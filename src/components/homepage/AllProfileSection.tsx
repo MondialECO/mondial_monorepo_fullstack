@@ -1,5 +1,3 @@
-"use client";
-
 import Image from "next/image";
 
 const profiles = [
@@ -34,7 +32,7 @@ export default function AllProfileSection() {
         <section className="relative w-full bg-[#FAFAFA] flex justify-center pt-10 md:pt-16">
 
             {/* top fade to connect hero */}
-            <div className="absolute top-0 left-0 w-full h-[120px] bg-gradient-to-b from-transparent to-[#FAFAFA] pointer-events-none" />
+            <div className="absolute top-0 left-0 w-full h-16 md:h-30 bg-linear-to-b from-transparent to-[#FAFAFA] pointer-events-none" />
             <div className="w-full max-w-7xl px-4 md:px-6 py-16 md:py-24 flex flex-col items-center">
 
                 {/* 🔥 Heading */}
@@ -52,7 +50,7 @@ export default function AllProfileSection() {
                     </h2>
 
                     <p className="text-sm md:text-base text-[#3E3E3E] max-w-xl">
-                        Whether you're a founder, entrepreneur, investor, or service
+                        Whether you&#39;re a founder, entrepreneur, investor, or service
                         provider, our platform is here to support your journey.
                     </p>
                 </div>
@@ -121,7 +119,7 @@ export default function AllProfileSection() {
 
                             {/* ✨ Hover Glow */}
                             <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition duration-500 pointer-events-none">
-                                <div className="absolute -inset-1 bg-gradient-to-r from-transparent via-white/40 to-transparent blur-xl" />
+                                <div className="absolute -inset-1 bg-linear-to-r from-transparent via-white/40 to-transparent blur-xl" />
                             </div>
 
                         </div>

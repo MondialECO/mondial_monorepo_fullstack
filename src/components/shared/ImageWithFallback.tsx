@@ -1,30 +1,32 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 
-interface ImageWithFallbackProps
-    extends React.ImgHTMLAttributes<HTMLImageElement> {
+interface ImageWithFallbackProps extends Omit<React.ImgHTMLAttributes<HTMLImageElement>, 'src'> {
+    src?: string;
+    width?: number;
+    height?: number;
     fallbackType?: 'avatar' | 'placeholder';
     showBorder?: boolean;
+    priority?: boolean;
 }
 
 /**
  * Image component with built-in fallback to placeholder
- * Handles 404 errors gracefully
+ * Optimized using next/image for format conversion, lazy loading, and sizing
  */
 export function ImageWithFallback({
-    src,
-    alt,
+    src = '',
+    alt = '',
+    width = 200,
+    height = 200,
     fallbackType = 'placeholder',
     showBorder = false,
+    priority = false,
     className = '',
-    ...props
 }: ImageWithFallbackProps) {
     const [hasError, setHasError] = useState(false);
-
-    const handleError = () => {
-        setHasError(true);
-    };
 
     // Fallback SVG placeholders
     const avatarPlaceholder = (
@@ -60,25 +62,16 @@ export function ImageWithFallback({
                 strokeWidth="3"
                 fill="none"
             />
-            <text
-                x="100"
-                y="190"
-                textAnchor="middle"
-                fill="#999"
-                fontSize="16"
-                fontFamily="sans-serif"
-            >
-                No image
-            </text>
         </svg>
     );
 
-    if (hasError) {
+    if (hasError || !src) {
         return (
             <div
                 className={`flex items-center justify-center bg-gray-100 ${showBorder ? 'border border-gray-300' : ''
                     } ${className}`}
                 title={alt || 'Image failed to load'}
+                style={{ width, height }}
             >
                 {fallbackType === 'avatar' ? avatarPlaceholder : genericPlaceholder}
             </div>
@@ -86,12 +79,15 @@ export function ImageWithFallback({
     }
 
     return (
-        <img
+        <Image
             src={src}
             alt={alt}
-            onError={handleError}
-            className={showBorder ? `border border-gray-300 ${className}` : className}
-            {...props}
+            width={width}
+            height={height}
+            quality={75}
+            priority={priority}
+            onError={() => setHasError(true)}
+            className={`${showBorder ? 'border border-gray-300' : ''} ${className}`}
         />
     );
 }

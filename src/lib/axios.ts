@@ -6,11 +6,13 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  if (typeof window !== "undefined") {
+  try {
     const token = localStorage.getItem("token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+  } catch {
+    // localStorage not available (e.g., SSR context)
   }
   return config;
 });
@@ -18,9 +20,15 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    if (err.response?.status === 401 && typeof window !== "undefined") {
-      localStorage.clear();
-      window.location.href = "/login";
+    if (err.response?.status === 401) {
+      try {
+        localStorage.clear();
+        if (typeof window !== "undefined") {
+          window.location.href = "/login";
+        }
+      } catch {
+        // localStorage not available
+      }
     }
     return Promise.reject(err);
   }

@@ -15,6 +15,7 @@ type AuthContextType = {
   token: string | null;
   user: User | null;
   isAuthenticated: boolean;
+  isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
 };
@@ -25,12 +26,11 @@ export const useAuth = () => useContext(AuthContext);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [isHydrated, setIsHydrated] = useState(false);
   const router = useRouter();
 
-  // SAFE hydration
+  // Hydrate from localStorage only once on mount
   useEffect(() => {
-    if (typeof window === "undefined") return;
-
     const storedUser = localStorage.getItem("user");
     const storedToken = localStorage.getItem("token");
 
@@ -42,6 +42,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.clear();
       }
     }
+
+    setIsHydrated(true);
   }, []);
 
   const login = async (email: string, password: string) => {
@@ -83,6 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         token,
         user,
         isAuthenticated: !!user && !!token,
+        isLoading: !isHydrated,
         login,
         logout,
       }}

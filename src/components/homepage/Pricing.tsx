@@ -101,12 +101,11 @@ function PricingCard({ plan }: { plan: Plan }) {
 
     return (
         <div
-            className={`bg-[#F9F9FA] rounded-[24px] px-5 py-6 flex flex-col border-2 border-white ${plan.featured ? "border-[#3c61dd]" : ""
+            className={`bg-[#F9F9FA] rounded-3xl px-5 py-6 flex flex-col border-2 border-white w-full sm:w-78 ${plan.featured ? "border-[#3c61dd]" : ""
                 }`}
             style={{
                 boxShadow: "-2px -1px 17px rgba(0, 0, 0, 0.02), 1px 2px 3px rgba(0, 0, 0, 0.04)",
-                height: "624px",
-                width: "315px",
+                minHeight: "624px",
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
@@ -130,7 +129,7 @@ function PricingCard({ plan }: { plan: Plan }) {
                         <div className="flex items-center gap-2">
                             <div
                                 style={{ backgroundColor: plan.avatarBg }}
-                                className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                                className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
                             >
                                 <ImageWithFallback
                                     src={plan.avatar}
@@ -164,7 +163,7 @@ function PricingCard({ plan }: { plan: Plan }) {
                         {/* Price Details */}
                         <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                             <span
-                                className="text-[#070707] font-semibold text-[48px] leading-[52px]"
+                                className="text-[#070707] font-semibold text-[48px] leading-13"
                                 style={{ fontFamily: "'Inter', sans-serif" }}
                             >
                                 ${price}
@@ -233,14 +232,14 @@ function PricingCard({ plan }: { plan: Plan }) {
                             <div key={i} className="flex items-center gap-3.5">
                                 {plan.features[i] ? (
                                     <div
-                                        className="w-4 h-4 rounded-full bg-[#099A48] flex items-center justify-center flex-shrink-0"
+                                        className="w-4 h-4 rounded-full bg-[#099A48] flex items-center justify-center shrink-0"
                                         style={{ width: "16px", height: "16px" }}
                                     >
                                         <Check size={10} color="white" strokeWidth={3} />
                                     </div>
                                 ) : (
                                     <div
-                                        className="w-4 h-4 rounded-full border border-[#606060] flex items-center justify-center flex-shrink-0"
+                                        className="w-4 h-4 rounded-full border border-[#606060] flex items-center justify-center shrink-0"
                                         style={{ width: "16px", height: "16px" }}
                                     >
                                         <X size={9} color="#606060" strokeWidth={2.5} />
@@ -300,7 +299,7 @@ export default function PricingPage() {
                             alignItems: "center",
                             gap: "12px",
                             marginBottom: "60px",
-                            width: "734px",
+                            maxWidth: "734px",
                             margin: "0 auto 60px",
                         }}
                     >
@@ -338,16 +337,10 @@ export default function PricingPage() {
 
                     {/* CARDS CONTAINER */}
                     <div
+                        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 w-full"
                         style={{
-                            display: "flex",
-                            flexDirection: "row",
-                            alignItems: "center",
-                            gap: "20px",
-                            width: "1320px",
                             filter: "drop-shadow(0px 4px 12px rgba(0, 0, 0, 0.04))",
                             margin: "0 auto",
-                            justifyContent: "center",
-                            flexWrap: "wrap",
                         }}
                     >
                         {PLANS.map((plan) => (

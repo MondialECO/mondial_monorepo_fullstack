@@ -1,5 +1,3 @@
-"use client";
-
 import Image from "next/image";
 
 const roles = [
@@ -36,7 +34,7 @@ export default function RolesSection() {
                 </div>
 
                 {/* 💎 Roles */}
-                <div className="w-full flex flex-wrap justify-center md:justify-between items-center gap-y-10 md:gap-y-0 md:gap-x-[80px]">
+                <div className="w-full flex flex-wrap justify-center md:justify-between items-center gap-y-10 md:gap-y-0 gap-x-6 md:gap-x-12 lg:gap-x-[80px]">
 
                     {roles.map((role, i) => (
                         <div

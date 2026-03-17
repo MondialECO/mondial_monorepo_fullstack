@@ -41,8 +41,8 @@ const FeatureCard = ({
     return (
         <div
             className={[
-                "relative overflow-hidden rounded-[20px] border border-white",
-                "shadow-[-2px_-1px_17px_rgba(0,0,0,0.02),_1px_2px_3px_rgba(0,0,0,0.04)]",
+                "relative overflow-hidden rounded-4xl border border-white",
+                "shadow-[-2px_-1px_17px_rgba(0,0,0,0.02),1px_2px_3px_rgba(0,0,0,0.04)]",
                 bgClass,
                 width,
                 height,
@@ -51,13 +51,13 @@ const FeatureCard = ({
         >
             <div className={posClass} style={{ zIndex: 3 }}>
                 <h3
-                    className="font-medium text-[28px] leading-[32px] text-[#070707]"
+                    className="font-medium text-[28px] leading-8 text-[#070707]"
                     style={{ fontFamily: "'Inter Tight', sans-serif" }}
                 >
                     {title}
                 </h3>
                 <p
-                    className="mt-2 text-[18px] leading-[28px] text-[#5E5E5E]"
+                    className="mt-2 text-[18px] leading-7 text-[#5E5E5E]"
                     style={{ fontFamily: "Inter, sans-serif" }}
                 >
                     {subtitle}
@@ -74,7 +74,7 @@ const FeatureCard = ({
 const FounderCard = () => (
     <FeatureCard
         width="lg:w-[456px] w-full"
-        height="h-[520px]"
+        height="min-h-[520px]"
         headerPos="top-left"
         title="Become a founder"
         subtitle="Convert followers to bookings."
@@ -103,7 +103,7 @@ const FounderCard = () => (
 const SubmitIdeasCard = () => (
     <FeatureCard
         width="flex-1"
-        height="h-[520px]"
+        height="min-h-[520px]"
         headerPos="top-left"
         title="Submit ideas"
         subtitle="Convert investors to commitments!"
@@ -133,7 +133,7 @@ const SubmitIdeasCard = () => (
 const GetInvestorsCard = () => (
     <FeatureCard
         width="flex-1"
-        height="h-[520px]"
+        height="min-h-[520px]"
         headerPos="bottom-left"
         title="Get Investors"
         subtitle="Convert investors to commitments!"
@@ -149,7 +149,7 @@ const GetInvestorsCard = () => (
                 alt="Investor list"
                 width={460}
                 height={345}
-                className="w-full max-w-[460px] h-auto object-contain"
+                className="w-full max-w-115 h-auto object-contain"
                 draggable={false}
             />
         </div>
@@ -161,14 +161,14 @@ const GetInvestorsCard = () => (
 const GrowTogetherCard = () => (
     <FeatureCard
         width="lg:w-[456px] w-full"
-        height="h-[520px]"
+        height="min-h-[520px]"
         headerPos="top-left"
         title="Grow Together"
         subtitle="Convert followers into bookings by sharing ideas!"
-        className="bg-gradient-to-b from-[#F3F0F9] to-[#F7FCFD]"
+        className="bg-linear-to-b from-[#F3F0F9] to-[#F7FCFD]"
     >
         {/* Image Container (fixed positioning anchor) */}
-        <div className="absolute left-1/2 top-[55%] -translate-x-1/2 -translate-y-1/2 z-[2]">
+        <div className="absolute left-1/2 top-[55%] -translate-x-1/2 -translate-y-1/2 z-2">
 
             {/* Scale Wrapper */}
             <div className="scale-[2] origin-center bottom-5">
@@ -177,7 +177,7 @@ const GrowTogetherCard = () => (
                     alt="Business Profit"
                     width={330}
                     height={212}
-                    className="rounded-[16px]"
+                    className="rounded-3xl"
                 />
             </div>
 
@@ -207,7 +207,7 @@ const TabToggle = ({
                 onClick={() => onChange(tab)}
                 style={{ fontFamily: "Inter, sans-serif" }}
                 className={[
-                    "h-9 px-4 rounded-full text-[14px] leading-[20px] transition-all duration-200 whitespace-nowrap",
+                    "h-9 px-4 rounded-full text-[14px] leading-5 transition-all duration-200 whitespace-nowrap",
                     active === tab
                         ? "bg-[#3C61DD] text-[#F7F7F7] font-semibold"
                         : "bg-[#F9F9FA] text-[#070707] font-normal border border-white",

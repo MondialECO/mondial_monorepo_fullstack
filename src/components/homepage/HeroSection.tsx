@@ -2,26 +2,69 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useTransition } from 'react';
 
-export default function HeroSection() {
+/*
+  Parallax scroll effect component.
+  Isolated to client component to avoid hydration issues.
+*/
+function HeroImageScroll({ src, alt }: { src: string; alt: string }) {
     const [scrollY, setScrollY] = useState(0);
+    const [, startTransition] = useTransition();
 
     useEffect(() => {
-        const handleScroll = () => setScrollY(window.scrollY);
+        let rafId: number;
+
+        const handleScroll = () => {
+            rafId = requestAnimationFrame(() => {
+                startTransition(() => {
+                    setScrollY(window.scrollY);
+                });
+            });
+        };
+
         window.addEventListener('scroll', handleScroll, { passive: true });
-        return () => window.removeEventListener('scroll', handleScroll);
+        return () => {
+            window.removeEventListener('scroll', handleScroll);
+            cancelAnimationFrame(rafId);
+        };
     }, []);
 
+    return (
+        <div
+            className="relative rounded-[18px] overflow-hidden border border-white/60 shadow-[0_40px_120px_rgba(0,0,0,0.12)]"
+            style={{
+                transform: `translateY(${scrollY * -0.04}px)`,
+            }}
+        >
+            {/* 🔥 depth overlay (fix light UI issue) */}
+            <div className="absolute inset-0 bg-black/5 z-10 pointer-events-none" />
+
+            {/* subtle bottom darkening */}
+            <div className="absolute inset-0 bg-linear-to-b from-transparent via-transparent to-black/10 z-10 pointer-events-none" />
+
+            <Image
+                src={src}
+                alt={alt}
+                width={1100}
+                height={650}
+                className="w-full h-auto object-cover"
+                priority
+            />
+        </div>
+    );
+}
+
+export default function HeroSection() {
     return (
         <section className="relative w-full min-h-screen flex flex-col items-center pt-20 md:pt-24 pb-20 md:pb-32 overflow-hidden bg-[#FAFAFA]">
 
             {/* 🌫️ Background System */}
             <div className="absolute inset-0 z-0 pointer-events-none">
-                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#ECECED] to-[#FAFAFA]" />
+                <div className="absolute inset-0 bg-linear-to-b from-transparent via-[#ECECED] to-[#FAFAFA]" />
 
                 {/* subtle glow */}
-                <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-white/50 blur-[120px]" />
+                <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-150 h-75 bg-white/50 blur-[120px]" />
             </div>
 
             <div className="relative z-10 w-full max-w-7xl mx-auto px-6 flex flex-col items-center text-center">
@@ -87,36 +130,15 @@ export default function HeroSection() {
                 </div>
 
                 {/* 🖥️ Dashboard */}
-                <div className="relative w-full max-w-[1100px] mt-10 md:mt-0">
+                <div className="relative w-full max-w-275 mt-10 md:mt-0">
 
                     {/* 🔥 Bottom fade bridge */}
-                    <div className="absolute bottom-0 left-0 w-full h-[220px] bg-gradient-to-b from-transparent via-[#FAFAFA]/70 to-[#FAFAFA] z-30 pointer-events-none" />
+                    <div className="absolute bottom-0 left-0 w-full h-55 bg-linear-to-b from-transparent via-[#FAFAFA]/70 to-[#FAFAFA] z-30 pointer-events-none" />
 
-                    {/* 🖼️ Image container */}
-                    <div
-                        className="relative rounded-[18px] overflow-hidden border border-white/60
-            shadow-[0_40px_120px_rgba(0,0,0,0.12)]
-            will-change-transform transition-transform duration-500 ease-out"
-                        style={{
-                            transform: `translateY(${scrollY * -0.04}px)`,
-                        }}
-                    >
-
-                        {/* 🔥 depth overlay (fix light UI issue) */}
-                        <div className="absolute inset-0 bg-black/5 z-10 pointer-events-none" />
-
-                        {/* subtle bottom darkening */}
-                        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/10 z-10 pointer-events-none" />
-
-                        <Image
-                            src="/dashboard-mockup.png"
-                            alt="Dashboard Interface"
-                            width={1100}
-                            height={650}
-                            className="w-full h-auto object-cover"
-                            priority
-                        />
-                    </div>
+                    <HeroImageScroll
+                        src="/dashboard-mockup.png"
+                        alt="Dashboard Interface"
+                    />
                 </div>
 
             </div>
