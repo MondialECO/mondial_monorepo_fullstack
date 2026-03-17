@@ -88,7 +88,7 @@ export default function IdeaCard({ idea }: IdeaCardProps) {
   };
 
   return (
-    <div className="bg-card text-card-foreground rounded-lg border shadow-sm p-4 sm:p-5">
+    <div className="bg-card text-card-foreground rounded-xl border shadow-sm p-4 sm:p-5 hover:shadow-md transition-shadow">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-4">
         <h3 className="text-md sm:text-lg font-semibold">
