@@ -89,46 +89,51 @@ export default function MyIdeasPage() {
 
   return (
     <main className="min-h-screen w-full bg-background text-foreground">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
+      <div className="max-w-[1136px] mx-auto px-4 sm:px-6 py-6">
         {/* Header */}
-        <div className="mb-5">
-          <h1 className="text-xl sm:text-2xl font-semibold mb-4">
-            My Ideas
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-xl sm:text-2xl font-semibold font-['inter_tight'] leading-tight sm:leading-8 text-foreground mb-6 sm:mb-8">
+            My ideas
           </h1>
 
           {/* Tabs + Action */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             {/* Tabs */}
-            <div className="flex flex-wrap gap-2">
-              {[
-                { id: "overview", label: "Overview" },
-                { id: "approved", label: "Approved" },
-                { id: "pending", label: "Pending" },
-                { id: "pause", label: "Pause" },
-                { id: "rejected", label: "Rejected" },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${activeTab === tab.id
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:bg-muted/80"
-                    }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
+            <div className="flex w-full md:w-auto overflow-x-auto scrollbar-hide p-1">
+              <div className="py-1 rounded-full outline outline-2 outline-offset-[-2px] outline-border inline-flex items-center gap-1 p-1 min-w-max">
+                {[
+                  { id: "overview", label: "Overview", count: mappedIdeas.length },
+                  { id: "approved", label: "Approved", count: mappedIdeas.filter(i => i.status === "approved").length },
+                  { id: "pending", label: "Pending", count: mappedIdeas.filter(i => i.status === "pending").length },
+                  { id: "pause", label: "Pause", count: mappedIdeas.filter(i => i.pauseInfo).length },
+                  { id: "rejected", label: "Rejected", count: mappedIdeas.filter(i => i.status === "rejected").length },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`px-3 py-2 rounded-full text-xs sm:text-sm transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === tab.id
+                      ? "bg-foreground text-background font-semibold"
+                      : "bg-muted text-muted-foreground font-medium outline outline-1 outline-offset-[-0.5px] outline-border/10 hover:bg-muted/80"
+                      }`}
+                  >
+                    {tab.label} ({tab.count.toString().padStart(2, '0')})
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Create Button */}
             <Button
-              size="sm"
-              className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white gap-2"
+              size="lg"
+              className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-4 py-2.5 shadow-[1px_2px_3px_0px_rgba(0,0,0,0.04)] shadow-[-2px_-1px_17px_0px_rgba(0,0,0,0.02)] flex items-center justify-center gap-[5px]"
               asChild
             >
               <Link href="/create-project">
-                {/* <Plus size={18} /> */}
-                + Create Idea
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M8 3.33334V12.6667" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M3.33331 8H12.6666" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                Create idea
               </Link>
             </Button>
           </div>
@@ -161,7 +166,7 @@ export default function MyIdeasPage() {
             </Button>
           </div>
         ) : (
-          <div className="space-y-5">
+          <div className="space-y-4">
             {filteredIdeas.map((idea) => (
               <IdeaCard key={idea.id} idea={idea as any} />
             ))}

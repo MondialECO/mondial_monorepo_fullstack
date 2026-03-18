@@ -88,21 +88,21 @@ export default function IdeaCard({ idea }: IdeaCardProps) {
   };
 
   return (
-    <div className="bg-card text-card-foreground rounded-lg border shadow-sm p-4 sm:p-5">
+    <div className="bg-card text-card-foreground rounded-xl border shadow-sm p-4 sm:p-5 hover:shadow-md transition-shadow">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-4">
-        <h3 className="text-md sm:text-lg font-semibold">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+        <h3 className="text-base sm:text-lg font-semibold leading-snug">
           {idea.title}
         </h3>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto scrollbar-hide">
           <button
-            className={`flex items-center gap-1 px-2 py-1 rounded-full text-sm font-medium border ${status.classes}`}
+            className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs sm:text-sm font-medium border min-w-max ${status.classes}`}
           >
             {status.icon}
             {status.label}
           </button>
-          <button className="flex items-center gap-1 px-2 py-1 rounded-full text-sm font-medium text-muted-foreground hover:bg-muted">
+          <button className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs sm:text-sm font-medium text-muted-foreground hover:bg-muted min-w-max">
             <Eye size={14} />
             View
           </button>
@@ -110,20 +110,22 @@ export default function IdeaCard({ idea }: IdeaCardProps) {
       </div>
 
       {/* Content */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t pt-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4">
         {/* Left */}
-        <div className="space-y-2">
-          <div className="flex flex-wrap items-center gap-1 text-xs sm:text-sm text-muted-foreground">
-            <span className="min-w-[130px] font-medium">Status:</span>
-            {idea.statusBadges.map((badge, idx) => (
-              <Badge
-                key={idx}
-                variant="secondary"
-                className={`text-xs py-0.5 px-2 ${BADGE_COLOR_MAP[badge.color || "default"]}`}
-              >
-                {badge.icon && "✓"} {badge.label}
-              </Badge>
-            ))}
+        <div className="space-y-3">
+          <div className="flex items-start gap-1 text-xs sm:text-sm text-muted-foreground">
+            <span className="min-w-[100px] sm:min-w-[130px] font-medium">Status:</span>
+            <div className="flex flex-wrap gap-1">
+              {idea.statusBadges.map((badge, idx) => (
+                <Badge
+                  key={idx}
+                  variant="secondary"
+                  className={`text-[10px] sm:text-xs py-0.5 px-2 ${BADGE_COLOR_MAP[badge.color || "default"]}`}
+                >
+                  {badge.icon && "✓"} {badge.label}
+                </Badge>
+              ))}
+            </div>
           </div>
 
           <InfoRow label="Created:" value={idea.createdDate} />
@@ -132,28 +134,34 @@ export default function IdeaCard({ idea }: IdeaCardProps) {
         </div>
 
         {/* Right */}
-        <div className="space-y-2">
+        <div className="space-y-3">
           <InfoRow label="Views:" value={idea.views} />
 
           {idea.fundRaised && (
             <InfoRow
               label="Fund Raised:"
-              value={`${idea.fundRaised} raised of ${idea.fundGoal}`}
+              value={<span><span className="text-foreground font-semibold">{idea.fundRaised}</span> raised of {idea.fundGoal}</span>}
             />
           )}
 
           <InfoRow label="Equity:" value={idea.equity} />
 
           <div className="flex items-center text-xs sm:text-sm text-muted-foreground">
-            <span className="min-w-[130px] font-medium">Investors:</span>
-            <div className="flex -space-x-1">
-              {Array.from({ length: idea.investors }).map((_, i) => (
+            <span className="min-w-[100px] sm:min-w-[130px] font-medium">Investors:</span>
+            <div className="flex -space-x-1.5">
+              {Array.from({ length: Math.min(idea.investors, 5) }).map((_, i) => (
                 <Avatar key={i} className="h-6 w-6 border-2 border-background">
-                  <AvatarFallback className="bg-muted text-xs">
+                  <AvatarFallback className="bg-muted text-[10px]">
                     {String.fromCharCode(65 + i)}
                   </AvatarFallback>
                 </Avatar>
               ))}
+              {idea.investors > 5 && (
+                <div className="h-6 w-6 rounded-full bg-muted border-2 border-background flex items-center justify-center text-[10px] font-medium">
+                  +{idea.investors - 5}
+                </div>
+              )}
+              {idea.investors === 0 && <span className="text-muted-foreground opacity-50 italic">None yet</span>}
             </div>
           </div>
         </div>
@@ -175,7 +183,7 @@ export default function IdeaCard({ idea }: IdeaCardProps) {
           <button
             onClick={handleTogglePause}
             disabled={isPausing}
-            className={`relative inline-flex h-6 w-12 items-center rounded-full transition-colors ${isPaused ? "bg-primary" : "bg-muted"
+            className={`relative inline-flex h-6 w-12 items-center rounded-full transition-colors ${isPaused ? "bg-blue-600" : "bg-gray-600"
               } ${isPausing ? "opacity-50 cursor-not-allowed" : ""}`}
             title={isPausing ? "Processing..." : "Toggle pause state"}
           >
