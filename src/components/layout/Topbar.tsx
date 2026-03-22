@@ -12,8 +12,8 @@ export default function Topbar() {
   const breadcrumbs = useBreadcrumb();
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b bg-sidebar text-muted-foreground">
-      <div className="flex h-14 items-center justify-between px-3 sm:px-4 lg:px-6">
+    <header className="sticky top-0 z-40 w-full border-b border-border bg-card text-muted-foreground">
+      <div className="flex h-[72px] items-center justify-between px-4 lg:px-8">
 
         {/* LEFT */}
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
@@ -37,13 +37,13 @@ export default function Topbar() {
                   )}
 
                   {isLast ? (
-                    <span className="font-medium truncate">
+                    <span className="font-semibold text-foreground truncate">
                       {item.label}
                     </span>
                   ) : (
                     <Link
                       href={item.href}
-                      className="text-muted-foreground hover:text-foreground truncate"
+                      className="text-muted-foreground hover:text-foreground transition-colors truncate"
                     >
                       {item.label}
                     </Link>
@@ -55,7 +55,7 @@ export default function Topbar() {
         </div>
 
         {/* RIGHT */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-4 lg:gap-6">
           <MessageIcon />
           <NotificationBell />
           <ThemeToggle />

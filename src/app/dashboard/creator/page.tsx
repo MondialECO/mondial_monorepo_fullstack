@@ -94,21 +94,21 @@ export default function CreatorDashboard() {
   }
 
   return (
-    <div className="w-full max-w-[1136px] mx-auto space-y-8 pb-8">
+    <div className="w-full max-w-[1136px] mx-auto space-y-6 pb-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-        <div className="space-y-2">
-          <h1 className="text-2xl font-medium font-['Inter'] leading-7 text-foreground">
+        <div className="space-y-1">
+          <h1 className="text-[28px] font-bold leading-tight text-foreground">
             Hello Back, Jona 👋
           </h1>
-          <p className="text-sm font-normal text-muted-foreground leading-5">
+          <p className="text-sm font-normal text-muted-foreground">
             Explore your project ideas here
           </p>
         </div>
         <Button
           asChild
           size="lg"
-          className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-4 py-2.5 shadow-[1px_2px_3px_0px_rgba(0,0,0,0.04)] shadow-[-2px_-1px_17px_0px_rgba(0,0,0,0.02)] flex items-center justify-center gap-[5px]"
+          className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-white rounded-lg px-5 py-2.5 shadow-sm flex items-center justify-center gap-2 transition-all duration-200"
         >
           <Link href="/create-project">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -121,125 +121,152 @@ export default function CreatorDashboard() {
       </div>
 
       {/* Stats Section */}
-      <div className="w-full p-3 bg-muted rounded-2xl shadow-[1px_2px_3px_0px_rgba(0,0,0,0.04)] shadow-[-2px_-1px_17px_0px_rgba(0,0,0,0.02)] outline outline-2 outline-offset-[-2px] outline-border grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Project Ideas */}
-        <div className="bg-card rounded-xl outline outline-1 outline-offset-[-1px] outline-border/10 flex flex-col justify-start items-start overflow-hidden">
-          <div className="self-stretch flex-1 p-3 pb-2 flex flex-col justify-start items-start gap-4">
-            <div className="inline-flex justify-start items-center gap-2">
-              <div className="p-1.5 bg-fuchsia-600/10 rounded-lg">
-                <Lightbulb className="h-4 w-4 text-fuchsia-600" />
+        <div className="bg-card rounded-[16px] border border-border p-6 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between min-h-[160px]">
+          <div className="flex justify-between items-start">
+            <div className="space-y-4">
+              <div className="inline-flex items-center gap-2">
+                <div className="p-2 bg-[#9333EA]/10 rounded-lg">
+                  <Lightbulb className="h-5 w-5 text-[#9333EA]" />
+                </div>
+                <div className="text-muted-foreground text-sm font-medium">Project Ideas</div>
               </div>
-              <div className="text-muted-foreground text-sm md:text-base font-normal leading-6 text-nowrap">Project Ideas</div>
+              <div className="text-foreground text-[28px] font-bold">{data.totalIdeas.toString().padStart(2, '0')}</div>
             </div>
-            <div className="text-foreground text-2xl md:text-3xl font-medium leading-8">{data.totalIdeas.toString().padStart(2, '0')}</div>
           </div>
-          <div className="self-stretch px-3 py-2.5 inline-flex justify-between items-center border-t border-border/10">
-            <div className="text-muted-foreground text-xs md:text-sm font-semibold leading-5">+{data.totalClicksLast14Days} views today</div>
-            <div className="flex items-center gap-1 text-lime-600">
-              <TrendingUp className="h-4 w-4" />
-              <div className="text-[10px] md:text-xs font-normal leading-5">4.1%</div>
+          <div className="flex justify-between items-center mt-4">
+            <div className="text-muted-foreground text-xs font-medium">+{data.totalClicksLast14Days} views today</div>
+            <div className="flex items-center gap-1 text-[#10B981]">
+              <TrendingUp className="h-3 w-3" />
+              <div className="text-xs font-semibold">4.1%</div>
             </div>
           </div>
         </div>
 
         {/* Funds Raised */}
-        <div className="bg-card rounded-xl outline outline-1 outline-offset-[-1px] outline-border/10 flex flex-col justify-start items-start overflow-hidden">
-          <div className="self-stretch flex-1 p-3 pb-2 flex flex-col justify-start items-start gap-4">
-            <div className="inline-flex justify-start items-center gap-2">
-              <div className="p-1.5 bg-emerald-600/10 rounded-lg">
-                <DollarSign className="h-4 w-4 text-emerald-600" />
+        <div className="bg-card rounded-[16px] border border-border p-6 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between min-h-[160px]">
+          <div className="flex justify-between items-start">
+            <div className="space-y-4">
+              <div className="inline-flex items-center gap-2">
+                <div className="p-2 bg-primary/10 rounded-lg">
+                  <DollarSign className="h-5 w-5 text-primary" />
+                </div>
+                <div className="text-muted-foreground text-sm font-medium">Funds Raised</div>
               </div>
-              <div className="text-muted-foreground text-sm md:text-base font-normal leading-6 text-nowrap">Funds Raised</div>
+              <div className="text-foreground text-[28px] font-bold">${data.totalFundRaised.toLocaleString()}</div>
             </div>
-            <div className="text-foreground text-2xl md:text-3xl font-medium leading-8">${data.totalFundRaised.toLocaleString()}</div>
           </div>
-          <div className="self-stretch px-3 py-2.5 flex items-center border-t border-border/10">
-            <div className="text-muted-foreground text-xs md:text-sm font-normal leading-5">Total Required ${data.totalRequired.toLocaleString()}</div>
+          <div className="mt-4">
+            <div className="text-muted-foreground text-xs font-medium">Total Required ${data.totalRequired.toLocaleString()}</div>
           </div>
         </div>
 
         {/* Total Equity */}
-        <div className="bg-card rounded-xl outline outline-1 outline-offset-[-1px] outline-border/10 flex flex-col justify-start items-start overflow-hidden md:col-span-2 lg:col-span-1">
-          <div className="self-stretch flex-1 p-3 pb-2 flex flex-col justify-start items-start gap-4">
-            <div className="inline-flex justify-start items-center gap-2">
-              <div className="p-1.5 bg-violet-600/10 rounded-lg">
-                <Users className="h-4 w-4 text-violet-600" />
+        <div className="bg-card rounded-[16px] border border-border p-6 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between min-h-[160px] md:col-span-2 lg:col-span-1">
+          <div className="flex justify-between items-start">
+            <div className="space-y-4">
+              <div className="inline-flex items-center gap-2">
+                <div className="p-2 bg-primary/10 rounded-lg">
+                  <Users className="h-5 w-5 text-primary" />
+                </div>
+                <div className="text-muted-foreground text-sm font-medium">Total Equity</div>
               </div>
-              <div className="text-muted-foreground text-sm md:text-base font-normal leading-6 text-nowrap">Total Equity</div>
+              <div className="text-foreground text-[28px] font-bold">{data.totalEquity}%</div>
             </div>
-            <div className="text-foreground text-2xl md:text-3xl font-medium leading-8">{data.totalEquity}%</div>
           </div>
-          <div className="self-stretch px-3 py-2.5 flex items-center border-t border-border/10">
-            <div className="text-muted-foreground text-xs md:text-sm font-normal leading-5">Total Investors: {data.activeInvestors.toString().padStart(2, '0')}</div>
+          <div className="mt-4">
+            <div className="text-muted-foreground text-xs font-medium">Total Investors: {data.activeInvestors.toString().padStart(2, '0')}</div>
           </div>
         </div>
       </div>
       {/* Main Content Area */}
-      <div className="flex flex-col lg:flex-row items-start gap-4">
+      <div className="flex flex-col lg:flex-row items-start gap-6">
         {/* Funding Overview */}
-        <div className="flex-1 w-full p-4 md:p-5 bg-muted rounded-2xl shadow-[1px_2px_3px_0px_rgba(0,0,0,0.04)] shadow-[-2px_-1px_17px_0px_rgba(0,0,0,0.02)] outline outline-2 outline-offset-[-2px] outline-border flex flex-col justify-center items-start gap-4 md:gap-5">
-          <div className="self-stretch inline-flex justify-center items-center gap-3 md:gap-5">
-            <div className="flex-1 text-foreground text-lg md:text-xl font-normal font-['Inter'] leading-6">Funding Overview</div>
-            <Button asChild variant="outline" size="sm" className="px-3 py-1.5 rounded-lg outline outline-1 outline-offset-[-1px] text-xs md:text-sm font-medium hover:bg-muted transition-colors">
+        <div className="flex-1 w-full bg-card rounded-[16px] border border-border shadow-sm p-6 flex flex-col gap-6">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-bold text-foreground">Funding Overview</h2>
+            <Button asChild variant="ghost" size="sm" className="text-primary hover:text-primary hover:bg-primary/5 font-semibold transition-colors">
               <Link href="/dashboard/creator/myideas">
                 See All
               </Link>
             </Button>
           </div>
 
-          <div className="self-stretch flex flex-col gap-4">
+          <div className="flex flex-col gap-6">
             {data.ideas.length === 0 ? (
               <div className="text-center py-10 text-muted-foreground bg-muted/20 rounded-xl border border-dashed border-border/30">
                 No project ideas found.
               </div>
             ) : (
               data.ideas.map((project) => (
-                <div key={project.id} className="self-stretch p-3 md:p-4 bg-card rounded-xl shadow-[0px_2px_40px_0px_rgba(0,0,0,0.02)] outline outline-1 outline-offset-[-1px] outline-border/10 flex flex-col gap-4 md:gap-6">
+                <div key={project.id} className="p-5 bg-card rounded-xl border border-border shadow-sm flex flex-col gap-6 hover:border-primary/20 transition-all duration-200">
                   {/* Status Badges */}
-                  <div className="self-stretch inline-flex justify-start items-center gap-1.5 flex-wrap">
-                    <div className="pl-2 pr-3 py-1 bg-muted rounded-full outline outline-1 outline-offset-[-1px] outline-border/20 flex justify-center items-center gap-1">
-                      <CheckCircle2 className="h-3 w-3 text-emerald-600" />
-                      <div className="text-foreground text-[10px] md:text-xs font-normal leading-5">{project.status === 'APPROVED' ? 'Approved' : 'Pending'}</div>
-                    </div>
-                    {project.stageLabel && (
-                      <div className="px-3 py-1 bg-amber-500/10 rounded-full outline outline-1 outline-offset-[-1px] outline-amber-500/20 flex justify-center items-center">
-                        <div className="text-amber-700 text-[10px] md:text-xs font-medium leading-5">Type: {project.stageLabel}</div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {project.status === 'APPROVED' ? (
+                      <div className="px-3 py-1 bg-[#10B981]/10 text-[#34D399] rounded-full text-xs font-semibold flex items-center gap-1">
+                        <CheckCircle2 className="h-3 w-3" />
+                        Approved
+                      </div>
+                    ) : (
+                      <div className="px-3 py-1 bg-[#F59E0B]/10 text-[#FBBF24] rounded-full text-xs font-semibold flex items-center gap-1">
+                        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-[#FBBF24]">
+                          <path d="M8 4V8L10.5 10.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="2"/>
+                        </svg>
+                        Pending
                       </div>
                     )}
-                    <div className="px-3 py-1 bg-emerald-500/10 rounded-full outline outline-1 outline-offset-[-1px] outline-emerald-500/20 flex justify-center items-center">
-                      <div className="text-emerald-700 text-[10px] md:text-xs font-medium leading-5">Online</div>
+                    {project.stageLabel && (
+                      <div className="px-3 py-1 bg-muted/50 text-muted-foreground rounded-full text-xs font-semibold">
+                        {project.stageLabel}
+                      </div>
+                    )}
+                    <div className="px-3 py-1 bg-[#10B981]/10 text-[#34D399] rounded-full text-xs font-semibold flex items-center gap-1">
+                      <div className="w-1.5 h-1.5 rounded-full bg-[#34D399]" />
+                      Online
                     </div>
                   </div>
 
                   {/* Info Header */}
-                  <div className="self-stretch inline-flex justify-between items-start gap-4">
+                  <div className="flex justify-between items-start gap-4">
                     <div className="flex-1 min-w-0">
-                      <div className="text-muted-foreground text-sm md:text-base font-semibold leading-6 truncate">{project.name}</div>
-                      <div className="text-slate-400 text-[10px] md:text-xs font-normal leading-5">
+                      <div className="text-foreground text-base font-bold truncate">{project.name}</div>
+                      <div className="text-muted-foreground text-xs font-normal mt-0.5">
                         {project.createdAt !== '0001-01-01T00:00:00Z'
                           ? format(new Date(project.createdAt), 'dd MMMM, yyyy')
                           : 'Just now'}
                       </div>
                     </div>
-                    <div className="flex -space-x-1.5 shrink-0">
-                      {project.investors && project.investors.slice(0, 3).map((_, i) => (
-                        <div key={i} className="w-5 h-5 md:w-6 md:h-6 rounded-full border-2 border-background bg-slate-200 shadow-sm" />
-                      ))}
+                    <div className="flex -space-x-2 shrink-0">
+                      {(project.investors && project.investors.length > 0) ? (
+                        project.investors.slice(0, 3).map((_, i) => (
+                          <div key={i} className="w-7 h-7 rounded-full border-2 border-card bg-muted shadow-sm flex items-center justify-center overflow-hidden">
+                            <span className="text-[10px] text-muted-foreground font-bold">In</span>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="w-7 h-7 rounded-full border-2 border-card bg-muted shadow-sm flex items-center justify-center">
+                          <Users className="h-3 w-3 text-muted-foreground" />
+                        </div>
+                      )}
                     </div>
                   </div>
 
                   {/* Progress Section */}
-                  <div className="self-stretch flex flex-col gap-1.5">
-                    <div className="text-foreground text-[10px] md:text-xs font-normal leading-5">{project.fundingProgress}% funded</div>
-                    <div className="self-stretch h-1 bg-gray-300 rounded-full overflow-hidden relative border border-border/5">
+                  <div className="flex flex-col gap-2">
+                    <div className="flex justify-between items-center">
+                      <div className="text-foreground text-xs font-bold">{project.fundingProgress}% funded</div>
+                    </div>
+                    <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-blue-600 rounded-full transition-all duration-500 "
+                        className="h-full bg-primary rounded-full transition-all duration-500"
                         style={{ width: `${project.fundingProgress}%` }}
                       />
                     </div>
-                    <div className="self-stretch flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1.5">
-                      <div className="text-muted-foreground text-[10px] md:text-xs font-normal leading-5">${project.totalRaised.toLocaleString()} raised of ${project.fundingRequired.toLocaleString()}</div>
-                      <div className="text-foreground text-[10px] md:text-xs font-normal leading-5 text-nowrap">{project.equityOffered}% equity offered</div>
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                      <div className="text-muted-foreground text-xs font-medium">${project.totalRaised.toLocaleString()} raised of ${project.fundingRequired.toLocaleString()}</div>
+                      <div className="text-foreground text-xs font-bold">{project.equityOffered}% equity offered</div>
                     </div>
                   </div>
                 </div>
@@ -249,36 +276,36 @@ export default function CreatorDashboard() {
         </div>
 
         {/* Top Investors */}
-        <div className="w-full lg:w-[350px] p-4 md:p-5 bg-muted rounded-2xl shadow-[1px_2px_3px_0px_rgba(0,0,0,0.04)] shadow-[-2px_-1px_17px_0px_rgba(0,0,0,0.02)] outline outline-2 outline-offset-[-2px] outline-border inline-flex flex-col justify-start items-center gap-4 overflow-hidden">
-          <div className="self-stretch inline-flex justify-between items-center">
-            <div className="justify-start text-foreground text-lg md:text-xl font-normal font-['Inter'] leading-6">Top Investors</div>
-            <Button asChild variant="outline" size="sm" className="px-3 py-1.5 rounded-lg outline outline-1 outline-offset-[-1px] text-xs md:text-sm font-medium hover:bg-muted transition-colors">
+        <div className="w-full lg:w-[350px] bg-card rounded-[16px] border border-border shadow-sm p-6 flex flex-col gap-6">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-bold text-foreground">Top Investors</h2>
+            <Button asChild variant="ghost" size="sm" className="text-primary hover:text-primary hover:bg-primary/5 font-semibold transition-colors">
               <Link href="/dashboard/creator/investors">See All</Link>
             </Button>
           </div>
-          <div className="self-stretch flex flex-col justify-start items-start gap-3 md:gap-4">
+          <div className="flex flex-col gap-4">
             {topInvestors.map((investor) => (
               <div
                 key={investor.ideaName}
-                className="w-full p-3 bg-card rounded-xl outline outline-1 outline-offset-[-1px] outline-border/10 flex items-center justify-between hover:bg-muted/80 transition-all cursor-pointer group"
+                className="w-full p-4 bg-transparent rounded-xl border border-transparent hover:border-border hover:bg-muted/30 transition-all duration-200 cursor-pointer flex items-center justify-between group"
               >
-                <div className="flex items-center gap-2 md:gap-3 min-w-0">
-                  <Avatar className="h-8 w-8 md:h-10 md:w-10 border-2 border-background shadow-sm shrink-0">
+                <div className="flex items-center gap-3 min-w-0">
+                  <Avatar className="h-10 w-10 border border-border ring-2 ring-transparent group-hover:ring-primary/20 transition-all">
                     <AvatarImage src={investor.avatarUrl} />
-                    <AvatarFallback className="bg-slate-100 text-[10px] md:text-xs">
+                    <AvatarFallback className="bg-muted text-xs font-bold text-muted-foreground">
                       {investor.name.split(" ").map(n => n[0]).join("").slice(0, 2)}
                     </AvatarFallback>
                   </Avatar>
                   <div className="min-w-0">
-                    <div className="text-foreground text-xs md:text-sm font-medium truncate group-hover:text-blue-600 transition-colors uppercase md:normal-case">{investor.name}</div>
-                    <div className="text-muted-foreground text-[10px] md:text-xs truncate">{investor.ideaName}</div>
+                    <div className="text-foreground text-sm font-bold truncate group-hover:text-primary transition-colors">{investor.name}</div>
+                    <div className="text-muted-foreground text-xs truncate mt-0.5">{investor.ideaName}</div>
                   </div>
                 </div>
                 <div className="pl-2 shrink-0 text-right">
-                  <div className="text-slate-900 font-semibold text-xs md:text-sm text-nowrap">
+                  <div className="text-foreground font-bold text-sm">
                     {investor.invested}
                   </div>
-                  <div className="text-muted-foreground text-[10px] md:text-xs truncate">{investor.equity} equity</div>
+                  <div className="text-muted-foreground text-xs mt-0.5">{investor.equity} equity</div>
                 </div>
               </div>
             ))}
