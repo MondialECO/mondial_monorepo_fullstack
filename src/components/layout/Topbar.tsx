@@ -12,7 +12,7 @@ export default function Topbar() {
   const breadcrumbs = useBreadcrumb();
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b bg-muted text-muted-foreground">
+    <header className="sticky top-0 z-40 w-full border-b bg-sidebar text-muted-foreground">
       <div className="flex h-14 items-center justify-between px-3 sm:px-4 lg:px-6">
 
         {/* LEFT */}
