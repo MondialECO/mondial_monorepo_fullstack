@@ -63,16 +63,8 @@ const equityDistributions = [
 export default function InvestmentDashboard() {
   return (
     <div className="space-y-4 sm:space-y-8">
-
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <span>Dashboards</span>
-        <span>/</span>
-        <span className="text-foreground font-medium">Investors</span>
-      </div>
-
       {/* 1. QUICK STATS */}
-      <div className="w-full p-2 sm:p-3 bg-card rounded-2xl shadow-[0px_2px_40px_0px_rgba(0,0,0,0.02)] outline outline-2 outline-offset-[-2px] outline-border flex flex-col sm:flex-row justify-start items-stretch sm:items-center gap-2 sm:gap-3">
+      <div className="w-full p-2 sm:p-3 bg-muted rounded-2xl shadow-[0px_2px_40px_0px_rgba(0,0,0,0.02)] outline outline-2 outline-offset-[-2px] outline-border flex flex-col sm:flex-row justify-start items-stretch sm:items-center gap-2 sm:gap-3">
         {[
           { label: "Investors", value: "03" },
           { label: "Total Raised", value: "$970K" },
@@ -80,15 +72,15 @@ export default function InvestmentDashboard() {
         ].map((item, i) => (
           <div
             key={i}
-            className="flex-1 p-3 sm:p-4 bg-muted rounded-xl outline outline-1 outline-offset-[-1px] outline-border/5 inline-flex flex-col justify-center items-start gap-1.5 sm:gap-2.5"
+            className="flex-1 p-3 sm:p-4 bg-card rounded-xl outline outline-1 outline-offset-[-1px] outline-border/5 inline-flex flex-col justify-center items-start gap-1.5 sm:gap-2.5"
           >
             <div className="inline-flex justify-between items-center">
-              <div className="text-muted-foreground text-base font-normal font-['Inter'] leading-6">
+              <div className="text-muted-foreground text-sm font-medium font-['Inter'] leading-5">
                 {item.label}
               </div>
             </div>
             <div className="self-stretch flex flex-col justify-start items-start gap-4">
-              <div className="text-foreground text-2xl sm:text-3xl font-medium font-['Inter'] leading-8">
+              <div className="text-foreground text-[30px] font-bold font-['Inter'] leading-tight">
                 {item.value}
               </div>
             </div>
@@ -97,9 +89,9 @@ export default function InvestmentDashboard() {
       </div>
 
       {/* 2. INVESTOR INSIGHTS */}
-      <div className="w-full px-3 pt-5 pb-3 sm:px-5 sm:pt-8 sm:pb-5 bg-card rounded-2xl shadow-[0px_2px_40px_0px_rgba(0,0,0,0.02)] outline outline-2 outline-offset-[-2px] outline-border inline-flex flex-col justify-start items-start gap-4 sm:gap-5">
+      <div className="w-full px-3 pt-5 pb-3 sm:px-5 sm:pt-8 sm:pb-5 bg-muted rounded-2xl shadow-[0px_2px_40px_0px_rgba(0,0,0,0.02)] outline outline-2 outline-offset-[-2px] outline-border inline-flex flex-col justify-start items-start gap-4 sm:gap-5">
         <div className="flex flex-col justify-start items-start gap-2">
-          <div className="self-stretch text-foreground text-xl sm:text-2xl font-medium font-['Inter'] leading-7">
+          <div className="self-stretch text-foreground text-[20px] font-semibold font-['Inter'] leading-7">
             Investor Insights
           </div>
           <div className="self-stretch text-muted-foreground text-sm font-normal font-['Inter'] leading-5">
@@ -122,8 +114,8 @@ export default function InvestmentDashboard() {
               >
                 <img className="w-10 h-10 rounded-full" src={`https://i.pravatar.cc/40?u=${row.name}`} alt={row.name} />
                 <div className="inline-flex flex-col justify-start items-start">
-                  <div className="text-foreground text-sm font-medium font-['Inter'] leading-5">{row.name}</div>
-                  <div className="text-muted-foreground text-xs font-normal font-['Inter'] leading-5">{row.email}</div>
+                  <div className="text-foreground text-sm font-semibold font-['Inter'] leading-5">{row.name}</div>
+                  <div className="text-muted-foreground text-[12px] font-normal font-['Inter'] leading-5">{row.email}</div>
                 </div>
               </div>
             ))}
@@ -257,7 +249,7 @@ export default function InvestmentDashboard() {
       {/* 3. EQUITY DISTRIBUTION */}
       <div className="w-full px-3 pt-5 pb-3 sm:px-5 sm:pt-8 sm:pb-5 bg-card rounded-2xl shadow-[0px_2px_40px_0px_rgba(0,0,0,0.02)] inline-flex flex-col justify-start items-start gap-4 sm:gap-5">
         <div className="flex flex-col justify-start items-start gap-2">
-          <div className="text-foreground text-xl sm:text-2xl font-medium font-['Inter'] leading-7">
+          <div className="text-foreground text-[20px] font-semibold font-['Inter'] leading-7">
             Equity Distribution by Idea
           </div>
           <div className="self-stretch text-muted-foreground text-sm font-normal font-['Inter'] leading-5">
@@ -279,11 +271,11 @@ export default function InvestmentDashboard() {
                   <div className="self-stretch flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-1.5">
                     <div className="flex items-center gap-1.5 min-w-0">
                       <ArrowUpRight className="w-5 h-5 text-foreground shrink-0" />
-                      <div className="text-foreground text-base sm:text-lg font-normal font-['Inter'] leading-7 line-clamp-1">
+                      <div className="text-foreground text-[16px] font-medium font-['Inter'] leading-tight line-clamp-1">
                         {item.title}
                       </div>
                     </div>
-                    <div className="sm:flex-1 sm:text-right text-foreground text-sm sm:text-base font-normal font-['Inter'] leading-6 shrink-0">
+                    <div className="sm:flex-1 sm:text-right text-foreground text-sm font-semibold font-['Inter'] leading-6 shrink-0">
                       Total Equity {item.totalEquity.toFixed(2)}%
                     </div>
                   </div>
