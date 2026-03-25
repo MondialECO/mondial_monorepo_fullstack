@@ -2,7 +2,7 @@ import React from "react"
 import { Profile } from "@/types/creator/publicProfile"
 
 export const ExperienceCard = ({ experience }: { experience: string }) => (
-    <div className="border border-border rounded-2xl p-6 space-y-3 bg-card">
+    <div className="border border-border p-6">
         <span className="self-stretch justify-start text-foreground text-base font-semibold leading-6">Years of Experience</span>
         <div className="self-stretch p-2 justify-start text-muted-foreground text-sm">
             {experience}
@@ -11,7 +11,7 @@ export const ExperienceCard = ({ experience }: { experience: string }) => (
 )
 
 export const TagsCard = ({ tags }: { tags: string[] }) => (
-    <div className="border border-border rounded-2xl p-6 space-y-4 bg-card">
+    <div className="p-6">
         <div className="self-stretch justify-start text-foreground text-base font-semibold leading-6">Experience & Background</div>
         <div className="self-stretch inline-flex justify-start items-start gap-2 flex-wrap content-start">
             {tags.map(tag => (
@@ -24,7 +24,7 @@ export const TagsCard = ({ tags }: { tags: string[] }) => (
 )
 
 export const PreviousProjectsCard = ({ prevProjects }: { prevProjects: string[] }) => (
-    <div className="border border-border rounded-2xl p-6 space-y-4 bg-card">
+    <div className="border border-border p-6 space-y-4">
         <div className="self-stretch justify-start text-foreground text-base font-semibold leading-6">Previous Projects</div>
         <ul className="space-y-3">
             {prevProjects.map((p, i) => (

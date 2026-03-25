@@ -5,7 +5,7 @@ import { useParams } from "next/navigation"
 import { MapPin, Plus } from "lucide-react"
 import { getProfileData } from "./data"
 import { ProjectCard } from "@/components/founder/ProjectCard"
-import { ExperienceCard, TagsCard, PreviousProjectsCard } from "@/components/founder/profile/ProfileSidebar"
+import { ExperienceCard, TagsCard, PreviousProjectsCard } from "@/components/founder/profile/ProfileView"
 
 export default function PublicProfilePage() {
     const { id } = useParams()
@@ -17,10 +17,10 @@ export default function PublicProfilePage() {
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
 
                     {/* LEFT COLUMN: Profile Info */}
-                    <div className="lg:col-span-4 space-y-6">
+                    <div className="lg:col-span-4 space-y-2 bg-card rounded-2xl border border-border">
 
                         {/* Main Profile Card */}
-                        <div className="overflow-hidden bg-card rounded-2xl border border-border">
+                        <div className="overflow-hidden rounded-2xl">
                             {/* Cover Image */}
                             <div className="h-20 bg-gradient-to-r from-blue-500 to-indigo-600 relative overflow-hidden">
                                 <img src="https://unsplash.com/photos/turned-on-flat-screen-television-5Xwaj9gaR0g" alt="cover" className="absolute inset-0 w-full h-full object-cover opacity-30 mix-blend-overlay" />
