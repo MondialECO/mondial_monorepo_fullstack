@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,7 +19,11 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export default function Profile() {
+interface ProfileProps {
+    Id: string;
+}
+
+export default function Profile({ Id }: ProfileProps) {
     const [activeTab, setActiveTab] = useState("personal");
     const [bio, setBio] = useState("Meet Alex, a passionate software developer with a knack for creating innovative solutions. With over five years of experience in the tech industry, Alex loves tackling complex challenges and collaborating with teams to bring ideas to life. When not coding, you can find Alex hiking or exploring new coffee shops.");
 
@@ -58,9 +63,9 @@ export default function Profile() {
                                         <button className="text-blue-500 text-sm font-semibold font-['Inter'] leading-5 hover:underline decoration-2 underline-offset-4">
                                             Update
                                         </button>
-                                        <button className="text-muted-foreground text-sm font-semibold font-['Inter'] leading-5 hover:text-foreground transition-colors">
+                                        <Link href={`/dashboard/creator/profile/${Id}`} className="text-muted-foreground text-sm font-semibold font-['Inter'] leading-5 hover:text-foreground transition-colors">
                                             Public View
-                                        </button>
+                                        </Link>
                                     </div>
                                 </div>
 
