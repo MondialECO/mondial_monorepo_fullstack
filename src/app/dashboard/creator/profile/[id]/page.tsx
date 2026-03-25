@@ -4,7 +4,7 @@ import React from "react"
 import { useParams } from "next/navigation"
 import { MapPin, Plus } from "lucide-react"
 import { getProfileData } from "./data"
-import { ProjectCard } from "@/components/founder/ProjectCard"
+import { ProjectCard } from "@/components/shared/ProjectCard"
 import { ExperienceCard, TagsCard, PreviousProjectsCard } from "@/components/founder/profile/ProfileView"
 
 export default function PublicProfilePage() {
