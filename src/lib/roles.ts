@@ -2,5 +2,6 @@ export enum UserRole {
   ADMIN = "Admin",
   CREATOR = "Creator",
   INVESTOR = "Investor",
-  ADVISOR = "Advisor",
+  ENTREPRENEUR = "Entrepreneur",
+  SERVICE_PROVIDER = "ServiceProvider",
 }

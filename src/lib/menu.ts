@@ -104,13 +104,26 @@ export const menu: Record<UserRole, MenuSection[]> = {
     },
   ],
 
-  [UserRole.ADVISOR]: [
+  [UserRole.ENTREPRENEUR]: [
     {
       title: "Dashboard",
       items: [
         {
           label: "Advisory Panel",
-          href: "/dashboard/advisor",
+          href: "/dashboard/entrepreneur",
+          icon: Briefcase,
+        },
+      ],
+    },
+  ],
+
+  [UserRole.SERVICE_PROVIDER]: [
+    {
+      title: "Dashboard",
+      items: [
+        {
+          label: "Advisory Panel",
+          href: "/dashboard/serviceprovider",
           icon: Briefcase,
         },
       ],
