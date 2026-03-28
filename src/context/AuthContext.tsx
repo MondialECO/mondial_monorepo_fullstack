@@ -66,7 +66,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       Admin: "/dashboard/admin",
       Creator: "/dashboard/creator",
       Investor: "/dashboard/investor",
-      Advisor: "/dashboard/advisor",
+      Entrepreneur: "/dashboard/entrepreneur",
+      ServiceProvider: "/dashboard/serviceprovider",
     };
 
     router.push(roleRoutes[user.role]);
