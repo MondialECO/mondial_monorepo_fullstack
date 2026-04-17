@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/app/_providers/AuthProvider";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 
 export default function LoginPage() {
-  const { login } = useAuth();
-  
+  const { login, isLoading: authLoading } = useAuth();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -15,6 +15,13 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Prevent form submission during provider hydration
+    if (authLoading) {
+      setError("Please wait while we initialize the authentication system...");
+      return;
+    }
+    
     setError(null);
     setIsLoading(true);
 
@@ -50,8 +57,8 @@ export default function LoginPage() {
 
           {/* Email */}
           <div>
-            <label 
-              htmlFor="email" 
+            <label
+              htmlFor="email"
               className="block text-sm font-medium text-gray-700 mb-1.5"
             >
               Email address
@@ -76,8 +83,8 @@ export default function LoginPage() {
 
           {/* Password */}
           <div>
-            <label 
-              htmlFor="password" 
+            <label
+              htmlFor="password"
               className="block text-sm font-medium text-gray-700 mb-1.5"
             >
               Password
@@ -114,7 +121,7 @@ export default function LoginPage() {
           {/* Submit */}
           <button
             type="submit"
-            disabled={isLoading}
+            disabled={isLoading || authLoading}
             className={`
               w-full flex items-center justify-center gap-2
               bg-black text-white font-medium
@@ -125,8 +132,8 @@ export default function LoginPage() {
               shadow-sm
             `}
           >
-            {isLoading && <Loader2 className="h-5 w-5 animate-spin" />}
-            {isLoading ? "Signing in..." : "Sign in"}
+            {(isLoading || authLoading) && <Loader2 className="h-5 w-5 animate-spin" />}
+            {isLoading ? "Signing in..." : authLoading ? "Loading..." : "Sign in"}
           </button>
         </form>
 

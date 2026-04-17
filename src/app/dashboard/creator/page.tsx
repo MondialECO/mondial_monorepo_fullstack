@@ -15,40 +15,8 @@ import {
   Loader2
 } from "lucide-react"
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { getDashboardStats } from "@/service/creator/dashboard";
-
-type Idea = {
-  id: string;
-  name: string;
-  status: string;
-  stageLabel: string | null;
-  isPublished: boolean;
-  createdAt: string;
-  fundingRequired: number;
-  equityOffered: number;
-  totalRaised: number;
-  fundingProgress: number;
-  investors: any[];
-}
-
-type DashboardStats = {
-  totalIdeas: number;
-  totalClicksLast14Days: number;
-  totalFundRaised: number;
-  totalRequired: number;
-  totalEquity: number;
-  activeInvestors: number;
-  ideas: Idea[];
-}
-
-type Investor = {
-  name: string
-  ideaName: string
-  invested: string
-  avatarUrl?: string
-  equity: string
-}
+import { useDashboardStats } from "@/hooks/queries/creator";
+import type { Investor } from "@/types/creator/dashboard";
 
 const topInvestors: Investor[] = [
   { name: "Sarah Ahmed", ideaName: "Cripto data momitoring", invested: "$45,000", avatarUrl: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80", equity: "10%" },
@@ -59,23 +27,7 @@ const topInvestors: Investor[] = [
 ]
 
 export default function CreatorDashboard() {
-  const [data, setData] = useState<DashboardStats | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const stats = await getDashboardStats();
-        setData(stats);
-      } catch (error) {
-        console.error("Failed to fetch dashboard stats", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchStats();
-  }, []);
+  const { data, isLoading: loading, isError } = useDashboardStats();
 
   if (loading) {
     return (
@@ -85,7 +37,7 @@ export default function CreatorDashboard() {
     );
   }
 
-  if (!data) {
+  if (isError || !data) {
     return (
       <div className="w-full max-w-7xl mx-auto text-center py-12 text-red-500">
         <p>Failed to load dashboard data.</p>
@@ -211,8 +163,8 @@ export default function CreatorDashboard() {
                     ) : (
                       <div className="px-3 py-1 bg-[#F59E0B]/10 text-[#FBBF24] rounded-full text-xs font-semibold flex items-center gap-1">
                         <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-[#FBBF24]">
-                          <path d="M8 4V8L10.5 10.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="2"/>
+                          <path d="M8 4V8L10.5 10.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                          <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="2" />
                         </svg>
                         Pending
                       </div>

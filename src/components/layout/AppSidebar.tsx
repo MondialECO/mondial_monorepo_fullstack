@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/app/_providers/AuthProvider";
 import { menu } from "@/lib/menu";
 
 import {
@@ -84,7 +84,7 @@ export default function AppSidebar() {
         {/* User Profile */}
         <div className="flex items-center gap-3 py-2 border-t border-sidebar-border pt-4">
           <div className="h-10 w-10 min-w-10 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center overflow-hidden">
-             <span className="text-xs font-bold">{user.name?.charAt(0).toUpperCase() || "U"}</span>
+            <span className="text-xs font-bold">{user.name?.charAt(0).toUpperCase() || "U"}</span>
           </div>
           <div className="flex flex-col min-w-0 group-data-[collapsible=icon]:hidden">
             <span className="text-sm font-semibold truncate leading-none mb-1">{user.name || "User"}</span>

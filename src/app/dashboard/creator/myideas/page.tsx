@@ -1,35 +1,18 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Loader2 } from "lucide-react"
 import IdeaCard from "@/components/founder/idea-card"
 import Link from "next/link";
-import { getDashboardMyIdeas } from "@/service/creator/dashboard";
+import { useMyIdeas } from "@/hooks/queries/creator";
 import { format } from "date-fns";
 
 export default function MyIdeasPage() {
   const [activeTab, setActiveTab] = useState("overview")
-  const [ideas, setIdeas] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+  const { data: ideas, isLoading, isError } = useMyIdeas();
 
-  useEffect(() => {
-    const fetchIdeas = async () => {
-      try {
-        setLoading(true);
-        const data = await getDashboardMyIdeas();
-        setIdeas(data || []);
-      } catch (error) {
-        console.error("Failed to fetch ideas", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchIdeas();
-  }, [])
-
-  const mappedIdeas = ideas.map((apiIdea, index) => {
+  const mappedIdeas = ideas?.map((apiIdea, index) => {
     let cardStatus: "approved" | "pending" | "rejected" = "pending";
     const apiStatus = apiIdea.status ? apiIdea.status.toUpperCase() : "DRAFT";
     if (apiStatus === "APPROVED") cardStatus = "approved";
@@ -79,7 +62,7 @@ export default function MyIdeasPage() {
       offeredEquity: typeof apiIdea.equityOffered === 'number' ? `${apiIdea.equityOffered}%` : '0%',
       pauseInfo: cardStatus === "approved",
     };
-  });
+  }) ?? [];
 
   const filteredIdeas = mappedIdeas.filter(idea => {
     if (activeTab === "overview") return true;
@@ -140,7 +123,19 @@ export default function MyIdeasPage() {
         </div>
 
         {/* Ideas List */}
-        {loading ? (
+        {isError ? (
+          <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-lg border border-dashed border-slate-300 dark:border-slate-700 mx-auto max-w-2xl mt-8">
+            <div className="mb-4 flex justify-center">
+              <div className="h-12 w-12 rounded-full bg-red-100 dark:bg-red-800 flex items-center justify-center">
+                <span className="text-xl text-red-500">⚠️</span>
+              </div>
+            </div>
+            <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">Error loading ideas</h3>
+            <p className="text-slate-500 dark:text-slate-400 mb-6 max-w-sm mx-auto">
+              We had trouble loading your ideas. Please try again later.
+            </p>
+          </div>
+        ) : isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-4">
             <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
             <p className="text-slate-500 text-sm">Loading your ideas...</p>

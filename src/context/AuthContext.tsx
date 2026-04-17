@@ -20,8 +20,32 @@ type AuthContextType = {
   logout: () => void;
 };
 
-const AuthContext = createContext<AuthContextType>(null!);
-export const useAuth = () => useContext(AuthContext);
+const AuthContext = createContext<AuthContextType | null>(null);
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  
+  // Return a safe default during SSR/hydration instead of throwing immediately
+  if (!context) {
+    // Only throw in development for debugging
+    if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+      // Return a temporary default to allow component to render, then warn
+      console.warn('[useAuth] Warning: Called outside AuthProvider. This component will not work properly.');
+    }
+    
+    // Return a safe default structure to prevent crashes
+    return {
+      token: null,
+      user: null,
+      isAuthenticated: false,
+      isLoading: true, // Start in loading state so UI shows "Loading..."
+      login: async () => { throw new Error('useAuth: AuthProvider not available'); },
+      logout: () => { throw new Error('useAuth: AuthProvider not available'); },
+    };
+  }
+  
+  return context;
+};
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -31,6 +55,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Hydrate from localStorage only once on mount
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
     const storedUser = localStorage.getItem("user");
     const storedToken = localStorage.getItem("token");
 

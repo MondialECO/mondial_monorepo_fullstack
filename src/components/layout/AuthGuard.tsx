@@ -1,7 +1,7 @@
 "use client";
 
-import { useAuth } from "@/context/AuthContext";
-import { useRouter } from "next/navigation";
+import { useAuth } from "@/app/_providers/AuthProvider";
+import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
 
 export default function AuthGuard({
@@ -11,12 +11,41 @@ export default function AuthGuard({
 }) {
   const { user, isLoading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (!isLoading && !user) {
       router.push("/login");
+      return;
     }
-  }, [user, isLoading, router]);
+
+    // Check role-based access control
+    if (!isLoading && user && pathname.includes('/dashboard')) {
+      // Extract role from path: /dashboard/creator -> creator
+      const pathParts = pathname.split('/');
+      const routeRole = pathParts[2]; // /dashboard/[role]/...
+
+      if (!routeRole) return; // Root dashboard, allow all
+
+      // Normalize roles for comparison
+      const userRole = user.role.toLowerCase();
+      const normalizedRouteRole = routeRole.toLowerCase();
+
+      // Admin can access admin routes and settings
+      if (userRole === 'admin' && ['admin', 'settings'].includes(normalizedRouteRole)) {
+        return; // Allow admin access
+      }
+
+      // Other users must have their role match the route exactly
+      if (userRole === normalizedRouteRole) {
+        return; // Role matches, allow access
+      }
+
+      // Role mismatch - redirect to user's own dashboard
+      const userDashboard = `/dashboard/${userRole}`;
+      router.push(userDashboard);
+    }
+  }, [user, isLoading, router, pathname]);
 
   if (isLoading) {
     return (

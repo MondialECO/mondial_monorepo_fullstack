@@ -1,14 +1,14 @@
 'use client';
 
-import { useState, useEffect,  useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Upload, Check } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import dynamic from 'next/dynamic';
-import { saveIdeaDraftApi } from '@/service/creator/dashboard';
+import { saveIdeaDraftApi } from '../../../service/creator/dashboard';
 import { CreateIdeaModel, IdeaFormState, IdeaStatus } from '@/types/creator/create-idea-model';
 
 const ReactQuill = dynamic(() => import('react-quill-new'), {
-  ssr: false,                    
+  ssr: false,
   loading: () => <p>Loading editor...</p>,
 });
 
@@ -17,23 +17,23 @@ import "react-quill-new/dist/quill.snow.css";
 // Field Type Definition (this solves all the type errors)
 type FormField =
   | {
-      key: string;
-      label: string;
-      placeholder?: string;
-      isRichText?: true;
-    }
+    key: string;
+    label: string;
+    placeholder?: string;
+    isRichText?: true;
+  }
   | {
-      key: string;
-      label: string;
-      type: 'select';
-      options: Array<{ label: string; value: string }>;
-    }
+    key: string;
+    label: string;
+    type: 'select';
+    options: Array<{ label: string; value: string }>;
+  }
   | {
-      key: string;
-      label: string;
-      type: 'number';
-      placeholder?: string;
-    };
+    key: string;
+    label: string;
+    type: 'number';
+    placeholder?: string;
+  };
 
 // Section type
 type FormSection = {
@@ -438,37 +438,37 @@ export default function CreateProjectPage() {
       setIsSaving(false);
     }
   };
- 
+
   const handleNext = async () => {
-      await saveDraft('DRAFT');
-      setCurrentStep((s) => Math.min(s + 1, formSections.length - 1));
-    };
+    await saveDraft('DRAFT');
+    setCurrentStep((s) => Math.min(s + 1, formSections.length - 1));
+  };
 
 
-    const handleFinalSubmit = async () => {
-      const res = await saveDraft('SUBMITTED');
-      if (res?.success) {
-        alert('Idea submitted successfully!');
-        // redirect('/dashboard') or show success page
-      } else {
-        alert('Submission failed: ' + (res?.message || 'Unknown error'));
-      }
-    };
+  const handleFinalSubmit = async () => {
+    const res = await saveDraft('SUBMITTED');
+    if (res?.success) {
+      alert('Idea submitted successfully!');
+      // redirect('/dashboard') or show success page
+    } else {
+      alert('Submission failed: ' + (res?.message || 'Unknown error'));
+    }
+  };
 
-    const handleFiles = (
-      files: FileList | null,
-      setter: React.Dispatch<React.SetStateAction<File[]>>
-    ) => {
-      if (!files) return;
-      setter((prev) => [...prev, ...Array.from(files)]);
-    };
+  const handleFiles = (
+    files: FileList | null,
+    setter: React.Dispatch<React.SetStateAction<File[]>>
+  ) => {
+    if (!files) return;
+    setter((prev) => [...prev, ...Array.from(files)]);
+  };
 
-    const removeFile = (
-      index: number,
-      setter: React.Dispatch<React.SetStateAction<File[]>>
-    ) => {
-      setter((prev) => prev.filter((_, i) => i !== index));
-    };
+  const removeFile = (
+    index: number,
+    setter: React.Dispatch<React.SetStateAction<File[]>>
+  ) => {
+    setter((prev) => prev.filter((_, i) => i !== index));
+  };
 
 
   if (!mounted) return null;
@@ -495,27 +495,26 @@ export default function CreateProjectPage() {
             <button
               key={section.id}
               onClick={() => setCurrentStep(index)}
-              className={`w-full text-left transition ${
-                currentStep === index
+              className={`w-full text-left transition ${currentStep === index
                   ? 'text-slate-900 dark:text-white'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-              }`}
+                }`}
             >
               <div className="flex gap-3">
                 <span className="text-sm font-semibold">{index + 1}</span>
                 <div>
                   <div className="text-sm font-semibold">{section.title}</div>
-                    <div className="text-xs text-slate-500 dark:text-slate-500 mt-0.5">
-                      {section.id === 1 && "Explain your core concept"}
-                      {section.id === 2 && "Outline your solution"}
-                      {section.id === 3 && "Analyze target market"}
-                      {section.id === 4 && "Describe revenue model"}
-                      {section.id === 5 && "Detail your execution"}
-                      {section.id === 6 && "Lay out your timeline"}
-                      {section.id === 7 && "Identify potential risks"}
-                      {section.id === 8 && "Introduce the founder"}
-                      {section.id === 9 && "Add equity, image, and docs"}
-                    </div>
+                  <div className="text-xs text-slate-500 dark:text-slate-500 mt-0.5">
+                    {section.id === 1 && "Explain your core concept"}
+                    {section.id === 2 && "Outline your solution"}
+                    {section.id === 3 && "Analyze target market"}
+                    {section.id === 4 && "Describe revenue model"}
+                    {section.id === 5 && "Detail your execution"}
+                    {section.id === 6 && "Lay out your timeline"}
+                    {section.id === 7 && "Identify potential risks"}
+                    {section.id === 8 && "Introduce the founder"}
+                    {section.id === 9 && "Add equity, image, and docs"}
+                  </div>
                 </div>
               </div>
             </button>
@@ -722,7 +721,7 @@ export default function CreateProjectPage() {
                 <ChevronRight className="inline w-4 h-4" />
               </button>
             )}
-     
+
           </div>
         </div>
       </main>

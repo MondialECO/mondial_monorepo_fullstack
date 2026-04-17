@@ -1,0 +1,7 @@
+This file is obsolete and should be deleted.
+
+The AuthContext has been moved to: src/app/_providers/AuthProvider.tsx
+
+All imports have been updated to use the new location.
+
+You can safely delete the old AuthContext.tsx file.

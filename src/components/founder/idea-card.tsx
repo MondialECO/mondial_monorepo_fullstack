@@ -59,7 +59,7 @@ const BADGE_COLOR_MAP: Record<string, string> = {
     "bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-600",
 }
 
-import { pauseIdeaApi } from "@/service/creator/dashboard"
+import { pauseIdeaApi } from "../../../service/creator/dashboard"
 
 export default function IdeaCard({ idea }: IdeaCardProps) {
   const [isPaused, setIsPaused] = useState(false)

@@ -1,7 +1,11 @@
 import BillingRow from "./BillingRow";
-import { billingData } from "@/data/billingData";
+import { BillingItem } from "@/types/billing";
 
-export default function BillingTable() {
+interface BillingTableProps {
+    items?: BillingItem[];
+}
+
+export default function BillingTable({ items = [] }: BillingTableProps) {
     return (
         <div className="w-full overflow-x-auto">
             <div className="w-full md:min-w-[1000px] flex flex-col">
@@ -28,7 +32,7 @@ export default function BillingTable() {
                         <div className="text-muted-foreground text-xs font-medium leading-5">Download</div>
                     </div>
                 </div>
-                {billingData.map((item) => (
+                {items.map((item) => (
                     <BillingRow key={item.id} item={item} />
                 ))}
             </div>
