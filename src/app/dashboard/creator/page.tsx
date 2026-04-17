@@ -11,12 +11,13 @@ import {
   TrendingUp,
   Users,
   Lightbulb,
-  DollarSign,
-  Loader2,
+  DollarSign
 } from "lucide-react";
 import Link from "next/link";
 import { useDashboardStats } from "@/hooks/queries/creator";
 import type { Investor } from "@/types/creator/dashboard";
+import LoadingState from "@/components/shared/LoadingState";
+import ErrorState from "@/components/shared/ErrorState";
 
 const topInvestors: Investor[] = [
   { name: "Sarah Ahmed", ideaName: "Cripto data momitoring", invested: "$45,000", avatarUrl: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80", equity: "10%" },
@@ -30,19 +31,11 @@ export default function CreatorDashboard() {
   const { data, isLoading: loading, isError } = useDashboardStats();
 
   if (loading) {
-    return (
-      <div className="w-full max-w-7xl mx-auto flex items-center justify-center min-h-[50vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <LoadingState message="Loading your dashboard..." />;
   }
 
   if (isError || !data) {
-    return (
-      <div className="w-full max-w-7xl mx-auto text-center py-12 text-red-500">
-        <p>Failed to load dashboard data.</p>
-      </div>
-    );
+    return <ErrorState title="Dashboard Error" message="Failed to load dashboard data." />;
   }
 
   return (

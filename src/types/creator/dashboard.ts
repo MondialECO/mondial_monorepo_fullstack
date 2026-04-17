@@ -33,3 +33,9 @@ export type Investor = {
   avatarUrl?: string;
   equity: string;
 };
+
+export type CreatorProfile = Record<string, unknown>;
+
+export type BillingInfo = Record<string, unknown>;
+
+export type CreatorSettings = Record<string, unknown>;

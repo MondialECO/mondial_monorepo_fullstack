@@ -2,11 +2,12 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Loader2 } from "lucide-react"
 import IdeaCard from "@/components/founder/idea-card"
 import Link from "next/link";
 import { useMyIdeas } from "@/hooks/queries/creator";
 import { format } from "date-fns";
+import LoadingState from "@/components/shared/LoadingState";
+import ErrorState from "@/components/shared/ErrorState";
 
 export default function MyIdeasPage() {
   const [activeTab, setActiveTab] = useState("overview")
@@ -124,22 +125,9 @@ export default function MyIdeasPage() {
 
         {/* Ideas List */}
         {isError ? (
-          <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-lg border border-dashed border-slate-300 dark:border-slate-700 mx-auto max-w-2xl mt-8">
-            <div className="mb-4 flex justify-center">
-              <div className="h-12 w-12 rounded-full bg-red-100 dark:bg-red-800 flex items-center justify-center">
-                <span className="text-xl text-red-500">⚠️</span>
-              </div>
-            </div>
-            <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">Error loading ideas</h3>
-            <p className="text-slate-500 dark:text-slate-400 mb-6 max-w-sm mx-auto">
-              We had trouble loading your ideas. Please try again later.
-            </p>
-          </div>
+          <ErrorState title="Error loading ideas" message="We had trouble loading your ideas. Please try again later." />
         ) : isLoading ? (
-          <div className="flex flex-col items-center justify-center py-20 gap-4">
-            <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
-            <p className="text-slate-500 text-sm">Loading your ideas...</p>
-          </div>
+          <LoadingState message="Loading your ideas..." />
         ) : filteredIdeas.length === 0 ? (
           <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-lg border border-dashed border-slate-300 dark:border-slate-700 mx-auto max-w-2xl mt-8">
             <div className="mb-4 flex justify-center">
