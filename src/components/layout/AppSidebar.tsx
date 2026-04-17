@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/app/_providers/AuthProvider";
 import { menu } from "@/lib/menu";
 
 import {
@@ -28,7 +28,6 @@ export default function AppSidebar() {
 
   return (
     <Sidebar>
-      {/* Header */}
       <SidebarHeader className="h-18 justify-center border-b border-sidebar-border mb-2">
         <div className="flex items-center gap-2 px-4">
           <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
@@ -53,14 +52,18 @@ export default function AppSidebar() {
 
                   return (
                     <SidebarMenuItem key={item.href}>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={active}
-                        className="py-6"
-                      >
+                      <SidebarMenuButton asChild isActive={active} className="py-6">
                         <Link href={item.href} className="flex items-center gap-3">
-                          {Icon && <Icon className={active ? "text-primary" : "text-muted-foreground"} />}
-                          <span className={active ? "font-medium" : "font-normal"}>{item.label}</span>
+                          {Icon && (
+                            <Icon
+                              className={
+                                active ? "text-primary" : "text-muted-foreground"
+                              }
+                            />
+                          )}
+                          <span className={active ? "font-medium" : "font-normal"}>
+                            {item.label}
+                          </span>
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -71,24 +74,33 @@ export default function AppSidebar() {
           </SidebarGroup>
         ))}
       </SidebarContent>
+
       <SidebarFooter className="p-4 gap-4 mt-auto">
-        {/* Upgrade Card */}
         <div className="rounded-xl bg-blue-50 dark:bg-blue-900/20 p-4 border border-blue-100 dark:border-blue-900/30 group-data-[collapsible=icon]:hidden">
-          <p className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-2">Upgrade Now</p>
-          <p className="text-xs text-blue-700 dark:text-blue-300 mb-3">Get more views and reach more investors.</p>
+          <p className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-2">
+            Upgrade Now
+          </p>
+          <p className="text-xs text-blue-700 dark:text-blue-300 mb-3">
+            Get more views and reach more investors.
+          </p>
           <button className="w-full py-2 bg-primary text-white text-xs font-semibold rounded-lg hover:bg-primary/90 transition-colors">
             Upgrade
           </button>
         </div>
 
-        {/* User Profile */}
         <div className="flex items-center gap-3 py-2 border-t border-sidebar-border pt-4">
           <div className="h-10 w-10 min-w-10 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center overflow-hidden">
-             <span className="text-xs font-bold">{user.name?.charAt(0).toUpperCase() || "U"}</span>
+            <span className="text-xs font-bold">
+              {user.name?.charAt(0).toUpperCase() || "U"}
+            </span>
           </div>
           <div className="flex flex-col min-w-0 group-data-[collapsible=icon]:hidden">
-            <span className="text-sm font-semibold truncate leading-none mb-1">{user.name || "User"}</span>
-            <span className="text-xs text-muted-foreground truncate leading-none">{user.role}</span>
+            <span className="text-sm font-semibold truncate leading-none mb-1">
+              {user.name || "User"}
+            </span>
+            <span className="text-xs text-muted-foreground truncate leading-none">
+              {user.role}
+            </span>
           </div>
         </div>
       </SidebarFooter>

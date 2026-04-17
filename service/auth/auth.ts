@@ -43,6 +43,19 @@ export const confirmEmailApi = async (request: ConfirmEmailRequest) => {
   return response.data;
 };
 
+// Resend Confirmation Email
+export type ResendConfirmationEmailRequest = { email: string };
+export const resendConfirmationEmailApi = async (request: ResendConfirmationEmailRequest) => {
+  const response = await axios.post("/auth/resend-confirmation-email", request);
+  return response.data;
+};
+
+// Refresh Token
+export const refreshTokenApi = async () => {
+  const response = await axios.post("/auth/refresh-token");
+  return response.data;
+};
+
 
 // Profile
 export type UserProfile = {

@@ -1,3 +1,4 @@
 {
-    "figma.autocompleteProperties": true
+    "figma.autocompleteProperties": true,
+    "claudeCodeChat.permissions.yoloMode": true
 }
