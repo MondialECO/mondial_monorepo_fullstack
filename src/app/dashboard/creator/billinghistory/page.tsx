@@ -3,9 +3,11 @@ import BillingHeader from "@/components/billing/BillingHeader"
 import BillingTable from "@/components/billing/BillingTable"
 import Pagination from "@/components/billing/Pagination"
 import { useBillingHistory } from "@/hooks/queries/creator"
+import { Loader2 } from "lucide-react"
 
 export default function BillingHistoryPage() {
-    const { data: billingItems = [], isLoading, isError, error } = useBillingHistory()
+    const { data, isLoading, isError, error } = useBillingHistory()
+    const billingItems = data ?? []
 
     return (
         <div className="w-full flex flex-col gap-6">
