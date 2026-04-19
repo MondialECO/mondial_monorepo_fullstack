@@ -100,3 +100,4 @@ src/
 ## Reference docs on disk
 
 - `PERFORMANCE_AUDIT_FIXES.md` — historical audit record (March 2026). Don't duplicate its fixes.
+- `FIGMA.md` — read this whenever a Figma URL, frame, or `mcp__*figma*` tool is in play. Contains the theme-token map, `components/ui/` inventory, and Code Connect workflow.
