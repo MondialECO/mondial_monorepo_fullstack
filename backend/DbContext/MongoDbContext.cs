@@ -22,6 +22,12 @@ namespace WebApp.DbContext
         public IMongoCollection<Investments> Investments => _database.GetCollection<Investments>("Investments");
         public IMongoCollection<Transactions> Transactions => _database.GetCollection<Transactions>("Transactions");
 
+        // Entrepreneur Collections
+        public IMongoCollection<companies> Companies => _database.GetCollection<companies>("Companies");
+        public IMongoCollection<InvestorMatch> InvestorMatches => _database.GetCollection<InvestorMatch>("InvestorMatches");
+        public IMongoCollection<DealExecution> DealExecutions => _database.GetCollection<DealExecution>("DealExecutions");
+        public IMongoCollection<Investor> Investors => _database.GetCollection<Investor>("Investors");
+
         // Extra collections
         public IMongoCollection<ContactModel> Contacts => _database.GetCollection<ContactModel>("Contacts");
         public IMongoCollection<FormData> FormDatas => _database.GetCollection<FormData>("FormDatas");
@@ -29,7 +35,7 @@ namespace WebApp.DbContext
         // Chat Collections
         public IMongoCollection<Conversation> Conversations => _database.GetCollection<Conversation>("Conversations");
         public IMongoCollection<ChatMessage> ChatMessages => _database.GetCollection<ChatMessage>("ChatMessages");
-       
+
         // notifications collection
         public IMongoCollection<Notification> Notifications => _database.GetCollection<Notification>("Notifications");
         public IMongoCollection<PushSubscriptionEntity> PushSubscription => _database.GetCollection<PushSubscriptionEntity>("PushSubscriptions");
