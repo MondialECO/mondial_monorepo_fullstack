@@ -63,7 +63,8 @@
       "Bash(sed -i 's/err: any/err: unknown/g' \"src/components/auth/ResetPage/ResetPage.tsx\")",
       "Bash(sed -i 's/} catch \\(err: any\\) {/} catch \\(err: unknown\\) {/g' \"src/components/homepage/FeaturesSection.tsx\")",
       "Bash(sed -i 's/err: any/err: unknown/g' \"src/components/homepage/FeaturesSection.tsx\")",
-      "Bash(sed -i 's/} catch \\(err: any\\) {/} catch \\(err: unknown\\) {/g' \"src/components/homepage/ImpactSection.tsx\")"
+      "Bash(sed -i 's/} catch \\(err: any\\) {/} catch \\(err: unknown\\) {/g' \"src/components/homepage/ImpactSection.tsx\")",
+      "Bash(npm list *)"
     ]
   }
 }
