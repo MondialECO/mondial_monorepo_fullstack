@@ -28,8 +28,9 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
         console.error('Error caught by boundary:', error, errorInfo);
 
         // In production, send to monitoring service
-        if (typeof window !== 'undefined' && (window as any).gtag) {
-            (window as any).gtag('event', 'exception', {
+        const windowWithGtag = window as unknown as { gtag?: (event: string, type: string, data: Record<string, unknown>) => void };
+        if (typeof window !== 'undefined' && windowWithGtag.gtag) {
+            windowWithGtag.gtag('event', 'exception', {
                 description: error.toString(),
                 fatal: false,
             });

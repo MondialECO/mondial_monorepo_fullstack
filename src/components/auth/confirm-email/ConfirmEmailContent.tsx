@@ -43,7 +43,7 @@ export default function ConfirmEmailContent() {
         setTimeout(() => {
           router.push("/login");
         }, 2000);
-      } catch (err: any) {
+      } catch (err: unknown) {
         const errorMessage = err.response?.data?.message || "Email confirmation failed.";
         
         // Check if error indicates expired token
@@ -74,7 +74,7 @@ export default function ConfirmEmailContent() {
       setMessage("Confirmation email sent! Check your inbox.");
       setStatus("loading");
       setMessage("New confirmation email sent. Check your inbox for the link.");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Resend error:", err);
       setMessage(err.response?.data?.message || "Failed to resend confirmation email.");
       setStatus("error");

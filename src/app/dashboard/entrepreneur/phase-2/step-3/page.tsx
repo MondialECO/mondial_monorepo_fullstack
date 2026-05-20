@@ -126,7 +126,7 @@ function Phase2Step3PageContent() {
               Beneficial Owners
             </h3>
             <p className="text-sm text-neutral-5 mb-4">
-              Verify each beneficial owner (>25% stake) to complete KYC requirements.
+              Verify each beneficial owner ({`>`}25% stake) to complete KYC requirements.
             </p>
 
             <div className="space-y-3">

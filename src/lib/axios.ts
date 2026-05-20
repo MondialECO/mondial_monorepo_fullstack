@@ -7,12 +7,13 @@ const api = axios.create({
 
 // Track whether we're already attempting a refresh to prevent infinite loops
 let isRefreshing = false;
-let failedQueue: Array<{
+interface QueueItem {
   resolve: (token: string) => void;
-  reject: (err: any) => void;
-}> = [];
+  reject: (err: Error) => void;
+}
+let failedQueue: QueueItem[] = [];
 
-const processQueue = (error: any, token: string | null = null) => {
+const processQueue = (error: Error | null, token: string | null = null) => {
   failedQueue.forEach((prom) => {
     if (error) {
       prom.reject(error);

@@ -244,7 +244,7 @@ export const entrepreneurApi = {
   advancePhase: async (
     companyId: string,
     phaseNumber: number,
-    data: any
+    data: Record<string, unknown>
   ): Promise<CompanyProgressResponse> => {
     const response = await api.post<CompanyProgressResponse>(
       `/companies/${companyId}/phase/${phaseNumber}`,
@@ -494,7 +494,7 @@ export const entrepreneurApi = {
   createDeal: async (
     companyId: string,
     investorId: string,
-    termSheet: any
+    termSheet: Record<string, unknown>
   ): Promise<DealStatusResponse> => {
     const response = await api.post<DealStatusResponse>(
       `/companies/${companyId}/deals`,
@@ -515,7 +515,7 @@ export const entrepreneurApi = {
     return response.data;
   },
 
-  updateTermSheet: async (dealId: string, termSheet: any) => {
+  updateTermSheet: async (dealId: string, termSheet: Record<string, unknown>) => {
     const response = await api.put(
       `/companies/deals/${dealId}/term-sheet`,
       termSheet
@@ -523,7 +523,7 @@ export const entrepreneurApi = {
     return response.data;
   },
 
-  progressChecklist: async (dealId: string, item: any) => {
+  progressChecklist: async (dealId: string, item: Record<string, unknown>) => {
     const response = await api.post(
       `/companies/deals/${dealId}/checklist`,
       item
