@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc *)",
+      "Bash(gh pr *)",
+      "Bash(xargs wc *)",
+      "Bash(git checkout *)",
+      "Skill(design-audit)",
+      "Bash(xargs grep -l \"credentialsSchema\")",
+      "Skill(perf-check)",
+      "Bash(cp -r Mondial.Client Mondial/frontend)",
+      "Bash(cp -r backend Mondial/backend)"
+    ]
+  }
+}
