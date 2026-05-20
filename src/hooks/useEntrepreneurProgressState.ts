@@ -37,11 +37,19 @@ export function useEntrepreneurProgressState() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const saveTimeoutRef = useRef<NodeJS.Timeout>();
+  const [isHydrated, setIsHydrated] = useState(false);
 
   // Mark as hydrated after mount
   useEffect(() => {
-    setIsLoading(false);
+    setIsHydrated(true);
   }, []);
+
+  // Set loading to false when hydrated
+  useEffect(() => {
+    if (isHydrated) {
+      setIsLoading(false);
+    }
+  }, [isHydrated]);
 
   // Save to localStorage with debounce
   useEffect(() => {

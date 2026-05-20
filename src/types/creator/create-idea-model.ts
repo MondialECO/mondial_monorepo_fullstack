@@ -82,7 +82,7 @@ export type IdeaFormState = Omit<CreateIdeaModel, 'media' | 'documents'> & {
   documents: File[];
 };
 
-export interface CreateIdeaApiRequest extends CreateIdeaModel {}
+export type CreateIdeaApiRequest = CreateIdeaModel;
 
 export interface SaveIdeaResponse {
   success: boolean;
