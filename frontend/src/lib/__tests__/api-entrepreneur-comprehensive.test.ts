@@ -1,5 +1,5 @@
 import axiosInstance from '@/lib/axios'
-import entrepreneurApi from '@/lib/api-entrepreneur'
+import { entrepreneurApi } from '@/lib/api-entrepreneur'
 
 jest.mock('@/lib/axios')
 
@@ -8,8 +8,7 @@ describe('Entrepreneur API - Comprehensive Test Suite', () => {
     jest.clearAllMocks()
   })
 
-  // PHASE 1: COMPANY CREATION
-  describe('Phase 1: Identity & Onboarding', () => {
+  describe('Phase 1: Company Creation', () => {
     it('createCompany should POST company data', async () => {
       const companyData = {
         companyName: 'TechStartup',
@@ -40,23 +39,19 @@ describe('Entrepreneur API - Comprehensive Test Suite', () => {
       expect(result).toEqual(mockCompany)
     })
 
-    it('getCompanyList should fetch all user companies', async () => {
-      const mockCompanies = [
-        { id: '123', companyName: 'Company1', currentPhase: 1 },
-        { id: '456', companyName: 'Company2', currentPhase: 3 },
-      ]
+    it('getPhaseProgress should fetch phase data', async () => {
+      const mockProgress = { companyId: '123', currentPhase: 2, completedPhases: [1] }
 
-      ;(axiosInstance.get as jest.Mock).mockResolvedValue({ data: mockCompanies })
+      ;(axiosInstance.get as jest.Mock).mockResolvedValue({ data: mockProgress })
 
-      const result = await entrepreneurApi.getCompanyList()
+      const result = await entrepreneurApi.getPhaseProgress('123')
 
-      expect(axiosInstance.get).toHaveBeenCalledWith('/companies/list')
-      expect(result).toHaveLength(2)
+      expect(axiosInstance.get).toHaveBeenCalledWith('/companies/123/progress')
+      expect(result.currentPhase).toBe(2)
     })
   })
 
-  // PHASE 2: LEGAL & DOCUMENTS
-  describe('Phase 2: Company Verification', () => {
+  describe('Phase 2: Legal Information & Documents', () => {
     it('updateLegalInfo should save legal information', async () => {
       const legalData = {
         legalName: 'TechStartup SARL',
@@ -73,32 +68,33 @@ describe('Entrepreneur API - Comprehensive Test Suite', () => {
       await entrepreneurApi.updateLegalInfo('123', legalData)
 
       expect(axiosInstance.post).toHaveBeenCalledWith(
-        '/companies/123/legal-info',
-        expect.objectContaining(legalData)
+        '/companies/123/legal',
+        legalData
       )
     })
 
-    it('uploadDocument should POST file to S3', async () => {
+    it('uploadDocument should upload file to S3', async () => {
       const formData = new FormData()
-      formData.append('file', new File(['content'], 'doc.pdf'))
+      formData.append('file', new File(['content'], 'document.pdf'))
 
       ;(axiosInstance.post as jest.Mock).mockResolvedValue({
-        data: { documentId: 'doc-123', status: 'uploaded' },
+        data: { documentId: 'doc-123', status: 'pending' },
       })
 
-      await entrepreneurApi.uploadDocument('123', formData)
+      const result = await entrepreneurApi.uploadDocument('123', formData)
 
       expect(axiosInstance.post).toHaveBeenCalledWith(
         '/companies/123/documents',
         formData,
-        expect.any(Object)
+        { headers: { 'Content-Type': 'multipart/form-data' } }
       )
+      expect(result.documentId).toBe('doc-123')
     })
 
-    it('getDocuments should list all company documents', async () => {
+    it('getDocuments should list uploaded documents', async () => {
       const mockDocs = [
-        { id: 'doc-1', fileName: 'articles.pdf', status: 'approved' },
-        { id: 'doc-2', fileName: 'id.jpg', status: 'pending' },
+        { documentId: 'doc-1', status: 'approved' },
+        { documentId: 'doc-2', status: 'pending' },
       ]
 
       ;(axiosInstance.get as jest.Mock).mockResolvedValue({ data: mockDocs })
@@ -109,107 +105,94 @@ describe('Entrepreneur API - Comprehensive Test Suite', () => {
       expect(result).toHaveLength(2)
     })
 
-    it('updateBeneficialOwners should save ownership structure', async () => {
-      const ownersData = {
-        beneficialOwners: [
-          { name: 'John Doe', email: 'john@test.com', percentage: 60 },
-          { name: 'Jane Smith', email: 'jane@test.com', percentage: 40 },
+    it('updateBeneficialOwners should save owner information', async () => {
+      const ownerData = {
+        owners: [
+          { fullName: 'John Doe', role: 'CEO', nationality: 'FR', ownershipPercent: 60 },
         ],
       }
 
       ;(axiosInstance.post as jest.Mock).mockResolvedValue({ data: { success: true } })
 
-      await entrepreneurApi.updateBeneficialOwners('123', ownersData)
+      await entrepreneurApi.updateBeneficialOwners('123', ownerData)
 
       expect(axiosInstance.post).toHaveBeenCalledWith(
         '/companies/123/beneficial-owners',
-        ownersData
+        ownerData
       )
     })
   })
 
-  // PHASE 3: FINANCIAL & KPI
-  describe('Phase 3: Financial & KPI', () => {
-    it('saveRevenue should save quarterly revenue', async () => {
+  describe('Phase 3: Financial Information', () => {
+    it('saveRevenue should store quarterly revenue', async () => {
       const revenueData = {
-        q1Revenue: 50000,
-        q2Revenue: 75000,
-        q3Revenue: 100000,
-        q4Revenue: 125000,
-        arr: 350000,
-        mrr: 29167,
-        churnRate: 2.5,
-        customerCount: 150,
+        q1Revenue: 10000,
+        q2Revenue: 15000,
+        q3Revenue: 20000,
+        q4Revenue: 25000,
       }
 
       ;(axiosInstance.post as jest.Mock).mockResolvedValue({ data: { success: true } })
 
       await entrepreneurApi.saveRevenue('123', revenueData)
 
-      expect(axiosInstance.post).toHaveBeenCalledWith('/companies/123/revenue', revenueData)
+      expect(axiosInstance.post).toHaveBeenCalledWith(
+        '/companies/123/revenue',
+        revenueData
+      )
     })
 
-    it('calculateValuation should return calculated valuation', async () => {
-      const mockValuation = {
-        baseValuation: 1000000,
-        adjustedValuation: 1250000,
-        multiplier: 8,
-        industry: 'SaaS',
-      }
+    it('calculateValuation should compute company valuation', async () => {
+      const mockValuation = { arr: 70000, valuation: 350000 }
 
       ;(axiosInstance.post as jest.Mock).mockResolvedValue({ data: mockValuation })
 
       const result = await entrepreneurApi.calculateValuation('123')
 
       expect(axiosInstance.post).toHaveBeenCalledWith('/companies/123/valuation')
-      expect(result.baseValuation).toBe(1000000)
+      expect(result.valuation).toBe(350000)
     })
 
-    it('saveEquityStructure should save cap table', async () => {
+    it('saveEquityStructure should store cap table', async () => {
       const equityData = {
-        equityStructure: [
-          { type: 'Common Stock', holder: 'Founder', shares: 600000, percentage: 60 },
-          { type: 'Common Stock', holder: 'Employee', shares: 400000, percentage: 40 },
+        shares: [
+          { holder: 'Founder A', shares: 600000, type: 'Common' },
+          { holder: 'Founder B', shares: 400000, type: 'Common' },
         ],
-        totalShares: 1000000,
       }
 
       ;(axiosInstance.post as jest.Mock).mockResolvedValue({ data: { success: true } })
 
       await entrepreneurApi.saveEquityStructure('123', equityData)
 
-      expect(axiosInstance.post).toHaveBeenCalledWith('/companies/123/equity-structure', equityData)
+      expect(axiosInstance.post).toHaveBeenCalledWith(
+        '/companies/123/equity-structure',
+        equityData
+      )
     })
 
-    it('saveFundingAsk should save funding request', async () => {
+    it('saveFundingAsk should store funding requirements', async () => {
       const fundingData = {
-        fundingTarget: 500000,
-        fundingRound: 'Seed',
-        capitalAllocation: {
-          product: 35,
-          marketing: 25,
-          hiring: 25,
-          operations: 15,
-        },
-        hireCount: 5,
-        hiringRoles: '2x Engineers, 1x PM, 1x Sales',
-        runway: 18,
+        targetAmount: 500000,
+        minimumAmount: 250000,
+        useOfFunds: { product: 40, marketing: 30, operations: 30 },
       }
 
       ;(axiosInstance.post as jest.Mock).mockResolvedValue({ data: { success: true } })
 
       await entrepreneurApi.saveFundingAsk('123', fundingData)
 
-      expect(axiosInstance.post).toHaveBeenCalledWith('/companies/123/funding-ask', fundingData)
+      expect(axiosInstance.post).toHaveBeenCalledWith(
+        '/companies/123/funding-ask',
+        fundingData
+      )
     })
 
-    it('getFinancialSummary should return financial overview', async () => {
+    it('getFinancialSummary should fetch financial metrics', async () => {
       const mockSummary = {
-        arr: 350000,
-        mrr: 29167,
-        valuation: 1250000,
-        fundingTarget: 500000,
-        runway: 18,
+        arr: 70000,
+        mrr: 5833,
+        growthPercent: 25,
       }
 
       ;(axiosInstance.get as jest.Mock).mockResolvedValue({ data: mockSummary })
@@ -217,18 +200,16 @@ describe('Entrepreneur API - Comprehensive Test Suite', () => {
       const result = await entrepreneurApi.getFinancialSummary('123')
 
       expect(axiosInstance.get).toHaveBeenCalledWith('/companies/123/financial-summary')
-      expect(result.arr).toBe(350000)
+      expect(result.arr).toBe(70000)
     })
   })
 
-  // PHASE 4: EQUITY & DILUTION
-  describe('Phase 4: Equity & Dilution', () => {
-    it('getCapTable should fetch current cap table', async () => {
+  describe('Phase 4: Cap Table & Dilution', () => {
+    it('getCapTable should fetch ownership structure', async () => {
       const mockCapTable = {
-        shareholders: [
-          { name: 'Founder', shares: 600000, percentage: 60 },
-          { name: 'Investor A', shares: 300000, percentage: 30 },
-          { name: 'ESOP', shares: 100000, percentage: 10 },
+        totalShares: 1000000,
+        holders: [
+          { name: 'Founder A', shares: 600000, percentage: 60 },
         ],
       }
 
@@ -237,74 +218,62 @@ describe('Entrepreneur API - Comprehensive Test Suite', () => {
       const result = await entrepreneurApi.getCapTable('123')
 
       expect(axiosInstance.get).toHaveBeenCalledWith('/companies/123/cap-table')
-      expect(result.shareholders).toHaveLength(3)
+      expect(result.totalShares).toBe(1000000)
     })
 
-    it('simulateDilution should return 3 scenarios', async () => {
-      const mockSimulation = {
-        baseCase: {
-          newInvestorPercentage: 20,
-          founderDilution: -12,
-          newFounderPercentage: 48,
-        },
-        optimisticCase: {
-          newInvestorPercentage: 15,
-          founderDilution: -9,
-          newFounderPercentage: 51,
-        },
-        conservativeCase: {
-          newInvestorPercentage: 25,
-          founderDilution: -15,
-          newFounderPercentage: 45,
-        },
+    it('simulateDilution should calculate 3 scenarios', async () => {
+      const dilutionData = { raiseAmount: 10000000 }
+      const mockScenarios = {
+        scenarios: [
+          { name: 'Series A 10M', postDilution: 90, founderOwnership: 54 },
+          { name: 'Series A 20M', postDilution: 80, founderOwnership: 48 },
+          { name: 'Series B 50M', postDilution: 65, founderOwnership: 39 },
+        ],
       }
 
-      ;(axiosInstance.post as jest.Mock).mockResolvedValue({ data: mockSimulation })
+      ;(axiosInstance.post as jest.Mock).mockResolvedValue({ data: mockScenarios })
 
-      const result = await entrepreneurApi.simulateDilution('123', {
-        fundingAmount: 500000,
-        postMoneyValuation: 2500000,
-      })
+      const result = await entrepreneurApi.simulateDilution('123', dilutionData)
 
-      expect(result.baseCase.newInvestorPercentage).toBe(20)
-      expect(result.optimisticCase.newInvestorPercentage).toBe(15)
-      expect(result.conservativeCase.newInvestorPercentage).toBe(25)
+      expect(axiosInstance.post).toHaveBeenCalledWith(
+        '/companies/123/dilution-simulation',
+        dilutionData
+      )
+      expect(result.scenarios).toHaveLength(3)
     })
   })
 
-  // PHASE 6: DATA ROOM
   describe('Phase 6: Data Room', () => {
     it('uploadDataRoomDocument should upload to secure storage', async () => {
       const formData = new FormData()
+      formData.append('file', new File(['content'], 'dataroom.pdf'))
 
       ;(axiosInstance.post as jest.Mock).mockResolvedValue({
-        data: { documentId: 'dataroom-123', status: 'published' },
+        data: { success: true },
       })
 
       await entrepreneurApi.uploadDataRoomDocument('123', formData)
 
       expect(axiosInstance.post).toHaveBeenCalledWith(
-        '/companies/123/data-room/documents',
+        '/companies/123/dataroom/documents',
         formData,
-        expect.any(Object)
+        { headers: { 'Content-Type': 'multipart/form-data' } }
       )
     })
 
     it('getDataRoom should list data room documents', async () => {
       const mockDataRoom = {
         documents: [
-          { id: 'dr-1', fileName: 'financial.xlsx', status: 'published' },
-          { id: 'dr-2', fileName: 'technology.pdf', status: 'published' },
+          { id: '1', name: 'Agreement', uploadedAt: '2023-01-01' },
         ],
-        ndaRequired: true,
       }
 
       ;(axiosInstance.get as jest.Mock).mockResolvedValue({ data: mockDataRoom })
 
       const result = await entrepreneurApi.getDataRoom('123')
 
-      expect(axiosInstance.get).toHaveBeenCalledWith('/companies/123/data-room')
-      expect(result.documents).toHaveLength(2)
+      expect(axiosInstance.get).toHaveBeenCalledWith('/companies/123/dataroom')
+      expect(result.documents).toHaveLength(1)
     })
 
     it('grantDataRoomAccess should grant investor access', async () => {
@@ -313,60 +282,49 @@ describe('Entrepreneur API - Comprehensive Test Suite', () => {
       await entrepreneurApi.grantDataRoomAccess('123', 'investor@test.com', 'view', 30)
 
       expect(axiosInstance.post).toHaveBeenCalledWith(
-        '/companies/123/data-room/access',
-        expect.objectContaining({
-          investorId: 'investor@test.com',
-          accessLevel: 'view',
-          days: 30,
-        })
+        '/companies/123/dataroom/access',
+        { investorId: 'investor@test.com', accessLevel: 'view', daysValid: 30 }
       )
     })
 
     it('revokeDataRoomAccess should remove investor access', async () => {
-      ;(axiosInstance.post as jest.Mock).mockResolvedValue({ data: { success: true } })
+      ;(axiosInstance.delete as jest.Mock).mockResolvedValue({ data: { success: true } })
 
-      await entrepreneurApi.revokeDataRoomAccess('123', 'investor-123')
+      await entrepreneurApi.revokeDataRoomAccess('123', 'investor@test.com')
 
-      expect(axiosInstance.post).toHaveBeenCalledWith(
-        '/companies/123/data-room/access/investor-123/revoke',
-        {}
+      expect(axiosInstance.delete).toHaveBeenCalledWith(
+        '/companies/123/dataroom/access/investor@test.com'
       )
     })
 
-    it('updateNdaRequirement should toggle NDA requirement', async () => {
-      ;(axiosInstance.post as jest.Mock).mockResolvedValue({ data: { ndaRequired: true } })
+    it('updateNdaRequirement should enforce NDA', async () => {
+      ;(axiosInstance.put as jest.Mock).mockResolvedValue({ data: { success: true } })
 
       await entrepreneurApi.updateNdaRequirement('123', true)
 
-      expect(axiosInstance.post).toHaveBeenCalledWith(
-        '/companies/123/data-room/nda',
-        { required: true }
+      expect(axiosInstance.put).toHaveBeenCalledWith(
+        '/companies/123/dataroom/nda',
+        true
       )
     })
   })
 
-  // PHASE 7: AI REVIEW
-  describe('Phase 7: AI Review', () => {
-    it('enqueueAiReview should start async AI review', async () => {
-      ;(axiosInstance.post as jest.Mock).mockResolvedValue({
-        data: { jobId: 'job-123', status: 'queued' },
-      })
+  describe('Phase 7: AI Review & Scoring', () => {
+    it('runAiReview should trigger AI review', async () => {
+      const mockReview = { reviewId: 'review-123', status: 'processing' }
 
-      const result = await entrepreneurApi.enqueueAiReview('123')
+      ;(axiosInstance.post as jest.Mock).mockResolvedValue({ data: mockReview })
 
-      expect(axiosInstance.post).toHaveBeenCalledWith('/companies/123/ai-review/enqueue', {})
-      expect(result.status).toBe('queued')
+      const result = await entrepreneurApi.runAiReview('123')
+
+      expect(axiosInstance.post).toHaveBeenCalledWith('/companies/123/ai-review')
+      expect(result.status).toBe('processing')
     })
 
-    it('getAiReview should return completed review', async () => {
+    it('getAiReview should fetch AI review results', async () => {
       const mockReview = {
-        overallScore: 85,
-        verificationScore: 90,
-        financialScore: 80,
-        equityScore: 75,
-        fundingScore: 88,
-        dataRoomScore: 82,
-        status: 'completed',
+        companyScore: 75,
+        insights: 'Strong financial position',
       }
 
       ;(axiosInstance.get as jest.Mock).mockResolvedValue({ data: mockReview })
@@ -374,82 +332,67 @@ describe('Entrepreneur API - Comprehensive Test Suite', () => {
       const result = await entrepreneurApi.getAiReview('123')
 
       expect(axiosInstance.get).toHaveBeenCalledWith('/companies/123/ai-review')
-      expect(result.overallScore).toBe(85)
+      expect(result.companyScore).toBe(75)
     })
 
-    it('getRecommendations should return improvement tips', async () => {
-      const mockRecs = [
-        { title: 'Improve cap table', description: 'Clarify equity allocation', priority: 'high' },
-        { title: 'Add more data room docs', description: 'Upload financial reports', priority: 'medium' },
-      ]
+    it('getRecommendations should fetch improvement suggestions', async () => {
+      const mockRecs = {
+        recommendations: [
+          { area: 'Marketing', priority: 'high', suggestion: 'Increase marketing spend' },
+        ],
+      }
 
       ;(axiosInstance.get as jest.Mock).mockResolvedValue({ data: mockRecs })
 
       const result = await entrepreneurApi.getRecommendations('123')
 
-      expect(axiosInstance.get).toHaveBeenCalledWith('/companies/123/ai-review/recommendations')
-      expect(result).toHaveLength(2)
+      expect(axiosInstance.get).toHaveBeenCalledWith('/companies/123/recommendations')
+      expect(result.recommendations).toHaveLength(1)
     })
 
-    it('awardInvestorReadyBadge should grant badge', async () => {
+    it('awardInvestorReadyBadge should mark as investor-ready', async () => {
       ;(axiosInstance.post as jest.Mock).mockResolvedValue({
-        data: { isInvestorReady: true, badgeAwarded: true },
+        data: { isInvestorReady: true },
       })
 
       const result = await entrepreneurApi.awardInvestorReadyBadge('123')
 
-      expect(axiosInstance.post).toHaveBeenCalledWith('/companies/123/investor-ready-badge', {})
+      expect(axiosInstance.post).toHaveBeenCalledWith('/companies/123/investor-ready')
       expect(result.isInvestorReady).toBe(true)
     })
   })
 
-  // PHASE 8: INVESTOR MATCHING
   describe('Phase 8: Investor Matching', () => {
-    it('getInvestorMatches should return matched investors', async () => {
-      const mockMatches = [
-        {
-          id: 'inv-1',
-          name: 'Sequoia Capital',
-          matchScore: 95,
-          stage: 'Series A',
-          checkSize: 1000000,
-        },
-        {
-          id: 'inv-2',
-          name: 'Accel Partners',
-          matchScore: 88,
-          stage: 'Seed',
-          checkSize: 500000,
-        },
-      ]
+    it('getInvestorMatches should fetch matched investors', async () => {
+      const mockMatches = {
+        matches: [
+          { investorId: 'inv-1', name: 'VC Fund A', matchScore: 95 },
+        ],
+      }
 
       ;(axiosInstance.get as jest.Mock).mockResolvedValue({ data: mockMatches })
 
       const result = await entrepreneurApi.getInvestorMatches('123')
 
       expect(axiosInstance.get).toHaveBeenCalledWith('/companies/123/investor-matches')
-      expect(result).toHaveLength(2)
+      expect(result.matches).toHaveLength(1)
     })
 
-    it('recordInvestorInteraction should log investor interaction', async () => {
+    it('recordInvestorInteraction should track interaction', async () => {
       ;(axiosInstance.post as jest.Mock).mockResolvedValue({ data: { success: true } })
 
-      await entrepreneurApi.recordInvestorInteraction('123', 'match-1', 'message', {
-        message: 'Interested in meeting',
-      })
+      await entrepreneurApi.recordInvestorInteraction('123', 'match-1', 'intro', 'Initial meeting')
 
       expect(axiosInstance.post).toHaveBeenCalledWith(
-        '/companies/123/investor-matches/match-1/interaction',
-        expect.objectContaining({ type: 'message' })
+        '/companies/123/investor-interaction',
+        { matchId: 'match-1', interactionType: 'intro', details: 'Initial meeting' }
       )
     })
 
-    it('getMatchingInsights should return analytics', async () => {
+    it('getMatchingInsights should fetch quality metrics', async () => {
       const mockInsights = {
-        totalMatches: 25,
-        activeConversations: 5,
-        meetings: 2,
-        averageMatchScore: 82,
+        totalMatches: 5,
+        avgScore: 85,
       }
 
       ;(axiosInstance.get as jest.Mock).mockResolvedValue({ data: mockInsights })
@@ -457,52 +400,49 @@ describe('Entrepreneur API - Comprehensive Test Suite', () => {
       const result = await entrepreneurApi.getMatchingInsights('123')
 
       expect(axiosInstance.get).toHaveBeenCalledWith('/companies/123/matching-insights')
-      expect(result.totalMatches).toBe(25)
+      expect(result.totalMatches).toBe(5)
     })
   })
 
-  // PHASE 9: DEAL EXECUTION
   describe('Phase 9: Deal Execution', () => {
     it('createDeal should initiate deal with investor', async () => {
-      const dealData = {
-        investorId: 'inv-1',
-        fundingAmount: 500000,
-        equityPercentage: 20,
+      const termSheet = {
+        totalRaiseAmount: 500000,
+        postMoneyValuation: 2500000,
+        equityType: 'Series A',
+        investorEquityPercent: 20,
+        proRataRights: true,
+        status: 'draft',
       }
 
-      ;(axiosInstance.post as jest.Mock).mockResolvedValue({
-        data: { dealId: 'deal-123', status: 'draft' },
-      })
+      const mockDeal = { dealId: 'deal-123', status: 'negotiating' }
 
-      await entrepreneurApi.createDeal('123', 'inv-1', dealData)
+      ;(axiosInstance.post as jest.Mock).mockResolvedValue({ data: mockDeal })
+
+      const result = await entrepreneurApi.createDeal('123', 'inv-1', termSheet)
 
       expect(axiosInstance.post).toHaveBeenCalledWith(
         '/companies/123/deals',
-        expect.objectContaining(dealData)
+        { investorId: 'inv-1', termSheet }
       )
+      expect(result.status).toBe('negotiating')
     })
 
     it('getDeal should fetch deal details', async () => {
-      const mockDeal = {
-        id: 'deal-123',
-        investorName: 'Sequoia Capital',
-        amount: 500000,
-        equity: 20,
-        status: 'negotiating',
-      }
+      const mockDeal = { dealId: 'deal-123', status: 'negotiating' }
 
       ;(axiosInstance.get as jest.Mock).mockResolvedValue({ data: mockDeal })
 
       const result = await entrepreneurApi.getDeal('deal-123')
 
-      expect(axiosInstance.get).toHaveBeenCalledWith('/deals/deal-123')
+      expect(axiosInstance.get).toHaveBeenCalledWith('/companies/deals/deal-123')
       expect(result.status).toBe('negotiating')
     })
 
-    it('getCompanyDeals should list all company deals', async () => {
+    it('getCompanyDeals should fetch all company deals', async () => {
       const mockDeals = [
-        { id: 'deal-1', investor: 'Investor A', status: 'draft' },
-        { id: 'deal-2', investor: 'Investor B', status: 'negotiating' },
+        { dealId: 'deal-1', status: 'negotiating' },
+        { dealId: 'deal-2', status: 'closed' },
       ]
 
       ;(axiosInstance.get as jest.Mock).mockResolvedValue({ data: mockDeals })
@@ -514,55 +454,54 @@ describe('Entrepreneur API - Comprehensive Test Suite', () => {
     })
 
     it('progressChecklist should update closing checklist', async () => {
-      ;(axiosInstance.post as jest.Mock).mockResolvedValue({
-        data: { checklistProgress: 7 },
-      })
+      const checklistItem = { item: 'docs-signed', completed: true, owner: 'Legal', dueDate: '2023-02-01' }
 
-      await entrepreneurApi.progressChecklist('deal-123', { item: 'docs-signed' })
+      const mockDeal = { dealId: 'deal-123', status: 'closing' }
+
+      ;(axiosInstance.post as jest.Mock).mockResolvedValue({ data: mockDeal })
+
+      const result = await entrepreneurApi.progressChecklist('deal-123', checklistItem)
 
       expect(axiosInstance.post).toHaveBeenCalledWith(
-        '/deals/deal-123/checklist',
-        expect.objectContaining({ item: 'docs-signed' })
+        '/companies/deals/deal-123/checklist',
+        checklistItem
       )
+      expect(result.status).toBe('closing')
     })
 
     it('closeDeal should finalize deal', async () => {
-      ;(axiosInstance.post as jest.Mock).mockResolvedValue({
-        data: { dealId: 'deal-123', status: 'closed', closedAt: '2026-05-21' },
-      })
+      const mockDeal = { dealId: 'deal-123', status: 'closed' }
+
+      ;(axiosInstance.post as jest.Mock).mockResolvedValue({ data: mockDeal })
 
       const result = await entrepreneurApi.closeDeal('deal-123')
 
-      expect(axiosInstance.post).toHaveBeenCalledWith('/deals/deal-123/close', {})
+      expect(axiosInstance.post).toHaveBeenCalledWith('/companies/deals/deal-123/close')
       expect(result.status).toBe('closed')
     })
   })
 
-  // BACKGROUND JOBS
   describe('Background Jobs', () => {
-    it('enqueueAiReview should queue job', async () => {
-      ;(axiosInstance.post as jest.Mock).mockResolvedValue({
-        data: { jobId: 'job-123', status: 'queued' },
-      })
+    it('enqueueAiReview should queue job and return jobId', async () => {
+      const mockJob = { jobId: 'job-123', status: 'queued' }
+
+      ;(axiosInstance.post as jest.Mock).mockResolvedValue({ data: mockJob })
 
       const result = await entrepreneurApi.enqueueAiReview('123')
 
+      expect(axiosInstance.post).toHaveBeenCalledWith('/jobs/123/ai-review')
       expect(result.jobId).toBe('job-123')
     })
 
-    it('getJobStatus should return job progress', async () => {
-      const mockStatus = {
-        jobId: 'job-123',
-        status: 'processing',
-        progress: 45,
-        estimatedCompletion: '2026-05-21T12:00:00Z',
-      }
+    it('getJobStatus should fetch job progress', async () => {
+      const mockStatus = { status: 'processing', progress: 50 }
 
       ;(axiosInstance.get as jest.Mock).mockResolvedValue({ data: mockStatus })
 
-      // This would be a job status endpoint
-      // const result = await entrepreneurApi.getJobStatus('job-123')
-      // expect(result.status).toBe('processing')
+      const result = await entrepreneurApi.getJobStatus('job-123')
+
+      expect(axiosInstance.get).toHaveBeenCalledWith('/jobs/job-123')
+      expect(result.status).toBe('processing')
     })
   })
 })

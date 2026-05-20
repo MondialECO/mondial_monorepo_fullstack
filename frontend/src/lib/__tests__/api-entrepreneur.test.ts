@@ -1,5 +1,5 @@
 import axiosInstance from '@/lib/axios'
-import entrepreneurApi from '@/lib/api-entrepreneur'
+import { entrepreneurApi } from '@/lib/api-entrepreneur'
 
 jest.mock('@/lib/axios')
 
@@ -39,30 +39,28 @@ describe('Entrepreneur API', () => {
     })
   })
 
-  describe('getCompanyList', () => {
-    it('should call GET /companies/list', async () => {
-      const mockCompanies = [
-        {
-          id: '123',
-          companyName: 'Test Co',
-          currentPhase: 1,
-          trustScore: 50,
-        },
-      ]
+  describe('getCompany', () => {
+    it('should call GET /companies/{id}', async () => {
+      const mockCompany = {
+        id: '123',
+        companyName: 'Test Co',
+        currentPhase: 1,
+        trustScore: 50,
+      }
 
       ;(axiosInstance.get as jest.Mock).mockResolvedValue({
-        data: mockCompanies,
+        data: mockCompany,
       })
 
-      const result = await entrepreneurApi.getCompanyList()
+      const result = await entrepreneurApi.getCompany('123')
 
-      expect(axiosInstance.get).toHaveBeenCalledWith('/companies/list')
-      expect(result).toEqual(mockCompanies)
+      expect(axiosInstance.get).toHaveBeenCalledWith('/companies/123')
+      expect(result).toEqual(mockCompany)
     })
   })
 
   describe('updateLegalInfo', () => {
-    it('should call POST /companies/{id}/legal-info with legal data', async () => {
+    it('should call POST /companies/{id}/legal with legal data', async () => {
       const companyId = '123'
       const legalData = {
         legalName: 'Test SARL',
@@ -71,6 +69,7 @@ describe('Entrepreneur API', () => {
         incorporationDate: '2023-01-01',
         registeredAddress: '123 Main St',
         country: 'France',
+        nafCode: '6202A',
       }
 
       ;(axiosInstance.post as jest.Mock).mockResolvedValue({
@@ -80,8 +79,8 @@ describe('Entrepreneur API', () => {
       await entrepreneurApi.updateLegalInfo(companyId, legalData)
 
       expect(axiosInstance.post).toHaveBeenCalledWith(
-        `/companies/${companyId}/legal-info`,
-        expect.objectContaining(legalData)
+        `/companies/${companyId}/legal`,
+        legalData
       )
     })
   })
@@ -94,7 +93,6 @@ describe('Entrepreneur API', () => {
         q2Revenue: 15000,
         q3Revenue: 20000,
         q4Revenue: 25000,
-        arr: 70000,
       }
 
       ;(axiosInstance.post as jest.Mock).mockResolvedValue({
@@ -105,7 +103,7 @@ describe('Entrepreneur API', () => {
 
       expect(axiosInstance.post).toHaveBeenCalledWith(
         `/companies/${companyId}/revenue`,
-        expect.objectContaining(revenueData)
+        revenueData
       )
     })
   })
@@ -131,7 +129,7 @@ describe('Entrepreneur API', () => {
   })
 
   describe('enqueueAiReview', () => {
-    it('should call POST /companies/{id}/ai-review/enqueue', async () => {
+    it('should call POST /jobs/{id}/ai-review', async () => {
       const companyId = '123'
 
       ;(axiosInstance.post as jest.Mock).mockResolvedValue({
@@ -140,10 +138,7 @@ describe('Entrepreneur API', () => {
 
       const result = await entrepreneurApi.enqueueAiReview(companyId)
 
-      expect(axiosInstance.post).toHaveBeenCalledWith(
-        `/companies/${companyId}/ai-review/enqueue`,
-        {}
-      )
+      expect(axiosInstance.post).toHaveBeenCalledWith(`/jobs/${companyId}/ai-review`)
       expect(result.jobId).toBe('job-123')
     })
   })
