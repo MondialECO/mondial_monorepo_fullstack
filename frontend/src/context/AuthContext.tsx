@@ -62,8 +62,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (storedUser && storedToken) {
       try {
-        setUser(JSON.parse(storedUser));
-        setToken(storedToken);
+        queueMicrotask(() => {
+          setUser(JSON.parse(storedUser));
+          setToken(storedToken);
+        });
       } catch {
         localStorage.clear();
       }

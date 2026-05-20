@@ -68,9 +68,9 @@ export default function Phase1Page() {
 
         {/* Next Steps */}
         <div className="border border-border rounded-2xl p-6 bg-background space-y-6">
-          <h3 className="text-xl font-bold text-foreground">What's Next?</h3>
+          <h3 className="text-xl font-bold text-foreground">What&apos;s Next?</h3>
           <p className="text-muted-foreground">
-            Now that your identity is verified, you can proceed to Phase 2: Company Verification. In this phase, you'll set up your company profile and get verified with an official company badge.
+            Now that your identity is verified, you can proceed to Phase 2: Company Verification. In this phase, you&apos;ll set up your company profile and get verified with an official company badge.
           </p>
 
           <Button asChild size="lg" className="w-full md:w-auto">

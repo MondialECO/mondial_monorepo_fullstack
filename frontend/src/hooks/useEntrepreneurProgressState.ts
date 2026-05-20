@@ -40,7 +40,9 @@ export function useEntrepreneurProgressState() {
 
   // Mark as hydrated after mount
   useEffect(() => {
-    setIsLoading(false);
+    queueMicrotask(() => {
+      setIsLoading(false);
+    });
   }, []);
 
   // Save to localStorage with debounce

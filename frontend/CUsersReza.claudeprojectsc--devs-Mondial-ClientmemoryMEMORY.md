@@ -1,1 +1,0 @@
-- [Signup API Extraction](signup_api_analysis.md) — Old signup API contract, validation rules, integration blockers

@@ -11,7 +11,9 @@ export default function ThemeToggle() {
 
   // Fix hydration mismatch
   useEffect(() => {
-    setMounted(true);
+    queueMicrotask(() => {
+      setMounted(true);
+    });
   }, []);
 
   if (!mounted) return null;
