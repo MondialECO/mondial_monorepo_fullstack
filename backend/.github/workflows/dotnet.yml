@@ -1,0 +1,65 @@
+# Build, test, and security-audit the .NET backend.
+# https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-net
+
+name: .NET
+
+on:
+  push:
+    branches: [ "main", "enterprise-hardening" ]
+  pull_request:
+    branches: [ "main" ]
+
+# Cancel superseded runs on the same ref to save CI minutes and avoid races.
+concurrency:
+  group: dotnet-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x
+
+    - name: Cache NuGet packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'NuGet.config') }}
+        restore-keys: nuget-${{ runner.os }}-
+
+    - name: Restore
+      run: dotnet restore WebApp.sln
+
+    - name: Build
+      run: dotnet build WebApp.sln --no-restore --configuration Release
+
+    # Supply-chain gate: fail on any High/Critical vulnerable dependency
+    # that is not the documented, suppressed accepted-risk advisory.
+    - name: Security audit (dependencies)
+      shell: bash
+      run: |
+        audit=$(dotnet list WebApp.csproj package --vulnerable --include-transitive 2>&1 || true)
+        echo "$audit"
+        if echo "$audit" | grep -E '\b(High|Critical)\b' | grep -v 'GHSA-6c8g-7p36-r338' | grep -q .; then
+          echo "::error::High/Critical vulnerable dependencies detected (not the accepted-risk advisory)."
+          exit 1
+        fi
+        echo "No blocking vulnerable dependencies."
+
+    - name: Test
+      run: dotnet test WebApp.sln --no-build --configuration Release --verbosity normal
+
+    # End-to-end runtime smoke against the published artifact (the exact
+    # execution path the Docker container takes). Requires no external
+    # infra: lazy MongoClient + Phase 10 Redis resilience let the app start
+    # with no Mongo/Redis. Validates health/version/metrics/security
+    # headers/correlation id/compression/404/per-IP rate limit.
+    - name: Runtime smoke (Published)
+      shell: pwsh
+      run: ./scripts/smoke-local.ps1 -Mode Published
