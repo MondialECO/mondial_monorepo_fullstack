@@ -1,0 +1,42 @@
+# Frontend (Node.js)
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.env.local
+frontend/.env.*.local
+frontend/dist/
+frontend/build/
+
+# Backend (.NET)
+backend/bin/
+backend/obj/
+backend/.env
+backend/*.user
+backend/*.suo
+backend/.vs/
+backend/Properties/launchSettings.json
+backend/.vscode/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.orig
+
+# OS
+Thumbs.db
+.DS_Store
+*.log
+
+# Dependencies
+**/node_modules/
+**/.gradle/
+**/.maven/
+
+# Temporary files
+*.tmp
+*.temp
+.claude/worktrees/
