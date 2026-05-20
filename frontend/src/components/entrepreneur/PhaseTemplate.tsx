@@ -81,7 +81,7 @@ export function PhaseTemplate({
 
         {/* Requirements Grid */}
         <div className="space-y-4">
-          <h2 className="text-xl font-bold text-neutral-1">What You&apos;ll Complete</h2>
+          <h2 className="text-xl font-bold text-neutral-1">What You'll Complete</h2>
           <div className="grid md:grid-cols-2 gap-4">
             {requirements.map((req) => {
               const ReqIcon = req.icon;
