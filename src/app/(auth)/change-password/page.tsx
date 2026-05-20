@@ -36,8 +36,9 @@ export default function ChangePassword() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to change password");
+    } catch (err: unknown) {
+      const message = (err as Record<string, unknown>)?.response?.data?.message;
+      setError(typeof message === 'string' ? message : "Failed to change password");
     } finally {
       setLoading(false);
     }

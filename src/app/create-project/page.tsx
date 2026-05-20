@@ -376,7 +376,7 @@ export default function CreateProjectPage() {
     existing_solutions: formData.existing_solutions || '',
 
     solution_description: formData.solution_description || '',
-    stage: (formData.stage as any) || '',
+    stage: (formData.stage as string) || '',
     differentiation: formData.differentiation || '',
     client_benefits: formData.client_benefits || '',
     long_term_vision: formData.long_term_vision || '',
@@ -386,14 +386,14 @@ export default function CreateProjectPage() {
     purchasing_behavior: formData.purchasing_behavior || '',
     market_size: formData.market_size || '',
 
-    product_type: (formData.product_type as any) || '',
+    product_type: (formData.product_type as string) || '',
     planned_price: formData.planned_price || '',
     sales_channels: formData.sales_channels || '',
     startup_costs: formData.startup_costs || '',
     revenue_12_months: formData.revenue_12_months || '',
 
     startup_requirements: formData.startup_requirements || '',
-    prototype_status: (formData.prototype_status as any) || '',
+    prototype_status: (formData.prototype_status as string) || '',
     main_risks: formData.main_risks || '',
 
     goals_30_days: formData.goals_30_days || '',
@@ -408,7 +408,7 @@ export default function CreateProjectPage() {
     founder_role: formData.founder_role || '',
     experience_skills: formData.experience_skills || '',
     prior_project_experience: formData.prior_project_experience || '',
-    weekly_time_available: (formData.weekly_time_available as any) || '',
+    weekly_time_available: (formData.weekly_time_available as string) || '',
     motivation_vision_statement: formData.motivation_vision_statement || '',
 
     amount_required: Number(formData.amount_required) || 0,

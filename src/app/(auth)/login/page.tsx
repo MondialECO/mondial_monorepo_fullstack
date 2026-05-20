@@ -1,8 +1,20 @@
 "use client";
 
 import { useState } from "react";
+import { z } from "zod";
 import { useAuth } from "@/app/_providers/AuthProvider";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
+
+const loginSchema = z.object({
+  email: z
+    .string()
+    .min(1, "Email is required")
+    .email("Invalid email address"),
+  password: z
+    .string()
+    .min(1, "Password is required")
+    .min(8, "Password must be at least 8 characters"),
+});
 
 export default function LoginPage() {
   const { login, isLoading: authLoading } = useAuth();
@@ -15,34 +27,43 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    // Validate form
+    const validation = loginSchema.safeParse({ email, password });
+    if (!validation.success) {
+      const firstError = validation.error.errors[0];
+      setError(firstError.message);
+      return;
+    }
+
     // Prevent form submission during provider hydration
     if (authLoading) {
       setError("Please wait while we initialize the authentication system...");
       return;
     }
-    
+
     setError(null);
     setIsLoading(true);
 
     try {
       await login(email, password);
-    } catch (err: any) {
-      setError(err?.message || "Failed to login. Please try again.");
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err : new Error("Failed to login");
+      setError(error.message || "Failed to login. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-md space-y-8 p-8 bg-white rounded-2xl shadow-lg border border-gray-100">
+    <div className="min-h-screen flex items-center justify-center bg-[color:var(--bg-light)] dark:bg-background px-4">
+      <div className="w-full max-w-md space-y-8 p-8 bg-card dark:bg-card rounded-2xl shadow-lg border border-border">
         {/* Header */}
         <div className="text-center">
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">
             Welcome back
           </h1>
-          <p className="mt-2 text-gray-600">
+          <p className="mt-2 text-muted-foreground">
             Sign in to your account
           </p>
         </div>
@@ -59,7 +80,7 @@ export default function LoginPage() {
           <div>
             <label
               htmlFor="email"
-              className="block text-sm font-medium text-gray-700 mb-1.5"
+              className="block text-sm font-medium text-foreground mb-1.5"
             >
               Email address
             </label>
@@ -70,8 +91,8 @@ export default function LoginPage() {
               required
               placeholder="name@example.com"
               className={`
-                w-full px-4 py-3 rounded-lg border border-gray-300 
-                focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent
+                w-full px-4 py-3 rounded-lg border border-border
+                focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent
                 transition-all duration-200
                 disabled:opacity-60
               `}
@@ -85,7 +106,7 @@ export default function LoginPage() {
           <div>
             <label
               htmlFor="password"
-              className="block text-sm font-medium text-gray-700 mb-1.5"
+              className="block text-sm font-medium text-foreground mb-1.5"
             >
               Password
             </label>
@@ -97,8 +118,8 @@ export default function LoginPage() {
                 required
                 placeholder="••••••••"
                 className={`
-                  w-full px-4 py-3 rounded-lg border border-gray-300 
-                  focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent
+                  w-full px-4 py-3 rounded-lg border border-border
+                  focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent
                   transition-all duration-200 pr-11
                   disabled:opacity-60
                 `}
@@ -109,7 +130,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 tabIndex={-1}
                 disabled={isLoading}
               >
@@ -124,10 +145,10 @@ export default function LoginPage() {
             disabled={isLoading || authLoading}
             className={`
               w-full flex items-center justify-center gap-2
-              bg-black text-white font-medium
+              bg-primary text-primary-foreground font-medium
               py-3.5 rounded-lg
-              hover:bg-gray-900 transition-colors
-              focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black
+              hover:opacity-90 transition-colors
+              focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring
               disabled:opacity-60 disabled:cursor-not-allowed
               shadow-sm
             `}
@@ -138,15 +159,15 @@ export default function LoginPage() {
         </form>
 
         {/* Footer links */}
-        <div className="text-center text-sm text-gray-600 space-y-2 pt-4">
+        <div className="text-center text-sm text-muted-foreground space-y-2 pt-4">
           <div>
-            <a href="/forgot-password" className="text-black hover:underline font-medium">
+            <a href="/forgot-password" className="text-primary hover:underline font-medium">
               Forgot password?
             </a>
           </div>
           <div>
             Don&#39;t have an account?{" "}
-            <a href="/signup" className="text-black font-medium hover:underline">
+            <a href="/signup" className="text-primary font-medium hover:underline">
               Sign up
             </a>
           </div>

@@ -42,6 +42,15 @@
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
   --color-brand-accent: var(--brand-accent);
+  --color-bg-light: var(--bg-light);
+  --color-bg-hero-gradient: var(--bg-hero-gradient);
+  --color-text-secondary: var(--text-secondary);
+  --color-skin-tone-1: var(--skin-tone-1);
+  --color-skin-tone-2: var(--skin-tone-2);
+  --color-skin-tone-3: var(--skin-tone-3);
+  --color-skin-tone-4: var(--skin-tone-4);
+  --color-success-light: var(--success-light);
+  --color-success-text: var(--success-text);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -80,6 +89,15 @@
   --sidebar-border: #E2E8F0;
   --sidebar-ring: #3C50E0;
   --brand-accent: #037D27;
+  --bg-light: #FAFAFA;
+  --bg-hero-gradient: linear-gradient(180deg, transparent, #ECECED, #FAFAFA);
+  --text-secondary: #555555;
+  --skin-tone-1: #ebd5c1;
+  --skin-tone-2: #f1dfcd;
+  --skin-tone-3: #e3c2ac;
+  --skin-tone-4: #422B22;
+  --success-light: #E5F7ED;
+  --success-text: #00A854;
 }
 
 .dark {
@@ -110,6 +128,15 @@
   --sidebar-border: #1F2937;
   --sidebar-ring: #818CF8;
   --brand-accent: #34D399;
+  --bg-light: #0a0b0d;
+  --bg-hero-gradient: linear-gradient(180deg, transparent, #1a1b1e, #0a0b0d);
+  --text-secondary: #a0a0a0;
+  --skin-tone-1: #5a4a40;
+  --skin-tone-2: #6a5a50;
+  --skin-tone-3: #5a4a40;
+  --skin-tone-4: #2a2220;
+  --success-light: #1a3d2a;
+  --success-text: #34d399;
 }
 
 @layer base {

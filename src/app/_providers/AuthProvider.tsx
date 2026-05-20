@@ -44,16 +44,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const storedUser = localStorage.getItem('user');
     const storedToken = localStorage.getItem('token');
 
-    if (storedUser && storedToken) {
-      try {
-        setUser(JSON.parse(storedUser));
-        setToken(storedToken);
-      } catch {
-        localStorage.clear();
+    queueMicrotask(() => {
+      if (storedUser && storedToken) {
+        try {
+          const parsedUser = JSON.parse(storedUser);
+          setUser(parsedUser);
+          setToken(storedToken);
+        } catch {
+          localStorage.clear();
+        }
       }
-    }
-
-    setIsHydrated(true);
+      setIsHydrated(true);
+    });
   }, []);
 
   // Sync auth state across multiple tabs/windows

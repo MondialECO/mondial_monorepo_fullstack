@@ -151,7 +151,7 @@ export default function MyIdeasPage() {
         ) : (
           <div className="space-y-4">
             {filteredIdeas.map((idea) => (
-              <IdeaCard key={idea.id} idea={idea as any} />
+              <IdeaCard key={idea.id} idea={idea as Record<string, unknown>} />
             ))}
           </div>
         )}

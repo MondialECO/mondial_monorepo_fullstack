@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -83,19 +83,26 @@ export default function Signup() {
                 // If signup doesn't return token, show email confirmation screen
                 setRegisteredEmail(email)
                 setStep("confirmation")
-                // Auto-redirect after 5 seconds to confirm-email page
-                setTimeout(() => {
-                    router.push(`/confirm-email?email=${encodeURIComponent(email)}`)
-                }, 5000)
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err)
-            setErrorMsg(err?.response?.data?.message || "Registration failed")
+            const error = err as { response?: { data?: { message?: string } } } | Error;
+            setErrorMsg(error?.response?.data?.message || "Registration failed")
             setStep("error")
         } finally {
             setIsSubmitting(false)
         }
     }
+
+    useEffect(() => {
+        if (step !== "confirmation") return;
+
+        const timer = setTimeout(() => {
+            router.push(`/confirm-email?email=${encodeURIComponent(registeredEmail)}`)
+        }, 5000)
+
+        return () => clearTimeout(timer)
+    }, [step, registeredEmail, router])
 
     const handleManualRedirect = () => {
         router.push(`/confirm-email?email=${encodeURIComponent(registeredEmail)}`)
@@ -116,7 +123,7 @@ export default function Signup() {
                             Check Your Email
                         </h1>
                         <p className="text-gray-600">
-                            We've sent a confirmation link to verify your account.
+                            We&apos;ve sent a confirmation link to verify your account.
                         </p>
                     </div>
 
@@ -127,7 +134,7 @@ export default function Signup() {
 
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-left">
                         <h3 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                            <span className="text-lg">📧</span> What's next?
+                            <span className="text-lg">📧</span> What&apos;s next?
                         </h3>
                         <ol className="space-y-2 text-sm text-gray-700">
                             <li className="flex gap-3">
@@ -144,7 +151,7 @@ export default function Signup() {
                             </li>
                         </ol>
                         <p className="text-xs text-gray-600 mt-3">
-                            💡 Tip: Check your spam or promotions folder if you don't see the email.
+                            💡 Tip: Check your spam or promotions folder if you don&apos;t see the email.
                         </p>
                     </div>
 
@@ -213,10 +220,10 @@ export default function Signup() {
 
     return (
         <>
-            <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-blue-50 flex items-center justify-center px-4 py-8">
-                <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8">
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2 text-center">Create Account</h1>
-                    <p className="text-center text-gray-600 mb-6">Join our community today</p>
+            <div className="min-h-screen bg-[color:var(--bg-light)] dark:bg-background flex items-center justify-center px-4 py-8">
+                <div className="w-full max-w-md bg-card dark:bg-card rounded-2xl shadow-2xl p-8">
+                    <h1 className="text-3xl font-bold text-foreground mb-2 text-center">Create Account</h1>
+                    <p className="text-center text-muted-foreground mb-6">Join our community today</p>
 
                     {errorMsg && (
                         <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
@@ -226,48 +233,48 @@ export default function Signup() {
 
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div>
-                            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                            <label htmlFor="name" className="block text-sm font-medium text-foreground mb-1">Full Name</label>
                             <input
                                 type="text"
                                 id="name"
                                 value={fullName}
                                 onChange={(e) => setFullName(e.target.value)}
                                 required
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                                className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent outline-none transition"
                             />
                         </div>
 
                         <div>
-                            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                            <label htmlFor="email" className="block text-sm font-medium text-foreground mb-1">Email Address</label>
                             <input
                                 type="email"
                                 id="email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 required
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                                className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent outline-none transition"
                             />
                         </div>
 
                         <div>
-                            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                            <label htmlFor="password" className="block text-sm font-medium text-foreground mb-1">Password</label>
                             <input
                                 type="password"
                                 id="password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                                className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent outline-none transition"
                             />
                         </div>
 
                         <div>
-                            <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-1">I am a...</label>
+                            <label htmlFor="role" className="block text-sm font-medium text-foreground mb-1">I am a...</label>
                             <select
                                 id="role"
                                 value={role}
                                 onChange={(e) => setRole(e.target.value)}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white transition"
+                                className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent outline-none bg-card dark:bg-card transition"
                             >
                                 <option value="creator">Creator (I have an idea)</option>
                                 <option value="investor">Investor (I want to invest)</option>
@@ -279,9 +286,9 @@ export default function Signup() {
                         </Button>
                     </form>
 
-                    <div className="mt-6 text-center text-sm text-gray-600">
+                    <div className="mt-6 text-center text-sm text-muted-foreground">
                         Already have an account?{" "}
-                        <Link href="/login" className="text-blue-600 hover:text-blue-700 hover:underline font-semibold">Log in</Link>
+                        <Link href="/login" className="text-primary hover:text-primary hover:underline font-semibold">Log in</Link>
                     </div>
                 </div>
             </div>

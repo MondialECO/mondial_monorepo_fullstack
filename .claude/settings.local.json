@@ -3,7 +3,25 @@
     "allow": [
       "Bash(npx tsc *)",
       "Bash(gh pr *)",
-      "Bash(xargs wc *)"
+      "Bash(xargs wc *)",
+      "Bash(git checkout *)",
+      "Skill(design-audit)",
+      "Bash(xargs grep -l \"credentialsSchema\")",
+      "Skill(perf-check)",
+      "Bash(cp -r Mondial.Client Mondial/frontend)",
+      "Bash(cp -r backend Mondial/backend)",
+      "Bash(dotnet build *)",
+      "Bash(npx eslint *)",
+      "Bash(awk '/^C:.*src/,/error/ {print}')",
+      "Bash(awk '/^[A-Z]:.*src\\\\//{found=1} found && /error/{print; found=0}')",
+      "Bash(winget install *)",
+      "Bash(dotnet --version)",
+      "Bash(timeout 15 dotnet watch run)",
+      "Bash(curl -s http://localhost:5000/health)",
+      "Bash(grep -E \"\\\\.tsx?$\")",
+      "mcp__claude_ai_Figma__get_design_context",
+      "mcp__claude_ai_Figma__get_screenshot",
+      "mcp__claude_ai_Figma__get_metadata"
     ]
   }
 }

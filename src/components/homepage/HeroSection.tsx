@@ -57,11 +57,11 @@ function HeroImageScroll({ src, alt }: { src: string; alt: string }) {
 
 export default function HeroSection() {
     return (
-        <section className="relative w-full min-h-screen flex flex-col items-center pt-20 md:pt-24 pb-20 md:pb-32 overflow-hidden bg-[#FAFAFA]">
+        <section className="relative w-full min-h-screen flex flex-col items-center pt-20 md:pt-24 pb-20 md:pb-32 overflow-hidden bg-[color:var(--bg-light)] dark:bg-[color:var(--bg-light)]">
 
             {/* 🌫️ Background System */}
             <div className="absolute inset-0 z-0 pointer-events-none">
-                <div className="absolute inset-0 bg-linear-to-b from-transparent via-[#ECECED] to-[#FAFAFA]" />
+                <div className="absolute inset-0" style={{ background: 'var(--bg-hero-gradient)' }} />
 
                 {/* subtle glow */}
                 <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-150 h-75 bg-white/50 blur-[120px]" />
@@ -72,20 +72,20 @@ export default function HeroSection() {
                 {/* 👤 Avatars */}
                 <div className="flex flex-col items-center mb-6 md:mb-8">
                     <div className="flex -space-x-2 mb-3">
-                        <div className="w-9 h-9 md:w-10 md:h-10 rounded-full border-2 border-white bg-[#ebd5c1] flex items-center justify-center text-lg shadow-sm z-40">👩🏽</div>
-                        <div className="w-9 h-9 md:w-10 md:h-10 rounded-full border-2 border-white bg-[#f1dfcd] flex items-center justify-center text-lg shadow-sm z-30">👦🏻</div>
-                        <div className="w-9 h-9 md:w-10 md:h-10 rounded-full border-2 border-white bg-[#e3c2ac] flex items-center justify-center text-lg shadow-sm z-20">👱🏻‍♀️</div>
-                        <div className="w-9 h-9 md:w-10 md:h-10 rounded-full border-2 border-white bg-[#422B22] flex items-center justify-center text-lg shadow-sm z-10">👨🏿</div>
+                        <div className="w-9 h-9 md:w-10 md:h-10 rounded-full border-2 border-white bg-[color:var(--skin-tone-1)] flex items-center justify-center text-lg shadow-sm z-40">👩🏽</div>
+                        <div className="w-9 h-9 md:w-10 md:h-10 rounded-full border-2 border-white bg-[color:var(--skin-tone-2)] flex items-center justify-center text-lg shadow-sm z-30">👦🏻</div>
+                        <div className="w-9 h-9 md:w-10 md:h-10 rounded-full border-2 border-white bg-[color:var(--skin-tone-3)] flex items-center justify-center text-lg shadow-sm z-20">👱🏻‍♀️</div>
+                        <div className="w-9 h-9 md:w-10 md:h-10 rounded-full border-2 border-white bg-[color:var(--skin-tone-4)] flex items-center justify-center text-lg shadow-sm z-10">👨🏿</div>
                     </div>
 
-                    <div className="px-4 py-1.5 rounded-full bg-[#E5F7ED] border border-[#d1f0df] text-[#00A854] text-sm font-medium">
+                    <div className="px-4 py-1.5 rounded-full bg-[color:var(--success-light)] dark:bg-[color:var(--success-light)] border border-[color:var(--success-light)] text-[color:var(--success-text)] dark:text-[color:var(--success-text)] text-sm font-medium">
                         4 profiles, 1 awesome solution!
                     </div>
                 </div>
 
                 {/* 🧠 Heading */}
                 <h1
-                    className="text-[#070707] font-normal tracking-tight mb-6 md:mb-8"
+                    className="text-foreground font-normal tracking-tight mb-6 md:mb-8"
                     style={{
                         fontFamily: '"Instrument Sans", sans-serif',
                         fontSize: 'clamp(40px, 8vw, 88px)',
@@ -107,23 +107,23 @@ export default function HeroSection() {
                 </h1>
 
                 {/* ✍️ Subtitle */}
-                <p className="text-[16px] md:text-[22px] leading-relaxed text-[#555555] max-w-xl md:max-w-2xl mb-10 md:mb-12">
+                <p className="text-[16px] md:text-[22px] leading-relaxed text-[color:var(--text-secondary)] max-w-xl md:max-w-2xl mb-10 md:mb-12">
                     A premium ecosystem connecting{' '}
-                    <strong className="text-[#070707] font-semibold">creators</strong> and{' '}
-                    <strong className="text-[#070707] font-semibold">investors</strong>
+                    <strong className="text-foreground font-semibold">creators</strong> and{' '}
+                    <strong className="text-foreground font-semibold">investors</strong>
                     <br className="hidden md:block" />
                     through Project Intelligence.
                 </p>
 
                 {/* 🚀 CTA */}
                 <div className="flex gap-4 mb-16 md:mb-20">
-                    <button className="px-8 py-3.5 md:px-10 md:py-4 bg-white text-[#070707] text-base md:text-lg font-medium rounded-full shadow-sm border border-gray-200 hover:bg-gray-50 transition-colors">
+                    <button className="px-8 py-3.5 md:px-10 md:py-4 bg-card text-foreground text-base md:text-lg font-medium rounded-full shadow-sm border border-border hover:bg-muted transition-colors">
                         Get a Demo
                     </button>
 
                     <Link
                         href="/signup"
-                        className="px-8 py-3.5 md:px-10 md:py-4 bg-[#3D63DD] text-white text-base md:text-lg font-medium rounded-full shadow-md hover:bg-blue-700 transition-colors inline-block"
+                        className="px-8 py-3.5 md:px-10 md:py-4 bg-primary text-primary-foreground text-base md:text-lg font-medium rounded-full shadow-md hover:opacity-90 transition-colors inline-block"
                     >
                         Join Free
                     </Link>
