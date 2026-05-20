@@ -1,0 +1,49 @@
+# Keep Claude's context small & cheap.
+# These paths are skipped by Grep/Glob/Read by default.
+
+# Build artifacts
+.next/
+out/
+build/
+dist/
+coverage/
+
+# Deps / locks
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+.pnp.*
+.yarn/
+
+# Static assets — binaries bloat context for no gain
+public/**/*.png
+public/**/*.jpg
+public/**/*.jpeg
+public/**/*.webp
+public/**/*.avif
+public/**/*.ico
+public/**/*.gif
+# keep SVGs readable (they're often source-of-truth for UI) — comment next line to skip them too
+# public/**/*.svg
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+*.swp
+
+# Logs / caches
+*.log
+*.tsbuildinfo
+.cache/
+
+# Env / secrets (defense in depth — also in settings.json deny list)
+.env
+.env.*
+
+# Historical docs Claude doesn't need loaded on every turn
+PERFORMANCE_AUDIT_FIXES.md
+
+# Git internals
+.git/

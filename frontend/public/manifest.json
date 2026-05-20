@@ -1,0 +1,18 @@
+{
+    "name": "Mondial - Social Credit Creation Platform",
+    "short_name": "Mondial",
+    "description": "The first social credit creation platform connecting creators, investors, entrepreneurs, and service providers through Project Intelligence.",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#F1F5F9",
+    "theme_color": "#3C50E0",
+    "orientation": "portrait-primary",
+    "categories": [
+        "business",
+        "finance",
+        "productivity"
+    ],
+    "lang": "en",
+    "dir": "ltr",
+    "icons": []
+}
