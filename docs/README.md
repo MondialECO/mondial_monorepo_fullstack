@@ -5,8 +5,16 @@ Essential guides for Mondial development and testing.
 ## 🚀 Quick Start
 
 1. **[../SETUP.md](../SETUP.md)** — Environment setup (5 minutes)
-2. **[LOCAL_AUTH_TEST.md](LOCAL_AUTH_TEST.md)** — Run auth test (30 minutes)
-3. **[../README.md](../README.md)** — Project overview
+2. **[CONFIGURATION.md](CONFIGURATION.md)** — Config settings (read first)
+3. **[LOCAL_AUTH_TEST.md](LOCAL_AUTH_TEST.md)** — Run auth test (30 minutes)
+4. **[../README.md](../README.md)** — Project overview
+
+## ⚙️ Configuration
+
+- **[CONFIGURATION.md](CONFIGURATION.md)** — All settings reference
+  - MongoDB, JWT, Email SMTP, Redis, CORS
+  - Environment variables & validation
+  - Production deployment checklist
 
 ## 🔐 Authentication
 
