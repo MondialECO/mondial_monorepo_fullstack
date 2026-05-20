@@ -265,10 +265,10 @@ export default function EntrepreneurOverview() {
             <PhaseCard
               key={phaseData.phase}
               {...phaseData}
-              isCompleted={progress.completedPhases.has(phaseData.phase as any)}
+              isCompleted={progress.completedPhases.has(phaseData.phase as number)}
               isActive={progress.currentPhase === phaseData.phase}
               isLocked={
-                !progress.completedPhases.has(phaseData.phase as any) &&
+                !progress.completedPhases.has(phaseData.phase as number) &&
                 progress.currentPhase !== phaseData.phase
               }
             />

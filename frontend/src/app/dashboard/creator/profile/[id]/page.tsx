@@ -66,7 +66,7 @@ export default function PublicProfilePage() {
                                     </div>
 
                                     <p className="self-stretch text-center justify-start text-muted-foreground text-sm">
-                                        "{profile.bio}"
+                                        &quot;{profile.bio}&quot;
                                     </p>
                                 </div>
                             </div>

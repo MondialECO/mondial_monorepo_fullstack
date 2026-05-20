@@ -43,8 +43,9 @@ export default function ConfirmEmailContent() {
         setTimeout(() => {
           router.push("/login");
         }, 2000);
-      } catch (err: any) {
-        const errorMessage = err.response?.data?.message || "Email confirmation failed.";
+      } catch (err: unknown) {
+        const error = err as { response?: { data?: { message?: string } } };
+        const errorMessage = error.response?.data?.message || "Email confirmation failed.";
         
         // Check if error indicates expired token
         if (errorMessage.toLowerCase().includes("expired")) {

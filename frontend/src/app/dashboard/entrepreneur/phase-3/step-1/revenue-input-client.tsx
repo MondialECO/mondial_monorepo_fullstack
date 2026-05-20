@@ -101,7 +101,7 @@ export function Phase3RevenueInputClient() {
                 Revenue Input
               </h1>
               <p className="text-sm sm:text-base text-neutral-5">
-                Please provide your company's revenue data for the last four
+                Please provide your company&apos;s revenue data for the last four
                 quarters to calculate your valuation.
               </p>
             </div>

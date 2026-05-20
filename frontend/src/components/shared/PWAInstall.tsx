@@ -15,9 +15,9 @@ export function PWAInstall() {
         }
 
         // Handle PWA install prompt
-        let deferredPrompt: any;
+        let deferredPrompt: Event | null = null;
 
-        window.addEventListener('beforeinstallprompt', (e) => {
+        window.addEventListener('beforeinstallprompt', (e: Event) => {
             e.preventDefault();
             deferredPrompt = e;
 

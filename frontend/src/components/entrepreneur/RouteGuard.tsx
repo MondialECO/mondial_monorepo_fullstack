@@ -27,7 +27,9 @@ export function RouteGuard({
 
   useEffect(() => {
     if (isLoading || !progress) {
-      setIsAuthorized(null);
+      queueMicrotask(() => {
+        setIsAuthorized(null);
+      });
       return;
     }
 

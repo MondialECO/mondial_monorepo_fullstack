@@ -52,7 +52,7 @@ export default function Phase2Step1Client() {
   const updatedStepIndicators = statusMap
     ? stepIndicators.map((step) => ({
         ...step,
-        status: statusMap[step.step as keyof typeof statusMap] as any,
+        status: statusMap[step.step as keyof typeof statusMap] as 'completed' | 'current' | 'pending',
       }))
     : stepIndicators;
 

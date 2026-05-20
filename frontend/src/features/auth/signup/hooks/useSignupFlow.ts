@@ -47,10 +47,12 @@ export function useSignupFlow(
       try {
         const { step, role, credentials: savedCreds, formData: savedFormData } =
           JSON.parse(savedState);
-        if (step && STEP_ORDER.includes(step)) setCurrentStep(step);
-        if (role) setSelectedRole(role);
-        if (savedCreds) setCredentialsState(savedCreds);
-        if (savedFormData) setFormDataState(savedFormData);
+        queueMicrotask(() => {
+          if (step && STEP_ORDER.includes(step)) setCurrentStep(step);
+          if (role) setSelectedRole(role);
+          if (savedCreds) setCredentialsState(savedCreds);
+          if (savedFormData) setFormDataState(savedFormData);
+        });
       } catch {
         // Ignore parse errors, use initial state
       }

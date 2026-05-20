@@ -14,14 +14,12 @@ export function useBreadcrumb(): BreadcrumbItem[] {
 
   const segments = pathname.split("/").filter(Boolean);
 
-  let path = "";
-
-  return segments.map((segment) => {
-    path += `/${segment}`;
+  return segments.map((segment, index) => {
+    const path = segments.slice(0, index + 1).join("/");
 
     return {
       label: formatLabel(segment),
-      href: path,
+      href: `/${path}`,
     };
   });
 }

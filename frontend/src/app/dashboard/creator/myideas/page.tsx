@@ -137,7 +137,7 @@ export default function MyIdeasPage() {
             </div>
             <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">No ideas found</h3>
             <p className="text-slate-500 dark:text-slate-400 mb-6 max-w-sm mx-auto">
-              You haven't created any ideas yet, or none match the selected filter.
+              You haven&apos;t created any ideas yet, or none match the selected filter.
             </p>
             <Button
               className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white"
