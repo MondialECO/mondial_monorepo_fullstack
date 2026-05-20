@@ -10,23 +10,16 @@ import {
   Eye,
   FolderLock,
   Rocket,
+  TrendingUp,
 } from 'lucide-react';
 import { useEntrepreneurProgress } from '@/hooks/useEntrepreneurProgress';
 import { Button } from '@/components/ui/button';
 import { RouteGuard } from '@/components/entrepreneur/RouteGuard';
 
-/**
- * Phase 2 / Step 4 — Company Verification.
- *
- * Redesigned to match Figma "2.5 Company verification": one centered card
- * containing the issued badge, the executive trust score, the unlocked
- * features, and the action footer. Uses theme tokens only (no hex).
- */
 function Phase2Step4PageContent() {
   const router = useRouter();
   const [isCompleting, setIsCompleting] = useState(false);
-  const { savePhaseData, moveToNextStep, getPhaseData } =
-    useEntrepreneurProgress();
+  const { savePhaseData, moveToNextStep, getPhaseData } = useEntrepreneurProgress();
 
   const handleContinue = async () => {
     setIsCompleting(true);
@@ -38,9 +31,8 @@ function Phase2Step4PageContent() {
       });
       await new Promise((r) => setTimeout(r, 500));
       moveToNextStep(2, 4);
-      // Phase advance updates more state — give it room to flush.
       await new Promise((r) => setTimeout(r, 300));
-      router.push('/dashboard/entrepreneur/phase-3/step-1');
+      router.push('/dashboard/entrepreneur');
     } catch {
       setIsCompleting(false);
     }
@@ -53,10 +45,10 @@ function Phase2Step4PageContent() {
   });
 
   const roadmap = [
-    'Concept Overview',
-    'Document Updates',
+    'Legal Identity',
+    'Documents',
     'Ownership & KYC',
-    'Final Overview',
+    'Final Review',
   ];
 
   const features = [
@@ -67,172 +59,180 @@ function Phase2Step4PageContent() {
     },
     {
       title: 'Data Room',
-      description: 'Secure Document Hosting',
+      description: 'Secure document hosting',
       Icon: FolderLock,
     },
     {
       title: 'Funding Portal',
-      description: 'Apply for pre-seed rounds',
+      description: 'Access pre-seed rounds',
       Icon: Rocket,
     },
   ];
 
   return (
-    <div className="min-h-[calc(100vh-72px)] bg-neutral-100 p-4 md:p-6 lg:p-8">
-      <div className="mx-auto w-full max-w-3xl bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-4 sm:p-6 md:p-8 space-y-6">
-        {/* Header */}
-        <header className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-neutral-1">
-              Company verification
-            </h1>
-            <p className="text-sm sm:text-base text-neutral-5 mt-1">
-              All 4 verification milestones achieved
-            </p>
-          </div>
-          <div className="sm:text-right shrink-0">
-            <p className="text-sm font-semibold text-neutral-1">
-              Overall Score 100%
-            </p>
-            <div className="mt-2 h-1.5 w-32 sm:w-36 rounded-full bg-neutral-4 overflow-hidden">
-              <div className="h-full w-full bg-primary rounded-full" />
+    <div className="min-h-screen bg-neutral-100 p-4 sm:p-6 md:p-8 lg:p-10">
+      <div className="mx-auto w-full max-w-4xl">
+        {/* Header Section with Background */}
+        <div className="bg-gradient-to-r from-primary/10 to-primary/5 border-2 border-primary/20 rounded-2xl p-6 sm:p-8 md:p-10 mb-8 space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-6">
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center">
+                  <BadgeCheck className="w-8 h-8 text-primary" strokeWidth={2} />
+                </div>
+                <div>
+                  <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-1">
+                    Company Verified
+                  </h1>
+                  <p className="text-sm sm:text-base text-neutral-5 mt-1">
+                    Congratulations! All verification steps completed
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Score Card */}
+            <div className="bg-white border-2 border-primary/30 rounded-xl p-4 text-center shrink-0">
+              <p className="text-xs font-semibold uppercase tracking-wide text-neutral-5 mb-2">
+                Overall Score
+              </p>
+              <p className="text-4xl font-bold text-neutral-1">100%</p>
+              <div className="mt-3 h-2 w-24 rounded-full bg-neutral-200 overflow-hidden mx-auto">
+                <div className="h-full w-full bg-primary rounded-full" />
+              </div>
             </div>
           </div>
-        </header>
 
-        {/* Verification Roadmap */}
-        <section className="space-y-3">
-          <h2 className="text-lg font-semibold tracking-tight text-neutral-1">
-            Verification Roadmap
-          </h2>
-          <nav
-            aria-label="Verification roadmap"
-            className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm"
-          >
-            {roadmap.map((item, idx) => {
-              const isLast = idx === roadmap.length - 1;
-              return (
-                <span key={item} className="flex items-center gap-2">
-                  <span
-                    className={
-                      isLast
-                        ? 'text-primary font-semibold'
-                        : 'text-neutral-5'
-                    }
-                  >
-                    {item}
-                  </span>
-                  {!isLast && (
-                    <ChevronRight className="w-3.5 h-3.5 text-neutral-5" />
-                  )}
-                </span>
-              );
-            })}
-          </nav>
-        </section>
+          {/* Verification Roadmap */}
+          <div className="pt-4 border-t-2 border-primary/20">
+            <p className="text-xs font-semibold uppercase tracking-wide text-neutral-5 mb-3">
+              Verification Path
+            </p>
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              {roadmap.map((item, idx) => {
+                const isLast = idx === roadmap.length - 1;
+                return (
+                  <div key={item} className="flex items-center gap-2">
+                    <div className="px-3 py-1 bg-white rounded-full text-neutral-1 font-medium text-xs sm:text-sm">
+                      {item}
+                    </div>
+                    {!isLast && (
+                      <ChevronRight className="w-4 h-4 text-primary/60 flex-shrink-0" />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
 
-        {/* Two-card row */}
-        <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Issued certificate card */}
-          <div className="bg-background border border-neutral-2 rounded-xl p-4 sm:p-5 space-y-4">
-            <div className="flex flex-col items-center text-center pt-2">
-              <div className="w-20 h-20 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center mb-3">
-                <BadgeCheck className="w-10 h-10 text-primary" strokeWidth={2} />
+        {/* Issued Certificate & Trust Score */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          {/* Certificate Card */}
+          <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 sm:p-8 space-y-6">
+            <div className="flex flex-col items-center text-center">
+              <div className="w-24 h-24 rounded-full bg-primary/15 border-2 border-primary/30 flex items-center justify-center mb-4">
+                <BadgeCheck className="w-12 h-12 text-primary" strokeWidth={2} />
               </div>
-              <p className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary">
+              <p className="inline-flex items-center gap-2 text-sm font-semibold text-primary bg-primary/10 px-3 py-1 rounded-full mb-3">
                 <BadgeCheck className="w-4 h-4" />
-                Verified Company
+                Verified Status
               </p>
-              <p className="text-base font-semibold text-neutral-1 mt-1">
-                Mondial.eco Certified Business
+              <p className="text-lg sm:text-xl font-bold text-neutral-1">
+                Mondial.eco Certified
+              </p>
+              <p className="text-sm text-neutral-5 mt-2">
+                Official business verification badge
               </p>
             </div>
-            <div className="grid grid-cols-2 gap-2 pt-3 border-t border-neutral-2">
-              <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-neutral-5">
-                  Issued
+
+            <div className="grid grid-cols-2 gap-4 pt-4 border-t-2 border-neutral-2">
+              <div className="text-center">
+                <p className="text-xs font-semibold uppercase tracking-wide text-neutral-5 mb-1">
+                  Issued Date
                 </p>
-                <p className="text-sm font-semibold text-neutral-1 mt-0.5">
+                <p className="text-sm font-bold text-neutral-1">
                   {issuedDate}
                 </p>
               </div>
-              <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-neutral-5">
-                  Issued
+              <div className="text-center">
+                <p className="text-xs font-semibold uppercase tracking-wide text-neutral-5 mb-1">
+                  Valid Until
                 </p>
-                <p className="text-sm font-semibold text-neutral-1 mt-0.5">
-                  {issuedDate}
+                <p className="text-sm font-bold text-neutral-1">
+                  {new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                  })}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Trust score card */}
-          <div className="bg-background border border-neutral-2 rounded-xl p-4 sm:p-5 space-y-3">
+          {/* Trust Score Card */}
+          <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 sm:p-8 space-y-6">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-neutral-1">
-                Executive Trust Score
-              </p>
-              <span className="px-2 py-0.5 rounded-md bg-green-100 text-green-700 text-xs font-semibold">
-                +20 pts
-              </span>
+              <h3 className="text-lg font-semibold text-neutral-1">
+                Trust Score
+              </h3>
+              <div className="flex items-center gap-1 text-green-600 bg-green-50 px-3 py-1 rounded-full text-xs font-semibold">
+                <TrendingUp className="w-4 h-4" />
+                +30 pts
+              </div>
             </div>
-            <div className="flex items-baseline gap-1">
-              <span className="text-4xl sm:text-5xl font-bold tracking-tight text-neutral-1">
-                60
-              </span>
-              <span className="text-sm text-neutral-5">/100</span>
-            </div>
-            <div className="h-2 w-full rounded-full bg-neutral-4 overflow-hidden">
-              <div
-                className="h-full bg-primary rounded-full"
-                style={{ width: '60%' }}
-              />
-            </div>
-            <p className="text-sm text-neutral-5 leading-relaxed">
-              Your score increased significantly after document verification.
-              Higher scores unlock lower platform fees.
-            </p>
-          </div>
-        </section>
 
-        {/* Features unlocked */}
-        <section className="space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-neutral-5">
+            <div className="text-center py-4">
+              <div className="text-5xl sm:text-6xl font-bold text-neutral-1 mb-2">
+                85
+              </div>
+              <p className="text-sm text-neutral-5">/100 Investor Ready Score</p>
+            </div>
+
+            <div className="space-y-2">
+              <div className="h-3 w-full rounded-full bg-neutral-4 overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-primary to-primary/70 rounded-full"
+                  style={{ width: '85%' }}
+                />
+              </div>
+              <p className="text-xs text-neutral-5">
+                Excellent score. Higher scores unlock lower platform fees and better matching.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Features Unlocked */}
+        <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 sm:p-8 mb-8">
+          <h3 className="text-lg font-semibold text-neutral-1 mb-6">
             Features Now Unlocked
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {features.map(({ title, description, Icon }) => (
               <div
                 key={title}
-                className="bg-background border border-neutral-2 rounded-lg p-3 flex items-start gap-3"
+                className="bg-background border-2 border-neutral-2 rounded-xl p-4 sm:p-5 flex flex-col items-center text-center space-y-3 hover:border-primary/50 transition"
               >
-                <div className="w-8 h-8 shrink-0 rounded-md bg-primary/10 flex items-center justify-center">
-                  <Icon className="w-4 h-4 text-primary" />
+                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Icon className="w-6 h-6 text-primary" />
                 </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-neutral-1">
-                    {title}
-                  </p>
-                  <p className="text-xs text-neutral-5 mt-0.5 leading-snug">
-                    {description}
-                  </p>
+                <div>
+                  <p className="text-sm font-bold text-neutral-1">{title}</p>
+                  <p className="text-xs text-neutral-5 mt-1">{description}</p>
                 </div>
               </div>
             ))}
           </div>
-        </section>
+        </div>
 
-        {/* Actions */}
-        <footer className="flex flex-col-reverse sm:flex-row gap-3 pt-2">
+        {/* Action Buttons */}
+        <div className="flex flex-col-reverse sm:flex-row gap-4">
           <Button
             type="button"
             variant="outline"
-            className="flex-1 gap-2"
-            onClick={() => {
-              /* Certificate download is generated server-side; intentionally
-                 a no-op here so the click is acknowledged without errors. */
-            }}
+            className="flex-1 gap-2 h-12"
+            onClick={() => {}}
           >
             <Download className="w-4 h-4" />
             Download Certificate
@@ -241,12 +241,21 @@ function Phase2Step4PageContent() {
             type="button"
             onClick={handleContinue}
             disabled={isCompleting}
-            className="flex-1 gap-2"
+            className="flex-1 gap-2 h-12"
           >
-            {isCompleting ? 'Continuing…' : 'Continue to Phase 3: Investor Outreach'}
-            <ArrowRight className="w-4 h-4" />
+            {isCompleting ? (
+              <>
+                <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Continuing...
+              </>
+            ) : (
+              <>
+                Continue to Dashboard
+                <ArrowRight className="w-4 h-4" />
+              </>
+            )}
           </Button>
-        </footer>
+        </div>
       </div>
     </div>
   );
