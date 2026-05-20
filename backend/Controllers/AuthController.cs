@@ -339,7 +339,8 @@ namespace WebApp.Controllers
 
             var encodedToken = WebUtility.UrlEncode(token);
 
-            var confirmationLink = $"https://mondialbusiness.eu/confirm-email?userId={Uri.EscapeDataString(user.Id.ToString())}&token={encodedToken}";
+            var baseUrl = _configuration["BaseUrl"] ?? "http://localhost:3000";
+            var confirmationLink = $"{baseUrl}/confirm-email?userId={Uri.EscapeDataString(user.Id.ToString())}&token={encodedToken}";
 
             bool emailSent = await _emailService.SendEmailAsync(user.Email, "Confirm your email",
                 $"Please confirm your account by clicking this link: <a href='{confirmationLink}'>Confirm Email</a>");
@@ -404,7 +405,8 @@ namespace WebApp.Controllers
 
             var token = await _userManager.GeneratePasswordResetTokenAsync(user);
             var encodedToken = WebUtility.UrlEncode(token);
-            var resetUrl = $"https://mondialbusiness.eu/reset-password?email={model.Email}&token={encodedToken}";
+            var baseUrl = _configuration["BaseUrl"] ?? "http://localhost:3000";
+            var resetUrl = $"{baseUrl}/reset-password?email={model.Email}&token={encodedToken}";
 
             _logger.LogInformation($"Generated password reset token for {model.Email}");
             bool emailSent = await _emailService.SendEmailAsync(user.Email, "Password Reset",

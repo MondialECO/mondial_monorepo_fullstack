@@ -1,8 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "https://api.mondialbusiness.eu/api",
-  // baseURL: "https://localhost:7264/api",
+  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api",
 });
 
 // Track whether we're already attempting a refresh to prevent infinite loops
