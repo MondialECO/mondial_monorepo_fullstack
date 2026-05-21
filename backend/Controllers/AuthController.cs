@@ -1,10 +1,12 @@
 ﻿using Amazon.Runtime.Internal.Util;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
 using System.ComponentModel.DataAnnotations;
@@ -36,6 +38,7 @@ namespace WebApp.Controllers
         private readonly IDistributedCache _cache;
         private readonly TwilioService _twilioService;
         private readonly WebApp.Services.Audit.IAuditLogger _audit;
+        private readonly IWebHostEnvironment _env;
 
         public AuthController(
             UserManager<ApplicationUser> userManager,
@@ -47,7 +50,8 @@ namespace WebApp.Controllers
             SaveFile saveFile,
             IDistributedCache cache,
             TwilioService twilioService,
-            WebApp.Services.Audit.IAuditLogger audit
+            WebApp.Services.Audit.IAuditLogger audit,
+            IWebHostEnvironment env
             )
         {
             _userManager = userManager;
@@ -60,6 +64,7 @@ namespace WebApp.Controllers
             _cache = cache;
             _twilioService = twilioService;
             _audit = audit;
+            _env = env;
         }
 
         #region Helper Methods
@@ -232,7 +237,10 @@ namespace WebApp.Controllers
                     return UnauthorizedResponse("Invalid token");
                 }
 
-                var userId = principal?.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+                // JwtSecurityTokenHandler remaps "sub" → ClaimTypes.NameIdentifier
+                // by default, so check both claim names.
+                var userId = principal?.FindFirst(JwtRegisteredClaimNames.Sub)?.Value
+                          ?? principal?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
                 if (string.IsNullOrEmpty(userId))
                     return UnauthorizedResponse("Invalid token claims");
 
@@ -348,6 +356,15 @@ namespace WebApp.Controllers
             }
 
             await _userManager.AddToRoleAsync(user, canonicalRole);
+
+            // Dev convenience: auto-confirm so signup→login works without a
+            // real inbox. Production must still go through the email link.
+            if (_env.IsDevelopment())
+            {
+                user.EmailConfirmed = true;
+                await _userManager.UpdateAsync(user);
+                _logger.LogInformation("Auto-confirmed email for {Email} (Development environment)", user.Email);
+            }
 
             var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
 

@@ -4,11 +4,15 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import api from '@/lib/axios';
 import { UserRole } from '@/lib/roles';
+import { ROLE_DASHBOARD_ROUTES } from '@/lib/role-routes';
 
 type User = {
   id: string;
   name: string;
+  /** Primary role used for routing. */
   role: UserRole;
+  /** All roles the user holds. */
+  roles: UserRole[];
 };
 
 type AuthContextType = {
@@ -18,6 +22,7 @@ type AuthContextType = {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
+  hasRole: (role: UserRole) => boolean;
 };
 
 const AuthContext = createContext<AuthContextType>(null!);
@@ -112,12 +117,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string) => {
     const res = await api.post('/auth/login', { email, password });
-    const { token, user: apiUser } = res.data;
+    // Backend wraps every response in { success, message, data }.
+    const payload = res.data?.data ?? res.data;
+    const { token, user: apiUser } = payload ?? {};
+
+    if (!token || !apiUser) {
+      throw new Error(res.data?.message || 'Invalid login response');
+    }
+
+    const roles = (apiUser.roles ?? apiUser.Roles ?? []) as UserRole[];
 
     const user: User = {
       id: apiUser.id,
       name: apiUser.name,
-      role: apiUser.roles[0] as UserRole,
+      role: (roles[0] ?? UserRole.CREATOR) as UserRole,
+      roles,
     };
 
     localStorage.setItem('token', token);
@@ -126,15 +140,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(user);
     setToken(token);
 
-    const roleRoutes: Record<UserRole, string> = {
-      Admin: '/dashboard/admin',
-      Creator: '/dashboard/creator',
-      Investor: '/dashboard/investor',
-      Entrepreneur: '/dashboard/entrepreneur',
-      ServiceProvider: '/dashboard/serviceprovider',
-    };
-
-    router.push(roleRoutes[user.role]);
+    router.push(ROLE_DASHBOARD_ROUTES[user.role] ?? '/dashboard');
   };
 
   const logout = () => {
@@ -143,6 +149,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setToken(null);
     router.push('/login');
   };
+
+  const hasRole = (role: UserRole) => !!user?.roles?.includes(role);
 
   return (
     <AuthContext.Provider
@@ -153,6 +161,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isLoading: !isHydrated,
         login,
         logout,
+        hasRole,
       }}
     >
       {children}
