@@ -9,11 +9,12 @@ import { cn } from "@/lib/utils";
  * (which is client) in as `children` from the page.
  */
 export function SignupShell({
-  badge = "Onboarding Protocol",
+  badge,
   title,
   subtitle,
   children,
 }: {
+  /** Optional pill above the title. Omit for a cleaner hero. */
   badge?: string;
   title: string;
   subtitle: string;
@@ -28,16 +29,16 @@ export function SignupShell({
       <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col items-center px-6">
         <section
           className={cn(
-            "flex w-full max-w-2xl flex-col items-center gap-10 py-12 text-center",
+            "flex w-full max-w-3xl flex-col items-center gap-10 py-12 text-center",
             "sm:py-16",
           )}
         >
           <div className="flex flex-col items-center gap-4">
-            <SectionBadge>{badge}</SectionBadge>
+            {badge && <SectionBadge>{badge}</SectionBadge>}
             <h1 className="text-balance text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
               {title}
             </h1>
-            <p className="max-w-md text-balance text-sm text-muted-foreground sm:text-base">
+            <p className="max-w-xl text-balance text-sm text-muted-foreground sm:text-base">
               {subtitle}
             </p>
           </div>

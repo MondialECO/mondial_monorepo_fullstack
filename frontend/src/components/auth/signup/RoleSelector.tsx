@@ -77,11 +77,11 @@ export function RoleSelector({
       <div className="flex w-full flex-col items-center gap-3">
         <Button
           size="lg"
-          className="w-full rounded-full sm:w-auto sm:min-w-[260px]"
+          className="w-full sm:w-auto sm:min-w-[200px]"
           disabled={!selected || submitting}
           onClick={handleSubmit}
         >
-          {submitting ? "Initializing…" : "Initialize Account"}
+          {submitting ? "Creating…" : "Create Account"}
         </Button>
         <p className="text-sm text-muted-foreground">
           Already have an account?{" "}

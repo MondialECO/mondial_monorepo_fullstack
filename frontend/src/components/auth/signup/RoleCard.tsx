@@ -41,9 +41,9 @@ export function RoleCardGrid({ role, selected, onSelect, className }: BaseProps)
         className,
       )}
     >
-      <RadioDot selected={selected} className="absolute right-4 top-4" />
+      <RadioDot selected={selected} className="absolute right-5 top-5" />
 
-      <div className="relative size-14 overflow-hidden rounded-xl bg-muted">
+      <div className="relative size-14 overflow-hidden rounded-full bg-muted">
         <Image
           src={role.avatar}
           alt=""
@@ -53,22 +53,12 @@ export function RoleCardGrid({ role, selected, onSelect, className }: BaseProps)
         />
       </div>
 
-      <div className="space-y-1">
+      <div className="space-y-1 mt-2">
         <h3 className="text-base font-semibold leading-tight">{role.name}</h3>
-        <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
+        <p className="text-sm text-muted-foreground leading-relaxed">
           {role.description}
         </p>
       </div>
-
-      <span
-        className={cn(
-          "mt-auto inline-flex items-center gap-1.5 text-xs font-medium",
-          "text-muted-foreground group-hover:text-primary transition-colors",
-        )}
-      >
-        Explore this role
-        <span aria-hidden="true">→</span>
-      </span>
     </button>
   );
 }
