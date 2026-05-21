@@ -15,13 +15,13 @@ import {
   Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useEntrepreneurDashboard } from '@/hooks/useEntrepreneurDashboard';
+import { useEntrepreneurProgress } from '@/hooks/useEntrepreneurProgress';
 import { RouteGuard } from '@/components/entrepreneur/RouteGuard';
 
 function Phase1PageContent() {
-  const { phaseProgress, isPhaseLoading, phaseError } = useEntrepreneurDashboard();
+  const { progress, isLoading, trustScore, currentPhase } = useEntrepreneurProgress();
 
-  if (isPhaseLoading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-neutral-100 flex items-center justify-center">
         <div className="text-center">
@@ -32,16 +32,18 @@ function Phase1PageContent() {
     );
   }
 
-  if (phaseError) {
+  if (!progress) {
     return (
       <div className="min-h-screen bg-neutral-100 flex items-center justify-center">
         <div className="max-w-md">
           <div className="bg-red-50 border-2 border-red-200 rounded-xl p-6">
             <div className="flex items-center gap-3 mb-4">
               <AlertCircle className="w-6 h-6 text-red-600" />
-              <h3 className="font-bold text-red-900">Error Loading Progress</h3>
+              <h3 className="font-bold text-red-900">Progress Unavailable</h3>
             </div>
-            <p className="text-red-800 text-sm mb-4">{phaseError}</p>
+            <p className="text-red-800 text-sm mb-4">
+              Your onboarding progress could not be loaded. Please refresh and try again.
+            </p>
             <Button className="w-full" onClick={() => window.location.reload()}>
               Retry
             </Button>
@@ -50,10 +52,6 @@ function Phase1PageContent() {
       </div>
     );
   }
-
-  if (!phaseProgress) return null;
-
-  const { overallProgressPercent, trustScore, currentPhase } = phaseProgress;
 
   return (
     <div className="min-h-screen bg-neutral-100">
