@@ -111,9 +111,23 @@ builder.Services.AddSingleton<IPresenceTracker, RedisPresenceTracker>();
 // Shared DataProtection key ring: without this each replica generates its
 // own keys, so auth/reset tokens and antiforgery break behind a load
 // balancer. SetApplicationName must be identical across replicas.
-builder.Services.AddDataProtection()
-    .PersistKeysToStackExchangeRedis(redisMultiplexer, $"{redisInstanceName}-DataProtection-Keys")
+//
+// In Development we fall back to the filesystem so a dev box without Redis
+// can still call encryption-dependent endpoints (email confirmation tokens,
+// password reset tokens). Production always uses Redis.
+var dpBuilder = builder.Services.AddDataProtection()
     .SetApplicationName("MondialBackend");
+
+if (builder.Environment.IsDevelopment())
+{
+    var keysDir = Path.Combine(builder.Environment.ContentRootPath, ".dataprotection-keys");
+    Directory.CreateDirectory(keysDir);
+    dpBuilder.PersistKeysToFileSystem(new DirectoryInfo(keysDir));
+}
+else
+{
+    dpBuilder.PersistKeysToStackExchangeRedis(redisMultiplexer, $"{redisInstanceName}-DataProtection-Keys");
+}
 
 
 // Allowed origins come from configuration (Cors:AllowedOrigins) so each
