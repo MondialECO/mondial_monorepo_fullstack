@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { RoleCardGrid, RoleCardList, type RoleOption } from "./RoleCard";
 import { cn } from "@/lib/utils";
@@ -20,10 +21,11 @@ export function RoleSelector({
   variant?: Variant;
   defaultRoleId?: string;
   signInHref?: string;
-  /** If omitted, the form POSTs to /api/signup with { roleId } */
+  /** If omitted, navigates to /signup?role=<id> with the canonical form. */
   onSubmit?: (roleId: string) => void | Promise<void>;
   className?: string;
 }) {
+  const router = useRouter();
   const [selected, setSelected] = useState<string | undefined>(defaultRoleId);
   const [submitting, setSubmitting] = useState(false);
 
@@ -34,12 +36,7 @@ export function RoleSelector({
       if (onSubmit) {
         await onSubmit(selected);
       } else {
-        // Default: hand off to an API route the app provides.
-        await fetch("/api/signup", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ roleId: selected }),
-        });
+        router.push(`/signup?role=${encodeURIComponent(selected)}`);
       }
     } finally {
       setSubmitting(false);

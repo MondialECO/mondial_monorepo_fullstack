@@ -1,11 +1,12 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { registerApi, RegisterModel } from "../../../../service/auth/auth"
 import { UserRole } from "@/lib/roles"
+import { ROLE_DASHBOARD_ROUTES } from "@/lib/role-routes"
 import EmailVerificationLayout from "@/components/auth/EmailVerificationLayout"
 import EmailDisplay from "@/components/auth/EmailDisplay"
 import { Mail, ArrowRight } from "lucide-react"
@@ -14,27 +15,31 @@ type SignupStep = "form" | "confirmation" | "error"
 
 export default function Signup() {
     const router = useRouter()
+    const searchParams = useSearchParams()
+
+    // Self-registerable roles (Admin is intentionally excluded — assigned by admin only).
+    // Order and labels follow docs/01-PLATFORM-OVERVIEW.md.
+    const signupRoles: { value: UserRole; label: string; hint: string }[] = [
+        { value: UserRole.ENTREPRENEUR, label: "Entrepreneur", hint: "I'm building a company" },
+        { value: UserRole.CREATOR, label: "Creator", hint: "I have an idea" },
+        { value: UserRole.INVESTOR, label: "Investor", hint: "I want to invest" },
+        { value: UserRole.SERVICE_PROVIDER, label: "Service Provider", hint: "I offer professional services" },
+    ]
 
     // Form state
     const [fullName, setFullName] = useState("")
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
-    const [role, setRole] = useState("creator")
+    const initialRole = (() => {
+        const raw = searchParams?.get("role")
+        const match = signupRoles.find((r) => r.value === raw)
+        return match?.value ?? UserRole.ENTREPRENEUR
+    })()
+    const [role, setRole] = useState<UserRole>(initialRole)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [errorMsg, setErrorMsg] = useState("")
     const [step, setStep] = useState<SignupStep>("form")
     const [registeredEmail, setRegisteredEmail] = useState("")
-
-    // Normalize role string to proper UserRole enum
-    const normalizeRole = (roleStr: string): string => {
-        const normalized = roleStr.toLowerCase().trim()
-        if (normalized === "creator") return "Creator"
-        if (normalized === "investor") return "Investor"
-        if (normalized === "entrepreneur") return "Entrepreneur"
-        if (normalized === "serviceprovider" || normalized === "service provider") return "ServiceProvider"
-        if (normalized === "admin") return "Admin"
-        return "Creator" // Default fallback
-    }
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -52,33 +57,22 @@ export default function Signup() {
             const response = await registerApi(model)
 
             // Check if backend returns token in signup response
-            if (response?.token && response?.user) {
-                // ✅ Auto-login user after successful signup
-                // This ensures token and user are persisted through AuthProvider's state management
-                const token = response.token
-                const userRole = normalizeRole(response.user.roles?.[0] || role)
+            // Backend may wrap the response in { success, message, data }.
+            const payload = response?.data ?? response
+            if (payload?.token && payload?.user) {
+                const token = payload.token
+                const apiRoles = (payload.user.roles ?? payload.user.Roles ?? []) as UserRole[]
+                const userRole = (apiRoles[0] as UserRole) || role
 
-                // Store directly in localStorage (AuthProvider will hydrate on next render)
                 localStorage.setItem('token', token)
                 localStorage.setItem('user', JSON.stringify({
-                    id: response.user.id,
-                    name: response.user.name,
-                    role: userRole
+                    id: payload.user.id,
+                    name: payload.user.name,
+                    role: userRole,
+                    roles: apiRoles.length ? apiRoles : [userRole]
                 }))
 
-                // Redirect to correct role-based dashboard
-                const roleRoutes: Record<string, string> = {
-                    "creator": "/dashboard/creator",
-                    "investor": "/dashboard/investor",
-                    "Creator": "/dashboard/creator",
-                    "Investor": "/dashboard/investor",
-                    "Admin": "/dashboard/admin",
-                    "Entrepreneur": "/dashboard/entrepreneur",
-                    "ServiceProvider": "/dashboard/serviceprovider",
-                }
-
-                const dashboardRoute = roleRoutes[userRole] || "/dashboard/creator"
-                router.push(dashboardRoute)
+                router.push(ROLE_DASHBOARD_ROUTES[userRole] ?? "/dashboard")
             } else {
                 // If signup doesn't return token, show email confirmation screen
                 setRegisteredEmail(email)
@@ -273,11 +267,14 @@ export default function Signup() {
                             <select
                                 id="role"
                                 value={role}
-                                onChange={(e) => setRole(e.target.value)}
+                                onChange={(e) => setRole(e.target.value as UserRole)}
                                 className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent outline-none bg-card dark:bg-card transition"
                             >
-                                <option value="creator">Creator (I have an idea)</option>
-                                <option value="investor">Investor (I want to invest)</option>
+                                {signupRoles.map((r) => (
+                                    <option key={r.value} value={r.value}>
+                                        {r.label} ({r.hint})
+                                    </option>
+                                ))}
                             </select>
                         </div>
 

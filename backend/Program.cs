@@ -25,6 +25,7 @@ using System.Security.Claims;
 using System.Text;
 using WebApp.Configuration;
 using WebApp.DbContext;
+using WebApp.Extensions;
 using WebApp.Filters;
 using WebApp.HealthChecks;
 using WebApp.Hubs;
@@ -257,6 +258,9 @@ builder.Services.AddHostedService<EmailBackgroundService>();
 builder.Services.AddScoped<EmailService>();
 builder.Services.AddScoped<SaveFile>();
 builder.Services.AddScoped<TwilioService>();
+
+// Company Services: 9-phase entrepreneur onboarding system
+builder.Services.AddCompanyServices(builder.Configuration);
 
 // Health checks: liveness (process up) is the bare endpoint; readiness
 // (tagged "ready") verifies MongoDB + Redis so the orchestrator only routes
@@ -512,6 +516,25 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions
 {
     Predicate = check => check.Tags.Contains("ready")
 });
+
+// Seed Identity roles so first-run registration doesn't fail with
+// "Failed to create default role". Idempotent — RoleExistsAsync gate.
+using (var scope = app.Services.CreateScope())
+{
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<ApplicationRole>>();
+    string[] roles = { "Admin", "Entrepreneur", "Creator", "Investor", "ServiceProvider" };
+    foreach (var roleName in roles)
+    {
+        if (!await roleManager.RoleExistsAsync(roleName))
+        {
+            await roleManager.CreateAsync(new ApplicationRole
+            {
+                Name = roleName,
+                Description = $"{roleName} role"
+            });
+        }
+    }
+}
 
 try
 {
