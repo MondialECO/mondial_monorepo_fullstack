@@ -6,7 +6,6 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { registerApi, RegisterModel } from "../../../../service/auth/auth"
 import { UserRole } from "@/lib/roles"
-import { ROLE_DASHBOARD_ROUTES } from "@/lib/role-routes"
 import EmailVerificationLayout from "@/components/auth/EmailVerificationLayout"
 import EmailDisplay from "@/components/auth/EmailDisplay"
 import { Mail, ArrowRight } from "lucide-react"
@@ -72,7 +71,9 @@ export default function Signup() {
                     roles: apiRoles.length ? apiRoles : [userRole]
                 }))
 
-                router.push(ROLE_DASHBOARD_ROUTES[userRole] ?? "/dashboard")
+                // Fresh signup → Phase 1 universal onboarding. The hub
+                // /onboarding picks the right step based on backend status.
+                router.push("/onboarding")
             } else {
                 // If signup doesn't return token, show email confirmation screen
                 setRegisteredEmail(email)

@@ -548,6 +548,27 @@ using (var scope = app.Services.CreateScope())
             });
         }
     }
+
+    // One-time migration: legacy users (pre-Phase-1-onboarding) have no
+    // Onboarding sub-doc, so they'd be considered "Phase 1 complete" by
+    // accident. Backfill with Phase=0 so they get bounced through the gate
+    // on next login. Idempotent: only touches docs where Onboarding is null.
+    try
+    {
+        var db = scope.ServiceProvider.GetRequiredService<MongoDB.Driver.IMongoDatabase>();
+        var users = db.GetCollection<ApplicationUser>("users");
+        var filter = MongoDB.Driver.Builders<ApplicationUser>.Filter.Eq("Onboarding", MongoDB.Bson.BsonNull.Value);
+        var update = MongoDB.Driver.Builders<ApplicationUser>.Update.Set(u => u.Onboarding, new OnboardingState { Phase = 0 });
+        var result = await users.UpdateManyAsync(filter, update);
+        if (result.ModifiedCount > 0)
+        {
+            Log.Information("Backfilled Onboarding state on {Count} legacy user(s)", result.ModifiedCount);
+        }
+    }
+    catch (Exception ex)
+    {
+        Log.Warning(ex, "Onboarding backfill skipped (non-fatal)");
+    }
 }
 
 try

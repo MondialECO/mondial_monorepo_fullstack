@@ -29,6 +29,10 @@ namespace WebApp.Models.DatabaseModels
 
         [BsonElement("Bio")]
         public string Bio { get; set; }
+
+        [BsonElement("Title")]
+        public string Title { get; set; }
+
         public string AvailableTime { get; set; }
         public string Geography { get; set; }
         public string Experience { get; set; }
@@ -52,6 +56,30 @@ namespace WebApp.Models.DatabaseModels
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public KycVerification Kyc { get; set; } = new();
+
+        // Phase 1 universal onboarding state. Every role (Entrepreneur,
+        // Creator, Investor, ServiceProvider) walks through Phase 1; the
+        // gate is enforced by OnboardingGuard on the frontend and by
+        // /api/auth/me reporting Onboarding.Phase < 1.
+        [BsonElement("Onboarding")]
+        public OnboardingState Onboarding { get; set; } = new();
+    }
+
+    public class OnboardingState
+    {
+        /// <summary>0 = not started, 1 = Phase 1 complete (KYC + phone + profile).</summary>
+        public int Phase { get; set; } = 0;
+
+        public bool PhoneVerified { get; set; }
+
+        /// <summary>HMAC-SHA256 of the 6-digit code; never store the code itself.</summary>
+        public string PhoneVerifyHash { get; set; }
+
+        public DateTime? PhoneVerifyExpiresAt { get; set; }
+
+        public bool ProfileComplete { get; set; }
+
+        public DateTime? CompletedAt { get; set; }
     }
 
     public class Address
