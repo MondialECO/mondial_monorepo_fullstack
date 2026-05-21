@@ -33,6 +33,10 @@
             {
                 isValid = allowedVideoExt.Contains(extension);
             }
+            else if (folderName == "profile")
+            {
+                isValid = allowedImageExt.Contains(extension);
+            }
 
             if (!isValid)
                 throw new ArgumentException($"Invalid file type: {extension}");

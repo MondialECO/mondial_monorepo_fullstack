@@ -140,7 +140,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(user);
     setToken(token);
 
-    router.push(ROLE_DASHBOARD_ROUTES[user.role] ?? '/dashboard');
+    // Three-way redirect:
+    //   - Phase 1 (universal KYC) incomplete → onboarding hub picks the right step
+    //   - Phase 1 complete → role-specific dashboard
+    const onboardingPhase = (apiUser.onboarding?.phase ?? apiUser.Onboarding?.phase ?? 0) as number;
+    if (onboardingPhase < 1) {
+      router.push('/onboarding');
+    } else {
+      router.push(ROLE_DASHBOARD_ROUTES[user.role] ?? '/dashboard');
+    }
   };
 
   const logout = () => {
