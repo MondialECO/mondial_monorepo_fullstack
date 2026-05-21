@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { ImageWithFallback } from "@/components/shared/ImageWithFallback";
 
 // ─────────────────────────────────────────────────────────────
@@ -29,7 +30,7 @@ const FeatureCard = ({
     headerPos = "top-left",
     title,
     subtitle,
-    bgClass = "bg-[#F9F9FA]",
+    bgClass = "bg-secondary",
     className = "",
     children,
 }: FeatureCardProps) => {
@@ -51,13 +52,13 @@ const FeatureCard = ({
         >
             <div className={posClass} style={{ zIndex: 3 }}>
                 <h3
-                    className="font-medium text-[28px] leading-8 text-[#070707]"
+                    className="font-medium text-[28px] leading-8 text-foreground"
                     style={{ fontFamily: "'Inter Tight', sans-serif" }}
                 >
                     {title}
                 </h3>
                 <p
-                    className="mt-2 text-[18px] leading-7 text-[#5E5E5E]"
+                    className="mt-2 text-[18px] leading-7 text-muted-foreground"
                     style={{ fontFamily: "Inter, sans-serif" }}
                 >
                     {subtitle}
@@ -83,11 +84,9 @@ const FounderCard = () => (
             className="absolute bottom-0 left-0 w-full pointer-events-none"
             style={{ zIndex: 2 }}
         >
-            {/* user_profile_card.svg — 456×367  */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Image
                 src="/landing/user_profile_card.svg"
-                alt=""
+                alt="User profile card"
                 width={456}
                 height={367}
                 className="w-full h-auto object-contain object-bottom"
@@ -108,13 +107,11 @@ const SubmitIdeasCard = () => (
         title="Submit ideas"
         subtitle="Convert investors to commitments!"
     >
-        {/* idea_card.svg — 640×425 */}
         <div
             className="absolute bottom-0 left-0 w-full pointer-events-none"
             style={{ zIndex: 2 }}
         >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Image
                 src="/landing/idea_card.svg"
                 alt="Submit idea detail card"
                 width={640}
@@ -138,13 +135,11 @@ const GetInvestorsCard = () => (
         title="Get Investors"
         subtitle="Convert investors to commitments!"
     >
-        {/* investorList_card.svg — 460×345 */}
         <div
             className="absolute top-4 left-0 w-full pointer-events-none flex justify-center"
             style={{ zIndex: 2 }}
         >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Image
                 src="/landing/investorList_card.svg"
                 alt="Investor list"
                 width={460}
@@ -165,7 +160,7 @@ const GrowTogetherCard = () => (
         headerPos="top-left"
         title="Grow Together"
         subtitle="Convert followers into bookings by sharing ideas!"
-        className="bg-linear-to-b from-[#F3F0F9] to-[#F7FCFD]"
+        className="bg-gradient-to-b from-secondary to-background"
     >
         {/* Image Container (fixed positioning anchor) */}
         <div className="absolute left-1/2 top-[55%] -translate-x-1/2 -translate-y-1/2 z-2">
@@ -198,7 +193,7 @@ const TabToggle = ({
     onChange: (t: TabKey) => void;
 }) => (
     <div
-        className="flex items-center p-2 gap-1 bg-[#EDEDED] border border-white rounded-[52px]"
+        className="flex items-center p-2 gap-1 bg-muted border border-white rounded-[52px]"
         style={{ boxShadow: "0 0 44px rgba(0,0,0,0.06)" }}
     >
         {TABS.map((tab) => (
@@ -209,8 +204,8 @@ const TabToggle = ({
                 className={[
                     "h-9 px-4 rounded-full text-[14px] leading-5 transition-all duration-200 whitespace-nowrap",
                     active === tab
-                        ? "bg-[#3C61DD] text-[#F7F7F7] font-semibold"
-                        : "bg-[#F9F9FA] text-[#070707] font-normal border border-white",
+                        ? "bg-primary text-white font-semibold"
+                        : "bg-secondary text-foreground font-normal border border-white",
                 ].join(" ")}
             >
                 {tab}
@@ -232,14 +227,14 @@ export default function FeaturesSection2() {
                 {/* Section heading */}
                 <div className="flex flex-col items-center gap-4 text-center max-w-[730px]">
                     <h2
-                        className="font-normal text-[52px] leading-[60px] tracking-[-0.02em] text-[#070707]"
+                        className="font-normal text-[52px] leading-[60px] tracking-[-0.02em] text-foreground"
                         style={{ fontFamily: "'Playfair Display', serif", fontStyle: "italic" }}
                     >
                         You&apos;ve got the basics, now create something{" "}
                         <em>awesome!</em>
                     </h2>
                     <p
-                        className="font-normal text-[16px] leading-[24px] text-[#3E3E3E] max-w-[486px]"
+                        className="font-normal text-[16px] leading-[24px] text-foreground max-w-[486px]"
                         style={{ fontFamily: "Inter, sans-serif" }}
                     >
                         Whether looking for a job or talent, our service ensures a seamless

@@ -138,13 +138,13 @@ function PricingCard({ plan }: { plan: Plan }) {
                                 />
                             </div>
                             <h3
-                                className="text-[#070707] text-[24px] font-semibold leading-8"
+                                className="text-foreground text-[24px] font-semibold leading-8"
                                 style={{ fontFamily: "'Inter Tight', sans-serif" }}
                             >
                                 {plan.name}
                             </h3>
                         </div>
-                        <p className="text-[#3E3E3E] text-[14px] font-normal leading-5 w-full">
+                        <p className="text-foreground text-[14px] font-normal leading-5 w-full">
                             {plan.description}
                         </p>
                     </div>
@@ -163,7 +163,7 @@ function PricingCard({ plan }: { plan: Plan }) {
                         {/* Price Details */}
                         <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                             <span
-                                className="text-[#070707] font-semibold text-[48px] leading-13"
+                                className="text-foreground font-semibold text-[48px] leading-13"
                                 style={{ fontFamily: "'Inter', sans-serif" }}
                             >
                                 ${price}
@@ -187,7 +187,7 @@ function PricingCard({ plan }: { plan: Plan }) {
 
                         {/* FRAME 69 - Additional Info */}
                         <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-                            <p className="text-[#070707] text-[14px] font-normal leading-5">
+                            <p className="text-foreground text-[14px] font-normal leading-5">
                                 {plan.edition}
                             </p>
 
@@ -232,14 +232,14 @@ function PricingCard({ plan }: { plan: Plan }) {
                             <div key={i} className="flex items-center gap-3.5">
                                 {plan.features[i] ? (
                                     <div
-                                        className="w-4 h-4 rounded-full bg-[#099A48] flex items-center justify-center shrink-0"
+                                        className="w-4 h-4 rounded-full bg-green-600 flex items-center justify-center shrink-0"
                                         style={{ width: "16px", height: "16px" }}
                                     >
                                         <Check size={10} color="white" strokeWidth={3} />
                                     </div>
                                 ) : (
                                     <div
-                                        className="w-4 h-4 rounded-full border border-[#606060] flex items-center justify-center shrink-0"
+                                        className="w-4 h-4 rounded-full border border-muted-foreground flex items-center justify-center shrink-0"
                                         style={{ width: "16px", height: "16px" }}
                                     >
                                         <X size={9} color="#606060" strokeWidth={2.5} />
@@ -278,13 +278,13 @@ function PricingCard({ plan }: { plan: Plan }) {
 
 export default function PricingPage() {
     return (
-        <div style={{ background: "#EDEDED", minHeight: "100vh" }}>
+        <div className="bg-muted min-h-screen">
             {/* NAV */}
-            <nav className="px-6 py-4 flex gap-6 border-b border-[#e0e0e0]">
-                <Link href="/" className="text-[#3c61dd] text-sm hover:underline">
+            <nav className="px-6 py-4 flex gap-6 border-b border-border">
+                <Link href="/" className="text-primary text-sm hover:underline">
                     ← Dashboard
                 </Link>
-                <Link href="/faq" className="text-[#3E3E3E] text-sm">
+                <Link href="/faq" className="text-foreground text-sm">
                     FAQ
                 </Link>
             </nav>
@@ -304,7 +304,7 @@ export default function PricingPage() {
                         }}
                     >
                         <h2
-                            className="text-[#070707] text-center italic"
+                            className="text-foreground text-center italic"
                             style={{
                                 fontFamily: "'PP Editorial Old', serif",
                                 fontSize: "52px",
@@ -319,7 +319,7 @@ export default function PricingPage() {
                         </h2>
 
                         <p
-                            className="text-[#3E3E3E] text-center"
+                            className="text-foreground text-center"
                             style={{
                                 fontFamily: "'Inter', sans-serif",
                                 fontSize: "16px",

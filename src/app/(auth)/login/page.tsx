@@ -31,7 +31,7 @@ export default function LoginPage() {
     // Validate form
     const validation = loginSchema.safeParse({ email, password });
     if (!validation.success) {
-      const firstError = validation.error.errors[0];
+      const firstError = validation.error.issues[0];
       setError(firstError.message);
       return;
     }
@@ -56,7 +56,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[color:var(--bg-light)] dark:bg-background px-4">
+    <div className="min-h-screen flex items-center justify-center bg-background dark:bg-background px-4">
       <div className="w-full max-w-md space-y-8 p-8 bg-card dark:bg-card rounded-2xl shadow-lg border border-border">
         {/* Header */}
         <div className="text-center">

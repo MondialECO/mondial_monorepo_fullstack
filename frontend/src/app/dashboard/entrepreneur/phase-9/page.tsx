@@ -1,4 +1,4 @@
-import { RouteGuard } from '@/components/layout/RouteGuard';
+import { RouteGuard } from '@/components/entrepreneur/RouteGuard';
 import DealExecutionClient from './client';
 
 export const metadata = {

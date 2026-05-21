@@ -1,4 +1,4 @@
-import { RouteGuard } from '@/components/layout/RouteGuard';
+import { RouteGuard } from '@/components/entrepreneur/RouteGuard';
 import ComingSoonPage from './coming-soon';
 
 export const metadata = {

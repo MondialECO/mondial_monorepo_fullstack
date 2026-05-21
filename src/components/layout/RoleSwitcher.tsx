@@ -6,14 +6,20 @@ import { useRouter } from 'next/navigation';
 import { ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 
-const ROLES: UserRole[] = ['Admin', 'Creator', 'Investor', 'Entrepreneur', 'ServiceProvider'];
+const ROLES = [
+  UserRole.ADMIN,
+  UserRole.CREATOR,
+  UserRole.INVESTOR,
+  UserRole.ENTREPRENEUR,
+  UserRole.SERVICE_PROVIDER,
+];
 
 const ROLE_ROUTES: Record<UserRole, string> = {
-  Admin: '/dashboard/admin',
-  Creator: '/dashboard/creator',
-  Investor: '/dashboard/investor',
-  Entrepreneur: '/dashboard/entrepreneur',
-  ServiceProvider: '/dashboard/serviceprovider',
+  [UserRole.ADMIN]: '/dashboard/admin',
+  [UserRole.CREATOR]: '/dashboard/creator',
+  [UserRole.INVESTOR]: '/dashboard/investor',
+  [UserRole.ENTREPRENEUR]: '/dashboard/entrepreneur',
+  [UserRole.SERVICE_PROVIDER]: '/dashboard/serviceprovider',
 };
 
 export default function RoleSwitcher() {

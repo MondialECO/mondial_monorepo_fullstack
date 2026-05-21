@@ -43,7 +43,7 @@ export interface CreateIdeaModel {
 
   // ===== Operations =====
   startup_requirements: string;
-  prototype_status: 'I Have' | 'Haven’t';
+  prototype_status: "I Have" | "Haven't";
   main_risks: string;
 
   // ===== Roadmap =====

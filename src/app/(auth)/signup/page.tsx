@@ -86,8 +86,8 @@ export default function Signup() {
             }
         } catch (err: unknown) {
             console.error(err)
-            const error = err as { response?: { data?: { message?: string } } } | Error;
-            setErrorMsg(error?.response?.data?.message || "Registration failed")
+            const axiosErr = err as Record<string, any>;
+            setErrorMsg(axiosErr?.response?.data?.message || "Registration failed")
             setStep("error")
         } finally {
             setIsSubmitting(false)
@@ -220,7 +220,7 @@ export default function Signup() {
 
     return (
         <>
-            <div className="min-h-screen bg-[color:var(--bg-light)] dark:bg-background flex items-center justify-center px-4 py-8">
+            <div className="min-h-screen bg-background dark:bg-background flex items-center justify-center px-4 py-8">
                 <div className="w-full max-w-md bg-card dark:bg-card rounded-2xl shadow-2xl p-8">
                     <h1 className="text-3xl font-bold text-foreground mb-2 text-center">Create Account</h1>
                     <p className="text-center text-muted-foreground mb-6">Join our community today</p>

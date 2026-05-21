@@ -112,12 +112,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string) => {
     const res = await api.post('/auth/login', { email, password });
-    const { token, user: apiUser } = res.data;
+    // Backend wraps responses as { success, message, data }.
+    const payload = res.data?.data ?? res.data;
+    const { token, user: apiUser } = payload ?? {};
+
+    if (!token || !apiUser) {
+      throw new Error(res.data?.message || 'Invalid login response');
+    }
 
     const user: User = {
       id: apiUser.id,
       name: apiUser.name,
-      role: apiUser.roles[0] as UserRole,
+      role: ((apiUser.roles ?? apiUser.Roles ?? [])[0] ?? UserRole.CREATOR) as UserRole,
     };
 
     localStorage.setItem('token', token);

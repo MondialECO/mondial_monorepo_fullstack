@@ -167,7 +167,7 @@ export function Phase3RevenueInputClient() {
                   <XAxis dataKey="quarter" stroke="#999" />
                   <YAxis stroke="#999" />
                   <Tooltip
-                    formatter={(value: number) => `€${(value / 1000).toFixed(1)}K`}
+                    formatter={(value: any) => typeof value === 'number' ? `€${(value / 1000).toFixed(1)}K` : value}
                     contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e5e5', borderRadius: '8px' }}
                   />
                   <Bar dataKey="revenue" fill="#3b82f6" radius={[8, 8, 0, 0]} />

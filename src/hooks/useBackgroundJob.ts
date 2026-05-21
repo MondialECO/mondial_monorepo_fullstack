@@ -15,14 +15,12 @@ export function useBackgroundJob(jobId: string | null) {
       return entrepreneurApi.getJobStatus(jobId);
     },
     enabled: !!jobId && isPolling,
-    refetchInterval: (data) => {
+    refetchInterval: (query) => {
+      const data = query.state.data as JobStatus | null | undefined;
       if (!data) return false;
-      // Stop polling once job is completed or failed
-      if (data.status === "completed" || data.status === "failed") {
-        setIsPolling(false);
-        return false;
-      }
-      return 2000; // Poll every 2 seconds
+      return data.status === "completed" || data.status === "failed"
+        ? false
+        : 2000; // Poll every 2 seconds
     },
     refetchOnWindowFocus: false,
   });

@@ -44,7 +44,8 @@ export default function ConfirmEmailContent() {
           router.push("/login");
         }, 2000);
       } catch (err: unknown) {
-        const errorMessage = err.response?.data?.message || "Email confirmation failed.";
+        const axiosErr = err as Record<string, any>;
+        const errorMessage = axiosErr?.response?.data?.message || "Email confirmation failed.";
         
         // Check if error indicates expired token
         if (errorMessage.toLowerCase().includes("expired")) {
@@ -76,7 +77,8 @@ export default function ConfirmEmailContent() {
       setMessage("New confirmation email sent. Check your inbox for the link.");
     } catch (err: unknown) {
       console.error("Resend error:", err);
-      setMessage(err.response?.data?.message || "Failed to resend confirmation email.");
+      const axiosErr = err as Record<string, any>;
+      setMessage(axiosErr?.response?.data?.message || "Failed to resend confirmation email.");
       setStatus("error");
       setResendDisabled(false);
     } finally {

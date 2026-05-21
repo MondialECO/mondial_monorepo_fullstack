@@ -1,4 +1,5 @@
 import React from "react"
+import Image from "next/image"
 import { ArrowRight, Heart } from "lucide-react"
 import { Project } from "@/types/creator/project"
 
@@ -12,7 +13,7 @@ const VerifiedBadge = ({ className }: { className?: string }) => (
 export const ProjectCard = ({ project }: { project: Project }) => (
     <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden flex flex-col group hover:shadow-md transition-shadow duration-200">
         <div className="relative h-48 overflow-hidden">
-            <img src={project.image} alt={project.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+            <Image src={project.image} alt={project.title} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
             <button className="absolute top-3 right-3 p-1.5 bg-background/20 hover:bg-background/40 backdrop-blur-md rounded-full text-white transition-colors">
                 <Heart size={16} />
@@ -36,7 +37,7 @@ export const ProjectCard = ({ project }: { project: Project }) => (
                 </div>
                 <div className="flex justify-start items-center">
                     {project.team.slice(0, 3).map((avatar: string, i: number) => (
-                        <img key={i} className="w-6 h-6 rounded-full shadow-[0px_2px_7px_0px_rgba(0,0,0,0.16)] border border-border" src={avatar} alt={`team member ${i + 1}`} />
+                        <Image key={i} src={avatar} alt={`team member ${i + 1}`} width={24} height={24} className="w-6 h-6 rounded-full shadow-[0px_2px_7px_0px_rgba(0,0,0,0.16)] border border-border" />
                     ))}
                 </div>
             </div>

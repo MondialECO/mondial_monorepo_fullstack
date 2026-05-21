@@ -20,7 +20,8 @@ export default function ForgotPassword() {
       const res = await axios.post("/auth/forgot-password", { email });
       setMessage(res.data.message || "Check your email for the reset link.");
     } catch (err: unknown) {
-      const message = (err as Record<string, unknown>)?.response?.data?.message;
+      const axiosErr = err as Record<string, any>;
+      const message = axiosErr?.response?.data?.message;
       setError(typeof message === 'string' ? message : "Failed to send reset email");
     } finally {
       setLoading(false);

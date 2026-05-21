@@ -9,11 +9,11 @@ const api = axios.create({
 let isRefreshing = false;
 interface QueueItem {
   resolve: (token: string) => void;
-  reject: (err: Error) => void;
+  reject: (err: unknown) => void;
 }
 let failedQueue: QueueItem[] = [];
 
-const processQueue = (error: Error | null, token: string | null = null) => {
+const processQueue = (error: unknown, token: string | null = null) => {
   failedQueue.forEach((prom) => {
     if (error) {
       prom.reject(error);

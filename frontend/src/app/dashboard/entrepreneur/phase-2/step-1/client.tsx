@@ -17,6 +17,12 @@ import LockedStepPreview from "@/components/entrepreneur/LockedStepPreview";
 export default function Phase2Step1Client() {
   const { progress } = useEntrepreneurProgress();
   const { form, formState, autosave, handleSaveDraft, handleNextClick } = usePhase2Step1Form();
+  const { register, control } = form;
+
+  // useWatch — unlike top-level form.watch(), this reliably re-renders this
+  // component on every keystroke so the progress badge and the Next button
+  // gating react to what the user has typed.
+  const values = useWatch({ control }) as Record<string, string | undefined>;
 
   if (!progress) {
     return (
@@ -25,12 +31,6 @@ export default function Phase2Step1Client() {
       </div>
     );
   }
-
-  const { register, control } = form;
-  // useWatch — unlike top-level form.watch(), this reliably re-renders this
-  // component on every keystroke so the progress badge and the Next button
-  // gating react to what the user has typed.
-  const values = useWatch({ control }) as Record<string, string | undefined>;
 
   // Required vs optional. Anything starred in the label below also has to
   // pass the gate for Next to enable.

@@ -5,7 +5,14 @@ import { ChevronLeft, ChevronRight, Upload, Check } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import dynamic from 'next/dynamic';
 import { saveIdeaDraftApi } from '../../../service/creator/dashboard';
-import { CreateIdeaModel, IdeaFormState, IdeaStatus } from '@/types/creator/create-idea-model';
+import {
+  CreateIdeaModel,
+  IdeaFormState,
+  IdeaStatus,
+  IdeaStage,
+  ProductType,
+  WeeklyTimeAvailable,
+} from '@/types/creator/create-idea-model';
 
 const ReactQuill = dynamic(() => import('react-quill-new'), {
   ssr: false,
@@ -376,7 +383,7 @@ export default function CreateProjectPage() {
     existing_solutions: formData.existing_solutions || '',
 
     solution_description: formData.solution_description || '',
-    stage: (formData.stage as string) || '',
+    stage: (formData.stage as IdeaStage) || 'idea',
     differentiation: formData.differentiation || '',
     client_benefits: formData.client_benefits || '',
     long_term_vision: formData.long_term_vision || '',
@@ -386,14 +393,14 @@ export default function CreateProjectPage() {
     purchasing_behavior: formData.purchasing_behavior || '',
     market_size: formData.market_size || '',
 
-    product_type: (formData.product_type as string) || '',
+    product_type: (formData.product_type as ProductType) || 'product',
     planned_price: formData.planned_price || '',
     sales_channels: formData.sales_channels || '',
     startup_costs: formData.startup_costs || '',
     revenue_12_months: formData.revenue_12_months || '',
 
     startup_requirements: formData.startup_requirements || '',
-    prototype_status: (formData.prototype_status as string) || '',
+    prototype_status: formData.prototype_status || "Haven't",
     main_risks: formData.main_risks || '',
 
     goals_30_days: formData.goals_30_days || '',
@@ -408,7 +415,8 @@ export default function CreateProjectPage() {
     founder_role: formData.founder_role || '',
     experience_skills: formData.experience_skills || '',
     prior_project_experience: formData.prior_project_experience || '',
-    weekly_time_available: (formData.weekly_time_available as string) || '',
+    weekly_time_available:
+      (formData.weekly_time_available as WeeklyTimeAvailable) || 'less_than_5_hours',
     motivation_vision_statement: formData.motivation_vision_statement || '',
 
     amount_required: Number(formData.amount_required) || 0,
