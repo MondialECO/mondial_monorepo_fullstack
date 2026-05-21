@@ -3,6 +3,7 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import AppSidebar from "@/components/layout/AppSidebar";
 import Topbar from "@/components/layout/Topbar";
 import AuthGuard from "@/components/layout/AuthGuard";
+import OnboardingGuard from "@/components/layout/OnboardingGuard";
 
 export default function DashboardLayout({
   children,
@@ -11,26 +12,28 @@ export default function DashboardLayout({
 }) {
   return (
     <AuthGuard>
-      <SidebarProvider>
-        <div className="flex min-h-screen w-full">
+      <OnboardingGuard>
+        <SidebarProvider>
+          <div className="flex min-h-screen w-full">
 
-          {/* LEFT: SIDEBAR */}
-          <AppSidebar />
+            {/* LEFT: SIDEBAR */}
+            <AppSidebar />
 
-          {/* RIGHT: TOPBAR + CONTENT */}
-          <div className="flex flex-1 flex-col">
+            {/* RIGHT: TOPBAR + CONTENT */}
+            <div className="flex flex-1 flex-col">
 
-            {/* Topbar only takes CONTENT width */}
-            <Topbar />
+              {/* Topbar only takes CONTENT width */}
+              <Topbar />
 
-            {/* Content */}
-            <main className="flex-1 overflow-auto p-4 md:p-6">
-              {children}
-            </main>
+              {/* Content */}
+              <main className="flex-1 overflow-auto p-4 md:p-6">
+                {children}
+              </main>
 
+            </div>
           </div>
-        </div>
-      </SidebarProvider>
+        </SidebarProvider>
+      </OnboardingGuard>
     </AuthGuard>
   );
 }
