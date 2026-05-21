@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Smartphone } from "lucide-react";
+import { AlertCircle, Loader2, Smartphone } from "lucide-react";
 import api from "@/lib/axios";
 import { useOnboarding } from "@/providers/OnboardingProvider";
 import { Button } from "@/components/ui/button";
@@ -44,6 +44,21 @@ export default function OnboardingPhonePage() {
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       setError(msg ?? "Invalid code.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function devConfirm() {
+    setError(null);
+    setBusy(true);
+    try {
+      await api.post("/onboarding/phone/dev-confirm");
+      await refresh();
+      router.push("/onboarding");
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setError(msg ?? "Failed to mark verified. Backend may not be in Development mode.");
     } finally {
       setBusy(false);
     }
@@ -126,6 +141,22 @@ export default function OnboardingPhonePage() {
           </Button>
         </form>
       )}
+
+      {/* Development shortcut — mirrors the identity page. Replaced once the
+          Twilio SMS integration is wired up. The endpoint behind the button
+          is IsDevelopment()-gated, so production users never see this work. */}
+      <div className="rounded-2xl border border-dashed border-border bg-card p-5 space-y-3">
+        <div className="flex items-start gap-3 text-xs text-amber-900 dark:text-amber-200">
+          <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+          <span>
+            Development shortcut: skip the SMS exchange and mark the phone verified. Available only while the backend runs in Development.
+          </span>
+        </div>
+        <Button onClick={devConfirm} disabled={busy} variant="outline" className="w-full">
+          {busy && <Loader2 className="w-4 h-4 animate-spin" />}
+          Mark verified (development)
+        </Button>
+      </div>
     </div>
   );
 }

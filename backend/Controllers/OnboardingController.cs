@@ -348,6 +348,34 @@ namespace WebApp.Controllers
             return Ok("Identity verified (development).");
         }
 
+        /// <summary>
+        /// Development-only shortcut for the phone-verification step. Used
+        /// until the Twilio SMS integration is wired up — the real flow
+        /// (send-otp → verify-otp) stays the primary path. Gated to
+        /// IsDevelopment() so it cannot be invoked in prod.
+        /// </summary>
+        [HttpPost("phone/dev-confirm")]
+        public async Task<IActionResult> PhoneDevConfirm()
+        {
+            if (!_env.IsDevelopment())
+                return Fail("Not available in this environment", 403);
+
+            var user = await CurrentUserAsync();
+            if (user == null) return Fail("User not found", 404);
+
+            user.Onboarding.PhoneVerified = true;
+            user.Onboarding.PhoneVerifyHash = null;
+            user.Onboarding.PhoneVerifyExpiresAt = null;
+            user.PhoneNumberConfirmed = true;
+            await _userManager.UpdateAsync(user);
+
+            await PromotePhaseIfCompleteAsync(user);
+
+            _logger.LogInformation("[DEV] Phone dev-confirmed for {Email}", user.Email);
+            _audit.Record("phone_dev_confirm", user.Email!, true);
+            return Ok("Phone verified (development).");
+        }
+
         // ----- Supplementary documents ------------------------------------
 
         /// <summary>
