@@ -1,5 +1,3 @@
-"use client";
-
 import Image from "next/image";
 import React from "react";
 
@@ -17,7 +15,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
     avatar,
 }) => {
     return (
-        <div className="w-full max-w-sm bg-[#111827] border border-[#1F2937] rounded-2xl p-6 shadow-lg">
+        <div className="w-full max-w-sm bg-card border border-border rounded-2xl p-6 shadow-lg">
             {/* Top Section */}
             <div className="flex items-center gap-4">
                 <div className="relative w-14 h-14">
@@ -38,7 +36,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
             </div>
 
             {/* Divider */}
-            <div className="my-5 h-px bg-[#1F2937]" />
+            <div className="my-5 h-px bg-border" />
 
             {/* Info */}
             <div className="space-y-3">
@@ -61,7 +59,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
                 <button className="flex-1 bg-white text-black text-sm font-medium py-2 rounded-lg hover:opacity-90 transition">
                     View Profile
                 </button>
-                <button className="flex-1 bg-[#1F2937] text-white text-sm py-2 rounded-lg hover:bg-[#374151] transition">
+                <button className="flex-1 bg-secondary text-foreground text-sm py-2 rounded-lg hover:bg-muted transition">
                     Message
                 </button>
             </div>

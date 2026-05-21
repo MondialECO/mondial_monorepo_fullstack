@@ -36,7 +36,7 @@ export function useEntrepreneurProgressState() {
     return { ...INITIAL_PROGRESS, lastUpdated: Date.now() };
   });
   const [isLoading, setIsLoading] = useState(true);
-  const saveTimeoutRef = useRef<NodeJS.Timeout>();
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Mark as hydrated after mount
   useEffect(() => {

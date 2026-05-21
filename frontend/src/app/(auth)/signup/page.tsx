@@ -81,8 +81,8 @@ export default function Signup() {
             }
         } catch (err: unknown) {
             console.error(err)
-            const error = err as { response?: { data?: { message?: string } } } | Error;
-            setErrorMsg(error?.response?.data?.message || "Registration failed")
+            const errorResponse = err as { response?: { data?: { message?: string } } };
+            setErrorMsg(errorResponse?.response?.data?.message || "Registration failed")
             setStep("error")
         } finally {
             setIsSubmitting(false)

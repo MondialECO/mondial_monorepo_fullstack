@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { ArrowUpRight } from "lucide-react"
 
 const investors = [
@@ -112,7 +113,7 @@ export default function InvestmentDashboard() {
                 className={`self-stretch h-20 px-6 py-4 inline-flex justify-start items-center gap-3 ${i % 2 === 0 ? "bg-card border-t border-b border-border/5" : ""
                   }`}
               >
-                <img className="w-10 h-10 rounded-full" src={`https://i.pravatar.cc/40?u=${row.name}`} alt={row.name} />
+                <Image width={40} height={40} className="w-10 h-10 rounded-full" src={`https://i.pravatar.cc/40?u=${row.name}`} alt={row.name} />
                 <div className="inline-flex flex-col justify-start items-start">
                   <div className="text-foreground text-sm font-semibold font-['Inter'] leading-5">{row.name}</div>
                   <div className="text-muted-foreground text-[12px] font-normal font-['Inter'] leading-5">{row.email}</div>
@@ -212,7 +213,7 @@ export default function InvestmentDashboard() {
               className="p-4 bg-muted rounded-xl outline outline-1 outline-offset-[-1px] outline-border/5 flex flex-col gap-3"
             >
               <div className="flex items-center gap-3">
-                <img className="w-10 h-10 rounded-full" src={`https://i.pravatar.cc/40?u=${row.name}`} alt={row.name} />
+                <Image width={40} height={40} className="w-10 h-10 rounded-full" src={`https://i.pravatar.cc/40?u=${row.name}`} alt={row.name} />
                 <div className="flex flex-col">
                   <div className="text-foreground text-sm font-medium font-['Inter'] leading-5">{row.name}</div>
                   <div className="text-muted-foreground text-xs font-normal font-['Inter'] leading-5">{row.email}</div>

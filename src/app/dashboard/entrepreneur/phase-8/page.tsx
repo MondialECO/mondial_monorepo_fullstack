@@ -6,8 +6,8 @@ import Phase8Client from './client';
 
 export default function Phase8Page() {
   return (
-    <RouteGuard requiredPhase={8} requiredStep={0}>
-      <EntrepreneurLayout>
+    <RouteGuard requiredPhase={8} >
+      <EntrepreneurLayout sidebar={<div />}>
         <div className="space-y-8">
           <PhaseHeader
             title="Investor Matching"

@@ -7,8 +7,8 @@ import Phase5Client from './client';
 
 export default function Phase5Page() {
   return (
-    <RouteGuard requiredPhase={5} requiredStep={0}>
-      <EntrepreneurLayout>
+    <RouteGuard requiredPhase={5}>
+      <EntrepreneurLayout sidebar={<div />}>
         <div className="space-y-8 md:space-y-12">
           <PhaseHeader
             title="Advisor Matching"

@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import React from "react"
 import { useParams } from "next/navigation"
 import { MapPin, Plus } from "lucide-react"
@@ -23,7 +24,7 @@ export default function PublicProfilePage() {
                         <div className="overflow-hidden rounded-2xl">
                             {/* Cover Image */}
                             <div className="h-20 bg-gradient-to-r from-blue-500 to-indigo-600 relative overflow-hidden">
-                                <img src="https://unsplash.com/photos/turned-on-flat-screen-television-5Xwaj9gaR0g" alt="cover" className="absolute inset-0 w-full h-full object-cover opacity-30 mix-blend-overlay" />
+                                <Image src="https://unsplash.com/photos/turned-on-flat-screen-television-5Xwaj9gaR0g" alt="cover" fill className="absolute inset-0 object-cover opacity-30 mix-blend-overlay" />
                                 <button className="absolute top-3 right-3 p-1.5 bg-background/20 hover:bg-background/30 backdrop-blur-md rounded-md text-foreground transition-colors">
                                     <Plus size={16} />
                                 </button>
@@ -34,7 +35,7 @@ export default function PublicProfilePage() {
                                 <div className="relative -top-12 mb-[-36px] flex justify-center">
                                     <div className="relative">
                                         <div className="w-20 h-20 rounded-full border-2 border-background bg-muted overflow-hidden shadow-md">
-                                            <img src={`https://i.pravatar.cc/120?u=${profile.id}`} alt={profile.name} className="w-full h-full object-cover" />
+                                            <Image src={`https://i.pravatar.cc/120?u=${profile.id}`} alt={profile.name} width={80} height={80} className="w-full h-full object-cover" />
                                         </div>
                                         <div className="absolute bottom-1 right-1 z-10 bg-background rounded-full">
                                             <svg width="20" height="20" aria-label="verify - 20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 drop-shadow-sm">

@@ -17,6 +17,15 @@ const config: Config = {
                 "gradient-conic":
                     "conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))",
             },
+            colors: {
+                "skin-tone-1": "var(--skin-tone-1)",
+                "skin-tone-2": "var(--skin-tone-2)",
+                "skin-tone-3": "var(--skin-tone-3)",
+                "skin-tone-4": "var(--skin-tone-4)",
+                "success-light": "var(--success-light)",
+                "success-text": "var(--success-text)",
+                "text-secondary": "var(--text-secondary)",
+            },
         },
     },
     plugins: [],

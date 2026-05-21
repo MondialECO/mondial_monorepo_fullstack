@@ -1,8 +1,8 @@
 import axios from '@/lib/axios';
-import { CreateIdeaModel, SaveIdeaResponse } from '@/types/creator/create-idea-model';
+import { CreateIdeaModel, SaveIdeaResponse, IdeaFormState } from '@/types/creator/create-idea-model';
 
 export const saveIdeaDraftApi = async (
-  model: CreateIdeaModel
+  model: IdeaFormState
 ): Promise<SaveIdeaResponse> => {
   const formData = new FormData();
 
