@@ -185,14 +185,8 @@ namespace WebApp.Controllers
                         Id = user.Id,
                         Name = user.Name,
                         Roles = roles,
-                        Onboarding = new
-                        {
-                            phase = user.Onboarding?.Phase ?? 0,
-                            phoneVerified = user.Onboarding?.PhoneVerified ?? false,
-                            kycStatus = user.KycStatus ?? "PENDING",
-                            kycTier = user.Tier_level,
-                            profileComplete = user.Onboarding?.ProfileComplete ?? false
-                        }
+                        // Just the phase; richer onboarding state via /onboarding/status.
+                        Onboarding = new { phase = user.Onboarding?.Phase ?? 0 }
                     }
                 });
             }
@@ -307,13 +301,12 @@ namespace WebApp.Controllers
                 user.Bio,
                 user.Title,
                 user.ImagePath,
+                // Just enough for routing decisions. The rich per-item state
+                // (identity / face / phone / email / supplementary docs) is
+                // served by /api/onboarding/status.
                 onboarding = new
                 {
                     phase = user.Onboarding?.Phase ?? 0,
-                    phoneVerified = user.Onboarding?.PhoneVerified ?? false,
-                    kycStatus = user.KycStatus ?? "PENDING",
-                    kycTier = user.Tier_level,
-                    profileComplete = user.Onboarding?.ProfileComplete ?? false
                 }
             });
         }
@@ -375,31 +368,18 @@ namespace WebApp.Controllers
 
             await _userManager.AddToRoleAsync(user, canonicalRole);
 
-            // Dev convenience: auto-confirm so signup→login works without a
-            // real inbox. Production must still go through the email link.
-            if (_env.IsDevelopment())
-            {
-                user.EmailConfirmed = true;
-                await _userManager.UpdateAsync(user);
-                _logger.LogInformation("Auto-confirmed email for {Email} (Development environment)", user.Email);
-            }
-
-            var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-
-            var encodedToken = WebUtility.UrlEncode(token);
-
-            var baseUrl = _configuration["BaseUrl"]?.TrimEnd('/') ?? "https://mondialbusiness.eu";
-            var confirmationLink = $"{baseUrl}/confirm-email?userId={Uri.EscapeDataString(user.Id.ToString())}&token={encodedToken}";
-
-            bool emailSent = await _emailService.SendEmailAsync(user.Email, "Confirm your email",
-                $"Please confirm your account by clicking this link: <a href='{confirmationLink}'>Confirm Email</a>");
-
-            if (!emailSent)
-                return InternalError("User registered, but failed to send confirmation email.");
+            // Email verification happens via OTP at the onboarding step
+            // (POST /api/onboarding/send-email-otp). We no longer send a
+            // confirmation link from /register, and Identity sees the user
+            // as confirmed at create time so they can sign in immediately —
+            // the OnboardingGuard then forces the OTP step before any
+            // /dashboard/* route opens up.
+            user.EmailConfirmed = true;
+            await _userManager.UpdateAsync(user);
 
             _audit.Record("register", user.Email!, true, new { role = canonicalRole });
 
-            return StatusCode(201, new { success = true, message = "User registered successfully! Please check your email for confirmation.", data = new { user.Id, user.Email } });
+            return StatusCode(201, new { success = true, message = "User registered. Continue with Phase 1 verification.", data = new { user.Id, user.Email } });
         }
 
         // GET: api/auth/confirm-email?userId=&token=
@@ -622,6 +602,7 @@ namespace WebApp.Controllers
 
             user.Name = model.Name ?? user.Name;
             user.PhoneNumber = model.Phone ?? user.PhoneNumber;
+            user.Title = model.Title ?? user.Title;
             user.Address = model.Address ?? user.Address;
             user.Bio = model.Bio ?? user.Bio;
 

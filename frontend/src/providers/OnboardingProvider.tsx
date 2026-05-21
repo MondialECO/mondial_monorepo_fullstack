@@ -3,22 +3,20 @@
 import { createContext, useContext, useCallback, useEffect, useState, ReactNode } from "react";
 import api from "@/lib/axios";
 import {
-  ONBOARDING_STEPS,
+  ONBOARDING_ITEMS,
+  OnboardingItem,
   OnboardingStatus,
-  OnboardingStep,
+  firstIncompleteRequired,
   isOnboardingComplete,
-  nextIncompleteStep,
 } from "@/lib/onboarding-routes";
 
 interface OnboardingContextValue {
   status: OnboardingStatus | null;
   isLoading: boolean;
-  /** True once status.phase >= 1. */
   isComplete: boolean;
-  /** First step the user still needs to finish, or null when done. */
-  nextStep: OnboardingStep | null;
-  steps: OnboardingStep[];
-  /** Re-fetch status from the backend. Called after every step mutation. */
+  items: OnboardingItem[];
+  /** First required item that isn't done yet, or null. */
+  nextRequired: OnboardingItem | null;
   refresh: () => Promise<void>;
 }
 
@@ -27,14 +25,12 @@ const OnboardingContext = createContext<OnboardingContextValue | null>(null);
 export function useOnboarding(): OnboardingContextValue {
   const ctx = useContext(OnboardingContext);
   if (!ctx) {
-    // Safe default for components that may render outside the provider tree
-    // during SSR / hydration. Real consumers should be inside the provider.
     return {
       status: null,
       isLoading: true,
       isComplete: false,
-      nextStep: null,
-      steps: ONBOARDING_STEPS,
+      items: ONBOARDING_ITEMS,
+      nextRequired: null,
       refresh: async () => {},
     };
   }
@@ -51,8 +47,6 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
       const payload = res.data?.data ?? res.data;
       setStatus(payload as OnboardingStatus);
     } catch {
-      // Unauthenticated or backend down — leave status null; AuthGuard
-      // will catch the auth case and bounce the user to /login.
       setStatus(null);
     } finally {
       setIsLoading(false);
@@ -67,8 +61,8 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
     status,
     isLoading,
     isComplete: isOnboardingComplete(status),
-    nextStep: status ? nextIncompleteStep(status) : null,
-    steps: ONBOARDING_STEPS,
+    items: ONBOARDING_ITEMS,
+    nextRequired: status ? firstIncompleteRequired(status) : null,
     refresh,
   };
 
