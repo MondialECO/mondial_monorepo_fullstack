@@ -72,7 +72,13 @@ api.interceptors.response.use(
           }
         );
 
-        const { token: newToken } = response.data;
+        // Backend wraps responses in { success, message, data: { token, ... } }.
+        const newToken: string | undefined =
+          response.data?.data?.token ?? response.data?.token;
+
+        if (!newToken) {
+          throw new Error("Refresh response missing token");
+        }
 
         // Update stored token
         localStorage.setItem("token", newToken);
