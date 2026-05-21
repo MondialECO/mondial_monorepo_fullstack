@@ -1,6 +1,7 @@
 "use client";
 
 import { FileText, AlertCircle, CheckCircle2 } from "lucide-react";
+import { useWatch } from "react-hook-form";
 import { useEntrepreneurProgress } from "@/hooks/useEntrepreneurProgress";
 import { usePhase2Step1Form } from "@/hooks/usePhase2Step1Form";
 import { Input } from "@/components/ui/input";
@@ -25,20 +26,32 @@ export default function Phase2Step1Client() {
     );
   }
 
-  const { register, watch } = form;
-  const values = watch();
-  const totalFields = 7;
-  const filled = [
-    values.companyName,
-    values.registrationNumber,
-    values.legalForm,
-    values.incorporationDate,
-    values.countryOfRegistration,
-    values.registeredAddress,
-    values.industryCode,
-  ].filter(Boolean).length;
+  const { register, control } = form;
+  // useWatch — unlike top-level form.watch(), this reliably re-renders this
+  // component on every keystroke so the progress badge and the Next button
+  // gating react to what the user has typed.
+  const values = useWatch({ control }) as Record<string, string | undefined>;
+
+  // Required vs optional. Anything starred in the label below also has to
+  // pass the gate for Next to enable.
+  const requiredKeys = [
+    "companyName",
+    "registrationNumber",
+    "legalForm",
+    "countryOfRegistration",
+    "registeredAddress",
+  ] as const;
+  const optionalKeys = ["incorporationDate", "industryCode"] as const;
+
+  const totalFields = requiredKeys.length + optionalKeys.length;
+  const filled = [...requiredKeys, ...optionalKeys].filter(
+    (k) => !!values?.[k]?.toString().trim(),
+  ).length;
   const pct = Math.round((filled / totalFields) * 100);
-  const isFormFilled = Boolean(values.companyName && values.registrationNumber);
+
+  const allRequiredFilled = requiredKeys.every(
+    (k) => !!values?.[k]?.toString().trim(),
+  );
 
   return (
     <PhaseStepShell
@@ -50,7 +63,7 @@ export default function Phase2Step1Client() {
       primaryAction={{
         label: "Next",
         onClick: handleNextClick,
-        disabled: !isFormFilled || formState.status === "navigating",
+        disabled: !allRequiredFilled || formState.status === "navigating",
         loading: formState.status === "navigating",
       }}
       secondaryAction={{
@@ -78,7 +91,7 @@ export default function Phase2Step1Client() {
     >
       <div className="space-y-6">
         {/* Company name (full width) */}
-        <Field label="Official Company Name">
+        <Field label="Official Company Name" required>
           <Input
             {...register("companyName")}
             placeholder="EcoSphere Solution SAS"
@@ -88,14 +101,14 @@ export default function Phase2Step1Client() {
 
         {/* Two-column rows */}
         <div className="grid md:grid-cols-2 gap-5">
-          <Field label="Registration (SIREN/SIRET)">
+          <Field label="Registration (SIREN/SIRET)" required>
             <Input
               {...register("registrationNumber")}
               placeholder="987 876 5684"
               className="h-11 bg-card font-mono"
             />
           </Field>
-          <Field label="Legal Form">
+          <Field label="Legal Form" required>
             <select
               {...register("legalForm")}
               className="w-full h-11 px-3 bg-card border border-border rounded-lg text-sm text-foreground"
@@ -118,7 +131,7 @@ export default function Phase2Step1Client() {
               className="h-11 bg-card"
             />
           </Field>
-          <Field label="Country of Registration">
+          <Field label="Country of Registration" required>
             <select
               {...register("countryOfRegistration")}
               className="w-full h-11 px-3 bg-card border border-border rounded-lg text-sm text-foreground"
@@ -135,7 +148,7 @@ export default function Phase2Step1Client() {
         </div>
 
         {/* Registered address (textarea) */}
-        <Field label="Registered Address">
+        <Field label="Registered Address" required>
           <textarea
             {...register("registeredAddress")}
             rows={2}
@@ -173,11 +186,24 @@ export default function Phase2Step1Client() {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  required,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  children: React.ReactNode;
+}) {
   return (
     <div>
       <label className="block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
         {label}
+        {required && (
+          <span aria-label="required" className="text-red-500 ml-0.5">
+            *
+          </span>
+        )}
       </label>
       {children}
     </div>
