@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Claude Code (per-developer machine-local config)
+# settings.json is shared; settings.local.json is your local allow-list and
+# may contain absolute paths from your machine. Keep it out of the repo.
+.claude/settings.local.json
+**/.claude/settings.local.json
