@@ -4,29 +4,27 @@ import { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { OnboardingProvider, useOnboarding } from "@/providers/OnboardingProvider";
-import { onboardingPath } from "@/lib/onboarding-routes";
 
 /**
- * Sits *inside* AuthGuard (so we know the user is logged in) but *outside*
- * any role-specific dashboard. Redirects to the right /onboarding/* step
- * until Phase 1 is complete. Once complete, the user passes through.
+ * Sits inside AuthGuard (so we know the user is logged in) but outside any
+ * role-specific dashboard. While Phase 1 is incomplete, every /dashboard/*
+ * request is redirected to the verification hub at /onboarding. The hub
+ * itself decides which sub-page (Identity / Phone / Email / etc.) to send
+ * the user to.
  */
 function Gate({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { isLoading, isComplete, nextStep, status } = useOnboarding();
+  const { isLoading, isComplete, status } = useOnboarding();
 
   useEffect(() => {
     if (isLoading) return;
     if (isComplete) return;
     // Status fetch failed (e.g. 401) — let AuthGuard handle the redirect.
     if (!status) return;
-
-    const destination = onboardingPath(nextStep);
-    if (pathname !== destination) {
-      router.replace(destination);
-    }
-  }, [isLoading, isComplete, nextStep, status, pathname, router]);
+    if (pathname?.startsWith("/onboarding")) return;
+    router.replace("/onboarding");
+  }, [isLoading, isComplete, status, pathname, router]);
 
   if (isLoading || (!isComplete && status)) {
     return (

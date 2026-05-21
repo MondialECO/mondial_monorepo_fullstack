@@ -67,19 +67,42 @@ namespace WebApp.Models.DatabaseModels
 
     public class OnboardingState
     {
-        /// <summary>0 = not started, 1 = Phase 1 complete (KYC + phone + profile).</summary>
+        /// <summary>0 = not started, 1 = Phase 1 complete (all role-required items verified).</summary>
         public int Phase { get; set; } = 0;
 
+        // --- Phone (step "phone") ---
         public bool PhoneVerified { get; set; }
 
         /// <summary>HMAC-SHA256 of the 6-digit code; never store the code itself.</summary>
         public string PhoneVerifyHash { get; set; }
-
         public DateTime? PhoneVerifyExpiresAt { get; set; }
 
-        public bool ProfileComplete { get; set; }
+        // --- Email (step "email") ---
+        public bool EmailOtpVerified { get; set; }
+        public string EmailOtpHash { get; set; }
+        public DateTime? EmailOtpExpiresAt { get; set; }
+
+        // --- Identity (step "identity") and Face (step "face") ---
+        // Per product: two hub cards but a single shared SUMSUB session;
+        // completing one verifies both. Dev shortcut flips both flags at once.
+        public bool IdentityDocumentVerified { get; set; }
+        public bool FaceVerified { get; set; }
+
+        // --- Optional / role-conditional documents ---
+        public DocumentRecord Residence { get; set; } = new();
+        public DocumentRecord Income { get; set; } = new();
+        public DocumentRecord Tax { get; set; } = new();
+        public DocumentRecord License { get; set; } = new();
 
         public DateTime? CompletedAt { get; set; }
+    }
+
+    /// <summary>One uploaded supplementary document.</summary>
+    public class DocumentRecord
+    {
+        public bool Uploaded { get; set; }
+        public string FilePath { get; set; }
+        public DateTime? UploadedAt { get; set; }
     }
 
     public class Address
