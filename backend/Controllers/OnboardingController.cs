@@ -16,21 +16,22 @@ using WebApp.Services;
 namespace WebApp.Controllers
 {
     /// <summary>
-    /// Phase 1 universal onboarding. Every authenticated user (regardless of
-    /// role) walks through these endpoints once: phone OTP → KYC → profile.
-    /// The frontend's OnboardingGuard reads Onboarding.Phase from /auth/me
+    /// Phase 1 universal onboarding. Hub-and-spoke flow per Figma design:
+    /// 4 mandatory verification items (Identity, Face, Phone, Email) plus
+    /// role-conditional supplementary documents (Income/Tax for Investor;
+    /// License for ServiceProvider; Residence for all as optional).
+    ///
+    /// The frontend's OnboardingGuard reads Onboarding.Phase from /status
     /// and gates /dashboard/* until Phase == 1.
     /// </summary>
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
-    // Rate limit applied per-action: send-otp is the only credential-cost
-    // endpoint here. The rest are state queries / state advances and only
-    // need the global per-IP cap.
     public class OnboardingController : ControllerBase
     {
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly TwilioService _twilio;
+        private readonly EmailService _emailService;
         private readonly IConfiguration _configuration;
         private readonly IWebHostEnvironment _env;
         private readonly ILogger<OnboardingController> _logger;
@@ -40,6 +41,7 @@ namespace WebApp.Controllers
         public OnboardingController(
             UserManager<ApplicationUser> userManager,
             TwilioService twilio,
+            EmailService emailService,
             IConfiguration configuration,
             IWebHostEnvironment env,
             ILogger<OnboardingController> logger,
@@ -48,6 +50,7 @@ namespace WebApp.Controllers
         {
             _userManager = userManager;
             _twilio = twilio;
+            _emailService = emailService;
             _configuration = configuration;
             _env = env;
             _logger = logger;
@@ -55,7 +58,31 @@ namespace WebApp.Controllers
             _audit = audit;
         }
 
-        // ------------- Helpers -------------
+        // ----- Constants and helpers --------------------------------------
+
+        /// <summary>The base 4 mandatory items every role must verify.</summary>
+        private static readonly string[] CoreRequired =
+            { "identity", "face", "phone", "email" };
+
+        /// <summary>Optional + role-conditional supplementary documents.</summary>
+        private static readonly string[] AllSupplementary =
+            { "residence", "income", "tax", "license" };
+
+        /// <summary>Required item set per role. Creator/Entrepreneur take only the core 4.</summary>
+        private static HashSet<string> RequiredItemsFor(string role)
+        {
+            var set = new HashSet<string>(CoreRequired, StringComparer.OrdinalIgnoreCase);
+            if (string.Equals(role, "Investor", StringComparison.OrdinalIgnoreCase))
+            {
+                set.Add("income");
+                set.Add("tax");
+            }
+            else if (string.Equals(role, "ServiceProvider", StringComparison.OrdinalIgnoreCase))
+            {
+                set.Add("license");
+            }
+            return set;
+        }
 
         private async Task<ApplicationUser> CurrentUserAsync()
         {
@@ -79,53 +106,90 @@ namespace WebApp.Controllers
             return Convert.ToHexString(bytes);
         }
 
+        private static bool IsItemVerified(ApplicationUser user, string key)
+        {
+            var ob = user.Onboarding;
+            return key.ToLowerInvariant() switch
+            {
+                "identity"  => ob.IdentityDocumentVerified,
+                "face"      => ob.FaceVerified,
+                "phone"     => ob.PhoneVerified,
+                "email"     => ob.EmailOtpVerified,
+                "residence" => ob.Residence?.Uploaded ?? false,
+                "income"    => ob.Income?.Uploaded ?? false,
+                "tax"       => ob.Tax?.Uploaded ?? false,
+                "license"   => ob.License?.Uploaded ?? false,
+                _ => false,
+            };
+        }
+
         private async Task PromotePhaseIfCompleteAsync(ApplicationUser user)
         {
-            // Phase 1 is "complete" when phone is verified AND KYC is verified
-            // AND the basic profile is filled. The frontend may complete these
-            // in any order; only here do we flip the gate.
-            var ready = user.Onboarding.PhoneVerified
-                     && string.Equals(user.KycStatus, "VERIFIED", StringComparison.OrdinalIgnoreCase)
-                     && user.Onboarding.ProfileComplete;
+            var required = RequiredItemsFor(user.User ?? "");
+            var allRequiredDone = required.All(key => IsItemVerified(user, key));
 
-            if (ready && user.Onboarding.Phase < 1)
+            if (allRequiredDone && user.Onboarding.Phase < 1)
             {
                 user.Onboarding.Phase = 1;
                 user.Onboarding.CompletedAt = DateTime.UtcNow;
+                // Mirror the legacy KycStatus so older code keeps working.
+                user.KycStatus = "VERIFIED";
+                user.Kyc.Status = VerificationStatus.Verified;
+                user.Kyc.VerifiedAt = DateTime.UtcNow;
                 if (user.Tier_level < 1) user.Tier_level = 1;
                 await _userManager.UpdateAsync(user);
-                _audit.Record("onboarding_complete", user.Email!, true);
+                _audit.Record("onboarding_complete", user.Email!, true, new { role = user.User });
             }
         }
 
-        // ------------- Status -------------
+        // ----- Status -----------------------------------------------------
 
-        /// <summary>Lightweight read for the OnboardingProvider on every page mount.</summary>
+        /// <summary>
+        /// Hub-and-spoke status read. Returns one item object per verification,
+        /// with required-vs-optional based on the user's role.
+        /// </summary>
         [HttpGet("status")]
         public async Task<IActionResult> Status()
         {
             var user = await CurrentUserAsync();
             if (user == null) return Fail("User not found", 404);
 
+            var required = RequiredItemsFor(user.User ?? "");
+
+            object ItemView(string key) => new
+            {
+                key,
+                verified = IsItemVerified(user, key),
+                required = required.Contains(key),
+            };
+
             return Ok("status", new
             {
                 phase = user.Onboarding?.Phase ?? 0,
-                phoneVerified = user.Onboarding?.PhoneVerified ?? false,
-                kycStatus = user.KycStatus ?? "PENDING",
-                kycTier = user.Tier_level,
-                profileComplete = user.Onboarding?.ProfileComplete ?? false,
+                role = user.User,
                 phone = user.PhoneNumber,
-                role = user.User
+                email = user.Email,
+                items = new
+                {
+                    identity  = ItemView("identity"),
+                    face      = ItemView("face"),
+                    phone     = ItemView("phone"),
+                    email     = ItemView("email"),
+                    residence = ItemView("residence"),
+                    income    = ItemView("income"),
+                    tax       = ItemView("tax"),
+                    license   = ItemView("license"),
+                },
             });
         }
 
-        // ------------- Phone OTP (step 1.2) -------------
+        // ----- Phone OTP --------------------------------------------------
 
-        public class SendOtpRequest { public string Phone { get; set; } }
+        public class SendPhoneOtpRequest { public string Phone { get; set; } }
 
         [HttpPost("send-otp")]
         [EnableRateLimiting("auth")]
-        public async Task<IActionResult> SendOtp([FromBody] SendOtpRequest body)
+        public async Task<IActionResult> SendPhoneOtp([FromBody] SendPhoneOtpRequest body)
         {
             if (string.IsNullOrWhiteSpace(body?.Phone))
                 return Fail("Phone number is required");
@@ -133,7 +197,6 @@ namespace WebApp.Controllers
             var user = await CurrentUserAsync();
             if (user == null) return Fail("User not found", 404);
 
-            // Naive E.164 sanity check; full validation lives client-side.
             var phone = body.Phone.Trim();
             if (!phone.StartsWith("+") || phone.Length < 8)
                 return Fail("Phone must be in E.164 format (e.g. +33612345678)");
@@ -148,10 +211,7 @@ namespace WebApp.Controllers
             var smsConfigured = !string.IsNullOrWhiteSpace(_configuration["Twilio:AccountSid"]);
             if (smsConfigured)
             {
-                try
-                {
-                    await _twilio.SendSmsAsync(phone, $"Your Mondial verification code is {code}. Expires in 60s.");
-                }
+                try { await _twilio.SendSmsAsync(phone, $"Your Mondial verification code is {code}. Expires in 60s."); }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Failed to send SMS via Twilio");
@@ -160,8 +220,6 @@ namespace WebApp.Controllers
             }
             else
             {
-                // Dev fallback: log the code so we can complete the flow without
-                // burning Twilio credits. NEVER return the code in the response.
                 _logger.LogWarning("[DEV] Twilio not configured. OTP for {Phone}: {Code}", phone, code);
             }
 
@@ -169,10 +227,49 @@ namespace WebApp.Controllers
             return Ok("Verification code sent.");
         }
 
-        public class VerifyOtpRequest { public string Code { get; set; } }
+        public class VerifyCodeRequest { public string Code { get; set; } }
 
         [HttpPost("verify-otp")]
-        public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpRequest body)
+        public async Task<IActionResult> VerifyPhoneOtp([FromBody] VerifyCodeRequest body)
+            => await VerifyOtpCore(body, isEmail: false);
+
+        // ----- Email OTP --------------------------------------------------
+
+        [HttpPost("send-email-otp")]
+        [EnableRateLimiting("auth")]
+        public async Task<IActionResult> SendEmailOtp()
+        {
+            var user = await CurrentUserAsync();
+            if (user == null) return Fail("User not found", 404);
+            if (string.IsNullOrWhiteSpace(user.Email)) return Fail("Email is missing on account");
+
+            var code = RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
+            user.Onboarding.EmailOtpHash = HashOtp(code, user.Id.ToString());
+            user.Onboarding.EmailOtpExpiresAt = DateTime.UtcNow.AddMinutes(10);
+            user.Onboarding.EmailOtpVerified = false;
+            await _userManager.UpdateAsync(user);
+
+            var smtpConfigured = !string.IsNullOrWhiteSpace(_configuration["EmailSettings:Email"]);
+            var body = $"<p>Your Mondial verification code is <b>{code}</b>.</p><p>It expires in 10 minutes.</p>";
+            var queued = smtpConfigured && await _emailService.SendEmailAsync(user.Email, "Verify your email", body);
+
+            // In Development always log the code regardless of SMTP success
+            // so smoke tests + manual QA can complete the flow without
+            // depending on an inbox round-trip.
+            if (_env.IsDevelopment() || !queued)
+            {
+                _logger.LogWarning("[DEV] Email OTP for {Email}: {Code}", user.Email, code);
+            }
+
+            _audit.Record("email_otp_send", user.Email!, true);
+            return Ok("Verification code sent to your email.");
+        }
+
+        [HttpPost("verify-email-otp")]
+        public async Task<IActionResult> VerifyEmailOtp([FromBody] VerifyCodeRequest body)
+            => await VerifyOtpCore(body, isEmail: true);
+
+        private async Task<IActionResult> VerifyOtpCore(VerifyCodeRequest body, bool isEmail)
         {
             if (string.IsNullOrWhiteSpace(body?.Code) || body.Code.Length != 6)
                 return Fail("6-digit code required");
@@ -180,43 +277,57 @@ namespace WebApp.Controllers
             var user = await CurrentUserAsync();
             if (user == null) return Fail("User not found", 404);
 
-            if (user.Onboarding.PhoneVerifyExpiresAt == null
-                || user.Onboarding.PhoneVerifyExpiresAt < DateTime.UtcNow
-                || string.IsNullOrEmpty(user.Onboarding.PhoneVerifyHash))
+            var expiresAt = isEmail ? user.Onboarding.EmailOtpExpiresAt : user.Onboarding.PhoneVerifyExpiresAt;
+            var storedHash = isEmail ? user.Onboarding.EmailOtpHash : user.Onboarding.PhoneVerifyHash;
+            var auditEvent = isEmail ? "email_otp_verify" : "otp_verify";
+
+            if (expiresAt == null || expiresAt < DateTime.UtcNow || string.IsNullOrEmpty(storedHash))
             {
-                _audit.Record("otp_verify", user.Email!, false, new { reason = "expired" });
+                _audit.Record(auditEvent, user.Email!, false, new { reason = "expired" });
                 return Fail("Code expired. Request a new one.");
             }
 
             var expected = HashOtp(body.Code, user.Id.ToString());
             if (!CryptographicOperations.FixedTimeEquals(
                     Encoding.UTF8.GetBytes(expected),
-                    Encoding.UTF8.GetBytes(user.Onboarding.PhoneVerifyHash)))
+                    Encoding.UTF8.GetBytes(storedHash)))
             {
-                _audit.Record("otp_verify", user.Email!, false, new { reason = "bad_code" });
+                _audit.Record(auditEvent, user.Email!, false, new { reason = "bad_code" });
                 return Fail("Invalid code");
             }
 
-            user.Onboarding.PhoneVerified = true;
-            user.Onboarding.PhoneVerifyHash = null;
-            user.Onboarding.PhoneVerifyExpiresAt = null;
-            user.PhoneNumberConfirmed = true;
-            await _userManager.UpdateAsync(user);
+            if (isEmail)
+            {
+                user.Onboarding.EmailOtpVerified = true;
+                user.Onboarding.EmailOtpHash = null;
+                user.Onboarding.EmailOtpExpiresAt = null;
+                user.EmailConfirmed = true;
+            }
+            else
+            {
+                user.Onboarding.PhoneVerified = true;
+                user.Onboarding.PhoneVerifyHash = null;
+                user.Onboarding.PhoneVerifyExpiresAt = null;
+                user.PhoneNumberConfirmed = true;
+            }
 
+            await _userManager.UpdateAsync(user);
             await PromotePhaseIfCompleteAsync(user);
 
-            _audit.Record("otp_verify", user.Email!, true);
-            return Ok("Phone verified");
+            _audit.Record(auditEvent, user.Email!, true);
+            return Ok(isEmail ? "Email verified" : "Phone verified");
         }
 
-        // ------------- KYC (step 1.3) -------------
+        // ----- Identity + Face (one SUMSUB session, two cards) ------------
 
         /// <summary>
         /// Development-only shortcut. Real SUMSUB widget integration is the
-        /// next PR. Gated to IsDevelopment() so it cannot be invoked in prod.
+        /// next PR. Per product: one shared SUMSUB session verifies BOTH the
+        /// identity document and the face match — completing one card flips
+        /// both flags so the hub shows both ticks green.
         /// </summary>
-        [HttpPost("kyc/dev-confirm")]
-        public async Task<IActionResult> KycDevConfirm()
+        [HttpPost("identity/dev-confirm")]
+        public async Task<IActionResult> IdentityDevConfirm()
         {
             if (!_env.IsDevelopment())
                 return Fail("Not available in this environment", 403);
@@ -224,61 +335,70 @@ namespace WebApp.Controllers
             var user = await CurrentUserAsync();
             if (user == null) return Fail("User not found", 404);
 
-            user.KycStatus = "VERIFIED";
+            user.Onboarding.IdentityDocumentVerified = true;
+            user.Onboarding.FaceVerified = true;
             user.Kyc.Status = VerificationStatus.Verified;
             user.Kyc.VerifiedAt = DateTime.UtcNow;
-            if (user.Tier_level < 1) user.Tier_level = 1;
             await _userManager.UpdateAsync(user);
 
             await PromotePhaseIfCompleteAsync(user);
 
-            _logger.LogInformation("[DEV] KYC dev-confirmed for {Email}", user.Email);
-            _audit.Record("kyc_dev_confirm", user.Email!, true);
-            return Ok("KYC verified (development).");
+            _logger.LogInformation("[DEV] Identity+Face dev-confirmed for {Email}", user.Email);
+            _audit.Record("identity_dev_confirm", user.Email!, true);
+            return Ok("Identity verified (development).");
         }
 
-        // ------------- Profile (step 1.5) -------------
+        // ----- Supplementary documents ------------------------------------
 
-        [HttpPut("profile")]
+        /// <summary>
+        /// Upload a supplementary document. Required vs optional is computed
+        /// per role at /status; this endpoint accepts any of the four types
+        /// and lets the role-gate decide whether it counts toward Phase 1.
+        /// </summary>
+        [HttpPost("documents/{type}")]
         [Consumes("multipart/form-data")]
-        public async Task<IActionResult> UpdateProfile(
-            [FromForm] string name,
-            [FromForm] string title,
-            [FromForm] string bio,
-            [FromForm] string city,
-            [FromForm] string country,
-            [FromForm] IFormFile photo = null)
+        public async Task<IActionResult> UploadDocument(string type, [FromForm] IFormFile file)
         {
+            if (file == null || file.Length == 0)
+                return Fail("File is required");
+
+            var key = (type ?? "").ToLowerInvariant();
+            if (!AllSupplementary.Contains(key))
+                return Fail($"Unknown document type '{type}'. Expected one of: {string.Join(", ", AllSupplementary)}");
+
             var user = await CurrentUserAsync();
             if (user == null) return Fail("User not found", 404);
 
-            if (string.IsNullOrWhiteSpace(name))
-                return Fail("Name is required");
-
-            user.Name = name.Trim();
-            user.Title = string.IsNullOrWhiteSpace(title) ? user.Title : title.Trim();
-            user.Bio = string.IsNullOrWhiteSpace(bio) ? user.Bio : bio.Trim();
-
-            user.Address ??= new Address();
-            if (!string.IsNullOrWhiteSpace(city)) user.Address.City = city.Trim();
-            if (!string.IsNullOrWhiteSpace(country)) user.Address.Country = country.Trim();
-
-            if (photo != null && photo.Length > 0)
+            string path;
+            try
             {
-                // Local filesystem storage today (Cloudinary migration pending,
-                // see memory/mondial-tech-stack.md). SaveFile.cs writes under
-                // wwwroot/uploads/ and returns the public path.
-                var path = await _fileService.SaveFileAsync(photo, "profile");
-                user.ImagePath = path;
+                path = await _fileService.SaveFileAsync(file, "documents");
+            }
+            catch (ArgumentException ex)
+            {
+                return Fail(ex.Message);
             }
 
-            user.Onboarding.ProfileComplete = true;
-            await _userManager.UpdateAsync(user);
+            var record = new DocumentRecord
+            {
+                Uploaded = true,
+                FilePath = path,
+                UploadedAt = DateTime.UtcNow,
+            };
 
+            switch (key)
+            {
+                case "residence": user.Onboarding.Residence = record; break;
+                case "income":    user.Onboarding.Income    = record; break;
+                case "tax":       user.Onboarding.Tax       = record; break;
+                case "license":   user.Onboarding.License   = record; break;
+            }
+
+            await _userManager.UpdateAsync(user);
             await PromotePhaseIfCompleteAsync(user);
 
-            _audit.Record("profile_update", user.Email!, true);
-            return Ok("Profile saved", new { imagePath = user.ImagePath });
+            _audit.Record($"document_upload_{key}", user.Email!, true);
+            return Ok("Document uploaded", new { type = key, filePath = path });
         }
     }
 }

@@ -23,7 +23,10 @@
             }
             else if (folderName == "documents")
             {
-                isValid = allowedDocExt.Contains(extension);
+                // Phase-1 supplementary uploads can be PDFs (utility bills,
+                // statements) or photos of physical documents (driver's
+                // licence), so allow both image and doc extensions.
+                isValid = allowedDocExt.Contains(extension) || allowedImageExt.Contains(extension);
             }
             else if (folderName == "Identity")
             {
