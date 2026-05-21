@@ -184,7 +184,15 @@ namespace WebApp.Controllers
                     {
                         Id = user.Id,
                         Name = user.Name,
-                        Roles = roles
+                        Roles = roles,
+                        Onboarding = new
+                        {
+                            phase = user.Onboarding?.Phase ?? 0,
+                            phoneVerified = user.Onboarding?.PhoneVerified ?? false,
+                            kycStatus = user.KycStatus ?? "PENDING",
+                            kycTier = user.Tier_level,
+                            profileComplete = user.Onboarding?.ProfileComplete ?? false
+                        }
                     }
                 });
             }
@@ -296,7 +304,17 @@ namespace WebApp.Controllers
                 user.Email,
                 user.PhoneNumber,
                 user.User,
-                user.Bio
+                user.Bio,
+                user.Title,
+                user.ImagePath,
+                onboarding = new
+                {
+                    phase = user.Onboarding?.Phase ?? 0,
+                    phoneVerified = user.Onboarding?.PhoneVerified ?? false,
+                    kycStatus = user.KycStatus ?? "PENDING",
+                    kycTier = user.Tier_level,
+                    profileComplete = user.Onboarding?.ProfileComplete ?? false
+                }
             });
         }
 

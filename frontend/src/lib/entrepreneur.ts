@@ -154,9 +154,13 @@ export function getNextPhase(currentPhase: PhaseNumber): PhaseNumber | null {
   return (currentPhase + 1) as PhaseNumber;
 }
 
-// Bumped from v0 (which seeded fake progress) to v1 (true zero-state) so
-// any pre-existing localStorage from the demo seed is discarded on next load.
-const PROGRESS_SCHEMA_VERSION = 1;
+// Schema version history:
+//   v0: original demo seed (currentPhase=2 with fake completed steps).
+//   v1: zero-state (currentPhase=1, empty).
+//   v2: Phase 1 lifted out to /onboarding; entrepreneur progress now starts
+//       at currentPhase=2 with Phase 1 marked complete (gated by
+//       OnboardingGuard before this provider is even mounted).
+const PROGRESS_SCHEMA_VERSION = 2;
 
 export function getProgressStorageKey(): string {
   return `entrepreneur-progress:v${PROGRESS_SCHEMA_VERSION}`;
@@ -210,14 +214,15 @@ export function deserializeProgress(data: string): EntrepreneurProgress {
   };
 }
 
-// True zero state for a brand-new entrepreneur. Previously this seeded
-// phase-1 and the first two phase-2 steps as completed for demo purposes;
-// that leaked into real signups and made the dashboard contradict itself
-// ("Phase 2, step 1" with phase-2 step 1 & 2 already "Completed").
+// Initial state for an entrepreneur who has just completed Phase 1 (the
+// universal identity/KYC gate, which lives at /onboarding and is enforced
+// by OnboardingGuard before anyone reaches /dashboard/entrepreneur). Their
+// first entrepreneur-specific work is Phase 2 step 1; Phase 1 is recorded
+// as already complete from the entrepreneur provider's perspective.
 export const INITIAL_PROGRESS: EntrepreneurProgress = {
-  currentPhase: 1,
+  currentPhase: 2,
   currentStep: 1,
-  completedPhases: new Set<PhaseNumber>(),
+  completedPhases: new Set<PhaseNumber>([1]),
   completedSteps: new Set<string>(),
   phaseData: {},
   trustScore: 0,

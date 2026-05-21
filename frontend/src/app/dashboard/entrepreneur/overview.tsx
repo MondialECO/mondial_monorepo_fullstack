@@ -29,7 +29,8 @@ const phases = [
     description: 'KYC verified, Tier 2 access',
     icon: FileText,
     trustScore: 44,
-    href: '/dashboard/entrepreneur/phase-1',
+    // Phase 1 is the universal onboarding gate; lives outside /dashboard.
+    href: '/onboarding',
   },
   {
     phase: 2,
