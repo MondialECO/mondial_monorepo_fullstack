@@ -154,8 +154,12 @@ export function getNextPhase(currentPhase: PhaseNumber): PhaseNumber | null {
   return (currentPhase + 1) as PhaseNumber;
 }
 
+// Bumped from v0 (which seeded fake progress) to v1 (true zero-state) so
+// any pre-existing localStorage from the demo seed is discarded on next load.
+const PROGRESS_SCHEMA_VERSION = 1;
+
 export function getProgressStorageKey(): string {
-  return 'entrepreneur-progress';
+  return `entrepreneur-progress:v${PROGRESS_SCHEMA_VERSION}`;
 }
 
 export function serializeProgress(progress: EntrepreneurProgress): string {
@@ -206,12 +210,16 @@ export function deserializeProgress(data: string): EntrepreneurProgress {
   };
 }
 
+// True zero state for a brand-new entrepreneur. Previously this seeded
+// phase-1 and the first two phase-2 steps as completed for demo purposes;
+// that leaked into real signups and made the dashboard contradict itself
+// ("Phase 2, step 1" with phase-2 step 1 & 2 already "Completed").
 export const INITIAL_PROGRESS: EntrepreneurProgress = {
-  currentPhase: 2,
+  currentPhase: 1,
   currentStep: 1,
-  completedPhases: new Set([1]),
-  completedSteps: new Set(['1', '2-1', '2-2']),
+  completedPhases: new Set<PhaseNumber>(),
+  completedSteps: new Set<string>(),
   phaseData: {},
-  trustScore: 44, // Phase 1 completed
-  lastUpdated: 0, // Set at runtime, not during module init
+  trustScore: 0,
+  lastUpdated: 0,
 };

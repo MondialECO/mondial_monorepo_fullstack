@@ -166,32 +166,39 @@ function Phase2PageContent() {
         <div className="space-y-4">
           <h2 className="text-xl font-bold text-foreground">Steps</h2>
           <div className="space-y-4">
-            {phaseSteps.map((step) => {
-              const isCompleted = progress.completedSteps.has(`2-${step.step}`);
-              const isActive = progress.currentStep === step.step && progress.currentPhase === 2;
-
-              // Find the highest completed step
-              const completedStepNumbers = Array.from(progress.completedSteps)
-                .filter(s => s.startsWith('2-'))
-                .map(s => parseInt(s.split('-')[1]));
-              const maxCompletedStep = completedStepNumbers.length > 0
-                ? Math.max(...completedStepNumbers)
-                : 0;
-
-              // A step is locked only if it comes after an incomplete step
-              // Allow the next step after completed ones to be accessible
-              const isLocked = step.step > maxCompletedStep + 1;
-
-              return (
-                <StepCard
-                  key={step.step}
-                  {...step}
-                  isCompleted={isCompleted}
-                  isActive={isActive}
-                  isLocked={isLocked}
-                />
+            {(() => {
+              // The active highlight should sit on the first not-yet-completed
+              // step — that's what "where do I go next" actually means. Reading
+              // progress.currentStep directly is fragile: if a step is marked
+              // completed without advancing the cursor, the ring sticks on a
+              // finished step.
+              const firstIncomplete = phaseSteps.find(
+                (s) => !progress.completedSteps.has(`2-${s.step}`),
               );
-            })}
+              const maxCompletedStep = phaseSteps.reduce(
+                (max, s) => (progress.completedSteps.has(`2-${s.step}`) ? Math.max(max, s.step) : max),
+                0,
+              );
+
+              return phaseSteps.map((step) => {
+                const isCompleted = progress.completedSteps.has(`2-${step.step}`);
+                const isActive =
+                  progress.currentPhase === 2 &&
+                  !isCompleted &&
+                  firstIncomplete?.step === step.step;
+                const isLocked = step.step > maxCompletedStep + 1;
+
+                return (
+                  <StepCard
+                    key={step.step}
+                    {...step}
+                    isCompleted={isCompleted}
+                    isActive={isActive}
+                    isLocked={isLocked}
+                  />
+                );
+              });
+            })()}
           </div>
         </div>
 
