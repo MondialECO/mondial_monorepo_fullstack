@@ -23,7 +23,7 @@ namespace WebApp.DbContext
         public IMongoCollection<Transactions> Transactions => _database.GetCollection<Transactions>("Transactions");
 
         // Entrepreneur Collections
-        public IMongoCollection<companies> Companies => _database.GetCollection<companies>("Companies");
+        public IMongoCollection<Companies> Companies => _database.GetCollection<Companies>("Companies");
         public IMongoCollection<InvestorMatch> InvestorMatches => _database.GetCollection<InvestorMatch>("InvestorMatches");
         public IMongoCollection<DealExecution> DealExecutions => _database.GetCollection<DealExecution>("DealExecutions");
         public IMongoCollection<Investor> Investors => _database.GetCollection<Investor>("Investors");

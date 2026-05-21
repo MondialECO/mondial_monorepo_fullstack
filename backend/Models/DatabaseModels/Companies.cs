@@ -2,17 +2,38 @@
 using MongoDB.Bson.Serialization.Attributes;
 using Twilio.Annotations;
 using static System.Runtime.InteropServices.JavaScript.JSType;
+using WebApp.Models.Dtos;
 
 namespace WebApp.Models.DatabaseModels;
 
-public class companies
+public class Companies
 {
     [BsonId]
-    [BsonRepresentation(BsonType.ObjectId)]
     public string Id { get; set; }
 
-    [BsonRepresentation(BsonType.ObjectId)]
     public string OwnerId { get; set; }
+
+    // Phase 1: Basic Info
+    public string CompanyName { get; set; }
+    public string Industry { get; set; }
+    public string Website { get; set; }
+    public string Tagline { get; set; }
+
+    // Phase tracking
+    public int CurrentPhase { get; set; } = 1;
+    public List<int> CompletedPhases { get; set; } = new();
+    public int TrustScore { get; set; } = 0;
+    public bool IsInvestorReady { get; set; } = false;
+    public DateTime? InvestorReadyBadgeAwardedAt { get; set; }
+
+    // Phase 2: Legal Info & Documents
+    public string LegalName { get; set; }
+    public string RegistrationNumber { get; set; }
+    public string LegalStructure { get; set; }
+    public string IncorporationDate { get; set; }
+    public string RegisteredAddress { get; set; }
+    public string Country { get; set; }
+    public string NafCode { get; set; }
 
     public LegalInfo Legal { get; set; }
 
@@ -22,17 +43,52 @@ public class companies
     public PhaseState Phase { get; set; } = new();
 
     public List<CompanyDocument> Documents { get; set; } = new();
+    public List<DocumentStatusResponse> DocumentStatuses { get; set; } = new();
     public List<BeneficialOwner> BeneficialOwners { get; set; } = new();
+    public List<BeneficialOwnerDto> BeneficialOwnersDto { get; set; } = new();
+
+    // Phase 3: Financial
+    public double? Q1Revenue { get; set; }
+    public double? Q2Revenue { get; set; }
+    public double? Q3Revenue { get; set; }
+    public double? Q4Revenue { get; set; }
+    public double? Valuation { get; set; }
+    public double? CurrentFunds { get; set; }
+    public double? MonthlyBurn { get; set; }
 
     public FinancialSummary FinancialSummary { get; set; }
 
-    public EquityStructure EquityStructure { get; set; }
+    // Phase 4: Equity Structure
+    public List<EquityEntryDto> EquityStructure { get; set; } = new();
+    public double? EsopPoolPercent { get; set; }
+    public int? EsopVestingMonths { get; set; }
+    public int? TotalShares { get; set; }
+
+    public EquityStructure EquityStructure_old { get; set; }
+
+    // Phase 5: Funding Ask
+    public double? FundingAskAmount { get; set; }
+    public string FundingRoundType { get; set; }
+    public double? PreMoneyValuation { get; set; }
+    public string ShareType { get; set; }
+    public List<CapitalAllocationDto> CapitalAllocation { get; set; } = new();
+    public ResourceMapDto ResourceMap { get; set; }
 
     public FundingAsk FundingAsk { get; set; }
 
+    // Phase 6: Data Room
+    public bool IsDataRoomLive { get; set; } = false;
+    public bool IsDataRoomNdaRequired { get; set; } = true;
+    public List<DataRoomDocumentResponse> DataRoomDocuments { get; set; } = new();
+    public List<DataRoomAccessRecord> DataRoomAccessRecords { get; set; } = new();
+
     public DataRoomInfo DataRoom { get; set; } = new();
 
-    public AiReview AiReview { get; set; }
+    // Phase 7: AI Review
+    public AiReviewResponse AiReview { get; set; }
+    public DateTime? LastAiReviewAt { get; set; }
+
+    public AiReview AiReview_old { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

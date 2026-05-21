@@ -79,11 +79,47 @@ export function useEntrepreneurProgressState() {
         if (!prev) return prev;
 
         const stepId = `${phase}-${step}`;
-        if (prev.completedSteps.has(stepId)) return prev;
+        const alreadyDone = prev.completedSteps.has(stepId);
 
-        const newSteps = new Set(prev.completedSteps);
-        newSteps.add(stepId);
-        return { ...prev, completedSteps: newSteps };
+        const newSteps = alreadyDone
+          ? prev.completedSteps
+          : new Set(prev.completedSteps).add(stepId);
+
+        // Only advance the cursor if we just finished the step the user
+        // is currently on. Completing an earlier step out of order (or
+        // re-completing one) must NOT roll the cursor backwards.
+        const isCursorStep = phase === prev.currentPhase && step === prev.currentStep;
+        if (!isCursorStep) {
+          return alreadyDone ? prev : { ...prev, completedSteps: newSteps };
+        }
+
+        const config = getPhaseConfig(phase);
+        const stepCount = config.hasSteps ? config.stepCount ?? 4 : 1;
+        const nextStep = (step + 1) as StepNumber;
+
+        // Finished the last step of the phase → roll over to next phase.
+        if (nextStep > stepCount) {
+          const nextPhase = getNextPhase(phase);
+          if (!nextPhase) {
+            // Final phase complete; cursor stays put.
+            return { ...prev, completedSteps: newSteps };
+          }
+          const newPhases = new Set(prev.completedPhases).add(phase);
+          return {
+            ...prev,
+            completedSteps: newSteps,
+            completedPhases: newPhases,
+            currentPhase: nextPhase,
+            currentStep: 1 as StepNumber,
+            trustScore: calculateTotalTrustScore(newPhases),
+          };
+        }
+
+        return {
+          ...prev,
+          completedSteps: newSteps,
+          currentStep: nextStep,
+        };
       });
     },
     []

@@ -27,6 +27,10 @@ secrets.json
 # ---- Tooling (machine-local) ----
 .claude/
 
+# ---- DataProtection (Development) ----
+# Key ring is persisted to disk only in Development; production uses Redis.
+.dataprotection-keys/
+
 # ---- Misc ----
 *.log
 Thumbs.db
