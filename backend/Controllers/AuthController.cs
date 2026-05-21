@@ -1,10 +1,12 @@
 ﻿using Amazon.Runtime.Internal.Util;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
 using System.ComponentModel.DataAnnotations;
@@ -36,6 +38,7 @@ namespace WebApp.Controllers
         private readonly IDistributedCache _cache;
         private readonly TwilioService _twilioService;
         private readonly WebApp.Services.Audit.IAuditLogger _audit;
+        private readonly IWebHostEnvironment _env;
 
         public AuthController(
             UserManager<ApplicationUser> userManager,
@@ -47,7 +50,8 @@ namespace WebApp.Controllers
             SaveFile saveFile,
             IDistributedCache cache,
             TwilioService twilioService,
-            WebApp.Services.Audit.IAuditLogger audit
+            WebApp.Services.Audit.IAuditLogger audit,
+            IWebHostEnvironment env
             )
         {
             _userManager = userManager;
@@ -60,6 +64,7 @@ namespace WebApp.Controllers
             _cache = cache;
             _twilioService = twilioService;
             _audit = audit;
+            _env = env;
         }
 
         #region Helper Methods
@@ -192,11 +197,86 @@ namespace WebApp.Controllers
 
 
 
-        //public class TokenRefreshRequest
-        //{
-        //    public string AccessToken { get; set; } = "";
-        //    public string RefreshToken { get; set; } = "";
-        //}
+        // Self-registerable roles. Admin is intentionally excluded — assigned
+        // via the admin console. Keep in sync with frontend src/lib/roles.ts.
+        private static readonly HashSet<string> AllowedSignupRoles = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "Entrepreneur",
+            "Creator",
+            "Investor",
+            "ServiceProvider"
+        };
+
+        // POST: api/auth/refresh-token
+        // Frontend axios interceptor calls this on 401 with the (possibly
+        // expired) bearer in the Authorization header. Returns a fresh token
+        // wrapped in the standard ApiResponse envelope.
+        [HttpPost("refresh-token")]
+        [AllowAnonymous]
+        public async Task<IActionResult> RefreshToken()
+        {
+            try
+            {
+                var authHeader = Request.Headers["Authorization"].FirstOrDefault();
+                if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                    return UnauthorizedResponse("Missing bearer token");
+
+                var expiredToken = authHeader.Substring("Bearer ".Length).Trim();
+
+                ClaimsPrincipal principal;
+                try
+                {
+                    principal = JwtTokenHelper.GetPrincipalFromExpiredToken(
+                        expiredToken,
+                        _configuration["JwtSettings:Key"],
+                        _configuration["JwtSettings:Issuer"],
+                        _configuration["JwtSettings:Audience"]);
+                }
+                catch (SecurityTokenException)
+                {
+                    return UnauthorizedResponse("Invalid token");
+                }
+
+                // JwtSecurityTokenHandler remaps "sub" → ClaimTypes.NameIdentifier
+                // by default, so check both claim names.
+                var userId = principal?.FindFirst(JwtRegisteredClaimNames.Sub)?.Value
+                          ?? principal?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId))
+                    return UnauthorizedResponse("Invalid token claims");
+
+                var user = await _userManager.FindByIdAsync(userId);
+                if (user == null)
+                    return UnauthorizedResponse("User not found");
+
+                if (user.RefreshToken == null ||
+                    user.RefreshToken.ExpiresAt < DateTime.UtcNow ||
+                    user.RefreshToken.IsRevoked)
+                {
+                    return UnauthorizedResponse("Refresh token expired or revoked");
+                }
+
+                var roles = await _userManager.GetRolesAsync(user);
+                var role = roles.Count > 0 ? roles[0] : "User";
+
+                var newToken = JwtTokenHelper.GenerateToken(
+                    user.Id.ToString(),
+                    role,
+                    _configuration["JwtSettings:Key"],
+                    _configuration["JwtSettings:Issuer"],
+                    _configuration["JwtSettings:Audience"]);
+
+                return Success("Token refreshed", new
+                {
+                    token = newToken,
+                    user = new { user.Id, user.Name, Roles = roles }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error refreshing token");
+                return InternalError("Failed to refresh token");
+            }
+        }
 
         [HttpGet("me")]
         public async Task<IActionResult> Me()
@@ -221,67 +301,6 @@ namespace WebApp.Controllers
         }
 
 
-        //[HttpPost("refresh")]
-        //public async Task<IActionResult> Refresh(TokenRefreshRequest request)
-        //{
-        //    try
-        //    {
-        //        var principal = JwtTokenHelper.GetPrincipalFromExpiredToken(
-        //            request.AccessToken,
-        //           _configuration["JwtSettings:Key"],
-        //            _configuration["JwtSettings:Issuer"],
-        //            _configuration["JwtSettings:Audience"]
-        //        );
-
-        //        var userId = principal?.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
-        //        if (userId == null)
-        //            return UnauthorizedResponse("Invalid access token");
-
-        //        var user = await _userManager.FindByIdAsync(userId);
-        //        if (user == null)
-        //            return UnauthorizedResponse("User not found");
-
-        //        if (user.RefreshToken == null ||
-        //            user.RefreshToken.Token != request.RefreshToken ||
-        //            user.RefreshToken.ExpiresAt < DateTime.UtcNow ||
-        //            user.RefreshToken.IsRevoked)
-        //        {
-        //            return UnauthorizedResponse("Invalid refresh token");
-        //        }
-
-        //        var newAccessToken = JwtTokenHelper.GenerateToken(
-        //            user.Id.ToString(),
-        //            (await _userManager.GetRolesAsync(user)).FirstOrDefault() ?? "User",
-        //            _configuration["JwtSettings:Key"],
-        //            _configuration["JwtSettings:Issuer"],
-        //            _configuration["JwtSettings:Audience"]
-        //        );
-
-        //        var newRefreshToken = JwtTokenHelper.GenerateRefreshToken();
-
-        //        user.RefreshToken.Token = newRefreshToken;
-        //        user.RefreshToken.ExpiresAt = DateTime.UtcNow.AddDays(7);
-
-        //        await _userManager.UpdateAsync(user);
-
-        //        return Success("Token refreshed", new
-        //        {
-        //            accessToken = newAccessToken,
-        //            refreshToken = newRefreshToken
-        //        });
-        //    }
-        //    catch (SecurityTokenException ste)
-        //    {
-        //        _logger.LogWarning(ste, "Invalid token during refresh");
-        //        return UnauthorizedResponse("Invalid token");
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        _logger.LogError(ex, "Error refreshing token");
-        //        return InternalError("Failed to refresh token");
-        //    }
-        //}
-
         [Authorize]
         [HttpPost("logout")]
         public async Task<IActionResult> Logout()
@@ -304,8 +323,11 @@ namespace WebApp.Controllers
             if (!ModelState.IsValid)
                 return Fail("Invalid request data");
 
-            if (string.Equals(model.User, "Admin", StringComparison.OrdinalIgnoreCase))
+            if (string.IsNullOrWhiteSpace(model.User) || !AllowedSignupRoles.Contains(model.User))
                 return Fail("Invalid role");
+
+            // Normalize to the canonical casing the role was seeded with.
+            var canonicalRole = AllowedSignupRoles.First(r => r.Equals(model.User, StringComparison.OrdinalIgnoreCase));
 
             var existingUser = await _userManager.FindByEmailAsync(model.Email);
             if (existingUser != null)
@@ -319,7 +341,7 @@ namespace WebApp.Controllers
                 UserName = model.Email,
                 Email = model.Email,
                 Name = model.Name,
-                User = model.User,
+                User = canonicalRole,
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -327,19 +349,28 @@ namespace WebApp.Controllers
             if (!result.Succeeded)
                 return Fail("User registration failed");
 
-            var roleExists = await _roleManager.RoleExistsAsync(model.User);
+            var roleExists = await _roleManager.RoleExistsAsync(canonicalRole);
             if (!roleExists)
             {
-                return InternalError("Failed to create default role");
+                return InternalError("Role not seeded. Check startup role seeding in Program.cs.");
             }
 
-            await _userManager.AddToRoleAsync(user, model.User);
+            await _userManager.AddToRoleAsync(user, canonicalRole);
+
+            // Dev convenience: auto-confirm so signup→login works without a
+            // real inbox. Production must still go through the email link.
+            if (_env.IsDevelopment())
+            {
+                user.EmailConfirmed = true;
+                await _userManager.UpdateAsync(user);
+                _logger.LogInformation("Auto-confirmed email for {Email} (Development environment)", user.Email);
+            }
 
             var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
 
             var encodedToken = WebUtility.UrlEncode(token);
 
-            var baseUrl = _configuration["BaseUrl"] ?? "http://localhost:3000";
+            var baseUrl = _configuration["BaseUrl"]?.TrimEnd('/') ?? "https://mondialbusiness.eu";
             var confirmationLink = $"{baseUrl}/confirm-email?userId={Uri.EscapeDataString(user.Id.ToString())}&token={encodedToken}";
 
             bool emailSent = await _emailService.SendEmailAsync(user.Email, "Confirm your email",
@@ -348,36 +379,86 @@ namespace WebApp.Controllers
             if (!emailSent)
                 return InternalError("User registered, but failed to send confirmation email.");
 
-            _audit.Record("register", user.Email!, true, new { role = model.User });
+            _audit.Record("register", user.Email!, true, new { role = canonicalRole });
 
             return StatusCode(201, new { success = true, message = "User registered successfully! Please check your email for confirmation.", data = new { user.Id, user.Email } });
         }
 
+        // GET: api/auth/confirm-email?userId=&token=
+        // Variant for the link in the confirmation email so users can hit it
+        // directly from their inbox. The frontend page also calls the POST
+        // variant when handling the link client-side.
+        [HttpGet("confirm-email")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ConfirmEmailGet([FromQuery] string userId, [FromQuery] string token)
+        {
+            return await ConfirmEmailCore(userId, token);
+        }
+
         [HttpPost("confirm-email")]
+        [AllowAnonymous]
         public async Task<IActionResult> ConfirmEmail([FromBody] ConfirmEmailModel model)
         {
-            if (string.IsNullOrEmpty(model.UserId) || string.IsNullOrEmpty(model.Token))
-            {
-                return Fail("Invalid confirmation request. User ID and Token are required.");
-            }
+            return await ConfirmEmailCore(model?.UserId, model?.Token);
+        }
 
-            var user = await _userManager.FindByIdAsync(model.UserId);
+        private async Task<IActionResult> ConfirmEmailCore(string userId, string token)
+        {
+            if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(token))
+                return Fail("Invalid confirmation request. User ID and Token are required.");
+
+            var user = await _userManager.FindByIdAsync(userId);
             if (user == null)
-            {
                 return NotFoundResponse("User not found.");
-            }
 
             if (user.EmailConfirmed)
-            {
                 return Success("Your email is already confirmed. You can log in now.");
-            }
-            var result = await _userManager.ConfirmEmailAsync(user, model.Token);
+
+            var result = await _userManager.ConfirmEmailAsync(user, token);
             if (!result.Succeeded)
-            {
                 return Fail("Email confirmation failed. Invalid or expired token.");
-            }
 
             return Success("Email confirmed successfully! You can now log in.");
+        }
+
+        public class ResendConfirmationModel
+        {
+            [Required]
+            [EmailAddress]
+            public string Email { get; set; }
+        }
+
+        // POST: api/auth/resend-confirmation-email
+        // Regenerates and resends the confirmation link. Always returns a
+        // generic success response so a caller cannot enumerate which emails
+        // are registered.
+        [HttpPost("resend-confirmation-email")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ResendConfirmationEmail([FromBody] ResendConfirmationModel model)
+        {
+            if (!ModelState.IsValid)
+                return Fail("Invalid email");
+
+            var user = await _userManager.FindByEmailAsync(model.Email);
+            if (user != null && !user.EmailConfirmed)
+            {
+                var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+                var encodedToken = WebUtility.UrlEncode(token);
+                var baseUrl = _configuration["BaseUrl"]?.TrimEnd('/') ?? "https://mondialbusiness.eu";
+                var confirmationLink = $"{baseUrl}/confirm-email?userId={Uri.EscapeDataString(user.Id.ToString())}&token={encodedToken}";
+
+                await _emailService.SendEmailAsync(user.Email, "Confirm your email",
+                    $"Please confirm your account by clicking this link: <a href='{confirmationLink}'>Confirm Email</a>");
+
+                _audit.Record("resend_confirmation", user.Email!, true);
+            }
+            else
+            {
+                _audit.Record("resend_confirmation", model.Email, false,
+                    new { reason = user == null ? "unknown_email" : "already_confirmed" });
+            }
+
+            return Success("If an unconfirmed account exists for that email, a new confirmation link has been sent.");
         }
 
 
@@ -405,8 +486,8 @@ namespace WebApp.Controllers
 
             var token = await _userManager.GeneratePasswordResetTokenAsync(user);
             var encodedToken = WebUtility.UrlEncode(token);
-            var baseUrl = _configuration["BaseUrl"] ?? "http://localhost:3000";
-            var resetUrl = $"{baseUrl}/reset-password?email={model.Email}&token={encodedToken}";
+            var baseUrl = _configuration["BaseUrl"]?.TrimEnd('/') ?? "https://mondialbusiness.eu";
+            var resetUrl = $"{baseUrl}/reset-password?email={Uri.EscapeDataString(model.Email)}&token={encodedToken}";
 
             _logger.LogInformation($"Generated password reset token for {model.Email}");
             bool emailSent = await _emailService.SendEmailAsync(user.Email, "Password Reset",

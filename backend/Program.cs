@@ -25,6 +25,7 @@ using System.Security.Claims;
 using System.Text;
 using WebApp.Configuration;
 using WebApp.DbContext;
+using WebApp.Extensions;
 using WebApp.Filters;
 using WebApp.HealthChecks;
 using WebApp.Hubs;
@@ -110,9 +111,23 @@ builder.Services.AddSingleton<IPresenceTracker, RedisPresenceTracker>();
 // Shared DataProtection key ring: without this each replica generates its
 // own keys, so auth/reset tokens and antiforgery break behind a load
 // balancer. SetApplicationName must be identical across replicas.
-builder.Services.AddDataProtection()
-    .PersistKeysToStackExchangeRedis(redisMultiplexer, $"{redisInstanceName}-DataProtection-Keys")
+//
+// In Development we fall back to the filesystem so a dev box without Redis
+// can still call encryption-dependent endpoints (email confirmation tokens,
+// password reset tokens). Production always uses Redis.
+var dpBuilder = builder.Services.AddDataProtection()
     .SetApplicationName("MondialBackend");
+
+if (builder.Environment.IsDevelopment())
+{
+    var keysDir = Path.Combine(builder.Environment.ContentRootPath, ".dataprotection-keys");
+    Directory.CreateDirectory(keysDir);
+    dpBuilder.PersistKeysToFileSystem(new DirectoryInfo(keysDir));
+}
+else
+{
+    dpBuilder.PersistKeysToStackExchangeRedis(redisMultiplexer, $"{redisInstanceName}-DataProtection-Keys");
+}
 
 
 // Allowed origins come from configuration (Cors:AllowedOrigins) so each
@@ -257,6 +272,9 @@ builder.Services.AddHostedService<EmailBackgroundService>();
 builder.Services.AddScoped<EmailService>();
 builder.Services.AddScoped<SaveFile>();
 builder.Services.AddScoped<TwilioService>();
+
+// Company Services: 9-phase entrepreneur onboarding system
+builder.Services.AddCompanyServices(builder.Configuration);
 
 // Health checks: liveness (process up) is the bare endpoint; readiness
 // (tagged "ready") verifies MongoDB + Redis so the orchestrator only routes
@@ -512,6 +530,25 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions
 {
     Predicate = check => check.Tags.Contains("ready")
 });
+
+// Seed Identity roles so first-run registration doesn't fail with
+// "Failed to create default role". Idempotent — RoleExistsAsync gate.
+using (var scope = app.Services.CreateScope())
+{
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<ApplicationRole>>();
+    string[] roles = { "Admin", "Entrepreneur", "Creator", "Investor", "ServiceProvider" };
+    foreach (var roleName in roles)
+    {
+        if (!await roleManager.RoleExistsAsync(roleName))
+        {
+            await roleManager.CreateAsync(new ApplicationRole
+            {
+                Name = roleName,
+                Description = $"{roleName} role"
+            });
+        }
+    }
+}
 
 try
 {
