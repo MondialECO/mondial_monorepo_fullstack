@@ -205,7 +205,7 @@ export function Phase3RevenueInputClient() {
         </div>
 
         <StepFooter
-          backUrl="/dashboard/entrepreneur/phase-2/dashboard"
+          backUrl="/dashboard/entrepreneur/phase-2/step-4"
           onNextClick={handleNextClick}
           isLoading={isLoading}
           nextLabel="Continue"

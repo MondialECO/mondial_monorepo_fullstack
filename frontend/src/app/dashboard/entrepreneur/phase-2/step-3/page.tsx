@@ -1,244 +1,418 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Users, CheckCircle, Shield, Lock, AlertCircle } from 'lucide-react';
-import { useEntrepreneurProgress } from '@/hooks/useEntrepreneurProgress';
-import { EntrepreneurLayout } from '@/components/entrepreneur/EntrepreneurLayout';
-import { ProgressSidebar } from '@/components/entrepreneur/ProgressSidebar';
-import { PhaseHeader } from '@/components/entrepreneur/PhaseHeader';
-import { StepFooter } from '@/components/entrepreneur/StepFooter';
-import { RouteGuard } from '@/components/entrepreneur/RouteGuard';
-import { Button } from '@/components/ui/button';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  Users,
+  ShieldCheck,
+  UserCircle2,
+  Trash2,
+  Plus,
+  Lock,
+  Loader2,
+  CheckCircle2,
+} from "lucide-react";
+import { useEntrepreneurProgress } from "@/hooks/useEntrepreneurProgress";
+import { RouteGuard } from "@/components/entrepreneur/RouteGuard";
+import PhaseStepShell from "@/components/entrepreneur/PhaseStepShell";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
-const beneficiaryOwners = [
-  { id: '1', name: 'John Smith', role: 'Founder & CEO', ownership: '60%', verified: false },
-  { id: '2', name: 'Jane Doe', role: 'Co-Founder & CTO', ownership: '40%', verified: false },
-];
+interface Shareholder {
+  id: string;
+  fullName: string;
+  ownership: number; // percent
+  nationality: string;
+  role?: string;
+}
 
-const PHASE_2_STEPS = [
-  { step: 1 as const, title: 'Legal Identity', subtitle: 'Enter company info' },
-  { step: 2 as const, title: 'Required Documentation', subtitle: 'Upload documents' },
-  { step: 3 as const, title: 'Ownership & KYC', subtitle: 'Verify owners' },
-  { step: 4 as const, title: 'Financial Preview', subtitle: 'Review summary' },
-];
+type Phase3Data = {
+  shareholders?: Shareholder[];
+  kycStarted?: boolean;
+  kycVerified?: boolean;
+};
 
-function Phase2Step3PageContent() {
+function uid() {
+  return Math.random().toString(36).slice(2, 9);
+}
+
+function Phase2Step3Content() {
   const router = useRouter();
-  const [isValidating, setIsValidating] = useState(false);
-  const [validationError, setValidationError] = useState<string>('');
-  const { progress, savePhaseData, moveToNextStep, getPhaseData } = useEntrepreneurProgress();
+  const { progress, completeStep, savePhaseData, getPhaseData } = useEntrepreneurProgress();
 
-  const savedData = getPhaseData(2) as { owners?: Array<{ id: string; verified: boolean }> } | undefined;
-  const initialVerified = new Set(
-    savedData?.owners?.filter((owner) => owner.verified).map((owner) => owner.id) || []
+  const stored = (getPhaseData(2) as { phase3?: Phase3Data } | undefined)?.phase3 ?? {};
+  const [shareholders, setShareholders] = useState<Shareholder[]>(
+    stored.shareholders && stored.shareholders.length > 0
+      ? stored.shareholders
+      : [
+          { id: uid(), fullName: "Elowen Davies", ownership: 20, nationality: "United Kingdom", role: "Chief Executive" },
+          { id: uid(), fullName: "Elowen Davies", ownership: 40, nationality: "Canada", role: "CMO" },
+        ],
   );
-  const [verifiedOwners, setVerifiedOwners] = useState<Set<string>>(initialVerified);
+  const [kycVerified, setKycVerified] = useState<boolean>(stored.kycVerified ?? false);
+  const [mode, setMode] = useState<"view" | "edit">(shareholders.length > 0 ? "view" : "edit");
+  const [busyKyc, setBusyKyc] = useState(false);
 
-  const allOwnersVerified = verifiedOwners.size === beneficiaryOwners.length;
+  function persist(next: Partial<Phase3Data>) {
+    const prev = (getPhaseData(2) as object) ?? {};
+    savePhaseData(2, { ...prev, phase3: { shareholders, kycVerified, ...next } });
+  }
 
-  const handleOwnerVerify = (ownerId: string) => {
-    const newVerified = new Set(verifiedOwners);
-    newVerified.add(ownerId);
-    setVerifiedOwners(newVerified);
-  };
+  function updateRow(id: string, patch: Partial<Shareholder>) {
+    setShareholders((rows) => {
+      const next = rows.map((r) => (r.id === id ? { ...r, ...patch } : r));
+      persist({ shareholders: next });
+      return next;
+    });
+  }
 
-  const handleNextClick = async () => {
-    setValidationError('');
-    setIsValidating(true);
+  function addRow() {
+    const next: Shareholder[] = [
+      ...shareholders,
+      { id: uid(), fullName: "", ownership: 0, nationality: "" },
+    ];
+    setShareholders(next);
+    setMode("edit");
+    persist({ shareholders: next });
+  }
 
-    try {
-      if (!allOwnersVerified) {
-        setValidationError('Please verify all beneficial owners');
-        setIsValidating(false);
-        return;
-      }
+  function removeRow(id: string) {
+    const next = shareholders.filter((r) => r.id !== id);
+    setShareholders(next);
+    persist({ shareholders: next });
+    if (next.length === 0) setMode("edit");
+  }
 
-      const existingData = getPhaseData(2) || {};
-      const formData = {
-        ...existingData,
-        owners: beneficiaryOwners.map((owner) => ({
-          ...owner,
-          verified: verifiedOwners.has(owner.id),
-        })),
-        kycStatus: 'verified',
-        biometricVerified: true,
-      };
+  function devConfirmKyc() {
+    setBusyKyc(true);
+    setTimeout(() => {
+      setKycVerified(true);
+      setBusyKyc(false);
+      persist({ kycVerified: true });
+    }, 400);
+  }
 
-      savePhaseData(2, formData);
-      await new Promise(resolve => setTimeout(resolve, 500));
-      const moveResult = moveToNextStep(2, 3);
+  function handleContinue() {
+    completeStep(2, 3);
+    router.push("/dashboard/entrepreneur/phase-2/step-4");
+  }
 
-      if (!moveResult) {
-        setValidationError('Failed to advance to next step');
-        return;
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 100));
-      router.push('/dashboard/entrepreneur/phase-2/step-4');
-    } catch (error) {
-      setValidationError('Failed to proceed. Please try again.');
-    } finally {
-      setIsValidating(false);
-    }
-  };
-
-  if (!progress) return null;
-
-  const statusMap = {
-    1: progress.completedSteps.has('2-1') ? 'completed' : progress.currentStep === 1 ? 'current' : 'pending',
-    2: progress.completedSteps.has('2-2') ? 'completed' : progress.currentStep === 2 ? 'current' : 'pending',
-    3: progress.completedSteps.has('2-3') ? 'completed' : progress.currentStep === 3 ? 'current' : 'pending',
-    4: progress.completedSteps.has('2-4') ? 'completed' : progress.currentStep === 4 ? 'current' : 'pending',
-  };
-
-  const stepIndicators = PHASE_2_STEPS.map((step) => ({
-    ...step,
-    status: statusMap[step.step as keyof typeof statusMap] as any,
-  }));
-
-  const sidebarContent = (
-    <ProgressSidebar
-      title="Verification Progress"
-      steps={stepIndicators}
-      overallScore={60}
-      scoreLabel="OVERALL SCORE"
-      scoreDescription="Verify beneficial owners to continue."
-    />
+  const filledPct = Math.min(
+    100,
+    Math.round(
+      (shareholders.filter((s) => s.fullName && s.ownership > 0 && s.nationality).length /
+        Math.max(1, shareholders.length)) *
+        100,
+    ),
   );
+
+  if (!progress) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-muted-foreground">
+        Loading…
+      </div>
+    );
+  }
+
+  const canContinue = shareholders.length > 0 && filledPct === 100 && kycVerified;
 
   return (
-    <EntrepreneurLayout sidebar={sidebarContent}>
-      <div className="space-y-4 md:space-y-6">
-        <PhaseHeader
-          title="Ownership & KYC Verification"
-          subtitle="Verify all beneficial owners and complete KYC checks to ensure regulatory compliance."
-          progressLabel="PROGRESS"
-          progressValue="Step 3 of 4"
-          progressPercentage={75}
-        />
-
-        {/* Ownership Section */}
-        <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-4 sm:p-6 md:p-8 space-y-6">
+    <PhaseStepShell
+      title="Ownership & KYC Verification"
+      subtitle="Identify beneficial owners and complete biometric identity verification."
+      progressLabel="Verification"
+      progressValue={`From ${filledPct}% Filled`}
+      progressIcon={Users}
+      primaryAction={{ label: "Continue", onClick: handleContinue, disabled: !canContinue }}
+      secondaryAction={{ label: "Save Draft", onClick: () => persist({}) }}
+      footerHint={{
+        label: "Back to Uploads",
+        onClick: () => router.push("/dashboard/entrepreneur/phase-2/step-2"),
+      }}
+      infoBanner={{
+        title: "Why need this information",
+        description:
+          "These documents are required for legal compliance and to protect the mondial.eco ecosystem. We use them to verify that your business is in good standing before unlocking access to specialized eco-funding and commercial partnerships.",
+      }}
+    >
+      {/* Beneficial Ownership */}
+      <section className="rounded-2xl border border-border bg-card/40 p-5 mb-6">
+        <div className="flex items-start justify-between gap-4 mb-4">
           <div>
-            <h3 className="text-lg font-semibold text-neutral-1 mb-4 flex items-center gap-2">
-              <Users className="w-5 h-5" />
-              Beneficial Owners
-            </h3>
-            <p className="text-sm text-neutral-5 mb-4">
-              Verify each beneficial owner (>25% stake) to complete KYC requirements.
-            </p>
-
-            <div className="space-y-3">
-              {beneficiaryOwners.map((owner) => {
-                const isVerified = verifiedOwners.has(owner.id);
-                return (
-                  <div
-                    key={owner.id}
-                    className={`border-2 rounded-xl p-4 transition ${
-                      isVerified
-                        ? 'bg-green-50 border-green-200'
-                        : 'bg-background border-neutral-2 hover:border-primary/50'
-                    }`}
-                  >
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                      <div className="flex items-start gap-3 flex-1">
-                        <div className={`w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                          isVerified ? 'bg-green-100' : 'bg-neutral-100'
-                        }`}>
-                          {isVerified ? (
-                            <CheckCircle className="w-6 h-6 text-green-600" />
-                          ) : (
-                            <Users className="w-6 h-6 text-neutral-5" />
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <h4 className="text-sm sm:text-base font-semibold text-neutral-1">{owner.name}</h4>
-                          <p className="text-xs sm:text-sm text-neutral-5 mt-1">{owner.role}</p>
-                          <p className="text-xs sm:text-sm text-neutral-5 mt-0.5 font-medium">{owner.ownership} ownership</p>
-                        </div>
-                      </div>
-                      <Button
-                        onClick={() => handleOwnerVerify(owner.id)}
-                        variant={isVerified ? 'outline' : 'default'}
-                        size="sm"
-                        className="w-full sm:w-auto gap-2"
-                        disabled={isVerified}
-                      >
-                        {isVerified ? (
-                          <>
-                            <CheckCircle className="w-4 h-4" />
-                            Verified
-                          </>
-                        ) : (
-                          <>
-                            <Shield className="w-4 h-4" />
-                            Verify
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* Security & Privacy Section */}
-        <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-4 sm:p-6 md:p-8 space-y-6">
-          <div>
-            <h3 className="text-lg font-semibold text-neutral-1 mb-4 flex items-center gap-2">
-              <Lock className="w-5 h-5" />
-              Security & Compliance
-            </h3>
-
-            <div className="space-y-3">
-              {[
-                { icon: Lock, label: 'Data Encryption', description: 'AES-256 encryption for all data' },
-                { icon: Shield, label: 'GDPR Compliant', description: 'Full data protection compliance' },
-                { icon: Users, label: 'KYC/AML', description: 'AMLD5 verified identity checks' },
-              ].map(({ icon: Icon, label, description }) => (
-                <div key={label} className="flex items-start gap-3 p-3 bg-background rounded-lg border border-neutral-2">
-                  <Icon className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-neutral-1">{label}</p>
-                    <p className="text-xs text-neutral-5 mt-0.5">{description}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Info Box */}
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex gap-3">
-          <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm font-semibold text-blue-900 mb-1">KYC Verification</p>
-            <p className="text-sm text-blue-800">
-              Each beneficial owner will undergo identity verification. This is a regulatory requirement to prevent fraud and money laundering.
+            <h2 className="text-base font-semibold text-foreground">Beneficial Ownership</h2>
+            <p className="text-xs text-muted-foreground mt-1">
+              Identify beneficial owners and complete biometric identity verification.
             </p>
           </div>
+          <Button variant="outline" size="sm" onClick={addRow} className="gap-1">
+            <Plus className="w-4 h-4" />
+            Add Shareholder
+          </Button>
         </div>
 
-        <StepFooter
-          backUrl="/dashboard/entrepreneur/phase-2/step-2"
-          onNextClick={handleNextClick}
-          isLoading={isValidating}
-          isNextDisabled={!allOwnersVerified}
-          nextLabel="Next"
-          nextValidationError={validationError}
+        {mode === "view" ? (
+          <TableView shareholders={shareholders} onEdit={() => setMode("edit")} />
+        ) : (
+          <EditView
+            shareholders={shareholders}
+            updateRow={updateRow}
+            removeRow={removeRow}
+            onDone={() => setMode(shareholders.length > 0 ? "view" : "edit")}
+          />
+        )}
+      </section>
+
+      {/* Two-column: Representative KYC + Security & Privacy */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <RepresentativeKycCard
+          verified={kycVerified}
+          busy={busyKyc}
+          onScan={devConfirmKyc}
         />
+        <SecurityPrivacyCard />
       </div>
-    </EntrepreneurLayout>
+
+      {/* Locked checks preview row */}
+      <div className="mt-6 rounded-2xl border border-border bg-card/40 px-5 py-4 flex items-center gap-4 opacity-70">
+        <span className="w-9 h-9 rounded-full bg-muted text-muted-foreground flex items-center justify-center text-sm font-semibold">
+          3
+        </span>
+        <div className="flex-1">
+          <p className="text-sm font-semibold text-foreground">Ownership & KYC Checks</p>
+          <p className="text-xs text-muted-foreground">KBIS, RIB, Insurance, Tax Certificates</p>
+        </div>
+        <Lock className="w-4 h-4 text-muted-foreground" />
+      </div>
+    </PhaseStepShell>
+  );
+}
+
+function TableView({ shareholders, onEdit }: { shareholders: Shareholder[]; onEdit: () => void }) {
+  if (shareholders.length === 0) {
+    return (
+      <div className="text-center py-10 text-sm text-muted-foreground">
+        No shareholders yet. Click "Add Shareholder" to begin.
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-xl border border-border overflow-hidden">
+      <table className="w-full text-sm">
+        <thead className="bg-muted/40">
+          <tr className="text-left text-[11px] uppercase tracking-wider text-muted-foreground">
+            <th className="px-4 py-3 font-semibold">Full Name</th>
+            <th className="px-4 py-3 font-semibold">Ownership</th>
+            <th className="px-4 py-3 font-semibold">Nationality</th>
+            <th className="px-4 py-3 font-semibold text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {shareholders.map((s) => (
+            <tr key={s.id} className="border-t border-border">
+              <td className="px-4 py-4">
+                <p className="font-medium text-foreground">{s.fullName || "—"}</p>
+                {s.role && <p className="text-xs text-muted-foreground">{s.role}</p>}
+              </td>
+              <td className="px-4 py-4 text-foreground">{s.ownership}%</td>
+              <td className="px-4 py-4 text-foreground">{s.nationality || "—"}</td>
+              <td className="px-4 py-4 text-right">
+                <button
+                  onClick={onEdit}
+                  className="text-primary text-sm font-medium hover:underline"
+                >
+                  Edit
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function EditView({
+  shareholders,
+  updateRow,
+  removeRow,
+  onDone,
+}: {
+  shareholders: Shareholder[];
+  updateRow: (id: string, patch: Partial<Shareholder>) => void;
+  removeRow: (id: string) => void;
+  onDone: () => void;
+}) {
+  return (
+    <div className="space-y-3">
+      {shareholders.map((s) => (
+        <div
+          key={s.id}
+          className="grid grid-cols-1 md:grid-cols-[1fr_140px_1fr_auto] gap-3 items-end"
+        >
+          <div>
+            <label className="block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+              Full Name
+            </label>
+            <Input
+              value={s.fullName}
+              onChange={(e) => updateRow(s.id, { fullName: e.target.value })}
+              placeholder="John Doe"
+              className="h-10 bg-card"
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+              Ownership (%)
+            </label>
+            <Input
+              type="number"
+              min={0}
+              max={100}
+              value={s.ownership}
+              onChange={(e) => updateRow(s.id, { ownership: Number(e.target.value) })}
+              className="h-10 bg-card"
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+              Nationality
+            </label>
+            <Input
+              value={s.nationality}
+              onChange={(e) => updateRow(s.id, { nationality: e.target.value })}
+              placeholder="United States"
+              className="h-10 bg-card"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => removeRow(s.id)}
+            className="h-10 w-10 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-red-600 hover:border-red-300 transition"
+            aria-label="Remove shareholder"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      ))}
+
+      {shareholders.length > 0 && (
+        <div className="pt-2">
+          <Button variant="outline" size="sm" onClick={onDone}>
+            Done editing
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RepresentativeKycCard({
+  verified,
+  busy,
+  onScan,
+}: {
+  verified: boolean;
+  busy: boolean;
+  onScan: () => void;
+}) {
+  return (
+    <div className="rounded-2xl border border-border bg-card/40 p-5 space-y-4">
+      <div>
+        <h3 className="font-semibold text-foreground">Representative KYC</h3>
+        <p className="text-xs text-muted-foreground mt-1">
+          Verify owners and conduct biometric checks for KYC.
+        </p>
+      </div>
+
+      <div className="rounded-xl border border-border bg-background p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+              <UserCircle2 className="w-5 h-5 text-primary" />
+            </span>
+            <div>
+              <p className="text-sm font-semibold text-foreground">Primary Applicant</p>
+              <p className="text-xs text-muted-foreground">Sarah Jenkis (Director)</p>
+            </div>
+          </div>
+          <span
+            className={cn(
+              "text-[10px] font-semibold uppercase tracking-wider rounded-full px-2 py-1",
+              verified
+                ? "bg-green-600/15 text-green-700 dark:text-green-300"
+                : "bg-primary/10 text-primary",
+            )}
+          >
+            {verified ? "Verified" : "Not Started"}
+          </span>
+        </div>
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          Complete the biometric identity verification using your mobile device or webcam.
+        </p>
+
+        <Button onClick={onScan} disabled={verified || busy} className="w-full gap-2">
+          {busy && <Loader2 className="w-4 h-4 animate-spin" />}
+          {verified ? (
+            <span className="inline-flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4" /> Identity Verified
+            </span>
+          ) : (
+            "Start Identity Verification"
+          )}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function SecurityPrivacyCard() {
+  return (
+    <div className="rounded-2xl border border-border bg-card/40 p-5 space-y-4">
+      <div>
+        <h3 className="font-semibold text-foreground">Security & Privacy</h3>
+        <p className="text-xs text-muted-foreground mt-1">
+          Verify ownership and complete KYC for better security.
+        </p>
+      </div>
+
+      <div className="rounded-xl border border-border bg-background p-4 space-y-3">
+        <div className="flex items-center gap-3">
+          <span className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+            <ShieldCheck className="w-5 h-5 text-primary" />
+          </span>
+          <p className="text-sm font-semibold text-foreground">Regular Compliance</p>
+        </div>
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          Your personal data is encrypted and handled by our certified KYC partner to ensure strict
+          regulatory compliance (AML/CFT).
+        </p>
+
+        <div className="flex items-center gap-4 pt-1">
+          <ComplianceBadge label="ISO 27001" />
+          <span className="text-border">|</span>
+          <ComplianceBadge label="GDPR" />
+          <span className="text-border">|</span>
+          <ComplianceBadge label="SOC2" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ComplianceBadge({ label }: { label: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+      <ShieldCheck className="w-3.5 h-3.5" />
+      {label}
+    </span>
   );
 }
 
 export default function Phase2Step3Page() {
   return (
     <RouteGuard requiredPhase={2} requiredStep={3}>
-      <Phase2Step3PageContent />
+      <Phase2Step3Content />
     </RouteGuard>
   );
 }

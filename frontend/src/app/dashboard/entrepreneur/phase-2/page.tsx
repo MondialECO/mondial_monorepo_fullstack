@@ -1,228 +1,166 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { Briefcase, ArrowRight, Clock } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useEntrepreneurProgress } from '@/hooks/useEntrepreneurProgress';
-import { RouteGuard } from '@/components/entrepreneur/RouteGuard';
+import Link from "next/link";
+import {
+  Briefcase,
+  FileText,
+  FileUp,
+  Users,
+  BadgeCheck,
+  ArrowRight,
+  CheckCircle2,
+  Lock,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useEntrepreneurProgress } from "@/hooks/useEntrepreneurProgress";
+import { RouteGuard } from "@/components/entrepreneur/RouteGuard";
+import { cn } from "@/lib/utils";
 
-const phaseSteps = [
+/**
+ * Phase 2 entry point. The Figma uses an inline per-step layout (no hub
+ * page), so this is intentionally minimal — a compact roadmap of the 4
+ * sub-steps with a CTA that drops the user into the first incomplete one.
+ */
+const STEPS = [
   {
     step: 1,
-    title: 'Legal Identity',
-    description: 'Register your company legal structure',
-    href: '/dashboard/entrepreneur/phase-2/step-1',
+    title: "Legal Identity",
+    subtitle: "Register your company legal structure",
+    icon: FileText,
+    href: "/dashboard/entrepreneur/phase-2/step-1",
   },
   {
     step: 2,
-    title: 'Document Upload',
-    description: 'Upload company documents and certificates',
-    href: '/dashboard/entrepreneur/phase-2/step-2',
+    title: "Document Submission",
+    subtitle: "Upload KBIS, RIB, tax and insurance",
+    icon: FileUp,
+    href: "/dashboard/entrepreneur/phase-2/step-2",
   },
   {
     step: 3,
-    title: 'Ownership & KYC',
-    description: 'Verify ownership and beneficial owners',
-    href: '/dashboard/entrepreneur/phase-2/step-3',
+    title: "Ownership & KYC",
+    subtitle: "Declare beneficial owners + biometric KYC",
+    icon: Users,
+    href: "/dashboard/entrepreneur/phase-2/step-3",
   },
   {
     step: 4,
-    title: 'Financial Preview',
-    description: 'Preview your financial information',
-    href: '/dashboard/entrepreneur/phase-2/step-4',
+    title: "Company Verification",
+    subtitle: "Receive your Mondial.eco Certified badge",
+    icon: BadgeCheck,
+    href: "/dashboard/entrepreneur/phase-2/step-4",
   },
 ];
 
-interface StepCardProps {
-  step: number;
-  title: string;
-  description: string;
-  href: string;
-  isActive: boolean;
-  isCompleted: boolean;
-  isLocked: boolean;
-}
-
-function StepCard({
-  step,
-  title,
-  description,
-  href,
-  isActive,
-  isCompleted,
-  isLocked,
-}: StepCardProps) {
-  return (
-    <Link href={isLocked ? '#' : href}>
-      <div
-        className={`border rounded-2xl p-6 transition-all ${
-          isLocked
-            ? 'border-border bg-neutral-100 opacity-50 cursor-not-allowed'
-            : isActive
-            ? 'border-primary bg-primary/5'
-            : 'border-border bg-background hover:border-primary hover:shadow-md'
-        }`}
-      >
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div
-              className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold ${
-                isCompleted
-                  ? 'bg-green-100 text-green-700'
-                  : isActive
-                  ? 'bg-primary/10 text-primary'
-                  : 'bg-muted text-muted-foreground'
-              }`}
-            >
-              {step}
-            </div>
-            <div>
-              <h3 className="font-semibold text-foreground">{title}</h3>
-              <p className="text-sm text-muted-foreground">{description}</p>
-            </div>
-          </div>
-          {isActive && <Clock className="w-5 h-5 text-primary animate-pulse" />}
-        </div>
-
-        <div className="flex items-center justify-between pt-4 border-t border-border">
-          <span className={`text-xs font-semibold ${
-            isCompleted
-              ? 'text-green-600'
-              : isActive
-              ? 'text-primary'
-              : 'text-muted-foreground'
-          }`}>
-            {isCompleted ? 'Completed' : isActive ? 'In Progress' : 'Locked'}
-          </span>
-          <ArrowRight className="w-4 h-4 text-muted-foreground" />
-        </div>
-      </div>
-    </Link>
-  );
-}
-
-function Phase2PageContent() {
+function Phase2HubContent() {
   const { progress } = useEntrepreneurProgress();
-
   if (!progress) return null;
 
-  const completedSteps = Array.from(progress.completedSteps).filter(
-    (step) => step.startsWith('2-')
-  ).length;
-  const totalSteps = phaseSteps.length;
-  const progressPercent = (completedSteps / totalSteps) * 100;
+  const isDone = (n: number) => progress.completedSteps.has(`2-${n}`);
+  const maxDone = STEPS.reduce((m, s) => (isDone(s.step) ? Math.max(m, s.step) : m), 0);
+  const firstOpen = STEPS.find((s) => !isDone(s.step));
+  const pct = Math.round((STEPS.filter((s) => isDone(s.step)).length / STEPS.length) * 100);
 
   return (
-    <div className="min-h-screen bg-muted/30">
-      <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
+    <div className="min-h-screen bg-muted/40">
+      <div className="mx-auto max-w-[1000px] px-4 sm:px-6 py-6 sm:py-10 space-y-6">
         {/* Header */}
-        <div className="space-y-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <Briefcase className="w-6 h-6 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-4xl font-bold text-foreground">
-                Phase 2: Company Verification
-              </h1>
-              <p className="text-lg text-muted-foreground mt-2">
-                Get your company verified with an official badge
-              </p>
-            </div>
-          </div>
-
-          {/* Progress */}
-          <div className="bg-background border border-border rounded-2xl p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground font-medium">PROGRESS</p>
-                <p className="text-3xl font-bold text-foreground mt-1">
-                  {completedSteps} of {totalSteps} Steps
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm text-muted-foreground font-medium">COMPLETION</p>
-                <p className="text-3xl font-bold text-primary mt-1">
-                  {Math.round(progressPercent)}%
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <div className="h-4 bg-muted rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-primary to-primary/60 rounded-full transition-all"
-                  style={{ width: `${progressPercent}%` }}
-                />
-              </div>
-              <p className="text-xs text-muted-foreground text-right">
-                {Math.round(progressPercent)}% complete
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Steps */}
-        <div className="space-y-4">
-          <h2 className="text-xl font-bold text-foreground">Steps</h2>
-          <div className="space-y-4">
-            {(() => {
-              // The active highlight should sit on the first not-yet-completed
-              // step — that's what "where do I go next" actually means. Reading
-              // progress.currentStep directly is fragile: if a step is marked
-              // completed without advancing the cursor, the ring sticks on a
-              // finished step.
-              const firstIncomplete = phaseSteps.find(
-                (s) => !progress.completedSteps.has(`2-${s.step}`),
-              );
-              const maxCompletedStep = phaseSteps.reduce(
-                (max, s) => (progress.completedSteps.has(`2-${s.step}`) ? Math.max(max, s.step) : max),
-                0,
-              );
-
-              return phaseSteps.map((step) => {
-                const isCompleted = progress.completedSteps.has(`2-${step.step}`);
-                const isActive =
-                  progress.currentPhase === 2 &&
-                  !isCompleted &&
-                  firstIncomplete?.step === step.step;
-                const isLocked = step.step > maxCompletedStep + 1;
-
-                return (
-                  <StepCard
-                    key={step.step}
-                    {...step}
-                    isCompleted={isCompleted}
-                    isActive={isActive}
-                    isLocked={isLocked}
-                  />
-                );
-              });
-            })()}
-          </div>
-        </div>
-
-        {/* Info Banner */}
-        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6 flex gap-4">
-          <div className="text-blue-600 flex-shrink-0 mt-1">
-            <Briefcase className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="font-semibold text-blue-900 mb-2">
-              Company Verification Benefits
-            </h3>
-            <p className="text-sm text-blue-800">
-              Once verified, your company will display a verified badge, increasing investor trust and unlocking access to Phase 3 (Financial Valuation & KPI). This badge is visible to all investors on the platform.
+        <header className="bg-background border border-border rounded-2xl px-6 sm:px-8 py-6">
+          <div className="flex items-center gap-3 mb-2">
+            <span className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <Briefcase className="w-5 h-5 text-primary" />
+            </span>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Phase 2
             </p>
           </div>
-        </div>
+          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground">
+            Company Verification
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground max-w-2xl">
+            Get your company verified with an official Mondial.eco Certified badge. Once complete,
+            you unlock investor visibility, the data room, and the funding portal.
+          </p>
 
-        {/* Back to Overview */}
+          <div className="mt-5">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">
+                {STEPS.filter((s) => isDone(s.step)).length} of {STEPS.length} steps complete
+              </span>
+              <span className="font-semibold text-foreground">{pct}%</span>
+            </div>
+            <div className="mt-2 h-2 rounded-full bg-muted overflow-hidden">
+              <div className="h-full bg-primary rounded-full" style={{ width: `${pct}%` }} />
+            </div>
+          </div>
+
+          {firstOpen && (
+            <div className="mt-5">
+              <Button asChild className="gap-2">
+                <Link href={firstOpen.href}>
+                  {maxDone === 0 ? "Start verification" : `Continue · Step ${firstOpen.step}`}
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+              </Button>
+            </div>
+          )}
+        </header>
+
+        {/* Step list */}
+        <ol className="space-y-3">
+          {STEPS.map((s) => {
+            const done = isDone(s.step);
+            const locked = s.step > maxDone + 1 && !done;
+            const Icon = s.icon;
+
+            return (
+              <li key={s.step}>
+                <Link
+                  href={locked ? "#" : s.href}
+                  className={cn(
+                    "flex items-center gap-4 rounded-2xl border bg-background px-5 py-4 transition",
+                    locked && "opacity-60 cursor-not-allowed",
+                    !locked && "hover:border-primary/40",
+                    done ? "border-green-600/30 bg-green-600/5" : "border-border",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0",
+                      done
+                        ? "bg-green-600/15 text-green-700 dark:text-green-300"
+                        : locked
+                        ? "bg-muted text-muted-foreground"
+                        : "bg-primary/10 text-primary",
+                    )}
+                  >
+                    {done ? <CheckCircle2 className="w-5 h-5" /> : <Icon className="w-5 h-5" />}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-foreground">
+                      Step {s.step}. {s.title}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{s.subtitle}</p>
+                  </div>
+                  {done ? (
+                    <span className="text-xs font-medium text-green-700 dark:text-green-300 uppercase tracking-wide">
+                      Completed
+                    </span>
+                  ) : locked ? (
+                    <Lock className="w-4 h-4 text-muted-foreground" />
+                  ) : (
+                    <ArrowRight className="w-4 h-4 text-muted-foreground" />
+                  )}
+                </Link>
+              </li>
+            );
+          })}
+        </ol>
+
+        {/* Back link */}
         <div>
           <Button variant="outline" asChild>
-            <Link href="/dashboard/entrepreneur">
-              Back to Overview
-            </Link>
+            <Link href="/dashboard/entrepreneur">Back to overview</Link>
           </Button>
         </div>
       </div>
@@ -233,7 +171,7 @@ function Phase2PageContent() {
 export default function Phase2Page() {
   return (
     <RouteGuard requiredPhase={2}>
-      <Phase2PageContent />
+      <Phase2HubContent />
     </RouteGuard>
   );
 }
