@@ -97,7 +97,11 @@ api.interceptors.response.use(
           }
         );
 
-        const { token: newToken } = response.data;
+        const refreshPayload = response.data?.data ?? response.data;
+        const newToken = refreshPayload?.token;
+        if (!newToken) {
+          throw new Error("Refresh token response missing token");
+        }
 
         // Update stored token
         localStorage.setItem("token", newToken);

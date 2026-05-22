@@ -3,6 +3,11 @@
 import { useAuth } from "@/app/_providers/AuthProvider";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
+import {
+  normalizeUserRole,
+  ROLE_DASHBOARD_ROUTES,
+  UserRole,
+} from "@/lib/roles";
 
 export default function AuthGuard({
   children,
@@ -27,22 +32,31 @@ export default function AuthGuard({
 
       if (!routeRole) return; // Root dashboard, allow all
 
-      // Normalize roles for comparison
-      const userRole = user.role.toLowerCase();
+      const userRole = normalizeUserRole(user.role);
+      const userDashboard = ROLE_DASHBOARD_ROUTES[userRole];
       const normalizedRouteRole = routeRole.toLowerCase();
+      const routeRoleMap: Record<string, UserRole> = {
+        admin: UserRole.ADMIN,
+        creator: UserRole.CREATOR,
+        investor: UserRole.INVESTOR,
+        entrepreneur: UserRole.ENTREPRENEUR,
+        advisor: UserRole.ADVISOR,
+        founder: UserRole.FOUNDER,
+        serviceprovider: UserRole.SERVICE_PROVIDER,
+        'service-provider': UserRole.SERVICE_PROVIDER,
+        service_provider: UserRole.SERVICE_PROVIDER,
+      };
 
       // Admin can access admin routes and settings
-      if (userRole === 'admin' && ['admin', 'settings'].includes(normalizedRouteRole)) {
-        return; // Allow admin access
+      if (userRole === UserRole.ADMIN && ['admin', 'settings'].includes(normalizedRouteRole)) {
+        return;
       }
 
-      // Other users must have their role match the route exactly
-      if (userRole === normalizedRouteRole) {
-        return; // Role matches, allow access
-      }
+      const mappedRouteRole = routeRoleMap[normalizedRouteRole];
 
-      // Role mismatch - redirect to user's own dashboard
-      const userDashboard = `/dashboard/${userRole}`;
+      if (!mappedRouteRole) return;
+      if (mappedRouteRole === userRole) return;
+
       router.push(userDashboard);
     }
   }, [user, isLoading, router, pathname]);
