@@ -8,8 +8,8 @@ public interface ICompanyService
     // ============ PHASE FLOW ============
 
     Task<CompanyProgressResponse> GetCurrentPhaseAsync(string userId);
-    Task<CompanyProgressResponse> AdvancePhaseAsync(string userId, int phaseNumber, object phaseData);
-    Task<CompanyProgressResponse> GetPhaseProgressAsync(string userId);
+    Task<CompanyProgressResponse> AdvancePhaseAsync(string companyId, int phaseNumber, object phaseData);
+    Task<CompanyProgressResponse> GetPhaseProgressAsync(string companyId);
 
     // ============ PHASE 1: IDENTITY & ONBOARDING (via Auth) ============
 
@@ -62,6 +62,7 @@ public interface ICompanyService
 
     Task<DealStatusResponse> CreateDealAsync(string companyId, CreateDealRequest request);
     Task<DealStatusResponse> GetDealAsync(string dealId);
+    Task<string?> GetDealCompanyIdAsync(string dealId);
     Task<List<DealStatusResponse>> GetCompanyDealsAsync(string companyId);
     Task<DealStatusResponse> UpdateTermSheetAsync(string dealId, TermSheetRequest request);
     Task<DealStatusResponse> ProgressChecklistAsync(string dealId, ChecklistItemDto item);

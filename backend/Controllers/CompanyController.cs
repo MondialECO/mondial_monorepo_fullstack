@@ -26,6 +26,23 @@ public class CompanyController : ControllerBase
             ?? throw new UnauthorizedAccessException("User not authenticated");
     }
 
+    private async Task EnsureCompanyOwnershipAsync(string companyId)
+    {
+        var userId = GetUserId();
+        var company = await _companyService.GetCompanyAsync(companyId);
+        if (!string.Equals(company.OwnerId, userId, StringComparison.Ordinal))
+            throw new UnauthorizedAccessException("You are not allowed to access this company.");
+    }
+
+    private async Task EnsureDealOwnershipAsync(string dealId)
+    {
+        var companyId = await _companyService.GetDealCompanyIdAsync(dealId);
+        if (string.IsNullOrWhiteSpace(companyId))
+            throw new KeyNotFoundException($"Deal {dealId} not found");
+
+        await EnsureCompanyOwnershipAsync(companyId);
+    }
+
     // ============ PHASE FLOW ============
 
     [HttpGet("current-phase")]
@@ -49,8 +66,8 @@ public class CompanyController : ControllerBase
     {
         try
         {
-            var userId = GetUserId();
-            var result = await _companyService.AdvancePhaseAsync(userId, phaseNumber, phaseData);
+            await EnsureCompanyOwnershipAsync(companyId);
+            var result = await _companyService.AdvancePhaseAsync(companyId, phaseNumber, phaseData);
             return Ok(result);
         }
         catch (Exception ex)
@@ -65,8 +82,8 @@ public class CompanyController : ControllerBase
     {
         try
         {
-            var userId = GetUserId();
-            var result = await _companyService.GetPhaseProgressAsync(userId);
+            await EnsureCompanyOwnershipAsync(companyId);
+            var result = await _companyService.GetPhaseProgressAsync(companyId);
             return Ok(result);
         }
         catch (Exception ex)
@@ -85,7 +102,13 @@ public class CompanyController : ControllerBase
         {
             var userId = GetUserId();
             var company = await _companyService.CreateCompanyAsync(userId, dto);
-            return CreatedAtAction(nameof(GetCompany), new { companyId = company.Id }, company);
+
+            // Avoid route-generation failures from CreatedAtAction when the route
+            // value cannot be resolved at runtime.
+            if (string.IsNullOrWhiteSpace(company.Id))
+                return Ok(company);
+
+            return Created($"/api/companies/{company.Id}", company);
         }
         catch (Exception ex)
         {
@@ -99,6 +122,7 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            await EnsureCompanyOwnershipAsync(companyId);
             var company = await _companyService.GetCompanyAsync(companyId);
             return Ok(company);
         }
@@ -116,6 +140,7 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            await EnsureCompanyOwnershipAsync(companyId);
             var company = await _companyService.UpdateLegalInfoAsync(companyId, request);
             return Ok(company);
         }
@@ -131,6 +156,7 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            await EnsureCompanyOwnershipAsync(companyId);
             var doc = await _companyService.UploadDocumentAsync(companyId, request);
             return Ok(doc);
         }
@@ -146,6 +172,7 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            await EnsureCompanyOwnershipAsync(companyId);
             var docs = await _companyService.GetDocumentStatusAsync(companyId);
             return Ok(docs);
         }
@@ -161,6 +188,7 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            await EnsureCompanyOwnershipAsync(companyId);
             var company = await _companyService.UpdateBeneficialOwnersAsync(companyId, request);
             return Ok(company);
         }
@@ -178,6 +206,7 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            await EnsureCompanyOwnershipAsync(companyId);
             var company = await _companyService.SaveRevenueDataAsync(companyId, request);
             return Ok(company);
         }
@@ -193,6 +222,7 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            await EnsureCompanyOwnershipAsync(companyId);
             var result = await _companyService.CalculateValuationAsync(companyId);
             return Ok(result);
         }
@@ -208,6 +238,7 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            await EnsureCompanyOwnershipAsync(companyId);
             var company = await _companyService.SaveEquityStructureAsync(companyId, request);
             return Ok(company);
         }
@@ -223,6 +254,7 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            await EnsureCompanyOwnershipAsync(companyId);
             var company = await _companyService.SaveFundingAskAsync(companyId, request);
             return Ok(company);
         }
@@ -238,6 +270,7 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            await EnsureCompanyOwnershipAsync(companyId);
             var result = await _companyService.GetFinancialSummaryAsync(companyId);
             return Ok(result);
         }
@@ -255,6 +288,7 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            await EnsureCompanyOwnershipAsync(companyId);
             var result = await _companyService.GetCapTableAsync(companyId);
             return Ok(result);
         }
@@ -270,6 +304,7 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            await EnsureCompanyOwnershipAsync(companyId);
             var result = await _companyService.SimulateDilutionAsync(companyId, request);
             return Ok(result);
         }
@@ -287,6 +322,7 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            await EnsureCompanyOwnershipAsync(companyId);
             var doc = await _companyService.UploadDataRoomDocumentAsync(companyId, request);
             return Ok(doc);
         }
@@ -302,6 +338,7 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            await EnsureCompanyOwnershipAsync(companyId);
             var result = await _companyService.GetDataRoomStatusAsync(companyId);
             return Ok(result);
         }
@@ -317,6 +354,7 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            await EnsureCompanyOwnershipAsync(companyId);
             var result = await _companyService.GrantDataRoomAccessAsync(companyId, request);
             return Ok(result);
         }
@@ -332,6 +370,7 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            await EnsureCompanyOwnershipAsync(companyId);
             await _companyService.RevokeDataRoomAccessAsync(companyId, investorId);
             return Ok();
         }
@@ -347,6 +386,7 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            await EnsureCompanyOwnershipAsync(companyId);
             await _companyService.UpdateNdaRequirementAsync(companyId, required);
             return Ok();
         }
@@ -364,6 +404,7 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            await EnsureCompanyOwnershipAsync(companyId);
             var result = await _companyService.RunAiReviewAsync(companyId);
             return Ok(result);
         }
@@ -379,6 +420,7 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            await EnsureCompanyOwnershipAsync(companyId);
             var result = await _companyService.GetAiReviewScoreAsync(companyId);
             return Ok(result);
         }
@@ -394,6 +436,7 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            await EnsureCompanyOwnershipAsync(companyId);
             var result = await _companyService.GetRecommendationsAsync(companyId);
             return Ok(result);
         }
@@ -409,6 +452,7 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            await EnsureCompanyOwnershipAsync(companyId);
             await _companyService.AwardInvestorReadyBadgeAsync(companyId);
             return Ok();
         }
@@ -426,6 +470,7 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            await EnsureCompanyOwnershipAsync(companyId);
             var result = await _companyService.GetMatchedInvestorsAsync(companyId);
             return Ok(result);
         }
@@ -441,6 +486,7 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            await EnsureCompanyOwnershipAsync(companyId);
             await _companyService.RecordInvestorInteractionAsync(companyId, request);
             return Ok();
         }
@@ -456,6 +502,7 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            await EnsureCompanyOwnershipAsync(companyId);
             var result = await _companyService.GetMatchingInsightsAsync(companyId);
             return Ok(result);
         }
@@ -473,6 +520,7 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            await EnsureCompanyOwnershipAsync(companyId);
             request.InvestorId ??= string.Empty; // Ensure it's set
             var result = await _companyService.CreateDealAsync(companyId, request);
             return CreatedAtAction(nameof(GetDeal), new { dealId = result.DealId }, result);
@@ -489,6 +537,7 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            await EnsureDealOwnershipAsync(dealId);
             var result = await _companyService.GetDealAsync(dealId);
             return Ok(result);
         }
@@ -504,6 +553,7 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            await EnsureCompanyOwnershipAsync(companyId);
             var result = await _companyService.GetCompanyDealsAsync(companyId);
             return Ok(result);
         }
@@ -519,6 +569,7 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            await EnsureDealOwnershipAsync(dealId);
             var result = await _companyService.UpdateTermSheetAsync(dealId, request);
             return Ok(result);
         }
@@ -534,6 +585,7 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            await EnsureDealOwnershipAsync(dealId);
             var result = await _companyService.ProgressChecklistAsync(dealId, item);
             return Ok(result);
         }
@@ -549,6 +601,7 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            await EnsureDealOwnershipAsync(dealId);
             var result = await _companyService.CloseDealAsync(dealId);
             return Ok(result);
         }

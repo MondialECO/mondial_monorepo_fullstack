@@ -18,6 +18,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { useEntrepreneurProgress } from '@/hooks/useEntrepreneurProgress';
 import { RouteGuard } from '@/components/entrepreneur/RouteGuard';
+import { useRouter } from 'next/navigation';
 
 const REVIEW_SCORES = [
   { category: 'Executive Summary', score: 92, weight: 'Critical', icon: Target },
@@ -59,13 +60,19 @@ const COMPARABLE_COMPANIES = [
 ];
 
 function Phase7PageContent() {
-  const { progress } = useEntrepreneurProgress();
+  const { progress, moveToNextStep } = useEntrepreneurProgress();
+  const router = useRouter();
   const [showDetailedAnalysis, setShowDetailedAnalysis] = useState(false);
 
   if (!progress) return null;
 
   const overallScore = Math.round(REVIEW_SCORES.reduce((sum, s) => sum + s.score, 0) / REVIEW_SCORES.length);
   const isBadgeEligible = overallScore >= 85;
+
+  const handleProceed = () => {
+    moveToNextStep(7, 1);
+    router.push('/dashboard/entrepreneur/phase-8');
+  };
 
   return (
     <div className="min-h-screen bg-neutral-100">
@@ -298,7 +305,7 @@ function Phase7PageContent() {
                 <p className="text-sm text-green-800 mb-4">
                   Congratulations! You've achieved investor-ready status. You can now unlock Phase 8: Investor Matching and start connecting with vetted investors.
                 </p>
-                <Button className="gap-2 bg-green-600 hover:bg-green-700">
+                <Button className="gap-2 bg-green-600 hover:bg-green-700" onClick={handleProceed}>
                   <Star className="w-4 h-4" />
                   Proceed to Investor Matching
                 </Button>

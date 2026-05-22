@@ -28,7 +28,7 @@ const PHASE_CONFIG: Record<PhaseNumber, PhaseConfig> = {
     description: 'Valuation €3.78M, KPI baseline',
     trustScore: 22,
     hasSteps: true,
-    stepCount: 4,
+    stepCount: 3,
   },
   4: {
     phase: 4,
@@ -207,11 +207,12 @@ export function deserializeProgress(data: string): EntrepreneurProgress {
 }
 
 export const INITIAL_PROGRESS: EntrepreneurProgress = {
-  currentPhase: 2,
+  currentPhase: 1,
   currentStep: 1,
-  completedPhases: new Set([1]),
-  completedSteps: new Set(['1', '2-1', '2-2']),
+  completedPhases: new Set(),
+  completedSteps: new Set(),
   phaseData: {},
-  trustScore: 44, // Phase 1 completed
+  trustScore: 0,
   lastUpdated: 0, // Set at runtime, not during module init
 };
+

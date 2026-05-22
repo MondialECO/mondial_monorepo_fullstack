@@ -1,8 +1,10 @@
 import axios from "axios";
 
+const apiBaseUrl =
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5093/api";
+
 const api = axios.create({
-  baseURL: "https://api.mondialbusiness.eu/api",
-  // baseURL: "https://localhost:7264/api",
+  baseURL: apiBaseUrl,
 });
 
 // Track whether we're already attempting a refresh to prevent infinite loops
@@ -44,6 +46,27 @@ api.interceptors.response.use(
   (res) => res,
   async (err) => {
     const originalRequest = err.config;
+    const requestUrl = String(originalRequest?.url ?? "");
+    const publicAuthPaths = [
+      "/auth/login",
+      "/auth/register",
+      "/auth/forgot-password",
+      "/auth/reset-password",
+      "/auth/confirm-email",
+      "/auth/resend-confirmation-email",
+    ];
+    const isPublicAuthRequest = publicAuthPaths.some((path) =>
+      requestUrl.includes(path)
+    );
+    const isRefreshRequest = requestUrl.includes("/auth/refresh-token");
+    const storedToken =
+      typeof window !== "undefined" ? localStorage.getItem("token") : null;
+
+    // Public auth endpoints can legitimately return 401/400 and should not
+    // trigger session-expired redirects or refresh-token retries.
+    if (isPublicAuthRequest || isRefreshRequest || !storedToken) {
+      return Promise.reject(err);
+    }
 
     if (err.response?.status === 401 && !originalRequest._retry) {
       // Prevent infinite retry loops

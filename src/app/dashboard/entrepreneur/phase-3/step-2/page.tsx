@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { PieChart, Users, AlertCircle, CheckCircle2, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +15,7 @@ const PHASE_3_STEPS = [
 ];
 
 function Phase3Step2Client() {
+  const router = useRouter();
   const { progress } = useEntrepreneurProgress();
   const [founders, setFounders] = useState([
     { id: 1, name: 'Founder A', shares: 450000, percentage: 45 },
@@ -51,7 +53,7 @@ function Phase3Step2Client() {
     setIsLoading(true);
     try {
       await new Promise((resolve) => setTimeout(resolve, 500));
-      window.location.href = '/dashboard/entrepreneur/phase-3/step-3';
+      router.push('/dashboard/entrepreneur/phase-3/step-3');
     } finally {
       setIsLoading(false);
     }
@@ -296,7 +298,7 @@ function Phase3Step2Client() {
 
         {/* Footer */}
         <div className="flex gap-3">
-          <Button variant="outline" className="flex-1 h-11" onClick={() => window.location.href = '/dashboard/entrepreneur/phase-3/step-1'}>
+          <Button variant="outline" className="flex-1 h-11" onClick={() => router.push('/dashboard/entrepreneur/phase-3/step-1')}>
             Back
           </Button>
           <Button className="flex-1 h-11 gap-2" onClick={handleNextClick} disabled={isLoading || !allocationComplete}>
