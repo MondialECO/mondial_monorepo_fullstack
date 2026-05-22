@@ -1,13 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import { Inter } from "next/font/google";
 import { RootProviders } from "./_providers/RootProviders";
-
-const inter = Inter({
-  subsets: ["latin"],
-  display: "swap",
-  preload: true,
-});
 
 const baseUrl = "https://mondialbusiness.eu";
 const title = "Mondial | Social Credit Creation Platform";
@@ -122,13 +115,10 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
         />
-        {/* Preconnect to external domains */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         {/* DNS prefetch for analytics */}
         <link rel="dns-prefetch" href="https://www.google-analytics.com" />
       </head>
-      <body className={inter.className} suppressHydrationWarning>
+      <body suppressHydrationWarning>
         <RootProviders>{children}</RootProviders>
       </body>
     </html>

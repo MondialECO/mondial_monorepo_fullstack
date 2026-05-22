@@ -94,19 +94,42 @@ builder.Services.AddSingleton<MongoDbContext>();
 // and the DataProtection key ring so every replica shares the same state.
 var redisConnection = builder.Configuration["Redis:Configuration"] ?? "localhost:6379";
 var redisInstanceName = builder.Configuration["Redis:InstanceName"] ?? "Mondial";
+var redisEnabledInDevelopment = builder.Configuration.GetValue("Redis:Enabled", false);
+var useRedis = !builder.Environment.IsDevelopment() || redisEnabledInDevelopment;
 
 // AbortOnConnectFail=false: do not crash-loop if Redis is briefly
 // unreachable at startup; the multiplexer reconnects in the background
 // and the Redis readiness health check keeps this replica out of the
 // load balancer until Redis is actually available.
-var redisOptions = ConfigurationOptions.Parse(redisConnection);
-redisOptions.AbortOnConnectFail = false;
-redisOptions.ConnectRetry = 5;
-redisOptions.ConnectTimeout = 5000;
-redisOptions.KeepAlive = 60;
-var redisMultiplexer = ConnectionMultiplexer.Connect(redisOptions);
-builder.Services.AddSingleton<IConnectionMultiplexer>(redisMultiplexer);
-builder.Services.AddSingleton<IPresenceTracker, RedisPresenceTracker>();
+IConnectionMultiplexer? redisMultiplexer = null;
+
+if (useRedis)
+{
+    try
+    {
+        var redisOptions = ConfigurationOptions.Parse(redisConnection);
+        redisOptions.AbortOnConnectFail = false;
+        redisOptions.ConnectRetry = 5;
+        redisOptions.ConnectTimeout = 5000;
+        redisOptions.KeepAlive = 60;
+
+        redisMultiplexer = ConnectionMultiplexer.Connect(redisOptions);
+        builder.Services.AddSingleton<IConnectionMultiplexer>(redisMultiplexer);
+        builder.Services.AddSingleton<IPresenceTracker, RedisPresenceTracker>();
+    }
+    catch (Exception ex) when (builder.Environment.IsDevelopment())
+    {
+        // Dev-mode fallback: allow local development without a Redis daemon.
+        useRedis = false;
+        Log.Warning(ex, "Redis unavailable in Development. Falling back to in-memory SignalR presence/cache.");
+        builder.Services.AddSingleton<IPresenceTracker, InMemoryPresenceTracker>();
+    }
+}
+else
+{
+    Log.Information("Redis integration is disabled for Development (set Redis:Enabled=true to enable it).");
+    builder.Services.AddSingleton<IPresenceTracker, InMemoryPresenceTracker>();
+}
 
 // Shared DataProtection key ring: without this each replica generates its
 // own keys, so auth/reset tokens and antiforgery break behind a load
@@ -126,7 +149,7 @@ if (builder.Environment.IsDevelopment())
 }
 else
 {
-    dpBuilder.PersistKeysToStackExchangeRedis(redisMultiplexer, $"{redisInstanceName}-DataProtection-Keys");
+    dpBuilder.PersistKeysToStackExchangeRedis(redisMultiplexer!, $"{redisInstanceName}-DataProtection-Keys");
 }
 
 
@@ -211,11 +234,14 @@ builder.Services.AddAuthentication(options =>
 // SignalR with a Redis backplane so connections/messages are shared
 // across all replicas (a client connected to replica A still receives
 // messages published from replica B).
-builder.Services.AddSignalR()
-    .AddStackExchangeRedis(redisConnection, o =>
+var signalRBuilder = builder.Services.AddSignalR();
+if (useRedis)
+{
+    signalRBuilder.AddStackExchangeRedis(redisConnection, o =>
     {
         o.Configuration.ChannelPrefix = RedisChannel.Literal($"{redisInstanceName}SignalR");
     });
+}
 // Define CustomUserIdProvider for SignalR
 builder.Services.AddSingleton<IUserIdProvider, CustomUserIdProvider>();
 
@@ -247,12 +273,19 @@ builder.Services.AddScoped<WebPushService>();
 
 
 
-// Distributed cache on the same shared Redis (connection from config).
-builder.Services.AddStackExchangeRedisCache(options =>
+if (useRedis)
 {
-    options.Configuration = redisConnection;
-    options.InstanceName = redisInstanceName;
-});
+    // Distributed cache on the same shared Redis (connection from config).
+    builder.Services.AddStackExchangeRedisCache(options =>
+    {
+        options.Configuration = redisConnection;
+        options.InstanceName = redisInstanceName;
+    });
+}
+else
+{
+    builder.Services.AddDistributedMemoryCache();
+}
 
 
 
@@ -279,14 +312,18 @@ builder.Services.AddCompanyServices(builder.Configuration);
 // Health checks: liveness (process up) is the bare endpoint; readiness
 // (tagged "ready") verifies MongoDB + Redis so the orchestrator only routes
 // traffic to replicas that can actually serve requests.
-builder.Services.AddHealthChecks()
+var healthChecks = builder.Services.AddHealthChecks()
     .AddCheck<MongoHealthCheck>(
         "mongodb",
-        tags: new[] { "ready" })
-    .AddRedis(
+        tags: new[] { "ready" });
+
+if (useRedis)
+{
+    healthChecks.AddRedis(
         redisConnection,
         name: "redis",
         tags: new[] { "ready" });
+}
 
 // FluentValidation: validators run via ValidationFilter, returning the
 // shared ApiResponse envelope on failure.

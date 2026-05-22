@@ -139,7 +139,6 @@ function PricingCard({ plan }: { plan: Plan }) {
                             </div>
                             <h3
                                 className="text-foreground text-[24px] font-semibold leading-8"
-                                style={{ fontFamily: "'Inter Tight', sans-serif" }}
                             >
                                 {plan.name}
                             </h3>
@@ -164,7 +163,6 @@ function PricingCard({ plan }: { plan: Plan }) {
                         <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                             <span
                                 className="text-foreground font-semibold text-[48px] leading-13"
-                                style={{ fontFamily: "'Inter', sans-serif" }}
                             >
                                 ${price}
                             </span>
@@ -213,7 +211,6 @@ function PricingCard({ plan }: { plan: Plan }) {
                                                 activeTab === tab ? "#3C61DD" : "#F9F9FA",
                                             color: activeTab === tab ? "#F7F7F7" : "#070707",
                                             border: activeTab === tab ? "none" : "1px solid #FFFFFF",
-                                            fontFamily: "'Inter', sans-serif",
                                         }}
                                     >
                                         {tab}
@@ -265,7 +262,6 @@ function PricingCard({ plan }: { plan: Plan }) {
                     color: plan.featured ? "#F7F7F7" : "#070707",
                     border: plan.featured ? "none" : "1px solid rgba(0, 0, 0, 0.08)",
                     boxShadow: "0px 2px 40px rgba(0, 0, 0, 0.02)",
-                    fontFamily: "'Inter', sans-serif",
                 }}
             >
                 Get Started
@@ -321,7 +317,6 @@ export default function PricingPage() {
                         <p
                             className="text-foreground text-center"
                             style={{
-                                fontFamily: "'Inter', sans-serif",
                                 fontSize: "16px",
                                 lineHeight: "24px",
                                 fontWeight: 400,

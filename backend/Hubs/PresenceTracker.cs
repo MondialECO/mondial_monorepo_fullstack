@@ -1,4 +1,5 @@
 using StackExchange.Redis;
+using System.Collections.Concurrent;
 
 namespace WebApp.Hubs
 {
@@ -49,5 +50,38 @@ namespace WebApp.Hubs
             var db = _redis.GetDatabase();
             return await db.KeyExistsAsync(Key(userId));
         }
+    }
+
+    /// <summary>
+    /// Development fallback when Redis is intentionally disabled/unavailable.
+    /// Presence is process-local and not shared across replicas.
+    /// </summary>
+    public class InMemoryPresenceTracker : IPresenceTracker
+    {
+        private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, byte>> _presence = new();
+
+        public Task UserConnectedAsync(string userId, string connectionId)
+        {
+            var connections = _presence.GetOrAdd(userId, _ => new ConcurrentDictionary<string, byte>());
+            connections.TryAdd(connectionId, 0);
+            return Task.CompletedTask;
+        }
+
+        public Task UserDisconnectedAsync(string userId, string connectionId)
+        {
+            if (_presence.TryGetValue(userId, out var connections))
+            {
+                connections.TryRemove(connectionId, out _);
+                if (connections.IsEmpty)
+                {
+                    _presence.TryRemove(userId, out _);
+                }
+            }
+
+            return Task.CompletedTask;
+        }
+
+        public Task<bool> IsOnlineAsync(string userId) =>
+            Task.FromResult(_presence.TryGetValue(userId, out var connections) && !connections.IsEmpty);
     }
 }
