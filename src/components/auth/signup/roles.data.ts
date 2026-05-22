@@ -23,7 +23,7 @@ export const SIGNUP_ROLES: RoleOption[] = [
     id: "creator",
     name: "Creator",
     description:
-      "Turn your audience into capital — publish, gate content, and monetize.",
+      "Turn your audience into capital and publish, gate content, and monetize.",
     avatar: "/profiles/creator.png",
   },
   {
@@ -34,3 +34,4 @@ export const SIGNUP_ROLES: RoleOption[] = [
     avatar: "/profiles/service.png",
   },
 ];
+

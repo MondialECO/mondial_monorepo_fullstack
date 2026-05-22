@@ -25,7 +25,7 @@ const PHASE_CONFIG: Record<PhaseNumber, PhaseConfig> = {
   3: {
     phase: 3,
     title: 'Financial Valuation & KPI',
-    description: 'Valuation €3.78M, KPI baseline',
+    description: 'Valuation EUR 3.78M, KPI baseline',
     trustScore: 22,
     hasSteps: true,
     stepCount: 3,
@@ -40,7 +40,7 @@ const PHASE_CONFIG: Record<PhaseNumber, PhaseConfig> = {
   5: {
     phase: 5,
     title: 'Needs & Funding Analysis',
-    description: 'Funding ask €450K live',
+    description: 'Funding ask EUR 450K live',
     trustScore: 8,
     hasSteps: false,
   },
@@ -215,4 +215,5 @@ export const INITIAL_PROGRESS: EntrepreneurProgress = {
   trustScore: 0,
   lastUpdated: 0, // Set at runtime, not during module init
 };
+
 

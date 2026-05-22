@@ -1,7 +1,7 @@
 'use client';
 
 import { useAuth } from '@/app/_providers/AuthProvider';
-import { UserRole } from '@/lib/roles';
+import { ROLE_DASHBOARD_ROUTES, UserRole } from '@/lib/roles';
 import { useRouter } from 'next/navigation';
 import { ChevronDown } from 'lucide-react';
 import { useState } from 'react';
@@ -11,16 +11,10 @@ const ROLES = [
   UserRole.CREATOR,
   UserRole.INVESTOR,
   UserRole.ENTREPRENEUR,
+  UserRole.ADVISOR,
+  UserRole.FOUNDER,
   UserRole.SERVICE_PROVIDER,
 ];
-
-const ROLE_ROUTES: Record<UserRole, string> = {
-  [UserRole.ADMIN]: '/dashboard/admin',
-  [UserRole.CREATOR]: '/dashboard/creator',
-  [UserRole.INVESTOR]: '/dashboard/investor',
-  [UserRole.ENTREPRENEUR]: '/dashboard/entrepreneur',
-  [UserRole.SERVICE_PROVIDER]: '/dashboard/serviceprovider',
-};
 
 export default function RoleSwitcher() {
   const { user, token } = useAuth();
@@ -44,7 +38,7 @@ export default function RoleSwitcher() {
     setIsOpen(false);
 
     // Redirect to the new role's dashboard
-    router.push(ROLE_ROUTES[newRole]);
+    router.push(ROLE_DASHBOARD_ROUTES[newRole]);
 
     // Refresh the page to update auth context
     window.location.reload();

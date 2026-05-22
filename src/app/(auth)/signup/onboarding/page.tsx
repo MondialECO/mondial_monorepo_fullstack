@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AxiosError } from "axios";
 import { SignupLayout } from "@/features/auth/signup/components";
@@ -12,17 +12,21 @@ import {
 import { useSignupFlow } from "@/features/auth/signup/hooks";
 import { registerApi } from "@/lib/api-auth";
 import type { CredentialsFormData } from "@/features/auth/signup/constants";
+import { SIGNUP_ROLE_STORAGE_KEY, formatRoleLabel } from "@/lib/signup-role";
 
 export default function SignupOnboarding() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const postSignupEmail = searchParams.get("email");
+  const postSignupRole = searchParams.get("role");
+  const isPostSignupMode = Boolean(postSignupEmail);
 
   const {
     currentStep,
     selectedRole,
     credentials,
-    formData,
     nextStep,
     previousStep,
     selectRole,
@@ -94,6 +98,38 @@ export default function SignupOnboarding() {
   // Verification step uses the wider two-column card.
   const width = currentStep === "verification" ? "5xl" : "2xl";
 
+  useEffect(() => {
+    if (postSignupRole) {
+      localStorage.setItem(SIGNUP_ROLE_STORAGE_KEY, postSignupRole);
+    }
+  }, [postSignupRole]);
+
+  if (isPostSignupMode) {
+    return (
+      <SignupLayout width="5xl">
+        <div className="flex w-full flex-col gap-6">
+          <div className="text-center">
+            <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">
+              Account Created Successfully
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Role: <span className="font-medium text-foreground">{formatRoleLabel(postSignupRole ?? "creator")}</span>
+            </p>
+            {postSignupEmail && (
+              <p className="mt-1 text-sm text-muted-foreground">
+                Email: <span className="font-medium text-foreground">{postSignupEmail}</span>
+              </p>
+            )}
+          </div>
+          <VerificationStep
+            onBack={() => router.push("/signup")}
+            onStart={() => router.push("/login")}
+          />
+        </div>
+      </SignupLayout>
+    );
+  }
+
   return (
     <SignupLayout width={width}>
       {currentStep === "role-selection" && (
@@ -151,7 +187,7 @@ export default function SignupOnboarding() {
               Welcome to Mondial!
             </h2>
             <p className="text-sm text-muted-foreground">
-              Your account is ready. Redirecting to dashboard…
+              Your account is ready. Redirecting to dashboard...
             </p>
           </div>
         </div>
@@ -159,3 +195,4 @@ export default function SignupOnboarding() {
     </SignupLayout>
   );
 }
+

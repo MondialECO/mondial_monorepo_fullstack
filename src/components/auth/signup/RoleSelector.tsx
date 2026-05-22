@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { RoleCardGrid, RoleCardList, type RoleOption } from "./RoleCard";
 import { cn } from "@/lib/utils";
+import { SIGNUP_ROLE_STORAGE_KEY } from "@/lib/signup-role";
 
 type Variant = "grid" | "list";
 
@@ -14,6 +16,8 @@ export function RoleSelector({
   defaultRoleId,
   signInHref = "/login",
   onSubmit,
+  nextHref = "/signup",
+  persistSelection = true,
   className,
 }: {
   roles: RoleOption[];
@@ -22,8 +26,11 @@ export function RoleSelector({
   signInHref?: string;
   /** If omitted, the form POSTs to /api/signup with { roleId } */
   onSubmit?: (roleId: string) => void | Promise<void>;
+  nextHref?: string;
+  persistSelection?: boolean;
   className?: string;
 }) {
+  const router = useRouter();
   const [selected, setSelected] = useState<string | undefined>(defaultRoleId);
   const [submitting, setSubmitting] = useState(false);
 
@@ -34,12 +41,10 @@ export function RoleSelector({
       if (onSubmit) {
         await onSubmit(selected);
       } else {
-        // Default: hand off to an API route the app provides.
-        await fetch("/api/signup", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ roleId: selected }),
-        });
+        if (typeof window !== "undefined" && persistSelection) {
+          localStorage.setItem(SIGNUP_ROLE_STORAGE_KEY, selected);
+        }
+        router.push(nextHref);
       }
     } finally {
       setSubmitting(false);
@@ -84,7 +89,7 @@ export function RoleSelector({
           disabled={!selected || submitting}
           onClick={handleSubmit}
         >
-          {submitting ? "Initializing…" : "Initialize Account"}
+          {submitting ? "Initializing..." : "Initialize Account"}
         </Button>
         <p className="text-sm text-muted-foreground">
           Already have an account?{" "}
@@ -99,3 +104,4 @@ export function RoleSelector({
     </div>
   );
 }
+

@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/axios";
-import { UserRole } from "@/lib/roles";
+import { normalizeUserRole, ROLE_DASHBOARD_ROUTES, UserRole } from "@/lib/roles";
 
 type User = {
   id: string;
@@ -79,7 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const user: User = {
       id: apiUser.id,
       name: apiUser.name,
-      role: apiUser.roles[0] as UserRole,
+      role: normalizeUserRole(apiUser.roles?.[0]),
     };
 
     localStorage.setItem("token", token);
@@ -88,15 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(user);
     setToken(token);
 
-    const roleRoutes: Record<UserRole, string> = {
-      Admin: "/dashboard/admin",
-      Creator: "/dashboard/creator",
-      Investor: "/dashboard/investor",
-      Entrepreneur: "/dashboard/entrepreneur",
-      ServiceProvider: "/dashboard/serviceprovider",
-    };
-
-    router.push(roleRoutes[user.role]);
+    router.push(ROLE_DASHBOARD_ROUTES[user.role]);
   };
 
   const logout = () => {

@@ -4,12 +4,12 @@ import { RoleSelector } from "@/components/auth/signup/RoleSelector";
 import { SIGNUP_ROLES } from "@/components/auth/signup/roles.data";
 
 export const metadata: Metadata = {
-  title: "Choose Your Path · Mondial",
+  title: "Choose Your Path | Mondial",
   description: "Select your operational profile to initialize your workspace.",
 };
 
 /**
- * /signup/role — role picker step. Server component; hands the interactive
+ * /signup/role - role picker step. Server component; hands the interactive
  * RoleSelector (client) only the data it needs.
  *
  * Flip `variant` to "list" for the single-column card layout.

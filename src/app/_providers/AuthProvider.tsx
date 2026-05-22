@@ -3,7 +3,12 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import api from '@/lib/axios';
-import { UserRole } from '@/lib/roles';
+import {
+  DEFAULT_USER_ROLE,
+  normalizeUserRole,
+  ROLE_DASHBOARD_ROUTES,
+  UserRole,
+} from '@/lib/roles';
 
 type User = {
   id: string;
@@ -48,7 +53,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (storedUser && storedToken) {
         try {
           const parsedUser = JSON.parse(storedUser);
-          setUser(parsedUser);
+          const normalizedRole = normalizeUserRole(parsedUser?.role);
+          setUser({
+            ...parsedUser,
+            role: normalizedRole,
+          });
           setToken(storedToken);
         } catch {
           localStorage.clear();
@@ -66,8 +75,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (tokenFromStorage && userFromStorage) {
         try {
+          const parsedUser = JSON.parse(userFromStorage);
+          const normalizedRole = normalizeUserRole(parsedUser?.role);
           setToken(tokenFromStorage);
-          setUser(JSON.parse(userFromStorage));
+          setUser({
+            ...parsedUser,
+            role: normalizedRole,
+          });
         } catch {
           localStorage.clear();
           setToken(null);
@@ -93,7 +107,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Verify token with backend
         await api.get('/auth/me');
         // Token is valid, continue
-      } catch (err) {
+      } catch {
         // Token is invalid or expired, clear auth and redirect
         console.log('Token validation failed, clearing auth');
         localStorage.clear();
@@ -108,7 +122,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Only verify once after hydration
     verifyToken();
-  }, [isHydrated]); // Only run when isHydrated changes to true
+  }, [isHydrated, token, pathname, router]);
 
   const login = async (email: string, password: string) => {
     const res = await api.post('/auth/login', { email, password });
@@ -120,10 +134,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error(res.data?.message || 'Invalid login response');
     }
 
+    const apiRoles = apiUser.roles ?? apiUser.Roles ?? [];
+    const resolvedRole = normalizeUserRole(apiRoles[0] ?? DEFAULT_USER_ROLE);
+
     const user: User = {
       id: apiUser.id,
       name: apiUser.name,
-      role: ((apiUser.roles ?? apiUser.Roles ?? [])[0] ?? UserRole.CREATOR) as UserRole,
+      role: resolvedRole,
     };
 
     localStorage.setItem('token', token);
@@ -132,15 +149,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(user);
     setToken(token);
 
-    const roleRoutes: Record<UserRole, string> = {
-      Admin: '/dashboard/admin',
-      Creator: '/dashboard/creator',
-      Investor: '/dashboard/investor',
-      Entrepreneur: '/dashboard/entrepreneur',
-      ServiceProvider: '/dashboard/serviceprovider',
-    };
-
-    router.push(roleRoutes[user.role]);
+    router.push(ROLE_DASHBOARD_ROUTES[user.role] ?? ROLE_DASHBOARD_ROUTES[DEFAULT_USER_ROLE]);
   };
 
   const logout = () => {

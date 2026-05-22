@@ -117,6 +117,32 @@ export const menu: Record<UserRole, MenuSection[]> = {
     },
   ],
 
+  [UserRole.ADVISOR]: [
+    {
+      title: "Dashboard",
+      items: [
+        {
+          label: "Advisory Workspace",
+          href: "/dashboard/advisor",
+          icon: Briefcase,
+        },
+      ],
+    },
+  ],
+
+  [UserRole.FOUNDER]: [
+    {
+      title: "Dashboard",
+      items: [
+        {
+          label: "Founder Workspace",
+          href: "/dashboard/founder",
+          icon: LayoutDashboard,
+        },
+      ],
+    },
+  ],
+
   [UserRole.SERVICE_PROVIDER]: [
     {
       title: "Dashboard",
