@@ -104,14 +104,55 @@ export default function RootLayout({
     ],
   };
 
+  // Some browser extensions inject `bis_*` attributes/scripts before React hydrates.
+  // That causes false-positive hydration mismatch warnings in development.
+  const hydrationSanitizerScript = `
+    (function () {
+      try {
+        var attrs = ["bis_skin_checked", "bis_use", "data-bis-config", "data-dynamic-id"];
+        function cleanNode(el) {
+          if (!el || !el.removeAttribute) return;
+          for (var i = 0; i < attrs.length; i++) {
+            el.removeAttribute(attrs[i]);
+          }
+          if (el.tagName === "SCRIPT") {
+            var src = el.getAttribute("src") || "";
+            if (src.indexOf("chrome-extension://") === 0) {
+              el.remove();
+            }
+          }
+        }
+        function clean() {
+          cleanNode(document.documentElement);
+          cleanNode(document.body);
+          var all = document.querySelectorAll("*");
+          for (var i = 0; i < all.length; i++) {
+            cleanNode(all[i]);
+          }
+        }
+        clean();
+        var timer = window.setInterval(clean, 200);
+        window.setTimeout(function () {
+          window.clearInterval(timer);
+        }, 3000);
+      } catch (_) {}
+    })();
+  `;
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
         <script
+          suppressHydrationWarning
+          dangerouslySetInnerHTML={{ __html: hydrationSanitizerScript }}
+        />
+        <script
+          suppressHydrationWarning
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
         <script
+          suppressHydrationWarning
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
         />
