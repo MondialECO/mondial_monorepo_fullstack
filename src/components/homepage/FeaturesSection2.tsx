@@ -52,15 +52,11 @@ const FeatureCard = ({
         >
             <div className={posClass} style={{ zIndex: 3 }}>
                 <h3
-                    className="font-medium text-[28px] leading-8 text-foreground"
-                    style={{ fontFamily: "'Inter Tight', sans-serif" }}
+                    className="font-medium text-[28px] leading-8 text-foreground tracking-tight"
                 >
                     {title}
                 </h3>
-                <p
-                    className="mt-2 text-[18px] leading-7 text-muted-foreground"
-                    style={{ fontFamily: "Inter, sans-serif" }}
-                >
+                <p className="mt-2 text-[18px] leading-7 text-muted-foreground">
                     {subtitle}
                 </p>
             </div>
@@ -200,7 +196,6 @@ const TabToggle = ({
             <button
                 key={tab}
                 onClick={() => onChange(tab)}
-                style={{ fontFamily: "Inter, sans-serif" }}
                 className={[
                     "h-9 px-4 rounded-full text-[14px] leading-5 transition-all duration-200 whitespace-nowrap",
                     active === tab
@@ -235,7 +230,6 @@ export default function FeaturesSection2() {
                     </h2>
                     <p
                         className="font-normal text-[16px] leading-[24px] text-foreground max-w-[486px]"
-                        style={{ fontFamily: "Inter, sans-serif" }}
                     >
                         Whether looking for a job or talent, our service ensures a seamless
                         experience for all.
