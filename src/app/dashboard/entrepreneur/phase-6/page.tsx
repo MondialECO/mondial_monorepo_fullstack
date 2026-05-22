@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   FolderOpen,
   File,
@@ -44,7 +45,8 @@ const DOCUMENTS = [
 ];
 
 function Phase6PageContent() {
-  const { progress } = useEntrepreneurProgress();
+  const router = useRouter();
+  const { progress, moveToNextStep } = useEntrepreneurProgress();
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -55,6 +57,11 @@ function Phase6PageContent() {
     const matchesSearch = searchQuery === '' || doc.name.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
+
+  const handleContinue = () => {
+    moveToNextStep(6, 1);
+    router.push('/dashboard/entrepreneur/phase-7');
+  };
 
   return (
     <div className="min-h-screen bg-neutral-100">
@@ -265,6 +272,13 @@ function Phase6PageContent() {
               <Button variant="outline" className="w-full mt-4 gap-2">
                 <Users className="w-4 h-4" />
                 Add New User
+              </Button>
+            </div>
+
+            <div className="flex justify-end">
+              <Button onClick={handleContinue} className="gap-2">
+                Continue to Phase 7
+                <CheckCircle2 className="w-4 h-4" />
               </Button>
             </div>
           </div>

@@ -18,6 +18,7 @@ import {
   getPhaseProgress,
   getPhaseConfig,
 } from '@/lib/entrepreneur';
+import entrepreneurApi from '@/lib/api-entrepreneur';
 
 const SAVE_DEBOUNCE_MS = 500;
 
@@ -44,11 +45,67 @@ export function useEntrepreneurProgressState() {
     setIsHydrated(true);
   }, []);
 
-  // Set loading to false when hydrated
+  // Sync phase state from backend (source of truth) when available.
   useEffect(() => {
-    if (isHydrated) {
-      setIsLoading(false);
-    }
+    if (!isHydrated) return;
+
+    let cancelled = false;
+
+    const syncFromServer = async () => {
+      const token =
+        typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      if (!token) {
+        if (!cancelled) setIsLoading(false);
+        return;
+      }
+
+      try {
+        const serverProgress = await entrepreneurApi.getCurrentPhase();
+        if (cancelled) return;
+
+        setProgress((prev) => {
+          const currentPhase = Math.min(
+            9,
+            Math.max(1, serverProgress.currentPhase)
+          ) as PhaseNumber;
+          const phaseConfig = getPhaseConfig(currentPhase);
+          const safeStep = phaseConfig.hasSteps
+            ? (Math.min(
+                prev.currentPhase === currentPhase ? prev.currentStep : 1,
+                phaseConfig.stepCount || 1
+              ) as StepNumber)
+            : (1 as StepNumber);
+
+          const completedPhases = new Set<PhaseNumber>(
+            (serverProgress.completedPhases || [])
+              .filter((phase) => phase >= 1 && phase <= 9)
+              .map((phase) => phase as PhaseNumber)
+          );
+
+          return {
+            ...prev,
+            currentPhase,
+            currentStep: safeStep,
+            completedPhases,
+            trustScore: Math.max(0, serverProgress.trustScore || 0),
+            lastUpdated: Date.now(),
+            phaseData: {
+              ...prev.phaseData,
+              __companyId: serverProgress.companyId,
+            },
+          };
+        });
+      } catch {
+        // Keep local state when backend progress cannot be fetched.
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    };
+
+    syncFromServer();
+    return () => {
+      cancelled = true;
+    };
   }, [isHydrated]);
 
   // Save to localStorage with debounce
@@ -60,13 +117,7 @@ export function useEntrepreneurProgressState() {
     saveTimeoutRef.current = setTimeout(() => {
       try {
         const serialized = serializeProgress(progress);
-        console.log('[PROGRESS SAVE] Saving to localStorage:', {
-          currentPhase: progress.currentPhase,
-          currentStep: progress.currentStep,
-          completedSteps: Array.from(progress.completedSteps),
-        });
         localStorage.setItem(getProgressStorageKey(), serialized);
-        console.log('[PROGRESS SAVE] Saved successfully');
       } catch (error) {
         console.error('Failed to save progress:', error);
       }
@@ -104,18 +155,9 @@ export function useEntrepreneurProgressState() {
         const targetPhase = phase || prev.currentPhase;
         const targetStep = currentStep || prev.currentStep;
 
-        console.log('[moveToNextStep] Called with:', { phase, currentStep, targetPhase, targetStep });
-        console.log('[moveToNextStep] Current progress:', {
-          currentPhase: prev.currentPhase,
-          currentStep: prev.currentStep,
-          completedSteps: Array.from(prev.completedSteps),
-        });
-
         // Check if we can move to next step
         const canMove = canMoveToNextStep(targetPhase, targetStep, prev.completedSteps);
-        console.log('[moveToNextStep] canMoveToNextStep result:', canMove);
         if (!canMove) {
-          console.warn('[moveToNextStep] Cannot move to next step');
           return prev;
         }
 
@@ -123,24 +165,32 @@ export function useEntrepreneurProgressState() {
         const config = getPhaseConfig(targetPhase);
         const stepId = `${targetPhase}-${targetStep}`;
 
-        console.log('[moveToNextStep] Moving to:', { nextStep, stepId });
-
-        // Check if phase is complete
-        if (config.hasSteps && nextStep > (config.stepCount || 4)) {
+        // Phases without steps complete immediately on continue.
+        if (!config.hasSteps) {
           // Phase complete, move to next phase
           const nextPhase = getNextPhase(targetPhase);
-          console.log('[moveToNextStep] Phase complete, moving to next phase:', nextPhase);
+          if (nextPhase) {
+            const newPhases = new Set(prev.completedPhases);
+            newPhases.add(targetPhase);
+            return {
+              ...prev,
+              currentPhase: nextPhase,
+              currentStep: 1,
+              completedPhases: newPhases,
+              trustScore: calculateTotalTrustScore(newPhases),
+            };
+          }
+          return prev;
+        }
+
+        // Check if stepped phase is complete.
+        if (nextStep > (config.stepCount || 4)) {
+          const nextPhase = getNextPhase(targetPhase);
           if (nextPhase) {
             const newSteps = new Set(prev.completedSteps);
             newSteps.add(stepId);
             const newPhases = new Set(prev.completedPhases);
             newPhases.add(targetPhase);
-            console.log('[moveToNextStep] setState (phase complete):', {
-              completedSteps: Array.from(newSteps),
-              currentPhase: nextPhase,
-              currentStep: 1,
-              completedPhases: Array.from(newPhases),
-            });
             return {
               ...prev,
               completedSteps: newSteps,
@@ -153,13 +203,9 @@ export function useEntrepreneurProgressState() {
           return prev;
         }
 
-        // Move to next step - complete current step and update current step in one setState
+        // Move to next step - complete current step and update current step in one setState.
         const newSteps = new Set(prev.completedSteps);
         newSteps.add(stepId);
-        console.log('[moveToNextStep] setState (step):', {
-          completedSteps: Array.from(newSteps),
-          currentStep: nextStep,
-        });
         return {
           ...prev,
           completedSteps: newSteps,

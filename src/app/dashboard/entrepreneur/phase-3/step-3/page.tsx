@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { DollarSign, Target, Calendar, CheckCircle2, AlertCircle, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +15,7 @@ const PHASE_3_STEPS = [
 ];
 
 function Phase3Step3Client() {
+  const router = useRouter();
   const { progress } = useEntrepreneurProgress();
   const [fundingAmount, setFundingAmount] = useState('450000');
   const [timeline, setTimeline] = useState('18');
@@ -43,7 +45,7 @@ function Phase3Step3Client() {
     setIsLoading(true);
     try {
       await new Promise((resolve) => setTimeout(resolve, 500));
-      window.location.href = '/dashboard/entrepreneur/phase-3/dashboard';
+      router.push('/dashboard/entrepreneur/phase-3/dashboard');
     } finally {
       setIsLoading(false);
     }
@@ -283,7 +285,7 @@ function Phase3Step3Client() {
 
         {/* Footer */}
         <div className="flex gap-3">
-          <Button variant="outline" className="flex-1 h-11" onClick={() => window.location.href = '/dashboard/entrepreneur/phase-3/step-2'}>
+          <Button variant="outline" className="flex-1 h-11" onClick={() => router.push('/dashboard/entrepreneur/phase-3/step-2')}>
             Back
           </Button>
           <Button className="flex-1 h-11 gap-2" onClick={handleContinue} disabled={isLoading || amount === 0 || months === 0}>

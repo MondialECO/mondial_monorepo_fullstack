@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useEntrepreneurProgress } from '@/hooks/useEntrepreneurProgress';
 import { EntrepreneurLayout } from '@/components/entrepreneur/EntrepreneurLayout';
@@ -18,6 +19,7 @@ const PHASE_3_STEPS = [
 ];
 
 export function Phase3RevenueInputClient() {
+  const router = useRouter();
   const { progress } = useEntrepreneurProgress();
   const [revenues, setRevenues] = useState({
     q1: '150000',
@@ -61,7 +63,7 @@ export function Phase3RevenueInputClient() {
     setIsLoading(true);
     try {
       await new Promise(resolve => setTimeout(resolve, 500));
-      window.location.href = '/dashboard/entrepreneur/phase-3/step-2';
+      router.push('/dashboard/entrepreneur/phase-3/step-2');
     } finally {
       setIsLoading(false);
     }

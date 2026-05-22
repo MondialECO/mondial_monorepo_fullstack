@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import entrepreneurApi, { CompanyProgressResponse } from "@/lib/api-entrepreneur";
+import { AxiosError } from "axios";
 
 export function useEntrepreneurDashboard() {
   const queryClient = useQueryClient();
@@ -24,7 +25,7 @@ export function useEntrepreneurDashboard() {
     mutationFn: async (payload: {
       companyId: string;
       phaseNumber: number;
-      data: any;
+      data: Record<string, unknown>;
     }) => {
       return entrepreneurApi.advancePhase(
         payload.companyId,
@@ -32,20 +33,26 @@ export function useEntrepreneurDashboard() {
         payload.data
       );
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       // Invalidate and refetch
       queryClient.invalidateQueries({ queryKey: ["entrepreneur"] });
       setError(null);
     },
-    onError: (err: any) => {
-      const errorMsg = err.response?.data?.error || "Failed to advance phase";
+    onError: (err: unknown) => {
+      const errorMsg =
+        (err as AxiosError<{ error?: string }>)?.response?.data?.error ||
+        "Failed to advance phase";
       setError(errorMsg);
     },
   });
 
   const advancePhase = useCallback(
-    async (companyId: string, phaseNumber: number, data: any) => {
-      return advancePhaseMutation.mutate({
+    async (
+      companyId: string,
+      phaseNumber: number,
+      data: Record<string, unknown>
+    ) => {
+      return advancePhaseMutation.mutateAsync({
         companyId,
         phaseNumber,
         data,

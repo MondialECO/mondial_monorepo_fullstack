@@ -42,53 +42,52 @@ public class CompanyService : ICompanyService
         if (company == null)
             throw new InvalidOperationException($"No company found for user {userId}");
 
-        return new CompanyProgressResponse
-        {
-            CompanyId = company.Id,
-            CurrentPhase = company.CurrentPhase,
-            CompletedPhases = company.CompletedPhases ?? new List<int>(),
-            OverallProgressPercent = CalculateOverallProgress(company),
-            TrustScore = company.TrustScore,
-            IsInvestorReady = company.IsInvestorReady,
-            CreatedAt = company.CreatedAt,
-            LastUpdatedAt = company.UpdatedAt
-        };
+        return BuildProgressResponse(company);
     }
 
-    public async Task<CompanyProgressResponse> AdvancePhaseAsync(string userId, int phaseNumber, object phaseData)
+    public async Task<CompanyProgressResponse> AdvancePhaseAsync(string companyId, int phaseNumber, object phaseData)
     {
-        var company = await GetCompanyByUserIdAsync(userId);
-        if (company == null)
-            throw new InvalidOperationException($"No company found for user {userId}");
+        var company = await GetCompanyAsync(companyId);
+
+        company.CompletedPhases ??= new List<int>();
 
         // Validate phase progression
         if (phaseNumber < 1 || phaseNumber > 9)
             throw new ArgumentException("Phase must be between 1 and 9");
 
-        if (phaseNumber > 1 && !company.CompletedPhases.Contains(phaseNumber - 1))
-            throw new InvalidOperationException($"Cannot advance to phase {phaseNumber}: phase {phaseNumber - 1} not completed");
+        if (phaseNumber <= company.CurrentPhase)
+            return BuildProgressResponse(company);
 
-        // Validate current phase requirements before advancing
-        var (isValid, errors) = await ValidatePhaseAsync(company, phaseNumber - 1);
-        if (!isValid)
-            throw new InvalidOperationException($"Cannot advance: {string.Join(", ", errors)}");
+        if (phaseNumber != company.CurrentPhase + 1)
+            throw new InvalidOperationException(
+                $"Cannot skip phases. Current phase is {company.CurrentPhase}, requested {phaseNumber}");
 
-        // Update company phase
+        // Validate the CURRENT phase before moving to the next one.
+        if (company.CurrentPhase >= 1)
+        {
+            var (isValid, errors) = await ValidatePhaseAsync(company, company.CurrentPhase);
+            if (!isValid)
+                throw new InvalidOperationException($"Cannot advance: {string.Join(", ", errors)}");
+        }
+
+        // Mark the previous phase completed and move to the next one.
+        if (!company.CompletedPhases.Contains(company.CurrentPhase))
+            company.CompletedPhases.Add(company.CurrentPhase);
+
         company.CurrentPhase = phaseNumber;
-        if (!company.CompletedPhases.Contains(phaseNumber - 1) && phaseNumber > 1)
-            company.CompletedPhases.Add(phaseNumber - 1);
 
         company.UpdatedAt = DateTime.UtcNow;
 
         var filter = Builders<Companies>.Filter.Eq(c => c.Id, company.Id);
         await _dbContext.Companies.ReplaceOneAsync(filter, company);
 
-        return await GetCurrentPhaseAsync(userId);
+        return BuildProgressResponse(company);
     }
 
-    public async Task<CompanyProgressResponse> GetPhaseProgressAsync(string userId)
+    public async Task<CompanyProgressResponse> GetPhaseProgressAsync(string companyId)
     {
-        return await GetCurrentPhaseAsync(userId);
+        var company = await GetCompanyAsync(companyId);
+        return BuildProgressResponse(company);
     }
 
     // ============ PHASE 1: IDENTITY & ONBOARDING ============
@@ -97,6 +96,7 @@ public class CompanyService : ICompanyService
     {
         var company = new Companies
         {
+            Id = ObjectId.GenerateNewId().ToString(),
             OwnerId = userId,
             CompanyName = dto.CompanyName,
             Industry = dto.Industry,
@@ -564,6 +564,16 @@ public class CompanyService : ICompanyService
         return MapDealToResponse(deal);
     }
 
+    public async Task<string?> GetDealCompanyIdAsync(string dealId)
+    {
+        var deal = await _dbContext.DealExecutions
+            .Find(d => d.Id == dealId)
+            .Project(d => d.CompanyId)
+            .FirstOrDefaultAsync();
+
+        return deal;
+    }
+
     public async Task<List<DealStatusResponse>> GetCompanyDealsAsync(string companyId)
     {
         var deals = await _dbContext.DealExecutions
@@ -643,7 +653,22 @@ public class CompanyService : ICompanyService
         if (company.CompletedPhases == null)
             return 0;
 
-        return (company.CompletedPhases.Count / 9) * 100;
+        return (int)Math.Round((company.CompletedPhases.Count / 9d) * 100);
+    }
+
+    private CompanyProgressResponse BuildProgressResponse(Companies company)
+    {
+        return new CompanyProgressResponse
+        {
+            CompanyId = company.Id,
+            CurrentPhase = company.CurrentPhase,
+            CompletedPhases = company.CompletedPhases ?? new List<int>(),
+            OverallProgressPercent = CalculateOverallProgress(company),
+            TrustScore = company.TrustScore,
+            IsInvestorReady = company.IsInvestorReady,
+            CreatedAt = company.CreatedAt,
+            LastUpdatedAt = company.UpdatedAt
+        };
     }
 
     private double CalculateGrowthRate(Companies company)
