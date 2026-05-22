@@ -118,7 +118,6 @@ export default function TrustedPartners() {
         */}
                 <p
                     style={{
-                        fontFamily: "'Inter', sans-serif",
                         fontSize: 16,
                         fontWeight: 400,
                         lineHeight: "24px",

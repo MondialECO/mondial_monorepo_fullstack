@@ -52,7 +52,6 @@ function FAQCard({ item }: { item: FAQItem }) {
             >
                 <p
                     className="flex-1 text-[#070707] text-[16px] sm:text-[18px] leading-6 sm:leading-7 font-medium"
-                    style={{ fontFamily: "'Inter Tight', 'Inter', sans-serif" }}
                 >
                     {item.question}
                 </p>
@@ -83,8 +82,7 @@ export default function FAQPage() {
 
                         <div className="flex-1 min-w-0">
                             <h1
-                                className="text-[32px] sm:text-[40px] lg:text-[48px] leading-[40px] sm:leading-[48px] lg:leading-[56px] text-[#8a8b8f]"
-                                style={{ fontFamily: "'Instrument Sans', sans-serif", fontWeight: 400 }}
+                                className="text-[32px] sm:text-[40px] lg:text-[48px] leading-[40px] sm:leading-[48px] lg:leading-[56px] text-[#8a8b8f] font-normal"
                             >
                                 {"Your Complete Guide to Mondial's "}
                                 <em
