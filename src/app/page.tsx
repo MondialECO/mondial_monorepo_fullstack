@@ -1,5 +1,4 @@
 import dynamic from "next/dynamic";
-import { Suspense } from "react";
 import Navbar from "@/components/shared/Navbar";
 import HeroSection from "@/components/homepage/HeroSection";
 import AllProfileSection from "@/components/homepage/AllProfileSection";
