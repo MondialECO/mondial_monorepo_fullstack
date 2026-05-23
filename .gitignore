@@ -29,6 +29,15 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+*.log
+*.tmp
+*.temp
+*.bak
+*~
+
+# local agent/tooling state
+.agents/
+.codex/
 
 # env files (can opt-in for committing if needed)
 .env*
@@ -39,6 +48,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# .NET build output
+bin/
+obj/
+out/
 
 # Claude Code (per-developer machine-local config)
 # settings.json is shared; settings.local.json is your local allow-list and

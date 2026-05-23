@@ -13,6 +13,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { useEntrepreneurProgress } from '@/hooks/useEntrepreneurProgress';
+import entrepreneurApi from '@/lib/api-entrepreneur';
 import { Button } from '@/components/ui/button';
 import { RouteGuard } from '@/components/entrepreneur/RouteGuard';
 
@@ -24,16 +25,54 @@ function Phase2Step4PageContent() {
   const handleContinue = async () => {
     setIsCompleting(true);
     try {
-      const existingData = getPhaseData(2) || {};
-      savePhaseData(2, {
+      const existingData = (getPhaseData(2) || {}) as any;
+      const finalData = {
         ...existingData,
         verifiedAt: new Date().toISOString(),
-      });
-      await new Promise((r) => setTimeout(r, 500));
+      };
+
+      // Save locally first
+      savePhaseData(2, finalData);
+      await new Promise((r) => setTimeout(r, 100));
+
+      // Mark step 4 complete locally
       moveToNextStep(2, 4);
+      await new Promise((r) => setTimeout(r, 100));
+
+      // CRITICAL: Get companyId and advance phase in backend
+      let companyId = existingData?.__companyId;
+
+      // If companyId missing from local state, fetch from backend
+      if (!companyId) {
+        console.log('🔧 CompanyId missing from local state, fetching from backend...');
+        try {
+          const phaseProgress = await entrepreneurApi.getCurrentPhase();
+          companyId = phaseProgress?.companyId;
+          if (!companyId) {
+            throw new Error('No company found in backend');
+          }
+          console.log('✅ CompanyId retrieved from backend:', companyId);
+        } catch (fetchError) {
+          const msg = fetchError instanceof Error ? fetchError.message : 'Failed to fetch company';
+          throw new Error(`Could not find company in backend: ${msg}`);
+        }
+      }
+
+      console.log('🔧 Advancing Phase 2 to completion for company:', companyId);
+      const advanceResponse = await entrepreneurApi.advancePhase(companyId, 2, finalData);
+
+      if (advanceResponse?.currentPhase !== 3) {
+        throw new Error('Phase advancement failed - backend did not return currentPhase=3');
+      }
+
+      console.log('✅ Phase 2 completed. Current phase:', advanceResponse.currentPhase);
+
+      // Wait a moment for state flush, then redirect to phase-3
       await new Promise((r) => setTimeout(r, 300));
-      router.push('/dashboard/entrepreneur');
-    } catch {
+      router.push('/dashboard/entrepreneur/phase-3');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to complete Phase 2';
+      console.error('❌ Phase 2 completion error:', message);
       setIsCompleting(false);
     }
   };

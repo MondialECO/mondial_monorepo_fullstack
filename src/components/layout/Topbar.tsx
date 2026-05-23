@@ -2,14 +2,16 @@
 
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import ThemeToggle from "../ThemeToggle";
-import { LayoutGrid, ChevronRight } from "lucide-react";
+import { LayoutGrid, ChevronRight, LogOut } from "lucide-react";
 import Link from "next/link";
 import { useBreadcrumb } from "@/hooks/useBreadcrumb";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import MessageIcon from "@/components/messages/MessageIcon";
+import { useAuth } from "@/app/_providers/AuthProvider";
 
 export default function Topbar() {
   const breadcrumbs = useBreadcrumb();
+  const { logout } = useAuth();
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border bg-card text-muted-foreground">
@@ -59,6 +61,14 @@ export default function Topbar() {
           <MessageIcon />
           <NotificationBell />
           <ThemeToggle />
+          <button
+            onClick={logout}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-foreground hover:bg-muted transition-colors"
+            title="Logout"
+          >
+            <LogOut className="h-5 w-5" />
+            <span className="hidden sm:inline">Logout</span>
+          </button>
         </div>
 
       </div>

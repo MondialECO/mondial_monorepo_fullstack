@@ -40,7 +40,17 @@ public class CompanyService : ICompanyService
     {
         var company = await GetCompanyByUserIdAsync(userId);
         if (company == null)
-            throw new InvalidOperationException($"No company found for user {userId}");
+            return new CompanyProgressResponse
+            {
+                CompanyId = string.Empty,
+                CurrentPhase = 1,
+                CompletedPhases = new List<int>(),
+                OverallProgressPercent = 0,
+                TrustScore = 0,
+                IsInvestorReady = false,
+                CreatedAt = DateTime.UtcNow,
+                LastUpdatedAt = DateTime.UtcNow
+            };
 
         return BuildProgressResponse(company);
     }
@@ -328,6 +338,77 @@ public class CompanyService : ICompanyService
         );
 
         return new DilutionSimulationResponse { Scenarios = scenarios };
+    }
+
+    // ============ PHASE 5: FUNDING ASK & PITCH ============
+
+    public async Task<Companies> SavePitchDeckAsync(string companyId, string fileName, Stream fileStream)
+    {
+        var company = await GetCompanyAsync(companyId);
+
+        // TODO: P1 - Save to S3 instead of local
+        var localPath = Path.Combine("uploads", companyId, "pitch");
+        Directory.CreateDirectory(localPath);
+
+        var filePath = Path.Combine(localPath, fileName);
+        using (var fileToWrite = new FileStream(filePath, FileMode.Create))
+        {
+            await fileStream.CopyToAsync(fileToWrite);
+        }
+
+        company.PitchDeckFileName = fileName;
+        company.PitchDeckUploadedAt = DateTime.UtcNow;
+
+        var result = await _dbContext.Companies.FindOneAndUpdateAsync(
+            Builders<Companies>.Filter.Eq(c => c.Id, company.Id),
+            Builders<Companies>.Update
+                .Set(c => c.PitchDeckFileName, fileName)
+                .Set(c => c.PitchDeckUploadedAt, DateTime.UtcNow)
+                .Set(c => c.UpdatedAt, DateTime.UtcNow),
+            new FindOneAndUpdateOptions<Companies> { ReturnDocument = ReturnDocument.After }
+        );
+
+        return result ?? company;
+    }
+
+    public async Task<Companies> SaveFundingNarrativeAsync(string companyId, string narrative)
+    {
+        var company = await GetCompanyAsync(companyId);
+        company.FundingNarrative = narrative;
+        company.UpdatedAt = DateTime.UtcNow;
+
+        var result = await _dbContext.Companies.FindOneAndUpdateAsync(
+            Builders<Companies>.Filter.Eq(c => c.Id, company.Id),
+            Builders<Companies>.Update
+                .Set(c => c.FundingNarrative, narrative)
+                .Set(c => c.UpdatedAt, DateTime.UtcNow),
+            new FindOneAndUpdateOptions<Companies> { ReturnDocument = ReturnDocument.After }
+        );
+
+        return result ?? company;
+    }
+
+    public async Task<Companies> SaveOutreachCampaignAsync(string companyId, List<string> investorIds, string template)
+    {
+        var company = await GetCompanyAsync(companyId);
+
+        // TODO: P1 - Queue background job for email outreach
+        company.OutreachCampaignTemplate = template;
+        company.OutreachInvestorList = investorIds;
+        company.OutreachCampaignStartedAt = DateTime.UtcNow;
+        company.UpdatedAt = DateTime.UtcNow;
+
+        var result = await _dbContext.Companies.FindOneAndUpdateAsync(
+            Builders<Companies>.Filter.Eq(c => c.Id, company.Id),
+            Builders<Companies>.Update
+                .Set(c => c.OutreachCampaignTemplate, template)
+                .Set(c => c.OutreachInvestorList, investorIds)
+                .Set(c => c.OutreachCampaignStartedAt, DateTime.UtcNow)
+                .Set(c => c.UpdatedAt, DateTime.UtcNow),
+            new FindOneAndUpdateOptions<Companies> { ReturnDocument = ReturnDocument.After }
+        );
+
+        return result ?? company;
     }
 
     // ============ PHASE 6: DATA ROOM ============

@@ -76,6 +76,14 @@ public class Companies
 
     public FundingAsk FundingAsk { get; set; }
 
+    // Phase 5: Pitch & Outreach
+    public string PitchDeckFileName { get; set; }
+    public DateTime? PitchDeckUploadedAt { get; set; }
+    public string FundingNarrative { get; set; }
+    public string OutreachCampaignTemplate { get; set; }
+    public List<string> OutreachInvestorList { get; set; } = new();
+    public DateTime? OutreachCampaignStartedAt { get; set; }
+
     // Phase 6: Data Room
     public bool IsDataRoomLive { get; set; } = false;
     public bool IsDataRoomNdaRequired { get; set; } = true;

@@ -3,9 +3,9 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import api from '@/lib/axios';
+import { isAxiosError } from 'axios';
 import {
-  DEFAULT_USER_ROLE,
-  normalizeUserRole,
+  parseStrictUserRole,
   ROLE_DASHBOARD_ROUTES,
   UserRole,
 } from '@/lib/roles';
@@ -14,6 +14,7 @@ type User = {
   id: string;
   name: string;
   role: UserRole;
+  onboardingPhase?: number; // Universal Phase 1 gate (0 = not started, 1 = complete)
 };
 
 type AuthContextType = {
@@ -21,8 +22,10 @@ type AuthContextType = {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isBackendVerified: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
+  refreshAuthMe: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType>(null!);
@@ -38,58 +41,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
+  const [isBackendVerified, setIsBackendVerified] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
-  // Hydrate from localStorage only once on mount (client-side only)
+  // Hydrate token from localStorage only (never authorize from cached user)
   useEffect(() => {
-    // Ensure this only runs on the client
     if (typeof window === 'undefined') return;
 
-    const storedUser = localStorage.getItem('user');
     const storedToken = localStorage.getItem('token');
-
     queueMicrotask(() => {
-      if (storedUser && storedToken) {
-        try {
-          const parsedUser = JSON.parse(storedUser);
-          const normalizedRole = normalizeUserRole(parsedUser?.role);
-          setUser({
-            ...parsedUser,
-            role: normalizedRole,
-          });
-          setToken(storedToken);
-        } catch {
-          localStorage.clear();
-        }
+      if (storedToken) {
+        setToken(storedToken);
       }
       setIsHydrated(true);
     });
   }, []);
 
-  // Sync auth state across multiple tabs/windows
+  // Sync token across multiple tabs/windows
   useEffect(() => {
     const syncAuth = () => {
       const tokenFromStorage = localStorage.getItem('token');
-      const userFromStorage = localStorage.getItem('user');
-
-      if (tokenFromStorage && userFromStorage) {
-        try {
-          const parsedUser = JSON.parse(userFromStorage);
-          const normalizedRole = normalizeUserRole(parsedUser?.role);
-          setToken(tokenFromStorage);
-          setUser({
-            ...parsedUser,
-            role: normalizedRole,
-          });
-        } catch {
-          localStorage.clear();
-          setToken(null);
-          setUser(null);
-        }
-      } else {
+      if (!tokenFromStorage) {
         setToken(null);
         setUser(null);
+        setIsBackendVerified(false);
       }
     };
 
@@ -97,32 +73,59 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('storage', syncAuth);
   }, []);
 
-  // Verify token is valid on backend when app loads
+  // Verify token with backend after hydration (must succeed before authorizing dashboard)
   useEffect(() => {
-    if (!isHydrated || !token) return;
-    if (!pathname?.startsWith('/dashboard')) return;
+    if (!isHydrated || !token) {
+      setIsBackendVerified(false);
+      return;
+    }
 
     const verifyToken = async () => {
       try {
-        // Verify token with backend
-        await api.get('/auth/me');
-        // Token is valid, continue
-      } catch {
-        // Token is invalid or expired, clear auth and redirect
-        console.log('Token validation failed, clearing auth');
-        localStorage.clear();
-        setUser(null);
+        const response = await api.get('/auth/me');
+        const authData = response.data?.data ?? response.data;
+
+        if (!authData) {
+          throw new Error('No user data from /auth/me');
+        }
+
+        const apiRoles = authData.roles ?? authData.Roles ?? [];
+        if (!apiRoles || apiRoles.length === 0) {
+          throw new Error('Backend user has no roles; cannot authorize session');
+        }
+
+        const resolvedRole = parseStrictUserRole(apiRoles[0]);
+        if (!resolvedRole) {
+          throw new Error(`Unknown role from backend: "${apiRoles[0]}". Cannot authorize session.`);
+        }
+
+        const updatedUser: User = {
+          id: authData.id,
+          name: authData.name,
+          role: resolvedRole,
+          onboardingPhase: authData.onboarding?.phase ?? 0,
+        };
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        setUser(updatedUser);
+        setIsBackendVerified(true);
+      } catch (error) {
+        const status = isAxiosError(error) ? error.response?.status : undefined;
+        const shouldExpireSession = status === 401 || status === 403;
+
+        console.log('Token validation failed, clearing auth:', error instanceof Error ? error.message : String(error));
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
         setToken(null);
-        // Only redirect if we're on a dashboard page
+        setUser(null);
+        setIsBackendVerified(false);
         if (typeof window !== 'undefined' && window.location.pathname.includes('/dashboard')) {
-          router.push('/login?reason=session_expired');
+          router.push('/login?reason=invalid_role');
         }
       }
     };
 
-    // Only verify once after hydration
     verifyToken();
-  }, [isHydrated, token, pathname, router]);
+  }, [isHydrated, token, router]);
 
   const login = async (email: string, password: string) => {
     const res = await api.post('/auth/login', { email, password });
@@ -135,12 +138,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const apiRoles = apiUser.roles ?? apiUser.Roles ?? [];
-    const resolvedRole = normalizeUserRole(apiRoles[0] ?? DEFAULT_USER_ROLE);
+
+    // FAIL CLOSED: Reject login if roles are missing
+    if (!apiRoles || apiRoles.length === 0) {
+      throw new Error('Login failed: user has no role assigned. Please contact support.');
+    }
+
+    // Use strict role validation; reject unknown roles
+    const resolvedRole = parseStrictUserRole(apiRoles[0]);
+    if (!resolvedRole) {
+      throw new Error(`Login failed: unknown role "${apiRoles[0]}". Please contact support.`);
+    }
+
+    // Capture onboarding phase from login response (backend includes it at apiUser.Onboarding.phase)
+    const onboardingPhase = apiUser.Onboarding?.phase ?? 0;
 
     const user: User = {
       id: apiUser.id,
       name: apiUser.name,
       role: resolvedRole,
+      onboardingPhase,
     };
 
     localStorage.setItem('token', token);
@@ -149,14 +166,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(user);
     setToken(token);
 
-    router.push(ROLE_DASHBOARD_ROUTES[user.role] ?? ROLE_DASHBOARD_ROUTES[DEFAULT_USER_ROLE]);
+    router.push(ROLE_DASHBOARD_ROUTES[user.role]);
   };
 
   const logout = () => {
-    localStorage.clear();
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
     setUser(null);
     setToken(null);
-    router.push('/login');
+    setIsBackendVerified(false);
+    router.replace('/login');
+  };
+
+  const refreshAuthMe = async () => {
+    if (!token) return;
+
+    try {
+      const response = await api.get('/auth/me');
+      const authData = response.data?.data ?? response.data;
+
+      if (!authData) {
+        throw new Error('No user data from /auth/me');
+      }
+
+      const apiRoles = authData.roles ?? authData.Roles ?? [];
+      if (!apiRoles || apiRoles.length === 0) {
+        throw new Error('Backend user has no roles');
+      }
+
+      const resolvedRole = parseStrictUserRole(apiRoles[0]);
+      if (!resolvedRole) {
+        throw new Error(`Unknown role: "${apiRoles[0]}"`);
+      }
+
+      const updatedUser: User = {
+        id: authData.id,
+        name: authData.name,
+        role: resolvedRole,
+        onboardingPhase: authData.onboarding?.phase ?? 0,
+      };
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      setUser(updatedUser);
+    } catch (error) {
+      console.error('Failed to refresh auth:', error);
+      logout();
+    }
   };
 
   return (
@@ -164,10 +218,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       value={{
         token,
         user,
-        isAuthenticated: !!user && !!token,
+        isAuthenticated: !!user && !!token && isBackendVerified,
         isLoading: !isHydrated,
+        isBackendVerified,
         login,
         logout,
+        refreshAuthMe,
       }}
     >
       {children}
