@@ -2,7 +2,12 @@
 
 import { createContext, useContext, ReactNode } from 'react';
 import { useEntrepreneurProgressState } from '@/hooks/useEntrepreneurProgressState';
-import { EntrepreneurProgress, PhaseNumber, StepNumber } from '@/types/entrepreneur';
+import {
+  EntrepreneurProgress,
+  PhaseNumber,
+  StepNumber,
+} from '@/types/entrepreneur';
+import { CompanyProgressResponse } from '@/lib/api-entrepreneur';
 
 interface EntrepreneurProgressContextType {
   progress: EntrepreneurProgress | null;
@@ -20,8 +25,12 @@ interface EntrepreneurProgressContextType {
   moveToNextStep: (phase?: PhaseNumber, currentStep?: StepNumber) => boolean;
   moveToStep: (phase: PhaseNumber, step: StepNumber) => boolean;
   savePhaseData: (phase: PhaseNumber, data: unknown) => void;
-  getPhaseData: (phase: PhaseNumber) => unknown;
+  getPhaseData: <T = unknown>(phase: PhaseNumber) => T | undefined;
   resetProgress: () => void;
+
+  // Backend authority
+  applyBackendResponse: (serverProgress: CompanyProgressResponse) => void;
+  refreshFromBackend: () => Promise<boolean>;
 }
 
 const EntrepreneurProgressContext = createContext<EntrepreneurProgressContextType | undefined>(undefined);

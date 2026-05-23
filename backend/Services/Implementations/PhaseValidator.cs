@@ -1,4 +1,5 @@
 using WebApp.Models.DatabaseModels;
+using WebApp.Models.Dtos;
 
 namespace WebApp.Services.Implementations;
 
@@ -50,16 +51,38 @@ public class PhaseValidator : IPhaseValidator
             if (string.IsNullOrWhiteSpace(company.Country))
                 errors.Add("Country is required");
 
-            if (company.BeneficialOwners == null || company.BeneficialOwners.Count == 0)
+            // Check beneficial owners — validate canonical fields, not just count.
+            if (company.BeneficialOwnersDto == null || company.BeneficialOwnersDto.Count == 0)
+            {
                 errors.Add("At least one beneficial owner is required");
+            }
+            else
+            {
+                for (var i = 0; i < company.BeneficialOwnersDto.Count; i++)
+                {
+                    var owner = company.BeneficialOwnersDto[i];
+                    if (string.IsNullOrWhiteSpace(owner.FullName))
+                        errors.Add($"Beneficial owner #{i + 1}: full name is required");
+                    if (string.IsNullOrWhiteSpace(owner.Email))
+                        errors.Add($"Beneficial owner #{i + 1}: email is required");
+                    if (owner.OwnershipPercent <= 0 || owner.OwnershipPercent > 100)
+                        errors.Add($"Beneficial owner #{i + 1}: ownership percent must be between 0 and 100");
+                }
+            }
 
-            if (company.Documents == null || company.Documents.Count == 0)
-                errors.Add("At least one document must be uploaded");
+            // Check documents — backend-authoritative required set.
+            // Phase 2 completion means every required document type has been
+            // submitted with a non-rejected status. Pending and approved both count.
+            var statuses = company.DocumentStatuses ?? new List<DocumentStatusResponse>();
+            foreach (var requiredType in Phase2Requirements.RequiredDocumentTypes)
+            {
+                var hasAcceptable = statuses.Any(d =>
+                    Phase2Requirements.MatchesType(d.Type, requiredType) &&
+                    Phase2Requirements.IsAcceptableStatus(d.Status));
 
-            // Check that documents are approved
-            var unapprovedDocs = company.Documents?.Where(d => d.Status != "approved").ToList();
-            if (unapprovedDocs?.Count > 0)
-                errors.Add($"{unapprovedDocs.Count} document(s) still pending review");
+                if (!hasAcceptable)
+                    errors.Add($"Required document '{requiredType}' is missing or rejected");
+            }
 
             return (errors.Count == 0, errors);
         });

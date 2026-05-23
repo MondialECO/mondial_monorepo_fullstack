@@ -24,9 +24,6 @@ export function RouteGuard({
   const { progress, isLoading, backendFetchFailed } = useEntrepreneurProgress();
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
 
-  // Dev mode: set to true to allow all steps without restrictions
-  const DEV_MODE_UNLOCK_ALL_STEPS = process.env.NEXT_PUBLIC_DEV_MODE === 'true';
-
   useEffect(() => {
     // UNIVERSAL PHASE 1 GATE: Block all phases 2+ if onboarding.phase < 1
     const onboardingPhase = user?.onboardingPhase ?? 0;
@@ -53,12 +50,6 @@ export function RouteGuard({
       return;
     }
 
-    // In dev mode, allow all routes
-    if (DEV_MODE_UNLOCK_ALL_STEPS) {
-      setIsAuthorized(true);
-      return;
-    }
-
     // Determine what phase/step we're trying to access
     const pathMatch = pathname.match(
       /\/dashboard\/entrepreneur\/(phase-(\d+))(?:\/step-(\d+))?/
@@ -72,7 +63,11 @@ export function RouteGuard({
     const pathPhase = parseInt(pathMatch[2]) as PhaseNumber;
     const pathStep = pathMatch[3] ? (parseInt(pathMatch[3]) as StepNumber) : undefined;
 
-    // Check if phase is locked
+    // AUTHORIZATION ONLY FROM BACKEND COMPANY PROGRESS.
+    // progress.currentPhase / progress.completedPhases are written ONLY by
+    // applyBackendResponse in useEntrepreneurProgressState (initial sync +
+    // advancePhase response). They are NOT persisted to localStorage and are
+    // NOT mutated by local moveToNextStep.
     const isPhaseCompleted = progress.completedPhases.has(pathPhase);
     const isPhaseActive = progress.currentPhase === pathPhase;
 
@@ -105,15 +100,13 @@ export function RouteGuard({
         return;
       }
 
-      // Check if step is locked (can access current, previous, or next step if previous is completed)
+      // For steps in current phase: allow current step and completed steps only
+      // Do NOT allow unrestricted navigation based on localStorage mutations
       if (pathPhase === progress.currentPhase) {
         const isStepCompleted = progress.completedSteps.has(`${pathPhase}-${pathStep}`);
         const isCurrent = pathStep === progress.currentStep;
-        const isPrevious = pathStep < progress.currentStep;
-        const isNextAfterCompleted = pathStep === progress.currentStep + 1 &&
-          progress.completedSteps.has(`${pathPhase}-${progress.currentStep}`);
 
-        if (!isStepCompleted && !isCurrent && !isPrevious && !isNextAfterCompleted) {
+        if (!isStepCompleted && !isCurrent) {
           // Trying to access a locked step - redirect to current step
           setIsAuthorized(false);
           router.replace(
@@ -121,12 +114,17 @@ export function RouteGuard({
           );
           return;
         }
+      } else if (pathStep !== 1) {
+        // For phases other than current phase, only allow step 1
+        setIsAuthorized(false);
+        router.replace(`/dashboard/entrepreneur/phase-${pathPhase}/step-1`);
+        return;
       }
     }
 
     // All checks passed
     setIsAuthorized(true);
-  }, [isLoading, progress, pathname, router, DEV_MODE_UNLOCK_ALL_STEPS, backendFetchFailed]);
+  }, [isLoading, progress, pathname, router, backendFetchFailed, user?.onboardingPhase]);
 
   // Don't render children until authorization check is complete
   if (isLoading || isAuthorized === null) {

@@ -9,42 +9,150 @@ import {
 import {
   INITIAL_PROGRESS,
   getProgressStorageKey,
-  serializeProgress,
-  deserializeProgress,
   canMoveToNextStep,
-  getNextPhase,
-  calculateTotalTrustScore,
   isStepComplete,
   getPhaseProgress,
   getPhaseConfig,
 } from '@/lib/entrepreneur';
-import entrepreneurApi from '@/lib/api-entrepreneur';
+import entrepreneurApi, {
+  CompanyProgressResponse,
+} from '@/lib/api-entrepreneur';
 
 const SAVE_DEBOUNCE_MS = 500;
 
+// Local-only drafts persisted to localStorage. Backend phase authority
+// (currentPhase / completedPhases / companyId) is NEVER persisted locally —
+// the RouteGuard reads it only from backend response.
+interface PersistedDraft {
+  currentStep: StepNumber;
+  completedSteps: string[];
+  phaseData: Record<string, unknown>;
+  lastUpdated: number;
+}
+
+function serializeDraft(progress: EntrepreneurProgress): string {
+  const draft: PersistedDraft = {
+    currentStep: progress.currentStep,
+    completedSteps: Array.from(progress.completedSteps),
+    phaseData: progress.phaseData,
+    lastUpdated: Date.now(),
+  };
+  return JSON.stringify(draft);
+}
+
+function loadDraft(): Partial<PersistedDraft> | null {
+  try {
+    const raw = localStorage.getItem(getProgressStorageKey());
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<PersistedDraft>;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
 export function useEntrepreneurProgressState() {
-  const [progress, setProgress] = useState<EntrepreneurProgress>(() => {
-    // Initialize with safe default - never null
-    // NOTE: localStorage is UI cache only, NOT authority. Backend verification is required before unlocking routes.
-    return { ...INITIAL_PROGRESS, lastUpdated: Date.now() };
-  });
+  const [progress, setProgress] = useState<EntrepreneurProgress>(() => ({
+    ...INITIAL_PROGRESS,
+    lastUpdated: Date.now(),
+  }));
   const [isLoading, setIsLoading] = useState(true);
   const [backendFetchFailed, setBackendFetchFailed] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
 
-  // Mark as hydrated after mount
   useEffect(() => {
     setIsHydrated(true);
   }, []);
 
-  // Sync phase state from backend (source of truth) when available.
+  // Apply backend response as the authoritative source for phase progression.
+  const applyBackendResponse = useCallback(
+    (serverProgress: CompanyProgressResponse) => {
+      setProgress((prev) => {
+        const currentPhase = Math.min(
+          9,
+          Math.max(1, serverProgress.currentPhase)
+        ) as PhaseNumber;
+        const phaseConfig = getPhaseConfig(currentPhase);
+
+        const completedPhases = new Set<PhaseNumber>(
+          (serverProgress.completedPhases || [])
+            .filter((phase) => phase >= 1 && phase <= 9)
+            .map((phase) => phase as PhaseNumber)
+        );
+
+        // Within-phase step state stays local; reset to 1 when phase changes.
+        const safeStep = phaseConfig.hasSteps
+          ? (Math.min(
+              prev.currentPhase === currentPhase ? prev.currentStep : 1,
+              phaseConfig.stepCount || 1
+            ) as StepNumber)
+          : (1 as StepNumber);
+
+        return {
+          ...prev,
+          currentPhase,
+          currentStep: safeStep,
+          completedPhases,
+          trustScore: Math.max(0, serverProgress.trustScore || 0),
+          lastUpdated: Date.now(),
+          phaseData: {
+            ...prev.phaseData,
+            __companyId: serverProgress.companyId,
+          },
+        };
+      });
+    },
+    []
+  );
+
+  const refreshFromBackend = useCallback(async (): Promise<boolean> => {
+    try {
+      const serverProgress = await entrepreneurApi.getCurrentPhase();
+      if (
+        !serverProgress ||
+        typeof serverProgress.currentPhase !== 'number'
+      ) {
+        setBackendFetchFailed(true);
+        return false;
+      }
+      applyBackendResponse(serverProgress);
+      setBackendFetchFailed(false);
+      return true;
+    } catch (error) {
+      console.error('Failed to fetch entrepreneur progress from backend:', error);
+      setBackendFetchFailed(true);
+      return false;
+    }
+  }, [applyBackendResponse]);
+
+  // Initial backend sync + draft hydration.
   useEffect(() => {
     if (!isHydrated) return;
-
     let cancelled = false;
 
-    const syncFromServer = async () => {
+    (async () => {
+      // Hydrate UI-only drafts first (step / phaseData) so the user sees
+      // their in-progress form values. This NEVER affects currentPhase or
+      // completedPhases — those are backend-only.
+      const draft = loadDraft();
+      if (draft) {
+        setProgress((prev) => ({
+          ...prev,
+          currentStep:
+            typeof draft.currentStep === 'number'
+              ? (draft.currentStep as StepNumber)
+              : prev.currentStep,
+          completedSteps: Array.isArray(draft.completedSteps)
+            ? new Set(draft.completedSteps as string[])
+            : prev.completedSteps,
+          phaseData:
+            draft.phaseData && typeof draft.phaseData === 'object'
+              ? { ...prev.phaseData, ...draft.phaseData }
+              : prev.phaseData,
+        }));
+      }
+
       const token =
         typeof window !== 'undefined' ? localStorage.getItem('token') : null;
       if (!token) {
@@ -52,78 +160,25 @@ export function useEntrepreneurProgressState() {
         return;
       }
 
-      try {
-        const serverProgress = await entrepreneurApi.getCurrentPhase();
-        if (cancelled) return;
+      await refreshFromBackend();
+      if (!cancelled) setIsLoading(false);
+    })();
 
-        // Safety check: ensure currentPhase is valid
-        if (!serverProgress || typeof serverProgress.currentPhase !== 'number') {
-          console.warn('Invalid server progress response:', serverProgress);
-          setBackendFetchFailed(true);
-          if (!cancelled) setIsLoading(false);
-          return;
-        }
-
-        setProgress((prev) => {
-          const currentPhase = Math.min(
-            9,
-            Math.max(1, serverProgress.currentPhase)
-          ) as PhaseNumber;
-          const phaseConfig = getPhaseConfig(currentPhase);
-          const safeStep = phaseConfig.hasSteps
-            ? (Math.min(
-                prev.currentPhase === currentPhase ? prev.currentStep : 1,
-                phaseConfig.stepCount || 1
-              ) as StepNumber)
-            : (1 as StepNumber);
-
-          const completedPhases = new Set<PhaseNumber>(
-            (serverProgress.completedPhases || [])
-              .filter((phase) => phase >= 1 && phase <= 9)
-              .map((phase) => phase as PhaseNumber)
-          );
-
-          return {
-            ...prev,
-            currentPhase,
-            currentStep: safeStep,
-            completedPhases,
-            trustScore: Math.max(0, serverProgress.trustScore || 0),
-            lastUpdated: Date.now(),
-            phaseData: {
-              ...prev.phaseData,
-              __companyId: serverProgress.companyId,
-            },
-          };
-        });
-        setBackendFetchFailed(false);
-      } catch (error) {
-        // FAIL CLOSED: Backend cannot be reached, do not unlock routes from cached progress
-        console.error('Failed to fetch entrepreneur progress from backend:', error);
-        setBackendFetchFailed(true);
-      } finally {
-        if (!cancelled) setIsLoading(false);
-      }
-    };
-
-    syncFromServer();
     return () => {
       cancelled = true;
     };
-  }, [isHydrated]);
+  }, [isHydrated, refreshFromBackend]);
 
-  // Save to localStorage with debounce
+  // Persist drafts only (NOT backend authority fields) with debounce.
   useEffect(() => {
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
     }
-
     saveTimeoutRef.current = setTimeout(() => {
       try {
-        const serialized = serializeProgress(progress);
-        localStorage.setItem(getProgressStorageKey(), serialized);
+        localStorage.setItem(getProgressStorageKey(), serializeDraft(progress));
       } catch (error) {
-        console.error('Failed to save progress:', error);
+        console.error('Failed to save draft:', error);
       }
     }, SAVE_DEBOUNCE_MS);
 
@@ -137,11 +192,8 @@ export function useEntrepreneurProgressState() {
   const completeStep = useCallback(
     (phase: PhaseNumber, step: StepNumber) => {
       setProgress((prev) => {
-        if (!prev) return prev;
-
         const stepId = `${phase}-${step}`;
         if (prev.completedSteps.has(stepId)) return prev;
-
         const newSteps = new Set(prev.completedSteps);
         newSteps.add(stepId);
         return { ...prev, completedSteps: newSteps };
@@ -150,141 +202,91 @@ export function useEntrepreneurProgressState() {
     []
   );
 
+  // WITHIN-PHASE step advancement only. Cross-phase advancement is the
+  // exclusive responsibility of the backend (via advancePhase + applyBackendResponse).
   const moveToNextStep = useCallback(
     (phase?: PhaseNumber, currentStep?: StepNumber): boolean => {
+      let advanced = false;
       setProgress((prev) => {
-        if (!prev) return prev;
-
-        // Use current progress if not provided
         const targetPhase = phase || prev.currentPhase;
         const targetStep = currentStep || prev.currentStep;
 
-        // Check if we can move to next step
-        const canMove = canMoveToNextStep(targetPhase, targetStep, prev.completedSteps);
-        if (!canMove) {
-          return prev;
-        }
+        const canMove = canMoveToNextStep(
+          targetPhase,
+          targetStep,
+          prev.completedSteps
+        );
+        if (!canMove) return prev;
 
-        const nextStep = (targetStep + 1) as StepNumber;
         const config = getPhaseConfig(targetPhase);
+        if (!config.hasSteps) return prev;
+
         const stepId = `${targetPhase}-${targetStep}`;
+        const nextStep = (targetStep + 1) as StepNumber;
 
-        // Phases without steps complete immediately on continue.
-        if (!config.hasSteps) {
-          // Phase complete, move to next phase
-          const nextPhase = getNextPhase(targetPhase);
-          if (nextPhase) {
-            const newPhases = new Set(prev.completedPhases);
-            newPhases.add(targetPhase);
-            return {
-              ...prev,
-              currentPhase: nextPhase,
-              currentStep: 1,
-              completedPhases: newPhases,
-              trustScore: calculateTotalTrustScore(newPhases),
-            };
-          }
-          return prev;
-        }
-
-        // Check if stepped phase is complete.
+        // If we're at the last step, do NOT advance the phase locally.
+        // The backend's advancePhase call drives that, then applyBackendResponse
+        // updates currentPhase/completedPhases.
         if (nextStep > (config.stepCount || 4)) {
-          const nextPhase = getNextPhase(targetPhase);
-          if (nextPhase) {
-            const newSteps = new Set(prev.completedSteps);
-            newSteps.add(stepId);
-            const newPhases = new Set(prev.completedPhases);
-            newPhases.add(targetPhase);
-            return {
-              ...prev,
-              completedSteps: newSteps,
-              currentPhase: nextPhase,
-              currentStep: 1,
-              completedPhases: newPhases,
-              trustScore: calculateTotalTrustScore(newPhases),
-            };
-          }
-          return prev;
+          const newSteps = new Set(prev.completedSteps);
+          newSteps.add(stepId);
+          advanced = true;
+          return { ...prev, completedSteps: newSteps };
         }
 
-        // Move to next step - complete current step and update current step in one setState.
         const newSteps = new Set(prev.completedSteps);
         newSteps.add(stepId);
+        advanced = true;
         return {
           ...prev,
           completedSteps: newSteps,
           currentStep: nextStep,
         };
       });
-      return true;
+      return advanced;
     },
     []
   );
 
   const moveToStep = useCallback(
     (phase: PhaseNumber, step: StepNumber): boolean => {
+      let moved = false;
       setProgress((prev) => {
-        if (!prev) return prev;
-
-        // Validate step range
         const config = getPhaseConfig(phase);
-        if (config.hasSteps && step > (config.stepCount || 4)) {
-          return prev;
-        }
+        if (config.hasSteps && step > (config.stepCount || 4)) return prev;
 
-        // CRITICAL: Validate phase access
-        // Can only move to phases that are completed or current
         const isPhaseCompleted = prev.completedPhases.has(phase);
         const isCurrentPhase = phase === prev.currentPhase;
+        if (!isPhaseCompleted && !isCurrentPhase) return prev;
 
-        if (!isPhaseCompleted && !isCurrentPhase) {
-          // Trying to jump to a locked phase - DENIED
+        if (phase === prev.currentPhase && step > prev.currentStep + 1) {
           return prev;
         }
 
-        // Within current phase: can only move to currentStep + 1
-        if (phase === prev.currentPhase) {
-          if (step > prev.currentStep + 1) {
-            return prev;
-          }
-        } else if (isPhaseCompleted) {
-          // In completed phase: can access any step
-          // (but still enforce step bounds check above)
-        }
-
-        return {
-          ...prev,
-          currentPhase: phase,
-          currentStep: step,
-        };
+        moved = true;
+        return { ...prev, currentStep: step };
       });
-      return true;
+      return moved;
     },
     []
   );
 
   const savePhaseData = useCallback(
     (phase: PhaseNumber, data: unknown) => {
-      setProgress((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          phaseData: {
-            ...prev.phaseData,
-            [phase]: data,
-          },
-        };
-      });
+      setProgress((prev) => ({
+        ...prev,
+        phaseData: {
+          ...prev.phaseData,
+          [phase]: data,
+        },
+      }));
     },
     []
   );
 
-  const getPhaseData = useCallback(
-    (phase: PhaseNumber) => {
-      return progress?.phaseData[phase];
-    },
-    [progress]
-  );
+  function getPhaseData<T = unknown>(phase: PhaseNumber): T | undefined {
+    return progress?.phaseData[phase] as T | undefined;
+  }
 
   const resetProgress = useCallback(() => {
     setProgress(INITIAL_PROGRESS);
@@ -314,5 +316,9 @@ export function useEntrepreneurProgressState() {
     savePhaseData,
     getPhaseData,
     resetProgress,
+
+    // Backend authority
+    applyBackendResponse,
+    refreshFromBackend,
   };
 }

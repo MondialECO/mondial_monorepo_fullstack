@@ -79,4 +79,10 @@ export interface Phase2Data {
   documents?: DocumentUploadData;
   ownership?: OwnershipData;
   financial?: FinancialPreviewData;
+  // Runtime metadata persisted in phaseData by the Phase 2 step pages
+  __companyId?: string;
+  documentsVerified?: boolean;
+  beneficialOwnersSaved?: boolean;
+  verifiedAt?: string;
 }
+
