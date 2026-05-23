@@ -30,17 +30,22 @@ public class UpdateBeneficialOwnersRequest
 
 public class BeneficialOwnerDto
 {
+    // Canonical required fields shared by frontend and backend.
     public string FullName { get; set; }
+    public string Email { get; set; }
+    public double OwnershipPercent { get; set; }
+
+    // Optional metadata.
     public string Role { get; set; }
     public string Nationality { get; set; }
-    public double OwnershipPercent { get; set; }
 }
 
 public class DocumentUploadRequest
 {
-    public string DocumentType { get; set; } // kbis, rib, tax_cert, articles, license, insurance
-    public string FileName { get; set; }
-    public byte[] FileContent { get; set; }
+    // Multipart form upload. `File` carries the actual upload stream;
+    // `DocumentType` is the document category (kbis, rib, tax_cert, articles, license, insurance, etc).
+    public Microsoft.AspNetCore.Http.IFormFile File { get; set; }
+    public string DocumentType { get; set; }
 }
 
 public class DocumentStatusResponse
@@ -51,6 +56,8 @@ public class DocumentStatusResponse
     public string Status { get; set; } // pending, approved, rejected
     public DateTime UploadedAt { get; set; }
     public string ReviewNote { get; set; }
+    public string StoragePath { get; set; }
+    public long FileSize { get; set; }
 }
 
 // ============ PHASE 3: FINANCIAL ============

@@ -2,19 +2,17 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Users, CheckCircle, Shield, Lock, AlertCircle } from 'lucide-react';
+import { Users, CheckCircle, Shield, Lock, AlertCircle, Plus, Trash2 } from 'lucide-react';
 import { useEntrepreneurProgress } from '@/hooks/useEntrepreneurProgress';
+import entrepreneurApi from '@/lib/api-entrepreneur';
 import { EntrepreneurLayout } from '@/components/entrepreneur/EntrepreneurLayout';
 import { ProgressSidebar } from '@/components/entrepreneur/ProgressSidebar';
 import { PhaseHeader } from '@/components/entrepreneur/PhaseHeader';
 import { StepFooter } from '@/components/entrepreneur/StepFooter';
 import { RouteGuard } from '@/components/entrepreneur/RouteGuard';
 import { Button } from '@/components/ui/button';
-
-const beneficiaryOwners = [
-  { id: '1', name: 'John Smith', role: 'Founder & CEO', ownership: '60%', verified: false },
-  { id: '2', name: 'Jane Doe', role: 'Co-Founder & CTO', ownership: '40%', verified: false },
-];
+import { Input } from '@/components/ui/input';
+import { Phase2Data } from '@/types/entrepreneur';
 
 const PHASE_2_STEPS = [
   { step: 1 as const, title: 'Legal Identity', subtitle: 'Enter company info' },
@@ -27,20 +25,64 @@ function Phase2Step3PageContent() {
   const router = useRouter();
   const [isValidating, setIsValidating] = useState(false);
   const [validationError, setValidationError] = useState<string>('');
+  const [owners, setOwners] = useState<Array<{ name: string; email: string; ownership: string }>>([]);
+  const [newOwner, setNewOwner] = useState({ name: '', email: '', ownership: '' });
+  const [isSaving, setIsSaving] = useState(false);
   const { progress, savePhaseData, moveToNextStep, getPhaseData } = useEntrepreneurProgress();
 
-  const savedData = getPhaseData(2) as { owners?: Array<{ id: string; verified: boolean }> } | undefined;
-  const initialVerified = new Set(
-    savedData?.owners?.filter((owner) => owner.verified).map((owner) => owner.id) || []
-  );
-  const [verifiedOwners, setVerifiedOwners] = useState<Set<string>>(initialVerified);
+  const allOwnersVerified = owners.length > 0;
 
-  const allOwnersVerified = verifiedOwners.size === beneficiaryOwners.length;
+  const handleAddOwner = () => {
+    const parsed = parseFloat(newOwner.ownership);
+    if (!newOwner.name || !newOwner.email || !newOwner.ownership) {
+      setValidationError('Please fill all owner fields');
+      return;
+    }
+    if (Number.isNaN(parsed) || parsed <= 0 || parsed > 100) {
+      setValidationError('Ownership must be between 0 and 100');
+      return;
+    }
 
-  const handleOwnerVerify = (ownerId: string) => {
-    const newVerified = new Set(verifiedOwners);
-    newVerified.add(ownerId);
-    setVerifiedOwners(newVerified);
+    setOwners([...owners, newOwner]);
+    setNewOwner({ name: '', email: '', ownership: '' });
+    setValidationError('');
+  };
+
+  const handleRemoveOwner = (index: number) => {
+    setOwners(owners.filter((_, i) => i !== index));
+  };
+
+  const handleSaveOwners = async (): Promise<void> => {
+    if (owners.length === 0) {
+      throw new Error('At least one beneficial owner is required');
+    }
+
+    setIsSaving(true);
+    try {
+      const existingData: Phase2Data = getPhaseData<Phase2Data>(2) ?? {};
+      let companyId = existingData.__companyId;
+
+      if (!companyId) {
+        const phaseProgress = await entrepreneurApi.getCurrentPhase();
+        companyId = phaseProgress?.companyId;
+        if (!companyId) throw new Error('No company found');
+      }
+
+      // Canonical DTO contract: fullName, email, ownershipPercent (required);
+      // role + nationality optional.
+      await entrepreneurApi.updateBeneficialOwners(companyId, {
+        owners: owners.map((o) => ({
+          fullName: o.name,
+          email: o.email,
+          ownershipPercent: parseFloat(o.ownership),
+        })),
+      });
+
+      savePhaseData(2, { ...existingData, beneficialOwnersSaved: true });
+      setValidationError('');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleNextClick = async () => {
@@ -48,38 +90,32 @@ function Phase2Step3PageContent() {
     setIsValidating(true);
 
     try {
-      if (!allOwnersVerified) {
-        setValidationError('Please verify all beneficial owners');
+      if (owners.length === 0) {
+        setValidationError('At least one beneficial owner is required');
         setIsValidating(false);
         return;
       }
 
-      const existingData = getPhaseData(2) || {};
-      const formData = {
-        ...existingData,
-        owners: beneficiaryOwners.map((owner) => ({
-          ...owner,
-          verified: verifiedOwners.has(owner.id),
-        })),
-        kycStatus: 'verified',
-        biometricVerified: true,
-      };
+      // Backend persistence is required. If save fails, do NOT advance.
+      await handleSaveOwners();
+      moveToNextStep(2, 3);
 
-      savePhaseData(2, formData);
-      await new Promise(resolve => setTimeout(resolve, 500));
-      const moveResult = moveToNextStep(2, 3);
-
-      if (!moveResult) {
-        setValidationError('Failed to advance to next step');
-        return;
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 300));
       router.push('/dashboard/entrepreneur/phase-2/step-4');
     } catch (error) {
-      setValidationError('Failed to proceed. Please try again.');
+      const msg = error instanceof Error ? error.message : 'Failed to proceed';
+      setValidationError(msg);
     } finally {
       setIsValidating(false);
+    }
+  };
+
+  const handleSaveOwnersClick = async () => {
+    try {
+      await handleSaveOwners();
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Failed to save owners';
+      setValidationError(msg);
     }
   };
 
@@ -126,62 +162,96 @@ function Phase2Step3PageContent() {
               Beneficial Owners
             </h3>
             <p className="text-sm text-neutral-5 mb-4">
-              Verify each beneficial owner ({`>`}25% stake) to complete KYC requirements.
+              Add all beneficial owners ({`>`}25% stake) for KYC verification.
             </p>
 
-            <div className="space-y-3">
-              {beneficiaryOwners.map((owner) => {
-                const isVerified = verifiedOwners.has(owner.id);
-                return (
+            {/* Add Owner Form */}
+            <div className="bg-background border-2 border-neutral-2 rounded-xl p-4 mb-6 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Input
+                  placeholder="Full name"
+                  value={newOwner.name}
+                  onChange={(e) => setNewOwner({ ...newOwner, name: e.target.value })}
+                  className="text-sm"
+                />
+                <Input
+                  placeholder="Email"
+                  type="email"
+                  value={newOwner.email}
+                  onChange={(e) => setNewOwner({ ...newOwner, email: e.target.value })}
+                  className="text-sm"
+                />
+              </div>
+              <div className="flex gap-4">
+                <Input
+                  placeholder="Ownership %"
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={newOwner.ownership}
+                  onChange={(e) => setNewOwner({ ...newOwner, ownership: e.target.value })}
+                  className="text-sm"
+                />
+                <Button
+                  onClick={handleAddOwner}
+                  variant="default"
+                  size="sm"
+                  className="gap-2 whitespace-nowrap"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Owner
+                </Button>
+              </div>
+            </div>
+
+            {/* Owners List */}
+            {owners.length > 0 ? (
+              <div className="space-y-3">
+                {owners.map((owner, index) => (
                   <div
-                    key={owner.id}
-                    className={`border-2 rounded-xl p-4 transition ${
-                      isVerified
-                        ? 'bg-green-50 border-green-200'
-                        : 'bg-background border-neutral-2 hover:border-primary/50'
-                    }`}
+                    key={index}
+                    className="border-2 border-green-200 bg-green-50 rounded-xl p-4"
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                       <div className="flex items-start gap-3 flex-1">
-                        <div className={`w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                          isVerified ? 'bg-green-100' : 'bg-neutral-100'
-                        }`}>
-                          {isVerified ? (
-                            <CheckCircle className="w-6 h-6 text-green-600" />
-                          ) : (
-                            <Users className="w-6 h-6 text-neutral-5" />
-                          )}
+                        <div className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 bg-green-100">
+                          <CheckCircle className="w-6 h-6 text-green-600" />
                         </div>
                         <div className="min-w-0 flex-1">
                           <h4 className="text-sm sm:text-base font-semibold text-neutral-1">{owner.name}</h4>
-                          <p className="text-xs sm:text-sm text-neutral-5 mt-1">{owner.role}</p>
-                          <p className="text-xs sm:text-sm text-neutral-5 mt-0.5 font-medium">{owner.ownership} ownership</p>
+                          <p className="text-xs sm:text-sm text-neutral-5 mt-1">{owner.email}</p>
+                          <p className="text-xs sm:text-sm text-neutral-5 mt-0.5 font-medium">{owner.ownership}% ownership</p>
                         </div>
                       </div>
                       <Button
-                        onClick={() => handleOwnerVerify(owner.id)}
-                        variant={isVerified ? 'outline' : 'default'}
+                        onClick={() => handleRemoveOwner(index)}
+                        variant="outline"
                         size="sm"
                         className="w-full sm:w-auto gap-2"
-                        disabled={isVerified}
                       >
-                        {isVerified ? (
-                          <>
-                            <CheckCircle className="w-4 h-4" />
-                            Verified
-                          </>
-                        ) : (
-                          <>
-                            <Shield className="w-4 h-4" />
-                            Verify
-                          </>
-                        )}
+                        <Trash2 className="w-4 h-4" />
+                        Remove
                       </Button>
                     </div>
                   </div>
-                );
-              })}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-sm text-neutral-5">
+                No beneficial owners added yet
+              </div>
+            )}
+
+            {owners.length > 0 && (
+              <Button
+                onClick={handleSaveOwnersClick}
+                variant="outline"
+                className="w-full mt-4"
+                disabled={isSaving}
+              >
+                {isSaving ? 'Saving...' : 'Save to Backend'}
+              </Button>
+            )}
           </div>
         </div>
 

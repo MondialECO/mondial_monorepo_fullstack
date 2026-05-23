@@ -1,15 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Upload, FileCheck, AlertCircle, Archive } from 'lucide-react';
+import { Upload, FileCheck, AlertCircle, Archive, Loader } from 'lucide-react';
 import { useEntrepreneurProgress } from '@/hooks/useEntrepreneurProgress';
+import entrepreneurApi from '@/lib/api-entrepreneur';
 import { EntrepreneurLayout } from '@/components/entrepreneur/EntrepreneurLayout';
 import { ProgressSidebar } from '@/components/entrepreneur/ProgressSidebar';
 import { PhaseHeader } from '@/components/entrepreneur/PhaseHeader';
 import { StepFooter } from '@/components/entrepreneur/StepFooter';
 import { RouteGuard } from '@/components/entrepreneur/RouteGuard';
 import { Button } from '@/components/ui/button';
+import { Phase2Data } from '@/types/entrepreneur';
 
 const requiredDocuments = [
   { id: 'kbis', name: 'KBIS (Company Registry)', description: 'Official registry extract' },
@@ -27,22 +29,56 @@ const PHASE_2_STEPS = [
 
 function Phase2Step2PageContent() {
   const router = useRouter();
+  const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
   const [isValidating, setIsValidating] = useState(false);
   const [validationError, setValidationError] = useState<string>('');
+  const [uploadingDocs, setUploadingDocs] = useState<Set<string>>(new Set());
+  const [uploadedDocs, setUploadedDocs] = useState<Set<string>>(new Set());
   const { progress, savePhaseData, moveToNextStep, getPhaseData } = useEntrepreneurProgress();
-
-  const savedData = getPhaseData(2) as { documents?: { id: string; status: string }[] } | undefined;
-  const initialDocs = new Set(
-    savedData?.documents?.filter((doc) => doc.status === 'uploaded').map((doc) => doc.id) || []
-  );
-  const [uploadedDocs, setUploadedDocs] = useState<Set<string>>(initialDocs);
 
   const allDocsUploaded = uploadedDocs.size === requiredDocuments.length;
 
-  const handleDocUpload = (docId: string) => {
-    const newDocs = new Set(uploadedDocs);
-    newDocs.add(docId);
-    setUploadedDocs(newDocs);
+  const handleDocUpload = async (docId: string) => {
+    const fileInput = fileInputRefs.current[docId];
+    if (!fileInput) return;
+
+    fileInput.click();
+  };
+
+  const handleFileSelected = async (docId: string, event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploadingDocs(prev => new Set(prev).add(docId));
+    try {
+      const existingData: Phase2Data = getPhaseData<Phase2Data>(2) ?? {};
+      let companyId = existingData.__companyId;
+
+      if (!companyId) {
+        const phaseProgress = await entrepreneurApi.getCurrentPhase();
+        companyId = phaseProgress?.companyId;
+        if (!companyId) throw new Error('No company found');
+      }
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('documentType', docId);
+
+      await entrepreneurApi.uploadDocument(companyId, formData);
+
+      const newDocs = new Set(uploadedDocs);
+      newDocs.add(docId);
+      setUploadedDocs(newDocs);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Upload failed';
+      setValidationError(`Failed to upload ${docId}: ${msg}`);
+    } finally {
+      setUploadingDocs(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(docId);
+        return newSet;
+      });
+    }
   };
 
   const handleNextClick = async () => {
@@ -56,29 +92,29 @@ function Phase2Step2PageContent() {
         return;
       }
 
-      const existingData = getPhaseData(2) || {};
-      const formData = {
-        ...existingData,
-        documents: requiredDocuments.map((doc) => ({
-          id: doc.id,
-          name: doc.name,
-          status: uploadedDocs.has(doc.id) ? 'uploaded' : 'pending',
-        })),
-      };
+      const existingData: Phase2Data = getPhaseData<Phase2Data>(2) ?? {};
+      let companyId = existingData.__companyId;
 
-      savePhaseData(2, formData);
-      await new Promise(resolve => setTimeout(resolve, 500));
-      const moveResult = moveToNextStep(2, 2);
-
-      if (!moveResult) {
-        setValidationError('Failed to advance to next step');
-        return;
+      if (!companyId) {
+        const phaseProgress = await entrepreneurApi.getCurrentPhase();
+        companyId = phaseProgress?.companyId;
+        if (!companyId) throw new Error('No company found');
       }
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Verify documents persisted in backend
+      const backendDocs = await entrepreneurApi.getDocuments(companyId);
+      if (!backendDocs || backendDocs.length === 0) {
+        throw new Error('Documents not persisted in backend');
+      }
+
+      savePhaseData(2, { ...existingData, documentsVerified: true });
+      moveToNextStep(2, 2);
+
+      await new Promise(resolve => setTimeout(resolve, 300));
       router.push('/dashboard/entrepreneur/phase-2/step-3');
     } catch (error) {
-      setValidationError('Failed to proceed. Please try again.');
+      const msg = error instanceof Error ? error.message : 'Failed to proceed';
+      setValidationError(msg);
     } finally {
       setIsValidating(false);
     }
@@ -123,6 +159,7 @@ function Phase2Step2PageContent() {
           <div className="grid gap-4">
             {requiredDocuments.map((doc) => {
               const isUploaded = uploadedDocs.has(doc.id);
+              const isUploading = uploadingDocs.has(doc.id);
               return (
                 <div
                   key={doc.id}
@@ -139,6 +176,8 @@ function Phase2Step2PageContent() {
                       }`}>
                         {isUploaded ? (
                           <FileCheck className="w-6 h-6 text-green-600" />
+                        ) : isUploading ? (
+                          <Loader className="w-6 h-6 text-neutral-5 animate-spin" />
                         ) : (
                           <Archive className="w-6 h-6 text-neutral-5" />
                         )}
@@ -153,12 +192,17 @@ function Phase2Step2PageContent() {
                       variant={isUploaded ? 'outline' : 'default'}
                       size="sm"
                       className="w-full sm:w-auto gap-2"
-                      disabled={isUploaded}
+                      disabled={isUploaded || isUploading}
                     >
                       {isUploaded ? (
                         <>
                           <FileCheck className="w-4 h-4" />
                           Uploaded
+                        </>
+                      ) : isUploading ? (
+                        <>
+                          <Loader className="w-4 h-4 animate-spin" />
+                          Uploading
                         </>
                       ) : (
                         <>
@@ -168,6 +212,13 @@ function Phase2Step2PageContent() {
                       )}
                     </Button>
                   </div>
+                  <input
+                    ref={(el) => { if (el) fileInputRefs.current[doc.id] = el; }}
+                    type="file"
+                    onChange={(e) => handleFileSelected(doc.id, e)}
+                    className="hidden"
+                    accept=".pdf,.doc,.docx,.xls,.xlsx"
+                  />
                 </div>
               );
             })}

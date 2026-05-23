@@ -1,4 +1,6 @@
+using System.Text;
 using FluentAssertions;
+using Microsoft.AspNetCore.Http;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using Moq;
@@ -86,7 +88,7 @@ public class CompanyServiceTests
         result.OwnerId.Should().Be(userId);
         result.CompanyName.Should().Be(createDto.CompanyName);
         result.Industry.Should().Be(createDto.Industry);
-        result.CurrentPhase.Should().Be(1);
+        result.CurrentPhase.Should().Be(2);
         result.TrustScore.Should().Be(0);
         result.IsInvestorReady.Should().BeFalse();
         result.CreatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(1));
@@ -290,8 +292,7 @@ public class CompanyServiceTests
         var uploadRequest = new DocumentUploadRequest
         {
             DocumentType = "articles_of_incorporation",
-            FileName = "articles.pdf",
-            FileContent = new byte[] { 1, 2, 3, 4, 5 }
+            File = CreateFormFile("articles.pdf", new byte[] { 1, 2, 3, 4, 5 })
         };
 
         // Act
@@ -303,7 +304,19 @@ public class CompanyServiceTests
         result.FileName.Should().Be("articles.pdf");
         result.Status.Should().Be("pending");
         result.UploadedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(1));
+        result.StoragePath.Should().Be("https://storage.example.com/doc-123.pdf");
+        result.FileSize.Should().Be(5);
         _mockDocumentManager.Verify(x => x.SaveDocumentAsync(companyId, "articles.pdf", It.IsAny<byte[]>()), Times.Once);
+    }
+
+    private static IFormFile CreateFormFile(string fileName, byte[] content)
+    {
+        var stream = new MemoryStream(content);
+        return new FormFile(stream, 0, content.Length, "file", fileName)
+        {
+            Headers = new HeaderDictionary(),
+            ContentType = "application/octet-stream"
+        };
     }
 
     [Fact]
@@ -334,8 +347,7 @@ public class CompanyServiceTests
         var uploadRequest = new DocumentUploadRequest
         {
             DocumentType = "business_license",
-            FileName = "license.pdf",
-            FileContent = new byte[] { 5, 4, 3, 2, 1 }
+            File = CreateFormFile("license.pdf", new byte[] { 5, 4, 3, 2, 1 })
         };
 
         // Act
@@ -512,8 +524,8 @@ public class CompanyServiceTests
 
         var owners = new List<BeneficialOwnerDto>
         {
-            new BeneficialOwnerDto { Name = "John Doe", OwnershipPercentage = 60, Verified = true },
-            new BeneficialOwnerDto { Name = "Jane Smith", OwnershipPercentage = 40, Verified = false }
+            new BeneficialOwnerDto { FullName = "John Doe", OwnershipPercent = 60, Nationality = "US" },
+            new BeneficialOwnerDto { FullName = "Jane Smith", OwnershipPercent = 40, Nationality = "FR" }
         };
 
         var updateRequest = new UpdateBeneficialOwnersRequest { Owners = owners };
@@ -523,8 +535,8 @@ public class CompanyServiceTests
 
         // Assert
         result.BeneficialOwnersDto.Should().HaveCount(2);
-        result.BeneficialOwnersDto[0].Name.Should().Be("John Doe");
-        result.BeneficialOwnersDto[0].OwnershipPercentage.Should().Be(60);
+        result.BeneficialOwnersDto[0].FullName.Should().Be("John Doe");
+        result.BeneficialOwnersDto[0].OwnershipPercent.Should().Be(60);
     }
 
     #endregion
@@ -566,9 +578,9 @@ public class CompanyServiceTests
     }
 
     [Fact]
-    public async Task GetCurrentPhaseAsync_WithNoCompany_ThrowsInvalidOperationException()
+    public async Task GetCurrentPhaseAsync_WithNoCompany_ReturnsPhase2()
     {
-        // Arrange
+        // Arrange - when no company exists, user is in Universal Phase 1; Entrepreneur phases start at 2
         var userId = "orphan-user";
 
         var mockCursor = new Mock<IAsyncCursor<Companies>>();
@@ -578,20 +590,26 @@ public class CompanyServiceTests
         _mockCompaniesCollection.Setup(x => x.Find(It.IsAny<FilterDefinition<Companies>>(), null))
             .Returns(mockCursor.Object);
 
-        // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() => _service.GetCurrentPhaseAsync(userId));
+        // Act
+        var result = await _service.GetCurrentPhaseAsync(userId);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.CompanyId.Should().Be(string.Empty);
+        result.CurrentPhase.Should().Be(2);
+        result.CompletedPhases.Should().BeEmpty();
     }
 
     [Fact]
     public async Task AdvancePhaseAsync_WithValidPhaseProgression_AdvancesPhaseAndReturnsProgress()
     {
-        // Arrange
+        // Arrange - company is at Phase 2, completing it advances to Phase 3
         var userId = "user-123";
         var company = new Companies
         {
             Id = "comp-123",
             OwnerId = userId,
-            CurrentPhase = 1,
+            CurrentPhase = 2,
             CompletedPhases = new List<int>()
         };
 
@@ -605,16 +623,16 @@ public class CompanyServiceTests
         _mockCompaniesCollection.Setup(x => x.ReplaceOneAsync(It.IsAny<FilterDefinition<Companies>>(), It.IsAny<Companies>(), null, CancellationToken.None))
             .ReturnsAsync(new ReplaceOneResult.Acknowledged(1, 1, null));
 
-        _mockPhaseValidator.Setup(x => x.ValidatePhaseAsync(It.IsAny<Companies>(), It.IsAny<int>()))
+        _mockPhaseValidator.Setup(x => x.ValidatePhase2Async(It.IsAny<Companies>()))
             .ReturnsAsync((true, new List<string>()));
 
-        // Act
+        // Act - complete phase 2
         var result = await _service.AdvancePhaseAsync(userId, 2, new { });
 
-        // Assert
+        // Assert - should advance to phase 3
         result.Should().NotBeNull();
-        result.CurrentPhase.Should().Be(2);
-        _mockPhaseValidator.Verify(x => x.ValidatePhaseAsync(It.IsAny<Companies>(), It.IsAny<int>()), Times.Once);
+        result.CurrentPhase.Should().Be(3);
+        result.CompletedPhases.Should().Contain(2);
     }
 
     [Fact]
@@ -641,15 +659,15 @@ public class CompanyServiceTests
     }
 
     [Fact]
-    public async Task AdvancePhaseAsync_WithSkippedPhase_ThrowsInvalidOperationException()
+    public async Task AdvancePhaseAsync_WithPhaseNotCurrent_ThrowsInvalidOperationException()
     {
-        // Arrange
+        // Arrange - company is at phase 2, trying to complete phase 3
         var userId = "user-123";
         var company = new Companies
         {
             Id = "comp-123",
             OwnerId = userId,
-            CurrentPhase = 1,
+            CurrentPhase = 2,
             CompletedPhases = new List<int>()
         };
 
@@ -660,7 +678,7 @@ public class CompanyServiceTests
         _mockCompaniesCollection.Setup(x => x.Find(It.IsAny<FilterDefinition<Companies>>(), null))
             .Returns(mockCursor.Object);
 
-        // Act & Assert
+        // Act & Assert - trying to complete phase 3 when currently at phase 2
         await Assert.ThrowsAsync<InvalidOperationException>(() => _service.AdvancePhaseAsync(userId, 3, new { }));
     }
 

@@ -123,10 +123,10 @@ function Phase2PageContent() {
             </div>
             <div>
               <h1 className="text-4xl font-bold text-foreground">
-                Phase 2: Company Verification
+                Phase 2: Company Submission
               </h1>
               <p className="text-lg text-muted-foreground mt-2">
-                Get your company verified with an official badge
+                Submit your company documents and ownership for compliance review
               </p>
             </div>
           </div>
@@ -202,10 +202,10 @@ function Phase2PageContent() {
           </div>
           <div>
             <h3 className="font-semibold text-blue-900 mb-2">
-              Company Verification Benefits
+              What happens after submission
             </h3>
             <p className="text-sm text-blue-800">
-              Once verified, your company will display a verified badge, increasing investor trust and unlocking access to Phase 3 (Financial Valuation & KPI). This badge is visible to all investors on the platform.
+              Completing Phase 2 submits your documents for compliance review and unlocks Phase 3 (Financial Valuation &amp; KPI). A verified company badge is awarded separately once a compliance officer approves your documents.
             </p>
           </div>
         </div>

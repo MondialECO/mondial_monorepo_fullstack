@@ -19,8 +19,8 @@ public class Companies
     public string Website { get; set; }
     public string Tagline { get; set; }
 
-    // Phase tracking
-    public int CurrentPhase { get; set; } = 1;
+    // Phase tracking - Entrepreneur phases start at 2; Universal Phase 1 is already complete
+    public int CurrentPhase { get; set; } = 2;
     public List<int> CompletedPhases { get; set; } = new();
     public int TrustScore { get; set; } = 0;
     public bool IsInvestorReady { get; set; } = false;

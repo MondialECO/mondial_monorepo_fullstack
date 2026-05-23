@@ -42,9 +42,10 @@ export interface DocumentStatusResponse {
 
 export interface BeneficialOwner {
   fullName: string;
-  role: string;
-  nationality: string;
+  email: string;
   ownershipPercent: number;
+  role?: string;
+  nationality?: string;
 }
 
 export interface UpdateBeneficialOwnersRequest {

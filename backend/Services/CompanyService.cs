@@ -40,10 +40,11 @@ public class CompanyService : ICompanyService
     {
         var company = await GetCompanyByUserIdAsync(userId);
         if (company == null)
+            // Universal Phase 1 is already complete; no company yet means not started Entrepreneur Phase 2.
             return new CompanyProgressResponse
             {
                 CompanyId = string.Empty,
-                CurrentPhase = 1,
+                CurrentPhase = 2,
                 CompletedPhases = new List<int>(),
                 OverallProgressPercent = 0,
                 TrustScore = 0,
@@ -55,36 +56,31 @@ public class CompanyService : ICompanyService
         return BuildProgressResponse(company);
     }
 
-    public async Task<CompanyProgressResponse> AdvancePhaseAsync(string companyId, int phaseNumber, object phaseData)
+    public async Task<CompanyProgressResponse> AdvancePhaseAsync(string companyId, int phaseToComplete, object phaseData)
     {
         var company = await GetCompanyAsync(companyId);
 
         company.CompletedPhases ??= new List<int>();
 
         // Validate phase progression
-        if (phaseNumber < 1 || phaseNumber > 9)
-            throw new ArgumentException("Phase must be between 1 and 9");
+        if (phaseToComplete < 2 || phaseToComplete > 9)
+            throw new ArgumentException("Phase must be between 2 and 9");
 
-        if (phaseNumber <= company.CurrentPhase)
-            return BuildProgressResponse(company);
-
-        if (phaseNumber != company.CurrentPhase + 1)
+        // phaseToComplete is the phase being completed, so currentPhase must equal phaseToComplete
+        if (company.CurrentPhase != phaseToComplete)
             throw new InvalidOperationException(
-                $"Cannot skip phases. Current phase is {company.CurrentPhase}, requested {phaseNumber}");
+                $"Cannot complete phase {phaseToComplete}. Current phase is {company.CurrentPhase}");
 
-        // Validate the CURRENT phase before moving to the next one.
-        if (company.CurrentPhase >= 1)
-        {
-            var (isValid, errors) = await ValidatePhaseAsync(company, company.CurrentPhase);
-            if (!isValid)
-                throw new InvalidOperationException($"Cannot advance: {string.Join(", ", errors)}");
-        }
+        // Validate the phase before moving to the next one.
+        var (isValid, errors) = await ValidatePhaseAsync(company, phaseToComplete);
+        if (!isValid)
+            throw new InvalidOperationException($"Cannot advance: {string.Join(", ", errors)}");
 
-        // Mark the previous phase completed and move to the next one.
-        if (!company.CompletedPhases.Contains(company.CurrentPhase))
-            company.CompletedPhases.Add(company.CurrentPhase);
+        // Mark the phase as completed and advance to the next phase.
+        if (!company.CompletedPhases.Contains(phaseToComplete))
+            company.CompletedPhases.Add(phaseToComplete);
 
-        company.CurrentPhase = phaseNumber;
+        company.CurrentPhase = phaseToComplete + 1;
 
         company.UpdatedAt = DateTime.UtcNow;
 
@@ -112,7 +108,7 @@ public class CompanyService : ICompanyService
             Industry = dto.Industry,
             Website = dto.Website,
             Tagline = dto.Tagline,
-            CurrentPhase = 1,
+            CurrentPhase = 2,
             CompletedPhases = new List<int>(),
             TrustScore = 0,
             IsInvestorReady = false,
@@ -158,21 +154,36 @@ public class CompanyService : ICompanyService
 
     public async Task<DocumentStatusResponse> UploadDocumentAsync(string companyId, DocumentUploadRequest request)
     {
+        if (request?.File == null || request.File.Length == 0)
+            throw new ArgumentException("Uploaded file is required");
+
+        if (string.IsNullOrWhiteSpace(request.DocumentType))
+            throw new ArgumentException("documentType is required");
+
         var company = await GetCompanyAsync(companyId);
 
-        // Save file using document manager
-        var fileUrl = await _documentManager.SaveDocumentAsync(companyId, request.FileName, request.FileContent);
+        // Read the multipart upload stream into bytes for the document manager.
+        byte[] fileBytes;
+        await using (var ms = new MemoryStream())
+        {
+            await request.File.CopyToAsync(ms);
+            fileBytes = ms.ToArray();
+        }
 
-        // Create document record
+        var fileName = request.File.FileName;
+        var storagePath = await _documentManager.SaveDocumentAsync(companyId, fileName, fileBytes);
+
         var docId = ObjectId.GenerateNewId().ToString();
         var document = new DocumentStatusResponse
         {
             DocumentId = docId,
             Type = request.DocumentType,
-            FileName = request.FileName,
+            FileName = fileName,
             Status = "pending",
             UploadedAt = DateTime.UtcNow,
-            ReviewNote = null
+            ReviewNote = null,
+            StoragePath = storagePath,
+            FileSize = request.File.Length
         };
 
         if (company.DocumentStatuses == null)

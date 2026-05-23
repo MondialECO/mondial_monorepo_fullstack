@@ -3,149 +3,151 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
+  AlertCircle,
   BadgeCheck,
   ChevronRight,
   ArrowRight,
   Download,
   Eye,
   FolderLock,
+  Loader,
   Rocket,
-  TrendingUp,
 } from 'lucide-react';
 import { useEntrepreneurProgress } from '@/hooks/useEntrepreneurProgress';
 import entrepreneurApi from '@/lib/api-entrepreneur';
 import { Button } from '@/components/ui/button';
 import { RouteGuard } from '@/components/entrepreneur/RouteGuard';
+import { Phase2Data } from '@/types/entrepreneur';
 
 function Phase2Step4PageContent() {
   const router = useRouter();
   const [isCompleting, setIsCompleting] = useState(false);
-  const { savePhaseData, moveToNextStep, getPhaseData } = useEntrepreneurProgress();
+  const [completionError, setCompletionError] = useState<string>('');
+  const {
+    progress,
+    savePhaseData,
+    moveToNextStep,
+    getPhaseData,
+    applyBackendResponse,
+  } = useEntrepreneurProgress();
+
+  // Backend-authoritative submission state. UI shows pending until backend confirms
+  // Phase 2 completion. NOTE: this means "documents submitted, awaiting review" —
+  // NOT "verified by a compliance officer". Wording below follows that semantic.
+  const isPhase2SubmittedToBackend =
+    !!progress &&
+    progress.completedPhases.has(2) &&
+    progress.currentPhase === 3;
 
   const handleContinue = async () => {
     setIsCompleting(true);
+    setCompletionError('');
     try {
-      const existingData = (getPhaseData(2) || {}) as any;
-      const finalData = {
-        ...existingData,
-        verifiedAt: new Date().toISOString(),
-      };
+      const existingData: Phase2Data = getPhaseData<Phase2Data>(2) ?? {};
 
-      // Save locally first
-      savePhaseData(2, finalData);
-      await new Promise((r) => setTimeout(r, 100));
-
-      // Mark step 4 complete locally
-      moveToNextStep(2, 4);
-      await new Promise((r) => setTimeout(r, 100));
-
-      // CRITICAL: Get companyId and advance phase in backend
-      let companyId = existingData?.__companyId;
-
-      // If companyId missing from local state, fetch from backend
+      let companyId = existingData.__companyId;
       if (!companyId) {
-        console.log('🔧 CompanyId missing from local state, fetching from backend...');
-        try {
-          const phaseProgress = await entrepreneurApi.getCurrentPhase();
-          companyId = phaseProgress?.companyId;
-          if (!companyId) {
-            throw new Error('No company found in backend');
-          }
-          console.log('✅ CompanyId retrieved from backend:', companyId);
-        } catch (fetchError) {
-          const msg = fetchError instanceof Error ? fetchError.message : 'Failed to fetch company';
-          throw new Error(`Could not find company in backend: ${msg}`);
+        const phaseProgress = await entrepreneurApi.getCurrentPhase();
+        companyId = phaseProgress?.companyId;
+        if (!companyId) {
+          throw new Error('No company found in backend');
         }
       }
 
-      console.log('🔧 Advancing Phase 2 to completion for company:', companyId);
-      const advanceResponse = await entrepreneurApi.advancePhase(companyId, 2, finalData);
+      const advanceResponse = await entrepreneurApi.advancePhase(companyId, 2, {});
 
       if (advanceResponse?.currentPhase !== 3) {
-        throw new Error('Phase advancement failed - backend did not return currentPhase=3');
+        throw new Error(
+          `Phase advancement failed - expected currentPhase=3, got ${advanceResponse?.currentPhase}`
+        );
+      }
+      if (!advanceResponse?.completedPhases?.includes(2)) {
+        throw new Error('Phase 2 not marked as completed in backend response');
       }
 
-      console.log('✅ Phase 2 completed. Current phase:', advanceResponse.currentPhase);
+      // Persist backend confirmation as authoritative source.
+      applyBackendResponse(advanceResponse);
 
-      // Wait a moment for state flush, then redirect to phase-3
+      savePhaseData(2, {
+        ...existingData,
+        submittedAt: new Date().toISOString(),
+      });
+      moveToNextStep(2, 4);
+
       await new Promise((r) => setTimeout(r, 300));
       router.push('/dashboard/entrepreneur/phase-3');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to complete Phase 2';
-      console.error('❌ Phase 2 completion error:', message);
+      console.error('Phase 2 completion error:', message);
+      setCompletionError(message);
       setIsCompleting(false);
     }
   };
 
-  const issuedDate = new Date().toLocaleDateString('en-US', {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  });
+  const submittedDate = isPhase2SubmittedToBackend
+    ? new Date().toLocaleDateString('en-US', {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+      })
+    : '—';
 
-  const roadmap = [
-    'Legal Identity',
-    'Documents',
-    'Ownership & KYC',
-    'Final Review',
-  ];
+  const roadmap = ['Legal Identity', 'Documents', 'Ownership & KYC', 'Final Review'];
 
   const features = [
-    {
-      title: 'Investor Visibility',
-      description: 'Featured in matching results',
-      Icon: Eye,
-    },
-    {
-      title: 'Data Room',
-      description: 'Secure document hosting',
-      Icon: FolderLock,
-    },
-    {
-      title: 'Funding Portal',
-      description: 'Access pre-seed rounds',
-      Icon: Rocket,
-    },
+    { title: 'Investor Visibility', description: 'Featured in matching results', Icon: Eye },
+    { title: 'Data Room', description: 'Secure document hosting', Icon: FolderLock },
+    { title: 'Funding Portal', description: 'Access pre-seed rounds', Icon: Rocket },
   ];
+
+  const heading = isPhase2SubmittedToBackend ? 'Documents Submitted' : 'Final Review';
+  const headingSubtitle = isPhase2SubmittedToBackend
+    ? 'All required documents submitted — compliance review pending'
+    : 'Submit your documents to complete Phase 2 — verification happens during review';
+  const overallScore = isPhase2SubmittedToBackend ? 'Submitted' : 'Pending';
+  const overallScoreBarPct = isPhase2SubmittedToBackend ? 100 : 0;
+  const submissionBadgeIcon = isPhase2SubmittedToBackend ? (
+    <BadgeCheck className="w-8 h-8 text-primary" strokeWidth={2} />
+  ) : (
+    <Loader className="w-8 h-8 text-primary animate-spin" />
+  );
 
   return (
     <div className="min-h-screen bg-neutral-100 p-4 sm:p-6 md:p-8 lg:p-10">
       <div className="mx-auto w-full max-w-4xl">
-        {/* Header Section with Background */}
         <div className="bg-gradient-to-r from-primary/10 to-primary/5 border-2 border-primary/20 rounded-2xl p-6 sm:p-8 md:p-10 mb-8 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-6">
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center">
-                  <BadgeCheck className="w-8 h-8 text-primary" strokeWidth={2} />
+                  {submissionBadgeIcon}
                 </div>
                 <div>
                   <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-1">
-                    Company Verified
+                    {heading}
                   </h1>
-                  <p className="text-sm sm:text-base text-neutral-5 mt-1">
-                    Congratulations! All verification steps completed
-                  </p>
+                  <p className="text-sm sm:text-base text-neutral-5 mt-1">{headingSubtitle}</p>
                 </div>
               </div>
             </div>
 
-            {/* Score Card */}
             <div className="bg-white border-2 border-primary/30 rounded-xl p-4 text-center shrink-0">
               <p className="text-xs font-semibold uppercase tracking-wide text-neutral-5 mb-2">
                 Overall Score
               </p>
-              <p className="text-4xl font-bold text-neutral-1">100%</p>
+              <p className="text-4xl font-bold text-neutral-1">{overallScore}</p>
               <div className="mt-3 h-2 w-24 rounded-full bg-neutral-200 overflow-hidden mx-auto">
-                <div className="h-full w-full bg-primary rounded-full" />
+                <div
+                  className="h-full bg-primary rounded-full transition-all"
+                  style={{ width: `${overallScoreBarPct}%` }}
+                />
               </div>
             </div>
           </div>
 
-          {/* Verification Roadmap */}
           <div className="pt-4 border-t-2 border-primary/20">
             <p className="text-xs font-semibold uppercase tracking-wide text-neutral-5 mb-3">
-              Verification Path
+              Submission Path
             </p>
             <div className="flex flex-wrap items-center gap-2 text-sm">
               {roadmap.map((item, idx) => {
@@ -155,9 +157,7 @@ function Phase2Step4PageContent() {
                     <div className="px-3 py-1 bg-white rounded-full text-neutral-1 font-medium text-xs sm:text-sm">
                       {item}
                     </div>
-                    {!isLast && (
-                      <ChevronRight className="w-4 h-4 text-primary/60 flex-shrink-0" />
-                    )}
+                    {!isLast && <ChevronRight className="w-4 h-4 text-primary/60 flex-shrink-0" />}
                   </div>
                 );
               })}
@@ -165,93 +165,95 @@ function Phase2Step4PageContent() {
           </div>
         </div>
 
-        {/* Issued Certificate & Trust Score */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          {/* Certificate Card */}
           <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 sm:p-8 space-y-6">
             <div className="flex flex-col items-center text-center">
               <div className="w-24 h-24 rounded-full bg-primary/15 border-2 border-primary/30 flex items-center justify-center mb-4">
-                <BadgeCheck className="w-12 h-12 text-primary" strokeWidth={2} />
+                {isPhase2SubmittedToBackend ? (
+                  <BadgeCheck className="w-12 h-12 text-primary" strokeWidth={2} />
+                ) : (
+                  <Loader className="w-12 h-12 text-primary animate-spin" />
+                )}
               </div>
-              <p className="inline-flex items-center gap-2 text-sm font-semibold text-primary bg-primary/10 px-3 py-1 rounded-full mb-3">
+              <p
+                className={`inline-flex items-center gap-2 text-sm font-semibold px-3 py-1 rounded-full mb-3 ${
+                  isPhase2SubmittedToBackend
+                    ? 'text-primary bg-primary/10'
+                    : 'text-neutral-5 bg-neutral-2'
+                }`}
+              >
                 <BadgeCheck className="w-4 h-4" />
-                Verified Status
+                {isPhase2SubmittedToBackend ? 'Awaiting Review' : 'Not Submitted'}
               </p>
               <p className="text-lg sm:text-xl font-bold text-neutral-1">
-                Mondial.eco Certified
+                {isPhase2SubmittedToBackend ? 'Compliance Review Pending' : 'Awaiting Submission'}
               </p>
               <p className="text-sm text-neutral-5 mt-2">
-                Official business verification badge
+                {isPhase2SubmittedToBackend
+                  ? 'A compliance officer will review your documents — verification is awarded after review.'
+                  : 'Submit below to send your documents for review'}
               </p>
             </div>
 
             <div className="grid grid-cols-2 gap-4 pt-4 border-t-2 border-neutral-2">
               <div className="text-center">
                 <p className="text-xs font-semibold uppercase tracking-wide text-neutral-5 mb-1">
-                  Issued Date
+                  Submitted Date
                 </p>
-                <p className="text-sm font-bold text-neutral-1">
-                  {issuedDate}
-                </p>
+                <p className="text-sm font-bold text-neutral-1">{submittedDate}</p>
               </div>
               <div className="text-center">
                 <p className="text-xs font-semibold uppercase tracking-wide text-neutral-5 mb-1">
-                  Valid Until
+                  Review Status
                 </p>
                 <p className="text-sm font-bold text-neutral-1">
-                  {new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric',
-                  })}
+                  {isPhase2SubmittedToBackend ? 'Pending' : '—'}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Trust Score Card */}
           <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 sm:p-8 space-y-6">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-neutral-1">
-                Trust Score
-              </h3>
-              <div className="flex items-center gap-1 text-green-600 bg-green-50 px-3 py-1 rounded-full text-xs font-semibold">
-                <TrendingUp className="w-4 h-4" />
-                +30 pts
-              </div>
+              <h3 className="text-lg font-semibold text-neutral-1">Submission Status</h3>
             </div>
 
             <div className="text-center py-4">
-              <div className="text-5xl sm:text-6xl font-bold text-neutral-1 mb-2">
-                85
+              <div className="text-3xl sm:text-4xl font-bold text-neutral-1 mb-2">
+                {isPhase2SubmittedToBackend ? 'Awaiting Review' : 'Not Submitted'}
               </div>
-              <p className="text-sm text-neutral-5">/100 Investor Ready Score</p>
+              <p className="text-sm text-neutral-5">Trust score awarded after compliance review</p>
             </div>
 
             <div className="space-y-2">
               <div className="h-3 w-full rounded-full bg-neutral-4 overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-primary to-primary/70 rounded-full"
-                  style={{ width: '85%' }}
+                  className="h-full bg-gradient-to-r from-primary to-primary/70 rounded-full transition-all"
+                  style={{ width: `${overallScoreBarPct}%` }}
                 />
               </div>
               <p className="text-xs text-neutral-5">
-                Excellent score. Higher scores unlock lower platform fees and better matching.
+                {isPhase2SubmittedToBackend
+                  ? 'Documents received. A compliance officer will review and award verification.'
+                  : 'Submit your documents to begin compliance review.'}
               </p>
             </div>
           </div>
         </div>
 
-        {/* Features Unlocked */}
         <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 sm:p-8 mb-8">
           <h3 className="text-lg font-semibold text-neutral-1 mb-6">
-            Features Now Unlocked
+            Features Unlocked After Compliance Review
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {features.map(({ title, description, Icon }) => (
               <div
                 key={title}
-                className="bg-background border-2 border-neutral-2 rounded-xl p-4 sm:p-5 flex flex-col items-center text-center space-y-3 hover:border-primary/50 transition"
+                className={`bg-background border-2 rounded-xl p-4 sm:p-5 flex flex-col items-center text-center space-y-3 transition ${
+                  isPhase2SubmittedToBackend
+                    ? 'border-neutral-2 hover:border-primary/50'
+                    : 'border-neutral-2 opacity-60'
+                }`}
               >
                 <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
                   <Icon className="w-6 h-6 text-primary" />
@@ -265,35 +267,55 @@ function Phase2Step4PageContent() {
           </div>
         </div>
 
-        {/* Action Buttons */}
+        {completionError && (
+          <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4 mb-4 flex gap-3">
+            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-red-900">{completionError}</p>
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-col-reverse sm:flex-row gap-4">
           <Button
             type="button"
             variant="outline"
             className="flex-1 gap-2 h-12"
+            disabled
             onClick={() => {}}
           >
             <Download className="w-4 h-4" />
-            Download Certificate
+            Certificate (after review)
           </Button>
-          <Button
-            type="button"
-            onClick={handleContinue}
-            disabled={isCompleting}
-            className="flex-1 gap-2 h-12"
-          >
-            {isCompleting ? (
-              <>
-                <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Continuing...
-              </>
-            ) : (
-              <>
-                Continue to Dashboard
-                <ArrowRight className="w-4 h-4" />
-              </>
-            )}
-          </Button>
+          {isPhase2SubmittedToBackend ? (
+            <Button
+              type="button"
+              onClick={() => router.push('/dashboard/entrepreneur/phase-3')}
+              className="flex-1 gap-2 h-12"
+            >
+              Continue to Phase 3
+              <ArrowRight className="w-4 h-4" />
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              onClick={handleContinue}
+              disabled={isCompleting}
+              className="flex-1 gap-2 h-12"
+            >
+              {isCompleting ? (
+                <>
+                  <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Submitting…
+                </>
+              ) : (
+                <>
+                  Submit & Complete Phase 2
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </Button>
+          )}
         </div>
       </div>
     </div>
