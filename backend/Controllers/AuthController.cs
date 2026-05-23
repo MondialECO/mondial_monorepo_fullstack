@@ -19,13 +19,13 @@ using WebApp.DbContext;
 using WebApp.Middleware;
 using WebApp.Models;
 using WebApp.Models.DatabaseModels;
+using WebApp.Models.Dtos;
 using WebApp.Services;
 //using static Org.BouncyCastle.Math.EC.ECCurve;
 namespace WebApp.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [EnableRateLimiting("auth")]
     public class AuthController : ControllerBase
     {
         private readonly UserManager<ApplicationUser> _userManager;
@@ -121,6 +121,7 @@ namespace WebApp.Controllers
 
         // POST: api/auth/login
         [HttpPost("login")]
+        [EnableRateLimiting("auth")]
         public async Task<IActionResult> Login(LoginRequestModel model)
         {
             try
@@ -291,6 +292,10 @@ namespace WebApp.Controllers
             if (user == null)
                 return NotFoundResponse("User not found.");
 
+            var userRoles = await _userManager.GetRolesAsync(user);
+            if (!userRoles.Any())
+                return Fail("User role not found; cannot authorize session");
+
             return Success("User retrieved", new
             {
                 user.Id,
@@ -301,9 +306,7 @@ namespace WebApp.Controllers
                 user.Bio,
                 user.Title,
                 user.ImagePath,
-                // Just enough for routing decisions. The rich per-item state
-                // (identity / face / phone / email / supplementary docs) is
-                // served by /api/onboarding/status.
+                roles = userRoles,
                 onboarding = new
                 {
                     phase = user.Onboarding?.Phase ?? 0,
@@ -329,6 +332,7 @@ namespace WebApp.Controllers
 
         // POST: api/auth/register
         [HttpPost("register")]
+        [EnableRateLimiting("auth")]
         public async Task<IActionResult> Register(RegisterModel model)
         {
             if (!ModelState.IsValid)
@@ -379,7 +383,55 @@ namespace WebApp.Controllers
 
             _audit.Record("register", user.Email!, true, new { role = canonicalRole });
 
-            return StatusCode(201, new { success = true, message = "User registered. Continue with Phase 1 verification.", data = new { user.Id, user.Email } });
+            // Generate short-lived onboarding token (15 min) for secure post-signup flow
+            var onboardingToken = JwtTokenHelper.GenerateOnboardingToken(
+                user.Id.ToString(),
+                user.Email,
+                canonicalRole,
+                _configuration["JwtSettings:Key"] ?? "fallback-secret",
+                _configuration["JwtSettings:Issuer"] ?? "mondial",
+                _configuration["JwtSettings:Audience"] ?? "mondial-app",
+                expiryMinutes: 15
+            );
+
+            return StatusCode(201, new
+            {
+                success = true,
+                message = "User registered. Continue with Phase 1 verification.",
+                data = new { user.Id, user.Email, onboardingToken }
+            });
+        }
+
+        // POST: api/auth/validate-onboarding-token
+        // Public endpoint to validate the short-lived onboarding token returned from /register.
+        // Used by the post-signup confirmation page to securely display email + role.
+        [HttpPost("validate-onboarding-token")]
+        [AllowAnonymous]
+        [EnableRateLimiting("auth")]
+        public IActionResult ValidateOnboardingToken([FromBody] ValidateOnboardingTokenModel model)
+        {
+            if (string.IsNullOrWhiteSpace(model?.OnboardingToken))
+                return Fail("Token is required");
+
+            var principal = JwtTokenHelper.ValidateOnboardingToken(
+                model.OnboardingToken,
+                _configuration["JwtSettings:Key"] ?? "fallback-secret",
+                _configuration["JwtSettings:Issuer"] ?? "mondial",
+                _configuration["JwtSettings:Audience"] ?? "mondial-app"
+            );
+
+            if (principal == null)
+                return UnauthorizedResponse("Invalid or expired token");
+
+            var userId = principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+            var email = principal.FindFirst("email")?.Value;
+            var role = principal.FindFirst(ClaimTypes.Role)?.Value;
+            var tokenType = principal.FindFirst("token_type")?.Value;
+
+            if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(email) || string.IsNullOrEmpty(role) || tokenType != "onboarding")
+                return UnauthorizedResponse("Invalid token claims");
+
+            return Success("Token validated", new { userId, email, role });
         }
 
         // GET: api/auth/confirm-email?userId=&token=
@@ -388,6 +440,7 @@ namespace WebApp.Controllers
         // variant when handling the link client-side.
         [HttpGet("confirm-email")]
         [AllowAnonymous]
+        [EnableRateLimiting("auth")]
         public async Task<IActionResult> ConfirmEmailGet([FromQuery] string userId, [FromQuery] string token)
         {
             return await ConfirmEmailCore(userId, token);
@@ -395,6 +448,7 @@ namespace WebApp.Controllers
 
         [HttpPost("confirm-email")]
         [AllowAnonymous]
+        [EnableRateLimiting("auth")]
         public async Task<IActionResult> ConfirmEmail([FromBody] ConfirmEmailModel model)
         {
             return await ConfirmEmailCore(model?.UserId, model?.Token);
@@ -432,6 +486,7 @@ namespace WebApp.Controllers
         // are registered.
         [HttpPost("resend-confirmation-email")]
         [AllowAnonymous]
+        [EnableRateLimiting("auth")]
         public async Task<IActionResult> ResendConfirmationEmail([FromBody] ResendConfirmationModel model)
         {
             if (!ModelState.IsValid)
@@ -468,6 +523,7 @@ namespace WebApp.Controllers
         }
 
         [HttpPost("forgot-password")]
+        [EnableRateLimiting("auth")]
         public async Task<IActionResult> ForgotPassword(ForgotPasswordModel model)
         {
             if (!ModelState.IsValid)
@@ -500,6 +556,7 @@ namespace WebApp.Controllers
 
 
         [HttpPost("reset-password")]
+        [EnableRateLimiting("auth")]
         public async Task<IActionResult> ResetPassword(ResetPasswordRequestModel model)
         {
             if (!ModelState.IsValid)
@@ -615,10 +672,73 @@ namespace WebApp.Controllers
             return Success("Account updated successfully.", new { ImagePath = user.ImagePath });
         }
 
+        // ============ ROLE TRANSITIONS ============
 
-      
+        [HttpPut("transition-role")]
+        [Authorize]
+        public async Task<ActionResult> TransitionRole([FromBody] TransitionRoleRequest request)
+        {
+            try
+            {
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(request?.NewRole))
+                    return BadRequest(new { error = "Missing required fields" });
+
+                var user = await _userManager.FindByIdAsync(userId);
+                if (user == null)
+                    return NotFound(new { error = "User not found" });
+
+                // P0: Universal Phase 1 (identity/onboarding) must be complete before any role transition
+                var onboardingPhase = user.Onboarding?.Phase ?? 0;
+                if (onboardingPhase < 1)
+                    return Unauthorized(new { error = "Complete Universal Phase 1 (identity verification) before transitioning roles" });
+
+                // TODO: P1 - Add validation for role transitions (Creator -> Entrepreneur only)
+                // Creator -> Entrepreneur: must not already have Entrepreneur role
+                if (request.NewRole == "Entrepreneur")
+                {
+                    var isAlreadyEntrepreneur = await _userManager.IsInRoleAsync(user, "Entrepreneur");
+                    if (!isAlreadyEntrepreneur)
+                    {
+                        // Add Entrepreneur role
+                        await _userManager.AddToRoleAsync(user, "Entrepreneur");
+
+                        // Initialize EntrepreneurProfile
+                        user.EntrepreneurProfile = new EntrepreneurProfile
+                        {
+                            CurrentPhase = 2,
+                            LegalVerified = false,
+                            FinancialValidated = false,
+                            CapTableReady = false
+                        };
+
+                        await _userManager.UpdateAsync(user);
+                    }
+                }
+                else if (request.NewRole == "Investor" || request.NewRole == "Creator" || request.NewRole == "ServiceProvider")
+                {
+                    // Add other role
+                    var isAlreadyInRole = await _userManager.IsInRoleAsync(user, request.NewRole);
+                    if (!isAlreadyInRole)
+                    {
+                        await _userManager.AddToRoleAsync(user, request.NewRole);
+                        await _userManager.UpdateAsync(user);
+                    }
+                }
+                else
+                {
+                    return BadRequest(new { error = "Invalid role" });
+                }
+
+                return Ok(new { message = "Role transition successful", newRole = request.NewRole });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error transitioning role");
+                return BadRequest(new { error = ex.Message });
+            }
+        }
     }
 
 
 }
-

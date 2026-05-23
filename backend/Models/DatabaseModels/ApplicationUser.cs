@@ -63,6 +63,18 @@ namespace WebApp.Models.DatabaseModels
         // /api/auth/me reporting Onboarding.Phase < 1.
         [BsonElement("Onboarding")]
         public OnboardingState Onboarding { get; set; } = new();
+
+        // Creator Profile (Phase 2+)
+        [BsonElement("CreatorProfile")]
+        public CreatorProfile CreatorProfile { get; set; } = new();
+
+        // Entrepreneur Profile (Phase 2+)
+        [BsonElement("EntrepreneurProfile")]
+        public EntrepreneurProfile EntrepreneurProfile { get; set; } = new();
+
+        // Investor Profile (Phase 2+)
+        [BsonElement("InvestorProfile")]
+        public InvestorProfile InvestorProfile { get; set; } = new();
     }
 
     public class OnboardingState
@@ -171,5 +183,41 @@ namespace WebApp.Models.DatabaseModels
         Pending,
         Verified,
         Rejected
+    }
+
+    // Creator Profile (Phase 2+)
+    public class CreatorProfile
+    {
+        public int IpVaultCount { get; set; } = 0;
+        public int PublishedIdeas { get; set; } = 0;
+        public int ActiveListings { get; set; } = 0;
+        public string CrossRoadsDecision { get; set; } = "PENDING"; // PATH_A | PATH_B | PENDING
+        public List<string> SocialProfiles { get; set; } = new(); // URLs
+        public string Bio { get; set; }
+        public List<string> Categories { get; set; } = new(); // Idea categories
+    }
+
+    // Entrepreneur Profile (Phase 2+)
+    public class EntrepreneurProfile
+    {
+        public string CompanyId { get; set; }
+        public int CurrentPhase { get; set; } = 1;
+        public bool LegalVerified { get; set; } = false;
+        public bool FinancialValidated { get; set; } = false;
+        public bool CapTableReady { get; set; } = false;
+        public DateTime? Phase2CompletedAt { get; set; }
+    }
+
+    // Investor Profile (Phase 2+)
+    public class InvestorProfile
+    {
+        public string InvestorId { get; set; }
+        public int CurrentPhase { get; set; } = 1;
+        public bool FinanceVerified { get; set; } = false;
+        public DateTime? FinanceVerificationSubmittedAt { get; set; }
+        public bool ThesisSubmitted { get; set; } = false;
+        public bool ProfilePublished { get; set; } = false;
+        public List<string> NdasSigned { get; set; } = new();
+        public List<string> DataRoomsAccessed { get; set; } = new();
     }
 }

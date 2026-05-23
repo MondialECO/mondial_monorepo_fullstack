@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
 using Org.BouncyCastle.Crypto;
@@ -15,6 +16,7 @@ namespace WebApp.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class CreatorController : ControllerBase
     {
         private readonly IBusinessIdeasService _serviceIdea;
@@ -22,27 +24,47 @@ namespace WebApp.Controllers
         private readonly ITransactionsService _transactionsService;
         private readonly SaveFile _saveFile;
         private readonly MongoDbContext _context;
+        private readonly UserManager<ApplicationUser> _userManager;
         public CreatorController(IBusinessIdeasService service,
             IInvestmentsService investmentsService,
             ITransactionsService transactionsService,
              SaveFile saveFile,
-             MongoDbContext context)
+             MongoDbContext context,
+             UserManager<ApplicationUser> userManager)
         {
             _serviceIdea = service;
             _investmentsService = investmentsService;
             _transactionsService = transactionsService;
             _saveFile = saveFile;
             _context = context;
+            _userManager = userManager;
+        }
+
+        private string GetUserId()
+        {
+            return User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? throw new UnauthorizedAccessException("User not authenticated");
+        }
+
+        private async Task EnsureUniversalPhase1CompleteAsync(string userId)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+                throw new UnauthorizedAccessException("User not found");
+
+            var phase = user.Onboarding?.Phase ?? 0;
+            if (phase < 1)
+                throw new UnauthorizedAccessException("Universal Phase 1 (identity verification) must be complete before accessing creator features");
         }
 
 
         [HttpGet("dashboard")]
         public async Task<IActionResult> GetCreatorDashboard()
         {
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            //var userId = "5f5df910-2b3f-4469-b72e-fb9a2dacc233";
-            if (string.IsNullOrEmpty(userId))
-                return Unauthorized();
+            try
+            {
+                var userId = GetUserId();
+                await EnsureUniversalPhase1CompleteAsync(userId);
 
             // 1️ Get Creator Ideas
             var ideas = (await _serviceIdea.GetByCreatorAsync(userId)).ToList();
@@ -152,6 +174,15 @@ namespace WebApp.Controllers
             };
 
             return Ok(response);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
         }
 
 
@@ -163,9 +194,10 @@ namespace WebApp.Controllers
             [FromForm] List<IFormFile>? documents,
             string? id)
         {
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userId))
-                return Unauthorized();
+            try
+            {
+                var userId = GetUserId();
+                await EnsureUniversalPhase1CompleteAsync(userId);
 
 
 
@@ -211,6 +243,15 @@ namespace WebApp.Controllers
                 message = "Draft saved",
                 id = ideaId
             });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
         }
 
 
@@ -219,12 +260,13 @@ namespace WebApp.Controllers
         [HttpGet("idea/{id}")]
         public async Task<IActionResult> GetIdea(string id)
         {
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userId))
-                return Unauthorized();
-            var idea = await _serviceIdea.GetByIdAsync(id);
-            if (idea == null || idea.CreatorId != userId)
-                return NotFound();
+            try
+            {
+                var userId = GetUserId();
+                await EnsureUniversalPhase1CompleteAsync(userId);
+                var idea = await _serviceIdea.GetByIdAsync(id);
+                if (idea == null || idea.CreatorId != userId)
+                    return NotFound();
 
             var responce = new
             {
@@ -250,17 +292,25 @@ namespace WebApp.Controllers
             };
 
             return Ok(responce);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
         }
 
 
         [HttpGet("my-ideas")]
         public async Task<IActionResult> MyIdeas()
         {
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            //var userId = "5f5df910-2b3f-4469-b72e-fb9a2dacc233";
-
-            if (string.IsNullOrEmpty(userId))
-                return Unauthorized();
+            try
+            {
+                var userId = GetUserId();
+                await EnsureUniversalPhase1CompleteAsync(userId);
 
             var ideas = await _serviceIdea.GetByCreatorAsync(userId);
 
@@ -358,24 +408,46 @@ namespace WebApp.Controllers
             }).ToList();
 
             return Ok(response);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
         }
 
 
         [HttpPost("toggle-idea/{id}")]
         public async Task<IActionResult> ToggleIdea(string id)
         {
-            var idea = await _context.BusinessIdeas
-                .Find(x => x.Id == id)
-                .FirstOrDefaultAsync();
+            try
+            {
+                var userId = GetUserId();
+                await EnsureUniversalPhase1CompleteAsync(userId);
+                var idea = await _context.BusinessIdeas
+                    .Find(x => x.Id == id)
+                    .FirstOrDefaultAsync();
 
-            if (idea == null)
-                return NotFound();
+                if (idea == null)
+                    return NotFound();
 
-            idea.IsPublished = !idea.IsPublished;
+                idea.IsPublished = !idea.IsPublished;
 
-            await _context.BusinessIdeas.ReplaceOneAsync(x => x.Id == id, idea);
+                await _context.BusinessIdeas.ReplaceOneAsync(x => x.Id == id, idea);
 
-            return Ok(idea);
+                return Ok(idea);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
         }
 
         [HttpGet("")]
@@ -383,8 +455,10 @@ namespace WebApp.Controllers
         [HttpGet("investments/{id}")]
         public async Task<IActionResult> GetIdeaInvestments(string id)
         {
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+            try
+            {
+                var userId = GetUserId();
+                await EnsureUniversalPhase1CompleteAsync(userId);
 
             var ideas = await _serviceIdea.GetByCreatorAsync(userId);
             if (ideas == null || !ideas.Any())
@@ -410,10 +484,53 @@ namespace WebApp.Controllers
             }).ToList();
 
             return Ok(response);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
         }
 
+        // ============ CREATOR PHASES ============
 
+        [HttpPut("cross-roads/{ideaId}/decide")]
+        public async Task<IActionResult> DecideCrossRoads(string ideaId, [FromBody] CrossRoadsDecisionRequest request)
+        {
+            try
+            {
+                var userId = GetUserId();
+                await EnsureUniversalPhase1CompleteAsync(userId);
+                if (string.IsNullOrEmpty(ideaId) || string.IsNullOrEmpty(request?.Decision))
+                    return BadRequest(new { error = "Missing required fields" });
 
+                if (request.Decision != "PATH_A" && request.Decision != "PATH_B")
+                    return BadRequest(new { error = "Decision must be PATH_A or PATH_B" });
 
+                // Update user's CrossRoadsDecision
+                var user = await _context.ApplicationUsers.FindOneAndUpdateAsync(
+                    Builders<ApplicationUser>.Filter.Eq(u => u.Id, Guid.Parse(userId)),
+                    Builders<ApplicationUser>.Update
+                        .Set(u => u.CreatorProfile.CrossRoadsDecision, request.Decision),
+                    new FindOneAndUpdateOptions<ApplicationUser> { ReturnDocument = ReturnDocument.After }
+                );
+
+                if (user == null)
+                    return NotFound(new { error = "User not found" });
+
+                return Ok(new { message = "Crossroads decision recorded", decision = request.Decision });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
     }
 }

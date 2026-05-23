@@ -37,6 +37,12 @@ public interface ICompanyService
     Task<SaveEquityStructureRequest> GetCapTableAsync(string companyId);
     Task<DilutionSimulationResponse> SimulateDilutionAsync(string companyId, SimulateDilutionRequest request);
 
+    // ============ PHASE 5: FUNDING ASK & PITCH ============
+
+    Task<Companies> SavePitchDeckAsync(string companyId, string fileName, Stream fileStream);
+    Task<Companies> SaveFundingNarrativeAsync(string companyId, string narrative);
+    Task<Companies> SaveOutreachCampaignAsync(string companyId, List<string> investorIds, string template);
+
     // ============ PHASE 6: DATA ROOM ============
 
     Task<DataRoomDocumentResponse> UploadDataRoomDocumentAsync(string companyId, UploadDataRoomDocumentRequest request);

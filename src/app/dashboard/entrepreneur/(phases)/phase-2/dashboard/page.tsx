@@ -4,6 +4,7 @@ import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, R
 import { TrendingUp, Users, Target, DollarSign, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { RouteGuard } from '@/components/entrepreneur/RouteGuard';
 
 const mockData = {
   fundingProgress: 250000,
@@ -127,7 +128,7 @@ const StatCard = ({
   </div>
 );
 
-export default function Phase2DashboardPage() {
+function Phase2DashboardContent() {
   const progressPercent = (mockData.fundingProgress / mockData.fundingGoal) * 100;
 
   return (
@@ -349,5 +350,13 @@ export default function Phase2DashboardPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function Phase2DashboardPage() {
+  return (
+    <RouteGuard requiredPhase={2}>
+      <Phase2DashboardContent />
+    </RouteGuard>
   );
 }

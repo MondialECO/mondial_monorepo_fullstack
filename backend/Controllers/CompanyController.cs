@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using WebApp.Models.DatabaseModels;
 using WebApp.Models.Dtos;
 using WebApp.Services;
 
@@ -12,11 +14,16 @@ namespace WebApp.Controllers;
 public class CompanyController : ControllerBase
 {
     private readonly ICompanyService _companyService;
+    private readonly UserManager<ApplicationUser> _userManager;
     private readonly ILogger<CompanyController> _logger;
 
-    public CompanyController(ICompanyService companyService, ILogger<CompanyController> logger)
+    public CompanyController(
+        ICompanyService companyService,
+        UserManager<ApplicationUser> userManager,
+        ILogger<CompanyController> logger)
     {
         _companyService = companyService;
+        _userManager = userManager;
         _logger = logger;
     }
 
@@ -43,6 +50,13 @@ public class CompanyController : ControllerBase
         await EnsureCompanyOwnershipAsync(companyId);
     }
 
+    private async Task EnsureUniversalPhase1CompleteAsync(string userId)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null || (user.Onboarding?.Phase ?? 0) < 1)
+            throw new UnauthorizedAccessException("User must complete Universal Phase 1 onboarding before accessing company endpoints.");
+    }
+
     // ============ PHASE FLOW ============
 
     [HttpGet("current-phase")]
@@ -51,8 +65,14 @@ public class CompanyController : ControllerBase
         try
         {
             var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
             var result = await _companyService.GetCurrentPhaseAsync(userId);
             return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
         }
         catch (Exception ex)
         {
@@ -66,9 +86,16 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
             await EnsureCompanyOwnershipAsync(companyId);
             var result = await _companyService.AdvancePhaseAsync(companyId, phaseNumber, phaseData);
             return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
         }
         catch (Exception ex)
         {
@@ -82,9 +109,16 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
             await EnsureCompanyOwnershipAsync(companyId);
             var result = await _companyService.GetPhaseProgressAsync(companyId);
             return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
         }
         catch (Exception ex)
         {
@@ -101,6 +135,7 @@ public class CompanyController : ControllerBase
         try
         {
             var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
             var company = await _companyService.CreateCompanyAsync(userId, dto);
 
             // Avoid route-generation failures from CreatedAtAction when the route
@@ -109,6 +144,11 @@ public class CompanyController : ControllerBase
                 return Ok(company);
 
             return Created($"/api/companies/{company.Id}", company);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
         }
         catch (Exception ex)
         {
@@ -122,9 +162,16 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
             await EnsureCompanyOwnershipAsync(companyId);
             var company = await _companyService.GetCompanyAsync(companyId);
             return Ok(company);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
         }
         catch (Exception ex)
         {
@@ -140,9 +187,16 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
             await EnsureCompanyOwnershipAsync(companyId);
             var company = await _companyService.UpdateLegalInfoAsync(companyId, request);
             return Ok(company);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
         }
         catch (Exception ex)
         {
@@ -156,9 +210,16 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
             await EnsureCompanyOwnershipAsync(companyId);
             var doc = await _companyService.UploadDocumentAsync(companyId, request);
             return Ok(doc);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
         }
         catch (Exception ex)
         {
@@ -172,9 +233,16 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
             await EnsureCompanyOwnershipAsync(companyId);
             var docs = await _companyService.GetDocumentStatusAsync(companyId);
             return Ok(docs);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
         }
         catch (Exception ex)
         {
@@ -188,9 +256,16 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
             await EnsureCompanyOwnershipAsync(companyId);
             var company = await _companyService.UpdateBeneficialOwnersAsync(companyId, request);
             return Ok(company);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
         }
         catch (Exception ex)
         {
@@ -206,9 +281,16 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
             await EnsureCompanyOwnershipAsync(companyId);
             var company = await _companyService.SaveRevenueDataAsync(companyId, request);
             return Ok(company);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
         }
         catch (Exception ex)
         {
@@ -222,9 +304,16 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
             await EnsureCompanyOwnershipAsync(companyId);
             var result = await _companyService.CalculateValuationAsync(companyId);
             return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
         }
         catch (Exception ex)
         {
@@ -238,9 +327,16 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
             await EnsureCompanyOwnershipAsync(companyId);
             var company = await _companyService.SaveEquityStructureAsync(companyId, request);
             return Ok(company);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
         }
         catch (Exception ex)
         {
@@ -254,9 +350,16 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
             await EnsureCompanyOwnershipAsync(companyId);
             var company = await _companyService.SaveFundingAskAsync(companyId, request);
             return Ok(company);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
         }
         catch (Exception ex)
         {
@@ -270,9 +373,16 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
             await EnsureCompanyOwnershipAsync(companyId);
             var result = await _companyService.GetFinancialSummaryAsync(companyId);
             return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
         }
         catch (Exception ex)
         {
@@ -288,9 +398,16 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
             await EnsureCompanyOwnershipAsync(companyId);
             var result = await _companyService.GetCapTableAsync(companyId);
             return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
         }
         catch (Exception ex)
         {
@@ -304,9 +421,16 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
             await EnsureCompanyOwnershipAsync(companyId);
             var result = await _companyService.SimulateDilutionAsync(companyId, request);
             return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
         }
         catch (Exception ex)
         {
@@ -322,9 +446,16 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
             await EnsureCompanyOwnershipAsync(companyId);
             var doc = await _companyService.UploadDataRoomDocumentAsync(companyId, request);
             return Ok(doc);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
         }
         catch (Exception ex)
         {
@@ -338,9 +469,16 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
             await EnsureCompanyOwnershipAsync(companyId);
             var result = await _companyService.GetDataRoomStatusAsync(companyId);
             return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
         }
         catch (Exception ex)
         {
@@ -354,9 +492,16 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
             await EnsureCompanyOwnershipAsync(companyId);
             var result = await _companyService.GrantDataRoomAccessAsync(companyId, request);
             return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
         }
         catch (Exception ex)
         {
@@ -370,9 +515,16 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
             await EnsureCompanyOwnershipAsync(companyId);
             await _companyService.RevokeDataRoomAccessAsync(companyId, investorId);
             return Ok();
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
         }
         catch (Exception ex)
         {
@@ -386,9 +538,16 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
             await EnsureCompanyOwnershipAsync(companyId);
             await _companyService.UpdateNdaRequirementAsync(companyId, required);
             return Ok();
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
         }
         catch (Exception ex)
         {
@@ -404,9 +563,16 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
             await EnsureCompanyOwnershipAsync(companyId);
             var result = await _companyService.RunAiReviewAsync(companyId);
             return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
         }
         catch (Exception ex)
         {
@@ -420,9 +586,16 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
             await EnsureCompanyOwnershipAsync(companyId);
             var result = await _companyService.GetAiReviewScoreAsync(companyId);
             return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
         }
         catch (Exception ex)
         {
@@ -436,9 +609,16 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
             await EnsureCompanyOwnershipAsync(companyId);
             var result = await _companyService.GetRecommendationsAsync(companyId);
             return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
         }
         catch (Exception ex)
         {
@@ -452,9 +632,16 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
             await EnsureCompanyOwnershipAsync(companyId);
             await _companyService.AwardInvestorReadyBadgeAsync(companyId);
             return Ok();
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
         }
         catch (Exception ex)
         {
@@ -470,9 +657,16 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
             await EnsureCompanyOwnershipAsync(companyId);
             var result = await _companyService.GetMatchedInvestorsAsync(companyId);
             return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
         }
         catch (Exception ex)
         {
@@ -486,9 +680,16 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
             await EnsureCompanyOwnershipAsync(companyId);
             await _companyService.RecordInvestorInteractionAsync(companyId, request);
             return Ok();
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
         }
         catch (Exception ex)
         {
@@ -502,9 +703,16 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
             await EnsureCompanyOwnershipAsync(companyId);
             var result = await _companyService.GetMatchingInsightsAsync(companyId);
             return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
         }
         catch (Exception ex)
         {
@@ -520,10 +728,17 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
             await EnsureCompanyOwnershipAsync(companyId);
             request.InvestorId ??= string.Empty; // Ensure it's set
             var result = await _companyService.CreateDealAsync(companyId, request);
             return CreatedAtAction(nameof(GetDeal), new { dealId = result.DealId }, result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
         }
         catch (Exception ex)
         {
@@ -537,9 +752,16 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
             await EnsureDealOwnershipAsync(dealId);
             var result = await _companyService.GetDealAsync(dealId);
             return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
         }
         catch (Exception ex)
         {
@@ -553,9 +775,16 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
             await EnsureCompanyOwnershipAsync(companyId);
             var result = await _companyService.GetCompanyDealsAsync(companyId);
             return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
         }
         catch (Exception ex)
         {
@@ -569,9 +798,16 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
             await EnsureDealOwnershipAsync(dealId);
             var result = await _companyService.UpdateTermSheetAsync(dealId, request);
             return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
         }
         catch (Exception ex)
         {
@@ -585,9 +821,16 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
             await EnsureDealOwnershipAsync(dealId);
             var result = await _companyService.ProgressChecklistAsync(dealId, item);
             return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
         }
         catch (Exception ex)
         {
@@ -601,9 +844,16 @@ public class CompanyController : ControllerBase
     {
         try
         {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
             await EnsureDealOwnershipAsync(dealId);
             var result = await _companyService.CloseDealAsync(dealId);
             return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
         }
         catch (Exception ex)
         {

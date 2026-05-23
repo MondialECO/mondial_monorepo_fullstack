@@ -7,6 +7,7 @@ import { EntrepreneurProgress, PhaseNumber, StepNumber } from '@/types/entrepren
 interface EntrepreneurProgressContextType {
   progress: EntrepreneurProgress | null;
   isLoading: boolean;
+  backendFetchFailed: boolean;
   currentPhase?: PhaseNumber;
   currentStep?: StepNumber;
   trustScore: number;

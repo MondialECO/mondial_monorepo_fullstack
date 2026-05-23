@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import { useAuth } from '@/app/_providers/AuthProvider';
 import { useEntrepreneurProgress } from '@/hooks/useEntrepreneurProgress';
 import { PhaseNumber, StepNumber } from '@/types/entrepreneur';
 import { getPhaseConfig } from '@/lib/entrepreneur';
@@ -19,13 +20,34 @@ export function RouteGuard({
 }: RouteGuardProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const { progress, isLoading } = useEntrepreneurProgress();
+  const { user } = useAuth();
+  const { progress, isLoading, backendFetchFailed } = useEntrepreneurProgress();
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
 
   // Dev mode: set to true to allow all steps without restrictions
   const DEV_MODE_UNLOCK_ALL_STEPS = process.env.NEXT_PUBLIC_DEV_MODE === 'true';
 
   useEffect(() => {
+    // UNIVERSAL PHASE 1 GATE: Block all phases 2+ if onboarding.phase < 1
+    const onboardingPhase = user?.onboardingPhase ?? 0;
+    const pathPhaseMatch = pathname.match(/\/dashboard\/entrepreneur\/(phase-(\d+))/);
+    const requestedPhase = pathPhaseMatch ? parseInt(pathPhaseMatch[2]) : 1;
+
+    // If phase < 1 and trying to access phase 2+, redirect to phase-1
+    if (onboardingPhase < 1 && requestedPhase > 1) {
+      setIsAuthorized(false);
+      router.replace('/dashboard/entrepreneur/phase-1');
+      return;
+    }
+
+    // FAIL CLOSED: If backend fetch failed, do not unlock routes from cached progress
+    if (!isLoading && backendFetchFailed) {
+      setIsAuthorized(false);
+      console.warn('Backend entrepreneur progress fetch failed; preventing route access');
+      router.replace('/dashboard/entrepreneur/phase-1');
+      return;
+    }
+
     if (isLoading || !progress) {
       setIsAuthorized(null);
       return;
@@ -53,7 +75,12 @@ export function RouteGuard({
     // Check if phase is locked
     const isPhaseCompleted = progress.completedPhases.has(pathPhase);
     const isPhaseActive = progress.currentPhase === pathPhase;
-    const isPhaseAccessible = isPhaseCompleted || isPhaseActive;
+
+    // Special rule for Phase 2: It's available if authPhase >= 1 (Phase 2 is where company is created)
+    // Phase 2 should not be locked by company progress since company doesn't exist yet
+    const isPhase2Available = pathPhase === 2 && onboardingPhase >= 1;
+
+    const isPhaseAccessible = isPhaseCompleted || isPhaseActive || isPhase2Available;
 
     // If trying to access a locked phase, redirect to current phase
     if (!isPhaseAccessible) {
@@ -99,7 +126,7 @@ export function RouteGuard({
 
     // All checks passed
     setIsAuthorized(true);
-  }, [isLoading, progress, pathname, router, DEV_MODE_UNLOCK_ALL_STEPS]);
+  }, [isLoading, progress, pathname, router, DEV_MODE_UNLOCK_ALL_STEPS, backendFetchFailed]);
 
   // Don't render children until authorization check is complete
   if (isLoading || isAuthorized === null) {

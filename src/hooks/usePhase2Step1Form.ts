@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/navigation';
 import { useEntrepreneurProgress } from './useEntrepreneurProgress';
+import entrepreneurApi from '@/lib/api-entrepreneur';
 import type { LegalIdentityFormData } from '@/lib/schemas/entrepreneur';
 
 type FormState = {
@@ -131,17 +132,68 @@ export function usePhase2Step1Form({
     try {
       const formData = form.getValues();
 
-      // Final save of the latest values.
-      savePhaseData(2, formData);
+      // CRITICAL: If company doesn't exist, create it now with Phase 2 legal data
+      if (!progress?.phaseData?.__companyId) {
+        try {
+          console.log('🔧 Creating company with Phase 1 basic data...');
+          // Step 1: Create company with Phase 1 basic fields
+          const createResponse = await entrepreneurApi.createCompany({
+            companyName: formData.companyName || 'Unnamed Company',
+            industry: 'Technology', // Placeholder - Phase 1 field
+            website: 'https://example.com', // Placeholder - Phase 1 field
+            tagline: 'Company created during Phase 2 verification',
+          });
 
-      // Allow the savePhaseData state update to flush.
-      await new Promise((resolve) => setTimeout(resolve, 50));
+          if (!createResponse?.companyId) {
+            throw new Error('No company ID returned from creation');
+          }
 
-      // Mark step 2-1 complete and advance currentStep -> 2.
+          const companyId = createResponse.companyId;
+          console.log('✅ Company created:', companyId);
+
+          // Step 2: Immediately update with Phase 2 legal identity data
+          console.log('🔧 Updating company with Phase 2 legal identity data...');
+          await entrepreneurApi.updateLegalInfo(companyId, {
+            legalName: formData.companyName || 'Unnamed Company',
+            registrationNumber: formData.registrationNumber || '',
+            legalStructure: formData.legalForm || '',
+            incorporationDate: formData.incorporationDate || '',
+            registeredAddress: formData.registeredAddress || '',
+            country: formData.countryOfRegistration || '',
+            nafCode: formData.industryCode || '',
+          });
+          console.log('✅ Legal info updated');
+
+          // Step 3: Verify company exists in backend by fetching current phase
+          console.log('🔧 Verifying company in backend...');
+          const phaseProgress = await entrepreneurApi.getCurrentPhase();
+          if (phaseProgress?.companyId !== companyId) {
+            throw new Error('Company verification failed - company not found in backend');
+          }
+          console.log('✅ Company verified in backend');
+
+          // Save to local state with companyId
+          savePhaseData(2, {
+            ...formData,
+            __companyId: companyId,
+          });
+        } catch (createError) {
+          const msg = createError instanceof Error ? createError.message : 'Failed to create company';
+          console.error('❌ Company creation failed:', msg);
+          throw new Error(`Could not create company: ${msg}`);
+        }
+      } else {
+        // Company exists, just save the phase 2 data
+        savePhaseData(2, formData);
+      }
+
+      // Allow state updates to flush
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Mark step 2-1 complete and advance currentStep -> 2
       moveToNextStep(2, 1);
 
-      // Allow moveToNextStep to flush so step-2's RouteGuard sees the
-      // updated progress; without this it would redirect back to step-1.
+      // Allow moveToNextStep to flush
       await new Promise((resolve) => setTimeout(resolve, 100));
 
       await router.push('/dashboard/entrepreneur/phase-2/step-2');
@@ -150,7 +202,7 @@ export function usePhase2Step1Form({
         error instanceof Error ? error.message : 'An error occurred';
       setFormState({ status: 'idle', error: message });
     }
-  }, [form, savePhaseData, moveToNextStep, router]);
+  }, [form, progress, savePhaseData, moveToNextStep, router]);
 
   return {
     form,

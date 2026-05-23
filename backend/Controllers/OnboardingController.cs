@@ -208,8 +208,12 @@ namespace WebApp.Controllers
             user.Onboarding.PhoneVerified = false;
             await _userManager.UpdateAsync(user);
 
-            var smsConfigured = !string.IsNullOrWhiteSpace(_configuration["Twilio:AccountSid"]);
-            if (smsConfigured)
+            var smsEnabled = _configuration.GetValue("Twilio:Enabled", false);
+            var smsConfigured =
+                !string.IsNullOrWhiteSpace(_configuration["Twilio:AccountSid"]) &&
+                !string.IsNullOrWhiteSpace(_configuration["Twilio:AuthToken"]) &&
+                !string.IsNullOrWhiteSpace(_configuration["Twilio:FromNumber"]);
+            if (smsEnabled && smsConfigured)
             {
                 try { await _twilio.SendSmsAsync(phone, $"Your Mondial verification code is {code}. Expires in 60s."); }
                 catch (Exception ex)
@@ -220,7 +224,7 @@ namespace WebApp.Controllers
             }
             else
             {
-                _logger.LogWarning("[DEV] Twilio not configured. OTP for {Phone}: {Code}", phone, code);
+                _logger.LogWarning("[DEV] Twilio SMS disabled/unconfigured. OTP for {Phone}: {Code}", phone, code);
             }
 
             _audit.Record("otp_send", user.Email!, true, new { phone });

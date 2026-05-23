@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { z } from "zod";
 import { useAuth } from "@/app/_providers/AuthProvider";
+import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { ROLE_DASHBOARD_ROUTES } from "@/lib/roles";
 
 const loginSchema = z.object({
   email: z
@@ -17,13 +19,22 @@ const loginSchema = z.object({
 });
 
 export default function LoginPage() {
-  const { login, isLoading: authLoading } = useAuth();
+  const { login, isLoading: authLoading, user, logout } = useAuth();
+  const router = useRouter();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Redirect logged-in users to their dashboard
+  useEffect(() => {
+    if (user && !authLoading) {
+      const dashboardRoute = ROLE_DASHBOARD_ROUTES[user.role];
+      router.replace(dashboardRoute);
+    }
+  }, [user, authLoading, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,6 +65,56 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   };
+
+  // Show loading state while hydrating
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background dark:bg-background px-4">
+        <div className="w-full max-w-md space-y-8 p-8 bg-card dark:bg-card rounded-2xl shadow-lg border border-border text-center">
+          <div className="flex flex-col items-center gap-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            <p className="text-muted-foreground">Loading...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show "Already logged in" message with redirect and logout options
+  if (user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background dark:bg-background px-4">
+        <div className="w-full max-w-md space-y-8 p-8 bg-card dark:bg-card rounded-2xl shadow-lg border border-border">
+          <div className="text-center space-y-4">
+            <h1 className="text-3xl font-bold tracking-tight text-foreground">
+              Already logged in
+            </h1>
+            <p className="text-muted-foreground">
+              Welcome back, {user.name}!
+            </p>
+            <p className="text-sm text-muted-foreground">
+              You are already logged in as a {user.role}.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <button
+              onClick={() => router.replace(ROLE_DASHBOARD_ROUTES[user.role])}
+              className="w-full px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90 transition-colors"
+            >
+              Go to Dashboard
+            </button>
+            <button
+              onClick={logout}
+              className="w-full px-6 py-3 bg-gray-200 text-gray-900 dark:bg-gray-800 dark:text-gray-100 rounded-lg font-medium hover:opacity-90 transition-colors"
+            >
+              Logout
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background dark:bg-background px-4">

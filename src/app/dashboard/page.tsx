@@ -4,8 +4,6 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/_providers/AuthProvider';
 import {
-  DEFAULT_USER_ROLE,
-  normalizeUserRole,
   ROLE_DASHBOARD_ROUTES,
 } from '@/lib/roles';
 
@@ -21,8 +19,7 @@ export default function DashboardPage() {
       return;
     }
 
-    const role = normalizeUserRole(user.role);
-    router.replace(ROLE_DASHBOARD_ROUTES[role] ?? ROLE_DASHBOARD_ROUTES[DEFAULT_USER_ROLE]);
+    router.replace(ROLE_DASHBOARD_ROUTES[user.role]);
   }, [isLoading, user, router]);
 
   return null;

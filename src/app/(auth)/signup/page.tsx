@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { registerApi } from "@/lib/api-auth";
+import { useAuth } from "@/app/_providers/AuthProvider";
+import { ROLE_DASHBOARD_ROUTES } from "@/lib/roles";
 import {
   SIGNUP_ROLE_STORAGE_KEY,
   formatRoleLabel,
@@ -15,6 +17,7 @@ import {
 
 export default function Signup() {
   const router = useRouter();
+  const { user, isLoading: authLoading, logout } = useAuth();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -22,6 +25,14 @@ export default function Signup() {
   const [errorMsg, setErrorMsg] = useState("");
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
   const [roleHydrated, setRoleHydrated] = useState(false);
+
+  // Redirect logged-in users to their dashboard
+  useEffect(() => {
+    if (user && !authLoading) {
+      const dashboardRoute = ROLE_DASHBOARD_ROUTES[user.role];
+      router.replace(dashboardRoute);
+    }
+  }, [user, authLoading, router]);
 
   useEffect(() => {
     const roleId = localStorage.getItem(SIGNUP_ROLE_STORAGE_KEY);
@@ -57,11 +68,16 @@ export default function Signup() {
         role: mapSignupRoleToBackendRole(selectedRoleId),
       };
 
-      await registerApi(model);
+      const response = await registerApi(model);
+      const onboardingToken = response.data?.onboardingToken;
+
+      if (!onboardingToken) {
+        setErrorMsg("Registration succeeded but token generation failed. Please try again.");
+        return;
+      }
+
       router.push(
-        `/signup/onboarding?email=${encodeURIComponent(email)}&role=${encodeURIComponent(
-          selectedRoleId
-        )}`
+        `/signup/onboarding?token=${encodeURIComponent(onboardingToken)}`
       );
     } catch (err: unknown) {
       console.error(err);
@@ -71,6 +87,49 @@ export default function Signup() {
       setIsSubmitting(false);
     }
   };
+
+  // Show loading state while hydrating
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-4 py-8">
+        <div className="text-sm text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
+
+  // Show "Already logged in" message with redirect and logout options
+  if (user) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-4 py-8">
+        <div className="w-full max-w-md bg-card rounded-2xl shadow-2xl p-8 space-y-6">
+          <div className="text-center space-y-2">
+            <h1 className="text-3xl font-bold text-foreground">
+              Already logged in
+            </h1>
+            <p className="text-muted-foreground">
+              Welcome back, {user.name}!
+            </p>
+          </div>
+          <div className="space-y-3">
+            <Button
+              onClick={() => router.replace(ROLE_DASHBOARD_ROUTES[user.role])}
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+              size="lg"
+            >
+              Go to Dashboard
+            </Button>
+            <Button
+              onClick={logout}
+              className="w-full bg-gray-200 hover:bg-gray-300 text-gray-900 font-semibold dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-100"
+              size="lg"
+            >
+              Logout
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!roleHydrated) {
     return (

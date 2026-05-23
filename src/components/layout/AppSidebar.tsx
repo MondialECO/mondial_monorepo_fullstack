@@ -4,7 +4,6 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/app/_providers/AuthProvider";
 import { menu } from "@/lib/menu";
-import { DEFAULT_USER_ROLE, normalizeUserRole } from "@/lib/roles";
 
 import {
   Sidebar,
@@ -25,8 +24,7 @@ export default function AppSidebar() {
 
   if (!user) return null;
 
-  const normalizedRole = normalizeUserRole(user.role);
-  const sections = menu[normalizedRole] ?? menu[DEFAULT_USER_ROLE];
+  const sections = menu[user.role];
 
   return (
     <Sidebar>

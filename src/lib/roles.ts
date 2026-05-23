@@ -35,3 +35,21 @@ export function normalizeUserRole(input: unknown): UserRole {
 
   return roleMap[raw] ?? DEFAULT_USER_ROLE;
 }
+
+export function parseStrictUserRole(input: unknown): UserRole | null {
+  if (!input || typeof input !== "string") return null;
+
+  const raw = String(input).trim().toLowerCase().replace(/[\s_-]/g, "");
+
+  const roleMap: Record<string, UserRole> = {
+    admin: UserRole.ADMIN,
+    creator: UserRole.CREATOR,
+    investor: UserRole.INVESTOR,
+    entrepreneur: UserRole.ENTREPRENEUR,
+    advisor: UserRole.ADVISOR,
+    founder: UserRole.FOUNDER,
+    serviceprovider: UserRole.SERVICE_PROVIDER,
+  };
+
+  return roleMap[raw] ?? null;
+}

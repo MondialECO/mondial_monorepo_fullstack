@@ -25,18 +25,11 @@ const SAVE_DEBOUNCE_MS = 500;
 export function useEntrepreneurProgressState() {
   const [progress, setProgress] = useState<EntrepreneurProgress>(() => {
     // Initialize with safe default - never null
-    const stored = typeof window !== 'undefined' ? localStorage.getItem(getProgressStorageKey()) : null;
-    if (stored) {
-      try {
-        return deserializeProgress(stored);
-      } catch (error) {
-        console.error('Failed to load progress:', error);
-        return { ...INITIAL_PROGRESS, lastUpdated: Date.now() };
-      }
-    }
+    // NOTE: localStorage is UI cache only, NOT authority. Backend verification is required before unlocking routes.
     return { ...INITIAL_PROGRESS, lastUpdated: Date.now() };
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [backendFetchFailed, setBackendFetchFailed] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
 
@@ -62,6 +55,14 @@ export function useEntrepreneurProgressState() {
       try {
         const serverProgress = await entrepreneurApi.getCurrentPhase();
         if (cancelled) return;
+
+        // Safety check: ensure currentPhase is valid
+        if (!serverProgress || typeof serverProgress.currentPhase !== 'number') {
+          console.warn('Invalid server progress response:', serverProgress);
+          setBackendFetchFailed(true);
+          if (!cancelled) setIsLoading(false);
+          return;
+        }
 
         setProgress((prev) => {
           const currentPhase = Math.min(
@@ -95,8 +96,11 @@ export function useEntrepreneurProgressState() {
             },
           };
         });
-      } catch {
-        // Keep local state when backend progress cannot be fetched.
+        setBackendFetchFailed(false);
+      } catch (error) {
+        // FAIL CLOSED: Backend cannot be reached, do not unlock routes from cached progress
+        console.error('Failed to fetch entrepreneur progress from backend:', error);
+        setBackendFetchFailed(true);
       } finally {
         if (!cancelled) setIsLoading(false);
       }
@@ -290,6 +294,7 @@ export function useEntrepreneurProgressState() {
     // State
     progress,
     isLoading,
+    backendFetchFailed,
     currentPhase: progress?.currentPhase,
     currentStep: progress?.currentStep,
     trustScore: progress?.trustScore ?? 0,

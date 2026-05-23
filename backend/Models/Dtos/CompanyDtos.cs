@@ -318,6 +318,19 @@ public class DealParticipantStatusDto
     public string Status { get; set; }
 }
 
+// ============ PHASE 5: FUNDING ASK & PITCH ============
+
+public class SaveFundingNarrativeRequest
+{
+    public string Narrative { get; set; }
+}
+
+public class SaveOutreachCampaignRequest
+{
+    public List<string> InvestorIds { get; set; }
+    public string Template { get; set; }
+}
+
 // ============ GENERAL RESPONSES ============
 
 public class CompanyProgressResponse
