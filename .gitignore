@@ -59,3 +59,18 @@ out/
 # may contain absolute paths from your machine. Keep it out of the repo.
 .claude/settings.local.json
 **/.claude/settings.local.json
+
+# Audit/Investigation reports (temporary analysis files)
+AUDIT_*.md
+BUILD_AND_ROUTES_TEST_REPORT.md
+FINAL_STATUS*.md
+HOMEPAGE_AUDIT*.md
+IMPLEMENTATION_SUMMARY.md
+ONBOARDING_FIX_SUMMARY.md
+P0_IMPLEMENTATION_CHECKLIST.md
+PERFORMANCE_SEO_OPTIMIZATION.md
+PERFORMANCE_AUDIT_FIXES.md
+PHASE_*_AUDIT_REPORT.md
+PHASE_*_IMPLEMENTATION.md
+PHASE_*_COMPLETE.md
+UNIVERSAL_*.md
