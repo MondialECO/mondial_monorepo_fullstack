@@ -12,7 +12,11 @@ public class DealExecution
     [BsonRepresentation(BsonType.ObjectId)]
     public string CompanyId { get; set; }
 
-    public string Status { get; set; } = "negotiation"; // negotiation | term_sheet | due_diligence | closing | closed | failed
+    /// <summary>
+    /// Whitelisted in <c>Phase9Requirements.DealStatusWhitelist</c>. Mutations
+    /// only via <c>UpdateDealStatusAsync</c> using the transition graph.
+    /// </summary>
+    public string Status { get; set; } = "initiated";
 
     public List<DealParticipant> Investors { get; set; } = new();
 
@@ -26,6 +30,21 @@ public class DealExecution
 
     public DealNegotiationStatus NegotiationStatus { get; set; } = new();
 
+    /// <summary>
+    /// Deal-scoped documents (term sheets, signed agreements, etc).
+    /// </summary>
+    public List<DealDocument> DealDocuments { get; set; } = new();
+
+    /// <summary>
+    /// Snapshotted at deal creation time. The live Investor record may later
+    /// disappear; the snapshot guarantees deal timelines never render null
+    /// investor identity.
+    /// </summary>
+    public string InvestorNameSnapshot { get; set; }
+    public string InvestorTypeSnapshot { get; set; }
+
+    public string CreatedByUserId { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? ClosedAt { get; set; }
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
@@ -38,7 +57,8 @@ public class DealParticipant
 
     public string InvestorName { get; set; }
     public double CommittedAmount { get; set; }
-    public string Status { get; set; } = "interested"; // interested | negotiating | committed | funded | withdrawn
+    /// <summary>Whitelisted in <c>Phase9Requirements.ParticipantStatusWhitelist</c>.</summary>
+    public string Status { get; set; } = "interested";
     public double EquityPercentage { get; set; }
     public DateTime JoinedAt { get; set; } = DateTime.UtcNow;
 }
@@ -66,8 +86,11 @@ public class TermSheet
     public bool InfoRightsTermination { get; set; } // Terminates upon IPO/acquisition
     public DateTime? ProposedClosingDate { get; set; }
 
-    public string Status { get; set; } = "draft"; // draft | proposed | negotiating | agreed | signed | closed
+    /// <summary>Whitelisted in <c>Phase9Requirements.TermSheetStatusWhitelist</c>.</summary>
+    public string Status { get; set; } = "draft";
     public DateTime? SignedAt { get; set; }
+    /// <summary>DocumentId of the signed term sheet artefact (in DealExecution.DealDocuments).</summary>
+    public string SignedDocumentId { get; set; }
 }
 
 public class DueDigligenceItem

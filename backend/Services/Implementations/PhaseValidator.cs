@@ -510,14 +510,48 @@ public class PhaseValidator : IPhaseValidator
 
     public async Task<(bool IsValid, List<string> Errors)> ValidatePhase9Async(Companies company)
     {
-        return await Task.Run(() =>
+        var errors = new List<string>();
+
+        var deals = await _dbContext.DealExecutions
+            .Find(d => d.CompanyId == company.Id)
+            .ToListAsync();
+
+        if (deals.Count < Phase9Requirements.MinDealsForCompletion)
         {
-            var errors = new List<string>();
+            errors.Add(
+                $"At least {Phase9Requirements.MinDealsForCompletion} deal must exist (currently {deals.Count})");
+            return (false, errors);
+        }
 
-            // Phase 9 validation happens per deal, not at company level
-            // This is a placeholder for when needed
+        // All deal-status values on persisted rows must be in the whitelist.
+        // Any pre-existing free-form status (e.g. "negotiation", "closed")
+        // surfaces as a phase-advancement error so callers must migrate via
+        // legal transitions, not via raw writes.
+        foreach (var d in deals)
+        {
+            if (!Phase9Requirements.IsValidDealStatus(d.Status))
+                errors.Add($"Deal {d.Id} has invalid status '{d.Status}'");
 
-            return (errors.Count == 0, errors);
-        });
+            foreach (var p in d.Investors ?? new List<DealParticipant>())
+            {
+                if (!Phase9Requirements.IsValidParticipantStatus(p.Status))
+                    errors.Add($"Deal {d.Id} participant {p.InvestorId} has invalid status '{p.Status}'");
+            }
+
+            if (d.TermSheet != null && !string.IsNullOrWhiteSpace(d.TermSheet.Status) &&
+                !Phase9Requirements.IsValidTermSheetStatus(d.TermSheet.Status))
+                errors.Add($"Deal {d.Id} has invalid term sheet status '{d.TermSheet.Status}'");
+        }
+
+        // At least one deal must be in a successful terminal state.
+        var hasTerminalSuccess = deals.Any(d =>
+            Phase9Requirements.RequiredTerminalStatesForCompletion.Any(t =>
+                string.Equals(t, d.Status, StringComparison.OrdinalIgnoreCase)));
+
+        if (!hasTerminalSuccess)
+            errors.Add(
+                $"At least one deal must be in a terminal success state ({string.Join("/", Phase9Requirements.RequiredTerminalStatesForCompletion)}) before Phase 9 can advance");
+
+        return (errors.Count == 0, errors);
     }
 }

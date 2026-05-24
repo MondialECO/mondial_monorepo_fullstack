@@ -1,4 +1,4 @@
-export type PhaseNumber = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+export type PhaseNumber = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
 export type StepNumber = 1 | 2 | 3 | 4;
 export type PhaseStatus = 'completed' | 'active' | 'locked';
 
@@ -72,6 +72,16 @@ export interface FinancialPreviewData {
   monthlyBurnRate: string;
   cashRunway: string;
   currentFunding: string;
+}
+
+export interface Phase9Data {
+  __companyId?: string;
+  selectedDealId?: string;
+  dealsCount?: number;
+  signedDealsCount?: number;
+  lastDealCreatedAt?: string;
+  lastTermSheetSignedAt?: string;
+  submittedAt?: string;
 }
 
 export interface Phase8Data {

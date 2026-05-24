@@ -70,14 +70,14 @@ export function useEntrepreneurProgressState() {
     (serverProgress: CompanyProgressResponse) => {
       setProgress((prev) => {
         const currentPhase = Math.min(
-          9,
+          10,
           Math.max(1, serverProgress.currentPhase)
         ) as PhaseNumber;
         const phaseConfig = getPhaseConfig(currentPhase);
 
         const completedPhases = new Set<PhaseNumber>(
           (serverProgress.completedPhases || [])
-            .filter((phase) => phase >= 1 && phase <= 9)
+            .filter((phase) => phase >= 1 && phase <= 10)
             .map((phase) => phase as PhaseNumber)
         );
 

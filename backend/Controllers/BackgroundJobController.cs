@@ -101,9 +101,17 @@ public class BackgroundJobController : ControllerBase
     {
         try
         {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureCompanyOwnershipAsync(companyId);
             var jobId = _backgroundJobService.EnqueueDataRoomAnalysis(companyId);
             _logger.LogInformation($"Data room analysis job {jobId} enqueued for company {companyId}");
             return Accepted(new { jobId, status = "queued" });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
         }
         catch (Exception ex)
         {
@@ -117,9 +125,17 @@ public class BackgroundJobController : ControllerBase
     {
         try
         {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureCompanyOwnershipAsync(companyId);
             var jobId = _backgroundJobService.EnqueueFinancialProjections(companyId);
             _logger.LogInformation($"Financial projections job {jobId} enqueued for company {companyId}");
             return Accepted(new { jobId, status = "queued" });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
         }
         catch (Exception ex)
         {
