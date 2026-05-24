@@ -1,309 +1,497 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { DollarSign, Target, Calendar, CheckCircle2, AlertCircle, ArrowRight } from 'lucide-react';
+import { AlertCircle, FileText, Plus, Trash2, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useEntrepreneurProgress } from '@/hooks/useEntrepreneurProgress';
 import { RouteGuard } from '@/components/entrepreneur/RouteGuard';
+import { EntrepreneurLayout } from '@/components/entrepreneur/EntrepreneurLayout';
+import { ProgressSidebar } from '@/components/entrepreneur/ProgressSidebar';
+import { PhaseHeader } from '@/components/entrepreneur/PhaseHeader';
+import { StepFooter } from '@/components/entrepreneur/StepFooter';
+import entrepreneurApi, {
+  FinancialReportResponse,
+} from '@/lib/api-entrepreneur';
+import { Phase3Data } from '@/types/entrepreneur';
 
 const PHASE_3_STEPS = [
-  { step: 1 as const, title: 'Revenue Input', subtitle: 'Enter financial data' },
+  { step: 1 as const, title: 'Revenue & Cash', subtitle: 'Financial baseline' },
   { step: 2 as const, title: 'Equity Structure', subtitle: 'Cap table setup' },
-  { step: 3 as const, title: 'Funding Ask', subtitle: 'Set raise amount' },
+  { step: 3 as const, title: 'Funding & KPI', subtitle: 'Ask, KPI, reports' },
 ];
+
+const REQUIRED_REPORT_TYPES: ReadonlyArray<{ id: string; label: string }> = [
+  { id: 'pnl', label: 'P&L statement' },
+  { id: 'balance', label: 'Balance sheet' },
+];
+
+type RoundType = 'pre_seed' | 'seed' | 'series_a';
+type ShareType = 'preferred' | 'safe' | 'note';
+
+interface AllocationRow {
+  category: string;
+  percent: string;
+}
 
 function Phase3Step3Client() {
   const router = useRouter();
-  const { progress } = useEntrepreneurProgress();
-  const [fundingAmount, setFundingAmount] = useState('450000');
-  const [timeline, setTimeline] = useState('18');
-  const [isLoading, setIsLoading] = useState(false);
+  const {
+    progress,
+    savePhaseData,
+    moveToNextStep,
+    getPhaseData,
+    applyBackendResponse,
+  } = useEntrepreneurProgress();
+
+  const [raiseAmount, setRaiseAmount] = useState('');
+  const [roundType, setRoundType] = useState<RoundType>('pre_seed');
+  const [preMoneyValuation, setPreMoneyValuation] = useState('');
+  const [shareType, setShareType] = useState<ShareType>('preferred');
+  const [allocations, setAllocations] = useState<AllocationRow[]>([
+    { category: 'Product', percent: '' },
+    { category: 'Sales & marketing', percent: '' },
+    { category: 'Operations', percent: '' },
+  ]);
+
+  const [mrr, setMrr] = useState('');
+  const [arr, setArr] = useState('');
+  const [grossMargin, setGrossMargin] = useState('');
+  const [cac, setCac] = useState('');
+  const [ltv, setLtv] = useState('');
+  const [churn, setChurn] = useState('');
+  const [activeAccounts, setActiveAccounts] = useState('');
+
+  const [reports, setReports] = useState<FinancialReportResponse[]>([]);
+  const [uploadingType, setUploadingType] = useState<string | null>(null);
+
+  const [validationError, setValidationError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const existing: Phase3Data = getPhaseData<Phase3Data>(3) ?? {};
+        const companyId =
+          existing.__companyId ?? (await entrepreneurApi.getCurrentPhase()).companyId;
+        if (!companyId) return;
+        const list = await entrepreneurApi.getFinancialReports(companyId);
+        if (!cancelled) setReports(list);
+      } catch {
+        // fall through; user can still upload
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [getPhaseData]);
 
   if (!progress) {
     return (
       <div className="min-h-screen bg-neutral-100 flex items-center justify-center p-4">
-        <div className="text-center">
-          <p className="text-neutral-5 text-sm">Loading...</p>
-        </div>
+        <p className="text-neutral-5 text-sm">Loading…</p>
       </div>
     );
   }
 
-  const amount = parseInt(fundingAmount) || 0;
-  const months = parseInt(timeline) || 0;
-  const monthlyBurn = months > 0 ? Math.round(amount / months) : 0;
+  const allocationTotal = allocations.reduce(
+    (sum, a) => sum + (parseFloat(a.percent) || 0),
+    0,
+  );
+
+  async function resolveCompanyId(): Promise<string> {
+    const existing: Phase3Data = getPhaseData<Phase3Data>(3) ?? {};
+    if (existing.__companyId) return existing.__companyId;
+    const fromServer = await entrepreneurApi.getCurrentPhase();
+    if (!fromServer?.companyId) throw new Error('No company found in backend');
+    return fromServer.companyId;
+  }
+
+  const updateAllocation = (idx: number, patch: Partial<AllocationRow>) =>
+    setAllocations((rs) => rs.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
+  const addAllocation = () =>
+    setAllocations((rs) => [...rs, { category: '', percent: '' }]);
+  const removeAllocation = (idx: number) =>
+    setAllocations((rs) => rs.filter((_, i) => i !== idx));
+
+  const handleReportUpload = async (type: string, file: File) => {
+    setValidationError('');
+    setUploadingType(type);
+    try {
+      const companyId = await resolveCompanyId();
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('reportType', type);
+      const uploaded = await entrepreneurApi.uploadFinancialReport(companyId, fd);
+      setReports((prev) => [uploaded, ...prev]);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Failed to upload report';
+      setValidationError(msg);
+    } finally {
+      setUploadingType(null);
+    }
+  };
+
+  const handleSubmit = async () => {
+    setValidationError('');
+
+    const raise = parseFloat(raiseAmount);
+    if (!Number.isFinite(raise) || raise <= 0) {
+      setValidationError('Raise amount must be greater than 0');
+      return;
+    }
+    const preMoney = parseFloat(preMoneyValuation);
+    if (!Number.isFinite(preMoney) || preMoney <= 0) {
+      setValidationError('Pre-money valuation must be greater than 0');
+      return;
+    }
+    if (allocationTotal < 95 || allocationTotal > 105) {
+      setValidationError(
+        `Capital allocation must total ~100% (currently ${allocationTotal.toFixed(2)}%)`,
+      );
+      return;
+    }
+    for (const a of allocations) {
+      const p = parseFloat(a.percent);
+      if (!a.category.trim() || !Number.isFinite(p) || p < 0) {
+        setValidationError('Every allocation row needs a category and non-negative percent');
+        return;
+      }
+    }
+
+    const mrrN = parseFloat(mrr);
+    const arrN = parseFloat(arr);
+    const gmN = parseFloat(grossMargin);
+    const cacN = parseFloat(cac);
+    const ltvN = parseFloat(ltv);
+    const churnN = parseFloat(churn);
+    const aaN = parseInt(activeAccounts, 10);
+    if (!Number.isFinite(mrrN) || mrrN < 0 ||
+        !Number.isFinite(arrN) || arrN < 0 ||
+        !Number.isFinite(gmN) || gmN < -100 || gmN > 100 ||
+        !Number.isFinite(cacN) || cacN < 0 ||
+        !Number.isFinite(ltvN) || ltvN < 0 ||
+        !Number.isFinite(churnN) || churnN < 0 || churnN > 100 ||
+        !Number.isFinite(aaN) || aaN < 0) {
+      setValidationError('Fill every KPI field with a valid non-negative number');
+      return;
+    }
+    if (mrrN <= 0 && arrN <= 0 && aaN <= 0) {
+      setValidationError('KPI baseline needs at least one of MRR, ARR, or active accounts > 0');
+      return;
+    }
+
+    for (const required of REQUIRED_REPORT_TYPES) {
+      const ok = reports.some(
+        (r) => r.type.toLowerCase() === required.id && r.status !== 'rejected',
+      );
+      if (!ok) {
+        setValidationError(`Upload your ${required.label} (and ensure it is not rejected)`);
+        return;
+      }
+    }
+
+    setIsSubmitting(true);
+    try {
+      const companyId = await resolveCompanyId();
+
+      await entrepreneurApi.saveFundingAsk(companyId, {
+        raiseAmount: raise,
+        roundType,
+        preMoneyValuation: preMoney,
+        shareType,
+        capitalAllocation: allocations.map((a) => ({
+          category: a.category.trim(),
+          amount: (raise * parseFloat(a.percent)) / 100,
+          percent: parseFloat(a.percent),
+        })),
+        resourceMap: { hiringPlan: [], serviceProviders: [], techTools: [] },
+      });
+
+      await entrepreneurApi.saveKpiBaseline(companyId, {
+        mrr: mrrN,
+        arr: arrN,
+        grossMarginPercent: gmN,
+        cac: cacN,
+        ltv: ltvN,
+        churnPercent: churnN,
+        activeAccounts: aaN,
+      });
+
+      const advanceResponse = await entrepreneurApi.advancePhase(companyId, 3, {});
+      if (advanceResponse?.currentPhase !== 4) {
+        throw new Error(
+          `Phase advancement failed - expected currentPhase=4, got ${advanceResponse?.currentPhase}`,
+        );
+      }
+      if (!advanceResponse?.completedPhases?.includes(3)) {
+        throw new Error('Phase 3 not marked as completed in backend response');
+      }
+
+      applyBackendResponse(advanceResponse);
+
+      const existing: Phase3Data = getPhaseData<Phase3Data>(3) ?? {};
+      savePhaseData(3, {
+        ...existing,
+        __companyId: companyId,
+        fundingAskSavedAt: new Date().toISOString(),
+        kpiBaselineSavedAt: new Date().toISOString(),
+        reportsSubmittedCount: reports.length,
+        submittedAt: new Date().toISOString(),
+      });
+      moveToNextStep(3, 3);
+
+      await new Promise((r) => setTimeout(r, 300));
+      router.push('/dashboard/entrepreneur/phase-4');
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Failed to submit Phase 3';
+      setValidationError(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const statusMap = {
     1: progress.completedSteps.has('3-1') ? 'completed' : progress.currentStep === 1 ? 'current' : 'pending',
     2: progress.completedSteps.has('3-2') ? 'completed' : progress.currentStep === 2 ? 'current' : 'pending',
     3: progress.completedSteps.has('3-3') ? 'completed' : progress.currentStep === 3 ? 'current' : 'pending',
   };
-
-  const handleContinue = async () => {
-    setIsLoading(true);
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      router.push('/dashboard/entrepreneur/phase-3/dashboard');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const stepIndicators = PHASE_3_STEPS.map((step) => ({
     ...step,
-    status: statusMap[step.step as keyof typeof statusMap] as any,
+    status: statusMap[step.step as keyof typeof statusMap] as 'completed' | 'current' | 'pending',
   }));
 
+  const sidebar = (
+    <ProgressSidebar
+      title="Financial Submission"
+      steps={stepIndicators}
+      overallScore={100}
+      scoreLabel="STEP"
+      scoreDescription="Submit funding ask, KPI baseline, and required reports."
+    />
+  );
+
   return (
-    <div className="min-h-screen bg-neutral-100">
-      {/* Header */}
-      <header className="bg-white border-b border-neutral-2">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 md:px-8 py-6 md:py-8">
-          <div className="flex items-start justify-between gap-4 mb-6">
+    <EntrepreneurLayout sidebar={sidebar}>
+      <div className="space-y-4 md:space-y-6">
+        <PhaseHeader
+          title="Funding Ask, KPI &amp; Reports"
+          subtitle="Submit your funding ask, KPI baseline, and required financial reports. Phase 3 completes only after the backend accepts everything."
+          progressLabel="PROGRESS"
+          progressValue="Step 3 of 3"
+          progressPercentage={100}
+        />
+
+        {/* Funding ask */}
+        <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 space-y-4">
+          <h3 className="text-lg font-bold text-neutral-1">Funding ask</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-neutral-1">Funding Ask</h1>
-              <p className="text-sm text-neutral-5 mt-1">Define your capital requirements and timeline</p>
+              <label className="block text-sm font-semibold text-neutral-1 mb-2">Raise amount (€)</label>
+              <Input
+                type="number"
+                min={0}
+                value={raiseAmount}
+                onChange={(e) => setRaiseAmount(e.target.value)}
+                className="h-10 bg-background border-neutral-2"
+              />
             </div>
-            <div className="text-right">
-              <p className="text-xs text-neutral-5 font-semibold uppercase tracking-wide mb-1">PROGRESS</p>
-              <p className="text-sm font-semibold text-neutral-1">Step 3 of 3</p>
+            <div>
+              <label className="block text-sm font-semibold text-neutral-1 mb-2">Pre-money valuation (€)</label>
+              <Input
+                type="number"
+                min={0}
+                value={preMoneyValuation}
+                onChange={(e) => setPreMoneyValuation(e.target.value)}
+                className="h-10 bg-background border-neutral-2"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-neutral-1 mb-2">Round</label>
+              <select
+                value={roundType}
+                onChange={(e) => setRoundType(e.target.value as RoundType)}
+                className="h-10 w-full rounded-md border border-neutral-2 bg-background px-3 text-sm"
+              >
+                <option value="pre_seed">pre_seed</option>
+                <option value="seed">seed</option>
+                <option value="series_a">series_a</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-neutral-1 mb-2">Share type</label>
+              <select
+                value={shareType}
+                onChange={(e) => setShareType(e.target.value as ShareType)}
+                className="h-10 w-full rounded-md border border-neutral-2 bg-background px-3 text-sm"
+              >
+                <option value="preferred">preferred</option>
+                <option value="safe">safe</option>
+                <option value="note">note</option>
+              </select>
             </div>
           </div>
+        </div>
 
-          {/* Progress Indicator */}
-          <div className="flex items-center gap-2">
-            {stepIndicators.map((step, idx) => (
-              <div key={step.step} className="flex items-center gap-2">
-                <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition ${
-                    step.status === 'completed'
-                      ? 'bg-green-100 text-green-700'
-                      : step.status === 'current'
-                      ? 'bg-primary text-white'
-                      : 'bg-neutral-200 text-neutral-5'
-                  }`}
+        {/* Capital allocation */}
+        <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-bold text-neutral-1">Capital allocation</h3>
+            <Button variant="outline" size="sm" onClick={addAllocation} className="gap-2">
+              <Plus className="w-4 h-4" /> Add category
+            </Button>
+          </div>
+          <div className="space-y-2">
+            {allocations.map((a, idx) => (
+              <div key={idx} className="grid grid-cols-12 gap-2 items-end">
+                <Input
+                  type="text"
+                  value={a.category}
+                  onChange={(e) => updateAllocation(idx, { category: e.target.value })}
+                  placeholder="Category"
+                  className="col-span-7 h-9 bg-background border-neutral-2"
+                />
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={a.percent}
+                  onChange={(e) => updateAllocation(idx, { percent: e.target.value })}
+                  placeholder="%"
+                  className="col-span-4 h-9 bg-background border-neutral-2"
+                />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="col-span-1"
+                  onClick={() => removeAllocation(idx)}
+                  aria-label="Remove"
                 >
-                  {step.status === 'completed' ? <CheckCircle2 className="w-5 h-5" /> : step.step}
-                </div>
-                {idx < stepIndicators.length - 1 && (
-                  <div className="w-8 h-0.5 bg-neutral-2" />
-                )}
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+          <p
+            className={`text-sm font-semibold ${
+              allocationTotal >= 95 && allocationTotal <= 105 ? 'text-green-700' : 'text-amber-700'
+            }`}
+          >
+            Total: {allocationTotal.toFixed(2)}%
+          </p>
+        </div>
+
+        {/* KPI baseline */}
+        <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 space-y-4">
+          <h3 className="text-lg font-bold text-neutral-1">KPI baseline</h3>
+          <p className="text-sm text-neutral-5">
+            Reviewers need a snapshot of your unit economics. All fields required.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {(
+              [
+                ['MRR (€)', mrr, setMrr],
+                ['ARR (€)', arr, setArr],
+                ['Gross margin (%)', grossMargin, setGrossMargin],
+                ['CAC (€)', cac, setCac],
+                ['LTV (€)', ltv, setLtv],
+                ['Churn (%)', churn, setChurn],
+                ['Active accounts', activeAccounts, setActiveAccounts],
+              ] as const
+            ).map(([label, value, setter]) => (
+              <div key={label}>
+                <label className="block text-sm font-semibold text-neutral-1 mb-2">{label}</label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={value}
+                  onChange={(e) => setter(e.target.value)}
+                  placeholder="0"
+                  className="h-10 bg-background border-neutral-2"
+                />
               </div>
             ))}
           </div>
         </div>
-      </header>
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 md:px-8 py-6 md:py-8 space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Form Section */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Funding Amount */}
-            <div className="bg-white border-2 border-neutral-2 rounded-2xl p-6 space-y-4">
-              <h3 className="text-lg font-bold text-neutral-1 flex items-center gap-2">
-                <DollarSign className="w-5 h-5 text-primary" />
-                Total Funding Ask
-              </h3>
-
-              <div className="space-y-2">
-                <label className="block text-sm font-semibold text-neutral-1">Amount (EUR)</label>
-                <div className="flex items-center gap-2">
-                  <span className="text-lg font-semibold text-neutral-5">€</span>
-                  <Input
-                    type="number"
-                    value={fundingAmount}
-                    onChange={(e) => setFundingAmount(e.target.value)}
-                    placeholder="0"
-                    className="h-12 text-lg"
-                  />
-                </div>
-              </div>
-
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-sm text-blue-900">
-                  <span className="font-semibold">💡 Tip:</span> Base your ask on your 18-24 month runway needs plus operational cushion (20-30%).
-                </p>
-              </div>
-            </div>
-
-            {/* Timeline & Burn Rate */}
-            <div className="bg-white border-2 border-neutral-2 rounded-2xl p-6 space-y-4">
-              <h3 className="text-lg font-bold text-neutral-1 flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-primary" />
-                Funding Timeline
-              </h3>
-
-              <div className="space-y-2">
-                <label className="block text-sm font-semibold text-neutral-1">Expected Runway (Months)</label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    value={timeline}
-                    onChange={(e) => setTimeline(e.target.value)}
-                    placeholder="Months"
-                    className="h-12"
-                  />
-                  <span className="text-sm text-neutral-5 font-semibold">months</span>
-                </div>
-              </div>
-
-              <div className="pt-4 border-t-2 border-neutral-2 space-y-3">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-neutral-5 mb-1">
-                    Monthly Burn Rate
-                  </p>
-                  <p className="text-2xl font-bold text-neutral-1">
-                    €{monthlyBurn.toLocaleString()}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-neutral-5 mb-1">
-                    Target Closing
-                  </p>
-                  <p className="text-lg font-semibold text-neutral-1">Q2 2026</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Use of Funds */}
-            <div className="bg-white border-2 border-neutral-2 rounded-2xl p-6 space-y-4">
-              <h3 className="text-lg font-bold text-neutral-1 flex items-center gap-2">
-                <Target className="w-5 h-5 text-primary" />
-                Proposed Use of Funds
-              </h3>
-
-              <div className="space-y-3">
-                {[
-                  { category: 'Product Development', allocation: 35 },
-                  { category: 'Sales & Marketing', allocation: 25 },
-                  { category: 'Operations & Team', allocation: 30 },
-                  { category: 'Legal & Compliance', allocation: 10 },
-                ].map((item) => (
-                  <div key={item.category}>
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="text-sm font-semibold text-neutral-1">{item.category}</p>
-                      <span className="text-xs font-bold text-primary">{item.allocation}%</span>
-                    </div>
-                    <div className="w-full h-3 bg-neutral-100 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-primary to-primary/70 rounded-full"
-                        style={{ width: `${item.allocation}%` }}
-                      />
-                    </div>
-                    <p className="text-xs text-neutral-5 mt-1">
-                      €{Math.round((amount * (item.allocation / 100)) / 1000).toLocaleString()}K
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Summary & Validation */}
-          <div className="space-y-6">
-            {/* Summary Card */}
-            <div className="bg-white border-2 border-neutral-2 rounded-2xl p-6 space-y-4 sticky top-24">
-              <h3 className="text-lg font-bold text-neutral-1">Funding Summary</h3>
-
-              <div className="space-y-4">
-                <div className="bg-neutral-50 rounded-lg p-4">
-                  <p className="text-xs text-neutral-5 font-semibold uppercase tracking-wide mb-1">
-                    Target Raise
-                  </p>
-                  <p className="text-3xl font-bold text-primary">€{parseInt(fundingAmount).toLocaleString()}</p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-blue-50 rounded-lg p-3">
-                    <p className="text-xs text-blue-900 font-semibold uppercase tracking-wide mb-1">
-                      Monthly Burn
-                    </p>
-                    <p className="text-lg font-bold text-blue-700">€{monthlyBurn.toLocaleString()}</p>
-                  </div>
-                  <div className="bg-green-50 rounded-lg p-3">
-                    <p className="text-xs text-green-900 font-semibold uppercase tracking-wide mb-1">
-                      Runway
-                    </p>
-                    <p className="text-lg font-bold text-green-700">{months}mo</p>
-                  </div>
-                </div>
-
-                <div>
-                  <p className="text-xs text-neutral-5 font-semibold uppercase tracking-wide mb-2">
-                    Key Metrics
-                  </p>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-neutral-5">Series Round Size</span>
-                      <span className="font-semibold text-neutral-1">Series A</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-neutral-5">Implied Valuation</span>
-                      <span className="font-semibold text-neutral-1">€3.5M - €4M</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-neutral-5">Equity Dilution</span>
-                      <span className="font-semibold text-neutral-1">10-12%</span>
+        {/* Financial reports */}
+        <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 space-y-4">
+          <h3 className="text-lg font-bold text-neutral-1">Financial reports</h3>
+          <p className="text-sm text-neutral-5">
+            Upload your latest P&amp;L and balance sheet. PDFs or spreadsheets accepted.
+          </p>
+          <div className="space-y-3">
+            {REQUIRED_REPORT_TYPES.map((rt) => {
+              const uploaded = reports.find(
+                (r) => r.type.toLowerCase() === rt.id && r.status !== 'rejected',
+              );
+              const uploading = uploadingType === rt.id;
+              return (
+                <div
+                  key={rt.id}
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-background border-2 border-neutral-2 rounded-xl p-4"
+                >
+                  <div className="flex items-start gap-3 flex-1">
+                    <FileText className="w-5 h-5 text-neutral-5 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-semibold text-neutral-1">{rt.label}</p>
+                      {uploaded ? (
+                        <p className="text-xs text-neutral-5 mt-1">
+                          {uploaded.fileName} · {uploaded.status}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-neutral-5 mt-1">Required</p>
+                      )}
                     </div>
                   </div>
+                  <label className="cursor-pointer">
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept=".pdf,.doc,.docx,.xls,.xlsx"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) handleReportUpload(rt.id, f);
+                      }}
+                    />
+                    <Button
+                      asChild
+                      variant={uploaded ? 'outline' : 'default'}
+                      size="sm"
+                      disabled={uploading}
+                      className="gap-2"
+                    >
+                      <span>
+                        <Upload className="w-4 h-4" />
+                        {uploading ? 'Uploading…' : uploaded ? 'Replace' : 'Upload'}
+                      </span>
+                    </Button>
+                  </label>
                 </div>
-              </div>
-
-              {months >= 18 ? (
-                <div className="p-3 bg-green-50 border border-green-200 rounded-lg flex gap-2">
-                  <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                  <p className="text-xs text-green-800">Runway is sufficient for Series A execution.</p>
-                </div>
-              ) : (
-                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg flex gap-2">
-                  <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-                  <p className="text-xs text-yellow-800">Consider extending runway to 18+ months for operational cushion.</p>
-                </div>
-              )}
-            </div>
-
-            {/* Investor Types */}
-            <div className="bg-neutral-50 border-2 border-neutral-2 rounded-2xl p-6 space-y-3">
-              <h3 className="text-sm font-bold text-neutral-1">Recommended Investor Types</h3>
-              <div className="space-y-2 text-sm">
-                {[
-                  'Venture Capital Firms',
-                  'Corporate Venture Arms',
-                  'Experienced Angel Syndicates',
-                ].map((type) => (
-                  <div key={type} className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-primary flex-shrink-0" />
-                    <span className="text-neutral-1">{type}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+              );
+            })}
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="flex gap-3">
-          <Button variant="outline" className="flex-1 h-11" onClick={() => router.push('/dashboard/entrepreneur/phase-3/step-2')}>
-            Back
-          </Button>
-          <Button className="flex-1 h-11 gap-2" onClick={handleContinue} disabled={isLoading || amount === 0 || months === 0}>
-            {isLoading ? (
-              <>
-                <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Completing...
-              </>
-            ) : (
-              <>
-                Complete Phase 3
-                <ArrowRight className="w-4 h-4" />
-              </>
-            )}
-          </Button>
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex gap-3">
+          <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-blue-800">
+            Submitting Phase 3 sends your financials for compliance review and unlocks Phase 4.
+            Verification is awarded separately after a reviewer approves your submission.
+          </p>
         </div>
+
+        <StepFooter
+          backUrl="/dashboard/entrepreneur/phase-3/step-2"
+          onNextClick={handleSubmit}
+          isLoading={isSubmitting}
+          nextLabel="Submit &amp; Complete Phase 3"
+          nextValidationError={validationError}
+        />
       </div>
-    </div>
+    </EntrepreneurLayout>
   );
 }
 

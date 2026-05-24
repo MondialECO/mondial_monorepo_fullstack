@@ -15,8 +15,8 @@ function Phase3PageContent() {
   return (
     <PhaseTemplate
       phaseNumber={3}
-      title="Phase 3: Financial Valuation & KPI"
-      subtitle="Build credibility with AI-generated valuation and KPI baseline"
+      title="Phase 3: Financial Submission"
+      subtitle="Submit revenue, cash position, KPI baseline, and required financial reports for compliance review"
       icon={BarChart3}
       trustScore={22}
       isLocked={!isPhase2Complete}
@@ -24,41 +24,41 @@ function Phase3PageContent() {
       requirements={[
         {
           icon: TrendingUp,
-          title: 'Revenue Input',
-          description: 'Enter revenue and expenses for the last four quarters (Q1–Q4)',
+          title: 'Revenue & Cash',
+          description: 'Quarterly revenue, monthly cash on hand, and monthly burn rate',
         },
         {
           icon: BarChart3,
-          title: 'Automated Valuation',
-          description: 'System generates AI-driven valuation based on sector benchmarks',
+          title: 'Equity Structure',
+          description: 'Cap table allocations totalling ~100% of issued shares',
         },
         {
           icon: TrendingUp,
           title: 'KPI Baseline',
-          description: 'Set baseline metrics for growth tracking',
+          description: 'MRR, ARR, gross margin, CAC, LTV, churn, and active accounts',
         },
         {
           icon: BarChart3,
-          title: 'Projections',
-          description: '3-year financial projections and scenario analysis',
+          title: 'Financial Reports',
+          description: 'Upload P&L and balance sheet for compliance review',
         },
       ]}
       features={[
         {
-          title: 'AI-Powered Valuation',
-          description: 'Automated analysis based on revenue, growth rate, and industry benchmarks',
+          title: 'Backend-Calculated Valuation',
+          description: 'Valuation is computed by the backend from your submitted financial data',
         },
         {
-          title: 'KPI Tracking',
-          description: 'Connect Stripe, ChartMogul, or manually enter metrics',
+          title: 'KPI Baseline Tracking',
+          description: 'Your baseline metrics are persisted for ongoing growth comparison',
         },
         {
-          title: 'Scenario Analysis',
-          description: 'Model growth scenarios and funding impact',
+          title: 'Compliance Review',
+          description: 'Submitted documents go through compliance review; verification is awarded after approval',
         },
         {
           title: 'Investor-Ready Data',
-          description: 'Export financial summaries for investor presentations',
+          description: 'Once reviewed, summaries become exportable for investor conversations',
         },
       ]}
     />

@@ -56,15 +56,11 @@ public class Companies
     public double? CurrentFunds { get; set; }
     public double? MonthlyBurn { get; set; }
 
-    public FinancialSummary FinancialSummary { get; set; }
-
     // Phase 4: Equity Structure
     public List<EquityEntryDto> EquityStructure { get; set; } = new();
     public double? EsopPoolPercent { get; set; }
     public int? EsopVestingMonths { get; set; }
     public int? TotalShares { get; set; }
-
-    public EquityStructure EquityStructure_old { get; set; }
 
     // Phase 5: Funding Ask
     public double? FundingAskAmount { get; set; }
@@ -73,8 +69,6 @@ public class Companies
     public string ShareType { get; set; }
     public List<CapitalAllocationDto> CapitalAllocation { get; set; } = new();
     public ResourceMapDto ResourceMap { get; set; }
-
-    public FundingAsk FundingAsk { get; set; }
 
     // Phase 5: Pitch & Outreach
     public string PitchDeckFileName { get; set; }

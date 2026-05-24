@@ -3,6 +3,7 @@ using MongoDB.Driver;
 using WebApp.Models.DatabaseModels;
 using WebApp.Models.Dtos;
 using WebApp.DbContext;
+using WebApp.Services.Implementations;
 
 namespace WebApp.Services;
 
@@ -320,6 +321,195 @@ public class CompanyService : ICompanyService
             LastUpdatedAt = company.UpdatedAt
         };
     }
+
+    // ============ PHASE 3 EXTENSIONS: CASH POSITION / MONTHLY REVENUE / KPI / REPORTS ============
+
+    public async Task<Companies> SaveCashPositionAsync(string companyId, SaveCashPositionRequest request)
+    {
+        if (request == null)
+            throw new ArgumentException("Request body required");
+        if (request.CurrentFunds < 0)
+            throw new ArgumentException("currentFunds must be >= 0");
+        if (request.MonthlyBurn < 0)
+            throw new ArgumentException("monthlyBurn must be >= 0");
+
+        var company = await GetCompanyAsync(companyId);
+        company.CurrentFunds = request.CurrentFunds;
+        company.MonthlyBurn = request.MonthlyBurn;
+        company.UpdatedAt = DateTime.UtcNow;
+
+        var filter = Builders<Companies>.Filter.Eq(c => c.Id, companyId);
+        await _dbContext.Companies.ReplaceOneAsync(filter, company);
+        return company;
+    }
+
+    public async Task<List<MonthlyRevenueResponse>> SaveMonthlyRevenueAsync(string companyId, SaveMonthlyRevenueRequest request)
+    {
+        if (request?.Entries == null || request.Entries.Count == 0)
+            throw new ArgumentException("At least one monthly revenue entry is required");
+
+        // Confirm the company exists & is owned by caller (ownership enforced at controller).
+        await GetCompanyAsync(companyId);
+
+        foreach (var entry in request.Entries)
+        {
+            if (string.IsNullOrWhiteSpace(entry.YearMonth) ||
+                !System.Text.RegularExpressions.Regex.IsMatch(entry.YearMonth, "^\\d{4}-\\d{2}$"))
+                throw new ArgumentException($"yearMonth '{entry.YearMonth}' must be YYYY-MM");
+            if (entry.Revenue < 0)
+                throw new ArgumentException($"revenue for {entry.YearMonth} must be >= 0");
+
+            var filter = Builders<Phase3MonthlyRevenue>.Filter.And(
+                Builders<Phase3MonthlyRevenue>.Filter.Eq(x => x.CompanyId, companyId),
+                Builders<Phase3MonthlyRevenue>.Filter.Eq(x => x.YearMonth, entry.YearMonth));
+
+            var doc = new Phase3MonthlyRevenue
+            {
+                Id = ObjectId.GenerateNewId().ToString(),
+                CompanyId = companyId,
+                YearMonth = entry.YearMonth,
+                Revenue = entry.Revenue,
+                SectorBreakdown = entry.SectorBreakdown ?? new Dictionary<string, double>(),
+                RecordedAt = DateTime.UtcNow,
+            };
+
+            // Upsert by (companyId, yearMonth) so the same month can be edited.
+            await _dbContext.Phase3MonthlyRevenues.ReplaceOneAsync(
+                filter, doc, new ReplaceOptions { IsUpsert = true });
+        }
+
+        return await GetMonthlyRevenueAsync(companyId);
+    }
+
+    public async Task<List<MonthlyRevenueResponse>> GetMonthlyRevenueAsync(string companyId)
+    {
+        await GetCompanyAsync(companyId);
+
+        var docs = await _dbContext.Phase3MonthlyRevenues
+            .Find(x => x.CompanyId == companyId)
+            .SortBy(x => x.YearMonth)
+            .ToListAsync();
+
+        return docs.Select(d => new MonthlyRevenueResponse
+        {
+            YearMonth = d.YearMonth,
+            Revenue = d.Revenue,
+            SectorBreakdown = d.SectorBreakdown ?? new Dictionary<string, double>(),
+            RecordedAt = d.RecordedAt,
+        }).ToList();
+    }
+
+    public async Task<KpiBaselineResponse> SaveKpiBaselineAsync(string companyId, SaveKpiBaselineRequest request)
+    {
+        if (request == null)
+            throw new ArgumentException("Request body required");
+
+        await GetCompanyAsync(companyId);
+
+        var doc = new Phase3Kpi
+        {
+            Id = ObjectId.GenerateNewId().ToString(),
+            CompanyId = companyId,
+            Mrr = request.Mrr,
+            Arr = request.Arr,
+            GrossMarginPercent = request.GrossMarginPercent,
+            Cac = request.Cac,
+            Ltv = request.Ltv,
+            ChurnPercent = request.ChurnPercent,
+            ActiveAccounts = request.ActiveAccounts,
+            RecordedAt = DateTime.UtcNow,
+        };
+
+        var validationErrors = Phase3Requirements.ValidateKpiBaseline(doc);
+        if (validationErrors.Count > 0)
+            throw new ArgumentException(string.Join("; ", validationErrors));
+
+        await _dbContext.Phase3Kpis.InsertOneAsync(doc);
+        return MapKpi(doc);
+    }
+
+    public async Task<KpiBaselineResponse?> GetKpiBaselineAsync(string companyId)
+    {
+        await GetCompanyAsync(companyId);
+
+        var latest = await _dbContext.Phase3Kpis
+            .Find(x => x.CompanyId == companyId)
+            .SortByDescending(x => x.RecordedAt)
+            .FirstOrDefaultAsync();
+
+        return latest == null ? null : MapKpi(latest);
+    }
+
+    public async Task<FinancialReportResponse> UploadFinancialReportAsync(string companyId, FinancialReportUploadRequest request)
+    {
+        if (request?.File == null || request.File.Length == 0)
+            throw new ArgumentException("Uploaded file is required");
+        if (string.IsNullOrWhiteSpace(request.ReportType))
+            throw new ArgumentException("reportType is required");
+
+        await GetCompanyAsync(companyId);
+
+        byte[] bytes;
+        await using (var ms = new MemoryStream())
+        {
+            await request.File.CopyToAsync(ms);
+            bytes = ms.ToArray();
+        }
+
+        var fileName = request.File.FileName;
+        var storagePath = await _documentManager.SaveDocumentAsync(companyId, fileName, bytes);
+
+        var doc = new Phase3FinancialReport
+        {
+            Id = ObjectId.GenerateNewId().ToString(),
+            CompanyId = companyId,
+            Type = request.ReportType.ToLowerInvariant(),
+            FileName = fileName,
+            StoragePath = storagePath,
+            FileSize = request.File.Length,
+            Status = Phase3Requirements.ReportStatusPending,
+            UploadedAt = DateTime.UtcNow,
+        };
+
+        await _dbContext.Phase3FinancialReports.InsertOneAsync(doc);
+        return MapReport(doc);
+    }
+
+    public async Task<List<FinancialReportResponse>> GetFinancialReportsAsync(string companyId)
+    {
+        await GetCompanyAsync(companyId);
+
+        var docs = await _dbContext.Phase3FinancialReports
+            .Find(x => x.CompanyId == companyId)
+            .SortByDescending(x => x.UploadedAt)
+            .ToListAsync();
+
+        return docs.Select(MapReport).ToList();
+    }
+
+    private static KpiBaselineResponse MapKpi(Phase3Kpi k) => new()
+    {
+        Mrr = k.Mrr,
+        Arr = k.Arr,
+        GrossMarginPercent = k.GrossMarginPercent,
+        Cac = k.Cac,
+        Ltv = k.Ltv,
+        ChurnPercent = k.ChurnPercent,
+        ActiveAccounts = k.ActiveAccounts,
+        RecordedAt = k.RecordedAt,
+    };
+
+    private static FinancialReportResponse MapReport(Phase3FinancialReport r) => new()
+    {
+        ReportId = r.Id,
+        Type = r.Type,
+        FileName = r.FileName,
+        Status = r.Status,
+        UploadedAt = r.UploadedAt,
+        FileSize = r.FileSize,
+        StoragePath = r.StoragePath,
+        ReviewNote = r.ReviewNote,
+    };
 
     // ============ PHASE 4: EQUITY STRUCTURE & DILUTION ============
 
