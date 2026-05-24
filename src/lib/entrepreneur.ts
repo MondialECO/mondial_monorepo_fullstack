@@ -33,9 +33,10 @@ const PHASE_CONFIG: Record<PhaseNumber, PhaseConfig> = {
   4: {
     phase: 4,
     title: 'Equity Structure & Ownership',
-    description: 'Cap table, ESOP, Dilution sim',
+    description: 'Cap table, ESOP, vesting, ownership history',
     trustScore: 12,
-    hasSteps: false,
+    hasSteps: true,
+    stepCount: 3,
   },
   5: {
     phase: 5,

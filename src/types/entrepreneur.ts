@@ -74,6 +74,16 @@ export interface FinancialPreviewData {
   currentFunding: string;
 }
 
+export interface Phase4Data {
+  __companyId?: string;
+  capTableSubmittedAt?: string;
+  capTableVersion?: number;
+  vestingSavedAt?: string;
+  ownershipHistorySavedAt?: string;
+  shareIssuancesCount?: number;
+  submittedAt?: string;
+}
+
 export interface Phase3Data {
   __companyId?: string;
   revenueSavedAt?: string;

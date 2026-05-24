@@ -603,6 +603,173 @@ public class CompanyController : ControllerBase
         }
     }
 
+    // ============ PHASE 4: CAP TABLE SUBMISSION / VESTING / OWNERSHIP HISTORY / ISSUANCE ============
+
+    [HttpPost("{companyId}/cap-table")]
+    public async Task<ActionResult<CapTableSnapshotResponse>> SubmitCapTable(
+        string companyId, [FromBody] SubmitCapTableRequest request)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureCompanyOwnershipAsync(companyId);
+            var result = await _companyService.SubmitCapTableAsync(companyId, request);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error submitting cap table");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpGet("{companyId}/cap-table/snapshot")]
+    public async Task<ActionResult<CapTableSnapshotResponse?>> GetLatestCapTableSnapshot(string companyId)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureCompanyOwnershipAsync(companyId);
+            var result = await _companyService.GetLatestCapTableSnapshotAsync(companyId);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error reading cap table snapshot");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpPost("{companyId}/vesting")]
+    public async Task<ActionResult<List<VestingScheduleResponse>>> SaveVesting(
+        string companyId, [FromBody] SaveVestingScheduleRequest request)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureCompanyOwnershipAsync(companyId);
+            var result = await _companyService.SaveVestingSchedulesAsync(companyId, request);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saving vesting schedules");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpGet("{companyId}/vesting")]
+    public async Task<ActionResult<List<VestingScheduleResponse>>> GetVesting(string companyId)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureCompanyOwnershipAsync(companyId);
+            var result = await _companyService.GetVestingSchedulesAsync(companyId);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error reading vesting schedules");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpPost("{companyId}/ownership-history")]
+    public async Task<ActionResult<List<OwnershipHistoryResponse>>> SaveOwnershipHistory(
+        string companyId, [FromBody] SaveOwnershipHistoryRequest request)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureCompanyOwnershipAsync(companyId);
+            var result = await _companyService.SaveOwnershipHistoryAsync(companyId, request);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saving ownership history");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpGet("{companyId}/ownership-history")]
+    public async Task<ActionResult<List<OwnershipHistoryResponse>>> GetOwnershipHistory(string companyId)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureCompanyOwnershipAsync(companyId);
+            var result = await _companyService.GetOwnershipHistoryAsync(companyId);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error reading ownership history");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpPost("{companyId}/share-issuance")]
+    public async Task<ActionResult<ShareIssuanceResponse>> RecordShareIssuance(
+        string companyId, [FromBody] RecordShareIssuanceRequest request)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureCompanyOwnershipAsync(companyId);
+            var result = await _companyService.RecordShareIssuanceAsync(companyId, request);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error recording share issuance");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
     // ============ PHASE 6: DATA ROOM ============
 
     [HttpPost("{companyId}/dataroom/documents")]

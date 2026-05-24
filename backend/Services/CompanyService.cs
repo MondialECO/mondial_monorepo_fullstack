@@ -541,6 +541,291 @@ public class CompanyService : ICompanyService
         return new DilutionSimulationResponse { Scenarios = scenarios };
     }
 
+    // ============ PHASE 4 EXTENSIONS: CAP TABLE / VESTING / OWNERSHIP HISTORY / ISSUANCE ============
+
+    public async Task<CapTableSnapshotResponse> SubmitCapTableAsync(string companyId, SubmitCapTableRequest request)
+    {
+        // Write-time validation = shape + per-grant + duplicate detection only.
+        // Totals reconciliation + founder presence are enforced at phase
+        // advancement (ValidatePhase4Async), so partial cap-table progress
+        // can be saved across steps without erroring out the user.
+        var shapeErrors = Phase4Requirements.ValidateCapTableShape(request);
+        if (shapeErrors.Count > 0)
+            throw new ArgumentException(string.Join("; ", shapeErrors));
+
+        var grantErrors = Phase4Requirements.ValidateGrants(request.Grants, request.TotalShares);
+        if (grantErrors.Count > 0)
+            throw new ArgumentException(string.Join("; ", grantErrors));
+
+        var duplicateErrors = Phase4Requirements.ValidateDuplicateRows(request);
+        if (duplicateErrors.Count > 0)
+            throw new ArgumentException(string.Join("; ", duplicateErrors));
+
+        var company = await GetCompanyAsync(companyId);
+
+        // Determine next version.
+        var existingLatest = await _dbContext.Phase4CapTables
+            .Find(c => c.CompanyId == companyId)
+            .SortByDescending(c => c.Version)
+            .FirstOrDefaultAsync();
+        var nextVersion = (existingLatest?.Version ?? 0) + 1;
+
+        var snapshot = new Phase4CapTable
+        {
+            Id = ObjectId.GenerateNewId().ToString(),
+            CompanyId = companyId,
+            Version = nextVersion,
+            TotalShares = request.TotalShares,
+            EsopPoolPercent = request.EsopPoolPercent,
+            EsopVestingMonths = request.EsopVestingMonths,
+            Grants = request.Grants.Select(g => new EquityGrant
+            {
+                GrantId = string.IsNullOrWhiteSpace(g.GrantId) ? ObjectId.GenerateNewId().ToString() : g.GrantId,
+                StakeholderName = g.StakeholderName,
+                StakeholderType = g.StakeholderType,
+                ShareClass = (g.ShareClass ?? string.Empty).ToLowerInvariant(),
+                SharesGranted = g.SharesGranted,
+                InvestmentAmount = g.InvestmentAmount,
+                GrantDate = g.GrantDate ?? DateTime.UtcNow,
+                CliffMonths = g.CliffMonths,
+                TotalVestMonths = g.TotalVestMonths,
+            }).ToList(),
+            RecordedAt = DateTime.UtcNow,
+        };
+
+        await _dbContext.Phase4CapTables.InsertOneAsync(snapshot);
+
+        // Mirror the latest snapshot into the Companies model for legacy
+        // consumers (validator already reads Phase4CapTables; this keeps Phase 3
+        // and other callers consistent).
+        company.TotalShares = snapshot.TotalShares;
+        company.EsopPoolPercent = snapshot.EsopPoolPercent;
+        company.EsopVestingMonths = snapshot.EsopVestingMonths;
+        company.EquityStructure = snapshot.Grants.Select(g => new EquityEntryDto
+        {
+            StakeholderName = g.StakeholderName,
+            Type = g.StakeholderType,
+            SharesOwned = g.SharesGranted,
+            VestingMonths = g.TotalVestMonths,
+            InvestmentAmount = g.InvestmentAmount,
+        }).ToList();
+        company.UpdatedAt = DateTime.UtcNow;
+        await _dbContext.Companies.ReplaceOneAsync(
+            Builders<Companies>.Filter.Eq(c => c.Id, companyId), company);
+
+        return MapCapTableSnapshot(snapshot);
+    }
+
+    public async Task<CapTableSnapshotResponse?> GetLatestCapTableSnapshotAsync(string companyId)
+    {
+        await GetCompanyAsync(companyId);
+        var latest = await _dbContext.Phase4CapTables
+            .Find(c => c.CompanyId == companyId)
+            .SortByDescending(c => c.RecordedAt)
+            .FirstOrDefaultAsync();
+        return latest == null ? null : MapCapTableSnapshot(latest);
+    }
+
+    public async Task<List<VestingScheduleResponse>> SaveVestingSchedulesAsync(string companyId, SaveVestingScheduleRequest request)
+    {
+        if (request?.Entries == null || request.Entries.Count == 0)
+            throw new ArgumentException("At least one vesting entry is required");
+
+        foreach (var e in request.Entries)
+        {
+            if (string.IsNullOrWhiteSpace(e.StakeholderName))
+                throw new ArgumentException("Vesting entry stakeholder name is required");
+            if (e.SharesGranted <= 0)
+                throw new ArgumentException($"Vesting entry for '{e.StakeholderName}': shares must be > 0");
+            var ve = Phase4Requirements.ValidateVesting(e.CliffMonths, e.TotalVestMonths, e.StakeholderName);
+            if (ve.Count > 0) throw new ArgumentException(string.Join("; ", ve));
+        }
+
+        await GetCompanyAsync(companyId);
+
+        // Replace any existing schedules for the same GrantId (idempotent saves).
+        foreach (var e in request.Entries)
+        {
+            var grantId = string.IsNullOrWhiteSpace(e.GrantId) ? ObjectId.GenerateNewId().ToString() : e.GrantId;
+            var filter = Builders<Phase4VestingSchedule>.Filter.And(
+                Builders<Phase4VestingSchedule>.Filter.Eq(x => x.CompanyId, companyId),
+                Builders<Phase4VestingSchedule>.Filter.Eq(x => x.GrantId, grantId));
+
+            var doc = new Phase4VestingSchedule
+            {
+                Id = ObjectId.GenerateNewId().ToString(),
+                CompanyId = companyId,
+                GrantId = grantId,
+                StakeholderName = e.StakeholderName,
+                SharesGranted = e.SharesGranted,
+                GrantDate = e.GrantDate,
+                CliffMonths = e.CliffMonths,
+                TotalVestMonths = e.TotalVestMonths,
+                RecordedAt = DateTime.UtcNow,
+            };
+
+            await _dbContext.Phase4VestingSchedules.ReplaceOneAsync(
+                filter, doc, new ReplaceOptions { IsUpsert = true });
+        }
+
+        return await GetVestingSchedulesAsync(companyId);
+    }
+
+    public async Task<List<VestingScheduleResponse>> GetVestingSchedulesAsync(string companyId)
+    {
+        await GetCompanyAsync(companyId);
+        var now = DateTime.UtcNow;
+        var docs = await _dbContext.Phase4VestingSchedules
+            .Find(v => v.CompanyId == companyId)
+            .SortBy(v => v.GrantDate)
+            .ToListAsync();
+
+        return docs.Select(v =>
+        {
+            var months = Phase4Requirements.MonthsBetween(v.GrantDate, now);
+            var pct = Phase4Requirements.ComputeVestedPercent(months, v.CliffMonths, v.TotalVestMonths);
+            var shares = Phase4Requirements.ComputeVestedShares(v.SharesGranted, months, v.CliffMonths, v.TotalVestMonths);
+            return new VestingScheduleResponse
+            {
+                GrantId = v.GrantId,
+                StakeholderName = v.StakeholderName,
+                SharesGranted = v.SharesGranted,
+                GrantDate = v.GrantDate,
+                CliffMonths = v.CliffMonths,
+                TotalVestMonths = v.TotalVestMonths,
+                VestedPercentNow = pct,
+                VestedSharesNow = shares,
+            };
+        }).ToList();
+    }
+
+    public async Task<List<OwnershipHistoryResponse>> SaveOwnershipHistoryAsync(string companyId, SaveOwnershipHistoryRequest request)
+    {
+        if (request?.Entries == null || request.Entries.Count == 0)
+            throw new ArgumentException("At least one ownership history entry is required");
+
+        foreach (var e in request.Entries)
+        {
+            if (string.IsNullOrWhiteSpace(e.RoundName))
+                throw new ArgumentException("Ownership history entry: roundName is required");
+            if (e.FounderOwnershipBefore < 0 || e.FounderOwnershipBefore > 100 ||
+                e.FounderOwnershipAfter < 0 || e.FounderOwnershipAfter > 100 ||
+                e.InvestorOwnership < 0 || e.InvestorOwnership > 100 ||
+                e.EsopOwnership < 0 || e.EsopOwnership > 100)
+                throw new ArgumentException($"Ownership history '{e.RoundName}': percentages must be between 0 and 100");
+            if (e.Valuation < 0)
+                throw new ArgumentException($"Ownership history '{e.RoundName}': valuation must be >= 0");
+        }
+
+        await GetCompanyAsync(companyId);
+
+        // Replace entire history for this company (idempotent on the full set).
+        await _dbContext.Phase4OwnershipHistories.DeleteManyAsync(h => h.CompanyId == companyId);
+        var docs = request.Entries.Select(e => new Phase4OwnershipHistory
+        {
+            Id = ObjectId.GenerateNewId().ToString(),
+            CompanyId = companyId,
+            RoundName = e.RoundName,
+            EventDate = e.EventDate ?? DateTime.UtcNow,
+            FounderOwnershipBefore = e.FounderOwnershipBefore,
+            FounderOwnershipAfter = e.FounderOwnershipAfter,
+            InvestorOwnership = e.InvestorOwnership,
+            EsopOwnership = e.EsopOwnership,
+            Valuation = e.Valuation,
+            Notes = e.Notes,
+            RecordedAt = DateTime.UtcNow,
+        }).ToList();
+        if (docs.Count > 0)
+            await _dbContext.Phase4OwnershipHistories.InsertManyAsync(docs);
+
+        return await GetOwnershipHistoryAsync(companyId);
+    }
+
+    public async Task<List<OwnershipHistoryResponse>> GetOwnershipHistoryAsync(string companyId)
+    {
+        await GetCompanyAsync(companyId);
+        var docs = await _dbContext.Phase4OwnershipHistories
+            .Find(h => h.CompanyId == companyId)
+            .SortBy(h => h.EventDate)
+            .ToListAsync();
+        return docs.Select(MapOwnershipHistory).ToList();
+    }
+
+    public async Task<ShareIssuanceResponse> RecordShareIssuanceAsync(string companyId, RecordShareIssuanceRequest request)
+    {
+        if (request == null) throw new ArgumentException("Request body required");
+        if (string.IsNullOrWhiteSpace(request.IssuedTo))
+            throw new ArgumentException("issuedTo is required");
+        if (!ShareClasses.IsValid(request.ShareClass))
+            throw new ArgumentException($"Invalid share class '{request.ShareClass}'");
+        if (request.SharesIssued <= 0)
+            throw new ArgumentException("sharesIssued must be > 0");
+        if (request.PricePerShare.HasValue && request.PricePerShare.Value < 0)
+            throw new ArgumentException("pricePerShare must be >= 0");
+
+        await GetCompanyAsync(companyId);
+
+        var doc = new Phase4ShareIssuance
+        {
+            Id = ObjectId.GenerateNewId().ToString(),
+            CompanyId = companyId,
+            IssuedTo = request.IssuedTo,
+            ShareClass = request.ShareClass.ToLowerInvariant(),
+            SharesIssued = request.SharesIssued,
+            PricePerShare = request.PricePerShare,
+            Reason = request.Reason,
+            IssuedAt = DateTime.UtcNow,
+        };
+
+        await _dbContext.Phase4ShareIssuances.InsertOneAsync(doc);
+
+        return new ShareIssuanceResponse
+        {
+            IssuanceId = doc.Id,
+            IssuedTo = doc.IssuedTo,
+            ShareClass = doc.ShareClass,
+            SharesIssued = doc.SharesIssued,
+            PricePerShare = doc.PricePerShare,
+            Reason = doc.Reason,
+            IssuedAt = doc.IssuedAt,
+        };
+    }
+
+    private static CapTableSnapshotResponse MapCapTableSnapshot(Phase4CapTable c) => new()
+    {
+        CapTableId = c.Id,
+        Version = c.Version,
+        TotalShares = c.TotalShares,
+        EsopPoolPercent = c.EsopPoolPercent,
+        EsopVestingMonths = c.EsopVestingMonths,
+        RecordedAt = c.RecordedAt,
+        Grants = c.Grants.Select(g => new EquityGrantDto
+        {
+            GrantId = g.GrantId,
+            StakeholderName = g.StakeholderName,
+            StakeholderType = g.StakeholderType,
+            ShareClass = g.ShareClass,
+            SharesGranted = g.SharesGranted,
+            InvestmentAmount = g.InvestmentAmount,
+            GrantDate = g.GrantDate,
+            CliffMonths = g.CliffMonths,
+            TotalVestMonths = g.TotalVestMonths,
+        }).ToList(),
+    };
+
+    private static OwnershipHistoryResponse MapOwnershipHistory(Phase4OwnershipHistory h) => new()
+    {
+        RoundName = h.RoundName,
+        EventDate = h.EventDate,
+        FounderOwnershipBefore = h.FounderOwnershipBefore,
+        FounderOwnershipAfter = h.FounderOwnershipAfter,
+        InvestorOwnership = h.InvestorOwnership,
+        EsopOwnership = h.EsopOwnership,
+        Valuation = h.Valuation,
+        Notes = h.Notes,
+        RecordedAt = h.RecordedAt,
+    };
+
     // ============ PHASE 5: FUNDING ASK & PITCH ============
 
     public async Task<Companies> SavePitchDeckAsync(string companyId, string fileName, Stream fileStream)
