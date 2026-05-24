@@ -87,8 +87,10 @@ public interface ICompanyService
     // ============ PHASE 8: INVESTOR MATCHING ============
 
     Task<List<InvestorMatchResponse>> GetMatchedInvestorsAsync(string companyId);
+    Task<List<InvestorMatchResponse>> RegenerateInvestorMatchesAsync(string companyId);
     Task RecordInvestorInteractionAsync(string companyId, RecordInteractionRequest request);
-    Task<List<InvestorMatch>> GetMatchingInsightsAsync(string companyId);
+    Task<InvestorMatchResponse> UpdateMatchStatusAsync(string companyId, string matchId, string status);
+    Task<MatchingInsightsResponse> GetMatchingInsightsAsync(string companyId);
 
     // ============ PHASE 9: DEAL EXECUTION ============
 

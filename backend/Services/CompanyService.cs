@@ -1457,19 +1457,87 @@ public class CompanyService : ICompanyService
     {
         var matches = await _dbContext.InvestorMatches
             .Find(m => m.CompanyId == companyId)
+            .SortByDescending(m => m.MatchScore)
             .ToListAsync();
 
-        return matches.Select(m => new InvestorMatchResponse
+        // Serve from the immutable snapshot fields persisted by the matcher
+        // at creation time. The live Investor record is consulted only as a
+        // backfill for legacy rows that pre-date the snapshot — never as the
+        // primary read path. This guarantees no null-filled investor cards
+        // even if the live Investor record has been deleted or mutated.
+        var results = new List<InvestorMatchResponse>();
+        foreach (var m in matches)
         {
-            MatchId = m.Id,
-            InvestorId = m.InvestorId,
-            MatchScore = m.MatchScore,
-            Status = m.Status
-        }).ToList();
+            var investorName = m.InvestorNameSnapshot;
+            var investorType = m.InvestorTypeSnapshot;
+            var investmentRange = m.InvestmentRangeSnapshot;
+            var preferredSectors = m.PreferredSectorsSnapshot?.Count > 0
+                ? m.PreferredSectorsSnapshot
+                : m.InvestorPreferences?.PreferredSectors ?? new List<string>();
+
+            // Legacy backfill: rows that pre-date the snapshot fields will
+            // have null snapshots. Try the live Investor record to populate.
+            if (string.IsNullOrWhiteSpace(investorName) || string.IsNullOrWhiteSpace(investorType))
+            {
+                try
+                {
+                    var investor = await _dbContext.Investors
+                        .Find(i => i.Id == m.InvestorId)
+                        .FirstOrDefaultAsync();
+                    if (investor != null)
+                    {
+                        investorName ??= investor.Name;
+                        investorType ??= investor.Type;
+                        if (string.IsNullOrWhiteSpace(investmentRange) && investor.MaxCheckSize > 0)
+                            investmentRange = $"EUR {investor.MinCheckSize:N0}-{investor.MaxCheckSize:N0}";
+                        if (preferredSectors.Count == 0)
+                            preferredSectors = investor.PreferredSectors ?? new List<string>();
+                    }
+                }
+                catch
+                {
+                    // Live investor lookup failed; fall through to the
+                    // hard-fallback below so the response never carries null.
+                }
+            }
+
+            results.Add(new InvestorMatchResponse
+            {
+                MatchId = m.Id,
+                InvestorId = m.InvestorId,
+                InvestorName = !string.IsNullOrWhiteSpace(investorName) ? investorName : m.InvestorId,
+                MatchScore = m.MatchScore,
+                InvestorType = !string.IsNullOrWhiteSpace(investorType) ? investorType : "(unknown)",
+                PreferredRound = m.InvestorPreferences?.PreferredStages?.FirstOrDefault() ?? "(unspecified)",
+                InvestmentRange = !string.IsNullOrWhiteSpace(investmentRange) ? investmentRange : "EUR (range unset)",
+                PreferredSectors = preferredSectors,
+                Status = m.Status,
+                MatchRationale = m.MatchRationale,
+                EngineVersion = m.EngineVersion,
+                MatchedAt = m.MatchedAt,
+                SavedAt = m.SavedAt,
+                AcceptedAt = m.AcceptedAt,
+                RejectedAt = m.RejectedAt,
+            });
+        }
+        return results;
+    }
+
+    public async Task<List<InvestorMatchResponse>> RegenerateInvestorMatchesAsync(string companyId)
+    {
+        var company = await GetCompanyAsync(companyId);
+        await _investorMatcher.FindMatchesAsync(company, investorPoolIds: null);
+        return await GetMatchedInvestorsAsync(companyId);
     }
 
     public async Task RecordInvestorInteractionAsync(string companyId, RecordInteractionRequest request)
     {
+        if (request == null || string.IsNullOrWhiteSpace(request.MatchId))
+            throw new ArgumentException("matchId is required");
+        if (!Phase8Requirements.IsValidInteractionType(request.InteractionType))
+            throw new ArgumentException(
+                $"interactionType must be one of: {string.Join(", ", Phase8Requirements.AllowedInteractionTypes)}");
+
         var match = await _dbContext.InvestorMatches
             .Find(m => m.Id == request.MatchId && m.CompanyId == companyId)
             .FirstOrDefaultAsync()
@@ -1477,7 +1545,7 @@ public class CompanyService : ICompanyService
 
         var interaction = new InteractionRecord
         {
-            Type = request.InteractionType,
+            Type = request.InteractionType.ToLowerInvariant(),
             Details = request.Details,
             Timestamp = DateTime.UtcNow,
             InitiatedBy = "company"
@@ -1491,11 +1559,54 @@ public class CompanyService : ICompanyService
         await _dbContext.InvestorMatches.ReplaceOneAsync(filter, match);
     }
 
-    public async Task<List<InvestorMatch>> GetMatchingInsightsAsync(string companyId)
+    public async Task<InvestorMatchResponse> UpdateMatchStatusAsync(string companyId, string matchId, string status)
     {
-        return await _dbContext.InvestorMatches
+        if (!Phase8Requirements.IsValidMatchStatus(status))
+            throw new ArgumentException(
+                $"status must be one of: {string.Join(", ", Phase8Requirements.AllowedMatchStatuses)}");
+
+        var match = await _dbContext.InvestorMatches
+            .Find(m => m.Id == matchId && m.CompanyId == companyId)
+            .FirstOrDefaultAsync()
+            ?? throw new KeyNotFoundException($"Match {matchId} not found");
+
+        match.Status = status.ToLowerInvariant();
+        match.UpdatedAt = DateTime.UtcNow;
+
+        // Record decisive transitions so the audit trail survives later
+        // status changes.
+        switch (match.Status)
+        {
+            case "saved": match.SavedAt = DateTime.UtcNow; break;
+            case "accepted": match.AcceptedAt = DateTime.UtcNow; break;
+            case "rejected": match.RejectedAt = DateTime.UtcNow; break;
+        }
+
+        var filter = Builders<InvestorMatch>.Filter.Eq(m => m.Id, match.Id);
+        await _dbContext.InvestorMatches.ReplaceOneAsync(filter, match);
+
+        var hydrated = await GetMatchedInvestorsAsync(companyId);
+        return hydrated.FirstOrDefault(r => r.MatchId == matchId);
+    }
+
+    public async Task<MatchingInsightsResponse> GetMatchingInsightsAsync(string companyId)
+    {
+        var matches = await _dbContext.InvestorMatches
             .Find(m => m.CompanyId == companyId)
             .ToListAsync();
+
+        var interactionsCount = matches.Sum(m => m.Interactions?.Count ?? 0);
+        var average = matches.Count > 0 ? matches.Average(m => (double)m.MatchScore) : 0;
+        var lastMatchedAt = matches.OrderByDescending(m => m.MatchedAt).FirstOrDefault()?.MatchedAt;
+
+        return new MatchingInsightsResponse
+        {
+            TotalMatches = matches.Count,
+            HighScoreMatches = matches.Count(m => m.MatchScore >= Phase8Requirements.MinScoreToCount),
+            InteractionsCount = interactionsCount,
+            AverageScore = Math.Round(average, 2),
+            LastMatchedAt = lastMatchedAt,
+        };
     }
 
     // ============ PHASE 9: DEAL EXECUTION ============

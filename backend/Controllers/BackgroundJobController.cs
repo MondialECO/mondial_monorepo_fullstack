@@ -77,9 +77,17 @@ public class BackgroundJobController : ControllerBase
     {
         try
         {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureCompanyOwnershipAsync(companyId);
             var jobId = _backgroundJobService.EnqueueInvestorMatching(companyId);
             _logger.LogInformation($"Investor matching job {jobId} enqueued for company {companyId}");
             return Accepted(new { jobId, status = "queued" });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
         }
         catch (Exception ex)
         {

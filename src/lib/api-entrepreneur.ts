@@ -439,8 +439,26 @@ export interface InvestorMatchResponse {
   investorType?: string;
   preferredRound?: string;
   investmentRange?: string;
-  preferredSectors?: string[];
+  preferredSectors: string[];
   status: string;
+  matchRationale?: string;
+  engineVersion?: string;
+  matchedAt?: string;
+  savedAt?: string;
+  acceptedAt?: string;
+  rejectedAt?: string;
+}
+
+export interface MatchingInsightsResponse {
+  totalMatches: number;
+  highScoreMatches: number;
+  interactionsCount: number;
+  averageScore: number;
+  lastMatchedAt?: string;
+}
+
+export interface UpdateMatchStatusRequest {
+  status: string; // saved | accepted | rejected | viewed | new | passed | interested | reviewing | matched
 }
 
 // Phase 9
@@ -1008,9 +1026,32 @@ export const entrepreneurApi = {
     return response.data;
   },
 
-  getMatchingInsights: async (companyId: string) => {
-    const response = await api.get(
+  getMatchingInsights: async (
+    companyId: string
+  ): Promise<MatchingInsightsResponse> => {
+    const response = await api.get<MatchingInsightsResponse>(
       `/companies/${companyId}/matching-insights`
+    );
+    return response.data;
+  },
+
+  regenerateInvestorMatches: async (
+    companyId: string
+  ): Promise<InvestorMatchResponse[]> => {
+    const response = await api.post<InvestorMatchResponse[]>(
+      `/companies/${companyId}/investor-matches/regenerate`
+    );
+    return response.data;
+  },
+
+  updateMatchStatus: async (
+    companyId: string,
+    matchId: string,
+    status: string
+  ): Promise<InvestorMatchResponse> => {
+    const response = await api.post<InvestorMatchResponse>(
+      `/companies/${companyId}/investor-matches/${matchId}/status`,
+      { status }
     );
     return response.data;
   },

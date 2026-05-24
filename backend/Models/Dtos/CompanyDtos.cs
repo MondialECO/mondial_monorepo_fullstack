@@ -310,15 +310,35 @@ public class InvestorMatchResponse
     public string InvestorType { get; set; }
     public string PreferredRound { get; set; }
     public string InvestmentRange { get; set; }
-    public List<string> PreferredSectors { get; set; }
+    public List<string> PreferredSectors { get; set; } = new();
     public string Status { get; set; }
+    public string MatchRationale { get; set; }
+    public string EngineVersion { get; set; }
+    public DateTime? MatchedAt { get; set; }
+    public DateTime? SavedAt { get; set; }
+    public DateTime? AcceptedAt { get; set; }
+    public DateTime? RejectedAt { get; set; }
 }
 
 public class RecordInteractionRequest
 {
     public string MatchId { get; set; }
-    public string InteractionType { get; set; } // view, message, call, proposal_sent
+    public string InteractionType { get; set; } // view | message | call | proposal_sent | term_sheet
     public string Details { get; set; }
+}
+
+public class UpdateMatchStatusRequest
+{
+    public string Status { get; set; } // saved | accepted | rejected | viewed | new | passed | interested | reviewing | matched
+}
+
+public class MatchingInsightsResponse
+{
+    public int TotalMatches { get; set; }
+    public int HighScoreMatches { get; set; }
+    public int InteractionsCount { get; set; }
+    public double AverageScore { get; set; }
+    public DateTime? LastMatchedAt { get; set; }
 }
 
 // ============ PHASE 9: DEAL EXECUTION ============

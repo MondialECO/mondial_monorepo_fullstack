@@ -1401,7 +1401,7 @@ public class CompanyController : ControllerBase
     }
 
     [HttpGet("{companyId}/matching-insights")]
-    public async Task<ActionResult> GetMatchingInsights(string companyId)
+    public async Task<ActionResult<MatchingInsightsResponse>> GetMatchingInsights(string companyId)
     {
         try
         {
@@ -1419,6 +1419,54 @@ public class CompanyController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting matching insights");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpPost("{companyId}/investor-matches/regenerate")]
+    public async Task<ActionResult<List<InvestorMatchResponse>>> RegenerateInvestorMatches(string companyId)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureCompanyOwnershipAsync(companyId);
+            var result = await _companyService.RegenerateInvestorMatchesAsync(companyId);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error regenerating investor matches");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpPost("{companyId}/investor-matches/{matchId}/status")]
+    public async Task<ActionResult<InvestorMatchResponse>> UpdateMatchStatus(
+        string companyId, string matchId, [FromBody] UpdateMatchStatusRequest request)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureCompanyOwnershipAsync(companyId);
+            var result = await _companyService.UpdateMatchStatusAsync(
+                companyId, matchId, request?.Status ?? string.Empty);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating match status");
             return BadRequest(new { error = ex.Message });
         }
     }

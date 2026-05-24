@@ -436,15 +436,76 @@ public class PhaseValidator : IPhaseValidator
 
     public async Task<(bool IsValid, List<string> Errors)> ValidatePhase8Async(Companies company)
     {
-        return await Task.Run(() =>
+        var errors = new List<string>();
+
+        var matches = await _dbContext.InvestorMatches
+            .Find(m => m.CompanyId == company.Id)
+            .ToListAsync();
+
+        if (matches.Count < Phase8Requirements.MinPersistedMatches)
         {
-            var errors = new List<string>();
+            errors.Add(
+                $"Investor matching must have produced at least {Phase8Requirements.MinPersistedMatches} match before Phase 8 can advance (currently {matches.Count})");
+            return (false, errors);
+        }
 
-            // Phase 8 is informational - just track investor interactions
-            // No strict validation needed - investors will be matched automatically
+        if (!matches.Any(m => m.MatchScore >= Phase8Requirements.MinScoreToCount))
+            errors.Add(
+                $"At least one match must score >= {Phase8Requirements.MinScoreToCount}");
 
-            return (errors.Count == 0, errors);
-        });
+        foreach (var m in matches)
+        {
+            // Structural shape
+            if (string.IsNullOrWhiteSpace(m.InvestorId))
+                errors.Add($"Match {m.Id} has no investorId (malformed row)");
+            if (m.MatchScore < 0 || m.MatchScore > 100)
+                errors.Add($"Match {m.Id} has out-of-range score {m.MatchScore}");
+            if (!Phase8Requirements.IsValidMatchStatus(m.Status))
+                errors.Add($"Match {m.Id} has invalid status '{m.Status}'");
+
+            // Matcher-produced provenance gates — minimal hand-rolled rows
+            // (status="new", score=80, nothing else) must NOT pass.
+            if (string.IsNullOrWhiteSpace(m.MatchRationale))
+                errors.Add($"Match {m.Id} is missing MatchRationale (not produced by the matcher)");
+            if (!string.Equals(m.EngineVersion, InvestorMatcher.EngineVersion, StringComparison.Ordinal))
+                errors.Add(
+                    $"Match {m.Id} has unexpected engineVersion '{m.EngineVersion}' (expected '{InvestorMatcher.EngineVersion}')");
+            if (!m.MatchedAt.HasValue)
+                errors.Add($"Match {m.Id} has no MatchedAt timestamp (malformed row)");
+            if (m.InvestorPreferences == null)
+            {
+                errors.Add($"Match {m.Id} has no investorPreferences snapshot");
+            }
+            else
+            {
+                var prefs = m.InvestorPreferences;
+                var hasAnyPref =
+                    (prefs.PreferredSectors?.Count > 0) ||
+                    (prefs.PreferredStages?.Count > 0) ||
+                    (prefs.PreferredGeographies?.Count > 0) ||
+                    prefs.MaxInvestmentAmount > 0;
+                if (!hasAnyPref)
+                    errors.Add($"Match {m.Id}: investorPreferences snapshot is empty (matcher would have captured at least one field)");
+            }
+
+            // Investor must still be hydratable — guards against orphaned matches.
+            if (!string.IsNullOrWhiteSpace(m.InvestorId))
+            {
+                var investorExists = await _dbContext.Investors
+                    .Find(i => i.Id == m.InvestorId)
+                    .AnyAsync();
+                if (!investorExists)
+                    errors.Add($"Match {m.Id}: investor {m.InvestorId} no longer exists — rerun matching");
+            }
+
+            foreach (var i in m.Interactions ?? new List<InteractionRecord>())
+            {
+                if (!Phase8Requirements.IsValidInteractionType(i.Type))
+                    errors.Add($"Match {m.Id} contains invalid interaction type '{i.Type}'");
+            }
+        }
+
+        return (errors.Count == 0, errors);
     }
 
     public async Task<(bool IsValid, List<string> Errors)> ValidatePhase9Async(Companies company)

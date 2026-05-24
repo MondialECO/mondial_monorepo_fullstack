@@ -75,6 +75,14 @@ public class Companies
     public string PitchDeckStoragePath { get; set; }
     public long? PitchDeckFileSize { get; set; }
 
+    // Phase 8: Matching inputs (backend-authoritative; deterministic).
+    // Set via Phase 3/5 setters or future dedicated endpoints. Nullable so
+    // the matcher can handle absence gracefully (lower-bound contribution).
+    /// <summary>Total addressable market in EUR, declared by the entrepreneur.</summary>
+    public double? MarketSizeEstimate { get; set; }
+    /// <summary>0-100 growth-potential score, deterministic backend input. No AI-derived estimates.</summary>
+    public double? GrowthPotentialScore { get; set; }
+
     // Phase 5: Pitch & Outreach
     public string PitchDeckFileName { get; set; }
     public DateTime? PitchDeckUploadedAt { get; set; }

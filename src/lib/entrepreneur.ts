@@ -62,7 +62,7 @@ const PHASE_CONFIG: Record<PhaseNumber, PhaseConfig> = {
   8: {
     phase: 8,
     title: 'Investor Matching',
-    description: 'AI matches, handshakes',
+    description: 'Automated rule-based matching against active investor pool',
     trustScore: 5,
     hasSteps: false,
   },
