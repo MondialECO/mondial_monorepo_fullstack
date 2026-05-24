@@ -1000,20 +1000,48 @@ public class CompanyService : ICompanyService
 
     // ============ PHASE 6: DATA ROOM ============
 
-    public async Task<DataRoomDocumentResponse> UploadDataRoomDocumentAsync(string companyId, UploadDataRoomDocumentRequest request)
+    public async Task<DataRoomDocumentResponse> UploadDataRoomDocumentAsync(string companyId, UploadDataRoomDocumentRequest request, string uploadedByUserId)
     {
+        if (request?.File == null || request.File.Length == 0)
+            throw new ArgumentException("Uploaded file is required");
+        if (request.File.Length > Phase6Requirements.MaxFileSizeBytes)
+            throw new ArgumentException(
+                $"File size {request.File.Length} exceeds {Phase6Requirements.MaxFileSizeBytes}");
+        if (string.IsNullOrWhiteSpace(request.Title))
+            throw new ArgumentException("title is required");
+        if (request.Title.Length > Phase6Requirements.MaxTitleLength)
+            throw new ArgumentException(
+                $"title must be <= {Phase6Requirements.MaxTitleLength} characters");
+        if (!Phase6Requirements.IsAllowedCategory(request.Category))
+            throw new ArgumentException(
+                $"category must be one of: {string.Join(", ", Phase6Requirements.AllowedCategories)}");
+
         var company = await GetCompanyAsync(companyId);
 
-        var fileUrl = await _documentManager.SaveDocumentAsync(companyId, request.FileName, request.FileContent);
+        byte[] bytes;
+        await using (var ms = new MemoryStream())
+        {
+            await request.File.CopyToAsync(ms);
+            bytes = ms.ToArray();
+        }
+
+        var fileName = request.File.FileName;
+        var storagePath = await _documentManager.SaveDocumentAsync(companyId, fileName, bytes);
 
         var doc = new DataRoomDocumentResponse
         {
             DocumentId = ObjectId.GenerateNewId().ToString(),
             Title = request.Title,
-            Category = request.Category,
+            Category = request.Category.ToLowerInvariant(),
             Status = "draft",
             UploadedAt = DateTime.UtcNow,
-            ViewCount = 0
+            ViewCount = 0,
+            DownloadCount = 0,
+            FileName = fileName,
+            MimeType = request.File.ContentType,
+            FileSize = request.File.Length,
+            StoragePath = storagePath,
+            UploadedBy = uploadedByUserId,
         };
 
         if (company.DataRoomDocuments == null)
@@ -1026,6 +1054,246 @@ public class CompanyService : ICompanyService
         await _dbContext.Companies.ReplaceOneAsync(filter, company);
 
         return doc;
+    }
+
+    public async Task<DataRoomStatusResponse> PublishDataRoomAsync(string companyId)
+    {
+        var company = await GetCompanyAsync(companyId);
+        var docs = company.DataRoomDocuments ?? new List<DataRoomDocumentResponse>();
+
+        if (docs.Count < Phase6Requirements.MinDocumentCount)
+            throw new InvalidOperationException(
+                $"Cannot publish: need at least {Phase6Requirements.MinDocumentCount} documents (currently {docs.Count})");
+
+        var uploadedCategories = docs
+            .Select(d => (d.Category ?? string.Empty).ToLowerInvariant())
+            .Distinct()
+            .ToList();
+        var missing = Phase6Requirements.RequiredCategories
+            .Where(req => !uploadedCategories.Any(u => string.Equals(u, req, StringComparison.OrdinalIgnoreCase)))
+            .ToList();
+        if (missing.Count > 0)
+            throw new InvalidOperationException(
+                $"Cannot publish: missing required categories ({string.Join(", ", missing)})");
+
+        foreach (var d in docs)
+        {
+            if (string.IsNullOrWhiteSpace(d.StoragePath))
+                throw new InvalidOperationException(
+                    $"Cannot publish: document '{d.FileName}' has no storagePath (malformed upload)");
+            if (d.FileSize <= 0)
+                throw new InvalidOperationException(
+                    $"Cannot publish: document '{d.FileName}' has fileSize 0");
+        }
+
+        company.IsDataRoomLive = true;
+        company.UpdatedAt = DateTime.UtcNow;
+
+        await _dbContext.Companies.ReplaceOneAsync(
+            Builders<Companies>.Filter.Eq(c => c.Id, companyId), company);
+
+        return await GetDataRoomStatusAsync(companyId);
+    }
+
+    /// <summary>
+    /// Centralised data-room access policy. Owner always passes. Non-owners
+    /// must satisfy: room published, grant exists, grant not expired, NDA
+    /// accepted when required, and (when <paramref name="requireDownloadPermission"/>
+    /// is true) grant.AccessLevel is in <see cref="Phase6Requirements.DownloadPermittedAccessLevels"/>.
+    ///
+    /// Used by both <see cref="DownloadDataRoomDocumentAsync"/> and
+    /// <see cref="TrackDataRoomEventAsync"/> so an analytics event can never
+    /// be persisted unless the caller could have actually performed the action.
+    /// </summary>
+    private async Task EnsureDataRoomAccessAsync(
+        Companies company, string callerUserId, bool callerIsOwner, bool requireDownloadPermission)
+    {
+        if (callerIsOwner) return;
+
+        if (!company.IsDataRoomLive)
+            throw new UnauthorizedAccessException("Data room is not published");
+
+        var grant = company.DataRoomAccessRecords?
+            .FirstOrDefault(g => string.Equals(g.InvestorId, callerUserId, StringComparison.Ordinal));
+        if (grant == null)
+            throw new UnauthorizedAccessException("No data-room access grant for this investor");
+        if (grant.ExpiresAt != default && grant.ExpiresAt < DateTime.UtcNow)
+            throw new UnauthorizedAccessException("Data-room access grant has expired");
+
+        if (requireDownloadPermission && !Phase6Requirements.AccessLevelPermitsDownload(grant.AccessLevel))
+            throw new UnauthorizedAccessException(
+                $"Access level '{grant.AccessLevel}' does not permit downloads (requires one of: {string.Join(", ", Phase6Requirements.DownloadPermittedAccessLevels)})");
+
+        if (company.IsDataRoomNdaRequired)
+        {
+            var nda = await _dbContext.Phase6NdaAcceptances
+                .Find(n => n.CompanyId == company.Id && n.InvestorId == callerUserId)
+                .FirstOrDefaultAsync();
+            if (nda == null)
+                throw new UnauthorizedAccessException("NDA acceptance is required");
+        }
+    }
+
+    /// <summary>
+    /// Download a data-room document. Owner can always download. Non-owner
+    /// callers must satisfy the centralised access policy AND have an
+    /// access-level that permits downloads (download | full_access).
+    /// </summary>
+    public async Task<(byte[] Content, DataRoomDocumentResponse Document)> DownloadDataRoomDocumentAsync(
+        string companyId, string documentId, string callerUserId, bool callerIsOwner)
+    {
+        var company = await GetCompanyAsync(companyId);
+        var doc = company.DataRoomDocuments?
+            .FirstOrDefault(d => string.Equals(d.DocumentId, documentId, StringComparison.Ordinal));
+        if (doc == null)
+            throw new KeyNotFoundException($"Document {documentId} not found");
+        if (string.IsNullOrWhiteSpace(doc.StoragePath))
+            throw new InvalidOperationException("Document storage path is missing");
+
+        await EnsureDataRoomAccessAsync(company, callerUserId, callerIsOwner, requireDownloadPermission: true);
+
+        var bytes = await File.ReadAllBytesAsync(doc.StoragePath);
+        return (bytes, doc);
+    }
+
+    public async Task<Phase6AccessLogResponse> TrackDataRoomEventAsync(
+        string companyId, string documentId, string investorId, bool callerIsOwner, string eventType, string ipHash)
+    {
+        if (!Phase6Requirements.IsTrackableEventType(eventType))
+            throw new ArgumentException($"eventType must be '{Phase6Requirements.EventTypeView}' or '{Phase6Requirements.EventTypeDownload}'");
+
+        var company = await GetCompanyAsync(companyId);
+        var doc = company.DataRoomDocuments?
+            .FirstOrDefault(d => string.Equals(d.DocumentId, documentId, StringComparison.Ordinal));
+        if (doc == null)
+            throw new KeyNotFoundException($"Document {documentId} not found");
+
+        // SAME authorization policy as real access. track-download additionally
+        // requires the download access-level so view_only / comment grants
+        // cannot poison the download counter.
+        var requireDownload = string.Equals(eventType, Phase6Requirements.EventTypeDownload, StringComparison.OrdinalIgnoreCase);
+        await EnsureDataRoomAccessAsync(company, investorId, callerIsOwner, requireDownloadPermission: requireDownload);
+
+        var log = new Phase6AccessLog
+        {
+            Id = ObjectId.GenerateNewId().ToString(),
+            CompanyId = companyId,
+            DocumentId = documentId,
+            InvestorId = investorId,
+            EventType = eventType.ToLowerInvariant(),
+            OccurredAt = DateTime.UtcNow,
+            IpHash = ipHash,
+        };
+        await _dbContext.Phase6AccessLogs.InsertOneAsync(log);
+
+        // Increment the denormalised counter on the embedded document for
+        // cheap UI reads (analytics still derives from the log collection).
+        var docFilter = Builders<Companies>.Filter.And(
+            Builders<Companies>.Filter.Eq(c => c.Id, companyId),
+            Builders<Companies>.Filter.ElemMatch(c => c.DataRoomDocuments, d => d.DocumentId == documentId));
+        var update = string.Equals(eventType, Phase6Requirements.EventTypeView, StringComparison.OrdinalIgnoreCase)
+            ? Builders<Companies>.Update.Inc("DataRoomDocuments.$.ViewCount", 1)
+            : Builders<Companies>.Update.Inc("DataRoomDocuments.$.DownloadCount", 1);
+        await _dbContext.Companies.UpdateOneAsync(docFilter, update);
+
+        return new Phase6AccessLogResponse
+        {
+            Id = log.Id,
+            DocumentId = log.DocumentId,
+            InvestorId = log.InvestorId,
+            EventType = log.EventType,
+            OccurredAt = log.OccurredAt,
+        };
+    }
+
+    public async Task<DataRoomAnalyticsResponse> GetDataRoomAnalyticsAsync(string companyId)
+    {
+        var company = await GetCompanyAsync(companyId);
+        var docs = company.DataRoomDocuments ?? new List<DataRoomDocumentResponse>();
+
+        var logs = await _dbContext.Phase6AccessLogs
+            .Find(l => l.CompanyId == companyId)
+            .ToListAsync();
+
+        var docEngagement = docs.Select(d =>
+        {
+            var docLogs = logs.Where(l => l.DocumentId == d.DocumentId).ToList();
+            return new DocumentEngagementResponse
+            {
+                DocumentId = d.DocumentId,
+                Title = d.Title,
+                Category = d.Category,
+                ViewCount = docLogs.Count(l => l.EventType == Phase6Requirements.EventTypeView),
+                DownloadCount = docLogs.Count(l => l.EventType == Phase6Requirements.EventTypeDownload),
+                UniqueInvestors = docLogs.Select(l => l.InvestorId).Distinct().Count(),
+                LastEventAt = docLogs.OrderByDescending(l => l.OccurredAt).FirstOrDefault()?.OccurredAt,
+            };
+        }).ToList();
+
+        var investorEngagement = logs
+            .GroupBy(l => l.InvestorId)
+            .Select(g => new InvestorEngagementResponse
+            {
+                InvestorId = g.Key,
+                ViewCount = g.Count(l => l.EventType == Phase6Requirements.EventTypeView),
+                DownloadCount = g.Count(l => l.EventType == Phase6Requirements.EventTypeDownload),
+                DocumentsTouched = g.Select(l => l.DocumentId).Distinct().Count(),
+                LastEventAt = g.OrderByDescending(l => l.OccurredAt).First().OccurredAt,
+            })
+            .OrderByDescending(i => i.LastEventAt)
+            .ToList();
+
+        return new DataRoomAnalyticsResponse
+        {
+            TotalDocuments = docs.Count,
+            TotalViews = logs.Count(l => l.EventType == Phase6Requirements.EventTypeView),
+            TotalDownloads = logs.Count(l => l.EventType == Phase6Requirements.EventTypeDownload),
+            UniqueInvestorsEngaged = logs.Select(l => l.InvestorId).Distinct().Count(),
+            DocumentEngagement = docEngagement,
+            InvestorEngagement = investorEngagement,
+        };
+    }
+
+    public async Task<List<Phase6AccessLogResponse>> GetDataRoomActivityTimelineAsync(string companyId)
+    {
+        await GetCompanyAsync(companyId);
+        var logs = await _dbContext.Phase6AccessLogs
+            .Find(l => l.CompanyId == companyId)
+            .SortByDescending(l => l.OccurredAt)
+            .ToListAsync();
+        return logs.Select(l => new Phase6AccessLogResponse
+        {
+            Id = l.Id,
+            DocumentId = l.DocumentId,
+            InvestorId = l.InvestorId,
+            EventType = l.EventType,
+            OccurredAt = l.OccurredAt,
+        }).ToList();
+    }
+
+    public async Task AcceptDataRoomNdaAsync(string companyId, string investorId, string ndaText, string ipHash)
+    {
+        await GetCompanyAsync(companyId);
+
+        var ndaTextHash = Convert.ToHexString(
+            System.Security.Cryptography.SHA256.HashData(
+                System.Text.Encoding.UTF8.GetBytes(ndaText ?? string.Empty)));
+
+        var nda = new Phase6NdaAcceptance
+        {
+            Id = ObjectId.GenerateNewId().ToString(),
+            CompanyId = companyId,
+            InvestorId = investorId,
+            AcceptedAt = DateTime.UtcNow,
+            NdaTextHash = ndaTextHash,
+            IpHash = ipHash,
+        };
+
+        var filter = Builders<Phase6NdaAcceptance>.Filter.And(
+            Builders<Phase6NdaAcceptance>.Filter.Eq(n => n.CompanyId, companyId),
+            Builders<Phase6NdaAcceptance>.Filter.Eq(n => n.InvestorId, investorId));
+        await _dbContext.Phase6NdaAcceptances.ReplaceOneAsync(
+            filter, nda, new ReplaceOptions { IsUpsert = true });
     }
 
     public async Task<DataRoomStatusResponse> GetDataRoomStatusAsync(string companyId)

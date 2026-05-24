@@ -74,6 +74,14 @@ export interface FinancialPreviewData {
   currentFunding: string;
 }
 
+export interface Phase6Data {
+  __companyId?: string;
+  documentsUploadedCount?: number;
+  accessGrantsCount?: number;
+  dataRoomPublishedAt?: string;
+  submittedAt?: string;
+}
+
 export interface Phase5Data {
   __companyId?: string;
   fundingAskSavedAt?: string;

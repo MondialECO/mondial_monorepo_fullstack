@@ -921,7 +921,7 @@ public class CompanyController : ControllerBase
             var userId = GetUserId();
             await EnsureUniversalPhase1CompleteAsync(userId);
             await EnsureCompanyOwnershipAsync(companyId);
-            var doc = await _companyService.UploadDataRoomDocumentAsync(companyId, request);
+            var doc = await _companyService.UploadDataRoomDocumentAsync(companyId, request, userId);
             return Ok(doc);
         }
         catch (UnauthorizedAccessException ex)
@@ -1024,6 +1024,213 @@ public class CompanyController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error updating NDA requirement");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpPost("{companyId}/dataroom/publish")]
+    public async Task<ActionResult<DataRoomStatusResponse>> PublishDataRoom(string companyId)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureCompanyOwnershipAsync(companyId);
+            var result = await _companyService.PublishDataRoomAsync(companyId);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error publishing data room");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpGet("{companyId}/dataroom/documents/{documentId}")]
+    public async Task<IActionResult> DownloadDataRoomDocument(string companyId, string documentId)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+
+            // Determine if the caller is the company owner; if not, the service
+            // performs the grant + NDA check internally (no IDOR — caller's own
+            // user id is what's checked against the grant list).
+            var company = await _companyService.GetCompanyAsync(companyId);
+            var callerIsOwner = string.Equals(company.OwnerId, userId, StringComparison.Ordinal);
+
+            var (bytes, doc) = await _companyService.DownloadDataRoomDocumentAsync(
+                companyId, documentId, userId, callerIsOwner);
+
+            return File(bytes, doc.MimeType ?? "application/octet-stream", doc.FileName);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error downloading data room document");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    private static string HashIp(HttpContext ctx)
+    {
+        var ip = ctx.Connection.RemoteIpAddress?.ToString() ?? string.Empty;
+        var bytes = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(ip));
+        return Convert.ToHexString(bytes);
+    }
+
+    [HttpPost("{companyId}/dataroom/track-view")]
+    public async Task<ActionResult<Phase6AccessLogResponse>> TrackDataRoomView(
+        string companyId, [FromBody] TrackDataRoomEventRequest request)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            // Investor's own id is bound from the auth token; owners can also track
+            // their own previews. No IDOR — investorId is NEVER taken from the body.
+            // Same authorization policy as a real document access.
+            var company = await _companyService.GetCompanyAsync(companyId);
+            var callerIsOwner = string.Equals(company.OwnerId, userId, StringComparison.Ordinal);
+            var result = await _companyService.TrackDataRoomEventAsync(
+                companyId, request?.DocumentId, userId, callerIsOwner, "view", HashIp(HttpContext));
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error tracking data room view");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpPost("{companyId}/dataroom/track-download")]
+    public async Task<ActionResult<Phase6AccessLogResponse>> TrackDataRoomDownload(
+        string companyId, [FromBody] TrackDataRoomEventRequest request)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            var company = await _companyService.GetCompanyAsync(companyId);
+            var callerIsOwner = string.Equals(company.OwnerId, userId, StringComparison.Ordinal);
+            var result = await _companyService.TrackDataRoomEventAsync(
+                companyId, request?.DocumentId, userId, callerIsOwner, "download", HashIp(HttpContext));
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error tracking data room download");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpGet("{companyId}/dataroom/analytics")]
+    public async Task<ActionResult<DataRoomAnalyticsResponse>> GetDataRoomAnalytics(string companyId)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureCompanyOwnershipAsync(companyId);
+            var result = await _companyService.GetDataRoomAnalyticsAsync(companyId);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error reading data room analytics");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpGet("{companyId}/dataroom/activity-timeline")]
+    public async Task<ActionResult<List<Phase6AccessLogResponse>>> GetDataRoomActivityTimeline(string companyId)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureCompanyOwnershipAsync(companyId);
+            var result = await _companyService.GetDataRoomActivityTimelineAsync(companyId);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error reading data room activity timeline");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpGet("{companyId}/dataroom/investor-engagement")]
+    public async Task<ActionResult<List<InvestorEngagementResponse>>> GetInvestorEngagement(string companyId)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureCompanyOwnershipAsync(companyId);
+            var analytics = await _companyService.GetDataRoomAnalyticsAsync(companyId);
+            return Ok(analytics.InvestorEngagement);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error reading investor engagement");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpPost("{companyId}/dataroom/nda/accept")]
+    public async Task<ActionResult> AcceptDataRoomNda(string companyId, [FromBody] AcceptNdaRequest request)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            // Note: NDA acceptance is INVESTOR-side; do NOT enforce ownership.
+            await _companyService.AcceptDataRoomNdaAsync(
+                companyId, userId, request?.NdaText ?? string.Empty, HashIp(HttpContext));
+            return Ok();
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error recording NDA acceptance");
             return BadRequest(new { error = ex.Message });
         }
     }

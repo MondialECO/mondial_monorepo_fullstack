@@ -171,11 +171,11 @@ public class DilutionScenarioDto
 
 public class UploadDataRoomDocumentRequest
 {
+    // Multipart: the actual file stream.
+    public Microsoft.AspNetCore.Http.IFormFile File { get; set; }
     public string Title { get; set; }
-    public string Category { get; set; } // legal, financial, technical, business, ip
+    public string Category { get; set; } // legal | financial | business | ip | team
     public bool IsRequired { get; set; }
-    public byte[] FileContent { get; set; }
-    public string FileName { get; set; }
 }
 
 public class DataRoomAccessRequest
@@ -193,6 +193,63 @@ public class DataRoomDocumentResponse
     public string Status { get; set; } // draft, published
     public DateTime UploadedAt { get; set; }
     public int ViewCount { get; set; }
+    public int DownloadCount { get; set; }
+    public string FileName { get; set; }
+    public string MimeType { get; set; }
+    public long FileSize { get; set; }
+    public string StoragePath { get; set; }
+    public string UploadedBy { get; set; }
+}
+
+// ============ PHASE 6: PUBLISH / DOWNLOAD / TRACKING / NDA ============
+
+public class TrackDataRoomEventRequest
+{
+    public string DocumentId { get; set; }
+}
+
+public class Phase6AccessLogResponse
+{
+    public string Id { get; set; }
+    public string DocumentId { get; set; }
+    public string InvestorId { get; set; }
+    public string EventType { get; set; } // view | download
+    public DateTime OccurredAt { get; set; }
+}
+
+public class DocumentEngagementResponse
+{
+    public string DocumentId { get; set; }
+    public string Title { get; set; }
+    public string Category { get; set; }
+    public int ViewCount { get; set; }
+    public int DownloadCount { get; set; }
+    public int UniqueInvestors { get; set; }
+    public DateTime? LastEventAt { get; set; }
+}
+
+public class InvestorEngagementResponse
+{
+    public string InvestorId { get; set; }
+    public int ViewCount { get; set; }
+    public int DownloadCount { get; set; }
+    public int DocumentsTouched { get; set; }
+    public DateTime? LastEventAt { get; set; }
+}
+
+public class DataRoomAnalyticsResponse
+{
+    public int TotalDocuments { get; set; }
+    public int TotalViews { get; set; }
+    public int TotalDownloads { get; set; }
+    public int UniqueInvestorsEngaged { get; set; }
+    public List<DocumentEngagementResponse> DocumentEngagement { get; set; } = new();
+    public List<InvestorEngagementResponse> InvestorEngagement { get; set; } = new();
+}
+
+public class AcceptNdaRequest
+{
+    public string NdaText { get; set; }
 }
 
 public class DataRoomStatusResponse

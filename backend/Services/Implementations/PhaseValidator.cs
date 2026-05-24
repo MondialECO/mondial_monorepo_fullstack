@@ -345,19 +345,62 @@ public class PhaseValidator : IPhaseValidator
             if (!company.IsDataRoomLive)
                 errors.Add("Data room must be published");
 
-            if (company.DataRoomDocuments == null || company.DataRoomDocuments.Count == 0)
+            var docs = company.DataRoomDocuments ?? new List<DataRoomDocumentResponse>();
+
+            if (docs.Count == 0)
+            {
                 errors.Add("Data room must contain at least one document");
+                return (false, errors);
+            }
 
-            var requiredCategories = new[] { "legal", "financial", "business" };
-            var uploadedCategories = company.DataRoomDocuments?
-                .Select(d => d.Category?.ToLower())
-                .Where(c => requiredCategories.Contains(c))
+            if (docs.Count < Phase6Requirements.MinDocumentCount)
+                errors.Add($"Data room must contain at least {Phase6Requirements.MinDocumentCount} documents (currently {docs.Count})");
+
+            // Per-document shape integrity (defends against malformed metadata
+            // written by a direct API spoof bypassing the controller validation).
+            for (var i = 0; i < docs.Count; i++)
+            {
+                var d = docs[i];
+                var label = string.IsNullOrWhiteSpace(d?.FileName) ? $"document #{i + 1}" : d.FileName;
+                if (d == null) { errors.Add($"Document row #{i + 1} is null"); continue; }
+                if (string.IsNullOrWhiteSpace(d.DocumentId))
+                    errors.Add($"Document '{label}': documentId is missing");
+                if (string.IsNullOrWhiteSpace(d.FileName))
+                    errors.Add($"Document #{i + 1}: fileName is missing");
+                if (string.IsNullOrWhiteSpace(d.StoragePath))
+                    errors.Add($"Document '{label}': storagePath is missing (malformed upload)");
+                if (d.FileSize <= 0)
+                    errors.Add($"Document '{label}': fileSize must be > 0");
+                if (!Phase6Requirements.IsAllowedCategory(d.Category))
+                    errors.Add($"Document '{label}': category '{d.Category}' is not in the allowed whitelist");
+            }
+
+            // Required categories present (case-insensitive).
+            var uploadedCategories = docs
+                .Select(d => (d.Category ?? string.Empty).ToLowerInvariant())
                 .Distinct()
-                .ToList() ?? new List<string>();
-
-            var missingCategories = requiredCategories.Except(uploadedCategories).ToList();
+                .ToList();
+            var missingCategories = Phase6Requirements.RequiredCategories
+                .Where(req => !uploadedCategories.Any(u => string.Equals(u, req, StringComparison.OrdinalIgnoreCase)))
+                .ToList();
             if (missingCategories.Count > 0)
                 errors.Add($"Missing required document categories: {string.Join(", ", missingCategories)}");
+
+            // Access record shape: every record must have an investorId + access level
+            // + non-past expiresAt. Phase 6 does not require any grants to exist (grants
+            // can be added post-phase), but malformed grants must not persist.
+            var grants = company.DataRoomAccessRecords ?? new List<DataRoomAccessRecord>();
+            for (var i = 0; i < grants.Count; i++)
+            {
+                var g = grants[i];
+                if (g == null) { errors.Add($"Access grant #{i + 1} is null"); continue; }
+                if (string.IsNullOrWhiteSpace(g.InvestorId))
+                    errors.Add($"Access grant #{i + 1}: investorId is missing");
+                if (string.IsNullOrWhiteSpace(g.AccessLevel))
+                    errors.Add($"Access grant for investor '{g.InvestorId}': accessLevel is missing");
+                if (g.ExpiresAt != default && g.ExpiresAt < DateTime.UtcNow)
+                    errors.Add($"Access grant for investor '{g.InvestorId}': expired at {g.ExpiresAt:o}");
+            }
 
             return (errors.Count == 0, errors);
         });

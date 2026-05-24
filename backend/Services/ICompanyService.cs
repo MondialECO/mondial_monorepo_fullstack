@@ -64,11 +64,17 @@ public interface ICompanyService
 
     // ============ PHASE 6: DATA ROOM ============
 
-    Task<DataRoomDocumentResponse> UploadDataRoomDocumentAsync(string companyId, UploadDataRoomDocumentRequest request);
+    Task<DataRoomDocumentResponse> UploadDataRoomDocumentAsync(string companyId, UploadDataRoomDocumentRequest request, string uploadedByUserId);
     Task<DataRoomStatusResponse> GetDataRoomStatusAsync(string companyId);
     Task<DataRoomStatusResponse> GrantDataRoomAccessAsync(string companyId, DataRoomAccessRequest request);
     Task RevokeDataRoomAccessAsync(string companyId, string investorId);
     Task UpdateNdaRequirementAsync(string companyId, bool required);
+    Task<DataRoomStatusResponse> PublishDataRoomAsync(string companyId);
+    Task<(byte[] Content, DataRoomDocumentResponse Document)> DownloadDataRoomDocumentAsync(string companyId, string documentId, string callerUserId, bool callerIsOwner);
+    Task<Phase6AccessLogResponse> TrackDataRoomEventAsync(string companyId, string documentId, string investorId, bool callerIsOwner, string eventType, string ipHash);
+    Task<DataRoomAnalyticsResponse> GetDataRoomAnalyticsAsync(string companyId);
+    Task<List<Phase6AccessLogResponse>> GetDataRoomActivityTimelineAsync(string companyId);
+    Task AcceptDataRoomNdaAsync(string companyId, string investorId, string ndaText, string ipHash);
 
     // ============ PHASE 7: AI REVIEW ============
 
