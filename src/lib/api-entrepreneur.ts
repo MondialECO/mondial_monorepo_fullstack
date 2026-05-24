@@ -167,9 +167,46 @@ export interface SaveFundingAskRequest {
   raiseAmount: number;
   roundType: "pre_seed" | "seed" | "series_a";
   preMoneyValuation: number;
-  shareType: "preferred" | "safe" | "note";
+  /** Optional at write time; required at Phase 5 advancement. */
+  equityOfferedPercent?: number;
+  shareType?: "preferred" | "safe" | "note";
   capitalAllocation: CapitalAllocation[];
   resourceMap: ResourceMap;
+}
+
+// Phase 5 — additional reads/writes
+export interface PitchDeckResponse {
+  fileName: string;
+  storagePath: string;
+  fileSize: number;
+  uploadedAt: string;
+}
+
+export interface FundingNarrativeResponse {
+  narrative: string;
+}
+
+export interface SaveFundingNarrativeRequest {
+  narrative: string;
+}
+
+export interface SaveOutreachCampaignRequest {
+  investorIds: string[];
+  template: string;
+}
+
+export interface FundingProfileResponse {
+  fundingAskAmount?: number;
+  fundingRoundType?: string;
+  preMoneyValuation?: number;
+  equityOfferedPercent?: number;
+  shareType?: string;
+  capitalAllocation: CapitalAllocation[];
+  resourceMap?: ResourceMap;
+  pitchDeckFileName?: string;
+  pitchDeckUploadedAt?: string;
+  fundingNarrative?: string;
+  hasOutreachCampaign: boolean;
 }
 
 // Phase 4 — Cap Table Submission
@@ -509,6 +546,63 @@ export const entrepreneurApi = {
     const response = await api.post(
       `/companies/${companyId}/funding-ask`,
       data
+    );
+    return response.data;
+  },
+
+  uploadPitchDeck: async (
+    companyId: string,
+    formData: FormData
+  ): Promise<PitchDeckResponse> => {
+    const response = await api.post<PitchDeckResponse>(
+      `/companies/${companyId}/pitch-deck`,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
+    return response.data;
+  },
+
+  getPitchDeck: async (
+    companyId: string
+  ): Promise<PitchDeckResponse | null> => {
+    const response = await api.get<PitchDeckResponse | null>(
+      `/companies/${companyId}/pitch-deck`
+    );
+    return response.data;
+  },
+
+  saveFundingNarrative: async (
+    companyId: string,
+    data: SaveFundingNarrativeRequest
+  ): Promise<{ narrative: string }> => {
+    const response = await api.post<{ narrative: string }>(
+      `/companies/${companyId}/funding-narrative`,
+      data
+    );
+    return response.data;
+  },
+
+  getFundingNarrative: async (
+    companyId: string
+  ): Promise<FundingNarrativeResponse> => {
+    const response = await api.get<FundingNarrativeResponse>(
+      `/companies/${companyId}/funding-narrative`
+    );
+    return response.data;
+  },
+
+  saveOutreachCampaign: async (
+    companyId: string,
+    data: SaveOutreachCampaignRequest
+  ): Promise<void> => {
+    await api.post(`/companies/${companyId}/outreach-campaign`, data);
+  },
+
+  getFundingProfile: async (
+    companyId: string
+  ): Promise<FundingProfileResponse> => {
+    const response = await api.get<FundingProfileResponse>(
+      `/companies/${companyId}/funding-profile`
     );
     return response.data;
   },

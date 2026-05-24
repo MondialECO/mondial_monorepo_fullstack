@@ -40,8 +40,8 @@ const PHASE_CONFIG: Record<PhaseNumber, PhaseConfig> = {
   },
   5: {
     phase: 5,
-    title: 'Needs & Funding Analysis',
-    description: 'Funding ask EUR 450K live',
+    title: 'Funding Submission',
+    description: 'Submit funding ask, pitch deck, and narrative for review',
     trustScore: 8,
     hasSteps: false,
   },

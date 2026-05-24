@@ -92,6 +92,8 @@ public class SaveFundingAskRequest
     public double RaiseAmount { get; set; }
     public string RoundType { get; set; } // pre_seed, seed, series_a
     public double PreMoneyValuation { get; set; }
+    /// <summary>Optional at write time; required at Phase 5 advancement.</summary>
+    public double? EquityOfferedPercent { get; set; }
     public string ShareType { get; set; } // preferred, safe, note
     public List<CapitalAllocationDto> CapitalAllocation { get; set; }
     public ResourceMapDto ResourceMap { get; set; }
@@ -537,4 +539,46 @@ public class ShareIssuanceResponse
     public double? PricePerShare { get; set; }
     public string Reason { get; set; }
     public DateTime IssuedAt { get; set; }
+}
+
+// ============ PHASE 5: PITCH DECK / NARRATIVE / FUNDING PROFILE ============
+
+public class PitchDeckUploadRequest
+{
+    public Microsoft.AspNetCore.Http.IFormFile File { get; set; }
+}
+
+public class PitchDeckResponse
+{
+    public string FileName { get; set; }
+    public string StoragePath { get; set; }
+    public long FileSize { get; set; }
+    public DateTime UploadedAt { get; set; }
+}
+
+public class FundingNarrativeResponse
+{
+    public string Narrative { get; set; }
+}
+
+public class FundingProfileResponse
+{
+    public double? FundingAskAmount { get; set; }
+    public string FundingRoundType { get; set; }
+    public double? PreMoneyValuation { get; set; }
+    public double? EquityOfferedPercent { get; set; }
+    public string ShareType { get; set; }
+    public List<CapitalAllocationDto> CapitalAllocation { get; set; } = new();
+    public ResourceMapDto ResourceMap { get; set; }
+    public string PitchDeckFileName { get; set; }
+    public DateTime? PitchDeckUploadedAt { get; set; }
+    public string FundingNarrative { get; set; }
+    public bool HasOutreachCampaign { get; set; }
+}
+
+public class OutreachCampaignResponse
+{
+    public string Template { get; set; }
+    public List<string> InvestorIds { get; set; } = new();
+    public DateTime? StartedAt { get; set; }
 }

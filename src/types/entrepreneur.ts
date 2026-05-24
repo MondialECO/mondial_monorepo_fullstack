@@ -74,6 +74,15 @@ export interface FinancialPreviewData {
   currentFunding: string;
 }
 
+export interface Phase5Data {
+  __companyId?: string;
+  fundingAskSavedAt?: string;
+  pitchDeckUploadedAt?: string;
+  narrativeSavedAt?: string;
+  outreachCampaignSavedAt?: string;
+  submittedAt?: string;
+}
+
 export interface Phase4Data {
   __companyId?: string;
   capTableSubmittedAt?: string;

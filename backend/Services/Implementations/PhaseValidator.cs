@@ -277,21 +277,60 @@ public class PhaseValidator : IPhaseValidator
         {
             var errors = new List<string>();
 
-            if (company.FundingAskAmount == null || company.FundingAskAmount <= 0)
+            if (company.FundingAskAmount == null ||
+                !double.IsFinite(company.FundingAskAmount.Value) ||
+                company.FundingAskAmount <= 0)
                 errors.Add("Funding ask amount is required");
 
             if (string.IsNullOrWhiteSpace(company.FundingRoundType))
                 errors.Add("Funding round type must be specified");
 
+            if (company.PreMoneyValuation == null ||
+                !double.IsFinite(company.PreMoneyValuation.Value) ||
+                company.PreMoneyValuation < Phase5Requirements.ValuationMin)
+                errors.Add($"Pre-money valuation must be >= {Phase5Requirements.ValuationMin}");
+
+            if (company.EquityOfferedPercent == null ||
+                !double.IsFinite(company.EquityOfferedPercent.Value) ||
+                company.EquityOfferedPercent <= Phase5Requirements.EquityOfferedMin ||
+                company.EquityOfferedPercent > Phase5Requirements.EquityOfferedMax)
+                errors.Add($"Equity offered must be between {Phase5Requirements.EquityOfferedMin} and {Phase5Requirements.EquityOfferedMax}%");
+
+            if (!Phase5Requirements.IsValidShareType(company.ShareType))
+                errors.Add($"Share type must be one of: {string.Join(", ", Phase5Requirements.ShareTypeWhitelist)}");
+
             if (company.CapitalAllocation == null || company.CapitalAllocation.Count == 0)
+            {
                 errors.Add("Capital allocation breakdown is required");
+            }
+            else
+            {
+                errors.AddRange(Phase5Requirements.ValidateAllocationRows(company.CapitalAllocation));
 
-            var allocationTotal = company.CapitalAllocation?.Sum(c => c.Percent) ?? 0;
-            if (allocationTotal < 95 || allocationTotal > 105)
-                errors.Add($"Capital allocation must total 100% (currently {allocationTotal:F2}%)");
+                var allocationTotal = company.CapitalAllocation
+                    .Where(c => c != null)
+                    .Sum(c => c.Percent);
+                if (!double.IsFinite(allocationTotal) ||
+                    allocationTotal < Phase5Requirements.AllocationMinTotalPercent ||
+                    allocationTotal > Phase5Requirements.AllocationMaxTotalPercent)
+                    errors.Add($"Capital allocation must total 100% (currently {allocationTotal:F2}%)");
+            }
 
-            if (company.ResourceMap?.HiringPlan?.Count == 0)
+            if (company.ResourceMap?.HiringPlan == null || company.ResourceMap.HiringPlan.Count == 0)
+            {
                 errors.Add("Hiring plan is required");
+            }
+            else
+            {
+                errors.AddRange(Phase5Requirements.ValidateHiringPlanRows(company.ResourceMap.HiringPlan));
+            }
+
+            if (string.IsNullOrWhiteSpace(company.PitchDeckFileName))
+                errors.Add("Pitch deck must be uploaded");
+
+            if (string.IsNullOrWhiteSpace(company.FundingNarrative) ||
+                company.FundingNarrative.Trim().Length < Phase5Requirements.NarrativeMinLength)
+                errors.Add($"Funding narrative must be at least {Phase5Requirements.NarrativeMinLength} characters");
 
             return (errors.Count == 0, errors);
         });
