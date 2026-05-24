@@ -81,6 +81,7 @@ public interface ICompanyService
     Task<AiReviewResponse> RunAiReviewAsync(string companyId);
     Task<AiReviewResponse> GetAiReviewScoreAsync(string companyId);
     Task<List<RecommendationDto>> GetRecommendationsAsync(string companyId);
+    Task<List<Phase7ReviewSnapshot>> GetAiReviewHistoryAsync(string companyId);
     Task AwardInvestorReadyBadgeAsync(string companyId);
 
     // ============ PHASE 8: INVESTOR MATCHING ============

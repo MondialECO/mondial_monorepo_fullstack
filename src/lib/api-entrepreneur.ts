@@ -419,6 +419,17 @@ export interface AiReviewResponse {
   reviewedAt: string;
 }
 
+export interface AiReviewHistoryEntry {
+  id: string;
+  companyId: string;
+  overallScore: number;
+  scoreBreakdown: ScoreBreakdownDto;
+  investorReadyBadge: boolean;
+  recommendations: RecommendationDto[];
+  reviewedAt: string;
+  engineVersion: string;
+}
+
 // Phase 8
 export interface InvestorMatchResponse {
   matchId: string;
@@ -960,6 +971,15 @@ export const entrepreneurApi = {
   awardInvestorReadyBadge: async (companyId: string) => {
     const response = await api.post(
       `/companies/${companyId}/investor-ready`
+    );
+    return response.data;
+  },
+
+  getAiReviewHistory: async (
+    companyId: string
+  ): Promise<AiReviewHistoryEntry[]> => {
+    const response = await api.get<AiReviewHistoryEntry[]>(
+      `/companies/${companyId}/ai-review/history`
     );
     return response.data;
   },

@@ -1329,6 +1329,29 @@ public class CompanyController : ControllerBase
         }
     }
 
+    [HttpGet("{companyId}/ai-review/history")]
+    public async Task<ActionResult<List<Phase7ReviewSnapshot>>> GetAiReviewHistory(string companyId)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureCompanyOwnershipAsync(companyId);
+            var result = await _companyService.GetAiReviewHistoryAsync(companyId);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting review history");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
     // ============ PHASE 8: INVESTOR MATCHING ============
 
     [HttpGet("{companyId}/investor-matches")]

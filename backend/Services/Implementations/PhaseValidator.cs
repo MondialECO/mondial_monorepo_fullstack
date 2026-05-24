@@ -413,13 +413,22 @@ public class PhaseValidator : IPhaseValidator
             var errors = new List<string>();
 
             if (company.AiReview == null)
-                errors.Add("AI review must be completed");
+            {
+                errors.Add("Automated readiness review must be completed");
+                return (false, errors);
+            }
 
-            if (company.AiReview?.OverallScore < 60)
-                errors.Add($"AI review score must be at least 60 (currently {company.AiReview?.OverallScore})");
+            if (!Phase7Requirements.MeetsAdvanceThreshold(company.AiReview.OverallScore))
+                errors.Add($"Review score must be at least {Phase7Requirements.ScoreThresholdForAdvance} (currently {company.AiReview.OverallScore})");
 
-            if (!company.AiReview?.InvestorReadyBadge ?? false)
-                errors.Add("Company must receive investor-ready badge");
+            if (!company.AiReview.InvestorReadyBadge)
+                errors.Add("Latest review did not award the investor-ready badge");
+
+            // Freshness — review must reflect the current company state.
+            var reviewedAt = company.LastAiReviewAt ?? company.AiReview.ReviewedAt;
+            if (!Phase7Requirements.IsFreshEnough(reviewedAt))
+                errors.Add(
+                    $"Review is stale (run at {reviewedAt:o}, max age {Phase7Requirements.MaxReviewAgeForAdvance.TotalDays:F0} days) — rerun before advancing");
 
             return (errors.Count == 0, errors);
         });
