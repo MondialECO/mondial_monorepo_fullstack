@@ -182,22 +182,93 @@ public class PhaseValidator : IPhaseValidator
 
     public async Task<(bool IsValid, List<string> Errors)> ValidatePhase4Async(Companies company)
     {
-        return await Task.Run(() =>
+        var errors = new List<string>();
+
+        // Latest submitted cap table (versioned, authoritative for Phase 4 review).
+        var capTable = await _dbContext.Phase4CapTables
+            .Find(c => c.CompanyId == company.Id)
+            .SortByDescending(c => c.RecordedAt)
+            .FirstOrDefaultAsync();
+
+        if (capTable == null)
         {
-            var errors = new List<string>();
+            errors.Add("Cap table must be submitted");
+            return (false, errors);
+        }
 
-            if (company.EquityStructure == null || company.EquityStructure.Count == 0)
-                errors.Add("Cap table must be defined");
+        if (capTable.TotalShares <= 0)
+            errors.Add("Total shares must be > 0");
 
-            if (company.TotalShares == null || company.TotalShares <= 0)
-                errors.Add("Total shares must be set");
+        if (capTable.Grants == null || capTable.Grants.Count == 0)
+        {
+            errors.Add("Cap table must contain at least one grant");
+            return (false, errors);
+        }
 
-            var totalOwnership = company.EquityStructure?.Sum(e => (e.SharesOwned / (double)company.TotalShares) * 100) ?? 0;
-            if (totalOwnership < 90 || totalOwnership > 100)
-                errors.Add($"Cap table must total 100% (currently {totalOwnership:F2}%)");
+        // No negative ownership.
+        if (capTable.Grants.Any(g => g.SharesGranted < 0))
+            errors.Add("Cap table contains negative share grants");
 
-            return (errors.Count == 0, errors);
-        });
+        // Issued shares <= total, and reconcile to ~100% of total.
+        var issued = capTable.Grants.Sum(g => g.SharesGranted);
+        if (issued > capTable.TotalShares)
+            errors.Add($"Issued shares ({issued}) exceed total authorised shares ({capTable.TotalShares})");
+
+        var issuedPercent = capTable.TotalShares > 0
+            ? (issued / (double)capTable.TotalShares) * 100.0 : 0;
+        if (issuedPercent <= Phase4Requirements.OwnershipMinPercent)
+            errors.Add("Ownership totals must be > 0%");
+        if (issuedPercent > Phase4Requirements.OwnershipMaxPercent)
+            errors.Add($"Ownership totals must be <= 100% (currently {issuedPercent:F2}%)");
+        if (issuedPercent < Phase4Requirements.OwnershipReconciledMin ||
+            issuedPercent > Phase4Requirements.OwnershipReconciledMax)
+            errors.Add($"Cap table must reconcile to ~100% of total shares (currently {issuedPercent:F2}%)");
+
+        // Founder presence.
+        if (!capTable.Grants.Any(g =>
+                string.Equals(g.StakeholderType, "founder", StringComparison.OrdinalIgnoreCase)))
+            errors.Add("At least one founder grant is required");
+
+        // Valid share class on every grant.
+        foreach (var g in capTable.Grants)
+        {
+            if (!ShareClasses.IsValid(g.ShareClass))
+                errors.Add($"Grant '{g.StakeholderName}': invalid share class '{g.ShareClass}'");
+        }
+
+        // Duplicate share-class rows for the same stakeholder.
+        var dupKeys = capTable.Grants
+            .GroupBy(g => $"{(g.StakeholderName ?? string.Empty).Trim().ToLowerInvariant()}::{(g.ShareClass ?? string.Empty).Trim().ToLowerInvariant()}")
+            .Where(grp => grp.Count() > 1)
+            .Select(grp => grp.Key)
+            .ToList();
+        foreach (var k in dupKeys)
+            errors.Add($"Duplicate cap-table row detected for {k.Replace("::", " / ")}");
+
+        // ESOP allocation sanity.
+        if (capTable.EsopPoolPercent < 0 || capTable.EsopPoolPercent > 100)
+            errors.Add("ESOP pool percent must be between 0 and 100");
+        if (capTable.EsopPoolPercent > 0 && capTable.EsopVestingMonths <= 0)
+            errors.Add("ESOP vesting months must be > 0 when ESOP pool is non-zero");
+
+        // Vesting schedule validity (per grant inline + standalone schedules).
+        foreach (var g in capTable.Grants)
+            errors.AddRange(Phase4Requirements.ValidateVesting(
+                g.CliffMonths, g.TotalVestMonths,
+                string.IsNullOrWhiteSpace(g.StakeholderName) ? "grant" : g.StakeholderName));
+
+        var vestingSchedules = await _dbContext.Phase4VestingSchedules
+            .Find(v => v.CompanyId == company.Id)
+            .ToListAsync();
+        foreach (var v in vestingSchedules)
+        {
+            if (v.SharesGranted <= 0)
+                errors.Add($"Vesting schedule for '{v.StakeholderName}': shares must be > 0");
+            errors.AddRange(Phase4Requirements.ValidateVesting(
+                v.CliffMonths, v.TotalVestMonths, $"vesting for {v.StakeholderName}"));
+        }
+
+        return (errors.Count == 0, errors);
     }
 
     public async Task<(bool IsValid, List<string> Errors)> ValidatePhase5Async(Companies company)

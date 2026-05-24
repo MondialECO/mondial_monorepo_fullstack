@@ -172,6 +172,105 @@ export interface SaveFundingAskRequest {
   resourceMap: ResourceMap;
 }
 
+// Phase 4 — Cap Table Submission
+export interface EquityGrantDto {
+  grantId?: string;
+  stakeholderName: string;
+  stakeholderType: 'founder' | 'investor' | 'advisor' | 'esop';
+  shareClass: 'common' | 'preferred' | 'safe' | 'note';
+  sharesGranted: number;
+  investmentAmount?: number;
+  grantDate?: string;
+  cliffMonths: number;
+  totalVestMonths: number;
+}
+
+export interface SubmitCapTableRequest {
+  totalShares: number;
+  esopPoolPercent: number;
+  esopVestingMonths: number;
+  grants: EquityGrantDto[];
+}
+
+export interface CapTableSnapshotResponse {
+  capTableId: string;
+  version: number;
+  totalShares: number;
+  esopPoolPercent: number;
+  esopVestingMonths: number;
+  grants: EquityGrantDto[];
+  recordedAt: string;
+}
+
+export interface VestingScheduleEntryDto {
+  grantId?: string;
+  stakeholderName: string;
+  sharesGranted: number;
+  grantDate: string;
+  cliffMonths: number;
+  totalVestMonths: number;
+}
+
+export interface SaveVestingScheduleRequest {
+  entries: VestingScheduleEntryDto[];
+}
+
+export interface VestingScheduleResponse {
+  grantId: string;
+  stakeholderName: string;
+  sharesGranted: number;
+  grantDate: string;
+  cliffMonths: number;
+  totalVestMonths: number;
+  vestedPercentNow: number;
+  vestedSharesNow: number;
+}
+
+export interface OwnershipHistoryEntryDto {
+  roundName: string;
+  eventDate?: string;
+  founderOwnershipBefore: number;
+  founderOwnershipAfter: number;
+  investorOwnership: number;
+  esopOwnership: number;
+  valuation: number;
+  notes?: string;
+}
+
+export interface SaveOwnershipHistoryRequest {
+  entries: OwnershipHistoryEntryDto[];
+}
+
+export interface OwnershipHistoryResponse {
+  roundName: string;
+  eventDate: string;
+  founderOwnershipBefore: number;
+  founderOwnershipAfter: number;
+  investorOwnership: number;
+  esopOwnership: number;
+  valuation: number;
+  notes?: string;
+  recordedAt: string;
+}
+
+export interface RecordShareIssuanceRequest {
+  issuedTo: string;
+  shareClass: 'common' | 'preferred' | 'safe' | 'note';
+  sharesIssued: number;
+  pricePerShare?: number;
+  reason?: string;
+}
+
+export interface ShareIssuanceResponse {
+  issuanceId: string;
+  issuedTo: string;
+  shareClass: string;
+  sharesIssued: number;
+  pricePerShare?: number;
+  reason?: string;
+  issuedAt: string;
+}
+
 // Phase 4
 export interface DilutionScenario {
   round: string;
@@ -508,6 +607,77 @@ export const entrepreneurApi = {
   ): Promise<DilutionSimulationResponse> => {
     const response = await api.post<DilutionSimulationResponse>(
       `/companies/${companyId}/dilution-simulation`,
+      data
+    );
+    return response.data;
+  },
+
+  submitCapTable: async (
+    companyId: string,
+    data: SubmitCapTableRequest
+  ): Promise<CapTableSnapshotResponse> => {
+    const response = await api.post<CapTableSnapshotResponse>(
+      `/companies/${companyId}/cap-table`,
+      data
+    );
+    return response.data;
+  },
+
+  getLatestCapTableSnapshot: async (
+    companyId: string
+  ): Promise<CapTableSnapshotResponse | null> => {
+    const response = await api.get<CapTableSnapshotResponse | null>(
+      `/companies/${companyId}/cap-table/snapshot`
+    );
+    return response.data;
+  },
+
+  saveVestingSchedules: async (
+    companyId: string,
+    data: SaveVestingScheduleRequest
+  ): Promise<VestingScheduleResponse[]> => {
+    const response = await api.post<VestingScheduleResponse[]>(
+      `/companies/${companyId}/vesting`,
+      data
+    );
+    return response.data;
+  },
+
+  getVestingSchedules: async (
+    companyId: string
+  ): Promise<VestingScheduleResponse[]> => {
+    const response = await api.get<VestingScheduleResponse[]>(
+      `/companies/${companyId}/vesting`
+    );
+    return response.data;
+  },
+
+  saveOwnershipHistory: async (
+    companyId: string,
+    data: SaveOwnershipHistoryRequest
+  ): Promise<OwnershipHistoryResponse[]> => {
+    const response = await api.post<OwnershipHistoryResponse[]>(
+      `/companies/${companyId}/ownership-history`,
+      data
+    );
+    return response.data;
+  },
+
+  getOwnershipHistory: async (
+    companyId: string
+  ): Promise<OwnershipHistoryResponse[]> => {
+    const response = await api.get<OwnershipHistoryResponse[]>(
+      `/companies/${companyId}/ownership-history`
+    );
+    return response.data;
+  },
+
+  recordShareIssuance: async (
+    companyId: string,
+    data: RecordShareIssuanceRequest
+  ): Promise<ShareIssuanceResponse> => {
+    const response = await api.post<ShareIssuanceResponse>(
+      `/companies/${companyId}/share-issuance`,
       data
     );
     return response.data;

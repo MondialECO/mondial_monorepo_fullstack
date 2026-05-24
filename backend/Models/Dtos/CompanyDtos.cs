@@ -427,3 +427,114 @@ public class FinancialReportResponse
     public string StoragePath { get; set; }
     public string ReviewNote { get; set; }
 }
+
+// ============ PHASE 4: CAP TABLE / VESTING / OWNERSHIP HISTORY / ISSUANCE ============
+
+public class EquityGrantDto
+{
+    public string GrantId { get; set; }
+    public string StakeholderName { get; set; }
+    public string StakeholderType { get; set; } // founder | investor | advisor | esop
+    public string ShareClass { get; set; }       // common | preferred | safe | note
+    public int SharesGranted { get; set; }
+    public double? InvestmentAmount { get; set; }
+    public DateTime? GrantDate { get; set; }
+    public int CliffMonths { get; set; }
+    public int TotalVestMonths { get; set; }
+}
+
+public class SubmitCapTableRequest
+{
+    public int TotalShares { get; set; }
+    public double EsopPoolPercent { get; set; }
+    public int EsopVestingMonths { get; set; }
+    public List<EquityGrantDto> Grants { get; set; } = new();
+}
+
+public class CapTableSnapshotResponse
+{
+    public string CapTableId { get; set; }
+    public int Version { get; set; }
+    public int TotalShares { get; set; }
+    public double EsopPoolPercent { get; set; }
+    public int EsopVestingMonths { get; set; }
+    public List<EquityGrantDto> Grants { get; set; } = new();
+    public DateTime RecordedAt { get; set; }
+}
+
+public class SaveVestingScheduleRequest
+{
+    public List<VestingScheduleEntryDto> Entries { get; set; } = new();
+}
+
+public class VestingScheduleEntryDto
+{
+    public string GrantId { get; set; }
+    public string StakeholderName { get; set; }
+    public int SharesGranted { get; set; }
+    public DateTime GrantDate { get; set; }
+    public int CliffMonths { get; set; }
+    public int TotalVestMonths { get; set; }
+}
+
+public class VestingScheduleResponse
+{
+    public string GrantId { get; set; }
+    public string StakeholderName { get; set; }
+    public int SharesGranted { get; set; }
+    public DateTime GrantDate { get; set; }
+    public int CliffMonths { get; set; }
+    public int TotalVestMonths { get; set; }
+    public double VestedPercentNow { get; set; }
+    public int VestedSharesNow { get; set; }
+}
+
+public class SaveOwnershipHistoryRequest
+{
+    public List<OwnershipHistoryEntryDto> Entries { get; set; } = new();
+}
+
+public class OwnershipHistoryEntryDto
+{
+    public string RoundName { get; set; }
+    public DateTime? EventDate { get; set; }
+    public double FounderOwnershipBefore { get; set; }
+    public double FounderOwnershipAfter { get; set; }
+    public double InvestorOwnership { get; set; }
+    public double EsopOwnership { get; set; }
+    public double Valuation { get; set; }
+    public string Notes { get; set; }
+}
+
+public class OwnershipHistoryResponse
+{
+    public string RoundName { get; set; }
+    public DateTime EventDate { get; set; }
+    public double FounderOwnershipBefore { get; set; }
+    public double FounderOwnershipAfter { get; set; }
+    public double InvestorOwnership { get; set; }
+    public double EsopOwnership { get; set; }
+    public double Valuation { get; set; }
+    public string Notes { get; set; }
+    public DateTime RecordedAt { get; set; }
+}
+
+public class RecordShareIssuanceRequest
+{
+    public string IssuedTo { get; set; }
+    public string ShareClass { get; set; }
+    public int SharesIssued { get; set; }
+    public double? PricePerShare { get; set; }
+    public string Reason { get; set; }
+}
+
+public class ShareIssuanceResponse
+{
+    public string IssuanceId { get; set; }
+    public string IssuedTo { get; set; }
+    public string ShareClass { get; set; }
+    public int SharesIssued { get; set; }
+    public double? PricePerShare { get; set; }
+    public string Reason { get; set; }
+    public DateTime IssuedAt { get; set; }
+}

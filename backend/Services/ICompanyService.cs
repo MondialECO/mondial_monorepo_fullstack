@@ -45,6 +45,14 @@ public interface ICompanyService
     Task<SaveEquityStructureRequest> GetCapTableAsync(string companyId);
     Task<DilutionSimulationResponse> SimulateDilutionAsync(string companyId, SimulateDilutionRequest request);
 
+    Task<CapTableSnapshotResponse> SubmitCapTableAsync(string companyId, SubmitCapTableRequest request);
+    Task<CapTableSnapshotResponse?> GetLatestCapTableSnapshotAsync(string companyId);
+    Task<List<VestingScheduleResponse>> SaveVestingSchedulesAsync(string companyId, SaveVestingScheduleRequest request);
+    Task<List<VestingScheduleResponse>> GetVestingSchedulesAsync(string companyId);
+    Task<List<OwnershipHistoryResponse>> SaveOwnershipHistoryAsync(string companyId, SaveOwnershipHistoryRequest request);
+    Task<List<OwnershipHistoryResponse>> GetOwnershipHistoryAsync(string companyId);
+    Task<ShareIssuanceResponse> RecordShareIssuanceAsync(string companyId, RecordShareIssuanceRequest request);
+
     // ============ PHASE 5: FUNDING ASK & PITCH ============
 
     Task<Companies> SavePitchDeckAsync(string companyId, string fileName, Stream fileStream);
