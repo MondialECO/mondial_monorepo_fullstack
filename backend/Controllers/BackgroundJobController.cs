@@ -1,5 +1,8 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using WebApp.Models.DatabaseModels;
 using WebApp.Services;
 
 namespace WebApp.Controllers;
@@ -10,14 +13,39 @@ namespace WebApp.Controllers;
 public class BackgroundJobController : ControllerBase
 {
     private readonly IBackgroundJobService _backgroundJobService;
+    private readonly ICompanyService _companyService;
+    private readonly UserManager<ApplicationUser> _userManager;
     private readonly ILogger<BackgroundJobController> _logger;
 
     public BackgroundJobController(
         IBackgroundJobService backgroundJobService,
+        ICompanyService companyService,
+        UserManager<ApplicationUser> userManager,
         ILogger<BackgroundJobController> logger)
     {
         _backgroundJobService = backgroundJobService;
+        _companyService = companyService;
+        _userManager = userManager;
         _logger = logger;
+    }
+
+    private string GetUserId()
+        => User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? throw new UnauthorizedAccessException("User not authenticated");
+
+    private async Task EnsureUniversalPhase1CompleteAsync(string userId)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null || (user.Onboarding?.Phase ?? 0) < 1)
+            throw new UnauthorizedAccessException("User must complete Universal Phase 1 onboarding before enqueuing jobs.");
+    }
+
+    private async Task EnsureCompanyOwnershipAsync(string companyId)
+    {
+        var userId = GetUserId();
+        var company = await _companyService.GetCompanyAsync(companyId);
+        if (!string.Equals(company.OwnerId, userId, StringComparison.Ordinal))
+            throw new UnauthorizedAccessException("You are not allowed to enqueue jobs for this company.");
     }
 
     [HttpPost("{companyId}/ai-review")]
@@ -25,9 +53,17 @@ public class BackgroundJobController : ControllerBase
     {
         try
         {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureCompanyOwnershipAsync(companyId);
             var jobId = _backgroundJobService.EnqueueAiReview(companyId);
             _logger.LogInformation($"AI review job {jobId} enqueued for company {companyId}");
             return Accepted(new { jobId, status = "queued" });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
         }
         catch (Exception ex)
         {

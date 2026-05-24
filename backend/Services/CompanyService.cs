@@ -1368,12 +1368,29 @@ public class CompanyService : ICompanyService
 
         var review = await _aiReviewEngine.RunReviewAsync(company);
 
+        // Mirror the latest snapshot to the company doc for the cheap
+        // "current score" read path used by the frontend.
         company.AiReview = review;
-        company.LastAiReviewAt = DateTime.UtcNow;
+        company.LastAiReviewAt = review.ReviewedAt;
         company.UpdatedAt = DateTime.UtcNow;
 
         var filter = Builders<Companies>.Filter.Eq(c => c.Id, companyId);
         await _dbContext.Companies.ReplaceOneAsync(filter, company);
+
+        // Persist an immutable history snapshot so trends + the badge-award
+        // audit trail survive future re-runs.
+        var snapshot = new Phase7ReviewSnapshot
+        {
+            Id = ObjectId.GenerateNewId().ToString(),
+            CompanyId = companyId,
+            OverallScore = review.OverallScore,
+            ScoreBreakdown = review.ScoreBreakdown,
+            InvestorReadyBadge = review.InvestorReadyBadge,
+            Recommendations = review.Recommendations ?? new List<RecommendationDto>(),
+            ReviewedAt = review.ReviewedAt,
+            EngineVersion = "rule_based_v1",
+        };
+        await _dbContext.Phase7ReviewSnapshots.InsertOneAsync(snapshot);
 
         return review;
     }
@@ -1381,7 +1398,7 @@ public class CompanyService : ICompanyService
     public async Task<AiReviewResponse> GetAiReviewScoreAsync(string companyId)
     {
         var company = await GetCompanyAsync(companyId);
-        return company.AiReview ?? throw new InvalidOperationException("No AI review found for this company");
+        return company.AiReview ?? throw new InvalidOperationException("No automated review found for this company");
     }
 
     public async Task<List<RecommendationDto>> GetRecommendationsAsync(string companyId)
@@ -1390,9 +1407,42 @@ public class CompanyService : ICompanyService
         return company.AiReview?.Recommendations ?? new List<RecommendationDto>();
     }
 
+    public async Task<List<Phase7ReviewSnapshot>> GetAiReviewHistoryAsync(string companyId)
+    {
+        await GetCompanyAsync(companyId);
+        return await _dbContext.Phase7ReviewSnapshots
+            .Find(s => s.CompanyId == companyId)
+            .SortByDescending(s => s.ReviewedAt)
+            .ToListAsync();
+    }
+
     public async Task AwardInvestorReadyBadgeAsync(string companyId)
     {
         var company = await GetCompanyAsync(companyId);
+
+        // Hard precondition: a valid, passing review must exist on the
+        // company. Without this gate, a direct POST /investor-ready can
+        // fake the company-level IsInvestorReady flag — visible downstream
+        // even though the validator catches the spoof at advancePhase time.
+        if (company.AiReview == null)
+            throw new InvalidOperationException("Cannot award badge: no automated review has been run");
+        if (!Phase7Requirements.MeetsBadgeThreshold(company.AiReview.OverallScore))
+            throw new InvalidOperationException(
+                $"Cannot award badge: review score {company.AiReview.OverallScore} is below the {Phase7Requirements.ScoreThresholdForBadge} threshold");
+        if (!company.AiReview.InvestorReadyBadge)
+            throw new InvalidOperationException(
+                "Cannot award badge: latest review did not award InvestorReadyBadge");
+
+        // Freshness gate: same window the phase validator enforces. Without
+        // this, a stale-but-passing review can be used to flip IsInvestorReady
+        // long after the underlying Phase 2-6 data has drifted.
+        var reviewedAt = company.LastAiReviewAt ?? company.AiReview.ReviewedAt;
+        if (!Phase7Requirements.IsFreshEnough(reviewedAt))
+        {
+            throw new InvalidOperationException(
+                "Cannot award badge: latest automated review is stale. Rerun the review before awarding investor-ready status.");
+        }
+
         company.IsInvestorReady = true;
         company.InvestorReadyBadgeAwardedAt = DateTime.UtcNow;
         company.UpdatedAt = DateTime.UtcNow;

@@ -74,6 +74,14 @@ export interface FinancialPreviewData {
   currentFunding: string;
 }
 
+export interface Phase7Data {
+  __companyId?: string;
+  lastReviewRunAt?: string;
+  lastReviewScore?: number;
+  badgeAwardedAt?: string;
+  submittedAt?: string;
+}
+
 export interface Phase6Data {
   __companyId?: string;
   documentsUploadedCount?: number;
