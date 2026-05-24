@@ -1,3 +1,5 @@
+using MongoDB.Driver;
+using WebApp.DbContext;
 using WebApp.Models.DatabaseModels;
 using WebApp.Models.Dtos;
 
@@ -5,6 +7,13 @@ namespace WebApp.Services.Implementations;
 
 public class PhaseValidator : IPhaseValidator
 {
+    private readonly MongoDbContext _dbContext;
+
+    public PhaseValidator(MongoDbContext dbContext)
+    {
+        _dbContext = dbContext;
+    }
+
     public async Task<(bool IsValid, List<string> Errors)> ValidatePhase1Async(Companies company)
     {
         return await Task.Run(() =>
@@ -90,28 +99,85 @@ public class PhaseValidator : IPhaseValidator
 
     public async Task<(bool IsValid, List<string> Errors)> ValidatePhase3Async(Companies company)
     {
-        return await Task.Run(() =>
+        var errors = new List<string>();
+
+        // Revenue ----------------------------------------------------------
+        var totalRevenue = (company.Q1Revenue ?? 0) + (company.Q2Revenue ?? 0) + (company.Q3Revenue ?? 0) + (company.Q4Revenue ?? 0);
+        if (totalRevenue <= 0)
+            errors.Add("Must have positive quarterly revenue data");
+
+        // Valuation --------------------------------------------------------
+        if (company.Valuation == null || company.Valuation <= 0)
+            errors.Add("Valuation must be calculated");
+
+        // Equity totals reconcile to TotalShares (90-100%) -----------------
+        if (company.EquityStructure == null || company.EquityStructure.Count == 0)
         {
-            var errors = new List<string>();
+            errors.Add("Equity structure must be defined");
+        }
+        else if (company.TotalShares == null || company.TotalShares <= 0)
+        {
+            errors.Add("Total shares must be set");
+        }
+        else
+        {
+            var totalOwnershipPercent = company.EquityStructure.Sum(e => (e.SharesOwned / (double)company.TotalShares) * 100);
+            if (totalOwnershipPercent < Phase3Requirements.EquityMinPercentOfTotalShares ||
+                totalOwnershipPercent > Phase3Requirements.EquityMaxPercentOfTotalShares)
+                errors.Add($"Equity ownership must total ~100% of TotalShares (currently {totalOwnershipPercent:F2}%)");
+        }
 
-            var totalRevenue = (company.Q1Revenue ?? 0) + (company.Q2Revenue ?? 0) + (company.Q3Revenue ?? 0) + (company.Q4Revenue ?? 0);
-            if (totalRevenue <= 0)
-                errors.Add("Must have positive quarterly revenue data");
+        // Funding ask ------------------------------------------------------
+        if (company.FundingAskAmount == null || company.FundingAskAmount <= 0)
+            errors.Add("Funding ask amount is required");
 
-            if (company.Valuation == null || company.Valuation <= 0)
-                errors.Add("Valuation must be calculated");
+        if (string.IsNullOrWhiteSpace(company.FundingRoundType))
+            errors.Add("Funding round type must be specified");
 
-            if (company.EquityStructure == null || company.EquityStructure.Count == 0)
-                errors.Add("Equity structure must be defined");
+        // Capital allocation total (95-105%) when provided -----------------
+        if (company.CapitalAllocation != null && company.CapitalAllocation.Count > 0)
+        {
+            var allocationTotal = company.CapitalAllocation.Sum(c => c.Percent);
+            if (allocationTotal < Phase3Requirements.AllocationMinTotalPercent ||
+                allocationTotal > Phase3Requirements.AllocationMaxTotalPercent)
+                errors.Add($"Capital allocation must total ~100% (currently {allocationTotal:F2}%)");
+        }
+        else
+        {
+            errors.Add("Capital allocation breakdown is required");
+        }
 
-            if (company.FundingAskAmount == null || company.FundingAskAmount <= 0)
-                errors.Add("Funding ask amount is required");
+        // Cash position ----------------------------------------------------
+        if (company.MonthlyBurn == null || company.MonthlyBurn <= 0)
+            errors.Add("Monthly burn rate is required (> 0)");
+        if (company.CurrentFunds == null || company.CurrentFunds < 0)
+            errors.Add("Current funds must be set (>= 0)");
 
-            if (string.IsNullOrWhiteSpace(company.FundingRoundType))
-                errors.Add("Funding round type must be specified");
+        // KPI baseline -----------------------------------------------------
+        var latestKpi = await _dbContext.Phase3Kpis
+            .Find(k => k.CompanyId == company.Id)
+            .SortByDescending(k => k.RecordedAt)
+            .FirstOrDefaultAsync();
 
-            return (errors.Count == 0, errors);
-        });
+        var kpiErrors = Phase3Requirements.ValidateKpiBaseline(latestKpi);
+        errors.AddRange(kpiErrors);
+
+        // Required financial reports submitted (non-rejected) --------------
+        var reports = await _dbContext.Phase3FinancialReports
+            .Find(r => r.CompanyId == company.Id)
+            .ToListAsync();
+
+        foreach (var requiredType in Phase3Requirements.RequiredReportTypes)
+        {
+            var hasAcceptable = reports.Any(r =>
+                Phase3Requirements.MatchesReportType(r.Type, requiredType) &&
+                Phase3Requirements.IsAcceptableReportStatus(r.Status));
+
+            if (!hasAcceptable)
+                errors.Add($"Required financial report '{requiredType}' is missing or rejected");
+        }
+
+        return (errors.Count == 0, errors);
     }
 
     public async Task<(bool IsValid, List<string> Errors)> ValidatePhase4Async(Companies company)

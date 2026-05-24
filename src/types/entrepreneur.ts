@@ -74,6 +74,18 @@ export interface FinancialPreviewData {
   currentFunding: string;
 }
 
+export interface Phase3Data {
+  __companyId?: string;
+  revenueSavedAt?: string;
+  cashPositionSavedAt?: string;
+  valuationCalculatedAt?: string;
+  equitySavedAt?: string;
+  fundingAskSavedAt?: string;
+  kpiBaselineSavedAt?: string;
+  reportsSubmittedCount?: number;
+  submittedAt?: string;
+}
+
 export interface Phase2Data {
   legalIdentity?: LegalIdentityData;
   documents?: DocumentUploadData;

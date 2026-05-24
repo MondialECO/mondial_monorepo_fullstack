@@ -391,6 +391,170 @@ public class CompanyController : ControllerBase
         }
     }
 
+    [HttpPost("{companyId}/cash-position")]
+    public async Task<ActionResult> SaveCashPosition(string companyId, [FromBody] SaveCashPositionRequest request)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureCompanyOwnershipAsync(companyId);
+            var company = await _companyService.SaveCashPositionAsync(companyId, request);
+            return Ok(new { currentFunds = company.CurrentFunds, monthlyBurn = company.MonthlyBurn });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saving cash position");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpPost("{companyId}/monthly-revenue")]
+    public async Task<ActionResult<List<MonthlyRevenueResponse>>> SaveMonthlyRevenue(
+        string companyId, [FromBody] SaveMonthlyRevenueRequest request)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureCompanyOwnershipAsync(companyId);
+            var result = await _companyService.SaveMonthlyRevenueAsync(companyId, request);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saving monthly revenue");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpGet("{companyId}/monthly-revenue")]
+    public async Task<ActionResult<List<MonthlyRevenueResponse>>> GetMonthlyRevenue(string companyId)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureCompanyOwnershipAsync(companyId);
+            var result = await _companyService.GetMonthlyRevenueAsync(companyId);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error reading monthly revenue");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpPost("{companyId}/kpis")]
+    public async Task<ActionResult<KpiBaselineResponse>> SaveKpiBaseline(
+        string companyId, [FromBody] SaveKpiBaselineRequest request)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureCompanyOwnershipAsync(companyId);
+            var result = await _companyService.SaveKpiBaselineAsync(companyId, request);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saving KPI baseline");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpGet("{companyId}/kpis")]
+    public async Task<ActionResult<KpiBaselineResponse?>> GetKpiBaseline(string companyId)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureCompanyOwnershipAsync(companyId);
+            var result = await _companyService.GetKpiBaselineAsync(companyId);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error reading KPI baseline");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpPost("{companyId}/financial-reports")]
+    public async Task<ActionResult<FinancialReportResponse>> UploadFinancialReport(
+        string companyId, [FromForm] FinancialReportUploadRequest request)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureCompanyOwnershipAsync(companyId);
+            var result = await _companyService.UploadFinancialReportAsync(companyId, request);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error uploading financial report");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpGet("{companyId}/financial-reports")]
+    public async Task<ActionResult<List<FinancialReportResponse>>> GetFinancialReports(string companyId)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureCompanyOwnershipAsync(companyId);
+            var result = await _companyService.GetFinancialReportsAsync(companyId);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error reading financial reports");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
     // ============ PHASE 4: EQUITY & DILUTION ============
 
     [HttpGet("{companyId}/cap-table")]

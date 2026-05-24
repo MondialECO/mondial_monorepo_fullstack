@@ -356,3 +356,74 @@ public class AdvancePhaseRequest
 {
     public int PhaseNumber { get; set; }
 }
+
+// ============ PHASE 3: CASH POSITION / KPI / MONTHLY REVENUE / REPORTS ============
+
+public class SaveCashPositionRequest
+{
+    public double CurrentFunds { get; set; }
+    public double MonthlyBurn { get; set; }
+}
+
+public class SaveMonthlyRevenueRequest
+{
+    public List<MonthlyRevenueEntryDto> Entries { get; set; } = new();
+}
+
+public class MonthlyRevenueEntryDto
+{
+    /// <summary>YYYY-MM, e.g. "2026-05".</summary>
+    public string YearMonth { get; set; }
+    public double Revenue { get; set; }
+    public Dictionary<string, double> SectorBreakdown { get; set; } = new();
+}
+
+public class MonthlyRevenueResponse
+{
+    public string YearMonth { get; set; }
+    public double Revenue { get; set; }
+    public Dictionary<string, double> SectorBreakdown { get; set; } = new();
+    public DateTime RecordedAt { get; set; }
+}
+
+public class SaveKpiBaselineRequest
+{
+    public double Mrr { get; set; }
+    public double Arr { get; set; }
+    public double GrossMarginPercent { get; set; }
+    public double Cac { get; set; }
+    public double Ltv { get; set; }
+    public double ChurnPercent { get; set; }
+    public int ActiveAccounts { get; set; }
+}
+
+public class KpiBaselineResponse
+{
+    public double Mrr { get; set; }
+    public double Arr { get; set; }
+    public double GrossMarginPercent { get; set; }
+    public double Cac { get; set; }
+    public double Ltv { get; set; }
+    public double ChurnPercent { get; set; }
+    public int ActiveAccounts { get; set; }
+    public DateTime RecordedAt { get; set; }
+}
+
+public class FinancialReportUploadRequest
+{
+    public Microsoft.AspNetCore.Http.IFormFile File { get; set; }
+    /// <summary>pnl | balance | audit | other</summary>
+    public string ReportType { get; set; }
+}
+
+public class FinancialReportResponse
+{
+    public string ReportId { get; set; }
+    public string Type { get; set; }
+    public string FileName { get; set; }
+    public string Status { get; set; }
+    public DateTime UploadedAt { get; set; }
+    public long FileSize { get; set; }
+    public string StoragePath { get; set; }
+    public string ReviewNote { get; set; }
+}

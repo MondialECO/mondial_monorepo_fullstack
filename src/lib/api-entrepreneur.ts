@@ -60,6 +60,65 @@ export interface SaveRevenueDataRequest {
   q4Revenue: number;
 }
 
+export interface SaveCashPositionRequest {
+  currentFunds: number;
+  monthlyBurn: number;
+}
+
+export interface CashPositionResponse {
+  currentFunds: number;
+  monthlyBurn: number;
+}
+
+export interface MonthlyRevenueEntry {
+  yearMonth: string; // YYYY-MM
+  revenue: number;
+  sectorBreakdown?: Record<string, number>;
+}
+
+export interface SaveMonthlyRevenueRequest {
+  entries: MonthlyRevenueEntry[];
+}
+
+export interface MonthlyRevenueResponse {
+  yearMonth: string;
+  revenue: number;
+  sectorBreakdown: Record<string, number>;
+  recordedAt: string;
+}
+
+export interface SaveKpiBaselineRequest {
+  mrr: number;
+  arr: number;
+  grossMarginPercent: number;
+  cac: number;
+  ltv: number;
+  churnPercent: number;
+  activeAccounts: number;
+}
+
+export interface KpiBaselineResponse {
+  mrr: number;
+  arr: number;
+  grossMarginPercent: number;
+  cac: number;
+  ltv: number;
+  churnPercent: number;
+  activeAccounts: number;
+  recordedAt: string;
+}
+
+export interface FinancialReportResponse {
+  reportId: string;
+  type: string;
+  fileName: string;
+  status: 'pending' | 'approved' | 'rejected';
+  uploadedAt: string;
+  fileSize: number;
+  storagePath: string;
+  reviewNote?: string;
+}
+
 export interface FinancialSummaryResponse {
   totalRevenue: number;
   finalValuation: number;
@@ -360,6 +419,78 @@ export const entrepreneurApi = {
   ): Promise<FinancialSummaryResponse> => {
     const response = await api.get<FinancialSummaryResponse>(
       `/companies/${companyId}/financial-summary`
+    );
+    return response.data;
+  },
+
+  saveCashPosition: async (
+    companyId: string,
+    data: SaveCashPositionRequest
+  ): Promise<CashPositionResponse> => {
+    const response = await api.post<CashPositionResponse>(
+      `/companies/${companyId}/cash-position`,
+      data
+    );
+    return response.data;
+  },
+
+  saveMonthlyRevenue: async (
+    companyId: string,
+    data: SaveMonthlyRevenueRequest
+  ): Promise<MonthlyRevenueResponse[]> => {
+    const response = await api.post<MonthlyRevenueResponse[]>(
+      `/companies/${companyId}/monthly-revenue`,
+      data
+    );
+    return response.data;
+  },
+
+  getMonthlyRevenue: async (
+    companyId: string
+  ): Promise<MonthlyRevenueResponse[]> => {
+    const response = await api.get<MonthlyRevenueResponse[]>(
+      `/companies/${companyId}/monthly-revenue`
+    );
+    return response.data;
+  },
+
+  saveKpiBaseline: async (
+    companyId: string,
+    data: SaveKpiBaselineRequest
+  ): Promise<KpiBaselineResponse> => {
+    const response = await api.post<KpiBaselineResponse>(
+      `/companies/${companyId}/kpis`,
+      data
+    );
+    return response.data;
+  },
+
+  getKpiBaseline: async (
+    companyId: string
+  ): Promise<KpiBaselineResponse | null> => {
+    const response = await api.get<KpiBaselineResponse | null>(
+      `/companies/${companyId}/kpis`
+    );
+    return response.data;
+  },
+
+  uploadFinancialReport: async (
+    companyId: string,
+    formData: FormData
+  ): Promise<FinancialReportResponse> => {
+    const response = await api.post<FinancialReportResponse>(
+      `/companies/${companyId}/financial-reports`,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
+    return response.data;
+  },
+
+  getFinancialReports: async (
+    companyId: string
+  ): Promise<FinancialReportResponse[]> => {
+    const response = await api.get<FinancialReportResponse[]>(
+      `/companies/${companyId}/financial-reports`
     );
     return response.data;
   },

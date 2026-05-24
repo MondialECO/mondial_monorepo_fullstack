@@ -2,321 +2,360 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { PieChart, Users, AlertCircle, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Plus, Trash2, AlertCircle, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useEntrepreneurProgress } from '@/hooks/useEntrepreneurProgress';
 import { RouteGuard } from '@/components/entrepreneur/RouteGuard';
+import { EntrepreneurLayout } from '@/components/entrepreneur/EntrepreneurLayout';
+import { ProgressSidebar } from '@/components/entrepreneur/ProgressSidebar';
+import { PhaseHeader } from '@/components/entrepreneur/PhaseHeader';
+import { StepFooter } from '@/components/entrepreneur/StepFooter';
+import entrepreneurApi from '@/lib/api-entrepreneur';
+import { Phase3Data } from '@/types/entrepreneur';
 
 const PHASE_3_STEPS = [
-  { step: 1 as const, title: 'Revenue Input', subtitle: 'Enter financial data' },
+  { step: 1 as const, title: 'Revenue & Cash', subtitle: 'Financial baseline' },
   { step: 2 as const, title: 'Equity Structure', subtitle: 'Cap table setup' },
-  { step: 3 as const, title: 'Funding Ask', subtitle: 'Set raise amount' },
+  { step: 3 as const, title: 'Funding & KPI', subtitle: 'Ask, KPI, reports' },
 ];
+
+type EquityType = 'founder' | 'investor' | 'esop' | 'advisor';
+interface Row {
+  stakeholderName: string;
+  type: EquityType;
+  sharesOwned: string;
+  vestingMonths: string;
+  investmentAmount: string;
+}
+
+function emptyRow(type: EquityType): Row {
+  return {
+    stakeholderName: '',
+    type,
+    sharesOwned: '',
+    vestingMonths: '',
+    investmentAmount: '',
+  };
+}
 
 function Phase3Step2Client() {
   const router = useRouter();
-  const { progress } = useEntrepreneurProgress();
-  const [founders, setFounders] = useState([
-    { id: 1, name: 'Founder A', shares: 450000, percentage: 45 },
-    { id: 2, name: 'Founder B', shares: 350000, percentage: 35 },
-  ]);
-  const [investors, setInvestors] = useState([
-    { id: 1, name: 'Early Investor', shares: 120000, percentage: 12 },
-  ]);
-  const [esopPool, setEsopPool] = useState({ shares: 30000, percentage: 3 });
-  const [isLoading, setIsLoading] = useState(false);
+  const { progress, savePhaseData, moveToNextStep, getPhaseData } = useEntrepreneurProgress();
+
+  const [totalShares, setTotalShares] = useState('1000000');
+  const [esopPoolPercent, setEsopPoolPercent] = useState('');
+  const [esopVestingMonths, setEsopVestingMonths] = useState('');
+  const [rows, setRows] = useState<Row[]>([emptyRow('founder')]);
+  const [validationError, setValidationError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!progress) {
     return (
       <div className="min-h-screen bg-neutral-100 flex items-center justify-center p-4">
-        <div className="text-center">
-          <p className="text-neutral-5 text-sm">Loading...</p>
-        </div>
+        <p className="text-neutral-5 text-sm">Loading…</p>
       </div>
     );
   }
 
-  const totalShares = 1000000;
-  const allocatedShares = founders.reduce((sum, f) => sum + f.shares, 0) +
-                          investors.reduce((sum, i) => sum + i.shares, 0) +
-                          esopPool.shares;
-  const allocationComplete = allocatedShares === totalShares;
+  const totalSharesNum = parseInt(totalShares, 10) || 0;
+  const allocatedShares = rows.reduce(
+    (sum, r) => sum + (parseInt(r.sharesOwned, 10) || 0),
+    0,
+  );
+  const allocationPercent =
+    totalSharesNum > 0 ? (allocatedShares / totalSharesNum) * 100 : 0;
+
+  const updateRow = (idx: number, patch: Partial<Row>) =>
+    setRows((r) => r.map((row, i) => (i === idx ? { ...row, ...patch } : row)));
+  const removeRow = (idx: number) =>
+    setRows((r) => r.filter((_, i) => i !== idx));
+  const addRow = (type: EquityType) =>
+    setRows((r) => [...r, emptyRow(type)]);
+
+  async function resolveCompanyId(): Promise<string> {
+    const existing: Phase3Data = getPhaseData<Phase3Data>(3) ?? {};
+    if (existing.__companyId) return existing.__companyId;
+    const fromServer = await entrepreneurApi.getCurrentPhase();
+    if (!fromServer?.companyId) throw new Error('No company found in backend');
+    return fromServer.companyId;
+  }
+
+  const handleNextClick = async () => {
+    setValidationError('');
+
+    if (totalSharesNum <= 0) {
+      setValidationError('Total shares must be greater than 0');
+      return;
+    }
+    const cleaned = rows
+      .map((r) => ({
+        ...r,
+        stakeholderName: r.stakeholderName.trim(),
+        sharesOwned: r.sharesOwned.trim(),
+      }))
+      .filter((r) => r.stakeholderName || r.sharesOwned);
+    if (cleaned.length === 0) {
+      setValidationError('Add at least one stakeholder');
+      return;
+    }
+    for (const r of cleaned) {
+      if (!r.stakeholderName) {
+        setValidationError('Every row needs a stakeholder name');
+        return;
+      }
+      const shares = parseInt(r.sharesOwned, 10);
+      if (!Number.isFinite(shares) || shares <= 0) {
+        setValidationError(`Shares for "${r.stakeholderName}" must be > 0`);
+        return;
+      }
+    }
+    if (allocationPercent < 90 || allocationPercent > 100) {
+      setValidationError(
+        `Allocated shares must total ~100% of total shares (currently ${allocationPercent.toFixed(2)}%)`,
+      );
+      return;
+    }
+    const esopPct = parseFloat(esopPoolPercent);
+    if (esopPoolPercent && (Number.isNaN(esopPct) || esopPct < 0 || esopPct > 100)) {
+      setValidationError('ESOP pool % must be between 0 and 100');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const companyId = await resolveCompanyId();
+
+      await entrepreneurApi.saveEquityStructure(companyId, {
+        entries: cleaned.map((r) => ({
+          stakeholderName: r.stakeholderName,
+          type: r.type,
+          sharesOwned: parseInt(r.sharesOwned, 10),
+          vestingMonths: r.vestingMonths ? parseInt(r.vestingMonths, 10) : undefined,
+          investmentAmount: r.investmentAmount ? parseFloat(r.investmentAmount) : undefined,
+        })),
+        esopPoolPercent: esopPoolPercent ? esopPct : 0,
+        esopVestingMonths: esopVestingMonths ? parseInt(esopVestingMonths, 10) : 0,
+        totalShares: totalSharesNum,
+      });
+
+      const existing: Phase3Data = getPhaseData<Phase3Data>(3) ?? {};
+      savePhaseData(3, {
+        ...existing,
+        __companyId: companyId,
+        equitySavedAt: new Date().toISOString(),
+      });
+      moveToNextStep(3, 2);
+      router.push('/dashboard/entrepreneur/phase-3/step-3');
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Failed to save equity structure';
+      setValidationError(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const statusMap = {
     1: progress.completedSteps.has('3-1') ? 'completed' : progress.currentStep === 1 ? 'current' : 'pending',
     2: progress.completedSteps.has('3-2') ? 'completed' : progress.currentStep === 2 ? 'current' : 'pending',
     3: progress.completedSteps.has('3-3') ? 'completed' : progress.currentStep === 3 ? 'current' : 'pending',
   };
-
-  const handleNextClick = async () => {
-    setIsLoading(true);
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      router.push('/dashboard/entrepreneur/phase-3/step-3');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const stepIndicators = PHASE_3_STEPS.map((step) => ({
     ...step,
-    status: statusMap[step.step as keyof typeof statusMap] as any,
+    status: statusMap[step.step as keyof typeof statusMap] as 'completed' | 'current' | 'pending',
   }));
 
+  const sidebar = (
+    <ProgressSidebar
+      title="Financial Submission"
+      steps={stepIndicators}
+      overallScore={66}
+      scoreLabel="STEP"
+      scoreDescription="Allocate shares between founders, investors, and ESOP."
+    />
+  );
+
   return (
-    <div className="min-h-screen bg-neutral-100">
-      {/* Header */}
-      <header className="bg-white border-b border-neutral-2">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 md:px-8 py-6 md:py-8">
-          <div className="flex items-start justify-between gap-4 mb-6">
+    <EntrepreneurLayout sidebar={sidebar}>
+      <div className="space-y-4 md:space-y-6">
+        <PhaseHeader
+          title="Equity Structure"
+          subtitle="Define your cap table. Allocations must total close to 100% of total shares."
+          progressLabel="PROGRESS"
+          progressValue="Step 2 of 3"
+          progressPercentage={66}
+        />
+
+        <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-neutral-1">Equity Structure</h1>
-              <p className="text-sm text-neutral-5 mt-1">Define your cap table and share allocation</p>
+              <label className="block text-sm font-semibold text-neutral-1 mb-2">
+                Total shares
+              </label>
+              <Input
+                type="number"
+                min={1}
+                value={totalShares}
+                onChange={(e) => setTotalShares(e.target.value)}
+                className="h-10 bg-background border-neutral-2"
+              />
             </div>
-            <div className="text-right">
-              <p className="text-xs text-neutral-5 font-semibold uppercase tracking-wide mb-1">PROGRESS</p>
-              <p className="text-sm font-semibold text-neutral-1">Step 2 of 3</p>
+            <div>
+              <label className="block text-sm font-semibold text-neutral-1 mb-2">
+                ESOP pool (%)
+              </label>
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                value={esopPoolPercent}
+                onChange={(e) => setEsopPoolPercent(e.target.value)}
+                placeholder="0"
+                className="h-10 bg-background border-neutral-2"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-neutral-1 mb-2">
+                ESOP vesting (months)
+              </label>
+              <Input
+                type="number"
+                min={0}
+                value={esopVestingMonths}
+                onChange={(e) => setEsopVestingMonths(e.target.value)}
+                placeholder="0"
+                className="h-10 bg-background border-neutral-2"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-bold text-neutral-1 flex items-center gap-2">
+              <Users className="w-5 h-5" /> Stakeholders
+            </h3>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => addRow('founder')} className="gap-2">
+                <Plus className="w-4 h-4" /> Founder
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => addRow('investor')} className="gap-2">
+                <Plus className="w-4 h-4" /> Investor
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => addRow('advisor')} className="gap-2">
+                <Plus className="w-4 h-4" /> Advisor
+              </Button>
             </div>
           </div>
 
-          {/* Progress Indicator */}
-          <div className="flex items-center gap-2">
-            {stepIndicators.map((step, idx) => (
-              <div key={step.step} className="flex items-center gap-2">
-                <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition ${
-                    step.status === 'completed'
-                      ? 'bg-green-100 text-green-700'
-                      : step.status === 'current'
-                      ? 'bg-primary text-white'
-                      : 'bg-neutral-200 text-neutral-5'
-                  }`}
-                >
-                  {step.status === 'completed' ? <CheckCircle2 className="w-5 h-5" /> : step.step}
+          <div className="space-y-3">
+            {rows.map((row, idx) => (
+              <div key={idx} className="grid grid-cols-12 gap-2 items-end">
+                <div className="col-span-4">
+                  <label className="block text-xs font-semibold text-neutral-5 mb-1">Name</label>
+                  <Input
+                    type="text"
+                    value={row.stakeholderName}
+                    onChange={(e) => updateRow(idx, { stakeholderName: e.target.value })}
+                    placeholder="Stakeholder"
+                    className="h-9 bg-background border-neutral-2"
+                  />
                 </div>
-                {idx < stepIndicators.length - 1 && (
-                  <div className="w-8 h-0.5 bg-neutral-2" />
-                )}
+                <div className="col-span-2">
+                  <label className="block text-xs font-semibold text-neutral-5 mb-1">Type</label>
+                  <select
+                    value={row.type}
+                    onChange={(e) => updateRow(idx, { type: e.target.value as EquityType })}
+                    className="h-9 w-full rounded-md border border-neutral-2 bg-background px-2 text-sm"
+                  >
+                    <option value="founder">founder</option>
+                    <option value="investor">investor</option>
+                    <option value="esop">esop</option>
+                    <option value="advisor">advisor</option>
+                  </select>
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-xs font-semibold text-neutral-5 mb-1">Shares</label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={row.sharesOwned}
+                    onChange={(e) => updateRow(idx, { sharesOwned: e.target.value })}
+                    placeholder="0"
+                    className="h-9 bg-background border-neutral-2"
+                  />
+                </div>
+                <div className="col-span-1">
+                  <label className="block text-xs font-semibold text-neutral-5 mb-1">Vest mo</label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={row.vestingMonths}
+                    onChange={(e) => updateRow(idx, { vestingMonths: e.target.value })}
+                    placeholder=""
+                    className="h-9 bg-background border-neutral-2"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-xs font-semibold text-neutral-5 mb-1">Invested (€)</label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={row.investmentAmount}
+                    onChange={(e) => updateRow(idx, { investmentAmount: e.target.value })}
+                    placeholder=""
+                    className="h-9 bg-background border-neutral-2"
+                  />
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="col-span-1"
+                  onClick={() => removeRow(idx)}
+                  aria-label="Remove row"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
               </div>
             ))}
           </div>
-        </div>
-      </header>
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 md:px-8 py-6 md:py-8 space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Form Section */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Founders */}
-            <div className="bg-white border-2 border-neutral-2 rounded-2xl p-6 space-y-4">
-              <h3 className="text-lg font-bold text-neutral-1 flex items-center gap-2">
-                <Users className="w-5 h-5 text-primary" />
-                Founders & Key Shareholders
-              </h3>
-
-              <div className="space-y-4">
-                {founders.map((founder) => (
-                  <div key={founder.id} className="space-y-2">
-                    <label className="block text-sm font-semibold text-neutral-1">{founder.name}</label>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        value={founder.shares}
-                        placeholder="Shares"
-                        className="h-10"
-                        disabled
-                      />
-                      <span className="text-sm font-semibold text-neutral-5 w-16 text-right">
-                        {founder.percentage}%
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="pt-4 border-t-2 border-neutral-2">
-                <p className="text-xs font-semibold uppercase tracking-wide text-neutral-5 mb-1">
-                  Total Founder Ownership
-                </p>
-                <p className="text-2xl font-bold text-neutral-1">
-                  {Math.round(
-                    (founders.reduce((sum, f) => sum + f.shares, 0) / totalShares) * 100
-                  )}%
-                </p>
-              </div>
-            </div>
-
-            {/* Investors */}
-            <div className="bg-white border-2 border-neutral-2 rounded-2xl p-6 space-y-4">
-              <h3 className="text-lg font-bold text-neutral-1">Early Investors</h3>
-
-              <div className="space-y-4">
-                {investors.map((investor) => (
-                  <div key={investor.id} className="space-y-2">
-                    <label className="block text-sm font-semibold text-neutral-1">{investor.name}</label>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        value={investor.shares}
-                        placeholder="Shares"
-                        className="h-10"
-                        disabled
-                      />
-                      <span className="text-sm font-semibold text-neutral-5 w-16 text-right">
-                        {investor.percentage}%
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="pt-4 border-t-2 border-neutral-2">
-                <p className="text-xs font-semibold uppercase tracking-wide text-neutral-5 mb-1">
-                  Total Investor Ownership
-                </p>
-                <p className="text-2xl font-bold text-neutral-1">
-                  {Math.round(
-                    (investors.reduce((sum, i) => sum + i.shares, 0) / totalShares) * 100
-                  )}%
-                </p>
-              </div>
-            </div>
-
-            {/* ESOP Pool */}
-            <div className="bg-white border-2 border-neutral-2 rounded-2xl p-6 space-y-4">
-              <h3 className="text-lg font-bold text-neutral-1">Employee Stock Option Pool (ESOP)</h3>
-
-              <div className="space-y-2">
-                <label className="block text-sm font-semibold text-neutral-1">ESOP Pool Shares</label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    value={esopPool.shares}
-                    placeholder="Shares"
-                    className="h-10"
-                    disabled
-                  />
-                  <span className="text-sm font-semibold text-neutral-5 w-16 text-right">
-                    {esopPool.percentage}%
-                  </span>
-                </div>
-              </div>
-
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-2">
-                <p className="text-sm font-semibold text-blue-900">💡 ESOP Best Practice</p>
-                <p className="text-sm text-blue-800">
-                  Maintain 10-15% ESOP pool for employee incentives. Current: {esopPool.percentage}%
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Visualization & Summary */}
-          <div className="space-y-6">
-            {/* Cap Table Summary */}
-            <div className="bg-white border-2 border-neutral-2 rounded-2xl p-6 space-y-4">
-              <h3 className="text-lg font-bold text-neutral-1 flex items-center gap-2">
-                <PieChart className="w-5 h-5 text-primary" />
-                Cap Table Summary
-              </h3>
-
-              <div className="space-y-3">
-                {[
-                  { label: 'Founders', value: Math.round((founders.reduce((sum, f) => sum + f.shares, 0) / totalShares) * 100), color: 'bg-primary' },
-                  { label: 'Investors', value: Math.round((investors.reduce((sum, i) => sum + i.shares, 0) / totalShares) * 100), color: 'bg-blue-500' },
-                  { label: 'ESOP Pool', value: esopPool.percentage, color: 'bg-green-500' },
-                  { label: 'Reserved', value: 100 - allocatedShares / (totalShares / 100), color: 'bg-neutral-300' },
-                ].map((item) => (
-                  <div key={item.label}>
-                    <div className="flex items-center justify-between text-sm mb-1">
-                      <span className="font-medium text-neutral-1">{item.label}</span>
-                      <span className="font-bold text-primary">{item.value}%</span>
-                    </div>
-                    <div className="w-full h-2 bg-neutral-100 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full ${item.color} rounded-full`}
-                        style={{ width: `${item.value}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="pt-4 border-t-2 border-neutral-2 space-y-3">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-neutral-5">Total Shares</p>
-                  <p className="text-2xl font-bold text-neutral-1">1,000,000</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-neutral-5">Fully Diluted</p>
-                  <p className="text-2xl font-bold text-neutral-1">100%</p>
-                </div>
-              </div>
-
-              {!allocationComplete && (
-                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg flex gap-2">
-                  <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-                  <p className="text-xs text-yellow-800">
-                    Cap table allocation not complete. Review share distribution.
-                  </p>
-                </div>
-              )}
-
-              {allocationComplete && (
-                <div className="p-3 bg-green-50 border border-green-200 rounded-lg flex gap-2">
-                  <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                  <p className="text-xs text-green-800">Cap table allocation verified.</p>
-                </div>
-              )}
-            </div>
-
-            {/* Key Metrics */}
-            <div className="bg-neutral-50 border-2 border-neutral-2 rounded-2xl p-6 space-y-3">
-              <h3 className="font-bold text-neutral-1 text-sm">Key Metrics</h3>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-neutral-5">Founder Control</span>
-                  <span className="font-bold text-neutral-1">
-                    {Math.round((founders.reduce((sum, f) => sum + f.shares, 0) / totalShares) * 100)}%
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-neutral-5">Investor Dilution</span>
-                  <span className="font-bold text-neutral-1">
-                    {Math.round((investors.reduce((sum, i) => sum + i.shares, 0) / totalShares) * 100)}%
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-neutral-5">Available Pool</span>
-                  <span className="font-bold text-neutral-1">{esopPool.percentage}%</span>
-                </div>
-              </div>
-            </div>
+          <div className="pt-4 border-t-2 border-neutral-2 flex items-center justify-between">
+            <p className="text-sm text-neutral-5">
+              Allocated:{' '}
+              <span className="font-bold text-neutral-1">
+                {allocatedShares.toLocaleString()} / {totalSharesNum.toLocaleString()}
+              </span>
+            </p>
+            <p
+              className={`text-sm font-bold ${
+                allocationPercent >= 90 && allocationPercent <= 100
+                  ? 'text-green-700'
+                  : 'text-amber-700'
+              }`}
+            >
+              {allocationPercent.toFixed(2)}%
+            </p>
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="flex gap-3">
-          <Button variant="outline" className="flex-1 h-11" onClick={() => router.push('/dashboard/entrepreneur/phase-3/step-1')}>
-            Back
-          </Button>
-          <Button className="flex-1 h-11 gap-2" onClick={handleNextClick} disabled={isLoading || !allocationComplete}>
-            {isLoading ? (
-              <>
-                <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Continuing...
-              </>
-            ) : (
-              <>
-                Continue
-                <ArrowRight className="w-4 h-4" />
-              </>
-            )}
-          </Button>
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex gap-3">
+          <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-blue-800">
+            Cap table is persisted to the backend on continue. Allocations are validated server-side;
+            failed saves block progression.
+          </p>
         </div>
+
+        <StepFooter
+          backUrl="/dashboard/entrepreneur/phase-3/step-1"
+          onNextClick={handleNextClick}
+          isLoading={isSubmitting}
+          nextLabel="Save &amp; Continue"
+          nextValidationError={validationError}
+        />
       </div>
-    </div>
+    </EntrepreneurLayout>
   );
 }
 
