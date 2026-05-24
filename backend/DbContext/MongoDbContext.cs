@@ -46,6 +46,9 @@ namespace WebApp.DbContext
         // Phase 7 sub-collections
         public IMongoCollection<Phase7ReviewSnapshot> Phase7ReviewSnapshots => _database.GetCollection<Phase7ReviewSnapshot>("Phase7ReviewSnapshots");
 
+        // Phase 9 sub-collections
+        public IMongoCollection<Phase9DealActivityLog> Phase9DealActivityLogs => _database.GetCollection<Phase9DealActivityLog>("Phase9DealActivityLogs");
+
         // Extra collections
         public IMongoCollection<ContactModel> Contacts => _database.GetCollection<ContactModel>("Contacts");
         public IMongoCollection<FormData> FormDatas => _database.GetCollection<FormData>("FormDatas");

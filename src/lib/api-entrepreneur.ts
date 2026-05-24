@@ -462,9 +462,36 @@ export interface UpdateMatchStatusRequest {
 }
 
 // Phase 9
+// 12-state deal lifecycle. Mirrors backend Phase9Requirements.DealStatusWhitelist.
+export type DealStatus =
+  | 'initiated'
+  | 'contacted'
+  | 'interested'
+  | 'meeting_scheduled'
+  | 'due_diligence'
+  | 'negotiating'
+  | 'term_sheet'
+  | 'agreement_sent'
+  | 'signed'
+  | 'completed'
+  | 'rejected'
+  | 'withdrawn';
+
+export type TermSheetStatus =
+  | 'draft' | 'proposed' | 'negotiating' | 'agreed' | 'signed' | 'rejected';
+
+export type ParticipantStatus =
+  | 'interested' | 'negotiating' | 'committed' | 'funded' | 'withdrawn';
+
+export type DueDiligenceStatus =
+  | 'pending' | 'in_progress' | 'completed' | 'flagged';
+
+export type DealDocumentKind =
+  | 'term_sheet' | 'signed_agreement' | 'due_diligence' | 'other';
+
 export interface DealStatusResponse {
   dealId: string;
-  status: string;
+  status: DealStatus | string;
   progressPercent: number;
   termSheet: {
     totalRaiseAmount: number;
@@ -472,7 +499,7 @@ export interface DealStatusResponse {
     equityType: string;
     investorEquityPercent: number;
     proRataRights: boolean;
-    status: string;
+    status: TermSheetStatus | string;
     signedAt?: string;
   };
   closingChecklist: Array<{
@@ -485,8 +512,29 @@ export interface DealStatusResponse {
     investorId: string;
     investorName: string;
     committedAmount: number;
-    status: string;
+    status: ParticipantStatus | string;
   }>;
+}
+
+export interface DealDocumentResponse {
+  documentId: string;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  documentKind: DealDocumentKind | string;
+  uploadedBy: string;
+  uploadedAt: string;
+}
+
+export interface DealActivityLogResponse {
+  id: string;
+  dealId: string;
+  eventType: string;
+  fromStatus?: string;
+  toStatus?: string;
+  actorUserId: string;
+  occurredAt: string;
+  notes?: string;
 }
 
 export interface JobStatus {
@@ -1103,6 +1151,77 @@ export const entrepreneurApi = {
       `/companies/deals/${dealId}/close`
     );
     return response.data;
+  },
+
+  updateDealStatus: async (
+    dealId: string,
+    status: DealStatus,
+    notes?: string
+  ): Promise<DealStatusResponse> => {
+    const response = await api.post<DealStatusResponse>(
+      `/companies/deals/${dealId}/status`,
+      { status, notes }
+    );
+    return response.data;
+  },
+
+  signTermSheet: async (
+    dealId: string,
+    file: File
+  ): Promise<DealStatusResponse> => {
+    const form = new FormData();
+    form.append('File', file);
+    const response = await api.post<DealStatusResponse>(
+      `/companies/deals/${dealId}/term-sheet/sign`,
+      form,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
+    return response.data;
+  },
+
+  mutateDueDiligenceItem: async (
+    dealId: string,
+    item: {
+      itemName: string;
+      category: 'legal' | 'financial' | 'technical' | 'business';
+      status: DueDiligenceStatus;
+      assignedTo?: string;
+      dueDate?: string;
+      notes?: string;
+    }
+  ): Promise<DealStatusResponse> => {
+    const response = await api.post<DealStatusResponse>(
+      `/companies/deals/${dealId}/due-diligence`,
+      item
+    );
+    return response.data;
+  },
+
+  getDealActivity: async (dealId: string): Promise<DealActivityLogResponse[]> => {
+    const response = await api.get<DealActivityLogResponse[]>(
+      `/companies/deals/${dealId}/activity`
+    );
+    return response.data;
+  },
+
+  uploadDealDocument: async (
+    dealId: string,
+    file: File,
+    documentKind: DealDocumentKind
+  ): Promise<DealDocumentResponse> => {
+    const form = new FormData();
+    form.append('File', file);
+    form.append('DocumentKind', documentKind);
+    const response = await api.post<DealDocumentResponse>(
+      `/companies/deals/${dealId}/documents`,
+      form,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
+    return response.data;
+  },
+
+  getDealDocumentUrl: (dealId: string, documentId: string): string => {
+    return `/companies/deals/${dealId}/documents/${documentId}`;
   },
 
   // ============ BACKGROUND JOBS ============

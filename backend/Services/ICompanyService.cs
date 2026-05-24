@@ -94,11 +94,18 @@ public interface ICompanyService
 
     // ============ PHASE 9: DEAL EXECUTION ============
 
-    Task<DealStatusResponse> CreateDealAsync(string companyId, CreateDealRequest request);
+    Task<DealStatusResponse> CreateDealAsync(string companyId, CreateDealRequest request, string actorUserId, string ipHash);
     Task<DealStatusResponse> GetDealAsync(string dealId);
     Task<string?> GetDealCompanyIdAsync(string dealId);
     Task<List<DealStatusResponse>> GetCompanyDealsAsync(string companyId);
-    Task<DealStatusResponse> UpdateTermSheetAsync(string dealId, TermSheetRequest request);
-    Task<DealStatusResponse> ProgressChecklistAsync(string dealId, ChecklistItemDto item);
-    Task<DealStatusResponse> CloseDealAsync(string dealId);
+    Task<DealStatusResponse> UpdateTermSheetAsync(string dealId, TermSheetRequest request, string actorUserId, string ipHash);
+    Task<DealStatusResponse> ProgressChecklistAsync(string dealId, ChecklistItemDto item, string actorUserId, string ipHash);
+    Task<DealStatusResponse> CloseDealAsync(string dealId, string actorUserId, string ipHash);
+
+    Task<DealStatusResponse> UpdateDealStatusAsync(string dealId, UpdateDealStatusRequest request, string actorUserId, string ipHash);
+    Task<DealStatusResponse> SignTermSheetAsync(string dealId, SignTermSheetRequest request, string actorUserId, string ipHash);
+    Task<DealStatusResponse> MutateDueDiligenceItemAsync(string dealId, MutateDueDiligenceItemRequest request, string actorUserId, string ipHash);
+    Task<DealDocumentResponse> UploadDealDocumentAsync(string dealId, UploadDealDocumentRequest request, string actorUserId, string ipHash);
+    Task<(byte[] Content, DealDocumentResponse Document)> GetDealDocumentAsync(string dealId, string documentId);
+    Task<List<DealActivityLogResponse>> GetDealActivityAsync(string dealId);
 }

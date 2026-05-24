@@ -73,6 +73,13 @@ const PHASE_CONFIG: Record<PhaseNumber, PhaseConfig> = {
     trustScore: 0, // Finalize
     hasSteps: false,
   },
+  10: {
+    phase: 10,
+    title: 'Journey Complete',
+    description: 'Round closed and recorded',
+    trustScore: 0,
+    hasSteps: false,
+  },
 };
 
 export function getPhaseConfig(phase: PhaseNumber): PhaseConfig {

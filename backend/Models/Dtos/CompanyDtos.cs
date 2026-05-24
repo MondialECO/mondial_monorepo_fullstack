@@ -404,6 +404,56 @@ public class DealParticipantStatusDto
     public string Status { get; set; }
 }
 
+public class UpdateDealStatusRequest
+{
+    public string Status { get; set; }
+    public string Notes { get; set; }
+}
+
+public class SignTermSheetRequest
+{
+    public Microsoft.AspNetCore.Http.IFormFile File { get; set; }
+}
+
+public class MutateDueDiligenceItemRequest
+{
+    public string ItemName { get; set; }
+    public string Category { get; set; }
+    public string Status { get; set; }
+    public string AssignedTo { get; set; }
+    public DateTime? DueDate { get; set; }
+    public string Notes { get; set; }
+}
+
+public class UploadDealDocumentRequest
+{
+    public Microsoft.AspNetCore.Http.IFormFile File { get; set; }
+    public string DocumentKind { get; set; }
+}
+
+public class DealDocumentResponse
+{
+    public string DocumentId { get; set; }
+    public string FileName { get; set; }
+    public long FileSize { get; set; }
+    public string MimeType { get; set; }
+    public string DocumentKind { get; set; }
+    public string UploadedBy { get; set; }
+    public DateTime UploadedAt { get; set; }
+}
+
+public class DealActivityLogResponse
+{
+    public string Id { get; set; }
+    public string DealId { get; set; }
+    public string EventType { get; set; }
+    public string FromStatus { get; set; }
+    public string ToStatus { get; set; }
+    public string ActorUserId { get; set; }
+    public DateTime OccurredAt { get; set; }
+    public string Notes { get; set; }
+}
+
 // ============ PHASE 5: FUNDING ASK & PITCH ============
 
 public class SaveFundingNarrativeRequest

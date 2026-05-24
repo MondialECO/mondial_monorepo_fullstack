@@ -1481,8 +1481,7 @@ public class CompanyController : ControllerBase
             var userId = GetUserId();
             await EnsureUniversalPhase1CompleteAsync(userId);
             await EnsureCompanyOwnershipAsync(companyId);
-            request.InvestorId ??= string.Empty; // Ensure it's set
-            var result = await _companyService.CreateDealAsync(companyId, request);
+            var result = await _companyService.CreateDealAsync(companyId, request, userId, HashIp(HttpContext));
             return CreatedAtAction(nameof(GetDeal), new { dealId = result.DealId }, result);
         }
         catch (UnauthorizedAccessException ex)
@@ -1551,7 +1550,7 @@ public class CompanyController : ControllerBase
             var userId = GetUserId();
             await EnsureUniversalPhase1CompleteAsync(userId);
             await EnsureDealOwnershipAsync(dealId);
-            var result = await _companyService.UpdateTermSheetAsync(dealId, request);
+            var result = await _companyService.UpdateTermSheetAsync(dealId, request, userId, HashIp(HttpContext));
             return Ok(result);
         }
         catch (UnauthorizedAccessException ex)
@@ -1574,7 +1573,7 @@ public class CompanyController : ControllerBase
             var userId = GetUserId();
             await EnsureUniversalPhase1CompleteAsync(userId);
             await EnsureDealOwnershipAsync(dealId);
-            var result = await _companyService.ProgressChecklistAsync(dealId, item);
+            var result = await _companyService.ProgressChecklistAsync(dealId, item, userId, HashIp(HttpContext));
             return Ok(result);
         }
         catch (UnauthorizedAccessException ex)
@@ -1597,7 +1596,7 @@ public class CompanyController : ControllerBase
             var userId = GetUserId();
             await EnsureUniversalPhase1CompleteAsync(userId);
             await EnsureDealOwnershipAsync(dealId);
-            var result = await _companyService.CloseDealAsync(dealId);
+            var result = await _companyService.CloseDealAsync(dealId, userId, HashIp(HttpContext));
             return Ok(result);
         }
         catch (UnauthorizedAccessException ex)
@@ -1608,6 +1607,150 @@ public class CompanyController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error closing deal");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpPost("deals/{dealId}/status")]
+    public async Task<ActionResult<DealStatusResponse>> UpdateDealStatus(string dealId, [FromBody] UpdateDealStatusRequest request)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureDealOwnershipAsync(dealId);
+            var result = await _companyService.UpdateDealStatusAsync(dealId, request, userId, HashIp(HttpContext));
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating deal status");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpPost("deals/{dealId}/term-sheet/sign")]
+    [RequestSizeLimit(60 * 1024 * 1024)]
+    public async Task<ActionResult<DealStatusResponse>> SignTermSheet(string dealId, [FromForm] SignTermSheetRequest request)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureDealOwnershipAsync(dealId);
+            var result = await _companyService.SignTermSheetAsync(dealId, request, userId, HashIp(HttpContext));
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error signing term sheet");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpPost("deals/{dealId}/due-diligence")]
+    public async Task<ActionResult<DealStatusResponse>> MutateDueDiligenceItem(string dealId, [FromBody] MutateDueDiligenceItemRequest request)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureDealOwnershipAsync(dealId);
+            var result = await _companyService.MutateDueDiligenceItemAsync(dealId, request, userId, HashIp(HttpContext));
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating due diligence item");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpGet("deals/{dealId}/activity")]
+    public async Task<ActionResult<List<DealActivityLogResponse>>> GetDealActivity(string dealId)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureDealOwnershipAsync(dealId);
+            var result = await _companyService.GetDealActivityAsync(dealId);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching deal activity");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpPost("deals/{dealId}/documents")]
+    [RequestSizeLimit(60 * 1024 * 1024)]
+    public async Task<ActionResult<DealDocumentResponse>> UploadDealDocument(string dealId, [FromForm] UploadDealDocumentRequest request)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureDealOwnershipAsync(dealId);
+            var result = await _companyService.UploadDealDocumentAsync(dealId, request, userId, HashIp(HttpContext));
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error uploading deal document");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpGet("deals/{dealId}/documents/{documentId}")]
+    public async Task<IActionResult> DownloadDealDocument(string dealId, string documentId)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureDealOwnershipAsync(dealId);
+            var (content, doc) = await _companyService.GetDealDocumentAsync(dealId, documentId);
+            return File(content, doc.MimeType ?? "application/octet-stream", doc.FileName);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error downloading deal document");
             return BadRequest(new { error = ex.Message });
         }
     }

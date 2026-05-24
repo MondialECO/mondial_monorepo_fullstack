@@ -63,7 +63,9 @@ public class CompanyService : ICompanyService
 
         company.CompletedPhases ??= new List<int>();
 
-        // Validate phase progression
+        // Validate phase progression. Completing phase 9 advances currentPhase
+        // to 10 (terminal "Journey Complete" state). Phase 10 itself cannot be
+        // "completed" — it has no business logic to validate.
         if (phaseToComplete < 2 || phaseToComplete > 9)
             throw new ArgumentException("Phase must be between 2 and 9");
 
@@ -1611,20 +1613,44 @@ public class CompanyService : ICompanyService
 
     // ============ PHASE 9: DEAL EXECUTION ============
 
-    public async Task<DealStatusResponse> CreateDealAsync(string companyId, CreateDealRequest request)
+    public async Task<DealStatusResponse> CreateDealAsync(string companyId, CreateDealRequest request, string actorUserId, string ipHash)
     {
+        if (request == null) throw new ArgumentException("Request body required");
+        if (string.IsNullOrWhiteSpace(request.InvestorId))
+            throw new ArgumentException("investorId is required");
+        if (request.TermSheet == null)
+            throw new ArgumentException("termSheet is required");
+        if (!double.IsFinite(request.TermSheet.TotalRaiseAmount) || request.TermSheet.TotalRaiseAmount <= 0)
+            throw new ArgumentException("termSheet.totalRaiseAmount must be > 0");
+        if (!double.IsFinite(request.TermSheet.PostMoneyValuation) || request.TermSheet.PostMoneyValuation <= 0)
+            throw new ArgumentException("termSheet.postMoneyValuation must be > 0");
+
+        // InvestorId must resolve to a live Investor row. Without this, callers
+        // can spawn deals against arbitrary strings and the deal timeline will
+        // render orphaned investor identities forever.
+        var investor = await _dbContext.Investors
+            .Find(i => i.Id == request.InvestorId)
+            .FirstOrDefaultAsync()
+            ?? throw new ArgumentException($"investorId '{request.InvestorId}' does not match any investor");
+
+        var dealId = ObjectId.GenerateNewId().ToString();
         var deal = new DealExecution
         {
+            Id = dealId,
             CompanyId = companyId,
-            Status = "negotiation",
+            Status = Phase9Requirements.DealStatusInitiated,
+            InvestorNameSnapshot = investor.Name,
+            InvestorTypeSnapshot = investor.Type,
+            CreatedByUserId = actorUserId,
             Investors = new List<DealParticipant>
             {
                 new DealParticipant
                 {
                     InvestorId = request.InvestorId,
+                    InvestorName = investor.Name,
                     CommittedAmount = request.TermSheet.TotalRaiseAmount,
-                    Status = "interested",
-                    EquityPercentage = (request.TermSheet.TotalRaiseAmount / request.TermSheet.PostMoneyValuation) * 100
+                    Status = Phase9Requirements.ParticipantStatusInterested,
+                    EquityPercentage = (request.TermSheet.TotalRaiseAmount / request.TermSheet.PostMoneyValuation) * 100,
                 }
             },
             TermSheet = new TermSheet
@@ -1636,17 +1662,26 @@ public class CompanyService : ICompanyService
                 LiquidationPreference = request.TermSheet.LiquidationPreference,
                 BoardSeats = request.TermSheet.BoardSeats,
                 ProposedClosingDate = request.TermSheet.ProposedClosingDate,
-                Status = "draft"
+                Status = Phase9Requirements.TermSheetStatusDraft,
             },
             DueDiligenceChecklist = new List<DueDigligenceItem>(),
             ClosingChecklist = new List<ClosingChecklistItem>(),
             Milestones = new List<DealMilestone>(),
             NegotiationStatus = new DealNegotiationStatus(),
+            DealDocuments = new List<DealDocument>(),
             CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            UpdatedAt = DateTime.UtcNow,
         };
 
         await _dbContext.DealExecutions.InsertOneAsync(deal);
+
+        await AppendDealActivityAsync(
+            companyId, dealId,
+            Phase9Requirements.ActivityDealCreated,
+            fromStatus: null,
+            toStatus: deal.Status,
+            actorUserId, ipHash,
+            notes: $"Deal created with investor {investor.Name}");
 
         return MapDealToResponse(deal);
     }
@@ -1680,12 +1715,29 @@ public class CompanyService : ICompanyService
         return deals.Select(MapDealToResponse).ToList();
     }
 
-    public async Task<DealStatusResponse> UpdateTermSheetAsync(string dealId, TermSheetRequest request)
+    public async Task<DealStatusResponse> UpdateTermSheetAsync(string dealId, TermSheetRequest request, string actorUserId, string ipHash)
     {
-        var deal = await _dbContext.DealExecutions
-            .Find(d => d.Id == dealId)
-            .FirstOrDefaultAsync()
-            ?? throw new KeyNotFoundException($"Deal {dealId} not found");
+        if (request == null) throw new ArgumentException("Request body required");
+        if (!double.IsFinite(request.TotalRaiseAmount) || request.TotalRaiseAmount <= 0)
+            throw new ArgumentException("totalRaiseAmount must be > 0");
+        if (!double.IsFinite(request.PostMoneyValuation) || request.PostMoneyValuation <= 0)
+            throw new ArgumentException("postMoneyValuation must be > 0");
+
+        var deal = await GetDealOrThrowAsync(dealId);
+
+        if (Phase9Requirements.IsTerminalDealStatus(deal.Status))
+            throw new InvalidOperationException(
+                $"Cannot update term sheet on deal in terminal status '{deal.Status}'");
+
+        // Term-sheet status auto-transitions to 'negotiating' from any
+        // pre-signed state. Enforce the transition graph rather than just
+        // overwriting.
+        var fromTsStatus = deal.TermSheet.Status ?? Phase9Requirements.TermSheetStatusDraft;
+        var toTsStatus = Phase9Requirements.TermSheetStatusNegotiating;
+        if (!string.Equals(fromTsStatus, toTsStatus, StringComparison.OrdinalIgnoreCase) &&
+            !Phase9Requirements.IsValidTermSheetTransition(fromTsStatus, toTsStatus))
+            throw new InvalidOperationException(
+                $"Illegal term sheet transition '{fromTsStatus}' -> '{toTsStatus}'");
 
         deal.TermSheet.TotalRaiseAmount = request.TotalRaiseAmount;
         deal.TermSheet.PostMoneyValuation = request.PostMoneyValuation;
@@ -1694,54 +1746,378 @@ public class CompanyService : ICompanyService
         deal.TermSheet.LiquidationPreference = request.LiquidationPreference;
         deal.TermSheet.BoardSeats = request.BoardSeats;
         deal.TermSheet.ProposedClosingDate = request.ProposedClosingDate;
-        deal.TermSheet.Status = "negotiating";
+        deal.TermSheet.Status = toTsStatus;
         deal.UpdatedAt = DateTime.UtcNow;
 
         var filter = Builders<DealExecution>.Filter.Eq(d => d.Id, dealId);
         await _dbContext.DealExecutions.ReplaceOneAsync(filter, deal);
 
+        await AppendDealActivityAsync(
+            deal.CompanyId, dealId,
+            Phase9Requirements.ActivityTermSheetUpdated,
+            fromStatus: fromTsStatus, toStatus: toTsStatus,
+            actorUserId, ipHash, notes: null);
+
         return MapDealToResponse(deal);
     }
 
-    public async Task<DealStatusResponse> ProgressChecklistAsync(string dealId, ChecklistItemDto item)
+    public async Task<DealStatusResponse> ProgressChecklistAsync(string dealId, ChecklistItemDto item, string actorUserId, string ipHash)
     {
-        var deal = await _dbContext.DealExecutions
-            .Find(d => d.Id == dealId)
-            .FirstOrDefaultAsync()
-            ?? throw new KeyNotFoundException($"Deal {dealId} not found");
+        if (item == null || string.IsNullOrWhiteSpace(item.Item))
+            throw new ArgumentException("checklist item.Item is required");
 
-        var checklistItem = deal.ClosingChecklist.FirstOrDefault(c => c.Item == item.Item);
-        if (checklistItem != null)
+        var deal = await GetDealOrThrowAsync(dealId);
+
+        if (Phase9Requirements.IsTerminalDealStatus(deal.Status))
+            throw new InvalidOperationException(
+                $"Cannot mutate checklist on deal in terminal status '{deal.Status}'");
+
+        var checklistItem = deal.ClosingChecklist.FirstOrDefault(c =>
+            string.Equals(c.Item, item.Item, StringComparison.Ordinal));
+        if (checklistItem == null)
         {
-            checklistItem.Completed = item.Completed;
-            if (item.Completed)
-                checklistItem.CompletedAt = DateTime.UtcNow;
+            // Insert if missing — UI may create + complete in the same call.
+            checklistItem = new ClosingChecklistItem
+            {
+                Item = item.Item,
+                Owner = item.Owner,
+                DueDate = item.DueDate,
+            };
+            deal.ClosingChecklist.Add(checklistItem);
         }
+        checklistItem.Completed = item.Completed;
+        if (item.Completed)
+            checklistItem.CompletedAt = DateTime.UtcNow;
+        else
+            checklistItem.CompletedAt = null;
 
         deal.UpdatedAt = DateTime.UtcNow;
 
         var filter = Builders<DealExecution>.Filter.Eq(d => d.Id, dealId);
         await _dbContext.DealExecutions.ReplaceOneAsync(filter, deal);
 
+        await AppendDealActivityAsync(
+            deal.CompanyId, dealId,
+            Phase9Requirements.ActivityChecklistUpdated,
+            fromStatus: null, toStatus: null,
+            actorUserId, ipHash,
+            notes: $"{item.Item}: {(item.Completed ? "completed" : "reopened")}");
+
         return MapDealToResponse(deal);
     }
 
-    public async Task<DealStatusResponse> CloseDealAsync(string dealId)
+    public async Task<DealStatusResponse> CloseDealAsync(string dealId, string actorUserId, string ipHash)
     {
-        var deal = await _dbContext.DealExecutions
-            .Find(d => d.Id == dealId)
-            .FirstOrDefaultAsync()
-            ?? throw new KeyNotFoundException($"Deal {dealId} not found");
+        var deal = await GetDealOrThrowAsync(dealId);
 
-        deal.Status = "closed";
+        // Close = transition Status -> "completed". Enforced via the deal
+        // state machine, so callers can't bypass the "signed" precondition.
+        var from = deal.Status;
+        var to = Phase9Requirements.DealStatusCompleted;
+        if (!Phase9Requirements.IsValidDealTransition(from, to))
+            throw new InvalidOperationException(
+                $"Cannot close deal: illegal transition '{from}' -> '{to}'. Deal must be in 'signed' before completion.");
+
+        deal.Status = to;
         deal.ClosedAt = DateTime.UtcNow;
         deal.UpdatedAt = DateTime.UtcNow;
 
         var filter = Builders<DealExecution>.Filter.Eq(d => d.Id, dealId);
         await _dbContext.DealExecutions.ReplaceOneAsync(filter, deal);
 
+        await AppendDealActivityAsync(
+            deal.CompanyId, dealId,
+            Phase9Requirements.ActivityDealClosed,
+            fromStatus: from, toStatus: to,
+            actorUserId, ipHash, notes: null);
+
         return MapDealToResponse(deal);
     }
+
+    public async Task<DealStatusResponse> UpdateDealStatusAsync(string dealId, UpdateDealStatusRequest request, string actorUserId, string ipHash)
+    {
+        if (request == null || string.IsNullOrWhiteSpace(request.Status))
+            throw new ArgumentException("status is required");
+        if (!Phase9Requirements.IsValidDealStatus(request.Status))
+            throw new ArgumentException(
+                $"status must be one of: {string.Join(", ", Phase9Requirements.DealStatusWhitelist)}");
+
+        var deal = await GetDealOrThrowAsync(dealId);
+
+        var from = deal.Status;
+        var to = request.Status.ToLowerInvariant();
+
+        if (string.Equals(from, to, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException($"Deal is already in status '{to}'");
+
+        if (!Phase9Requirements.IsValidDealTransition(from, to))
+            throw new InvalidOperationException(
+                $"Illegal deal status transition '{from}' -> '{to}'");
+
+        deal.Status = to;
+        deal.UpdatedAt = DateTime.UtcNow;
+        if (string.Equals(to, Phase9Requirements.DealStatusCompleted, StringComparison.OrdinalIgnoreCase))
+            deal.ClosedAt = DateTime.UtcNow;
+
+        var filter = Builders<DealExecution>.Filter.Eq(d => d.Id, dealId);
+        await _dbContext.DealExecutions.ReplaceOneAsync(filter, deal);
+
+        await AppendDealActivityAsync(
+            deal.CompanyId, dealId,
+            Phase9Requirements.ActivityDealStatusChanged,
+            fromStatus: from, toStatus: to,
+            actorUserId, ipHash, notes: request.Notes);
+
+        return MapDealToResponse(deal);
+    }
+
+    public async Task<DealStatusResponse> SignTermSheetAsync(string dealId, SignTermSheetRequest request, string actorUserId, string ipHash)
+    {
+        if (request?.File == null || request.File.Length == 0)
+            throw new ArgumentException("Signed term sheet file is required");
+        if (request.File.Length > Phase9Requirements.MaxDealDocumentSizeBytes)
+            throw new ArgumentException(
+                $"File size {request.File.Length} exceeds {Phase9Requirements.MaxDealDocumentSizeBytes}");
+
+        var deal = await GetDealOrThrowAsync(dealId);
+
+        if (Phase9Requirements.IsTerminalDealStatus(deal.Status))
+            throw new InvalidOperationException(
+                $"Cannot sign term sheet on deal in terminal status '{deal.Status}'");
+
+        // Term-sheet axis transition: anything -> signed must be a legal
+        // transition. (draft/proposed/negotiating must move via 'agreed'
+        // first; the graph captures that.)
+        var fromTs = deal.TermSheet.Status ?? Phase9Requirements.TermSheetStatusDraft;
+        var toTs = Phase9Requirements.TermSheetStatusSigned;
+        if (!Phase9Requirements.IsValidTermSheetTransition(fromTs, toTs))
+            throw new InvalidOperationException(
+                $"Illegal term sheet transition '{fromTs}' -> '{toTs}'. Mark as 'agreed' before signing.");
+
+        // Persist the signed-agreement file.
+        byte[] bytes;
+        await using (var ms = new MemoryStream())
+        {
+            await request.File.CopyToAsync(ms);
+            bytes = ms.ToArray();
+        }
+        var storagePath = await _documentManager.SaveDocumentAsync(deal.CompanyId, request.File.FileName, bytes);
+
+        var doc = new DealDocument
+        {
+            DocumentId = ObjectId.GenerateNewId().ToString(),
+            FileName = request.File.FileName,
+            StoragePath = storagePath,
+            FileSize = request.File.Length,
+            MimeType = request.File.ContentType,
+            DocumentKind = "term_sheet",
+            UploadedBy = actorUserId,
+            UploadedAt = DateTime.UtcNow,
+        };
+        deal.DealDocuments.Add(doc);
+
+        deal.TermSheet.Status = toTs;
+        deal.TermSheet.SignedAt = DateTime.UtcNow;
+        deal.TermSheet.SignedDocumentId = doc.DocumentId;
+
+        // Deal axis side-effect: from agreement_sent -> signed. Other states
+        // simply persist the term-sheet artefact without moving the deal axis.
+        string fromDeal = deal.Status;
+        string toDeal = deal.Status;
+        if (Phase9Requirements.IsValidDealTransition(deal.Status, Phase9Requirements.DealStatusSigned))
+        {
+            toDeal = Phase9Requirements.DealStatusSigned;
+            deal.Status = toDeal;
+        }
+        deal.UpdatedAt = DateTime.UtcNow;
+
+        var filter = Builders<DealExecution>.Filter.Eq(d => d.Id, dealId);
+        await _dbContext.DealExecutions.ReplaceOneAsync(filter, deal);
+
+        await AppendDealActivityAsync(
+            deal.CompanyId, dealId,
+            Phase9Requirements.ActivityTermSheetSigned,
+            fromStatus: fromDeal, toStatus: toDeal,
+            actorUserId, ipHash,
+            notes: $"Term sheet signed (document {doc.DocumentId})");
+
+        return MapDealToResponse(deal);
+    }
+
+    public async Task<DealStatusResponse> MutateDueDiligenceItemAsync(string dealId, MutateDueDiligenceItemRequest request, string actorUserId, string ipHash)
+    {
+        if (request == null) throw new ArgumentException("Request body required");
+        if (string.IsNullOrWhiteSpace(request.ItemName))
+            throw new ArgumentException("itemName is required");
+        if (!Phase9Requirements.IsValidDueDiligenceCategory(request.Category))
+            throw new ArgumentException(
+                $"category must be one of: {string.Join(", ", Phase9Requirements.DueDiligenceCategoryWhitelist)}");
+        if (!Phase9Requirements.IsValidDueDiligenceStatus(request.Status))
+            throw new ArgumentException(
+                $"status must be one of: {string.Join(", ", Phase9Requirements.DueDiligenceStatusWhitelist)}");
+
+        var deal = await GetDealOrThrowAsync(dealId);
+
+        if (Phase9Requirements.IsTerminalDealStatus(deal.Status))
+            throw new InvalidOperationException(
+                $"Cannot mutate diligence items on deal in terminal status '{deal.Status}'");
+
+        var existing = deal.DueDiligenceChecklist
+            .FirstOrDefault(d => string.Equals(d.ItemName, request.ItemName, StringComparison.Ordinal));
+        if (existing == null)
+        {
+            existing = new DueDigligenceItem
+            {
+                ItemName = request.ItemName,
+                CreatedAt = DateTime.UtcNow,
+            };
+            deal.DueDiligenceChecklist.Add(existing);
+        }
+        existing.Category = request.Category.ToLowerInvariant();
+        existing.Status = request.Status.ToLowerInvariant();
+        existing.AssignedTo = request.AssignedTo;
+        existing.DueDate = request.DueDate;
+        existing.Notes = request.Notes;
+
+        deal.UpdatedAt = DateTime.UtcNow;
+
+        var filter = Builders<DealExecution>.Filter.Eq(d => d.Id, dealId);
+        await _dbContext.DealExecutions.ReplaceOneAsync(filter, deal);
+
+        await AppendDealActivityAsync(
+            deal.CompanyId, dealId,
+            Phase9Requirements.ActivityDueDiligenceUpdated,
+            fromStatus: null, toStatus: existing.Status,
+            actorUserId, ipHash,
+            notes: $"{existing.ItemName} -> {existing.Status}");
+
+        return MapDealToResponse(deal);
+    }
+
+    public async Task<DealDocumentResponse> UploadDealDocumentAsync(string dealId, UploadDealDocumentRequest request, string actorUserId, string ipHash)
+    {
+        if (request?.File == null || request.File.Length == 0)
+            throw new ArgumentException("Uploaded file is required");
+        if (request.File.Length > Phase9Requirements.MaxDealDocumentSizeBytes)
+            throw new ArgumentException(
+                $"File size {request.File.Length} exceeds {Phase9Requirements.MaxDealDocumentSizeBytes}");
+        if (!Phase9Requirements.IsValidDealDocumentKind(request.DocumentKind))
+            throw new ArgumentException(
+                $"documentKind must be one of: {string.Join(", ", Phase9Requirements.DealDocumentKindWhitelist)}");
+
+        var deal = await GetDealOrThrowAsync(dealId);
+
+        byte[] bytes;
+        await using (var ms = new MemoryStream())
+        {
+            await request.File.CopyToAsync(ms);
+            bytes = ms.ToArray();
+        }
+
+        var storagePath = await _documentManager.SaveDocumentAsync(deal.CompanyId, request.File.FileName, bytes);
+        var doc = new DealDocument
+        {
+            DocumentId = ObjectId.GenerateNewId().ToString(),
+            FileName = request.File.FileName,
+            StoragePath = storagePath,
+            FileSize = request.File.Length,
+            MimeType = request.File.ContentType,
+            DocumentKind = request.DocumentKind.ToLowerInvariant(),
+            UploadedBy = actorUserId,
+            UploadedAt = DateTime.UtcNow,
+        };
+
+        deal.DealDocuments.Add(doc);
+        deal.UpdatedAt = DateTime.UtcNow;
+
+        var filter = Builders<DealExecution>.Filter.Eq(d => d.Id, dealId);
+        await _dbContext.DealExecutions.ReplaceOneAsync(filter, deal);
+
+        await AppendDealActivityAsync(
+            deal.CompanyId, dealId,
+            Phase9Requirements.ActivityDocumentUploaded,
+            fromStatus: null, toStatus: null,
+            actorUserId, ipHash,
+            notes: $"{doc.DocumentKind}: {doc.FileName}");
+
+        return MapDealDocument(doc);
+    }
+
+    public async Task<(byte[] Content, DealDocumentResponse Document)> GetDealDocumentAsync(string dealId, string documentId)
+    {
+        var deal = await GetDealOrThrowAsync(dealId);
+        var doc = deal.DealDocuments?
+            .FirstOrDefault(d => string.Equals(d.DocumentId, documentId, StringComparison.Ordinal))
+            ?? throw new KeyNotFoundException($"Deal document {documentId} not found");
+        if (string.IsNullOrWhiteSpace(doc.StoragePath))
+            throw new InvalidOperationException("Document storage path is missing");
+
+        var bytes = await File.ReadAllBytesAsync(doc.StoragePath);
+        return (bytes, MapDealDocument(doc));
+    }
+
+    public async Task<List<DealActivityLogResponse>> GetDealActivityAsync(string dealId)
+    {
+        await GetDealOrThrowAsync(dealId);
+        var logs = await _dbContext.Phase9DealActivityLogs
+            .Find(l => l.DealId == dealId)
+            .SortByDescending(l => l.OccurredAt)
+            .ToListAsync();
+
+        return logs.Select(l => new DealActivityLogResponse
+        {
+            Id = l.Id,
+            DealId = l.DealId,
+            EventType = l.EventType,
+            FromStatus = l.FromStatus,
+            ToStatus = l.ToStatus,
+            ActorUserId = l.ActorUserId,
+            OccurredAt = l.OccurredAt,
+            Notes = l.Notes,
+        }).ToList();
+    }
+
+    private async Task<DealExecution> GetDealOrThrowAsync(string dealId)
+    {
+        return await _dbContext.DealExecutions
+            .Find(d => d.Id == dealId)
+            .FirstOrDefaultAsync()
+            ?? throw new KeyNotFoundException($"Deal {dealId} not found");
+    }
+
+    private async Task AppendDealActivityAsync(
+        string companyId, string dealId, string eventType,
+        string fromStatus, string toStatus,
+        string actorUserId, string ipHash, string notes)
+    {
+        if (!Phase9Requirements.IsValidActivityEventType(eventType))
+            throw new InvalidOperationException($"Invalid activity eventType '{eventType}'");
+
+        await _dbContext.Phase9DealActivityLogs.InsertOneAsync(new Phase9DealActivityLog
+        {
+            Id = ObjectId.GenerateNewId().ToString(),
+            CompanyId = companyId,
+            DealId = dealId,
+            EventType = eventType,
+            FromStatus = fromStatus,
+            ToStatus = toStatus,
+            ActorUserId = actorUserId,
+            OccurredAt = DateTime.UtcNow,
+            IpHash = ipHash,
+            Notes = notes,
+        });
+    }
+
+    private static DealDocumentResponse MapDealDocument(DealDocument d) => new()
+    {
+        DocumentId = d.DocumentId,
+        FileName = d.FileName,
+        FileSize = d.FileSize,
+        MimeType = d.MimeType,
+        DocumentKind = d.DocumentKind,
+        UploadedBy = d.UploadedBy,
+        UploadedAt = d.UploadedAt,
+    };
 
     // ============ HELPERS ============
 
