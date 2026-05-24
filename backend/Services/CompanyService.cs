@@ -287,12 +287,53 @@ public class CompanyService : ICompanyService
 
     public async Task<Companies> SaveFundingAskAsync(string companyId, SaveFundingAskRequest request)
     {
+        if (request == null) throw new ArgumentException("Request body required");
+        if (!double.IsFinite(request.RaiseAmount) || request.RaiseAmount <= 0)
+            throw new ArgumentException("raiseAmount must be a finite number > 0");
+        if (!double.IsFinite(request.PreMoneyValuation) ||
+            request.PreMoneyValuation < Phase5Requirements.ValuationMin)
+            throw new ArgumentException($"preMoneyValuation must be >= {Phase5Requirements.ValuationMin}");
+
+        // EquityOfferedPercent is optional at write time (Phase 3 doesn't collect it).
+        // Phase 5 validator enforces it before phase advancement.
+        if (request.EquityOfferedPercent.HasValue)
+        {
+            if (!double.IsFinite(request.EquityOfferedPercent.Value) ||
+                request.EquityOfferedPercent.Value <= Phase5Requirements.EquityOfferedMin ||
+                request.EquityOfferedPercent.Value > Phase5Requirements.EquityOfferedMax)
+                throw new ArgumentException(
+                    $"equityOfferedPercent must be in ({Phase5Requirements.EquityOfferedMin}, {Phase5Requirements.EquityOfferedMax}]");
+        }
+
+        // ShareType is optional at write time; whitelist enforced when provided
+        // and at Phase 5 advancement.
+        if (!string.IsNullOrWhiteSpace(request.ShareType) &&
+            !Phase5Requirements.IsValidShareType(request.ShareType))
+            throw new ArgumentException(
+                $"shareType must be one of: {string.Join(", ", Phase5Requirements.ShareTypeWhitelist)}");
+
+        // Per-row validation of capital allocation + hiring plan at write time
+        // so malformed rows are rejected before they ever reach Mongo.
+        if (request.CapitalAllocation != null && request.CapitalAllocation.Count > 0)
+        {
+            var allocErrors = Phase5Requirements.ValidateAllocationRows(request.CapitalAllocation);
+            if (allocErrors.Count > 0) throw new ArgumentException(string.Join("; ", allocErrors));
+        }
+        if (request.ResourceMap?.HiringPlan != null && request.ResourceMap.HiringPlan.Count > 0)
+        {
+            var hireErrors = Phase5Requirements.ValidateHiringPlanRows(request.ResourceMap.HiringPlan);
+            if (hireErrors.Count > 0) throw new ArgumentException(string.Join("; ", hireErrors));
+        }
+
         var company = await GetCompanyAsync(companyId);
 
         company.FundingAskAmount = request.RaiseAmount;
         company.FundingRoundType = request.RoundType;
         company.PreMoneyValuation = request.PreMoneyValuation;
-        company.ShareType = request.ShareType;
+        if (request.EquityOfferedPercent.HasValue)
+            company.EquityOfferedPercent = request.EquityOfferedPercent.Value;
+        if (!string.IsNullOrWhiteSpace(request.ShareType))
+            company.ShareType = request.ShareType.ToLowerInvariant();
         company.CapitalAllocation = request.CapitalAllocation;
         company.ResourceMap = request.ResourceMap;
         company.UpdatedAt = DateTime.UtcNow;
@@ -828,37 +869,69 @@ public class CompanyService : ICompanyService
 
     // ============ PHASE 5: FUNDING ASK & PITCH ============
 
-    public async Task<Companies> SavePitchDeckAsync(string companyId, string fileName, Stream fileStream)
+    public async Task<PitchDeckResponse> UploadPitchDeckAsync(string companyId, PitchDeckUploadRequest request)
     {
+        if (request?.File == null || request.File.Length == 0)
+            throw new ArgumentException("Uploaded file is required");
+
         var company = await GetCompanyAsync(companyId);
 
-        // TODO: P1 - Save to S3 instead of local
-        var localPath = Path.Combine("uploads", companyId, "pitch");
-        Directory.CreateDirectory(localPath);
-
-        var filePath = Path.Combine(localPath, fileName);
-        using (var fileToWrite = new FileStream(filePath, FileMode.Create))
+        byte[] bytes;
+        await using (var ms = new MemoryStream())
         {
-            await fileStream.CopyToAsync(fileToWrite);
+            await request.File.CopyToAsync(ms);
+            bytes = ms.ToArray();
         }
 
-        company.PitchDeckFileName = fileName;
-        company.PitchDeckUploadedAt = DateTime.UtcNow;
+        var fileName = request.File.FileName;
+        var storagePath = await _documentManager.SaveDocumentAsync(companyId, fileName, bytes);
+        var uploadedAt = DateTime.UtcNow;
 
-        var result = await _dbContext.Companies.FindOneAndUpdateAsync(
+        company.PitchDeckFileName = fileName;
+        company.PitchDeckUploadedAt = uploadedAt;
+        company.PitchDeckStoragePath = storagePath;
+        company.PitchDeckFileSize = request.File.Length;
+        company.UpdatedAt = uploadedAt;
+
+        await _dbContext.Companies.FindOneAndUpdateAsync(
             Builders<Companies>.Filter.Eq(c => c.Id, company.Id),
             Builders<Companies>.Update
                 .Set(c => c.PitchDeckFileName, fileName)
-                .Set(c => c.PitchDeckUploadedAt, DateTime.UtcNow)
-                .Set(c => c.UpdatedAt, DateTime.UtcNow),
-            new FindOneAndUpdateOptions<Companies> { ReturnDocument = ReturnDocument.After }
-        );
+                .Set(c => c.PitchDeckUploadedAt, uploadedAt)
+                .Set(c => c.PitchDeckStoragePath, storagePath)
+                .Set(c => c.PitchDeckFileSize, request.File.Length)
+                .Set(c => c.UpdatedAt, uploadedAt));
 
-        return result ?? company;
+        return new PitchDeckResponse
+        {
+            FileName = fileName,
+            StoragePath = storagePath,
+            FileSize = request.File.Length,
+            UploadedAt = uploadedAt,
+        };
+    }
+
+    public async Task<PitchDeckResponse?> GetPitchDeckAsync(string companyId)
+    {
+        var company = await GetCompanyAsync(companyId);
+        if (string.IsNullOrWhiteSpace(company.PitchDeckFileName)) return null;
+        return new PitchDeckResponse
+        {
+            FileName = company.PitchDeckFileName,
+            StoragePath = company.PitchDeckStoragePath,
+            FileSize = company.PitchDeckFileSize ?? 0,
+            UploadedAt = company.PitchDeckUploadedAt ?? DateTime.MinValue,
+        };
     }
 
     public async Task<Companies> SaveFundingNarrativeAsync(string companyId, string narrative)
     {
+        if (string.IsNullOrWhiteSpace(narrative))
+            throw new ArgumentException("narrative is required");
+        if (narrative.Trim().Length < Phase5Requirements.NarrativeMinLength)
+            throw new ArgumentException(
+                $"narrative must be at least {Phase5Requirements.NarrativeMinLength} characters");
+
         var company = await GetCompanyAsync(companyId);
         company.FundingNarrative = narrative;
         company.UpdatedAt = DateTime.UtcNow;
@@ -874,13 +947,22 @@ public class CompanyService : ICompanyService
         return result ?? company;
     }
 
+    public async Task<FundingNarrativeResponse> GetFundingNarrativeAsync(string companyId)
+    {
+        var company = await GetCompanyAsync(companyId);
+        return new FundingNarrativeResponse { Narrative = company.FundingNarrative ?? string.Empty };
+    }
+
     public async Task<Companies> SaveOutreachCampaignAsync(string companyId, List<string> investorIds, string template)
     {
+        if (string.IsNullOrWhiteSpace(template))
+            throw new ArgumentException("template is required");
+
         var company = await GetCompanyAsync(companyId);
 
         // TODO: P1 - Queue background job for email outreach
         company.OutreachCampaignTemplate = template;
-        company.OutreachInvestorList = investorIds;
+        company.OutreachInvestorList = investorIds ?? new List<string>();
         company.OutreachCampaignStartedAt = DateTime.UtcNow;
         company.UpdatedAt = DateTime.UtcNow;
 
@@ -888,13 +970,32 @@ public class CompanyService : ICompanyService
             Builders<Companies>.Filter.Eq(c => c.Id, company.Id),
             Builders<Companies>.Update
                 .Set(c => c.OutreachCampaignTemplate, template)
-                .Set(c => c.OutreachInvestorList, investorIds)
+                .Set(c => c.OutreachInvestorList, company.OutreachInvestorList)
                 .Set(c => c.OutreachCampaignStartedAt, DateTime.UtcNow)
                 .Set(c => c.UpdatedAt, DateTime.UtcNow),
             new FindOneAndUpdateOptions<Companies> { ReturnDocument = ReturnDocument.After }
         );
 
         return result ?? company;
+    }
+
+    public async Task<FundingProfileResponse> GetFundingProfileAsync(string companyId)
+    {
+        var company = await GetCompanyAsync(companyId);
+        return new FundingProfileResponse
+        {
+            FundingAskAmount = company.FundingAskAmount,
+            FundingRoundType = company.FundingRoundType,
+            PreMoneyValuation = company.PreMoneyValuation,
+            EquityOfferedPercent = company.EquityOfferedPercent,
+            ShareType = company.ShareType,
+            CapitalAllocation = company.CapitalAllocation ?? new List<CapitalAllocationDto>(),
+            ResourceMap = company.ResourceMap,
+            PitchDeckFileName = company.PitchDeckFileName,
+            PitchDeckUploadedAt = company.PitchDeckUploadedAt,
+            FundingNarrative = company.FundingNarrative,
+            HasOutreachCampaign = !string.IsNullOrWhiteSpace(company.OutreachCampaignTemplate),
+        };
     }
 
     // ============ PHASE 6: DATA ROOM ============

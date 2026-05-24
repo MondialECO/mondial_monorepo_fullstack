@@ -55,9 +55,12 @@ public interface ICompanyService
 
     // ============ PHASE 5: FUNDING ASK & PITCH ============
 
-    Task<Companies> SavePitchDeckAsync(string companyId, string fileName, Stream fileStream);
+    Task<PitchDeckResponse> UploadPitchDeckAsync(string companyId, PitchDeckUploadRequest request);
+    Task<PitchDeckResponse?> GetPitchDeckAsync(string companyId);
     Task<Companies> SaveFundingNarrativeAsync(string companyId, string narrative);
+    Task<FundingNarrativeResponse> GetFundingNarrativeAsync(string companyId);
     Task<Companies> SaveOutreachCampaignAsync(string companyId, List<string> investorIds, string template);
+    Task<FundingProfileResponse> GetFundingProfileAsync(string companyId);
 
     // ============ PHASE 6: DATA ROOM ============
 

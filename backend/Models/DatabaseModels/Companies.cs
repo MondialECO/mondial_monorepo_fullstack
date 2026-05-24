@@ -66,9 +66,14 @@ public class Companies
     public double? FundingAskAmount { get; set; }
     public string FundingRoundType { get; set; }
     public double? PreMoneyValuation { get; set; }
+    public double? EquityOfferedPercent { get; set; }
     public string ShareType { get; set; }
     public List<CapitalAllocationDto> CapitalAllocation { get; set; } = new();
     public ResourceMapDto ResourceMap { get; set; }
+
+    // Phase 5: Pitch deck storage metadata
+    public string PitchDeckStoragePath { get; set; }
+    public long? PitchDeckFileSize { get; set; }
 
     // Phase 5: Pitch & Outreach
     public string PitchDeckFileName { get; set; }

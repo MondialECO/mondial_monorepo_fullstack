@@ -368,6 +368,147 @@ public class CompanyController : ControllerBase
         }
     }
 
+    [HttpPost("{companyId}/pitch-deck")]
+    public async Task<ActionResult<PitchDeckResponse>> UploadPitchDeck(string companyId, [FromForm] PitchDeckUploadRequest request)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureCompanyOwnershipAsync(companyId);
+            var result = await _companyService.UploadPitchDeckAsync(companyId, request);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error uploading pitch deck");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpGet("{companyId}/pitch-deck")]
+    public async Task<ActionResult<PitchDeckResponse?>> GetPitchDeck(string companyId)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureCompanyOwnershipAsync(companyId);
+            var result = await _companyService.GetPitchDeckAsync(companyId);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error reading pitch deck");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpPost("{companyId}/funding-narrative")]
+    public async Task<ActionResult> SaveFundingNarrative(string companyId, [FromBody] SaveFundingNarrativeRequest request)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureCompanyOwnershipAsync(companyId);
+            var company = await _companyService.SaveFundingNarrativeAsync(companyId, request?.Narrative ?? string.Empty);
+            return Ok(new { narrative = company.FundingNarrative });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saving funding narrative");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpGet("{companyId}/funding-narrative")]
+    public async Task<ActionResult<FundingNarrativeResponse>> GetFundingNarrative(string companyId)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureCompanyOwnershipAsync(companyId);
+            var result = await _companyService.GetFundingNarrativeAsync(companyId);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error reading funding narrative");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpPost("{companyId}/outreach-campaign")]
+    public async Task<ActionResult> SaveOutreachCampaign(string companyId, [FromBody] SaveOutreachCampaignRequest request)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureCompanyOwnershipAsync(companyId);
+            await _companyService.SaveOutreachCampaignAsync(
+                companyId,
+                request?.InvestorIds ?? new List<string>(),
+                request?.Template ?? string.Empty);
+            return Ok();
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saving outreach campaign");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpGet("{companyId}/funding-profile")]
+    public async Task<ActionResult<FundingProfileResponse>> GetFundingProfile(string companyId)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureCompanyOwnershipAsync(companyId);
+            var result = await _companyService.GetFundingProfileAsync(companyId);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error reading funding profile");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
     [HttpGet("{companyId}/financial-summary")]
     public async Task<ActionResult<FinancialSummaryResponse>> GetFinancialSummary(string companyId)
     {
