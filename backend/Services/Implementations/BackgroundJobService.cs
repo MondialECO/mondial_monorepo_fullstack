@@ -4,16 +4,19 @@ public class BackgroundJobService : IBackgroundJobService
 {
     private readonly ICompanyService _companyService;
     private readonly IPhaseNotificationService _notificationService;
+    private readonly IInvestorMatcher _investorMatcher;
     private readonly ILogger<BackgroundJobService> _logger;
     private readonly Dictionary<string, JobStatus> _jobCache;
 
     public BackgroundJobService(
         ICompanyService companyService,
         IPhaseNotificationService notificationService,
+        IInvestorMatcher investorMatcher,
         ILogger<BackgroundJobService> logger)
     {
         _companyService = companyService;
         _notificationService = notificationService;
+        _investorMatcher = investorMatcher;
         _logger = logger;
         _jobCache = new Dictionary<string, JobStatus>();
     }
@@ -146,10 +149,10 @@ public class BackgroundJobService : IBackgroundJobService
 
             var company = await _companyService.GetCompanyAsync(companyId);
 
-            // In a real implementation, fetch actual investor pool from database
-            var investorPoolIds = new List<string>();
-
-            var matches = await _companyService.GetMatchedInvestorsAsync(companyId);
+            // Pass null pool ID list — InvestorMatcher loads the full active
+            // investor pool itself. ACTUALLY RUNS the matcher (previously this
+            // line only read existing matches and was effectively a no-op).
+            var matches = await _investorMatcher.FindMatchesAsync(company, investorPoolIds: null);
 
             _jobCache[jobId].Status = "completed";
             _jobCache[jobId].CompletedAt = DateTime.UtcNow;

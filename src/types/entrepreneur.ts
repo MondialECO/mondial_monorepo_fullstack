@@ -74,6 +74,14 @@ export interface FinancialPreviewData {
   currentFunding: string;
 }
 
+export interface Phase8Data {
+  __companyId?: string;
+  matchesGeneratedAt?: string;
+  matchesCount?: number;
+  lastInteractionAt?: string;
+  submittedAt?: string;
+}
+
 export interface Phase7Data {
   __companyId?: string;
   lastReviewRunAt?: string;
