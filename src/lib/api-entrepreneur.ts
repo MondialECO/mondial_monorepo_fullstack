@@ -335,6 +335,20 @@ export interface DataRoomDocumentResponse {
   status: "draft" | "published";
   uploadedAt: string;
   viewCount: number;
+  downloadCount: number;
+  fileName: string;
+  mimeType?: string;
+  fileSize: number;
+  storagePath?: string;
+  uploadedBy?: string;
+}
+
+export interface DataRoomAccessGrant {
+  investorId: string;
+  investorName?: string;
+  accessLevel: string;
+  grantedAt: string;
+  expiresAt: string;
 }
 
 export interface DataRoomStatusResponse {
@@ -342,13 +356,42 @@ export interface DataRoomStatusResponse {
   ndaRequired: boolean;
   totalDocuments: number;
   documents: DataRoomDocumentResponse[];
-  accessGrants: Array<{
-    investorId: string;
-    investorName: string;
-    accessLevel: string;
-    grantedAt: string;
-    expiresAt: string;
-  }>;
+  accessGrants: DataRoomAccessGrant[];
+}
+
+export interface Phase6AccessLogResponse {
+  id: string;
+  documentId: string;
+  investorId: string;
+  eventType: 'view' | 'download';
+  occurredAt: string;
+}
+
+export interface DocumentEngagementResponse {
+  documentId: string;
+  title: string;
+  category: string;
+  viewCount: number;
+  downloadCount: number;
+  uniqueInvestors: number;
+  lastEventAt?: string;
+}
+
+export interface InvestorEngagementResponse {
+  investorId: string;
+  viewCount: number;
+  downloadCount: number;
+  documentsTouched: number;
+  lastEventAt?: string;
+}
+
+export interface DataRoomAnalyticsResponse {
+  totalDocuments: number;
+  totalViews: number;
+  totalDownloads: number;
+  uniqueInvestorsEngaged: number;
+  documentEngagement: DocumentEngagementResponse[];
+  investorEngagement: InvestorEngagementResponse[];
 }
 
 // Phase 7
@@ -820,6 +863,73 @@ export const entrepreneurApi = {
   updateNdaRequirement: async (companyId: string, required: boolean) => {
     const response = await api.put(`/companies/${companyId}/dataroom/nda`, required);
     return response.data;
+  },
+
+  publishDataRoom: async (
+    companyId: string
+  ): Promise<DataRoomStatusResponse> => {
+    const response = await api.post<DataRoomStatusResponse>(
+      `/companies/${companyId}/dataroom/publish`
+    );
+    return response.data;
+  },
+
+  downloadDataRoomDocument: async (
+    companyId: string,
+    documentId: string
+  ): Promise<Blob> => {
+    const response = await api.get(
+      `/companies/${companyId}/dataroom/documents/${documentId}`,
+      { responseType: 'blob' }
+    );
+    return response.data as Blob;
+  },
+
+  trackDataRoomView: async (
+    companyId: string,
+    documentId: string
+  ): Promise<Phase6AccessLogResponse> => {
+    const response = await api.post<Phase6AccessLogResponse>(
+      `/companies/${companyId}/dataroom/track-view`,
+      { documentId }
+    );
+    return response.data;
+  },
+
+  trackDataRoomDownload: async (
+    companyId: string,
+    documentId: string
+  ): Promise<Phase6AccessLogResponse> => {
+    const response = await api.post<Phase6AccessLogResponse>(
+      `/companies/${companyId}/dataroom/track-download`,
+      { documentId }
+    );
+    return response.data;
+  },
+
+  getDataRoomAnalytics: async (
+    companyId: string
+  ): Promise<DataRoomAnalyticsResponse> => {
+    const response = await api.get<DataRoomAnalyticsResponse>(
+      `/companies/${companyId}/dataroom/analytics`
+    );
+    return response.data;
+  },
+
+  getDataRoomActivityTimeline: async (
+    companyId: string
+  ): Promise<Phase6AccessLogResponse[]> => {
+    const response = await api.get<Phase6AccessLogResponse[]>(
+      `/companies/${companyId}/dataroom/activity-timeline`
+    );
+    return response.data;
+  },
+
+  acceptDataRoomNda: async (
+    companyId: string,
+    ndaText: string
+  ): Promise<void> => {
+    await api.post(`/companies/${companyId}/dataroom/nda/accept`, { ndaText });
   },
 
   // ============ PHASE 7: AI REVIEW ============

@@ -1,289 +1,417 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  FolderOpen,
-  File,
-  FileText,
-  Lock,
-  Share2,
-  Download,
-  MoreVertical,
-  Search,
-  Upload,
-  Home,
-  Briefcase,
-  DollarSign,
-  Lightbulb,
-  Users,
-  CheckCircle2,
-} from 'lucide-react';
+import { AlertCircle, FileText, Plus, ShieldCheck, Trash2, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useEntrepreneurProgress } from '@/hooks/useEntrepreneurProgress';
 import { RouteGuard } from '@/components/entrepreneur/RouteGuard';
+import { EntrepreneurLayout } from '@/components/entrepreneur/EntrepreneurLayout';
+import { PhaseHeader } from '@/components/entrepreneur/PhaseHeader';
+import { StepFooter } from '@/components/entrepreneur/StepFooter';
+import entrepreneurApi, {
+  DataRoomAccessGrant,
+  DataRoomAnalyticsResponse,
+  DataRoomDocumentResponse,
+  DataRoomStatusResponse,
+} from '@/lib/api-entrepreneur';
+import { Phase6Data } from '@/types/entrepreneur';
 
-const DOCUMENT_CATEGORIES = [
-  { id: 'all', name: 'All Documents', icon: Home, count: 24 },
-  { id: 'legal', name: 'Legal Documents', icon: Briefcase, count: 6 },
-  { id: 'financial', name: 'Financial Records', icon: DollarSign, count: 8 },
-  { id: 'ip', name: 'IP & Patents', icon: Lightbulb, count: 4 },
-  { id: 'team', name: 'Team Information', icon: Users, count: 6 },
-];
+const ALLOWED_CATEGORIES = ['legal', 'financial', 'business', 'ip', 'team'] as const;
+const REQUIRED_CATEGORIES = ['legal', 'financial', 'business'] as const;
+type Category = (typeof ALLOWED_CATEGORIES)[number];
 
-const DOCUMENTS = [
-  { id: 1, name: 'Articles of Incorporation', category: 'legal', date: '2024-01-15', size: '245 KB', shared: false, verified: true },
-  { id: 2, name: 'Cap Table - Latest', category: 'legal', date: '2024-05-10', size: '180 KB', shared: true, verified: true },
-  { id: 3, name: 'Y2023 Financial Statements', category: 'financial', date: '2024-03-20', size: '1.2 MB', shared: false, verified: true },
-  { id: 4, name: 'Tax Returns 2023', category: 'financial', date: '2024-04-01', size: '856 KB', shared: false, verified: true },
-  { id: 5, name: 'Patent Application - Core Tech', category: 'ip', date: '2024-02-28', size: '542 KB', shared: true, verified: true },
-  { id: 6, name: 'Trademark Registrations', category: 'ip', date: '2024-01-10', size: '320 KB', shared: false, verified: true },
-  { id: 7, name: 'Team Bios & CVs', category: 'team', date: '2024-05-05', size: '2.1 MB', shared: true, verified: true },
-  { id: 8, name: 'Org Chart', category: 'team', date: '2024-04-15', size: '156 KB', shared: false, verified: false },
-  { id: 9, name: 'Q1 2024 Financial Report', category: 'financial', date: '2024-05-01', size: '678 KB', shared: true, verified: true },
-];
-
-function Phase6PageContent() {
+function Phase6Content() {
   const router = useRouter();
-  const { progress, moveToNextStep } = useEntrepreneurProgress();
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [searchQuery, setSearchQuery] = useState('');
+  const { savePhaseData, moveToNextStep, getPhaseData, applyBackendResponse } =
+    useEntrepreneurProgress();
 
-  if (!progress) return null;
+  const [status, setStatus] = useState<DataRoomStatusResponse | null>(null);
+  const [analytics, setAnalytics] = useState<DataRoomAnalyticsResponse | null>(null);
 
-  const filteredDocs = DOCUMENTS.filter((doc) => {
-    const matchesCategory = selectedCategory === 'all' || doc.category === selectedCategory;
-    const matchesSearch = searchQuery === '' || doc.name.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
-  });
+  const [uploadTitle, setUploadTitle] = useState('');
+  const [uploadCategory, setUploadCategory] = useState<Category>('legal');
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
-  const handleContinue = () => {
-    moveToNextStep(6, 1);
-    router.push('/dashboard/entrepreneur/phase-7');
+  const [grantInvestorId, setGrantInvestorId] = useState('');
+  const [grantAccessLevel, setGrantAccessLevel] = useState('view_only');
+  const [grantDaysValid, setGrantDaysValid] = useState('30');
+
+  const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  async function resolveCompanyId(): Promise<string> {
+    const existing: Phase6Data = getPhaseData<Phase6Data>(6) ?? {};
+    if (existing.__companyId) return existing.__companyId;
+    const fromServer = await entrepreneurApi.getCurrentPhase();
+    if (!fromServer?.companyId) throw new Error('No company found in backend');
+    return fromServer.companyId;
+  }
+
+  const reload = async () => {
+    try {
+      const companyId = await resolveCompanyId();
+      const [s, a] = await Promise.all([
+        entrepreneurApi.getDataRoom(companyId),
+        entrepreneurApi.getDataRoomAnalytics(companyId).catch(() => null),
+      ]);
+      setStatus(s);
+      setAnalytics(a);
+      const existing: Phase6Data = getPhaseData<Phase6Data>(6) ?? {};
+      savePhaseData(6, {
+        ...existing,
+        __companyId: companyId,
+        documentsUploadedCount: s.documents.length,
+        accessGrantsCount: s.accessGrants.length,
+      });
+    } catch {
+      // hydration failure is acceptable; user can still try to act
+    }
   };
 
+  useEffect(() => {
+    void reload();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleUpload = async () => {
+    setError('');
+    if (!uploadFile) { setError('Pick a file to upload'); return; }
+    if (!uploadTitle.trim()) { setError('Title is required'); return; }
+    setIsUploading(true);
+    try {
+      const companyId = await resolveCompanyId();
+      const fd = new FormData();
+      fd.append('file', uploadFile);
+      fd.append('title', uploadTitle.trim());
+      fd.append('category', uploadCategory);
+      fd.append('isRequired', 'false');
+      await entrepreneurApi.uploadDataRoomDocument(companyId, fd);
+      setUploadFile(null);
+      setUploadTitle('');
+      await reload();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Upload failed');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleGrant = async () => {
+    setError('');
+    if (!grantInvestorId.trim()) { setError('Investor id is required'); return; }
+    const days = parseInt(grantDaysValid, 10);
+    if (!Number.isFinite(days) || days <= 0) { setError('Days valid must be > 0'); return; }
+    try {
+      const companyId = await resolveCompanyId();
+      await entrepreneurApi.grantDataRoomAccess(companyId, grantInvestorId.trim(), grantAccessLevel, days);
+      setGrantInvestorId('');
+      await reload();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Grant failed');
+    }
+  };
+
+  const handleRevoke = async (investorId: string) => {
+    setError('');
+    try {
+      const companyId = await resolveCompanyId();
+      await entrepreneurApi.revokeDataRoomAccess(companyId, investorId);
+      await reload();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Revoke failed');
+    }
+  };
+
+  const handleNdaToggle = async (required: boolean) => {
+    setError('');
+    try {
+      const companyId = await resolveCompanyId();
+      await entrepreneurApi.updateNdaRequirement(companyId, required);
+      await reload();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'NDA toggle failed');
+    }
+  };
+
+  const handleDownload = async (doc: DataRoomDocumentResponse) => {
+    setError('');
+    try {
+      const companyId = await resolveCompanyId();
+      const blob = await entrepreneurApi.downloadDataRoomDocument(companyId, doc.documentId);
+      await entrepreneurApi.trackDataRoomDownload(companyId, doc.documentId);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = doc.fileName || doc.title;
+      a.click();
+      URL.revokeObjectURL(url);
+      await reload();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Download failed');
+    }
+  };
+
+  const handleSubmit = async () => {
+    setError('');
+    setIsSubmitting(true);
+    try {
+      const companyId = await resolveCompanyId();
+      const published = await entrepreneurApi.publishDataRoom(companyId);
+      setStatus(published);
+
+      const advanceResponse = await entrepreneurApi.advancePhase(companyId, 6, {});
+      if (advanceResponse?.currentPhase !== 7) {
+        throw new Error(`Phase advancement failed - expected currentPhase=7, got ${advanceResponse?.currentPhase}`);
+      }
+      if (!advanceResponse?.completedPhases?.includes(6)) {
+        throw new Error('Phase 6 not marked as completed in backend response');
+      }
+      applyBackendResponse(advanceResponse);
+
+      const existing: Phase6Data = getPhaseData<Phase6Data>(6) ?? {};
+      savePhaseData(6, {
+        ...existing,
+        __companyId: companyId,
+        dataRoomPublishedAt: new Date().toISOString(),
+        submittedAt: new Date().toISOString(),
+      });
+      moveToNextStep(6, 1);
+
+      await new Promise((r) => setTimeout(r, 300));
+      router.push('/dashboard/entrepreneur/phase-7');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Submit failed');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const docs = status?.documents ?? [];
+  const grants = status?.accessGrants ?? [];
+  const uploadedCategories = new Set(docs.map((d) => d.category?.toLowerCase()));
+  const missingRequired = REQUIRED_CATEGORIES.filter((c) => !uploadedCategories.has(c));
+
   return (
-    <div className="min-h-screen bg-neutral-100">
-      {/* Header */}
-      <header className="bg-white border-b border-neutral-2 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 h-16 md:h-20 flex items-center justify-between">
-          <div className="flex-1">
-            <h1 className="text-2xl md:text-3xl font-bold text-neutral-1">Data Room</h1>
-            <p className="text-sm text-neutral-5 mt-0.5">Secure document vault for investor due diligence</p>
-          </div>
-          <Button className="gap-2 ml-4 whitespace-nowrap">
-            <Upload className="w-4 h-4" />
-            <span className="hidden sm:inline">Upload Document</span>
-          </Button>
+    <div className="space-y-6">
+      <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+        <div>
+          <p className="text-xs uppercase text-neutral-5">Total documents</p>
+          <p className="font-bold text-neutral-1">{docs.length}</p>
         </div>
-      </header>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-6 md:py-8">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          {/* Sidebar */}
-          <div className="md:col-span-1">
-            <div className="bg-white border-2 border-neutral-2 rounded-xl p-4 sticky top-24 space-y-2">
-              <h3 className="text-sm font-bold uppercase tracking-wide text-neutral-5 px-2 py-2">Categories</h3>
-              {DOCUMENT_CATEGORIES.map((cat) => {
-                const Icon = cat.icon;
-                const isSelected = selectedCategory === cat.id;
-                return (
-                  <button
-                    key={cat.id}
-                    onClick={() => setSelectedCategory(cat.id)}
-                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition ${
-                      isSelected
-                        ? 'bg-primary/10 border border-primary'
-                        : 'hover:bg-neutral-50 border border-transparent'
-                    }`}
-                  >
-                    <Icon className={`w-4 h-4 ${isSelected ? 'text-primary' : 'text-neutral-5'}`} />
-                    <div className="flex-1 text-left">
-                      <p className={`text-sm font-medium ${isSelected ? 'text-primary' : 'text-neutral-1'}`}>
-                        {cat.name}
-                      </p>
-                    </div>
-                    <span className={`text-xs font-semibold ${isSelected ? 'text-primary' : 'text-neutral-5'}`}>
-                      {cat.count}
-                    </span>
-                  </button>
-                );
-              })}
-
-              <div className="pt-4 border-t-2 border-neutral-2 mt-4">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                  <p className="text-xs font-semibold text-blue-900 mb-2 flex items-center gap-2">
-                    <Lock className="w-4 h-4" />
-                    Security
-                  </p>
-                  <p className="text-xs text-blue-800">
-                    All documents are encrypted with AES-256 and access is tracked in real-time.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Main Content */}
-          <div className="md:col-span-3 space-y-6">
-            {/* Search and Filter */}
-            <div className="bg-white border-2 border-neutral-2 rounded-xl p-4">
-              <div className="flex items-center gap-2">
-                <Search className="w-5 h-5 text-neutral-5" />
-                <Input
-                  placeholder="Search documents..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
-                />
-              </div>
-            </div>
-
-            {/* Document Statistics */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {[
-                { label: 'Total Documents', value: '24', color: 'bg-primary/10 text-primary' },
-                { label: 'Verified', value: '23', color: 'bg-green-100 text-green-700' },
-                { label: 'Shared Access', value: '8', color: 'bg-blue-100 text-blue-700' },
-              ].map((stat) => (
-                <div key={stat.label} className={`${stat.color} border-2 border-current rounded-lg p-4`}>
-                  <p className="text-xs font-semibold uppercase tracking-wide opacity-75">{stat.label}</p>
-                  <p className="text-2xl font-bold mt-2">{stat.value}</p>
-                </div>
-              ))}
-            </div>
-
-            {/* Documents List */}
-            <div className="bg-white border-2 border-neutral-2 rounded-xl overflow-hidden">
-              <div className="p-4 sm:p-6 border-b border-neutral-2">
-                <h3 className="font-bold text-neutral-1">
-                  {selectedCategory === 'all' ? 'All Documents' : DOCUMENT_CATEGORIES.find(c => c.id === selectedCategory)?.name}
-                </h3>
-                <p className="text-sm text-neutral-5 mt-1">{filteredDocs.length} documents</p>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-neutral-2 bg-neutral-50">
-                      <th className="px-4 py-3 text-left font-semibold text-neutral-1">Document Name</th>
-                      <th className="px-4 py-3 text-left font-semibold text-neutral-1">Date</th>
-                      <th className="px-4 py-3 text-left font-semibold text-neutral-1">Size</th>
-                      <th className="px-4 py-3 text-center font-semibold text-neutral-1">Status</th>
-                      <th className="px-4 py-3 text-center font-semibold text-neutral-1">Access</th>
-                      <th className="px-4 py-3 text-right font-semibold text-neutral-1">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredDocs.length > 0 ? (
-                      filteredDocs.map((doc, idx) => (
-                        <tr
-                          key={doc.id}
-                          className={idx !== filteredDocs.length - 1 ? 'border-b border-neutral-2' : ''}
-                        >
-                          <td className="px-4 py-4">
-                            <div className="flex items-center gap-3">
-                              <FileText className="w-5 h-5 text-primary flex-shrink-0" />
-                              <div>
-                                <p className="font-medium text-neutral-1">{doc.name}</p>
-                                <p className="text-xs text-neutral-5 mt-0.5">{doc.size}</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-4 py-4 text-neutral-5">{doc.date}</td>
-                          <td className="px-4 py-4 text-neutral-5">{doc.size}</td>
-                          <td className="px-4 py-4 text-center">
-                            {doc.verified ? (
-                              <div className="flex items-center justify-center gap-1">
-                                <CheckCircle2 className="w-4 h-4 text-green-600" />
-                                <span className="text-xs text-green-600 font-semibold">Verified</span>
-                              </div>
-                            ) : (
-                              <span className="text-xs text-yellow-600 font-semibold">Pending</span>
-                            )}
-                          </td>
-                          <td className="px-4 py-4 text-center">
-                            {doc.shared ? (
-                              <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
-                                Shared
-                              </span>
-                            ) : (
-                              <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-neutral-100 text-neutral-5">
-                                Private
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-4 text-right">
-                            <button className="p-2 hover:bg-neutral-100 rounded-lg transition">
-                              <MoreVertical className="w-4 h-4 text-neutral-5" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={6} className="px-4 py-8 text-center">
-                          <p className="text-neutral-5 text-sm">No documents found</p>
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Access Control Section */}
-            <div className="bg-white border-2 border-neutral-2 rounded-xl p-4 sm:p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-bold text-neutral-1 flex items-center gap-2">
-                  <Share2 className="w-5 h-5 text-primary" />
-                  Access Control
-                </h3>
-                <Button size="sm" variant="outline" className="gap-2">
-                  <Users className="w-4 h-4" />
-                  Manage Access
-                </Button>
-              </div>
-
-              <div className="space-y-3">
-                {[
-                  { email: 'investor@example.com', access: 'View Only', added: '2024-05-15' },
-                  { email: 'advisor@example.com', access: 'View Only', added: '2024-05-10' },
-                  { email: 'team@example.com', access: 'Can Edit', added: '2024-04-20' },
-                ].map((user) => (
-                  <div key={user.email} className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg border border-neutral-2">
-                    <div>
-                      <p className="font-medium text-neutral-1">{user.email}</p>
-                      <p className="text-xs text-neutral-5 mt-0.5">Added {user.added}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary">
-                        {user.access}
-                      </span>
-                      <button className="p-2 hover:bg-neutral-200 rounded-lg transition">
-                        <MoreVertical className="w-4 h-4 text-neutral-5" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <Button variant="outline" className="w-full mt-4 gap-2">
-                <Users className="w-4 h-4" />
-                Add New User
-              </Button>
-            </div>
-
-            <div className="flex justify-end">
-              <Button onClick={handleContinue} className="gap-2">
-                Continue to Phase 7
-                <CheckCircle2 className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
+        <div>
+          <p className="text-xs uppercase text-neutral-5">Required categories</p>
+          <p className={`font-bold ${missingRequired.length === 0 ? 'text-green-700' : 'text-amber-700'}`}>
+            {REQUIRED_CATEGORIES.length - missingRequired.length} / {REQUIRED_CATEGORIES.length}
+          </p>
+        </div>
+        <div>
+          <p className="text-xs uppercase text-neutral-5">Access grants</p>
+          <p className="font-bold text-neutral-1">{grants.length}</p>
+        </div>
+        <div>
+          <p className="text-xs uppercase text-neutral-5">Published</p>
+          <p className={`font-bold ${status?.isLive ? 'text-green-700' : 'text-neutral-5'}`}>
+            {status?.isLive ? 'yes' : 'no'}
+          </p>
         </div>
       </div>
+
+      {missingRequired.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex gap-3">
+          <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-amber-800">
+            Missing required categories: <strong>{missingRequired.join(', ')}</strong>.
+            Each must have at least one document before you can submit.
+          </p>
+        </div>
+      )}
+
+      <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 space-y-4">
+        <h3 className="text-lg font-bold text-neutral-1">Upload document</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <Input
+            type="text"
+            value={uploadTitle}
+            onChange={(e) => setUploadTitle(e.target.value)}
+            placeholder="Document title"
+            className="h-10 bg-background border-neutral-2"
+          />
+          <select
+            value={uploadCategory}
+            onChange={(e) => setUploadCategory(e.target.value as Category)}
+            className="h-10 rounded-md border border-neutral-2 bg-background px-3 text-sm"
+          >
+            {ALLOWED_CATEGORIES.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+          <input
+            type="file"
+            onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
+            className="h-10 text-sm"
+          />
+        </div>
+        <Button onClick={handleUpload} disabled={isUploading || !uploadFile} className="gap-2">
+          <Upload className="w-4 h-4" />
+          {isUploading ? 'Uploading…' : 'Upload'}
+        </Button>
+      </div>
+
+      <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 space-y-3">
+        <h3 className="text-lg font-bold text-neutral-1">Documents</h3>
+        {docs.length === 0 ? (
+          <p className="text-sm text-neutral-5">No documents uploaded yet.</p>
+        ) : (
+          <div className="space-y-2">
+            {docs.map((d) => (
+              <div
+                key={d.documentId}
+                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 bg-background border-2 border-neutral-2 rounded-xl p-3"
+              >
+                <div className="flex items-start gap-3 flex-1 min-w-0">
+                  <FileText className="w-5 h-5 text-neutral-5 mt-0.5" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-neutral-1 truncate">{d.title}</p>
+                    <p className="text-xs text-neutral-5 truncate">
+                      {d.category} · {d.fileName} · {(d.fileSize / 1024).toFixed(1)} KB
+                    </p>
+                    <p className="text-xs text-neutral-5 mt-0.5">
+                      Views: {d.viewCount} · Downloads: {d.downloadCount}
+                    </p>
+                  </div>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => handleDownload(d)}>
+                  Download
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-bold text-neutral-1">Access grants</h3>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={status?.ndaRequired ?? false}
+              onChange={(e) => handleNdaToggle(e.target.checked)}
+            />
+            NDA required
+          </label>
+        </div>
+
+        <div className="grid grid-cols-12 gap-2 items-end">
+          <Input
+            type="text"
+            value={grantInvestorId}
+            onChange={(e) => setGrantInvestorId(e.target.value)}
+            placeholder="Investor id"
+            className="col-span-5 h-9 bg-background border-neutral-2"
+          />
+          <select
+            value={grantAccessLevel}
+            onChange={(e) => setGrantAccessLevel(e.target.value)}
+            className="col-span-3 h-9 rounded-md border border-neutral-2 bg-background px-2 text-sm"
+          >
+            <option value="view_only">view_only</option>
+            <option value="download">download</option>
+            <option value="comment">comment</option>
+          </select>
+          <Input
+            type="number"
+            min={1}
+            value={grantDaysValid}
+            onChange={(e) => setGrantDaysValid(e.target.value)}
+            placeholder="Days"
+            className="col-span-2 h-9 bg-background border-neutral-2"
+          />
+          <Button onClick={handleGrant} className="col-span-2 gap-2">
+            <Plus className="w-4 h-4" /> Grant
+          </Button>
+        </div>
+
+        {grants.length === 0 ? (
+          <p className="text-sm text-neutral-5">No access grants yet.</p>
+        ) : (
+          <div className="space-y-2">
+            {grants.map((g: DataRoomAccessGrant) => (
+              <div
+                key={g.investorId}
+                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 bg-background border-2 border-neutral-2 rounded-xl p-3"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-neutral-1 truncate">{g.investorId}</p>
+                  <p className="text-xs text-neutral-5">
+                    {g.accessLevel} · granted {new Date(g.grantedAt).toLocaleString()} · expires{' '}
+                    {new Date(g.expiresAt).toLocaleString()}
+                  </p>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => handleRevoke(g.investorId)} aria-label="Revoke">
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 space-y-3">
+        <h3 className="text-lg font-bold text-neutral-1">Engagement (backend-derived)</h3>
+        {!analytics || analytics.totalViews + analytics.totalDownloads === 0 ? (
+          <p className="text-sm text-neutral-5">
+            No engagement events recorded yet. Numbers will populate as investors view or download documents.
+          </p>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+            <div>
+              <p className="text-xs uppercase text-neutral-5">Total views</p>
+              <p className="font-bold text-neutral-1">{analytics.totalViews}</p>
+            </div>
+            <div>
+              <p className="text-xs uppercase text-neutral-5">Total downloads</p>
+              <p className="font-bold text-neutral-1">{analytics.totalDownloads}</p>
+            </div>
+            <div>
+              <p className="text-xs uppercase text-neutral-5">Unique investors</p>
+              <p className="font-bold text-neutral-1">{analytics.uniqueInvestorsEngaged}</p>
+            </div>
+            <div>
+              <p className="text-xs uppercase text-neutral-5">Documents tracked</p>
+              <p className="font-bold text-neutral-1">{analytics.documentEngagement.length}</p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex gap-3">
+        <ShieldCheck className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+        <p className="text-sm text-blue-800">
+          Submitting Phase 6 publishes your data room and sends it for compliance review.
+          Investors with valid grants (and a signed NDA if required) can then access documents.
+          Verified data-room status is awarded separately after review.
+        </p>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4 flex gap-3">
+          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+          <p className="text-sm font-semibold text-red-900">{error}</p>
+        </div>
+      )}
+
+      <StepFooter
+        backUrl="/dashboard/entrepreneur/phase-5"
+        onNextClick={handleSubmit}
+        isLoading={isSubmitting}
+        nextLabel="Publish &amp; Complete Phase 6"
+        nextValidationError={error}
+        isNextDisabled={docs.length === 0 || missingRequired.length > 0}
+      />
     </div>
   );
 }
@@ -291,7 +419,18 @@ function Phase6PageContent() {
 export default function Phase6Page() {
   return (
     <RouteGuard requiredPhase={6}>
-      <Phase6PageContent />
+      <EntrepreneurLayout sidebar={<div />}>
+        <div className="space-y-6 md:space-y-8">
+          <PhaseHeader
+            title="Data Room Submission"
+            subtitle="Upload required documents, manage investor access, and submit for compliance review."
+            progressLabel="PROGRESS"
+            progressValue="Phase 6 of 9"
+            progressPercentage={67}
+          />
+          <Phase6Content />
+        </div>
+      </EntrepreneurLayout>
     </RouteGuard>
   );
 }
