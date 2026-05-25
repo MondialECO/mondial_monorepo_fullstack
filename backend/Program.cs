@@ -89,12 +89,13 @@ builder.Services.AddSingleton<IMongoDatabase>(sp =>
 });
 builder.Services.AddSingleton<MongoDbContext>();
 
+
 // ---- Shared Redis (required for multi-replica/stateless operation) ----
 // One multiplexer is reused for caching, the SignalR backplane, presence,
 // and the DataProtection key ring so every replica shares the same state.
 var redisConnection = builder.Configuration["Redis:Configuration"] ?? "localhost:6379";
 var redisInstanceName = builder.Configuration["Redis:InstanceName"] ?? "Mondial";
-var redisEnabledInDevelopment = builder.Configuration.GetValue("Redis:Enabled", false);
+var redisEnabledInDevelopment = builder.Configuration.GetValue("Redis:Enabled", true);
 var useRedis = !builder.Environment.IsDevelopment() || redisEnabledInDevelopment;
 
 // AbortOnConnectFail=false: do not crash-loop if Redis is briefly
