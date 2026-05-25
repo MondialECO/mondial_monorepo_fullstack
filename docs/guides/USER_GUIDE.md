@@ -165,7 +165,7 @@ Investor:    20%
 
 ## Phase 5: Advisor Matching (Coming Soon)
 
-AI-powered matching with experienced advisors and mentors.
+Rule-based matching with experienced advisors and mentors, with AI-powered matching planned for P1.
 
 **Status:** Under development
 
