@@ -35,7 +35,7 @@ $env:ASPNETCORE_URLS        = $base
 $env:ASPNETCORE_ENVIRONMENT = if ($Mode -eq 'Published') { 'Production' } else { 'Development' }
 $env:BUILD_SHA              = "smoke-$Mode"
 $env:BUILD_TIME             = (Get-Date).ToString('o')
-$env:MongoDbSettings__ConnectionString = "mongodb://127.0.0.1:27017/?serverSelectionTimeoutMS=2000"
+$env:MongoDbSettings__ConnectionString = "mongodb+srv://mongoDB:hr11100010@cluster0.nsfffx4.mongodb.net/MondialEcoDev?retryWrites=true&w=majority"
 $env:MongoDbSettings__DatabaseName     = "SmokeTest"
 $env:JwtSettings__Issuer    = "smoke"
 $env:JwtSettings__Audience  = "smoke"
