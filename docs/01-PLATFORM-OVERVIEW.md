@@ -8,7 +8,7 @@
 
 ## What is Mondial.eco?
 
-Mondial.eco is a **verified, AI-powered B2B SaaS ecosystem platform** that connects four user types in a single secure environment:
+Mondial.eco is a **verified B2B SaaS ecosystem platform** that connects four user types in a single secure environment:
 
 1. **Creators** — IP owners, content creators, inventors
 2. **Entrepreneurs** — Startup founders raising investment
@@ -21,7 +21,7 @@ Unlike competitors offering single-purpose tools, Mondial.eco is **all-in-one**:
 - Startup fundraising + investor deal flow
 - Equity management (cap table, ESOP)
 - Verified service provider marketplace
-- AI-powered matching algorithm
+- Rule-based matching algorithm, with AI-powered upgrades planned for P1
 - Built-in secure Messenger
 - Data rooms with NDA automation
 - Term sheet builder
@@ -94,7 +94,7 @@ One connected, verified, role-aware platform where every action flows automatica
 ✅ **Only platform** combining fundraising + service marketplace + IP marketplace + verified deal flow  
 ✅ **Phase-locked onboarding** ensures verified users only  
 ✅ **Cross-Roads mechanism** — unique Creator → Entrepreneur conversion pipeline  
-✅ **7-component AI matching** algorithm for investor-entrepreneur compatibility  
+✅ **7-component rule-based matching** algorithm for investor-entrepreneur compatibility, with AI matching planned for P1  
 ✅ **Role-aware Messenger** where deal actions (EOI, NDA, Data Room, Term Sheet, Escrow) happen inside chat  
 ✅ **EU-compliant by design** — MiFID II, GDPR, AML/KYC, eIDAS  
 ✅ **Phase 3 → Phase 4 auto-fill** — no double data entry  
