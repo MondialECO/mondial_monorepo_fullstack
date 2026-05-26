@@ -4,7 +4,7 @@ High-level overview of the 9-phase entrepreneur onboarding system, API architect
 
 ## System Overview
 
-Mondial is a SaaS platform connecting entrepreneurs with investors through an AI-powered matching engine. The system guides entrepreneurs through 9 phases of company setup and investor engagement.
+Mondial is a SaaS platform connecting entrepreneurs with investors through a deterministic matching engine, with AI-powered matching planned for P1. The system guides entrepreneurs through 9 phases of company setup and investor engagement.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -67,7 +67,7 @@ Mondial is a SaaS platform connecting entrepreneurs with investors through an AI
 - **Endpoints:** GET /companies/{id}/cap-table, POST /companies/{id}/cap-table
 
 ### Phase 5: Advisor Matching
-- AI-powered advisor matching based on company profile
+- Rule-based advisor matching based on company profile, with AI-powered matching planned for P1
 - Locked: Until Phase 4 complete
 - Status: Under development
 - **Endpoints:** GET /advisors/matches (future)

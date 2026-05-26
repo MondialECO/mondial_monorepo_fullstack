@@ -21,12 +21,14 @@ public class BackgroundJobService : IBackgroundJobService
         _jobCache = new Dictionary<string, JobStatus>();
     }
 
-    public string EnqueueAiReview(string companyId)
+    public string EnqueueAiReview(string companyId, string ownerUserId)
     {
         var jobId = Guid.NewGuid().ToString();
         var jobStatus = new JobStatus
         {
             JobId = jobId,
+            CompanyId = companyId,
+            OwnerUserId = ownerUserId,
             Status = "queued",
             CreatedAt = DateTime.UtcNow
         };
@@ -40,12 +42,14 @@ public class BackgroundJobService : IBackgroundJobService
         return jobId;
     }
 
-    public string EnqueueInvestorMatching(string companyId)
+    public string EnqueueInvestorMatching(string companyId, string ownerUserId)
     {
         var jobId = Guid.NewGuid().ToString();
         var jobStatus = new JobStatus
         {
             JobId = jobId,
+            CompanyId = companyId,
+            OwnerUserId = ownerUserId,
             Status = "queued",
             CreatedAt = DateTime.UtcNow
         };
@@ -58,12 +62,14 @@ public class BackgroundJobService : IBackgroundJobService
         return jobId;
     }
 
-    public string EnqueueDataRoomAnalysis(string companyId)
+    public string EnqueueDataRoomAnalysis(string companyId, string ownerUserId)
     {
         var jobId = Guid.NewGuid().ToString();
         var jobStatus = new JobStatus
         {
             JobId = jobId,
+            CompanyId = companyId,
+            OwnerUserId = ownerUserId,
             Status = "queued",
             CreatedAt = DateTime.UtcNow
         };
@@ -76,12 +82,14 @@ public class BackgroundJobService : IBackgroundJobService
         return jobId;
     }
 
-    public string EnqueueFinancialProjections(string companyId)
+    public string EnqueueFinancialProjections(string companyId, string ownerUserId)
     {
         var jobId = Guid.NewGuid().ToString();
         var jobStatus = new JobStatus
         {
             JobId = jobId,
+            CompanyId = companyId,
+            OwnerUserId = ownerUserId,
             Status = "queued",
             CreatedAt = DateTime.UtcNow
         };

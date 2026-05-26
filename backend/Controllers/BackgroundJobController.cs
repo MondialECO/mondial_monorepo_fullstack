@@ -56,7 +56,7 @@ public class BackgroundJobController : ControllerBase
             var userId = GetUserId();
             await EnsureUniversalPhase1CompleteAsync(userId);
             await EnsureCompanyOwnershipAsync(companyId);
-            var jobId = _backgroundJobService.EnqueueAiReview(companyId);
+            var jobId = _backgroundJobService.EnqueueAiReview(companyId, userId);
             _logger.LogInformation($"AI review job {jobId} enqueued for company {companyId}");
             return Accepted(new { jobId, status = "queued" });
         }
@@ -80,7 +80,7 @@ public class BackgroundJobController : ControllerBase
             var userId = GetUserId();
             await EnsureUniversalPhase1CompleteAsync(userId);
             await EnsureCompanyOwnershipAsync(companyId);
-            var jobId = _backgroundJobService.EnqueueInvestorMatching(companyId);
+            var jobId = _backgroundJobService.EnqueueInvestorMatching(companyId, userId);
             _logger.LogInformation($"Investor matching job {jobId} enqueued for company {companyId}");
             return Accepted(new { jobId, status = "queued" });
         }
@@ -104,7 +104,7 @@ public class BackgroundJobController : ControllerBase
             var userId = GetUserId();
             await EnsureUniversalPhase1CompleteAsync(userId);
             await EnsureCompanyOwnershipAsync(companyId);
-            var jobId = _backgroundJobService.EnqueueDataRoomAnalysis(companyId);
+            var jobId = _backgroundJobService.EnqueueDataRoomAnalysis(companyId, userId);
             _logger.LogInformation($"Data room analysis job {jobId} enqueued for company {companyId}");
             return Accepted(new { jobId, status = "queued" });
         }
@@ -128,7 +128,7 @@ public class BackgroundJobController : ControllerBase
             var userId = GetUserId();
             await EnsureUniversalPhase1CompleteAsync(userId);
             await EnsureCompanyOwnershipAsync(companyId);
-            var jobId = _backgroundJobService.EnqueueFinancialProjections(companyId);
+            var jobId = _backgroundJobService.EnqueueFinancialProjections(companyId, userId);
             _logger.LogInformation($"Financial projections job {jobId} enqueued for company {companyId}");
             return Accepted(new { jobId, status = "queued" });
         }
@@ -150,6 +150,13 @@ public class BackgroundJobController : ControllerBase
         try
         {
             var status = await _backgroundJobService.GetJobStatusAsync(jobId);
+            if (string.Equals(status.Status, "not_found", StringComparison.Ordinal))
+                return NotFound();
+
+            var userId = GetUserId();
+            if (!string.Equals(status.OwnerUserId, userId, StringComparison.Ordinal))
+                return Forbid();
+
             return Ok(status);
         }
         catch (Exception ex)
