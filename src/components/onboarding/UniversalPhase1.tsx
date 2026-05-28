@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/app/_providers/AuthProvider';
-import { useRouter } from 'next/navigation';
 import api from '@/lib/axios';
 import {
   CheckCircle2,
@@ -18,6 +17,7 @@ import {
   Home,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import Link from 'next/link';
 
 interface OnboardingItem {
@@ -67,11 +67,13 @@ const ITEM_LABELS = {
 
 export default function UniversalPhase1() {
   const { user, refreshAuthMe } = useAuth();
-  const router = useRouter();
   const [status, setStatus] = useState<OnboardingStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [verifying, setVerifying] = useState<string | null>(null);
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [otpCodes, setOtpCodes] = useState<Record<string, string>>({});
+  const [otpSent, setOtpSent] = useState<Record<string, boolean>>({});
 
   const isPhaseComplete = (status?.phase ?? 0) >= 1;
 
@@ -82,6 +84,7 @@ export default function UniversalPhase1() {
         const response = await api.get('/onboarding/status');
         const data = response.data?.data ?? response.data;
         setStatus(data);
+        setPhoneNumber(data?.phone ?? '');
       } catch (err) {
         setError('Failed to load onboarding status');
         console.error(err);
@@ -98,31 +101,46 @@ export default function UniversalPhase1() {
   const handleVerifyItem = async (itemKey: string) => {
     try {
       setVerifying(itemKey);
+      setError(null);
       const item = status?.items[itemKey as keyof typeof status.items];
       if (!item || item.verified) return;
 
       let endpoint = '';
-      const payload: Record<string, unknown> = {};
-      const isDev = process.env.NODE_ENV === 'development';
+      let payload: Record<string, unknown> = {};
 
       switch (itemKey) {
         case 'identity':
         case 'face':
-          if (!isDev) {
-            setError('Identity verification is only available in development. In production, please submit via the proper verification process.');
-            return;
-          }
           endpoint = '/onboarding/identity/dev-confirm';
           break;
         case 'phone':
-          if (!isDev) {
-            setError('Phone verification is only available in development. In production, please submit via the proper verification process.');
-            return;
+          if (otpSent.phone) {
+            const code = otpCodes.phone?.trim() ?? '';
+            if (code.length !== 6) {
+              setError('Enter the 6-digit phone verification code.');
+              return;
+            }
+            endpoint = '/onboarding/verify-otp';
+            payload = { code };
+          } else if (phoneNumber.trim()) {
+            endpoint = '/onboarding/send-otp';
+            payload = { phone: phoneNumber.trim() };
+          } else {
+            endpoint = '/onboarding/phone/dev-confirm';
           }
-          endpoint = '/onboarding/phone/dev-confirm';
           break;
         case 'email':
-          endpoint = '/onboarding/send-email-otp';
+          if (otpSent.email) {
+            const code = otpCodes.email?.trim() ?? '';
+            if (code.length !== 6) {
+              setError('Enter the 6-digit email verification code.');
+              return;
+            }
+            endpoint = '/onboarding/verify-email-otp';
+            payload = { code };
+          } else {
+            endpoint = '/onboarding/send-email-otp';
+          }
           break;
         default:
           setError(`No verification action configured for ${itemKey}`);
@@ -132,16 +150,24 @@ export default function UniversalPhase1() {
       // Do NOT mark as verified locally before backend response
       await api.post(endpoint, payload);
 
+      if (endpoint.endsWith('send-otp') || endpoint.endsWith('send-email-otp')) {
+        setOtpSent((current) => ({ ...current, [itemKey]: true }));
+        return;
+      }
+
       // Refetch both status endpoints to confirm backend state
       const statusResponse = await api.get('/onboarding/status');
       const statusData = statusResponse.data?.data ?? statusResponse.data;
       setStatus(statusData);
+      setPhoneNumber(statusData?.phone ?? phoneNumber);
+      setOtpCodes((current) => ({ ...current, [itemKey]: '' }));
+      setOtpSent((current) => ({ ...current, [itemKey]: false }));
 
       // Refresh AuthProvider with updated user state from backend
       await refreshAuthMe();
     } catch (err) {
       console.error(`Failed to verify ${itemKey}:`, err);
-      setError(`Verification failed for ${itemKey}`);
+      setError(`Verification failed for ${itemKey}. Please try again.`);
     } finally {
       setVerifying(null);
     }
@@ -271,8 +297,41 @@ export default function UniversalPhase1() {
                     )}
                   </div>
                   <p className="text-xs text-neutral-600">
-                    {item.verified ? 'Verified' : 'Not verified'}
+                    {item.verified
+                      ? 'Verified'
+                      : otpSent[key]
+                        ? 'Code sent'
+                        : 'Not verified'}
                   </p>
+
+                  {key === 'phone' && !item.verified && !isPhaseComplete && (
+                    <Input
+                      value={otpSent.phone ? otpCodes.phone ?? '' : phoneNumber}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        if (otpSent.phone) {
+                          setOtpCodes((current) => ({ ...current, phone: value }));
+                        } else {
+                          setPhoneNumber(value);
+                        }
+                      }}
+                      className="mt-3"
+                      placeholder={otpSent.phone ? '6-digit code' : '+15551234567'}
+                      inputMode={otpSent.phone ? 'numeric' : 'tel'}
+                    />
+                  )}
+
+                  {key === 'email' && otpSent.email && !item.verified && !isPhaseComplete && (
+                    <Input
+                      value={otpCodes.email ?? ''}
+                      onChange={(event) =>
+                        setOtpCodes((current) => ({ ...current, email: event.target.value }))
+                      }
+                      className="mt-3"
+                      placeholder="6-digit code"
+                      inputMode="numeric"
+                    />
+                  )}
                 </div>
 
                 {!item.verified && !isPhaseComplete && (
@@ -286,7 +345,7 @@ export default function UniversalPhase1() {
                     {verifying === key ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
-                      'Verify'
+                      otpSent[key] ? 'Submit' : 'Verify'
                     )}
                   </Button>
                 )}

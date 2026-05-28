@@ -38,6 +38,9 @@ const VALID_PHASE_1_PATHS = new Set([
   "/dashboard/creator/phase-1",
   "/dashboard/investor/phase-1",
   "/dashboard/serviceprovider/phase-1",
+  "/dashboard/admin/phase-1",
+  "/dashboard/advisor/phase-1",
+  "/dashboard/founder/phase-1",
 ]);
 
 export default function AuthGuard({
