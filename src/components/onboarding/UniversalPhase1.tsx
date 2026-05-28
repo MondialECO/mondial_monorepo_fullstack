@@ -102,7 +102,7 @@ export default function UniversalPhase1() {
       if (!item || item.verified) return;
 
       let endpoint = '';
-      let payload: Record<string, unknown> = {};
+      const payload: Record<string, unknown> = {};
       const isDev = process.env.NODE_ENV === 'development';
 
       switch (itemKey) {
