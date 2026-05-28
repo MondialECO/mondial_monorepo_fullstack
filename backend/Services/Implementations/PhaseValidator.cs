@@ -491,9 +491,9 @@ public class PhaseValidator : IPhaseValidator
             // Investor must still be hydratable — guards against orphaned matches.
             if (!string.IsNullOrWhiteSpace(m.InvestorId))
             {
-                var investorExists = await _dbContext.Investors
-                    .Find(i => i.Id == m.InvestorId)
-                    .AnyAsync();
+                var investorCursor = await _dbContext.Investors
+                    .FindAsync(i => i.Id == m.InvestorId);
+                var investorExists = await investorCursor.AnyAsync();
                 if (!investorExists)
                     errors.Add($"Match {m.Id}: investor {m.InvestorId} no longer exists — rerun matching");
             }

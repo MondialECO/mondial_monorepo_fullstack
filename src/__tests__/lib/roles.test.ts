@@ -7,12 +7,14 @@ describe('UserRole Enum', () => {
     expect(UserRole.CREATOR).toBe('Creator');
     expect(UserRole.INVESTOR).toBe('Investor');
     expect(UserRole.ENTREPRENEUR).toBe('Entrepreneur');
+    expect(UserRole.ADVISOR).toBe('Advisor');
+    expect(UserRole.FOUNDER).toBe('Founder');
     expect(UserRole.SERVICE_PROVIDER).toBe('ServiceProvider');
   });
 
-  it('should define 5 distinct roles', () => {
+  it('should define 7 distinct roles', () => {
     const roles = Object.values(UserRole);
-    expect(roles).toHaveLength(5);
+    expect(roles).toHaveLength(7);
   });
 
   it('should have correct role values', () => {
@@ -20,6 +22,8 @@ describe('UserRole Enum', () => {
     expect(UserRole.CREATOR).toBe('Creator');
     expect(UserRole.INVESTOR).toBe('Investor');
     expect(UserRole.ENTREPRENEUR).toBe('Entrepreneur');
+    expect(UserRole.ADVISOR).toBe('Advisor');
+    expect(UserRole.FOUNDER).toBe('Founder');
     expect(UserRole.SERVICE_PROVIDER).toBe('ServiceProvider');
   });
 
@@ -60,6 +64,8 @@ describe('UserRole Enum', () => {
       [UserRole.CREATOR]: '/dashboard/creator',
       [UserRole.INVESTOR]: '/dashboard/investor',
       [UserRole.ENTREPRENEUR]: '/dashboard/entrepreneur',
+      [UserRole.ADVISOR]: '/dashboard/advisor',
+      [UserRole.FOUNDER]: '/dashboard/founder',
       [UserRole.SERVICE_PROVIDER]: '/dashboard/serviceprovider',
     };
 
