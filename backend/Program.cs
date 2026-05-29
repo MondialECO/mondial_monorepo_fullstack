@@ -87,7 +87,7 @@ builder.Services.AddSingleton<IMongoDatabase>(sp =>
     var client = sp.GetRequiredService<IMongoClient>();
     return client.GetDatabase(settings.DatabaseName);
 });
-builder.Services.AddSingleton<MongoDbContext>();
+builder.Services.AddSingleton(sp => new MongoDbContext(sp.GetRequiredService<IMongoDatabase>()));
 
 
 // ---- Shared Redis (required for multi-replica/stateless operation) ----
