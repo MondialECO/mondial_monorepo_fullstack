@@ -43,6 +43,8 @@ interface OnboardingStatus {
   };
 }
 
+const CORE_ITEM_KEYS = ['identity', 'face', 'phone', 'email'] as const;
+
 const ITEM_ICONS = {
   identity: FileText,
   face: Shield,
@@ -69,7 +71,8 @@ export default function UniversalPhase1() {
   const { user, refreshAuthMe } = useAuth();
   const [status, setStatus] = useState<OnboardingStatus | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [verifying, setVerifying] = useState<string | null>(null);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [otpCodes, setOtpCodes] = useState<Record<string, string>>({});
@@ -85,8 +88,9 @@ export default function UniversalPhase1() {
         const data = response.data?.data ?? response.data;
         setStatus(data);
         setPhoneNumber(data?.phone ?? '');
+        setLoadError(null);
       } catch (err) {
-        setError('Failed to load onboarding status');
+        setLoadError('Failed to load onboarding status');
         console.error(err);
       } finally {
         setLoading(false);
@@ -101,7 +105,7 @@ export default function UniversalPhase1() {
   const handleVerifyItem = async (itemKey: string) => {
     try {
       setVerifying(itemKey);
-      setError(null);
+      setActionError(null);
       const item = status?.items[itemKey as keyof typeof status.items];
       if (!item || item.verified) return;
 
@@ -117,7 +121,7 @@ export default function UniversalPhase1() {
           if (otpSent.phone) {
             const code = otpCodes.phone?.trim() ?? '';
             if (code.length !== 6) {
-              setError('Enter the 6-digit phone verification code.');
+              setActionError('Enter the 6-digit phone verification code.');
               return;
             }
             endpoint = '/onboarding/verify-otp';
@@ -133,7 +137,7 @@ export default function UniversalPhase1() {
           if (otpSent.email) {
             const code = otpCodes.email?.trim() ?? '';
             if (code.length !== 6) {
-              setError('Enter the 6-digit email verification code.');
+              setActionError('Enter the 6-digit email verification code.');
               return;
             }
             endpoint = '/onboarding/verify-email-otp';
@@ -143,7 +147,7 @@ export default function UniversalPhase1() {
           }
           break;
         default:
-          setError(`No verification action configured for ${itemKey}`);
+          setActionError(`No verification action configured for ${itemKey}`);
           return;
       }
 
@@ -167,7 +171,7 @@ export default function UniversalPhase1() {
       await refreshAuthMe();
     } catch (err) {
       console.error(`Failed to verify ${itemKey}:`, err);
-      setError(`Verification failed for ${itemKey}. Please try again.`);
+      setActionError(`Verification failed for ${itemKey}. Please try again.`);
     } finally {
       setVerifying(null);
     }
@@ -184,7 +188,7 @@ export default function UniversalPhase1() {
     );
   }
 
-  if (error || !status) {
+  if (loadError || !status) {
     return (
       <div className="min-h-screen bg-neutral-100 flex items-center justify-center">
         <div className="max-w-md">
@@ -193,7 +197,7 @@ export default function UniversalPhase1() {
               <AlertCircle className="w-6 h-6 text-red-600" />
               <h3 className="font-bold text-red-900">Error Loading Verification</h3>
             </div>
-            <p className="text-red-800 text-sm mb-4">{error}</p>
+            <p className="text-red-800 text-sm mb-4">{loadError}</p>
             <Button className="w-full" onClick={() => window.location.reload()}>
               Retry
             </Button>
@@ -262,8 +266,15 @@ export default function UniversalPhase1() {
         )}
 
         {/* Verification Items Grid */}
+        {actionError && (
+          <div className="border-2 border-destructive/30 bg-destructive/10 rounded-lg p-4 text-sm text-destructive">
+            {actionError}
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {Object.entries(status.items).map(([key, item]) => {
+          {CORE_ITEM_KEYS.map((key) => {
+            const item = status.items[key];
             if (!item) return null;
 
             const Icon = ITEM_ICONS[key as keyof typeof ITEM_ICONS] || FileText;
