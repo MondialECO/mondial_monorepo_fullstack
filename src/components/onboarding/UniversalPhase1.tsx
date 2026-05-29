@@ -375,7 +375,7 @@ export default function UniversalPhase1() {
                     <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                       {!otpSent.phone && (
                         <Select value={phoneCountryCode} onValueChange={setPhoneCountryCode}>
-                          <SelectTrigger className="h-10 sm:w-44">
+                          <SelectTrigger aria-label="Phone country code" className="h-10 sm:w-44">
                             <SelectValue placeholder="+880" />
                           </SelectTrigger>
                           <SelectContent>
@@ -398,6 +398,7 @@ export default function UniversalPhase1() {
                           }
                         }}
                         className="h-10"
+                        aria-label={otpSent.phone ? 'Phone verification code' : 'Phone number'}
                         placeholder={otpSent.phone ? '6-digit code' : '1712345678'}
                         inputMode={otpSent.phone ? 'numeric' : 'tel'}
                       />
