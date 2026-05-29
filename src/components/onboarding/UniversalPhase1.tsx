@@ -18,6 +18,13 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import Link from 'next/link';
 
 interface OnboardingItem {
@@ -44,6 +51,50 @@ interface OnboardingStatus {
 }
 
 const CORE_ITEM_KEYS = ['identity', 'face', 'phone', 'email'] as const;
+
+const PHONE_COUNTRY_OPTIONS = [
+  { value: '+880', label: 'Bangladesh', region: 'BD' },
+  { value: '+33', label: 'France', region: 'Europe' },
+  { value: '+44', label: 'United Kingdom', region: 'Europe' },
+  { value: '+49', label: 'Germany', region: 'Europe' },
+  { value: '+39', label: 'Italy', region: 'Europe' },
+  { value: '+34', label: 'Spain', region: 'Europe' },
+  { value: '+31', label: 'Netherlands', region: 'Europe' },
+  { value: '+32', label: 'Belgium', region: 'Europe' },
+  { value: '+41', label: 'Switzerland', region: 'Europe' },
+  { value: '+45', label: 'Denmark', region: 'Europe' },
+  { value: '+46', label: 'Sweden', region: 'Europe' },
+  { value: '+47', label: 'Norway', region: 'Europe' },
+  { value: '+48', label: 'Poland', region: 'Europe' },
+  { value: '+351', label: 'Portugal', region: 'Europe' },
+];
+
+function splitPhoneNumber(rawPhone?: string | null) {
+  const compactPhone = (rawPhone ?? '').replace(/[^\d+]/g, '');
+  const matchedOption = [...PHONE_COUNTRY_OPTIONS]
+    .sort((left, right) => right.value.length - left.value.length)
+    .find((option) => compactPhone.startsWith(option.value));
+
+  if (!matchedOption) {
+    return {
+      countryCode: '+880',
+      nationalNumber: compactPhone.startsWith('+') ? compactPhone : compactPhone.replace(/^0+/, ''),
+    };
+  }
+
+  return {
+    countryCode: matchedOption.value,
+    nationalNumber: compactPhone.slice(matchedOption.value.length).replace(/^0+/, ''),
+  };
+}
+
+function toE164Phone(countryCode: string, nationalNumber: string) {
+  const compactNumber = nationalNumber.replace(/[^\d+]/g, '');
+  if (compactNumber.startsWith('+')) return compactNumber;
+
+  const withoutLeadingZeroes = compactNumber.replace(/^0+/, '');
+  return `${countryCode}${withoutLeadingZeroes}`;
+}
 
 const ITEM_ICONS = {
   identity: FileText,
@@ -75,6 +126,7 @@ export default function UniversalPhase1() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [verifying, setVerifying] = useState<string | null>(null);
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [phoneCountryCode, setPhoneCountryCode] = useState('+880');
   const [otpCodes, setOtpCodes] = useState<Record<string, string>>({});
   const [otpSent, setOtpSent] = useState<Record<string, boolean>>({});
 
@@ -86,8 +138,10 @@ export default function UniversalPhase1() {
         setLoading(true);
         const response = await api.get('/onboarding/status');
         const data = response.data?.data ?? response.data;
+        const parsedPhone = splitPhoneNumber(data?.phone);
         setStatus(data);
-        setPhoneNumber(data?.phone ?? '');
+        setPhoneCountryCode(parsedPhone.countryCode);
+        setPhoneNumber(parsedPhone.nationalNumber);
         setLoadError(null);
       } catch (err) {
         setLoadError('Failed to load onboarding status');
@@ -128,7 +182,7 @@ export default function UniversalPhase1() {
             payload = { code };
           } else if (phoneNumber.trim()) {
             endpoint = '/onboarding/send-otp';
-            payload = { phone: phoneNumber.trim() };
+            payload = { phone: toE164Phone(phoneCountryCode, phoneNumber) };
           } else {
             endpoint = '/onboarding/phone/dev-confirm';
           }
@@ -162,8 +216,10 @@ export default function UniversalPhase1() {
       // Refetch both status endpoints to confirm backend state
       const statusResponse = await api.get('/onboarding/status');
       const statusData = statusResponse.data?.data ?? statusResponse.data;
+      const parsedPhone = splitPhoneNumber(statusData?.phone);
       setStatus(statusData);
-      setPhoneNumber(statusData?.phone ?? phoneNumber);
+      setPhoneCountryCode(parsedPhone.countryCode);
+      setPhoneNumber(parsedPhone.nationalNumber || phoneNumber);
       setOtpCodes((current) => ({ ...current, [itemKey]: '' }));
       setOtpSent((current) => ({ ...current, [itemKey]: false }));
 
@@ -316,20 +372,36 @@ export default function UniversalPhase1() {
                   </p>
 
                   {key === 'phone' && !item.verified && !isPhaseComplete && (
-                    <Input
-                      value={otpSent.phone ? otpCodes.phone ?? '' : phoneNumber}
-                      onChange={(event) => {
-                        const value = event.target.value;
-                        if (otpSent.phone) {
-                          setOtpCodes((current) => ({ ...current, phone: value }));
-                        } else {
-                          setPhoneNumber(value);
-                        }
-                      }}
-                      className="mt-3"
-                      placeholder={otpSent.phone ? '6-digit code' : '+15551234567'}
-                      inputMode={otpSent.phone ? 'numeric' : 'tel'}
-                    />
+                    <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                      {!otpSent.phone && (
+                        <Select value={phoneCountryCode} onValueChange={setPhoneCountryCode}>
+                          <SelectTrigger className="h-10 sm:w-44">
+                            <SelectValue placeholder="+880" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {PHONE_COUNTRY_OPTIONS.map((option) => (
+                              <SelectItem key={`${option.value}-${option.label}`} value={option.value}>
+                                {option.region} - {option.label} {option.value}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      <Input
+                        value={otpSent.phone ? otpCodes.phone ?? '' : phoneNumber}
+                        onChange={(event) => {
+                          const value = event.target.value;
+                          if (otpSent.phone) {
+                            setOtpCodes((current) => ({ ...current, phone: value }));
+                          } else {
+                            setPhoneNumber(value);
+                          }
+                        }}
+                        className="h-10"
+                        placeholder={otpSent.phone ? '6-digit code' : '1712345678'}
+                        inputMode={otpSent.phone ? 'numeric' : 'tel'}
+                      />
+                    </div>
                   )}
 
                   {key === 'email' && otpSent.email && !item.verified && !isPhaseComplete && (
