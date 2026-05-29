@@ -227,7 +227,7 @@ export default function UniversalPhase1() {
               Identity & Onboarding Verification
             </h1>
             <p className="text-sm text-neutral-600 mt-1">
-              {isPhaseComplete ? '✓ Verification Complete' : 'Complete all required items to proceed'}
+              {isPhaseComplete ? 'Verification Complete' : 'Complete all required items to proceed'}
             </p>
           </div>
         </div>
