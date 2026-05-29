@@ -17,9 +17,9 @@ namespace WebApp.Controllers
 {
     /// <summary>
     /// Phase 1 universal onboarding. Hub-and-spoke flow per Figma design:
-    /// 4 mandatory verification items (Identity, Face, Phone, Email) plus
-    /// role-conditional supplementary documents (Income/Tax for Investor;
-    /// License for ServiceProvider; Residence for all as optional).
+    /// 4 mandatory verification items (Identity, Face, Phone, Email).
+    /// Supplementary documents can still be uploaded, but they do not block
+    /// the universal Phase 1 gate.
     ///
     /// The frontend's OnboardingGuard reads Onboarding.Phase from /status
     /// and gates /dashboard/* until Phase == 1.
@@ -64,25 +64,13 @@ namespace WebApp.Controllers
         private static readonly string[] CoreRequired =
             { "identity", "face", "phone", "email" };
 
-        /// <summary>Optional + role-conditional supplementary documents.</summary>
+        /// <summary>Optional supplementary documents kept outside the universal Phase 1 gate.</summary>
         private static readonly string[] AllSupplementary =
             { "residence", "income", "tax", "license" };
 
-        /// <summary>Required item set per role. Creator/Entrepreneur take only the core 4.</summary>
+        /// <summary>Required item set for universal Phase 1. Every role completes the same core 4.</summary>
         private static HashSet<string> RequiredItemsFor(string role)
-        {
-            var set = new HashSet<string>(CoreRequired, StringComparer.OrdinalIgnoreCase);
-            if (string.Equals(role, "Investor", StringComparison.OrdinalIgnoreCase))
-            {
-                set.Add("income");
-                set.Add("tax");
-            }
-            else if (string.Equals(role, "ServiceProvider", StringComparison.OrdinalIgnoreCase))
-            {
-                set.Add("license");
-            }
-            return set;
-        }
+            => new(CoreRequired, StringComparer.OrdinalIgnoreCase);
 
         private async Task<ApplicationUser> CurrentUserAsync()
         {
