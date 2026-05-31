@@ -31,7 +31,9 @@ jobs:
       - name: Build for staging
         run: npm run build
         env:
-          NEXT_PUBLIC_API_URL: https://api-staging.mondialbusiness.eu
+          # Must match src/lib/axios.ts which reads NEXT_PUBLIC_API_BASE_URL
+          # and includes the /api path component.
+          NEXT_PUBLIC_API_BASE_URL: https://api-staging.mondialbusiness.eu/api
           NEXT_TELEMETRY_DISABLED: 1
 
       - name: Deploy to staging
@@ -83,7 +85,9 @@ jobs:
       - name: Build for production
         run: npm run build
         env:
-          NEXT_PUBLIC_API_URL: https://api.mondialbusiness.eu
+          # Must match src/lib/axios.ts which reads NEXT_PUBLIC_API_BASE_URL
+          # and includes the /api path component.
+          NEXT_PUBLIC_API_BASE_URL: https://api.mondialbusiness.eu/api
           NEXT_TELEMETRY_DISABLED: 1
 
       - name: Deploy to production
