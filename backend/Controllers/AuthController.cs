@@ -9,6 +9,7 @@ using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
+using System;
 using System.ComponentModel.DataAnnotations;
 using System.Data;
 using System.IdentityModel.Tokens.Jwt;
@@ -420,6 +421,8 @@ namespace WebApp.Controllers
                 _configuration["JwtSettings:Audience"] ?? "mondial-app"
             );
 
+            // console.WriteLine(principal.Claims.ToList());
+            Console.WriteLine("Principal identity: " + principal.Identity?.Name + ", Claims count: " + principal.Claims.Count());
             if (principal == null)
                 return UnauthorizedResponse("Invalid or expired token");
 

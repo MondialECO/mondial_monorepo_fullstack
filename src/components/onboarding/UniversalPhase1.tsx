@@ -168,9 +168,11 @@ export default function UniversalPhase1() {
 
       switch (itemKey) {
         case 'identity':
+          setActionError('Identity verification is not configured yet. Connect the production KYC provider to start this step.');
+          return;
         case 'face':
-          endpoint = '/onboarding/identity/dev-confirm';
-          break;
+          setActionError('Identity verification is not configured yet. Connect the production KYC provider to start this step.');
+          return;
         case 'phone':
           if (otpSent.phone) {
             const code = otpCodes.phone?.trim() ?? '';
@@ -184,7 +186,8 @@ export default function UniversalPhase1() {
             endpoint = '/onboarding/send-otp';
             payload = { phone: toE164Phone(phoneCountryCode, phoneNumber) };
           } else {
-            endpoint = '/onboarding/phone/dev-confirm';
+            setActionError('Enter your phone number before requesting a verification code.');
+            return;
           }
           break;
         case 'email':
@@ -339,11 +342,10 @@ export default function UniversalPhase1() {
             return (
               <div
                 key={key}
-                className={`bg-white border-2 rounded-lg p-4 flex items-start gap-4 transition ${
-                  item.verified
-                    ? 'border-green-200 bg-green-50'
-                    : 'border-neutral-200 bg-white'
-                }`}
+                className={`bg-white border-2 rounded-lg p-4 flex items-start gap-4 transition ${item.verified
+                  ? 'border-green-200 bg-green-50'
+                  : 'border-neutral-200 bg-white'
+                  }`}
               >
                 <div className="flex-shrink-0 mt-1">
                   {item.verified ? (
@@ -424,7 +426,7 @@ export default function UniversalPhase1() {
                     variant="outline"
                     onClick={() => handleVerifyItem(key)}
                     disabled={verifying === key}
-                    className="flex-shrink-0"
+                    className="shrink-0"
                   >
                     {verifying === key ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
