@@ -86,4 +86,30 @@ describe('UniversalPhase1 phone verification', () => {
       });
     });
   });
+
+  it('does not locally complete identity verification', async () => {
+    const user = userEvent.setup();
+    render(<UniversalPhase1 />);
+
+    await screen.findByText('Legal Identity');
+    await user.click(screen.getAllByRole('button', { name: 'Verify' })[0]);
+
+    expect(api.post).not.toHaveBeenCalled();
+    expect(
+      screen.getByText('Identity verification is not configured yet. Connect the production KYC provider to start this step.')
+    ).toBeInTheDocument();
+  });
+
+  it('requires a phone number before requesting phone verification', async () => {
+    const user = userEvent.setup();
+    render(<UniversalPhase1 />);
+
+    await screen.findByLabelText('Phone number');
+    await user.click(screen.getAllByRole('button', { name: 'Verify' })[2]);
+
+    expect(api.post).not.toHaveBeenCalled();
+    expect(
+      screen.getByText('Enter your phone number before requesting a verification code.')
+    ).toBeInTheDocument();
+  });
 });

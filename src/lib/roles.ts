@@ -3,8 +3,6 @@ export enum UserRole {
   CREATOR = "Creator",
   INVESTOR = "Investor",
   ENTREPRENEUR = "Entrepreneur",
-  ADVISOR = "Advisor",
-  FOUNDER = "Founder",
   SERVICE_PROVIDER = "ServiceProvider",
 }
 
@@ -15,8 +13,6 @@ export const ROLE_DASHBOARD_ROUTES: Record<UserRole, string> = {
   [UserRole.CREATOR]: "/dashboard/creator",
   [UserRole.INVESTOR]: "/dashboard/investor",
   [UserRole.ENTREPRENEUR]: "/dashboard/entrepreneur",
-  [UserRole.ADVISOR]: "/dashboard/advisor",
-  [UserRole.FOUNDER]: "/dashboard/founder",
   [UserRole.SERVICE_PROVIDER]: "/dashboard/serviceprovider",
 };
 
@@ -28,8 +24,6 @@ export function normalizeUserRole(input: unknown): UserRole {
     creator: UserRole.CREATOR,
     investor: UserRole.INVESTOR,
     entrepreneur: UserRole.ENTREPRENEUR,
-    advisor: UserRole.ADVISOR,
-    founder: UserRole.FOUNDER,
     serviceprovider: UserRole.SERVICE_PROVIDER,
   };
 
@@ -46,8 +40,6 @@ export function parseStrictUserRole(input: unknown): UserRole | null {
     creator: UserRole.CREATOR,
     investor: UserRole.INVESTOR,
     entrepreneur: UserRole.ENTREPRENEUR,
-    advisor: UserRole.ADVISOR,
-    founder: UserRole.FOUNDER,
     serviceprovider: UserRole.SERVICE_PROVIDER,
   };
 

@@ -4,7 +4,7 @@ Essential guides for Mondial development and testing.
 
 ## 🚀 Quick Start
 
-1. **[../SETUP.md](../SETUP.md)** — Environment setup (5 minutes)
+1. **[archive/SETUP.md](archive/SETUP.md)** — Environment setup (5 minutes)
 2. **[CONFIGURATION.md](CONFIGURATION.md)** — Config settings (read first)
 3. **[LOCAL_AUTH_TEST.md](LOCAL_AUTH_TEST.md)** — Run auth test (30 minutes)
 4. **[../README.md](../README.md)** — Project overview
@@ -38,9 +38,8 @@ Essential guides for Mondial development and testing.
 Mondial/
 ├── frontend/              Next.js 16 + React 19
 ├── backend/               ASP.NET Core 8
-├── docs/                  This directory
-├── README.md              Monorepo overview
-└── SETUP.md               Setup instructions
+├── docs/                  This directory (SETUP.md now under docs/archive/)
+└── README.md              Monorepo overview
 ```
 
 ## ✅ Pre-Launch Checklist
