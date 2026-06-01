@@ -40,6 +40,7 @@ namespace WebApp.Controllers
         private readonly TwilioService _twilioService;
         private readonly WebApp.Services.Audit.IAuditLogger _audit;
         private readonly IWebHostEnvironment _env;
+        private readonly IInvestorService _investorService;
 
         public AuthController(
             UserManager<ApplicationUser> userManager,
@@ -52,7 +53,8 @@ namespace WebApp.Controllers
             IDistributedCache cache,
             TwilioService twilioService,
             WebApp.Services.Audit.IAuditLogger audit,
-            IWebHostEnvironment env
+            IWebHostEnvironment env,
+            IInvestorService investorService
             )
         {
             _userManager = userManager;
@@ -66,6 +68,7 @@ namespace WebApp.Controllers
             _twilioService = twilioService;
             _audit = audit;
             _env = env;
+            _investorService = investorService;
         }
 
         #region Helper Methods
@@ -375,6 +378,38 @@ namespace WebApp.Controllers
             }
 
             await _userManager.AddToRoleAsync(user, canonicalRole);
+
+            // P0-1: auto-create an Investor catalog row when a user signs up
+            // as an Investor, and link it back via InvestorProfile.InvestorId.
+            // Best-effort: a failure here logs and continues — we never want
+            // an investor-catalog hiccup to roll back a successful signup.
+            if (canonicalRole.Equals("Investor", StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    var stub = new Investor
+                    {
+                        Name = user.Name ?? user.Email ?? "Investor",
+                        Type = "angel",
+                        PrimaryEmail = user.Email,
+                        IsActive = true,
+                        ProfileScore = 50,
+                        LinkedUserId = user.Id.ToString()
+                    };
+
+                    var created = await _investorService.CreateInvestorAsync(stub);
+
+                    user.InvestorProfile ??= new InvestorProfile();
+                    user.InvestorProfile.InvestorId = created.Id;
+                    await _userManager.UpdateAsync(user);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex,
+                        "Investor catalog row creation failed for user {UserId}; signup proceeds without linkage",
+                        user.Id);
+                }
+            }
 
             // Email verification happens via OTP at the onboarding step
             // (POST /api/onboarding/send-email-otp). We no longer send a

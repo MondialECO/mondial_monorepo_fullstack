@@ -45,4 +45,9 @@ public class Investor
     public int ProfileScore { get; set; } // 0-100, higher = more attractive
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+    // Link back to ApplicationUser when this investor was auto-created
+    // from an Investor-role signup. Null for admin-curated catalog entries
+    // (e.g. demo seed data).
+    public string? LinkedUserId { get; set; }
 }
