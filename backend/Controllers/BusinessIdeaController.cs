@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using WebApp.Models.DatabaseModels;
@@ -8,6 +9,7 @@ namespace WebApp.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class BusinessIdeaController : ControllerBase
     {
 
@@ -31,6 +33,15 @@ namespace WebApp.Controllers
         {
             var idea = await _service.GetByIdAsync(id);
             if (idea == null) return NotFound();
+
+            // Marketplace is authenticated-only for MVP. Non-owner non-admin
+            // callers cannot see unpublished ideas; treat them as not-found
+            // to prevent enumeration.
+            var callerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var isOwner = !string.IsNullOrEmpty(callerId) && idea.CreatorId == callerId;
+            if (!idea.IsPublished && !isOwner && !User.IsInRole("Admin"))
+                return NotFound();
+
             return Ok(idea);
         }
 
@@ -38,6 +49,14 @@ namespace WebApp.Controllers
         public async Task<IActionResult> GetByCreator(string creatorId)
         {
             var ideas = await _service.GetByCreatorAsync(creatorId);
+
+            // Owner or admin sees everything (including drafts); other
+            // authenticated callers see published ideas only.
+            var callerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var isOwner = !string.IsNullOrEmpty(callerId) && creatorId == callerId;
+            if (!isOwner && !User.IsInRole("Admin"))
+                ideas = ideas.Where(i => i.IsPublished);
+
             return Ok(ideas);
         }
 

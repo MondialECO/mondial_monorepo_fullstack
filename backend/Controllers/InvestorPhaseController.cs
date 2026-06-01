@@ -45,6 +45,7 @@ public class InvestorPhaseController : ControllerBase
     // ============ INVESTOR PHASE 5: DEAL DISCOVERY ============
 
     [HttpGet("deals")]
+    [Authorize(Roles = "Investor,Admin")]
     public async Task<ActionResult<List<DealDiscoveryResponse>>> GetDealDiscovery([FromQuery] string? sector = null, [FromQuery] string? stage = null)
     {
         try

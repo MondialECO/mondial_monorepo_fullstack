@@ -222,6 +222,7 @@ namespace WebApp.Controllers
         public class VerifyCodeRequest { public string Code { get; set; } }
 
         [HttpPost("verify-otp")]
+        [EnableRateLimiting("auth")]
         public async Task<IActionResult> VerifyPhoneOtp([FromBody] VerifyCodeRequest body)
             => await VerifyOtpCore(body, isEmail: false);
 
@@ -258,6 +259,7 @@ namespace WebApp.Controllers
         }
 
         [HttpPost("verify-email-otp")]
+        [EnableRateLimiting("auth")]
         public async Task<IActionResult> VerifyEmailOtp([FromBody] VerifyCodeRequest body)
             => await VerifyOtpCore(body, isEmail: true);
 
