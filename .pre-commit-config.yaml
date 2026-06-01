@@ -2,11 +2,18 @@
 #
 #   pip install pre-commit           # or:  brew install pre-commit
 #   pre-commit install --install-hooks
-#   pre-commit install --hook-type pre-push
+#
+# `default_install_hook_types` below ensures the single `pre-commit
+# install` command activates BOTH the pre-commit and pre-push stages,
+# so devs no longer need a separate `--hook-type pre-push` step.
 #
 # Runs the gitleaks secret scanner on every commit and every push.
 # Bypass requires explicit --no-verify AND reviewer approval per the
 # project's git-safety policy.
+
+default_install_hook_types:
+  - pre-commit
+  - pre-push
 
 repos:
   - repo: https://github.com/gitleaks/gitleaks
