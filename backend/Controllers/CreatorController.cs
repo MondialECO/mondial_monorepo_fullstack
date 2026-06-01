@@ -434,6 +434,11 @@ namespace WebApp.Controllers
                 if (idea == null)
                     return NotFound();
 
+                // Only the owning creator can flip publication state.
+                // Treat foreign access as not-found to avoid enumeration.
+                if (idea.CreatorId != userId)
+                    return NotFound();
+
                 idea.IsPublished = !idea.IsPublished;
 
                 await _context.BusinessIdeas.ReplaceOneAsync(x => x.Id == id, idea);
@@ -465,6 +470,12 @@ namespace WebApp.Controllers
                 return Ok(new List<object>());
 
             var ideaIds = ideas.Select(i => i.Id).ToList();
+
+            // Scope the requested idea id to the caller's own ideas. Without
+            // this, any authenticated user could read the investor list of
+            // any idea on the platform.
+            if (!ideaIds.Contains(id))
+                return NotFound();
 
             var investor = await _investmentsService.GetByIdeaIdsAsync(ideaIds);
             //if (investor == null || investor.CreatorId != userId) return NotFound();
