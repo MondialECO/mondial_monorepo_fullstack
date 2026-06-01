@@ -31,12 +31,16 @@ namespace WebApp.Services.Repository
                 .ToListAsync();
         }
 
-        public async Task MarkAsRead(ObjectId id)
+        // SEC-10 Phase 2: atomic ownership-scoped update. The filter requires
+        // both Id AND UserId to match, so a foreign caller's id never causes
+        // a write. Returns true if a document was updated.
+        public async Task<bool> MarkAsRead(ObjectId id, Guid userId)
         {
-            await _collection.UpdateOneAsync(
-                n => n.Id == id,
+            var result = await _collection.UpdateOneAsync(
+                n => n.Id == id && n.UserId == userId,
                 Builders<Notification>.Update.Set(n => n.IsRead, true)
             );
+            return result.ModifiedCount > 0;
         }
     }
 }

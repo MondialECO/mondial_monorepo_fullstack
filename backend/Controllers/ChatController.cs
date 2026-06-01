@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using MongoDB.Bson;
 using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using WebApp.Models.DatabaseModels;
 using WebApp.Models.Dtos;
 using WebApp.Services.Interface;
@@ -26,9 +27,13 @@ namespace WebApp.Controllers
             _hub = hub;
         }
 
-        // Get current user ID from JWT token
+        // Get current user ID from JWT token. ASP.NET Core 8 JwtBearer
+        // remaps inbound "sub" → ClaimTypes.NameIdentifier by default
+        // (JwtSecurityTokenHandler.DefaultMapInboundClaims = true), so we
+        // must look up the mapped name here. Looking up "sub" directly
+        // returns null (pre-SEC-10-Phase-2 bug).
         private Guid CurrentUserId =>
-            Guid.Parse(User.FindFirst("sub")?.Value
+            Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value
                 ?? throw new UnauthorizedAccessException());
 
         // Conversation list
@@ -46,8 +51,12 @@ namespace WebApp.Controllers
             int skip = 0,
             int limit = 30)
         {
+            var conversationObjectId = ObjectId.Parse(conversationId);
+            if (!await _chatService.IsParticipantAsync(conversationObjectId, CurrentUserId))
+                return Forbid();
+
             var messages = await _chatService.GetMessages(
-                ObjectId.Parse(conversationId), skip, limit);
+                conversationObjectId, skip, limit);
 
             return Ok(messages);
         }
@@ -56,9 +65,13 @@ namespace WebApp.Controllers
         [HttpPost("send")]
         public async Task<IActionResult> SendMessage(SendMessageRequest request)
         {
+            var conversationObjectId = ObjectId.Parse(request.ConversationId);
+            if (!await _chatService.IsParticipantAsync(conversationObjectId, CurrentUserId))
+                return Forbid();
+
             var message = new ChatMessage
             {
-                ConversationId = ObjectId.Parse(request.ConversationId),
+                ConversationId = conversationObjectId,
                 SenderId = CurrentUserId,
                 Message = request.Message
             };
@@ -76,8 +89,12 @@ namespace WebApp.Controllers
         [HttpPost("read/{conversationId}")]
         public async Task<IActionResult> MarkRead(string conversationId)
         {
+            var conversationObjectId = ObjectId.Parse(conversationId);
+            if (!await _chatService.IsParticipantAsync(conversationObjectId, CurrentUserId))
+                return Forbid();
+
             await _chatService.MarkAsRead(
-                ObjectId.Parse(conversationId),
+                conversationObjectId,
                 CurrentUserId
             );
 

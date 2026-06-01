@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.SignalR;
 using MongoDB.Bson;
 using Org.BouncyCastle.Asn1.Ocsp;
 using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using WebApp.Models.DatabaseModels;
 using WebApp.Models.Dtos;
 using WebApp.Services.Interface;
@@ -18,10 +19,25 @@ public class ChatHub : Hub
         _chatService = chatService;
     }
 
+    // Inbound JWT "sub" is remapped to ClaimTypes.NameIdentifier by the
+    // default JwtSecurityTokenHandler. The short name is null on the
+    // principal.
+    private Guid CurrentUserId()
+    {
+        var value = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(value) || !Guid.TryParse(value, out var id))
+            throw new HubException("Not authenticated");
+        return id;
+    }
+
     public async Task JoinConversation(string conversationId)
     {
-        if (!ObjectId.TryParse(conversationId, out _))
+        if (!ObjectId.TryParse(conversationId, out var conversationObjectId))
             throw new HubException("Invalid conversation id");
+
+        var userId = CurrentUserId();
+        if (!await _chatService.IsParticipantAsync(conversationObjectId, userId))
+            throw new HubException("Not a participant of this conversation");
 
         await Groups.AddToGroupAsync(Context.ConnectionId, conversationId);
     }
@@ -31,12 +47,15 @@ public class ChatHub : Hub
         if (string.IsNullOrWhiteSpace(request.Message))
             throw new HubException("Message empty");
 
-        var senderId = Guid.Parse(
-            Context.User!.FindFirst(JwtRegisteredClaimNames.Sub)!.Value
-        );
+        var senderId = CurrentUserId();
+        var conversationObjectId = ObjectId.Parse(request.ConversationId);
+
+        if (!await _chatService.IsParticipantAsync(conversationObjectId, senderId))
+            throw new HubException("Not a participant of this conversation");
+
         var message = new ChatMessage
         {
-            ConversationId = ObjectId.Parse(request.ConversationId),
+            ConversationId = conversationObjectId,
             SenderId = senderId,
             Message = request.Message
         };

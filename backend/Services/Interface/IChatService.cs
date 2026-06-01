@@ -15,5 +15,9 @@ namespace WebApp.Services.Interface
         Task<List<ChatMessage>> GetMessages(ObjectId conversationId, int skip, int limit);
         Task<ChatMessage> AddMessage(ChatMessage message);
         Task MarkAsRead(ObjectId conversationId, Guid userId);
+
+        // True only when the user is a participant of the conversation.
+        // Authorization gate for Chat read/write paths (SEC-10 Phase 2).
+        Task<bool> IsParticipantAsync(ObjectId conversationId, Guid userId);
     }
 }

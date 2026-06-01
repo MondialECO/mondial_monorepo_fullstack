@@ -42,5 +42,8 @@ namespace WebApp.Services
            await _messages.MarkAsRead(conversationId, userId);
         }
 
+        public Task<bool> IsParticipantAsync(ObjectId conversationId, Guid userId)
+            => _conversation.IsParticipantAsync(conversationId, userId);
+
     }
 }
