@@ -1,7 +1,6 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 
@@ -16,7 +15,6 @@ interface Deal {
 }
 
 export default function Phase5Client() {
-  const router = useRouter();
   const [deals, setDeals] = useState<Deal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -112,9 +110,12 @@ export default function Phase5Client() {
                     <strong>Founder:</strong> {deal.founderName}
                   </p>
                 </div>
-                <Button onClick={() => router.push(`/dashboard/investor/deals/${deal.companyId}`)} className="w-full">
+                <Button disabled aria-disabled="true" className="w-full cursor-not-allowed">
                   View Details
                 </Button>
+                <p className="mt-2 text-center text-xs text-neutral-5">
+                  Detail view coming in P1
+                </p>
               </div>
             ))}
           </div>

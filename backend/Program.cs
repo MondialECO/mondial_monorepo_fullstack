@@ -607,6 +607,10 @@ using (var scope = app.Services.CreateScope())
     {
         Log.Warning(ex, "Onboarding backfill skipped (non-fatal)");
     }
+
+    // Development-only demo seeding (Investor catalogue). Double-gated on
+    // IsDevelopment() and config flag SeedDemoData. Idempotent.
+    await scope.ServiceProvider.SeedDemoDataAsync(app.Environment, app.Configuration);
 }
 
 try

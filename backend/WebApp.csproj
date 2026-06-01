@@ -53,4 +53,13 @@
     <Folder Include="wwwroot\" />
   </ItemGroup>
 
+  <!-- Demo seed payloads. The SDK already includes these as Content
+       implicitly; we only need to set CopyToOutputDirectory so the
+       seeder can resolve them via AppContext.BaseDirectory at runtime. -->
+  <ItemGroup>
+    <Content Update="Configuration\SeedData\**\*.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>
