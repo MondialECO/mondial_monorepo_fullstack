@@ -45,6 +45,16 @@ namespace WebApp.Services.Repository
             return newConvo;
         }
 
+        // Membership check used by Chat authorization (SEC-10 Phase 2).
+        // Returns true iff a conversation with the given id exists AND
+        // includes the user in its Participants list.
+        public async Task<bool> IsParticipantAsync(ObjectId conversationId, Guid userId)
+        {
+            return await _collection
+                .Find(c => c.Id == conversationId && c.Participants.Contains(userId))
+                .AnyAsync();
+        }
+
         public async Task UpdateConversionLastMessage(ChatMessage update)
         {
             var filter = Builders<Conversation>.Filter.Eq(c => c.Id, update.ConversationId);

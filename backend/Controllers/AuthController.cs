@@ -320,7 +320,10 @@ namespace WebApp.Controllers
         [HttpPost("logout")]
         public async Task<IActionResult> Logout()
         {
-            var userId = User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+            // JwtBearer remaps inbound "sub" → ClaimTypes.NameIdentifier by
+            // default. Look up the mapped name to match Me/account/password
+            // endpoints below.
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var user = await _userManager.FindByIdAsync(userId);
 
             if (user == null)
@@ -426,7 +429,13 @@ namespace WebApp.Controllers
             if (principal == null)
                 return UnauthorizedResponse("Invalid or expired token");
 
-            var userId = principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+            // The local JwtSecurityTokenHandler instance inherits the
+            // process-wide DefaultMapInboundClaims = true, so inbound "sub"
+            // is normally remapped to ClaimTypes.NameIdentifier. Keep the
+            // explicit Sub lookup as a primary, and fall through to the
+            // mapped name to match the refresh-token path above.
+            var userId = principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value
+                      ?? principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             var email = principal.FindFirst("email")?.Value;
             var role = principal.FindFirst(ClaimTypes.Role)?.Value;
             var tokenType = principal.FindFirst("token_type")?.Value;
