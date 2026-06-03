@@ -30,6 +30,19 @@ public class ChatHub : Hub
         return id;
     }
 
+    // Every connection joins its own per-user group so the server can reach a
+    // user across ALL their conversations (not just the open thread). The
+    // group name is the user id, matching the controller's fan-out target.
+    public override async Task OnConnectedAsync()
+    {
+        var userId = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!string.IsNullOrEmpty(userId))
+            await Groups.AddToGroupAsync(Context.ConnectionId, userId);
+        await base.OnConnectedAsync();
+    }
+
+    // Retained for backward compatibility. Per-user groups now drive delivery,
+    // so joining a conversation group is no longer required to receive messages.
     public async Task JoinConversation(string conversationId)
     {
         if (!ObjectId.TryParse(conversationId, out var conversationObjectId))
@@ -61,7 +74,13 @@ public class ChatHub : Hub
         };
         var savedMessage = await _chatService.AddMessage(message);
 
-        await Clients.Group(request.ConversationId)
-            .SendAsync("ReceiveMessage", savedMessage);
+        // Fan out to every participant's per-user group so recipients receive
+        // the message regardless of which thread (if any) they have open.
+        var participants = await _chatService.GetParticipantsAsync(conversationObjectId);
+        foreach (var participantId in participants)
+        {
+            await Clients.Group(participantId.ToString())
+                .SendAsync("ReceiveMessage", savedMessage);
+        }
     }
 }

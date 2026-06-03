@@ -10,6 +10,13 @@ public class CreateCompanyDto
     public string Tagline { get; set; }
 }
 
+public class CreateCompanyFromIdeaResponse
+{
+    public string CompanyId { get; set; }
+    public string SourceBusinessIdeaId { get; set; }
+    public bool AlreadyExisted { get; set; }
+}
+
 // ============ PHASE 2: LEGAL INFO & DOCUMENTS ============
 
 public class UpdateLegalInfoRequest
@@ -375,6 +382,10 @@ public class DealStatusResponse
     public TermSheetResponse TermSheet { get; set; }
     public List<ChecklistItemDto> ClosingChecklist { get; set; }
     public List<DealParticipantStatusDto> Investors { get; set; }
+
+    // Offer system (Phase D-4): whose turn it is + the offer/counter history.
+    public string CurrentTurn { get; set; } = "";
+    public List<TermSheetRevisionResponse> Revisions { get; set; } = new();
 }
 
 public class TermSheetResponse
@@ -708,4 +719,160 @@ public class OutreachCampaignResponse
     public string Template { get; set; }
     public List<string> InvestorIds { get; set; } = new();
     public DateTime? StartedAt { get; set; }
+}
+
+// ============ INVESTOR-SIDE READS (Phase B/C/D — June 10 demo) ============
+
+public class OpportunityCardResponse
+{
+    public string CompanyId { get; set; }
+    public string CompanyName { get; set; }
+    public string Tagline { get; set; }
+    public string Industry { get; set; }
+    public string Country { get; set; }
+    public string FundingRoundType { get; set; }
+    public double? FundingAskAmount { get; set; }
+    public double? Valuation { get; set; }
+    public int MatchScore { get; set; }
+    public string MatchStatus { get; set; }
+    public bool IsInvestorReady { get; set; }
+    public DateTime LastUpdatedAt { get; set; }
+}
+
+public class OpportunityFeedResponse
+{
+    public int TotalMatches { get; set; }
+    public int NewMatchesToday { get; set; }
+    public List<OpportunityCardResponse> Items { get; set; } = new();
+}
+
+public class OpportunityScoreBreakdownDto
+{
+    public int SectorFit { get; set; }
+    public int StageFit { get; set; }
+    public int GeographyFit { get; set; }
+    public int TeamScore { get; set; }
+}
+
+public class OpportunityCapTableSummaryDto
+{
+    public int TotalShares { get; set; }
+    public double EsopPoolPercent { get; set; }
+    public List<EquityEntryDto> Entries { get; set; } = new();
+}
+
+public class OpportunityTeamMemberDto
+{
+    public string Name { get; set; }
+    public string Role { get; set; }
+}
+
+public class OpportunityDetailResponse
+{
+    public string CompanyId { get; set; }
+    public string CompanyName { get; set; }
+    public string Tagline { get; set; }
+    public string Industry { get; set; }
+    public string Country { get; set; }
+    public string FundingRoundType { get; set; }
+    public double? FundingAskAmount { get; set; }
+    public double? EquityOfferedPercent { get; set; }
+    public double? PreMoneyValuation { get; set; }
+    public double? Valuation { get; set; }
+    public int TrustScore { get; set; }
+    public bool IsInvestorReady { get; set; }
+    public int MatchScore { get; set; }
+    public string MatchStatus { get; set; }
+    public string MatchRationale { get; set; }
+    public OpportunityScoreBreakdownDto ScoreBreakdown { get; set; }
+    public bool NdaRequired { get; set; }
+    public bool NdaAccepted { get; set; }
+    public DateTime? NdaAcceptedAt { get; set; }
+    /// <summary>Set only when NdaAccepted == true.</summary>
+    public OpportunityCapTableSummaryDto CapTableSummary { get; set; }
+    /// <summary>Set only when NdaAccepted == true.</summary>
+    public List<OpportunityTeamMemberDto> Team { get; set; }
+    public int DocumentsCount { get; set; }
+    public int? AiReviewScore { get; set; }
+    public DateTime LastUpdatedAt { get; set; }
+}
+
+public class InvestorPipelineSummaryDto
+{
+    public int ActiveDeals { get; set; }
+    public double CapitalCommitted { get; set; }
+    public double AverageMatchScore { get; set; }
+    /// <summary>Multiple-on-invested-capital. Demo placeholder until per-investment current-valuation field exists.</summary>
+    public double Moic { get; set; }
+}
+
+public class InvestorPipelineColumnsDto
+{
+    public List<OpportunityCardResponse> NewMatches { get; set; } = new();
+    public List<OpportunityCardResponse> InReview { get; set; } = new();
+    public List<OpportunityCardResponse> NdaSigned { get; set; } = new();
+    public List<OpportunityCardResponse> DataRoom { get; set; } = new();
+    public List<OpportunityCardResponse> Negotiation { get; set; } = new();
+}
+
+public class InvestorPipelineResponse
+{
+    public InvestorPipelineSummaryDto Summary { get; set; }
+    public InvestorPipelineColumnsDto Columns { get; set; }
+}
+
+// ============ Phase C — NDA accept response ============
+
+public class NdaAcceptanceResponse
+{
+    public DateTime AcceptedAt { get; set; }
+    public string NdaTextHash { get; set; }
+}
+
+// ============ Phase D — Data Room investor reads ============
+
+public class InvestorDocumentListItemDto
+{
+    public string DocumentId { get; set; }
+    public string Title { get; set; }
+    public string Category { get; set; }
+    public string FileName { get; set; }
+    public string MimeType { get; set; }
+    public long FileSize { get; set; }
+    public DateTime UploadedAt { get; set; }
+}
+
+public class InvestorDocumentListResponse
+{
+    public bool NdaRequired { get; set; }
+    public bool NdaAccepted { get; set; }
+    public List<InvestorDocumentListItemDto> Items { get; set; } = new();
+}
+
+public class InvestorReviewedDocumentDto
+{
+    public string DocumentId { get; set; }
+    public string Title { get; set; }
+    public DateTime ViewedAt { get; set; }
+}
+
+public class InvestorSessionResponse
+{
+    public int ViewedDocsCount { get; set; }
+    public int TotalDocsCount { get; set; }
+    public int ViewEventsCount { get; set; }
+    public int DownloadEventsCount { get; set; }
+    public DateTime? FirstAccessAt { get; set; }
+    public DateTime? LastAccessAt { get; set; }
+    public List<InvestorReviewedDocumentDto> ReviewedDocuments { get; set; } = new();
+}
+
+public class DiligenceProgressResponse
+{
+    public int TotalItems { get; set; }
+    public int Completed { get; set; }
+    public int InProgress { get; set; }
+    public int Pending { get; set; }
+    public int Flagged { get; set; }
+    public int PercentComplete { get; set; }
 }

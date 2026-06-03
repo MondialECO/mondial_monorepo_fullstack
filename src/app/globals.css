@@ -51,6 +51,10 @@
   --color-skin-tone-4: var(--skin-tone-4);
   --color-success-light: var(--success-light);
   --color-success-text: var(--success-text);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -98,6 +102,10 @@
   --skin-tone-4: #422B22;
   --success-light: #E5F7ED;
   --success-text: #00A854;
+  --warning: #B45309;
+  --warning-foreground: #FFFFFF;
+  --info: #0369A1;
+  --info-foreground: #FFFFFF;
 }
 
 .dark {
@@ -137,6 +145,10 @@
   --skin-tone-4: #2a2220;
   --success-light: #1a3d2a;
   --success-text: #34d399;
+  --warning: #FBBF24;
+  --warning-foreground: #1C2434;
+  --info: #38BDF8;
+  --info-foreground: #08090A;
 }
 
 @layer base {

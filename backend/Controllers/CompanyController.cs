@@ -15,15 +15,18 @@ public class CompanyController : ControllerBase
 {
     private readonly ICompanyService _companyService;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IPhaseNotificationService _phaseNotificationService;
     private readonly ILogger<CompanyController> _logger;
 
     public CompanyController(
         ICompanyService companyService,
         UserManager<ApplicationUser> userManager,
+        IPhaseNotificationService phaseNotificationService,
         ILogger<CompanyController> logger)
     {
         _companyService = companyService;
         _userManager = userManager;
+        _phaseNotificationService = phaseNotificationService;
         _logger = logger;
     }
 
@@ -50,11 +53,73 @@ public class CompanyController : ControllerBase
         await EnsureCompanyOwnershipAsync(companyId);
     }
 
+    // Bilateral deal authorization (Phase D-2). Resolves the caller as either
+    // the founder (company owner) or an investor participant (matched on
+    // InvestorProfile.InvestorId, never the user id). Non-participants get a
+    // KeyNotFoundException → 404, so deal existence is never leaked.
+    private async Task<DealAccessContext> EnsureDealParticipantAsync(string dealId)
+    {
+        var userId = GetUserId();
+
+        var deal = await _companyService.GetDealEntityAsync(dealId);
+        if (deal == null)
+            throw new KeyNotFoundException($"Deal {dealId} not found");
+
+        var company = await _companyService.GetCompanyAsync(deal.CompanyId);
+        var user = await _userManager.FindByIdAsync(userId);
+        var investorProfileId = user?.InvestorProfile?.InvestorId;
+
+        var resolution = DealAccessResolver.Resolve(
+            userId,
+            company?.OwnerId,
+            investorProfileId,
+            deal.Investors.Select(i => i.InvestorId));
+
+        if (resolution == null)
+            throw new KeyNotFoundException($"Deal {dealId} not found");
+
+        return new DealAccessContext
+        {
+            Deal = deal,
+            Role = resolution.Role,
+            PrincipalId = resolution.PrincipalId
+        };
+    }
+
+    // Best-effort deal notification (offer events). Non-blocking — failure must
+    // not roll back an already-persisted offer transition.
+    private async Task NotifyDealEventAsync(string dealId, string status)
+    {
+        try
+        {
+            await _phaseNotificationService.NotifyDealStatusChangeAsync(dealId, "", status);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Deal offer notification failed for deal {DealId} (non-fatal)", dealId);
+        }
+    }
+
     private async Task EnsureUniversalPhase1CompleteAsync(string userId)
     {
         var user = await _userManager.FindByIdAsync(userId);
         if (user == null || (user.Onboarding?.Phase ?? 0) < 1)
             throw new UnauthorizedAccessException("User must complete Universal Phase 1 onboarding before accessing company endpoints.");
+    }
+
+    /// <summary>
+    /// Resolves the caller's <see cref="InvestorProfile.InvestorId"/> from
+    /// the authenticated principal. Throws 403 when the caller has no
+    /// linked Investor catalogue entry (i.e. not an Investor-role user).
+    /// Mirrors the shape of <see cref="EnsureUniversalPhase1CompleteAsync"/>.
+    /// </summary>
+    private async Task<string> EnsureInvestorIdentityAsync(string userId)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+        var investorId = user?.InvestorProfile?.InvestorId;
+        if (string.IsNullOrWhiteSpace(investorId))
+            throw new UnauthorizedAccessException("User has no linked investor profile.");
+        return investorId;
     }
 
     // ============ PHASE FLOW ============
@@ -153,6 +218,41 @@ public class CompanyController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating company");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    // Promotes a Creator's BusinessIdea into an entrepreneur Company.
+    // Idempotent: returns the existing company if this idea was already promoted.
+    [HttpPost("from-idea/{ideaId}")]
+    public async Task<ActionResult<CreateCompanyFromIdeaResponse>> CreateCompanyFromIdea(string ideaId)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+
+            var (company, alreadyExisted) = await _companyService.CreateCompanyFromIdeaAsync(userId, ideaId);
+
+            return Ok(new CreateCompanyFromIdeaResponse
+            {
+                CompanyId = company.Id,
+                SourceBusinessIdeaId = company.SourceBusinessIdeaId,
+                AlreadyExisted = alreadyExisted
+            });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating company from idea {IdeaId}", ideaId);
             return BadRequest(new { error = ex.Message });
         }
     }
@@ -1213,16 +1313,32 @@ public class CompanyController : ControllerBase
     }
 
     [HttpPost("{companyId}/dataroom/nda/accept")]
-    public async Task<ActionResult> AcceptDataRoomNda(string companyId, [FromBody] AcceptNdaRequest request)
+    public async Task<ActionResult<NdaAcceptanceResponse>> AcceptDataRoomNda(string companyId, [FromBody] AcceptNdaRequest request)
     {
         try
         {
             var userId = GetUserId();
             await EnsureUniversalPhase1CompleteAsync(userId);
             // Note: NDA acceptance is INVESTOR-side; do NOT enforce ownership.
-            await _companyService.AcceptDataRoomNdaAsync(
-                companyId, userId, request?.NdaText ?? string.Empty, HashIp(HttpContext));
-            return Ok();
+            // Persist the Investor catalogue id (not the ApplicationUser id) so the
+            // row lines up with what investor-scoped read endpoints filter against.
+            var investorId = await EnsureInvestorIdentityAsync(userId);
+            var result = await _companyService.AcceptDataRoomNdaAsync(
+                companyId, investorId, request?.NdaText ?? string.Empty, HashIp(HttpContext));
+
+            // Best-effort notification — emitted here (not in the service) to avoid the
+            // ICompanyService <-> IPhaseNotificationService DI cycle. Failure must not
+            // block the 200 response (the NDA is already persisted).
+            try
+            {
+                await _phaseNotificationService.NotifyNdaSignedAsync(companyId, investorId);
+            }
+            catch (Exception nex)
+            {
+                _logger.LogWarning(nex, "NDA-signed notification failed for {CompanyId} (non-fatal)", companyId);
+            }
+
+            return Ok(result);
         }
         catch (UnauthorizedAccessException ex)
         {
@@ -1503,14 +1619,18 @@ public class CompanyController : ControllerBase
         {
             var userId = GetUserId();
             await EnsureUniversalPhase1CompleteAsync(userId);
-            await EnsureDealOwnershipAsync(dealId);
-            var result = await _companyService.GetDealAsync(dealId);
+            var ctx = await EnsureDealParticipantAsync(dealId);
+            var result = _companyService.GetDealForParticipant(ctx);
             return Ok(result);
         }
         catch (UnauthorizedAccessException ex)
         {
             _logger.LogWarning("Authorization failed: {Message}", ex.Message);
             return StatusCode(403, new { error = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { error = ex.Message });
         }
         catch (Exception ex)
         {
@@ -1549,8 +1669,8 @@ public class CompanyController : ControllerBase
         {
             var userId = GetUserId();
             await EnsureUniversalPhase1CompleteAsync(userId);
-            await EnsureDealOwnershipAsync(dealId);
-            var result = await _companyService.UpdateTermSheetAsync(dealId, request, userId, HashIp(HttpContext));
+            var ctx = await EnsureDealParticipantAsync(dealId);
+            var result = await _companyService.UpdateTermSheetAsync(ctx, request, userId, HashIp(HttpContext));
             return Ok(result);
         }
         catch (UnauthorizedAccessException ex)
@@ -1572,8 +1692,8 @@ public class CompanyController : ControllerBase
         {
             var userId = GetUserId();
             await EnsureUniversalPhase1CompleteAsync(userId);
-            await EnsureDealOwnershipAsync(dealId);
-            var result = await _companyService.ProgressChecklistAsync(dealId, item, userId, HashIp(HttpContext));
+            var ctx = await EnsureDealParticipantAsync(dealId);
+            var result = await _companyService.ProgressChecklistAsync(ctx, item, userId, HashIp(HttpContext));
             return Ok(result);
         }
         catch (UnauthorizedAccessException ex)
@@ -1595,8 +1715,8 @@ public class CompanyController : ControllerBase
         {
             var userId = GetUserId();
             await EnsureUniversalPhase1CompleteAsync(userId);
-            await EnsureDealOwnershipAsync(dealId);
-            var result = await _companyService.CloseDealAsync(dealId, userId, HashIp(HttpContext));
+            var ctx = await EnsureDealParticipantAsync(dealId);
+            var result = await _companyService.CloseDealAsync(ctx, userId, HashIp(HttpContext));
             return Ok(result);
         }
         catch (UnauthorizedAccessException ex)
@@ -1618,8 +1738,8 @@ public class CompanyController : ControllerBase
         {
             var userId = GetUserId();
             await EnsureUniversalPhase1CompleteAsync(userId);
-            await EnsureDealOwnershipAsync(dealId);
-            var result = await _companyService.UpdateDealStatusAsync(dealId, request, userId, HashIp(HttpContext));
+            var ctx = await EnsureDealParticipantAsync(dealId);
+            var result = await _companyService.UpdateDealStatusAsync(ctx, request, userId, HashIp(HttpContext));
             return Ok(result);
         }
         catch (UnauthorizedAccessException ex)
@@ -1642,8 +1762,8 @@ public class CompanyController : ControllerBase
         {
             var userId = GetUserId();
             await EnsureUniversalPhase1CompleteAsync(userId);
-            await EnsureDealOwnershipAsync(dealId);
-            var result = await _companyService.SignTermSheetAsync(dealId, request, userId, HashIp(HttpContext));
+            var ctx = await EnsureDealParticipantAsync(dealId);
+            var result = await _companyService.SignTermSheetAsync(ctx, request, userId, HashIp(HttpContext));
             return Ok(result);
         }
         catch (UnauthorizedAccessException ex)
@@ -1665,8 +1785,8 @@ public class CompanyController : ControllerBase
         {
             var userId = GetUserId();
             await EnsureUniversalPhase1CompleteAsync(userId);
-            await EnsureDealOwnershipAsync(dealId);
-            var result = await _companyService.MutateDueDiligenceItemAsync(dealId, request, userId, HashIp(HttpContext));
+            var ctx = await EnsureDealParticipantAsync(dealId);
+            var result = await _companyService.MutateDueDiligenceItemAsync(ctx, request, userId, HashIp(HttpContext));
             return Ok(result);
         }
         catch (UnauthorizedAccessException ex)
@@ -1688,8 +1808,8 @@ public class CompanyController : ControllerBase
         {
             var userId = GetUserId();
             await EnsureUniversalPhase1CompleteAsync(userId);
-            await EnsureDealOwnershipAsync(dealId);
-            var result = await _companyService.GetDealActivityAsync(dealId);
+            var ctx = await EnsureDealParticipantAsync(dealId);
+            var result = await _companyService.GetDealActivityForParticipantAsync(ctx);
             return Ok(result);
         }
         catch (UnauthorizedAccessException ex)
@@ -1697,11 +1817,84 @@ public class CompanyController : ControllerBase
             _logger.LogWarning("Authorization failed: {Message}", ex.Message);
             return StatusCode(403, new { error = ex.Message });
         }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { error = ex.Message });
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error fetching deal activity");
             return BadRequest(new { error = ex.Message });
         }
+    }
+
+    // ============ PHASE D-4: OFFER ACTIONS (bilateral, turn-gated) ============
+
+    [HttpPost("deals/{dealId}/offer/counter")]
+    public async Task<ActionResult<DealStatusResponse>> CounterOffer(string dealId, [FromBody] OfferTermsRequest request)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            var ctx = await EnsureDealParticipantAsync(dealId);
+            var result = await _companyService.CounterOfferAsync(ctx, request, userId, HashIp(HttpContext));
+            await NotifyDealEventAsync(ctx.Deal.Id, "offer_countered");
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex) { return StatusCode(403, new { error = ex.Message }); }
+        catch (KeyNotFoundException ex) { return NotFound(new { error = ex.Message }); }
+        catch (Exception ex) { _logger.LogError(ex, "Error countering offer"); return BadRequest(new { error = ex.Message }); }
+    }
+
+    [HttpPost("deals/{dealId}/offer/accept")]
+    public async Task<ActionResult<DealStatusResponse>> AcceptOffer(string dealId)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            var ctx = await EnsureDealParticipantAsync(dealId);
+            var result = await _companyService.AcceptOfferAsync(ctx, userId, HashIp(HttpContext));
+            await NotifyDealEventAsync(ctx.Deal.Id, "offer_accepted");
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex) { return StatusCode(403, new { error = ex.Message }); }
+        catch (KeyNotFoundException ex) { return NotFound(new { error = ex.Message }); }
+        catch (Exception ex) { _logger.LogError(ex, "Error accepting offer"); return BadRequest(new { error = ex.Message }); }
+    }
+
+    [HttpPost("deals/{dealId}/offer/reject")]
+    public async Task<ActionResult<DealStatusResponse>> RejectOffer(string dealId, [FromBody] RejectOfferRequest request)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            var ctx = await EnsureDealParticipantAsync(dealId);
+            var result = await _companyService.RejectOfferAsync(ctx, request?.Note, userId, HashIp(HttpContext));
+            await NotifyDealEventAsync(ctx.Deal.Id, "offer_rejected");
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex) { return StatusCode(403, new { error = ex.Message }); }
+        catch (KeyNotFoundException ex) { return NotFound(new { error = ex.Message }); }
+        catch (Exception ex) { _logger.LogError(ex, "Error rejecting offer"); return BadRequest(new { error = ex.Message }); }
+    }
+
+    [HttpPost("deals/{dealId}/offer/viewed")]
+    public async Task<ActionResult<DealStatusResponse>> MarkOfferViewed(string dealId)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            var ctx = await EnsureDealParticipantAsync(dealId);
+            var result = await _companyService.MarkOfferViewedAsync(ctx, userId, HashIp(HttpContext));
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex) { return StatusCode(403, new { error = ex.Message }); }
+        catch (KeyNotFoundException ex) { return NotFound(new { error = ex.Message }); }
+        catch (Exception ex) { _logger.LogError(ex, "Error marking offer viewed"); return BadRequest(new { error = ex.Message }); }
     }
 
     [HttpPost("deals/{dealId}/documents")]
@@ -1712,8 +1905,8 @@ public class CompanyController : ControllerBase
         {
             var userId = GetUserId();
             await EnsureUniversalPhase1CompleteAsync(userId);
-            await EnsureDealOwnershipAsync(dealId);
-            var result = await _companyService.UploadDealDocumentAsync(dealId, request, userId, HashIp(HttpContext));
+            var ctx = await EnsureDealParticipantAsync(dealId);
+            var result = await _companyService.UploadDealDocumentAsync(ctx, request, userId, HashIp(HttpContext));
             return Ok(result);
         }
         catch (UnauthorizedAccessException ex)
@@ -1735,8 +1928,8 @@ public class CompanyController : ControllerBase
         {
             var userId = GetUserId();
             await EnsureUniversalPhase1CompleteAsync(userId);
-            await EnsureDealOwnershipAsync(dealId);
-            var (content, doc) = await _companyService.GetDealDocumentAsync(dealId, documentId);
+            var ctx = await EnsureDealParticipantAsync(dealId);
+            var (content, doc) = await _companyService.GetDealDocumentAsync(ctx, documentId);
             return File(content, doc.MimeType ?? "application/octet-stream", doc.FileName);
         }
         catch (UnauthorizedAccessException ex)
@@ -1751,6 +1944,170 @@ public class CompanyController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error downloading deal document");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    // ============================================================
+    // INVESTOR-SIDE READS (Phase B/D — June 10 demo)
+    // Static route segments precede {companyId} so "opportunities"
+    // never collides with the GET /{companyId} actions above.
+    // ============================================================
+
+    [HttpGet("opportunities")]
+    public async Task<ActionResult<OpportunityFeedResponse>> GetOpportunities(
+        [FromQuery] string sector = "",
+        [FromQuery] string stage = "",
+        [FromQuery] string geography = "",
+        [FromQuery] int take = 20)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            var investorId = await EnsureInvestorIdentityAsync(userId);
+            var result = await _companyService.GetOpportunitiesForInvestorAsync(investorId, sector, stage, geography, take);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting opportunities feed");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpGet("opportunities/pipeline")]
+    public async Task<ActionResult<InvestorPipelineResponse>> GetInvestorPipeline()
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            var investorId = await EnsureInvestorIdentityAsync(userId);
+            var result = await _companyService.GetInvestorPipelineAsync(investorId, userId);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting investor pipeline");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpGet("opportunities/{companyId}")]
+    public async Task<ActionResult<OpportunityDetailResponse>> GetOpportunityDetail(string companyId)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            var investorId = await EnsureInvestorIdentityAsync(userId);
+            var result = await _companyService.GetOpportunityForInvestorAsync(investorId, companyId);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting opportunity detail");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpGet("opportunities/{companyId}/documents")]
+    public async Task<ActionResult<InvestorDocumentListResponse>> GetInvestorDocuments(string companyId)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            var investorId = await EnsureInvestorIdentityAsync(userId);
+            var result = await _companyService.GetInvestorDocumentsAsync(investorId, companyId);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting investor documents");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpGet("opportunities/{companyId}/my-session")]
+    public async Task<ActionResult<InvestorSessionResponse>> GetInvestorSession(string companyId)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            var investorId = await EnsureInvestorIdentityAsync(userId);
+            var result = await _companyService.GetInvestorSessionAsync(investorId, companyId);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting investor session");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpGet("opportunities/{companyId}/diligence-progress")]
+    public async Task<ActionResult<DiligenceProgressResponse>> GetDiligenceProgress(string companyId)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            var investorId = await EnsureInvestorIdentityAsync(userId);
+            var result = await _companyService.GetDiligenceProgressAsync(investorId, companyId);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting diligence progress");
             return BadRequest(new { error = ex.Message });
         }
     }

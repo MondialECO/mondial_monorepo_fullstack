@@ -47,7 +47,8 @@ public class Phase6AccessPolicyTests
             new Mock<IInvestorMatcher>().Object,
             new Mock<IAiReviewEngine>().Object,
             new Mock<IDocumentManager>().Object,
-            new Mock<IPhaseValidator>().Object);
+            new Mock<IPhaseValidator>().Object,
+            new Mock<IDealEventPublisher>().Object);
     }
 
     private static Companies CompanyWithGrant(string accessLevel, bool ndaRequired = false, bool published = true)

@@ -21,19 +21,25 @@ public class InvestorPhaseController : ControllerBase
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IInvestmentsService _investmentsService;
     private readonly IInvestorService _investorService;
+    private readonly ICompanyService _companyService;
+    private readonly IPhaseNotificationService _phaseNotificationService;
 
     public InvestorPhaseController(
         MongoDbContext dbContext,
         ILogger<InvestorPhaseController> logger,
         UserManager<ApplicationUser> userManager,
         IInvestmentsService investmentsService,
-        IInvestorService investorService)
+        IInvestorService investorService,
+        ICompanyService companyService,
+        IPhaseNotificationService phaseNotificationService)
     {
         _dbContext = dbContext;
         _logger = logger;
         _userManager = userManager;
         _investmentsService = investmentsService;
         _investorService = investorService;
+        _companyService = companyService;
+        _phaseNotificationService = phaseNotificationService;
     }
 
     private string GetUserId()
@@ -392,8 +398,10 @@ public class InvestorPhaseController : ControllerBase
 
     // ============ INVESTOR PHASE 8: TERM SHEET ============
 
+    // Investor-initiated initial offer. Persists a real DealExecution + first
+    // term-sheet revision (Phase D-4), replacing the former placeholder.
     [HttpPost("term-sheet/{companyId}/create")]
-    public async Task<ActionResult> CreateTermSheet(string companyId, [FromBody] InvestorTermSheetRequest request)
+    public async Task<ActionResult<DealStatusResponse>> CreateTermSheet(string companyId, [FromBody] OfferTermsRequest request)
     {
         try
         {
@@ -403,22 +411,39 @@ public class InvestorPhaseController : ControllerBase
             if (string.IsNullOrWhiteSpace(companyId) || request == null)
                 return BadRequest(new { error = "Missing required fields" });
 
-            // TODO: P1 - Create Deal or TermSheet record
-            return Ok(new
+            var user = await _userManager.FindByIdAsync(userId);
+            var investorId = user?.InvestorProfile?.InvestorId;
+            if (string.IsNullOrWhiteSpace(investorId))
+                return StatusCode(403, new { error = "User has no linked investor profile." });
+
+            var result = await _companyService.CreateInvestorOfferAsync(
+                companyId, investorId, request, userId, ipHash: "");
+
+            // Best-effort: notify participants a new offer arrived (resolved
+            // from the deal, so both founder and investor are reached).
+            try
             {
-                message = "Term sheet created",
-                termSheetId = Guid.NewGuid().ToString(),
-                status = "draft"
-            });
+                await _phaseNotificationService.NotifyDealStatusChangeAsync(result.DealId, "", "offer_sent");
+            }
+            catch (Exception nex)
+            {
+                _logger.LogWarning(nex, "Offer-sent notification failed for deal {DealId} (non-fatal)", result.DealId);
+            }
+
+            return Ok(result);
         }
         catch (UnauthorizedAccessException ex)
         {
             _logger.LogWarning("Authorization failed: {Message}", ex.Message);
             return StatusCode(403, new { error = ex.Message });
         }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { error = ex.Message });
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating term sheet");
+            _logger.LogError(ex, "Error creating offer");
             return BadRequest(new { error = ex.Message });
         }
     }

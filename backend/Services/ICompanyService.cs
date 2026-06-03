@@ -14,6 +14,7 @@ public interface ICompanyService
     // ============ PHASE 1: IDENTITY & ONBOARDING (via Auth) ============
 
     Task<Companies> CreateCompanyAsync(string userId, CreateCompanyDto dto);
+    Task<(Companies Company, bool AlreadyExisted)> CreateCompanyFromIdeaAsync(string userId, string ideaId);
     Task<Companies> GetCompanyAsync(string companyId);
     Task<Companies> GetCompanyByUserIdAsync(string userId);
 
@@ -74,7 +75,7 @@ public interface ICompanyService
     Task<Phase6AccessLogResponse> TrackDataRoomEventAsync(string companyId, string documentId, string investorId, bool callerIsOwner, string eventType, string ipHash);
     Task<DataRoomAnalyticsResponse> GetDataRoomAnalyticsAsync(string companyId);
     Task<List<Phase6AccessLogResponse>> GetDataRoomActivityTimelineAsync(string companyId);
-    Task AcceptDataRoomNdaAsync(string companyId, string investorId, string ndaText, string ipHash);
+    Task<NdaAcceptanceResponse> AcceptDataRoomNdaAsync(string companyId, string investorId, string ndaText, string ipHash);
 
     // ============ PHASE 7: AI REVIEW ============
 
@@ -98,14 +99,55 @@ public interface ICompanyService
     Task<DealStatusResponse> GetDealAsync(string dealId);
     Task<string?> GetDealCompanyIdAsync(string dealId);
     Task<List<DealStatusResponse>> GetCompanyDealsAsync(string companyId);
-    Task<DealStatusResponse> UpdateTermSheetAsync(string dealId, TermSheetRequest request, string actorUserId, string ipHash);
-    Task<DealStatusResponse> ProgressChecklistAsync(string dealId, ChecklistItemDto item, string actorUserId, string ipHash);
-    Task<DealStatusResponse> CloseDealAsync(string dealId, string actorUserId, string ipHash);
 
-    Task<DealStatusResponse> UpdateDealStatusAsync(string dealId, UpdateDealStatusRequest request, string actorUserId, string ipHash);
-    Task<DealStatusResponse> SignTermSheetAsync(string dealId, SignTermSheetRequest request, string actorUserId, string ipHash);
-    Task<DealStatusResponse> MutateDueDiligenceItemAsync(string dealId, MutateDueDiligenceItemRequest request, string actorUserId, string ipHash);
-    Task<DealDocumentResponse> UploadDealDocumentAsync(string dealId, UploadDealDocumentRequest request, string actorUserId, string ipHash);
-    Task<(byte[] Content, DealDocumentResponse Document)> GetDealDocumentAsync(string dealId, string documentId);
+    // ---- Bilateral (participant-based) deal reads (Phase D-2) ----
+    // Raw deal entity for participant resolution (CompanyId + Investor ids).
+    Task<DealExecution?> GetDealEntityAsync(string dealId);
+    // Defense-in-depth reads: require a resolved DealAccessContext, never a
+    // bare dealId, so the service cannot be driven without proven participation.
+    DealStatusResponse GetDealForParticipant(DealAccessContext ctx);
+    Task<List<DealActivityLogResponse>> GetDealActivityForParticipantAsync(DealAccessContext ctx);
+    // All deals the caller participates in, by either role (founder via owned
+    // company id, investor via catalogue investor id).
+    Task<List<DealStatusResponse>> GetDealsForParticipantAsync(string? ownedCompanyId, string? investorId);
+
+    // ---- Offer system (Phase D-4) ----
+    Task<DealStatusResponse> CreateInvestorOfferAsync(string companyId, string investorId, OfferTermsRequest req, string actorUserId, string ipHash);
+    Task<DealStatusResponse> CounterOfferAsync(DealAccessContext ctx, OfferTermsRequest req, string actorUserId, string ipHash);
+    Task<DealStatusResponse> AcceptOfferAsync(DealAccessContext ctx, string actorUserId, string ipHash);
+    Task<DealStatusResponse> RejectOfferAsync(DealAccessContext ctx, string note, string actorUserId, string ipHash);
+    Task<DealStatusResponse> MarkOfferViewedAsync(DealAccessContext ctx, string actorUserId, string ipHash);
+
+    // Resolve both deal participants (founder + investors) to user id + email,
+    // for realtime fan-out and notification delivery (Phase D-4.5).
+    Task<List<DealRecipient>> GetDealRecipientsAsync(string dealId);
+    // ---- Bilateral (participant-based) deal writes (Phase D-3) ----
+    // Each takes a resolved DealAccessContext so the service re-validates the
+    // caller's role (defense-in-depth) and never trusts the controller alone.
+    Task<DealStatusResponse> UpdateTermSheetAsync(DealAccessContext ctx, TermSheetRequest request, string actorUserId, string ipHash);
+    Task<DealStatusResponse> ProgressChecklistAsync(DealAccessContext ctx, ChecklistItemDto item, string actorUserId, string ipHash);
+    Task<DealStatusResponse> CloseDealAsync(DealAccessContext ctx, string actorUserId, string ipHash);
+
+    Task<DealStatusResponse> UpdateDealStatusAsync(DealAccessContext ctx, UpdateDealStatusRequest request, string actorUserId, string ipHash);
+    Task<DealStatusResponse> SignTermSheetAsync(DealAccessContext ctx, SignTermSheetRequest request, string actorUserId, string ipHash);
+    Task<DealStatusResponse> MutateDueDiligenceItemAsync(DealAccessContext ctx, MutateDueDiligenceItemRequest request, string actorUserId, string ipHash);
+    Task<DealDocumentResponse> UploadDealDocumentAsync(DealAccessContext ctx, UploadDealDocumentRequest request, string actorUserId, string ipHash);
+    Task<(byte[] Content, DealDocumentResponse Document)> GetDealDocumentAsync(DealAccessContext ctx, string documentId);
     Task<List<DealActivityLogResponse>> GetDealActivityAsync(string dealId);
+
+    // ============ INVESTOR-SIDE READS (Phase B/C/D — June 10 demo) ============
+
+    Task<OpportunityFeedResponse> GetOpportunitiesForInvestorAsync(
+        string investorId, string sector, string stage, string geography, int take);
+
+    Task<OpportunityDetailResponse> GetOpportunityForInvestorAsync(
+        string investorId, string companyId);
+
+    Task<InvestorPipelineResponse> GetInvestorPipelineAsync(string investorId, string callerUserId);
+
+    Task<InvestorDocumentListResponse> GetInvestorDocumentsAsync(string investorId, string companyId);
+
+    Task<InvestorSessionResponse> GetInvestorSessionAsync(string investorId, string companyId);
+
+    Task<DiligenceProgressResponse> GetDiligenceProgressAsync(string investorId, string companyId);
 }
