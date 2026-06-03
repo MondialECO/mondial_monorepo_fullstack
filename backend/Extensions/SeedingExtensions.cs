@@ -1,61 +1,78 @@
 using System.Text.Json;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Hosting;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using Serilog;
 using WebApp.DbContext;
 using WebApp.Models.DatabaseModels;
+using WebApp.Models.Dtos;
+using WebApp.Services;
 
 namespace WebApp.Extensions;
 
 /// <summary>
-/// Demo seed data for non-production environments. Currently seeds the
-/// Investor catalogue so the investor list, matching, and dashboards have
-/// something to render on a fresh database.
+/// Demo seed data for non-production environments. Seeds, in order, the
+/// Investor catalogue, demo creator + investor users, demo business ideas,
+/// and demo investments that link the demo investor to the demo ideas.
 ///
-/// Double-gated: only runs when the host is Development AND
-/// configuration flag SeedDemoData=true. Production appsettings ships with
+/// Double-gated: only runs when the host is Development AND configuration
+/// flag SeedDemoData=true. Production appsettings ships with
 /// SeedDemoData=false so a misconfigured prod env still won't seed.
 ///
-/// Idempotent: if the Investors collection already has any documents the
-/// seeder no-ops, so crash-loops and re-deploys are safe.
+/// Each step is independently idempotent. Re-runs are no-ops once the
+/// target rows exist.
 /// </summary>
 public static class SeedingExtensions
 {
+    private const string DemoCreatorEmail = "demo.creator@mondial.local";
+    private const string DemoInvestorEmail = "demo.investor@mondial.local";
+    private const string DemoEntrepreneurEmail = "demo.entrepreneur@mondial.local";
+    private const string DemoPassword = "DemoP@ss1";
+    private const string DemoNdaText = "This is a demo NDA — do not use in production.";
+
     public static async Task SeedDemoDataAsync(this IServiceProvider services, IHostEnvironment env, IConfiguration config)
     {
-        // Hard gate 1: never in non-Development environments.
-        if (!env.IsDevelopment())
-        {
-            return;
-        }
-
-        // Hard gate 2: explicit opt-in flag.
-        if (!config.GetValue<bool>("SeedDemoData"))
-        {
-            return;
-        }
+        if (!env.IsDevelopment()) return;
+        if (!config.GetValue<bool>("SeedDemoData")) return;
 
         try
         {
             await SeedInvestorsAsync(services);
+            var (creator, investor) = await SeedDemoUsersAsync(services);
+            var ideas = await SeedBusinessIdeasAsync(services, creator);
+            await SeedInvestmentsAsync(services, investor, ideas);
+
+            // Investor-demo seed pipeline (P0 for the 2026-06-10 demo). Each
+            // step is independently idempotent and inherits the dev-only +
+            // SeedDemoData=true gates from this parent method.
+            var entrepreneur = await SeedDemoEntrepreneurAsync(services);
+            var companies = await SeedDemoCompaniesAsync(services, entrepreneur);
+            await SeedInvestorMatchesAsync(services, investor, companies);
+            await SeedNdaAcceptancesAsync(services, investor, companies);
+            await SeedDataRoomDocsAsync(services, companies);
+            await SeedAccessLogsAsync(services, investor, companies);
+            await SeedDealExecutionAsync(services, investor, companies);
         }
         catch (Exception ex)
         {
-            Log.Warning(ex, "Demo seeding skipped (non-fatal)");
+            // Forensic-quality warning: include the flattened ToString so the
+            // full inner-exception chain survives any structured-attachment
+            // truncation or async-sink buffering.
+            Log.Warning(ex, "Demo seeding skipped (non-fatal). Full={Full}", ex.ToString());
         }
     }
+
+    // ---- 1) Investor catalogue ----
 
     private static async Task SeedInvestorsAsync(IServiceProvider services)
     {
         var dbContext = services.GetRequiredService<MongoDbContext>();
 
-        // Idempotency gate: bail if anyone (admin, prior seed, signup) has
-        // already put rows in the catalogue.
         var existing = await dbContext.Investors.CountDocumentsAsync(FilterDefinition<Investor>.Empty);
         if (existing > 0)
         {
-            Log.Information("Investor catalogue already populated ({Count}) — seed skipped", existing);
+            Log.Information("Investor catalogue already populated ({Count}) - seed skipped", existing);
             return;
         }
 
@@ -88,5 +105,709 @@ public static class SeedingExtensions
 
         await dbContext.Investors.InsertManyAsync(investors);
         Log.Information("Seeded {Count} demo investor(s) into the catalogue", investors.Count);
+    }
+
+    // ---- 2) Demo users (creator + investor) ----
+
+    private static async Task<(ApplicationUser creator, ApplicationUser investor)> SeedDemoUsersAsync(IServiceProvider services)
+    {
+        var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+        var roleManager = services.GetRequiredService<RoleManager<ApplicationRole>>();
+        var investorService = services.GetRequiredService<IInvestorService>();
+
+        var creator = await GetOrCreateDemoUserAsync(
+            userManager, roleManager,
+            email: DemoCreatorEmail,
+            name: "Demo Creator",
+            role: "Creator");
+
+        var investor = await GetOrCreateDemoUserAsync(
+            userManager, roleManager,
+            email: DemoInvestorEmail,
+            name: "Demo Investor",
+            role: "Investor");
+
+        // Link the demo investor to an Investor catalogue row exactly the
+        // way AuthController.Register's P0-1 wiring does. Done here in the
+        // seeder rather than as a signup side effect so demo data is
+        // available at boot without any user action.
+        if (string.IsNullOrEmpty(investor.InvestorProfile?.InvestorId))
+        {
+            try
+            {
+                var stub = new Investor
+                {
+                    Name = investor.Name ?? "Demo Investor",
+                    Type = "angel",
+                    PrimaryEmail = investor.Email,
+                    IsActive = true,
+                    ProfileScore = 60,
+                    LinkedUserId = investor.Id.ToString(),
+                    PreferredSectors = new List<string> { "SaaS", "HealthTech", "ClimaTech" },
+                    PreferredStages = new List<string> { "seed", "series_a" },
+                    MinCheckSize = 50000,
+                    MaxCheckSize = 750000,
+                    PreferredGeographies = new List<string> { "EU" }
+                };
+
+                var created = await investorService.CreateInvestorAsync(stub);
+
+                investor.InvestorProfile ??= new InvestorProfile();
+                investor.InvestorProfile.InvestorId = created.Id;
+                await userManager.UpdateAsync(investor);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Demo investor catalogue link failed (non-fatal)");
+            }
+        }
+
+        return (creator, investor);
+    }
+
+    private static async Task<ApplicationUser> GetOrCreateDemoUserAsync(
+        UserManager<ApplicationUser> userManager,
+        RoleManager<ApplicationRole> roleManager,
+        string email,
+        string name,
+        string role)
+    {
+        var existing = await userManager.FindByEmailAsync(email);
+        if (existing != null)
+        {
+            Log.Information("Demo user {Email} already exists - skip", email);
+            return existing;
+        }
+
+        if (!await roleManager.RoleExistsAsync(role))
+        {
+            // Defensive only - Program.cs role seeding runs before us. Skip
+            // creating a user we can't legally assign a role to.
+            Log.Warning("Role {Role} missing; cannot create demo user {Email}", role, email);
+            throw new InvalidOperationException($"Role '{role}' is not seeded");
+        }
+
+        var user = new ApplicationUser
+        {
+            UserName = email,
+            Email = email,
+            Name = name,
+            User = role,
+            EmailConfirmed = true,
+            CreatedAt = DateTime.UtcNow,
+            // Phase 1 universal onboarding pre-completed so dashboards
+            // unlock without an OTP/identity walkthrough during the demo.
+            Onboarding = new OnboardingState
+            {
+                Phase = 1,
+                EmailOtpVerified = true,
+                PhoneVerified = true,
+                IdentityDocumentVerified = true,
+                FaceVerified = true,
+                CompletedAt = DateTime.UtcNow
+            }
+        };
+
+        var createResult = await userManager.CreateAsync(user, DemoPassword);
+        if (!createResult.Succeeded)
+        {
+            var errors = string.Join("; ", createResult.Errors.Select(e => e.Description));
+            throw new InvalidOperationException($"Failed to create demo user {email}: {errors}");
+        }
+
+        var roleResult = await userManager.AddToRoleAsync(user, role);
+        if (!roleResult.Succeeded)
+        {
+            var errors = string.Join("; ", roleResult.Errors.Select(e => e.Description));
+            throw new InvalidOperationException($"Failed to assign role {role} to {email}: {errors}");
+        }
+
+        Log.Information("Seeded demo user {Email} with role {Role}", email, role);
+        return user;
+    }
+
+    // ---- 3) Business ideas (owned by demo creator) ----
+
+    private static async Task<List<BusinessIdeas>> SeedBusinessIdeasAsync(IServiceProvider services, ApplicationUser creator)
+    {
+        var dbContext = services.GetRequiredService<MongoDbContext>();
+
+        var existing = await dbContext.BusinessIdeas.CountDocumentsAsync(FilterDefinition<BusinessIdeas>.Empty);
+        if (existing > 0)
+        {
+            Log.Information("BusinessIdeas already populated ({Count}) - seed skipped", existing);
+            // Return what the demo creator owns so downstream steps still
+            // get a coherent set (or an empty list if the existing rows
+            // belong to someone else - investments step will then no-op).
+            var ownIdeas = await dbContext.BusinessIdeas
+                .Find(i => i.CreatorId == creator.Id.ToString())
+                .ToListAsync();
+            return ownIdeas;
+        }
+
+        var seedPath = Path.Combine(AppContext.BaseDirectory, "Configuration", "SeedData", "business-ideas.json");
+        if (!File.Exists(seedPath))
+        {
+            Log.Warning("Business-ideas seed file not found at {Path}", seedPath);
+            return new List<BusinessIdeas>();
+        }
+
+        var json = await File.ReadAllTextAsync(seedPath);
+        var jsonOpts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+        var ideas = JsonSerializer.Deserialize<List<BusinessIdeas>>(json, jsonOpts);
+
+        if (ideas == null || ideas.Count == 0)
+        {
+            Log.Warning("Business-ideas seed file parsed to empty list");
+            return new List<BusinessIdeas>();
+        }
+
+        var creatorId = creator.Id.ToString();
+        var now = DateTime.UtcNow;
+        foreach (var idea in ideas)
+        {
+            idea.Id = ObjectId.GenerateNewId().ToString();
+            idea.CreatorId = creatorId;
+            idea.CreatedAt = now;
+            idea.UpdatedAt = now;
+            idea.Milestones ??= new List<Milestone>();
+            idea.InvestmentRounds ??= new List<InvestmentRound>();
+            idea.ImageVideo ??= new List<string>();
+            idea.DocumentUrls ??= new List<string>();
+        }
+
+        await dbContext.BusinessIdeas.InsertManyAsync(ideas);
+        Log.Information("Seeded {Count} demo business idea(s) for creator {Email}", ideas.Count, creator.Email);
+        return ideas;
+    }
+
+    // ---- 4) Investments (linking demo investor to demo ideas) ----
+
+    private static async Task SeedInvestmentsAsync(IServiceProvider services, ApplicationUser investor, List<BusinessIdeas> ideas)
+    {
+        var dbContext = services.GetRequiredService<MongoDbContext>();
+
+        var existing = await dbContext.Investments.CountDocumentsAsync(FilterDefinition<Investments>.Empty);
+        if (existing > 0)
+        {
+            Log.Information("Investments already populated ({Count}) - seed skipped", existing);
+            return;
+        }
+
+        if (ideas.Count == 0)
+        {
+            Log.Information("No demo ideas available to invest in - investments step skipped");
+            return;
+        }
+
+        // Invest in up to the first 3 ideas at 20% of the asked amount each.
+        var target = ideas.Take(3).ToList();
+        var now = DateTime.UtcNow;
+        var docs = new List<Investments>();
+
+        for (var i = 0; i < target.Count; i++)
+        {
+            var idea = target[i];
+            var amount = Math.Round(idea.FundingRequired * 0.2m, 2);
+            var equity = Math.Round(idea.EquityOffered * 0.2, 4);
+            var createdAt = now.AddDays(-30 * (target.Count - i)); // 90/60/30 days ago
+
+            docs.Add(new Investments
+            {
+                Id = ObjectId.GenerateNewId().ToString(),
+                RoundId = ObjectId.GenerateNewId().ToString(),
+                IdeaId = idea.Id,
+                ideaName = idea.Name,
+                InvestorId = investor.Id,
+                InvestorName = investor.Name ?? "Demo Investor",
+                RoundName = "Seed",
+                Amount = amount,
+                EquityPercentage = equity,
+                Status = "Escrowed",
+                CreatedAt = createdAt
+            });
+        }
+
+        await dbContext.Investments.InsertManyAsync(docs);
+        Log.Information("Seeded {Count} demo investment(s) for investor {Email}", docs.Count, investor.Email);
+    }
+
+    // ---- 5) Demo entrepreneur (Companies owner for investor demo) ----
+
+    private static async Task<ApplicationUser> SeedDemoEntrepreneurAsync(IServiceProvider services)
+    {
+        var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+        var roleManager = services.GetRequiredService<RoleManager<ApplicationRole>>();
+
+        return await GetOrCreateDemoUserAsync(
+            userManager, roleManager,
+            email: DemoEntrepreneurEmail,
+            name: "Demo Entrepreneur",
+            role: "Entrepreneur");
+    }
+
+    // ---- 6) Demo companies (one per pipeline column for the investor view) ----
+
+    private static async Task<List<Companies>> SeedDemoCompaniesAsync(IServiceProvider services, ApplicationUser entrepreneur)
+    {
+        var dbContext = services.GetRequiredService<MongoDbContext>();
+
+        var existing = await dbContext.Companies.CountDocumentsAsync(FilterDefinition<Companies>.Empty);
+        if (existing > 0)
+        {
+            Log.Information("Companies already populated ({Count}) - seed skipped", existing);
+            return await dbContext.Companies
+                .Find(c => c.OwnerId == entrepreneur.Id.ToString())
+                .ToListAsync();
+        }
+
+        var seedPath = Path.Combine(AppContext.BaseDirectory, "Configuration", "SeedData", "companies.json");
+        if (!File.Exists(seedPath))
+        {
+            Log.Warning("Companies seed file not found at {Path}", seedPath);
+            return new List<Companies>();
+        }
+
+        var json = await File.ReadAllTextAsync(seedPath);
+        var jsonOpts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+        var seeds = JsonSerializer.Deserialize<List<CompanySeedRecord>>(json, jsonOpts);
+        if (seeds == null || seeds.Count == 0)
+        {
+            Log.Warning("Companies seed file parsed to empty list");
+            return new List<Companies>();
+        }
+
+        var ownerId = entrepreneur.Id.ToString();
+        var now = DateTime.UtcNow;
+        var docs = new List<Companies>();
+        foreach (var s in seeds)
+        {
+            docs.Add(new Companies
+            {
+                Id = ObjectId.GenerateNewId().ToString(),
+                OwnerId = ownerId,
+                CompanyName = s.CompanyName,
+                Industry = s.Industry,
+                Tagline = s.Tagline,
+                Country = s.Country,
+                CurrentPhase = 7,
+                CompletedPhases = new List<int> { 1, 2, 3, 4, 5, 6 },
+                TrustScore = s.TrustScore,
+                IsInvestorReady = s.IsInvestorReady,
+                InvestorReadyBadgeAwardedAt = s.IsInvestorReady ? now.AddDays(-7) : null,
+                VerificationStatus = "verified",
+                VerifiedBadge = true,
+                FundingRoundType = s.FundingRoundType,
+                FundingAskAmount = s.FundingAskAmount,
+                EquityOfferedPercent = s.EquityOfferedPercent,
+                PreMoneyValuation = s.PreMoneyValuation,
+                Valuation = s.Valuation,
+                ShareType = s.ShareType,
+                MarketSizeEstimate = s.MarketSizeEstimate,
+                GrowthPotentialScore = s.GrowthPotentialScore,
+                FundingNarrative = s.FundingNarrative,
+                EsopPoolPercent = s.EsopPoolPercent,
+                TotalShares = s.TotalShares,
+                EquityStructure = new List<EquityEntryDto>
+                {
+                    new() { StakeholderName = "Founder & CEO", Type = "founder", SharesOwned = 600000 },
+                    new() { StakeholderName = "Co-Founder", Type = "founder", SharesOwned = 250000 },
+                    new() { StakeholderName = "ESOP Pool", Type = "esop", SharesOwned = 100000 },
+                },
+                CreatedAt = now.AddDays(-60),
+                UpdatedAt = now,
+            });
+        }
+
+        await dbContext.Companies.InsertManyAsync(docs);
+        Log.Information("Seeded {Count} demo company(s) for entrepreneur {Email}", docs.Count, entrepreneur.Email);
+        return docs;
+    }
+
+    // ---- 7) InvestorMatches (link demo investor to demo companies, one per column) ----
+
+    private static async Task SeedInvestorMatchesAsync(IServiceProvider services, ApplicationUser investorUser, List<Companies> companies)
+    {
+        var dbContext = services.GetRequiredService<MongoDbContext>();
+
+        var existing = await dbContext.InvestorMatches.CountDocumentsAsync(FilterDefinition<InvestorMatch>.Empty);
+        if (existing > 0)
+        {
+            Log.Information("InvestorMatches already populated ({Count}) - seed skipped", existing);
+            return;
+        }
+
+        if (companies.Count == 0) return;
+
+        var investorId = investorUser.InvestorProfile?.InvestorId;
+        if (string.IsNullOrEmpty(investorId))
+        {
+            Log.Warning("Demo investor has no InvestorProfile.InvestorId - match seeding skipped");
+            return;
+        }
+
+        var seedPath = Path.Combine(AppContext.BaseDirectory, "Configuration", "SeedData", "companies.json");
+        var json = await File.ReadAllTextAsync(seedPath);
+        var jsonOpts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+        var seeds = JsonSerializer.Deserialize<List<CompanySeedRecord>>(json, jsonOpts) ?? new();
+        var seedsByName = seeds.ToDictionary(s => s.CompanyName);
+
+        var now = DateTime.UtcNow;
+        var docs = new List<InvestorMatch>();
+        for (var i = 0; i < companies.Count; i++)
+        {
+            var co = companies[i];
+            if (!seedsByName.TryGetValue(co.CompanyName, out var s)) continue;
+            docs.Add(new InvestorMatch
+            {
+                Id = ObjectId.GenerateNewId().ToString(),
+                CompanyId = co.Id,
+                InvestorId = investorId,
+                MatchScore = s.MatchScore,
+                Status = s.MatchStatus,
+                MatchedAt = now.AddHours(-i * 3),
+                LastInteractionAt = now.AddHours(-i),
+                UpdatedAt = now,
+                MatchRationale = $"Sector fit {s.MatchScore}; stage {co.FundingRoundType}; geography {co.Country}.",
+                EngineVersion = "rule_based_v1",
+                InvestorNameSnapshot = investorUser.Name ?? "Demo Investor",
+                InvestorTypeSnapshot = "angel",
+                InvestmentRangeSnapshot = "EUR 50K - 750K",
+                PreferredSectorsSnapshot = new List<string> { "FinTech", "ClimaTech", "HealthTech" },
+            });
+        }
+
+        if (docs.Count > 0)
+        {
+            await dbContext.InvestorMatches.InsertManyAsync(docs);
+            Log.Information("Seeded {Count} demo investor match(es) for investor {Email}", docs.Count, investorUser.Email);
+        }
+    }
+
+    // ---- 8) NDA acceptances (3 of 5 companies) ----
+
+    private static async Task SeedNdaAcceptancesAsync(IServiceProvider services, ApplicationUser investorUser, List<Companies> companies)
+    {
+        var dbContext = services.GetRequiredService<MongoDbContext>();
+
+        var existing = await dbContext.Phase6NdaAcceptances.CountDocumentsAsync(FilterDefinition<Phase6NdaAcceptance>.Empty);
+        if (existing > 0)
+        {
+            Log.Information("Phase6NdaAcceptances already populated ({Count}) - seed skipped", existing);
+            return;
+        }
+
+        var investorId = investorUser.InvestorProfile?.InvestorId;
+        if (string.IsNullOrEmpty(investorId)) return;
+
+        var targets = new[] { "Helio Solar", "Veris Health", "Rousseau Technologies SAS" };
+        var ndaTextHash = Convert.ToHexString(
+            System.Security.Cryptography.SHA256.HashData(
+                System.Text.Encoding.UTF8.GetBytes(DemoNdaText)));
+
+        var now = DateTime.UtcNow;
+        var docs = new List<Phase6NdaAcceptance>();
+        foreach (var name in targets)
+        {
+            var co = companies.FirstOrDefault(c => c.CompanyName == name);
+            if (co == null) continue;
+            docs.Add(new Phase6NdaAcceptance
+            {
+                Id = ObjectId.GenerateNewId().ToString(),
+                CompanyId = co.Id,
+                InvestorId = investorId,
+                AcceptedAt = now.AddDays(-3),
+                NdaTextHash = ndaTextHash,
+                IpHash = "DEMO_SEED",
+            });
+        }
+
+        if (docs.Count > 0)
+        {
+            await dbContext.Phase6NdaAcceptances.InsertManyAsync(docs);
+            Log.Information("Seeded {Count} demo NDA acceptance(s)", docs.Count);
+        }
+    }
+
+    // ---- 9) Data room documents on Rousseau ----
+
+    private static async Task SeedDataRoomDocsAsync(IServiceProvider services, List<Companies> companies)
+    {
+        var dbContext = services.GetRequiredService<MongoDbContext>();
+
+        var rousseau = companies.FirstOrDefault(c => c.CompanyName == "Rousseau Technologies SAS");
+        if (rousseau == null) return;
+
+        // Ensure a real, downloadable PDF exists on disk for the demo
+        // "Pitch Deck v3" document so the investor demo flow can perform
+        // an end-to-end download. Other seeded docs stay metadata-only.
+        var demoPdfPath = EnsureDemoPitchPdf();
+        var demoPdfSize = new FileInfo(demoPdfPath).Length;
+
+        // Backfill: if docs were previously seeded with empty StoragePath,
+        // upgrade the Pitch Deck row in place so existing dev DBs are fixed
+        // without requiring a destructive re-seed.
+        if (rousseau.DataRoomDocuments != null && rousseau.DataRoomDocuments.Count > 0)
+        {
+            var pitch = rousseau.DataRoomDocuments.FirstOrDefault(d => d.Title == "Pitch Deck v3");
+            if (pitch != null && string.IsNullOrWhiteSpace(pitch.StoragePath))
+            {
+                pitch.StoragePath = demoPdfPath;
+                pitch.FileSize = demoPdfSize;
+                var upd = Builders<Companies>.Update.Set(c => c.DataRoomDocuments, rousseau.DataRoomDocuments);
+                await dbContext.Companies.UpdateOneAsync(c => c.Id == rousseau.Id, upd);
+                Log.Information("Backfilled Pitch Deck v3 StoragePath on Rousseau ({Path})", demoPdfPath);
+            }
+            else
+            {
+                Log.Information("Rousseau already has data-room docs ({Count}) - seed skipped", rousseau.DataRoomDocuments.Count);
+            }
+            return;
+        }
+
+        var docs = new (string Title, string Category, string FileName, string Mime, long Size, string Path)[]
+        {
+            ("Pitch Deck v3", "business", "pitch-v3.pdf", "application/pdf", demoPdfSize, demoPdfPath),
+            ("Financial Model 2025-26", "financial", "fin-model.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 524288, ""),
+            ("Cap Table — details", "financial", "cap-table.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 131072, ""),
+            ("Articles of Incorporation", "legal", "articles.pdf", "application/pdf", 262144, ""),
+            ("Customer LOIs (3)", "business", "lois.pdf", "application/pdf", 1048576, ""),
+        };
+
+        var now = DateTime.UtcNow;
+        var responses = docs.Select(d => new DataRoomDocumentResponse
+        {
+            DocumentId = ObjectId.GenerateNewId().ToString(),
+            Title = d.Title,
+            Category = d.Category,
+            Status = "published",
+            UploadedAt = now.AddDays(-2),
+            ViewCount = 0,
+            DownloadCount = 0,
+            FileName = d.FileName,
+            MimeType = d.Mime,
+            FileSize = d.Size,
+            StoragePath = d.Path, // Pitch Deck v3 points to a real file; others stay metadata-only for MVP.
+            UploadedBy = rousseau.OwnerId,
+        }).ToList();
+
+        var update = Builders<Companies>.Update
+            .Set(c => c.DataRoomDocuments, responses)
+            .Set(c => c.IsDataRoomLive, true)
+            .Set(c => c.IsDataRoomNdaRequired, true)
+            .Set(c => c.UpdatedAt, now);
+        await dbContext.Companies.UpdateOneAsync(c => c.Id == rousseau.Id, update);
+        // Reflect in the in-memory company too so later seed steps see them.
+        rousseau.DataRoomDocuments = responses;
+        rousseau.IsDataRoomLive = true;
+        rousseau.IsDataRoomNdaRequired = true;
+        Log.Information("Seeded {Count} data-room document(s) on company {Name}", responses.Count, rousseau.CompanyName);
+    }
+
+    // Writes a minimal valid PDF to disk the first time it's needed and returns
+    // its absolute path. Idempotent — subsequent calls just return the path.
+    private static string EnsureDemoPitchPdf()
+    {
+        var dir = Path.Combine(AppContext.BaseDirectory, "Configuration", "SeedData");
+        Directory.CreateDirectory(dir);
+        var pdfPath = Path.Combine(dir, "demo-pitch.pdf");
+        if (!File.Exists(pdfPath))
+        {
+            File.WriteAllBytes(pdfPath, BuildMinimalDemoPdf());
+        }
+        return pdfPath;
+    }
+
+    private static byte[] BuildMinimalDemoPdf()
+    {
+        // Hand-built minimal PDF 1.4 with one blank Letter-sized page.
+        // Offsets are computed from the body so the xref table stays consistent.
+        const string header = "%PDF-1.4\n";
+        const string obj1 = "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n";
+        const string obj2 = "2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n";
+        const string obj3 = "3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>\nendobj\n";
+
+        int pos1 = header.Length;
+        int pos2 = pos1 + obj1.Length;
+        int pos3 = pos2 + obj2.Length;
+        int xrefPos = pos3 + obj3.Length;
+
+        var xref = new System.Text.StringBuilder();
+        xref.Append("xref\n");
+        xref.Append("0 4\n");
+        xref.Append("0000000000 65535 f \n");
+        xref.Append($"{pos1:D10} 00000 n \n");
+        xref.Append($"{pos2:D10} 00000 n \n");
+        xref.Append($"{pos3:D10} 00000 n \n");
+        xref.Append("trailer\n<< /Size 4 /Root 1 0 R >>\n");
+        xref.Append("startxref\n");
+        xref.Append(xrefPos);
+        xref.Append("\n%%EOF\n");
+
+        return System.Text.Encoding.ASCII.GetBytes(header + obj1 + obj2 + obj3 + xref);
+    }
+
+    // ---- 10) Access logs (view/download events on Rousseau + Veris) ----
+
+    private static async Task SeedAccessLogsAsync(IServiceProvider services, ApplicationUser investorUser, List<Companies> companies)
+    {
+        var dbContext = services.GetRequiredService<MongoDbContext>();
+
+        var existing = await dbContext.Phase6AccessLogs.CountDocumentsAsync(FilterDefinition<Phase6AccessLog>.Empty);
+        if (existing > 0)
+        {
+            Log.Information("Phase6AccessLogs already populated ({Count}) - seed skipped", existing);
+            return;
+        }
+
+        var investorId = investorUser.InvestorProfile?.InvestorId;
+        if (string.IsNullOrEmpty(investorId)) return;
+
+        var rousseau = companies.FirstOrDefault(c => c.CompanyName == "Rousseau Technologies SAS");
+        var veris = companies.FirstOrDefault(c => c.CompanyName == "Veris Health");
+        if (rousseau == null) return;
+
+        var now = DateTime.UtcNow;
+        var logs = new List<Phase6AccessLog>();
+
+        // Rousseau: 2 distinct documents viewed, 1 downloaded, 1 extra view event.
+        var pitchDoc = rousseau.DataRoomDocuments?.FirstOrDefault(d => d.Title == "Pitch Deck v3");
+        var finDoc = rousseau.DataRoomDocuments?.FirstOrDefault(d => d.Title == "Financial Model 2025-26");
+        if (pitchDoc != null)
+        {
+            logs.Add(NewAccessLog(rousseau.Id, pitchDoc.DocumentId, investorId, "view", now.AddHours(-22)));
+            logs.Add(NewAccessLog(rousseau.Id, pitchDoc.DocumentId, investorId, "download", now.AddHours(-21)));
+            logs.Add(NewAccessLog(rousseau.Id, pitchDoc.DocumentId, investorId, "view", now.AddHours(-3)));
+        }
+        if (finDoc != null)
+        {
+            logs.Add(NewAccessLog(rousseau.Id, finDoc.DocumentId, investorId, "view", now.AddHours(-2)));
+        }
+
+        // Veris: 1 view event with a synthetic document id so the dataRoom
+        // pipeline column populates without seeding a separate doc set.
+        if (veris != null)
+        {
+            logs.Add(NewAccessLog(veris.Id, ObjectId.GenerateNewId().ToString(), investorId, "view", now.AddHours(-12)));
+        }
+
+        if (logs.Count > 0)
+        {
+            await dbContext.Phase6AccessLogs.InsertManyAsync(logs);
+            Log.Information("Seeded {Count} demo data-room access log(s)", logs.Count);
+        }
+    }
+
+    private static Phase6AccessLog NewAccessLog(string companyId, string documentId, string investorId, string eventType, DateTime occurredAt)
+        => new()
+        {
+            Id = ObjectId.GenerateNewId().ToString(),
+            CompanyId = companyId,
+            DocumentId = documentId,
+            InvestorId = investorId,
+            EventType = eventType,
+            OccurredAt = occurredAt,
+            IpHash = "DEMO_SEED",
+        };
+
+    // ---- 11) DealExecution draft term sheet on Rousseau ----
+
+    private static async Task SeedDealExecutionAsync(IServiceProvider services, ApplicationUser investorUser, List<Companies> companies)
+    {
+        var dbContext = services.GetRequiredService<MongoDbContext>();
+
+        var existing = await dbContext.DealExecutions.CountDocumentsAsync(FilterDefinition<DealExecution>.Empty);
+        if (existing > 0)
+        {
+            Log.Information("DealExecutions already populated ({Count}) - seed skipped", existing);
+            return;
+        }
+
+        var investorId = investorUser.InvestorProfile?.InvestorId;
+        if (string.IsNullOrEmpty(investorId)) return;
+
+        var rousseau = companies.FirstOrDefault(c => c.CompanyName == "Rousseau Technologies SAS");
+        if (rousseau == null) return;
+
+        var now = DateTime.UtcNow;
+        var deal = new DealExecution
+        {
+            Id = ObjectId.GenerateNewId().ToString(),
+            CompanyId = rousseau.Id,
+            Status = "initiated",
+            Investors = new List<DealParticipant>
+            {
+                new()
+                {
+                    InvestorId = investorId,
+                    InvestorName = investorUser.Name ?? "Demo Investor",
+                    CommittedAmount = 450000,
+                    Status = "interested",
+                    EquityPercentage = 15.78,
+                    JoinedAt = now.AddDays(-1),
+                }
+            },
+            TermSheet = new TermSheet
+            {
+                TotalRaiseAmount = 450000,
+                PreMoneyValuation = 2400000,
+                PostMoneyValuation = 2850000,
+                EquityType = "preferred",
+                InvestorEquityPercent = 15.78,
+                ProRataRights = true,
+                LiquidationPreference = "1x_non_participating",
+                BoardSeats = 1,
+                AntiDilutionProtection = "broad_based",
+                VestingYears = 4,
+                CliffMonths = 12,
+                InvestorRights = new List<string> { "information_rights", "voting_rights", "rofr" },
+                InfoRightsTermination = true,
+                ProposedClosingDate = now.AddDays(30),
+                Status = "draft",
+            },
+            DueDiligenceChecklist = new List<DueDigligenceItem>
+            {
+                new() { ItemName = "Legal entity check", Category = "legal", Status = "completed" },
+                new() { ItemName = "Cap table verification", Category = "financial", Status = "completed" },
+                new() { ItemName = "Customer references", Category = "business", Status = "in_progress" },
+                new() { ItemName = "Tech architecture review", Category = "technical", Status = "pending" },
+            },
+            InvestorNameSnapshot = investorUser.Name ?? "Demo Investor",
+            InvestorTypeSnapshot = "angel",
+            CreatedByUserId = investorUser.Id.ToString(),
+            CreatedAt = now.AddDays(-1),
+            UpdatedAt = now,
+        };
+
+        await dbContext.DealExecutions.InsertOneAsync(deal);
+        Log.Information("Seeded demo deal execution for company {Name}", rousseau.CompanyName);
+    }
+
+    /// <summary>
+    /// Lightweight record matching companies.json shape. Lives here (private)
+    /// so the seed file stays readable without polluting public DTOs.
+    /// </summary>
+    private class CompanySeedRecord
+    {
+        public string CompanyName { get; set; }
+        public string Industry { get; set; }
+        public string Tagline { get; set; }
+        public string Country { get; set; }
+        public string FundingRoundType { get; set; }
+        public double FundingAskAmount { get; set; }
+        public double EquityOfferedPercent { get; set; }
+        public double PreMoneyValuation { get; set; }
+        public double Valuation { get; set; }
+        public string ShareType { get; set; }
+        public int TrustScore { get; set; }
+        public bool IsInvestorReady { get; set; }
+        public double MarketSizeEstimate { get; set; }
+        public double GrowthPotentialScore { get; set; }
+        public string FundingNarrative { get; set; }
+        public double EsopPoolPercent { get; set; }
+        public int TotalShares { get; set; }
+        public string PipelineColumn { get; set; }
+        public int MatchScore { get; set; }
+        public string MatchStatus { get; set; }
     }
 }

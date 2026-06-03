@@ -24,8 +24,6 @@ function normalizePathRole(pathname: string): string | null {
     investor: "investor",
     creator: "creator",
     admin: "admin",
-    advisor: "advisor",
-    founder: "founder",
     serviceprovider: "serviceprovider",
   };
 
@@ -39,8 +37,6 @@ const VALID_PHASE_1_PATHS = new Set([
   "/dashboard/investor/phase-1",
   "/dashboard/serviceprovider/phase-1",
   "/dashboard/admin/phase-1",
-  "/dashboard/advisor/phase-1",
-  "/dashboard/founder/phase-1",
 ]);
 
 export default function AuthGuard({
@@ -97,8 +93,6 @@ export default function AuthGuard({
       creator: UserRole.CREATOR,
       investor: UserRole.INVESTOR,
       entrepreneur: UserRole.ENTREPRENEUR,
-      advisor: UserRole.ADVISOR,
-      founder: UserRole.FOUNDER,
       serviceprovider: UserRole.SERVICE_PROVIDER,
       'service-provider': UserRole.SERVICE_PROVIDER,
       service_provider: UserRole.SERVICE_PROVIDER,

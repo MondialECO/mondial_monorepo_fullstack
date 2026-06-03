@@ -13,6 +13,10 @@ public class Companies
 
     public string OwnerId { get; set; }
 
+    // Provenance: when a Company is created from a BusinessIdea via the
+    // creator->entrepreneur transition, this holds the source idea id.
+    public string SourceBusinessIdeaId { get; set; }
+
     // Phase 1: Basic Info
     public string CompanyName { get; set; }
     public string Industry { get; set; }

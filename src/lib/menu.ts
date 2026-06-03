@@ -6,9 +6,12 @@ import {
   User,
   CreditCard,
   Settings,
-  HelpCircle,
   Wallet,
   Briefcase,
+  Compass,
+  LayoutGrid,
+  MessageSquare,
+  Handshake,
 } from "lucide-react";
 
 export type MenuItem = {
@@ -78,17 +81,6 @@ export const menu: Record<UserRole, MenuSection[]> = {
         },
       ],
     },
-
-    {
-      title: "Others",
-      items: [
-        {
-          label: "Help & Support",
-          href: "/dashboard/creator/help",
-          icon: HelpCircle,
-        },
-      ],
-    },
   ],
 
   [UserRole.INVESTOR]: [
@@ -99,6 +91,26 @@ export const menu: Record<UserRole, MenuSection[]> = {
           label: "Investments",
           href: "/dashboard/investor",
           icon: Wallet,
+        },
+        {
+          label: "Discovery",
+          href: "/dashboard/investor/discovery",
+          icon: Compass,
+        },
+        {
+          label: "Pipeline",
+          href: "/dashboard/investor/pipeline",
+          icon: LayoutGrid,
+        },
+        {
+          label: "Deals",
+          href: "/dashboard/investor/deals",
+          icon: Handshake,
+        },
+        {
+          label: "Messages",
+          href: "/dashboard/investor/messages",
+          icon: MessageSquare,
         },
       ],
     },
@@ -113,31 +125,15 @@ export const menu: Record<UserRole, MenuSection[]> = {
           href: "/dashboard/entrepreneur",
           icon: Briefcase,
         },
-      ],
-    },
-  ],
-
-  [UserRole.ADVISOR]: [
-    {
-      title: "Dashboard",
-      items: [
         {
-          label: "Advisory Workspace",
-          href: "/dashboard/advisor",
-          icon: Briefcase,
+          label: "Deals",
+          href: "/dashboard/entrepreneur/deals",
+          icon: Handshake,
         },
-      ],
-    },
-  ],
-
-  [UserRole.FOUNDER]: [
-    {
-      title: "Dashboard",
-      items: [
         {
-          label: "Founder Workspace",
-          href: "/dashboard/founder",
-          icon: LayoutDashboard,
+          label: "Messages",
+          href: "/dashboard/entrepreneur/messages",
+          icon: MessageSquare,
         },
       ],
     },

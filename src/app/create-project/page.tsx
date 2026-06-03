@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Upload, Check } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import dynamic from 'next/dynamic';
-import { saveIdeaDraftApi } from '../../../service/creator/dashboard';
+import { saveIdeaDraftApi } from '@/lib/api-creator-dashboard';
 import { CreateIdeaModel, IdeaFormState, IdeaStatus, IdeaStage, ProductType, WeeklyTimeAvailable } from '@/types/creator/create-idea-model';
 
 const ReactQuill = dynamic(() => import('react-quill-new'), {

@@ -42,7 +42,8 @@ public class Phase7AccessPolicyTests
             new Mock<IInvestorMatcher>().Object,
             new Mock<IAiReviewEngine>().Object,
             new Mock<IDocumentManager>().Object,
-            new Mock<IPhaseValidator>().Object);
+            new Mock<IPhaseValidator>().Object,
+            new Mock<IDealEventPublisher>().Object);
     }
 
     private void SetupCompanyLookup(Companies company)

@@ -1,9 +1,11 @@
 "use client"
 
 import { useState, ReactNode } from "react"
+import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Eye, Check, Clock, X } from "lucide-react"
+import { Eye, Check, Clock, X, Rocket } from "lucide-react"
+import { pauseIdeaApi } from "@/lib/api-creator-dashboard"
 
 interface StatusProps {
   icon: ReactNode
@@ -59,8 +61,6 @@ const BADGE_COLOR_MAP: Record<string, string> = {
     "bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-600",
 }
 
-import { pauseIdeaApi } from "../../../service/creator/dashboard"
-
 export default function IdeaCard({ idea }: IdeaCardProps) {
   const [isPaused, setIsPaused] = useState(false)
   const [isPausing, setIsPausing] = useState(false)
@@ -106,6 +106,13 @@ export default function IdeaCard({ idea }: IdeaCardProps) {
             <Eye size={14} />
             View
           </button>
+          <Link
+            href={`/dashboard/creator/phase-3?ideaId=${encodeURIComponent(String(idea.id))}`}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs sm:text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 min-w-max"
+          >
+            <Rocket size={14} />
+            Continue as Entrepreneur
+          </Link>
         </div>
       </div>
 

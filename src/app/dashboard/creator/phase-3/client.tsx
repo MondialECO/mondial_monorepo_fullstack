@@ -1,15 +1,22 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import Link from 'next/link';
-import { getDashboardMyIdeas } from '@/lib/api-creator-dashboard';
+import {
+  getDashboardMyIdeas,
+  createCompanyFromIdea,
+} from '@/lib/api-creator-dashboard';
+import api from '@/lib/axios';
 import type { Idea } from '@/types/creator/dashboard';
 
 export default function Phase3Client() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const requestedIdeaId = searchParams.get('ideaId');
+
   const [selected, setSelected] = useState<'PATH_B' | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,11 +40,20 @@ export default function Phase3Client() {
     };
   }, []);
 
-  const hasIdea = (ideas?.length ?? 0) > 0;
-  const firstIdeaId = ideas?.[0]?.id;
+  const targetIdea = useMemo(() => {
+    if (!ideas || ideas.length === 0) return null;
+    if (requestedIdeaId) {
+      const match = ideas.find((i) => String(i.id) === String(requestedIdeaId));
+      if (match) return match;
+    }
+    return ideas[0];
+  }, [ideas, requestedIdeaId]);
+
+  const hasIdea = targetIdea !== null;
+  const targetIdeaId = targetIdea?.id ? String(targetIdea.id) : null;
 
   const handlePathB = async () => {
-    if (!firstIdeaId) {
+    if (!targetIdeaId) {
       setError('You need at least one idea before choosing a path.');
       return;
     }
@@ -46,11 +62,22 @@ export default function Phase3Client() {
     setError(null);
 
     try {
-      await axios.put(`/api/creator/cross-roads/${firstIdeaId}/decide`, {
+      // 1. Record crossroads decision
+      await api.put(`/creator/cross-roads/${targetIdeaId}/decide`, {
         decision: 'PATH_B',
       });
-      await axios.put('/api/auth/transition-role', { newRole: 'Entrepreneur' });
-      router.push('/dashboard/entrepreneur/phase-2/step-1');
+
+      // 2. Grant Entrepreneur role
+      await api.put('/auth/transition-role', { newRole: 'Entrepreneur' });
+
+      // 3. Promote the idea into a Company (idempotent on the backend)
+      const { companyId } = await createCompanyFromIdea(targetIdeaId);
+
+      // 4. Redirect into entrepreneur onboarding with company context
+      const target = companyId
+        ? `/dashboard/entrepreneur/phase-2/step-1?companyId=${encodeURIComponent(companyId)}`
+        : '/dashboard/entrepreneur/phase-2/step-1';
+      router.push(target);
     } catch (err: unknown) {
       const message =
         axios.isAxiosError(err) && err.response?.data?.error
@@ -69,6 +96,17 @@ export default function Phase3Client() {
         <p className="text-neutral-5 mb-8">
           Choose your path forward. You can pivot later, but this determines your immediate next steps.
         </p>
+
+        {targetIdea && (
+          <div className="mb-6 rounded-lg border border-neutral-2 bg-white p-4 text-sm">
+            <p className="text-neutral-5">
+              Selected idea:{' '}
+              <span className="font-semibold text-foreground">
+                {targetIdea.name || 'Untitled idea'}
+              </span>
+            </p>
+          </div>
+        )}
 
         {error && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md">

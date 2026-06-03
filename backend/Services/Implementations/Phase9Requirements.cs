@@ -238,6 +238,11 @@ public static class Phase9Requirements
     public const string ActivityChecklistUpdated = "checklist_updated";
     public const string ActivityDocumentUploaded = "deal_document_uploaded";
     public const string ActivityDealClosed = "deal_closed";
+    public const string ActivityOfferSent = "offer_sent";
+    public const string ActivityOfferViewed = "offer_viewed";
+    public const string ActivityOfferCountered = "offer_countered";
+    public const string ActivityOfferAccepted = "offer_accepted";
+    public const string ActivityOfferRejected = "offer_rejected";
 
     public static readonly IReadOnlyList<string> ActivityEventTypeWhitelist = new[]
     {
@@ -249,7 +254,54 @@ public static class Phase9Requirements
         ActivityChecklistUpdated,
         ActivityDocumentUploaded,
         ActivityDealClosed,
+        ActivityOfferSent,
+        ActivityOfferViewed,
+        ActivityOfferCountered,
+        ActivityOfferAccepted,
+        ActivityOfferRejected,
     };
+
+    // ----- Offer axis (per term-sheet revision) -------------------------
+
+    public const string OfferStatusDraft = "draft";
+    public const string OfferStatusSent = "sent";
+    public const string OfferStatusViewed = "viewed";
+    public const string OfferStatusCountered = "countered";
+    public const string OfferStatusAccepted = "accepted";
+    public const string OfferStatusRejected = "rejected";
+
+    public static readonly IReadOnlyList<string> OfferStatusWhitelist = new[]
+    {
+        OfferStatusDraft,
+        OfferStatusSent,
+        OfferStatusViewed,
+        OfferStatusCountered,
+        OfferStatusAccepted,
+        OfferStatusRejected,
+    };
+
+    // Per-revision lifecycle. A "countered" revision is terminal for itself;
+    // the counter spawns a NEW revision in "sent". accepted/rejected are
+    // terminal for the whole offer thread.
+    public static readonly IReadOnlyDictionary<string, IReadOnlySet<string>> OfferStatusTransitions =
+        new Dictionary<string, IReadOnlySet<string>>(StringComparer.OrdinalIgnoreCase)
+        {
+            [OfferStatusDraft] = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                OfferStatusSent,
+            },
+            [OfferStatusSent] = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                OfferStatusViewed, OfferStatusCountered, OfferStatusAccepted, OfferStatusRejected,
+            },
+            [OfferStatusViewed] = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                OfferStatusCountered, OfferStatusAccepted, OfferStatusRejected,
+            },
+            [OfferStatusCountered] = new HashSet<string>(StringComparer.OrdinalIgnoreCase),
+            [OfferStatusAccepted] = new HashSet<string>(StringComparer.OrdinalIgnoreCase),
+            [OfferStatusRejected] = new HashSet<string>(StringComparer.OrdinalIgnoreCase),
+        };
 
     // ----- Helpers ------------------------------------------------------
 
@@ -298,5 +350,14 @@ public static class Phase9Requirements
     public static bool IsValidParticipantTransition(string from, string to)
         => IsValidParticipantStatus(from) && IsValidParticipantStatus(to) &&
             ParticipantStatusTransitions.TryGetValue(from, out var allowed) &&
+            allowed.Contains(to);
+
+    public static bool IsValidOfferStatus(string s)
+        => !string.IsNullOrWhiteSpace(s)
+            && OfferStatusWhitelist.Any(x => string.Equals(x, s, StringComparison.OrdinalIgnoreCase));
+
+    public static bool IsValidOfferTransition(string from, string to)
+        => IsValidOfferStatus(from) && IsValidOfferStatus(to) &&
+            OfferStatusTransitions.TryGetValue(from, out var allowed) &&
             allowed.Contains(to);
 }

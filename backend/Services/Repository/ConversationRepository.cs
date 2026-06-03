@@ -26,7 +26,10 @@ namespace WebApp.Services.Repository
                 .ToListAsync();
         }
 
-        public async Task<Conversation> GetOrCreateConversation(Guid user1, Guid user2)
+        // Returns the existing Direct conversation between the pair, or creates
+        // one. `Created` is true only when a new conversation was inserted, so
+        // callers can fire a one-time "conversation created" realtime event.
+        public async Task<(Conversation Conversation, bool Created)> GetOrCreateConversation(Guid user1, Guid user2)
         {
             var convo = await _collection.Find(c =>
                 c.Participants.Contains(user1) &&
@@ -34,7 +37,7 @@ namespace WebApp.Services.Repository
                 c.Type == "Direct"
             ).FirstOrDefaultAsync();
 
-            if (convo != null) return convo;
+            if (convo != null) return (convo, false);
 
             var newConvo = new Conversation
             {
@@ -42,7 +45,17 @@ namespace WebApp.Services.Repository
             };
 
             await _collection.InsertOneAsync(newConvo);
-            return newConvo;
+            return (newConvo, true);
+        }
+
+        // Participant ids for a conversation — used to fan realtime events out
+        // to each participant's per-user hub group.
+        public async Task<List<Guid>> GetParticipantsAsync(ObjectId conversationId)
+        {
+            var convo = await _collection
+                .Find(c => c.Id == conversationId)
+                .FirstOrDefaultAsync();
+            return convo?.Participants ?? new List<Guid>();
         }
 
         // Membership check used by Chat authorization (SEC-10 Phase 2).
@@ -55,7 +68,7 @@ namespace WebApp.Services.Repository
                 .AnyAsync();
         }
 
-        public async Task UpdateConversionLastMessage(ChatMessage update)
+        public async Task UpdateConversationLastMessage(ChatMessage update)
         {
             var filter = Builders<Conversation>.Filter.Eq(c => c.Id, update.ConversationId);
             var updateDef = Builders<Conversation>.Update

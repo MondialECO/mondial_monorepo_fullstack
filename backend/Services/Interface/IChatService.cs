@@ -11,10 +11,15 @@ namespace WebApp.Services.Interface
 
 
         Task<List<Conversation>> GetUserConversations(Guid userId);
-        Task<Conversation> GetOrCreateConversation(Guid user1, Guid user2);
+        Task<(Conversation Conversation, bool Created)> GetOrCreateConversation(Guid user1, Guid user2);
+        Task<List<Guid>> GetParticipantsAsync(ObjectId conversationId);
         Task<List<ChatMessage>> GetMessages(ObjectId conversationId, int skip, int limit);
         Task<ChatMessage> AddMessage(ChatMessage message);
         Task MarkAsRead(ObjectId conversationId, Guid userId);
+
+        // Unread counts per conversation for the user (conversationId -> count).
+        Task<Dictionary<string, long>> CountUnreadByConversationAsync(
+            List<ObjectId> conversationIds, Guid userId);
 
         // True only when the user is a participant of the conversation.
         // Authorization gate for Chat read/write paths (SEC-10 Phase 2).

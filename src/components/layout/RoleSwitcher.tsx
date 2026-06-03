@@ -11,8 +11,6 @@ const ROLES = [
   UserRole.CREATOR,
   UserRole.INVESTOR,
   UserRole.ENTREPRENEUR,
-  UserRole.ADVISOR,
-  UserRole.FOUNDER,
   UserRole.SERVICE_PROVIDER,
 ];
 
