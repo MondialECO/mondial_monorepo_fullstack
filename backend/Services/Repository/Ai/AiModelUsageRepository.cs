@@ -30,5 +30,9 @@ namespace WebApp.Services.Repository.Ai
                     new CreateIndexOptions { Name = "Model_CreatedAt" }),
             });
         }
+
+        /// <summary>All usage entries for a user (for usage aggregation).</summary>
+        public async Task<List<AiModelUsage>> GetByOwnerAsync(string ownerUserId)
+            => await _collection.Find(x => x.OwnerUserId == ownerUserId).ToListAsync();
     }
 }

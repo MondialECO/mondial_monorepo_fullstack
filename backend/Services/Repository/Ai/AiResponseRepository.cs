@@ -28,5 +28,15 @@ namespace WebApp.Services.Repository.Ai
                     new CreateIndexOptions { Name = "Owner_CreatedAt" }),
             });
         }
+
+        /// <summary>The (latest) response for a request, owner-scoped.</summary>
+        public async Task<AiResponse?> GetByRequestAsync(string requestId, string ownerUserId)
+            => await _collection.Find(x => x.RequestId == requestId && x.OwnerUserId == ownerUserId)
+                .SortByDescending(x => x.CreatedAt)
+                .FirstOrDefaultAsync();
+
+        /// <summary>A response by id, owner-scoped (null if not owned).</summary>
+        public async Task<AiResponse?> GetOwnedAsync(string responseId, string ownerUserId)
+            => await _collection.Find(x => x.Id == responseId && x.OwnerUserId == ownerUserId).FirstOrDefaultAsync();
     }
 }
