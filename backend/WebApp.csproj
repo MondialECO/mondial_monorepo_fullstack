@@ -17,6 +17,15 @@
     <PackageReference Include="AspNetCore.HealthChecks.Redis" Version="8.0.1" />
     <PackageReference Include="AspNetCore.Identity.MongoDbCore" Version="6.0.0" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="11.11.0" />
+    <!-- AI infrastructure (C-1): durable background job engine on the existing
+         Mongo connection. Hangfire.Mongo is pinned to 1.10.9 — the last release
+         on the MongoDB.Driver 2.x line, built against the STRONG-NAMED 2.29.0
+         (driver gained strong-naming at 2.28; <=1.10.7 reference the unsigned
+         2.24-2.26, whose null public-key-token breaks compile-time typeref
+         unification against our signed 2.30.0 -> CS0012). 2.29's token matches
+         2.30, so the compiler unifies upward. 1.11.0+ requires driver 3.x. -->
+    <PackageReference Include="Hangfire.AspNetCore" Version="1.8.14" />
+    <PackageReference Include="Hangfire.Mongo" Version="1.10.9" />
     <PackageReference Include="MailKit" Version="4.16.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.StackExchangeRedis" Version="8.0.11" />

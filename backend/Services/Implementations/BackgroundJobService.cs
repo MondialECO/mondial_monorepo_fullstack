@@ -1,238 +1,102 @@
+using Hangfire;
+using WebApp.Models.DatabaseModels.Jobs;
+using WebApp.Services.Repository;
+
 namespace WebApp.Services.Implementations;
 
+/// <summary>
+/// Hangfire-backed adapter for the legacy background-job API. The
+/// <see cref="IBackgroundJobService"/> interface and the <c>BackgroundJobController</c>
+/// contract are preserved byte-for-byte; only the backing changed: the old
+/// in-memory <c>Dictionary</c> + <c>Task.Run</c> (lost on restart, no retries,
+/// no monitoring) is replaced by a durable Hangfire enqueue plus a persisted
+/// <see cref="BackgroundJobRecord"/> in the dedicated <c>BackgroundJobs</c>
+/// collection. Existing callers (AI Review / Investor Matching / Data Room /
+/// Financial Projections) keep working unchanged but gain durability, retries
+/// and dashboard visibility.
+/// </summary>
 public class BackgroundJobService : IBackgroundJobService
 {
-    private readonly ICompanyService _companyService;
-    private readonly IPhaseNotificationService _notificationService;
-    private readonly IInvestorMatcher _investorMatcher;
+    private readonly IBackgroundJobClient _jobClient;
+    private readonly IBackgroundJobRepository _jobs;
     private readonly ILogger<BackgroundJobService> _logger;
-    private readonly Dictionary<string, JobStatus> _jobCache;
 
     public BackgroundJobService(
-        ICompanyService companyService,
-        IPhaseNotificationService notificationService,
-        IInvestorMatcher investorMatcher,
+        IBackgroundJobClient jobClient,
+        IBackgroundJobRepository jobs,
         ILogger<BackgroundJobService> logger)
     {
-        _companyService = companyService;
-        _notificationService = notificationService;
-        _investorMatcher = investorMatcher;
+        _jobClient = jobClient;
+        _jobs = jobs;
         _logger = logger;
-        _jobCache = new Dictionary<string, JobStatus>();
     }
 
     public string EnqueueAiReview(string companyId, string ownerUserId)
-    {
-        var jobId = Guid.NewGuid().ToString();
-        var jobStatus = new JobStatus
-        {
-            JobId = jobId,
-            CompanyId = companyId,
-            OwnerUserId = ownerUserId,
-            Status = "queued",
-            CreatedAt = DateTime.UtcNow
-        };
-
-        _jobCache[jobId] = jobStatus;
-
-        // Fire and forget - in production, use Hangfire
-        _ = Task.Run(async () => await ProcessAiReviewAsync(companyId, jobId));
-
-        _logger.LogInformation($"AI review job {jobId} queued for company {companyId}");
-        return jobId;
-    }
+        => Enqueue("ai-review", companyId, ownerUserId,
+            (jobId, cid) => _jobClient.Enqueue<BackgroundJobProcessor>(p => p.ProcessAiReviewAsync(jobId, cid)));
 
     public string EnqueueInvestorMatching(string companyId, string ownerUserId)
-    {
-        var jobId = Guid.NewGuid().ToString();
-        var jobStatus = new JobStatus
-        {
-            JobId = jobId,
-            CompanyId = companyId,
-            OwnerUserId = ownerUserId,
-            Status = "queued",
-            CreatedAt = DateTime.UtcNow
-        };
-
-        _jobCache[jobId] = jobStatus;
-
-        _ = Task.Run(async () => await ProcessInvestorMatchingAsync(companyId, jobId));
-
-        _logger.LogInformation($"Investor matching job {jobId} queued for company {companyId}");
-        return jobId;
-    }
+        => Enqueue("investor-matching", companyId, ownerUserId,
+            (jobId, cid) => _jobClient.Enqueue<BackgroundJobProcessor>(p => p.ProcessInvestorMatchingAsync(jobId, cid)));
 
     public string EnqueueDataRoomAnalysis(string companyId, string ownerUserId)
-    {
-        var jobId = Guid.NewGuid().ToString();
-        var jobStatus = new JobStatus
-        {
-            JobId = jobId,
-            CompanyId = companyId,
-            OwnerUserId = ownerUserId,
-            Status = "queued",
-            CreatedAt = DateTime.UtcNow
-        };
-
-        _jobCache[jobId] = jobStatus;
-
-        _ = Task.Run(async () => await ProcessDataRoomAnalysisAsync(companyId, jobId));
-
-        _logger.LogInformation($"Data room analysis job {jobId} queued for company {companyId}");
-        return jobId;
-    }
+        => Enqueue("data-room-analysis", companyId, ownerUserId,
+            (jobId, cid) => _jobClient.Enqueue<BackgroundJobProcessor>(p => p.ProcessDataRoomAnalysisAsync(jobId, cid)));
 
     public string EnqueueFinancialProjections(string companyId, string ownerUserId)
+        => Enqueue("financial-projections", companyId, ownerUserId,
+            (jobId, cid) => _jobClient.Enqueue<BackgroundJobProcessor>(p => p.ProcessFinancialProjectionsAsync(jobId, cid)));
+
+    /// <summary>
+    /// Persist the durable record FIRST (so the processor never races ahead of
+    /// a missing document), then enqueue the Hangfire job and back-fill its id.
+    /// </summary>
+    private string Enqueue(string jobType, string companyId, string ownerUserId, Func<string, string, string> enqueue)
     {
         var jobId = Guid.NewGuid().ToString();
-        var jobStatus = new JobStatus
+
+        _jobs.InsertAsync(new BackgroundJobRecord
         {
             JobId = jobId,
+            JobType = jobType,
             CompanyId = companyId,
             OwnerUserId = ownerUserId,
             Status = "queued",
-            CreatedAt = DateTime.UtcNow
-        };
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+        }).GetAwaiter().GetResult();
 
-        _jobCache[jobId] = jobStatus;
+        var hangfireJobId = enqueue(jobId, companyId);
+        _jobs.SetHangfireJobIdAsync(jobId, hangfireJobId).GetAwaiter().GetResult();
 
-        _ = Task.Run(async () => await ProcessFinancialProjectionsAsync(companyId, jobId));
-
-        _logger.LogInformation($"Financial projections job {jobId} queued for company {companyId}");
+        _logger.LogInformation("{JobType} job {JobId} (hangfire {HangfireJobId}) queued for company {CompanyId}",
+            jobType, jobId, hangfireJobId, companyId);
         return jobId;
     }
 
     public async Task<JobStatus> GetJobStatusAsync(string jobId)
     {
-        return await Task.Run(() =>
+        var record = await _jobs.GetAsync(jobId);
+        if (record == null)
         {
-            if (_jobCache.TryGetValue(jobId, out var status))
-                return status;
-
             return new JobStatus
             {
                 JobId = jobId,
                 Status = "not_found",
-                ErrorMessage = "Job not found"
+                ErrorMessage = "Job not found",
             };
-        });
-    }
-
-    private async Task ProcessAiReviewAsync(string companyId, string jobId)
-    {
-        try
-        {
-            _jobCache[jobId].Status = "processing";
-
-            var company = await _companyService.GetCompanyAsync(companyId);
-            var review = await _companyService.RunAiReviewAsync(companyId);
-
-            _jobCache[jobId].Status = "completed";
-            _jobCache[jobId].CompletedAt = DateTime.UtcNow;
-            _jobCache[jobId].Result = $"Score: {review.OverallScore}";
-
-            // Send notification
-            await _notificationService.NotifyAiReviewCompleteAsync(
-                companyId,
-                company.CompanyName,
-                review.OverallScore
-            );
-
-            _logger.LogInformation($"AI review job {jobId} completed for company {companyId}");
         }
-        catch (Exception ex)
+
+        return new JobStatus
         {
-            _jobCache[jobId].Status = "failed";
-            _jobCache[jobId].CompletedAt = DateTime.UtcNow;
-            _jobCache[jobId].ErrorMessage = ex.Message;
-            _logger.LogError(ex, $"AI review job {jobId} failed for company {companyId}");
-        }
-    }
-
-    private async Task ProcessInvestorMatchingAsync(string companyId, string jobId)
-    {
-        try
-        {
-            _jobCache[jobId].Status = "processing";
-
-            var company = await _companyService.GetCompanyAsync(companyId);
-
-            // Pass null pool ID list — InvestorMatcher loads the full active
-            // investor pool itself. ACTUALLY RUNS the matcher (previously this
-            // line only read existing matches and was effectively a no-op).
-            var matches = await _investorMatcher.FindMatchesAsync(company, investorPoolIds: null);
-
-            _jobCache[jobId].Status = "completed";
-            _jobCache[jobId].CompletedAt = DateTime.UtcNow;
-            _jobCache[jobId].Result = $"{matches.Count} matches found";
-
-            // Send notification
-            await _notificationService.NotifyInvestorMatchAsync(
-                companyId,
-                company.CompanyName,
-                matches.Count
-            );
-
-            _logger.LogInformation($"Investor matching job {jobId} completed for company {companyId}");
-        }
-        catch (Exception ex)
-        {
-            _jobCache[jobId].Status = "failed";
-            _jobCache[jobId].CompletedAt = DateTime.UtcNow;
-            _jobCache[jobId].ErrorMessage = ex.Message;
-            _logger.LogError(ex, $"Investor matching job {jobId} failed for company {companyId}");
-        }
-    }
-
-    private async Task ProcessDataRoomAnalysisAsync(string companyId, string jobId)
-    {
-        try
-        {
-            _jobCache[jobId].Status = "processing";
-
-            var dataRoom = await _companyService.GetDataRoomStatusAsync(companyId);
-
-            // Placeholder for more advanced analysis
-            var completeness = dataRoom.Documents?.Count ?? 0;
-
-            _jobCache[jobId].Status = "completed";
-            _jobCache[jobId].CompletedAt = DateTime.UtcNow;
-            _jobCache[jobId].Result = $"Data room analysis: {completeness} documents";
-
-            _logger.LogInformation($"Data room analysis job {jobId} completed for company {companyId}");
-        }
-        catch (Exception ex)
-        {
-            _jobCache[jobId].Status = "failed";
-            _jobCache[jobId].CompletedAt = DateTime.UtcNow;
-            _jobCache[jobId].ErrorMessage = ex.Message;
-            _logger.LogError(ex, $"Data room analysis job {jobId} failed for company {companyId}");
-        }
-    }
-
-    private async Task ProcessFinancialProjectionsAsync(string companyId, string jobId)
-    {
-        try
-        {
-            _jobCache[jobId].Status = "processing";
-
-            var financials = await _companyService.GetFinancialSummaryAsync(companyId);
-
-            // Placeholder for more advanced projections
-            var projectionYear1 = financials.AnnualRecurringRevenue * 1.5; // Assume 50% growth
-
-            _jobCache[jobId].Status = "completed";
-            _jobCache[jobId].CompletedAt = DateTime.UtcNow;
-            _jobCache[jobId].Result = $"Year 1 projection: {projectionYear1:C}";
-
-            _logger.LogInformation($"Financial projections job {jobId} completed for company {companyId}");
-        }
-        catch (Exception ex)
-        {
-            _jobCache[jobId].Status = "failed";
-            _jobCache[jobId].CompletedAt = DateTime.UtcNow;
-            _jobCache[jobId].ErrorMessage = ex.Message;
-            _logger.LogError(ex, $"Financial projections job {jobId} failed for company {companyId}");
-        }
+            JobId = record.JobId,
+            CompanyId = record.CompanyId!,
+            OwnerUserId = record.OwnerUserId,
+            Status = record.Status,
+            CreatedAt = record.CreatedAt,
+            CompletedAt = record.CompletedAt,
+            Result = record.Result!,
+            ErrorMessage = record.ErrorMessage!,
+        };
     }
 }
