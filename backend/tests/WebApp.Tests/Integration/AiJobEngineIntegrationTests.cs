@@ -112,8 +112,13 @@ public class AiJobEngineIntegrationTests : IClassFixture<AppFixture>
         var act = () => BuildRunner(provider).RunAsync(req.Id);
         await act.Should().ThrowAsync<AiProviderException>(); // rethrown for Hangfire
 
-        (await requests.GetByIdAsync(req.Id))!.Status.Should().Be("Failed");
+        var failed = await requests.GetByIdAsync(req.Id);
+        failed!.Status.Should().Be("Failed");
+        failed.Error.Should().NotBeNullOrEmpty(); // error persisted
+
+        // No partial persistence: neither a response nor a usage row is written.
         (await new AiResponseRepository(Db).FindAsync(r => r.RequestId == req.Id)).Should().BeEmpty();
+        (await new AiModelUsageRepository(Db).FindAsync(u => u.RequestId == req.Id)).Should().BeEmpty();
     }
 
     [SkippableFact]

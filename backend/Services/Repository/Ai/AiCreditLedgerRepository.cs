@@ -40,5 +40,30 @@ namespace WebApp.Services.Repository.Ai
                     .Set(x => x.UpdatedAt, DateTime.UtcNow));
             return result.ModifiedCount > 0;
         }
+
+        /// <summary>
+        /// Idempotently grants a starter ledger to a user who has none. Uses an
+        /// upsert with $setOnInsert so an existing balance is NEVER touched and
+        /// repeat runs are safe; the unique OwnerUserId index guards concurrency.
+        /// Returns true only when a new ledger was created.
+        /// </summary>
+        public async Task<bool> TryGrantInitialAsync(string ownerUserId, int amount)
+        {
+            var update = Builders<AiCreditLedger>.Update
+                .SetOnInsert(x => x.OwnerUserId, ownerUserId)
+                .SetOnInsert(x => x.Balance, amount)
+                .SetOnInsert(x => x.LifetimeGranted, amount)
+                .SetOnInsert(x => x.LifetimeSpent, 0)
+                .SetOnInsert(x => x.Debits, new List<AiCreditDebit>())
+                .SetOnInsert(x => x.CreatedAt, DateTime.UtcNow)
+                .SetOnInsert(x => x.UpdatedAt, DateTime.UtcNow);
+
+            var result = await _collection.UpdateOneAsync(
+                x => x.OwnerUserId == ownerUserId,
+                update,
+                new UpdateOptions { IsUpsert = true });
+
+            return result.UpsertedId is not null;
+        }
     }
 }

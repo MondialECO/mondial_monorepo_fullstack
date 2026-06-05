@@ -27,6 +27,18 @@ namespace WebApp.Configuration.AiOptions
 
         /// <summary>Per-module feature flags (Clarifier / BusinessPlan / Forecast).</summary>
         public AiFeatureFlags Features { get; set; } = new();
+
+        /// <summary>
+        /// Starter AI credit balance granted to each existing user at startup
+        /// when <see cref="GrantStarterCreditsToExisting"/> is on. 0 = no grant.
+        /// </summary>
+        public int StarterCredits { get; set; } = 0;
+
+        /// <summary>
+        /// Config gate for the one-time idempotent starter-credit backfill. Off
+        /// by default — must be opted into per environment.
+        /// </summary>
+        public bool GrantStarterCreditsToExisting { get; set; } = false;
     }
 
     public class AiFeatureFlags

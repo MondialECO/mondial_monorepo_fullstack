@@ -657,6 +657,26 @@ using (var scope = app.Services.CreateScope())
         Log.Warning(ex, "AI prompt seeding skipped (non-fatal)");
     }
 
+    // C-1 Phase 7: optional, config-gated, idempotent starter-credit grant to
+    // existing users. Off by default. Only users with no AICredits ledger are
+    // touched, so this is safe on every boot.
+    try
+    {
+        var aiCfg = app.Configuration.GetSection("Ai");
+        if (aiCfg.GetValue("GrantStarterCreditsToExisting", false))
+        {
+            var amount = aiCfg.GetValue("StarterCredits", 0);
+            var seeder = scope.ServiceProvider.GetRequiredService<WebApp.Services.Ai.IAiCreditSeeder>();
+            var granted = await seeder.GrantStarterCreditsAsync(amount);
+            if (granted > 0)
+                Log.Information("Granted {Count} starter AI credit ledger(s) ({Amount} each)", granted, amount);
+        }
+    }
+    catch (Exception ex)
+    {
+        Log.Warning(ex, "AI starter-credit grant skipped (non-fatal)");
+    }
+
     // Development-only demo seeding (Investor catalogue). Double-gated on
     // IsDevelopment() and config flag SeedDemoData. Idempotent.
     await scope.ServiceProvider.SeedDemoDataAsync(app.Environment, app.Configuration);
