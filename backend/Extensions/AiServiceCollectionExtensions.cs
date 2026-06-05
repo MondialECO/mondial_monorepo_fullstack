@@ -63,6 +63,15 @@ public static class AiServiceCollectionExtensions
         services.AddSingleton<Services.Ai.Prompts.IPromptBuilder, Services.Ai.Prompts.PromptBuilder>();
         services.AddSingleton<Services.Ai.Prompts.IPromptVersionStore, Services.Ai.Prompts.PromptVersionStore>();
 
+        // ---- AI job engine (Phase 4) ----
+        // Handlers self-register as IAiTaskHandler; the registry builds the
+        // type->handler map. C-1 ships only the Probe handler. Runner + service
+        // are scoped (Hangfire resolves the runner in a fresh per-job scope).
+        services.AddScoped<Services.Ai.Jobs.IAiTaskHandler, Services.Ai.Jobs.NoOpProbeHandler>();
+        services.AddScoped<Services.Ai.Jobs.AiTaskHandlerRegistry>();
+        services.AddScoped<Services.Ai.Jobs.IAiJobRunner, Services.Ai.Jobs.AiJobRunner>();
+        services.AddScoped<Services.Ai.Jobs.IAiJobService, Services.Ai.Jobs.AiJobService>();
+
         // ---- Durable legacy-job persistence (dedicated BackgroundJobs collection) ----
         // Singleton to match the IMongoDatabase lifetime and create indexes once.
         services.AddSingleton<IBackgroundJobRepository, BackgroundJobRepository>();
