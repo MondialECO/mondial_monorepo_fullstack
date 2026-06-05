@@ -21,6 +21,7 @@ namespace WebApp.Services.Ai.Jobs
         private readonly IPromptBuilder _promptBuilder;
         private readonly IModelRouter _modelRouter;
         private readonly IAiProvider _provider;
+        private readonly IAiJobCompletionHandler _completion;
         private readonly ILogger<AiJobRunner> _logger;
 
         public AiJobRunner(
@@ -32,6 +33,7 @@ namespace WebApp.Services.Ai.Jobs
             IPromptBuilder promptBuilder,
             IModelRouter modelRouter,
             IAiProvider provider,
+            IAiJobCompletionHandler completion,
             ILogger<AiJobRunner> logger)
         {
             _requests = requests;
@@ -42,6 +44,7 @@ namespace WebApp.Services.Ai.Jobs
             _promptBuilder = promptBuilder;
             _modelRouter = modelRouter;
             _provider = provider;
+            _completion = completion;
             _logger = logger;
         }
 
@@ -88,7 +91,7 @@ namespace WebApp.Services.Ai.Jobs
 
                 var interpreted = await handler.InterpretAsync(request, completion);
 
-                await _responses.AddAsync(new AiResponse
+                var responseEntity = new AiResponse
                 {
                     RequestId = request.Id,
                     OwnerUserId = request.OwnerUserId,
@@ -103,7 +106,8 @@ namespace WebApp.Services.Ai.Jobs
                     },
                     FinishReason = completion.FinishReason,
                     Version = 1,
-                });
+                };
+                await _responses.AddAsync(responseEntity);
 
                 await _usage.AddAsync(new AiModelUsage
                 {
@@ -119,12 +123,19 @@ namespace WebApp.Services.Ai.Jobs
 
                 await _requests.SetCompletedAsync(request.Id, template.Key, template.Version);
 
+                // Terminal success: notification + realtime (best-effort, never throws).
+                await _completion.OnCompletedAsync(request, responseEntity);
+
                 _logger.LogInformation("AI job {RequestId} ({JobType}) completed on model {Model}.",
                     requestId, request.JobType, completion.Model);
             }
             catch (Exception ex)
             {
                 await _requests.SetFailedAsync(requestId, ex.Message);
+
+                // Terminal failure: notification + realtime (best-effort, never throws).
+                await _completion.OnFailedAsync(request, ex.Message);
+
                 _logger.LogError(ex, "AI job {RequestId} ({JobType}) failed.", requestId, request.JobType);
                 throw; // let Hangfire record the failure (and retry up to the limit)
             }
