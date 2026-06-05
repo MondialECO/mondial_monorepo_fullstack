@@ -629,6 +629,21 @@ using (var scope = app.Services.CreateScope())
         Log.Warning(ex, "Onboarding backfill skipped (non-fatal)");
     }
 
+    // C-1: idempotently seed in-code AI prompt templates into PromptVersions.
+    // Only inserts a (key, version) that is absent — safe on every boot.
+    try
+    {
+        var promptStore = scope.ServiceProvider
+            .GetRequiredService<WebApp.Services.Ai.Prompts.IPromptVersionStore>();
+        var seededCount = await promptStore.SeedAsync(WebApp.Services.Ai.Prompts.PromptTemplate.All);
+        if (seededCount > 0)
+            Log.Information("Seeded {Count} AI prompt template version(s)", seededCount);
+    }
+    catch (Exception ex)
+    {
+        Log.Warning(ex, "AI prompt seeding skipped (non-fatal)");
+    }
+
     // Development-only demo seeding (Investor catalogue). Double-gated on
     // IsDevelopment() and config flag SeedDemoData. Idempotent.
     await scope.ServiceProvider.SeedDemoDataAsync(app.Environment, app.Configuration);

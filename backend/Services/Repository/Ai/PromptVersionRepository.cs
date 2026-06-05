@@ -34,5 +34,22 @@ namespace WebApp.Services.Repository.Ai
                     }),
             });
         }
+
+        /// <summary>The single active version for a key, or null.</summary>
+        public async Task<PromptVersion?> GetActiveAsync(string key)
+            => await _collection.Find(x => x.Key == key && x.IsActive).FirstOrDefaultAsync();
+
+        /// <summary>True if a (key, version) document already exists.</summary>
+        public async Task<bool> ExistsAsync(string key, int version)
+            => await _collection.Find(x => x.Key == key && x.Version == version).AnyAsync();
+
+        /// <summary>
+        /// Clears the active flag on every version of a key. Run before
+        /// inserting a new active version so the partial-unique index holds.
+        /// </summary>
+        public Task DeactivateAllForKeyAsync(string key)
+            => _collection.UpdateManyAsync(
+                x => x.Key == key && x.IsActive,
+                Builders<PromptVersion>.Update.Set(x => x.IsActive, false));
     }
 }
