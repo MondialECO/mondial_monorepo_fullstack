@@ -26,6 +26,9 @@
          2.30, so the compiler unifies upward. 1.11.0+ requires driver 3.x. -->
     <PackageReference Include="Hangfire.AspNetCore" Version="1.8.14" />
     <PackageReference Include="Hangfire.Mongo" Version="1.10.9" />
+    <!-- C-1 Phase 1: transient-fault handling (retry on 429/5xx) for the typed
+         OpenRouter HttpClient. Polly v7 via the ASP.NET Core integration. -->
+    <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="8.0.14" />
     <PackageReference Include="MailKit" Version="4.16.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.StackExchangeRedis" Version="8.0.11" />
