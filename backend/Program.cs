@@ -323,6 +323,11 @@ builder.Services.AddAiServices(builder.Configuration);
 var healthChecks = builder.Services.AddHealthChecks()
     .AddCheck<MongoHealthCheck>(
         "mongodb",
+        tags: new[] { "ready" })
+    // C-1: OpenRouter readiness. Config-only by default (no network); does a
+    // live auth ping only when OpenRouter:EnableHealthCheckPing is set.
+    .AddCheck<OpenRouterHealthCheck>(
+        "openrouter",
         tags: new[] { "ready" });
 
 if (useRedis)

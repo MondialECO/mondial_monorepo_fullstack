@@ -31,5 +31,12 @@ namespace WebApp.Configuration.AiOptions
 
         /// <summary>Max transient-retry attempts at the HTTP layer (Phase 1 / Polly).</summary>
         public int MaxRetries { get; set; } = 3;
+
+        /// <summary>
+        /// When true, the readiness health check performs a live auth ping
+        /// (GET /key) against OpenRouter. Off by default so /health/ready does
+        /// not depend on outbound network reachability or spend a request.
+        /// </summary>
+        public bool EnableHealthCheckPing { get; set; } = false;
     }
 }

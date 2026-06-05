@@ -2,7 +2,10 @@ using Hangfire;
 using Hangfire.Mongo;
 using Hangfire.Mongo.Migration.Strategies;
 using Hangfire.Mongo.Migration.Strategies.Backup;
+using Microsoft.Extensions.Options;
 using WebApp.Configuration.AiOptions;
+using WebApp.HealthChecks;
+using WebApp.Services.Ai.Providers;
 using WebApp.Services.Repository;
 
 namespace WebApp.Extensions;
@@ -19,9 +22,28 @@ public static class AiServiceCollectionExtensions
 {
     public static IServiceCollection AddAiServices(this IServiceCollection services, IConfiguration configuration)
     {
-        // ---- AI configuration binding (consumed from Phase 1 onward) ----
+        // ---- AI configuration binding ----
         services.Configure<OpenRouterSettings>(configuration.GetSection(OpenRouterSettings.SectionName));
         services.Configure<AiSettings>(configuration.GetSection(AiSettings.SectionName));
+
+        // ---- OpenRouter provider (Phase 1): typed HttpClient + model routing ----
+        services.AddSingleton<IModelRouter, ModelRouter>();
+
+        // Typed client. Auth/attribution headers + BaseAddress come from
+        // OpenRouterSettings; a Polly retry policy (429/5xx) is layered on top.
+        services.AddHttpClient<IAiProvider, OpenRouterClient>((sp, client) =>
+        {
+            var s = sp.GetRequiredService<IOptions<OpenRouterSettings>>().Value;
+            OpenRouterClient.ConfigureHttpClient(client, s);
+        })
+        .AddPolicyHandler((sp, _) =>
+        {
+            var s = sp.GetRequiredService<IOptions<OpenRouterSettings>>().Value;
+            return OpenRouterResiliencePolicies.Default(s.MaxRetries);
+        });
+
+        // Separate, header-less client for the readiness ping (opt-in).
+        services.AddHttpClient(OpenRouterHealthCheck.PingClientName);
 
         // ---- Durable legacy-job persistence (dedicated BackgroundJobs collection) ----
         // Singleton to match the IMongoDatabase lifetime and create indexes once.
