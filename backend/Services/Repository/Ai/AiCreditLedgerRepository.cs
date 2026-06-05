@@ -19,5 +19,26 @@ namespace WebApp.Services.Repository.Ai
                     Builders<AiCreditLedger>.IndexKeys.Ascending(x => x.OwnerUserId),
                     new CreateIndexOptions { Name = "OwnerUserId_Unique", Unique = true }));
         }
+
+        public async Task<AiCreditLedger?> GetByOwnerAsync(string ownerUserId)
+            => await _collection.Find(x => x.OwnerUserId == ownerUserId).FirstOrDefaultAsync();
+
+        /// <summary>
+        /// Atomically debits <paramref name="amount"/> credits iff the user has a
+        /// ledger with a sufficient balance. The filter requires Balance >= amount
+        /// so concurrent debits can never overspend. Returns false when there is
+        /// no ledger or the balance is insufficient (no write performed).
+        /// </summary>
+        public async Task<bool> TryDebitAsync(string ownerUserId, int amount, AiCreditDebit debit)
+        {
+            var result = await _collection.UpdateOneAsync(
+                x => x.OwnerUserId == ownerUserId && x.Balance >= amount,
+                Builders<AiCreditLedger>.Update
+                    .Inc(x => x.Balance, -amount)
+                    .Inc(x => x.LifetimeSpent, amount)
+                    .Push(x => x.Debits, debit)
+                    .Set(x => x.UpdatedAt, DateTime.UtcNow));
+            return result.ModifiedCount > 0;
+        }
     }
 }

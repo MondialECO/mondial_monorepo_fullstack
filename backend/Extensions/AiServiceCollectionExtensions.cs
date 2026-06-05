@@ -78,6 +78,10 @@ public static class AiServiceCollectionExtensions
         services.AddScoped<Services.Ai.Jobs.IAiEventPublisher, Services.Ai.Jobs.AiEventPublisher>();
         services.AddScoped<Services.Ai.Jobs.IAiJobCompletionHandler, Services.Ai.Jobs.AiJobCompletionHandler>();
 
+        // ---- API surface services (Phase 6) ----
+        services.AddScoped<Services.Ai.IAiUsageService, Services.Ai.AiUsageService>();
+        services.AddScoped<Services.Ai.IAiCreditService, Services.Ai.AiCreditService>();
+
         // ---- Durable legacy-job persistence (dedicated BackgroundJobs collection) ----
         // Singleton to match the IMongoDatabase lifetime and create indexes once.
         services.AddSingleton<IBackgroundJobRepository, BackgroundJobRepository>();

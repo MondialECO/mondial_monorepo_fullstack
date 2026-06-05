@@ -21,5 +21,13 @@ namespace WebApp.Services.Repository.Ai
                         .Descending(x => x.CreatedAt),
                     new CreateIndexOptions { Name = "Owner_Type_CreatedAt" }));
         }
+
+        /// <summary>Owner's insights, newest first, paged.</summary>
+        public async Task<List<AiInsight>> GetByOwnerAsync(string ownerUserId, int skip, int limit)
+            => await _collection.Find(x => x.OwnerUserId == ownerUserId)
+                .SortByDescending(x => x.CreatedAt)
+                .Skip(skip)
+                .Limit(limit)
+                .ToListAsync();
     }
 }
