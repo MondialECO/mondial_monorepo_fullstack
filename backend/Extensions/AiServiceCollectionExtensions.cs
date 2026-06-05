@@ -7,6 +7,7 @@ using WebApp.Configuration.AiOptions;
 using WebApp.HealthChecks;
 using WebApp.Services.Ai.Providers;
 using WebApp.Services.Repository;
+using WebApp.Services.Repository.Ai;
 
 namespace WebApp.Extensions;
 
@@ -44,6 +45,17 @@ public static class AiServiceCollectionExtensions
 
         // Separate, header-less client for the readiness ping (opt-in).
         services.AddHttpClient(OpenRouterHealthCheck.PingClientName);
+
+        // ---- AI persistence (Phase 2): repositories for the 7 AI collections ----
+        // Singletons (like NotificationRepository / BackgroundJobRepository) so the
+        // ctor index creation runs once per process against the shared IMongoDatabase.
+        services.AddSingleton<AiRequestRepository>();
+        services.AddSingleton<AiResponseRepository>();
+        services.AddSingleton<PromptVersionRepository>();
+        services.AddSingleton<AiModelUsageRepository>();
+        services.AddSingleton<AiFeedbackRepository>();
+        services.AddSingleton<AiInsightRepository>();
+        services.AddSingleton<AiCreditLedgerRepository>();
 
         // ---- Durable legacy-job persistence (dedicated BackgroundJobs collection) ----
         // Singleton to match the IMongoDatabase lifetime and create indexes once.
