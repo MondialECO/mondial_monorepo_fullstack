@@ -57,6 +57,12 @@ public static class AiServiceCollectionExtensions
         services.AddSingleton<AiInsightRepository>();
         services.AddSingleton<AiCreditLedgerRepository>();
 
+        // ---- Prompt framework (Phase 3) ----
+        // Builder is stateless; store wraps the PromptVersions repository. Both
+        // singletons. Startup seeding of in-code templates happens in Program.cs.
+        services.AddSingleton<Services.Ai.Prompts.IPromptBuilder, Services.Ai.Prompts.PromptBuilder>();
+        services.AddSingleton<Services.Ai.Prompts.IPromptVersionStore, Services.Ai.Prompts.PromptVersionStore>();
+
         // ---- Durable legacy-job persistence (dedicated BackgroundJobs collection) ----
         // Singleton to match the IMongoDatabase lifetime and create indexes once.
         services.AddSingleton<IBackgroundJobRepository, BackgroundJobRepository>();
