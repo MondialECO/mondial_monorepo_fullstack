@@ -1,5 +1,6 @@
 ﻿using Asp.Versioning;
 using FluentValidation;
+using Hangfire;
 using Microsoft.AspNetCore.ResponseCompression;
 using System.IO.Compression;
 using System.Reflection;
@@ -310,6 +311,12 @@ builder.Services.AddScoped<TwilioService>();
 // Company Services: 9-phase entrepreneur onboarding system
 builder.Services.AddCompanyServices(builder.Configuration);
 
+// AI infrastructure (C-1): durable Hangfire job engine on the existing Mongo
+// connection + AI config binding + legacy-job persistence. The legacy
+// IBackgroundJobService (registered above) is now backed by this Hangfire
+// infrastructure.
+builder.Services.AddAiServices(builder.Configuration);
+
 // Health checks: liveness (process up) is the bare endpoint; readiness
 // (tagged "ready") verifies MongoDB + Redis so the orchestrator only routes
 // traffic to replicas that can actually serve requests.
@@ -520,6 +527,15 @@ app.UseRequestTimeouts();
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Hangfire ops dashboard. Mounted after auth so the Admin-only authorization
+// filter sees the populated principal. Dashboard requests are short AJAX polls,
+// so the global request-timeout does not affect it.
+app.UseHangfireDashboard("/hangfire", new Hangfire.DashboardOptions
+{
+    Authorization = new[] { new WebApp.Filters.HangfireDashboardAuthorizationFilter() },
+    DisplayStorageConnectionString = false,
+});
 
 // SignalR Hubs: long-lived connections must opt out of the request
 // timeout or they would be killed after 30s.
