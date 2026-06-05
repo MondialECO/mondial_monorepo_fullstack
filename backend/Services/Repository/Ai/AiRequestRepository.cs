@@ -33,5 +33,41 @@ namespace WebApp.Services.Repository.Ai
                     new CreateIndexOptions { Name = "HangfireJobId" }),
             });
         }
+
+        public Task SetHangfireJobIdAsync(string id, string hangfireJobId)
+            => _collection.UpdateOneAsync(
+                x => x.Id == id,
+                Builders<AiRequest>.Update
+                    .Set(x => x.HangfireJobId, hangfireJobId)
+                    .Set(x => x.UpdatedAt, DateTime.UtcNow));
+
+        public Task SetProcessingAsync(string id)
+            => _collection.UpdateOneAsync(
+                x => x.Id == id,
+                Builders<AiRequest>.Update
+                    .Set(x => x.Status, "Processing")
+                    .Set(x => x.UpdatedAt, DateTime.UtcNow));
+
+        public Task SetCompletedAsync(string id, string promptKey, int promptVersion)
+            => _collection.UpdateOneAsync(
+                x => x.Id == id,
+                Builders<AiRequest>.Update
+                    .Set(x => x.Status, "Completed")
+                    .Set(x => x.PromptKey, promptKey)
+                    .Set(x => x.PromptVersion, promptVersion)
+                    .Set(x => x.Error, null)
+                    .Set(x => x.UpdatedAt, DateTime.UtcNow));
+
+        public Task SetFailedAsync(string id, string error)
+            => _collection.UpdateOneAsync(
+                x => x.Id == id,
+                Builders<AiRequest>.Update
+                    .Set(x => x.Status, "Failed")
+                    .Set(x => x.Error, error)
+                    .Set(x => x.UpdatedAt, DateTime.UtcNow));
+
+        /// <summary>Ownership-scoped fetch (returns null if not owned).</summary>
+        public async Task<AiRequest?> GetOwnedAsync(string id, string ownerUserId)
+            => await _collection.Find(x => x.Id == id && x.OwnerUserId == ownerUserId).FirstOrDefaultAsync();
     }
 }
