@@ -72,6 +72,12 @@ public static class AiServiceCollectionExtensions
         services.AddScoped<Services.Ai.Jobs.IAiJobRunner, Services.Ai.Jobs.AiJobRunner>();
         services.AddScoped<Services.Ai.Jobs.IAiJobService, Services.Ai.Jobs.AiJobService>();
 
+        // ---- Notifications + realtime (Phase 5) ----
+        // Reuse the existing NotificationService + NotificationHub. The event
+        // publisher mirrors DealEventPublisher (owner per-user group, no new hub).
+        services.AddScoped<Services.Ai.Jobs.IAiEventPublisher, Services.Ai.Jobs.AiEventPublisher>();
+        services.AddScoped<Services.Ai.Jobs.IAiJobCompletionHandler, Services.Ai.Jobs.AiJobCompletionHandler>();
+
         // ---- Durable legacy-job persistence (dedicated BackgroundJobs collection) ----
         // Singleton to match the IMongoDatabase lifetime and create indexes once.
         services.AddSingleton<IBackgroundJobRepository, BackgroundJobRepository>();

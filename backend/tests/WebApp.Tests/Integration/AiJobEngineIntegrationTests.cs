@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using WebApp.Models.DatabaseModels;
 using WebApp.Models.DatabaseModels.Ai;
 using WebApp.Services.Ai;
 using WebApp.Services.Ai.Jobs;
@@ -44,6 +45,7 @@ public class AiJobEngineIntegrationTests : IClassFixture<AppFixture>
         new PromptBuilder(),
         Services.GetRequiredService<IModelRouter>(),
         provider,
+        Services.GetRequiredService<IAiJobCompletionHandler>(),
         NullLogger<AiJobRunner>.Instance);
 
     [SkippableFact]
@@ -131,6 +133,39 @@ public class AiJobEngineIntegrationTests : IClassFixture<AppFixture>
 
         (await svc.GetStatusAsync(id, owner)).Should().NotBeNull();
         (await svc.GetStatusAsync(id, "another-user")).Should().BeNull(); // ownership scoped
+    }
+
+    // ---- Phase 5: notification persistence on terminal states ----
+
+    [SkippableFact]
+    public async Task Completed_job_persists_success_notification_for_owner()
+    {
+        Skip.IfNot(_fx.Available, _fx.SkipReason);
+        var owner = Guid.NewGuid();
+        var requests = new AiRequestRepository(Db);
+        var req = new AiRequest { OwnerUserId = owner.ToString(), JobType = "Probe", Status = "Pending", InputPayload = new BsonDocument("message", "ping") };
+        await requests.AddAsync(req);
+
+        await BuildRunner(new RecordingProvider(Canned())).RunAsync(req.Id);
+
+        var notifs = await Db.GetCollection<Notification>("Notifications").Find(n => n.UserId == owner).ToListAsync();
+        notifs.Should().Contain(n => n.Title == "AI job complete");
+    }
+
+    [SkippableFact]
+    public async Task Failed_job_persists_failure_notification_for_owner()
+    {
+        Skip.IfNot(_fx.Available, _fx.SkipReason);
+        var owner = Guid.NewGuid();
+        var requests = new AiRequestRepository(Db);
+        var req = new AiRequest { OwnerUserId = owner.ToString(), JobType = "Probe", Status = "Pending" };
+        await requests.AddAsync(req);
+
+        var act = () => BuildRunner(new RecordingProvider(new AiProviderException("boom", 500))).RunAsync(req.Id);
+        await act.Should().ThrowAsync<AiProviderException>();
+
+        var notifs = await Db.GetCollection<Notification>("Notifications").Find(n => n.UserId == owner).ToListAsync();
+        notifs.Should().Contain(n => n.Title == "AI job failed");
     }
 
     private sealed class RecordingProvider : IAiProvider
