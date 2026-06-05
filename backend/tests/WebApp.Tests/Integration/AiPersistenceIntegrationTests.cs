@@ -2,7 +2,9 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using WebApp.Models.DatabaseModels;
 using WebApp.Models.DatabaseModels.Ai;
+using WebApp.Services.Ai;
 using WebApp.Services.Repository.Ai;
 using Xunit;
 
@@ -137,5 +139,44 @@ public class AiPersistenceIntegrationTests : IClassFixture<AppFixture>
 
         var act = () => repo.AddAsync(new PromptVersion { Key = key, Version = 1, SystemText = "b", IsActive = false });
         await act.Should().ThrowAsync<MongoWriteException>();
+    }
+
+    // ---- Phase 7: starter-credit grant idempotency ----
+
+    [SkippableFact]
+    public async Task Starter_credit_grant_is_idempotent()
+    {
+        Skip.IfNot(_fx.Available, _fx.SkipReason);
+        var credits = new AiCreditLedgerRepository(Db);
+        var owner = Guid.NewGuid().ToString();
+
+        (await credits.TryGrantInitialAsync(owner, 10)).Should().BeTrue();   // first grant
+        (await credits.TryGrantInitialAsync(owner, 10)).Should().BeFalse();  // no-op
+        (await credits.TryGrantInitialAsync(owner, 999)).Should().BeFalse(); // never re-grants
+
+        (await credits.GetByOwnerAsync(owner))!.Balance.Should().Be(10);     // balance untouched
+    }
+
+    [SkippableFact]
+    public async Task Credit_seeder_grants_once_per_user()
+    {
+        Skip.IfNot(_fx.Available, _fx.SkipReason);
+        var users = Db.GetCollection<ApplicationUser>("users");
+        var u1 = new ApplicationUser { Id = Guid.NewGuid(), UserName = "seed1@test" };
+        var u2 = new ApplicationUser { Id = Guid.NewGuid(), UserName = "seed2@test" };
+        await users.InsertManyAsync(new[] { u1, u2 });
+
+        var seeder = Services.GetRequiredService<IAiCreditSeeder>();
+
+        var first = await seeder.GrantStarterCreditsAsync(25);
+        first.Should().BeGreaterThanOrEqualTo(2); // at least our two new users
+
+        var credits = new AiCreditLedgerRepository(Db);
+        (await credits.GetByOwnerAsync(u1.Id.ToString()))!.Balance.Should().Be(25);
+        (await credits.GetByOwnerAsync(u2.Id.ToString()))!.Balance.Should().Be(25);
+
+        // Idempotent: our two users are not re-granted on the second run.
+        await seeder.GrantStarterCreditsAsync(25);
+        (await credits.GetByOwnerAsync(u1.Id.ToString()))!.Balance.Should().Be(25);
     }
 }

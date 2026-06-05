@@ -29,22 +29,24 @@ public class AiControllerIntegrationTests : IClassFixture<AppFixture>
     private IServiceProvider Services => _fx.Factory!.Services;
     private IMongoDatabase Db => Services.GetRequiredService<IMongoDatabase>();
 
-    private static string Jwt(string userId)
+    private static string Jwt(string userId, params string[] roles)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(new string('k', 48)));
+        var claims = new List<Claim> { new(JwtRegisteredClaimNames.Sub, userId) };
+        claims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)));
         var token = new JwtSecurityToken(
             issuer: "test",
             audience: "test",
-            claims: new[] { new Claim(JwtRegisteredClaimNames.Sub, userId) },
+            claims: claims,
             expires: DateTime.UtcNow.AddMinutes(15),
             signingCredentials: new SigningCredentials(key, SecurityAlgorithms.HmacSha256));
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
-    private HttpClient Authed(string userId)
+    private HttpClient Authed(string userId, params string[] roles)
     {
         var client = _fx.Factory!.CreateClient();
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Jwt(userId));
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Jwt(userId, roles));
         return client;
     }
 
@@ -135,6 +137,23 @@ public class AiControllerIntegrationTests : IClassFixture<AppFixture>
         // Free job (Probe = 0) never touches the ledger.
         var free = Guid.NewGuid().ToString();
         await svc.DebitForJobAsync(free, AiJobType.Probe); // no throw, no ledger needed
+    }
+
+    [SkippableFact]
+    public async Task Hangfire_dashboard_is_admin_only()
+    {
+        Skip.IfNot(_fx.Available, _fx.SkipReason);
+
+        // Hangfire: 401 when unauthenticated, 403 when authenticated but the
+        // Admin authorization filter denies, 200 for Admins.
+        var anon = _fx.Factory!.CreateClient();
+        (await anon.GetAsync("/hangfire")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+
+        var nonAdmin = Authed(Guid.NewGuid().ToString()); // no roles
+        (await nonAdmin.GetAsync("/hangfire")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        var admin = Authed(Guid.NewGuid().ToString(), "Admin");
+        (await admin.GetAsync("/hangfire")).StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
     [SkippableFact]

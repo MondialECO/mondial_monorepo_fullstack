@@ -82,6 +82,9 @@ public static class AiServiceCollectionExtensions
         services.AddScoped<Services.Ai.IAiUsageService, Services.Ai.AiUsageService>();
         services.AddScoped<Services.Ai.IAiCreditService, Services.Ai.AiCreditService>();
 
+        // ---- Operational: idempotent starter-credit backfill (Phase 7) ----
+        services.AddScoped<Services.Ai.IAiCreditSeeder, Services.Ai.AiCreditSeeder>();
+
         // ---- Durable legacy-job persistence (dedicated BackgroundJobs collection) ----
         // Singleton to match the IMongoDatabase lifetime and create indexes once.
         services.AddSingleton<IBackgroundJobRepository, BackgroundJobRepository>();
