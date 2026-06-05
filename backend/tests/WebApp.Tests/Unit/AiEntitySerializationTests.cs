@@ -1,0 +1,164 @@
+using FluentAssertions;
+using MongoDB.Bson;
+using MongoDB.Bson.Serialization;
+using WebApp.Models.DatabaseModels.Ai;
+using Xunit;
+
+namespace WebApp.Tests.Unit;
+
+/// <summary>
+/// BSON mapping/round-trip checks for the AI persistence entities — no MongoDB
+/// server required. Verifies the audited convention (string id stored as
+/// ObjectId, BsonElement names, BsonDocument payloads, Decimal128 cost).
+/// </summary>
+public class AiEntitySerializationTests
+{
+    private static BsonDocument Bson<T>(T entity) => entity!.ToBsonDocument();
+    private static T RoundTrip<T>(T entity) => BsonSerializer.Deserialize<T>(Bson(entity));
+
+    [Fact]
+    public void AiRequest_round_trips_with_objectid_and_payload()
+    {
+        var e = new AiRequest
+        {
+            Id = ObjectId.GenerateNewId().ToString(),
+            OwnerUserId = "user-1",
+            JobType = "Probe",
+            Status = "Pending",
+            InputPayload = new BsonDocument { ["idea"] = "solar drones", ["n"] = 3 },
+            PromptKey = "probe",
+            PromptVersion = 2,
+            HangfireJobId = "hf-9",
+        };
+
+        var bson = Bson(e);
+        bson["_id"].BsonType.Should().Be(BsonType.ObjectId);
+        bson.Contains("OwnerUserId").Should().BeTrue();
+
+        var back = RoundTrip(e);
+        back.OwnerUserId.Should().Be("user-1");
+        back.JobType.Should().Be("Probe");
+        back.PromptVersion.Should().Be(2);
+        back.InputPayload!["idea"].AsString.Should().Be("solar drones");
+        back.InputPayload!["n"].AsInt32.Should().Be(3);
+    }
+
+    [Fact]
+    public void AiResponse_round_trips_embedded_token_usage()
+    {
+        var e = new AiResponse
+        {
+            Id = ObjectId.GenerateNewId().ToString(),
+            RequestId = ObjectId.GenerateNewId().ToString(),
+            OwnerUserId = "user-1",
+            Model = "openai/gpt-4o-mini",
+            RawText = "hello",
+            OutputPayload = new BsonDocument("summary", "ok"),
+            TokenUsage = new AiResponseTokenUsage { PromptTokens = 10, CompletionTokens = 5, TotalTokens = 15 },
+            FinishReason = "stop",
+            Version = 1,
+        };
+
+        Bson(e)["RequestId"].BsonType.Should().Be(BsonType.ObjectId);
+
+        var back = RoundTrip(e);
+        back.Model.Should().Be("openai/gpt-4o-mini");
+        back.TokenUsage.TotalTokens.Should().Be(15);
+        back.OutputPayload!["summary"].AsString.Should().Be("ok");
+    }
+
+    [Fact]
+    public void AiModelUsage_stores_cost_as_decimal128()
+    {
+        var e = new AiModelUsage
+        {
+            Id = ObjectId.GenerateNewId().ToString(),
+            OwnerUserId = "user-1",
+            RequestId = ObjectId.GenerateNewId().ToString(),
+            Model = "openai/gpt-4o",
+            PromptTokens = 100,
+            CompletionTokens = 50,
+            TotalTokens = 150,
+            EstimatedCost = 0.01234m,
+            TaskType = "Probe",
+        };
+
+        Bson(e)["EstimatedCost"].BsonType.Should().Be(BsonType.Decimal128);
+        RoundTrip(e).EstimatedCost.Should().Be(0.01234m);
+    }
+
+    [Fact]
+    public void PromptVersion_round_trips()
+    {
+        var e = new PromptVersion
+        {
+            Id = ObjectId.GenerateNewId().ToString(),
+            Key = "probe",
+            Version = 1,
+            SystemText = "You are a probe.",
+            OutputContract = "json",
+            IsActive = true,
+        };
+
+        var back = RoundTrip(e);
+        back.Key.Should().Be("probe");
+        back.IsActive.Should().BeTrue();
+        back.SystemText.Should().Be("You are a probe.");
+    }
+
+    [Fact]
+    public void AiFeedback_round_trips()
+    {
+        var e = new AiFeedback
+        {
+            Id = ObjectId.GenerateNewId().ToString(),
+            OwnerUserId = "user-1",
+            ResponseId = ObjectId.GenerateNewId().ToString(),
+            Rating = 5,
+            Comment = "great",
+        };
+
+        var back = RoundTrip(e);
+        back.Rating.Should().Be(5);
+        back.Comment.Should().Be("great");
+    }
+
+    [Fact]
+    public void AiInsight_round_trips_payload()
+    {
+        var e = new AiInsight
+        {
+            Id = ObjectId.GenerateNewId().ToString(),
+            OwnerUserId = "user-1",
+            Type = "market",
+            Payload = new BsonDocument("score", 0.9),
+            SourceRequestId = ObjectId.GenerateNewId().ToString(),
+        };
+
+        var back = RoundTrip(e);
+        back.Type.Should().Be("market");
+        back.Payload!["score"].AsDouble.Should().Be(0.9);
+    }
+
+    [Fact]
+    public void AiCreditLedger_round_trips_debits()
+    {
+        var e = new AiCreditLedger
+        {
+            Id = ObjectId.GenerateNewId().ToString(),
+            OwnerUserId = "user-1",
+            Balance = 9,
+            LifetimeGranted = 10,
+            LifetimeSpent = 1,
+            Debits = new List<AiCreditDebit>
+            {
+                new() { Amount = 1, Reason = "Probe", RequestId = ObjectId.GenerateNewId().ToString() },
+            },
+        };
+
+        var back = RoundTrip(e);
+        back.Balance.Should().Be(9);
+        back.Debits.Should().ContainSingle();
+        back.Debits[0].Reason.Should().Be("Probe");
+    }
+}
