@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using WebApp.Models.DatabaseModels;
 using WebApp.Models.Dtos;
+using WebApp.Services.Audit;
 using WebApp.Services.Implementations;
 using WebApp.Services.Interface;
 using Xunit;
@@ -18,6 +19,8 @@ namespace WebApp.Tests.Unit;
 public class ServiceProviderServiceTests
 {
     private readonly Mock<UserManager<ApplicationUser>> _userManager = MockUserManager();
+    private readonly Mock<IAuditLogger> _audit = new();
+    private readonly Mock<INotificationService> _notifications = new();
     private readonly ServiceProviderService _service;
 
     public ServiceProviderServiceTests()
@@ -25,7 +28,8 @@ public class ServiceProviderServiceTests
         _userManager
             .Setup(m => m.UpdateAsync(It.IsAny<ApplicationUser>()))
             .ReturnsAsync(IdentityResult.Success);
-        _service = new ServiceProviderService(_userManager.Object, NullLogger<ServiceProviderService>.Instance);
+        _service = new ServiceProviderService(
+            _userManager.Object, _audit.Object, _notifications.Object, NullLogger<ServiceProviderService>.Instance);
     }
 
     private static Mock<UserManager<ApplicationUser>> MockUserManager() =>
@@ -205,5 +209,128 @@ public class ServiceProviderServiceTests
 
         result.Outcome.Should().Be(ServiceProviderOutcome.Conflict);
         result.Message.Should().Contain("already");
+    }
+
+    [Fact]
+    public async Task Submit_records_audit_entry()
+    {
+        var user = GivenUser(CompleteProviderUser());
+
+        await _service.SubmitVerificationAsync(user.Id.ToString(),
+            new SubmitVerificationRequest { ConfirmAccuracy = true });
+
+        _audit.Verify(a => a.Record("ServiceProviderVerification.Submit",
+            user.Id.ToString(), true, It.IsAny<object>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Submit_allows_resubmission_from_rejected_and_clears_reason()
+    {
+        var user = CompleteProviderUser();
+        user.ServiceProviderProfile.VerificationStatus = ServiceProviderVerificationStatus.Rejected;
+        user.ServiceProviderProfile.RejectionReason = "incomplete";
+        GivenUser(user);
+
+        var result = await _service.SubmitVerificationAsync(user.Id.ToString(),
+            new SubmitVerificationRequest { ConfirmAccuracy = true });
+
+        result.Outcome.Should().Be(ServiceProviderOutcome.Ok);
+        result.Value!.VerificationStatus.Should().Be("UnderReview");
+        user.ServiceProviderProfile.RejectionReason.Should().BeNull();
+    }
+
+    // ---------------- Admin approve ----------------
+
+    private static ApplicationUser UnderReviewUser()
+    {
+        var u = CompleteProviderUser();
+        u.ServiceProviderProfile.VerificationStatus = ServiceProviderVerificationStatus.UnderReview;
+        return u;
+    }
+
+    [Fact]
+    public async Task Approve_verifies_seeds_trustscore_and_notifies()
+    {
+        var user = GivenUser(UnderReviewUser());
+
+        var result = await _service.ApproveVerificationAsync(user.Id.ToString(), "admin-1");
+
+        result.Outcome.Should().Be(ServiceProviderOutcome.Ok);
+        result.Value!.VerificationStatus.Should().Be("Verified");
+        result.Value.IsVerified.Should().BeTrue();
+        result.Value.VerifiedAt.Should().NotBeNull();
+        result.Value.TrustScore.Should().Be(ServiceProviderService.TrustScoreBaseline);
+        user.ServiceProviderProfile.TrustScore.Should().Be(50.0);
+
+        _audit.Verify(a => a.Record("ServiceProviderVerification.Approve", "admin-1", true, It.IsAny<object>()), Times.Once);
+        _notifications.Verify(n => n.NotifyUser(user.Id, "Provider verification approved", It.IsAny<string>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Approve_conflicts_when_not_under_review()
+    {
+        var user = GivenUser(CompleteProviderUser()); // status Pending
+
+        var result = await _service.ApproveVerificationAsync(user.Id.ToString(), "admin-1");
+
+        result.Outcome.Should().Be(ServiceProviderOutcome.Conflict);
+        _notifications.Verify(n => n.NotifyUser(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Approve_returns_NotFound_for_missing_user()
+    {
+        _userManager.Setup(m => m.FindByIdAsync("ghost")).ReturnsAsync((ApplicationUser?)null);
+        var result = await _service.ApproveVerificationAsync("ghost", "admin-1");
+        result.Outcome.Should().Be(ServiceProviderOutcome.NotFound);
+    }
+
+    [Fact]
+    public async Task Approve_succeeds_even_when_notification_throws()
+    {
+        var user = GivenUser(UnderReviewUser());
+        _notifications
+            .Setup(n => n.NotifyUser(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>()))
+            .ThrowsAsync(new Exception("push down"));
+
+        var result = await _service.ApproveVerificationAsync(user.Id.ToString(), "admin-1");
+
+        result.Outcome.Should().Be(ServiceProviderOutcome.Ok);
+        user.ServiceProviderProfile.VerificationStatus.Should().Be(ServiceProviderVerificationStatus.Verified);
+    }
+
+    // ---------------- Admin reject ----------------
+
+    [Fact]
+    public async Task Reject_sets_status_reason_and_notifies()
+    {
+        var user = GivenUser(UnderReviewUser());
+
+        var result = await _service.RejectVerificationAsync(user.Id.ToString(), "admin-1", "blurry portfolio");
+
+        result.Outcome.Should().Be(ServiceProviderOutcome.Ok);
+        result.Value!.VerificationStatus.Should().Be("Rejected");
+        result.Value.RejectionReason.Should().Be("blurry portfolio");
+        result.Value.VerifiedAt.Should().BeNull();
+        user.ServiceProviderProfile.TrustScore.Should().Be(0); // not seeded on reject
+
+        _audit.Verify(a => a.Record("ServiceProviderVerification.Reject", "admin-1", true, It.IsAny<object>()), Times.Once);
+        _notifications.Verify(n => n.NotifyUser(user.Id, "Provider verification needs changes", It.IsAny<string>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Reject_conflicts_when_not_under_review()
+    {
+        var user = GivenUser(CompleteProviderUser()); // Pending
+        var result = await _service.RejectVerificationAsync(user.Id.ToString(), "admin-1", "reason");
+        result.Outcome.Should().Be(ServiceProviderOutcome.Conflict);
+    }
+
+    [Fact]
+    public async Task Reject_returns_NotFound_for_missing_user()
+    {
+        _userManager.Setup(m => m.FindByIdAsync("ghost")).ReturnsAsync((ApplicationUser?)null);
+        var result = await _service.RejectVerificationAsync("ghost", "admin-1", "reason");
+        result.Outcome.Should().Be(ServiceProviderOutcome.NotFound);
     }
 }

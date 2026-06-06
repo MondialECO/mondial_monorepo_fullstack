@@ -145,6 +145,17 @@ public class UpdatePortfolioItemRequestValidator : AbstractValidator<UpdatePortf
     }
 }
 
+public class RejectProviderVerificationRequestValidator : AbstractValidator<RejectProviderVerificationRequest>
+{
+    public RejectProviderVerificationRequestValidator()
+    {
+        RuleFor(x => x.Reason)
+            .NotEmpty().WithMessage("A rejection reason is required.")
+            .MaximumLength(ServiceProviderLimits.MaxNoteLength)
+                .WithMessage($"Reason must be {ServiceProviderLimits.MaxNoteLength} characters or fewer.");
+    }
+}
+
 public class SubmitVerificationRequestValidator : AbstractValidator<SubmitVerificationRequest>
 {
     public SubmitVerificationRequestValidator()

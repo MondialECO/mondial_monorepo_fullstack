@@ -15,6 +15,7 @@ public class ServiceProviderValidatorTests
     private readonly AddPortfolioItemRequestValidator _add = new();
     private readonly UpdatePortfolioItemRequestValidator _update = new();
     private readonly SubmitVerificationRequestValidator _submit = new();
+    private readonly RejectProviderVerificationRequestValidator _reject = new();
 
     // ---------------- Profile ----------------
 
@@ -224,5 +225,24 @@ public class ServiceProviderValidatorTests
             Note = new string('x', 1001),
         });
         result.ShouldHaveValidationErrorFor(x => x.Note);
+    }
+
+    // ---------------- Reject verification (admin) ----------------
+
+    [Fact]
+    public void Reject_requires_reason()
+    {
+        _reject.TestValidate(new RejectProviderVerificationRequest { Reason = "" })
+            .ShouldHaveValidationErrorFor(x => x.Reason);
+
+        _reject.TestValidate(new RejectProviderVerificationRequest { Reason = "incomplete portfolio" })
+            .ShouldNotHaveAnyValidationErrors();
+    }
+
+    [Fact]
+    public void Reject_rejects_overlong_reason()
+    {
+        _reject.TestValidate(new RejectProviderVerificationRequest { Reason = new string('x', 1001) })
+            .ShouldHaveValidationErrorFor(x => x.Reason);
     }
 }
