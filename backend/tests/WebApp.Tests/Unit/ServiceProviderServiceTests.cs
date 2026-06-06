@@ -1,3 +1,4 @@
+using System.Linq;
 using FluentAssertions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -49,6 +50,49 @@ public class ServiceProviderServiceTests
         _userManager.Setup(m => m.FindByIdAsync("ghost")).ReturnsAsync((ApplicationUser?)null);
         var result = await _service.GetProfileAsync("ghost");
         result.Outcome.Should().Be(ServiceProviderOutcome.NotFound);
+    }
+
+    // ---------------- Admin pending queue (Phase 5) ----------------
+
+    [Fact]
+    public async Task GetPendingVerifications_returns_only_UnderReview_oldest_first()
+    {
+        var newer = new ApplicationUser
+        {
+            Name = "Newer",
+            ServiceProviderProfile = new()
+            {
+                VerificationStatus = ServiceProviderVerificationStatus.UnderReview,
+                VerificationSubmittedAt = new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc),
+                Skills = new() { "contracts" },
+            },
+        };
+        var older = new ApplicationUser
+        {
+            Name = "Older",
+            Email = "older@example.com",
+            ServiceProviderProfile = new()
+            {
+                VerificationStatus = ServiceProviderVerificationStatus.UnderReview,
+                VerificationSubmittedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            },
+        };
+        var pending = new ApplicationUser
+        {
+            ServiceProviderProfile = new() { VerificationStatus = ServiceProviderVerificationStatus.Pending },
+        };
+        var noProfile = new ApplicationUser();
+
+        _userManager
+            .Setup(m => m.Users)
+            .Returns(new[] { newer, pending, older, noProfile }.AsQueryable());
+
+        var result = await _service.GetPendingVerificationsAsync();
+
+        result.Outcome.Should().Be(ServiceProviderOutcome.Ok);
+        result.Value!.Select(p => p.Name).Should().Equal("Older", "Newer"); // oldest first
+        result.Value[0].Email.Should().Be("older@example.com");
+        result.Value[0].Profile.VerificationStatus.Should().Be("UnderReview");
     }
 
     // ---------------- Upsert / normalization ----------------

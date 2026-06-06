@@ -57,7 +57,11 @@ public interface IServiceProviderService
     Task<ServiceProviderResult<ServiceProviderVerificationResponse>> SubmitVerificationAsync(
         string userId, SubmitVerificationRequest request);
 
-    // ---- Admin (Phase 5): approve/reject a submission awaiting review ----
+    // ---- Admin (Phase 5): list / approve / reject submissions awaiting review ----
+
+    /// <summary>All providers whose profile is awaiting review (UnderReview),
+    /// oldest submission first, projected for the admin moderation queue.</summary>
+    Task<ServiceProviderResult<List<PendingProviderResponse>>> GetPendingVerificationsAsync();
 
     Task<ServiceProviderResult<ServiceProviderVerificationResponse>> ApproveVerificationAsync(
         string providerUserId, string adminUserId);
