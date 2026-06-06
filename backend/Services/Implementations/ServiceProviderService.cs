@@ -177,6 +177,31 @@ public class ServiceProviderService : IServiceProviderService
             profile.ToVerificationResponse(), "Submitted for verification.");
     }
 
+    public Task<ServiceProviderResult<List<PendingProviderResponse>>> GetPendingVerificationsAsync()
+    {
+        // The profile is embedded on ApplicationUser, so we materialize and filter
+        // in memory: robust against LINQ-to-Mongo translation of the nested enum,
+        // and adequate at the current user scale. A server-side filtered index is
+        // a later optimization, not needed for this surface.
+        var pending = _userManager.Users.ToList()
+            .Where(u => u.ServiceProviderProfile is
+            {
+                VerificationStatus: ServiceProviderVerificationStatus.UnderReview
+            })
+            .OrderBy(u => u.ServiceProviderProfile!.VerificationSubmittedAt)
+            .Select(u => new PendingProviderResponse
+            {
+                UserId = u.Id.ToString(),
+                Name = u.Name,
+                Email = u.Email,
+                Profile = u.ServiceProviderProfile!.ToResponse(),
+            })
+            .ToList();
+
+        return Task.FromResult(
+            ServiceProviderResult<List<PendingProviderResponse>>.Ok(pending, "OK"));
+    }
+
     public async Task<ServiceProviderResult<ServiceProviderVerificationResponse>> ApproveVerificationAsync(
         string providerUserId, string adminUserId)
     {

@@ -13,6 +13,7 @@ import {
   LayoutGrid,
   MessageSquare,
   Handshake,
+  ShieldCheck,
 } from "lucide-react";
 
 export type MenuItem = {
@@ -35,6 +36,11 @@ export const menu: Record<UserRole, MenuSection[]> = {
           label: "Admin Overview",
           href: "/dashboard/admin",
           icon: LayoutDashboard,
+        },
+        {
+          label: "Provider Verifications",
+          href: "/dashboard/admin/serviceproviders",
+          icon: ShieldCheck,
         },
       ],
     },

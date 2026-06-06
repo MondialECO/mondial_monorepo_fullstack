@@ -170,6 +170,21 @@ public class ServiceProviderVerificationResponse
     public double TrustScore { get; set; }
 }
 
+/// <summary>
+/// One entry in the admin "pending verification" queue: a provider whose profile
+/// is awaiting review (UnderReview). Carries the user's identity plus the full
+/// profile projection so the admin queue and detail drawer render from a single
+/// fetch (headline, categories, skills, portfolio, industries, languages,
+/// pricing models, trust score, and submittedAt all live on <see cref="Profile"/>).
+/// </summary>
+public class PendingProviderResponse
+{
+    public string UserId { get; set; } = "";
+    public string? Name { get; set; }
+    public string? Email { get; set; }
+    public ServiceProviderProfileResponse Profile { get; set; } = new();
+}
+
 // ---------------- Mapping (pure, entity → response) ----------------
 
 /// <summary>

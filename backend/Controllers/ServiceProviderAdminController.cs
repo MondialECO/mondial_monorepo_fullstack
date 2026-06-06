@@ -32,6 +32,10 @@ public class ServiceProviderAdminController : ControllerBase
         User.FindFirst(ClaimTypes.NameIdentifier)?.Value
         ?? throw new UnauthorizedAccessException();
 
+    [HttpGet("pending")]
+    public async Task<IActionResult> Pending() =>
+        Map(await _service.GetPendingVerificationsAsync());
+
     [HttpPost("verification/{providerUserId}/approve")]
     public async Task<IActionResult> Approve(string providerUserId) =>
         Map(await _service.ApproveVerificationAsync(providerUserId, CurrentUserId));
