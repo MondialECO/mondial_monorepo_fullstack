@@ -17,8 +17,12 @@ namespace WebApp.Models.Dtos.Ai
         /// <summary>Denormalized 0–100 score; null until completed.</summary>
         public int? ClarityScore { get; set; }
 
-        /// <summary>The structured contract; null until completed.</summary>
-        public ClarifierOutputDto? Output { get; set; }
+        /// <summary>
+        /// The structured ClarifierOutput contract (shape = <see cref="ClarifierOutputDto"/>,
+        /// camelCase keys), inlined as the stored document so the wire shape matches
+        /// <c>AiController</c>'s result mapping. Null until completed.
+        /// </summary>
+        public object? Output { get; set; }
 
         public string? Error { get; set; }
 
