@@ -132,6 +132,151 @@ public class ServiceProviderValidatorTests
         result.ShouldHaveValidationErrorFor("Skills[0]");
     }
 
+    // ---------------- Stage 2 profile (D-2 Phase 3) ----------------
+
+    // Stage-2 fields are optional, so every case carries a valid Stage-1 base.
+    private static CreateOrUpdateServiceProviderProfileRequest Base() => new()
+    {
+        Skills = new() { "contracts" },
+        ServiceCategories = new() { "Legal" },
+    };
+
+    [Fact]
+    public void Profile_passes_with_full_stage2_fields()
+    {
+        var req = Base();
+        req.Headline = "Fractional CFO";
+        req.Bio = "15 years in finance.";
+        req.Industries = new() { "Fintech", "SaaS" };
+        req.Languages = new() { "English", "French" };
+        req.PricingModels = new() { "MonthlyRetainer", "EquityCompensation" };
+
+        _profile.TestValidate(req).ShouldNotHaveAnyValidationErrors();
+    }
+
+    [Fact]
+    public void Profile_rejects_overlong_headline()
+    {
+        var req = Base();
+        req.Headline = new string('x', 151);
+        _profile.TestValidate(req).ShouldHaveValidationErrorFor(x => x.Headline);
+    }
+
+    [Fact]
+    public void Profile_rejects_overlong_bio()
+    {
+        var req = Base();
+        req.Bio = new string('x', 3001);
+        _profile.TestValidate(req).ShouldHaveValidationErrorFor(x => x.Bio);
+    }
+
+    [Fact]
+    public void Profile_rejects_duplicate_industries_case_insensitively()
+    {
+        var req = Base();
+        req.Industries = new() { "Fintech", "fintech" };
+        _profile.TestValidate(req).ShouldHaveValidationErrorFor(x => x.Industries);
+    }
+
+    [Fact]
+    public void Profile_rejects_blank_industry()
+    {
+        var req = Base();
+        req.Industries = new() { "   " };
+        _profile.TestValidate(req).ShouldHaveValidationErrorFor(x => x.Industries);
+    }
+
+    [Fact]
+    public void Profile_rejects_overlong_industry()
+    {
+        var req = Base();
+        req.Industries = new() { new string('x', 101) };
+        _profile.TestValidate(req).ShouldHaveValidationErrorFor("Industries[0]");
+    }
+
+    [Fact]
+    public void Profile_rejects_too_many_industries()
+    {
+        var req = Base();
+        req.Industries = Enumerable.Range(0, 21).Select(i => $"ind{i}").ToList();
+        _profile.TestValidate(req).ShouldHaveValidationErrorFor(x => x.Industries);
+    }
+
+    [Fact]
+    public void Profile_rejects_duplicate_languages_case_insensitively()
+    {
+        var req = Base();
+        req.Languages = new() { "English", "english" };
+        _profile.TestValidate(req).ShouldHaveValidationErrorFor(x => x.Languages);
+    }
+
+    [Fact]
+    public void Profile_rejects_blank_language()
+    {
+        var req = Base();
+        req.Languages = new() { " " };
+        _profile.TestValidate(req).ShouldHaveValidationErrorFor(x => x.Languages);
+    }
+
+    [Fact]
+    public void Profile_rejects_overlong_language()
+    {
+        var req = Base();
+        req.Languages = new() { new string('x', 51) };
+        _profile.TestValidate(req).ShouldHaveValidationErrorFor("Languages[0]");
+    }
+
+    [Fact]
+    public void Profile_rejects_too_many_languages()
+    {
+        var req = Base();
+        req.Languages = Enumerable.Range(0, 21).Select(i => $"lang{i}").ToList();
+        _profile.TestValidate(req).ShouldHaveValidationErrorFor(x => x.Languages);
+    }
+
+    [Fact]
+    public void Profile_rejects_unknown_pricing_model()
+    {
+        var req = Base();
+        req.PricingModels = new() { "BarterDeal" };
+        _profile.TestValidate(req).ShouldHaveValidationErrorFor("PricingModels[0]");
+    }
+
+    [Fact]
+    public void Profile_rejects_numeric_pricing_model_string()
+    {
+        var req = Base();
+        req.PricingModels = new() { "2" };
+        _profile.TestValidate(req).ShouldHaveValidationErrorFor("PricingModels[0]");
+    }
+
+    [Fact]
+    public void Profile_rejects_duplicate_pricing_models()
+    {
+        var req = Base();
+        req.PricingModels = new() { "Hourly", "hourly" };
+        _profile.TestValidate(req).ShouldHaveValidationErrorFor(x => x.PricingModels);
+    }
+
+    [Fact]
+    public void Profile_accepts_all_pricing_model_values()
+    {
+        var req = Base();
+        req.PricingModels = new()
+        {
+            "FixedPrice", "Hourly", "MonthlyRetainer", "ProjectBased",
+            "EquityCompensation", "RevenueShare", "Other",
+        };
+        _profile.TestValidate(req).ShouldNotHaveValidationErrorFor(x => x.PricingModels);
+    }
+
+    [Fact]
+    public void Profile_with_no_stage2_fields_still_passes()
+    {
+        // Backward compatibility: a Stage-1-only request must validate cleanly.
+        _profile.TestValidate(Base()).ShouldNotHaveAnyValidationErrors();
+    }
+
     // ---------------- Add portfolio ----------------
 
     [Fact]
