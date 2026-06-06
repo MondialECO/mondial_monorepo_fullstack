@@ -141,6 +141,61 @@ public class AiEntitySerializationTests
     }
 
     [Fact]
+    public void ClarifierSession_round_trips_with_objectids_and_contract()
+    {
+        var e = new ClarifierSession
+        {
+            Id = ObjectId.GenerateNewId().ToString(),
+            OwnerUserId = "user-1",
+            BusinessIdeaId = ObjectId.GenerateNewId().ToString(),
+            RequestId = ObjectId.GenerateNewId().ToString(),
+            Status = "Completed",
+            Input = new BsonDocument { ["title"] = "solar drones", ["problemStatement"] = "p" },
+            Output = new BsonDocument { ["schemaVersion"] = 1, ["clarityScore"] = 80 },
+            ClarityScore = 80,
+            SchemaVersion = 1,
+            Version = 1,
+        };
+
+        var bson = Bson(e);
+        bson["_id"].BsonType.Should().Be(BsonType.ObjectId);
+        bson["BusinessIdeaId"].BsonType.Should().Be(BsonType.ObjectId);
+        bson["RequestId"].BsonType.Should().Be(BsonType.ObjectId);
+
+        var back = RoundTrip(e);
+        back.OwnerUserId.Should().Be("user-1");
+        back.Status.Should().Be("Completed");
+        back.ClarityScore.Should().Be(80);
+        back.SchemaVersion.Should().Be(1);
+        back.Input!["title"].AsString.Should().Be("solar drones");
+        back.Output!["clarityScore"].AsInt32.Should().Be(80);
+    }
+
+    [Fact]
+    public void ClarifierSession_omits_null_optional_fields()
+    {
+        var e = new ClarifierSession
+        {
+            Id = ObjectId.GenerateNewId().ToString(),
+            OwnerUserId = "user-1",
+            Status = "Pending",
+            Input = new BsonDocument("title", "x"),
+        };
+
+        var bson = Bson(e);
+        bson.Contains("BusinessIdeaId").Should().BeFalse();
+        bson.Contains("RequestId").Should().BeFalse();
+        bson.Contains("Output").Should().BeFalse();
+        bson.Contains("ClarityScore").Should().BeFalse();
+        bson.Contains("Error").Should().BeFalse();
+
+        var back = RoundTrip(e);
+        back.BusinessIdeaId.Should().BeNull();
+        back.Output.Should().BeNull();
+        back.ClarityScore.Should().BeNull();
+    }
+
+    [Fact]
     public void AiCreditLedger_round_trips_debits()
     {
         var e = new AiCreditLedger
