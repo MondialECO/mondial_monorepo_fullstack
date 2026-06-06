@@ -276,16 +276,23 @@ namespace WebApp.Models.DatabaseModels
 
     // Service domains a provider can offer. Stage 1 captures these at
     // onboarding; matching/marketplace consumption comes in later stages.
+    // Authoritative list = Doc 05 "Supported Categories" (12 entries, order
+    // preserved). Other is an appended expansion catch-all and MUST stay last
+    // so the serialized Int32 ordinals of the authoritative entries are stable.
     public enum ServiceCategory
     {
-        Legal,
-        Financial,
-        Marketing,
-        Technology,
+        Development,
         Design,
-        Product,
+        Marketing,
+        Legal,
+        Finance,
+        Accounting,
         Operations,
         Strategy,
+        DueDiligence,
+        FundraisingSupport,
+        AiAutomation,
+        HrRecruitment,
         Other
     }
 }

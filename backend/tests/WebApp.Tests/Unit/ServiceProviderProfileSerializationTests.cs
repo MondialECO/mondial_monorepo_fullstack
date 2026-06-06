@@ -31,7 +31,7 @@ public class ServiceProviderProfileSerializationTests
             RejectionReason = "incomplete",
             TrustScore = 42.5,
             Skills = new List<string> { "contracts", "fundraising" },
-            ServiceCategories = new List<ServiceCategory> { ServiceCategory.Legal, ServiceCategory.Financial },
+            ServiceCategories = new List<ServiceCategory> { ServiceCategory.Legal, ServiceCategory.Finance },
             PortfolioItems = new List<PortfolioItem>
             {
                 new() { Title = "Series A docs", Description = "led the round", Url = "https://x", ImagePath = "/img/a.png" },
@@ -47,7 +47,7 @@ public class ServiceProviderProfileSerializationTests
         back.RejectionReason.Should().Be("incomplete");
         back.TrustScore.Should().Be(42.5);
         back.Skills.Should().Equal("contracts", "fundraising");
-        back.ServiceCategories.Should().Equal(ServiceCategory.Legal, ServiceCategory.Financial);
+        back.ServiceCategories.Should().Equal(ServiceCategory.Legal, ServiceCategory.Finance);
         back.PortfolioItems.Should().ContainSingle();
         back.PortfolioItems[0].Title.Should().Be("Series A docs");
         back.PortfolioItems[0].Url.Should().Be("https://x");
