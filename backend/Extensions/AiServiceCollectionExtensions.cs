@@ -57,6 +57,9 @@ public static class AiServiceCollectionExtensions
         services.AddSingleton<AiInsightRepository>();
         services.AddSingleton<AiCreditLedgerRepository>();
 
+        // ---- C-2 Idea Clarifier (source-of-truth session store) ----
+        services.AddSingleton<ClarifierSessionRepository>();
+
         // ---- Prompt framework (Phase 3) ----
         // Builder is stateless; store wraps the PromptVersions repository. Both
         // singletons. Startup seeding of in-code templates happens in Program.cs.
