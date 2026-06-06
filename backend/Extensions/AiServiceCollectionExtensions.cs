@@ -66,6 +66,10 @@ public static class AiServiceCollectionExtensions
         services.AddSingleton<BusinessPlanSessionRepository>();
         services.AddSingleton<IBusinessPlanSessionStore>(sp => sp.GetRequiredService<BusinessPlanSessionRepository>());
 
+        // ---- C-4 Forecast (source-of-truth session store) ----
+        services.AddSingleton<ForecastSessionRepository>();
+        services.AddSingleton<IForecastSessionStore>(sp => sp.GetRequiredService<ForecastSessionRepository>());
+
         // ---- Prompt framework (Phase 3) ----
         // Builder is stateless; store wraps the PromptVersions repository. Both
         // singletons. Startup seeding of in-code templates happens in Program.cs.
