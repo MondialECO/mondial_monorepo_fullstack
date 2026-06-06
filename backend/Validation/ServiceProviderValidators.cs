@@ -21,6 +21,14 @@ internal static class ServiceProviderLimits
     public const int MaxImagePathLength = 500;
     public const int MaxNoteLength = 1000;
 
+    // ---- Stage 2: Provider Profile (D-2 Phase 3) ----
+    public const int MaxHeadlineLength = 150;
+    public const int MaxBioLength = 3000;
+    public const int MaxIndustries = 20;
+    public const int MaxIndustryLength = 100;
+    public const int MaxLanguages = 20;
+    public const int MaxLanguageLength = 50;
+
     // Authoritative category names (Doc 05 / ServiceCategory enum). Matched
     // case-insensitively but membership-checked so numeric strings are rejected.
     public static readonly HashSet<string> AllowedCategories =
@@ -30,6 +38,16 @@ internal static class ServiceProviderLimits
 
     public static bool IsAllowedCategory(string? v) =>
         !string.IsNullOrWhiteSpace(v) && AllowedCategories.Contains(v.Trim());
+
+    // Authoritative pricing-model names (locked PricingModel enum). Same
+    // membership-check approach as categories, so numeric/unknown strings fail.
+    public static readonly HashSet<string> AllowedPricingModels =
+        new(Enum.GetNames<PricingModel>(), StringComparer.OrdinalIgnoreCase);
+
+    public static readonly int MaxPricingModels = AllowedPricingModels.Count;
+
+    public static bool IsAllowedPricingModel(string? v) =>
+        !string.IsNullOrWhiteSpace(v) && AllowedPricingModels.Contains(v.Trim());
 
     public static bool BeValidHttpUrl(string? url) =>
         Uri.TryCreate(url, UriKind.Absolute, out var u) &&
@@ -84,6 +102,63 @@ public class CreateOrUpdateServiceProviderProfileRequestValidator
             RuleForEach(x => x.ServiceCategories)
                 .Must(ServiceProviderLimits.IsAllowedCategory)
                     .WithMessage("'{PropertyValue}' is not a recognised service category.");
+        });
+
+        // ---- Stage 2: Provider Profile (D-2 Phase 3) ----
+        // All Stage-2 fields are optional: rules apply only when supplied, so a
+        // Stage-1 request (Skills + Categories only) still validates unchanged.
+
+        RuleFor(x => x.Headline)
+            .MaximumLength(ServiceProviderLimits.MaxHeadlineLength)
+                .WithMessage($"Headline must be {ServiceProviderLimits.MaxHeadlineLength} characters or fewer.")
+            .When(x => !string.IsNullOrWhiteSpace(x.Headline));
+
+        RuleFor(x => x.Bio)
+            .MaximumLength(ServiceProviderLimits.MaxBioLength)
+                .WithMessage($"Bio must be {ServiceProviderLimits.MaxBioLength} characters or fewer.")
+            .When(x => !string.IsNullOrWhiteSpace(x.Bio));
+
+        When(x => x.Industries is { Count: > 0 }, () =>
+        {
+            RuleFor(x => x.Industries)
+                .Must(i => i.Count <= ServiceProviderLimits.MaxIndustries)
+                    .WithMessage($"You can list at most {ServiceProviderLimits.MaxIndustries} industries.")
+                .Must(ServiceProviderLimits.NoBlankEntries)
+                    .WithMessage("Industries cannot be blank.")
+                .Must(ServiceProviderLimits.NoDuplicatesIgnoreCase)
+                    .WithMessage("Duplicate industries are not allowed.");
+
+            RuleForEach(x => x.Industries)
+                .MaximumLength(ServiceProviderLimits.MaxIndustryLength)
+                    .WithMessage($"Each industry must be {ServiceProviderLimits.MaxIndustryLength} characters or fewer.");
+        });
+
+        When(x => x.Languages is { Count: > 0 }, () =>
+        {
+            RuleFor(x => x.Languages)
+                .Must(l => l.Count <= ServiceProviderLimits.MaxLanguages)
+                    .WithMessage($"You can list at most {ServiceProviderLimits.MaxLanguages} languages.")
+                .Must(ServiceProviderLimits.NoBlankEntries)
+                    .WithMessage("Languages cannot be blank.")
+                .Must(ServiceProviderLimits.NoDuplicatesIgnoreCase)
+                    .WithMessage("Duplicate languages are not allowed.");
+
+            RuleForEach(x => x.Languages)
+                .MaximumLength(ServiceProviderLimits.MaxLanguageLength)
+                    .WithMessage($"Each language must be {ServiceProviderLimits.MaxLanguageLength} characters or fewer.");
+        });
+
+        When(x => x.PricingModels is { Count: > 0 }, () =>
+        {
+            RuleFor(x => x.PricingModels)
+                .Must(p => p.Count <= ServiceProviderLimits.MaxPricingModels)
+                    .WithMessage($"You can select at most {ServiceProviderLimits.MaxPricingModels} pricing models.")
+                .Must(ServiceProviderLimits.NoDuplicatesIgnoreCase)
+                    .WithMessage("Duplicate pricing models are not allowed.");
+
+            RuleForEach(x => x.PricingModels)
+                .Must(ServiceProviderLimits.IsAllowedPricingModel)
+                    .WithMessage("'{PropertyValue}' is not a recognised pricing model.");
         });
     }
 }
