@@ -75,6 +75,10 @@ namespace WebApp.Models.DatabaseModels
         // Investor Profile (Phase 2+)
         [BsonElement("InvestorProfile")]
         public InvestorProfile InvestorProfile { get; set; } = new();
+
+        // Service Provider Profile (Phase 2+ — Stage 1: Verification & Onboarding only)
+        [BsonElement("ServiceProviderProfile")]
+        public ServiceProviderProfile ServiceProviderProfile { get; set; } = new();
     }
 
     public class OnboardingState
@@ -219,5 +223,69 @@ namespace WebApp.Models.DatabaseModels
         public bool ProfilePublished { get; set; } = false;
         public List<string> NdasSigned { get; set; } = new();
         public List<string> DataRoomsAccessed { get; set; } = new();
+    }
+
+    // Service Provider Profile (Phase 2+ — Stage 1: Verification & Onboarding only).
+    // Mirrors the embedded InvestorProfile/CreatorProfile pattern: lives on
+    // ApplicationUser, no separate collection. Stage 1 covers verification and
+    // onboarding state ONLY — no marketplace, matching, proposal, workroom,
+    // milestone, escrow, review, or reputation fields belong here yet.
+    public class ServiceProviderProfile
+    {
+        public string ProviderId { get; set; }
+        public int CurrentPhase { get; set; } = 1;
+
+        // Provider verification is tracked SEPARATELY from identity KYC
+        // (ApplicationUser.Kyc / VerificationStatus). A provider may be
+        // KYC-approved yet still Pending provider verification, and vice versa.
+        public ServiceProviderVerificationStatus VerificationStatus { get; set; } = ServiceProviderVerificationStatus.Pending;
+        public DateTime? VerificationSubmittedAt { get; set; }
+        public DateTime? VerifiedAt { get; set; }
+        public string RejectionReason { get; set; }
+
+        // Reputation seed for later stages; 0 until verification produces a score.
+        public double TrustScore { get; set; } = 0;
+
+        public List<string> Skills { get; set; } = new();
+        public List<ServiceCategory> ServiceCategories { get; set; } = new();
+        public List<PortfolioItem> PortfolioItems { get; set; } = new();
+
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    }
+
+    // One showcase item in a service provider's portfolio.
+    public class PortfolioItem
+    {
+        public string Title { get; set; }
+        public string Description { get; set; }
+        public string Url { get; set; }
+        public string ImagePath { get; set; }
+        public DateTime AddedAt { get; set; } = DateTime.UtcNow;
+    }
+
+    // Provider verification lifecycle — deliberately distinct from the KYC
+    // VerificationStatus enum so the two concerns can evolve independently.
+    public enum ServiceProviderVerificationStatus
+    {
+        Pending,
+        UnderReview,
+        Verified,
+        Rejected
+    }
+
+    // Service domains a provider can offer. Stage 1 captures these at
+    // onboarding; matching/marketplace consumption comes in later stages.
+    public enum ServiceCategory
+    {
+        Legal,
+        Financial,
+        Marketing,
+        Technology,
+        Design,
+        Product,
+        Operations,
+        Strategy,
+        Other
     }
 }
