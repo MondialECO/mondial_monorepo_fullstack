@@ -14,6 +14,7 @@ import {
   MessageSquare,
   Handshake,
   ShieldCheck,
+  Sparkles,
 } from "lucide-react";
 
 export type MenuItem = {
@@ -59,6 +60,11 @@ export const menu: Record<UserRole, MenuSection[]> = {
           label: "My Ideas",
           href: "/dashboard/creator/myideas",
           icon: Lightbulb,
+        },
+        {
+          label: "AI Studio",
+          href: "/dashboard/creator/ai",
+          icon: Sparkles,
         },
         {
           label: "Investors",
