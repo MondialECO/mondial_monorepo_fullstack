@@ -145,12 +145,7 @@ export const menu: Record<UserRole, MenuSection[]> = {
       title: "Dashboard",
       items: [
         {
-          label: "Advisory Panel",
-          href: "/dashboard/serviceprovider",
-          icon: Briefcase,
-        },
-        {
-          label: "Profile",
+          label: "Provider Profile",
           href: "/dashboard/serviceprovider/profile",
           icon: BadgeCheck,
         },
