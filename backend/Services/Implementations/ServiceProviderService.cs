@@ -56,8 +56,17 @@ public class ServiceProviderService : IServiceProviderService
 
         var profile = EnsureProfile(user);
         profile.ProviderId ??= user.Id.ToString();
-        profile.Skills = NormalizeSkills(request.Skills);
+        profile.Skills = NormalizeStrings(request.Skills);
         profile.ServiceCategories = NormalizeCategories(request.ServiceCategories);
+
+        // ---- Stage 2: Provider Profile (D-2 Phase 4) ----
+        profile.Headline = NullIfBlank(request.Headline);
+        profile.Bio = NullIfBlank(request.Bio);
+        profile.Industries = NormalizeStrings(request.Industries);
+        profile.Languages = NormalizeStrings(request.Languages);
+        profile.PricingModels = NormalizePricingModels(request.PricingModels);
+
+        MaybeAdvancePhase(profile);
         Touch(profile);
 
         await _userManager.UpdateAsync(user);
@@ -260,18 +269,60 @@ public class ServiceProviderService : IServiceProviderService
     private static bool HasAtLeastOneSkill(ServiceProviderProfile p) =>
         p.Skills.Any(s => !string.IsNullOrWhiteSpace(s));
 
+    /// <summary>
+    /// Stage-2 completeness gate (D-2 Phase 4): the profile is complete only when
+    /// every field below is present. Headline/Bio count when non-blank. Drives the
+    /// one-way CurrentPhase 1→2 advancement; it never downgrades the phase.
+    /// </summary>
+    internal static bool IsProfileComplete(ServiceProviderProfile p) =>
+        !string.IsNullOrWhiteSpace(p.Headline) &&
+        !string.IsNullOrWhiteSpace(p.Bio) &&
+        HasAtLeastOneSkill(p) &&
+        p.ServiceCategories.Count > 0 &&
+        p.Industries.Count > 0 &&
+        p.Languages.Count > 0 &&
+        p.PricingModels.Count > 0 &&
+        p.PortfolioItems.Count > 0;
+
+    /// <summary>Advance to Phase 2 once the Stage-2 profile is complete. One-way only.</summary>
+    private static void MaybeAdvancePhase(ServiceProviderProfile p)
+    {
+        if (p.CurrentPhase < 2 && IsProfileComplete(p))
+            p.CurrentPhase = 2;
+    }
+
     /// <summary>Trim, drop blanks, and de-duplicate case-insensitively (first wins).</summary>
-    internal static List<string> NormalizeSkills(IEnumerable<string>? skills)
+    internal static List<string> NormalizeStrings(IEnumerable<string>? values)
     {
         var result = new List<string>();
-        if (skills is null) return result;
+        if (values is null) return result;
 
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var raw in skills)
+        foreach (var raw in values)
         {
             var trimmed = raw?.Trim();
             if (string.IsNullOrEmpty(trimmed)) continue;
             if (seen.Add(trimmed)) result.Add(trimmed);
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Parse pricing-model names to the locked enum (case-insensitive). Unknown
+    /// values are ignored, duplicates collapsed, first-occurrence order preserved.
+    /// </summary>
+    internal static List<PricingModel> NormalizePricingModels(IEnumerable<string>? models)
+    {
+        var result = new List<PricingModel>();
+        if (models is null) return result;
+
+        var seen = new HashSet<PricingModel>();
+        foreach (var raw in models)
+        {
+            var trimmed = raw?.Trim();
+            if (string.IsNullOrEmpty(trimmed)) continue;
+            if (Enum.TryParse<PricingModel>(trimmed, ignoreCase: true, out var model) && seen.Add(model))
+                result.Add(model);
         }
         return result;
     }

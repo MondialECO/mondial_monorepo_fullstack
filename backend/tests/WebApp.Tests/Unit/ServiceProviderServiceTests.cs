@@ -71,6 +71,165 @@ public class ServiceProviderServiceTests
         _userManager.Verify(m => m.UpdateAsync(user), Times.Once);
     }
 
+    // ---------------- Stage 2 upsert (D-2 Phase 4) ----------------
+
+    [Fact]
+    public async Task Upsert_persists_all_stage2_fields()
+    {
+        var user = GivenUser(new ApplicationUser());
+
+        var result = await _service.UpsertProfileAsync(user.Id.ToString(), new CreateOrUpdateServiceProviderProfileRequest
+        {
+            Skills = new() { "contracts" },
+            ServiceCategories = new() { "Legal" },
+            Headline = "Fractional CFO",
+            Bio = "15 years in finance.",
+            Industries = new() { "Fintech", "SaaS" },
+            Languages = new() { "English", "French" },
+            PricingModels = new() { "MonthlyRetainer", "EquityCompensation" },
+        });
+
+        result.Outcome.Should().Be(ServiceProviderOutcome.Ok);
+        result.Value!.Headline.Should().Be("Fractional CFO");
+        result.Value.Bio.Should().Be("15 years in finance.");
+        result.Value.Industries.Should().Equal("Fintech", "SaaS");
+        result.Value.Languages.Should().Equal("English", "French");
+        result.Value.PricingModels.Should().Equal("MonthlyRetainer", "EquityCompensation");
+    }
+
+    [Fact]
+    public async Task Upsert_trims_and_dedupes_industries_and_languages()
+    {
+        var user = GivenUser(new ApplicationUser());
+
+        var result = await _service.UpsertProfileAsync(user.Id.ToString(), new CreateOrUpdateServiceProviderProfileRequest
+        {
+            Skills = new() { "contracts" },
+            ServiceCategories = new() { "Legal" },
+            Industries = new() { "  Fintech ", "fintech", "FINTECH", "SaaS", "   " },
+            Languages = new() { " English ", "english", "French" },
+        });
+
+        result.Value!.Industries.Should().Equal("Fintech", "SaaS"); // trimmed, first-wins, deduped
+        result.Value.Languages.Should().Equal("English", "French");
+    }
+
+    [Fact]
+    public async Task Upsert_blank_headline_and_bio_become_null()
+    {
+        var user = GivenUser(new ApplicationUser());
+
+        var result = await _service.UpsertProfileAsync(user.Id.ToString(), new CreateOrUpdateServiceProviderProfileRequest
+        {
+            Skills = new() { "contracts" },
+            ServiceCategories = new() { "Legal" },
+            Headline = "   ",
+            Bio = "",
+        });
+
+        result.Value!.Headline.Should().BeNull();
+        result.Value.Bio.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Upsert_parses_pricing_models_ignoring_invalid_and_dedup_preserving_order()
+    {
+        var user = GivenUser(new ApplicationUser());
+
+        var result = await _service.UpsertProfileAsync(user.Id.ToString(), new CreateOrUpdateServiceProviderProfileRequest
+        {
+            Skills = new() { "contracts" },
+            ServiceCategories = new() { "Legal" },
+            PricingModels = new() { "hourly", "Hourly", "BarterDeal", "FixedPrice", "  " },
+        });
+
+        // invalid "BarterDeal" dropped; "hourly"/"Hourly" collapsed; order preserved.
+        result.Value!.PricingModels.Should().Equal("Hourly", "FixedPrice");
+    }
+
+    [Fact]
+    public async Task Upsert_advances_to_phase_2_when_profile_complete()
+    {
+        var user = GivenUser(new ApplicationUser
+        {
+            ServiceProviderProfile = new ServiceProviderProfile
+            {
+                PortfolioItems = new() { new PortfolioItem { Title = "a" } },
+            },
+        });
+
+        var result = await _service.UpsertProfileAsync(user.Id.ToString(), new CreateOrUpdateServiceProviderProfileRequest
+        {
+            Skills = new() { "contracts" },
+            ServiceCategories = new() { "Legal" },
+            Headline = "Fractional CFO",
+            Bio = "bio",
+            Industries = new() { "Fintech" },
+            Languages = new() { "English" },
+            PricingModels = new() { "FixedPrice" },
+        });
+
+        result.Value!.CurrentPhase.Should().Be(2);
+        result.Value.ProfileComplete.Should().BeTrue();
+        user.ServiceProviderProfile.CurrentPhase.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Upsert_incomplete_profile_stays_phase_1()
+    {
+        var user = GivenUser(new ApplicationUser());
+
+        // No Bio, no Industries/Languages/PricingModels, no portfolio → incomplete.
+        var result = await _service.UpsertProfileAsync(user.Id.ToString(), new CreateOrUpdateServiceProviderProfileRequest
+        {
+            Skills = new() { "contracts" },
+            ServiceCategories = new() { "Legal" },
+            Headline = "Fractional CFO",
+        });
+
+        result.Value!.CurrentPhase.Should().Be(1);
+        result.Value.ProfileComplete.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Upsert_does_not_downgrade_phase_when_incomplete()
+    {
+        // Already at Phase 2; a later incomplete save must not drop back to Phase 1.
+        var user = GivenUser(new ApplicationUser
+        {
+            ServiceProviderProfile = new ServiceProviderProfile { CurrentPhase = 2 },
+        });
+
+        var result = await _service.UpsertProfileAsync(user.Id.ToString(), new CreateOrUpdateServiceProviderProfileRequest
+        {
+            Skills = new() { "contracts" },
+            ServiceCategories = new() { "Legal" },
+        });
+
+        result.Value!.CurrentPhase.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Upsert_stage1_only_request_is_backward_compatible()
+    {
+        // A pre-D-2 client sends only Skills + Categories: Stage-2 fields default
+        // to empty/null, profile stays Phase 1, no error.
+        var user = GivenUser(new ApplicationUser());
+
+        var result = await _service.UpsertProfileAsync(user.Id.ToString(), new CreateOrUpdateServiceProviderProfileRequest
+        {
+            Skills = new() { "contracts" },
+            ServiceCategories = new() { "Legal" },
+        });
+
+        result.Outcome.Should().Be(ServiceProviderOutcome.Ok);
+        result.Value!.CurrentPhase.Should().Be(1);
+        result.Value.Headline.Should().BeNull();
+        result.Value.Industries.Should().BeEmpty();
+        result.Value.Languages.Should().BeEmpty();
+        result.Value.PricingModels.Should().BeEmpty();
+    }
+
     // ---------------- Portfolio ----------------
 
     [Fact]
