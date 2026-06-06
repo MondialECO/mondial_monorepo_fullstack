@@ -25,6 +25,23 @@ public class CreateOrUpdateServiceProviderProfileRequest
 
     /// <summary>Authoritative service-category names (see ServiceCategory enum).</summary>
     public List<string> ServiceCategories { get; set; } = new();
+
+    // ---- Stage 2: Provider Profile (D-2) ----
+
+    /// <summary>Short public headline (Stage 2). Null when not yet set.</summary>
+    public string? Headline { get; set; }
+
+    /// <summary>Longer public bio (Stage 2). Null when not yet set.</summary>
+    public string? Bio { get; set; }
+
+    /// <summary>Free-form industry tags (e.g. "Fintech", "SaaS"), normalized like Skills.</summary>
+    public List<string> Industries { get; set; } = new();
+
+    /// <summary>Free-form spoken languages (e.g. "English"), normalized like Skills.</summary>
+    public List<string> Languages { get; set; } = new();
+
+    /// <summary>Pricing-model names the provider works under (see PricingModel enum).</summary>
+    public List<string> PricingModels { get; set; } = new();
 }
 
 /// <summary>Append one portfolio item (Stage 1 "Portfolio Submission").</summary>
@@ -110,6 +127,24 @@ public class ServiceProviderProfileResponse
     public List<string> ServiceCategories { get; set; } = new();
     public List<PortfolioItemResponse> PortfolioItems { get; set; } = new();
 
+    // ---- Stage 2: Provider Profile (D-2) ----
+    public string? Headline { get; set; }
+    public string? Bio { get; set; }
+    public List<string> Industries { get; set; } = new();
+    public List<string> Languages { get; set; } = new();
+
+    /// <summary>Pricing-model names (PricingModel enum), emitted as stable strings.</summary>
+    public List<string> PricingModels { get; set; } = new();
+
+    /// <summary>
+    /// Stage-2 profile completeness (0–100), computed as a DTO-level projection.
+    /// Never persisted. See ServiceProviderMapping for the locked weighting.
+    /// </summary>
+    public int CompletionPercent { get; set; }
+
+    /// <summary>True when CompletionPercent is 100.</summary>
+    public bool ProfileComplete { get; set; }
+
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }
@@ -155,21 +190,52 @@ public static class ServiceProviderMapping
         AddedAt = item.AddedAt,
     };
 
-    public static ServiceProviderProfileResponse ToResponse(this ServiceProviderProfile profile) => new()
+    public static ServiceProviderProfileResponse ToResponse(this ServiceProviderProfile profile)
     {
-        ProviderId = profile.ProviderId,
-        CurrentPhase = profile.CurrentPhase,
-        VerificationStatus = profile.VerificationStatus.ToString(),
-        VerificationSubmittedAt = profile.VerificationSubmittedAt,
-        VerifiedAt = profile.VerifiedAt,
-        RejectionReason = profile.RejectionReason,
-        TrustScore = profile.TrustScore,
-        Skills = new List<string>(profile.Skills),
-        ServiceCategories = profile.ServiceCategories.Select(c => c.ToString()).ToList(),
-        PortfolioItems = profile.PortfolioItems.Select((p, i) => p.ToResponse(i)).ToList(),
-        CreatedAt = profile.CreatedAt,
-        UpdatedAt = profile.UpdatedAt,
-    };
+        var completion = CompletionPercent(profile);
+        return new()
+        {
+            ProviderId = profile.ProviderId,
+            CurrentPhase = profile.CurrentPhase,
+            VerificationStatus = profile.VerificationStatus.ToString(),
+            VerificationSubmittedAt = profile.VerificationSubmittedAt,
+            VerifiedAt = profile.VerifiedAt,
+            RejectionReason = profile.RejectionReason,
+            TrustScore = profile.TrustScore,
+            Skills = new List<string>(profile.Skills),
+            ServiceCategories = profile.ServiceCategories.Select(c => c.ToString()).ToList(),
+            PortfolioItems = profile.PortfolioItems.Select((p, i) => p.ToResponse(i)).ToList(),
+            Headline = profile.Headline,
+            Bio = profile.Bio,
+            Industries = new List<string>(profile.Industries),
+            Languages = new List<string>(profile.Languages),
+            PricingModels = profile.PricingModels.Select(p => p.ToString()).ToList(),
+            CompletionPercent = completion,
+            ProfileComplete = completion == 100,
+            CreatedAt = profile.CreatedAt,
+            UpdatedAt = profile.UpdatedAt,
+        };
+    }
+
+    /// <summary>
+    /// Stage-2 profile completeness as a pure projection over the entity. Locked
+    /// D-2 weighting (sums to 100): Headline 15, Bio 15, ≥1 Skill 15,
+    /// ≥1 ServiceCategory 15, ≥1 Industry 15, ≥1 Language 10, ≥1 PricingModel 5,
+    /// ≥1 PortfolioItem 10. Headline/Bio count only when non-blank. Not persisted.
+    /// </summary>
+    public static int CompletionPercent(ServiceProviderProfile profile)
+    {
+        var pct = 0;
+        if (!string.IsNullOrWhiteSpace(profile.Headline)) pct += 15;
+        if (!string.IsNullOrWhiteSpace(profile.Bio)) pct += 15;
+        if (profile.Skills.Count > 0) pct += 15;
+        if (profile.ServiceCategories.Count > 0) pct += 15;
+        if (profile.Industries.Count > 0) pct += 15;
+        if (profile.Languages.Count > 0) pct += 10;
+        if (profile.PricingModels.Count > 0) pct += 5;
+        if (profile.PortfolioItems.Count > 0) pct += 10;
+        return pct;
+    }
 
     public static ServiceProviderVerificationResponse ToVerificationResponse(this ServiceProviderProfile profile) => new()
     {
