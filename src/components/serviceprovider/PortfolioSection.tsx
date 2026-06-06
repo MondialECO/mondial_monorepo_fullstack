@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { ExternalLink, FolderOpen, Pencil, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -99,22 +99,29 @@ export function PortfolioSection({ items }: { items: PortfolioItem[] }) {
           Add item
         </Button>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent>
         {items.length === 0 ? (
           <EmptyState
+            icon={FolderOpen}
             title="No portfolio items yet"
             description="Add work samples so founders can evaluate your delivery."
+            action={
+              <Button onClick={openAdd} size="sm" variant="outline">
+                <Plus className="h-4 w-4" />
+                Add your first item
+              </Button>
+            }
           />
         ) : (
-          items.map((item) => (
-            <div
-              key={item.index}
-              className="flex items-start justify-between gap-4 rounded-lg border p-4"
-            >
-              <div className="min-w-0 space-y-1">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {items.map((item) => (
+              <div
+                key={item.index}
+                className="flex flex-col rounded-lg border bg-background p-4"
+              >
                 <p className="font-medium text-foreground">{item.title}</p>
                 {item.description && (
-                  <p className="text-sm text-muted-foreground line-clamp-2">
+                  <p className="mt-1 text-sm text-muted-foreground line-clamp-3">
                     {item.description}
                   </p>
                 )}
@@ -123,33 +130,34 @@ export function PortfolioSection({ items }: { items: PortfolioItem[] }) {
                     href={item.url}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-sm text-primary underline underline-offset-2"
+                    className="mt-2 inline-flex items-center gap-1 text-sm text-primary underline underline-offset-2"
                   >
-                    {item.url}
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    Visit link
                   </a>
                 )}
+                <div className="mt-3 flex justify-end gap-1 border-t pt-2">
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label="Edit item"
+                    onClick={() => openEdit(item)}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label="Delete item"
+                    disabled={remove.isPending}
+                    onClick={() => remove.mutate(item.index)}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
               </div>
-              <div className="flex shrink-0 gap-1">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Edit item"
-                  onClick={() => openEdit(item)}
-                >
-                  <Pencil className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Delete item"
-                  disabled={remove.isPending}
-                  onClick={() => remove.mutate(item.index)}
-                >
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
-              </div>
-            </div>
-          ))
+            ))}
+          </div>
         )}
       </CardContent>
 
