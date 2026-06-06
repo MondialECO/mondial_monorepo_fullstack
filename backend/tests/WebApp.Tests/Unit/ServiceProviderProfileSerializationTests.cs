@@ -121,4 +121,98 @@ public class ServiceProviderProfileSerializationTests
         bson.Contains("ServiceProviderProfile").Should().BeTrue();
         bson["ServiceProviderProfile"]["ProviderId"].AsString.Should().Be("sp-9");
     }
+
+    // ---- Stage 2: Provider Profile (D-2 Phase 1) ----
+
+    [Fact]
+    public void ServiceProviderProfile_round_trips_all_stage2_fields()
+    {
+        var e = new ServiceProviderProfile
+        {
+            ProviderId = "sp-2",
+            Headline = "Fractional CFO for early-stage startups",
+            Bio = "15 years across fundraising and finance ops.",
+            Industries = new List<string> { "Fintech", "SaaS" },
+            Languages = new List<string> { "English", "French" },
+            PricingModels = new List<PricingModel>
+            {
+                PricingModel.MonthlyRetainer, PricingModel.EquityCompensation,
+            },
+        };
+
+        var back = RoundTrip(e);
+        back.Headline.Should().Be("Fractional CFO for early-stage startups");
+        back.Bio.Should().Be("15 years across fundraising and finance ops.");
+        back.Industries.Should().Equal("Fintech", "SaaS");
+        back.Languages.Should().Equal("English", "French");
+        back.PricingModels.Should().Equal(PricingModel.MonthlyRetainer, PricingModel.EquityCompensation);
+    }
+
+    [Fact]
+    public void ServiceProviderProfile_stage2_defaults_are_safe_and_empty()
+    {
+        var e = new ServiceProviderProfile();
+
+        e.Headline.Should().BeNull();
+        e.Bio.Should().BeNull();
+        e.Industries.Should().BeEmpty();
+        e.Languages.Should().BeEmpty();
+        e.PricingModels.Should().BeEmpty();
+
+        var back = RoundTrip(e);
+        back.Industries.Should().BeEmpty();
+        back.Languages.Should().BeEmpty();
+        back.PricingModels.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void PricingModel_ordinals_are_stable_and_other_is_last()
+    {
+        // Persisted as Int32 ordinals; these values are a wire contract and must
+        // not drift. Other must remain the final member.
+        ((int)PricingModel.FixedPrice).Should().Be(0);
+        ((int)PricingModel.Hourly).Should().Be(1);
+        ((int)PricingModel.MonthlyRetainer).Should().Be(2);
+        ((int)PricingModel.ProjectBased).Should().Be(3);
+        ((int)PricingModel.EquityCompensation).Should().Be(4);
+        ((int)PricingModel.RevenueShare).Should().Be(5);
+        ((int)PricingModel.Other).Should().Be(6);
+
+        Enum.GetValues<PricingModel>()[^1].Should().Be(PricingModel.Other);
+    }
+
+    [Fact]
+    public void PricingModels_persist_as_int32_ordinals()
+    {
+        var e = new ServiceProviderProfile
+        {
+            PricingModels = new List<PricingModel> { PricingModel.RevenueShare, PricingModel.Other },
+        };
+
+        var bson = Bson(e);
+        bson["PricingModels"].AsBsonArray.Select(v => v.AsInt32).Should().Equal(5, 6);
+    }
+
+    [Fact]
+    public void Stage1_only_document_deserializes_stage2_fields_to_defaults()
+    {
+        // Backward compatibility: a profile persisted during D-1 (Stage 1) has no
+        // Headline/Bio/Industries/Languages/PricingModels elements. Deserialization
+        // must yield safe defaults rather than nulls for the collections.
+        var stage1 = new BsonDocument
+        {
+            ["ProviderId"] = "sp-legacy",
+            ["CurrentPhase"] = 1,
+            ["VerificationStatus"] = "Verified",
+            ["Skills"] = new BsonArray { "contracts" },
+        };
+
+        var back = BsonSerializer.Deserialize<ServiceProviderProfile>(stage1);
+        back.Headline.Should().BeNull();
+        back.Bio.Should().BeNull();
+        back.Industries.Should().NotBeNull().And.BeEmpty();
+        back.Languages.Should().NotBeNull().And.BeEmpty();
+        back.PricingModels.Should().NotBeNull().And.BeEmpty();
+        back.Skills.Should().Equal("contracts");
+    }
 }

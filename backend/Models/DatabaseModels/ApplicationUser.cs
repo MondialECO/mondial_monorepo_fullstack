@@ -250,6 +250,19 @@ namespace WebApp.Models.DatabaseModels
         public List<ServiceCategory> ServiceCategories { get; set; } = new();
         public List<PortfolioItem> PortfolioItems { get; set; } = new();
 
+        // ---- Stage 2: Provider Profile (D-2 Phase 1) ----
+        // Public-facing profile fields. Additive to the embedded document: legacy
+        // Stage-1 records without these elements deserialize to safe defaults
+        // (null strings, empty lists). Per the locked D-2 decision audit:
+        // Services stays expressed by ServiceCategories (no new field); Industries
+        // and Languages are free-form strings normalized like Skills (no enum, no
+        // lookup collection); Certifications/ExternalLinks are deferred.
+        public string Headline { get; set; }
+        public string Bio { get; set; }
+        public List<string> Industries { get; set; } = new();
+        public List<string> Languages { get; set; } = new();
+        public List<PricingModel> PricingModels { get; set; } = new();
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     }
@@ -293,6 +306,21 @@ namespace WebApp.Models.DatabaseModels
         FundraisingSupport,
         AiAutomation,
         HrRecruitment,
+        Other
+    }
+
+    // Pricing arrangements a provider is willing to work under (Stage 2). Locked
+    // D-2 decision audit values. Serialized as Int32 ordinals like ServiceCategory,
+    // so Other MUST stay last and existing entries MUST keep their order to keep
+    // persisted ordinals stable across releases.
+    public enum PricingModel
+    {
+        FixedPrice,
+        Hourly,
+        MonthlyRetainer,
+        ProjectBased,
+        EquityCompensation,
+        RevenueShare,
         Other
     }
 }
