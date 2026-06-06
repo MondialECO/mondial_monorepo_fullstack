@@ -123,7 +123,58 @@ namespace WebApp.Services.Ai.Prompts
                 "field of any kind.",
         };
 
+        /// <summary>
+        /// C-4 Forecast (one-shot, single structured JSON completion). Projects the
+        /// clarified opportunity / business plan into a fixed 12-month financial
+        /// outlook: revenue, cost, cash-flow, and break-even. The forecast horizon is
+        /// locked to 12 monthly periods — no custom horizon and no yearly roll-up. The
+        /// <see cref="OutputContract"/> keys are the locked seven-field hand-off shape
+        /// (<c>schemaVersion = 1</c>) and deliberately exclude any funding ask. The
+        /// <c>advisoryNotice</c> field carries the human-readable estimate disclaimer
+        /// that aligns with <see cref="SafetyRules"/>; safety clauses themselves are
+        /// injected by the builder, so they are not restated in the system text.
+        /// </summary>
+        public static readonly PromptTemplate Forecast = new()
+        {
+            Key = "forecast",
+            Version = 1,
+            SystemText =
+                "You are Mondial's Financial Forecast Analyst. In a single pass, turn a " +
+                "clarified business opportunity and its business plan into a grounded " +
+                "12-month financial forecast. Project exactly 12 consecutive monthly " +
+                "periods (month 1 through month 12) — never a custom horizon and never " +
+                "a yearly forecast. Ground every figure in the input and in the " +
+                "assumptions you state; when the input is thin, make the driving " +
+                "assumption explicit rather than fabricating precision. Present all " +
+                "numbers as planning estimates, not guarantees. Do NOT include any " +
+                "funding ask, capital request, or valuation of any kind.",
+            OutputContract =
+                "Respond with ONE JSON object and nothing else — no markdown, no code " +
+                "fences, no commentary before or after. It MUST match this schema " +
+                "exactly (camelCase keys, all keys present; arrays may be empty but " +
+                "must not be omitted; add no extra keys; do NOT add any funding ask):\n" +
+                "{\n" +
+                "  \"schemaVersion\": 1,\n" +
+                "  \"revenueForecast\": { \"currency\": string, \"summary\": string, \"monthly\": [ { \"month\": integer (1-12), \"amount\": number, \"notes\": string } ] },\n" +
+                "  \"costForecast\": { \"currency\": string, \"summary\": string, \"monthly\": [ { \"month\": integer (1-12), \"fixedCosts\": number, \"variableCosts\": number, \"notes\": string } ] },\n" +
+                "  \"cashFlowProjection\": { \"currency\": string, \"summary\": string, \"monthly\": [ { \"month\": integer (1-12), \"netCashFlow\": number, \"endingBalance\": number, \"notes\": string } ] },\n" +
+                "  \"breakEvenAnalysis\": { \"breakEvenMonth\": integer (1-12) | null, \"summary\": string, \"isAchievedWithinHorizon\": boolean },\n" +
+                "  \"assumptions\": [string],\n" +
+                "  \"risks\": [ { \"category\": string, \"description\": string, \"likelihood\": \"low\" | \"medium\" | \"high\", \"impact\": \"low\" | \"medium\" | \"high\", \"mitigation\": string } ],\n" +
+                "  \"advisoryNotice\": string\n" +
+                "}\n" +
+                "schemaVersion MUST be 1. Each monthly array MUST contain exactly 12 " +
+                "entries, one per month, with month values 1 through 12 in order. " +
+                "breakEvenMonth MUST be an integer 1-12 when break-even is reached " +
+                "within the horizon, otherwise null with isAchievedWithinHorizon false. " +
+                "likelihood and impact MUST each be one of low, medium, or high. " +
+                "advisoryNotice MUST state plainly that these figures are planning " +
+                "estimates, not guarantees of financial outcomes, and that qualified " +
+                "professional advice is recommended. Do not include any funding ask, " +
+                "capital request, or valuation field of any kind.",
+        };
+
         /// <summary>All in-code templates seeded into <c>PromptVersions</c> on startup.</summary>
-        public static readonly IReadOnlyList<PromptTemplate> All = new[] { Probe, IdeaClarifier, BusinessPlan };
+        public static readonly IReadOnlyList<PromptTemplate> All = new[] { Probe, IdeaClarifier, BusinessPlan, Forecast };
     }
 }
