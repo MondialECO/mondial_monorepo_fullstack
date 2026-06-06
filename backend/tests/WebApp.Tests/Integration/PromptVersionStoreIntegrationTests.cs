@@ -75,4 +75,19 @@ public class PromptVersionStoreIntegrationTests : IClassFixture<AppFixture>
 
         (await Store.GetActiveAsync("never-seeded-" + Guid.NewGuid())).Should().BeNull();
     }
+
+    [SkippableFact]
+    public async Task IdeaClarifier_template_is_seeded_on_boot_and_resolves_active()
+    {
+        Skip.IfNot(_fx.Available, _fx.SkipReason);
+
+        // C-2 P2: PromptTemplate.All is seeded on startup, so the active
+        // idea-clarifier version (with its locked output contract) resolves.
+        var active = await Store.GetActiveAsync(PromptTemplate.IdeaClarifier.Key);
+
+        active.Should().NotBeNull();
+        active!.Version.Should().Be(1);
+        active.SystemText.Should().Contain("Idea Clarifier");
+        active.OutputContract.Should().Contain("\"schemaVersion\": 1");
+    }
 }

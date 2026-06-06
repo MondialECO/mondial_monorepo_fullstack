@@ -30,7 +30,53 @@ namespace WebApp.Services.Ai.Prompts
                 "Respond in plain text, at most two short sentences. No markdown, no preamble.",
         };
 
+        /// <summary>
+        /// C-2 Idea Clarifier (one-shot). Transforms a raw idea into the structured
+        /// opportunity contract consumed by C-3 (Business Plan) and C-4 (Forecast).
+        /// The <see cref="OutputContract"/> is the locked hand-off shape — its keys
+        /// mirror <c>ClarifierOutputDto</c> exactly (<c>schemaVersion = 1</c>).
+        /// Safety clauses are injected by the builder via <see cref="SafetyRules"/>,
+        /// so they are not restated here.
+        /// </summary>
+        public static readonly PromptTemplate IdeaClarifier = new()
+        {
+            Key = "idea-clarifier",
+            Version = 1,
+            SystemText =
+                "You are Mondial's Idea Clarifier. In a single pass, transform a " +
+                "founder's raw business idea into a clear, structured opportunity. " +
+                "Be specific and concrete: name the real problem, who has it, what " +
+                "already exists, how the proposed solution is different, and the " +
+                "honest risks. Ground every statement in the idea the user provides " +
+                "— do not invent markets, numbers, or competitors. When the input is " +
+                "thin, make the missing assumption explicit (in the assumptions list) " +
+                "rather than fabricating detail. Judge clarity strictly: a high " +
+                "clarity score means the problem, audience, and solution are already " +
+                "well defined; a low score means the idea is still vague.",
+            OutputContract =
+                "Respond with ONE JSON object and nothing else — no markdown, no code " +
+                "fences, no commentary before or after. It MUST match this schema " +
+                "exactly (camelCase keys, all keys present; arrays may be empty but " +
+                "must not be omitted; add no extra keys):\n" +
+                "{\n" +
+                "  \"schemaVersion\": 1,\n" +
+                "  \"problemDefinition\": { \"statement\": string, \"painPoints\": [string], \"severity\": \"low\" | \"medium\" | \"high\" },\n" +
+                "  \"targetAudience\": { \"primarySegment\": string, \"characteristics\": [string], \"sizeQualitative\": string },\n" +
+                "  \"existingAlternatives\": [ { \"name\": string, \"gap\": string } ],\n" +
+                "  \"proposedSolution\": { \"summary\": string, \"differentiation\": string, \"valueProposition\": string },\n" +
+                "  \"riskAssessment\": [ { \"category\": string, \"description\": string, \"likelihood\": \"low\" | \"medium\" | \"high\", \"mitigation\": string } ],\n" +
+                "  \"assumptions\": [string],\n" +
+                "  \"clarityScore\": integer (0-100),\n" +
+                "  \"clarityRationale\": string,\n" +
+                "  \"tags\": [string]\n" +
+                "}\n" +
+                "schemaVersion MUST be 1. clarityScore MUST be an integer between 0 " +
+                "and 100. severity and likelihood MUST be one of low, medium, or high. " +
+                "sizeQualitative is a qualitative reach statement only — never a " +
+                "specific market value or revenue figure.",
+        };
+
         /// <summary>All in-code templates seeded into <c>PromptVersions</c> on startup.</summary>
-        public static readonly IReadOnlyList<PromptTemplate> All = new[] { Probe };
+        public static readonly IReadOnlyList<PromptTemplate> All = new[] { Probe, IdeaClarifier };
     }
 }
