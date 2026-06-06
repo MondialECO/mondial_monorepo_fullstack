@@ -76,7 +76,54 @@ namespace WebApp.Services.Ai.Prompts
                 "specific market value or revenue figure.",
         };
 
+        /// <summary>
+        /// C-3 Business Plan (one-shot, single structured JSON completion). Turns the
+        /// clarified opportunity (the authoritative input — see locked C-3 decision #2)
+        /// into the seven-section BusinessPlanOutput contract. The
+        /// <see cref="OutputContract"/> keys mirror <c>BusinessPlanOutputDto</c> exactly
+        /// (<c>schemaVersion = 1</c>) and deliberately exclude any funding ask (locked
+        /// C-3 decision #1). Safety clauses are injected by the builder via
+        /// <see cref="SafetyRules"/>, so they are not restated here.
+        /// </summary>
+        public static readonly PromptTemplate BusinessPlan = new()
+        {
+            Key = "business-plan",
+            Version = 1,
+            SystemText =
+                "You are Mondial's Business Plan Architect. In a single pass, turn a " +
+                "clarified business opportunity into a concrete, investor-readable " +
+                "business plan. Ground every section strictly in the clarified " +
+                "opportunity you are given — it is the authoritative source. You may " +
+                "use the founder's original submission only as secondary context to " +
+                "fill gaps; never contradict the clarified opportunity. Be specific " +
+                "and realistic: name real segments, channels, competitors and risks " +
+                "implied by the input. Do NOT invent precise market sizes, revenue " +
+                "figures, valuations, or a funding ask — keep sizing and economics " +
+                "qualitative. When the input is thin, state the assumption plainly " +
+                "rather than fabricating numbers.",
+            OutputContract =
+                "Respond with ONE JSON object and nothing else — no markdown, no code " +
+                "fences, no commentary before or after. It MUST match this schema " +
+                "exactly (camelCase keys, all keys present; arrays may be empty but " +
+                "must not be omitted; add no extra keys; do NOT add any funding ask):\n" +
+                "{\n" +
+                "  \"schemaVersion\": 1,\n" +
+                "  \"executiveSummary\": { \"overview\": string, \"valueProposition\": string, \"highlights\": [string] },\n" +
+                "  \"marketAnalysis\": { \"overview\": string, \"targetSegments\": [string], \"marketSizeQualitative\": string, \"trends\": [string] },\n" +
+                "  \"competitorAnalysis\": { \"overview\": string, \"competitors\": [ { \"name\": string, \"positioning\": string, \"strengths\": [string], \"weaknesses\": [string], \"ourAdvantage\": string } ] },\n" +
+                "  \"revenueModel\": { \"summary\": string, \"revenueStreams\": [ { \"name\": string, \"description\": string } ], \"pricingStrategy\": string, \"keyMetrics\": [string] },\n" +
+                "  \"goToMarket\": { \"strategy\": string, \"channels\": [string], \"phases\": [ { \"name\": string, \"description\": string } ] },\n" +
+                "  \"operationsPlan\": { \"overview\": string, \"keyActivities\": [string], \"resources\": [string], \"milestones\": [ { \"title\": string, \"description\": string, \"timeframe\": string } ] },\n" +
+                "  \"risks\": [ { \"category\": string, \"description\": string, \"likelihood\": \"low\" | \"medium\" | \"high\", \"impact\": \"low\" | \"medium\" | \"high\", \"mitigation\": string } ]\n" +
+                "}\n" +
+                "schemaVersion MUST be 1. likelihood and impact MUST each be one of " +
+                "low, medium, or high. marketSizeQualitative is a qualitative reach " +
+                "statement only — never a specific market value or revenue figure. Do " +
+                "not include any funding ask, funding amount, or valuation request " +
+                "field of any kind.",
+        };
+
         /// <summary>All in-code templates seeded into <c>PromptVersions</c> on startup.</summary>
-        public static readonly IReadOnlyList<PromptTemplate> All = new[] { Probe, IdeaClarifier };
+        public static readonly IReadOnlyList<PromptTemplate> All = new[] { Probe, IdeaClarifier, BusinessPlan };
     }
 }
