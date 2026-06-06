@@ -56,4 +56,12 @@ public interface IServiceProviderService
 
     Task<ServiceProviderResult<ServiceProviderVerificationResponse>> SubmitVerificationAsync(
         string userId, SubmitVerificationRequest request);
+
+    // ---- Admin (Phase 5): approve/reject a submission awaiting review ----
+
+    Task<ServiceProviderResult<ServiceProviderVerificationResponse>> ApproveVerificationAsync(
+        string providerUserId, string adminUserId);
+
+    Task<ServiceProviderResult<ServiceProviderVerificationResponse>> RejectVerificationAsync(
+        string providerUserId, string adminUserId, string reason);
 }

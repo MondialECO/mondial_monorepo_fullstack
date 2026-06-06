@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using WebApp.Models.DatabaseModels;
 using WebApp.Models.Dtos;
+using WebApp.Services.Audit;
 using WebApp.Services.Interface;
 
 namespace WebApp.Services.Implementations;
@@ -16,13 +17,23 @@ namespace WebApp.Services.Implementations;
 public class ServiceProviderService : IServiceProviderService
 {
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IAuditLogger _audit;
+    private readonly INotificationService _notifications;
     private readonly ILogger<ServiceProviderService> _logger;
+
+    /// <summary>Neutral 0–100 baseline seeded on approval (D-1 locked decision).
+    /// Reputation-driven recomputation is deferred to Stage 9.</summary>
+    public const double TrustScoreBaseline = 50.0;
 
     public ServiceProviderService(
         UserManager<ApplicationUser> userManager,
+        IAuditLogger audit,
+        INotificationService notifications,
         ILogger<ServiceProviderService> logger)
     {
         _userManager = userManager;
+        _audit = audit;
+        _notifications = notifications;
         _logger = logger;
     }
 
@@ -125,8 +136,11 @@ public class ServiceProviderService : IServiceProviderService
 
         var profile = EnsureProfile(user);
 
-        // Duplicate-submission guard: only a Pending profile can be submitted.
-        if (profile.VerificationStatus != ServiceProviderVerificationStatus.Pending)
+        // Duplicate-submission guard: only a Pending or previously-Rejected
+        // profile can be (re)submitted (Rejected→UnderReview resubmission is
+        // allowed per the D-1 locked decision). UnderReview/Verified cannot.
+        if (profile.VerificationStatus is not (ServiceProviderVerificationStatus.Pending
+            or ServiceProviderVerificationStatus.Rejected))
             return ServiceProviderResult<ServiceProviderVerificationResponse>.Conflict(
                 "Verification has already been submitted.");
 
@@ -138,11 +152,87 @@ public class ServiceProviderService : IServiceProviderService
 
         profile.VerificationStatus = ServiceProviderVerificationStatus.UnderReview;
         profile.VerificationSubmittedAt = DateTime.UtcNow;
+        profile.RejectionReason = null; // clear any prior rejection on resubmission
         Touch(profile);
 
         await _userManager.UpdateAsync(user);
+
+        _audit.Record("ServiceProviderVerification.Submit", userId, success: true, new
+        {
+            skills = profile.Skills.Count,
+            categories = profile.ServiceCategories.Count,
+            portfolioCount = profile.PortfolioItems.Count,
+        });
+
         return ServiceProviderResult<ServiceProviderVerificationResponse>.Ok(
             profile.ToVerificationResponse(), "Submitted for verification.");
+    }
+
+    public async Task<ServiceProviderResult<ServiceProviderVerificationResponse>> ApproveVerificationAsync(
+        string providerUserId, string adminUserId)
+    {
+        var user = await _userManager.FindByIdAsync(providerUserId);
+        if (user is null)
+            return ServiceProviderResult<ServiceProviderVerificationResponse>.NotFound("Service provider profile not found.");
+
+        var profile = EnsureProfile(user);
+        if (profile.VerificationStatus != ServiceProviderVerificationStatus.UnderReview)
+            return ServiceProviderResult<ServiceProviderVerificationResponse>.Conflict(
+                "Verification is not awaiting review.");
+
+        profile.VerificationStatus = ServiceProviderVerificationStatus.Verified;
+        profile.VerifiedAt = DateTime.UtcNow;
+        profile.RejectionReason = null;
+        profile.TrustScore = TrustScoreBaseline;
+        Touch(profile);
+
+        await _userManager.UpdateAsync(user);
+
+        _audit.Record("ServiceProviderVerification.Approve", adminUserId, success: true, new
+        {
+            providerUserId,
+            trustScore = profile.TrustScore,
+        });
+
+        await NotifyAsync(user.Id,
+            "Provider verification approved",
+            "Your service provider profile has been verified. Your Verified Provider Badge is now active.");
+
+        return ServiceProviderResult<ServiceProviderVerificationResponse>.Ok(
+            profile.ToVerificationResponse(), "Provider verified.");
+    }
+
+    public async Task<ServiceProviderResult<ServiceProviderVerificationResponse>> RejectVerificationAsync(
+        string providerUserId, string adminUserId, string reason)
+    {
+        var user = await _userManager.FindByIdAsync(providerUserId);
+        if (user is null)
+            return ServiceProviderResult<ServiceProviderVerificationResponse>.NotFound("Service provider profile not found.");
+
+        var profile = EnsureProfile(user);
+        if (profile.VerificationStatus != ServiceProviderVerificationStatus.UnderReview)
+            return ServiceProviderResult<ServiceProviderVerificationResponse>.Conflict(
+                "Verification is not awaiting review.");
+
+        profile.VerificationStatus = ServiceProviderVerificationStatus.Rejected;
+        profile.RejectionReason = reason;
+        profile.VerifiedAt = null;
+        Touch(profile);
+
+        await _userManager.UpdateAsync(user);
+
+        _audit.Record("ServiceProviderVerification.Reject", adminUserId, success: true, new
+        {
+            providerUserId,
+            reason,
+        });
+
+        await NotifyAsync(user.Id,
+            "Provider verification needs changes",
+            $"Your service provider verification was not approved. Reason: {reason}");
+
+        return ServiceProviderResult<ServiceProviderVerificationResponse>.Ok(
+            profile.ToVerificationResponse(), "Provider verification rejected.");
     }
 
     // ---------------- pure helpers ----------------
@@ -151,6 +241,19 @@ public class ServiceProviderService : IServiceProviderService
         user.ServiceProviderProfile ??= new ServiceProviderProfile();
 
     private static void Touch(ServiceProviderProfile profile) => profile.UpdatedAt = DateTime.UtcNow;
+
+    /// <summary>Best-effort in-app + realtime/web-push notification; never fails the operation.</summary>
+    private async Task NotifyAsync(Guid userId, string title, string body)
+    {
+        try
+        {
+            await _notifications.NotifyUser(userId, title, body);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Provider verification notification failed for {UserId} (non-fatal).", userId);
+        }
+    }
 
     private static string? NullIfBlank(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
 

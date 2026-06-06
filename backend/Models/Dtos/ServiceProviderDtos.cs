@@ -70,6 +70,16 @@ public class SubmitVerificationRequest
 
 // ---------------- Responses ----------------
 
+/// <summary>
+/// Admin rejection of a provider's verification submission. Carries the reason
+/// shown to the provider. Admin identity comes from the principal, never the body.
+/// </summary>
+public class RejectProviderVerificationRequest
+{
+    [Required]
+    public string Reason { get; set; } = "";
+}
+
 /// <summary>One portfolio item as returned to clients.</summary>
 public class PortfolioItemResponse
 {
