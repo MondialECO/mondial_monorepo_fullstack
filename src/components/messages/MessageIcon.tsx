@@ -2,9 +2,16 @@
 
 import { MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useConversations } from "@/hooks/queries/chat";
 
 export default function MessageIcon() {
-  const unreadCount = 2; // later API / realtime
+  // Total unread = sum of per-conversation unread counts from the live
+  // conversations list (kept current by the chat realtime cache mutators).
+  const { data: conversations } = useConversations();
+  const unreadCount = (conversations ?? []).reduce(
+    (n, c) => n + (c.unreadCount ?? 0),
+    0
+  );
 
   return (
     <Button
@@ -16,8 +23,8 @@ export default function MessageIcon() {
       <MessageCircle className="h-5 w-5 text-muted-foreground" />
 
       {unreadCount > 0 && (
-        <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-white">
-          {unreadCount}
+        <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-medium text-white">
+          {unreadCount > 9 ? "9+" : unreadCount}
         </span>
       )}
     </Button>
