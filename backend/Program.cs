@@ -38,6 +38,7 @@ using WebApp.Services.Audit;
 using WebApp.Services;
 using WebApp.Services.Email;
 using WebApp.Services.Interface;
+using WebApp.Services.Implementations;
 using WebApp.Services.Repository;
 using WebApp.Validation;
 
@@ -293,6 +294,9 @@ else
 
 // need removed after using dashboard
 builder.Services.AddScoped<ISubmmitdata, SubmmitdataRepository>();
+
+// D-1 Service Provider (Stage 1: Verification & Onboarding) — embedded profile.
+builder.Services.AddScoped<IServiceProviderService, ServiceProviderService>();
 
 // Observability: OpenTelemetry traces + metrics (/metrics for Prometheus).
 builder.AddObservability();
