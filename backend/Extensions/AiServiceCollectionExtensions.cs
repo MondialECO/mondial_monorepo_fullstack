@@ -83,6 +83,7 @@ public static class AiServiceCollectionExtensions
         services.AddScoped<Services.Ai.Jobs.IAiTaskHandler, Services.Ai.Jobs.NoOpProbeHandler>();
         services.AddScoped<Services.Ai.Jobs.IAiTaskHandler, Services.Ai.Jobs.IdeaClarifierHandler>(); // C-2
         services.AddScoped<Services.Ai.Jobs.IAiTaskHandler, Services.Ai.Jobs.BusinessPlanHandler>();  // C-3
+        services.AddScoped<Services.Ai.Jobs.IAiTaskHandler, Services.Ai.Jobs.ForecastHandler>();      // C-4
         services.AddScoped<Services.Ai.Jobs.AiTaskHandlerRegistry>();
         services.AddScoped<Services.Ai.Jobs.IAiJobRunner, Services.Ai.Jobs.AiJobRunner>();
         services.AddScoped<Services.Ai.Jobs.IAiJobService, Services.Ai.Jobs.AiJobService>();
