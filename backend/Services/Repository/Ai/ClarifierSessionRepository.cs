@@ -5,12 +5,31 @@ using WebApp.Models.DatabaseModels.Ai;
 namespace WebApp.Services.Repository.Ai
 {
     /// <summary>
+    /// Lifecycle seam over the <c>ClarifierSessions</c> collection. Lets the
+    /// Idea-Clarifier handler (and the C-2 API) be unit-tested without a live
+    /// Mongo connection; implemented by <see cref="ClarifierSessionRepository"/>.
+    /// </summary>
+    public interface IClarifierSessionStore
+    {
+        Task AddAsync(ClarifierSession session);
+        Task<ClarifierSession?> GetOwnedAsync(string id, string ownerUserId);
+        Task<ClarifierSession?> GetByRequestAsync(string requestId, string ownerUserId);
+        Task<List<ClarifierSession>> ListByOwnerAsync(string ownerUserId, int skip, int limit);
+        Task<List<ClarifierSession>> ListByIdeaAsync(string businessIdeaId, string ownerUserId, int skip, int limit);
+        Task SetRequestIdAsync(string id, string requestId);
+        Task SetProcessingAsync(string id);
+        Task SetCompletedAsync(string id, BsonDocument output, int? clarityScore);
+        Task SetNeedsReviewAsync(string id, string error);
+        Task SetFailedAsync(string id, string error);
+    }
+
+    /// <summary>
     /// Repository for the <c>ClarifierSessions</c> collection — the C-2 source of
     /// truth. Owner-scoped reads and lifecycle transitions mirror
     /// <see cref="AiRequestRepository"/>; the engine's request/response documents
     /// stay infrastructure-only.
     /// </summary>
-    public class ClarifierSessionRepository : MongoRepository<ClarifierSession>
+    public class ClarifierSessionRepository : MongoRepository<ClarifierSession>, IClarifierSessionStore
     {
         public ClarifierSessionRepository(IMongoDatabase database) : base(database, "ClarifierSessions")
         {

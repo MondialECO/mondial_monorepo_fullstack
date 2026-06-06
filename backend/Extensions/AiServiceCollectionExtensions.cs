@@ -59,6 +59,8 @@ public static class AiServiceCollectionExtensions
 
         // ---- C-2 Idea Clarifier (source-of-truth session store) ----
         services.AddSingleton<ClarifierSessionRepository>();
+        services.AddSingleton<IClarifierSessionStore>(sp => sp.GetRequiredService<ClarifierSessionRepository>());
+        services.AddSingleton<Services.Ai.Jobs.IAiInsightWriter, Services.Ai.Jobs.AiInsightWriter>();
 
         // ---- Prompt framework (Phase 3) ----
         // Builder is stateless; store wraps the PromptVersions repository. Both
@@ -71,6 +73,7 @@ public static class AiServiceCollectionExtensions
         // type->handler map. C-1 ships only the Probe handler. Runner + service
         // are scoped (Hangfire resolves the runner in a fresh per-job scope).
         services.AddScoped<Services.Ai.Jobs.IAiTaskHandler, Services.Ai.Jobs.NoOpProbeHandler>();
+        services.AddScoped<Services.Ai.Jobs.IAiTaskHandler, Services.Ai.Jobs.IdeaClarifierHandler>(); // C-2
         services.AddScoped<Services.Ai.Jobs.AiTaskHandlerRegistry>();
         services.AddScoped<Services.Ai.Jobs.IAiJobRunner, Services.Ai.Jobs.AiJobRunner>();
         services.AddScoped<Services.Ai.Jobs.IAiJobService, Services.Ai.Jobs.AiJobService>();
