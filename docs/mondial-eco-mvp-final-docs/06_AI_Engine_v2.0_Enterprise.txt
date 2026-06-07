@@ -1,0 +1,46 @@
+
+06_AI_Engine_v2.0 (Enterprise Specification)
+Executive Summary
+The AI Engine is the intelligence layer of Mondial.eco. It powers idea discovery, founder intelligence, business planning, matching, reputation scoring and funding readiness through a multi-model AI architecture.
+Business Objectives
+- Accelerate startup creation- Improve funding readiness- Increase matching quality- Personalize user experiences- Create defensible platform intelligence
+AI Architecture
+Core Stack:- OpenRouter- OpenAI Models- Anthropic ModelsFuture:- Proprietary Models- Specialized Startup Intelligence Models- Private Fine-Tuned Models
+Model Routing Strategy
+OpenAI:- Structured generation- Business planning- Financial analysisAnthropic:- Deep reasoning- Long-context analysis- Founder interviewsRouter decides model based on task type.
+AI Module 1: Idea Generator
+Purpose:Generate startup ideas for users without ideas.Inputs:- Skills- Interests- Industries- GoalsOutputs:- Idea Cards- Opportunity Scores- Market Suggestions
+AI Module 2: Idea Clarifier
+Purpose:Transform raw ideas into structured opportunities.Outputs:- Problem Definition- Target Audience- Solution Summary- Risk Assessment- Clarity Score
+AI Module 3: Founder DNA Engine
+Purpose:Analyze motivations and founder characteristics.Outputs:- Builder Type- Founder Story- Conviction Score- Leadership Indicators
+AI Module 4: Business Plan Generator
+Outputs:- Executive Summary- Market Analysis- Revenue Model- GTM Strategy- Operations PlanBusiness Rule:Always editable by user.
+AI Module 5: Financial Forecast Engine
+Outputs:- Revenue Forecast- Cost Forecast- Cash Flow Projection- Break-even AnalysisAI results are advisory only.
+AI Module 6: Matching Engine
+Used For:- Investor Matching- Co-Founder Matching- Service Provider MatchingInputs:- Matching Vector- Skills- Goals- Geography- Reputation
+AI Module 7: Reputation Intelligence
+Purpose:Detect trust signals.Factors:- Reviews- Activity- Verification- Responsiveness- Completed Deals
+AI Module 8: Funding Readiness Engine
+Outputs:- Funding Readiness Score- Weakness Analysis- Recommended Improvements- Investor Suitability
+Prompt Framework
+Prompt Layers:1. System Prompt2. Product Context3. User Context4. Task Prompt5. Output FormatterAll prompts version controlled.
+AI Safety Rules
+- No financial guarantees- No legal guarantees- No valuation guarantees- Human review encouraged- Explain uncertainty when needed
+Cost Optimization
+- Cache reusable outputs- Route simple tasks to lower-cost models- Limit unnecessary regenerations- Use AI credits for premium features
+Analytics &amp; Monitoring
+Track:- Prompt Usage- Token Usage- Model Performance- User Satisfaction- AI Adoption
+Database Collections
+AIRequestsAIResponsesPromptVersionsAIFeedbackModelUsageAIInsights
+API Requirements
+POST /ai/idea-generatorPOST /ai/idea-clarifierPOST /ai/business-planPOST /ai/forecastGET /ai/insightsGET /ai/usage
+Permissions
+Users:Own AI resultsAdmins:Monitoring accessSystem:Routing and optimization
+Edge Cases
+Low Context InputConflicting User DataIncomplete ProfilesHallucination RisksRate Limits
+Success Metrics
+AI Adoption RateBusiness Plans GeneratedFunding Readiness ImprovementMatching Acceptance RateUser Satisfaction Score
+Future Scalability
+Proprietary AI ModelsPredictive Founder IntelligenceInvestment Prediction ModelsAI Co-FounderAutonomous Startup Advisors

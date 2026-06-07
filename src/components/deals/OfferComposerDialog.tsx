@@ -32,6 +32,8 @@ interface OfferComposerDialogProps {
   pending?: boolean;
   /** Prefill (e.g. the current terms when countering). */
   initial?: TermSheetView | null;
+  /** Server-side error from the last submit attempt, surfaced to the user. */
+  submitError?: string | null;
   onSubmit: (terms: OfferTermsInput) => void;
 }
 
@@ -47,6 +49,7 @@ export default function OfferComposerDialog({
   submitLabel,
   pending,
   initial,
+  submitError,
   onSubmit,
 }: OfferComposerDialogProps) {
   const [raise, setRaise] = useState(initial?.totalRaiseAmount?.toString() ?? "");
@@ -156,7 +159,9 @@ export default function OfferComposerDialog({
           </div>
         </div>
 
-        {error ? <p className="text-xs text-destructive">{error}</p> : null}
+        {(error ?? submitError) ? (
+          <p className="text-xs text-destructive">{error ?? submitError}</p>
+        ) : null}
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>

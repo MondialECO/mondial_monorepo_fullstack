@@ -1,7 +1,9 @@
+import { EntrepreneurProgressProvider } from "@/providers/EntrepreneurProgressProvider";
+
 export default function EntrepreneurLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return children;
+  return <EntrepreneurProgressProvider>{children}</EntrepreneurProgressProvider>;
 }

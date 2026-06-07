@@ -19,6 +19,16 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "mondialbusiness.eu",
       },
+      // Demo seed/profile imagery (creator profiles, avatars). Required or
+      // next/image throws at runtime on those pages.
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+      },
+      {
+        protocol: "https",
+        hostname: "i.pravatar.cc",
+      },
     ],
   },
 };
