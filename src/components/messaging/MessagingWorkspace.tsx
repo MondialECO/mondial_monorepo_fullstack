@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/app/_providers/AuthProvider";
 import { useSignalRHub, hubEvent } from "@/lib/realtime";
 import {
   bumpConversationInCache,

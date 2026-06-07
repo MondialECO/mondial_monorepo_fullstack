@@ -681,8 +681,8 @@ using (var scope = app.Services.CreateScope())
         Log.Warning(ex, "AI starter-credit grant skipped (non-fatal)");
     }
 
-    // Development-only demo seeding (Investor catalogue). Double-gated on
-    // IsDevelopment() and config flag SeedDemoData. Idempotent.
+    // Demo seeding (Investor catalogue + demo data). Double-gated on
+    // Development/Demo environment and config flag SeedDemoData. Idempotent.
     await scope.ServiceProvider.SeedDemoDataAsync(app.Environment, app.Configuration);
 }
 

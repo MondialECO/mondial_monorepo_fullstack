@@ -1,4 +1,5 @@
 import { UserRole } from "@/lib/roles";
+import { API_ORIGIN } from "@/lib/api-config";
 import type { ConversationParticipant } from "@/types/chat";
 
 // Within the Entrepreneur↔Investor loop the counterparty is, by definition,
@@ -30,14 +31,11 @@ export function participantDisplayName(
 }
 
 // Resolve a possibly-relative ImagePath to an absolute URL against the API
-// origin (NEXT_PUBLIC_API_BASE_URL minus the trailing /api).
+// origin (API_ORIGIN = NEXT_PUBLIC_API_BASE_URL minus the trailing /api).
 export function resolveMediaUrl(path: string | null | undefined): string | undefined {
   if (!path) return undefined;
   if (/^https?:\/\//i.test(path)) return path;
-  const apiBase =
-    process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5093/api";
-  const origin = apiBase.replace(/\/api\/?$/, "");
-  return `${origin}/${path.replace(/^\/+/, "")}`;
+  return `${API_ORIGIN}/${path.replace(/^\/+/, "")}`;
 }
 
 // Short, stable suffix to disambiguate same-role counterparties in a list.

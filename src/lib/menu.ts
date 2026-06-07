@@ -71,6 +71,11 @@ export const menu: Record<UserRole, MenuSection[]> = {
           href: "/dashboard/creator/investors",
           icon: Users,
         },
+        {
+          label: "Messages",
+          href: "/dashboard/creator/messages",
+          icon: MessageSquare,
+        },
       ],
     },
 

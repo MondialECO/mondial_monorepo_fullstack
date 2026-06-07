@@ -30,34 +30,67 @@ export default function MakeOfferButton({
   const router = useRouter();
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const createOffer = useCreateInvestorOffer();
 
   const submit = async (terms: OfferTermsInput) => {
+    setSubmitError(null);
     try {
       const deal = await createOffer.mutateAsync({ companyId, terms });
       setOpen(false);
       const base = user ? ROLE_DASHBOARD_ROUTES[user.role] : "/dashboard/investor";
       router.push(`${base}/deals?d=${deal.dealId}`);
-    } catch {
-      // Surface kept minimal; the host screen stays usable.
+    } catch (err) {
+      // Surface the failure instead of swallowing it silently — otherwise the
+      // button appears to "do nothing". Keep the dialog open so the investor
+      // can adjust terms and retry.
+      setSubmitError(extractApiError(err));
     }
   };
 
   return (
     <>
-      <Button type="button" variant={variant} size={size} className={className} onClick={() => setOpen(true)}>
+      <Button
+        type="button"
+        variant={variant}
+        size={size}
+        className={className}
+        onClick={() => {
+          setSubmitError(null);
+          setOpen(true);
+        }}
+      >
         <FileText className="h-4 w-4" aria-hidden />
         {label}
       </Button>
       <OfferComposerDialog
         open={open}
-        onOpenChange={setOpen}
+        onOpenChange={(next) => {
+          if (!next) setSubmitError(null);
+          setOpen(next);
+        }}
         title="Make an offer"
         description="Propose term-sheet economics to the founder. This starts a negotiation."
         submitLabel="Send offer"
         pending={createOffer.isPending}
+        submitError={submitError}
         onSubmit={submit}
       />
     </>
+  );
+}
+
+// Pull a human-readable message out of an axios/HTTP error, falling back to a
+// generic line so the user always gets feedback.
+function extractApiError(err: unknown): string {
+  const e = err as {
+    response?: { data?: { error?: string; message?: string } };
+    message?: string;
+  };
+  return (
+    e?.response?.data?.error ??
+    e?.response?.data?.message ??
+    e?.message ??
+    "Could not send the offer. Please try again."
   );
 }

@@ -8,6 +8,7 @@ using WebApp.DbContext;
 using WebApp.Models.DatabaseModels;
 using WebApp.Models.Dtos;
 using WebApp.Services;
+using WebApp.Services.Repository.Ai;
 
 namespace WebApp.Extensions;
 
@@ -16,9 +17,10 @@ namespace WebApp.Extensions;
 /// Investor catalogue, demo creator + investor users, demo business ideas,
 /// and demo investments that link the demo investor to the demo ideas.
 ///
-/// Double-gated: only runs when the host is Development AND configuration
-/// flag SeedDemoData=true. Production appsettings ships with
-/// SeedDemoData=false so a misconfigured prod env still won't seed.
+/// Double-gated: only runs when the host is Development OR the dedicated
+/// Demo environment, AND configuration flag SeedDemoData=true. Production
+/// appsettings ships with SeedDemoData=false so a misconfigured prod env
+/// still won't seed.
 ///
 /// Each step is independently idempotent. Re-runs are no-ops once the
 /// target rows exist.
@@ -28,12 +30,22 @@ public static class SeedingExtensions
     private const string DemoCreatorEmail = "demo.creator@mondial.local";
     private const string DemoInvestorEmail = "demo.investor@mondial.local";
     private const string DemoEntrepreneurEmail = "demo.entrepreneur@mondial.local";
+    private const string DemoServiceProviderEmail = "demo.provider@mondial.local";
+    private const string DemoAdminEmail = "demo.admin@mondial.local";
     private const string DemoPassword = "DemoP@ss1";
     private const string DemoNdaText = "This is a demo NDA — do not use in production.";
 
+    // Starter AI credit balance granted to demo users so the AI Studio flow
+    // (Idea Clarifier 1 + Business Plan 5 + Forecast 5 = 11 per full run) can
+    // be exercised end-to-end. ~9 full runs before top-up is required.
+    private const int DemoAiCredits = 100;
+
     public static async Task SeedDemoDataAsync(this IServiceProvider services, IHostEnvironment env, IConfiguration config)
     {
-        if (!env.IsDevelopment()) return;
+        // Allow seeding in Development or a dedicated Demo environment (VPS
+        // demo runs ASPNETCORE_ENVIRONMENT=Demo to keep production hardening
+        // while still seeding). Production never satisfies this gate.
+        if (!env.IsDevelopment() && !env.IsEnvironment("Demo")) return;
         if (!config.GetValue<bool>("SeedDemoData")) return;
 
         try
@@ -44,8 +56,8 @@ public static class SeedingExtensions
             await SeedInvestmentsAsync(services, investor, ideas);
 
             // Investor-demo seed pipeline (P0 for the 2026-06-10 demo). Each
-            // step is independently idempotent and inherits the dev-only +
-            // SeedDemoData=true gates from this parent method.
+            // step is independently idempotent and inherits the
+            // Development/Demo + SeedDemoData=true gates from this parent method.
             var entrepreneur = await SeedDemoEntrepreneurAsync(services);
             var companies = await SeedDemoCompaniesAsync(services, entrepreneur);
             await SeedInvestorMatchesAsync(services, investor, companies);
@@ -53,6 +65,15 @@ public static class SeedingExtensions
             await SeedDataRoomDocsAsync(services, companies);
             await SeedAccessLogsAsync(services, investor, companies);
             await SeedDealExecutionAsync(services, investor, companies);
+
+            // Demo-readiness seed pipeline (P0 for the 2026-06-10 demo): a
+            // service-provider user so entrepreneur↔provider chat exists, AI
+            // credits so the Creator AI Studio runs, and realistic inbox
+            // conversations. Each step is independently idempotent.
+            await SeedDemoAdminAsync(services);
+            var serviceProvider = await SeedDemoServiceProviderAsync(services);
+            await SeedDemoAiCreditsAsync(services, creator, investor, entrepreneur);
+            await SeedDemoConversationsAsync(services, creator, investor, entrepreneur, serviceProvider);
         }
         catch (Exception ex)
         {
@@ -131,7 +152,28 @@ public static class SeedingExtensions
         // way AuthController.Register's P0-1 wiring does. Done here in the
         // seeder rather than as a signup side effect so demo data is
         // available at boot without any user action.
-        if (string.IsNullOrEmpty(investor.InvestorProfile?.InvestorId))
+        //
+        // P1-1 self-healing: a reseed (or a manually dropped Investors
+        // collection) can leave InvestorProfile.InvestorId pointing at a row
+        // that no longer exists. Treat a non-empty-but-dangling link the same
+        // as a missing one and relink. Idempotent: a valid link is left
+        // untouched; a missing/dangling one is recreated.
+        var linkedInvestorId = investor.InvestorProfile?.InvestorId;
+        var needsLink = string.IsNullOrEmpty(linkedInvestorId);
+        if (!needsLink)
+        {
+            try
+            {
+                await investorService.GetInvestorAsync(linkedInvestorId!);
+            }
+            catch (KeyNotFoundException)
+            {
+                Log.Warning("Demo investor link {InvestorId} is dangling - relinking", linkedInvestorId);
+                needsLink = true;
+            }
+        }
+
+        if (needsLink)
         {
             try
             {
@@ -356,9 +398,27 @@ public static class SeedingExtensions
         if (existing > 0)
         {
             Log.Information("Companies already populated ({Count}) - seed skipped", existing);
-            return await dbContext.Companies
+            var owned = await dbContext.Companies
                 .Find(c => c.OwnerId == entrepreneur.Id.ToString())
                 .ToListAsync();
+
+            // Self-heal demo DBs seeded before the phase fix: Investor Deal
+            // Discovery requires CurrentPhase >= 8, so bump any demo company
+            // still parked below 8 up to 8. Idempotent — once at 8 this no-ops.
+            var stale = owned.Where(c => c.CurrentPhase < 8).ToList();
+            foreach (var c in stale)
+            {
+                var bump = Builders<Companies>.Update
+                    .Set(x => x.CurrentPhase, 8)
+                    .Set(x => x.CompletedPhases, new List<int> { 1, 2, 3, 4, 5, 6, 7 })
+                    .Set(x => x.UpdatedAt, DateTime.UtcNow);
+                await dbContext.Companies.UpdateOneAsync(x => x.Id == c.Id, bump);
+                c.CurrentPhase = 8;
+            }
+            if (stale.Count > 0)
+                Log.Information("Backfilled {Count} demo company(s) to CurrentPhase 8 for discovery", stale.Count);
+
+            return owned;
         }
 
         var seedPath = Path.Combine(AppContext.BaseDirectory, "Configuration", "SeedData", "companies.json");
@@ -390,8 +450,12 @@ public static class SeedingExtensions
                 Industry = s.Industry,
                 Tagline = s.Tagline,
                 Country = s.Country,
-                CurrentPhase = 7,
-                CompletedPhases = new List<int> { 1, 2, 3, 4, 5, 6 },
+                // Investor Deal Discovery filters on CurrentPhase >= 8
+                // (InvestorPhaseController.GetDealDiscovery). Seeding at 8 makes
+                // the demo companies discoverable; anything lower leaves the
+                // investor discovery view empty.
+                CurrentPhase = 8,
+                CompletedPhases = new List<int> { 1, 2, 3, 4, 5, 6, 7 },
                 TrustScore = s.TrustScore,
                 IsInvestorReady = s.IsInvestorReady,
                 InvestorReadyBadgeAwardedAt = s.IsInvestorReady ? now.AddDays(-7) : null,
@@ -781,6 +845,210 @@ public static class SeedingExtensions
 
         await dbContext.DealExecutions.InsertOneAsync(deal);
         Log.Information("Seeded demo deal execution for company {Name}", rousseau.CompanyName);
+    }
+
+    // ---- 11b) Demo admin (login + admin-route access for the demo) ----
+
+    // Creates the demo Admin account. GetOrCreateDemoUserAsync already sets
+    // EmailConfirmed=true, a completed universal Phase-1 onboarding state, and
+    // the DemoP@ss1 password, so the account can log in and reach admin routes
+    // immediately. No dashboard features are seeded — account creation only.
+    private static async Task<ApplicationUser> SeedDemoAdminAsync(IServiceProvider services)
+    {
+        var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+        var roleManager = services.GetRequiredService<RoleManager<ApplicationRole>>();
+
+        return await GetOrCreateDemoUserAsync(
+            userManager, roleManager,
+            email: DemoAdminEmail,
+            name: "Demo Admin",
+            role: "Admin");
+    }
+
+    // ---- 12) Demo service provider (counterpart for entrepreneur↔provider chat) ----
+
+    private static async Task<ApplicationUser> SeedDemoServiceProviderAsync(IServiceProvider services)
+    {
+        var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+        var roleManager = services.GetRequiredService<RoleManager<ApplicationRole>>();
+
+        var provider = await GetOrCreateDemoUserAsync(
+            userManager, roleManager,
+            email: DemoServiceProviderEmail,
+            name: "Demo Service Provider",
+            role: "ServiceProvider");
+
+        // P1-3: seed provider verification state so the admin verification
+        // queue (GetPendingVerificationsAsync filters on UnderReview), the
+        // public provider profile, and the trust score are all demonstrable.
+        // Idempotent: only (re)seed while the profile is absent or still
+        // Pending; an already-UnderReview/Verified/Rejected profile is left as
+        // the admin (or a prior run) set it.
+        var profile = provider.ServiceProviderProfile;
+        if (profile == null || profile.VerificationStatus == ServiceProviderVerificationStatus.Pending)
+        {
+            var now = DateTime.UtcNow;
+            provider.ServiceProviderProfile = new ServiceProviderProfile
+            {
+                ProviderId = provider.Id.ToString(),
+                CurrentPhase = 2,
+                VerificationStatus = ServiceProviderVerificationStatus.UnderReview,
+                VerificationSubmittedAt = now.AddDays(-2),
+                TrustScore = 72,
+                Headline = "Fractional CFO & Fundraising Advisor",
+                Bio = "Ex-Big-4 finance lead helping early-stage founders close seed and Series A rounds — term sheets, cap tables, and financial models.",
+                Skills = new List<string> { "Financial Modeling", "Term Sheet Review", "Cap Table", "Fundraising" },
+                ServiceCategories = new List<ServiceCategory>
+                {
+                    ServiceCategory.Finance,
+                    ServiceCategory.FundraisingSupport,
+                    ServiceCategory.DueDiligence,
+                },
+                Industries = new List<string> { "SaaS", "ClimaTech", "HealthTech" },
+                Languages = new List<string> { "English", "French" },
+                PricingModels = new List<PricingModel> { PricingModel.FixedPrice, PricingModel.Hourly },
+                CreatedAt = now.AddDays(-5),
+                UpdatedAt = now.AddDays(-2),
+            };
+            await userManager.UpdateAsync(provider);
+            Log.Information("Seeded demo service-provider verification state (UnderReview) for {Email}", provider.Email);
+        }
+        else
+        {
+            Log.Information("Demo service-provider already has verification state ({Status}) - seed skipped",
+                profile.VerificationStatus);
+        }
+
+        return provider;
+    }
+
+    // ---- 13) Demo AI credits (so the Creator AI Studio runs end-to-end) ----
+
+    // Grants each demo user a starter AICredits ledger via the SAME idempotent
+    // upsert used by the production starter-credit seeder. No bypass, no
+    // hardcoded exemption — debits still flow through AiCreditService normally;
+    // these users simply start with a real balance. Safe to re-run: an existing
+    // ledger is never touched (TryGrantInitialAsync only inserts).
+    private static async Task SeedDemoAiCreditsAsync(
+        IServiceProvider services,
+        params ApplicationUser[] users)
+    {
+        var credits = services.GetRequiredService<AiCreditLedgerRepository>();
+
+        var granted = 0;
+        foreach (var user in users)
+        {
+            if (await credits.TryGrantInitialAsync(user.Id.ToString(), DemoAiCredits))
+                granted++;
+        }
+
+        if (granted > 0)
+            Log.Information("Seeded {Count} demo AI credit ledger(s) ({Amount} each)", granted, DemoAiCredits);
+        else
+            Log.Information("Demo AI credit ledgers already present - seed skipped");
+    }
+
+    // ---- 14) Demo conversations (realistic inbox threads for the demo) ----
+
+    // Seeds three Direct conversations with backdated messages so the inbox is
+    // populated at boot. Writes straight to the Conversations / ChatMessages
+    // collections (the same ones MessagesRepository/ConversationRepository use)
+    // so messages render and unread counts compute exactly as live chat would.
+    // The final message in each thread is left unread for its recipient so the
+    // notification bell / unread badge has something to show.
+    private static async Task SeedDemoConversationsAsync(
+        IServiceProvider services,
+        ApplicationUser creator,
+        ApplicationUser investor,
+        ApplicationUser entrepreneur,
+        ApplicationUser serviceProvider)
+    {
+        var database = services.GetRequiredService<IMongoDatabase>();
+        var conversations = database.GetCollection<Conversation>("Conversations");
+        var messages = database.GetCollection<ChatMessage>("ChatMessages");
+
+        var existing = await conversations.CountDocumentsAsync(FilterDefinition<Conversation>.Empty);
+        if (existing > 0)
+        {
+            Log.Information("Conversations already populated ({Count}) - seed skipped", existing);
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+
+        // Creator ↔ Investor — interest in a seeded idea, ends investor-side (unread for creator).
+        await SeedConversationAsync(conversations, messages, creator, investor, now.AddDays(-2), new (Guid, string)[]
+        {
+            (investor.Id, "Hi! I came across GridPulse on the platform — really impressive concept. Would love to learn more about your traction."),
+            (creator.Id, "Thanks so much! We're piloting with two municipal grids and seeing an 18% peak-load reduction. Happy to share the deck."),
+            (investor.Id, "That's compelling. Could you send the latest business plan and forecast? Keen to understand your funding ask."),
+            (creator.Id, "Just generated an updated plan in AI Studio — sending it over now. We're raising €500K at seed."),
+            (investor.Id, "Perfect, I'll review it today. Let's set up a call this week."),
+        });
+
+        // Entrepreneur ↔ Investor — live deal on Rousseau, ends entrepreneur-side (unread for investor).
+        await SeedConversationAsync(conversations, messages, entrepreneur, investor, now.AddDays(-1).AddHours(-6), new (Guid, string)[]
+        {
+            (investor.Id, "I've signed the NDA and reviewed the Rousseau data room — the pitch deck and financials look solid."),
+            (entrepreneur.Id, "Great to hear! Happy to answer any questions on the cap table or the customer LOIs."),
+            (investor.Id, "The term sheet draft looks fair. I'm comfortable committing €450K at the €2.4M pre-money."),
+            (entrepreneur.Id, "Fantastic — that works for us. I'll have our counsel confirm the closing timeline and revert shortly."),
+        });
+
+        // Entrepreneur ↔ Service Provider — advisory engagement, ends provider-side (unread for entrepreneur).
+        await SeedConversationAsync(conversations, messages, entrepreneur, serviceProvider, now.AddHours(-20), new (Guid, string)[]
+        {
+            (entrepreneur.Id, "Hi — we're closing a seed round and need help reviewing our term sheet and cap table. Are you available?"),
+            (serviceProvider.Id, "Absolutely, that's right in our wheelhouse. We offer fixed-fee term sheet reviews for early-stage founders."),
+            (entrepreneur.Id, "Perfect. The round is €450K at €2.4M pre-money, preferred shares. Can you turn it around this week?"),
+            (serviceProvider.Id, "Yes — send the draft over and we'll have comments back within 48 hours."),
+        });
+
+        Log.Information("Seeded 3 demo conversation(s) with messages");
+    }
+
+    // Inserts one Direct conversation and its messages. All but the last message
+    // are marked read; the last stays unread so its recipient sees an unread
+    // badge. Timestamps step forward 30 min from startedAt to read naturally.
+    private static async Task SeedConversationAsync(
+        IMongoCollection<Conversation> conversations,
+        IMongoCollection<ChatMessage> messages,
+        ApplicationUser a,
+        ApplicationUser b,
+        DateTime startedAt,
+        (Guid SenderId, string Message)[] script)
+    {
+        var conversation = new Conversation
+        {
+            Id = ObjectId.GenerateNewId(),
+            Participants = new List<Guid> { a.Id, b.Id },
+            Type = "Direct",
+            CreatedAt = startedAt,
+        };
+        await conversations.InsertOneAsync(conversation);
+
+        var docs = new List<ChatMessage>();
+        for (var i = 0; i < script.Length; i++)
+        {
+            var isLast = i == script.Length - 1;
+            docs.Add(new ChatMessage
+            {
+                Id = ObjectId.GenerateNewId(),
+                ConversationId = conversation.Id,
+                SenderId = script[i].SenderId,
+                Message = script[i].Message,
+                MessageType = "Text",
+                IsRead = !isLast, // leave the final message unread for its recipient
+                CreatedAt = startedAt.AddMinutes(30 * i),
+            });
+        }
+        await messages.InsertManyAsync(docs);
+
+        var last = docs[^1];
+        var update = Builders<Conversation>.Update
+            .Set(c => c.LastMessage, last.Message)
+            .Set(c => c.LastMessageAt, last.CreatedAt);
+        await conversations.UpdateOneAsync(c => c.Id == conversation.Id, update);
     }
 
     /// <summary>

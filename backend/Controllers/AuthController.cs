@@ -459,20 +459,27 @@ namespace WebApp.Controllers
                 _configuration["JwtSettings:Audience"] ?? "mondial-app"
             );
 
-            // console.WriteLine(principal.Claims.ToList());
-            Console.WriteLine("Principal identity: " + principal.Identity?.Name + ", Claims count: " + principal.Claims.Count());
             if (principal == null)
                 return UnauthorizedResponse("Invalid or expired token");
 
             // The local JwtSecurityTokenHandler instance inherits the
-            // process-wide DefaultMapInboundClaims = true, so inbound "sub"
-            // is normally remapped to ClaimTypes.NameIdentifier. Keep the
-            // explicit Sub lookup as a primary, and fall through to the
-            // mapped name to match the refresh-token path above.
+            // process-wide DefaultMapInboundClaims = true, so the raw JWT
+            // claim names emitted by GenerateOnboardingToken are remapped to
+            // the long ClaimTypes.* URIs when the token is read back:
+            //   "sub"   -> ClaimTypes.NameIdentifier
+            //   "email" -> ClaimTypes.Email
+            // (The role claim is already written as ClaimTypes.Role, so it
+            //  survives unchanged.) Look up each value under BOTH the raw JWT
+            // name and the mapped type so validation is correct regardless of
+            // the inbound-claim-mapping setting. The previous code only read
+            // the raw "email" claim, which was null after mapping and caused a
+            // spurious 401 "Invalid token claims" for every new signup.
             var userId = principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value
                       ?? principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            var email = principal.FindFirst("email")?.Value;
-            var role = principal.FindFirst(ClaimTypes.Role)?.Value;
+            var email = principal.FindFirst("email")?.Value
+                      ?? principal.FindFirst(ClaimTypes.Email)?.Value;
+            var role = principal.FindFirst(ClaimTypes.Role)?.Value
+                      ?? principal.FindFirst("role")?.Value;
             var tokenType = principal.FindFirst("token_type")?.Value;
 
             if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(email) || string.IsNullOrEmpty(role) || tokenType != "onboarding")

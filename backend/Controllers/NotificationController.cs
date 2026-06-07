@@ -36,11 +36,17 @@ namespace WebApp.Controllers
         [HttpPost("read/{id}")]
         public async Task<IActionResult> MarkAsRead(string id)
         {
+            // Defensive parse: a malformed id is treated as "not found" (no
+            // enumeration signal) rather than surfacing a 500. Previously
+            // ObjectId.Parse threw a FormatException on any non-24-hex id.
+            if (!ObjectId.TryParse(id, out var objectId))
+                return NotFound();
+
             // Ownership is enforced atomically in the repository — the Mongo
             // update filter requires both Id AND UserId to match. A foreign
-            // notification id results in zero updates, returning 404 (no
+            // notification id results in zero matches, returning 404 (no
             // enumeration signal).
-            var updated = await _service.MarkAsRead(ObjectId.Parse(id), CurrentUserId);
+            var updated = await _service.MarkAsRead(objectId, CurrentUserId);
             if (!updated) return NotFound();
             return Ok();
         }
