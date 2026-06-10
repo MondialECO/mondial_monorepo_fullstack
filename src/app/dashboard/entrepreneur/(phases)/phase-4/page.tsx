@@ -75,4 +75,22 @@ function Phase4PageContent() {
           <Button variant="outline" asChild>
             <Link href="/dashboard/entrepreneur">Back to overview</Link>
           </Button>
-          <Button asCh
+          <Button asChild disabled={!isPhase3Complete}>
+            <Link href="/dashboard/entrepreneur/phase-4/step-1">
+              {isPhase3Complete ? 'Start submission' : 'Complete Phase 3 first'}
+              <ArrowRight className="w-4 h-4 ml-2" aria-hidden />
+            </Link>
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function Phase4Page() {
+  return (
+    <RouteGuard requiredPhase={4}>
+      <Phase4PageContent />
+    </RouteGuard>
+  );
+}

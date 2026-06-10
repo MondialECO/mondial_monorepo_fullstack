@@ -230,4 +230,13 @@ export function CapTableList({ rows, totalShares }: { rows: CapTableRow[]; total
           ))}
         </tbody>
         <tfoot>
-          <tr className
+          <tr className="border-t border-border font-semibold">
+            <td className="py-2.5 pr-4 text-foreground" colSpan={3}>Total{totalShares ? ` · ${intl(totalShares)} shares` : ''}</td>
+            <td className="py-2.5 pr-4 tabular-nums text-foreground">{pct(totalPct)}</td>
+            <td className="py-2.5 tabular-nums text-foreground">{totalInvest > 0 ? eur(totalInvest) : '—'}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  );
+}

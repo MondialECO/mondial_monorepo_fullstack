@@ -540,4 +540,26 @@ export default function Phase5Client() {
       <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 flex gap-3">
         <AlertCircle className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
         <p className="text-sm text-muted-foreground">
-          Submitting Phase 5 sends your fu
+          Submitting Phase 5 sends your funding ask, pitch deck, and narrative to compliance
+          review and unlocks Phase 6. Verified investor-facing status is awarded separately after
+          review.
+        </p>
+      </div>
+
+      {validationError && (
+        <div className="bg-destructive/10 border-2 border-destructive/30 rounded-xl p-4 flex gap-3">
+          <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
+          <p className="text-sm font-semibold text-destructive">{validationError}</p>
+        </div>
+      )}
+
+      <StepFooter
+        backUrl="/dashboard/entrepreneur/phase-4"
+        onNextClick={handleSubmit}
+        isLoading={isSubmitting}
+        nextLabel="Submit &amp; Complete Phase 5"
+        nextValidationError={validationError}
+      />
+    </div>
+  );
+}

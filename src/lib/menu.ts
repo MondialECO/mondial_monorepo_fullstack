@@ -170,4 +170,49 @@ export const menu: Record<UserRole, MenuSection[]> = {
           icon: TrendingUp,
         },
         {
-          label:
+          label: "Data Room",
+          href: "/dashboard/entrepreneur/phase-6",
+          icon: FolderOpen,
+        },
+        {
+          label: "AI Review",
+          href: "/dashboard/entrepreneur/phase-7",
+          icon: Sparkles,
+        },
+      ],
+    },
+    {
+      title: "Matching",
+      items: [
+        {
+          label: "Investor Matching",
+          href: "/dashboard/entrepreneur/phase-8",
+          icon: Handshake,
+        },
+        {
+          label: "Deals",
+          href: "/dashboard/entrepreneur/deals",
+          icon: Users,
+        },
+        {
+          label: "Messages",
+          href: "/dashboard/entrepreneur/messages",
+          icon: MessageSquare,
+        },
+      ],
+    },
+  ],
+
+  [UserRole.SERVICE_PROVIDER]: [
+    {
+      title: "Dashboard",
+      items: [
+        {
+          label: "Provider Profile",
+          href: "/dashboard/serviceprovider/profile",
+          icon: BadgeCheck,
+        },
+      ],
+    },
+  ],
+};

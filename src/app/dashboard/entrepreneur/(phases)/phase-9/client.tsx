@@ -618,4 +618,28 @@ export default function Phase9Client() {
                   {a.notes && ` · ${a.notes}`}
                   <span className="block text-muted-foreground">
                     {new Date(a.occurredAt).toLocaleString()}
-        
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {/* Advance footer */}
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-input">
+        <p className="text-xs text-muted-foreground">
+          {canAdvance
+            ? 'At least one deal is signed/completed — Phase 9 can advance.'
+            : 'At least one deal must reach signed or completed before Phase 9 can advance.'}
+        </p>
+        <Button
+          onClick={handleAdvance}
+          disabled={!canAdvance || isSubmitting}
+        >
+          {isSubmitting ? 'Advancing…' : 'Complete Phase 9'}
+        </Button>
+      </div>
+    </div>
+  );
+}

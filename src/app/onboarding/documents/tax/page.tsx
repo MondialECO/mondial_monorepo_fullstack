@@ -11,3 +11,6 @@ export default function TaxPage() {
       title="Tax Documents"
       description="Tax residency certificate or most recent return."
       helper="Upload a recent tax filing or residency certificate. Required for Investor accreditation."
+    />
+  );
+}
