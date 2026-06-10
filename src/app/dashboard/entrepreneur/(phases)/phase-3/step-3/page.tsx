@@ -11,6 +11,7 @@ import { EntrepreneurLayout } from '@/components/entrepreneur/EntrepreneurLayout
 import { ProgressSidebar } from '@/components/entrepreneur/ProgressSidebar';
 import { PhaseHeader } from '@/components/entrepreneur/PhaseHeader';
 import { StepFooter } from '@/components/entrepreneur/StepFooter';
+import { Phase3FinancialDashboard } from '@/components/entrepreneur/phase3/Phase3FinancialDashboard';
 import entrepreneurApi, {
   FinancialReportResponse,
 } from '@/lib/api-entrepreneur';
@@ -90,8 +91,12 @@ function Phase3Step3Client() {
 
   if (!progress) {
     return (
-      <div className="min-h-screen bg-neutral-100 flex items-center justify-center p-4">
-        <p className="text-neutral-5 text-sm">Loading…</p>
+      <div
+        className="min-h-screen bg-background flex items-center justify-center p-4"
+        role="status"
+        aria-live="polite"
+      >
+        <p className="text-muted-foreground text-sm">Loading…</p>
       </div>
     );
   }
@@ -100,6 +105,7 @@ function Phase3Step3Client() {
     (sum, a) => sum + (parseFloat(a.percent) || 0),
     0,
   );
+  const allocationValid = allocationTotal >= 95 && allocationTotal <= 105;
 
   async function resolveCompanyId(): Promise<string> {
     const existing: Phase3Data = getPhaseData<Phase3Data>(3) ?? {};
@@ -284,36 +290,42 @@ function Phase3Step3Client() {
           progressPercentage={100}
         />
 
+        {/* Figma 3.2 / 3.3 — live valuation + KPI tracker (real data, honest unavailable states) */}
+        <Phase3FinancialDashboard />
+
         {/* Funding ask */}
-        <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 space-y-4">
-          <h3 className="text-lg font-bold text-neutral-1">Funding ask</h3>
+        <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+          <h2 className="text-lg font-bold text-foreground">Funding ask</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-neutral-1 mb-2">Raise amount (€)</label>
+              <label htmlFor="raise-amount" className="block text-sm font-semibold text-foreground mb-2">Raise amount (€)</label>
               <Input
+                id="raise-amount"
                 type="number"
                 min={0}
                 value={raiseAmount}
                 onChange={(e) => setRaiseAmount(e.target.value)}
-                className="h-10 bg-background border-neutral-2"
+                className="h-10"
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-neutral-1 mb-2">Pre-money valuation (€)</label>
+              <label htmlFor="pre-money" className="block text-sm font-semibold text-foreground mb-2">Pre-money valuation (€)</label>
               <Input
+                id="pre-money"
                 type="number"
                 min={0}
                 value={preMoneyValuation}
                 onChange={(e) => setPreMoneyValuation(e.target.value)}
-                className="h-10 bg-background border-neutral-2"
+                className="h-10"
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-neutral-1 mb-2">Round</label>
+              <label htmlFor="round-type" className="block text-sm font-semibold text-foreground mb-2">Round</label>
               <select
+                id="round-type"
                 value={roundType}
                 onChange={(e) => setRoundType(e.target.value as RoundType)}
-                className="h-10 w-full rounded-md border border-neutral-2 bg-background px-3 text-sm"
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <option value="pre_seed">pre_seed</option>
                 <option value="seed">seed</option>
@@ -321,11 +333,12 @@ function Phase3Step3Client() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-semibold text-neutral-1 mb-2">Share type</label>
+              <label htmlFor="share-type" className="block text-sm font-semibold text-foreground mb-2">Share type</label>
               <select
+                id="share-type"
                 value={shareType}
                 onChange={(e) => setShareType(e.target.value as ShareType)}
-                className="h-10 w-full rounded-md border border-neutral-2 bg-background px-3 text-sm"
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <option value="preferred">preferred</option>
                 <option value="safe">safe</option>
@@ -336,11 +349,11 @@ function Phase3Step3Client() {
         </div>
 
         {/* Capital allocation */}
-        <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 space-y-4">
+        <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-bold text-neutral-1">Capital allocation</h3>
+            <h2 className="text-lg font-bold text-foreground">Capital allocation</h2>
             <Button variant="outline" size="sm" onClick={addAllocation} className="gap-2">
-              <Plus className="w-4 h-4" /> Add category
+              <Plus className="w-4 h-4" aria-hidden /> Add category
             </Button>
           </div>
           <div className="space-y-2">
@@ -351,7 +364,8 @@ function Phase3Step3Client() {
                   value={a.category}
                   onChange={(e) => updateAllocation(idx, { category: e.target.value })}
                   placeholder="Category"
-                  className="col-span-7 h-9 bg-background border-neutral-2"
+                  aria-label={`Allocation ${idx + 1} category`}
+                  className="col-span-7 h-9"
                 />
                 <Input
                   type="number"
@@ -360,56 +374,54 @@ function Phase3Step3Client() {
                   value={a.percent}
                   onChange={(e) => updateAllocation(idx, { percent: e.target.value })}
                   placeholder="%"
-                  className="col-span-4 h-9 bg-background border-neutral-2"
+                  aria-label={`Allocation ${idx + 1} percent`}
+                  className="col-span-4 h-9"
                 />
                 <Button
                   variant="ghost"
                   size="sm"
                   className="col-span-1"
                   onClick={() => removeAllocation(idx)}
-                  aria-label="Remove"
+                  aria-label={`Remove allocation ${idx + 1}`}
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <Trash2 className="w-4 h-4" aria-hidden />
                 </Button>
               </div>
             ))}
           </div>
-          <p
-            className={`text-sm font-semibold ${
-              allocationTotal >= 95 && allocationTotal <= 105 ? 'text-green-700' : 'text-amber-700'
-            }`}
-          >
+          <p className={`text-sm font-semibold ${allocationValid ? 'text-primary' : 'text-destructive'}`} role="status" aria-live="polite">
             Total: {allocationTotal.toFixed(2)}%
           </p>
         </div>
 
         {/* KPI baseline */}
-        <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 space-y-4">
-          <h3 className="text-lg font-bold text-neutral-1">KPI baseline</h3>
-          <p className="text-sm text-neutral-5">
+        <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+          <h2 className="text-lg font-bold text-foreground">KPI baseline</h2>
+          <p className="text-sm text-muted-foreground">
             Reviewers need a snapshot of your unit economics. All fields required.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {(
               [
-                ['MRR (€)', mrr, setMrr],
-                ['ARR (€)', arr, setArr],
-                ['Gross margin (%)', grossMargin, setGrossMargin],
-                ['CAC (€)', cac, setCac],
-                ['LTV (€)', ltv, setLtv],
-                ['Churn (%)', churn, setChurn],
-                ['Active accounts', activeAccounts, setActiveAccounts],
+                ['MRR (€)', 'mrr', mrr, setMrr],
+                ['ARR (€)', 'arr', arr, setArr],
+                ['Gross margin (%)', 'gm', grossMargin, setGrossMargin],
+                ['CAC (€)', 'cac', cac, setCac],
+                ['LTV (€)', 'ltv', ltv, setLtv],
+                ['Churn (%)', 'churn', churn, setChurn],
+                ['Active accounts', 'aa', activeAccounts, setActiveAccounts],
               ] as const
-            ).map(([label, value, setter]) => (
-              <div key={label}>
-                <label className="block text-sm font-semibold text-neutral-1 mb-2">{label}</label>
+            ).map(([label, id, value, setter]) => (
+              <div key={id}>
+                <label htmlFor={`kpi-${id}`} className="block text-sm font-semibold text-foreground mb-2">{label}</label>
                 <Input
+                  id={`kpi-${id}`}
                   type="number"
                   min={0}
                   value={value}
                   onChange={(e) => setter(e.target.value)}
                   placeholder="0"
-                  className="h-10 bg-background border-neutral-2"
+                  className="h-10"
                 />
               </div>
             ))}
@@ -417,9 +429,9 @@ function Phase3Step3Client() {
         </div>
 
         {/* Financial reports */}
-        <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 space-y-4">
-          <h3 className="text-lg font-bold text-neutral-1">Financial reports</h3>
-          <p className="text-sm text-neutral-5">
+        <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+          <h2 className="text-lg font-bold text-foreground">Financial reports</h2>
+          <p className="text-sm text-muted-foreground">
             Upload your latest P&amp;L and balance sheet. PDFs or spreadsheets accepted.
           </p>
           <div className="space-y-3">
@@ -431,18 +443,18 @@ function Phase3Step3Client() {
               return (
                 <div
                   key={rt.id}
-                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-background border-2 border-neutral-2 rounded-xl p-4"
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-background border border-border rounded-xl p-4"
                 >
                   <div className="flex items-start gap-3 flex-1">
-                    <FileText className="w-5 h-5 text-neutral-5 mt-0.5" />
+                    <FileText className="w-5 h-5 text-muted-foreground mt-0.5" aria-hidden />
                     <div>
-                      <p className="text-sm font-semibold text-neutral-1">{rt.label}</p>
+                      <p className="text-sm font-semibold text-foreground">{rt.label}</p>
                       {uploaded ? (
-                        <p className="text-xs text-neutral-5 mt-1">
+                        <p className="text-xs text-muted-foreground mt-1">
                           {uploaded.fileName} · {uploaded.status}
                         </p>
                       ) : (
-                        <p className="text-xs text-neutral-5 mt-1">Required</p>
+                        <p className="text-xs text-muted-foreground mt-1">Required</p>
                       )}
                     </div>
                   </div>
@@ -451,6 +463,7 @@ function Phase3Step3Client() {
                       type="file"
                       className="hidden"
                       accept=".pdf,.doc,.docx,.xls,.xlsx"
+                      aria-label={`Upload ${rt.label}`}
                       onChange={(e) => {
                         const f = e.target.files?.[0];
                         if (f) handleReportUpload(rt.id, f);
@@ -464,7 +477,7 @@ function Phase3Step3Client() {
                       className="gap-2"
                     >
                       <span>
-                        <Upload className="w-4 h-4" />
+                        <Upload className="w-4 h-4" aria-hidden />
                         {uploading ? 'Uploading…' : uploaded ? 'Replace' : 'Upload'}
                       </span>
                     </Button>
@@ -475,30 +488,13 @@ function Phase3Step3Client() {
           </div>
         </div>
 
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex gap-3">
-          <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-blue-800">
+        <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 flex gap-3">
+          <AlertCircle className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" aria-hidden />
+          <p className="text-sm text-muted-foreground">
             Submitting Phase 3 sends your financials for compliance review and unlocks Phase 4.
             Verification is awarded separately after a reviewer approves your submission.
           </p>
         </div>
 
         <StepFooter
-          backUrl="/dashboard/entrepreneur/phase-3/step-2"
-          onNextClick={handleSubmit}
-          isLoading={isSubmitting}
-          nextLabel="Submit &amp; Complete Phase 3"
-          nextValidationError={validationError}
-        />
-      </div>
-    </EntrepreneurLayout>
-  );
-}
-
-export default function Phase3Step3Page() {
-  return (
-    <RouteGuard requiredPhase={3} requiredStep={3}>
-      <Phase3Step3Client />
-    </RouteGuard>
-  );
-}
+          backUrl="/dashboard/entr

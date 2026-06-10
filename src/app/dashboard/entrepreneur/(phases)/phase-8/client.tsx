@@ -14,13 +14,43 @@ import {
 import { Button } from '@/components/ui/button';
 import { useEntrepreneurProgress } from '@/hooks/useEntrepreneurProgress';
 import { StepFooter } from '@/components/entrepreneur/StepFooter';
+import {
+  SectionCard,
+  MetricCard,
+  Chip,
+  UnavailableValue,
+  type Tone,
+} from '@/components/entrepreneur/phase3/FinancialWidgets';
 import entrepreneurApi, {
   InvestorMatchResponse,
   MatchingInsightsResponse,
+  type FundingProfileResponse,
 } from '@/lib/api-entrepreneur';
 import { Phase8Data } from '@/types/entrepreneur';
 
 const INTERACTION_TYPES = ['view', 'message', 'call', 'proposal_sent', 'term_sheet'] as const;
+
+const TABS: Array<{ key: string; label: string }> = [
+  { key: 'all', label: 'All' },
+  { key: 'interested', label: 'Interested' },
+  { key: 'accepted', label: 'Accepted' },
+  { key: 'saved', label: 'Saved' },
+  { key: 'rejected', label: 'Rejected' },
+];
+
+const eur = (n: number) =>
+  new Intl.NumberFormat('en-IE', { style: 'currency', currency: 'EUR', notation: 'compact', maximumFractionDigits: 1 }).format(n || 0);
+
+function scoreTone(s: number): Tone {
+  return s >= 70 ? 'success' : s >= 40 ? 'warning' : 'muted';
+}
+function statusTone(s: string): Tone {
+  const v = (s || '').toLowerCase();
+  if (v === 'accepted') return 'success';
+  if (v === 'interested') return 'primary';
+  if (v === 'rejected') return 'destructive';
+  return 'muted';
+}
 
 export default function Phase8Client() {
   const router = useRouter();
@@ -29,6 +59,11 @@ export default function Phase8Client() {
 
   const [matches, setMatches] = useState<InvestorMatchResponse[]>([]);
   const [insights, setInsights] = useState<MatchingInsightsResponse | null>(null);
+  const [funding, setFunding] = useState<FundingProfileResponse | null>(null);
+  const [investorReady, setInvestorReady] = useState<boolean | null>(null);
+  const [activeTab, setActiveTab] = useState('all');
+  const [filterType, setFilterType] = useState('');
+  const [filterRound, setFilterRound] = useState('');
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -43,13 +78,18 @@ export default function Phase8Client() {
 
   const reload = async () => {
     try {
-      const companyId = await resolveCompanyId();
-      const [m, i] = await Promise.all([
+      const prog = await entrepreneurApi.getCurrentPhase();
+      const companyId = (getPhaseData<Phase8Data>(8) ?? {}).__companyId ?? prog.companyId;
+      setInvestorReady(prog.isInvestorReady);
+      if (!companyId) return;
+      const [m, i, f] = await Promise.all([
         entrepreneurApi.getInvestorMatches(companyId),
         entrepreneurApi.getMatchingInsights(companyId).catch(() => null),
+        entrepreneurApi.getFundingProfile(companyId).catch(() => null),
       ]);
       setMatches(m);
       setInsights(i);
+      setFunding(f);
       const existing: Phase8Data = getPhaseData<Phase8Data>(8) ?? {};
       savePhaseData(8, {
         ...existing,
@@ -139,141 +179,84 @@ export default function Phase8Client() {
 
   const canAdvance = matches.some((m) => m.matchScore >= 40);
 
+  const types = Array.from(new Set(matches.map((m) => m.investorType).filter(Boolean))) as string[];
+  const rounds = Array.from(new Set(matches.map((m) => m.preferredRound).filter(Boolean))) as string[];
+  const tabCount = (key: string) =>
+    key === 'all' ? matches.length : matches.filter((m) => (m.status || '').toLowerCase() === key).length;
+  const visible = matches.filter((m) => {
+    if (activeTab !== 'all' && (m.status || '').toLowerCase() !== activeTab) return false;
+    if (filterType && m.investorType !== filterType) return false;
+    if (filterRound && m.preferredRound !== filterRound) return false;
+    return true;
+  });
+  const avg = insights ? Math.max(0, Math.min(100, insights.averageScore)) : 0;
+
   return (
     <div className="space-y-6">
       {/* Dev banner — explicit, no AI claims */}
-      <div className="bg-amber-50 border border-amber-300 rounded-xl p-4 flex gap-3">
-        <Info className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-        <div className="text-sm text-amber-900">
+      <div className="bg-warning/10 border border-warning/40 rounded-xl p-4 flex gap-3">
+        <Info className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" aria-hidden />
+        <div className="text-sm text-foreground">
           <p className="font-semibold mb-1">Deterministic rule-based matching active</p>
           <p>
-            Match scores and rationales are computed by a backend rules engine that
-            intersects your company profile with each investor&apos;s declared preferences
-            (sector, stage, check-size band, geography). LLM-driven personalised matching
-            will replace this when AI provider credentials are configured.
+            Match scores and rationales are computed by a backend rules engine that intersects your
+            company profile with each investor&apos;s declared preferences (sector, stage, check-size
+            band, geography). LLM-driven personalised matching will replace this when AI provider
+            credentials are configured.
           </p>
         </div>
       </div>
 
-      {/* Insights summary — backend-derived */}
-      <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 space-y-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h3 className="text-lg font-bold text-neutral-1">Investor matches</h3>
-            <p className="text-xs text-neutral-5 mt-1">
-              {insights
-                ? `${insights.totalMatches} total · ${insights.highScoreMatches} high-score · avg ${insights.averageScore}`
-                : 'No matches generated yet.'}
-            </p>
-          </div>
-          <Button onClick={handleRegenerate} disabled={isRegenerating} className="gap-2">
-            <RefreshCcw className="w-4 h-4" />
-            {isRegenerating ? 'Generating…' : matches.length > 0 ? 'Re-run matching' : 'Generate matches'}
-          </Button>
-        </div>
+      {/* KPI row — real MatchingInsights */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <MetricCard label="Total matches" value={insights ? String(insights.totalMatches) : undefined} unavailable={insights ? undefined : 'unavailable'} />
+        <MetricCard label="High-score matches" value={insights ? String(insights.highScoreMatches) : undefined} unavailable={insights ? undefined : 'unavailable'} chip="score ≥ 70" chipTone="success" />
+        <MetricCard label="Average match score" value={insights ? String(insights.averageScore) : undefined} unavailable={insights ? undefined : 'unavailable'} />
       </div>
-
-      {/* Match cards */}
-      <div className="space-y-3">
-        {matches.length === 0 ? (
-          <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 text-sm text-neutral-5">
-            No matches yet. Click <strong>Generate matches</strong> to run the matcher against the
-            active investor pool.
+      {insights && (
+        <div>
+          <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
+            <span>Average match score</span><span>{insights.averageScore}/100</span>
           </div>
-        ) : (
-          matches.map((m) => (
-            <div
-              key={m.matchId}
-              className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 space-y-3"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-base font-bold text-neutral-1">
-                    {m.investorName ?? m.investorId}
-                  </p>
-                  <p className="text-xs text-neutral-5">
-                    {m.investorType ?? '—'}
-                    {m.investmentRange ? ` · ${m.investmentRange}` : ''}
-                    {m.preferredRound ? ` · ${m.preferredRound}` : ''}
-                  </p>
-                  {m.preferredSectors.length > 0 && (
-                    <p className="text-xs text-neutral-5 mt-1">
-                      Sectors: {m.preferredSectors.join(', ')}
-                    </p>
-                  )}
-                </div>
-                <div className="text-right">
-                  <p className={`text-2xl font-bold ${m.matchScore >= 70 ? 'text-green-700' : m.matchScore >= 40 ? 'text-amber-700' : 'text-neutral-5'}`}>
-                    {m.matchScore}
-                  </p>
-                  <p className="text-xs text-neutral-5">match score</p>
-                </div>
-              </div>
-
-              {m.matchRationale && (
-                <p className="text-xs text-neutral-5 bg-background border border-neutral-2 rounded-md p-2 font-mono">
-                  {m.matchRationale}
-                </p>
-              )}
-
-              <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-neutral-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs uppercase text-neutral-5">Status:</span>
-                  <span className="text-xs font-semibold text-neutral-1">{m.status}</span>
-                  {m.engineVersion && (
-                    <span className="text-xs text-neutral-5">· engine: {m.engineVersion}</span>
-                  )}
-                </div>
-                <div className="flex flex-wrap gap-1">
-                  <Button size="sm" variant="outline" onClick={() => handleStatusUpdate(m.matchId, 'saved')}>
-                    <Bookmark className="w-3 h-3 mr-1" /> Save
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => handleStatusUpdate(m.matchId, 'accepted')}>
-                    <Check className="w-3 h-3 mr-1" /> Accept
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => handleStatusUpdate(m.matchId, 'rejected')}>
-                    <X className="w-3 h-3 mr-1" /> Reject
-                  </Button>
-                  <details className="relative">
-                    <summary className="list-none cursor-pointer">
-                      <Button size="sm" variant="outline" asChild>
-                        <span><MessageSquare className="w-3 h-3 mr-1" /> Log interaction</span>
-                      </Button>
-                    </summary>
-                    <div className="absolute right-0 mt-2 w-48 bg-background border border-neutral-2 rounded-md shadow-lg p-2 z-10">
-                      {INTERACTION_TYPES.map((kind) => (
-                        <button
-                          key={kind}
-                          className="block w-full text-left px-2 py-1 text-xs text-neutral-1 hover:bg-neutral-2 rounded"
-                          onClick={() => handleInteraction(m.matchId, kind)}
-                        >
-                          {kind}
-                        </button>
-                      ))}
-                    </div>
-                  </details>
-                </div>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-
-      {error && (
-        <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4 flex gap-3">
-          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-          <p className="text-sm font-semibold text-red-900">{error}</p>
+          <div className="h-2 w-full overflow-hidden rounded-full bg-muted" role="progressbar" aria-label="Average match score" aria-valuenow={avg} aria-valuemin={0} aria-valuemax={100}>
+            <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${avg}%` }} />
+          </div>
         </div>
       )}
 
-      <StepFooter
-        backUrl="/dashboard/entrepreneur/phase-7"
-        onNextClick={handleSubmit}
-        isLoading={isSubmitting}
-        nextLabel="Submit &amp; Complete Phase 8"
-        nextValidationError={error}
-        isNextDisabled={!canAdvance}
-      />
-    </div>
-  );
-}
+      {/* Funding ask banner — real FundingProfile */}
+      <SectionCard
+        title="Your funding ask is live"
+        headerRight={
+          <Button onClick={handleRegenerate} disabled={isRegenerating} size="sm" className="gap-2">
+            <RefreshCcw className={`w-4 h-4 ${isRegenerating ? 'animate-spin' : ''}`} aria-hidden />
+            {isRegenerating ? 'Generating…' : matches.length > 0 ? 'Re-run matching' : 'Generate matches'}
+          </Button>
+        }
+      >
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+          <span className="text-foreground"><span className="text-muted-foreground">Amount:</span> <span className="font-semibold">{funding?.fundingAskAmount ? eur(funding.fundingAskAmount) : '—'}</span></span>
+          <span className="text-foreground"><span className="text-muted-foreground">Round:</span> <span className="font-semibold">{funding?.fundingRoundType ?? '—'}</span></span>
+          <span className="text-foreground"><span className="text-muted-foreground">Equity offered:</span> <span className="font-semibold">{funding?.equityOfferedPercent ? `${funding.equityOfferedPercent}%` : '—'}</span></span>
+          <Chip tone={investorReady ? 'success' : 'muted'}>{investorReady == null ? 'Status pending' : investorReady ? 'Investor-ready ✓' : 'Not yet investor-ready'}</Chip>
+        </div>
+      </SectionCard>
+
+      {/* Tabs + filters */}
+      <div className="space-y-3">
+        <div role="tablist" aria-label="Match status" className="flex flex-wrap gap-2">
+          {TABS.map((t) => (
+            <button
+              key={t.key}
+              role="tab"
+              aria-selected={activeTab === t.key}
+              onClick={() => setActiveTab(t.key)}
+              className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${activeTab === t.key ? 'border-transparent bg-primary text-primary-foreground' : 'border-border bg-card text-foreground hover:border-primary/40'}`}
+            >
+              {t.label} <span className={activeTab === t.key ? 'text-primary-foreground/80' : 'text-muted-foreground'}>({tabCount(t.key)})</span>
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-end gap-3">
+          <div>
+            <label htmlFor="filter-type" className="block text-xs font-medium text-muted-

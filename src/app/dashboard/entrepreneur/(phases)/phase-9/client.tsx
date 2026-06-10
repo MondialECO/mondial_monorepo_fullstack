@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Info, RefreshCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useEntrepreneurProgress } from '@/hooks/useEntrepreneurProgress';
+import { Phase9PipelineVisuals } from '@/components/entrepreneur/deals/Phase9PipelineVisuals';
 import entrepreneurApi, {
   DealActivityLogResponse,
   DealStatus,
@@ -305,19 +306,22 @@ export default function Phase9Client() {
   if (isLoading) {
     return (
       <div className="space-y-4">
-        <div className="h-16 bg-neutral-3 border-2 border-neutral-4 rounded-2xl animate-pulse" />
-        <div className="h-32 bg-neutral-3 border-2 border-neutral-4 rounded-2xl animate-pulse" />
-        <div className="h-32 bg-neutral-3 border-2 border-neutral-4 rounded-2xl animate-pulse" />
+        <div className="h-16 bg-card border-2 border-border rounded-2xl animate-pulse" />
+        <div className="h-32 bg-card border-2 border-border rounded-2xl animate-pulse" />
+        <div className="h-32 bg-card border-2 border-border rounded-2xl animate-pulse" />
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      {/* Figma P9 — pipeline visuals (real data + honest shells) */}
+      <Phase9PipelineVisuals />
+
       {/* Dev banner — explicit, no AI claims */}
-      <div className="bg-amber-50 border border-amber-300 rounded-xl p-4 flex gap-3">
-        <Info className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-        <div className="text-sm text-amber-900">
+      <div className="bg-warning/10 border border-warning/40 rounded-xl p-4 flex gap-3">
+        <Info className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
+        <div className="text-sm text-foreground">
           <p className="font-semibold mb-1">Deterministic deal pipeline active</p>
           <p>
             Deal state transitions, term-sheet signing, and document storage are
@@ -330,22 +334,23 @@ export default function Phase9Client() {
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-300 rounded-md p-3 text-sm text-red-700">
+        <div className="bg-destructive/10 border border-destructive/30 rounded-md p-3 text-sm text-destructive">
           {error}
         </div>
       )}
 
       {/* Create deal */}
-      <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 space-y-4">
-        <h3 className="text-lg font-bold text-neutral-1">Create deal</h3>
-        <p className="text-xs text-neutral-5">
+      <div className="bg-card border-2 border-border rounded-2xl p-6 space-y-4">
+        <h3 className="text-lg font-bold text-foreground">Create deal</h3>
+        <p className="text-xs text-muted-foreground">
           Pick an investor from your matches and seed the term sheet. The deal
           starts in <code>initiated</code>; move it through the pipeline via the
           status selector once created.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <select
-            className="bg-background border border-neutral-2 rounded-md px-3 py-2 text-sm"
+            aria-label="Select investor for new deal"
+            className="bg-background border border-input rounded-md px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             value={newDealInvestorId}
             onChange={(e) => setNewDealInvestorId(e.target.value)}
           >
@@ -357,7 +362,7 @@ export default function Phase9Client() {
             ))}
           </select>
           <input
-            className="bg-background border border-neutral-2 rounded-md px-3 py-2 text-sm"
+            className="bg-background border border-input rounded-md px-3 py-2 text-sm"
             placeholder="Total raise (EUR)"
             type="number"
             min="0"
@@ -365,7 +370,7 @@ export default function Phase9Client() {
             onChange={(e) => setNewDealRaise(e.target.value)}
           />
           <input
-            className="bg-background border border-neutral-2 rounded-md px-3 py-2 text-sm"
+            className="bg-background border border-input rounded-md px-3 py-2 text-sm"
             placeholder="Post-money valuation (EUR)"
             type="number"
             min="0"
@@ -377,18 +382,18 @@ export default function Phase9Client() {
           Create deal
         </Button>
         {matches.length === 0 && (
-          <p className="text-xs text-neutral-5">
+          <p className="text-xs text-muted-foreground">
             No investor matches available — generate matches in Phase 8 first.
           </p>
         )}
       </div>
 
       {/* Deal list + selector */}
-      <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 space-y-4">
+      <div className="bg-card border-2 border-border rounded-2xl p-6 space-y-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h3 className="text-lg font-bold text-neutral-1">Deals</h3>
-            <p className="text-xs text-neutral-5 mt-1">
+            <h3 className="text-lg font-bold text-foreground">Deals</h3>
+            <p className="text-xs text-muted-foreground mt-1">
               {isLoading
                 ? 'Loading…'
                 : deals.length === 0
@@ -413,7 +418,7 @@ export default function Phase9Client() {
                 className={`text-xs px-3 py-1.5 rounded-md border ${
                   d.dealId === selectedDealId
                     ? 'bg-primary text-primary-foreground border-primary'
-                    : 'bg-background border-neutral-2 text-neutral-1'
+                    : 'bg-background border-input text-foreground'
                 }`}
               >
                 {d.investors[0]?.investorName ?? d.dealId.slice(-6)} · {d.status}
@@ -425,21 +430,21 @@ export default function Phase9Client() {
 
       {/* Selected deal detail */}
       {selectedDeal && (
-        <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 space-y-4">
+        <div className="bg-card border-2 border-border rounded-2xl p-6 space-y-4">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h3 className="text-lg font-bold text-neutral-1">
+              <h3 className="text-lg font-bold text-foreground">
                 Deal {selectedDeal.dealId.slice(-6)}
               </h3>
-              <p className="text-xs text-neutral-5 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Investor: {selectedDeal.investors[0]?.investorName ?? '—'} ·
                 Term sheet: {selectedDeal.termSheet.status} ·
                 Raise: EUR {selectedDeal.termSheet.totalRaiseAmount.toLocaleString()}
               </p>
             </div>
             <div className="text-right">
-              <p className="text-2xl font-bold text-neutral-1">{selectedDeal.status}</p>
-              <p className="text-xs text-neutral-5">current state</p>
+              <p className="text-2xl font-bold text-foreground">{selectedDeal.status}</p>
+              <p className="text-xs text-muted-foreground">current state</p>
             </div>
           </div>
 
@@ -456,11 +461,12 @@ export default function Phase9Client() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="text-xs uppercase text-neutral-5 block mb-1">
+              <label className="text-xs uppercase text-muted-foreground block mb-1">
                 Advance status
               </label>
               <select
-                className="w-full bg-background border border-neutral-2 rounded-md px-3 py-2 text-sm"
+                aria-label="Advance deal status"
+                className="w-full bg-background border border-input rounded-md px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 value={selectedDeal.status}
                 onChange={(e) => void handleStatusChange(e.target.value as DealStatus)}
               >
@@ -470,21 +476,22 @@ export default function Phase9Client() {
                   </option>
                 ))}
               </select>
-              <p className="text-xs text-neutral-5 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Backend enforces the transition graph; illegal moves return 400.
               </p>
             </div>
 
             <div>
-              <label className="text-xs uppercase text-neutral-5 block mb-1">
+              <label className="text-xs uppercase text-muted-foreground block mb-1">
                 Upload signed term sheet
               </label>
               <input
                 type="file"
+                aria-label="Upload signed term sheet"
                 className="block w-full text-xs"
                 onChange={(e) => void handleSignTermSheet(e.target.files?.[0] ?? null)}
               />
-              <p className="text-xs text-neutral-5 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Requires term sheet axis to be in &apos;agreed&apos; first.
               </p>
             </div>
@@ -494,17 +501,18 @@ export default function Phase9Client() {
 
       {/* Due diligence */}
       {selectedDeal && (
-        <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 space-y-4">
-          <h3 className="text-lg font-bold text-neutral-1">Due diligence</h3>
+        <div className="bg-card border-2 border-border rounded-2xl p-6 space-y-4">
+          <h3 className="text-lg font-bold text-foreground">Due diligence</h3>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
             <input
-              className="bg-background border border-neutral-2 rounded-md px-3 py-2 text-sm md:col-span-2"
+              className="bg-background border border-input rounded-md px-3 py-2 text-sm md:col-span-2"
               placeholder="Item name (e.g. Cap table review)"
               value={ddItemName}
               onChange={(e) => setDdItemName(e.target.value)}
             />
             <select
-              className="bg-background border border-neutral-2 rounded-md px-3 py-2 text-sm"
+              aria-label="Due diligence category"
+              className="bg-background border border-input rounded-md px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               value={ddCategory}
               onChange={(e) => setDdCategory(e.target.value as typeof ddCategory)}
             >
@@ -514,7 +522,8 @@ export default function Phase9Client() {
               <option value="business">business</option>
             </select>
             <select
-              className="bg-background border border-neutral-2 rounded-md px-3 py-2 text-sm"
+              aria-label="Due diligence status"
+              className="bg-background border border-input rounded-md px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               value={ddStatus}
               onChange={(e) => setDdStatus(e.target.value as DueDiligenceStatus)}
             >
@@ -530,11 +539,11 @@ export default function Phase9Client() {
 
       {/* Closing checklist */}
       {selectedDeal && (
-        <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 space-y-3">
-          <h3 className="text-lg font-bold text-neutral-1">Closing checklist</h3>
+        <div className="bg-card border-2 border-border rounded-2xl p-6 space-y-3">
+          <h3 className="text-lg font-bold text-foreground">Closing checklist</h3>
           <div className="flex gap-2">
             <input
-              className="flex-1 bg-background border border-neutral-2 rounded-md px-3 py-2 text-sm"
+              className="flex-1 bg-background border border-input rounded-md px-3 py-2 text-sm"
               placeholder="Checklist item (e.g. Sign SPA)"
               value={checklistInput}
               onChange={(e) => setChecklistInput(e.target.value)}
@@ -545,17 +554,17 @@ export default function Phase9Client() {
             <Button onClick={() => handleChecklistAdd(true)}>Add as done</Button>
           </div>
           {selectedDeal.closingChecklist.length === 0 ? (
-            <p className="text-xs text-neutral-5">No checklist items yet.</p>
+            <p className="text-xs text-muted-foreground">No checklist items yet.</p>
           ) : (
             <ul className="space-y-1">
               {selectedDeal.closingChecklist.map((c) => (
                 <li
                   key={c.item}
-                  className="flex items-center justify-between text-sm bg-background border border-neutral-2 rounded-md px-3 py-2"
+                  className="flex items-center justify-between text-sm bg-background border border-input rounded-md px-3 py-2"
                 >
-                  <span className={c.completed ? 'text-neutral-5 line-through' : 'text-neutral-1'}>
+                  <span className={c.completed ? 'text-muted-foreground line-through' : 'text-foreground'}>
                     {c.item}
-                    <span className="text-xs text-neutral-5 ml-2">[{c.owner}]</span>
+                    <span className="text-xs text-muted-foreground ml-2">[{c.owner}]</span>
                   </span>
                   <Button
                     size="sm"
@@ -573,14 +582,14 @@ export default function Phase9Client() {
 
       {/* Deal documents */}
       {selectedDeal && (
-        <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 space-y-3">
-          <h3 className="text-lg font-bold text-neutral-1">Deal documents</h3>
-          <p className="text-xs text-neutral-5">
+        <div className="bg-card border-2 border-border rounded-2xl p-6 space-y-3">
+          <h3 className="text-lg font-bold text-foreground">Deal documents</h3>
+          <p className="text-xs text-muted-foreground">
             Documents are stored per deal; downloads require deal ownership.
             Signed term sheets are uploaded via the deal-detail panel above and
             recorded with kind <code>term_sheet</code>.
           </p>
-          <label className="text-xs uppercase text-neutral-5 block">
+          <label className="text-xs uppercase text-muted-foreground block">
             Upload other document
           </label>
           <input
@@ -593,44 +602,20 @@ export default function Phase9Client() {
 
       {/* Activity timeline (backend-derived) */}
       {selectedDeal && (
-        <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 space-y-3">
-          <h3 className="text-lg font-bold text-neutral-1">Activity timeline</h3>
+        <div className="bg-card border-2 border-border rounded-2xl p-6 space-y-3">
+          <h3 className="text-lg font-bold text-foreground">Activity timeline</h3>
           {activity.length === 0 ? (
-            <p className="text-xs text-neutral-5">No activity yet.</p>
+            <p className="text-xs text-muted-foreground">No activity yet.</p>
           ) : (
             <ul className="space-y-2">
               {activity.map((a) => (
                 <li
                   key={a.id}
-                  className="text-xs text-neutral-5 bg-background border border-neutral-2 rounded-md p-2 font-mono"
+                  className="text-xs text-muted-foreground bg-background border border-input rounded-md p-2 font-mono"
                 >
-                  <span className="text-neutral-1 font-semibold">{a.eventType}</span>
+                  <span className="text-foreground font-semibold">{a.eventType}</span>
                   {a.fromStatus && a.toStatus && ` · ${a.fromStatus} → ${a.toStatus}`}
                   {a.notes && ` · ${a.notes}`}
-                  <span className="block text-neutral-5">
+                  <span className="block text-muted-foreground">
                     {new Date(a.occurredAt).toLocaleString()}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
-
-      {/* Advance footer */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-neutral-2">
-        <p className="text-xs text-neutral-5">
-          {canAdvance
-            ? 'At least one deal is signed/completed — Phase 9 can advance.'
-            : 'At least one deal must reach signed or completed before Phase 9 can advance.'}
-        </p>
-        <Button
-          onClick={handleAdvance}
-          disabled={!canAdvance || isSubmitting}
-        >
-          {isSubmitting ? 'Advancing…' : 'Complete Phase 9'}
-        </Button>
-      </div>
-    </div>
-  );
-}
+        
