@@ -300,4 +300,22 @@ export function Phase3FinancialDashboard({ companyId: companyIdProp }: { company
             <MetricCard label="LTV" value={hasKpi ? eur(kpi!.ltv) : undefined} unavailable={hasKpi ? undefined : 'unavailable'} />
             <MetricCard label="Total runway" value={hasFin && financial!.runwayMonths > 0 ? `${num(financial!.runwayMonths)} mo` : undefined} unavailable={hasFin && financial!.runwayMonths > 0 ? undefined : 'unavailable'} />
             <MetricCard label="Gross margin" value={hasKpi ? `${num(kpi!.grossMarginPercent)}%` : undefined} unavailable={hasKpi ? undefined : 'unavailable'} />
-            <MetricCard label="
+            <MetricCard label="NPS" unavailable="unavailable" />
+            <MetricCard label="Burn rate" unavailable="unavailable" />
+          </div>
+        </div>
+
+        {/* Business health */}
+        <div className="mt-4">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-sm font-semibold text-foreground">Business health</p>
+            {progress && <Chip tone="primary">{`Trust score ${progress.trustScore}/100`}</Chip>}
+          </div>
+          <DataTable columns={['Metric', 'Value', 'Status']} rows={healthRows} caption="Business health metrics" />
+        </div>
+      </SectionCard>
+    </div>
+  );
+}
+
+export default Phase3FinancialDashboard;

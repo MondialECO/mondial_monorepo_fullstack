@@ -271,4 +271,78 @@ export function IntegrationNotice({
             {a}
           </button>
         ))}
-        <span className="text-xs italic text-muted-foreground">Awaiting integration<
+        <span className="text-xs italic text-muted-foreground">Awaiting integration</span>
+      </div>
+    </div>
+  );
+}
+
+export interface RailStep {
+  label: string;
+  description: string;
+  state: 'complete' | 'current' | 'pending';
+}
+
+/** Figma 3.3 left "Verification Progress" rail — vertical stepper + overall-score footer. */
+export function VerificationProgressRail({
+  steps,
+  overallPercent,
+  helper,
+}: {
+  steps: RailStep[];
+  overallPercent: number | null;
+  helper?: string;
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-card p-5">
+      <p className="mb-4 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
+        Verification progress
+      </p>
+      <ol className="space-y-1">
+        {steps.map((s, i) => (
+          <li key={s.label} className="flex gap-3">
+            <div className="flex flex-col items-center">
+              <span
+                className={cn(
+                  'flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-xs font-semibold',
+                  s.state === 'complete'
+                    ? 'border-transparent bg-success-light text-success-text'
+                    : s.state === 'current'
+                      ? 'border-transparent bg-primary text-primary-foreground'
+                      : 'border-border bg-muted text-muted-foreground',
+                )}
+                aria-hidden
+              >
+                {s.state === 'complete' ? <Check className="h-4 w-4" /> : i + 1}
+              </span>
+              {i < steps.length - 1 && <span className="my-1 w-px flex-1 bg-border" aria-hidden />}
+            </div>
+            <div className="pb-3">
+              <p className="text-sm font-semibold text-foreground">
+                {s.label}
+                <span className="sr-only"> — {s.state}</span>
+              </p>
+              <p className="text-xs leading-5 text-muted-foreground">{s.description}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
+      <div className="mt-2 rounded-lg border border-border bg-muted/40 p-3">
+        <div className="mb-1 flex items-center justify-between">
+          <span className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">Overall score</span>
+          <span className="text-sm font-semibold text-foreground">{overallPercent == null ? '—' : `${overallPercent}%`}</span>
+        </div>
+        <div
+          className="h-2 w-full overflow-hidden rounded-full bg-muted"
+          role="progressbar"
+          aria-valuenow={overallPercent ?? 0}
+          aria-valuemin={0}
+          aria-valuemax={100}
+        >
+          <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${overallPercent ?? 0}%` }} />
+        </div>
+        {helper && <p className="mt-2 text-xs text-muted-foreground">{helper}</p>}
+      </div>
+    </div>
+  );
+}

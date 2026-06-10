@@ -11,3 +11,6 @@ export default function IncomePage() {
       title="Proof of Income"
       description="Pay slips, employment letter, or last year's tax return."
       helper="Upload at least one document showing income. Investors must provide this for accreditation."
+    />
+  );
+}

@@ -497,4 +497,21 @@ function Phase3Step3Client() {
         </div>
 
         <StepFooter
-          backUrl="/dashboard/entr
+          backUrl="/dashboard/entrepreneur/phase-3/step-2"
+          onNextClick={handleSubmit}
+          isLoading={isSubmitting}
+          nextLabel="Submit &amp; Complete Phase 3"
+          nextValidationError={validationError}
+        />
+      </div>
+    </EntrepreneurLayout>
+  );
+}
+
+export default function Phase3Step3Page() {
+  return (
+    <RouteGuard requiredPhase={3} requiredStep={3}>
+      <Phase3Step3Client />
+    </RouteGuard>
+  );
+}

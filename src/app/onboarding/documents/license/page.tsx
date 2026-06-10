@@ -13,3 +13,6 @@ export default function LicensePage() {
       helper="Upload a clear photo or scan. Service Providers must provide a professional credential or licence."
       acceptHint="PDF or image. Up to 20MB."
       accept=".pdf,.jpg,.jpeg,.png,.webp"
+    />
+  );
+}

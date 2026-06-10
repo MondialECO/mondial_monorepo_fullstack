@@ -388,4 +388,72 @@ export function Phase3RevenueInputClient() {
 
             <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
               <div className="flex items-center justify-between">
-           
+                <h2 className="text-lg font-bold text-foreground">Monthly revenue (optional)</h2>
+                <Button variant="outline" size="sm" className="gap-2" onClick={addMonthlyRow}>
+                  <Plus className="w-4 h-4" aria-hidden /> Add month
+                </Button>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Add monthly breakdowns to give reviewers a finer-grained picture. YYYY-MM format.
+              </p>
+              <div className="space-y-3">
+                {monthlyRows.map((row, idx) => (
+                  <div key={idx} className="grid grid-cols-12 gap-2">
+                    <Input
+                      type="text"
+                      value={row.yearMonth}
+                      onChange={(e) => updateMonthlyRow(idx, { yearMonth: e.target.value })}
+                      placeholder="2026-04"
+                      aria-label={`Month ${idx + 1} (YYYY-MM)`}
+                      className="col-span-5 h-10"
+                    />
+                    <div className="col-span-6 flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground" aria-hidden>€</span>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={row.revenue}
+                        onChange={(e) => updateMonthlyRow(idx, { revenue: e.target.value })}
+                        placeholder="0"
+                        aria-label={`Month ${idx + 1} revenue in euros`}
+                        className="h-10 flex-1"
+                      />
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="col-span-1"
+                      onClick={() => removeMonthlyRow(idx)}
+                      aria-label={`Remove month ${idx + 1}`}
+                    >
+                      <Trash2 className="w-4 h-4" aria-hidden />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 flex gap-3">
+              <AlertCircle className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" aria-hidden />
+              <div>
+                <p className="text-sm font-semibold text-foreground mb-1">Submission, not verification</p>
+                <p className="text-sm text-muted-foreground">
+                  Saving this data submits your financials for compliance review. Valuation is calculated
+                  by the backend; no insights are shown until they exist.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <StepFooter
+          backUrl="/dashboard/entrepreneur/phase-2"
+          onNextClick={handleNextClick}
+          isLoading={isSubmitting}
+          nextLabel="Save &amp; Continue"
+          nextValidationError={validationError}
+        />
+      </div>
+    </EntrepreneurLayout>
+  );
+}

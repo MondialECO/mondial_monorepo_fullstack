@@ -11,3 +11,6 @@ export default function ResidencePage() {
       title="Proof of Residence"
       description="Recent utility bill or bank statement showing your current address."
       helper="Drag a file or browse. Must be dated within the last 3 months."
+    />
+  );
+}

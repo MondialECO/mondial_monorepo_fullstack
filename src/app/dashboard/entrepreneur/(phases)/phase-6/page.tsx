@@ -418,4 +418,6 @@ export default function Phase6Page() {
           <Phase6Content />
         </div>
       </EntrepreneurLayout>
-    </RouteGuard
+    </RouteGuard>
+  );
+}

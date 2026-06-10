@@ -267,4 +267,6 @@ export default function Phase7Page() {
           <Phase7Content />
         </div>
       </EntrepreneurLayout>
-    </RouteGuard
+    </RouteGuard>
+  );
+}
