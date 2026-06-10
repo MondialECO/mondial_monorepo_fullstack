@@ -91,8 +91,8 @@ function Phase4Step1Client() {
 
   if (!progress) {
     return (
-      <div className="min-h-screen bg-neutral-100 flex items-center justify-center p-4">
-        <p className="text-neutral-5 text-sm">Loading…</p>
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <p className="text-muted-foreground text-sm">Loading…</p>
       </div>
     );
   }
@@ -222,10 +222,10 @@ function Phase4Step1Client() {
           progressPercentage={33}
         />
 
-        <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 space-y-4">
+        <div className="bg-card border-2 border-border rounded-2xl p-6 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-neutral-1 mb-2">
+              <label className="block text-sm font-semibold text-foreground mb-2">
                 Total authorised shares
               </label>
               <Input
@@ -234,18 +234,18 @@ function Phase4Step1Client() {
                 value={totalShares}
                 onChange={(e) => setTotalShares(e.target.value)}
                 placeholder="e.g. 1000000"
-                className="h-10 bg-background border-neutral-2"
+                className="h-10 bg-background border-input"
               />
-              <p className="text-xs text-neutral-5 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Enter the total authorised share count for your company. Nothing is persisted until you continue.
               </p>
             </div>
           </div>
         </div>
 
-        <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 space-y-4">
+        <div className="bg-card border-2 border-border rounded-2xl p-6 space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-bold text-neutral-1 flex items-center gap-2">
+            <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
               <Users className="w-5 h-5" /> Grants
             </h3>
             <div className="flex gap-2">
@@ -265,23 +265,23 @@ function Phase4Step1Client() {
             {rows.map((row, idx) => (
               <div key={idx} className="grid grid-cols-12 gap-2 items-end">
                 <div className="col-span-4">
-                  <label className="block text-xs font-semibold text-neutral-5 mb-1">Name</label>
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">Name</label>
                   <Input
                     type="text"
                     value={row.stakeholderName}
                     onChange={(e) => updateRow(idx, { stakeholderName: e.target.value })}
                     placeholder="Stakeholder"
-                    className="h-9 bg-background border-neutral-2"
+                    className="h-9 bg-background border-input"
                   />
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-xs font-semibold text-neutral-5 mb-1">Type</label>
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">Type</label>
                   <select
                     value={row.stakeholderType}
                     onChange={(e) =>
                       updateRow(idx, { stakeholderType: e.target.value as StakeholderType })
                     }
-                    className="h-9 w-full rounded-md border border-neutral-2 bg-background px-2 text-sm"
+                    className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
                   >
                     <option value="founder">founder</option>
                     <option value="investor">investor</option>
@@ -289,11 +289,11 @@ function Phase4Step1Client() {
                   </select>
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-xs font-semibold text-neutral-5 mb-1">Class</label>
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">Class</label>
                   <select
                     value={row.shareClass}
                     onChange={(e) => updateRow(idx, { shareClass: e.target.value as ShareClass })}
-                    className="h-9 w-full rounded-md border border-neutral-2 bg-background px-2 text-sm"
+                    className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
                   >
                     <option value="common">common</option>
                     <option value="preferred">preferred</option>
@@ -302,23 +302,23 @@ function Phase4Step1Client() {
                   </select>
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-xs font-semibold text-neutral-5 mb-1">Shares</label>
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">Shares</label>
                   <Input
                     type="number"
                     min={0}
                     value={row.sharesGranted}
                     onChange={(e) => updateRow(idx, { sharesGranted: e.target.value })}
-                    className="h-9 bg-background border-neutral-2"
+                    className="h-9 bg-background border-input"
                   />
                 </div>
                 <div className="col-span-1">
-                  <label className="block text-xs font-semibold text-neutral-5 mb-1">€</label>
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">€</label>
                   <Input
                     type="number"
                     min={0}
                     value={row.investmentAmount}
                     onChange={(e) => updateRow(idx, { investmentAmount: e.target.value })}
-                    className="h-9 bg-background border-neutral-2"
+                    className="h-9 bg-background border-input"
                   />
                 </div>
                 <Button
@@ -334,20 +334,20 @@ function Phase4Step1Client() {
             ))}
           </div>
 
-          <div className="pt-4 border-t-2 border-neutral-2 flex items-center justify-between">
-            <p className="text-sm text-neutral-5">
+          <div className="pt-4 border-t-2 border-input flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
               Allocated:{' '}
-              <span className="font-bold text-neutral-1">
+              <span className="font-bold text-foreground">
                 {allocated.toLocaleString()} / {totalSharesNum.toLocaleString()}
               </span>
             </p>
-            <p className="text-sm font-bold text-neutral-1">{allocatedPercent.toFixed(2)}%</p>
+            <p className="text-sm font-bold text-foreground">{allocatedPercent.toFixed(2)}%</p>
           </div>
         </div>
 
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex gap-3">
-          <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-blue-800">
+        <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 flex gap-3">
+          <AlertCircle className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-muted-foreground">
             Step 1 persists a draft cap table to the backend. Final reconciliation to 100% is enforced
             on Submit in step 3 by <code>ValidatePhase4Async</code>.
           </p>

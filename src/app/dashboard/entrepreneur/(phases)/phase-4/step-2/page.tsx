@@ -113,8 +113,8 @@ function Phase4Step2Client() {
 
   if (!progress) {
     return (
-      <div className="min-h-screen bg-neutral-100 flex items-center justify-center p-4">
-        <p className="text-neutral-5 text-sm">Loading…</p>
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <p className="text-muted-foreground text-sm">Loading…</p>
       </div>
     );
   }
@@ -297,13 +297,13 @@ function Phase4Step2Client() {
           progressPercentage={66}
         />
 
-        <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 space-y-4">
-          <h3 className="text-lg font-bold text-neutral-1 flex items-center gap-2">
+        <div className="bg-card border-2 border-border rounded-2xl p-6 space-y-4">
+          <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
             <PieChart className="w-5 h-5" /> ESOP pool
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-neutral-1 mb-2">Pool (%)</label>
+              <label className="block text-sm font-semibold text-foreground mb-2">Pool (%)</label>
               <Input
                 type="number"
                 min={0}
@@ -311,33 +311,33 @@ function Phase4Step2Client() {
                 value={esopPoolPercent}
                 onChange={(e) => setEsopPoolPercent(e.target.value)}
                 placeholder="0"
-                className="h-10 bg-background border-neutral-2"
+                className="h-10 bg-background border-input"
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-neutral-1 mb-2">Vesting months</label>
+              <label className="block text-sm font-semibold text-foreground mb-2">Vesting months</label>
               <Input
                 type="number"
                 min={0}
                 value={esopVestingMonths}
                 onChange={(e) => setEsopVestingMonths(e.target.value)}
-                className="h-10 bg-background border-neutral-2"
+                className="h-10 bg-background border-input"
               />
             </div>
           </div>
-          <p className="text-xs text-neutral-5">
+          <p className="text-xs text-muted-foreground">
             ESOP shares are calculated server-side as <code>floor(pool% × totalShares)</code>.
           </p>
         </div>
 
-        <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 space-y-4">
+        <div className="bg-card border-2 border-border rounded-2xl p-6 space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-bold text-neutral-1">Vesting schedules</h3>
+            <h3 className="text-lg font-bold text-foreground">Vesting schedules</h3>
             <Button variant="outline" size="sm" onClick={addVestingRow} className="gap-2">
               <Plus className="w-4 h-4" /> Add schedule
             </Button>
           </div>
-          <p className="text-xs text-neutral-5">
+          <p className="text-xs text-muted-foreground">
             Standard schedule: 12-month cliff, 48-month total (25% at 12, 50% at 24, 75% at 36, 100% at 48).
             Backend computes vested % from grant date.
           </p>
@@ -349,7 +349,7 @@ function Phase4Step2Client() {
                   value={v.stakeholderName}
                   onChange={(e) => updateVestingRow(idx, { stakeholderName: e.target.value })}
                   placeholder="Name"
-                  className="col-span-3 h-9 bg-background border-neutral-2"
+                  className="col-span-3 h-9 bg-background border-input"
                 />
                 <Input
                   type="number"
@@ -357,13 +357,13 @@ function Phase4Step2Client() {
                   value={v.sharesGranted}
                   onChange={(e) => updateVestingRow(idx, { sharesGranted: e.target.value })}
                   placeholder="Shares"
-                  className="col-span-2 h-9 bg-background border-neutral-2"
+                  className="col-span-2 h-9 bg-background border-input"
                 />
                 <Input
                   type="date"
                   value={v.grantDate}
                   onChange={(e) => updateVestingRow(idx, { grantDate: e.target.value })}
-                  className="col-span-3 h-9 bg-background border-neutral-2"
+                  className="col-span-3 h-9 bg-background border-input"
                 />
                 <Input
                   type="number"
@@ -371,7 +371,7 @@ function Phase4Step2Client() {
                   value={v.cliffMonths}
                   onChange={(e) => updateVestingRow(idx, { cliffMonths: e.target.value })}
                   placeholder="Cliff"
-                  className="col-span-1 h-9 bg-background border-neutral-2"
+                  className="col-span-1 h-9 bg-background border-input"
                 />
                 <Input
                   type="number"
@@ -379,7 +379,7 @@ function Phase4Step2Client() {
                   value={v.totalVestMonths}
                   onChange={(e) => updateVestingRow(idx, { totalVestMonths: e.target.value })}
                   placeholder="Total"
-                  className="col-span-2 h-9 bg-background border-neutral-2"
+                  className="col-span-2 h-9 bg-background border-input"
                 />
                 <Button
                   variant="ghost"
@@ -395,9 +395,9 @@ function Phase4Step2Client() {
           </div>
         </div>
 
-        <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 space-y-4">
+        <div className="bg-card border-2 border-border rounded-2xl p-6 space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-bold text-neutral-1">Share issuances (optional)</h3>
+            <h3 className="text-lg font-bold text-foreground">Share issuances (optional)</h3>
             <Button variant="outline" size="sm" onClick={addIssuanceRow} className="gap-2">
               <Plus className="w-4 h-4" /> Add issuance
             </Button>
@@ -410,12 +410,12 @@ function Phase4Step2Client() {
                   value={row.issuedTo}
                   onChange={(e) => updateIssuanceRow(idx, { issuedTo: e.target.value })}
                   placeholder="Issued to"
-                  className="col-span-3 h-9 bg-background border-neutral-2"
+                  className="col-span-3 h-9 bg-background border-input"
                 />
                 <select
                   value={row.shareClass}
                   onChange={(e) => updateIssuanceRow(idx, { shareClass: e.target.value as ShareClass })}
-                  className="col-span-2 h-9 rounded-md border border-neutral-2 bg-background px-2 text-sm"
+                  className="col-span-2 h-9 rounded-md border border-input bg-background px-2 text-sm"
                 >
                   <option value="common">common</option>
                   <option value="preferred">preferred</option>
@@ -428,7 +428,7 @@ function Phase4Step2Client() {
                   value={row.sharesIssued}
                   onChange={(e) => updateIssuanceRow(idx, { sharesIssued: e.target.value })}
                   placeholder="Shares"
-                  className="col-span-2 h-9 bg-background border-neutral-2"
+                  className="col-span-2 h-9 bg-background border-input"
                 />
                 <Input
                   type="number"
@@ -436,14 +436,14 @@ function Phase4Step2Client() {
                   value={row.pricePerShare}
                   onChange={(e) => updateIssuanceRow(idx, { pricePerShare: e.target.value })}
                   placeholder="€/share"
-                  className="col-span-2 h-9 bg-background border-neutral-2"
+                  className="col-span-2 h-9 bg-background border-input"
                 />
                 <Input
                   type="text"
                   value={row.reason}
                   onChange={(e) => updateIssuanceRow(idx, { reason: e.target.value })}
                   placeholder="Reason"
-                  className="col-span-2 h-9 bg-background border-neutral-2"
+                  className="col-span-2 h-9 bg-background border-input"
                 />
                 <Button
                   variant="ghost"
@@ -459,9 +459,9 @@ function Phase4Step2Client() {
           </div>
         </div>
 
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex gap-3">
-          <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-blue-800">
+        <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 flex gap-3">
+          <AlertCircle className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-muted-foreground">
             Saving here writes a new cap-table version, persists vesting schedules, and records each
             issuance event. Failed save blocks progression.
           </p>

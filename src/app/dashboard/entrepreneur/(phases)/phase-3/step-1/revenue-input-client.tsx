@@ -16,10 +16,10 @@ import { EntrepreneurLayout } from '@/components/entrepreneur/EntrepreneurLayout
 import { ProgressSidebar } from '@/components/entrepreneur/ProgressSidebar';
 import { PhaseHeader } from '@/components/entrepreneur/PhaseHeader';
 import { StepFooter } from '@/components/entrepreneur/StepFooter';
-import { TrendingUp, AlertCircle, Plus, Trash2 } from 'lucide-react';
+import { TrendingUp, AlertCircle, Plus, Trash2, ShieldCheck, Activity } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import entrepreneurApi from '@/lib/api-entrepreneur';
+import entrepreneurApi, { type FinancialSummaryResponse } from '@/lib/api-entrepreneur';
 import { Phase3Data } from '@/types/entrepreneur';
 
 const PHASE_3_STEPS = [
@@ -49,22 +49,35 @@ export function Phase3RevenueInputClient() {
   const [validationError, setValidationError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Hydrate from backend if a monthly series exists.
+  // Real backend-derived status (Figma 3.1 "Verification Status" + "Financial
+  // Health" cards). Populated only once the backend has computed a valuation —
+  // otherwise the cards show an honest "pending" state. No fake values.
+  const [financial, setFinancial] = useState<FinancialSummaryResponse | null>(null);
+  const [investorReady, setInvestorReady] = useState<boolean | null>(null);
+
+  // Hydrate from backend if a monthly series exists, and pull real financial
+  // summary + verification status for the status cards.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         const existing: Phase3Data = getPhaseData<Phase3Data>(3) ?? {};
-        const companyId =
-          existing.__companyId ?? (await entrepreneurApi.getCurrentPhase()).companyId;
-        if (!companyId) return;
-        const monthly = await entrepreneurApi.getMonthlyRevenue(companyId);
+        const prog = await entrepreneurApi.getCurrentPhase();
+        const companyId = existing.__companyId ?? prog.companyId;
         if (cancelled) return;
-        if (monthly.length > 0) {
+        setInvestorReady(prog.isInvestorReady);
+        if (!companyId) return;
+        const [monthly, fin] = await Promise.allSettled([
+          entrepreneurApi.getMonthlyRevenue(companyId),
+          entrepreneurApi.getFinancialSummary(companyId),
+        ]);
+        if (cancelled) return;
+        if (monthly.status === 'fulfilled' && monthly.value.length > 0) {
           setMonthlyRows(
-            monthly.map((m) => ({ yearMonth: m.yearMonth, revenue: String(m.revenue) })),
+            monthly.value.map((m) => ({ yearMonth: m.yearMonth, revenue: String(m.revenue) })),
           );
         }
+        if (fin.status === 'fulfilled') setFinancial(fin.value);
       } catch {
         // Silent — empty form is a fine fallback.
       }
@@ -76,8 +89,12 @@ export function Phase3RevenueInputClient() {
 
   if (!progress) {
     return (
-      <div className="min-h-screen bg-neutral-100 flex items-center justify-center p-4">
-        <p className="text-neutral-5 text-sm">Loading…</p>
+      <div
+        className="min-h-screen bg-background flex items-center justify-center p-4"
+        role="status"
+        aria-live="polite"
+      >
+        <p className="text-muted-foreground text-sm">Loading…</p>
       </div>
     );
   }
@@ -211,6 +228,8 @@ export function Phase3RevenueInputClient() {
     />
   );
 
+  const hasValuation = !!financial && financial.finalValuation > 0;
+
   return (
     <EntrepreneurLayout sidebar={sidebarContent}>
       <div className="space-y-4 md:space-y-6">
@@ -222,14 +241,46 @@ export function Phase3RevenueInputClient() {
           progressPercentage={33}
         />
 
+        {/* Figma 3.1 status row — Verification Status + Financial Health (real, backend-derived) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" role="status" aria-live="polite">
+          <div className="bg-card border border-border rounded-2xl p-5 flex items-start gap-3">
+            <span className="rounded-lg bg-primary/10 p-2.5 text-primary">
+              <ShieldCheck className="w-5 h-5" aria-hidden />
+            </span>
+            <div className="space-y-0.5">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Verification status</p>
+              <p className="text-base font-semibold text-foreground">
+                {investorReady == null ? '—' : investorReady ? 'Institutional ready' : 'Pending review'}
+              </p>
+              <p className="text-xs text-muted-foreground">Set by backend compliance checks.</p>
+            </div>
+          </div>
+          <div className="bg-card border border-border rounded-2xl p-5 flex items-start gap-3">
+            <span className="rounded-lg bg-primary/10 p-2.5 text-primary">
+              <Activity className="w-5 h-5" aria-hidden />
+            </span>
+            <div className="space-y-0.5">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Financial health</p>
+              <p className="text-base font-semibold text-foreground">
+                {financial && financial.growthRate
+                  ? `${financial.growthRate > 0 ? '+' : ''}${financial.growthRate}% yearly growth`
+                  : 'Awaiting calculation'}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {hasValuation ? `Estimated valuation €${(financial!.finalValuation / 1000).toFixed(1)}K` : 'Computed after you save.'}
+              </p>
+            </div>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-1 space-y-6">
-            <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 space-y-6">
+            <div className="bg-card border border-border rounded-2xl p-6 space-y-6">
               <div>
-                <h3 className="text-lg font-bold text-neutral-1 mb-4 flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5" />
+                <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5" aria-hidden />
                   Quarterly Revenue (EUR)
-                </h3>
+                </h2>
                 <div className="space-y-4">
                   {(
                     [
@@ -240,18 +291,20 @@ export function Phase3RevenueInputClient() {
                     ] as const
                   ).map(([label, value, setter]) => (
                     <div key={label}>
-                      <label className="block text-sm font-semibold text-neutral-1 mb-2">
+                      <label htmlFor={`rev-${label}`} className="block text-sm font-semibold text-foreground mb-2">
                         {label}
                       </label>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm text-neutral-5">€</span>
+                        <span className="text-sm text-muted-foreground" aria-hidden>€</span>
                         <Input
+                          id={`rev-${label}`}
                           type="number"
                           min={0}
                           value={value}
                           onChange={(e) => setter(e.target.value)}
                           placeholder="0"
-                          className="h-10 bg-background border-neutral-2 placeholder:text-neutral-5 flex-1"
+                          aria-label={`${label} revenue in euros`}
+                          className="h-10 flex-1"
                         />
                       </div>
                     </div>
@@ -259,45 +312,47 @@ export function Phase3RevenueInputClient() {
                 </div>
               </div>
 
-              <div className="pt-4 border-t-2 border-neutral-2 space-y-2">
-                <p className="text-xs font-semibold uppercase tracking-wide text-neutral-5">
+              <div className="pt-4 border-t border-border space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Total entered
                 </p>
-                <p className="text-2xl font-bold text-neutral-1">
+                <p className="text-2xl font-bold text-foreground">
                   €{(totalRevenue / 1000).toFixed(1)}K
                 </p>
-                <p className="text-xs text-neutral-5">Computed locally from inputs.</p>
+                <p className="text-xs text-muted-foreground">Computed locally from inputs.</p>
               </div>
             </div>
 
-            <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 space-y-4">
-              <h3 className="text-lg font-bold text-neutral-1">Cash position</h3>
+            <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+              <h2 className="text-lg font-bold text-foreground">Cash position</h2>
               <div>
-                <label className="block text-sm font-semibold text-neutral-1 mb-2">
+                <label htmlFor="current-funds" className="block text-sm font-semibold text-foreground mb-2">
                   Current cash on hand (EUR)
                 </label>
                 <Input
+                  id="current-funds"
                   type="number"
                   min={0}
                   value={currentFunds}
                   onChange={(e) => setCurrentFunds(e.target.value)}
                   placeholder="0"
-                  className="h-10 bg-background border-neutral-2"
+                  className="h-10"
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-neutral-1 mb-2">
+                <label htmlFor="monthly-burn" className="block text-sm font-semibold text-foreground mb-2">
                   Monthly burn (EUR)
                 </label>
                 <Input
+                  id="monthly-burn"
                   type="number"
                   min={0}
                   value={monthlyBurn}
                   onChange={(e) => setMonthlyBurn(e.target.value)}
                   placeholder="0"
-                  className="h-10 bg-background border-neutral-2"
+                  className="h-10"
                 />
-                <p className="text-xs text-neutral-5 mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   Runway is derived backend-side from cash and burn.
                 </p>
               </div>
@@ -305,93 +360,32 @@ export function Phase3RevenueInputClient() {
           </div>
 
           <div className="lg:col-span-2 space-y-6">
-            <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6">
-              <h3 className="text-lg font-bold text-neutral-1 mb-4">Quarterly trend</h3>
+            <div className="bg-card border border-border rounded-2xl p-6">
+              <h2 className="text-lg font-bold text-foreground mb-4">Quarterly trend</h2>
               <ResponsiveContainer width="100%" height={260}>
                 <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
-                  <XAxis dataKey="quarter" stroke="#999" />
-                  <YAxis stroke="#999" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="quarter" stroke="hsl(var(--muted-foreground))" />
+                  <YAxis stroke="hsl(var(--muted-foreground))" />
                   <Tooltip
                     formatter={(value) =>
                       typeof value === 'number' ? `€${(value / 1000).toFixed(1)}K` : String(value)
                     }
-                    contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e5e5', borderRadius: '8px' }}
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--card))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px',
+                      color: 'hsl(var(--foreground))',
+                    }}
                   />
                   <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
-              <p className="text-xs text-neutral-5 mt-2">
+              <p className="text-xs text-muted-foreground mt-2">
                 Chart reflects what you have entered above. No precomputed numbers are shown.
               </p>
             </div>
 
-            <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 space-y-4">
+            <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold text-neutral-1">Monthly revenue (optional)</h3>
-                <Button variant="outline" size="sm" className="gap-2" onClick={addMonthlyRow}>
-                  <Plus className="w-4 h-4" /> Add month
-                </Button>
-              </div>
-              <p className="text-sm text-neutral-5">
-                Add monthly breakdowns to give reviewers a finer-grained picture. YYYY-MM format.
-              </p>
-              <div className="space-y-3">
-                {monthlyRows.map((row, idx) => (
-                  <div key={idx} className="grid grid-cols-12 gap-2">
-                    <Input
-                      type="text"
-                      value={row.yearMonth}
-                      onChange={(e) => updateMonthlyRow(idx, { yearMonth: e.target.value })}
-                      placeholder="2026-04"
-                      className="col-span-5 h-10 bg-background border-neutral-2"
-                    />
-                    <div className="col-span-6 flex items-center gap-2">
-                      <span className="text-sm text-neutral-5">€</span>
-                      <Input
-                        type="number"
-                        min={0}
-                        value={row.revenue}
-                        onChange={(e) => updateMonthlyRow(idx, { revenue: e.target.value })}
-                        placeholder="0"
-                        className="h-10 bg-background border-neutral-2 flex-1"
-                      />
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="col-span-1"
-                      onClick={() => removeMonthlyRow(idx)}
-                      aria-label="Remove month"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex gap-3">
-              <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-semibold text-blue-900 mb-1">Submission, not verification</p>
-                <p className="text-sm text-blue-800">
-                  Saving this data submits your financials for compliance review. Valuation is calculated
-                  by the backend; no insights are shown until they exist.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <StepFooter
-          backUrl="/dashboard/entrepreneur/phase-2"
-          onNextClick={handleNextClick}
-          isLoading={isSubmitting}
-          nextLabel="Save &amp; Continue"
-          nextValidationError={validationError}
-        />
-      </div>
-    </EntrepreneurLayout>
-  );
-}
+           

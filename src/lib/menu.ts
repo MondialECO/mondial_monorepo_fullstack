@@ -15,6 +15,10 @@ import {
   Handshake,
   ShieldCheck,
   Sparkles,
+  BarChart3,
+  PieChart,
+  FolderOpen,
+  TrendingUp,
 } from "lucide-react";
 
 export type MenuItem = {
@@ -134,39 +138,36 @@ export const menu: Record<UserRole, MenuSection[]> = {
     },
   ],
 
+  // Entrepreneur sidebar mirrors the Figma Dashboard Overview groups
+  // (MAIN / FUNDING / MATCHING). Every href points at a route that exists today.
   [UserRole.ENTREPRENEUR]: [
     {
-      title: "Dashboard",
+      title: "Main",
       items: [
         {
-          label: "Advisory Panel",
+          label: "Dashboard",
           href: "/dashboard/entrepreneur",
-          icon: Briefcase,
+          icon: LayoutDashboard,
         },
         {
-          label: "Deals",
-          href: "/dashboard/entrepreneur/deals",
-          icon: Handshake,
+          label: "Financials & KPIs",
+          href: "/dashboard/entrepreneur/phase-3",
+          icon: BarChart3,
         },
         {
-          label: "Messages",
-          href: "/dashboard/entrepreneur/messages",
-          icon: MessageSquare,
+          label: "Equity & Cap Table",
+          href: "/dashboard/entrepreneur/phase-4",
+          icon: PieChart,
         },
       ],
     },
-  ],
-
-  [UserRole.SERVICE_PROVIDER]: [
     {
-      title: "Dashboard",
+      title: "Funding",
       items: [
         {
-          label: "Provider Profile",
-          href: "/dashboard/serviceprovider/profile",
-          icon: BadgeCheck,
+          label: "Funding Ask",
+          href: "/dashboard/entrepreneur/phase-5",
+          icon: TrendingUp,
         },
-      ],
-    },
-  ],
-};
+        {
+          label:

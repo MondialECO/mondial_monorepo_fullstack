@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useEntrepreneurProgress } from '@/hooks/useEntrepreneurProgress';
 import { StepFooter } from '@/components/entrepreneur/StepFooter';
+import { Phase5FundingVisuals } from '@/components/entrepreneur/equity/Phase5FundingVisuals';
 import entrepreneurApi, {
   FundingProfileResponse,
   PitchDeckResponse,
@@ -271,7 +272,7 @@ export default function Phase5Client() {
       moveToNextStep(5, 1);
 
       await new Promise((r) => setTimeout(r, 300));
-      router.push('/dashboard/entrepreneur/phase-6');
+      router.push('/dashboard/entrepreneur/phase-5/complete');
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Failed to submit Phase 5';
       setValidationError(msg);
@@ -282,53 +283,60 @@ export default function Phase5Client() {
 
   return (
     <div className="space-y-6">
+      {/* Figma P5 — funding / equity visuals (real data + honest states) */}
+      <Phase5FundingVisuals />
+
       {/* Funding ask */}
-      <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 space-y-4">
-        <h3 className="text-lg font-bold text-neutral-1">Funding ask</h3>
+      <div className="bg-card border-2 border-border rounded-2xl p-6 space-y-4">
+        <h3 className="text-lg font-bold text-foreground">Funding ask</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-semibold text-neutral-1 mb-2">
+            <label htmlFor="p5-raise" className="block text-sm font-semibold text-foreground mb-2">
               Raise amount (€)
             </label>
             <Input
+              id="p5-raise"
               type="number"
               min={0}
               value={raiseAmount}
               onChange={(e) => setRaiseAmount(e.target.value)}
-              className="h-10 bg-background border-neutral-2"
+              className="h-10 bg-background border-input"
             />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-neutral-1 mb-2">
+            <label htmlFor="p5-premoney" className="block text-sm font-semibold text-foreground mb-2">
               Pre-money valuation (€)
             </label>
             <Input
+              id="p5-premoney"
               type="number"
               min={0}
               value={preMoneyValuation}
               onChange={(e) => setPreMoneyValuation(e.target.value)}
-              className="h-10 bg-background border-neutral-2"
+              className="h-10 bg-background border-input"
             />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-neutral-1 mb-2">
+            <label htmlFor="p5-equity" className="block text-sm font-semibold text-foreground mb-2">
               Equity offered (%)
             </label>
             <Input
+              id="p5-equity"
               type="number"
               min={0}
               max={100}
               value={equityOfferedPercent}
               onChange={(e) => setEquityOfferedPercent(e.target.value)}
-              className="h-10 bg-background border-neutral-2"
+              className="h-10 bg-background border-input"
             />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-neutral-1 mb-2">Round</label>
+            <label htmlFor="p5-round" className="block text-sm font-semibold text-foreground mb-2">Round</label>
             <select
+              id="p5-round"
               value={roundType}
               onChange={(e) => setRoundType(e.target.value as RoundType)}
-              className="h-10 w-full rounded-md border border-neutral-2 bg-background px-3 text-sm"
+              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <option value="pre_seed">pre_seed</option>
               <option value="seed">seed</option>
@@ -336,13 +344,14 @@ export default function Phase5Client() {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-semibold text-neutral-1 mb-2">
+            <label htmlFor="p5-share" className="block text-sm font-semibold text-foreground mb-2">
               Share type
             </label>
             <select
+              id="p5-share"
               value={shareType}
               onChange={(e) => setShareType(e.target.value as ShareType)}
-              className="h-10 w-full rounded-md border border-neutral-2 bg-background px-3 text-sm"
+              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <option value="preferred">preferred</option>
               <option value="safe">safe</option>
@@ -353,9 +362,9 @@ export default function Phase5Client() {
       </div>
 
       {/* Capital allocation */}
-      <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 space-y-4">
+      <div className="bg-card border-2 border-border rounded-2xl p-6 space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-bold text-neutral-1">Capital allocation</h3>
+          <h3 className="text-lg font-bold text-foreground">Capital allocation</h3>
           <Button variant="outline" size="sm" onClick={addAllocation} className="gap-2">
             <Plus className="w-4 h-4" /> Add category
           </Button>
@@ -368,7 +377,7 @@ export default function Phase5Client() {
                 value={a.category}
                 onChange={(e) => updateAllocation(idx, { category: e.target.value })}
                 placeholder="Category"
-                className="col-span-7 h-9 bg-background border-neutral-2"
+                className="col-span-7 h-9 bg-background border-input"
               />
               <Input
                 type="number"
@@ -377,7 +386,7 @@ export default function Phase5Client() {
                 value={a.percent}
                 onChange={(e) => updateAllocation(idx, { percent: e.target.value })}
                 placeholder="%"
-                className="col-span-4 h-9 bg-background border-neutral-2"
+                className="col-span-4 h-9 bg-background border-input"
               />
               <Button
                 variant="ghost"
@@ -394,8 +403,8 @@ export default function Phase5Client() {
         <p
           className={`text-sm font-semibold ${
             allocationTotal >= 95 && allocationTotal <= 105
-              ? 'text-green-700'
-              : 'text-amber-700'
+              ? 'text-success-text'
+              : 'text-warning'
           }`}
         >
           Total: {allocationTotal.toFixed(2)}%
@@ -403,9 +412,9 @@ export default function Phase5Client() {
       </div>
 
       {/* Hiring plan */}
-      <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 space-y-4">
+      <div className="bg-card border-2 border-border rounded-2xl p-6 space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-bold text-neutral-1">Hiring plan</h3>
+          <h3 className="text-lg font-bold text-foreground">Hiring plan</h3>
           <Button variant="outline" size="sm" onClick={addHiring} className="gap-2">
             <Plus className="w-4 h-4" /> Add role
           </Button>
@@ -418,7 +427,7 @@ export default function Phase5Client() {
                 value={h.role}
                 onChange={(e) => updateHiring(idx, { role: e.target.value })}
                 placeholder="Role"
-                className="col-span-3 h-9 bg-background border-neutral-2"
+                className="col-span-3 h-9 bg-background border-input"
               />
               <Input
                 type="number"
@@ -426,19 +435,20 @@ export default function Phase5Client() {
                 value={h.salary}
                 onChange={(e) => updateHiring(idx, { salary: e.target.value })}
                 placeholder="Salary (€)"
-                className="col-span-3 h-9 bg-background border-neutral-2"
+                className="col-span-3 h-9 bg-background border-input"
               />
               <Input
                 type="text"
                 value={h.timeline}
                 onChange={(e) => updateHiring(idx, { timeline: e.target.value })}
                 placeholder="Timeline"
-                className="col-span-3 h-9 bg-background border-neutral-2"
+                className="col-span-3 h-9 bg-background border-input"
               />
               <select
                 value={h.priority}
                 onChange={(e) => updateHiring(idx, { priority: e.target.value })}
-                className="col-span-2 h-9 rounded-md border border-neutral-2 bg-background px-2 text-sm"
+                aria-label={`Hiring row ${idx + 1} priority`}
+                className="col-span-2 h-9 rounded-md border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <option value="high">high</option>
                 <option value="medium">medium</option>
@@ -459,20 +469,20 @@ export default function Phase5Client() {
       </div>
 
       {/* Pitch deck */}
-      <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 space-y-4">
-        <h3 className="text-lg font-bold text-neutral-1">Pitch deck</h3>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-background border-2 border-neutral-2 rounded-xl p-4">
+      <div className="bg-card border-2 border-border rounded-2xl p-6 space-y-4">
+        <h3 className="text-lg font-bold text-foreground">Pitch deck</h3>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-background border-2 border-input rounded-xl p-4">
           <div className="flex items-start gap-3 flex-1">
-            <FileText className="w-5 h-5 text-neutral-5 mt-0.5" />
+            <FileText className="w-5 h-5 text-muted-foreground mt-0.5" />
             <div>
-              <p className="text-sm font-semibold text-neutral-1">Investor pitch deck</p>
+              <p className="text-sm font-semibold text-foreground">Investor pitch deck</p>
               {pitchDeck ? (
-                <p className="text-xs text-neutral-5 mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   {pitchDeck.fileName} · uploaded{' '}
                   {new Date(pitchDeck.uploadedAt).toLocaleString()}
                 </p>
               ) : (
-                <p className="text-xs text-neutral-5 mt-1">PDF, PPTX, or DOCX. Required.</p>
+                <p className="text-xs text-muted-foreground mt-1">PDF, PPTX, or DOCX. Required.</p>
               )}
             </div>
           </div>
@@ -503,9 +513,9 @@ export default function Phase5Client() {
       </div>
 
       {/* Funding narrative */}
-      <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 space-y-3">
-        <h3 className="text-lg font-bold text-neutral-1">Funding narrative</h3>
-        <p className="text-xs text-neutral-5">
+      <div className="bg-card border-2 border-border rounded-2xl p-6 space-y-3">
+        <h3 className="text-lg font-bold text-foreground">Funding narrative</h3>
+        <p className="text-xs text-muted-foreground">
           Describe your funding needs, use of capital, and traction. Minimum{' '}
           {NARRATIVE_MIN_LENGTH} characters.
         </p>
@@ -513,42 +523,21 @@ export default function Phase5Client() {
           value={narrative}
           onChange={(e) => setNarrative(e.target.value)}
           placeholder="Describe how the round will be used, key milestones, and what investors get…"
-          className="w-full h-40 p-3 border border-neutral-2 rounded-lg bg-background text-neutral-1 placeholder-neutral-5"
+          aria-label="Funding narrative"
+          className="w-full h-40 p-3 border border-input rounded-lg bg-background text-foreground placeholder:text-muted-foreground"
         />
         <p
           className={`text-xs font-semibold ${
             narrative.trim().length >= NARRATIVE_MIN_LENGTH
-              ? 'text-green-700'
-              : 'text-neutral-5'
+              ? 'text-success-text'
+              : 'text-muted-foreground'
           }`}
         >
           {narrative.trim().length} / {NARRATIVE_MIN_LENGTH} characters
         </p>
       </div>
 
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex gap-3">
-        <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-        <p className="text-sm text-blue-800">
-          Submitting Phase 5 sends your funding ask, pitch deck, and narrative to compliance
-          review and unlocks Phase 6. Verified investor-facing status is awarded separately after
-          review.
-        </p>
-      </div>
-
-      {validationError && (
-        <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4 flex gap-3">
-          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-          <p className="text-sm font-semibold text-red-900">{validationError}</p>
-        </div>
-      )}
-
-      <StepFooter
-        backUrl="/dashboard/entrepreneur/phase-4"
-        onNextClick={handleSubmit}
-        isLoading={isSubmitting}
-        nextLabel="Submit &amp; Complete Phase 5"
-        nextValidationError={validationError}
-      />
-    </div>
-  );
-}
+      <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 flex gap-3">
+        <AlertCircle className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+        <p className="text-sm text-muted-foreground">
+          Submitting Phase 5 sends your fu
