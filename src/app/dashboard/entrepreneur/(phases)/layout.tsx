@@ -16,7 +16,7 @@ export default function PhaseLayout({
       <SidebarProvider>
         <div className="flex min-h-screen w-full flex-col">
           {/* Topbar full width */}
-          <Topbar />
+          {/* <Topbar /> */}
 
           {/* Content full width (no sidebar) */}
           <main className="flex-1 overflow-auto p-4 md:p-6">

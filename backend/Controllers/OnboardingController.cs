@@ -368,5 +368,74 @@ namespace WebApp.Controllers
             _audit.Record($"document_upload_{key}", user.Email!, true);
             return Ok("Document uploaded", new { type = key, filePath = path });
         }
+
+        // ----- Development-only verification shortcuts ---------------------
+        // The production KYC widget (SUMSUB) is not wired into this build, so
+        // there is no provider callback to flip the onboarding flags the
+        // Phase 1 gate reads (IdentityDocumentVerified / FaceVerified /
+        // PhoneVerified). The onboarding pages POST to these endpoints to
+        // complete Identity+Face and Phone during local QA. They are gated to
+        // Development and return 404 in any other environment, so they can
+        // never run in production.
+
+        [HttpPost("identity/dev-confirm")]
+        public Task<IActionResult> DevConfirmIdentity() => DevConfirmKycAsync();
+
+        [HttpPost("face/dev-confirm")]
+        public Task<IActionResult> DevConfirmFace() => DevConfirmKycAsync();
+
+        private async Task<IActionResult> DevConfirmKycAsync()
+        {
+            if (!_env.IsDevelopment()) return NotFound();
+
+            var user = await CurrentUserAsync();
+            if (user == null) return Fail("User not found", 404);
+
+            // Single shared KYC session: completing one verifies both.
+            user.Onboarding.IdentityDocumentVerified = true;
+            user.Onboarding.FaceVerified = true;
+            await _userManager.UpdateAsync(user);
+            await PromotePhaseIfCompleteAsync(user);
+
+            _audit.Record("kyc_dev_confirm", user.Email!, true);
+            return Ok("Identity and face verified (development)");
+        }
+
+        [HttpPost("phone/dev-confirm")]
+        public async Task<IActionResult> DevConfirmPhone([FromBody] SendPhoneOtpRequest body = null)
+        {
+            if (!_env.IsDevelopment()) return NotFound();
+
+            var user = await CurrentUserAsync();
+            if (user == null) return Fail("User not found", 404);
+
+            if (!string.IsNullOrWhiteSpace(body?.Phone))
+                user.PhoneNumber = body.Phone.Trim();
+
+            user.Onboarding.PhoneVerified = true;
+            user.PhoneNumberConfirmed = true;
+            await _userManager.UpdateAsync(user);
+            await PromotePhaseIfCompleteAsync(user);
+
+            _audit.Record("phone_dev_confirm", user.Email!, true);
+            return Ok("Phone verified (development)");
+        }
+
+        [HttpPost("email/dev-confirm")]
+        public async Task<IActionResult> DevConfirmEmail()
+        {
+            if (!_env.IsDevelopment()) return NotFound();
+
+            var user = await CurrentUserAsync();
+            if (user == null) return Fail("User not found", 404);
+
+            user.Onboarding.EmailOtpVerified = true;
+            user.EmailConfirmed = true;
+            await _userManager.UpdateAsync(user);
+            await PromotePhaseIfCompleteAsync(user);
+
+            _audit.Record("email_dev_confirm", user.Email!, true);
+            return Ok("Email verified (development)");
+        }
     }
 }
