@@ -572,7 +572,11 @@ public class FinancialReportResponse
 
 public class EquityGrantDto
 {
-    public string GrantId { get; set; }
+    // Optional on submit: new grants don't carry an id yet. The service
+    // (SubmitCapTableAsync) generates one when null/empty. Must be nullable so
+    // ASP.NET's implicit non-nullable-reference-type "required" model validation
+    // doesn't 400 new-grant submissions before the service can assign an id.
+    public string? GrantId { get; set; }
     public string StakeholderName { get; set; }
     public string StakeholderType { get; set; } // founder | investor | advisor | esop
     public string ShareClass { get; set; }       // common | preferred | safe | note
@@ -609,7 +613,11 @@ public class SaveVestingScheduleRequest
 
 public class VestingScheduleEntryDto
 {
-    public string GrantId { get; set; }
+    // Optional on submit: a vesting row seeded from a new grant has no id yet.
+    // SaveVestingSchedulesAsync generates one when null/empty. Must be nullable
+    // so ASP.NET's implicit non-nullable-reference-type "required" validation
+    // doesn't 400 the request before the service can assign an id.
+    public string? GrantId { get; set; }
     public string StakeholderName { get; set; }
     public int SharesGranted { get; set; }
     public DateTime GrantDate { get; set; }

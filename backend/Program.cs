@@ -230,6 +230,25 @@ builder.Services.AddAuthentication(options =>
             }
 
             return Task.CompletedTask;
+        },
+        OnTokenValidated = context =>
+        {
+            // .NET 8's JsonWebTokenHandler does NOT remap the JWT "sub" claim
+            // to ClaimTypes.NameIdentifier. Many controllers (CompanyController,
+            // AiController, etc.) resolve the caller via
+            // User.FindFirst(ClaimTypes.NameIdentifier); without this backfill
+            // that lookup is null and every such endpoint throws -> HTTP 403,
+            // locking the entire entrepreneur Phase 2-9 journey.
+            if (context.Principal?.Identity is ClaimsIdentity identity &&
+                identity.FindFirst(ClaimTypes.NameIdentifier) == null)
+            {
+                var sub = identity.FindFirst(JwtRegisteredClaimNames.Sub)?.Value
+                          ?? identity.FindFirst("sub")?.Value
+                          ?? identity.Name;
+                if (!string.IsNullOrEmpty(sub))
+                    identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, sub));
+            }
+            return Task.CompletedTask;
         }
     };
 });
