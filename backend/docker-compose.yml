@@ -10,10 +10,11 @@
 
 services:
   traefik:
-    image: traefik:v3.1
+    image: traefik:v2.11
     command:
       - --providers.docker=true
       - --providers.docker.exposedbydefault=false
+      - --providers.docker.endpoint=unix:///var/run/docker.sock
       - --entrypoints.web.address=:80
       - --entrypoints.websecure.address=:443
       - --entrypoints.web.http.redirections.entrypoint.to=websecure
@@ -21,12 +22,16 @@ services:
       - --certificatesresolvers.le.acme.email=${ACME_EMAIL}
       - --certificatesresolvers.le.acme.storage=/letsencrypt/acme.json
       - --certificatesresolvers.le.acme.tlschallenge=true
+      #froentend
+      - --providers.file.filename=/traefik-dynamic.yml
+      - --providers.file.watch=true
     ports:
       - "80:80"
       - "443:443"
     volumes:
       - ./letsencrypt:/letsencrypt
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik-dynamic.yml:/traefik-dynamic.yml:ro
     restart: unless-stopped
 
   api:

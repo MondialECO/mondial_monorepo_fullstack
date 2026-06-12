@@ -1,0 +1,15 @@
+http:
+  routers:
+    frontend:
+      rule: "Host(`mondialbusiness.eu`) || Host(`www.mondialbusiness.eu`)"
+      entrypoints:
+        - websecure
+      tls:
+        certResolver: le
+      service: frontend-svc
+
+  services:
+    frontend-svc:
+      loadBalancer:
+        servers:
+          - url: "http://172.17.0.1:3000"
