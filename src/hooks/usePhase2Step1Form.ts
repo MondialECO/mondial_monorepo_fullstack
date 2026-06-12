@@ -170,8 +170,7 @@ export function usePhase2Step1Form({
             tagline: 'Company created during Phase 2 verification',
           });
 
-          // API returns either 'id' or 'companyId' depending on response type
-          const companyId = createResponse?.companyId || createResponse?.id;
+          const companyId = createResponse?.companyId;
           if (!companyId) {
             throw new Error('No company ID returned from creation');
           }
