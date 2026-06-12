@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Users, CheckCircle, Shield, Lock, AlertCircle, Plus, Trash2 } from 'lucide-react';
+import { Users, CheckCircle, Shield, Lock, AlertCircle, Plus, Trash2, Edit2, X } from 'lucide-react';
 import { useEntrepreneurProgress } from '@/hooks/useEntrepreneurProgress';
 import entrepreneurApi from '@/lib/api-entrepreneur';
 import { EntrepreneurLayout } from '@/components/entrepreneur/EntrepreneurLayout';
@@ -21,21 +21,68 @@ const PHASE_2_STEPS = [
   { step: 4 as const, title: 'Financial Preview', subtitle: 'Review summary' },
 ];
 
+interface Owner {
+  name: string;
+  email: string;
+  ownership: string;
+  nationality: string;
+}
+
 function Phase2Step3PageContent() {
   const router = useRouter();
   const [isValidating, setIsValidating] = useState(false);
   const [validationError, setValidationError] = useState<string>('');
-  const [owners, setOwners] = useState<Array<{ name: string; email: string; ownership: string }>>([]);
-  const [newOwner, setNewOwner] = useState({ name: '', email: '', ownership: '' });
+  const [owners, setOwners] = useState<Owner[]>([]);
+  const [newOwner, setNewOwner] = useState<Owner>({ name: '', email: '', ownership: '', nationality: '' });
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const { progress, savePhaseData, moveToNextStep, getPhaseData } = useEntrepreneurProgress();
+
+  // Fetch existing beneficial owners on mount
+  useEffect(() => {
+    const fetchOwners = async () => {
+      try {
+        setIsLoading(true);
+        const existingData: Phase2Data = getPhaseData<Phase2Data>(2) ?? {};
+        let companyId = existingData.__companyId;
+
+        if (!companyId) {
+          const phaseProgress = await entrepreneurApi.getCurrentPhase();
+          companyId = phaseProgress?.companyId;
+        }
+
+        if (companyId) {
+          const beneficialOwners = await entrepreneurApi.getBeneficialOwners(companyId);
+          if (beneficialOwners && beneficialOwners.length > 0) {
+            setOwners(
+              beneficialOwners.map((owner: any) => ({
+                name: owner.fullName || '',
+                email: owner.email || '',
+                ownership: String(owner.ownershipPercent || ''),
+                nationality: owner.nationality || '',
+              }))
+            );
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to fetch beneficial owners:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (progress) {
+      fetchOwners();
+    }
+  }, [progress, getPhaseData]);
 
   const allOwnersVerified = owners.length > 0;
 
   const handleAddOwner = () => {
     const parsed = parseFloat(newOwner.ownership);
-    if (!newOwner.name || !newOwner.email || !newOwner.ownership) {
-      setValidationError('Please fill all owner fields');
+    if (!newOwner.name || !newOwner.email || !newOwner.ownership || !newOwner.nationality) {
+      setValidationError('Please fill all owner fields (including nationality)');
       return;
     }
     if (Number.isNaN(parsed) || parsed <= 0 || parsed > 100) {
@@ -43,9 +90,26 @@ function Phase2Step3PageContent() {
       return;
     }
 
-    setOwners([...owners, newOwner]);
-    setNewOwner({ name: '', email: '', ownership: '' });
+    if (editingIndex !== null) {
+      const updatedOwners = [...owners];
+      updatedOwners[editingIndex] = newOwner;
+      setOwners(updatedOwners);
+      setEditingIndex(null);
+    } else {
+      setOwners([...owners, newOwner]);
+    }
+    setNewOwner({ name: '', email: '', ownership: '', nationality: '' });
     setValidationError('');
+  };
+
+  const handleEditOwner = (index: number) => {
+    setNewOwner(owners[index]);
+    setEditingIndex(index);
+  };
+
+  const handleCancelEdit = () => {
+    setNewOwner({ name: '', email: '', ownership: '', nationality: '' });
+    setEditingIndex(null);
   };
 
   const handleRemoveOwner = (index: number) => {
@@ -68,13 +132,13 @@ function Phase2Step3PageContent() {
         if (!companyId) throw new Error('No company found');
       }
 
-      // Canonical DTO contract: fullName, email, ownershipPercent (required);
-      // role + nationality optional.
+      // Canonical DTO contract: fullName, email, ownershipPercent, nationality (required)
       await entrepreneurApi.updateBeneficialOwners(companyId, {
         owners: owners.map((o) => ({
           fullName: o.name,
           email: o.email,
           ownershipPercent: parseFloat(o.ownership),
+          nationality: o.nationality,
         })),
       });
 
@@ -119,7 +183,7 @@ function Phase2Step3PageContent() {
     }
   };
 
-  if (!progress) return null;
+  if (!progress || isLoading) return null;
 
   const statusMap = {
     1: progress.completedSteps.has('2-1') ? 'completed' : progress.currentStep === 1 ? 'current' : 'pending',
@@ -165,8 +229,8 @@ function Phase2Step3PageContent() {
               Add all beneficial owners ({`>`}25% stake) for KYC verification.
             </p>
 
-            {/* Add Owner Form */}
-            <div className="bg-background border-2 border-neutral-2 rounded-xl p-4 mb-6 space-y-4">
+            {/* Add/Edit Owner Form */}
+            <div className={`bg-background border-2 rounded-xl p-4 mb-6 space-y-4 ${editingIndex !== null ? 'border-blue-300' : 'border-neutral-2'}`}>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Input
                   placeholder="Full name"
@@ -182,7 +246,13 @@ function Phase2Step3PageContent() {
                   className="text-sm"
                 />
               </div>
-              <div className="flex gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Input
+                  placeholder="Nationality"
+                  value={newOwner.nationality}
+                  onChange={(e) => setNewOwner({ ...newOwner, nationality: e.target.value })}
+                  className="text-sm"
+                />
                 <Input
                   placeholder="Ownership %"
                   type="number"
@@ -192,15 +262,37 @@ function Phase2Step3PageContent() {
                   onChange={(e) => setNewOwner({ ...newOwner, ownership: e.target.value })}
                   className="text-sm"
                 />
+              </div>
+              <div className="flex gap-2">
                 <Button
                   onClick={handleAddOwner}
                   variant="default"
                   size="sm"
-                  className="gap-2 whitespace-nowrap"
+                  className="gap-2"
                 >
-                  <Plus className="w-4 h-4" />
-                  Add Owner
+                  {editingIndex !== null ? (
+                    <>
+                      <CheckCircle className="w-4 h-4" />
+                      Save Changes
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4" />
+                      Add Owner
+                    </>
+                  )}
                 </Button>
+                {editingIndex !== null && (
+                  <Button
+                    onClick={handleCancelEdit}
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                  >
+                    <X className="w-4 h-4" />
+                    Cancel
+                  </Button>
+                )}
               </div>
             </div>
 
@@ -210,28 +302,42 @@ function Phase2Step3PageContent() {
                 {owners.map((owner, index) => (
                   <div
                     key={index}
-                    className="border-2 border-green-200 bg-green-50 rounded-xl p-4"
+                    className={`border-2 rounded-xl p-4 ${editingIndex === index ? 'border-blue-300 bg-blue-50' : 'border-green-200 bg-green-50'}`}
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                       <div className="flex items-start gap-3 flex-1">
-                        <div className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 bg-green-100">
-                          <CheckCircle className="w-6 h-6 text-green-600" />
+                        <div className={`w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 ${editingIndex === index ? 'bg-blue-100' : 'bg-green-100'}`}>
+                          <CheckCircle className={`w-6 h-6 ${editingIndex === index ? 'text-blue-600' : 'text-green-600'}`} />
                         </div>
                         <div className="min-w-0 flex-1">
                           <h4 className="text-sm sm:text-base font-semibold text-neutral-1">{owner.name}</h4>
                           <p className="text-xs sm:text-sm text-neutral-5 mt-1">{owner.email}</p>
-                          <p className="text-xs sm:text-sm text-neutral-5 mt-0.5 font-medium">{owner.ownership}% ownership</p>
+                          <div className="flex flex-col sm:flex-row sm:gap-4 mt-0.5 text-xs sm:text-sm text-neutral-5 font-medium">
+                            <span>{owner.nationality ? `🌍 ${owner.nationality}` : 'No nationality'}</span>
+                            <span>{owner.ownership}% ownership</span>
+                          </div>
                         </div>
                       </div>
-                      <Button
-                        onClick={() => handleRemoveOwner(index)}
-                        variant="outline"
-                        size="sm"
-                        className="w-full sm:w-auto gap-2"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        Remove
-                      </Button>
+                      <div className="flex gap-2 w-full sm:w-auto">
+                        <Button
+                          onClick={() => handleEditOwner(index)}
+                          variant="outline"
+                          size="sm"
+                          className="gap-2 flex-1 sm:flex-none"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                          Edit
+                        </Button>
+                        <Button
+                          onClick={() => handleRemoveOwner(index)}
+                          variant="outline"
+                          size="sm"
+                          className="gap-2 flex-1 sm:flex-none"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Remove
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 ))}

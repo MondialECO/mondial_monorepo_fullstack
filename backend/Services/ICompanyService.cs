@@ -24,6 +24,7 @@ public interface ICompanyService
     Task<DocumentStatusResponse> UploadDocumentAsync(string companyId, DocumentUploadRequest request);
     Task<List<DocumentStatusResponse>> GetDocumentStatusAsync(string companyId);
     Task<Companies> UpdateBeneficialOwnersAsync(string companyId, UpdateBeneficialOwnersRequest request);
+    Task<List<BeneficialOwnerResponse>> GetBeneficialOwnersAsync(string companyId);
 
     // ============ PHASE 3: FINANCIAL & KPI ============
 

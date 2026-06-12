@@ -7,8 +7,8 @@ import { ProgressSidebar } from '@/components/entrepreneur/ProgressSidebar';
 import { PhaseHeader } from '@/components/entrepreneur/PhaseHeader';
 import { StepFooter } from '@/components/entrepreneur/StepFooter';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
+import { useWatch } from 'react-hook-form';
 
 const PHASE_2_STEPS = [
   { step: 1 as const, title: 'Legal Identity', subtitle: 'Enter company info' },
@@ -55,9 +55,9 @@ export default function Phase2Step1Client() {
     );
   }
 
-  const { register, watch } = form;
-  const formValues = watch();
-  const isFormFilled = formValues.companyName && formValues.registrationNumber;
+  const { register } = form;
+  const formValues = useWatch({ control: form.control });
+  const isFormFilled = !!(formValues?.companyName?.trim() && formValues?.registrationNumber?.trim());
 
   return (
     <EntrepreneurLayout sidebar={sidebarContent || <div />}>
@@ -192,9 +192,8 @@ export default function Phase2Step1Client() {
           </div>
         </div>
 
-        {/* Footer */}
         <StepFooter
-          backUrl="/dashboard/entrepreneur/phase-2"
+          backUrl="/dashboard/entrepreneur"
           onNextClick={handleNextClick}
           isLoading={formState.status === 'navigating'}
           isNextDisabled={!isFormFilled}

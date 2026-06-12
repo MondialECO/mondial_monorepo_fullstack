@@ -32,22 +32,28 @@ export function StepFooter({
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [saveDraftSuccess, setSaveDraftSuccess] = useState(false);
 
-  const handleNextClick = async () => {
-    if (onNextClick) {
+  const handleNextClick = async (e?: React.MouseEvent) => {
+    e?.preventDefault();
+    if (!onNextClick) return;
+    try {
       await onNextClick();
+    } catch (error) {
+      console.error('Next click error:', error);
     }
   };
 
-  const handleSaveDraft = async () => {
-    if (onSaveDraft) {
-      setIsSavingDraft(true);
-      try {
-        await onSaveDraft();
-        setSaveDraftSuccess(true);
-        setTimeout(() => setSaveDraftSuccess(false), 2000);
-      } finally {
-        setIsSavingDraft(false);
-      }
+  const handleSaveDraft = async (e?: React.MouseEvent) => {
+    e?.preventDefault();
+    if (!onSaveDraft) return;
+    setIsSavingDraft(true);
+    try {
+      await onSaveDraft();
+      setSaveDraftSuccess(true);
+      setTimeout(() => setSaveDraftSuccess(false), 2000);
+    } catch (error) {
+      console.error('Save draft error:', error);
+    } finally {
+      setIsSavingDraft(false);
     }
   };
 

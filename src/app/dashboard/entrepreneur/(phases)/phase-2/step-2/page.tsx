@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Upload, FileCheck, AlertCircle, Archive, Loader } from 'lucide-react';
 import { useEntrepreneurProgress } from '@/hooks/useEntrepreneurProgress';
@@ -34,7 +34,46 @@ function Phase2Step2PageContent() {
   const [validationError, setValidationError] = useState<string>('');
   const [uploadingDocs, setUploadingDocs] = useState<Set<string>>(new Set());
   const [uploadedDocs, setUploadedDocs] = useState<Set<string>>(new Set());
+  const [isLoading, setIsLoading] = useState(true);
   const { progress, savePhaseData, moveToNextStep, getPhaseData } = useEntrepreneurProgress();
+
+  // Fetch existing documents on mount
+  useEffect(() => {
+    const fetchDocuments = async () => {
+      try {
+        setIsLoading(true);
+        const existingData: Phase2Data = getPhaseData<Phase2Data>(2) ?? {};
+        let companyId = existingData.__companyId;
+
+        if (!companyId) {
+          const phaseProgress = await entrepreneurApi.getCurrentPhase();
+          companyId = phaseProgress?.companyId;
+        }
+
+        if (companyId) {
+          const documents = await entrepreneurApi.getDocuments(companyId);
+          if (documents && documents.length > 0) {
+            const docIds = new Set<string>();
+            documents.forEach((doc: any) => {
+              const docType = doc.type?.toLowerCase() || doc.documentType?.toLowerCase();
+              if (docType) {
+                docIds.add(docType);
+              }
+            });
+            setUploadedDocs(docIds);
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to fetch documents:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (progress) {
+      fetchDocuments();
+    }
+  }, [progress, getPhaseData]);
 
   const allDocsUploaded = uploadedDocs.size === requiredDocuments.length;
 
@@ -120,7 +159,7 @@ function Phase2Step2PageContent() {
     }
   };
 
-  if (!progress) return null;
+  if (!progress || isLoading) return null;
 
   const statusMap = {
     1: progress.completedSteps.has('2-1') ? 'completed' : progress.currentStep === 1 ? 'current' : 'pending',

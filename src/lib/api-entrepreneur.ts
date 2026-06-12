@@ -632,6 +632,13 @@ export const entrepreneurApi = {
     return response.data;
   },
 
+  getBeneficialOwners: async (companyId: string) => {
+    const response = await api.get(
+      `/companies/${companyId}/beneficial-owners`
+    );
+    return response.data;
+  },
+
   // ============ PHASE 3: FINANCIAL & KPI ============
 
   saveRevenue: async (companyId: string, data: SaveRevenueDataRequest) => {

@@ -106,6 +106,28 @@ public class CompanyService : ICompanyService
 
     public async Task<Companies> CreateCompanyAsync(string userId, CreateCompanyDto dto)
     {
+        // Check if user already has a company
+        var existingCompany = await _dbContext.Companies
+            .Find(c => c.OwnerId == userId)
+            .FirstOrDefaultAsync();
+
+        if (existingCompany != null)
+        {
+            // Update existing company
+            existingCompany.CompanyName = dto.CompanyName;
+            existingCompany.Industry = dto.Industry;
+            existingCompany.Website = dto.Website;
+            existingCompany.Tagline = dto.Tagline;
+            existingCompany.UpdatedAt = DateTime.UtcNow;
+
+            await _dbContext.Companies.ReplaceOneAsync(
+                c => c.Id == existingCompany.Id,
+                existingCompany
+            );
+            return existingCompany;
+        }
+
+        // Create new company if doesn't exist
         var company = new Companies
         {
             Id = ObjectId.GenerateNewId().ToString(),
@@ -279,6 +301,24 @@ public class CompanyService : ICompanyService
         await _dbContext.Companies.ReplaceOneAsync(filter, company);
 
         return company;
+    }
+
+    public async Task<List<BeneficialOwnerResponse>> GetBeneficialOwnersAsync(string companyId)
+    {
+        var company = await GetCompanyAsync(companyId);
+
+        if (company.BeneficialOwnersDto == null || company.BeneficialOwnersDto.Count == 0)
+        {
+            return new List<BeneficialOwnerResponse>();
+        }
+
+        return company.BeneficialOwnersDto.Select(owner => new BeneficialOwnerResponse
+        {
+            FullName = owner.FullName ?? string.Empty,
+            Email = owner.Email ?? string.Empty,
+            OwnershipPercent = owner.OwnershipPercent,
+            Nationality = owner.Nationality ?? string.Empty
+        }).ToList();
     }
 
     // ============ PHASE 3: FINANCIAL & KPI ============

@@ -73,41 +73,67 @@ export function usePhase2Step1Form({
     defaultValues: EMPTY_FORM_DATA,
   });
 
-  // Hydrate the form ONCE from saved progress (if any).
+  // Hydrate the form ONCE from saved progress or database.
   useEffect(() => {
     if (!progress || isInitializedRef.current) return;
     isInitializedRef.current = true;
 
-    const savedData =
-      (initialData as LegalIdentityFormData | undefined) ||
-      (getPhaseData(2) as LegalIdentityFormData | undefined);
+    const initializeForm = async () => {
+      try {
+        // 1. Check for local saved data first
+        let savedData =
+          (initialData as LegalIdentityFormData | undefined) ||
+          (getPhaseData(2) as LegalIdentityFormData | undefined);
 
-    if (savedData) {
-      form.reset({ ...EMPTY_FORM_DATA, ...savedData });
-    }
-  }, [progress, initialData, form, getPhaseData]);
+        // 2. If no local data, try to load from database
+        if (!savedData || !savedData.companyName) {
+          const phaseData = getPhaseData(2) as any;
+          let companyId = phaseData?.__companyId;
 
-  // Debounced autosave so progress state doesn't update on every keystroke.
-  // Surfaces an "Auto-saved" indicator for ~1.5s after each persist.
-  useEffect(() => {
-    const subscription = form.watch((values) => {
-      if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
-      setAutosave((s) => ({ ...s, status: 'pending' }));
-      autosaveTimerRef.current = setTimeout(() => {
-        savePhaseData(2, values);
-        setAutosave({ status: 'saved', lastSavedAt: Date.now() });
-        if (savedFlashTimerRef.current) clearTimeout(savedFlashTimerRef.current);
-        savedFlashTimerRef.current = setTimeout(() => {
-          setAutosave((s) => ({ ...s, status: 'idle' }));
-        }, 1500);
-      }, AUTOSAVE_DEBOUNCE_MS);
-    });
-    return () => {
-      subscription.unsubscribe();
-      if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
-      if (savedFlashTimerRef.current) clearTimeout(savedFlashTimerRef.current);
+          // 3. If no companyId in local state, fetch from backend
+          if (!companyId) {
+            const phaseProgress = await entrepreneurApi.getCurrentPhase();
+            companyId = phaseProgress?.companyId;
+          }
+
+          // 4. Fetch company data from database
+          if (companyId) {
+            const company = await entrepreneurApi.getCompany(companyId);
+            if (company) {
+              savedData = {
+                companyName: company.legalName || company.companyName || '',
+                registrationNumber: company.registrationNumber || '',
+                legalForm: company.legalStructure || '',
+                incorporationDate: company.incorporationDate || '',
+                countryOfRegistration: company.country || '',
+                registeredAddress: company.registeredAddress || '',
+                industryCode: company.nafCode || '',
+              };
+              // Save companyId to local state for future use
+              const existingData = getPhaseData(2) as any;
+              if (existingData && !existingData.__companyId) {
+                savePhaseData(2, { ...existingData, __companyId: companyId });
+              }
+            }
+          }
+        }
+
+        // 5. Reset form with data (local or database)
+        if (savedData) {
+          form.reset({ ...EMPTY_FORM_DATA, ...savedData });
+        }
+      } catch (error) {
+        console.warn('Failed to load company data:', error);
+        // Fall back to empty form
+        form.reset(EMPTY_FORM_DATA);
+      }
     };
-  }, [form, savePhaseData]);
+
+    initializeForm();
+  }, [progress, initialData, form, getPhaseData, savePhaseData]);
+
+  // Autosave disabled - only save on explicit button clicks
+  // (Save Draft or Next button)
 
   const handleSaveDraft = useCallback(async () => {
     setFormState({ status: 'saving', error: null });
@@ -144,11 +170,11 @@ export function usePhase2Step1Form({
             tagline: 'Company created during Phase 2 verification',
           });
 
-          if (!createResponse?.companyId) {
+          // API returns either 'id' or 'companyId' depending on response type
+          const companyId = createResponse?.companyId || createResponse?.id;
+          if (!companyId) {
             throw new Error('No company ID returned from creation');
           }
-
-          const companyId = createResponse.companyId;
           console.log('✅ Company created:', companyId);
 
           // Step 2: Immediately update with Phase 2 legal identity data
