@@ -42,8 +42,15 @@ public class BeneficialOwnerDto
     public string Email { get; set; }
     public double OwnershipPercent { get; set; }
 
-    // Optional metadata.
-    public string Role { get; set; }
+    public string? Role { get; set; }
+    public string Nationality { get; set; }
+}
+
+public class BeneficialOwnerResponse
+{
+    public string FullName { get; set; }
+    public string Email { get; set; }
+    public double OwnershipPercent { get; set; }
     public string Nationality { get; set; }
 }
 

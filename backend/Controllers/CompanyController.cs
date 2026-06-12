@@ -374,6 +374,29 @@ public class CompanyController : ControllerBase
         }
     }
 
+    [HttpGet("{companyId}/beneficial-owners")]
+    public async Task<ActionResult<List<BeneficialOwnerResponse>>> GetBeneficialOwners(string companyId)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureCompanyOwnershipAsync(companyId);
+            var owners = await _companyService.GetBeneficialOwnersAsync(companyId);
+            return Ok(owners);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting beneficial owners");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
     // ============ PHASE 3: FINANCIAL & KPI ============
 
     [HttpPost("{companyId}/revenue")]
