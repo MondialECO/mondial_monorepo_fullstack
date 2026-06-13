@@ -1,7 +1,7 @@
 'use client';
 
-import { PhaseNumber, StepNumber } from '@/types/entrepreneur';
-import { CheckCircle2, Lock } from 'lucide-react';
+import { StepNumber } from '@/types/entrepreneur';
+import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface StepIndicatorConfig {
@@ -30,7 +30,7 @@ export function ProgressSidebar({
     <div className="space-y-4 sm:space-y-6 md:space-y-8">
       {/* Progress Section */}
       <div>
-        <h2 className="text-lg font-semibold tracking-tight text-neutral-1 mb-5 sm:mb-6">
+        <h2 className="text-lg font-semibold tracking-tight text-foreground mb-5 sm:mb-6">
           {title}
         </h2>
 
@@ -39,7 +39,7 @@ export function ProgressSidebar({
           {/* Vertical line connector - contained within steps only */}
           {steps.length > 1 && (
             <div
-              className="absolute left-3 top-0 w-0.5 bg-neutral-2 rounded-full"
+              className="absolute left-3 top-0 w-0.5 bg-border rounded-full"
               style={{
                 height: `calc((${steps.length - 1}) * 6rem)`,
               }}
@@ -48,24 +48,22 @@ export function ProgressSidebar({
 
           {/* Steps Items */}
           <div className="space-y-6 sm:space-y-8 md:space-y-9 relative">
-            {steps.map((step, idx) => (
+            {steps.map((step) => (
               <div key={step.step} className="flex gap-3 relative z-10">
                 {/* Icon */}
                 <div
                   className={cn(
                     'w-6 h-6 rounded-lg flex-shrink-0 flex items-center justify-center font-semibold text-xs sm:text-sm',
                     step.status === 'completed' &&
-                      'bg-green-600 text-white flex items-center justify-center',
+                      'bg-success-text text-white',
                     step.status === 'current' &&
-                      'bg-neutral-4 border border-neutral-2 text-neutral-1',
+                      'bg-card border border-border text-foreground',
                     step.status === 'pending' &&
-                      'bg-neutral-4 border border-neutral-2 text-neutral-1 opacity-60'
+                      'bg-card border border-border text-foreground opacity-60'
                   )}
                 >
                   {step.status === 'completed' ? (
-                    <CheckCircle2 className="w-4 h-4" />
-                  ) : step.status === 'pending' ? (
-                    <Lock className="w-3 h-3" />
+                    <Check className="w-4 h-4" aria-hidden />
                   ) : (
                     step.step
                   )}
@@ -76,14 +74,14 @@ export function ProgressSidebar({
                   <p
                     className={cn(
                       'text-sm font-semibold',
-                      step.status === 'completed' && 'text-green-600',
-                      step.status === 'current' && 'text-neutral-1',
-                      step.status === 'pending' && 'text-neutral-1 opacity-60'
+                      step.status === 'completed' && 'text-success-text',
+                      step.status === 'current' && 'text-foreground',
+                      step.status === 'pending' && 'text-foreground opacity-60'
                     )}
                   >
                     {step.title}
                   </p>
-                  <p className="text-xs text-neutral-5 mt-0.5">{step.subtitle}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{step.subtitle}</p>
                 </div>
               </div>
             ))}
@@ -92,22 +90,22 @@ export function ProgressSidebar({
       </div>
 
       {/* Score Card - Clean separation from timeline */}
-      <div className="bg-neutral-4 border border-neutral-2 rounded-2xl p-4 sm:p-5 space-y-3 relative z-20">
+      <div className="bg-card border border-border rounded-2xl p-4 sm:p-5 space-y-3 relative z-20">
         <div className="flex justify-between gap-2">
-          <span className="text-xs font-medium uppercase tracking-wide text-neutral-2">
+          <span className="text-xs font-medium uppercase tracking-wide text-foreground">
             {scoreLabel}
           </span>
           <span className="text-sm font-semibold text-primary">
             {overallScore}%
           </span>
         </div>
-        <div className="w-full h-2 bg-neutral-2 rounded-full overflow-hidden shadow-sm">
+        <div className="w-full h-2 bg-border rounded-full overflow-hidden shadow-sm">
           <div
             className="h-full bg-gradient-to-r from-primary to-primary/70 transition-all duration-500 ease-out"
             style={{ width: `${overallScore}%` }}
           />
         </div>
-        <p className="text-xs text-neutral-5 leading-snug">{scoreDescription}</p>
+        <p className="text-xs text-muted-foreground leading-snug">{scoreDescription}</p>
       </div>
     </div>
   );

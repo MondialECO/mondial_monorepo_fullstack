@@ -2,59 +2,38 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AlertCircle, FileText, Plus, Trash2, Upload } from 'lucide-react';
+import { AlertCircle, FileText, Upload, ShieldCheck, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useEntrepreneurProgress } from '@/hooks/useEntrepreneurProgress';
 import { RouteGuard } from '@/components/entrepreneur/RouteGuard';
 import { EntrepreneurLayout } from '@/components/entrepreneur/EntrepreneurLayout';
 import { ProgressSidebar } from '@/components/entrepreneur/ProgressSidebar';
-import { PhaseHeader } from '@/components/entrepreneur/PhaseHeader';
 import { StepFooter } from '@/components/entrepreneur/StepFooter';
-import { Phase3FinancialDashboard } from '@/components/entrepreneur/phase3/Phase3FinancialDashboard';
-import entrepreneurApi, {
-  FinancialReportResponse,
-} from '@/lib/api-entrepreneur';
+import {
+  Phase3Container,
+  Surface,
+  MetricTile,
+  RevenueBars,
+  InfoCallout,
+  Chip,
+} from '@/components/entrepreneur/phase3/Phase3Ui';
+import { PHASE_3_STEPS } from '@/components/entrepreneur/phase3/steps';
+import entrepreneurApi, { FinancialReportResponse } from '@/lib/api-entrepreneur';
 import { Phase3Data } from '@/types/entrepreneur';
-
-const PHASE_3_STEPS = [
-  { step: 1 as const, title: 'Revenue & Cash', subtitle: 'Financial baseline' },
-  { step: 2 as const, title: 'Equity Structure', subtitle: 'Cap table setup' },
-  { step: 3 as const, title: 'Funding & KPI', subtitle: 'Ask, KPI, reports' },
-];
 
 const REQUIRED_REPORT_TYPES: ReadonlyArray<{ id: string; label: string }> = [
   { id: 'pnl', label: 'P&L statement' },
   { id: 'balance', label: 'Balance sheet' },
 ];
 
-type RoundType = 'pre_seed' | 'seed' | 'series_a';
-type ShareType = 'preferred' | 'safe' | 'note';
+const eur = (n: number) =>
+  new Intl.NumberFormat('en-IE', { style: 'currency', currency: 'EUR', notation: 'compact', maximumFractionDigits: 1 }).format(n || 0);
 
-interface AllocationRow {
-  category: string;
-  percent: string;
-}
-
-function Phase3Step3Client() {
+function Phase3KpiTrackerClient() {
   const router = useRouter();
-  const {
-    progress,
-    savePhaseData,
-    moveToNextStep,
-    getPhaseData,
-    applyBackendResponse,
-  } = useEntrepreneurProgress();
-
-  const [raiseAmount, setRaiseAmount] = useState('');
-  const [roundType, setRoundType] = useState<RoundType>('pre_seed');
-  const [preMoneyValuation, setPreMoneyValuation] = useState('');
-  const [shareType, setShareType] = useState<ShareType>('preferred');
-  const [allocations, setAllocations] = useState<AllocationRow[]>([
-    { category: 'Product', percent: '' },
-    { category: 'Sales & marketing', percent: '' },
-    { category: 'Operations', percent: '' },
-  ]);
+  const { progress, savePhaseData, moveToNextStep, getPhaseData, applyBackendResponse, trustScore } =
+    useEntrepreneurProgress();
 
   const [mrr, setMrr] = useState('');
   const [arr, setArr] = useState('');
@@ -66,6 +45,8 @@ function Phase3Step3Client() {
 
   const [reports, setReports] = useState<FinancialReportResponse[]>([]);
   const [uploadingType, setUploadingType] = useState<string | null>(null);
+  const [monthly, setMonthly] = useState<{ yearMonth: string; revenue: number }[]>([]);
+  const [overallProgress, setOverallProgress] = useState<number | null>(null);
 
   const [validationError, setValidationError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -75,11 +56,17 @@ function Phase3Step3Client() {
     (async () => {
       try {
         const existing: Phase3Data = getPhaseData<Phase3Data>(3) ?? {};
-        const companyId =
-          existing.__companyId ?? (await entrepreneurApi.getCurrentPhase()).companyId;
+        const prog = await entrepreneurApi.getCurrentPhase();
+        if (!cancelled) setOverallProgress(prog.overallProgressPercent);
+        const companyId = existing.__companyId ?? prog.companyId;
         if (!companyId) return;
-        const list = await entrepreneurApi.getFinancialReports(companyId);
-        if (!cancelled) setReports(list);
+        const [list, mon] = await Promise.allSettled([
+          entrepreneurApi.getFinancialReports(companyId),
+          entrepreneurApi.getMonthlyRevenue(companyId),
+        ]);
+        if (cancelled) return;
+        if (list.status === 'fulfilled') setReports(list.value);
+        if (mon.status === 'fulfilled') setMonthly(mon.value);
       } catch {
         // fall through; user can still upload
       }
@@ -91,21 +78,13 @@ function Phase3Step3Client() {
 
   if (!progress) {
     return (
-      <div
-        className="min-h-screen bg-background flex items-center justify-center p-4"
-        role="status"
-        aria-live="polite"
-      >
+      <div className="min-h-screen bg-background flex items-center justify-center p-4" role="status" aria-live="polite">
         <p className="text-muted-foreground text-sm">Loading…</p>
       </div>
     );
   }
 
-  const allocationTotal = allocations.reduce(
-    (sum, a) => sum + (parseFloat(a.percent) || 0),
-    0,
-  );
-  const allocationValid = allocationTotal >= 95 && allocationTotal <= 105;
+  const num = (s: string) => (Number.isFinite(parseFloat(s)) ? parseFloat(s) : null);
 
   async function resolveCompanyId(): Promise<string> {
     const existing: Phase3Data = getPhaseData<Phase3Data>(3) ?? {};
@@ -114,13 +93,6 @@ function Phase3Step3Client() {
     if (!fromServer?.companyId) throw new Error('No company found in backend');
     return fromServer.companyId;
   }
-
-  const updateAllocation = (idx: number, patch: Partial<AllocationRow>) =>
-    setAllocations((rs) => rs.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
-  const addAllocation = () =>
-    setAllocations((rs) => [...rs, { category: '', percent: '' }]);
-  const removeAllocation = (idx: number) =>
-    setAllocations((rs) => rs.filter((_, i) => i !== idx));
 
   const handleReportUpload = async (type: string, file: File) => {
     setValidationError('');
@@ -133,8 +105,7 @@ function Phase3Step3Client() {
       const uploaded = await entrepreneurApi.uploadFinancialReport(companyId, fd);
       setReports((prev) => [uploaded, ...prev]);
     } catch (error) {
-      const msg = error instanceof Error ? error.message : 'Failed to upload report';
-      setValidationError(msg);
+      setValidationError(error instanceof Error ? error.message : 'Failed to upload report');
     } finally {
       setUploadingType(null);
     }
@@ -142,45 +113,14 @@ function Phase3Step3Client() {
 
   const handleSubmit = async () => {
     setValidationError('');
-
-    const raise = parseFloat(raiseAmount);
-    if (!Number.isFinite(raise) || raise <= 0) {
-      setValidationError('Raise amount must be greater than 0');
-      return;
-    }
-    const preMoney = parseFloat(preMoneyValuation);
-    if (!Number.isFinite(preMoney) || preMoney <= 0) {
-      setValidationError('Pre-money valuation must be greater than 0');
-      return;
-    }
-    if (allocationTotal < 95 || allocationTotal > 105) {
-      setValidationError(
-        `Capital allocation must total ~100% (currently ${allocationTotal.toFixed(2)}%)`,
-      );
-      return;
-    }
-    for (const a of allocations) {
-      const p = parseFloat(a.percent);
-      if (!a.category.trim() || !Number.isFinite(p) || p < 0) {
-        setValidationError('Every allocation row needs a category and non-negative percent');
-        return;
-      }
-    }
-
-    const mrrN = parseFloat(mrr);
-    const arrN = parseFloat(arr);
-    const gmN = parseFloat(grossMargin);
-    const cacN = parseFloat(cac);
-    const ltvN = parseFloat(ltv);
-    const churnN = parseFloat(churn);
-    const aaN = parseInt(activeAccounts, 10);
-    if (!Number.isFinite(mrrN) || mrrN < 0 ||
-        !Number.isFinite(arrN) || arrN < 0 ||
-        !Number.isFinite(gmN) || gmN < -100 || gmN > 100 ||
-        !Number.isFinite(cacN) || cacN < 0 ||
-        !Number.isFinite(ltvN) || ltvN < 0 ||
-        !Number.isFinite(churnN) || churnN < 0 || churnN > 100 ||
-        !Number.isFinite(aaN) || aaN < 0) {
+    const mrrN = num(mrr), arrN = num(arr), gmN = num(grossMargin);
+    const cacN = num(cac), ltvN = num(ltv), churnN = num(churn), aaN = num(activeAccounts);
+    if (
+      mrrN == null || mrrN < 0 || arrN == null || arrN < 0 ||
+      gmN == null || gmN < -100 || gmN > 100 || cacN == null || cacN < 0 ||
+      ltvN == null || ltvN < 0 || churnN == null || churnN < 0 || churnN > 100 ||
+      aaN == null || aaN < 0
+    ) {
       setValidationError('Fill every KPI field with a valid non-negative number');
       return;
     }
@@ -188,11 +128,8 @@ function Phase3Step3Client() {
       setValidationError('KPI baseline needs at least one of MRR, ARR, or active accounts > 0');
       return;
     }
-
     for (const required of REQUIRED_REPORT_TYPES) {
-      const ok = reports.some(
-        (r) => r.type.toLowerCase() === required.id && r.status !== 'rejected',
-      );
+      const ok = reports.some((r) => r.type.toLowerCase() === required.id && r.status !== 'rejected');
       if (!ok) {
         setValidationError(`Upload your ${required.label} (and ensure it is not rejected)`);
         return;
@@ -202,58 +139,31 @@ function Phase3Step3Client() {
     setIsSubmitting(true);
     try {
       const companyId = await resolveCompanyId();
-
-      await entrepreneurApi.saveFundingAsk(companyId, {
-        raiseAmount: raise,
-        roundType,
-        preMoneyValuation: preMoney,
-        shareType,
-        capitalAllocation: allocations.map((a) => ({
-          category: a.category.trim(),
-          amount: (raise * parseFloat(a.percent)) / 100,
-          percent: parseFloat(a.percent),
-        })),
-        resourceMap: { hiringPlan: [], serviceProviders: [], techTools: [] },
-      });
-
       await entrepreneurApi.saveKpiBaseline(companyId, {
-        mrr: mrrN,
-        arr: arrN,
-        grossMarginPercent: gmN,
-        cac: cacN,
-        ltv: ltvN,
-        churnPercent: churnN,
-        activeAccounts: aaN,
+        mrr: mrrN, arr: arrN, grossMarginPercent: gmN, cac: cacN, ltv: ltvN, churnPercent: churnN, activeAccounts: aaN,
       });
-
       const advanceResponse = await entrepreneurApi.advancePhase(companyId, 3, {});
       if (advanceResponse?.currentPhase !== 4) {
-        throw new Error(
-          `Phase advancement failed - expected currentPhase=4, got ${advanceResponse?.currentPhase}`,
-        );
+        throw new Error(`Phase advancement failed - expected currentPhase=4, got ${advanceResponse?.currentPhase}`);
       }
       if (!advanceResponse?.completedPhases?.includes(3)) {
         throw new Error('Phase 3 not marked as completed in backend response');
       }
-
       applyBackendResponse(advanceResponse);
 
       const existing: Phase3Data = getPhaseData<Phase3Data>(3) ?? {};
       savePhaseData(3, {
         ...existing,
         __companyId: companyId,
-        fundingAskSavedAt: new Date().toISOString(),
         kpiBaselineSavedAt: new Date().toISOString(),
         reportsSubmittedCount: reports.length,
         submittedAt: new Date().toISOString(),
       });
       moveToNextStep(3, 3);
-
       await new Promise((r) => setTimeout(r, 300));
       router.push('/dashboard/entrepreneur/phase-4');
     } catch (error) {
-      const msg = error instanceof Error ? error.message : 'Failed to submit Phase 3';
-      setValidationError(msg);
+      setValidationError(error instanceof Error ? error.message : 'Failed to submit Phase 3');
     } finally {
       setIsSubmitting(false);
     }
@@ -263,199 +173,176 @@ function Phase3Step3Client() {
     1: progress.completedSteps.has('3-1') ? 'completed' : progress.currentStep === 1 ? 'current' : 'pending',
     2: progress.completedSteps.has('3-2') ? 'completed' : progress.currentStep === 2 ? 'current' : 'pending',
     3: progress.completedSteps.has('3-3') ? 'completed' : progress.currentStep === 3 ? 'current' : 'pending',
-  };
-  const stepIndicators = PHASE_3_STEPS.map((step) => ({
-    ...step,
-    status: statusMap[step.step as keyof typeof statusMap] as 'completed' | 'current' | 'pending',
+  } as const;
+  const stepIndicators = PHASE_3_STEPS.map((s) => ({
+    ...s,
+    status: statusMap[s.step as 1 | 2 | 3] as 'completed' | 'current' | 'pending',
   }));
 
   const sidebar = (
     <ProgressSidebar
-      title="Financial Submission"
+      title="Verification Progress"
       steps={stepIndicators}
       overallScore={100}
-      scoreLabel="STEP"
-      scoreDescription="Submit funding ask, KPI baseline, and required reports."
+      scoreLabel="OVERALL SCORE"
+      scoreDescription="Submit your KPI baseline and required reports to complete Phase 3."
     />
   );
 
+  const chartData =
+    monthly.length > 0
+      ? monthly.slice(-4).map((m) => ({ label: m.yearMonth.slice(5), value: m.revenue }))
+      : [
+          { label: 'Q1', value: 0 },
+          { label: 'Q2', value: 0 },
+          { label: 'Q3', value: 0 },
+          { label: 'Q4', value: 0 },
+        ];
+
+  const ltvCac = num(ltv) != null && num(cac) != null && num(cac)! > 0 ? (num(ltv)! / num(cac)!).toFixed(1) : null;
+
+  const KPI_FIELDS = [
+    ['MRR (€)', 'mrr', mrr, setMrr],
+    ['ARR (€)', 'arr', arr, setArr],
+    ['Gross margin (%)', 'gm', grossMargin, setGrossMargin],
+    ['CAC (€)', 'cac', cac, setCac],
+    ['LTV (€)', 'ltv', ltv, setLtv],
+    ['Churn (%)', 'churn', churn, setChurn],
+    ['Active accounts', 'aa', activeAccounts, setActiveAccounts],
+  ] as const;
+
   return (
     <EntrepreneurLayout sidebar={sidebar}>
-      <div className="space-y-4 md:space-y-6">
-        <PhaseHeader
-          title="Funding Ask, KPI &amp; Reports"
-          subtitle="Submit your funding ask, KPI baseline, and required financial reports. Phase 3 completes only after the backend accepts everything."
-          progressLabel="PROGRESS"
-          progressValue="Step 3 of 3"
-          progressPercentage={100}
-        />
-
-        {/* Figma 3.2 / 3.3 — live valuation + KPI tracker (real data, honest unavailable states) */}
-        <Phase3FinancialDashboard />
-
-        {/* Funding ask */}
-        <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
-          <h2 className="text-lg font-bold text-foreground">Funding ask</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <Phase3Container
+        crumbs={['Entrepreneur Verification', 'Live KPI Tracking']}
+        title="KPI Tracker"
+        subtitle="Submit your KPI baseline and required financial reports. Phase 3 completes once the backend accepts everything."
+      >
+        {/* Integration banner — backend-blocked, disabled actions */}
+        <div className="bg-warning/10 border border-warning/30 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+          <div className="flex gap-3">
+            <Zap className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" aria-hidden />
             <div>
-              <label htmlFor="raise-amount" className="block text-sm font-semibold text-foreground mb-2">Raise amount (€)</label>
-              <Input
-                id="raise-amount"
-                type="number"
-                min={0}
-                value={raiseAmount}
-                onChange={(e) => setRaiseAmount(e.target.value)}
-                className="h-10"
-              />
+              <p className="text-sm font-semibold text-foreground">Connect Stripe to enable automatic KPI sync</p>
+              <p className="text-[13px] text-muted-foreground">Live metric sync is awaiting integration. Enter your baseline manually below.</p>
             </div>
-            <div>
-              <label htmlFor="pre-money" className="block text-sm font-semibold text-foreground mb-2">Pre-money valuation (€)</label>
-              <Input
-                id="pre-money"
-                type="number"
-                min={0}
-                value={preMoneyValuation}
-                onChange={(e) => setPreMoneyValuation(e.target.value)}
-                className="h-10"
-              />
-            </div>
-            <div>
-              <label htmlFor="round-type" className="block text-sm font-semibold text-foreground mb-2">Round</label>
-              <select
-                id="round-type"
-                value={roundType}
-                onChange={(e) => setRoundType(e.target.value as RoundType)}
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <option value="pre_seed">pre_seed</option>
-                <option value="seed">seed</option>
-                <option value="series_a">series_a</option>
-              </select>
-            </div>
-            <div>
-              <label htmlFor="share-type" className="block text-sm font-semibold text-foreground mb-2">Share type</label>
-              <select
-                id="share-type"
-                value={shareType}
-                onChange={(e) => setShareType(e.target.value as ShareType)}
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <option value="preferred">preferred</option>
-                <option value="safe">safe</option>
-                <option value="note">note</option>
-              </select>
-            </div>
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <Button variant="outline" size="sm" disabled>Connect Stripe</Button>
+            <Button variant="outline" size="sm" disabled>Connect ChartMogul</Button>
           </div>
         </div>
 
-        {/* Capital allocation */}
-        <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-foreground">Capital allocation</h2>
-            <Button variant="outline" size="sm" onClick={addAllocation} className="gap-2">
-              <Plus className="w-4 h-4" aria-hidden /> Add category
-            </Button>
-          </div>
-          <div className="space-y-2">
-            {allocations.map((a, idx) => (
-              <div key={idx} className="grid grid-cols-12 gap-2 items-end">
-                <Input
-                  type="text"
-                  value={a.category}
-                  onChange={(e) => updateAllocation(idx, { category: e.target.value })}
-                  placeholder="Category"
-                  aria-label={`Allocation ${idx + 1} category`}
-                  className="col-span-7 h-9"
-                />
-                <Input
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={a.percent}
-                  onChange={(e) => updateAllocation(idx, { percent: e.target.value })}
-                  placeholder="%"
-                  aria-label={`Allocation ${idx + 1} percent`}
-                  className="col-span-4 h-9"
-                />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="col-span-1"
-                  onClick={() => removeAllocation(idx)}
-                  aria-label={`Remove allocation ${idx + 1}`}
-                >
-                  <Trash2 className="w-4 h-4" aria-hidden />
-                </Button>
+        <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-4">
+          {/* Operational mastery — composite score is backend-blocked; show real progress */}
+          <Surface className="p-6 flex flex-col items-center text-center gap-4">
+            <div className="self-start">
+              <p className="text-sm font-medium text-muted-foreground">Data Efficiency</p>
+              <p className="text-lg font-semibold text-foreground">Operational Mastery</p>
+            </div>
+            <div className="relative grid place-items-center size-40 rounded-full bg-primary/10">
+              <div className="absolute inset-2 rounded-full border-[10px] border-primary/20" />
+              <div className="text-center">
+                <p className="text-3xl font-semibold text-foreground tabular-nums">{overallProgress ?? 0}%</p>
+                <p className="text-xs text-muted-foreground">Overall progress</p>
               </div>
-            ))}
+            </div>
+            <div className="grid grid-cols-2 gap-3 w-full text-left">
+              <div>
+                <p className="text-xs text-muted-foreground">System Health</p>
+                <p className="text-sm italic text-muted-foreground">Data unavailable</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Data Throughput</p>
+                <p className="text-sm italic text-muted-foreground">Data unavailable</p>
+              </div>
+            </div>
+            <div className="w-full rounded-xl border border-dashed border-border p-3 text-left">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Data Integration</p>
+              <div className="flex flex-col gap-2">
+                <Button variant="outline" size="sm" disabled className="w-full">Connect Stripe</Button>
+                <Button variant="outline" size="sm" disabled className="w-full">Connect ChartMogul</Button>
+              </div>
+            </div>
+          </Surface>
+
+          {/* Metric grid (live from inputs; honest shells for unbacked metrics) */}
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 content-start">
+            <MetricTile label="Monthly Recurring Revenue" value={num(mrr) != null ? eur(num(mrr)!) : ''} available={num(mrr) != null} />
+            <MetricTile label="Churn Rate" value={num(churn) != null ? `${num(churn)}%` : ''} available={num(churn) != null} />
+            <MetricTile label="Annual Revenue" value={num(arr) != null ? eur(num(arr)!) : ''} available={num(arr) != null} />
+            <MetricTile label="NPS" value="" available={false} />
+            <MetricTile label="CAC" value={num(cac) != null ? eur(num(cac)!) : ''} available={num(cac) != null} />
+            <MetricTile label="LTV" value={num(ltv) != null ? eur(num(ltv)!) : ''} available={num(ltv) != null} />
+            <MetricTile label="Total Runway" value="" available={false} />
+            <MetricTile label="Gross Margin" value={num(grossMargin) != null ? `${num(grossMargin)}%` : ''} available={num(grossMargin) != null} />
+            <MetricTile label="Burn Rate" value="" available={false} icon={ShieldCheck} />
           </div>
-          <p className={`text-sm font-semibold ${allocationValid ? 'text-primary' : 'text-destructive'}`} role="status" aria-live="polite">
-            Total: {allocationTotal.toFixed(2)}%
-          </p>
         </div>
 
-        {/* KPI baseline */}
-        <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
-          <h2 className="text-lg font-bold text-foreground">KPI baseline</h2>
-          <p className="text-sm text-muted-foreground">
-            Reviewers need a snapshot of your unit economics. All fields required.
-          </p>
+        {/* Revenue trend + business health */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+          <Surface className="p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-semibold text-foreground">Revenue trend</h2>
+              <Chip tone="success">Live from submitted revenue</Chip>
+            </div>
+            <RevenueBars data={chartData} height={180} />
+          </Surface>
+          <Surface className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-foreground">Business Health</h2>
+              <Chip tone="primary">Score {trustScore}/100</Chip>
+            </div>
+            <table className="w-full text-sm">
+              <tbody>
+                {[
+                  ['LTV / CAC ratio', ltvCac != null ? `${ltvCac}x` : null],
+                  ['Burn multiple', null],
+                  ['Growth', null],
+                  ['Churn rate', num(churn) != null ? `${num(churn)}%` : null],
+                ].map(([label, value]) => (
+                  <tr key={label as string} className="border-b border-border/60 last:border-0">
+                    <td className="py-3 text-foreground">{label}</td>
+                    <td className="py-3 text-right font-medium text-foreground tabular-nums">
+                      {value ?? <span className="italic text-muted-foreground font-normal">Data unavailable</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Surface>
+        </div>
+
+        {/* KPI baseline input (real submission) */}
+        <Surface className="p-6 mt-4 space-y-4">
+          <h2 className="text-lg font-semibold text-foreground">KPI baseline</h2>
+          <p className="text-sm text-muted-foreground">Reviewers need a snapshot of your unit economics. All fields required.</p>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {(
-              [
-                ['MRR (€)', 'mrr', mrr, setMrr],
-                ['ARR (€)', 'arr', arr, setArr],
-                ['Gross margin (%)', 'gm', grossMargin, setGrossMargin],
-                ['CAC (€)', 'cac', cac, setCac],
-                ['LTV (€)', 'ltv', ltv, setLtv],
-                ['Churn (%)', 'churn', churn, setChurn],
-                ['Active accounts', 'aa', activeAccounts, setActiveAccounts],
-              ] as const
-            ).map(([label, id, value, setter]) => (
+            {KPI_FIELDS.map(([label, id, value, setter]) => (
               <div key={id}>
-                <label htmlFor={`kpi-${id}`} className="block text-sm font-semibold text-foreground mb-2">{label}</label>
-                <Input
-                  id={`kpi-${id}`}
-                  type="number"
-                  min={0}
-                  value={value}
-                  onChange={(e) => setter(e.target.value)}
-                  placeholder="0"
-                  className="h-10"
-                />
+                <label htmlFor={`kpi-${id}`} className="block text-sm font-medium text-foreground mb-2">{label}</label>
+                <Input id={`kpi-${id}`} type="number" min={0} value={value} onChange={(e) => setter(e.target.value)} placeholder="0" className="h-10" />
               </div>
             ))}
           </div>
-        </div>
+        </Surface>
 
         {/* Financial reports */}
-        <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
-          <h2 className="text-lg font-bold text-foreground">Financial reports</h2>
-          <p className="text-sm text-muted-foreground">
-            Upload your latest P&amp;L and balance sheet. PDFs or spreadsheets accepted.
-          </p>
+        <Surface className="p-6 mt-4 space-y-4">
+          <h2 className="text-lg font-semibold text-foreground">Financial reports</h2>
+          <p className="text-sm text-muted-foreground">Upload your latest P&amp;L and balance sheet. PDFs or spreadsheets accepted.</p>
           <div className="space-y-3">
             {REQUIRED_REPORT_TYPES.map((rt) => {
-              const uploaded = reports.find(
-                (r) => r.type.toLowerCase() === rt.id && r.status !== 'rejected',
-              );
+              const uploaded = reports.find((r) => r.type.toLowerCase() === rt.id && r.status !== 'rejected');
               const uploading = uploadingType === rt.id;
               return (
-                <div
-                  key={rt.id}
-                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-background border border-border rounded-xl p-4"
-                >
+                <div key={rt.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-background border border-border rounded-xl p-4">
                   <div className="flex items-start gap-3 flex-1">
                     <FileText className="w-5 h-5 text-muted-foreground mt-0.5" aria-hidden />
                     <div>
-                      <p className="text-sm font-semibold text-foreground">{rt.label}</p>
-                      {uploaded ? (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {uploaded.fileName} · {uploaded.status}
-                        </p>
-                      ) : (
-                        <p className="text-xs text-muted-foreground mt-1">Required</p>
-                      )}
+                      <p className="text-sm font-medium text-foreground">{rt.label}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{uploaded ? `${uploaded.fileName} · ${uploaded.status}` : 'Required'}</p>
                     </div>
                   </div>
                   <label className="cursor-pointer">
@@ -469,13 +356,7 @@ function Phase3Step3Client() {
                         if (f) handleReportUpload(rt.id, f);
                       }}
                     />
-                    <Button
-                      asChild
-                      variant={uploaded ? 'outline' : 'default'}
-                      size="sm"
-                      disabled={uploading}
-                      className="gap-2"
-                    >
+                    <Button asChild variant={uploaded ? 'outline' : 'default'} size="sm" disabled={uploading} className="gap-2">
                       <span>
                         <Upload className="w-4 h-4" aria-hidden />
                         {uploading ? 'Uploading…' : uploaded ? 'Replace' : 'Upload'}
@@ -486,24 +367,25 @@ function Phase3Step3Client() {
               );
             })}
           </div>
+        </Surface>
+
+        <div className="mt-4">
+          <InfoCallout icon={AlertCircle} title="Submission completes Phase 3">
+            Submitting sends your financials for compliance review and unlocks Phase 4. Verification is awarded
+            separately after a reviewer approves your submission.
+          </InfoCallout>
         </div>
 
-        <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 flex gap-3">
-          <AlertCircle className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" aria-hidden />
-          <p className="text-sm text-muted-foreground">
-            Submitting Phase 3 sends your financials for compliance review and unlocks Phase 4.
-            Verification is awarded separately after a reviewer approves your submission.
-          </p>
+        <div className="mt-6">
+          <StepFooter
+            backUrl="/dashboard/entrepreneur/phase-3/step-2"
+            onNextClick={handleSubmit}
+            isLoading={isSubmitting}
+            nextLabel="Submit &amp; Complete Phase 3"
+            nextValidationError={validationError}
+          />
         </div>
-
-        <StepFooter
-          backUrl="/dashboard/entrepreneur/phase-3/step-2"
-          onNextClick={handleSubmit}
-          isLoading={isSubmitting}
-          nextLabel="Submit &amp; Complete Phase 3"
-          nextValidationError={validationError}
-        />
-      </div>
+      </Phase3Container>
     </EntrepreneurLayout>
   );
 }
@@ -511,7 +393,7 @@ function Phase3Step3Client() {
 export default function Phase3Step3Page() {
   return (
     <RouteGuard requiredPhase={3} requiredStep={3}>
-      <Phase3Step3Client />
+      <Phase3KpiTrackerClient />
     </RouteGuard>
   );
 }

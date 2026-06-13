@@ -29,8 +29,8 @@ function Phase3PageContent() {
         },
         {
           icon: BarChart3,
-          title: 'Equity Structure',
-          description: 'Cap table allocations totalling ~100% of issued shares',
+          title: 'Automated Valuation',
+          description: 'Review your AI-estimated valuation and define your funding ask',
         },
         {
           icon: TrendingUp,
