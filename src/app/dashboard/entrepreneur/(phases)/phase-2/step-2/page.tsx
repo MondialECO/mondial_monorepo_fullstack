@@ -14,10 +14,30 @@ import { Button } from '@/components/ui/button';
 import { Phase2Data } from '@/types/entrepreneur';
 
 const requiredDocuments = [
-  { id: 'kbis', name: 'KBIS (Company Registry)', description: 'Official registry extract' },
-  { id: 'articles', name: 'Articles of Association', description: 'Company bylaws/charter' },
-  { id: 'license', name: 'Business License', description: 'Operating authorization' },
-  { id: 'tax', name: 'Tax Certificate', description: 'Recent tax filing proof' },
+  {
+    id: 'kbis',
+    name: 'KBIS / Extrait Kbis',
+    description: 'Official company registration extract from the French national trade registry (Registre du Commerce)',
+    mandatory: true
+  },
+  {
+    id: 'articles',
+    name: 'Articles of Association',
+    description: 'Official articles of association or corporate bylaws filed with the commercial register',
+    mandatory: true
+  },
+  {
+    id: 'license',
+    name: 'Business License',
+    description: 'Professional license or permit required to conduct your specific business activities',
+    mandatory: true
+  },
+  {
+    id: 'tax',
+    name: 'Tax Certificate / Attestation Fiscale',
+    description: 'Certificate of tax compliance issued by the Direction Générale des Finances Publiques',
+    mandatory: true
+  },
 ];
 
 const PHASE_2_STEPS = [
@@ -120,6 +140,11 @@ function Phase2Step2PageContent() {
     }
   };
 
+  const handleSaveForLater = () => {
+    const existingData: Phase2Data = getPhaseData<Phase2Data>(2) ?? {};
+    savePhaseData(2, { ...existingData, uploadedDocuments: Array.from(uploadedDocs) });
+  };
+
   const handleNextClick = async () => {
     setValidationError('');
     setIsValidating(true);
@@ -194,69 +219,79 @@ function Phase2Step2PageContent() {
           progressPercentage={50}
         />
 
-        <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-4 sm:p-6 md:p-8 space-y-4">
-          <div className="grid gap-4">
+        {/* Header Section with Progress */}
+        <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-4 sm:p-6 md:p-8">
+          <div className="flex items-start justify-between gap-4 mb-6 pb-6 border-b border-neutral-2">
+            <div className="flex-1">
+              <h2 className="text-2xl sm:text-3xl font-semibold text-neutral-1 mb-2">Document Submission</h2>
+              <p className="text-sm text-neutral-4">
+                Please provide the following legal documents to certify your company's existence and compliance. Only PDF, JPG, or PNG formats are accepted.
+              </p>
+            </div>
+            <div className="text-right flex-shrink-0">
+              <p className="text-xs font-semibold text-neutral-5 uppercase mb-1">PROGRESS</p>
+              <p className="text-base font-semibold text-neutral-1">{uploadedDocs.size} of {requiredDocuments.length} Required</p>
+            </div>
+          </div>
+
+          {/* 2x2 Grid of Document Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {requiredDocuments.map((doc) => {
               const isUploaded = uploadedDocs.has(doc.id);
               const isUploading = uploadingDocs.has(doc.id);
               return (
                 <div
                   key={doc.id}
-                  className={`border-2 rounded-xl p-4 sm:p-5 transition ${
-                    isUploaded
-                      ? 'bg-green-50 border-green-200'
-                      : 'bg-background border-neutral-2 hover:border-primary/50'
-                  }`}
+                  className="bg-background border border-neutral-2 rounded-2xl p-5 flex flex-col gap-4"
                 >
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <div className="flex items-start gap-3 flex-1">
-                      <div className={`w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                        isUploaded ? 'bg-green-100' : 'bg-neutral-100'
-                      }`}>
-                        {isUploaded ? (
-                          <FileCheck className="w-6 h-6 text-green-600" />
-                        ) : isUploading ? (
-                          <Loader className="w-6 h-6 text-neutral-5 animate-spin" />
-                        ) : (
-                          <Archive className="w-6 h-6 text-neutral-5" />
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <h3 className="text-sm sm:text-base font-semibold text-neutral-1">{doc.name}</h3>
-                        <p className="text-xs sm:text-sm text-neutral-5 mt-1">{doc.description}</p>
-                      </div>
+                  {/* Document Header with Mandatory Badge */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-base font-semibold text-neutral-1 mb-1">{doc.name}</h3>
+                      <p className="text-xs text-neutral-5 leading-relaxed">{doc.description}</p>
                     </div>
-                    <Button
-                      onClick={() => handleDocUpload(doc.id)}
-                      variant={isUploaded ? 'outline' : 'default'}
-                      size="sm"
-                      className="w-full sm:w-auto gap-2"
-                      disabled={isUploaded || isUploading}
-                    >
-                      {isUploaded ? (
-                        <>
-                          <FileCheck className="w-4 h-4" />
-                          Uploaded
-                        </>
-                      ) : isUploading ? (
-                        <>
-                          <Loader className="w-4 h-4 animate-spin" />
-                          Uploading
-                        </>
-                      ) : (
-                        <>
-                          <Upload className="w-4 h-4" />
-                          Upload
-                        </>
-                      )}
-                    </Button>
+                    {doc.mandatory && (
+                      <div className="flex-shrink-0 bg-yellow-100 px-2 py-1 rounded-sm">
+                        <span className="text-xs font-semibold text-yellow-700">Mandatory</span>
+                      </div>
+                    )}
                   </div>
+
+                  {/* Dashed Upload Zone */}
+                  <div
+                    onClick={() => !isUploaded && !isUploading && handleDocUpload(doc.id)}
+                    className={`border-2 border-dashed rounded-lg p-6 min-h-48 flex flex-col items-center justify-center cursor-pointer transition ${
+                      isUploaded
+                        ? 'bg-green-50 border-green-200'
+                        : 'bg-neutral-100 border-neutral-300 hover:border-primary/50 hover:bg-neutral-150'
+                    }`}
+                  >
+                    <div className="flex flex-col items-center gap-3">
+                      {isUploaded ? (
+                        <FileCheck className="w-9 h-9 text-green-600" />
+                      ) : isUploading ? (
+                        <Loader className="w-9 h-9 text-neutral-5 animate-spin" />
+                      ) : (
+                        <Upload className="w-9 h-9 text-neutral-5 opacity-60" />
+                      )}
+                      <p className="text-sm text-neutral-5 text-center">
+                        {isUploaded ? 'Document Uploaded' : isUploading ? 'Uploading...' : 'Click to upload document or drag and drop'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* File Hint */}
+                  <div className="bg-neutral-100 border border-neutral-300 rounded-lg px-4 py-3 flex items-center gap-2">
+                    <Archive className="w-5 h-5 text-neutral-5 flex-shrink-0" />
+                    <p className="text-xs text-neutral-4">PDF, JPG, PNG — max 10MB</p>
+                  </div>
+
                   <input
                     ref={(el) => { if (el) fileInputRefs.current[doc.id] = el; }}
                     type="file"
                     onChange={(e) => handleFileSelected(doc.id, e)}
                     className="hidden"
-                    accept=".pdf,.doc,.docx,.xls,.xlsx"
+                    accept=".pdf,.jpg,.jpeg,.png"
                   />
                 </div>
               );
@@ -264,25 +299,47 @@ function Phase2Step2PageContent() {
           </div>
         </div>
 
-        {/* Info Box */}
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex gap-3">
-          <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+        {/* Info Panel */}
+        <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-6 flex gap-4">
+          <AlertCircle className="w-6 h-6 text-blue-600 flex-shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-semibold text-blue-900 mb-1">Document Security</p>
+            <p className="text-sm font-semibold text-blue-900 mb-2">Why need this information</p>
             <p className="text-sm text-blue-800">
-              All documents are encrypted using AES-256 and stored securely. Only authorized compliance officers can access your files.
+              These documents are required for legal compliance and to protect the mondial.eco ecosystem. We use them to verify that your business is in good standing before unlocking access to specialized eco-funding and commercial partnerships.
             </p>
           </div>
         </div>
 
-        <StepFooter
-          backUrl="/dashboard/entrepreneur/phase-2/step-1"
-          onNextClick={handleNextClick}
-          isLoading={isValidating}
-          isNextDisabled={!allDocsUploaded}
-          nextLabel="Next"
-          nextValidationError={validationError}
-        />
+        <div className="border-t border-neutral-2 pt-6 flex items-center justify-between">
+          <button
+            onClick={handleSaveForLater}
+            className="text-sm text-neutral-4 font-medium hover:text-neutral-1 transition"
+          >
+            Save For Later
+          </button>
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              onClick={() => router.push('/dashboard/entrepreneur/phase-2/step-1')}
+              className="px-6"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleNextClick}
+              disabled={!allDocsUploaded || isValidating}
+              className="px-6 gap-2"
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+        {validationError && (
+          <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            {validationError}
+          </div>
+        )}
       </div>
     </EntrepreneurLayout>
   );

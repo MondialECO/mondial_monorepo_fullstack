@@ -33,7 +33,6 @@ const EMPTY_FORM_DATA: LegalIdentityFormData = {
   industryCode: '',
 };
 
-const AUTOSAVE_DEBOUNCE_MS = 400;
 
 /**
  * Phase 2 / Step 1 form hook.
@@ -65,7 +64,6 @@ export function usePhase2Step1Form({
   });
 
   const isInitializedRef = useRef(false);
-  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // No resolver / no validation — just a typed data container.
@@ -161,7 +159,6 @@ export function usePhase2Step1Form({
       // CRITICAL: If company doesn't exist, create it now with Phase 2 legal data
       if (!progress?.phaseData?.__companyId) {
         try {
-          console.log('🔧 Creating company with Phase 1 basic data...');
           // Step 1: Create company with Phase 1 basic fields
           const createResponse = await entrepreneurApi.createCompany({
             companyName: formData.companyName || 'Unnamed Company',
@@ -170,14 +167,13 @@ export function usePhase2Step1Form({
             tagline: 'Company created during Phase 2 verification',
           });
 
-          const companyId = createResponse?.companyId;
+          // API returns company object — handle both 'id' and 'companyId' field names
+          const companyId = (createResponse as any)?.companyId || (createResponse as any)?.id;
           if (!companyId) {
             throw new Error('No company ID returned from creation');
           }
-          console.log('✅ Company created:', companyId);
 
           // Step 2: Immediately update with Phase 2 legal identity data
-          console.log('🔧 Updating company with Phase 2 legal identity data...');
           await entrepreneurApi.updateLegalInfo(companyId, {
             legalName: formData.companyName || 'Unnamed Company',
             registrationNumber: formData.registrationNumber || '',
@@ -187,15 +183,12 @@ export function usePhase2Step1Form({
             country: formData.countryOfRegistration || '',
             nafCode: formData.industryCode || '',
           });
-          console.log('✅ Legal info updated');
 
           // Step 3: Verify company exists in backend by fetching current phase
-          console.log('🔧 Verifying company in backend...');
           const phaseProgress = await entrepreneurApi.getCurrentPhase();
           if (phaseProgress?.companyId !== companyId) {
             throw new Error('Company verification failed - company not found in backend');
           }
-          console.log('✅ Company verified in backend');
 
           // Save to local state with companyId
           savePhaseData(2, {
@@ -204,7 +197,6 @@ export function usePhase2Step1Form({
           });
         } catch (createError) {
           const msg = createError instanceof Error ? createError.message : 'Failed to create company';
-          console.error('❌ Company creation failed:', msg);
           throw new Error(`Could not create company: ${msg}`);
         }
       } else {
@@ -212,14 +204,13 @@ export function usePhase2Step1Form({
         savePhaseData(2, formData);
       }
 
-      // Allow state updates to flush
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
       // Mark step 2-1 complete and advance currentStep -> 2
       moveToNextStep(2, 1);
 
-      // Allow moveToNextStep to flush
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      // Allow moveToNextStep to flush through React state batching
+      // 500ms ensures the progress state (currentStep, completedSteps) is fully updated
+      // before router.push() is called, so step-2's RouteGuard sees the new state
+      await new Promise<void>((resolve) => setTimeout(resolve, 500));
 
       await router.push('/dashboard/entrepreneur/phase-2/step-2');
     } catch (error) {
