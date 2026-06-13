@@ -22,17 +22,17 @@ export function PhaseHeader({
   return (
     <div
       className={cn(
-        'bg-neutral-3 border-2 border-neutral-4 rounded-2xl sm:rounded-3xl p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6',
+        'bg-card border border-border rounded-2xl sm:rounded-3xl p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6',
         className
       )}
     >
-      <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-3 sm:gap-4 md:gap-8 pb-3 sm:pb-4 md:pb-6 border-b border-neutral-2">
+      <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-3 sm:gap-4 md:gap-8 pb-3 sm:pb-4 md:pb-6 border-b border-border">
         {/* Left Section */}
         <div className="flex-1 min-w-0">
-          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-neutral-1 mb-1 sm:mb-2 leading-tight">
+          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground mb-1 sm:mb-2 leading-tight">
             {title}
           </h1>
-          <p className="text-sm sm:text-base text-neutral-5 line-clamp-2">
+          <p className="text-sm sm:text-base text-muted-foreground line-clamp-2">
             {subtitle}
           </p>
         </div>
@@ -40,13 +40,13 @@ export function PhaseHeader({
         {/* Right Section - Progress */}
         {progressPercentage !== undefined && (
           <div className="text-left md:text-right w-full md:w-auto md:flex-shrink-0">
-            <p className="text-xs font-medium uppercase tracking-wide text-neutral-5 mb-1.5">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-1.5">
               {progressLabel}
             </p>
-            <p className="text-sm font-semibold text-neutral-1 mb-2">
+            <p className="text-sm font-semibold text-foreground mb-2">
               {progressValue}
             </p>
-            <div className="h-1.5 w-full md:max-w-xs bg-neutral-2 rounded-full overflow-hidden shadow-sm">
+            <div className="h-1.5 w-full md:max-w-xs bg-border rounded-full overflow-hidden shadow-sm">
               <div
                 className="h-full bg-gradient-to-r from-primary to-primary/70 transition-all duration-500 ease-out"
                 style={{ width: `${progressPercentage}%` }}

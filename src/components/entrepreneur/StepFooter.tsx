@@ -84,20 +84,20 @@ export function StepFooter({
   return (
     <div className="space-y-3">
       {nextValidationError && (
-        <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">
+        <div className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg p-3">
           {nextValidationError}
         </div>
       )}
 
       <div
         className={cn(
-          'flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 md:gap-4 pt-3 sm:pt-4 border-t border-neutral-2',
+          'flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 md:gap-4 pt-3 sm:pt-4 border-t border-border',
           className
         )}
       >
         {/* Back Button */}
         <Link href={backUrl}>
-          <button className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-neutral-4 border border-neutral-2 rounded-lg text-sm sm:text-base text-neutral-1 font-medium hover:bg-neutral-3 transition disabled:opacity-50">
+          <button className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-card border border-border rounded-lg text-sm sm:text-base text-foreground font-medium hover:bg-accent transition disabled:opacity-50">
             Back
           </button>
         </Link>
@@ -109,11 +109,11 @@ export function StepFooter({
               onClick={handleSaveDraft}
               disabled={isSavingDraft}
               className={cn(
-                'w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-neutral-4 border border-neutral-2 rounded-lg text-sm sm:text-base text-neutral-1 font-medium transition',
+                'w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-card border border-border rounded-lg text-sm sm:text-base text-foreground font-medium transition',
                 isSavingDraft
                   ? 'opacity-50 cursor-not-allowed'
-                  : 'hover:bg-neutral-3',
-                saveDraftSuccess && 'border-green-400 bg-green-50'
+                  : 'hover:bg-accent',
+                saveDraftSuccess && 'border-success-text bg-success-light'
               )}
             >
               {isSavingDraft ? 'Saving...' : saveDraftSuccess ? '✓ Saved' : 'Save Draft'}
@@ -133,8 +133,8 @@ export function StepFooter({
                 className={cn(
                   'w-full flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg text-sm sm:text-base font-medium transition',
                   isNextDisabled || isLoading
-                    ? 'bg-neutral-100 text-neutral-5 cursor-not-allowed'
-                    : 'bg-primary text-white hover:bg-primary/90'
+                    ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                    : 'bg-primary text-primary-foreground hover:bg-primary/90'
                 )}
               >
                 {nextButtonContent}
