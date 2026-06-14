@@ -44,6 +44,7 @@ export function Phase3RevenueInputClient() {
   const [monthlyBurn, setMonthlyBurn] = useState('');
   const [monthlyRows, setMonthlyRows] = useState<MonthlyRow[]>([{ yearMonth: '', revenue: '' }]);
   const [validationError, setValidationError] = useState('');
+  const [recalcError, setRecalcError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRecalculating, setIsRecalculating] = useState(false);
 
@@ -119,28 +120,32 @@ export function Phase3RevenueInputClient() {
     return fromServer.companyId;
   }
 
-  function validate(): string | null {
+  function validate(requireCashPosition = true): string | null {
     if (totalRevenue <= 0) return 'Enter quarterly revenue totalling more than 0';
-    const cf = parseFloat(currentFunds);
-    const mb = parseFloat(monthlyBurn);
-    if (!Number.isFinite(cf) || cf < 0) return 'Current cash on hand must be 0 or greater';
-    if (!Number.isFinite(mb) || mb <= 0) return 'Monthly burn must be greater than 0';
+    if (requireCashPosition) {
+      const cf = parseFloat(currentFunds);
+      if (!Number.isFinite(cf) || cf < 0) return 'Current cash on hand must be a valid number ≥ 0';
+      const mb = parseFloat(monthlyBurn);
+      if (!Number.isFinite(mb) || mb <= 0) return 'Monthly burn must be a valid number > 0';
+    }
     const cleaned = monthlyRows
       .map((r) => ({ yearMonth: r.yearMonth.trim(), revenue: r.revenue.trim() }))
       .filter((r) => r.yearMonth || r.revenue);
     for (const row of cleaned) {
-      if (!/^\d{4}-\d{2}$/.test(row.yearMonth)) return `Monthly entry "${row.yearMonth}" must be YYYY-MM`;
+      if (!/^\d{4}-\d{2}$/.test(row.yearMonth)) return `Monthly entry "${row.yearMonth}" must be YYYY-MM format`;
       const rev = parseFloat(row.revenue);
-      if (!Number.isFinite(rev) || rev < 0) return `Monthly revenue for ${row.yearMonth} must be a non-negative number`;
+      if (!Number.isFinite(rev) || rev < 0) return `Monthly revenue for ${row.yearMonth} must be a valid number ≥ 0`;
     }
     return null;
   }
 
   async function persistAndCalculate(navigate: boolean) {
     setValidationError('');
-    const err = validate();
+    setRecalcError('');
+    const err = validate(navigate);
     if (err) {
-      setValidationError(err);
+      if (navigate) setValidationError(err);
+      else setRecalcError(err);
       return;
     }
     if (navigate) setIsSubmitting(true);
@@ -153,10 +158,12 @@ export function Phase3RevenueInputClient() {
         q3Revenue: qNum(q3),
         q4Revenue: qNum(q4),
       });
-      await entrepreneurApi.saveCashPosition(companyId, {
-        currentFunds: parseFloat(currentFunds),
-        monthlyBurn: parseFloat(monthlyBurn),
-      });
+      if (navigate) {
+        await entrepreneurApi.saveCashPosition(companyId, {
+          currentFunds: parseFloat(currentFunds),
+          monthlyBurn: parseFloat(monthlyBurn),
+        });
+      }
       const cleanedMonthly = monthlyRows
         .map((r) => ({ yearMonth: r.yearMonth.trim(), revenue: r.revenue.trim() }))
         .filter((r) => r.yearMonth || r.revenue);
@@ -180,7 +187,7 @@ export function Phase3RevenueInputClient() {
         ...existing,
         __companyId: companyId,
         revenueSavedAt: new Date().toISOString(),
-        cashPositionSavedAt: new Date().toISOString(),
+        ...(navigate && { cashPositionSavedAt: new Date().toISOString() }),
         valuationCalculatedAt: new Date().toISOString(),
       });
 
@@ -189,7 +196,9 @@ export function Phase3RevenueInputClient() {
         router.push('/dashboard/entrepreneur/phase-3/step-2');
       }
     } catch (error) {
-      setValidationError(error instanceof Error ? error.message : 'Failed to save financial data');
+      const msg = error instanceof Error ? error.message : 'Failed to save financial data';
+      if (navigate) setValidationError(msg);
+      else setRecalcError(msg);
     } finally {
       setIsSubmitting(false);
       setIsRecalculating(false);
@@ -253,6 +262,11 @@ export function Phase3RevenueInputClient() {
                 </div>
               ))}
             </div>
+            {recalcError && (
+              <div className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg p-3">
+                {recalcError}
+              </div>
+            )}
             <Button
               onClick={() => persistAndCalculate(false)}
               disabled={isRecalculating || isSubmitting}
@@ -281,7 +295,7 @@ export function Phase3RevenueInputClient() {
                 icon={Activity}
                 value={
                   financial && financial.growthRate
-                    ? `${financial.growthRate > 0 ? '+' : ''}${financial.growthRate}% Yearly Growth`
+                    ? `${financial.growthRate > 0 ? '+' : ''}${financial.growthRate.toFixed(2)}% Yearly Growth`
                     : 'Awaiting calculation'
                 }
                 sub={
