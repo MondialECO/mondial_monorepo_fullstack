@@ -37,6 +37,10 @@ namespace WebApp.DbContext
         public virtual IMongoCollection<Phase3Kpi> Phase3Kpis => _database.GetCollection<Phase3Kpi>("Phase3Kpis");
         public virtual IMongoCollection<Phase3MonthlyRevenue> Phase3MonthlyRevenues => _database.GetCollection<Phase3MonthlyRevenue>("Phase3MonthlyRevenues");
         public virtual IMongoCollection<Phase3FinancialReport> Phase3FinancialReports => _database.GetCollection<Phase3FinancialReport>("Phase3FinancialReports");
+        public virtual IMongoCollection<Phase3Concept> Phase3Concepts => _database.GetCollection<Phase3Concept>("Phase3Concepts");
+
+        // Smart Matchmaking outbox
+        public virtual IMongoCollection<MatchmakingQueueItem> MatchmakingQueue => _database.GetCollection<MatchmakingQueueItem>("MatchmakingQueue");
 
         // Phase 4 sub-collections
         public virtual IMongoCollection<Phase4CapTable> Phase4CapTables => _database.GetCollection<Phase4CapTable>("Phase4CapTables");

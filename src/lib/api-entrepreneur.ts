@@ -87,6 +87,12 @@ export interface MonthlyRevenueResponse {
   recordedAt: string;
 }
 
+export interface QuarterlyRevenueResponse {
+  quarter: string; // "Q1", "Q2", "Q3", "Q4"
+  revenue: number;
+  monthCount: number;
+}
+
 export interface SaveKpiBaselineRequest {
   mrr: number;
   arr: number;
@@ -95,6 +101,31 @@ export interface SaveKpiBaselineRequest {
   ltv: number;
   churnPercent: number;
   activeAccounts: number;
+  // Optional Step-3 extras → persisted on the company (MonthlyBurn / Nps).
+  burnRate?: number;
+  nps?: number;
+}
+
+export interface SaveConceptRequest {
+  oneLiner: string;
+  problemStatement: string;
+  solutionDescription: string;
+  stage: string;        // idea | mvp | beta | revenue | growth
+  businessModel: string;
+  sectorTags: string[]; // 1–3
+  keywordTags: string[]; // 0–5
+}
+
+export interface ConceptResponse {
+  oneLiner: string;
+  problemStatement: string;
+  solutionDescription: string;
+  stage: string;
+  businessModel: string;
+  sectorTags: string[];
+  keywordTags: string[];
+  clarityScore: number;
+  recordedAt: string;
 }
 
 export interface KpiBaselineResponse {
@@ -126,6 +157,11 @@ export interface FinancialSummaryResponse {
   annualRecurringRevenue: number;
   runwayMonths: number;
   growthRate: number;
+  // Phase 3 valuation-model outputs (Step 2 display).
+  confidenceScore?: number;
+  riskDiscountRate?: number;
+  revenueMultiple?: number;
+  industry?: string;
   lastUpdatedAt: string;
 }
 
@@ -774,6 +810,15 @@ export const entrepreneurApi = {
     return response.data;
   },
 
+  getQuarterlyRevenue: async (
+    companyId: string
+  ): Promise<QuarterlyRevenueResponse[]> => {
+    const response = await api.get<QuarterlyRevenueResponse[]>(
+      `/companies/${companyId}/quarterly-revenue`
+    );
+    return response.data;
+  },
+
   saveKpiBaseline: async (
     companyId: string,
     data: SaveKpiBaselineRequest
@@ -790,6 +835,26 @@ export const entrepreneurApi = {
   ): Promise<KpiBaselineResponse | null> => {
     const response = await api.get<KpiBaselineResponse | null>(
       `/companies/${companyId}/kpis`
+    );
+    return response.data;
+  },
+
+  saveConcept: async (
+    companyId: string,
+    data: SaveConceptRequest
+  ): Promise<ConceptResponse> => {
+    const response = await api.post<ConceptResponse>(
+      `/companies/${companyId}/concept`,
+      data
+    );
+    return response.data;
+  },
+
+  getConcept: async (
+    companyId: string
+  ): Promise<ConceptResponse | null> => {
+    const response = await api.get<ConceptResponse | null>(
+      `/companies/${companyId}/concept`
     );
     return response.data;
   },

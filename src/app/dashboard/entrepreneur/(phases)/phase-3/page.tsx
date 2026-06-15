@@ -1,6 +1,6 @@
 'use client';
 
-import { BarChart3, TrendingUp, Zap } from 'lucide-react';
+import { BarChart3, TrendingUp, Lightbulb } from 'lucide-react';
 import { useEntrepreneurProgress } from '@/hooks/useEntrepreneurProgress';
 import { PhaseTemplate } from '@/components/entrepreneur/PhaseTemplate';
 import { RouteGuard } from '@/components/entrepreneur/RouteGuard';
@@ -15,8 +15,8 @@ function Phase3PageContent() {
   return (
     <PhaseTemplate
       phaseNumber={3}
-      title="Phase 3: Financial Submission"
-      subtitle="Submit revenue, cash position, KPI baseline, and required financial reports for compliance review"
+      title="Phase 3: Financial Valuation & KPI"
+      subtitle="Submit quarterly revenue, review your AI valuation, enter your KPI baseline, and describe your concept"
       icon={BarChart3}
       trustScore={22}
       isLocked={!isPhase2Complete}
@@ -24,23 +24,23 @@ function Phase3PageContent() {
       requirements={[
         {
           icon: TrendingUp,
-          title: 'Revenue & Cash',
-          description: 'Quarterly revenue, monthly cash on hand, and monthly burn rate',
+          title: 'Revenue Input',
+          description: 'Quarterly revenue (Q1–Q4) for the last four quarters',
         },
         {
           icon: BarChart3,
           title: 'Automated Valuation',
-          description: 'Review your AI-estimated valuation and define your funding ask',
+          description: 'Review your AI-estimated valuation derived from revenue and sector benchmarks',
         },
         {
           icon: TrendingUp,
-          title: 'KPI Baseline',
-          description: 'MRR, ARR, gross margin, CAC, LTV, churn, and active accounts',
+          title: 'Live KPI Tracking',
+          description: 'MRR, burn rate, CAC, LTV, churn, and NPS traction metrics',
         },
         {
-          icon: BarChart3,
-          title: 'Financial Reports',
-          description: 'Upload P&L and balance sheet for compliance review',
+          icon: Lightbulb,
+          title: 'Concept Overview',
+          description: 'Explain your core concept, problem, solution, market, and stage',
         },
       ]}
       features={[

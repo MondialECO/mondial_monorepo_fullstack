@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AlertCircle, Plus, Trash2, ShieldCheck, Activity, ArrowRight } from 'lucide-react';
+import { ShieldCheck, Activity, ArrowRight } from 'lucide-react';
 import { useEntrepreneurProgress } from '@/hooks/useEntrepreneurProgress';
 import { EntrepreneurLayout } from '@/components/entrepreneur/EntrepreneurLayout';
 import { ProgressSidebar } from '@/components/entrepreneur/ProgressSidebar';
@@ -14,16 +14,10 @@ import {
   Surface,
   IconStatCard,
   RevenueBars,
-  InfoCallout,
 } from '@/components/entrepreneur/phase3/Phase3Ui';
 import { PHASE_3_STEPS } from '@/components/entrepreneur/phase3/steps';
 import entrepreneurApi, { type FinancialSummaryResponse } from '@/lib/api-entrepreneur';
 import { Phase3Data } from '@/types/entrepreneur';
-
-interface MonthlyRow {
-  yearMonth: string;
-  revenue: string;
-}
 
 const QUARTERS = [
   ['Q1 Revenue (Jan – Mar)', 'q1'],
@@ -40,9 +34,6 @@ export function Phase3RevenueInputClient() {
   const [q2, setQ2] = useState('');
   const [q3, setQ3] = useState('');
   const [q4, setQ4] = useState('');
-  const [currentFunds, setCurrentFunds] = useState('');
-  const [monthlyBurn, setMonthlyBurn] = useState('');
-  const [monthlyRows, setMonthlyRows] = useState<MonthlyRow[]>([{ yearMonth: '', revenue: '' }]);
   const [validationError, setValidationError] = useState('');
   const [recalcError, setRecalcError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -62,15 +53,8 @@ export function Phase3RevenueInputClient() {
         if (cancelled) return;
         setInvestorReady(prog.isInvestorReady);
         if (!companyId) return;
-        const [monthly, fin] = await Promise.allSettled([
-          entrepreneurApi.getMonthlyRevenue(companyId),
-          entrepreneurApi.getFinancialSummary(companyId),
-        ]);
-        if (cancelled) return;
-        if (monthly.status === 'fulfilled' && monthly.value.length > 0) {
-          setMonthlyRows(monthly.value.map((m) => ({ yearMonth: m.yearMonth, revenue: String(m.revenue) })));
-        }
-        if (fin.status === 'fulfilled') setFinancial(fin.value);
+        const fin = await entrepreneurApi.getFinancialSummary(companyId);
+        if (!cancelled) setFinancial(fin);
       } catch {
         // Silent — empty form is a fine fallback.
       }
@@ -107,11 +91,6 @@ export function Phase3RevenueInputClient() {
     { label: 'Q4', value: qNum(q4) },
   ];
 
-  const addMonthlyRow = () => setMonthlyRows((r) => [...r, { yearMonth: '', revenue: '' }]);
-  const removeMonthlyRow = (idx: number) => setMonthlyRows((r) => r.filter((_, i) => i !== idx));
-  const updateMonthlyRow = (idx: number, patch: Partial<MonthlyRow>) =>
-    setMonthlyRows((r) => r.map((row, i) => (i === idx ? { ...row, ...patch } : row)));
-
   async function resolveCompanyId(): Promise<string> {
     const existing: Phase3Data = getPhaseData<Phase3Data>(3) ?? {};
     if (existing.__companyId) return existing.__companyId;
@@ -120,30 +99,11 @@ export function Phase3RevenueInputClient() {
     return fromServer.companyId;
   }
 
-  function validate(requireCashPosition = true): string | null {
-    if (totalRevenue <= 0) return 'Enter quarterly revenue totalling more than 0';
-    if (requireCashPosition) {
-      const cf = parseFloat(currentFunds);
-      if (!Number.isFinite(cf) || cf < 0) return 'Current cash on hand must be a valid number ≥ 0';
-      const mb = parseFloat(monthlyBurn);
-      if (!Number.isFinite(mb) || mb <= 0) return 'Monthly burn must be a valid number > 0';
-    }
-    const cleaned = monthlyRows
-      .map((r) => ({ yearMonth: r.yearMonth.trim(), revenue: r.revenue.trim() }))
-      .filter((r) => r.yearMonth || r.revenue);
-    for (const row of cleaned) {
-      if (!/^\d{4}-\d{2}$/.test(row.yearMonth)) return `Monthly entry "${row.yearMonth}" must be YYYY-MM format`;
-      const rev = parseFloat(row.revenue);
-      if (!Number.isFinite(rev) || rev < 0) return `Monthly revenue for ${row.yearMonth} must be a valid number ≥ 0`;
-    }
-    return null;
-  }
-
   async function persistAndCalculate(navigate: boolean) {
     setValidationError('');
     setRecalcError('');
-    const err = validate(navigate);
-    if (err) {
+    if (totalRevenue <= 0) {
+      const err = 'Enter quarterly revenue totalling more than 0';
       if (navigate) setValidationError(err);
       else setRecalcError(err);
       return;
@@ -158,20 +118,6 @@ export function Phase3RevenueInputClient() {
         q3Revenue: qNum(q3),
         q4Revenue: qNum(q4),
       });
-      if (navigate) {
-        await entrepreneurApi.saveCashPosition(companyId, {
-          currentFunds: parseFloat(currentFunds),
-          monthlyBurn: parseFloat(monthlyBurn),
-        });
-      }
-      const cleanedMonthly = monthlyRows
-        .map((r) => ({ yearMonth: r.yearMonth.trim(), revenue: r.revenue.trim() }))
-        .filter((r) => r.yearMonth || r.revenue);
-      if (cleanedMonthly.length > 0) {
-        await entrepreneurApi.saveMonthlyRevenue(companyId, {
-          entries: cleanedMonthly.map((r) => ({ yearMonth: r.yearMonth, revenue: parseFloat(r.revenue) })),
-        });
-      }
       await entrepreneurApi.calculateValuation(companyId);
 
       // Refresh the verification + health cards with freshly computed values.
@@ -187,7 +133,6 @@ export function Phase3RevenueInputClient() {
         ...existing,
         __companyId: companyId,
         revenueSavedAt: new Date().toISOString(),
-        ...(navigate && { cashPositionSavedAt: new Date().toISOString() }),
         valuationCalculatedAt: new Date().toISOString(),
       });
 
@@ -209,17 +154,18 @@ export function Phase3RevenueInputClient() {
     1: progress.completedSteps.has('3-1') ? 'completed' : progress.currentStep === 1 ? 'current' : 'pending',
     2: progress.completedSteps.has('3-2') ? 'completed' : progress.currentStep === 2 ? 'current' : 'pending',
     3: progress.completedSteps.has('3-3') ? 'completed' : progress.currentStep === 3 ? 'current' : 'pending',
+    4: progress.completedSteps.has('3-4') ? 'completed' : progress.currentStep === 4 ? 'current' : 'pending',
   } as const;
   const stepIndicators = PHASE_3_STEPS.map((s) => ({
     ...s,
-    status: statusMap[s.step as 1 | 2 | 3] as 'completed' | 'current' | 'pending',
+    status: statusMap[s.step as 1 | 2 | 3 | 4] as 'completed' | 'current' | 'pending',
   }));
 
   const sidebar = (
     <ProgressSidebar
       title="Verification Progress"
       steps={stepIndicators}
-      overallScore={33}
+      overallScore={25}
       scoreLabel="OVERALL SCORE"
       scoreDescription="Complete Step 1 to unlock the automated valuation module."
     />
@@ -230,18 +176,21 @@ export function Phase3RevenueInputClient() {
   return (
     <EntrepreneurLayout sidebar={sidebar}>
       <Phase3Container
-        crumbs={['Entrepreneur Verification', 'Financial Valuation']}
+        crumbs={['Entrepreneur Verification', 'Revenue Input']}
         title="Revenue Input"
         subtitle="Please provide your company's revenue data for the last four quarters to calculate your valuation."
       >
-        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-4">
           {/* Quarterly revenue + recalculate */}
           <Surface className="p-5 flex flex-col gap-6">
             <h2 className="text-lg font-semibold text-foreground">Quarterly Revenue (EUR)</h2>
             <div className="space-y-4">
               {QUARTERS.map(([label, key]) => (
                 <div key={key}>
-                  <label htmlFor={`rev-${key}`} className="block text-sm font-medium text-foreground mb-2">
+                  <label
+                    htmlFor={`rev-${key}`}
+                    className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2"
+                  >
                     {label}
                   </label>
                   <div className="relative">
@@ -301,105 +250,11 @@ export function Phase3RevenueInputClient() {
                 sub={
                   hasValuation
                     ? `Estimated valuation €${(financial!.finalValuation / 1000).toFixed(1)}K`
-                    : 'Computed after you recalculate'
+                    : 'Strong year-over-year revenue scaling'
                 }
               />
             </div>
           </div>
-        </div>
-
-        {/* Cash position + monthly breakdown (required by backend, not in hero) */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
-          <Surface className="p-6 space-y-4">
-            <h2 className="text-lg font-semibold text-foreground">Cash Position</h2>
-            <div>
-              <label htmlFor="current-funds" className="block text-sm font-medium text-foreground mb-2">
-                Current cash on hand (EUR)
-              </label>
-              <Input
-                id="current-funds"
-                type="number"
-                min={0}
-                value={currentFunds}
-                onChange={(e) => setCurrentFunds(e.target.value)}
-                placeholder="0"
-                className="h-10"
-              />
-            </div>
-            <div>
-              <label htmlFor="monthly-burn" className="block text-sm font-medium text-foreground mb-2">
-                Monthly burn (EUR)
-              </label>
-              <Input
-                id="monthly-burn"
-                type="number"
-                min={0}
-                value={monthlyBurn}
-                onChange={(e) => setMonthlyBurn(e.target.value)}
-                placeholder="0"
-                className="h-10"
-              />
-              <p className="text-xs text-muted-foreground mt-1">Runway is derived backend-side from cash and burn.</p>
-            </div>
-            <p className="text-sm text-foreground pt-2 border-t border-border">
-              Total entered revenue:{' '}
-              <span className="font-semibold tabular-nums">€{(totalRevenue / 1000).toFixed(1)}K</span>
-            </p>
-          </Surface>
-
-          <Surface className="p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-foreground">Monthly revenue (optional)</h2>
-              <Button variant="outline" size="sm" className="gap-2" onClick={addMonthlyRow}>
-                <Plus className="w-4 h-4" aria-hidden /> Add month
-              </Button>
-            </div>
-            <p className="text-sm text-muted-foreground">Add monthly breakdowns for a finer-grained picture. YYYY-MM format.</p>
-            <div className="space-y-3">
-              {monthlyRows.map((row, idx) => (
-                <div key={idx} className="grid grid-cols-12 gap-2">
-                  <Input
-                    type="text"
-                    value={row.yearMonth}
-                    onChange={(e) => updateMonthlyRow(idx, { yearMonth: e.target.value })}
-                    placeholder="2026-04"
-                    aria-label={`Month ${idx + 1} (YYYY-MM)`}
-                    className="col-span-5 h-10"
-                  />
-                  <div className="col-span-6 relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground" aria-hidden>
-                      €
-                    </span>
-                    <Input
-                      type="number"
-                      min={0}
-                      value={row.revenue}
-                      onChange={(e) => updateMonthlyRow(idx, { revenue: e.target.value })}
-                      placeholder="0"
-                      aria-label={`Month ${idx + 1} revenue in euros`}
-                      className="h-10 pl-7"
-                    />
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="col-span-1"
-                    onClick={() => removeMonthlyRow(idx)}
-                    aria-label={`Remove month ${idx + 1}`}
-                  >
-                    <Trash2 className="w-4 h-4" aria-hidden />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </Surface>
-        </div>
-
-        <div className="mt-4">
-          <InfoCallout icon={AlertCircle} title="Submission, not verification">
-            Saving submits your financials for compliance review. Valuation is calculated by the backend; no
-            insights are shown until they exist.
-          </InfoCallout>
         </div>
 
         <div className="mt-6">

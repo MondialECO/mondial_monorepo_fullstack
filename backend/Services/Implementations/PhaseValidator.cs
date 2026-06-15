@@ -110,50 +110,13 @@ public class PhaseValidator : IPhaseValidator
         if (company.Valuation == null || company.Valuation <= 0)
             errors.Add("Valuation must be calculated");
 
-        // Equity totals reconcile to TotalShares (90-100%) -----------------
-        if (company.EquityStructure == null || company.EquityStructure.Count == 0)
-        {
-            errors.Add("Equity structure must be defined");
-        }
-        else if (company.TotalShares == null || company.TotalShares <= 0)
-        {
-            errors.Add("Total shares must be set");
-        }
-        else
-        {
-            var totalOwnershipPercent = company.EquityStructure.Sum(e => (e.SharesOwned / (double)company.TotalShares) * 100);
-            if (totalOwnershipPercent < Phase3Requirements.EquityMinPercentOfTotalShares ||
-                totalOwnershipPercent > Phase3Requirements.EquityMaxPercentOfTotalShares)
-                errors.Add($"Equity ownership must total ~100% of TotalShares (currently {totalOwnershipPercent:F2}%)");
-        }
-
-        // Funding ask ------------------------------------------------------
-        if (company.FundingAskAmount == null || company.FundingAskAmount <= 0)
-            errors.Add("Funding ask amount is required");
-
-        if (string.IsNullOrWhiteSpace(company.FundingRoundType))
-            errors.Add("Funding round type must be specified");
-
-        // Capital allocation total (95-105%) when provided -----------------
-        if (company.CapitalAllocation != null && company.CapitalAllocation.Count > 0)
-        {
-            var allocationTotal = company.CapitalAllocation.Sum(c => c.Percent);
-            if (allocationTotal < Phase3Requirements.AllocationMinTotalPercent ||
-                allocationTotal > Phase3Requirements.AllocationMaxTotalPercent)
-                errors.Add($"Capital allocation must total ~100% (currently {allocationTotal:F2}%)");
-        }
-        else
-        {
-            errors.Add("Capital allocation breakdown is required");
-        }
-
-        // Cash position ----------------------------------------------------
-        if (company.MonthlyBurn == null || company.MonthlyBurn <= 0)
-            errors.Add("Monthly burn rate is required (> 0)");
-        if (company.CurrentFunds == null || company.CurrentFunds < 0)
-            errors.Add("Current funds must be set (>= 0)");
-
         // KPI baseline -----------------------------------------------------
+        // Phase 3's four-step workflow (Revenue → Automated Valuation →
+        // Live KPI Tracking → Concept Overview) collects revenue, an AI
+        // valuation, and a KPI baseline. Funding ask, capital allocation,
+        // equity structure, cash position, and financial-report uploads are
+        // NOT part of this workflow (they belong to later phases) and are
+        // therefore not required to complete Phase 3.
         var latestKpi = await _dbContext.Phase3Kpis
             .Find(k => k.CompanyId == company.Id)
             .SortByDescending(k => k.RecordedAt)
@@ -162,20 +125,12 @@ public class PhaseValidator : IPhaseValidator
         var kpiErrors = Phase3Requirements.ValidateKpiBaseline(latestKpi);
         errors.AddRange(kpiErrors);
 
-        // Required financial reports submitted (non-rejected) --------------
-        var reports = await _dbContext.Phase3FinancialReports
-            .Find(r => r.CompanyId == company.Id)
-            .ToListAsync();
-
-        foreach (var requiredType in Phase3Requirements.RequiredReportTypes)
-        {
-            var hasAcceptable = reports.Any(r =>
-                Phase3Requirements.MatchesReportType(r.Type, requiredType) &&
-                Phase3Requirements.IsAcceptableReportStatus(r.Status));
-
-            if (!hasAcceptable)
-                errors.Add($"Required financial report '{requiredType}' is missing or rejected");
-        }
+        // Concept Overview (Step 4) must exist before Phase 3 can complete.
+        var concept = await _dbContext.Phase3Concepts
+            .Find(c => c.CompanyId == company.Id)
+            .FirstOrDefaultAsync();
+        if (concept == null)
+            errors.Add("Concept overview is required");
 
         return (errors.Count == 0, errors);
     }

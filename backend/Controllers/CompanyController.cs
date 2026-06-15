@@ -725,6 +725,29 @@ public class CompanyController : ControllerBase
         }
     }
 
+    [HttpGet("{companyId}/quarterly-revenue")]
+    public async Task<ActionResult<List<QuarterlyRevenueResponse>>> GetQuarterlyRevenue(string companyId)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureCompanyOwnershipAsync(companyId);
+            var result = await _companyService.GetQuarterlyRevenueAsync(companyId);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error reading quarterly revenue");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
     [HttpPost("{companyId}/kpis")]
     public async Task<ActionResult<KpiBaselineResponse>> SaveKpiBaseline(
         string companyId, [FromBody] SaveKpiBaselineRequest request)
@@ -815,6 +838,53 @@ public class CompanyController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error reading financial reports");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpPost("{companyId}/concept")]
+    public async Task<ActionResult<ConceptResponse>> SaveConcept(
+        string companyId, [FromBody] SaveConceptRequest request)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureCompanyOwnershipAsync(companyId);
+            var result = await _companyService.SaveConceptAsync(companyId, request);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saving concept overview");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpGet("{companyId}/concept")]
+    public async Task<ActionResult<ConceptResponse?>> GetConcept(string companyId)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureCompanyOwnershipAsync(companyId);
+            var result = await _companyService.GetConceptAsync(companyId);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error reading concept overview");
             return BadRequest(new { error = ex.Message });
         }
     }

@@ -93,6 +93,11 @@ public class CompanyService : ICompanyService
         var filter = Builders<Companies>.Filter.Eq(c => c.Id, company.Id);
         await _dbContext.Companies.ReplaceOneAsync(filter, company);
 
+        // Post-completion side effects. Best-effort and self-contained (swallows
+        // its own errors) so it can never block or fail the phase advance.
+        if (phaseToComplete == 3)
+            await Phase3CompletionEvents.RunAsync(_dbContext, company);
+
         return BuildProgressResponse(company);
     }
 
@@ -323,10 +328,18 @@ public class CompanyService : ICompanyService
 
     // ============ PHASE 3: FINANCIAL & KPI ============
 
+    // Canonical quarterly revenue store for the Phase 3 Step 1 (quarterly-input)
+    // workflow. Companies.Q1-Q4 is the single source of truth; the optional
+    // Phase3MonthlyRevenues collection is for future Stripe/ChartMogul syncs.
     public async Task<Companies> SaveRevenueDataAsync(string companyId, SaveRevenueDataRequest request)
     {
-        var company = await GetCompanyAsync(companyId);
+        if (request == null)
+            throw new ArgumentException("Request body required");
+        if (request.Q1Revenue < 0 || request.Q2Revenue < 0 ||
+            request.Q3Revenue < 0 || request.Q4Revenue < 0)
+            throw new ArgumentException("Quarterly revenue values must be >= 0");
 
+        var company = await GetCompanyAsync(companyId);
         company.Q1Revenue = request.Q1Revenue;
         company.Q2Revenue = request.Q2Revenue;
         company.Q3Revenue = request.Q3Revenue;
@@ -335,7 +348,6 @@ public class CompanyService : ICompanyService
 
         var filter = Builders<Companies>.Filter.Eq(c => c.Id, companyId);
         await _dbContext.Companies.ReplaceOneAsync(filter, company);
-
         return company;
     }
 
@@ -347,14 +359,18 @@ public class CompanyService : ICompanyService
         var growthRate = CalculateGrowthRate(company);
         var runwayMonths = CalculateRunway(company);
 
+        var context = await BuildValuationContextAsync(company);
         var valuation = await _valuationEngine.CalculateValuationAsync(
             totalRevenue,
             growthRate,
             company.Industry,
-            runwayMonths
+            context
         );
 
         company.Valuation = valuation.EstimatedValuation;
+        company.ValuationRevenueMultiple = valuation.RevenueMultiple;
+        company.ValuationRiskDiscountRate = valuation.RiskDiscountRate;
+        company.ValuationConfidenceScore = valuation.ConfidenceScore;
         company.UpdatedAt = DateTime.UtcNow;
 
         var filter = Builders<Companies>.Filter.Eq(c => c.Id, companyId);
@@ -368,7 +384,45 @@ public class CompanyService : ICompanyService
             AnnualRecurringRevenue = totalRevenue,
             RunwayMonths = runwayMonths,
             GrowthRate = growthRate,
+            ConfidenceScore = valuation.ConfidenceScore,
+            RiskDiscountRate = valuation.RiskDiscountRate,
             LastUpdatedAt = DateTime.UtcNow
+        };
+    }
+
+    /// <summary>
+    /// Builds the deterministic <see cref="ValuationContext"/> for a company from
+    /// its document, embedded beneficial owners, concept stage, and NDA count.
+    /// All inputs are backend-derived — no AI estimates.
+    /// </summary>
+    private async Task<ValuationContext> BuildValuationContextAsync(Companies company)
+    {
+        var concept = await _dbContext.Phase3Concepts
+            .Find(c => c.CompanyId == company.Id)
+            .FirstOrDefaultAsync();
+
+        var owners = company.BeneficialOwnersDto ?? new List<BeneficialOwnerDto>();
+        var largestOwnership = owners.Count > 0 ? owners.Max(o => o.OwnershipPercent) : 100;
+
+        var ndaCount = (int)await _dbContext.Phase6NdaAcceptances
+            .CountDocumentsAsync(n => n.CompanyId == company.Id);
+
+        var completedPhases = company.CompletedPhases ?? new List<int>();
+
+        return new ValuationContext
+        {
+            Stage = string.IsNullOrWhiteSpace(concept?.Stage) ? "mvp" : concept.Stage.ToLowerInvariant(),
+            IsLegalEntityFormed = !string.IsNullOrWhiteSpace(company.LegalName) || completedPhases.Contains(2),
+            FounderCount = owners.Count > 0 ? owners.Count : 1,
+            KpiDataSource = "manual",
+            RevenueEnteredManually = true,
+            DocumentsVerified = completedPhases.Contains(2),
+            NdaSignedCount = ndaCount,
+            LargestOwnershipPct = largestOwnership,
+            Q1 = company.Q1Revenue ?? 0,
+            Q2 = company.Q2Revenue ?? 0,
+            Q3 = company.Q3Revenue ?? 0,
+            Q4 = company.Q4Revenue ?? 0,
         };
     }
 
@@ -462,6 +516,10 @@ public class CompanyService : ICompanyService
             AnnualRecurringRevenue = totalRevenue,
             RunwayMonths = runwayMonths,
             GrowthRate = CalculateGrowthRate(company),
+            ConfidenceScore = company.ValuationConfidenceScore ?? 0,
+            RiskDiscountRate = company.ValuationRiskDiscountRate ?? 0,
+            RevenueMultiple = company.ValuationRevenueMultiple ?? 0,
+            Industry = company.Industry,
             LastUpdatedAt = company.UpdatedAt
         };
     }
@@ -492,8 +550,7 @@ public class CompanyService : ICompanyService
         if (request?.Entries == null || request.Entries.Count == 0)
             throw new ArgumentException("At least one monthly revenue entry is required");
 
-        // Confirm the company exists & is owned by caller (ownership enforced at controller).
-        await GetCompanyAsync(companyId);
+        var company = await GetCompanyAsync(companyId);
 
         foreach (var entry in request.Entries)
         {
@@ -522,7 +579,31 @@ public class CompanyService : ICompanyService
                 filter, doc, new ReplaceOptions { IsUpsert = true });
         }
 
-        return await GetMonthlyRevenueAsync(companyId);
+        // Recalculate and cache Q1-Q4 on company from all monthly data (single source of truth).
+        var allMonthly = await GetMonthlyRevenueAsync(companyId);
+        var quarters = new Dictionary<int, double> { { 1, 0 }, { 2, 0 }, { 3, 0 }, { 4, 0 } };
+
+        foreach (var monthly in allMonthly)
+        {
+            if (int.TryParse(monthly.YearMonth.Substring(5, 2), out var month))
+            {
+                var quarter = (month - 1) / 3 + 1;
+                if (quarters.ContainsKey(quarter))
+                    quarters[quarter] += monthly.Revenue;
+            }
+        }
+
+        // Update company with cached quarterly values.
+        company.Q1Revenue = quarters[1];
+        company.Q2Revenue = quarters[2];
+        company.Q3Revenue = quarters[3];
+        company.Q4Revenue = quarters[4];
+        company.UpdatedAt = DateTime.UtcNow;
+
+        var companyFilter = Builders<Companies>.Filter.Eq(c => c.Id, companyId);
+        await _dbContext.Companies.ReplaceOneAsync(companyFilter, company);
+
+        return allMonthly;
     }
 
     public async Task<List<MonthlyRevenueResponse>> GetMonthlyRevenueAsync(string companyId)
@@ -541,6 +622,36 @@ public class CompanyService : ICompanyService
             SectorBreakdown = d.SectorBreakdown ?? new Dictionary<string, double>(),
             RecordedAt = d.RecordedAt,
         }).ToList();
+    }
+
+    // Reads the canonical quarterly store (Companies.Q1-Q4). MonthCount is the
+    // number of months backing each quarter if detailed monthly data exists,
+    // else 0 (quarterly value entered directly via Step 1).
+    public async Task<List<QuarterlyRevenueResponse>> GetQuarterlyRevenueAsync(string companyId)
+    {
+        var company = await GetCompanyAsync(companyId);
+
+        var monthly = await _dbContext.Phase3MonthlyRevenues
+            .Find(x => x.CompanyId == companyId)
+            .ToListAsync();
+
+        var monthCounts = new Dictionary<string, int> { { "Q1", 0 }, { "Q2", 0 }, { "Q3", 0 }, { "Q4", 0 } };
+        foreach (var doc in monthly)
+        {
+            if (int.TryParse(doc.YearMonth.Substring(5, 2), out var month))
+            {
+                var quarter = $"Q{(month - 1) / 3 + 1}";
+                if (monthCounts.ContainsKey(quarter)) monthCounts[quarter]++;
+            }
+        }
+
+        return new List<QuarterlyRevenueResponse>
+        {
+            new() { Quarter = "Q1", Revenue = company.Q1Revenue ?? 0, MonthCount = monthCounts["Q1"] },
+            new() { Quarter = "Q2", Revenue = company.Q2Revenue ?? 0, MonthCount = monthCounts["Q2"] },
+            new() { Quarter = "Q3", Revenue = company.Q3Revenue ?? 0, MonthCount = monthCounts["Q3"] },
+            new() { Quarter = "Q4", Revenue = company.Q4Revenue ?? 0, MonthCount = monthCounts["Q4"] },
+        };
     }
 
     public async Task<KpiBaselineResponse> SaveKpiBaselineAsync(string companyId, SaveKpiBaselineRequest request)
@@ -568,7 +679,35 @@ public class CompanyService : ICompanyService
         if (validationErrors.Count > 0)
             throw new ArgumentException(string.Join("; ", validationErrors));
 
+        // Optional Step-3 extras → persisted on the Companies document. Validate
+        // ranges before writing. Both are nullable: null means "not provided".
+        if (request.BurnRate.HasValue && request.BurnRate.Value < 0)
+            throw new ArgumentException("burnRate must be >= 0");
+        if (request.Nps.HasValue && (request.Nps.Value < 0 || request.Nps.Value > 100))
+            throw new ArgumentException("nps must be between 0 and 100");
+
         await _dbContext.Phase3Kpis.InsertOneAsync(doc);
+
+        // Persist MonthlyBurn + Nps to the company in a single atomic update so
+        // they land together with the KPI baseline. Runway intentionally NOT
+        // recomputed here (CurrentFunds isn't collected in the new flow, so it
+        // stays 0) and valuation is NOT re-run (it was locked in Step 2).
+        if (request.BurnRate.HasValue || request.Nps.HasValue)
+        {
+            var updates = new List<UpdateDefinition<Companies>>
+            {
+                Builders<Companies>.Update.Set(c => c.UpdatedAt, DateTime.UtcNow)
+            };
+            if (request.BurnRate.HasValue)
+                updates.Add(Builders<Companies>.Update.Set(c => c.MonthlyBurn, request.BurnRate.Value));
+            if (request.Nps.HasValue)
+                updates.Add(Builders<Companies>.Update.Set(c => c.Nps, request.Nps.Value));
+
+            await _dbContext.Companies.UpdateOneAsync(
+                Builders<Companies>.Filter.Eq(c => c.Id, companyId),
+                Builders<Companies>.Update.Combine(updates));
+        }
+
         return MapKpi(doc);
     }
 
@@ -653,6 +792,85 @@ public class CompanyService : ICompanyService
         FileSize = r.FileSize,
         StoragePath = r.StoragePath,
         ReviewNote = r.ReviewNote,
+    };
+
+    private static readonly HashSet<string> ConceptStages =
+        new(StringComparer.OrdinalIgnoreCase) { "idea", "mvp", "beta", "revenue", "growth" };
+
+    public async Task<ConceptResponse> SaveConceptAsync(string companyId, SaveConceptRequest request)
+    {
+        if (request == null) throw new ArgumentException("Request body required");
+
+        // Validation (Part 6a).
+        if (string.IsNullOrWhiteSpace(request.OneLiner))
+            throw new ArgumentException("oneLiner is required");
+        if (request.OneLiner.Length > 160)
+            throw new ArgumentException("oneLiner must be <= 160 characters");
+        if (string.IsNullOrWhiteSpace(request.BusinessModel))
+            throw new ArgumentException("businessModel is required");
+        if (string.IsNullOrWhiteSpace(request.Stage) || !ConceptStages.Contains(request.Stage))
+            throw new ArgumentException($"stage must be one of: {string.Join(", ", ConceptStages)}");
+
+        var sectorTags = request.SectorTags ?? new List<string>();
+        if (sectorTags.Count < 1 || sectorTags.Count > 3)
+            throw new ArgumentException("sectorTags must contain between 1 and 3 items");
+        var keywordTags = request.KeywordTags ?? new List<string>();
+        if (keywordTags.Count > 5)
+            throw new ArgumentException("keywordTags must contain at most 5 items");
+
+        await GetCompanyAsync(companyId);
+
+        // ClarityScore: four binary dimensions, each worth 25 (0–100).
+        int clarityScore = 0;
+        if (!string.IsNullOrWhiteSpace(request.ProblemStatement) && request.ProblemStatement.Length > 30) clarityScore += 25;
+        if (!string.IsNullOrWhiteSpace(request.OneLiner) && request.OneLiner.Length > 20) clarityScore += 25;
+        if (sectorTags.Count > 0) clarityScore += 25;
+        if (!string.IsNullOrWhiteSpace(request.BusinessModel)) clarityScore += 25;
+
+        var doc = new Phase3Concept
+        {
+            Id = ObjectId.GenerateNewId().ToString(),
+            CompanyId = companyId,
+            OneLiner = request.OneLiner.Trim(),
+            ProblemStatement = request.ProblemStatement?.Trim(),
+            SolutionDescription = request.SolutionDescription?.Trim(),
+            Stage = request.Stage.ToLowerInvariant(),
+            BusinessModel = request.BusinessModel,
+            SectorTags = sectorTags,
+            KeywordTags = keywordTags,
+            ClarityScore = clarityScore,
+            RecordedAt = DateTime.UtcNow,
+        };
+
+        // One concept per company — upsert by CompanyId (replaced on resubmit).
+        await _dbContext.Phase3Concepts.ReplaceOneAsync(
+            Builders<Phase3Concept>.Filter.Eq(c => c.CompanyId, companyId),
+            doc,
+            new ReplaceOptions { IsUpsert = true });
+
+        return MapConcept(doc);
+    }
+
+    public async Task<ConceptResponse?> GetConceptAsync(string companyId)
+    {
+        await GetCompanyAsync(companyId);
+        var doc = await _dbContext.Phase3Concepts
+            .Find(c => c.CompanyId == companyId)
+            .FirstOrDefaultAsync();
+        return doc == null ? null : MapConcept(doc);
+    }
+
+    private static ConceptResponse MapConcept(Phase3Concept c) => new()
+    {
+        OneLiner = c.OneLiner,
+        ProblemStatement = c.ProblemStatement,
+        SolutionDescription = c.SolutionDescription,
+        Stage = c.Stage,
+        BusinessModel = c.BusinessModel,
+        SectorTags = c.SectorTags ?? new List<string>(),
+        KeywordTags = c.KeywordTags ?? new List<string>(),
+        ClarityScore = c.ClarityScore,
+        RecordedAt = c.RecordedAt,
     };
 
     // ============ PHASE 4: EQUITY STRUCTURE & DILUTION ============

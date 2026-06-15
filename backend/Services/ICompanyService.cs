@@ -37,10 +37,13 @@ public interface ICompanyService
     Task<Companies> SaveCashPositionAsync(string companyId, SaveCashPositionRequest request);
     Task<List<MonthlyRevenueResponse>> SaveMonthlyRevenueAsync(string companyId, SaveMonthlyRevenueRequest request);
     Task<List<MonthlyRevenueResponse>> GetMonthlyRevenueAsync(string companyId);
+    Task<List<QuarterlyRevenueResponse>> GetQuarterlyRevenueAsync(string companyId);
     Task<KpiBaselineResponse> SaveKpiBaselineAsync(string companyId, SaveKpiBaselineRequest request);
     Task<KpiBaselineResponse?> GetKpiBaselineAsync(string companyId);
     Task<FinancialReportResponse> UploadFinancialReportAsync(string companyId, FinancialReportUploadRequest request);
     Task<List<FinancialReportResponse>> GetFinancialReportsAsync(string companyId);
+    Task<ConceptResponse> SaveConceptAsync(string companyId, SaveConceptRequest request);
+    Task<ConceptResponse?> GetConceptAsync(string companyId);
 
     // ============ PHASE 4: EQUITY STRUCTURE & DILUTION ============
 
