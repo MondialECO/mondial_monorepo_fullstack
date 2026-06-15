@@ -147,6 +147,13 @@ public class TechToolDto
     public double MonthlyCost { get; set; }
 }
 
+public class QuarterlyRevenueResponse
+{
+    public string Quarter { get; set; } // "Q1", "Q2", "Q3", "Q4"
+    public double Revenue { get; set; }
+    public int MonthCount { get; set; } // How many months aggregated
+}
+
 public class FinancialSummaryResponse
 {
     public double TotalRevenue { get; set; }
@@ -155,6 +162,11 @@ public class FinancialSummaryResponse
     public double AnnualRecurringRevenue { get; set; }
     public int RunwayMonths { get; set; }
     public double GrowthRate { get; set; }
+    // Phase 3 valuation-model outputs (Step 2 display).
+    public int ConfidenceScore { get; set; }
+    public double RiskDiscountRate { get; set; }
+    public double RevenueMultiple { get; set; }
+    public string? Industry { get; set; }
     public DateTime LastUpdatedAt { get; set; }
 }
 
@@ -542,6 +554,36 @@ public class SaveKpiBaselineRequest
     public double Ltv { get; set; }
     public double ChurnPercent { get; set; }
     public int ActiveAccounts { get; set; }
+
+    // Optional Phase 3 Step-3 extras. Null = not provided (kept backward compatible).
+    public double? BurnRate { get; set; }   // → Companies.MonthlyBurn (>= 0)
+    public int? Nps { get; set; }           // → Companies.Nps (0–100)
+}
+
+// ============ PHASE 3: CONCEPT OVERVIEW (STEP 4) ============
+
+public class SaveConceptRequest
+{
+    public string OneLiner { get; set; }
+    public string ProblemStatement { get; set; }
+    public string SolutionDescription { get; set; }
+    public string Stage { get; set; }
+    public string BusinessModel { get; set; }
+    public List<string> SectorTags { get; set; } = new();
+    public List<string> KeywordTags { get; set; } = new();
+}
+
+public class ConceptResponse
+{
+    public string OneLiner { get; set; }
+    public string ProblemStatement { get; set; }
+    public string SolutionDescription { get; set; }
+    public string Stage { get; set; }
+    public string BusinessModel { get; set; }
+    public List<string> SectorTags { get; set; } = new();
+    public List<string> KeywordTags { get; set; } = new();
+    public int ClarityScore { get; set; }
+    public DateTime RecordedAt { get; set; }
 }
 
 public class KpiBaselineResponse

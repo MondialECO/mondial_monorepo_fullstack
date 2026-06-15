@@ -28,7 +28,7 @@ const PHASE_CONFIG: Record<PhaseNumber, PhaseConfig> = {
     description: 'Valuation EUR 3.78M, KPI baseline',
     trustScore: 22,
     hasSteps: true,
-    stepCount: 3,
+    stepCount: 4,
   },
   4: {
     phase: 4,

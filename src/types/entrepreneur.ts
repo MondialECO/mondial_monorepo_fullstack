@@ -132,10 +132,24 @@ export interface Phase3Data {
   revenueSavedAt?: string;
   cashPositionSavedAt?: string;
   valuationCalculatedAt?: string;
+  valuationReviewedAt?: string;
   equitySavedAt?: string;
   fundingAskSavedAt?: string;
   kpiBaselineSavedAt?: string;
   reportsSubmittedCount?: number;
+  // Step 3 extras with no backend field yet (kept client-side, honest)
+  burnRate?: number;
+  nps?: number;
+  // Step 4 — Concept Overview
+  conceptOverview?: {
+    elevatorPitch?: string;
+    problemStatement?: string;
+    solution?: string;
+    targetMarket?: string;
+    businessModel?: string;
+    stage?: string;
+  };
+  conceptSavedAt?: string;
   submittedAt?: string;
 }
 

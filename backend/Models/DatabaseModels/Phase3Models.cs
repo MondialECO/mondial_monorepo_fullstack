@@ -50,6 +50,57 @@ public class Phase3MonthlyRevenue
 }
 
 /// <summary>
+/// Phase 3 Concept Overview (Step 4). One concept per company — upserted by
+/// CompanyId on resubmit. <see cref="ClarityScore"/> is computed server-side.
+/// </summary>
+public class Phase3Concept
+{
+    [BsonId]
+    [BsonRepresentation(BsonType.ObjectId)]
+    public string Id { get; set; } = ObjectId.GenerateNewId().ToString();
+
+    public string CompanyId { get; set; }
+
+    /// <summary>Elevator pitch / one-liner, max 160 chars.</summary>
+    public string OneLiner { get; set; }
+    public string ProblemStatement { get; set; }
+    public string SolutionDescription { get; set; }
+
+    /// <summary>idea | mvp | beta | revenue | growth</summary>
+    public string Stage { get; set; }
+
+    /// <summary>e.g. SaaS_Subscription | Marketplace | Transactional ...</summary>
+    public string BusinessModel { get; set; }
+
+    public List<string> SectorTags { get; set; } = new();   // max 3
+    public List<string> KeywordTags { get; set; } = new();  // max 5
+
+    /// <summary>0–100, computed server-side from the four binary dimensions.</summary>
+    public int ClarityScore { get; set; }
+
+    public DateTime RecordedAt { get; set; } = DateTime.UtcNow;
+}
+
+/// <summary>
+/// Outbox row for the Smart Matchmaking pipeline. Written when an entrepreneur
+/// completes Phase 3 (no live event bus yet); consumed downstream.
+/// </summary>
+public class MatchmakingQueueItem
+{
+    [BsonId]
+    [BsonRepresentation(BsonType.ObjectId)]
+    public string Id { get; set; } = ObjectId.GenerateNewId().ToString();
+
+    public string CompanyId { get; set; }
+
+    /// <summary>The "matchmaking.entrepreneur.update" payload.</summary>
+    public BsonDocument Payload { get; set; }
+
+    public string Status { get; set; } = "pending";  // pending | processed | failed
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+}
+
+/// <summary>
 /// Phase 3 financial report (P&amp;L, balance sheet, audit, etc.). Uploaded
 /// via multipart; the binary lives on disk via IDocumentManager and the
 /// metadata + storage path lives here.

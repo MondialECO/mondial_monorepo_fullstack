@@ -2,51 +2,32 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AlertCircle, FileText, Upload, ShieldCheck, Zap } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Lock, HelpCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { useEntrepreneurProgress } from '@/hooks/useEntrepreneurProgress';
 import { RouteGuard } from '@/components/entrepreneur/RouteGuard';
 import { EntrepreneurLayout } from '@/components/entrepreneur/EntrepreneurLayout';
 import { ProgressSidebar } from '@/components/entrepreneur/ProgressSidebar';
 import { StepFooter } from '@/components/entrepreneur/StepFooter';
-import {
-  Phase3Container,
-  Surface,
-  MetricTile,
-  RevenueBars,
-  InfoCallout,
-  Chip,
-} from '@/components/entrepreneur/phase3/Phase3Ui';
+import { Phase3Container, Surface, Chip } from '@/components/entrepreneur/phase3/Phase3Ui';
 import { PHASE_3_STEPS } from '@/components/entrepreneur/phase3/steps';
-import entrepreneurApi, { FinancialReportResponse } from '@/lib/api-entrepreneur';
+import { cn } from '@/lib/utils';
+import entrepreneurApi, { type FinancialSummaryResponse } from '@/lib/api-entrepreneur';
 import { Phase3Data } from '@/types/entrepreneur';
-
-const REQUIRED_REPORT_TYPES: ReadonlyArray<{ id: string; label: string }> = [
-  { id: 'pnl', label: 'P&L statement' },
-  { id: 'balance', label: 'Balance sheet' },
-];
-
-const eur = (n: number) =>
-  new Intl.NumberFormat('en-IE', { style: 'currency', currency: 'EUR', notation: 'compact', maximumFractionDigits: 1 }).format(n || 0);
 
 function Phase3KpiTrackerClient() {
   const router = useRouter();
-  const { progress, savePhaseData, moveToNextStep, getPhaseData, applyBackendResponse, trustScore } =
-    useEntrepreneurProgress();
+  const { progress, savePhaseData, moveToNextStep, getPhaseData } = useEntrepreneurProgress();
 
   const [mrr, setMrr] = useState('');
-  const [arr, setArr] = useState('');
-  const [grossMargin, setGrossMargin] = useState('');
+  const [monthlyBurn, setMonthlyBurn] = useState('');
   const [cac, setCac] = useState('');
   const [ltv, setLtv] = useState('');
   const [churn, setChurn] = useState('');
-  const [activeAccounts, setActiveAccounts] = useState('');
+  const [nps, setNps] = useState('');
 
-  const [reports, setReports] = useState<FinancialReportResponse[]>([]);
-  const [uploadingType, setUploadingType] = useState<string | null>(null);
-  const [monthly, setMonthly] = useState<{ yearMonth: string; revenue: number }[]>([]);
-  const [overallProgress, setOverallProgress] = useState<number | null>(null);
+  const [financial, setFinancial] = useState<FinancialSummaryResponse | null>(null);
 
   const [validationError, setValidationError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -57,18 +38,29 @@ function Phase3KpiTrackerClient() {
       try {
         const existing: Phase3Data = getPhaseData<Phase3Data>(3) ?? {};
         const prog = await entrepreneurApi.getCurrentPhase();
-        if (!cancelled) setOverallProgress(prog.overallProgressPercent);
         const companyId = existing.__companyId ?? prog.companyId;
         if (!companyId) return;
-        const [list, mon] = await Promise.allSettled([
-          entrepreneurApi.getFinancialReports(companyId),
-          entrepreneurApi.getMonthlyRevenue(companyId),
+        const [fin, kpi] = await Promise.allSettled([
+          entrepreneurApi.getFinancialSummary(companyId),
+          entrepreneurApi.getKpiBaseline(companyId),
         ]);
         if (cancelled) return;
-        if (list.status === 'fulfilled') setReports(list.value);
-        if (mon.status === 'fulfilled') setMonthly(mon.value);
+        if (fin.status === 'fulfilled') setFinancial(fin.value);
+        // Prefill from a previously saved KPI baseline so returning users
+        // don't re-type everything.
+        if (kpi.status === 'fulfilled' && kpi.value) {
+          const k = kpi.value;
+          if (k.mrr) setMrr(String(k.mrr));
+          if (k.cac) setCac(String(k.cac));
+          if (k.ltv) setLtv(String(k.ltv));
+          if (k.churnPercent != null) setChurn(String(k.churnPercent));
+        }
+        // Burn rate & NPS have no field on KpiBaselineResponse — restore from
+        // local phase data (where Step 3 persists them).
+        if (existing.burnRate != null) setMonthlyBurn(String(existing.burnRate));
+        if (existing.nps != null) setNps(String(existing.nps));
       } catch {
-        // fall through; user can still upload
+        // fall through; user can still enter metrics
       }
     })();
     return () => {
@@ -86,6 +78,25 @@ function Phase3KpiTrackerClient() {
 
   const num = (s: string) => (Number.isFinite(parseFloat(s)) ? parseFloat(s) : null);
 
+  // Locked / derived values (honest: shown only when computable).
+  const arrValue = num(mrr) != null ? num(mrr)! * 12 : null;
+  const runwayValue = financial && financial.runwayMonths > 0 ? financial.runwayMonths : null;
+
+  // Health indicators (honest — only render values we can derive).
+  const ltvCac = num(ltv) != null && num(cac) != null && num(cac)! > 0 ? num(ltv)! / num(cac)! : null;
+
+  // Revenue growth from the canonical backend value (avg quarterly growth,
+  // returned as a fraction → ×100 for percent). Matches the valuation engine.
+  const revenueGrowth =
+    financial && financial.growthRate != null ? financial.growthRate * 100 : null;
+
+  // Burn multiple = monthly burn / monthly recurring revenue (≡ burn / (ARR/12)).
+  // Mirrors the backend matchmaking formula in Phase3CompletionEvents.
+  const burnMultiple =
+    num(monthlyBurn) != null && num(mrr) != null && num(mrr)! > 0
+      ? num(monthlyBurn)! / num(mrr)!
+      : null;
+
   async function resolveCompanyId(): Promise<string> {
     const existing: Phase3Data = getPhaseData<Phase3Data>(3) ?? {};
     if (existing.__companyId) return existing.__companyId;
@@ -94,76 +105,52 @@ function Phase3KpiTrackerClient() {
     return fromServer.companyId;
   }
 
-  const handleReportUpload = async (type: string, file: File) => {
+  const handleNext = async () => {
     setValidationError('');
-    setUploadingType(type);
-    try {
-      const companyId = await resolveCompanyId();
-      const fd = new FormData();
-      fd.append('file', file);
-      fd.append('reportType', type);
-      const uploaded = await entrepreneurApi.uploadFinancialReport(companyId, fd);
-      setReports((prev) => [uploaded, ...prev]);
-    } catch (error) {
-      setValidationError(error instanceof Error ? error.message : 'Failed to upload report');
-    } finally {
-      setUploadingType(null);
-    }
-  };
-
-  const handleSubmit = async () => {
-    setValidationError('');
-    const mrrN = num(mrr), arrN = num(arr), gmN = num(grossMargin);
-    const cacN = num(cac), ltvN = num(ltv), churnN = num(churn), aaN = num(activeAccounts);
+    const mrrN = num(mrr), burnN = num(monthlyBurn), cacN = num(cac), ltvN = num(ltv), churnN = num(churn), npsN = num(nps);
     if (
-      mrrN == null || mrrN < 0 || arrN == null || arrN < 0 ||
-      gmN == null || gmN < -100 || gmN > 100 || cacN == null || cacN < 0 ||
-      ltvN == null || ltvN < 0 || churnN == null || churnN < 0 || churnN > 100 ||
-      aaN == null || aaN < 0
+      mrrN == null || mrrN < 0 || burnN == null || burnN < 0 ||
+      cacN == null || cacN < 0 || ltvN == null || ltvN < 0 ||
+      churnN == null || churnN < 0 || churnN > 100 || npsN == null || npsN < 0 || npsN > 100
     ) {
-      setValidationError('Fill every KPI field with a valid non-negative number');
+      setValidationError('Fill every KPI field with a valid number (churn 0–100%, NPS 0–100)');
       return;
     }
-    if (mrrN <= 0 && arrN <= 0 && aaN <= 0) {
-      setValidationError('KPI baseline needs at least one of MRR, ARR, or active accounts > 0');
+    if (mrrN <= 0) {
+      setValidationError('Monthly Recurring Revenue must be greater than 0');
       return;
-    }
-    for (const required of REQUIRED_REPORT_TYPES) {
-      const ok = reports.some((r) => r.type.toLowerCase() === required.id && r.status !== 'rejected');
-      if (!ok) {
-        setValidationError(`Upload your ${required.label} (and ensure it is not rejected)`);
-        return;
-      }
     }
 
     setIsSubmitting(true);
     try {
       const companyId = await resolveCompanyId();
+      // saveKpiBaseline carries the fields the backend models. Gross margin and
+      // active accounts aren't collected in the new design, so default them; the
+      // backend only requires one of MRR/ARR/accounts > 0 (MRR satisfies it).
       await entrepreneurApi.saveKpiBaseline(companyId, {
-        mrr: mrrN, arr: arrN, grossMarginPercent: gmN, cac: cacN, ltv: ltvN, churnPercent: churnN, activeAccounts: aaN,
+        mrr: mrrN,
+        arr: mrrN * 12,
+        grossMarginPercent: 0,
+        cac: cacN,
+        ltv: ltvN,
+        churnPercent: churnN,
+        activeAccounts: 0,
+        burnRate: burnN,
+        nps: npsN,
       });
-      const advanceResponse = await entrepreneurApi.advancePhase(companyId, 3, {});
-      if (advanceResponse?.currentPhase !== 4) {
-        throw new Error(`Phase advancement failed - expected currentPhase=4, got ${advanceResponse?.currentPhase}`);
-      }
-      if (!advanceResponse?.completedPhases?.includes(3)) {
-        throw new Error('Phase 3 not marked as completed in backend response');
-      }
-      applyBackendResponse(advanceResponse);
 
       const existing: Phase3Data = getPhaseData<Phase3Data>(3) ?? {};
       savePhaseData(3, {
         ...existing,
         __companyId: companyId,
         kpiBaselineSavedAt: new Date().toISOString(),
-        reportsSubmittedCount: reports.length,
-        submittedAt: new Date().toISOString(),
+        burnRate: burnN,
+        nps: npsN,
       });
       moveToNextStep(3, 3);
-      await new Promise((r) => setTimeout(r, 300));
-      router.push('/dashboard/entrepreneur/phase-4');
+      router.push('/dashboard/entrepreneur/phase-3/step-4');
     } catch (error) {
-      setValidationError(error instanceof Error ? error.message : 'Failed to submit Phase 3');
+      setValidationError(error instanceof Error ? error.message : 'Failed to save KPI baseline');
     } finally {
       setIsSubmitting(false);
     }
@@ -173,220 +160,215 @@ function Phase3KpiTrackerClient() {
     1: progress.completedSteps.has('3-1') ? 'completed' : progress.currentStep === 1 ? 'current' : 'pending',
     2: progress.completedSteps.has('3-2') ? 'completed' : progress.currentStep === 2 ? 'current' : 'pending',
     3: progress.completedSteps.has('3-3') ? 'completed' : progress.currentStep === 3 ? 'current' : 'pending',
+    4: progress.completedSteps.has('3-4') ? 'completed' : progress.currentStep === 4 ? 'current' : 'pending',
   } as const;
   const stepIndicators = PHASE_3_STEPS.map((s) => ({
     ...s,
-    status: statusMap[s.step as 1 | 2 | 3] as 'completed' | 'current' | 'pending',
+    status: statusMap[s.step as 1 | 2 | 3 | 4] as 'completed' | 'current' | 'pending',
   }));
 
   const sidebar = (
     <ProgressSidebar
       title="Verification Progress"
       steps={stepIndicators}
-      overallScore={100}
+      overallScore={75}
       scoreLabel="OVERALL SCORE"
-      scoreDescription="Submit your KPI baseline and required reports to complete Phase 3."
+      scoreDescription="Enter your KPI baseline, then describe your concept to complete Phase 3."
     />
   );
-
-  const chartData =
-    monthly.length > 0
-      ? monthly.slice(-4).map((m) => ({ label: m.yearMonth.slice(5), value: m.revenue }))
-      : [
-          { label: 'Q1', value: 0 },
-          { label: 'Q2', value: 0 },
-          { label: 'Q3', value: 0 },
-          { label: 'Q4', value: 0 },
-        ];
-
-  const ltvCac = num(ltv) != null && num(cac) != null && num(cac)! > 0 ? (num(ltv)! / num(cac)!).toFixed(1) : null;
-
-  const KPI_FIELDS = [
-    ['MRR (€)', 'mrr', mrr, setMrr],
-    ['ARR (€)', 'arr', arr, setArr],
-    ['Gross margin (%)', 'gm', grossMargin, setGrossMargin],
-    ['CAC (€)', 'cac', cac, setCac],
-    ['LTV (€)', 'ltv', ltv, setLtv],
-    ['Churn (%)', 'churn', churn, setChurn],
-    ['Active accounts', 'aa', activeAccounts, setActiveAccounts],
-  ] as const;
 
   return (
     <EntrepreneurLayout sidebar={sidebar}>
       <Phase3Container
         crumbs={['Entrepreneur Verification', 'Live KPI Tracking']}
-        title="KPI Tracker"
-        subtitle="Submit your KPI baseline and required financial reports. Phase 3 completes once the backend accepts everything."
+        title="KPI & Traction Metrics"
+        subtitle="Connect your revenue tools or enter key metrics manually to establish an accurate traction profile."
       >
-        {/* Integration banner — backend-blocked, disabled actions */}
-        <div className="bg-warning/10 border border-warning/30 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-          <div className="flex gap-3">
-            <Zap className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" aria-hidden />
-            <div>
-              <p className="text-sm font-semibold text-foreground">Connect Stripe to enable automatic KPI sync</p>
-              <p className="text-[13px] text-muted-foreground">Live metric sync is awaiting integration. Enter your baseline manually below.</p>
-            </div>
-          </div>
-          <div className="flex gap-2 shrink-0">
-            <Button variant="outline" size="sm" disabled>Connect Stripe</Button>
-            <Button variant="outline" size="sm" disabled>Connect ChartMogul</Button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-4">
-          {/* Operational mastery — composite score is backend-blocked; show real progress */}
-          <Surface className="p-6 flex flex-col items-center text-center gap-4">
-            <div className="self-start">
-              <p className="text-sm font-medium text-muted-foreground">Data Efficiency</p>
-              <p className="text-lg font-semibold text-foreground">Operational Mastery</p>
-            </div>
-            <div className="relative grid place-items-center size-40 rounded-full bg-primary/10">
-              <div className="absolute inset-2 rounded-full border-[10px] border-primary/20" />
-              <div className="text-center">
-                <p className="text-3xl font-semibold text-foreground tabular-nums">{overallProgress ?? 0}%</p>
-                <p className="text-xs text-muted-foreground">Overall progress</p>
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-4">
+          {/* Left: integrations + manual KPI entry */}
+          <div className="flex flex-col gap-4">
+            {/* Connect Revenue tools */}
+            <Surface className="p-6">
+              <h2 className="text-lg font-semibold text-foreground mb-4">Connect Revenue tools</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <IntegrationCard letter="S" name="Stripe" colorClass="text-orange-500 border-orange-500/40" buttonClass="bg-orange-500 text-white" />
+                <IntegrationCard letter="C" name="ChartMogul" colorClass="text-purple-600 border-purple-600/40" buttonClass="bg-purple-600 text-white" />
               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3 w-full text-left">
+              <div className="flex items-center gap-3 my-5" aria-hidden>
+                <span className="h-px flex-1 bg-border" />
+                <span className="text-xs text-muted-foreground">OR</span>
+                <span className="h-px flex-1 bg-border" />
+              </div>
+              <p className="text-center text-sm text-muted-foreground">
+                Don&apos;t use these tools? Enter your metrics manually below.
+              </p>
+            </Surface>
+
+            {/* Manual KPI Entry */}
+            <Surface className="p-6 space-y-4">
+              <h2 className="text-lg font-semibold text-foreground">Manual KPI Entry</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <KpiField id="mrr" label="Monthly Recurring Revenue (MRR)" value={mrr} onChange={setMrr} prefix="€" />
+                <KpiField id="arr" label="Annual Recurring Revenue (ARR)" value={arrValue != null ? String(arrValue) : ''} prefix="€" locked lockedHint="Auto-calculated (MRR × 12)" />
+                <KpiField id="burn" label="Monthly Burn Rate" value={monthlyBurn} onChange={setMonthlyBurn} prefix="€" />
+                <KpiField id="runway" label="Runway (Months)" value={runwayValue != null ? String(runwayValue) : ''} locked lockedHint="Derived from revenue & burn" />
+                <KpiField id="cac" label="Customer Acquisition Cost (CAC)" value={cac} onChange={setCac} prefix="€" />
+                <KpiField id="ltv" label="Lifetime Value (LTV)" value={ltv} onChange={setLtv} prefix="€" />
+                <KpiField id="churn" label="Monthly Churn Rate" value={churn} onChange={setChurn} suffix="%" />
+                <KpiField id="nps" label="Net Promoter Score (NPS)" value={nps} onChange={setNps} />
+              </div>
+            </Surface>
+          </div>
+
+          {/* Right rail */}
+          <div className="flex flex-col gap-4">
+            <Surface className="p-5 space-y-4">
+              <h2 className="text-base font-semibold text-foreground">Health Indicators</h2>
+              <HealthRow label="LTV/CAC Ratio" value={ltvCac != null ? `${ltvCac.toFixed(1)}x` : null} badge={ltvCac != null ? (ltvCac >= 3 ? 'Excellent' : ltvCac >= 1 ? 'Efficient' : 'Low') : null} tone={ltvCac != null && ltvCac >= 3 ? 'success' : ltvCac != null && ltvCac >= 1 ? 'primary' : 'destructive'} />
+              <HealthRow label="Burn Multiple" value={burnMultiple != null ? `${burnMultiple.toFixed(1)}x` : null} badge={burnMultiple != null ? (burnMultiple <= 1 ? 'Efficient' : burnMultiple <= 2 ? 'Moderate' : 'High') : null} tone={burnMultiple != null && burnMultiple <= 1 ? 'success' : burnMultiple != null && burnMultiple <= 2 ? 'primary' : 'destructive'} />
+              <HealthRow label="Revenue Growth" value={revenueGrowth != null ? `${revenueGrowth >= 0 ? '+' : ''}${revenueGrowth.toFixed(2)}%` : null} badge={revenueGrowth != null ? (revenueGrowth >= 0 ? 'Efficient' : 'Declining') : null} tone={revenueGrowth != null && revenueGrowth >= 0 ? 'success' : 'destructive'} />
+            </Surface>
+
+            <div className="bg-primary/5 border border-primary/20 rounded-2xl p-5 flex gap-3">
+              <HelpCircle className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" aria-hidden />
               <div>
-                <p className="text-xs text-muted-foreground">System Health</p>
-                <p className="text-sm italic text-muted-foreground">Data unavailable</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Data Throughput</p>
-                <p className="text-sm italic text-muted-foreground">Data unavailable</p>
-              </div>
-            </div>
-            <div className="w-full rounded-xl border border-dashed border-border p-3 text-left">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Data Integration</p>
-              <div className="flex flex-col gap-2">
-                <Button variant="outline" size="sm" disabled className="w-full">Connect Stripe</Button>
-                <Button variant="outline" size="sm" disabled className="w-full">Connect ChartMogul</Button>
+                <p className="text-sm font-semibold text-primary mb-1">Why we need this information</p>
+                <p className="text-[13px] text-muted-foreground">
+                  Investors rely on standardized traction metrics to benchmark your performance against peers.
+                  Consistent KPI tracking demonstrates operational maturity and significantly increases valuation
+                  confidence.
+                </p>
               </div>
             </div>
-          </Surface>
 
-          {/* Metric grid (live from inputs; honest shells for unbacked metrics) */}
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 content-start">
-            <MetricTile label="Monthly Recurring Revenue" value={num(mrr) != null ? eur(num(mrr)!) : ''} available={num(mrr) != null} />
-            <MetricTile label="Churn Rate" value={num(churn) != null ? `${num(churn)}%` : ''} available={num(churn) != null} />
-            <MetricTile label="Annual Revenue" value={num(arr) != null ? eur(num(arr)!) : ''} available={num(arr) != null} />
-            <MetricTile label="NPS" value="" available={false} />
-            <MetricTile label="CAC" value={num(cac) != null ? eur(num(cac)!) : ''} available={num(cac) != null} />
-            <MetricTile label="LTV" value={num(ltv) != null ? eur(num(ltv)!) : ''} available={num(ltv) != null} />
-            <MetricTile label="Total Runway" value="" available={false} />
-            <MetricTile label="Gross Margin" value={num(grossMargin) != null ? `${num(grossMargin)}%` : ''} available={num(grossMargin) != null} />
-            <MetricTile label="Burn Rate" value="" available={false} icon={ShieldCheck} />
+            <div className="bg-success-light border border-success-text/20 rounded-2xl p-5 space-y-3">
+              <p className="text-sm font-semibold text-success-text">Complete Phase 3 to unlock Phase 4 — Equity Structure</p>
+              <p className="text-[13px] text-muted-foreground">Finish the concept overview next to finalise your valuation profile.</p>
+            </div>
           </div>
-        </div>
-
-        {/* Revenue trend + business health */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
-          <Surface className="p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold text-foreground">Revenue trend</h2>
-              <Chip tone="success">Live from submitted revenue</Chip>
-            </div>
-            <RevenueBars data={chartData} height={180} />
-          </Surface>
-          <Surface className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-foreground">Business Health</h2>
-              <Chip tone="primary">Score {trustScore}/100</Chip>
-            </div>
-            <table className="w-full text-sm">
-              <tbody>
-                {[
-                  ['LTV / CAC ratio', ltvCac != null ? `${ltvCac}x` : null],
-                  ['Burn multiple', null],
-                  ['Growth', null],
-                  ['Churn rate', num(churn) != null ? `${num(churn)}%` : null],
-                ].map(([label, value]) => (
-                  <tr key={label as string} className="border-b border-border/60 last:border-0">
-                    <td className="py-3 text-foreground">{label}</td>
-                    <td className="py-3 text-right font-medium text-foreground tabular-nums">
-                      {value ?? <span className="italic text-muted-foreground font-normal">Data unavailable</span>}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </Surface>
-        </div>
-
-        {/* KPI baseline input (real submission) */}
-        <Surface className="p-6 mt-4 space-y-4">
-          <h2 className="text-lg font-semibold text-foreground">KPI baseline</h2>
-          <p className="text-sm text-muted-foreground">Reviewers need a snapshot of your unit economics. All fields required.</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {KPI_FIELDS.map(([label, id, value, setter]) => (
-              <div key={id}>
-                <label htmlFor={`kpi-${id}`} className="block text-sm font-medium text-foreground mb-2">{label}</label>
-                <Input id={`kpi-${id}`} type="number" min={0} value={value} onChange={(e) => setter(e.target.value)} placeholder="0" className="h-10" />
-              </div>
-            ))}
-          </div>
-        </Surface>
-
-        {/* Financial reports */}
-        <Surface className="p-6 mt-4 space-y-4">
-          <h2 className="text-lg font-semibold text-foreground">Financial reports</h2>
-          <p className="text-sm text-muted-foreground">Upload your latest P&amp;L and balance sheet. PDFs or spreadsheets accepted.</p>
-          <div className="space-y-3">
-            {REQUIRED_REPORT_TYPES.map((rt) => {
-              const uploaded = reports.find((r) => r.type.toLowerCase() === rt.id && r.status !== 'rejected');
-              const uploading = uploadingType === rt.id;
-              return (
-                <div key={rt.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-background border border-border rounded-xl p-4">
-                  <div className="flex items-start gap-3 flex-1">
-                    <FileText className="w-5 h-5 text-muted-foreground mt-0.5" aria-hidden />
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{rt.label}</p>
-                      <p className="text-xs text-muted-foreground mt-1">{uploaded ? `${uploaded.fileName} · ${uploaded.status}` : 'Required'}</p>
-                    </div>
-                  </div>
-                  <label className="cursor-pointer">
-                    <input
-                      type="file"
-                      className="hidden"
-                      accept=".pdf,.doc,.docx,.xls,.xlsx"
-                      aria-label={`Upload ${rt.label}`}
-                      onChange={(e) => {
-                        const f = e.target.files?.[0];
-                        if (f) handleReportUpload(rt.id, f);
-                      }}
-                    />
-                    <Button asChild variant={uploaded ? 'outline' : 'default'} size="sm" disabled={uploading} className="gap-2">
-                      <span>
-                        <Upload className="w-4 h-4" aria-hidden />
-                        {uploading ? 'Uploading…' : uploaded ? 'Replace' : 'Upload'}
-                      </span>
-                    </Button>
-                  </label>
-                </div>
-              );
-            })}
-          </div>
-        </Surface>
-
-        <div className="mt-4">
-          <InfoCallout icon={AlertCircle} title="Submission completes Phase 3">
-            Submitting sends your financials for compliance review and unlocks Phase 4. Verification is awarded
-            separately after a reviewer approves your submission.
-          </InfoCallout>
         </div>
 
         <div className="mt-6">
           <StepFooter
             backUrl="/dashboard/entrepreneur/phase-3/step-2"
-            onNextClick={handleSubmit}
+            onNextClick={handleNext}
             isLoading={isSubmitting}
-            nextLabel="Submit &amp; Complete Phase 3"
+            nextLabel="Concept Overview"
             nextValidationError={validationError}
           />
         </div>
       </Phase3Container>
     </EntrepreneurLayout>
+  );
+}
+
+/* ---- Local presentational helpers --------------------------------------- */
+
+function IntegrationCard({
+  letter,
+  name,
+  colorClass,
+  buttonClass,
+}: {
+  letter: string;
+  name: string;
+  colorClass: string;
+  buttonClass: string;
+}) {
+  return (
+    <div className="border border-border rounded-2xl p-5 flex flex-col items-center gap-3 text-center">
+      <span className={cn('grid place-items-center size-12 rounded-full border-2 text-lg font-bold', colorClass)}>
+        {letter}
+      </span>
+      <p className="text-sm font-semibold text-foreground">{name}</p>
+      <Chip tone="neutral">Not Connected</Chip>
+      <Button
+        type="button"
+        disabled
+        className={cn('w-full', buttonClass)}
+      >
+        Connect {name}
+      </Button>
+    </div>
+  );
+}
+
+function KpiField({
+  id,
+  label,
+  value,
+  onChange,
+  prefix,
+  suffix,
+  locked = false,
+  lockedHint,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange?: (v: string) => void;
+  prefix?: string;
+  suffix?: string;
+  locked?: boolean;
+  lockedHint?: string;
+}) {
+  return (
+    <div>
+      <label htmlFor={`kpi-${id}`} className="block text-sm font-medium text-foreground mb-2">
+        {label}
+      </label>
+      <div className="relative">
+        {prefix ? (
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground" aria-hidden>
+            {prefix}
+          </span>
+        ) : null}
+        <Input
+          id={`kpi-${id}`}
+          type="number"
+          value={value}
+          onChange={onChange ? (e) => onChange(e.target.value) : undefined}
+          readOnly={locked}
+          disabled={locked}
+          placeholder={locked ? '—' : '0'}
+          aria-label={lockedHint ? `${label} — ${lockedHint}` : label}
+          className={cn('h-10', prefix && 'pl-7', (suffix || locked) && 'pr-16', locked && 'bg-muted text-muted-foreground')}
+        />
+        {locked ? (
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 text-xs text-muted-foreground">
+            Locked <Lock className="w-3 h-3" aria-hidden />
+          </span>
+        ) : suffix ? (
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground" aria-hidden>
+            {suffix}
+          </span>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function HealthRow({
+  label,
+  value,
+  badge,
+  tone,
+}: {
+  label: string;
+  value: string | null;
+  badge: string | null;
+  tone: 'success' | 'primary' | 'destructive' | 'neutral';
+}) {
+  return (
+    <div className="border border-border rounded-xl p-4 flex items-center justify-between gap-3">
+      <div>
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="text-lg font-semibold text-foreground tabular-nums">
+          {value ?? <span className="text-sm italic font-normal text-muted-foreground">Data unavailable</span>}
+        </p>
+      </div>
+      {badge ? <Chip tone={tone}>{badge}</Chip> : null}
+    </div>
   );
 }
 
