@@ -47,18 +47,17 @@ function Phase3KpiTrackerClient() {
         if (cancelled) return;
         if (fin.status === 'fulfilled') setFinancial(fin.value);
         // Prefill from a previously saved KPI baseline so returning users
-        // don't re-type everything.
+        // don't re-type everything. All fields (including burnRate and nps) are
+        // now persisted in the API response.
         if (kpi.status === 'fulfilled' && kpi.value) {
           const k = kpi.value;
           if (k.mrr) setMrr(String(k.mrr));
           if (k.cac) setCac(String(k.cac));
           if (k.ltv) setLtv(String(k.ltv));
           if (k.churnPercent != null) setChurn(String(k.churnPercent));
+          if (k.burnRate != null) setMonthlyBurn(String(k.burnRate));
+          if (k.nps != null) setNps(String(k.nps));
         }
-        // Burn rate & NPS have no field on KpiBaselineResponse — restore from
-        // local phase data (where Step 3 persists them).
-        if (existing.burnRate != null) setMonthlyBurn(String(existing.burnRate));
-        if (existing.nps != null) setNps(String(existing.nps));
       } catch {
         // fall through; user can still enter metrics
       }
@@ -110,10 +109,10 @@ function Phase3KpiTrackerClient() {
     const mrrN = num(mrr), burnN = num(monthlyBurn), cacN = num(cac), ltvN = num(ltv), churnN = num(churn), npsN = num(nps);
     if (
       mrrN == null || mrrN < 0 || burnN == null || burnN < 0 ||
-      cacN == null || cacN < 0 || ltvN == null || ltvN < 0 ||
+      cacN == null || cacN <= 0 || ltvN == null || ltvN < 0 ||
       churnN == null || churnN < 0 || churnN > 100 || npsN == null || npsN < 0 || npsN > 100
     ) {
-      setValidationError('Fill every KPI field with a valid number (churn 0–100%, NPS 0–100)');
+      setValidationError('Fill every KPI field with a valid number (CAC > 0, churn 0–100%, NPS 0–100)');
       return;
     }
     if (mrrN <= 0) {

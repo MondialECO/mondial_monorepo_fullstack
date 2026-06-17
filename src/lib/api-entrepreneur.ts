@@ -136,6 +136,8 @@ export interface KpiBaselineResponse {
   ltv: number;
   churnPercent: number;
   activeAccounts: number;
+  burnRate?: number | null;
+  nps?: number | null;
   recordedAt: string;
 }
 

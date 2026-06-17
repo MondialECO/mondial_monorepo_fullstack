@@ -661,6 +661,12 @@ public class CompanyService : ICompanyService
 
         await GetCompanyAsync(companyId);
 
+        // Validate BurnRate and Nps ranges BEFORE persistence
+        if (request.BurnRate.HasValue && request.BurnRate.Value < 0)
+            throw new ArgumentException("burnRate must be >= 0");
+        if (request.Nps.HasValue && (request.Nps.Value < 0 || request.Nps.Value > 100))
+            throw new ArgumentException("nps must be between 0 and 100");
+
         var doc = new Phase3Kpi
         {
             Id = ObjectId.GenerateNewId().ToString(),
@@ -672,6 +678,8 @@ public class CompanyService : ICompanyService
             Ltv = request.Ltv,
             ChurnPercent = request.ChurnPercent,
             ActiveAccounts = request.ActiveAccounts,
+            BurnRate = request.BurnRate,
+            Nps = request.Nps,
             RecordedAt = DateTime.UtcNow,
         };
 
@@ -679,19 +687,9 @@ public class CompanyService : ICompanyService
         if (validationErrors.Count > 0)
             throw new ArgumentException(string.Join("; ", validationErrors));
 
-        // Optional Step-3 extras → persisted on the Companies document. Validate
-        // ranges before writing. Both are nullable: null means "not provided".
-        if (request.BurnRate.HasValue && request.BurnRate.Value < 0)
-            throw new ArgumentException("burnRate must be >= 0");
-        if (request.Nps.HasValue && (request.Nps.Value < 0 || request.Nps.Value > 100))
-            throw new ArgumentException("nps must be between 0 and 100");
-
         await _dbContext.Phase3Kpis.InsertOneAsync(doc);
 
-        // Persist MonthlyBurn + Nps to the company in a single atomic update so
-        // they land together with the KPI baseline. Runway intentionally NOT
-        // recomputed here (CurrentFunds isn't collected in the new flow, so it
-        // stays 0) and valuation is NOT re-run (it was locked in Step 2).
+        // Also persist to Companies for current-state queries (MonthlyBurn + Nps used for runway, scoring)
         if (request.BurnRate.HasValue || request.Nps.HasValue)
         {
             var updates = new List<UpdateDefinition<Companies>>
@@ -779,6 +777,8 @@ public class CompanyService : ICompanyService
         Ltv = k.Ltv,
         ChurnPercent = k.ChurnPercent,
         ActiveAccounts = k.ActiveAccounts,
+        BurnRate = k.BurnRate,
+        Nps = k.Nps,
         RecordedAt = k.RecordedAt,
     };
 
@@ -808,6 +808,10 @@ public class CompanyService : ICompanyService
             throw new ArgumentException("oneLiner must be <= 160 characters");
         if (string.IsNullOrWhiteSpace(request.BusinessModel))
             throw new ArgumentException("businessModel is required");
+        if (string.IsNullOrWhiteSpace(request.ProblemStatement))
+            throw new ArgumentException("problemStatement is required");
+        if (string.IsNullOrWhiteSpace(request.SolutionDescription))
+            throw new ArgumentException("solutionDescription is required");
         if (string.IsNullOrWhiteSpace(request.Stage) || !ConceptStages.Contains(request.Stage))
             throw new ArgumentException($"stage must be one of: {string.Join(", ", ConceptStages)}");
 
@@ -827,26 +831,31 @@ public class CompanyService : ICompanyService
         if (sectorTags.Count > 0) clarityScore += 25;
         if (!string.IsNullOrWhiteSpace(request.BusinessModel)) clarityScore += 25;
 
-        var doc = new Phase3Concept
-        {
-            Id = ObjectId.GenerateNewId().ToString(),
-            CompanyId = companyId,
-            OneLiner = request.OneLiner.Trim(),
-            ProblemStatement = request.ProblemStatement?.Trim(),
-            SolutionDescription = request.SolutionDescription?.Trim(),
-            Stage = request.Stage.ToLowerInvariant(),
-            BusinessModel = request.BusinessModel,
-            SectorTags = sectorTags,
-            KeywordTags = keywordTags,
-            ClarityScore = clarityScore,
-            RecordedAt = DateTime.UtcNow,
-        };
+        // One concept per company — upsert by CompanyId (updated on resubmit).
+        // Use FindOneAndUpdateAsync to avoid the immutable _id error that
+        // ReplaceOneAsync hits when a doc already exists. CompanyId is set only
+        // on insert so it's never rewritten on update.
+        var filter = Builders<Phase3Concept>.Filter.Eq(c => c.CompanyId, companyId);
+        var update = Builders<Phase3Concept>.Update
+            .SetOnInsert(c => c.CompanyId, companyId)
+            .Set(c => c.OneLiner, request.OneLiner.Trim())
+            .Set(c => c.ProblemStatement, request.ProblemStatement?.Trim())
+            .Set(c => c.SolutionDescription, request.SolutionDescription?.Trim())
+            .Set(c => c.Stage, request.Stage.ToLowerInvariant())
+            .Set(c => c.BusinessModel, request.BusinessModel)
+            .Set(c => c.SectorTags, sectorTags)
+            .Set(c => c.KeywordTags, keywordTags)
+            .Set(c => c.ClarityScore, clarityScore)
+            .Set(c => c.RecordedAt, DateTime.UtcNow);
 
-        // One concept per company — upsert by CompanyId (replaced on resubmit).
-        await _dbContext.Phase3Concepts.ReplaceOneAsync(
-            Builders<Phase3Concept>.Filter.Eq(c => c.CompanyId, companyId),
-            doc,
-            new ReplaceOptions { IsUpsert = true });
+        var doc = await _dbContext.Phase3Concepts.FindOneAndUpdateAsync(
+            filter,
+            update,
+            new FindOneAndUpdateOptions<Phase3Concept>
+            {
+                IsUpsert = true,
+                ReturnDocument = ReturnDocument.After
+            });
 
         return MapConcept(doc);
     }
@@ -2594,7 +2603,19 @@ public class CompanyService : ICompanyService
         if (monthlyBurn <= 0) return 0;
 
         var currentFunds = company.CurrentFunds ?? 0;
-        return (int)(currentFunds / monthlyBurn);
+
+        // If currentFunds is available, use it for calculation
+        if (currentFunds > 0)
+            return (int)(currentFunds / monthlyBurn);
+
+        // Fallback: For Phase 3 flow without cash position, estimate from ARR
+        // Runway ≈ ARR / (12 × MonthlyBurn) months
+        // This assumes monthly burn is sustainable at current revenue level
+        var arr = (company.Q1Revenue ?? 0) + (company.Q2Revenue ?? 0) +
+                  (company.Q3Revenue ?? 0) + (company.Q4Revenue ?? 0);
+        if (arr <= 0) return 0;
+
+        return (int)(arr / (12 * monthlyBurn));
     }
 
     // ============ PHASE D-4: OFFER SYSTEM ============

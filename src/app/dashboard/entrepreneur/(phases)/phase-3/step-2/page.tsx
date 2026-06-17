@@ -242,7 +242,7 @@ function Phase3ValuationClient() {
               <MetricTile label="Annual Revenue" value={financial ? eur(financial.totalRevenue) : '—'} available={!!financial} />
               <MetricTile
                 label="Average Growth"
-                value={financial && financial.growthRate ? `${financial.growthRate > 0 ? '+' : ''}${financial.growthRate.toFixed(2)}%` : '—'}
+                value={financial && financial.growthRate ? `${financial.growthRate > 0 ? '+' : ''}${(financial.growthRate * 100).toFixed(1)}%` : '—'}
                 available={!!financial}
               />
               <div className="bg-primary text-primary-foreground rounded-2xl p-5 flex flex-col gap-3">
@@ -286,7 +286,7 @@ function Phase3ValuationClient() {
               <IconStatCard
                 label="Financial Health"
                 icon={Activity}
-                value={financial && financial.growthRate ? `${financial.growthRate.toFixed(2)}% Yearly Growth` : 'Awaiting calculation'}
+                value={financial && financial.growthRate ? `${(financial.growthRate * 100).toFixed(1)}% Yearly Growth` : 'Awaiting calculation'}
                 sub="Strong year-over-year revenue scaling"
               />
             </div>

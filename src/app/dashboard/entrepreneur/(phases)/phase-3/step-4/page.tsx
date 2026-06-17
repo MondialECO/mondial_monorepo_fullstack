@@ -129,6 +129,14 @@ function Phase3ConceptOverviewClient() {
     try {
       const companyId = await resolveCompanyId();
 
+      // Pre-check: Verify Step 3 (KPI baseline) was completed before advancing
+      const kpi = await entrepreneurApi.getKpiBaseline(companyId);
+      if (!kpi) {
+        setValidationError('⚠️ Complete Step 3 (KPI Baseline) first, then return to finish Phase 3');
+        setIsSubmitting(false);
+        return;
+      }
+
       // Persist the concept to the backend FIRST — Phase 3 completion now
       // requires a Phase3Concept document (ValidatePhase3Async). Also keep a
       // local copy so the form rehydrates on reload.
