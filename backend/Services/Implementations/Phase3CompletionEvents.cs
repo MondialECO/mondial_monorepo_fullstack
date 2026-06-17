@@ -49,8 +49,8 @@ public static class Phase3CompletionEvents
 
             BsonValue ltvCac = kpi != null && kpi.Cac > 0 ? kpi.Ltv / kpi.Cac : BsonNull.Value;
             BsonValue burnMultiple =
-                company.MonthlyBurn is > 0 && kpi != null && kpi.Arr > 0
-                    ? company.MonthlyBurn.Value / (kpi.Arr / 12)
+                kpi?.BurnRate is > 0 && kpi?.Arr > 0
+                    ? kpi.BurnRate / (kpi.Arr / 12)
                     : BsonNull.Value;
 
             var payload = new BsonDocument
@@ -74,7 +74,7 @@ public static class Phase3CompletionEvents
                         { "LTV_CAC_ratio", ltvCac },
                         { "burn_multiple", burnMultiple },
                         { "churn_rate", kpi?.ChurnPercent ?? 0 },
-                        { "NPS", company.Nps.HasValue ? new BsonInt32(company.Nps.Value) : BsonNull.Value },
+                        { "NPS", kpi?.Nps.HasValue == true ? new BsonInt32(kpi.Nps.Value) : BsonNull.Value },
                         { "data_source", "manual" },
                     }
                 },

@@ -595,6 +595,8 @@ public class KpiBaselineResponse
     public double Ltv { get; set; }
     public double ChurnPercent { get; set; }
     public int ActiveAccounts { get; set; }
+    public double? BurnRate { get; set; }
+    public int? Nps { get; set; }
     public DateTime RecordedAt { get; set; }
 }
 

@@ -244,7 +244,7 @@ export function Phase3RevenueInputClient() {
                 icon={Activity}
                 value={
                   financial && financial.growthRate
-                    ? `${financial.growthRate > 0 ? '+' : ''}${financial.growthRate.toFixed(2)}% Yearly Growth`
+                    ? `${financial.growthRate > 0 ? '+' : ''}${(financial.growthRate * 100).toFixed(1)}% Yearly Growth`
                     : 'Awaiting calculation'
                 }
                 sub={

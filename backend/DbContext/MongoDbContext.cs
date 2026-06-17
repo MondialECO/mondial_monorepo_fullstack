@@ -12,11 +12,42 @@ namespace WebApp.DbContext
         {
             var client = new MongoClient(settings.Value.ConnectionString);
             _database = client.GetDatabase(settings.Value.DatabaseName);
+            EnsureMatchmakingQueueIndexes();
         }
 
         public MongoDbContext(IMongoDatabase database)
         {
             _database = database;
+            EnsureMatchmakingQueueIndexes();
+        }
+
+        // Smart Matchmaking outbox indexes: Status (consumer polling), CompanyId
+        // (lookup/dedup), CreatedAt desc (ordering). Background builds; not a TTL
+        // index — the outbox is durable, not ephemeral. Best-effort + swallowed so
+        // context construction never blocks or fails (unit tests mock the context
+        // and the MatchmakingQueue getter is unset, so this no-ops there).
+        private void EnsureMatchmakingQueueIndexes()
+        {
+            try
+            {
+                var models = new[]
+                {
+                    new CreateIndexModel<MatchmakingQueueItem>(
+                        Builders<MatchmakingQueueItem>.IndexKeys.Ascending(x => x.Status),
+                        new CreateIndexOptions { Background = true }),
+                    new CreateIndexModel<MatchmakingQueueItem>(
+                        Builders<MatchmakingQueueItem>.IndexKeys.Ascending(x => x.CompanyId),
+                        new CreateIndexOptions { Background = true }),
+                    new CreateIndexModel<MatchmakingQueueItem>(
+                        Builders<MatchmakingQueueItem>.IndexKeys.Descending(x => x.CreatedAt),
+                        new CreateIndexOptions { Background = true }),
+                };
+                MatchmakingQueue.Indexes.CreateMany(models);
+            }
+            catch
+            {
+                // Best-effort; never block or fail context construction.
+            }
         }
 
         public virtual IMongoCollection<ApplicationUser> ApplicationUsers => _database.GetCollection<ApplicationUser>("ApplicationUsers");

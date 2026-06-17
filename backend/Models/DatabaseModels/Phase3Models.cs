@@ -24,6 +24,9 @@ public class Phase3Kpi
     public double ChurnPercent { get; set; }
     public int ActiveAccounts { get; set; }
 
+    public double? BurnRate { get; set; }
+    public int? Nps { get; set; }
+
     public DateTime RecordedAt { get; set; } = DateTime.UtcNow;
 }
 

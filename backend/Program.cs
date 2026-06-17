@@ -459,8 +459,10 @@ builder.Services.AddControllers(options =>
 .AddJsonOptions(options =>
 {
     // Configure JSON serialization to use camelCase property names
-    // so frontend (which expects camelCase) matches backend responses
+    // so frontend (which expects camelCase) matches backend responses.
+    // PropertyNameCaseInsensitive allows deserialization from camelCase JSON.
     options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+    options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
 });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
