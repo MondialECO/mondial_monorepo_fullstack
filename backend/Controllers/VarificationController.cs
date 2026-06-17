@@ -11,6 +11,7 @@ namespace WebApp.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class VarificationController : ControllerBase
     {
         private readonly EmailService _emailService;

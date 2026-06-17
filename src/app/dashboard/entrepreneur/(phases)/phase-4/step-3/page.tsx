@@ -97,8 +97,8 @@ function Phase4Step3Client() {
 
   if (!progress) {
     return (
-      <div className="min-h-screen bg-neutral-100 flex items-center justify-center p-4">
-        <p className="text-neutral-5 text-sm">Loading…</p>
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <p className="text-muted-foreground text-sm">Loading…</p>
       </div>
     );
   }
@@ -248,47 +248,47 @@ function Phase4Step3Client() {
         />
 
         {/* Backend-derived reconciliation summary */}
-        <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 space-y-3">
-          <h3 className="text-lg font-bold text-neutral-1">Reconciliation summary</h3>
+        <div className="bg-card border-2 border-border rounded-2xl p-6 space-y-3">
+          <h3 className="text-lg font-bold text-foreground">Reconciliation summary</h3>
           {snapshot ? (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               <div>
-                <p className="text-xs uppercase text-neutral-5">Total shares</p>
-                <p className="font-bold text-neutral-1">{totalShares.toLocaleString()}</p>
+                <p className="text-xs uppercase text-muted-foreground">Total shares</p>
+                <p className="font-bold text-foreground">{totalShares.toLocaleString()}</p>
               </div>
               <div>
-                <p className="text-xs uppercase text-neutral-5">Issued</p>
-                <p className="font-bold text-neutral-1">{issued.toLocaleString()}</p>
+                <p className="text-xs uppercase text-muted-foreground">Issued</p>
+                <p className="font-bold text-foreground">{issued.toLocaleString()}</p>
               </div>
               <div>
-                <p className="text-xs uppercase text-neutral-5">Allocated %</p>
+                <p className="text-xs uppercase text-muted-foreground">Allocated %</p>
                 <p
                   className={`font-bold ${
-                    reconciledOk ? 'text-green-700' : 'text-amber-700'
+                    reconciledOk ? 'text-success-text' : 'text-warning'
                   }`}
                 >
                   {issuedPercent.toFixed(2)}%
                 </p>
               </div>
               <div>
-                <p className="text-xs uppercase text-neutral-5">Founder present</p>
-                <p className={`font-bold ${hasFounder ? 'text-green-700' : 'text-amber-700'}`}>
+                <p className="text-xs uppercase text-muted-foreground">Founder present</p>
+                <p className={`font-bold ${hasFounder ? 'text-success-text' : 'text-warning'}`}>
                   {hasFounder ? 'yes' : 'no'}
                 </p>
               </div>
             </div>
           ) : (
-            <p className="text-sm text-neutral-5">No cap table snapshot yet — go back to step 1.</p>
+            <p className="text-sm text-muted-foreground">No cap table snapshot yet — go back to step 1.</p>
           )}
 
           {snapshot && vesting.length > 0 && (
-            <div className="pt-3 border-t border-neutral-2">
-              <p className="text-xs uppercase text-neutral-5 mb-2">Vesting (backend-computed)</p>
+            <div className="pt-3 border-t border-input">
+              <p className="text-xs uppercase text-muted-foreground mb-2">Vesting (backend-computed)</p>
               <div className="space-y-1 text-xs">
                 {vesting.map((v) => (
                   <div key={v.grantId} className="flex justify-between">
-                    <span className="text-neutral-1">{v.stakeholderName}</span>
-                    <span className="text-neutral-5">
+                    <span className="text-foreground">{v.stakeholderName}</span>
+                    <span className="text-muted-foreground">
                       {v.vestedSharesNow.toLocaleString()} / {v.sharesGranted.toLocaleString()}{' '}
                       ({v.vestedPercentNow.toFixed(1)}%)
                     </span>
@@ -299,14 +299,14 @@ function Phase4Step3Client() {
           )}
         </div>
 
-        <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 space-y-4">
+        <div className="bg-card border-2 border-border rounded-2xl p-6 space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-bold text-neutral-1">Ownership history</h3>
+            <h3 className="text-lg font-bold text-foreground">Ownership history</h3>
             <Button variant="outline" size="sm" onClick={addRow} className="gap-2">
               <Plus className="w-4 h-4" /> Add round
             </Button>
           </div>
-          <p className="text-xs text-neutral-5">
+          <p className="text-xs text-muted-foreground">
             Optional. Record each round so reviewers can see the dilution trajectory.
           </p>
           <div className="space-y-2">
@@ -317,48 +317,48 @@ function Phase4Step3Client() {
                   value={r.roundName}
                   onChange={(e) => updateRow(idx, { roundName: e.target.value })}
                   placeholder="Round (e.g. Seed)"
-                  className="col-span-3 h-9 bg-background border-neutral-2"
+                  className="col-span-3 h-9 bg-background border-input"
                 />
                 <Input
                   type="date"
                   value={r.eventDate}
                   onChange={(e) => updateRow(idx, { eventDate: e.target.value })}
-                  className="col-span-2 h-9 bg-background border-neutral-2"
+                  className="col-span-2 h-9 bg-background border-input"
                 />
                 <Input
                   type="number"
                   value={r.founderOwnershipBefore}
                   onChange={(e) => updateRow(idx, { founderOwnershipBefore: e.target.value })}
                   placeholder="Founder before %"
-                  className="col-span-1 h-9 bg-background border-neutral-2"
+                  className="col-span-1 h-9 bg-background border-input"
                 />
                 <Input
                   type="number"
                   value={r.founderOwnershipAfter}
                   onChange={(e) => updateRow(idx, { founderOwnershipAfter: e.target.value })}
                   placeholder="After %"
-                  className="col-span-1 h-9 bg-background border-neutral-2"
+                  className="col-span-1 h-9 bg-background border-input"
                 />
                 <Input
                   type="number"
                   value={r.investorOwnership}
                   onChange={(e) => updateRow(idx, { investorOwnership: e.target.value })}
                   placeholder="Inv %"
-                  className="col-span-1 h-9 bg-background border-neutral-2"
+                  className="col-span-1 h-9 bg-background border-input"
                 />
                 <Input
                   type="number"
                   value={r.esopOwnership}
                   onChange={(e) => updateRow(idx, { esopOwnership: e.target.value })}
                   placeholder="ESOP %"
-                  className="col-span-1 h-9 bg-background border-neutral-2"
+                  className="col-span-1 h-9 bg-background border-input"
                 />
                 <Input
                   type="number"
                   value={r.valuation}
                   onChange={(e) => updateRow(idx, { valuation: e.target.value })}
                   placeholder="Valuation €"
-                  className="col-span-2 h-9 bg-background border-neutral-2"
+                  className="col-span-2 h-9 bg-background border-input"
                 />
                 <Button
                   variant="ghost"
@@ -374,18 +374,18 @@ function Phase4Step3Client() {
           </div>
         </div>
 
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex gap-3">
-          <ShieldCheck className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-blue-800">
+        <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 flex gap-3">
+          <ShieldCheck className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-muted-foreground">
             Submitting Phase 4 sends your cap table for compliance review and unlocks Phase 5.
             Verification is awarded separately after a reviewer approves your submission.
           </p>
         </div>
 
         {validationError && (
-          <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4 flex gap-3">
-            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-            <p className="text-sm font-semibold text-red-900">{validationError}</p>
+          <div className="bg-destructive/10 border-2 border-destructive/30 rounded-xl p-4 flex gap-3">
+            <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
+            <p className="text-sm font-semibold text-destructive">{validationError}</p>
           </div>
         )}
 

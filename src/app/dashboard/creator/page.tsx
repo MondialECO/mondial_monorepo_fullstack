@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { format } from "date-fns";
 import {
   CheckCircle2,
+  Clock,
   TrendingUp,
   Users,
   Lightbulb,
@@ -18,9 +19,12 @@ import { useDashboardStats } from "@/hooks/queries/creator";
 import LoadingState from "@/components/shared/LoadingState";
 import ErrorState from "@/components/shared/ErrorState";
 import { topInvestors } from "@/constants/investors";
+import { useAuth } from "@/context/AuthContext";
 
 export default function CreatorDashboard() {
   const { data, isLoading: loading, isError } = useDashboardStats();
+  const { user } = useAuth();
+  const firstName = user?.name?.trim().split(/\s+/)[0] || "there";
 
   if (loading) {
     return <LoadingState message="Loading your dashboard..." />;
@@ -36,7 +40,7 @@ export default function CreatorDashboard() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
         <div className="space-y-1">
           <h1 className="text-[28px] font-bold leading-tight text-foreground">
-            Hello Back, Jona 👋
+            Hello back, {firstName} 👋
           </h1>
           <p className="text-sm font-normal text-muted-foreground">
             Explore your project ideas here
@@ -140,28 +144,25 @@ export default function CreatorDashboard() {
                   {/* Status Badges */}
                   <div className="flex items-center gap-2 flex-wrap">
                     {project.status === "APPROVED" ? (
-                      <div className="px-3 py-1 bg-[#10B981]/10 text-[#34D399] rounded-full text-xs font-semibold flex items-center gap-1">
+                      <Badge variant="success" className="px-3 py-1 font-semibold">
                         <CheckCircle2 className="h-3 w-3" />
                         Approved
-                      </div>
+                      </Badge>
                     ) : (
-                      <div className="px-3 py-1 bg-[#F59E0B]/10 text-[#FBBF24] rounded-full text-xs font-semibold flex items-center gap-1">
-                        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-[#FBBF24]">
-                          <path d="M8 4V8L10.5 10.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                          <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="2" />
-                        </svg>
+                      <Badge variant="warning" className="px-3 py-1 font-semibold">
+                        <Clock className="h-3 w-3" />
                         Pending
-                      </div>
+                      </Badge>
                     )}
                     {project.stageLabel && (
-                      <div className="px-3 py-1 bg-muted/50 text-muted-foreground rounded-full text-xs font-semibold">
+                      <Badge variant="secondary" className="px-3 py-1 font-semibold text-muted-foreground">
                         {project.stageLabel}
-                      </div>
+                      </Badge>
                     )}
-                    <div className="px-3 py-1 bg-[#10B981]/10 text-[#34D399] rounded-full text-xs font-semibold flex items-center gap-1">
-                      <div className="w-1.5 h-1.5 rounded-full bg-[#34D399]" />
+                    <Badge variant="success" className="px-3 py-1 font-semibold">
+                      <span className="w-1.5 h-1.5 rounded-full bg-success-text" />
                       Online
-                    </div>
+                    </Badge>
                   </div>
 
                   {/* Info Header */}

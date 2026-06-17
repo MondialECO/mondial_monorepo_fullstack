@@ -1,10 +1,8 @@
 import axios from "axios";
-
-const apiBaseUrl =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5093/api";
+import { API_BASE_URL } from "./api-config";
 
 const api = axios.create({
-  baseURL: apiBaseUrl,
+  baseURL: API_BASE_URL,
 });
 
 // Track whether we're already attempting a refresh to prevent infinite loops

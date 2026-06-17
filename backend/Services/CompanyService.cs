@@ -16,6 +16,7 @@ public class CompanyService : ICompanyService
     private readonly IAiReviewEngine _aiReviewEngine;
     private readonly IDocumentManager _documentManager;
     private readonly IPhaseValidator _phaseValidator;
+    private readonly IDealEventPublisher _dealEvents;
 
     public CompanyService(
         MongoDbContext dbContext,
@@ -24,7 +25,8 @@ public class CompanyService : ICompanyService
         IInvestorMatcher investorMatcher,
         IAiReviewEngine aiReviewEngine,
         IDocumentManager documentManager,
-        IPhaseValidator phaseValidator)
+        IPhaseValidator phaseValidator,
+        IDealEventPublisher dealEvents)
     {
         _dbContext = dbContext;
         _valuationEngine = valuationEngine;
@@ -33,6 +35,7 @@ public class CompanyService : ICompanyService
         _aiReviewEngine = aiReviewEngine;
         _documentManager = documentManager;
         _phaseValidator = phaseValidator;
+        _dealEvents = dealEvents;
     }
 
     // ============ PHASE FLOW ============
@@ -90,6 +93,11 @@ public class CompanyService : ICompanyService
         var filter = Builders<Companies>.Filter.Eq(c => c.Id, company.Id);
         await _dbContext.Companies.ReplaceOneAsync(filter, company);
 
+        // Post-completion side effects. Best-effort and self-contained (swallows
+        // its own errors) so it can never block or fail the phase advance.
+        if (phaseToComplete == 3)
+            await Phase3CompletionEvents.RunAsync(_dbContext, company);
+
         return BuildProgressResponse(company);
     }
 
@@ -103,6 +111,28 @@ public class CompanyService : ICompanyService
 
     public async Task<Companies> CreateCompanyAsync(string userId, CreateCompanyDto dto)
     {
+        // Check if user already has a company
+        var existingCompany = await _dbContext.Companies
+            .Find(c => c.OwnerId == userId)
+            .FirstOrDefaultAsync();
+
+        if (existingCompany != null)
+        {
+            // Update existing company
+            existingCompany.CompanyName = dto.CompanyName;
+            existingCompany.Industry = dto.Industry;
+            existingCompany.Website = dto.Website;
+            existingCompany.Tagline = dto.Tagline;
+            existingCompany.UpdatedAt = DateTime.UtcNow;
+
+            await _dbContext.Companies.ReplaceOneAsync(
+                c => c.Id == existingCompany.Id,
+                existingCompany
+            );
+            return existingCompany;
+        }
+
+        // Create new company if doesn't exist
         var company = new Companies
         {
             Id = ObjectId.GenerateNewId().ToString(),
@@ -121,6 +151,64 @@ public class CompanyService : ICompanyService
 
         await _dbContext.Companies.InsertOneAsync(company);
         return company;
+    }
+
+    public async Task<(Companies Company, bool AlreadyExisted)> CreateCompanyFromIdeaAsync(string userId, string ideaId)
+    {
+        if (string.IsNullOrWhiteSpace(ideaId))
+            throw new ArgumentException("ideaId is required", nameof(ideaId));
+
+        var idea = await _dbContext.BusinessIdeas.Find(i => i.Id == ideaId).FirstOrDefaultAsync()
+            ?? throw new KeyNotFoundException($"Business idea {ideaId} not found");
+
+        if (!string.Equals(idea.CreatorId, userId, StringComparison.Ordinal))
+            throw new UnauthorizedAccessException("Idea does not belong to the caller");
+
+        // Idempotent: if this user already promoted this idea, return the
+        // existing company instead of duplicating.
+        var existing = await _dbContext.Companies
+            .Find(c => c.OwnerId == userId && c.SourceBusinessIdeaId == ideaId)
+            .FirstOrDefaultAsync();
+        if (existing != null)
+            return (existing, true);
+
+        var companyName = !string.IsNullOrWhiteSpace(idea.Name)
+            ? idea.Name
+            : (idea.FounderIdentity?.BusinessName ?? "Untitled Company");
+
+        var company = new Companies
+        {
+            Id = ObjectId.GenerateNewId().ToString(),
+            OwnerId = userId,
+            SourceBusinessIdeaId = ideaId,
+            CompanyName = companyName,
+            Industry = ResolveIndustry(idea),
+            Website = string.Empty,
+            Tagline = idea.Solution?.Description,
+            Country = idea.Market?.Geography,
+            FundingNarrative = idea.Solution?.Vision,
+            FundingAskAmount = idea.FundingRequired > 0 ? (double?)(double)idea.FundingRequired : null,
+            EquityOfferedPercent = idea.EquityOffered > 0 ? (double?)idea.EquityOffered : null,
+            CurrentPhase = 2,
+            CompletedPhases = new List<int>(),
+            TrustScore = 0,
+            IsInvestorReady = false,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        await _dbContext.Companies.InsertOneAsync(company);
+        return (company, false);
+    }
+
+    private static string ResolveIndustry(BusinessIdeas idea)
+    {
+        // Industry is a free-text field on Companies. Fall back to the
+        // founder role context or a safe default. Entrepreneur can edit
+        // later in Phase 2 onboarding.
+        var role = idea.FounderIdentity?.Role;
+        if (!string.IsNullOrWhiteSpace(role)) return role;
+        return "Other";
     }
 
     public async Task<Companies> GetCompanyAsync(string companyId)
@@ -220,12 +308,38 @@ public class CompanyService : ICompanyService
         return company;
     }
 
-    // ============ PHASE 3: FINANCIAL & KPI ============
-
-    public async Task<Companies> SaveRevenueDataAsync(string companyId, SaveRevenueDataRequest request)
+    public async Task<List<BeneficialOwnerResponse>> GetBeneficialOwnersAsync(string companyId)
     {
         var company = await GetCompanyAsync(companyId);
 
+        if (company.BeneficialOwnersDto == null || company.BeneficialOwnersDto.Count == 0)
+        {
+            return new List<BeneficialOwnerResponse>();
+        }
+
+        return company.BeneficialOwnersDto.Select(owner => new BeneficialOwnerResponse
+        {
+            FullName = owner.FullName ?? string.Empty,
+            Email = owner.Email ?? string.Empty,
+            OwnershipPercent = owner.OwnershipPercent,
+            Nationality = owner.Nationality ?? string.Empty
+        }).ToList();
+    }
+
+    // ============ PHASE 3: FINANCIAL & KPI ============
+
+    // Canonical quarterly revenue store for the Phase 3 Step 1 (quarterly-input)
+    // workflow. Companies.Q1-Q4 is the single source of truth; the optional
+    // Phase3MonthlyRevenues collection is for future Stripe/ChartMogul syncs.
+    public async Task<Companies> SaveRevenueDataAsync(string companyId, SaveRevenueDataRequest request)
+    {
+        if (request == null)
+            throw new ArgumentException("Request body required");
+        if (request.Q1Revenue < 0 || request.Q2Revenue < 0 ||
+            request.Q3Revenue < 0 || request.Q4Revenue < 0)
+            throw new ArgumentException("Quarterly revenue values must be >= 0");
+
+        var company = await GetCompanyAsync(companyId);
         company.Q1Revenue = request.Q1Revenue;
         company.Q2Revenue = request.Q2Revenue;
         company.Q3Revenue = request.Q3Revenue;
@@ -234,7 +348,6 @@ public class CompanyService : ICompanyService
 
         var filter = Builders<Companies>.Filter.Eq(c => c.Id, companyId);
         await _dbContext.Companies.ReplaceOneAsync(filter, company);
-
         return company;
     }
 
@@ -246,14 +359,18 @@ public class CompanyService : ICompanyService
         var growthRate = CalculateGrowthRate(company);
         var runwayMonths = CalculateRunway(company);
 
+        var context = await BuildValuationContextAsync(company);
         var valuation = await _valuationEngine.CalculateValuationAsync(
             totalRevenue,
             growthRate,
             company.Industry,
-            runwayMonths
+            context
         );
 
         company.Valuation = valuation.EstimatedValuation;
+        company.ValuationRevenueMultiple = valuation.RevenueMultiple;
+        company.ValuationRiskDiscountRate = valuation.RiskDiscountRate;
+        company.ValuationConfidenceScore = valuation.ConfidenceScore;
         company.UpdatedAt = DateTime.UtcNow;
 
         var filter = Builders<Companies>.Filter.Eq(c => c.Id, companyId);
@@ -267,7 +384,45 @@ public class CompanyService : ICompanyService
             AnnualRecurringRevenue = totalRevenue,
             RunwayMonths = runwayMonths,
             GrowthRate = growthRate,
+            ConfidenceScore = valuation.ConfidenceScore,
+            RiskDiscountRate = valuation.RiskDiscountRate,
             LastUpdatedAt = DateTime.UtcNow
+        };
+    }
+
+    /// <summary>
+    /// Builds the deterministic <see cref="ValuationContext"/> for a company from
+    /// its document, embedded beneficial owners, concept stage, and NDA count.
+    /// All inputs are backend-derived — no AI estimates.
+    /// </summary>
+    private async Task<ValuationContext> BuildValuationContextAsync(Companies company)
+    {
+        var concept = await _dbContext.Phase3Concepts
+            .Find(c => c.CompanyId == company.Id)
+            .FirstOrDefaultAsync();
+
+        var owners = company.BeneficialOwnersDto ?? new List<BeneficialOwnerDto>();
+        var largestOwnership = owners.Count > 0 ? owners.Max(o => o.OwnershipPercent) : 100;
+
+        var ndaCount = (int)await _dbContext.Phase6NdaAcceptances
+            .CountDocumentsAsync(n => n.CompanyId == company.Id);
+
+        var completedPhases = company.CompletedPhases ?? new List<int>();
+
+        return new ValuationContext
+        {
+            Stage = string.IsNullOrWhiteSpace(concept?.Stage) ? "mvp" : concept.Stage.ToLowerInvariant(),
+            IsLegalEntityFormed = !string.IsNullOrWhiteSpace(company.LegalName) || completedPhases.Contains(2),
+            FounderCount = owners.Count > 0 ? owners.Count : 1,
+            KpiDataSource = "manual",
+            RevenueEnteredManually = true,
+            DocumentsVerified = completedPhases.Contains(2),
+            NdaSignedCount = ndaCount,
+            LargestOwnershipPct = largestOwnership,
+            Q1 = company.Q1Revenue ?? 0,
+            Q2 = company.Q2Revenue ?? 0,
+            Q3 = company.Q3Revenue ?? 0,
+            Q4 = company.Q4Revenue ?? 0,
         };
     }
 
@@ -361,6 +516,10 @@ public class CompanyService : ICompanyService
             AnnualRecurringRevenue = totalRevenue,
             RunwayMonths = runwayMonths,
             GrowthRate = CalculateGrowthRate(company),
+            ConfidenceScore = company.ValuationConfidenceScore ?? 0,
+            RiskDiscountRate = company.ValuationRiskDiscountRate ?? 0,
+            RevenueMultiple = company.ValuationRevenueMultiple ?? 0,
+            Industry = company.Industry,
             LastUpdatedAt = company.UpdatedAt
         };
     }
@@ -391,8 +550,7 @@ public class CompanyService : ICompanyService
         if (request?.Entries == null || request.Entries.Count == 0)
             throw new ArgumentException("At least one monthly revenue entry is required");
 
-        // Confirm the company exists & is owned by caller (ownership enforced at controller).
-        await GetCompanyAsync(companyId);
+        var company = await GetCompanyAsync(companyId);
 
         foreach (var entry in request.Entries)
         {
@@ -421,7 +579,31 @@ public class CompanyService : ICompanyService
                 filter, doc, new ReplaceOptions { IsUpsert = true });
         }
 
-        return await GetMonthlyRevenueAsync(companyId);
+        // Recalculate and cache Q1-Q4 on company from all monthly data (single source of truth).
+        var allMonthly = await GetMonthlyRevenueAsync(companyId);
+        var quarters = new Dictionary<int, double> { { 1, 0 }, { 2, 0 }, { 3, 0 }, { 4, 0 } };
+
+        foreach (var monthly in allMonthly)
+        {
+            if (int.TryParse(monthly.YearMonth.Substring(5, 2), out var month))
+            {
+                var quarter = (month - 1) / 3 + 1;
+                if (quarters.ContainsKey(quarter))
+                    quarters[quarter] += monthly.Revenue;
+            }
+        }
+
+        // Update company with cached quarterly values.
+        company.Q1Revenue = quarters[1];
+        company.Q2Revenue = quarters[2];
+        company.Q3Revenue = quarters[3];
+        company.Q4Revenue = quarters[4];
+        company.UpdatedAt = DateTime.UtcNow;
+
+        var companyFilter = Builders<Companies>.Filter.Eq(c => c.Id, companyId);
+        await _dbContext.Companies.ReplaceOneAsync(companyFilter, company);
+
+        return allMonthly;
     }
 
     public async Task<List<MonthlyRevenueResponse>> GetMonthlyRevenueAsync(string companyId)
@@ -442,12 +624,48 @@ public class CompanyService : ICompanyService
         }).ToList();
     }
 
+    // Reads the canonical quarterly store (Companies.Q1-Q4). MonthCount is the
+    // number of months backing each quarter if detailed monthly data exists,
+    // else 0 (quarterly value entered directly via Step 1).
+    public async Task<List<QuarterlyRevenueResponse>> GetQuarterlyRevenueAsync(string companyId)
+    {
+        var company = await GetCompanyAsync(companyId);
+
+        var monthly = await _dbContext.Phase3MonthlyRevenues
+            .Find(x => x.CompanyId == companyId)
+            .ToListAsync();
+
+        var monthCounts = new Dictionary<string, int> { { "Q1", 0 }, { "Q2", 0 }, { "Q3", 0 }, { "Q4", 0 } };
+        foreach (var doc in monthly)
+        {
+            if (int.TryParse(doc.YearMonth.Substring(5, 2), out var month))
+            {
+                var quarter = $"Q{(month - 1) / 3 + 1}";
+                if (monthCounts.ContainsKey(quarter)) monthCounts[quarter]++;
+            }
+        }
+
+        return new List<QuarterlyRevenueResponse>
+        {
+            new() { Quarter = "Q1", Revenue = company.Q1Revenue ?? 0, MonthCount = monthCounts["Q1"] },
+            new() { Quarter = "Q2", Revenue = company.Q2Revenue ?? 0, MonthCount = monthCounts["Q2"] },
+            new() { Quarter = "Q3", Revenue = company.Q3Revenue ?? 0, MonthCount = monthCounts["Q3"] },
+            new() { Quarter = "Q4", Revenue = company.Q4Revenue ?? 0, MonthCount = monthCounts["Q4"] },
+        };
+    }
+
     public async Task<KpiBaselineResponse> SaveKpiBaselineAsync(string companyId, SaveKpiBaselineRequest request)
     {
         if (request == null)
             throw new ArgumentException("Request body required");
 
         await GetCompanyAsync(companyId);
+
+        // Validate BurnRate and Nps ranges BEFORE persistence
+        if (request.BurnRate.HasValue && request.BurnRate.Value < 0)
+            throw new ArgumentException("burnRate must be >= 0");
+        if (request.Nps.HasValue && (request.Nps.Value < 0 || request.Nps.Value > 100))
+            throw new ArgumentException("nps must be between 0 and 100");
 
         var doc = new Phase3Kpi
         {
@@ -460,6 +678,8 @@ public class CompanyService : ICompanyService
             Ltv = request.Ltv,
             ChurnPercent = request.ChurnPercent,
             ActiveAccounts = request.ActiveAccounts,
+            BurnRate = request.BurnRate,
+            Nps = request.Nps,
             RecordedAt = DateTime.UtcNow,
         };
 
@@ -468,6 +688,24 @@ public class CompanyService : ICompanyService
             throw new ArgumentException(string.Join("; ", validationErrors));
 
         await _dbContext.Phase3Kpis.InsertOneAsync(doc);
+
+        // Also persist to Companies for current-state queries (MonthlyBurn + Nps used for runway, scoring)
+        if (request.BurnRate.HasValue || request.Nps.HasValue)
+        {
+            var updates = new List<UpdateDefinition<Companies>>
+            {
+                Builders<Companies>.Update.Set(c => c.UpdatedAt, DateTime.UtcNow)
+            };
+            if (request.BurnRate.HasValue)
+                updates.Add(Builders<Companies>.Update.Set(c => c.MonthlyBurn, request.BurnRate.Value));
+            if (request.Nps.HasValue)
+                updates.Add(Builders<Companies>.Update.Set(c => c.Nps, request.Nps.Value));
+
+            await _dbContext.Companies.UpdateOneAsync(
+                Builders<Companies>.Filter.Eq(c => c.Id, companyId),
+                Builders<Companies>.Update.Combine(updates));
+        }
+
         return MapKpi(doc);
     }
 
@@ -539,6 +777,8 @@ public class CompanyService : ICompanyService
         Ltv = k.Ltv,
         ChurnPercent = k.ChurnPercent,
         ActiveAccounts = k.ActiveAccounts,
+        BurnRate = k.BurnRate,
+        Nps = k.Nps,
         RecordedAt = k.RecordedAt,
     };
 
@@ -552,6 +792,94 @@ public class CompanyService : ICompanyService
         FileSize = r.FileSize,
         StoragePath = r.StoragePath,
         ReviewNote = r.ReviewNote,
+    };
+
+    private static readonly HashSet<string> ConceptStages =
+        new(StringComparer.OrdinalIgnoreCase) { "idea", "mvp", "beta", "revenue", "growth" };
+
+    public async Task<ConceptResponse> SaveConceptAsync(string companyId, SaveConceptRequest request)
+    {
+        if (request == null) throw new ArgumentException("Request body required");
+
+        // Validation (Part 6a).
+        if (string.IsNullOrWhiteSpace(request.OneLiner))
+            throw new ArgumentException("oneLiner is required");
+        if (request.OneLiner.Length > 160)
+            throw new ArgumentException("oneLiner must be <= 160 characters");
+        if (string.IsNullOrWhiteSpace(request.BusinessModel))
+            throw new ArgumentException("businessModel is required");
+        if (string.IsNullOrWhiteSpace(request.ProblemStatement))
+            throw new ArgumentException("problemStatement is required");
+        if (string.IsNullOrWhiteSpace(request.SolutionDescription))
+            throw new ArgumentException("solutionDescription is required");
+        if (string.IsNullOrWhiteSpace(request.Stage) || !ConceptStages.Contains(request.Stage))
+            throw new ArgumentException($"stage must be one of: {string.Join(", ", ConceptStages)}");
+
+        var sectorTags = request.SectorTags ?? new List<string>();
+        if (sectorTags.Count < 1 || sectorTags.Count > 3)
+            throw new ArgumentException("sectorTags must contain between 1 and 3 items");
+        var keywordTags = request.KeywordTags ?? new List<string>();
+        if (keywordTags.Count > 5)
+            throw new ArgumentException("keywordTags must contain at most 5 items");
+
+        await GetCompanyAsync(companyId);
+
+        // ClarityScore: four binary dimensions, each worth 25 (0–100).
+        int clarityScore = 0;
+        if (!string.IsNullOrWhiteSpace(request.ProblemStatement) && request.ProblemStatement.Length > 30) clarityScore += 25;
+        if (!string.IsNullOrWhiteSpace(request.OneLiner) && request.OneLiner.Length > 20) clarityScore += 25;
+        if (sectorTags.Count > 0) clarityScore += 25;
+        if (!string.IsNullOrWhiteSpace(request.BusinessModel)) clarityScore += 25;
+
+        // One concept per company — upsert by CompanyId (updated on resubmit).
+        // Use FindOneAndUpdateAsync to avoid the immutable _id error that
+        // ReplaceOneAsync hits when a doc already exists. CompanyId is set only
+        // on insert so it's never rewritten on update.
+        var filter = Builders<Phase3Concept>.Filter.Eq(c => c.CompanyId, companyId);
+        var update = Builders<Phase3Concept>.Update
+            .SetOnInsert(c => c.CompanyId, companyId)
+            .Set(c => c.OneLiner, request.OneLiner.Trim())
+            .Set(c => c.ProblemStatement, request.ProblemStatement?.Trim())
+            .Set(c => c.SolutionDescription, request.SolutionDescription?.Trim())
+            .Set(c => c.Stage, request.Stage.ToLowerInvariant())
+            .Set(c => c.BusinessModel, request.BusinessModel)
+            .Set(c => c.SectorTags, sectorTags)
+            .Set(c => c.KeywordTags, keywordTags)
+            .Set(c => c.ClarityScore, clarityScore)
+            .Set(c => c.RecordedAt, DateTime.UtcNow);
+
+        var doc = await _dbContext.Phase3Concepts.FindOneAndUpdateAsync(
+            filter,
+            update,
+            new FindOneAndUpdateOptions<Phase3Concept>
+            {
+                IsUpsert = true,
+                ReturnDocument = ReturnDocument.After
+            });
+
+        return MapConcept(doc);
+    }
+
+    public async Task<ConceptResponse?> GetConceptAsync(string companyId)
+    {
+        await GetCompanyAsync(companyId);
+        var doc = await _dbContext.Phase3Concepts
+            .Find(c => c.CompanyId == companyId)
+            .FirstOrDefaultAsync();
+        return doc == null ? null : MapConcept(doc);
+    }
+
+    private static ConceptResponse MapConcept(Phase3Concept c) => new()
+    {
+        OneLiner = c.OneLiner,
+        ProblemStatement = c.ProblemStatement,
+        SolutionDescription = c.SolutionDescription,
+        Stage = c.Stage,
+        BusinessModel = c.BusinessModel,
+        SectorTags = c.SectorTags ?? new List<string>(),
+        KeywordTags = c.KeywordTags ?? new List<string>(),
+        ClarityScore = c.ClarityScore,
+        RecordedAt = c.RecordedAt,
     };
 
     // ============ PHASE 4: EQUITY STRUCTURE & DILUTION ============
@@ -1273,7 +1601,7 @@ public class CompanyService : ICompanyService
         }).ToList();
     }
 
-    public async Task AcceptDataRoomNdaAsync(string companyId, string investorId, string ndaText, string ipHash)
+    public async Task<NdaAcceptanceResponse> AcceptDataRoomNdaAsync(string companyId, string investorId, string ndaText, string ipHash)
     {
         await GetCompanyAsync(companyId);
 
@@ -1281,12 +1609,13 @@ public class CompanyService : ICompanyService
             System.Security.Cryptography.SHA256.HashData(
                 System.Text.Encoding.UTF8.GetBytes(ndaText ?? string.Empty)));
 
+        var acceptedAt = DateTime.UtcNow;
         var nda = new Phase6NdaAcceptance
         {
             Id = ObjectId.GenerateNewId().ToString(),
             CompanyId = companyId,
             InvestorId = investorId,
-            AcceptedAt = DateTime.UtcNow,
+            AcceptedAt = acceptedAt,
             NdaTextHash = ndaTextHash,
             IpHash = ipHash,
         };
@@ -1296,6 +1625,14 @@ public class CompanyService : ICompanyService
             Builders<Phase6NdaAcceptance>.Filter.Eq(n => n.InvestorId, investorId));
         await _dbContext.Phase6NdaAcceptances.ReplaceOneAsync(
             filter, nda, new ReplaceOptions { IsUpsert = true });
+
+        // Notification emission is the controller's responsibility — IPhaseNotificationService
+        // depends on ICompanyService, so injecting it here would create a DI cycle.
+        return new NdaAcceptanceResponse
+        {
+            AcceptedAt = acceptedAt,
+            NdaTextHash = ndaTextHash,
+        };
     }
 
     public async Task<DataRoomStatusResponse> GetDataRoomStatusAsync(string companyId)
@@ -1715,8 +2052,58 @@ public class CompanyService : ICompanyService
         return deals.Select(MapDealToResponse).ToList();
     }
 
-    public async Task<DealStatusResponse> UpdateTermSheetAsync(string dealId, TermSheetRequest request, string actorUserId, string ipHash)
+    // ---- Bilateral (participant-based) deal reads (Phase D-2) ----
+
+    public async Task<DealExecution?> GetDealEntityAsync(string dealId)
     {
+        return await _dbContext.DealExecutions
+            .Find(d => d.Id == dealId)
+            .FirstOrDefaultAsync();
+    }
+
+    // Defense-in-depth: refuse to map a deal unless given a valid access
+    // context. A controller cannot fetch-and-return a deal without first
+    // proving participation via EnsureDealParticipantAsync.
+    public DealStatusResponse GetDealForParticipant(DealAccessContext ctx)
+    {
+        AssertAccess(ctx);
+        return MapDealToResponse(ctx.Deal);
+    }
+
+    public async Task<List<DealActivityLogResponse>> GetDealActivityForParticipantAsync(DealAccessContext ctx)
+    {
+        AssertAccess(ctx);
+        return await GetDealActivityAsync(ctx.Deal.Id);
+    }
+
+    public async Task<List<DealStatusResponse>> GetDealsForParticipantAsync(string? ownedCompanyId, string? investorId)
+    {
+        var f = Builders<DealExecution>.Filter;
+        var clauses = new List<FilterDefinition<DealExecution>>();
+        if (!string.IsNullOrWhiteSpace(ownedCompanyId))
+            clauses.Add(f.Eq(d => d.CompanyId, ownedCompanyId));
+        if (!string.IsNullOrWhiteSpace(investorId))
+            clauses.Add(f.ElemMatch(d => d.Investors, i => i.InvestorId == investorId));
+
+        if (clauses.Count == 0)
+            return new List<DealStatusResponse>();
+
+        var deals = await _dbContext.DealExecutions.Find(f.Or(clauses)).ToListAsync();
+        return deals.Select(MapDealToResponse).ToList();
+    }
+
+    private static void AssertAccess(DealAccessContext ctx)
+    {
+        if (ctx?.Deal == null || string.IsNullOrWhiteSpace(ctx.Role) ||
+            string.IsNullOrWhiteSpace(ctx.PrincipalId))
+            throw new UnauthorizedAccessException("A resolved deal access context is required.");
+    }
+
+    public async Task<DealStatusResponse> UpdateTermSheetAsync(DealAccessContext ctx, TermSheetRequest request, string actorUserId, string ipHash)
+    {
+        AssertAccess(ctx);
+        DealActionPolicy.AssertCanPerform(ctx.Role, DealAction.EditTerms);
+        var dealId = ctx.Deal.Id;
         if (request == null) throw new ArgumentException("Request body required");
         if (!double.IsFinite(request.TotalRaiseAmount) || request.TotalRaiseAmount <= 0)
             throw new ArgumentException("totalRaiseAmount must be > 0");
@@ -1761,8 +2148,11 @@ public class CompanyService : ICompanyService
         return MapDealToResponse(deal);
     }
 
-    public async Task<DealStatusResponse> ProgressChecklistAsync(string dealId, ChecklistItemDto item, string actorUserId, string ipHash)
+    public async Task<DealStatusResponse> ProgressChecklistAsync(DealAccessContext ctx, ChecklistItemDto item, string actorUserId, string ipHash)
     {
+        AssertAccess(ctx);
+        DealActionPolicy.AssertCanPerform(ctx.Role, DealAction.ProgressChecklist);
+        var dealId = ctx.Deal.Id;
         if (item == null || string.IsNullOrWhiteSpace(item.Item))
             throw new ArgumentException("checklist item.Item is required");
 
@@ -1806,9 +2196,18 @@ public class CompanyService : ICompanyService
         return MapDealToResponse(deal);
     }
 
-    public async Task<DealStatusResponse> CloseDealAsync(string dealId, string actorUserId, string ipHash)
+    public async Task<DealStatusResponse> CloseDealAsync(DealAccessContext ctx, string actorUserId, string ipHash)
     {
+        AssertAccess(ctx);
+        DealActionPolicy.AssertCanPerform(ctx.Role, DealAction.CloseDeal);
+        var dealId = ctx.Deal.Id;
         var deal = await GetDealOrThrowAsync(dealId);
+
+        // Mutual close requires BOTH parties' signatures — never just the deal
+        // axis (which could be advanced manually).
+        if (!deal.Signatures.BothSigned)
+            throw new InvalidOperationException(
+                "Cannot close deal: both founder and investor must sign the term sheet first.");
 
         // Close = transition Status -> "completed". Enforced via the deal
         // state machine, so callers can't bypass the "signed" precondition.
@@ -1834,8 +2233,11 @@ public class CompanyService : ICompanyService
         return MapDealToResponse(deal);
     }
 
-    public async Task<DealStatusResponse> UpdateDealStatusAsync(string dealId, UpdateDealStatusRequest request, string actorUserId, string ipHash)
+    public async Task<DealStatusResponse> UpdateDealStatusAsync(DealAccessContext ctx, UpdateDealStatusRequest request, string actorUserId, string ipHash)
     {
+        AssertAccess(ctx);
+        DealActionPolicy.AssertCanPerform(ctx.Role, DealAction.UpdateStatus);
+        var dealId = ctx.Deal.Id;
         if (request == null || string.IsNullOrWhiteSpace(request.Status))
             throw new ArgumentException("status is required");
         if (!Phase9Requirements.IsValidDealStatus(request.Status))
@@ -1871,8 +2273,12 @@ public class CompanyService : ICompanyService
         return MapDealToResponse(deal);
     }
 
-    public async Task<DealStatusResponse> SignTermSheetAsync(string dealId, SignTermSheetRequest request, string actorUserId, string ipHash)
+    public async Task<DealStatusResponse> SignTermSheetAsync(DealAccessContext ctx, SignTermSheetRequest request, string actorUserId, string ipHash)
     {
+        AssertAccess(ctx);
+        DealActionPolicy.AssertCanPerform(ctx.Role, DealAction.SignTermSheet);
+        var dealId = ctx.Deal.Id;
+
         if (request?.File == null || request.File.Length == 0)
             throw new ArgumentException("Signed term sheet file is required");
         if (request.File.Length > Phase9Requirements.MaxDealDocumentSizeBytes)
@@ -1885,14 +2291,20 @@ public class CompanyService : ICompanyService
             throw new InvalidOperationException(
                 $"Cannot sign term sheet on deal in terminal status '{deal.Status}'");
 
-        // Term-sheet axis transition: anything -> signed must be a legal
-        // transition. (draft/proposed/negotiating must move via 'agreed'
-        // first; the graph captures that.)
+        // Both parties may only sign once the term sheet is 'agreed'. The graph
+        // only permits agreed -> signed, so this guards the precondition.
         var fromTs = deal.TermSheet.Status ?? Phase9Requirements.TermSheetStatusDraft;
-        var toTs = Phase9Requirements.TermSheetStatusSigned;
-        if (!Phase9Requirements.IsValidTermSheetTransition(fromTs, toTs))
+        if (!Phase9Requirements.IsValidTermSheetTransition(fromTs, Phase9Requirements.TermSheetStatusSigned))
             throw new InvalidOperationException(
-                $"Illegal term sheet transition '{fromTs}' -> '{toTs}'. Mark as 'agreed' before signing.");
+                $"Cannot sign: term sheet must be 'agreed' first (current '{fromTs}').");
+
+        // Turn enforcement: the slot is fixed by role. A party cannot sign the
+        // other party's slot, and cannot sign their own slot twice.
+        var slot = DealActionPolicy.SignatureSlotForRole(ctx.Role);
+        if (slot == DealRoles.Founder && deal.Signatures.FounderSignedAt.HasValue)
+            throw new InvalidOperationException("Founder has already signed this term sheet.");
+        if (slot == DealRoles.Investor && deal.Signatures.InvestorSignedAt.HasValue)
+            throw new InvalidOperationException("Investor has already signed this term sheet.");
 
         // Persist the signed-agreement file.
         byte[] bytes;
@@ -1916,18 +2328,35 @@ public class CompanyService : ICompanyService
         };
         deal.DealDocuments.Add(doc);
 
-        deal.TermSheet.Status = toTs;
-        deal.TermSheet.SignedAt = DateTime.UtcNow;
-        deal.TermSheet.SignedDocumentId = doc.DocumentId;
+        // Record the caller's own signature slot.
+        if (slot == DealRoles.Founder)
+        {
+            deal.Signatures.FounderSignedAt = DateTime.UtcNow;
+            deal.Signatures.FounderSignedByUserId = actorUserId;
+            deal.Signatures.FounderSignedDocumentId = doc.DocumentId;
+        }
+        else
+        {
+            deal.Signatures.InvestorSignedAt = DateTime.UtcNow;
+            deal.Signatures.InvestorSignedByInvestorId = ctx.PrincipalId;
+            deal.Signatures.InvestorSignedDocumentId = doc.DocumentId;
+        }
 
-        // Deal axis side-effect: from agreement_sent -> signed. Other states
-        // simply persist the term-sheet artefact without moving the deal axis.
+        // The term sheet is only 'signed' (and the deal axis advances) once BOTH
+        // parties have signed. The first signature just records its slot.
         string fromDeal = deal.Status;
         string toDeal = deal.Status;
-        if (Phase9Requirements.IsValidDealTransition(deal.Status, Phase9Requirements.DealStatusSigned))
+        if (deal.Signatures.BothSigned)
         {
-            toDeal = Phase9Requirements.DealStatusSigned;
-            deal.Status = toDeal;
+            deal.TermSheet.Status = Phase9Requirements.TermSheetStatusSigned;
+            deal.TermSheet.SignedAt = DateTime.UtcNow;
+            deal.TermSheet.SignedDocumentId = doc.DocumentId;
+
+            if (Phase9Requirements.IsValidDealTransition(deal.Status, Phase9Requirements.DealStatusSigned))
+            {
+                toDeal = Phase9Requirements.DealStatusSigned;
+                deal.Status = toDeal;
+            }
         }
         deal.UpdatedAt = DateTime.UtcNow;
 
@@ -1939,13 +2368,18 @@ public class CompanyService : ICompanyService
             Phase9Requirements.ActivityTermSheetSigned,
             fromStatus: fromDeal, toStatus: toDeal,
             actorUserId, ipHash,
-            notes: $"Term sheet signed (document {doc.DocumentId})");
+            notes: deal.Signatures.BothSigned
+                ? $"Term sheet fully signed by both parties (document {doc.DocumentId})"
+                : $"Term sheet signed by {slot} (document {doc.DocumentId})");
 
         return MapDealToResponse(deal);
     }
 
-    public async Task<DealStatusResponse> MutateDueDiligenceItemAsync(string dealId, MutateDueDiligenceItemRequest request, string actorUserId, string ipHash)
+    public async Task<DealStatusResponse> MutateDueDiligenceItemAsync(DealAccessContext ctx, MutateDueDiligenceItemRequest request, string actorUserId, string ipHash)
     {
+        AssertAccess(ctx);
+        DealActionPolicy.AssertCanPerform(ctx.Role, DealAction.MutateDueDiligence);
+        var dealId = ctx.Deal.Id;
         if (request == null) throw new ArgumentException("Request body required");
         if (string.IsNullOrWhiteSpace(request.ItemName))
             throw new ArgumentException("itemName is required");
@@ -1994,8 +2428,11 @@ public class CompanyService : ICompanyService
         return MapDealToResponse(deal);
     }
 
-    public async Task<DealDocumentResponse> UploadDealDocumentAsync(string dealId, UploadDealDocumentRequest request, string actorUserId, string ipHash)
+    public async Task<DealDocumentResponse> UploadDealDocumentAsync(DealAccessContext ctx, UploadDealDocumentRequest request, string actorUserId, string ipHash)
     {
+        AssertAccess(ctx);
+        DealActionPolicy.AssertCanPerform(ctx.Role, DealAction.UploadDocument);
+        var dealId = ctx.Deal.Id;
         if (request?.File == null || request.File.Length == 0)
             throw new ArgumentException("Uploaded file is required");
         if (request.File.Length > Phase9Requirements.MaxDealDocumentSizeBytes)
@@ -2043,8 +2480,11 @@ public class CompanyService : ICompanyService
         return MapDealDocument(doc);
     }
 
-    public async Task<(byte[] Content, DealDocumentResponse Document)> GetDealDocumentAsync(string dealId, string documentId)
+    public async Task<(byte[] Content, DealDocumentResponse Document)> GetDealDocumentAsync(DealAccessContext ctx, string documentId)
     {
+        AssertAccess(ctx);
+        DealActionPolicy.AssertCanPerform(ctx.Role, DealAction.DownloadDocument);
+        var dealId = ctx.Deal.Id;
         var deal = await GetDealOrThrowAsync(dealId);
         var doc = deal.DealDocuments?
             .FirstOrDefault(d => string.Equals(d.DocumentId, documentId, StringComparison.Ordinal))
@@ -2163,7 +2603,384 @@ public class CompanyService : ICompanyService
         if (monthlyBurn <= 0) return 0;
 
         var currentFunds = company.CurrentFunds ?? 0;
-        return (int)(currentFunds / monthlyBurn);
+
+        // If currentFunds is available, use it for calculation
+        if (currentFunds > 0)
+            return (int)(currentFunds / monthlyBurn);
+
+        // Fallback: For Phase 3 flow without cash position, estimate from ARR
+        // Runway ≈ ARR / (12 × MonthlyBurn) months
+        // This assumes monthly burn is sustainable at current revenue level
+        var arr = (company.Q1Revenue ?? 0) + (company.Q2Revenue ?? 0) +
+                  (company.Q3Revenue ?? 0) + (company.Q4Revenue ?? 0);
+        if (arr <= 0) return 0;
+
+        return (int)(arr / (12 * monthlyBurn));
+    }
+
+    // ============ PHASE D-4: OFFER SYSTEM ============
+
+    public async Task<DealStatusResponse> CreateInvestorOfferAsync(
+        string companyId, string investorId, OfferTermsRequest req, string actorUserId, string ipHash)
+    {
+        ValidateOfferTerms(req);
+        if (string.IsNullOrWhiteSpace(investorId))
+            throw new ArgumentException("investorId is required");
+
+        _ = await GetCompanyAsync(companyId)
+            ?? throw new KeyNotFoundException($"Company {companyId} not found");
+
+        var investor = await _dbContext.Investors
+            .Find(i => i.Id == investorId)
+            .FirstOrDefaultAsync()
+            ?? throw new ArgumentException($"investorId '{investorId}' does not match any investor");
+
+        // One offer thread per (company, investor). Reuse an existing deal;
+        // once a thread is open, callers must counter instead of re-creating.
+        var deal = await _dbContext.DealExecutions
+            .Find(d => d.CompanyId == companyId && d.Investors.Any(i => i.InvestorId == investorId))
+            .FirstOrDefaultAsync();
+
+        if (deal != null && deal.Revisions.Any())
+            throw new InvalidOperationException(
+                "An offer thread already exists for this investor — use counter-offer.");
+
+        if (deal == null)
+        {
+            deal = new DealExecution
+            {
+                Id = ObjectId.GenerateNewId().ToString(),
+                CompanyId = companyId,
+                Status = Phase9Requirements.DealStatusInitiated,
+                InvestorNameSnapshot = investor.Name,
+                InvestorTypeSnapshot = investor.Type,
+                CreatedByUserId = actorUserId,
+                Investors = new List<DealParticipant>
+                {
+                    new DealParticipant
+                    {
+                        InvestorId = investorId,
+                        InvestorName = investor.Name,
+                        Status = Phase9Requirements.ParticipantStatusInterested,
+                    }
+                },
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+            };
+            await _dbContext.DealExecutions.InsertOneAsync(deal);
+        }
+
+        deal.Revisions.Add(new TermSheetRevision
+        {
+            RevisionNumber = 1,
+            ProposedByRole = DealRoles.Investor,
+            ProposedByPrincipalId = investorId,
+            Status = Phase9Requirements.OfferStatusSent,
+            Terms = SnapshotTerms(req),
+            Note = req.Note,
+        });
+        deal.TermSheet = SnapshotTerms(req);
+        deal.TermSheet.Status = Phase9Requirements.TermSheetStatusProposed;
+        deal.CurrentTurn = DealRoles.Founder;
+        deal.UpdatedAt = DateTime.UtcNow;
+
+        await _dbContext.DealExecutions.ReplaceOneAsync(
+            Builders<DealExecution>.Filter.Eq(d => d.Id, deal.Id), deal);
+
+        await AppendDealActivityAsync(deal.CompanyId, deal.Id,
+            Phase9Requirements.ActivityOfferSent,
+            fromStatus: null, toStatus: Phase9Requirements.OfferStatusSent,
+            actorUserId, ipHash, notes: "Initial offer sent by investor (revision 1)");
+
+        await EmitDealEventAsync(deal, DealEventNames.OfferReceived);
+        return MapDealToResponse(deal);
+    }
+
+    public async Task<DealStatusResponse> CounterOfferAsync(
+        DealAccessContext ctx, OfferTermsRequest req, string actorUserId, string ipHash)
+    {
+        AssertAccess(ctx);
+        DealActionPolicy.AssertCanPerform(ctx.Role, DealAction.CounterOffer);
+        ValidateOfferTerms(req);
+
+        var deal = await GetDealOrThrowAsync(ctx.Deal.Id);
+        var latest = GetLatestOpenRevisionOrThrow(deal);
+        AssertTurnAndCounterparty(ctx, deal, latest);
+
+        if (!Phase9Requirements.IsValidOfferTransition(latest.Status, Phase9Requirements.OfferStatusCountered))
+            throw new InvalidOperationException(
+                $"Cannot counter an offer in status '{latest.Status}'.");
+
+        latest.Status = Phase9Requirements.OfferStatusCountered;
+        latest.RespondedAt = DateTime.UtcNow;
+
+        deal.Revisions.Add(new TermSheetRevision
+        {
+            RevisionNumber = deal.Revisions.Count + 1,
+            ProposedByRole = ctx.Role,
+            ProposedByPrincipalId = ctx.PrincipalId,
+            Status = Phase9Requirements.OfferStatusSent,
+            Terms = SnapshotTerms(req),
+            Note = req.Note,
+        });
+        deal.TermSheet = SnapshotTerms(req);
+        deal.TermSheet.Status = Phase9Requirements.TermSheetStatusNegotiating;
+        deal.CurrentTurn = OtherRole(ctx.Role);
+        deal.UpdatedAt = DateTime.UtcNow;
+
+        await _dbContext.DealExecutions.ReplaceOneAsync(
+            Builders<DealExecution>.Filter.Eq(d => d.Id, deal.Id), deal);
+
+        await AppendDealActivityAsync(deal.CompanyId, deal.Id,
+            Phase9Requirements.ActivityOfferCountered,
+            fromStatus: Phase9Requirements.OfferStatusCountered,
+            toStatus: Phase9Requirements.OfferStatusSent,
+            actorUserId, ipHash, notes: $"Counter-offer by {ctx.Role} (revision {deal.Revisions.Count})");
+
+        await EmitDealEventAsync(deal, DealEventNames.OfferCountered);
+        return MapDealToResponse(deal);
+    }
+
+    public async Task<DealStatusResponse> AcceptOfferAsync(
+        DealAccessContext ctx, string actorUserId, string ipHash)
+    {
+        AssertAccess(ctx);
+        DealActionPolicy.AssertCanPerform(ctx.Role, DealAction.AcceptOffer);
+
+        var deal = await GetDealOrThrowAsync(ctx.Deal.Id);
+        var latest = GetLatestOpenRevisionOrThrow(deal);
+        AssertTurnAndCounterparty(ctx, deal, latest);
+
+        if (!Phase9Requirements.IsValidOfferTransition(latest.Status, Phase9Requirements.OfferStatusAccepted))
+            throw new InvalidOperationException(
+                $"Cannot accept an offer in status '{latest.Status}'.");
+
+        latest.Status = Phase9Requirements.OfferStatusAccepted;
+        latest.RespondedAt = DateTime.UtcNow;
+
+        // Accepted revision becomes the live, agreed term sheet (ready to sign).
+        deal.TermSheet = CloneTerms(latest.Terms);
+        deal.TermSheet.Status = Phase9Requirements.TermSheetStatusAgreed;
+        deal.CurrentTurn = "";
+        deal.UpdatedAt = DateTime.UtcNow;
+
+        await _dbContext.DealExecutions.ReplaceOneAsync(
+            Builders<DealExecution>.Filter.Eq(d => d.Id, deal.Id), deal);
+
+        await AppendDealActivityAsync(deal.CompanyId, deal.Id,
+            Phase9Requirements.ActivityOfferAccepted,
+            fromStatus: null, toStatus: Phase9Requirements.OfferStatusAccepted,
+            actorUserId, ipHash, notes: $"Offer accepted by {ctx.Role} (revision {latest.RevisionNumber})");
+
+        await EmitDealEventAsync(deal, DealEventNames.OfferAccepted);
+        return MapDealToResponse(deal);
+    }
+
+    public async Task<DealStatusResponse> RejectOfferAsync(
+        DealAccessContext ctx, string note, string actorUserId, string ipHash)
+    {
+        AssertAccess(ctx);
+        DealActionPolicy.AssertCanPerform(ctx.Role, DealAction.RejectOffer);
+
+        var deal = await GetDealOrThrowAsync(ctx.Deal.Id);
+        var latest = GetLatestOpenRevisionOrThrow(deal);
+        AssertTurnAndCounterparty(ctx, deal, latest);
+
+        if (!Phase9Requirements.IsValidOfferTransition(latest.Status, Phase9Requirements.OfferStatusRejected))
+            throw new InvalidOperationException(
+                $"Cannot reject an offer in status '{latest.Status}'.");
+
+        latest.Status = Phase9Requirements.OfferStatusRejected;
+        latest.RespondedAt = DateTime.UtcNow;
+        deal.TermSheet.Status = Phase9Requirements.TermSheetStatusRejected;
+        deal.CurrentTurn = "";
+
+        var fromDeal = deal.Status;
+        var toDeal = deal.Status;
+        if (Phase9Requirements.IsValidDealTransition(deal.Status, Phase9Requirements.DealStatusRejected))
+        {
+            toDeal = Phase9Requirements.DealStatusRejected;
+            deal.Status = toDeal;
+        }
+        deal.UpdatedAt = DateTime.UtcNow;
+
+        await _dbContext.DealExecutions.ReplaceOneAsync(
+            Builders<DealExecution>.Filter.Eq(d => d.Id, deal.Id), deal);
+
+        await AppendDealActivityAsync(deal.CompanyId, deal.Id,
+            Phase9Requirements.ActivityOfferRejected,
+            fromStatus: fromDeal, toStatus: toDeal,
+            actorUserId, ipHash, notes: string.IsNullOrWhiteSpace(note) ? $"Offer rejected by {ctx.Role}" : note);
+
+        await EmitDealEventAsync(deal, DealEventNames.OfferRejected);
+        return MapDealToResponse(deal);
+    }
+
+    public async Task<DealStatusResponse> MarkOfferViewedAsync(
+        DealAccessContext ctx, string actorUserId, string ipHash)
+    {
+        AssertAccess(ctx);
+
+        var deal = await GetDealOrThrowAsync(ctx.Deal.Id);
+        var latest = deal.Revisions.OrderBy(r => r.RevisionNumber).LastOrDefault();
+        if (latest == null) return MapDealToResponse(deal);
+
+        // Only the party the offer is waiting on (the receiver) marks it viewed.
+        if (!string.Equals(deal.CurrentTurn, ctx.Role, StringComparison.Ordinal))
+            return MapDealToResponse(deal);
+
+        // Idempotent: only the sent -> viewed transition does anything.
+        if (!Phase9Requirements.IsValidOfferTransition(latest.Status, Phase9Requirements.OfferStatusViewed))
+            return MapDealToResponse(deal);
+
+        latest.Status = Phase9Requirements.OfferStatusViewed;
+        latest.ViewedAt = DateTime.UtcNow;
+        deal.UpdatedAt = DateTime.UtcNow;
+
+        await _dbContext.DealExecutions.ReplaceOneAsync(
+            Builders<DealExecution>.Filter.Eq(d => d.Id, deal.Id), deal);
+
+        await AppendDealActivityAsync(deal.CompanyId, deal.Id,
+            Phase9Requirements.ActivityOfferViewed,
+            fromStatus: Phase9Requirements.OfferStatusSent,
+            toStatus: Phase9Requirements.OfferStatusViewed,
+            actorUserId, ipHash, notes: $"Offer viewed by {ctx.Role}");
+
+        await EmitDealEventAsync(deal, DealEventNames.OfferViewed);
+        return MapDealToResponse(deal);
+    }
+
+    // ---- offer helpers ----
+
+    private static void ValidateOfferTerms(OfferTermsRequest req)
+    {
+        if (req == null) throw new ArgumentException("Offer terms are required");
+        if (!double.IsFinite(req.TotalRaiseAmount) || req.TotalRaiseAmount <= 0)
+            throw new ArgumentException("totalRaiseAmount must be > 0");
+        if (!double.IsFinite(req.PostMoneyValuation) || req.PostMoneyValuation <= 0)
+            throw new ArgumentException("postMoneyValuation must be > 0");
+    }
+
+    private static TermSheet SnapshotTerms(OfferTermsRequest req) => new TermSheet
+    {
+        TotalRaiseAmount = req.TotalRaiseAmount,
+        PreMoneyValuation = req.PreMoneyValuation,
+        PostMoneyValuation = req.PostMoneyValuation,
+        EquityType = req.EquityType,
+        InvestorEquityPercent = req.InvestorEquityPercent,
+        ProRataRights = req.ProRataRights,
+        LiquidationPreference = req.LiquidationPreference,
+        BoardSeats = req.BoardSeats,
+        AntiDilutionProtection = req.AntiDilutionProtection,
+        Status = Phase9Requirements.TermSheetStatusDraft,
+    };
+
+    private static TermSheet CloneTerms(TermSheet t) => new TermSheet
+    {
+        TotalRaiseAmount = t.TotalRaiseAmount,
+        PreMoneyValuation = t.PreMoneyValuation,
+        PostMoneyValuation = t.PostMoneyValuation,
+        EquityType = t.EquityType,
+        InvestorEquityPercent = t.InvestorEquityPercent,
+        ProRataRights = t.ProRataRights,
+        LiquidationPreference = t.LiquidationPreference,
+        BoardSeats = t.BoardSeats,
+        AntiDilutionProtection = t.AntiDilutionProtection,
+        VestingYears = t.VestingYears,
+        CliffMonths = t.CliffMonths,
+        ProposedClosingDate = t.ProposedClosingDate,
+    };
+
+    private static string OtherRole(string role)
+        => role == DealRoles.Founder ? DealRoles.Investor : DealRoles.Founder;
+
+    private static TermSheetRevision GetLatestOpenRevisionOrThrow(DealExecution deal)
+    {
+        var latest = deal.Revisions.OrderBy(r => r.RevisionNumber).LastOrDefault()
+            ?? throw new InvalidOperationException("No offer exists on this deal.");
+        return latest;
+    }
+
+    // Turn enforcement: only the party whose turn it is may respond, and a party
+    // may never respond to an offer it proposed itself.
+    private static void AssertTurnAndCounterparty(
+        DealAccessContext ctx, DealExecution deal, TermSheetRevision latest)
+    {
+        if (!string.Equals(deal.CurrentTurn, ctx.Role, StringComparison.Ordinal))
+            throw new InvalidOperationException(
+                $"It is not {ctx.Role}'s turn to act on this offer.");
+        if (!DealActionPolicy.CanRespondToOffer(ctx.Role, latest.ProposedByRole))
+            throw new InvalidOperationException(
+                "A party cannot respond to an offer it proposed itself.");
+    }
+
+    // Resolve both deal participants to ApplicationUser identity + email. The
+    // founder is the company owner (ApplicationUser id); each investor is
+    // resolved from the catalogue InvestorId back to the linked user.
+    public async Task<List<DealRecipient>> GetDealRecipientsAsync(string dealId)
+    {
+        var recipients = new List<DealRecipient>();
+
+        var deal = await _dbContext.DealExecutions.Find(d => d.Id == dealId).FirstOrDefaultAsync();
+        if (deal == null) return recipients;
+
+        var company = await _dbContext.Companies.Find(c => c.Id == deal.CompanyId).FirstOrDefaultAsync();
+        if (company != null && !string.IsNullOrWhiteSpace(company.OwnerId)
+            && Guid.TryParse(company.OwnerId, out var ownerGuid))
+        {
+            var founder = await _dbContext.ApplicationUsers.Find(u => u.Id == ownerGuid).FirstOrDefaultAsync();
+            if (founder != null)
+                recipients.Add(new DealRecipient
+                {
+                    Role = DealRoles.Founder,
+                    UserId = founder.Id.ToString(),
+                    Email = founder.Email,
+                    Name = founder.Name,
+                });
+        }
+
+        foreach (var p in deal.Investors)
+        {
+            if (string.IsNullOrWhiteSpace(p.InvestorId)) continue;
+            var user = await _dbContext.ApplicationUsers
+                .Find(u => u.InvestorProfile.InvestorId == p.InvestorId)
+                .FirstOrDefaultAsync();
+            if (user != null && recipients.All(r => r.UserId != user.Id.ToString()))
+                recipients.Add(new DealRecipient
+                {
+                    Role = DealRoles.Investor,
+                    UserId = user.Id.ToString(),
+                    Email = user.Email,
+                    Name = user.Name,
+                });
+        }
+
+        return recipients;
+    }
+
+    // Best-effort realtime fan-out of a deal/offer event to both participants'
+    // per-user groups, plus a generic DealUpdated. Never throws into the caller.
+    private async Task EmitDealEventAsync(DealExecution deal, string eventName)
+    {
+        try
+        {
+            var recipients = await GetDealRecipientsAsync(deal.Id);
+            var userIds = recipients
+                .Select(r => r.UserId)
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .Distinct()
+                .ToList();
+            if (userIds.Count == 0) return;
+
+            var payload = MapDealToResponse(deal);
+            await _dealEvents.PublishAsync(userIds, eventName, payload);
+            if (eventName != DealEventNames.DealUpdated)
+                await _dealEvents.PublishAsync(userIds, DealEventNames.DealUpdated, payload);
+        }
+        catch
+        {
+            // Realtime is best-effort; the deal mutation is already persisted.
+        }
     }
 
     private DealStatusResponse MapDealToResponse(DealExecution deal)
@@ -2195,7 +3012,30 @@ public class CompanyService : ICompanyService
                 InvestorId = inv.InvestorId,
                 CommittedAmount = inv.CommittedAmount,
                 Status = inv.Status
-            }).ToList()
+            }).ToList(),
+            CurrentTurn = deal.CurrentTurn ?? "",
+            Revisions = (deal.Revisions ?? new List<TermSheetRevision>())
+                .OrderBy(r => r.RevisionNumber)
+                .Select(r => new TermSheetRevisionResponse
+                {
+                    RevisionNumber = r.RevisionNumber,
+                    ProposedByRole = r.ProposedByRole,
+                    Status = r.Status,
+                    Note = r.Note,
+                    CreatedAt = r.CreatedAt,
+                    ViewedAt = r.ViewedAt,
+                    RespondedAt = r.RespondedAt,
+                    Terms = new TermSheetResponse
+                    {
+                        TotalRaiseAmount = r.Terms.TotalRaiseAmount,
+                        PostMoneyValuation = r.Terms.PostMoneyValuation,
+                        EquityType = r.Terms.EquityType,
+                        InvestorEquityPercent = r.Terms.InvestorEquityPercent,
+                        ProRataRights = r.Terms.ProRataRights,
+                        Status = r.Terms.Status,
+                        SignedAt = r.Terms.SignedAt,
+                    }
+                }).ToList()
         };
     }
 
@@ -2220,6 +3060,389 @@ public class CompanyService : ICompanyService
             8 => await _phaseValidator.ValidatePhase8Async(company),
             9 => await _phaseValidator.ValidatePhase9Async(company),
             _ => (false, new List<string> { "Invalid phase" })
+        };
+    }
+
+    // ============================================================
+    // INVESTOR-SIDE READS (Phase B/C/D — June 10 demo)
+    //
+    // All reads are scoped to a resolved investorId. A caller cannot
+    // address a company they're not matched to — the InvestorMatch
+    // join doubles as the authorization fence (404 instead of 403 so
+    // the existence of an unmatched company is not leaked).
+    // ============================================================
+
+    public async Task<OpportunityFeedResponse> GetOpportunitiesForInvestorAsync(
+        string investorId, string sector, string stage, string geography, int take)
+    {
+        if (string.IsNullOrWhiteSpace(investorId))
+            throw new UnauthorizedAccessException("Investor profile not linked.");
+
+        if (take <= 0) take = 20;
+        if (take > 50) take = 50;
+
+        var matches = await _dbContext.InvestorMatches
+            .Find(m => m.InvestorId == investorId)
+            .SortByDescending(m => m.MatchScore)
+            .ToListAsync();
+
+        var newCutoff = DateTime.UtcNow.AddHours(-24);
+        var newCount = matches.Count(m => m.MatchedAt.HasValue && m.MatchedAt.Value >= newCutoff);
+
+        if (matches.Count == 0)
+            return new OpportunityFeedResponse { TotalMatches = 0, NewMatchesToday = 0, Items = new() };
+
+        var companyIds = matches.Select(m => m.CompanyId).Distinct().ToList();
+        var companies = await _dbContext.Companies
+            .Find(Builders<Companies>.Filter.In(c => c.Id, companyIds))
+            .ToListAsync();
+        var companiesById = companies.ToDictionary(c => c.Id);
+
+        var items = new List<OpportunityCardResponse>();
+        foreach (var m in matches)
+        {
+            if (!companiesById.TryGetValue(m.CompanyId, out var co)) continue;
+
+            // Apply optional filters against the company snapshot.
+            if (!string.IsNullOrWhiteSpace(sector) &&
+                !string.Equals(co.Industry, sector, StringComparison.OrdinalIgnoreCase)) continue;
+            if (!string.IsNullOrWhiteSpace(stage) &&
+                !string.Equals(co.FundingRoundType, stage, StringComparison.OrdinalIgnoreCase)) continue;
+            if (!string.IsNullOrWhiteSpace(geography) &&
+                !string.Equals(co.Country, geography, StringComparison.OrdinalIgnoreCase)) continue;
+
+            items.Add(BuildOpportunityCard(co, m));
+            if (items.Count >= take) break;
+        }
+
+        return new OpportunityFeedResponse
+        {
+            TotalMatches = matches.Count,
+            NewMatchesToday = newCount,
+            Items = items,
+        };
+    }
+
+    public async Task<OpportunityDetailResponse> GetOpportunityForInvestorAsync(string investorId, string companyId)
+    {
+        if (string.IsNullOrWhiteSpace(investorId))
+            throw new UnauthorizedAccessException("Investor profile not linked.");
+
+        var match = await _dbContext.InvestorMatches
+            .Find(m => m.InvestorId == investorId && m.CompanyId == companyId)
+            .FirstOrDefaultAsync();
+        if (match == null)
+            throw new KeyNotFoundException("Opportunity not found.");
+
+        var company = await _dbContext.Companies
+            .Find(c => c.Id == companyId)
+            .FirstOrDefaultAsync();
+        if (company == null)
+            throw new KeyNotFoundException("Opportunity not found.");
+
+        var nda = await _dbContext.Phase6NdaAcceptances
+            .Find(n => n.CompanyId == companyId && n.InvestorId == investorId)
+            .FirstOrDefaultAsync();
+        var ndaAccepted = nda != null;
+
+        var detail = new OpportunityDetailResponse
+        {
+            CompanyId = company.Id,
+            CompanyName = company.CompanyName,
+            Tagline = company.Tagline,
+            Industry = company.Industry,
+            Country = company.Country,
+            FundingRoundType = company.FundingRoundType,
+            FundingAskAmount = company.FundingAskAmount,
+            EquityOfferedPercent = company.EquityOfferedPercent,
+            PreMoneyValuation = company.PreMoneyValuation,
+            Valuation = company.Valuation,
+            TrustScore = company.TrustScore,
+            IsInvestorReady = company.IsInvestorReady,
+            MatchScore = match.MatchScore,
+            MatchStatus = match.Status,
+            MatchRationale = match.MatchRationale,
+            ScoreBreakdown = BuildScoreBreakdown(match.MatchScore),
+            NdaRequired = company.IsDataRoomNdaRequired,
+            NdaAccepted = ndaAccepted,
+            NdaAcceptedAt = nda?.AcceptedAt,
+            DocumentsCount = company.DataRoomDocuments?.Count ?? 0,
+            AiReviewScore = company.AiReview?.OverallScore,
+            LastUpdatedAt = company.UpdatedAt,
+        };
+
+        if (ndaAccepted)
+        {
+            detail.CapTableSummary = new OpportunityCapTableSummaryDto
+            {
+                TotalShares = company.TotalShares ?? 0,
+                EsopPoolPercent = company.EsopPoolPercent ?? 0,
+                Entries = company.EquityStructure ?? new List<EquityEntryDto>(),
+            };
+            detail.Team = (company.EquityStructure ?? new List<EquityEntryDto>())
+                .Where(e => e.Type == "founder")
+                .Select(e => new OpportunityTeamMemberDto { Name = e.StakeholderName, Role = "Founder" })
+                .ToList();
+        }
+
+        return detail;
+    }
+
+    public async Task<InvestorPipelineResponse> GetInvestorPipelineAsync(string investorId, string callerUserId)
+    {
+        if (string.IsNullOrWhiteSpace(investorId))
+            throw new UnauthorizedAccessException("Investor profile not linked.");
+
+        var matches = await _dbContext.InvestorMatches
+            .Find(m => m.InvestorId == investorId)
+            .ToListAsync();
+        if (matches.Count == 0)
+            return new InvestorPipelineResponse
+            {
+                Summary = new InvestorPipelineSummaryDto { ActiveDeals = 0, CapitalCommitted = 0, AverageMatchScore = 0, Moic = 0 },
+                Columns = new InvestorPipelineColumnsDto(),
+            };
+
+        var companyIds = matches.Select(m => m.CompanyId).Distinct().ToList();
+        var companies = await _dbContext.Companies
+            .Find(Builders<Companies>.Filter.In(c => c.Id, companyIds))
+            .ToListAsync();
+        var companiesById = companies.ToDictionary(c => c.Id);
+
+        var ndas = await _dbContext.Phase6NdaAcceptances
+            .Find(n => n.InvestorId == investorId)
+            .ToListAsync();
+        var ndaCompanyIds = ndas.Select(n => n.CompanyId).ToHashSet();
+
+        var accessLogs = await _dbContext.Phase6AccessLogs
+            .Find(l => l.InvestorId == investorId)
+            .ToListAsync();
+        var accessLogCompanyIds = accessLogs.Select(l => l.CompanyId).ToHashSet();
+
+        var deals = await _dbContext.DealExecutions
+            .Find(Builders<DealExecution>.Filter.In(d => d.CompanyId, companyIds))
+            .ToListAsync();
+        var dealCompanyIds = deals
+            .Where(d => d.Investors != null && d.Investors.Any(p => p.InvestorId == investorId))
+            .Select(d => d.CompanyId)
+            .ToHashSet();
+
+        var columns = new InvestorPipelineColumnsDto();
+        foreach (var m in matches)
+        {
+            if (!companiesById.TryGetValue(m.CompanyId, out var co)) continue;
+            var card = BuildOpportunityCard(co, m);
+
+            // Most-advanced state wins. A card lives in exactly one column.
+            if (dealCompanyIds.Contains(co.Id))
+                columns.Negotiation.Add(card);
+            else if (accessLogCompanyIds.Contains(co.Id))
+                columns.DataRoom.Add(card);
+            else if (ndaCompanyIds.Contains(co.Id))
+                columns.NdaSigned.Add(card);
+            else if (m.Status is "viewed" or "interested" or "reviewing")
+                columns.InReview.Add(card);
+            else
+                columns.NewMatches.Add(card);
+        }
+
+        // Summary stats reuse the existing Investments collection (callerUserId is the
+        // ApplicationUser id, which is what SeedInvestmentsAsync writes into InvestorId).
+        // Investments.InvestorId is Guid; parse client-side to avoid LINQ-to-MongoDB
+        // translation issues with .ToString().
+        var investments = new List<Investments>();
+        if (!string.IsNullOrWhiteSpace(callerUserId) && Guid.TryParse(callerUserId, out var callerGuid))
+        {
+            investments = await _dbContext.Investments
+                .Find(i => i.InvestorId == callerGuid)
+                .ToListAsync();
+        }
+        var capitalCommitted = investments.Sum(i => (double)i.Amount);
+        var activeDeals = columns.NewMatches.Count + columns.InReview.Count + columns.NdaSigned.Count
+                          + columns.DataRoom.Count + columns.Negotiation.Count;
+        var avgScore = matches.Count == 0 ? 0 : matches.Average(m => m.MatchScore);
+
+        return new InvestorPipelineResponse
+        {
+            Summary = new InvestorPipelineSummaryDto
+            {
+                ActiveDeals = activeDeals,
+                CapitalCommitted = capitalCommitted,
+                AverageMatchScore = Math.Round(avgScore, 1),
+                // Demo placeholder until a per-investment current-valuation field exists.
+                Moic = capitalCommitted > 0 ? 1.44 : 0,
+            },
+            Columns = columns,
+        };
+    }
+
+    public async Task<InvestorDocumentListResponse> GetInvestorDocumentsAsync(string investorId, string companyId)
+    {
+        if (string.IsNullOrWhiteSpace(investorId))
+            throw new UnauthorizedAccessException("Investor profile not linked.");
+
+        var match = await _dbContext.InvestorMatches
+            .Find(m => m.InvestorId == investorId && m.CompanyId == companyId)
+            .FirstOrDefaultAsync();
+        if (match == null)
+            throw new KeyNotFoundException("Opportunity not found.");
+
+        var company = await _dbContext.Companies
+            .Find(c => c.Id == companyId)
+            .FirstOrDefaultAsync();
+        if (company == null)
+            throw new KeyNotFoundException("Opportunity not found.");
+
+        var nda = await _dbContext.Phase6NdaAcceptances
+            .Find(n => n.CompanyId == companyId && n.InvestorId == investorId)
+            .FirstOrDefaultAsync();
+        var ndaAccepted = nda != null;
+
+        var response = new InvestorDocumentListResponse
+        {
+            NdaRequired = company.IsDataRoomNdaRequired,
+            NdaAccepted = ndaAccepted,
+        };
+
+        // Pre-NDA: empty list. Document existence is not revealed.
+        if (company.IsDataRoomNdaRequired && !ndaAccepted) return response;
+
+        response.Items = (company.DataRoomDocuments ?? new List<DataRoomDocumentResponse>())
+            .Select(d => new InvestorDocumentListItemDto
+            {
+                DocumentId = d.DocumentId,
+                Title = d.Title,
+                Category = d.Category,
+                FileName = d.FileName,
+                MimeType = d.MimeType,
+                FileSize = d.FileSize,
+                UploadedAt = d.UploadedAt,
+            }).ToList();
+        return response;
+    }
+
+    public async Task<InvestorSessionResponse> GetInvestorSessionAsync(string investorId, string companyId)
+    {
+        if (string.IsNullOrWhiteSpace(investorId))
+            throw new UnauthorizedAccessException("Investor profile not linked.");
+
+        var match = await _dbContext.InvestorMatches
+            .Find(m => m.InvestorId == investorId && m.CompanyId == companyId)
+            .FirstOrDefaultAsync();
+        if (match == null)
+            throw new KeyNotFoundException("Opportunity not found.");
+
+        var company = await _dbContext.Companies
+            .Find(c => c.Id == companyId)
+            .FirstOrDefaultAsync();
+        var totalDocs = company?.DataRoomDocuments?.Count ?? 0;
+        var docsById = (company?.DataRoomDocuments ?? new List<DataRoomDocumentResponse>())
+            .ToDictionary(d => d.DocumentId);
+
+        var logs = await _dbContext.Phase6AccessLogs
+            .Find(l => l.InvestorId == investorId && l.CompanyId == companyId)
+            .SortBy(l => l.OccurredAt)
+            .ToListAsync();
+
+        var viewEvents = logs.Where(l => l.EventType == "view").ToList();
+        var downloadEvents = logs.Where(l => l.EventType == "download").ToList();
+
+        // Most-recent view per document — dedup by DocumentId.
+        var reviewed = viewEvents
+            .GroupBy(l => l.DocumentId)
+            .Select(g =>
+            {
+                var newest = g.OrderByDescending(l => l.OccurredAt).First();
+                docsById.TryGetValue(newest.DocumentId ?? string.Empty, out var doc);
+                return new InvestorReviewedDocumentDto
+                {
+                    DocumentId = newest.DocumentId,
+                    Title = doc?.Title ?? "Document",
+                    ViewedAt = newest.OccurredAt,
+                };
+            }).ToList();
+
+        return new InvestorSessionResponse
+        {
+            ViewedDocsCount = reviewed.Count,
+            TotalDocsCount = totalDocs,
+            ViewEventsCount = viewEvents.Count,
+            DownloadEventsCount = downloadEvents.Count,
+            FirstAccessAt = logs.Count > 0 ? logs.First().OccurredAt : null,
+            LastAccessAt = logs.Count > 0 ? logs.Last().OccurredAt : null,
+            ReviewedDocuments = reviewed,
+        };
+    }
+
+    public async Task<DiligenceProgressResponse> GetDiligenceProgressAsync(string investorId, string companyId)
+    {
+        if (string.IsNullOrWhiteSpace(investorId))
+            throw new UnauthorizedAccessException("Investor profile not linked.");
+
+        var match = await _dbContext.InvestorMatches
+            .Find(m => m.InvestorId == investorId && m.CompanyId == companyId)
+            .FirstOrDefaultAsync();
+        if (match == null)
+            throw new KeyNotFoundException("Opportunity not found.");
+
+        var deal = await _dbContext.DealExecutions
+            .Find(d => d.CompanyId == companyId)
+            .SortByDescending(d => d.CreatedAt)
+            .FirstOrDefaultAsync();
+
+        var items = deal?.DueDiligenceChecklist ?? new List<DueDigligenceItem>();
+        var total = items.Count;
+        if (total == 0)
+            return new DiligenceProgressResponse();
+
+        var completed = items.Count(i => i.Status == "completed");
+        var inProgress = items.Count(i => i.Status == "in_progress");
+        var pending = items.Count(i => i.Status == "pending");
+        var flagged = items.Count(i => i.Status == "flagged");
+
+        return new DiligenceProgressResponse
+        {
+            TotalItems = total,
+            Completed = completed,
+            InProgress = inProgress,
+            Pending = pending,
+            Flagged = flagged,
+            PercentComplete = (int)Math.Round(completed / (double)total * 100),
+        };
+    }
+
+    // ---- Helpers ----
+
+    private static OpportunityCardResponse BuildOpportunityCard(Companies co, InvestorMatch m)
+        => new()
+        {
+            CompanyId = co.Id,
+            CompanyName = co.CompanyName,
+            Tagline = co.Tagline,
+            Industry = co.Industry,
+            Country = co.Country,
+            FundingRoundType = co.FundingRoundType,
+            FundingAskAmount = co.FundingAskAmount,
+            Valuation = co.Valuation,
+            MatchScore = m.MatchScore,
+            MatchStatus = m.Status,
+            IsInvestorReady = co.IsInvestorReady,
+            LastUpdatedAt = co.UpdatedAt,
+        };
+
+    /// <summary>
+    /// Derives 4 factor bars from the overall match score. Deterministic, clamped 0-100.
+    /// Cheap stand-in until <see cref="InvestorMatch.MatchRationale"/> becomes a typed shape.
+    /// </summary>
+    private static OpportunityScoreBreakdownDto BuildScoreBreakdown(int matchScore)
+    {
+        static int Clamp(int v) => Math.Clamp(v, 0, 100);
+        return new OpportunityScoreBreakdownDto
+        {
+            SectorFit = Clamp(matchScore),
+            StageFit = Clamp(matchScore - 3),
+            GeographyFit = Clamp(matchScore - 5),
+            TeamScore = Clamp(matchScore + 2),
         };
     }
 }

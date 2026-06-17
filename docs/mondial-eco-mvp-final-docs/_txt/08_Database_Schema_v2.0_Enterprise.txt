@@ -1,0 +1,144 @@
+08_Database_Schema_v2.0 (Enterprise Specification)
+Executive Summary
+Defines the MongoDB data architecture, collection strategy, relationships, indexing approach, audit fields and versioning standards for Mondial.eco.
+Database Philosophy
+Principles:
+- Document-first architecture
+- Event-ready design
+- Auditability
+- Scalability
+- AI compatibility
+Core Collections
+Users
+IdentityProfiles
+ExperienceProfiles
+SkillGraphs
+FounderDNA
+AIInsights
+Ideas
+IdeaJournals
+BusinessPlans
+Forecasts
+Companies
+FundingRequests
+Investors
+ServiceProviders
+Projects
+Reviews
+Notifications
+Users Collection
+Fields:
+_id
+email
+role
+status
+verificationStatus
+createdAt
+updatedAt
+
+Indexes:
+email (unique)
+role
+status
+Ideas Collection
+Fields:
+title
+description
+clarityScore
+creatorId
+status
+versions[]
+createdAt
+
+Indexes:
+creatorId
+status
+createdAt
+Companies Collection
+Fields:
+companyName
+registrationStatus
+industry
+stage
+valuation
+ownerId
+
+Indexes:
+ownerId
+industry
+stage
+Funding Requests
+Fields:
+companyId
+amountRequested
+equityOffered
+safeTerms
+status
+
+Indexes:
+companyId
+status
+Investors Collection
+Fields:
+investorType
+ticketSize
+thesis
+industries
+geographies
+
+Indexes:
+investorType
+industries
+Service Providers Collection
+Fields:
+category
+skills
+reputationScore
+availability
+
+Indexes:
+category
+reputationScore
+Relationship Strategy
+User -> Ideas (1:N)
+User -> Company (1:N)
+Company -> FundingRequest (1:N)
+Investor -> Watchlist (1:N)
+Project -> Milestones (1:N)
+Audit Fields
+Required in all collections:
+createdAt
+updatedAt
+createdBy
+updatedBy
+version
+isDeleted
+Versioning Strategy
+Soft deletes
+Document version history
+AI output version tracking
+Business plan revision history
+Indexing Strategy
+Unique Indexes
+Compound Indexes
+Search Indexes
+Analytics Indexes
+Analytics Collections
+EventLogs
+AIUsageLogs
+FundingMetrics
+MarketplaceMetrics
+Security Requirements
+PII encryption
+Role-based access
+Audit logging
+Retention policies
+Migration Strategy
+Schema evolution
+Backward compatibility
+Versioned migrations
+Success Metrics
+Query performance
+Storage efficiency
+Scalability
+Audit coverage

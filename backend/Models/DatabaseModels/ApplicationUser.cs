@@ -75,6 +75,10 @@ namespace WebApp.Models.DatabaseModels
         // Investor Profile (Phase 2+)
         [BsonElement("InvestorProfile")]
         public InvestorProfile InvestorProfile { get; set; } = new();
+
+        // Service Provider Profile (Phase 2+ — Stage 1: Verification & Onboarding only)
+        [BsonElement("ServiceProviderProfile")]
+        public ServiceProviderProfile ServiceProviderProfile { get; set; } = new();
     }
 
     public class OnboardingState
@@ -219,5 +223,104 @@ namespace WebApp.Models.DatabaseModels
         public bool ProfilePublished { get; set; } = false;
         public List<string> NdasSigned { get; set; } = new();
         public List<string> DataRoomsAccessed { get; set; } = new();
+    }
+
+    // Service Provider Profile (Phase 2+ — Stage 1: Verification & Onboarding only).
+    // Mirrors the embedded InvestorProfile/CreatorProfile pattern: lives on
+    // ApplicationUser, no separate collection. Stage 1 covers verification and
+    // onboarding state ONLY — no marketplace, matching, proposal, workroom,
+    // milestone, escrow, review, or reputation fields belong here yet.
+    public class ServiceProviderProfile
+    {
+        public string ProviderId { get; set; }
+        public int CurrentPhase { get; set; } = 1;
+
+        // Provider verification is tracked SEPARATELY from identity KYC
+        // (ApplicationUser.Kyc / VerificationStatus). A provider may be
+        // KYC-approved yet still Pending provider verification, and vice versa.
+        public ServiceProviderVerificationStatus VerificationStatus { get; set; } = ServiceProviderVerificationStatus.Pending;
+        public DateTime? VerificationSubmittedAt { get; set; }
+        public DateTime? VerifiedAt { get; set; }
+        public string RejectionReason { get; set; }
+
+        // Reputation seed for later stages; 0 until verification produces a score.
+        public double TrustScore { get; set; } = 0;
+
+        public List<string> Skills { get; set; } = new();
+        public List<ServiceCategory> ServiceCategories { get; set; } = new();
+        public List<PortfolioItem> PortfolioItems { get; set; } = new();
+
+        // ---- Stage 2: Provider Profile (D-2 Phase 1) ----
+        // Public-facing profile fields. Additive to the embedded document: legacy
+        // Stage-1 records without these elements deserialize to safe defaults
+        // (null strings, empty lists). Per the locked D-2 decision audit:
+        // Services stays expressed by ServiceCategories (no new field); Industries
+        // and Languages are free-form strings normalized like Skills (no enum, no
+        // lookup collection); Certifications/ExternalLinks are deferred.
+        public string Headline { get; set; }
+        public string Bio { get; set; }
+        public List<string> Industries { get; set; } = new();
+        public List<string> Languages { get; set; } = new();
+        public List<PricingModel> PricingModels { get; set; } = new();
+
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    }
+
+    // One showcase item in a service provider's portfolio.
+    public class PortfolioItem
+    {
+        public string Title { get; set; }
+        public string Description { get; set; }
+        public string Url { get; set; }
+        public string ImagePath { get; set; }
+        public DateTime AddedAt { get; set; } = DateTime.UtcNow;
+    }
+
+    // Provider verification lifecycle — deliberately distinct from the KYC
+    // VerificationStatus enum so the two concerns can evolve independently.
+    public enum ServiceProviderVerificationStatus
+    {
+        Pending,
+        UnderReview,
+        Verified,
+        Rejected
+    }
+
+    // Service domains a provider can offer. Stage 1 captures these at
+    // onboarding; matching/marketplace consumption comes in later stages.
+    // Authoritative list = Doc 05 "Supported Categories" (12 entries, order
+    // preserved). Other is an appended expansion catch-all and MUST stay last
+    // so the serialized Int32 ordinals of the authoritative entries are stable.
+    public enum ServiceCategory
+    {
+        Development,
+        Design,
+        Marketing,
+        Legal,
+        Finance,
+        Accounting,
+        Operations,
+        Strategy,
+        DueDiligence,
+        FundraisingSupport,
+        AiAutomation,
+        HrRecruitment,
+        Other
+    }
+
+    // Pricing arrangements a provider is willing to work under (Stage 2). Locked
+    // D-2 decision audit values. Serialized as Int32 ordinals like ServiceCategory,
+    // so Other MUST stay last and existing entries MUST keep their order to keep
+    // persisted ordinals stable across releases.
+    public enum PricingModel
+    {
+        FixedPrice,
+        Hourly,
+        MonthlyRetainer,
+        ProjectBased,
+        EquityCompensation,
+        RevenueShare,
+        Other
     }
 }

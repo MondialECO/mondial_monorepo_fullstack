@@ -8,10 +8,6 @@ import {
   UserRole,
 } from "@/lib/roles";
 
-function getDashboardRoute(userRole: string): string {
-  return ROLE_DASHBOARD_ROUTES[userRole as UserRole];
-}
-
 function normalizePathRole(pathname: string): string | null {
   const match = pathname.match(/^\/dashboard\/([^/]+)/);
   if (!match) return null;
@@ -24,8 +20,6 @@ function normalizePathRole(pathname: string): string | null {
     investor: "investor",
     creator: "creator",
     admin: "admin",
-    advisor: "advisor",
-    founder: "founder",
     serviceprovider: "serviceprovider",
   };
 
@@ -38,6 +32,7 @@ const VALID_PHASE_1_PATHS = new Set([
   "/dashboard/creator/phase-1",
   "/dashboard/investor/phase-1",
   "/dashboard/serviceprovider/phase-1",
+  "/dashboard/admin/phase-1",
 ]);
 
 export default function AuthGuard({
@@ -57,6 +52,13 @@ export default function AuthGuard({
       return;
     }
 
+    // Universal Phase 1 onboarding flow is reachable by any authenticated user.
+    // Phase-0 users complete verification here; the onboarding hub itself owns
+    // the "already complete -> /onboarding/complete" redirect (business logic).
+    if (pathname === "/onboarding" || pathname.startsWith("/onboarding/")) {
+      return;
+    }
+
     if (!pathname.includes('/dashboard')) return;
 
     // Fix uppercase role routes (e.g., /dashboard/Entrepreneur -> /dashboard/entrepreneur)
@@ -73,16 +75,16 @@ export default function AuthGuard({
     const userRole = user.role;
     const onboardingPhase = user.onboardingPhase ?? 0;
 
-    // UNIVERSAL PHASE 1 GATE: If incomplete, redirect to phase-1 (unless already there)
+    // UNIVERSAL PHASE 1 GATE: incomplete users go to the universal onboarding hub.
     if (onboardingPhase === 0) {
-      // Already on a valid phase-1 page, allow it
+      // Legacy role-specific phase-1 pages still resolve (kept for back-compat;
+      // not deleted in this phase).
       if (VALID_PHASE_1_PATHS.has(pathname)) {
         return;
       }
 
-      // Redirect to the user's role-specific phase-1
-      const dashboardRoute = getDashboardRoute(user.role);
-      router.push(`${dashboardRoute}/phase-1`);
+      // Redirect incomplete users to the universal onboarding hub.
+      router.push("/onboarding");
       return;
     }
 
@@ -94,8 +96,6 @@ export default function AuthGuard({
       creator: UserRole.CREATOR,
       investor: UserRole.INVESTOR,
       entrepreneur: UserRole.ENTREPRENEUR,
-      advisor: UserRole.ADVISOR,
-      founder: UserRole.FOUNDER,
       serviceprovider: UserRole.SERVICE_PROVIDER,
       'service-provider': UserRole.SERVICE_PROVIDER,
       service_provider: UserRole.SERVICE_PROVIDER,

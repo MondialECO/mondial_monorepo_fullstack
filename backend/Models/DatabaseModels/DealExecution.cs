@@ -22,6 +22,24 @@ public class DealExecution
 
     public TermSheet TermSheet { get; set; } = new();
 
+    /// <summary>
+    /// Ordered offer/counter-offer history (Phase D-4). The last entry is the
+    /// live offer; <see cref="TermSheet"/> holds the accepted/current terms.
+    /// </summary>
+    public List<TermSheetRevision> Revisions { get; set; } = new();
+
+    /// <summary>
+    /// Whose action the offer thread is waiting on: "founder", "investor", or
+    /// "" (none — no open offer / negotiation concluded).
+    /// </summary>
+    public string CurrentTurn { get; set; } = "";
+
+    /// <summary>
+    /// Per-role term-sheet signatures. Each party signs only its own slot; a
+    /// deal is fully signed only when BOTH slots are present (Phase D-3).
+    /// </summary>
+    public DealSignatures Signatures { get; set; } = new();
+
     public List<DueDigligenceItem> DueDiligenceChecklist { get; set; } = new();
 
     public List<ClosingChecklistItem> ClosingChecklist { get; set; } = new();
@@ -91,6 +109,47 @@ public class TermSheet
     public DateTime? SignedAt { get; set; }
     /// <summary>DocumentId of the signed term sheet artefact (in DealExecution.DealDocuments).</summary>
     public string SignedDocumentId { get; set; }
+}
+
+// One round in the offer/counter-offer thread (Phase D-4). Terms is a snapshot
+// of the proposed economics for that round; the live/accepted terms remain on
+// DealExecution.TermSheet.
+public class TermSheetRevision
+{
+    public int RevisionNumber { get; set; }
+
+    /// <summary>"founder" | "investor".</summary>
+    public string ProposedByRole { get; set; }
+
+    /// <summary>Founder = ApplicationUser id; investor = catalogue InvestorId.</summary>
+    public string ProposedByPrincipalId { get; set; }
+
+    /// <summary>Whitelisted in Phase9Requirements.OfferStatusWhitelist.</summary>
+    public string Status { get; set; } = "sent";
+
+    /// <summary>Snapshot of proposed economics for this round.</summary>
+    public TermSheet Terms { get; set; } = new();
+
+    public string Note { get; set; }
+
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? ViewedAt { get; set; }
+    public DateTime? RespondedAt { get; set; }
+}
+
+// Dual-party term-sheet signatures. The slot a caller writes is fixed by their
+// role, so a founder can never sign the investor slot and vice versa.
+public class DealSignatures
+{
+    public DateTime? FounderSignedAt { get; set; }
+    public string FounderSignedByUserId { get; set; }
+    public string FounderSignedDocumentId { get; set; }
+
+    public DateTime? InvestorSignedAt { get; set; }
+    public string InvestorSignedByInvestorId { get; set; }
+    public string InvestorSignedDocumentId { get; set; }
+
+    public bool BothSigned => FounderSignedAt.HasValue && InvestorSignedAt.HasValue;
 }
 
 public class DueDigligenceItem

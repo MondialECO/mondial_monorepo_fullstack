@@ -1,0 +1,126 @@
+11_Event_Architecture_v2.0 (MVP Enterprise Specification)
+Executive Summary
+Defines the event-driven architecture required for the MVP. This document only includes events that are necessary for the approved MVP scope.
+MVP Scope Only
+Included:
+- User Events
+- Creator Events
+- Entrepreneur Events
+- Investor Events
+- Marketplace Events
+- Escrow Events
+- AI Events
+- Notification Events
+
+Excluded:
+- Corporate VC Events
+- Secondary Market Events
+- Crowdfunding Events
+- Debt Financing Events
+Event Naming Standard
+Format:
+<Entity><ActionPastTense>
+
+Examples:
+UserRegistered
+IdeaCreated
+FundingRequestPublished
+InvestorMatched
+EscrowReleased
+Core Domain Events
+UserRegistered
+ProfileCompleted
+IdeaCreated
+IdeaClarified
+BusinessPlanGenerated
+ForecastGenerated
+FundingRequestPublished
+InvestorMatched
+ProposalAccepted
+MilestoneApproved
+EscrowReleased
+User Events
+UserRegistered
+EmailVerified
+KYCCompleted
+ProfileCompleted
+RoleUpgraded
+Creator Events
+IdeaCreated
+IdeaUpdated
+IdeaClarified
+BusinessPlanGenerated
+ForecastGenerated
+CreatorUpgradedToEntrepreneur
+Entrepreneur Events
+CompanyCreated
+ValuationCalculated
+FundingRequestPublished
+DataRoomCreated
+InvestorInterestReceived
+Investor Events
+InvestorRegistered
+OpportunityViewed
+NdaSigned
+DataRoomAccessed
+InvestmentInterestSubmitted
+Marketplace Events
+ServicePublished
+ProposalSubmitted
+ProposalAccepted
+ProjectStarted
+ProjectCompleted
+Escrow Events
+EscrowFunded
+MilestoneSubmitted
+MilestoneApproved
+EscrowReleased
+DisputeOpened
+AI Events
+AiRequestCreated
+AiResponseGenerated
+AiJobFailed
+AiInsightCreated
+Notification Events
+NotificationCreated
+EmailQueued
+EmailSent
+ReminderTriggered
+Queue Architecture
+Recommended:
+BullMQ + Redis
+
+Queues:
+AI Queue
+Notification Queue
+Report Queue
+Audit Queue
+Retry Policy
+AI Jobs: 3 retries
+Email Jobs: 5 retries
+Notification Jobs: 3 retries
+Dead Letter Queue
+Failed jobs moved to DLQ.
+Admin review required for repeated failures.
+Audit Events
+PermissionChanged
+RoleAssigned
+VerificationApproved
+EscrowReleased
+FundingRequestPublished
+Storage Requirements
+Collections:
+EventLogs
+AuditLogs
+JobLogs
+Monitoring
+Track:
+Failed Events
+Queue Length
+Processing Time
+Retry Counts
+Success Metrics
+Event Delivery Rate
+Queue Processing Time
+Failure Rate
+System Reliability

@@ -1,0 +1,42 @@
+
+09_API_Specification_v2.0 (Enterprise Specification)
+Executive Summary
+Defines all public and internal API contracts, authentication standards, request/response formats, error handling, versioning and rate limiting for Mondial.eco.
+API Standards
+Architecture: REST APIFormat: JSONVersioning: /api/v1/Authentication: JWTTransport: HTTPS only
+Authentication APIs
+POST /auth/registerPOST /auth/loginPOST /auth/logoutPOST /auth/refresh-tokenPOST /auth/verify-emailPOST /auth/reset-password
+User Intelligence APIs
+GET /intelligence/profilePUT /intelligence/profileGET /intelligence/scoreGET /intelligence/insightsPOST /intelligence/recalculate
+Creator APIs
+POST /ideasGET /ideasGET /ideas/{id}PUT /ideas/{id}DELETE /ideas/{id}POST /business-plan/generatePOST /forecast/generate
+Entrepreneur APIs
+POST /companiesGET /companies/{id}POST /valuation/calculatePOST /funding-requestsGET /funding-requestsPOST /data-room
+Investor APIs
+POST /investor/profileGET /opportunitiesPOST /watchlistPOST /nda/requestGET /deal-pipelineGET /portfolio
+Marketplace APIs
+POST /servicesGET /servicesPOST /proposalsGET /projectsPOST /milestonesPOST /escrow/release
+AI APIs
+POST /ai/idea-generatorPOST /ai/idea-clarifierPOST /ai/business-planPOST /ai/forecastPOST /ai/funding-readiness
+Notification APIs
+GET /notificationsPUT /notifications/readPOST /notifications/preferences
+Admin APIs
+GET /admin/usersGET /admin/reportsPOST /admin/moderationPOST /admin/verification
+Request Standards
+Headers:Authorization: Bearer TokenContent-Type: application/jsonAccept: application/json
+Response Standards
+Success:{  success: true,  data: {}}Error:{  success: false,  errorCode: '',  message: ''}
+Error Codes
+400 Validation Error401 Unauthorized403 Forbidden404 Not Found409 Conflict429 Rate Limited500 Internal Error
+Rate Limiting
+Anonymous:100 requests/hourAuthenticated:1000 requests/hourAI Endpoints:Credit-based limits
+API Versioning Strategy
+Current:/api/v1/Future:/api/v2/Backward compatibility maintained where possible.
+Webhook Strategy
+Events:Funding PublishedInvestor InterestedProposal AcceptedEscrow ReleasedAI Job Completed
+Security Requirements
+JWT ValidationRBAC EnforcementInput ValidationRate LimitingAudit Logging
+Monitoring &amp; Analytics
+Track:LatencyError RatesEndpoint UsageAI ConsumptionConversion Events
+Success Metrics
+API AvailabilityResponse TimesError RateDeveloper AdoptionIntegration Success

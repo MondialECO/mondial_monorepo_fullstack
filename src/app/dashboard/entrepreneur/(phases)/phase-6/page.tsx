@@ -10,6 +10,7 @@ import { RouteGuard } from '@/components/entrepreneur/RouteGuard';
 import { EntrepreneurLayout } from '@/components/entrepreneur/EntrepreneurLayout';
 import { PhaseHeader } from '@/components/entrepreneur/PhaseHeader';
 import { StepFooter } from '@/components/entrepreneur/StepFooter';
+import { Phase6DataRoomVisuals } from '@/components/entrepreneur/dataroom/Phase6DataRoomVisuals';
 import entrepreneurApi, {
   DataRoomAccessGrant,
   DataRoomAnalyticsResponse,
@@ -181,7 +182,7 @@ function Phase6Content() {
       moveToNextStep(6, 1);
 
       await new Promise((r) => setTimeout(r, 300));
-      router.push('/dashboard/entrepreneur/phase-7');
+      router.push('/dashboard/entrepreneur/phase-6/complete');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Submit failed');
     } finally {
@@ -196,53 +197,35 @@ function Phase6Content() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-        <div>
-          <p className="text-xs uppercase text-neutral-5">Total documents</p>
-          <p className="font-bold text-neutral-1">{docs.length}</p>
-        </div>
-        <div>
-          <p className="text-xs uppercase text-neutral-5">Required categories</p>
-          <p className={`font-bold ${missingRequired.length === 0 ? 'text-green-700' : 'text-amber-700'}`}>
-            {REQUIRED_CATEGORIES.length - missingRequired.length} / {REQUIRED_CATEGORIES.length}
-          </p>
-        </div>
-        <div>
-          <p className="text-xs uppercase text-neutral-5">Access grants</p>
-          <p className="font-bold text-neutral-1">{grants.length}</p>
-        </div>
-        <div>
-          <p className="text-xs uppercase text-neutral-5">Published</p>
-          <p className={`font-bold ${status?.isLive ? 'text-green-700' : 'text-neutral-5'}`}>
-            {status?.isLive ? 'yes' : 'no'}
-          </p>
-        </div>
-      </div>
+      {/* Figma P6 — data room visuals (real data + honest shells) */}
+      <Phase6DataRoomVisuals />
 
       {missingRequired.length > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex gap-3">
-          <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-amber-800">
+        <div className="bg-warning/10 border border-warning/30 rounded-xl p-4 flex gap-3">
+          <AlertCircle className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-warning">
             Missing required categories: <strong>{missingRequired.join(', ')}</strong>.
             Each must have at least one document before you can submit.
           </p>
         </div>
       )}
 
-      <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 space-y-4">
-        <h3 className="text-lg font-bold text-neutral-1">Upload document</h3>
+      <div className="bg-card border-2 border-border rounded-2xl p-6 space-y-4">
+        <h3 className="text-lg font-bold text-foreground">Upload document</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <Input
             type="text"
             value={uploadTitle}
             onChange={(e) => setUploadTitle(e.target.value)}
             placeholder="Document title"
-            className="h-10 bg-background border-neutral-2"
+            aria-label="Document title"
+            className="h-10 bg-background border-input"
           />
           <select
             value={uploadCategory}
             onChange={(e) => setUploadCategory(e.target.value as Category)}
-            className="h-10 rounded-md border border-neutral-2 bg-background px-3 text-sm"
+            aria-label="Document category"
+            className="h-10 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             {ALLOWED_CATEGORIES.map((c) => (
               <option key={c} value={c}>{c}</option>
@@ -251,6 +234,7 @@ function Phase6Content() {
           <input
             type="file"
             onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
+            aria-label="Document file"
             className="h-10 text-sm"
           />
         </div>
@@ -260,25 +244,25 @@ function Phase6Content() {
         </Button>
       </div>
 
-      <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 space-y-3">
-        <h3 className="text-lg font-bold text-neutral-1">Documents</h3>
+      <div className="bg-card border-2 border-border rounded-2xl p-6 space-y-3">
+        <h3 className="text-lg font-bold text-foreground">Documents</h3>
         {docs.length === 0 ? (
-          <p className="text-sm text-neutral-5">No documents uploaded yet.</p>
+          <p className="text-sm text-muted-foreground">No documents uploaded yet.</p>
         ) : (
           <div className="space-y-2">
             {docs.map((d) => (
               <div
                 key={d.documentId}
-                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 bg-background border-2 border-neutral-2 rounded-xl p-3"
+                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 bg-background border-2 border-input rounded-xl p-3"
               >
                 <div className="flex items-start gap-3 flex-1 min-w-0">
-                  <FileText className="w-5 h-5 text-neutral-5 mt-0.5" />
+                  <FileText className="w-5 h-5 text-muted-foreground mt-0.5" />
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-neutral-1 truncate">{d.title}</p>
-                    <p className="text-xs text-neutral-5 truncate">
+                    <p className="text-sm font-semibold text-foreground truncate">{d.title}</p>
+                    <p className="text-xs text-muted-foreground truncate">
                       {d.category} · {d.fileName} · {(d.fileSize / 1024).toFixed(1)} KB
                     </p>
-                    <p className="text-xs text-neutral-5 mt-0.5">
+                    <p className="text-xs text-muted-foreground mt-0.5">
                       Views: {d.viewCount} · Downloads: {d.downloadCount}
                     </p>
                   </div>
@@ -292,9 +276,9 @@ function Phase6Content() {
         )}
       </div>
 
-      <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 space-y-4">
+      <div className="bg-card border-2 border-border rounded-2xl p-6 space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-bold text-neutral-1">Access grants</h3>
+          <h3 className="text-lg font-bold text-foreground">Access grants</h3>
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
@@ -311,12 +295,14 @@ function Phase6Content() {
             value={grantInvestorId}
             onChange={(e) => setGrantInvestorId(e.target.value)}
             placeholder="Investor id"
-            className="col-span-5 h-9 bg-background border-neutral-2"
+            aria-label="Investor ID"
+            className="col-span-5 h-9 bg-background border-input"
           />
           <select
             value={grantAccessLevel}
             onChange={(e) => setGrantAccessLevel(e.target.value)}
-            className="col-span-3 h-9 rounded-md border border-neutral-2 bg-background px-2 text-sm"
+            aria-label="Access level"
+            className="col-span-3 h-9 rounded-md border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <option value="view_only">view_only</option>
             <option value="download">download</option>
@@ -328,7 +314,8 @@ function Phase6Content() {
             value={grantDaysValid}
             onChange={(e) => setGrantDaysValid(e.target.value)}
             placeholder="Days"
-            className="col-span-2 h-9 bg-background border-neutral-2"
+            aria-label="Days valid"
+            className="col-span-2 h-9 bg-background border-input"
           />
           <Button onClick={handleGrant} className="col-span-2 gap-2">
             <Plus className="w-4 h-4" /> Grant
@@ -336,17 +323,17 @@ function Phase6Content() {
         </div>
 
         {grants.length === 0 ? (
-          <p className="text-sm text-neutral-5">No access grants yet.</p>
+          <p className="text-sm text-muted-foreground">No access grants yet.</p>
         ) : (
           <div className="space-y-2">
             {grants.map((g: DataRoomAccessGrant) => (
               <div
                 key={g.investorId}
-                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 bg-background border-2 border-neutral-2 rounded-xl p-3"
+                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 bg-background border-2 border-input rounded-xl p-3"
               >
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-neutral-1 truncate">{g.investorId}</p>
-                  <p className="text-xs text-neutral-5">
+                  <p className="text-sm font-semibold text-foreground truncate">{g.investorId}</p>
+                  <p className="text-xs text-muted-foreground">
                     {g.accessLevel} · granted {new Date(g.grantedAt).toLocaleString()} · expires{' '}
                     {new Date(g.expiresAt).toLocaleString()}
                   </p>
@@ -360,37 +347,37 @@ function Phase6Content() {
         )}
       </div>
 
-      <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 space-y-3">
-        <h3 className="text-lg font-bold text-neutral-1">Engagement (backend-derived)</h3>
+      <div className="bg-card border-2 border-border rounded-2xl p-6 space-y-3">
+        <h3 className="text-lg font-bold text-foreground">Engagement (backend-derived)</h3>
         {!analytics || analytics.totalViews + analytics.totalDownloads === 0 ? (
-          <p className="text-sm text-neutral-5">
+          <p className="text-sm text-muted-foreground">
             No engagement events recorded yet. Numbers will populate as investors view or download documents.
           </p>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
             <div>
-              <p className="text-xs uppercase text-neutral-5">Total views</p>
-              <p className="font-bold text-neutral-1">{analytics.totalViews}</p>
+              <p className="text-xs uppercase text-muted-foreground">Total views</p>
+              <p className="font-bold text-foreground">{analytics.totalViews}</p>
             </div>
             <div>
-              <p className="text-xs uppercase text-neutral-5">Total downloads</p>
-              <p className="font-bold text-neutral-1">{analytics.totalDownloads}</p>
+              <p className="text-xs uppercase text-muted-foreground">Total downloads</p>
+              <p className="font-bold text-foreground">{analytics.totalDownloads}</p>
             </div>
             <div>
-              <p className="text-xs uppercase text-neutral-5">Unique investors</p>
-              <p className="font-bold text-neutral-1">{analytics.uniqueInvestorsEngaged}</p>
+              <p className="text-xs uppercase text-muted-foreground">Unique investors</p>
+              <p className="font-bold text-foreground">{analytics.uniqueInvestorsEngaged}</p>
             </div>
             <div>
-              <p className="text-xs uppercase text-neutral-5">Documents tracked</p>
-              <p className="font-bold text-neutral-1">{analytics.documentEngagement.length}</p>
+              <p className="text-xs uppercase text-muted-foreground">Documents tracked</p>
+              <p className="font-bold text-foreground">{analytics.documentEngagement.length}</p>
             </div>
           </div>
         )}
       </div>
 
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex gap-3">
-        <ShieldCheck className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-        <p className="text-sm text-blue-800">
+      <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 flex gap-3">
+        <ShieldCheck className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+        <p className="text-sm text-primary">
           Submitting Phase 6 publishes your data room and sends it for compliance review.
           Investors with valid grants (and a signed NDA if required) can then access documents.
           Verified data-room status is awarded separately after review.
@@ -398,9 +385,9 @@ function Phase6Content() {
       </div>
 
       {error && (
-        <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4 flex gap-3">
-          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-          <p className="text-sm font-semibold text-red-900">{error}</p>
+        <div className="bg-destructive/10 border-2 border-destructive/30 rounded-xl p-4 flex gap-3">
+          <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
+          <p className="text-sm font-semibold text-destructive">{error}</p>
         </div>
       )}
 

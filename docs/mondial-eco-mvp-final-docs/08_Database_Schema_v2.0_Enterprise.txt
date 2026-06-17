@@ -1,0 +1,36 @@
+
+08_Database_Schema_v2.0 (Enterprise Specification)
+Executive Summary
+Defines the MongoDB data architecture, collection strategy, relationships, indexing approach, audit fields and versioning standards for Mondial.eco.
+Database Philosophy
+Principles:- Document-first architecture- Event-ready design- Auditability- Scalability- AI compatibility
+Core Collections
+UsersIdentityProfilesExperienceProfilesSkillGraphsFounderDNAAIInsightsIdeasIdeaJournalsBusinessPlansForecastsCompaniesFundingRequestsInvestorsServiceProvidersProjectsReviewsNotifications
+Users Collection
+Fields:_idemailrolestatusverificationStatuscreatedAtupdatedAtIndexes:email (unique)rolestatus
+Ideas Collection
+Fields:titledescriptionclarityScorecreatorIdstatusversions[]createdAtIndexes:creatorIdstatuscreatedAt
+Companies Collection
+Fields:companyNameregistrationStatusindustrystagevaluationownerIdIndexes:ownerIdindustrystage
+Funding Requests
+Fields:companyIdamountRequestedequityOfferedsafeTermsstatusIndexes:companyIdstatus
+Investors Collection
+Fields:investorTypeticketSizethesisindustriesgeographiesIndexes:investorTypeindustries
+Service Providers Collection
+Fields:categoryskillsreputationScoreavailabilityIndexes:categoryreputationScore
+Relationship Strategy
+User -&gt; Ideas (1:N)User -&gt; Company (1:N)Company -&gt; FundingRequest (1:N)Investor -&gt; Watchlist (1:N)Project -&gt; Milestones (1:N)
+Audit Fields
+Required in all collections:createdAtupdatedAtcreatedByupdatedByversionisDeleted
+Versioning Strategy
+Soft deletesDocument version historyAI output version trackingBusiness plan revision history
+Indexing Strategy
+Unique IndexesCompound IndexesSearch IndexesAnalytics Indexes
+Analytics Collections
+EventLogsAIUsageLogsFundingMetricsMarketplaceMetrics
+Security Requirements
+PII encryptionRole-based accessAudit loggingRetention policies
+Migration Strategy
+Schema evolutionBackward compatibilityVersioned migrations
+Success Metrics
+Query performanceStorage efficiencyScalabilityAudit coverage

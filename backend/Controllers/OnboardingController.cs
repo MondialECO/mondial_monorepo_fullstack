@@ -17,9 +17,9 @@ namespace WebApp.Controllers
 {
     /// <summary>
     /// Phase 1 universal onboarding. Hub-and-spoke flow per Figma design:
-    /// 4 mandatory verification items (Identity, Face, Phone, Email) plus
-    /// role-conditional supplementary documents (Income/Tax for Investor;
-    /// License for ServiceProvider; Residence for all as optional).
+    /// 4 mandatory verification items (Identity, Face, Phone, Email).
+    /// Supplementary documents can still be uploaded, but they do not block
+    /// the universal Phase 1 gate.
     ///
     /// The frontend's OnboardingGuard reads Onboarding.Phase from /status
     /// and gates /dashboard/* until Phase == 1.
@@ -64,25 +64,13 @@ namespace WebApp.Controllers
         private static readonly string[] CoreRequired =
             { "identity", "face", "phone", "email" };
 
-        /// <summary>Optional + role-conditional supplementary documents.</summary>
+        /// <summary>Optional supplementary documents kept outside the universal Phase 1 gate.</summary>
         private static readonly string[] AllSupplementary =
             { "residence", "income", "tax", "license" };
 
-        /// <summary>Required item set per role. Creator/Entrepreneur take only the core 4.</summary>
+        /// <summary>Required item set for universal Phase 1. Every role completes the same core 4.</summary>
         private static HashSet<string> RequiredItemsFor(string role)
-        {
-            var set = new HashSet<string>(CoreRequired, StringComparer.OrdinalIgnoreCase);
-            if (string.Equals(role, "Investor", StringComparison.OrdinalIgnoreCase))
-            {
-                set.Add("income");
-                set.Add("tax");
-            }
-            else if (string.Equals(role, "ServiceProvider", StringComparison.OrdinalIgnoreCase))
-            {
-                set.Add("license");
-            }
-            return set;
-        }
+            => new(CoreRequired, StringComparer.OrdinalIgnoreCase);
 
         private async Task<ApplicationUser> CurrentUserAsync()
         {
@@ -234,6 +222,7 @@ namespace WebApp.Controllers
         public class VerifyCodeRequest { public string Code { get; set; } }
 
         [HttpPost("verify-otp")]
+        [EnableRateLimiting("auth")]
         public async Task<IActionResult> VerifyPhoneOtp([FromBody] VerifyCodeRequest body)
             => await VerifyOtpCore(body, isEmail: false);
 
@@ -270,6 +259,7 @@ namespace WebApp.Controllers
         }
 
         [HttpPost("verify-email-otp")]
+        [EnableRateLimiting("auth")]
         public async Task<IActionResult> VerifyEmailOtp([FromBody] VerifyCodeRequest body)
             => await VerifyOtpCore(body, isEmail: true);
 
@@ -322,63 +312,9 @@ namespace WebApp.Controllers
             return Ok(isEmail ? "Email verified" : "Phone verified");
         }
 
-        // ----- Identity + Face (one SUMSUB session, two cards) ------------
-
-        /// <summary>
-        /// Development-only shortcut. Real SUMSUB widget integration is the
-        /// next PR. Per product: one shared SUMSUB session verifies BOTH the
-        /// identity document and the face match — completing one card flips
-        /// both flags so the hub shows both ticks green.
-        /// </summary>
-        [HttpPost("identity/dev-confirm")]
-        public async Task<IActionResult> IdentityDevConfirm()
-        {
-            if (!_env.IsDevelopment())
-                return Fail("Not available in this environment", 403);
-
-            var user = await CurrentUserAsync();
-            if (user == null) return Fail("User not found", 404);
-
-            user.Onboarding.IdentityDocumentVerified = true;
-            user.Onboarding.FaceVerified = true;
-            user.Kyc.Status = VerificationStatus.Verified;
-            user.Kyc.VerifiedAt = DateTime.UtcNow;
-            await _userManager.UpdateAsync(user);
-
-            await PromotePhaseIfCompleteAsync(user);
-
-            _logger.LogInformation("[DEV] Identity+Face dev-confirmed for {Email}", user.Email);
-            _audit.Record("identity_dev_confirm", user.Email!, true);
-            return Ok("Identity verified (development).");
-        }
-
-        /// <summary>
-        /// Development-only shortcut for the phone-verification step. Used
-        /// until the Twilio SMS integration is wired up — the real flow
-        /// (send-otp → verify-otp) stays the primary path. Gated to
-        /// IsDevelopment() so it cannot be invoked in prod.
-        /// </summary>
-        [HttpPost("phone/dev-confirm")]
-        public async Task<IActionResult> PhoneDevConfirm()
-        {
-            if (!_env.IsDevelopment())
-                return Fail("Not available in this environment", 403);
-
-            var user = await CurrentUserAsync();
-            if (user == null) return Fail("User not found", 404);
-
-            user.Onboarding.PhoneVerified = true;
-            user.Onboarding.PhoneVerifyHash = null;
-            user.Onboarding.PhoneVerifyExpiresAt = null;
-            user.PhoneNumberConfirmed = true;
-            await _userManager.UpdateAsync(user);
-
-            await PromotePhaseIfCompleteAsync(user);
-
-            _logger.LogInformation("[DEV] Phone dev-confirmed for {Email}", user.Email);
-            _audit.Record("phone_dev_confirm", user.Email!, true);
-            return Ok("Phone verified (development).");
-        }
+        // ----- Identity + Face -------------------------------------------
+        // Production KYC must be completed by a real provider callback. There
+        // is intentionally no local endpoint that marks these items verified.
 
         // ----- Supplementary documents ------------------------------------
 
@@ -431,6 +367,75 @@ namespace WebApp.Controllers
 
             _audit.Record($"document_upload_{key}", user.Email!, true);
             return Ok("Document uploaded", new { type = key, filePath = path });
+        }
+
+        // ----- Development-only verification shortcuts ---------------------
+        // The production KYC widget (SUMSUB) is not wired into this build, so
+        // there is no provider callback to flip the onboarding flags the
+        // Phase 1 gate reads (IdentityDocumentVerified / FaceVerified /
+        // PhoneVerified). The onboarding pages POST to these endpoints to
+        // complete Identity+Face and Phone during local QA. They are gated to
+        // Development and return 404 in any other environment, so they can
+        // never run in production.
+
+        [HttpPost("identity/dev-confirm")]
+        public Task<IActionResult> DevConfirmIdentity() => DevConfirmKycAsync();
+
+        [HttpPost("face/dev-confirm")]
+        public Task<IActionResult> DevConfirmFace() => DevConfirmKycAsync();
+
+        private async Task<IActionResult> DevConfirmKycAsync()
+        {
+            if (!_env.IsDevelopment()) return NotFound();
+
+            var user = await CurrentUserAsync();
+            if (user == null) return Fail("User not found", 404);
+
+            // Single shared KYC session: completing one verifies both.
+            user.Onboarding.IdentityDocumentVerified = true;
+            user.Onboarding.FaceVerified = true;
+            await _userManager.UpdateAsync(user);
+            await PromotePhaseIfCompleteAsync(user);
+
+            _audit.Record("kyc_dev_confirm", user.Email!, true);
+            return Ok("Identity and face verified (development)");
+        }
+
+        [HttpPost("phone/dev-confirm")]
+        public async Task<IActionResult> DevConfirmPhone([FromBody] SendPhoneOtpRequest body = null)
+        {
+            if (!_env.IsDevelopment()) return NotFound();
+
+            var user = await CurrentUserAsync();
+            if (user == null) return Fail("User not found", 404);
+
+            if (!string.IsNullOrWhiteSpace(body?.Phone))
+                user.PhoneNumber = body.Phone.Trim();
+
+            user.Onboarding.PhoneVerified = true;
+            user.PhoneNumberConfirmed = true;
+            await _userManager.UpdateAsync(user);
+            await PromotePhaseIfCompleteAsync(user);
+
+            _audit.Record("phone_dev_confirm", user.Email!, true);
+            return Ok("Phone verified (development)");
+        }
+
+        [HttpPost("email/dev-confirm")]
+        public async Task<IActionResult> DevConfirmEmail()
+        {
+            if (!_env.IsDevelopment()) return NotFound();
+
+            var user = await CurrentUserAsync();
+            if (user == null) return Fail("User not found", 404);
+
+            user.Onboarding.EmailOtpVerified = true;
+            user.EmailConfirmed = true;
+            await _userManager.UpdateAsync(user);
+            await PromotePhaseIfCompleteAsync(user);
+
+            _audit.Record("email_dev_confirm", user.Email!, true);
+            return Ok("Email verified (development)");
         }
     }
 }

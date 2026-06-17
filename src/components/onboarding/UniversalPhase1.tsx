@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/app/_providers/AuthProvider';
-import { useRouter } from 'next/navigation';
 import api from '@/lib/axios';
 import {
   CheckCircle2,
@@ -18,6 +17,14 @@ import {
   Home,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import Link from 'next/link';
 
 interface OnboardingItem {
@@ -41,6 +48,52 @@ interface OnboardingStatus {
     tax?: OnboardingItem;
     license?: OnboardingItem;
   };
+}
+
+const CORE_ITEM_KEYS = ['identity', 'face', 'phone', 'email'] as const;
+
+const PHONE_COUNTRY_OPTIONS = [
+  { value: '+880', label: 'Bangladesh', region: 'BD' },
+  { value: '+33', label: 'France', region: 'Europe' },
+  { value: '+44', label: 'United Kingdom', region: 'Europe' },
+  { value: '+49', label: 'Germany', region: 'Europe' },
+  { value: '+39', label: 'Italy', region: 'Europe' },
+  { value: '+34', label: 'Spain', region: 'Europe' },
+  { value: '+31', label: 'Netherlands', region: 'Europe' },
+  { value: '+32', label: 'Belgium', region: 'Europe' },
+  { value: '+41', label: 'Switzerland', region: 'Europe' },
+  { value: '+45', label: 'Denmark', region: 'Europe' },
+  { value: '+46', label: 'Sweden', region: 'Europe' },
+  { value: '+47', label: 'Norway', region: 'Europe' },
+  { value: '+48', label: 'Poland', region: 'Europe' },
+  { value: '+351', label: 'Portugal', region: 'Europe' },
+];
+
+function splitPhoneNumber(rawPhone?: string | null) {
+  const compactPhone = (rawPhone ?? '').replace(/[^\d+]/g, '');
+  const matchedOption = [...PHONE_COUNTRY_OPTIONS]
+    .sort((left, right) => right.value.length - left.value.length)
+    .find((option) => compactPhone.startsWith(option.value));
+
+  if (!matchedOption) {
+    return {
+      countryCode: '+880',
+      nationalNumber: compactPhone.startsWith('+') ? compactPhone : compactPhone.replace(/^0+/, ''),
+    };
+  }
+
+  return {
+    countryCode: matchedOption.value,
+    nationalNumber: compactPhone.slice(matchedOption.value.length).replace(/^0+/, ''),
+  };
+}
+
+function toE164Phone(countryCode: string, nationalNumber: string) {
+  const compactNumber = nationalNumber.replace(/[^\d+]/g, '');
+  if (compactNumber.startsWith('+')) return compactNumber;
+
+  const withoutLeadingZeroes = compactNumber.replace(/^0+/, '');
+  return `${countryCode}${withoutLeadingZeroes}`;
 }
 
 const ITEM_ICONS = {
@@ -67,11 +120,15 @@ const ITEM_LABELS = {
 
 export default function UniversalPhase1() {
   const { user, refreshAuthMe } = useAuth();
-  const router = useRouter();
   const [status, setStatus] = useState<OnboardingStatus | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [verifying, setVerifying] = useState<string | null>(null);
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [phoneCountryCode, setPhoneCountryCode] = useState('+880');
+  const [otpCodes, setOtpCodes] = useState<Record<string, string>>({});
+  const [otpSent, setOtpSent] = useState<Record<string, boolean>>({});
 
   const isPhaseComplete = (status?.phase ?? 0) >= 1;
 
@@ -81,9 +138,13 @@ export default function UniversalPhase1() {
         setLoading(true);
         const response = await api.get('/onboarding/status');
         const data = response.data?.data ?? response.data;
+        const parsedPhone = splitPhoneNumber(data?.phone);
         setStatus(data);
+        setPhoneCountryCode(parsedPhone.countryCode);
+        setPhoneNumber(parsedPhone.nationalNumber);
+        setLoadError(null);
       } catch (err) {
-        setError('Failed to load onboarding status');
+        setLoadError('Failed to load onboarding status');
         console.error(err);
       } finally {
         setLoading(false);
@@ -98,50 +159,78 @@ export default function UniversalPhase1() {
   const handleVerifyItem = async (itemKey: string) => {
     try {
       setVerifying(itemKey);
+      setActionError(null);
       const item = status?.items[itemKey as keyof typeof status.items];
       if (!item || item.verified) return;
 
       let endpoint = '';
       let payload: Record<string, unknown> = {};
-      const isDev = process.env.NODE_ENV === 'development';
 
       switch (itemKey) {
         case 'identity':
+          setActionError('Identity verification is not configured yet. Connect the production KYC provider to start this step.');
+          return;
         case 'face':
-          if (!isDev) {
-            setError('Identity verification is only available in development. In production, please submit via the proper verification process.');
-            return;
-          }
-          endpoint = '/onboarding/identity/dev-confirm';
-          break;
+          setActionError('Identity verification is not configured yet. Connect the production KYC provider to start this step.');
+          return;
         case 'phone':
-          if (!isDev) {
-            setError('Phone verification is only available in development. In production, please submit via the proper verification process.');
+          if (otpSent.phone) {
+            const code = otpCodes.phone?.trim() ?? '';
+            if (code.length !== 6) {
+              setActionError('Enter the 6-digit phone verification code.');
+              return;
+            }
+            endpoint = '/onboarding/verify-otp';
+            payload = { code };
+          } else if (phoneNumber.trim()) {
+            endpoint = '/onboarding/send-otp';
+            payload = { phone: toE164Phone(phoneCountryCode, phoneNumber) };
+          } else {
+            setActionError('Enter your phone number before requesting a verification code.');
             return;
           }
-          endpoint = '/onboarding/phone/dev-confirm';
           break;
         case 'email':
-          endpoint = '/onboarding/send-email-otp';
+          if (otpSent.email) {
+            const code = otpCodes.email?.trim() ?? '';
+            if (code.length !== 6) {
+              setActionError('Enter the 6-digit email verification code.');
+              return;
+            }
+            endpoint = '/onboarding/verify-email-otp';
+            payload = { code };
+          } else {
+            endpoint = '/onboarding/send-email-otp';
+          }
           break;
         default:
-          setError(`No verification action configured for ${itemKey}`);
+          setActionError(`No verification action configured for ${itemKey}`);
           return;
       }
 
       // Do NOT mark as verified locally before backend response
       await api.post(endpoint, payload);
 
+      if (endpoint.endsWith('send-otp') || endpoint.endsWith('send-email-otp')) {
+        setOtpSent((current) => ({ ...current, [itemKey]: true }));
+        return;
+      }
+
       // Refetch both status endpoints to confirm backend state
       const statusResponse = await api.get('/onboarding/status');
       const statusData = statusResponse.data?.data ?? statusResponse.data;
+      const parsedPhone = splitPhoneNumber(statusData?.phone);
       setStatus(statusData);
+      setPhoneCountryCode(parsedPhone.countryCode);
+      setPhoneNumber(parsedPhone.nationalNumber || phoneNumber);
+      setOtpCodes((current) => ({ ...current, [itemKey]: '' }));
+      setOtpSent((current) => ({ ...current, [itemKey]: false }));
 
       // Refresh AuthProvider with updated user state from backend
       await refreshAuthMe();
     } catch (err) {
       console.error(`Failed to verify ${itemKey}:`, err);
-      setError(`Verification failed for ${itemKey}`);
+      setActionError(`Verification failed for ${itemKey}. Please try again.`);
     } finally {
       setVerifying(null);
     }
@@ -158,7 +247,7 @@ export default function UniversalPhase1() {
     );
   }
 
-  if (error || !status) {
+  if (loadError || !status) {
     return (
       <div className="min-h-screen bg-neutral-100 flex items-center justify-center">
         <div className="max-w-md">
@@ -167,7 +256,7 @@ export default function UniversalPhase1() {
               <AlertCircle className="w-6 h-6 text-red-600" />
               <h3 className="font-bold text-red-900">Error Loading Verification</h3>
             </div>
-            <p className="text-red-800 text-sm mb-4">{error}</p>
+            <p className="text-red-800 text-sm mb-4">{loadError}</p>
             <Button className="w-full" onClick={() => window.location.reload()}>
               Retry
             </Button>
@@ -197,7 +286,7 @@ export default function UniversalPhase1() {
               Identity & Onboarding Verification
             </h1>
             <p className="text-sm text-neutral-600 mt-1">
-              {isPhaseComplete ? '✓ Verification Complete' : 'Complete all required items to proceed'}
+              {isPhaseComplete ? 'Verification Complete' : 'Complete all required items to proceed'}
             </p>
           </div>
         </div>
@@ -236,8 +325,15 @@ export default function UniversalPhase1() {
         )}
 
         {/* Verification Items Grid */}
+        {actionError && (
+          <div className="border-2 border-destructive/30 bg-destructive/10 rounded-lg p-4 text-sm text-destructive">
+            {actionError}
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {Object.entries(status.items).map(([key, item]) => {
+          {CORE_ITEM_KEYS.map((key) => {
+            const item = status.items[key];
             if (!item) return null;
 
             const Icon = ITEM_ICONS[key as keyof typeof ITEM_ICONS] || FileText;
@@ -246,11 +342,10 @@ export default function UniversalPhase1() {
             return (
               <div
                 key={key}
-                className={`bg-white border-2 rounded-lg p-4 flex items-start gap-4 transition ${
-                  item.verified
-                    ? 'border-green-200 bg-green-50'
-                    : 'border-neutral-200 bg-white'
-                }`}
+                className={`bg-white border-2 rounded-lg p-4 flex items-start gap-4 transition ${item.verified
+                  ? 'border-green-200 bg-green-50'
+                  : 'border-neutral-200 bg-white'
+                  }`}
               >
                 <div className="flex-shrink-0 mt-1">
                   {item.verified ? (
@@ -271,8 +366,58 @@ export default function UniversalPhase1() {
                     )}
                   </div>
                   <p className="text-xs text-neutral-600">
-                    {item.verified ? 'Verified' : 'Not verified'}
+                    {item.verified
+                      ? 'Verified'
+                      : otpSent[key]
+                        ? 'Code sent'
+                        : 'Not verified'}
                   </p>
+
+                  {key === 'phone' && !item.verified && !isPhaseComplete && (
+                    <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                      {!otpSent.phone && (
+                        <Select value={phoneCountryCode} onValueChange={setPhoneCountryCode}>
+                          <SelectTrigger aria-label="Phone country code" className="h-10 sm:w-44">
+                            <SelectValue placeholder="+880" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {PHONE_COUNTRY_OPTIONS.map((option) => (
+                              <SelectItem key={`${option.value}-${option.label}`} value={option.value}>
+                                {option.region} - {option.label} {option.value}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      <Input
+                        value={otpSent.phone ? otpCodes.phone ?? '' : phoneNumber}
+                        onChange={(event) => {
+                          const value = event.target.value;
+                          if (otpSent.phone) {
+                            setOtpCodes((current) => ({ ...current, phone: value }));
+                          } else {
+                            setPhoneNumber(value);
+                          }
+                        }}
+                        className="h-10"
+                        aria-label={otpSent.phone ? 'Phone verification code' : 'Phone number'}
+                        placeholder={otpSent.phone ? '6-digit code' : '1712345678'}
+                        inputMode={otpSent.phone ? 'numeric' : 'tel'}
+                      />
+                    </div>
+                  )}
+
+                  {key === 'email' && otpSent.email && !item.verified && !isPhaseComplete && (
+                    <Input
+                      value={otpCodes.email ?? ''}
+                      onChange={(event) =>
+                        setOtpCodes((current) => ({ ...current, email: event.target.value }))
+                      }
+                      className="mt-3"
+                      placeholder="6-digit code"
+                      inputMode="numeric"
+                    />
+                  )}
                 </div>
 
                 {!item.verified && !isPhaseComplete && (
@@ -281,12 +426,12 @@ export default function UniversalPhase1() {
                     variant="outline"
                     onClick={() => handleVerifyItem(key)}
                     disabled={verifying === key}
-                    className="flex-shrink-0"
+                    className="shrink-0"
                   >
                     {verifying === key ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
-                      'Verify'
+                      otpSent[key] ? 'Submit' : 'Verify'
                     )}
                   </Button>
                 )}
