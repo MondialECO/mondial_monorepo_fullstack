@@ -22,7 +22,7 @@ backend/.env
 
 #### Database (MongoDB)
 ```env
-MongoDbSettings__ConnectionString=mongodb+srv://mongoDB:***REMOVED***@***REMOVED***.mongodb.net/
+MongoDbSettings__ConnectionString=mongodb+srv://<user>:<password>@<cluster>.mongodb.net/
 MongoDbSettings__DatabaseName=MondialEcoDev
 ```
 
@@ -35,7 +35,7 @@ MongoDbSettings__DatabaseName=MondialEcoDev
 ```env
 JwtSettings__Issuer=mondialbusiness.eu
 JwtSettings__Audience=mondialbusiness.eu
-JwtSettings__Key=***REMOVED***@mondialbusiness.eu
+JwtSettings__Key=<cryptographically-random-256-bit-base64-string>
 JwtSettings__ExpiryHours=8
 ```
 
@@ -50,7 +50,7 @@ JwtSettings__ExpiryHours=8
 EmailSettings__SmtpServer=smtp.zoho.com
 EmailSettings__Port=587
 EmailSettings__Email=info@mondialbusiness.eu
-EmailSettings__Password=***REMOVED***
+EmailSettings__Password=<smtp-password>
 ```
 
 **Details:**

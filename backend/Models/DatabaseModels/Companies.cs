@@ -13,6 +13,10 @@ public class Companies
 
     public string OwnerId { get; set; }
 
+    // Provenance: when a Company is created from a BusinessIdea via the
+    // creator->entrepreneur transition, this holds the source idea id.
+    public string SourceBusinessIdeaId { get; set; }
+
     // Phase 1: Basic Info
     public string CompanyName { get; set; }
     public string Industry { get; set; }
@@ -55,6 +59,19 @@ public class Companies
     public double? Valuation { get; set; }
     public double? CurrentFunds { get; set; }
     public double? MonthlyBurn { get; set; }
+
+    // Phase 3: KPI extras persisted on the company alongside Phase3Kpis.
+    public int? Nps { get; set; }
+
+    // Phase 3: cached valuation model outputs (so GetFinancialSummary and the
+    // matchmaking payload can read them without recomputing).
+    public double? ValuationRevenueMultiple { get; set; }
+    public double? ValuationRiskDiscountRate { get; set; }
+    public int? ValuationConfidenceScore { get; set; }
+
+    // Running readiness/trust scores (TrustScore above is the legacy int; this
+    // is the Phase-3 investor-readiness counter incremented on completion).
+    public int? InvestorReadyScore { get; set; }
 
     // Phase 4: Equity Structure
     public List<EquityEntryDto> EquityStructure { get; set; } = new();

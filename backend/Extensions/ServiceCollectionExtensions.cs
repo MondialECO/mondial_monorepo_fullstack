@@ -21,6 +21,9 @@ public static class ServiceCollectionExtensions
         var uploadsPath = configuration["FileStorage:UploadPath"] ?? "uploads";
         services.AddScoped<IDocumentManager>(provider => new DocumentManager(uploadsPath));
 
+        // Deal/offer realtime event publisher (per-user groups on NotificationHub)
+        services.AddScoped<IDealEventPublisher, DealEventPublisher>();
+
         // Register CompanyService (depends on all the above)
         services.AddScoped<ICompanyService, CompanyService>();
 

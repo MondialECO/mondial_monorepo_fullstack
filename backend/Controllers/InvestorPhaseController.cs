@@ -6,6 +6,8 @@ using System.Security.Claims;
 using WebApp.DbContext;
 using WebApp.Models.DatabaseModels;
 using WebApp.Models.Dtos;
+using WebApp.Services;
+using WebApp.Services.Interface;
 
 namespace WebApp.Controllers;
 
@@ -17,12 +19,27 @@ public class InvestorPhaseController : ControllerBase
     private readonly MongoDbContext _dbContext;
     private readonly ILogger<InvestorPhaseController> _logger;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IInvestmentsService _investmentsService;
+    private readonly IInvestorService _investorService;
+    private readonly ICompanyService _companyService;
+    private readonly IPhaseNotificationService _phaseNotificationService;
 
-    public InvestorPhaseController(MongoDbContext dbContext, ILogger<InvestorPhaseController> logger, UserManager<ApplicationUser> userManager)
+    public InvestorPhaseController(
+        MongoDbContext dbContext,
+        ILogger<InvestorPhaseController> logger,
+        UserManager<ApplicationUser> userManager,
+        IInvestmentsService investmentsService,
+        IInvestorService investorService,
+        ICompanyService companyService,
+        IPhaseNotificationService phaseNotificationService)
     {
         _dbContext = dbContext;
         _logger = logger;
         _userManager = userManager;
+        _investmentsService = investmentsService;
+        _investorService = investorService;
+        _companyService = companyService;
+        _phaseNotificationService = phaseNotificationService;
     }
 
     private string GetUserId()
@@ -42,9 +59,257 @@ public class InvestorPhaseController : ControllerBase
             throw new UnauthorizedAccessException("Universal Phase 1 (identity verification) must be complete before accessing investor features");
     }
 
+    // ============ INVESTOR DASHBOARD (P0-3) ============
+
+    [HttpGet("stats")]
+    public async Task<IActionResult> GetStats()
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+
+            var (investments, items) = await BuildPortfolioAsync(userId);
+
+            var totalInvested = investments.Sum(i => (double)i.Amount);
+            var numberOfInvestments = investments.Count;
+            var activeInvestments = investments.Count(IsActiveInvestment);
+
+            // MVP: no realized valuation/exit data yet. Surface invested
+            // capital as portfolio value and 0% ROI so the dashboard renders
+            // a coherent baseline instead of NaN/undefined.
+            return Ok(new
+            {
+                totalInvested,
+                portfolioValue = totalInvested,
+                numberOfInvestments,
+                averageROI = 0.0,
+                activeInvestments,
+                investments = items
+            });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error building investor stats");
+            return StatusCode(500, new { error = "Failed to build investor stats" });
+        }
+    }
+
+    [HttpGet("portfolio")]
+    public async Task<IActionResult> GetPortfolio()
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+
+            var (_, items) = await BuildPortfolioAsync(userId);
+            return Ok(items);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error building investor portfolio");
+            return StatusCode(500, new { error = "Failed to build portfolio" });
+        }
+    }
+
+    [HttpGet("profile")]
+    public async Task<IActionResult> GetProfile()
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+
+            var user = await _userManager.FindByIdAsync(userId)
+                ?? throw new UnauthorizedAccessException("User not found");
+
+            Investor? catalog = null;
+            var catalogId = user.InvestorProfile?.InvestorId;
+            if (!string.IsNullOrWhiteSpace(catalogId))
+            {
+                try
+                {
+                    catalog = await _investorService.GetInvestorAsync(catalogId);
+                }
+                catch (KeyNotFoundException)
+                {
+                    // Stale link — surface bare user slice rather than 500.
+                    _logger.LogWarning("InvestorProfile.InvestorId {Id} on user {UserId} no longer resolves", catalogId, userId);
+                }
+            }
+
+            return Ok(new
+            {
+                id = catalog?.Id,
+                userId = user.Id.ToString(),
+                name = catalog?.Name ?? user.Name,
+                email = catalog?.PrimaryEmail ?? user.Email,
+                type = catalog?.Type,
+                bio = catalog?.Bio ?? user.Bio,
+                website = catalog?.Website,
+                logoUrl = catalog?.LogoUrl ?? user.ImagePath,
+                preferredSectors = catalog?.PreferredSectors ?? new List<string>(),
+                preferredStages = catalog?.PreferredStages ?? new List<string>(),
+                minCheckSize = catalog?.MinCheckSize ?? 0,
+                maxCheckSize = catalog?.MaxCheckSize ?? 0,
+                preferredGeographies = catalog?.PreferredGeographies ?? new List<string>(),
+                primaryContact = catalog?.PrimaryContact ?? user.Name,
+                primaryPhone = catalog?.PrimaryPhone ?? user.PhoneNumber,
+                profileScore = catalog?.ProfileScore ?? 0,
+                isActive = catalog?.IsActive ?? true,
+                linked = catalog != null
+            });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error building investor profile");
+            return StatusCode(500, new { error = "Failed to build investor profile" });
+        }
+    }
+
+    [HttpGet("settings")]
+    public async Task<IActionResult> GetSettings()
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+
+            var user = await _userManager.FindByIdAsync(userId)
+                ?? throw new UnauthorizedAccessException("User not found");
+
+            // No NotificationSettings schema in MVP — surface MVP-safe defaults
+            // alongside the existing ApplicationUser slice the UI binds to.
+            return Ok(new
+            {
+                id = user.Id.ToString(),
+                name = user.Name,
+                email = user.Email,
+                phone = user.PhoneNumber,
+                geography = user.Geography,
+                availableTime = user.AvailableTime,
+                address = user.Address,
+                notifications = new
+                {
+                    emailEnabled = true,
+                    pushEnabled = false
+                }
+            });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error building investor settings");
+            return StatusCode(500, new { error = "Failed to build investor settings" });
+        }
+    }
+
+    // ---- Shared portfolio projection ----
+
+    private async Task<(List<Investments> raw, List<object> projected)> BuildPortfolioAsync(string userId)
+    {
+        if (!Guid.TryParse(userId, out var investorGuid))
+        {
+            return (new List<Investments>(), new List<object>());
+        }
+
+        var investments = (await _investmentsService.GetByInvestorAsync(investorGuid)).ToList();
+
+        if (investments.Count == 0)
+        {
+            return (investments, new List<object>());
+        }
+
+        var ideaIds = investments.Select(i => i.IdeaId).Where(id => !string.IsNullOrEmpty(id)).Distinct().ToList();
+
+        var ideas = ideaIds.Count > 0
+            ? await _dbContext.BusinessIdeas
+                .Find(Builders<BusinessIdeas>.Filter.In(i => i.Id, ideaIds))
+                .ToListAsync()
+            : new List<BusinessIdeas>();
+
+        var ideaById = ideas.ToDictionary(i => i.Id);
+
+        var creatorIds = ideas.Select(i => i.CreatorId).Where(id => !string.IsNullOrEmpty(id)).Distinct().ToList();
+
+        var creators = creatorIds.Count > 0
+            ? await _dbContext.ApplicationUsers
+                .Find(Builders<ApplicationUser>.Filter.In(u => u.Id, creatorIds.Select(Guid.Parse)))
+                .ToListAsync()
+            : new List<ApplicationUser>();
+
+        var creatorById = creators.ToDictionary(u => u.Id.ToString());
+
+        var projected = investments
+            .OrderByDescending(inv => inv.CreatedAt)
+            .Select(inv =>
+            {
+                ideaById.TryGetValue(inv.IdeaId ?? string.Empty, out var idea);
+                ApplicationUser? creator = null;
+                if (idea != null)
+                {
+                    creatorById.TryGetValue(idea.CreatorId ?? string.Empty, out creator);
+                }
+
+                return (object)new
+                {
+                    id = inv.Id,
+                    ideaName = idea?.Name ?? inv.ideaName ?? "(unknown idea)",
+                    creatorName = creator?.Name ?? "Unknown founder",
+                    investedAmount = (double)inv.Amount,
+                    equityOwned = inv.EquityPercentage,
+                    status = NormalizeInvestmentStatus(inv.Status),
+                    investmentDate = inv.CreatedAt.ToString("yyyy-MM-dd"),
+                    fundingRound = inv.RoundName
+                };
+            })
+            .ToList();
+
+        return (investments, projected);
+    }
+
+    private static bool IsActiveInvestment(Investments inv)
+    {
+        if (string.IsNullOrWhiteSpace(inv.Status)) return true;
+        var s = inv.Status.Trim();
+        return s.Equals("Pending", StringComparison.OrdinalIgnoreCase)
+            || s.Equals("Escrowed", StringComparison.OrdinalIgnoreCase)
+            || s.Equals("Active", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string NormalizeInvestmentStatus(string raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return "active";
+        var s = raw.Trim().ToLowerInvariant();
+        return s switch
+        {
+            "completed" => "completed",
+            "refunded" => "withdrawn",
+            "withdrawn" => "withdrawn",
+            _ => "active"
+        };
+    }
+
     // ============ INVESTOR PHASE 5: DEAL DISCOVERY ============
 
     [HttpGet("deals")]
+    [Authorize(Roles = "Investor,Admin")]
     public async Task<ActionResult<List<DealDiscoveryResponse>>> GetDealDiscovery([FromQuery] string? sector = null, [FromQuery] string? stage = null)
     {
         try
@@ -133,8 +398,10 @@ public class InvestorPhaseController : ControllerBase
 
     // ============ INVESTOR PHASE 8: TERM SHEET ============
 
+    // Investor-initiated initial offer. Persists a real DealExecution + first
+    // term-sheet revision (Phase D-4), replacing the former placeholder.
     [HttpPost("term-sheet/{companyId}/create")]
-    public async Task<ActionResult> CreateTermSheet(string companyId, [FromBody] InvestorTermSheetRequest request)
+    public async Task<ActionResult<DealStatusResponse>> CreateTermSheet(string companyId, [FromBody] OfferTermsRequest request)
     {
         try
         {
@@ -144,22 +411,39 @@ public class InvestorPhaseController : ControllerBase
             if (string.IsNullOrWhiteSpace(companyId) || request == null)
                 return BadRequest(new { error = "Missing required fields" });
 
-            // TODO: P1 - Create Deal or TermSheet record
-            return Ok(new
+            var user = await _userManager.FindByIdAsync(userId);
+            var investorId = user?.InvestorProfile?.InvestorId;
+            if (string.IsNullOrWhiteSpace(investorId))
+                return StatusCode(403, new { error = "User has no linked investor profile." });
+
+            var result = await _companyService.CreateInvestorOfferAsync(
+                companyId, investorId, request, userId, ipHash: "");
+
+            // Best-effort: notify participants a new offer arrived (resolved
+            // from the deal, so both founder and investor are reached).
+            try
             {
-                message = "Term sheet created",
-                termSheetId = Guid.NewGuid().ToString(),
-                status = "draft"
-            });
+                await _phaseNotificationService.NotifyDealStatusChangeAsync(result.DealId, "", "offer_sent");
+            }
+            catch (Exception nex)
+            {
+                _logger.LogWarning(nex, "Offer-sent notification failed for deal {DealId} (non-fatal)", result.DealId);
+            }
+
+            return Ok(result);
         }
         catch (UnauthorizedAccessException ex)
         {
             _logger.LogWarning("Authorization failed: {Message}", ex.Message);
             return StatusCode(403, new { error = ex.Message });
         }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { error = ex.Message });
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating term sheet");
+            _logger.LogError(ex, "Error creating offer");
             return BadRequest(new { error = ex.Message });
         }
     }

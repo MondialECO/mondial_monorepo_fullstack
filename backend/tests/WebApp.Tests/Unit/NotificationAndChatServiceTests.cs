@@ -313,7 +313,7 @@
 //        _mockMessagesRepo.Setup(x => x.AddMessage(It.IsAny<ChatMessage>()))
 //            .Returns(Task.CompletedTask);
 
-//        _mockConversationRepo.Setup(x => x.UpdateConversionLastMessage(It.IsAny<ChatMessage>()))
+//        _mockConversationRepo.Setup(x => x.UpdateConversationLastMessage(It.IsAny<ChatMessage>()))
 //            .Returns(Task.CompletedTask);
 
 //        // Act
@@ -323,7 +323,7 @@
 //        result.Should().Be(message);
 //        result.Content.Should().Be("Hello there!");
 //        _mockMessagesRepo.Verify(x => x.AddMessage(It.IsAny<ChatMessage>()), Times.Once);
-//        _mockConversationRepo.Verify(x => x.UpdateConversionLastMessage(It.IsAny<ChatMessage>()), Times.Once);
+//        _mockConversationRepo.Verify(x => x.UpdateConversationLastMessage(It.IsAny<ChatMessage>()), Times.Once);
 //    }
 
 //    [Fact]
@@ -340,7 +340,7 @@
 //        _mockMessagesRepo.Setup(x => x.AddMessage(It.IsAny<ChatMessage>()))
 //            .Returns(Task.CompletedTask);
 
-//        _mockConversationRepo.Setup(x => x.UpdateConversionLastMessage(It.IsAny<ChatMessage>()))
+//        _mockConversationRepo.Setup(x => x.UpdateConversationLastMessage(It.IsAny<ChatMessage>()))
 //            .Returns(Task.CompletedTask);
 
 //        // Act

@@ -1,5 +1,6 @@
 ﻿using Asp.Versioning;
 using FluentValidation;
+using Hangfire;
 using Microsoft.AspNetCore.ResponseCompression;
 using System.IO.Compression;
 using System.Reflection;
@@ -37,6 +38,7 @@ using WebApp.Services.Audit;
 using WebApp.Services;
 using WebApp.Services.Email;
 using WebApp.Services.Interface;
+using WebApp.Services.Implementations;
 using WebApp.Services.Repository;
 using WebApp.Validation;
 
@@ -87,7 +89,7 @@ builder.Services.AddSingleton<IMongoDatabase>(sp =>
     var client = sp.GetRequiredService<IMongoClient>();
     return client.GetDatabase(settings.DatabaseName);
 });
-builder.Services.AddSingleton<MongoDbContext>();
+builder.Services.AddSingleton(sp => new MongoDbContext(sp.GetRequiredService<IMongoDatabase>()));
 
 
 // ---- Shared Redis (required for multi-replica/stateless operation) ----
@@ -228,6 +230,25 @@ builder.Services.AddAuthentication(options =>
             }
 
             return Task.CompletedTask;
+        },
+        OnTokenValidated = context =>
+        {
+            // .NET 8's JsonWebTokenHandler does NOT remap the JWT "sub" claim
+            // to ClaimTypes.NameIdentifier. Many controllers (CompanyController,
+            // AiController, etc.) resolve the caller via
+            // User.FindFirst(ClaimTypes.NameIdentifier); without this backfill
+            // that lookup is null and every such endpoint throws -> HTTP 403,
+            // locking the entire entrepreneur Phase 2-9 journey.
+            if (context.Principal?.Identity is ClaimsIdentity identity &&
+                identity.FindFirst(ClaimTypes.NameIdentifier) == null)
+            {
+                var sub = identity.FindFirst(JwtRegisteredClaimNames.Sub)?.Value
+                          ?? identity.FindFirst("sub")?.Value
+                          ?? identity.Name;
+                if (!string.IsNullOrEmpty(sub))
+                    identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, sub));
+            }
+            return Task.CompletedTask;
         }
     };
 });
@@ -293,6 +314,9 @@ else
 // need removed after using dashboard
 builder.Services.AddScoped<ISubmmitdata, SubmmitdataRepository>();
 
+// D-1 Service Provider (Stage 1: Verification & Onboarding) — embedded profile.
+builder.Services.AddScoped<IServiceProviderService, ServiceProviderService>();
+
 // Observability: OpenTelemetry traces + metrics (/metrics for Prometheus).
 builder.AddObservability();
 
@@ -310,12 +334,23 @@ builder.Services.AddScoped<TwilioService>();
 // Company Services: 9-phase entrepreneur onboarding system
 builder.Services.AddCompanyServices(builder.Configuration);
 
+// AI infrastructure (C-1): durable Hangfire job engine on the existing Mongo
+// connection + AI config binding + legacy-job persistence. The legacy
+// IBackgroundJobService (registered above) is now backed by this Hangfire
+// infrastructure.
+builder.Services.AddAiServices(builder.Configuration);
+
 // Health checks: liveness (process up) is the bare endpoint; readiness
 // (tagged "ready") verifies MongoDB + Redis so the orchestrator only routes
 // traffic to replicas that can actually serve requests.
 var healthChecks = builder.Services.AddHealthChecks()
     .AddCheck<MongoHealthCheck>(
         "mongodb",
+        tags: new[] { "ready" })
+    // C-1: OpenRouter readiness. Config-only by default (no network); does a
+    // live auth ping only when OpenRouter:EnableHealthCheckPing is set.
+    .AddCheck<OpenRouterHealthCheck>(
+        "openrouter",
         tags: new[] { "ready" });
 
 if (useRedis)
@@ -352,6 +387,19 @@ builder.Services.AddRateLimiter(options =>
             factory: _ => new FixedWindowRateLimiterOptions
             {
                 PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
+
+    // C-1: per-user AI policy. AI calls are expensive/rate-limited upstream, so
+    // cap enqueues per authenticated user (falling back to IP before auth runs).
+    options.AddPolicy("ai", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                          ?? httpContext.Connection.RemoteIpAddress?.ToString() ?? "anon",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 20,
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0
             }));
@@ -407,6 +455,14 @@ builder.Services.AddControllers(options =>
             errors);
         return new BadRequestObjectResult(payload);
     };
+})
+.AddJsonOptions(options =>
+{
+    // Configure JSON serialization to use camelCase property names
+    // so frontend (which expects camelCase) matches backend responses.
+    // PropertyNameCaseInsensitive allows deserialization from camelCase JSON.
+    options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+    options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
 });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -521,6 +577,15 @@ app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
+// Hangfire ops dashboard. Mounted after auth so the Admin-only authorization
+// filter sees the populated principal. Dashboard requests are short AJAX polls,
+// so the global request-timeout does not affect it.
+app.UseHangfireDashboard("/hangfire", new Hangfire.DashboardOptions
+{
+    Authorization = new[] { new WebApp.Filters.HangfireDashboardAuthorizationFilter() },
+    DisplayStorageConnectionString = false,
+});
+
 // SignalR Hubs: long-lived connections must opt out of the request
 // timeout or they would be killed after 30s.
 app.MapHub<NotificationHub>("/hubs/notifications").DisableRequestTimeout();
@@ -607,6 +672,45 @@ using (var scope = app.Services.CreateScope())
     {
         Log.Warning(ex, "Onboarding backfill skipped (non-fatal)");
     }
+
+    // C-1: idempotently seed in-code AI prompt templates into PromptVersions.
+    // Only inserts a (key, version) that is absent — safe on every boot.
+    try
+    {
+        var promptStore = scope.ServiceProvider
+            .GetRequiredService<WebApp.Services.Ai.Prompts.IPromptVersionStore>();
+        var seededCount = await promptStore.SeedAsync(WebApp.Services.Ai.Prompts.PromptTemplate.All);
+        if (seededCount > 0)
+            Log.Information("Seeded {Count} AI prompt template version(s)", seededCount);
+    }
+    catch (Exception ex)
+    {
+        Log.Warning(ex, "AI prompt seeding skipped (non-fatal)");
+    }
+
+    // C-1 Phase 7: optional, config-gated, idempotent starter-credit grant to
+    // existing users. Off by default. Only users with no AICredits ledger are
+    // touched, so this is safe on every boot.
+    try
+    {
+        var aiCfg = app.Configuration.GetSection("Ai");
+        if (aiCfg.GetValue("GrantStarterCreditsToExisting", false))
+        {
+            var amount = aiCfg.GetValue("StarterCredits", 0);
+            var seeder = scope.ServiceProvider.GetRequiredService<WebApp.Services.Ai.IAiCreditSeeder>();
+            var granted = await seeder.GrantStarterCreditsAsync(amount);
+            if (granted > 0)
+                Log.Information("Granted {Count} starter AI credit ledger(s) ({Amount} each)", granted, amount);
+        }
+    }
+    catch (Exception ex)
+    {
+        Log.Warning(ex, "AI starter-credit grant skipped (non-fatal)");
+    }
+
+    // Demo seeding (Investor catalogue + demo data). Double-gated on
+    // Development/Demo environment and config flag SeedDemoData. Idempotent.
+    await scope.ServiceProvider.SeedDemoDataAsync(app.Environment, app.Configuration);
 }
 
 try

@@ -1,0 +1,214 @@
+03_Entrepreneur_Journey_v2.0 (Enterprise Specification)
+Executive Summary
+The Entrepreneur Journey is the funding and growth engine of Mondial.eco. It supports both existing businesses and startup founders by providing verification, valuation, fundraising, investor matching and due diligence workflows.
+Business Objectives
+- Help founders become investment-ready.
+- Standardize fundraising preparation.
+- Reduce investor due diligence friction.
+- Increase successful funding outcomes.
+- Connect entrepreneurs with investors and execution partners.
+Target Users
+- Existing Startup Founders
+- SME Owners
+- Pre-Incorporation Founders
+- Creator-to-Entrepreneur Upgrades
+- Solo Founders
+- Startup Teams
+Entrepreneur Entry Paths
+Path A: Existing Registered Company
+Path B: Startup in Formation
+Path C: Creator Upgrade
+
+All paths converge into the Funding Readiness Workflow.
+Stage 1: Verification & Onboarding
+Requirements:
+- Identity Verification
+- KYC
+- Company Information
+- Business Classification
+- Industry Selection
+
+Outputs:
+- Verified Entrepreneur Profile
+- Trust Score
+Stage 2: Company & Startup Profile
+Fields:
+- Company Name
+- Registration Status
+- Website
+- Industry
+- Team Size
+- Revenue Stage
+- Growth Stage
+
+Outputs:
+- Company Profile
+- Startup Snapshot
+Stage 3: Funding Readiness Assessment
+AI Evaluation:
+- Team Readiness
+- Product Readiness
+- Market Readiness
+- Financial Readiness
+
+Outputs:
+- Funding Readiness Score
+- Gap Analysis
+- Recommended Actions
+Stage 4: Valuation Engine
+Inputs:
+- Revenue
+- Growth Rate
+- Users
+- Market Size
+- Industry Benchmarks
+
+Outputs:
+- Estimated Valuation Range
+- Investor Presentation Metrics
+
+Business Rule:
+Valuation is advisory, not legally binding.
+Stage 5: Cap Table Management
+Features:
+- Founder Ownership
+- Co-Founder Shares
+- Employee Allocation
+- ESOP Pool
+- Investor Equity
+
+Outputs:
+- Current Cap Table
+- Dilution Simulation
+Stage 6: Funding Request Creation
+Funding Information:
+- Amount Requested
+- Equity Offered
+- SAFE Terms
+- Use of Funds
+- Milestones
+
+Outputs:
+- Funding Listing
+- Investor Visibility
+Stage 7: Data Room
+Storage:
+- Pitch Deck
+- Business Plan
+- Financial Forecast
+- Legal Documents
+- Cap Table
+- Team Information
+
+Access Control:
+Investor approval and NDA workflow.
+Stage 8: Investor Matching
+Matching Factors:
+- Industry
+- Geography
+- Stage
+- Ticket Size
+- Thesis Alignment
+- Risk Profile
+
+Outputs:
+- Match Score
+- Investor Recommendations
+Stage 9: Fundraising Pipeline
+Stages:
+- Draft
+- Published
+- Interested Investors
+- Meetings
+- Due Diligence
+- Negotiation
+- Closed
+
+Outputs:
+- Fundraising Dashboard
+Stage 10: Due Diligence Readiness
+Checks:
+- Legal
+- Financial
+- Product
+- Team
+- Market
+
+Output:
+Due Diligence Readiness Report
+Notifications
+Funding Request Published
+Investor Interested
+NDA Signed
+Data Room Viewed
+Meeting Scheduled
+Offer Received
+UX Requirements
+- Guided Workflow
+- Progress Tracking
+- Auto Save
+- Resume Sessions
+- Mobile Support
+- Dashboard Visibility
+Validation Rules
+Required:
+- Company/Startup Profile
+- Funding Goal
+- Business Description
+- Team Information
+
+Optional:
+- Website
+- Attachments
+- External References
+Database Collections
+Entrepreneurs
+Companies
+FundingRequests
+Valuations
+CapTables
+ESOPPools
+InvestorMatches
+DataRooms
+FundraisingPipelines
+API Requirements
+POST /entrepreneurs
+POST /valuation/calculate
+POST /funding-request
+GET /investor-matches
+POST /data-room
+GET /fundraising-pipeline
+Permissions
+Entrepreneur:
+Full access to owned records.
+
+Investor:
+View only approved opportunities.
+
+Admin:
+Moderation and verification access.
+Analytics Events
+Profile Completed
+Funding Request Published
+Investor Match Generated
+Data Room Viewed
+Meeting Booked
+Funding Closed
+Edge Cases
+Unregistered Startup
+Multiple Founders
+Cap Table Conflicts
+Funding Goal Changes
+Incomplete Due Diligence
+Success Metrics
+Funding Requests Published
+Investor Engagement Rate
+Funding Readiness Improvement
+Meetings Scheduled
+Funding Closed
+Future Scalability
+Convertible Notes
+Debt Financing
+Secondary Markets
+Corporate VC Matching
+Automated Term Sheet Generation

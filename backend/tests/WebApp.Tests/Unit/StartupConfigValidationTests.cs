@@ -25,6 +25,7 @@ public class StartupConfigValidationTests
         ["EmailSettings:SmtpServer"] = "smtp.test",
         ["EmailSettings:Email"] = "a@b.com",
         ["EmailSettings:Password"] = "pw",
+        ["OpenRouter:ApiKey"] = "sk-or-test-key",
     };
 
     [Fact]
@@ -45,6 +46,18 @@ public class StartupConfigValidationTests
         var act = () => builder.ValidateRequiredConfiguration();
         act.Should().Throw<InvalidOperationException>()
            .WithMessage("*MongoDbSettings:ConnectionString*");
+    }
+
+    [Fact]
+    public void Throws_when_openrouter_api_key_missing()
+    {
+        var cfg = ValidConfig();
+        cfg["OpenRouter:ApiKey"] = "";
+        var builder = BuilderWith(cfg);
+
+        var act = () => builder.ValidateRequiredConfiguration();
+        act.Should().Throw<InvalidOperationException>()
+           .WithMessage("*OpenRouter:ApiKey*");
     }
 
     [Fact]

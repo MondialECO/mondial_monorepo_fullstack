@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AlertCircle, BarChart3, History, Info, RefreshCcw, ShieldCheck } from 'lucide-react';
+import { AlertCircle, History, Info, RefreshCcw, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useEntrepreneurProgress } from '@/hooks/useEntrepreneurProgress';
 import { RouteGuard } from '@/components/entrepreneur/RouteGuard';
 import { EntrepreneurLayout } from '@/components/entrepreneur/EntrepreneurLayout';
 import { PhaseHeader } from '@/components/entrepreneur/PhaseHeader';
 import { StepFooter } from '@/components/entrepreneur/StepFooter';
+import { Phase7ReviewVisuals } from '@/components/entrepreneur/dataroom/Phase7ReviewVisuals';
 import entrepreneurApi, {
   AiReviewHistoryEntry,
   AiReviewResponse,
@@ -106,7 +107,7 @@ function Phase7Content() {
       });
       moveToNextStep(7, 1);
       await new Promise((r) => setTimeout(r, 300));
-      router.push('/dashboard/entrepreneur/phase-8');
+      router.push('/dashboard/entrepreneur/phase-7/complete');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Submit failed');
     } finally {
@@ -121,9 +122,9 @@ function Phase7Content() {
   return (
     <div className="space-y-6">
       {/* Dev-mode banner — explicit, non-removable until LLM credentials wired */}
-      <div className="bg-amber-50 border border-amber-300 rounded-xl p-4 flex gap-3">
-        <Info className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-        <div className="text-sm text-amber-900">
+      <div className="bg-warning/10 border border-warning/40 rounded-xl p-4 flex gap-3">
+        <Info className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
+        <div className="text-sm text-foreground">
           <p className="font-semibold mb-1">Automated rule-based review active</p>
           <p>
             Scores and recommendations are produced by a deterministic backend rules engine
@@ -133,12 +134,15 @@ function Phase7Content() {
         </div>
       </div>
 
-      {/* Latest snapshot summary — fully backend-derived */}
-      <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 space-y-4">
+      {/* Figma P7 — AI review visuals (real data + honest shells) */}
+      <Phase7ReviewVisuals />
+
+      {/* Run control — drives the submit gating below */}
+      <div className="bg-card border-2 border-border rounded-2xl p-6 space-y-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h3 className="text-lg font-bold text-neutral-1">Automated Readiness Review</h3>
-            <p className="text-xs text-neutral-5 mt-1">
+            <h3 className="text-lg font-bold text-foreground">Automated Readiness Review</h3>
+            <p className="text-xs text-muted-foreground mt-1">
               {review
                 ? `Last run ${new Date(review.reviewedAt).toLocaleString()}`
                 : 'No review has been run yet.'}
@@ -153,17 +157,17 @@ function Phase7Content() {
         {review ? (
           <>
             <div className="grid grid-cols-2 md:grid-cols-6 gap-3 pt-2">
-              <div className="md:col-span-2 bg-background border-2 border-neutral-2 rounded-xl p-4">
-                <p className="text-xs uppercase text-neutral-5">Overall</p>
-                <p className={`text-3xl font-bold ${meetsThreshold ? 'text-green-700' : 'text-amber-700'}`}>
+              <div className="md:col-span-2 bg-background border-2 border-input rounded-xl p-4">
+                <p className="text-xs uppercase text-muted-foreground">Overall</p>
+                <p className={`text-3xl font-bold ${meetsThreshold ? 'text-success-text' : 'text-warning'}`}>
                   {overallScore}
                 </p>
-                <p className="text-xs text-neutral-5 mt-1">/100 (threshold 70)</p>
+                <p className="text-xs text-muted-foreground mt-1">/100 (threshold 70)</p>
               </div>
               {SCORE_LABELS.map(({ key, label }) => (
-                <div key={key as string} className="bg-background border-2 border-neutral-2 rounded-xl p-4">
-                  <p className="text-xs uppercase text-neutral-5">{label}</p>
-                  <p className="text-xl font-bold text-neutral-1">
+                <div key={key as string} className="bg-background border-2 border-input rounded-xl p-4">
+                  <p className="text-xs uppercase text-muted-foreground">{label}</p>
+                  <p className="text-xl font-bold text-foreground">
                     {review.scoreBreakdown[key]}
                   </p>
                 </div>
@@ -172,9 +176,9 @@ function Phase7Content() {
 
             <div className="flex items-center gap-3 pt-2">
               <ShieldCheck
-                className={`w-5 h-5 ${badge ? 'text-green-700' : 'text-neutral-5'}`}
+                className={`w-5 h-5 ${badge ? 'text-success-text' : 'text-muted-foreground'}`}
               />
-              <p className={`text-sm font-semibold ${badge ? 'text-green-700' : 'text-neutral-5'}`}>
+              <p className={`text-sm font-semibold ${badge ? 'text-success-text' : 'text-muted-foreground'}`}>
                 {badge
                   ? 'Investor-ready threshold met — badge eligible'
                   : 'Below investor-ready threshold (badge not awarded)'}
@@ -182,76 +186,35 @@ function Phase7Content() {
             </div>
           </>
         ) : (
-          <p className="text-sm text-neutral-5">
+          <p className="text-sm text-muted-foreground">
             Click <strong>Run review</strong> to score your company against the current
             Phase 2–6 data. The result will appear here.
           </p>
         )}
       </div>
 
-      {/* Recommendations — backend-generated only */}
-      <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 space-y-3">
-        <h3 className="text-lg font-bold text-neutral-1 flex items-center gap-2">
-          <BarChart3 className="w-5 h-5" />
-          Improvement recommendations
-        </h3>
-        {!review ? (
-          <p className="text-sm text-neutral-5">Run a review to see recommendations.</p>
-        ) : review.recommendations.length === 0 ? (
-          <p className="text-sm text-neutral-5">
-            No recommendations from this run — every sub-score is above its template threshold.
-          </p>
-        ) : (
-          <div className="space-y-3">
-            {review.recommendations.map((rec, idx) => (
-              <div
-                key={idx}
-                className="bg-background border-2 border-neutral-2 rounded-xl p-4"
-              >
-                <div className="flex items-center justify-between gap-3 mb-2">
-                  <p className="text-sm font-semibold text-neutral-1">{rec.title}</p>
-                  <span
-                    className={`text-xs font-semibold px-2 py-1 rounded ${
-                      rec.priority === 'high'
-                        ? 'bg-red-100 text-red-800'
-                        : rec.priority === 'medium'
-                        ? 'bg-amber-100 text-amber-800'
-                        : 'bg-blue-100 text-blue-800'
-                    }`}
-                  >
-                    {rec.priority}
-                  </span>
-                </div>
-                <p className="text-sm text-neutral-5">{rec.description}</p>
-                <p className="text-xs text-neutral-5 mt-2">
-                  Potential point gain: <strong>+{rec.potentialPointGain}</strong>
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      {/* Recommendations now rendered richer by Phase7ReviewVisuals above */}
 
       {/* History — backend snapshots only */}
-      <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-6 space-y-3">
-        <h3 className="text-lg font-bold text-neutral-1 flex items-center gap-2">
+      <div className="bg-card border-2 border-border rounded-2xl p-6 space-y-3">
+        <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
           <History className="w-5 h-5" />
           Review history
         </h3>
         {history.length === 0 ? (
-          <p className="text-sm text-neutral-5">No prior reviews yet.</p>
+          <p className="text-sm text-muted-foreground">No prior reviews yet.</p>
         ) : (
           <div className="space-y-2">
             {history.map((h) => (
               <div
                 key={h.id}
-                className="flex items-center justify-between bg-background border-2 border-neutral-2 rounded-xl p-3 text-sm"
+                className="flex items-center justify-between bg-background border-2 border-input rounded-xl p-3 text-sm"
               >
                 <div>
-                  <p className="font-semibold text-neutral-1">
+                  <p className="font-semibold text-foreground">
                     Score {h.overallScore} · {h.investorReadyBadge ? 'badge eligible' : 'below threshold'}
                   </p>
-                  <p className="text-xs text-neutral-5">
+                  <p className="text-xs text-muted-foreground">
                     {new Date(h.reviewedAt).toLocaleString()} · engine: {h.engineVersion}
                   </p>
                 </div>
@@ -261,9 +224,9 @@ function Phase7Content() {
         )}
       </div>
 
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex gap-3">
-        <ShieldCheck className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-        <p className="text-sm text-blue-800">
+      <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 flex gap-3">
+        <ShieldCheck className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+        <p className="text-sm text-primary">
           Submitting Phase 7 advances you to Phase 8. The backend validator requires a
           fresh review (within 30 days), score ≥ 70, and the investor-ready badge flag set
           by the engine. Failed validation blocks progression.
@@ -271,9 +234,9 @@ function Phase7Content() {
       </div>
 
       {error && (
-        <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4 flex gap-3">
-          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-          <p className="text-sm font-semibold text-red-900">{error}</p>
+        <div className="bg-destructive/10 border-2 border-destructive/30 rounded-xl p-4 flex gap-3">
+          <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
+          <p className="text-sm font-semibold text-destructive">{error}</p>
         </div>
       )}
 

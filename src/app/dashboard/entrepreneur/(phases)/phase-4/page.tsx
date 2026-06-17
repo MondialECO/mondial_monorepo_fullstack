@@ -5,6 +5,7 @@ import { ArrowRight, PieChart, ShieldCheck, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useEntrepreneurProgress } from '@/hooks/useEntrepreneurProgress';
 import { RouteGuard } from '@/components/entrepreneur/RouteGuard';
+import { Phase4Overview } from '@/components/entrepreneur/equity/Phase4Overview';
 
 const PHASE_4_STEPS = [
   { step: 1, title: 'Founder & Investor Equity', description: 'Define founder and investor grants', icon: Users },
@@ -14,31 +15,41 @@ const PHASE_4_STEPS = [
 
 function Phase4PageContent() {
   const { progress } = useEntrepreneurProgress();
-  if (!progress) return null;
+  if (!progress) {
+    return (
+      <div className="min-h-screen bg-muted/30 flex items-center justify-center p-4" role="status" aria-live="polite">
+        <p className="text-muted-foreground text-sm">Loading…</p>
+      </div>
+    );
+  }
 
   const isPhase3Complete = progress.completedPhases.has(3);
 
   return (
     <div className="min-h-screen bg-muted/30">
-      <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
+      <div className="max-w-5xl mx-auto px-4 py-8 space-y-8">
         <div className="space-y-3">
-          <h1 className="text-4xl font-bold text-foreground">
-            Phase 4: Cap Table Submission
+          <h1 className="text-3xl md:text-4xl font-bold text-foreground">
+            Equity Structure &amp; Ownership
           </h1>
           <p className="text-lg text-muted-foreground">
-            Submit your founder, investor, and ESOP grants with vesting schedules and ownership history.
+            Define your cap table, record stakeholders, set up ESOP, and review ownership.
             All data is persisted to the backend and validated server-side.
           </p>
         </div>
 
+        {/* Figma P4.1 — Overview (real cap-table data + honest empty states) */}
+        <Phase4Overview />
+
         <div className="space-y-3">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Submission steps</h2>
           {PHASE_4_STEPS.map(({ step, title, description, icon: Icon }) => (
             <div
               key={step}
-              className="bg-background border border-border rounded-2xl p-5 flex items-start gap-4"
+              className="bg-card border border-border rounded-2xl p-5 flex items-start gap-4"
             >
               <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
-                <Icon className="w-5 h-5" />
+                <Icon className="w-5 h-5" aria-hidden />
               </div>
               <div className="flex-1">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -51,9 +62,9 @@ function Phase4PageContent() {
           ))}
         </div>
 
-        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6">
-          <h3 className="font-semibold text-blue-900 mb-2">What happens after submission</h3>
-          <p className="text-sm text-blue-800">
+        <div className="bg-primary/5 border border-primary/20 rounded-2xl p-6">
+          <h3 className="font-semibold text-foreground mb-2">What happens after submission</h3>
+          <p className="text-sm text-muted-foreground">
             Submitting your cap table sends it to compliance review and unlocks Phase 5. Vesting is
             calculated by the backend from the schedules you declare. Verified status is awarded
             separately after a reviewer approves your submission.
@@ -67,7 +78,7 @@ function Phase4PageContent() {
           <Button asChild disabled={!isPhase3Complete}>
             <Link href="/dashboard/entrepreneur/phase-4/step-1">
               {isPhase3Complete ? 'Start submission' : 'Complete Phase 3 first'}
-              <ArrowRight className="w-4 h-4 ml-2" />
+              <ArrowRight className="w-4 h-4 ml-2" aria-hidden />
             </Link>
           </Button>
         </div>

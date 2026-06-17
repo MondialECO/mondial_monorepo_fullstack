@@ -18,7 +18,7 @@ namespace WebApp.Services
         public async Task<ChatMessage> AddMessage(ChatMessage message)
         {
             await _messages.AddMessage(message);
-            await _conversation.UpdateConversionLastMessage(message);
+            await _conversation.UpdateConversationLastMessage(message);
             return message;
         }
 
@@ -27,10 +27,13 @@ namespace WebApp.Services
            return await _messages.GetMessages(conversationId, skip, limit);
         }
 
-        public async Task<Conversation> GetOrCreateConversation(Guid user1, Guid user2)
+        public async Task<(Conversation Conversation, bool Created)> GetOrCreateConversation(Guid user1, Guid user2)
         {
             return await _conversation.GetOrCreateConversation(user1, user2);
         }
+
+        public Task<List<Guid>> GetParticipantsAsync(ObjectId conversationId)
+            => _conversation.GetParticipantsAsync(conversationId);
 
         public async Task<List<Conversation>> GetUserConversations(Guid userId)
         {
@@ -41,6 +44,13 @@ namespace WebApp.Services
         {
            await _messages.MarkAsRead(conversationId, userId);
         }
+
+        public Task<bool> IsParticipantAsync(ObjectId conversationId, Guid userId)
+            => _conversation.IsParticipantAsync(conversationId, userId);
+
+        public Task<Dictionary<string, long>> CountUnreadByConversationAsync(
+            List<ObjectId> conversationIds, Guid userId)
+            => _messages.CountUnreadByConversationAsync(conversationIds, userId);
 
     }
 }

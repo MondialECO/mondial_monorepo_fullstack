@@ -59,6 +59,7 @@ namespace WebApp.Controllers
 
 
         [HttpGet("dashboard")]
+        [HttpGet("dashboard/stats")]
         public async Task<IActionResult> GetCreatorDashboard()
         {
             try
@@ -305,6 +306,7 @@ namespace WebApp.Controllers
 
 
         [HttpGet("my-ideas")]
+        [HttpGet("ideas")]
         public async Task<IActionResult> MyIdeas()
         {
             try
@@ -434,6 +436,11 @@ namespace WebApp.Controllers
                 if (idea == null)
                     return NotFound();
 
+                // Only the owning creator can flip publication state.
+                // Treat foreign access as not-found to avoid enumeration.
+                if (idea.CreatorId != userId)
+                    return NotFound();
+
                 idea.IsPublished = !idea.IsPublished;
 
                 await _context.BusinessIdeas.ReplaceOneAsync(x => x.Id == id, idea);
@@ -466,6 +473,12 @@ namespace WebApp.Controllers
 
             var ideaIds = ideas.Select(i => i.Id).ToList();
 
+            // Scope the requested idea id to the caller's own ideas. Without
+            // this, any authenticated user could read the investor list of
+            // any idea on the platform.
+            if (!ideaIds.Contains(id))
+                return NotFound();
+
             var investor = await _investmentsService.GetByIdeaIdsAsync(ideaIds);
             //if (investor == null || investor.CreatorId != userId) return NotFound();
 
@@ -492,6 +505,161 @@ namespace WebApp.Controllers
             catch (Exception ex)
             {
                 return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        // ============ CREATOR DASHBOARD ALIASES & STUBS (P0-4) ============
+
+        // PATCH alias for the frontend's pause action. Mirrors ToggleIdea so
+        // the same authorization/ownership semantics are enforced.
+        [HttpPatch("ideas/{id}/pause")]
+        public async Task<IActionResult> PauseIdea(string id)
+        {
+            try
+            {
+                var userId = GetUserId();
+                await EnsureUniversalPhase1CompleteAsync(userId);
+
+                var idea = await _context.BusinessIdeas
+                    .Find(x => x.Id == id)
+                    .FirstOrDefaultAsync();
+
+                if (idea == null)
+                    return NotFound();
+
+                if (idea.CreatorId != userId)
+                    return NotFound();
+
+                idea.IsPublished = !idea.IsPublished;
+
+                await _context.BusinessIdeas.ReplaceOneAsync(x => x.Id == id, idea);
+
+                return Ok(new { success = true, id = idea.Id, isPublished = idea.IsPublished });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        [HttpGet("profile")]
+        public async Task<IActionResult> GetCreatorProfile()
+        {
+            try
+            {
+                var userId = GetUserId();
+                await EnsureUniversalPhase1CompleteAsync(userId);
+
+                var user = await _userManager.FindByIdAsync(userId);
+                if (user == null)
+                    return NotFound();
+
+                return Ok(new
+                {
+                    id = user.Id.ToString(),
+                    name = user.Name,
+                    email = user.Email,
+                    phone = user.PhoneNumber,
+                    bio = user.Bio,
+                    title = user.Title,
+                    imagePath = user.ImagePath,
+                    address = user.Address,
+                    geography = user.Geography,
+                    availableTime = user.AvailableTime,
+                    experience = user.Experience,
+                    mainExperience = user.MainExperience,
+                    linkedinUrl = user.linkedin_url
+                });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        // MVP stub. No billing schema yet — surface a stable shape so the
+        // dashboard can render without 404s.
+        [HttpGet("billing")]
+        public async Task<IActionResult> GetCreatorBilling()
+        {
+            try
+            {
+                var userId = GetUserId();
+                await EnsureUniversalPhase1CompleteAsync(userId);
+
+                return Ok(new
+                {
+                    plan = "free",
+                    status = "active",
+                    renewsAt = (DateTime?)null,
+                    paymentMethod = (object?)null
+                });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, new { error = ex.Message });
+            }
+        }
+
+        // MVP stub. Notification/visibility prefs not yet persisted — return
+        // MVP-safe defaults plus the existing ApplicationUser slice.
+        [HttpGet("settings")]
+        public async Task<IActionResult> GetCreatorSettings()
+        {
+            try
+            {
+                var userId = GetUserId();
+                await EnsureUniversalPhase1CompleteAsync(userId);
+
+                var user = await _userManager.FindByIdAsync(userId);
+                if (user == null)
+                    return NotFound();
+
+                return Ok(new
+                {
+                    id = user.Id.ToString(),
+                    name = user.Name,
+                    email = user.Email,
+                    phone = user.PhoneNumber,
+                    notifications = new
+                    {
+                        emailEnabled = true,
+                        pushEnabled = false
+                    },
+                    visibility = new
+                    {
+                        showProfilePublic = true
+                    }
+                });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, new { error = ex.Message });
+            }
+        }
+
+        // MVP stub. No billing-history schema — return an empty list so the
+        // frontend's mock-data fallback is no longer triggered by 404s.
+        [HttpGet("billing-history")]
+        public async Task<IActionResult> GetCreatorBillingHistory()
+        {
+            try
+            {
+                var userId = GetUserId();
+                await EnsureUniversalPhase1CompleteAsync(userId);
+                return Ok(new List<object>());
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, new { error = ex.Message });
             }
         }
 

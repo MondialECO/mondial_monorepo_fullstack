@@ -159,6 +159,8 @@ public class Phase8ValidatorTests
             {
                 Id = "m-1", CompanyId = "comp-1", InvestorId = "inv-1",
                 MatchScore = 80, Status = "new",
+                EngineVersion = "legacy",
+                InvestorPreferences = null!,
             },
         });
         SetupInvestorExists(true);

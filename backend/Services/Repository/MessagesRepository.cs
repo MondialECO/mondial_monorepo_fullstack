@@ -49,5 +49,26 @@ namespace WebApp.Services.Repository
                 update
             );
         }
+
+        // Unread counts per conversation for a given user, in a single
+        // aggregation: messages addressed to the user (not their own) that
+        // remain unread. Conversations with zero unread are simply absent.
+        public async Task<Dictionary<string, long>> CountUnreadByConversationAsync(
+            List<ObjectId> conversationIds, Guid userId)
+        {
+            if (conversationIds.Count == 0)
+                return new Dictionary<string, long>();
+
+            var grouped = await _collection
+                .Aggregate()
+                .Match(m =>
+                    conversationIds.Contains(m.ConversationId) &&
+                    m.SenderId != userId &&
+                    !m.IsRead)
+                .Group(m => m.ConversationId, g => new { Id = g.Key, Count = (long)g.Count() })
+                .ToListAsync();
+
+            return grouped.ToDictionary(x => x.Id.ToString(), x => x.Count);
+        }
     }
 }

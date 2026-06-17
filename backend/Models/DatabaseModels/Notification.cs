@@ -1,11 +1,14 @@
-﻿using MongoDB.Bson;
+﻿using System.Text.Json.Serialization;
+using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
+using WebApp.Serialization;
 
 namespace WebApp.Models.DatabaseModels
 {
     public class Notification
     {
         [BsonId]
+        [JsonConverter(typeof(ObjectIdJsonConverter))]
         public ObjectId Id { get; set; }
 
         [BsonElement("UserId")]
@@ -22,6 +25,7 @@ namespace WebApp.Models.DatabaseModels
         // Message | Investment | System | Security
 
         [BsonElement("ReferenceId")]
+        [JsonConverter(typeof(ObjectIdJsonConverter))]
         public ObjectId? ReferenceId { get; set; }
         // ConversationId / ProjectId / InvestmentId
 

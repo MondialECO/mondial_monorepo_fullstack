@@ -72,10 +72,8 @@ namespace WebApp.Services
             return await _repo.GetUserNotifications(userId, skip, limit);
         }
 
-        public async Task MarkAsRead(ObjectId notificationId)
-        {
-            await _repo.MarkAsRead(notificationId);
-        }
+        public Task<bool> MarkAsRead(ObjectId notificationId, Guid userId)
+            => _repo.MarkAsRead(notificationId, userId);
 
 
     }

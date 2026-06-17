@@ -3,25 +3,28 @@ using MongoDB.Driver;
 using Moq;
 using WebApp.DbContext;
 using WebApp.Models.DatabaseModels;
-using WebApp.Models.Dtos;
 using WebApp.Services.Implementations;
 using Xunit;
 
 namespace WebApp.Tests.Unit;
 
 /// <summary>
-/// Phase 3 (Financial Submission) validator coverage.
+/// Phase 3 (Financial Valuation & KPI) validator coverage.
 ///
-/// Backend-authoritative rule: Phase 3 completes only when revenue,
-/// valuation, equity (~100%), funding ask, capital allocation (~100%),
-/// monthly burn, current funds, KPI baseline, AND every required
-/// financial report (pending OR approved) are persisted.
+/// Backend-authoritative rule for the four-step workflow (Revenue →
+/// Automated Valuation → Live KPI Tracking → Concept Overview): Phase 3
+/// completes only when positive quarterly revenue, a calculated valuation,
+/// a valid KPI baseline, AND a Concept Overview document are persisted.
+///
+/// Funding ask, capital allocation, equity structure, cash position, and
+/// financial-report uploads are intentionally NOT required (they belong to
+/// later phases / different workflows).
 /// </summary>
 public class Phase3ValidatorTests
 {
     private readonly Mock<MongoDbContext> _mockDbContext;
     private readonly Mock<IMongoCollection<Phase3Kpi>> _mockKpiCollection;
-    private readonly Mock<IMongoCollection<Phase3FinancialReport>> _mockReportCollection;
+    private readonly Mock<IMongoCollection<Phase3Concept>> _mockConceptCollection;
     private readonly PhaseValidator _validator;
 
     public Phase3ValidatorTests()
@@ -29,10 +32,10 @@ public class Phase3ValidatorTests
         _mockDbContext = new Mock<MongoDbContext>(
             new MongoClient("mongodb://localhost:27017").GetDatabase("mondial_test"));
         _mockKpiCollection = new Mock<IMongoCollection<Phase3Kpi>>();
-        _mockReportCollection = new Mock<IMongoCollection<Phase3FinancialReport>>();
+        _mockConceptCollection = new Mock<IMongoCollection<Phase3Concept>>();
 
         _mockDbContext.Setup(x => x.Phase3Kpis).Returns(_mockKpiCollection.Object);
-        _mockDbContext.Setup(x => x.Phase3FinancialReports).Returns(_mockReportCollection.Object);
+        _mockDbContext.Setup(x => x.Phase3Concepts).Returns(_mockConceptCollection.Object);
 
         _validator = new PhaseValidator(_mockDbContext.Object);
     }
@@ -45,20 +48,6 @@ public class Phase3ValidatorTests
         Q3Revenue = 120_000,
         Q4Revenue = 130_000,
         Valuation = 5_000_000,
-        FundingAskAmount = 500_000,
-        FundingRoundType = "seed",
-        MonthlyBurn = 50_000,
-        CurrentFunds = 600_000,
-        TotalShares = 1_000_000,
-        EquityStructure = new List<EquityEntryDto>
-        {
-            new() { StakeholderName = "Founder", Type = "founder", SharesOwned = 1_000_000 },
-        },
-        CapitalAllocation = new List<CapitalAllocationDto>
-        {
-            new() { Category = "Product", Amount = 250_000, Percent = 50 },
-            new() { Category = "Sales", Amount = 250_000, Percent = 50 },
-        },
     };
 
     private static Phase3Kpi GoodKpi() => new()
@@ -70,6 +59,18 @@ public class Phase3ValidatorTests
         Ltv = 2_000,
         ChurnPercent = 4,
         ActiveAccounts = 50,
+    };
+
+    private static Phase3Concept GoodConcept() => new()
+    {
+        CompanyId = "comp-1",
+        OneLiner = "An AI co-pilot for indie founders to ship faster.",
+        ProblemStatement = "Founders waste weeks on boilerplate before validating an idea.",
+        SolutionDescription = "Generate and wire features from a spec.",
+        Stage = "mvp",
+        BusinessModel = "SaaS_Subscription",
+        SectorTags = new List<string> { "SaaS" },
+        ClarityScore = 100,
     };
 
     private void SetupKpiReturns(Phase3Kpi? kpi)
@@ -87,33 +88,26 @@ public class Phase3ValidatorTests
             .ReturnsAsync(cursor.Object);
     }
 
-    private void SetupReportsReturns(IEnumerable<Phase3FinancialReport> reports)
+    private void SetupConceptReturns(Phase3Concept? concept)
     {
-        var list = reports.ToList();
-        var cursor = new Mock<IAsyncCursor<Phase3FinancialReport>>();
-        cursor.Setup(c => c.Current).Returns(list);
+        var cursor = new Mock<IAsyncCursor<Phase3Concept>>();
+        cursor.Setup(c => c.Current).Returns(concept == null ? new List<Phase3Concept>() : new[] { concept });
         cursor.SetupSequence(c => c.MoveNextAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(list.Count > 0)
+            .ReturnsAsync(concept != null)
             .ReturnsAsync(false);
 
-        _mockReportCollection.Setup(c => c.FindAsync(
-            It.IsAny<FilterDefinition<Phase3FinancialReport>>(),
-            It.IsAny<FindOptions<Phase3FinancialReport, Phase3FinancialReport>>(),
+        _mockConceptCollection.Setup(c => c.FindAsync(
+            It.IsAny<FilterDefinition<Phase3Concept>>(),
+            It.IsAny<FindOptions<Phase3Concept, Phase3Concept>>(),
             It.IsAny<CancellationToken>()))
             .ReturnsAsync(cursor.Object);
     }
-
-    private static IEnumerable<Phase3FinancialReport> AllRequiredReports(string status = Phase3Requirements.ReportStatusPending) => new[]
-    {
-        new Phase3FinancialReport { CompanyId = "comp-1", Type = "pnl", Status = status, FileName = "pnl.pdf" },
-        new Phase3FinancialReport { CompanyId = "comp-1", Type = "balance", Status = status, FileName = "balance.pdf" },
-    };
 
     [Fact]
     public async Task Phase3_AllValidData_Passes()
     {
         SetupKpiReturns(GoodKpi());
-        SetupReportsReturns(AllRequiredReports());
+        SetupConceptReturns(GoodConcept());
 
         var (isValid, errors) = await _validator.ValidatePhase3Async(CompanyWithGoodBasics());
 
@@ -125,7 +119,7 @@ public class Phase3ValidatorTests
     public async Task Phase3_MissingKpiBaseline_Fails()
     {
         SetupKpiReturns(null);
-        SetupReportsReturns(AllRequiredReports());
+        SetupConceptReturns(GoodConcept());
 
         var (isValid, errors) = await _validator.ValidatePhase3Async(CompanyWithGoodBasics());
 
@@ -134,89 +128,53 @@ public class Phase3ValidatorTests
     }
 
     [Fact]
-    public async Task Phase3_RejectedRequiredReport_Fails()
+    public async Task Phase3_MissingConcept_Fails()
     {
         SetupKpiReturns(GoodKpi());
-        SetupReportsReturns(new[]
-        {
-            new Phase3FinancialReport { CompanyId = "comp-1", Type = "pnl", Status = "pending" },
-            new Phase3FinancialReport { CompanyId = "comp-1", Type = "balance", Status = Phase3Requirements.ReportStatusRejected },
-        });
+        SetupConceptReturns(null);
 
         var (isValid, errors) = await _validator.ValidatePhase3Async(CompanyWithGoodBasics());
 
         isValid.Should().BeFalse();
-        errors.Should().Contain("Required financial report 'balance' is missing or rejected");
+        errors.Should().Contain("Concept overview is required");
     }
 
     [Fact]
-    public async Task Phase3_MissingRequiredReportType_Fails()
-    {
-        SetupKpiReturns(GoodKpi());
-        SetupReportsReturns(new[]
-        {
-            new Phase3FinancialReport { CompanyId = "comp-1", Type = "pnl", Status = "pending" },
-        });
-
-        var (isValid, errors) = await _validator.ValidatePhase3Async(CompanyWithGoodBasics());
-
-        isValid.Should().BeFalse();
-        errors.Should().Contain("Required financial report 'balance' is missing or rejected");
-    }
-
-    [Fact]
-    public async Task Phase3_InvalidCapitalAllocationTotal_Fails()
+    public async Task Phase3_NoRevenue_Fails()
     {
         var company = CompanyWithGoodBasics();
-        company.CapitalAllocation = new List<CapitalAllocationDto>
-        {
-            new() { Category = "Product", Amount = 100, Percent = 60 }, // 60% total – outside 95-105
-        };
+        company.Q1Revenue = company.Q2Revenue = company.Q3Revenue = company.Q4Revenue = 0;
         SetupKpiReturns(GoodKpi());
-        SetupReportsReturns(AllRequiredReports());
+        SetupConceptReturns(GoodConcept());
 
         var (isValid, errors) = await _validator.ValidatePhase3Async(company);
 
         isValid.Should().BeFalse();
-        errors.Should().Contain(e => e.Contains("Capital allocation must total"));
+        errors.Should().Contain("Must have positive quarterly revenue data");
     }
 
     [Fact]
-    public async Task Phase3_InvalidEquityOwnershipTotal_Fails()
+    public async Task Phase3_NoValuation_Fails()
     {
         var company = CompanyWithGoodBasics();
-        company.EquityStructure = new List<EquityEntryDto>
-        {
-            new() { StakeholderName = "Founder", Type = "founder", SharesOwned = 500_000 }, // 50%
-        };
+        company.Valuation = null;
         SetupKpiReturns(GoodKpi());
-        SetupReportsReturns(AllRequiredReports());
+        SetupConceptReturns(GoodConcept());
 
         var (isValid, errors) = await _validator.ValidatePhase3Async(company);
 
         isValid.Should().BeFalse();
-        errors.Should().Contain(e => e.Contains("Equity ownership must total"));
+        errors.Should().Contain("Valuation must be calculated");
     }
 
     [Fact]
-    public async Task Phase3_ZeroMonthlyBurn_Fails()
+    public async Task Phase3_DoesNotRequireFundingOrEquityOrReports()
     {
-        var company = CompanyWithGoodBasics();
-        company.MonthlyBurn = 0;
+        // Company has NONE of: funding ask, equity structure, capital allocation,
+        // cash position, or financial reports — yet still passes with revenue +
+        // valuation + KPI + concept. Proves the old gates were removed.
         SetupKpiReturns(GoodKpi());
-        SetupReportsReturns(AllRequiredReports());
-
-        var (isValid, errors) = await _validator.ValidatePhase3Async(company);
-
-        isValid.Should().BeFalse();
-        errors.Should().Contain("Monthly burn rate is required (> 0)");
-    }
-
-    [Fact]
-    public async Task Phase3_ApprovedReportsAlsoPass()
-    {
-        SetupKpiReturns(GoodKpi());
-        SetupReportsReturns(AllRequiredReports(Phase3Requirements.ReportStatusApproved));
+        SetupConceptReturns(GoodConcept());
 
         var (isValid, errors) = await _validator.ValidatePhase3Async(CompanyWithGoodBasics());
 
