@@ -208,6 +208,8 @@ export interface SaveFundingAskRequest {
   /** Optional at write time; required at Phase 5 advancement. */
   equityOfferedPercent?: number;
   shareType?: "preferred" | "safe" | "note";
+  /** Explicit minimum cheque size (EUR). Optional at write time. */
+  minimumTicketEur?: number;
   capitalAllocation: CapitalAllocation[];
   resourceMap: ResourceMap;
 }
@@ -239,9 +241,11 @@ export interface FundingProfileResponse {
   preMoneyValuation?: number;
   equityOfferedPercent?: number;
   shareType?: string;
+  minimumTicketEur?: number;
   capitalAllocation: CapitalAllocation[];
   resourceMap?: ResourceMap;
   pitchDeckFileName?: string;
+  pitchDeckFileSize?: number;
   pitchDeckUploadedAt?: string;
   fundingNarrative?: string;
   hasOutreachCampaign: boolean;
@@ -969,6 +973,10 @@ export const entrepreneurApi = {
       data
     );
     return response.data;
+  },
+
+  markExitReviewed: async (companyId: string): Promise<void> => {
+    await api.post(`/companies/${companyId}/exit-reviewed`);
   },
 
   // ============ PHASE 6: DATA ROOM ============

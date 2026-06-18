@@ -1104,6 +1104,29 @@ public class CompanyController : ControllerBase
         }
     }
 
+    [HttpPost("{companyId}/exit-reviewed")]
+    public async Task<ActionResult> MarkExitWaterfallReviewed(string companyId)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureCompanyOwnershipAsync(companyId);
+            await _companyService.SetExitWaterfallReviewedAsync(companyId);
+            return Ok();
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error marking exit waterfall reviewed");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
     // ============ PHASE 6: DATA ROOM ============
 
     [HttpPost("{companyId}/dataroom/documents")]

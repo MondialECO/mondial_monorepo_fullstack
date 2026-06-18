@@ -13,12 +13,14 @@ namespace WebApp.DbContext
             var client = new MongoClient(settings.Value.ConnectionString);
             _database = client.GetDatabase(settings.Value.DatabaseName);
             EnsureMatchmakingQueueIndexes();
+            EnsurePhase4Indexes();
         }
 
         public MongoDbContext(IMongoDatabase database)
         {
             _database = database;
             EnsureMatchmakingQueueIndexes();
+            EnsurePhase4Indexes();
         }
 
         // Smart Matchmaking outbox indexes: Status (consumer polling), CompanyId
@@ -43,6 +45,65 @@ namespace WebApp.DbContext
                         new CreateIndexOptions { Background = true }),
                 };
                 MatchmakingQueue.Indexes.CreateMany(models);
+            }
+            catch
+            {
+                // Best-effort; never block or fail context construction.
+            }
+        }
+
+        // Phase 4 sub-collection indexes. Same best-effort + swallowed pattern as
+        // the matchmaking outbox: lookup by CompanyId, ordering by RecordedAt/
+        // EventDate/IssuedAt/Version, plus a unique composite {CompanyId, GrantId}
+        // on vesting schedules that enforces the upsert-key invariant at the DB
+        // level. Background builds; never block or fail context construction.
+        private void EnsurePhase4Indexes()
+        {
+            try
+            {
+                Phase4CapTables.Indexes.CreateMany(new[]
+                {
+                    new CreateIndexModel<Phase4CapTable>(
+                        Builders<Phase4CapTable>.IndexKeys.Ascending(x => x.CompanyId),
+                        new CreateIndexOptions { Background = true }),
+                    new CreateIndexModel<Phase4CapTable>(
+                        Builders<Phase4CapTable>.IndexKeys.Descending(x => x.RecordedAt),
+                        new CreateIndexOptions { Background = true }),
+                    new CreateIndexModel<Phase4CapTable>(
+                        Builders<Phase4CapTable>.IndexKeys.Descending(x => x.Version),
+                        new CreateIndexOptions { Background = true }),
+                });
+
+                Phase4VestingSchedules.Indexes.CreateMany(new[]
+                {
+                    new CreateIndexModel<Phase4VestingSchedule>(
+                        Builders<Phase4VestingSchedule>.IndexKeys.Ascending(x => x.CompanyId),
+                        new CreateIndexOptions { Background = true }),
+                    new CreateIndexModel<Phase4VestingSchedule>(
+                        Builders<Phase4VestingSchedule>.IndexKeys
+                            .Ascending(x => x.CompanyId).Ascending(x => x.GrantId),
+                        new CreateIndexOptions { Background = true, Unique = true }),
+                });
+
+                Phase4OwnershipHistories.Indexes.CreateMany(new[]
+                {
+                    new CreateIndexModel<Phase4OwnershipHistory>(
+                        Builders<Phase4OwnershipHistory>.IndexKeys.Ascending(x => x.CompanyId),
+                        new CreateIndexOptions { Background = true }),
+                    new CreateIndexModel<Phase4OwnershipHistory>(
+                        Builders<Phase4OwnershipHistory>.IndexKeys.Descending(x => x.EventDate),
+                        new CreateIndexOptions { Background = true }),
+                });
+
+                Phase4ShareIssuances.Indexes.CreateMany(new[]
+                {
+                    new CreateIndexModel<Phase4ShareIssuance>(
+                        Builders<Phase4ShareIssuance>.IndexKeys.Ascending(x => x.CompanyId),
+                        new CreateIndexOptions { Background = true }),
+                    new CreateIndexModel<Phase4ShareIssuance>(
+                        Builders<Phase4ShareIssuance>.IndexKeys.Descending(x => x.IssuedAt),
+                        new CreateIndexOptions { Background = true }),
+                });
             }
             catch
             {
