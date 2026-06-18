@@ -96,3 +96,21 @@ export async function downloadDataRoomDocument(
   );
   return res.data;
 }
+
+/**
+ * Records a download engagement event for a data-room document. The backend
+ * binds the investor identity from the auth token (never the body — IDOR-safe)
+ * and applies the same access policy as the real download, so this can only
+ * succeed for a document the caller could actually download. Fire-and-forget
+ * from the caller's perspective: a tracking failure must never break the
+ * download UX. Feeds the entrepreneur's data-room analytics.
+ */
+export async function trackDocumentDownload(
+  companyId: string,
+  documentId: string
+): Promise<void> {
+  await api.post(
+    `/companies/${companyId}/dataroom/track-download`,
+    { documentId }
+  );
+}

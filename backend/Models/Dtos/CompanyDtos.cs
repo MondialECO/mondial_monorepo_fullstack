@@ -208,7 +208,10 @@ public class UploadDataRoomDocumentRequest
 
 public class DataRoomAccessRequest
 {
-    public string InvestorId { get; set; }
+    // Both identifiers are optional at the model level; the service requires
+    // exactly one (email is the primary path, id is the back-compat fallback).
+    public string? InvestorId { get; set; }
+    public string? InvestorEmail { get; set; } // resolved to an Investor by PrimaryEmail
     public string AccessLevel { get; set; } // view_only, download, comment
     public int DaysValid { get; set; } = 7;
 }
@@ -284,6 +287,8 @@ public class DataRoomStatusResponse
 {
     public bool IsLive { get; set; }
     public bool NdaRequired { get; set; }
+    /// <summary>Set once an investor has signed; NDA can no longer be disabled.</summary>
+    public DateTime? NdaLockedAt { get; set; }
     public int TotalDocuments { get; set; }
     public List<DataRoomDocumentResponse> Documents { get; set; }
     public List<DataRoomAccessRecord> AccessGrants { get; set; }
