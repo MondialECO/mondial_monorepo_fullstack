@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using WebApp.Models.DatabaseModels;
@@ -17,6 +18,7 @@ public class CompanyService : ICompanyService
     private readonly IDocumentManager _documentManager;
     private readonly IPhaseValidator _phaseValidator;
     private readonly IDealEventPublisher _dealEvents;
+    private readonly ILogger<CompanyService>? _logger;
 
     public CompanyService(
         MongoDbContext dbContext,
@@ -26,7 +28,8 @@ public class CompanyService : ICompanyService
         IAiReviewEngine aiReviewEngine,
         IDocumentManager documentManager,
         IPhaseValidator phaseValidator,
-        IDealEventPublisher dealEvents)
+        IDealEventPublisher dealEvents,
+        ILogger<CompanyService>? logger = null)
     {
         _dbContext = dbContext;
         _valuationEngine = valuationEngine;
@@ -36,6 +39,7 @@ public class CompanyService : ICompanyService
         _documentManager = documentManager;
         _phaseValidator = phaseValidator;
         _dealEvents = dealEvents;
+        _logger = logger;
     }
 
     // ============ PHASE FLOW ============
@@ -97,6 +101,12 @@ public class CompanyService : ICompanyService
         // its own errors) so it can never block or fail the phase advance.
         if (phaseToComplete == 3)
             await Phase3CompletionEvents.RunAsync(_dbContext, company);
+
+        if (phaseToComplete == 4)
+            await Phase4CompletionEvents.RunAsync(_dbContext, company);
+
+        if (phaseToComplete == 5)
+            await Phase5CompletionEvents.RunAsync(_dbContext, company, _logger);
 
         return BuildProgressResponse(company);
     }
@@ -450,6 +460,11 @@ public class CompanyService : ICompanyService
         if (!double.IsFinite(request.PreMoneyValuation) ||
             request.PreMoneyValuation < Phase5Requirements.ValuationMin)
             throw new ArgumentException($"preMoneyValuation must be >= {Phase5Requirements.ValuationMin}");
+        if (request.PreMoneyValuation < request.RaiseAmount)
+            throw new ArgumentException("preMoneyValuation must be >= raiseAmount");
+        if (request.MinimumTicketEur.HasValue &&
+            (!double.IsFinite(request.MinimumTicketEur.Value) || request.MinimumTicketEur.Value < 0))
+            throw new ArgumentException("minimumTicketEur must be a finite number >= 0");
 
         // EquityOfferedPercent is optional at write time (Phase 3 doesn't collect it).
         // Phase 5 validator enforces it before phase advancement.
@@ -491,6 +506,8 @@ public class CompanyService : ICompanyService
             company.EquityOfferedPercent = request.EquityOfferedPercent.Value;
         if (!string.IsNullOrWhiteSpace(request.ShareType))
             company.ShareType = request.ShareType.ToLowerInvariant();
+        if (request.MinimumTicketEur.HasValue)
+            company.MinimumTicketEur = request.MinimumTicketEur.Value;
         company.CapitalAllocation = request.CapitalAllocation;
         company.ResourceMap = request.ResourceMap;
         company.UpdatedAt = DateTime.UtcNow;
@@ -997,6 +1014,25 @@ public class CompanyService : ICompanyService
         return latest == null ? null : MapCapTableSnapshot(latest);
     }
 
+    /// <summary>
+    /// Marks the latest cap-table snapshot's exit waterfall as reviewed. Required
+    /// (alongside a recorded dilution simulation) before Phase 4 advancement.
+    /// </summary>
+    public async Task SetExitWaterfallReviewedAsync(string companyId)
+    {
+        await GetCompanyAsync(companyId);
+        var latest = await _dbContext.Phase4CapTables
+            .Find(c => c.CompanyId == companyId)
+            .SortByDescending(c => c.RecordedAt)
+            .FirstOrDefaultAsync();
+        if (latest == null)
+            throw new ArgumentException("No cap table snapshot found to mark exit waterfall reviewed");
+
+        await _dbContext.Phase4CapTables.UpdateOneAsync(
+            Builders<Phase4CapTable>.Filter.Eq(c => c.Id, latest.Id),
+            Builders<Phase4CapTable>.Update.Set(c => c.ExitWaterfallReviewed, true));
+    }
+
     public async Task<List<VestingScheduleResponse>> SaveVestingSchedulesAsync(string companyId, SaveVestingScheduleRequest request)
     {
         if (request?.Entries == null || request.Entries.Count == 0)
@@ -1148,6 +1184,27 @@ public class CompanyService : ICompanyService
             IssuedAt = DateTime.UtcNow,
         };
 
+        // SAFE-note conversion: when issuing a SAFE and all conversion inputs are
+        // supplied, derive the conversion price, share count, and method used.
+        if (string.Equals(doc.ShareClass, ShareClasses.Safe, StringComparison.OrdinalIgnoreCase)
+            && request.SafePrincipal is > 0
+            && request.ValuationCap is > 0
+            && request.RoundPricePerShare is > 0
+            && request.DiscountRate is >= 0 and < 1
+            && request.TotalSharesPreRound is > 0)
+        {
+            var conversion = Phase4Requirements.ComputeSafeConversion(
+                request.SafePrincipal.Value,
+                request.ValuationCap.Value,
+                request.DiscountRate.Value,
+                request.RoundPricePerShare.Value,
+                request.TotalSharesPreRound.Value);
+
+            doc.SharesIssued = conversion.SharesIssued;
+            doc.ConversionPrice = conversion.ConversionPrice;
+            doc.ConversionMethod = conversion.MethodUsed;
+        }
+
         await _dbContext.Phase4ShareIssuances.InsertOneAsync(doc);
 
         return new ShareIssuanceResponse
@@ -1159,6 +1216,8 @@ public class CompanyService : ICompanyService
             PricePerShare = doc.PricePerShare,
             Reason = doc.Reason,
             IssuedAt = doc.IssuedAt,
+            ConversionPrice = doc.ConversionPrice,
+            ConversionMethod = doc.ConversionMethod,
         };
     }
 
@@ -1312,6 +1371,20 @@ public class CompanyService : ICompanyService
     public async Task<FundingProfileResponse> GetFundingProfileAsync(string companyId)
     {
         var company = await GetCompanyAsync(companyId);
+
+        // amount is DERIVED on read from the single source of truth
+        // (raise × percent / 100) — never persisted, so it can never drift
+        // from FundingAskAmount.
+        var raise = company.FundingAskAmount ?? 0;
+        var allocation = (company.CapitalAllocation ?? new List<CapitalAllocationDto>())
+            .Select(c => new CapitalAllocationDto
+            {
+                Category = c.Category,
+                Percent = c.Percent,
+                Amount = double.IsFinite(c.Percent) ? raise * c.Percent / 100.0 : 0,
+            })
+            .ToList();
+
         return new FundingProfileResponse
         {
             FundingAskAmount = company.FundingAskAmount,
@@ -1319,9 +1392,11 @@ public class CompanyService : ICompanyService
             PreMoneyValuation = company.PreMoneyValuation,
             EquityOfferedPercent = company.EquityOfferedPercent,
             ShareType = company.ShareType,
-            CapitalAllocation = company.CapitalAllocation ?? new List<CapitalAllocationDto>(),
+            MinimumTicketEur = company.MinimumTicketEur,
+            CapitalAllocation = allocation,
             ResourceMap = company.ResourceMap,
             PitchDeckFileName = company.PitchDeckFileName,
+            PitchDeckFileSize = company.PitchDeckFileSize,
             PitchDeckUploadedAt = company.PitchDeckUploadedAt,
             FundingNarrative = company.FundingNarrative,
             HasOutreachCampaign = !string.IsNullOrWhiteSpace(company.OutreachCampaignTemplate),

@@ -109,6 +109,8 @@ public class SaveFundingAskRequest
     /// <summary>Optional at write time; required at Phase 5 advancement.</summary>
     public double? EquityOfferedPercent { get; set; }
     public string ShareType { get; set; } // preferred, safe, note
+    /// <summary>Explicit minimum cheque size (EUR). Optional at write time.</summary>
+    public double? MinimumTicketEur { get; set; }
     public List<CapitalAllocationDto> CapitalAllocation { get; set; }
     public ResourceMapDto ResourceMap { get; set; }
 }
@@ -725,6 +727,16 @@ public class RecordShareIssuanceRequest
     public int SharesIssued { get; set; }
     public double? PricePerShare { get; set; }
     public string Reason { get; set; }
+
+    // Optional SAFE-note conversion inputs. When ShareClass == "safe" and all of
+    // these are supplied, the service computes the conversion (price, shares,
+    // method) via Phase4Requirements.ComputeSafeConversion. Backward compatible:
+    // omitted for ordinary issuances.
+    public double? SafePrincipal { get; set; }
+    public double? ValuationCap { get; set; }
+    public double? DiscountRate { get; set; }
+    public double? RoundPricePerShare { get; set; }
+    public int? TotalSharesPreRound { get; set; }
 }
 
 public class ShareIssuanceResponse
@@ -736,6 +748,10 @@ public class ShareIssuanceResponse
     public double? PricePerShare { get; set; }
     public string Reason { get; set; }
     public DateTime IssuedAt { get; set; }
+
+    // Populated only for SAFE conversions (otherwise null).
+    public double? ConversionPrice { get; set; }
+    public string ConversionMethod { get; set; }
 }
 
 // ============ PHASE 5: PITCH DECK / NARRATIVE / FUNDING PROFILE ============
@@ -765,9 +781,11 @@ public class FundingProfileResponse
     public double? PreMoneyValuation { get; set; }
     public double? EquityOfferedPercent { get; set; }
     public string ShareType { get; set; }
+    public double? MinimumTicketEur { get; set; }
     public List<CapitalAllocationDto> CapitalAllocation { get; set; } = new();
     public ResourceMapDto ResourceMap { get; set; }
     public string PitchDeckFileName { get; set; }
+    public long? PitchDeckFileSize { get; set; }
     public DateTime? PitchDeckUploadedAt { get; set; }
     public string FundingNarrative { get; set; }
     public bool HasOutreachCampaign { get; set; }

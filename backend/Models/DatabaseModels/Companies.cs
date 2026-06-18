@@ -82,9 +82,14 @@ public class Companies
     // Phase 5: Funding Ask
     public double? FundingAskAmount { get; set; }
     public string FundingRoundType { get; set; }
+    // Set true by Phase5CompletionEvents when the funding submission completes.
+    public bool? FundingAskLive { get; set; }
     public double? PreMoneyValuation { get; set; }
     public double? EquityOfferedPercent { get; set; }
     public string ShareType { get; set; }
+    // Explicit minimum cheque size (EUR). Authoritative for the matchmaking
+    // payload's min_ticket — never derived from a capital-allocation row.
+    public double? MinimumTicketEur { get; set; }
     public List<CapitalAllocationDto> CapitalAllocation { get; set; } = new();
     public ResourceMapDto ResourceMap { get; set; }
 

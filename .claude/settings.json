@@ -31,7 +31,19 @@
       "Bash(ls:*)",
       "Bash(cat:*)",
       "Bash(rg:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(curl -s -o p4_overview.png \"https://www.figma.com/api/mcp/asset/63e1c84b-32ab-4372-8d58-b293d5d89f71\")",
+      "Bash(curl -s -o p4_captable.png \"https://www.figma.com/api/mcp/asset/c839201a-9d7e-4526-babf-f42fea1bbeee\")",
+      "Read(//d/d/**)",
+      "Bash(curl -s -o p4_dilution.png \"https://www.figma.com/api/mcp/asset/7a0625d9-0f4b-45ea-8b0b-d56813169611\")",
+      "Bash(curl -s -o p4_history.png \"https://www.figma.com/api/mcp/asset/b66d68ef-8f33-4df9-8408-4853afb104af\")",
+      "Bash(echo \"=== lint exit: $? ===\")",
+      "Skill(ui-review)",
+      "Skill(ui-review:*)",
+      "Bash(curl -s http://localhost:3000/api/health)",
+      "Bash(curl -s -L http://localhost:3000/dashboard/entrepreneur/phase-4)",
+      "Skill(code-review)",
+      "Skill(code-review:*)"
     ],
     "deny": [
       "Bash(rm -rf:*)",
