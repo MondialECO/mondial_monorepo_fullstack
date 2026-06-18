@@ -14,6 +14,7 @@ namespace WebApp.DbContext
             _database = client.GetDatabase(settings.Value.DatabaseName);
             EnsureMatchmakingQueueIndexes();
             EnsurePhase4Indexes();
+            EnsurePhase6Indexes();
         }
 
         public MongoDbContext(IMongoDatabase database)
@@ -21,6 +22,7 @@ namespace WebApp.DbContext
             _database = database;
             EnsureMatchmakingQueueIndexes();
             EnsurePhase4Indexes();
+            EnsurePhase6Indexes();
         }
 
         // Smart Matchmaking outbox indexes: Status (consumer polling), CompanyId
@@ -102,6 +104,31 @@ namespace WebApp.DbContext
                         new CreateIndexOptions { Background = true }),
                     new CreateIndexModel<Phase4ShareIssuance>(
                         Builders<Phase4ShareIssuance>.IndexKeys.Descending(x => x.IssuedAt),
+                        new CreateIndexOptions { Background = true }),
+                });
+            }
+            catch
+            {
+                // Best-effort; never block or fail context construction.
+            }
+        }
+
+        // Phase 6 data-room access-log indexes. Analytics and the activity
+        // timeline both query by CompanyId; the timeline sorts by OccurredAt and
+        // engagement groups by InvestorId. Same best-effort + swallowed pattern.
+        private void EnsurePhase6Indexes()
+        {
+            try
+            {
+                Phase6AccessLogs.Indexes.CreateMany(new[]
+                {
+                    new CreateIndexModel<Phase6AccessLog>(
+                        Builders<Phase6AccessLog>.IndexKeys
+                            .Ascending(x => x.CompanyId).Descending(x => x.OccurredAt),
+                        new CreateIndexOptions { Background = true }),
+                    new CreateIndexModel<Phase6AccessLog>(
+                        Builders<Phase6AccessLog>.IndexKeys
+                            .Ascending(x => x.CompanyId).Ascending(x => x.InvestorId),
                         new CreateIndexOptions { Background = true }),
                 });
             }

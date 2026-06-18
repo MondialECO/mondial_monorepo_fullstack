@@ -396,6 +396,8 @@ export interface DataRoomAccessGrant {
 export interface DataRoomStatusResponse {
   isLive: boolean;
   ndaRequired: boolean;
+  /** Set once an investor has signed; NDA can no longer be disabled. */
+  ndaLockedAt?: string | null;
   totalDocuments: number;
   documents: DataRoomDocumentResponse[];
   accessGrants: DataRoomAccessGrant[];
@@ -1001,13 +1003,13 @@ export const entrepreneurApi = {
 
   grantDataRoomAccess: async (
     companyId: string,
-    investorId: string,
+    investorEmail: string,
     accessLevel: string,
     daysValid: number = 7
   ) => {
     const response = await api.post(
       `/companies/${companyId}/dataroom/access`,
-      { investorId, accessLevel, daysValid }
+      { investorEmail, accessLevel, daysValid }
     );
     return response.data;
   },
@@ -1020,7 +1022,14 @@ export const entrepreneurApi = {
   },
 
   updateNdaRequirement: async (companyId: string, required: boolean) => {
-    const response = await api.put(`/companies/${companyId}/dataroom/nda`, required);
+    // Backend binds [FromBody] bool, which requires a raw JSON literal (true/false).
+    // Axios only serializes a primitive boolean when the JSON content type is set
+    // explicitly; without this header the body is unparseable and the API returns 400.
+    const response = await api.put(
+      `/companies/${companyId}/dataroom/nda`,
+      required,
+      { headers: { "Content-Type": "application/json" } }
+    );
     return response.data;
   },
 
@@ -1080,6 +1089,15 @@ export const entrepreneurApi = {
   ): Promise<Phase6AccessLogResponse[]> => {
     const response = await api.get<Phase6AccessLogResponse[]>(
       `/companies/${companyId}/dataroom/activity-timeline`
+    );
+    return response.data;
+  },
+
+  getDataRoomInvestorEngagement: async (
+    companyId: string
+  ): Promise<InvestorEngagementResponse[]> => {
+    const response = await api.get<InvestorEngagementResponse[]>(
+      `/companies/${companyId}/dataroom/investor-engagement`
     );
     return response.data;
   },

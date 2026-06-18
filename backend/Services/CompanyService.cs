@@ -1701,6 +1701,17 @@ public class CompanyService : ICompanyService
         await _dbContext.Phase6NdaAcceptances.ReplaceOneAsync(
             filter, nda, new ReplaceOptions { IsUpsert = true });
 
+        // Lock NDA enforcement on first signature: once an investor relies on
+        // the NDA the entrepreneur can no longer disable it. Only sets the
+        // timestamp if not already locked.
+        await _dbContext.Companies.UpdateOneAsync(
+            Builders<Companies>.Filter.And(
+                Builders<Companies>.Filter.Eq(c => c.Id, companyId),
+                Builders<Companies>.Filter.Eq(c => c.DataRoomNdaLockedAt, (DateTime?)null)),
+            Builders<Companies>.Update
+                .Set(c => c.DataRoomNdaLockedAt, acceptedAt)
+                .Set(c => c.UpdatedAt, DateTime.UtcNow));
+
         // Notification emission is the controller's responsibility — IPhaseNotificationService
         // depends on ICompanyService, so injecting it here would create a DI cycle.
         return new NdaAcceptanceResponse
@@ -1718,6 +1729,7 @@ public class CompanyService : ICompanyService
         {
             IsLive = company.IsDataRoomLive,
             NdaRequired = company.IsDataRoomNdaRequired,
+            NdaLockedAt = company.DataRoomNdaLockedAt,
             TotalDocuments = company.DataRoomDocuments?.Count ?? 0,
             Documents = company.DataRoomDocuments ?? new List<DataRoomDocumentResponse>(),
             AccessGrants = company.DataRoomAccessRecords ?? new List<DataRoomAccessRecord>()
@@ -1726,20 +1738,58 @@ public class CompanyService : ICompanyService
 
     public async Task<DataRoomStatusResponse> GrantDataRoomAccessAsync(string companyId, DataRoomAccessRequest request)
     {
+        var email = request?.InvestorEmail?.Trim();
+        var investorId = request?.InvestorId?.Trim();
+        if (string.IsNullOrWhiteSpace(email) && string.IsNullOrWhiteSpace(investorId))
+            throw new ArgumentException("investorEmail is required");
+
         var company = await GetCompanyAsync(companyId);
+
+        // The identifier must resolve to a live Investor row — without this, grants
+        // can be created for arbitrary strings, leaving orphaned access records
+        // that no real investor can ever use. Mirrors the deal-creation guard.
+        // Email is the primary path (case-insensitive); InvestorId is kept as a
+        // back-compat fallback for any direct API callers.
+        Investor investor;
+        if (!string.IsNullOrWhiteSpace(email))
+        {
+            var emailFilter = Builders<Investor>.Filter.Regex(
+                i => i.PrimaryEmail,
+                new BsonRegularExpression($"^{System.Text.RegularExpressions.Regex.Escape(email)}$", "i"));
+            investor = await _dbContext.Investors.Find(emailFilter).FirstOrDefaultAsync()
+                ?? throw new ArgumentException(
+                    $"No verified investor found with email '{email}'. Only verified investors can be granted data room access.");
+        }
+        else
+        {
+            investor = await _dbContext.Investors
+                .Find(i => i.Id == investorId)
+                .FirstOrDefaultAsync()
+                ?? throw new ArgumentException(
+                    $"Investor '{investorId}' not found. Only verified investors can be granted data room access.");
+        }
+
+        // Always store the resolved investor's real Id so dedupe + revoke key on it.
+        var resolvedInvestorId = investor.Id;
 
         var accessRecord = new DataRoomAccessRecord
         {
-            InvestorId = request.InvestorId,
+            InvestorId = resolvedInvestorId,
+            InvestorName = investor.Name,
             AccessLevel = request.AccessLevel,
             GrantedAt = DateTime.UtcNow,
             ExpiresAt = DateTime.UtcNow.AddDays(request.DaysValid)
         };
 
-        if (company.DataRoomAccessRecords == null)
-            company.DataRoomAccessRecords = new List<DataRoomAccessRecord>();
+        company.DataRoomAccessRecords ??= new List<DataRoomAccessRecord>();
 
-        company.DataRoomAccessRecords.Add(accessRecord);
+        // Dedupe by investor: re-granting the same investor updates their
+        // existing grant (expiry + access level) instead of stacking a second
+        // record. Exactly one grant per investor.
+        company.DataRoomAccessRecords = company.DataRoomAccessRecords
+            .Where(r => !string.Equals(r.InvestorId, resolvedInvestorId, StringComparison.Ordinal))
+            .Append(accessRecord)
+            .ToList();
         company.UpdatedAt = DateTime.UtcNow;
 
         var filter = Builders<Companies>.Filter.Eq(c => c.Id, companyId);
@@ -1767,6 +1817,13 @@ public class CompanyService : ICompanyService
     public async Task UpdateNdaRequirementAsync(string companyId, bool required)
     {
         var company = await GetCompanyAsync(companyId);
+
+        // NDA enforcement cannot be disabled once an investor has signed —
+        // disabling it would retroactively strip the protection they relied on.
+        if (!required && company.DataRoomNdaLockedAt.HasValue)
+            throw new InvalidOperationException(
+                "NDA enforcement cannot be disabled after investors have signed. Revoke individual access instead.");
+
         company.IsDataRoomNdaRequired = required;
         company.UpdatedAt = DateTime.UtcNow;
 

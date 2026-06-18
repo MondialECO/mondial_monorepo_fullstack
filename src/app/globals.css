@@ -66,9 +66,9 @@
 
 :root {
   --radius: 0.75rem;
-  --background: #F1F5F9;
+  --background: #ededed;
   --foreground: #1C2434;
-  --card: #FFFFFF;
+  --card: #f9f9fa;
   --card-foreground: #1C2434;
   --popover: #FFFFFF;
   --popover-foreground: #1C2434;
@@ -106,6 +106,25 @@
   --warning-foreground: #FFFFFF;
   --info: #0369A1;
   --info-foreground: #FFFFFF;
+
+  /* Phase 6 — Data Room design tokens (Figma) */
+  --dr-bg-page: #ededed;
+  --dr-bg-card: #f9f9fa;
+  --dr-bg-white: #ffffff;
+  --dr-bg-blue: #f1f5ff;
+  --dr-bg-green: #d4ffe5;
+  --dr-bg-yellow: #f9f2e8;
+  --dr-bg-icon: #f1f1f2;
+  --dr-primary: #3c61dd;
+  --dr-primary-toggle: #3c6ef0;
+  --dr-text-primary: #070707;
+  --dr-text-secondary: #5e5e5e;
+  --dr-text-muted: #606060;
+  --dr-green: #067231;
+  --dr-yellow: #965f11;
+  --dr-yellow-alt: #985b07;
+  --dr-border: rgba(0, 0, 0, 0.08);
+  --dr-border-light: rgba(0, 0, 0, 0.06);
 }
 
 .dark {
@@ -149,6 +168,25 @@
   --warning-foreground: #1C2434;
   --info: #38BDF8;
   --info-foreground: #08090A;
+
+  /* Phase 6 — Data Room design tokens (dark) */
+  --dr-bg-page: #08090A;
+  --dr-bg-card: #0b0c0e;
+  --dr-bg-white: #111214;
+  --dr-bg-blue: #15203a;
+  --dr-bg-green: #0f3d24;
+  --dr-bg-yellow: #3a2f1a;
+  --dr-bg-icon: #1a1b1e;
+  --dr-primary: #6f8cff;
+  --dr-primary-toggle: #6f8cff;
+  --dr-text-primary: #f5f5f5;
+  --dr-text-secondary: #a0a0a0;
+  --dr-text-muted: #8a8a8a;
+  --dr-green: #34d399;
+  --dr-yellow: #fbbf24;
+  --dr-yellow-alt: #fbbf24;
+  --dr-border: rgba(255, 255, 255, 0.12);
+  --dr-border-light: rgba(255, 255, 255, 0.08);
 }
 
 @layer base {

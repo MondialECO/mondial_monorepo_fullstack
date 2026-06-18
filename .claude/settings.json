@@ -43,7 +43,10 @@
       "Bash(curl -s http://localhost:3000/api/health)",
       "Bash(curl -s -L http://localhost:3000/dashboard/entrepreneur/phase-4)",
       "Skill(code-review)",
-      "Skill(code-review:*)"
+      "Skill(code-review:*)",
+      "Bash(grep -E \"\\\\.\\(tsx?|cs\\)$\")",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(curl -s http://localhost:3000)"
     ],
     "deny": [
       "Bash(rm -rf:*)",
