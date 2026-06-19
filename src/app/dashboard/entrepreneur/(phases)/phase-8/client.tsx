@@ -184,20 +184,20 @@ export default function Phase8Client() {
   });
 
   return (
-    <div className="flex-1 bg-[#ededed] overflow-y-auto p-8 flex flex-col gap-6">
+    <div className="flex-1 overflow-y-auto p-8 flex flex-col gap-6" style={{ backgroundColor: 'var(--dr-bg-page)' }}>
       {/* Page Header */}
       <div className="flex items-start justify-between gap-6">
         <div className="flex flex-col gap-2">
-          <h1 className="text-[32px] font-semibold text-[#070707] leading-[40px]">
+          <h1 className="text-[32px] font-semibold leading-[40px]" style={{ color: 'var(--dr-text-primary)' }}>
             Investor Matching — Phase 8
           </h1>
-          <p className="text-sm text-[#5e5e5e]">
+          <p className="text-sm" style={{ color: 'var(--dr-text-secondary)' }}>
             AI has matched your company with {insights?.totalMatches ?? 0} compatible investors.
             Express interest to begin a conversation.
           </p>
         </div>
-        <span className="flex items-center gap-1.5 bg-[#d4ffe5] border border-black/8 px-3 py-1 rounded-full text-[#157a55] text-sm font-semibold shrink-0">
-          <span className="w-2 h-2 rounded-full bg-[#157a55]" />
+        <span className="flex items-center gap-1.5 border border-black/8 px-3 py-1 rounded-full text-sm font-semibold shrink-0" style={{ backgroundColor: 'var(--dr-bg-green)', color: 'var(--p8-green)' }}>
+          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--p8-green)' }} />
           AI MATCHING LIVE
         </span>
       </div>
@@ -205,59 +205,59 @@ export default function Phase8Client() {
       {/* 4 Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* AI Matches */}
-        <div className="bg-[#f9f9fa] border border-white rounded-xl px-4 py-3 flex flex-col gap-2 drop-shadow-sm">
-          <span className="text-[11px] font-medium text-[#606060] uppercase tracking-wide">AI Matches</span>
-          <span className="text-[24px] font-semibold leading-[32px] text-[#070707]">
+        <div className="border border-white rounded-xl px-4 py-3 flex flex-col gap-2 drop-shadow-sm" style={{ backgroundColor: 'var(--dr-bg-card)' }}>
+          <span className="text-[11px] font-medium uppercase tracking-wide" style={{ color: 'var(--dr-text-muted)' }}>AI Matches</span>
+          <span className="text-[24px] font-semibold leading-[32px]" style={{ color: 'var(--dr-text-primary)' }}>
             {insights?.totalMatches ?? 0}
           </span>
-          <span className="text-[11px] text-[#606060]">Compatible investors</span>
+          <span className="text-[11px]" style={{ color: 'var(--dr-text-muted)' }}>Compatible investors</span>
         </div>
 
         {/* Expressions of Interest */}
-        <div className="bg-[#f9f9fa] border border-white rounded-xl px-4 py-3 flex flex-col gap-2 drop-shadow-sm">
-          <span className="text-[11px] font-medium text-[#606060] uppercase tracking-wide">Expressions</span>
-          <span className="text-[24px] font-semibold leading-[32px] text-[#965f11]">
+        <div className="border border-white rounded-xl px-4 py-3 flex flex-col gap-2 drop-shadow-sm" style={{ backgroundColor: 'var(--dr-bg-card)' }}>
+          <span className="text-[11px] font-medium uppercase tracking-wide" style={{ color: 'var(--dr-text-muted)' }}>Expressions</span>
+          <span className="text-[24px] font-semibold leading-[32px]" style={{ color: 'var(--dr-yellow)' }}>
             {insights?.highScoreMatches ?? 0}
           </span>
-          <span className="text-[11px] text-[#606060]">Investors interested</span>
+          <span className="text-[11px]" style={{ color: 'var(--dr-text-muted)' }}>Investors interested</span>
         </div>
 
         {/* Handshakes Confirmed */}
-        <div className="bg-[#f9f9fa] border border-white rounded-xl px-4 py-3 flex flex-col gap-2 drop-shadow-sm">
-          <span className="text-[11px] font-medium text-[#606060] uppercase tracking-wide">Handshakes</span>
-          <span className="text-[24px] font-semibold leading-[32px] text-[#157a55]">
+        <div className="border border-white rounded-xl px-4 py-3 flex flex-col gap-2 drop-shadow-sm" style={{ backgroundColor: 'var(--dr-bg-card)' }}>
+          <span className="text-[11px] font-medium uppercase tracking-wide" style={{ color: 'var(--dr-text-muted)' }}>Handshakes</span>
+          <span className="text-[24px] font-semibold leading-[32px]" style={{ color: 'var(--p8-green)' }}>
             {acceptedCount}
           </span>
-          <span className="text-[11px] text-[#606060]">Meeting scheduled</span>
+          <span className="text-[11px]" style={{ color: 'var(--dr-text-muted)' }}>Meeting scheduled</span>
         </div>
 
         {/* Profile Views */}
-        <div className="bg-[#f9f9fa] border border-white rounded-xl px-4 py-3 flex flex-col gap-2 drop-shadow-sm">
-          <span className="text-[11px] font-medium text-[#606060] uppercase tracking-wide">Profile Views</span>
-          <span className="text-[24px] font-semibold leading-[32px] text-[#3c61dd]">
+        <div className="border border-white rounded-xl px-4 py-3 flex flex-col gap-2 drop-shadow-sm" style={{ backgroundColor: 'var(--dr-bg-card)' }}>
+          <span className="text-[11px] font-medium uppercase tracking-wide" style={{ color: 'var(--dr-text-muted)' }}>Profile Views</span>
+          <span className="text-[24px] font-semibold leading-[32px]" style={{ color: 'var(--dr-primary)' }}>
             {insights?.interactionsCount ?? 0}
           </span>
-          <span className="text-[11px] text-[#606060]">Meeting scheduled</span>
+          <span className="text-[11px]" style={{ color: 'var(--dr-text-muted)' }}>Meeting scheduled</span>
         </div>
       </div>
 
       {/* Funding Ask Info Bar */}
-      <div className="bg-[#f9f9fa] border border-white rounded-lg px-4 py-3.5 flex justify-between items-center">
+      <div className="border border-white rounded-lg px-4 py-3.5 flex justify-between items-center" style={{ backgroundColor: 'var(--dr-bg-card)' }}>
         <div className="flex items-center gap-3 h-full">
-          <span className="text-xs font-semibold text-[#157a55]">Your funding ask is live</span>
+          <span className="text-xs font-semibold" style={{ color: 'var(--p8-green)' }}>Your funding ask is live</span>
           <div className="w-px h-full bg-black/8" />
-          <span className="text-xs font-medium text-[#070707]">{funding?.fundingRoundType ?? '—'}</span>
+          <span className="text-xs font-medium" style={{ color: 'var(--dr-text-primary)' }}>{funding?.fundingRoundType ?? '—'}</span>
           <div className="w-px h-full bg-black/8" />
-          <span className="text-xs font-medium text-[#070707]">${funding?.fundingAskAmount?.toLocaleString() ?? '—'}</span>
+          <span className="text-xs font-medium" style={{ color: 'var(--dr-text-primary)' }}>${funding?.fundingAskAmount?.toLocaleString() ?? '—'}</span>
           <div className="w-px h-full bg-black/8" />
-          <span className="text-xs font-medium text-[#070707]">
+          <span className="text-xs font-medium" style={{ color: 'var(--dr-text-primary)' }}>
             {funding?.equityOfferedPercent ?? '—'}%{' '}
-            <span className="text-[11px] text-[#5e5e5e]">equity</span>
+            <span className="text-[11px]" style={{ color: 'var(--dr-text-secondary)' }}>equity</span>
           </span>
           {investorReady && (
             <>
               <div className="w-px h-full bg-black/8" />
-              <span className="bg-[#d4ffe5] text-[#157a55] text-[11px] px-2 py-0.5 rounded-full font-medium">
+              <span className="text-[11px] px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: 'var(--dr-bg-green)', color: 'var(--p8-green)' }}>
                 Investor-Ready Badge ✓
               </span>
             </>
@@ -265,7 +265,7 @@ export default function Phase8Client() {
         </div>
         <button
           onClick={() => router.push('/dashboard/entrepreneur/phase-5')}
-          className="bg-white border border-black/8 px-4 py-1.5 rounded-lg text-sm text-[#5e5e5e] font-medium hover:bg-[#f9f9fa] transition-colors"
+          className="bg-white border border-black/8 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors" style={{ color: 'var(--dr-text-secondary)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--dr-bg-card)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
         >
           Edit Ask
         </button>
@@ -283,11 +283,13 @@ export default function Phase8Client() {
             onClick={() => setActiveTab(tab.key)}
             role="tab"
             aria-selected={activeTab === tab.key}
-            className={`px-2 pb-3.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === tab.key
-                ? 'border-[#3c61dd] text-[#3c61dd]'
-                : 'border-transparent text-[#606060] hover:text-[#3c61dd]'
-            }`}
+            className="px-2 pb-3.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap"
+            style={{
+              borderColor: activeTab === tab.key ? 'var(--dr-primary)' : 'transparent',
+              color: activeTab === tab.key ? 'var(--dr-primary)' : 'var(--dr-text-muted)',
+            }}
+            onMouseEnter={(e) => { if (activeTab !== tab.key) e.currentTarget.style.color = 'var(--dr-primary)'; }}
+            onMouseLeave={(e) => { if (activeTab !== tab.key) e.currentTarget.style.color = 'var(--dr-text-muted)'; }}
           >
             {tab.label}
           </button>
@@ -298,16 +300,22 @@ export default function Phase8Client() {
       <div className="flex gap-3 flex-wrap">
         {/* Stage Filter */}
         <div className="relative group">
-          <button className="bg-white border border-black/8 px-4 py-2.5 rounded-full text-sm text-[#5e5e5e] font-medium flex items-center gap-2 hover:border-black/12 transition-colors">
+          <button className="bg-white border border-black/8 px-4 py-2.5 rounded-full text-sm font-medium flex items-center gap-2 hover:border-black/12 transition-colors" style={{ color: 'var(--dr-text-secondary)' }}>
             Stage
             <ChevronDown className="w-4 h-4" />
           </button>
           <div className="absolute top-full left-0 mt-2 w-48 bg-white border border-black/8 rounded-lg shadow-lg p-2 z-10 hidden group-hover:block">
             <button
               onClick={() => setFilterStage('')}
-              className={`block w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
-                filterStage === '' ? 'bg-[#f1f5ff] text-[#3c61dd] font-medium' : 'text-[#070707] hover:bg-[#f9f9fa]'
-              }`}
+              style={{
+                backgroundColor: filterStage === '' ? 'var(--dr-bg-blue)' : 'transparent',
+                color: filterStage === '' ? 'var(--dr-primary)' : 'var(--dr-text-primary)',
+                fontWeight: filterStage === '' ? '500' : 'normal',
+                cursor: 'pointer',
+              }}
+              onMouseEnter={(e) => { if (filterStage !== '') e.currentTarget.style.backgroundColor = 'var(--dr-bg-card)'; }}
+              onMouseLeave={(e) => { if (filterStage !== '') e.currentTarget.style.backgroundColor = 'transparent'; }}
+              className="block w-full text-left px-3 py-2 text-sm rounded-md transition-colors"
             >
               All Stages
             </button>
@@ -315,9 +323,15 @@ export default function Phase8Client() {
               <button
                 key={stage}
                 onClick={() => setFilterStage(stage)}
-                className={`block w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
-                  filterStage === stage ? 'bg-[#f1f5ff] text-[#3c61dd] font-medium' : 'text-[#070707] hover:bg-[#f9f9fa]'
-                }`}
+                style={{
+                  backgroundColor: filterStage === stage ? 'var(--dr-bg-blue)' : 'transparent',
+                  color: filterStage === stage ? 'var(--dr-primary)' : 'var(--dr-text-primary)',
+                  fontWeight: filterStage === stage ? '500' : 'normal',
+                  cursor: 'pointer',
+                }}
+                onMouseEnter={(e) => { if (filterStage !== stage) e.currentTarget.style.backgroundColor = 'var(--dr-bg-card)'; }}
+                onMouseLeave={(e) => { if (filterStage !== stage) e.currentTarget.style.backgroundColor = 'transparent'; }}
+                className="block w-full text-left px-3 py-2 text-sm rounded-md transition-colors"
               >
                 {stage}
               </button>
@@ -327,16 +341,22 @@ export default function Phase8Client() {
 
         {/* Investor Type Filter */}
         <div className="relative group">
-          <button className="bg-white border border-black/8 px-4 py-2.5 rounded-full text-sm text-[#5e5e5e] font-medium flex items-center gap-2 hover:border-black/12 transition-colors">
+          <button className="bg-white border border-black/8 px-4 py-2.5 rounded-full text-sm font-medium flex items-center gap-2 hover:border-black/12 transition-colors" style={{ color: 'var(--dr-text-secondary)' }}>
             VC/Angel
             <ChevronDown className="w-4 h-4" />
           </button>
           <div className="absolute top-full left-0 mt-2 w-48 bg-white border border-black/8 rounded-lg shadow-lg p-2 z-10 hidden group-hover:block">
             <button
               onClick={() => setFilterType('')}
-              className={`block w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
-                filterType === '' ? 'bg-[#f1f5ff] text-[#3c61dd] font-medium' : 'text-[#070707] hover:bg-[#f9f9fa]'
-              }`}
+              style={{
+                backgroundColor: filterType === '' ? 'var(--dr-bg-blue)' : 'transparent',
+                color: filterType === '' ? 'var(--dr-primary)' : 'var(--dr-text-primary)',
+                fontWeight: filterType === '' ? '500' : 'normal',
+                cursor: 'pointer',
+              }}
+              onMouseEnter={(e) => { if (filterType !== '') e.currentTarget.style.backgroundColor = 'var(--dr-bg-card)'; }}
+              onMouseLeave={(e) => { if (filterType !== '') e.currentTarget.style.backgroundColor = 'transparent'; }}
+              className="block w-full text-left px-3 py-2 text-sm rounded-md transition-colors"
             >
               All Types
             </button>
@@ -344,9 +364,15 @@ export default function Phase8Client() {
               <button
                 key={type}
                 onClick={() => setFilterType(type)}
-                className={`block w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
-                  filterType === type ? 'bg-[#f1f5ff] text-[#3c61dd] font-medium' : 'text-[#070707] hover:bg-[#f9f9fa]'
-                }`}
+                style={{
+                  backgroundColor: filterType === type ? 'var(--dr-bg-blue)' : 'transparent',
+                  color: filterType === type ? 'var(--dr-primary)' : 'var(--dr-text-primary)',
+                  fontWeight: filterType === type ? '500' : 'normal',
+                  cursor: 'pointer',
+                }}
+                onMouseEnter={(e) => { if (filterType !== type) e.currentTarget.style.backgroundColor = 'var(--dr-bg-card)'; }}
+                onMouseLeave={(e) => { if (filterType !== type) e.currentTarget.style.backgroundColor = 'transparent'; }}
+                className="block w-full text-left px-3 py-2 text-sm rounded-md transition-colors"
               >
                 {type}
               </button>
@@ -356,27 +382,33 @@ export default function Phase8Client() {
 
         {/* Location Filter (Stub) */}
         <div className="relative group">
-          <button className="bg-white border border-black/8 px-4 py-2.5 rounded-full text-sm text-[#5e5e5e] font-medium flex items-center gap-2 hover:border-black/12 transition-colors">
+          <button className="bg-white border border-black/8 px-4 py-2.5 rounded-full text-sm font-medium flex items-center gap-2 hover:border-black/12 transition-colors" style={{ color: 'var(--dr-text-secondary)' }}>
             Location
             <ChevronDown className="w-4 h-4" />
           </button>
           <div className="absolute top-full left-0 mt-2 w-48 bg-white border border-black/8 rounded-lg shadow-lg p-2 z-10 hidden group-hover:block">
-            <div className="px-3 py-2 text-xs text-[#5e5e5e]">Coming soon</div>
+            <div className="px-3 py-2 text-xs" style={{ color: 'var(--dr-text-secondary)' }}>Coming soon</div>
           </div>
         </div>
 
         {/* Ticket Size Filter */}
         <div className="relative group">
-          <button className="bg-white border border-black/8 px-4 py-2.5 rounded-full text-sm text-[#5e5e5e] font-medium flex items-center gap-2 hover:border-black/12 transition-colors">
+          <button className="bg-white border border-black/8 px-4 py-2.5 rounded-full text-sm font-medium flex items-center gap-2 hover:border-black/12 transition-colors" style={{ color: 'var(--dr-text-secondary)' }}>
             Ticket Size
             <ChevronDown className="w-4 h-4" />
           </button>
           <div className="absolute top-full left-0 mt-2 w-48 bg-white border border-black/8 rounded-lg shadow-lg p-2 z-10 hidden group-hover:block">
             <button
               onClick={() => setFilterTicketSize('')}
-              className={`block w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
-                filterTicketSize === '' ? 'bg-[#f1f5ff] text-[#3c61dd] font-medium' : 'text-[#070707] hover:bg-[#f9f9fa]'
-              }`}
+              style={{
+                backgroundColor: filterTicketSize === '' ? 'var(--dr-bg-blue)' : 'transparent',
+                color: filterTicketSize === '' ? 'var(--dr-primary)' : 'var(--dr-text-primary)',
+                fontWeight: filterTicketSize === '' ? '500' : 'normal',
+                cursor: 'pointer',
+              }}
+              onMouseEnter={(e) => { if (filterTicketSize !== '') e.currentTarget.style.backgroundColor = 'var(--dr-bg-card)'; }}
+              onMouseLeave={(e) => { if (filterTicketSize !== '') e.currentTarget.style.backgroundColor = 'transparent'; }}
+              className="block w-full text-left px-3 py-2 text-sm rounded-md transition-colors"
             >
               All Sizes
             </button>
@@ -384,9 +416,15 @@ export default function Phase8Client() {
               <button
                 key={size}
                 onClick={() => setFilterTicketSize(size)}
-                className={`block w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
-                  filterTicketSize === size ? 'bg-[#f1f5ff] text-[#3c61dd] font-medium' : 'text-[#070707] hover:bg-[#f9f9fa]'
-                }`}
+                style={{
+                  backgroundColor: filterTicketSize === size ? 'var(--dr-bg-blue)' : 'transparent',
+                  color: filterTicketSize === size ? 'var(--dr-primary)' : 'var(--dr-text-primary)',
+                  fontWeight: filterTicketSize === size ? '500' : 'normal',
+                  cursor: 'pointer',
+                }}
+                onMouseEnter={(e) => { if (filterTicketSize !== size) e.currentTarget.style.backgroundColor = 'var(--dr-bg-card)'; }}
+                onMouseLeave={(e) => { if (filterTicketSize !== size) e.currentTarget.style.backgroundColor = 'transparent'; }}
+                className="block w-full text-left px-3 py-2 text-sm rounded-md transition-colors"
               >
                 {size}
               </button>
@@ -398,15 +436,15 @@ export default function Phase8Client() {
       {/* Match Cards Grid (Responsive) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {matches.length === 0 ? (
-          <div className="col-span-2 border border-dashed border-black/8 rounded-2xl bg-white p-12 text-sm text-[#5e5e5e] text-center">
+          <div className="col-span-2 border border-dashed border-black/8 rounded-2xl bg-white p-12 text-sm text-center" style={{ color: 'var(--dr-text-secondary)' }}>
             No matches yet. Click{' '}
-            <button onClick={handleRegenerate} className="text-[#3c61dd] underline font-medium hover:no-underline">
+            <button onClick={handleRegenerate} className="underline font-medium hover:no-underline" style={{ color: 'var(--dr-primary)' }}>
               Generate matches
             </button>{' '}
             to run the matcher.
           </div>
         ) : visible.length === 0 ? (
-          <div className="col-span-2 text-sm text-[#5e5e5e] text-center py-8">
+          <div className="col-span-2 text-sm text-center py-8" style={{ color: 'var(--dr-text-secondary)' }}>
             No matches in this view.
           </div>
         ) : (
@@ -415,13 +453,15 @@ export default function Phase8Client() {
             return (
               <div
                 key={m.matchId}
-                className="relative bg-[#f9f9fa] border border-white rounded-[20px] p-5 flex flex-col gap-6 overflow-hidden shadow-[−2px_−1px_17px_rgba(0,0,0,0.02),1px_2px_3px_rgba(0,0,0,0.04)]"
+                className="relative border border-white rounded-[20px] p-5 flex flex-col gap-6 overflow-hidden shadow-[−2px_−1px_17px_rgba(0,0,0,0.02),1px_2px_3px_rgba(0,0,0,0.04)]" style={{ backgroundColor: 'var(--dr-bg-card)' }}
               >
                 {/* Status Badge */}
                 <span
-                  className={`absolute top-0 right-0 rounded-bl-2xl px-3 py-1 text-[11px] font-medium border border-black/8 ${
-                    isHandshake ? 'bg-[#d4ffe5] text-[#157a55]' : 'bg-[#f1f5ff] text-[#3c61dd]'
-                  }`}
+                  className="absolute top-0 right-0 rounded-bl-2xl px-3 py-1 text-[11px] font-medium border border-black/8"
+                  style={{
+                    backgroundColor: isHandshake ? 'var(--dr-bg-green)' : 'var(--dr-bg-blue)',
+                    color: isHandshake ? 'var(--p8-green)' : 'var(--dr-primary)',
+                  }}
                 >
                   {isHandshake ? 'HANDSHAKE CONFIRM' : 'ACTION REQUIRED'}
                 </span>
@@ -429,26 +469,26 @@ export default function Phase8Client() {
                 {/* Card Header */}
                 <div className="flex items-center justify-between pt-1">
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-[#070707]">{m.investorName ?? m.investorId}</p>
-                    <p className="text-xs text-[#5e5e5e] mt-0.5">
+                    <p className="text-sm font-semibold" style={{ color: 'var(--dr-text-primary)' }}>{m.investorName ?? m.investorId}</p>
+                    <p className="text-xs mt-0.5" style={{ color: 'var(--dr-text-secondary)' }}>
                       {m.investorType ?? '—'}
                       {m.preferredRound ? ` · ${m.preferredRound}` : ''}
                     </p>
                   </div>
                   <div className="text-right shrink-0 ml-4">
-                    <span className={`text-[20px] font-semibold ${isHandshake ? 'text-[#157a55]' : 'text-[#3c61dd]'}`}>
+                    <span className="text-[20px] font-semibold" style={{ color: isHandshake ? 'var(--p8-green)' : 'var(--dr-primary)' }}>
                       {m.matchScore}%
                     </span>
-                    <span className="text-xs font-medium text-[#5e5e5e] ml-1">Match</span>
+                    <span className="text-xs font-medium ml-1" style={{ color: 'var(--dr-text-secondary)' }}>Match</span>
                   </div>
                 </div>
 
                 {/* Description */}
                 <div className="border-b border-black/8 pb-6 flex flex-col gap-3">
-                  <p className="text-sm text-[#5e5e5e] leading-5">{m.matchRationale || 'Match rationale'}</p>
+                  <p className="text-sm leading-5" style={{ color: 'var(--dr-text-secondary)' }}>{m.matchRationale || 'Match rationale'}</p>
                   <div className="flex gap-2 flex-wrap">
                     {m.preferredSectors.slice(0, 2).map((s) => (
-                      <span key={s} className="bg-white border border-black/8 px-3 py-1 rounded-lg text-xs text-[#3e3e3e]">
+                      <span key={s} className="bg-white border border-black/8 px-3 py-1 rounded-lg text-xs" style={{ color: 'var(--dr-text-primary)' }}>
                         {s}
                       </span>
                     ))}
@@ -459,31 +499,31 @@ export default function Phase8Client() {
                 {isHandshake ? (
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
-                      <Calendar className="w-4 h-4 text-[#157a55]" />
-                      <span className="text-xs font-medium text-[#157a55]">
+                      <Calendar className="w-4 h-4" style={{ color: 'var(--p8-green)' }} />
+                      <span className="text-xs font-medium" style={{ color: 'var(--p8-green)' }}>
                         Meeting {m.acceptedAt ? new Date(m.acceptedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) + ', 14:00 CET' : 'Scheduled'}
                       </span>
                     </div>
-                    <button className="bg-[#157a55] text-white text-xs px-4 py-2 rounded-full font-medium hover:bg-[#0f5c3f] transition-colors">
+                    <button className="text-white text-xs px-4 py-2 rounded-full font-medium transition-colors" style={{ backgroundColor: 'var(--p8-green)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--p8-green-dark)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--p8-green)'}>
                       Prepare
                     </button>
                   </div>
                 ) : (
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <Lock className="w-4 h-4 text-[#3c61dd]" />
-                      <span className="text-xs font-medium text-[#3c61dd]">Data Room Access</span>
+                      <Lock className="w-4 h-4" style={{ color: 'var(--dr-primary)' }} />
+                      <span className="text-xs font-medium" style={{ color: 'var(--dr-primary)' }}>Data Room Access</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleStatusUpdate(m.matchId, 'viewed')}
-                        className="border border-[#3c61dd] text-[#3c61dd] text-xs px-4 py-2 rounded-full font-medium hover:bg-[#f1f5ff] transition-colors"
+                        className="border text-xs px-4 py-2 rounded-full font-medium transition-colors" style={{ borderColor: 'var(--dr-primary)', color: 'var(--dr-primary)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--dr-bg-blue)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                       >
                         View Profile
                       </button>
                       <button
                         onClick={() => handleStatusUpdate(m.matchId, 'interested')}
-                        className="bg-[#3c61dd] text-white text-xs px-4 py-2 rounded-full font-medium hover:bg-[#1F3FAF] transition-colors"
+                        className="text-white text-xs px-4 py-2 rounded-full font-medium transition-colors" style={{ backgroundColor: 'var(--dr-primary)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--p8-blue-dark)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--dr-primary)'}
                       >
                         Express Interest
                       </button>
@@ -497,7 +537,7 @@ export default function Phase8Client() {
       </div>
 
       {error && (
-        <div className="bg-[#fee2e2] border border-[#fca5a5] rounded-xl p-4 flex gap-3 items-start text-sm text-[#dc2626]" role="alert">
+        <div className="border rounded-xl p-4 flex gap-3 items-start text-sm" style={{ backgroundColor: 'rgb(254, 226, 226)', borderColor: 'rgb(252, 165, 165)', color: 'rgb(220, 38, 38)' }} role="alert">
           <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" aria-hidden="true" />
           {error}
         </div>
