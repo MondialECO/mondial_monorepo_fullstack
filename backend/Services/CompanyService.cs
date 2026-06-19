@@ -1845,6 +1845,9 @@ public class CompanyService : ICompanyService
         company.LastAiReviewAt = review.ReviewedAt;
         company.UpdatedAt = DateTime.UtcNow;
 
+        if (review.InvestorReadyBadge)
+            company.IsInvestorReady = true;
+
         var filter = Builders<Companies>.Filter.Eq(c => c.Id, companyId);
         await _dbContext.Companies.ReplaceOneAsync(filter, company);
 
@@ -1858,10 +1861,23 @@ public class CompanyService : ICompanyService
             ScoreBreakdown = review.ScoreBreakdown,
             InvestorReadyBadge = review.InvestorReadyBadge,
             Recommendations = review.Recommendations ?? new List<RecommendationDto>(),
+            PitchDeckAnalysis = review.PitchDeckAnalysis,
             ReviewedAt = review.ReviewedAt,
             EngineVersion = "rule_based_v1",
         };
         await _dbContext.Phase7ReviewSnapshots.InsertOneAsync(snapshot);
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var scoreUpdate = Builders<Companies>.Update
+                    .Inc(c => c.InvestorReadyScore, 15);
+                await _dbContext.Companies.UpdateOneAsync(
+                    c => c.Id == companyId, scoreUpdate);
+            }
+            catch { /* swallow — completion events must never block phase */ }
+        });
 
         return review;
     }
