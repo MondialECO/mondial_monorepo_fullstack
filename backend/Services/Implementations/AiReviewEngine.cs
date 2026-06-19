@@ -61,6 +61,7 @@ public class AiReviewEngine : IAiReviewEngine
             var overallScore = (scores.VerificationScore + scores.FinancialScore + scores.EquityScore + scores.FundingScore + scores.DataRoomScore) / 5;
 
             var recommendations = GenerateRecommendations(company, scores);
+            var pitchDeckAnalysis = CalculatePitchDeckAnalysis(scores);
 
             return new AiReviewResponse
             {
@@ -76,6 +77,7 @@ public class AiReviewEngine : IAiReviewEngine
                 },
                 InvestorReadyBadge = Phase7Requirements.MeetsBadgeThreshold(overallScore),
                 Recommendations = recommendations,
+                PitchDeckAnalysis = pitchDeckAnalysis,
                 ReviewedAt = DateTime.UtcNow
             };
         });
@@ -199,5 +201,35 @@ public class AiReviewEngine : IAiReviewEngine
         }
 
         return recommendations;
+    }
+
+    private PitchDeckAnalysisDto CalculatePitchDeckAnalysis((int VerificationScore, int FinancialScore, int EquityScore, int FundingScore, int DataRoomScore) scores)
+    {
+        var clarityNarrative = (scores.VerificationScore + scores.FundingScore) / 2 / 10;
+        var marketSizeProof = scores.FundingScore / 10;
+        var tractionMetrics = scores.FinancialScore / 10;
+        var teamPedigree = (scores.VerificationScore + scores.EquityScore) / 2 / 10;
+
+        var averageScore = (clarityNarrative + marketSizeProof + tractionMetrics + teamPedigree) / 4;
+
+        var grade = averageScore switch
+        {
+            >= 9 => "A+",
+            >= 8 => "A",
+            >= 7 => "B+",
+            >= 6 => "B",
+            >= 5 => "C+",
+            _ => "C"
+        };
+
+        return new PitchDeckAnalysisDto
+        {
+            Grade = grade,
+            AverageScore = averageScore,
+            ClarityNarrative = clarityNarrative,
+            MarketSizeProof = marketSizeProof,
+            TractionMetrics = tractionMetrics,
+            TeamPedigree = teamPedigree
+        };
     }
 }

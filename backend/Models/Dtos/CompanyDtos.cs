@@ -311,6 +311,7 @@ public class AiReviewResponse
     public ScoreBreakdownDto ScoreBreakdown { get; set; }
     public bool InvestorReadyBadge { get; set; }
     public List<RecommendationDto> Recommendations { get; set; }
+    public PitchDeckAnalysisDto PitchDeckAnalysis { get; set; }
     public DateTime ReviewedAt { get; set; }
 }
 
@@ -330,6 +331,16 @@ public class RecommendationDto
     public string Description { get; set; }
     public string Priority { get; set; } // high, medium, low
     public int PotentialPointGain { get; set; }
+}
+
+public class PitchDeckAnalysisDto
+{
+    public string Grade { get; set; }
+    public int AverageScore { get; set; }
+    public int ClarityNarrative { get; set; }
+    public int MarketSizeProof { get; set; }
+    public int TractionMetrics { get; set; }
+    public int TeamPedigree { get; set; }
 }
 
 // ============ PHASE 8: INVESTOR MATCHING ============

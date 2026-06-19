@@ -28,6 +28,7 @@ public class Phase7ReviewSnapshot
     public ScoreBreakdownDto ScoreBreakdown { get; set; }
     public bool InvestorReadyBadge { get; set; }
     public List<RecommendationDto> Recommendations { get; set; } = new();
+    public PitchDeckAnalysisDto PitchDeckAnalysis { get; set; }
 
     public DateTime ReviewedAt { get; set; } = DateTime.UtcNow;
 

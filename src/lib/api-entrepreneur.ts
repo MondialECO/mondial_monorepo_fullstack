@@ -455,11 +455,21 @@ export interface ScoreBreakdownDto {
   overallScore: number;
 }
 
+export interface PitchDeckAnalysis {
+  grade: string;
+  averageScore: number;
+  clarityNarrative: number;
+  marketSizeProof: number;
+  tractionMetrics: number;
+  teamPedigree: number;
+}
+
 export interface AiReviewResponse {
   overallScore: number;
   scoreBreakdown: ScoreBreakdownDto;
   investorReadyBadge: boolean;
   recommendations: RecommendationDto[];
+  pitchDeckAnalysis: PitchDeckAnalysis;
   reviewedAt: string;
 }
 
@@ -470,6 +480,7 @@ export interface AiReviewHistoryEntry {
   scoreBreakdown: ScoreBreakdownDto;
   investorReadyBadge: boolean;
   recommendations: RecommendationDto[];
+  pitchDeckAnalysis: PitchDeckAnalysis;
   reviewedAt: string;
   engineVersion: string;
 }

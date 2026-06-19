@@ -46,7 +46,11 @@
       "Skill(code-review:*)",
       "Bash(grep -E \"\\\\.\\(tsx?|cs\\)$\")",
       "Bash(echo \"EXIT: $?\")",
-      "Bash(curl -s http://localhost:3000)"
+      "Bash(curl -s http://localhost:3000)",
+      "Bash(python3)",
+      "Bash(cat \"C:\\\\Users\\\\Hafiz\\\\.claude\\\\projects\\\\d--GitHub-mondial-monorepo-fullstack\\\\b1b68283-5cba-43ed-a0ff-682af2e6ff1e\\\\tool-results\\\\toolu_01Y8c7KKSeHNNzmJ556gmE6J.json\" *)",
+      "Bash(find \"C:\\\\Users\\\\Hafiz\\\\.claude\\\\projects\" -name \"toolu_01Y8c7KKSeHNNzmJ556gmE6J.json\" 2>/dev/null)",
+      "Read(//c/Users/Hafiz/.claude/projects/**)"
     ],
     "deny": [
       "Bash(rm -rf:*)",
@@ -60,6 +64,9 @@
       "Bash(git reset --hard:*)",
       "Read(.env*)",
       "Read(**/.env*)"
+    ],
+    "additionalDirectories": [
+      "\\tmp"
     ]
   }
 }
