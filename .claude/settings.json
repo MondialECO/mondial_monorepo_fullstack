@@ -50,7 +50,8 @@
       "Bash(python3)",
       "Bash(cat \"C:\\\\Users\\\\Hafiz\\\\.claude\\\\projects\\\\d--GitHub-mondial-monorepo-fullstack\\\\b1b68283-5cba-43ed-a0ff-682af2e6ff1e\\\\tool-results\\\\toolu_01Y8c7KKSeHNNzmJ556gmE6J.json\" *)",
       "Bash(find \"C:\\\\Users\\\\Hafiz\\\\.claude\\\\projects\" -name \"toolu_01Y8c7KKSeHNNzmJ556gmE6J.json\" 2>/dev/null)",
-      "Read(//c/Users/Hafiz/.claude/projects/**)"
+      "Read(//c/Users/Hafiz/.claude/projects/**)",
+      "Bash(node -e ' *)"
     ],
     "deny": [
       "Bash(rm -rf:*)",
