@@ -4,53 +4,20 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   AlertCircle,
-  Bookmark,
-  Check,
-  Info,
-  MessageSquare,
+  Calendar,
+  ChevronDown,
+  Lock,
   RefreshCcw,
-  X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useEntrepreneurProgress } from '@/hooks/useEntrepreneurProgress';
 import { StepFooter } from '@/components/entrepreneur/StepFooter';
-import {
-  SectionCard,
-  MetricCard,
-  Chip,
-  UnavailableValue,
-  type Tone,
-} from '@/components/entrepreneur/phase3/FinancialWidgets';
 import entrepreneurApi, {
   InvestorMatchResponse,
   MatchingInsightsResponse,
   type FundingProfileResponse,
 } from '@/lib/api-entrepreneur';
 import { Phase8Data } from '@/types/entrepreneur';
-
-const INTERACTION_TYPES = ['view', 'message', 'call', 'proposal_sent', 'term_sheet'] as const;
-
-const TABS: Array<{ key: string; label: string }> = [
-  { key: 'all', label: 'All' },
-  { key: 'interested', label: 'Interested' },
-  { key: 'accepted', label: 'Accepted' },
-  { key: 'saved', label: 'Saved' },
-  { key: 'rejected', label: 'Rejected' },
-];
-
-const eur = (n: number) =>
-  new Intl.NumberFormat('en-IE', { style: 'currency', currency: 'EUR', notation: 'compact', maximumFractionDigits: 1 }).format(n || 0);
-
-function scoreTone(s: number): Tone {
-  return s >= 70 ? 'success' : s >= 40 ? 'warning' : 'muted';
-}
-function statusTone(s: string): Tone {
-  const v = (s || '').toLowerCase();
-  if (v === 'accepted') return 'success';
-  if (v === 'interested') return 'primary';
-  if (v === 'rejected') return 'destructive';
-  return 'muted';
-}
 
 export default function Phase8Client() {
   const router = useRouter();
@@ -62,8 +29,10 @@ export default function Phase8Client() {
   const [funding, setFunding] = useState<FundingProfileResponse | null>(null);
   const [investorReady, setInvestorReady] = useState<boolean | null>(null);
   const [activeTab, setActiveTab] = useState('all');
+  const [filterStage, setFilterStage] = useState('');
   const [filterType, setFilterType] = useState('');
-  const [filterRound, setFilterRound] = useState('');
+  const [filterLocation, setFilterLocation] = useState('');
+  const [filterTicketSize, setFilterTicketSize] = useState('');
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -179,186 +148,358 @@ export default function Phase8Client() {
 
   const canAdvance = matches.some((m) => m.matchScore >= 40);
 
+  const interestedCount = matches.filter((m) => (m.status || '').toLowerCase() === 'interested').length;
+  const acceptedCount = matches.filter((m) => (m.status || '').toLowerCase() === 'accepted').length;
+
+  // Extract unique filter values
+  const stages = Array.from(new Set(matches.map((m) => m.preferredRound).filter(Boolean))) as string[];
   const types = Array.from(new Set(matches.map((m) => m.investorType).filter(Boolean))) as string[];
-  const rounds = Array.from(new Set(matches.map((m) => m.preferredRound).filter(Boolean))) as string[];
-  const tabCount = (key: string) =>
-    key === 'all' ? matches.length : matches.filter((m) => (m.status || '').toLowerCase() === key).length;
+  const locations = Array.from(new Set(matches.map((m) => m.investmentRange).filter(Boolean))) as string[];
+  const ticketSizes = Array.from(new Set(matches.map((m) => m.investmentRange).filter(Boolean))) as string[];
+
+  // Apply all filters
   const visible = matches.filter((m) => {
-    if (activeTab !== 'all' && (m.status || '').toLowerCase() !== activeTab) return false;
+    // Tab filter
+    if (activeTab === 'all') {
+      // pass
+    } else if (activeTab === 'interested') {
+      if ((m.status || '').toLowerCase() !== 'interested') return false;
+    } else if (activeTab === 'accepted') {
+      if ((m.status || '').toLowerCase() !== 'accepted') return false;
+    }
+
+    // Stage filter
+    if (filterStage && m.preferredRound !== filterStage) return false;
+
+    // Type filter
     if (filterType && m.investorType !== filterType) return false;
-    if (filterRound && m.preferredRound !== filterRound) return false;
+
+    // Location filter (stub for now - can be enhanced with country data)
+    if (filterLocation && m.investmentRange !== filterLocation) return false;
+
+    // Ticket Size filter
+    if (filterTicketSize && m.investmentRange !== filterTicketSize) return false;
+
     return true;
   });
-  const avg = insights ? Math.max(0, Math.min(100, insights.averageScore)) : 0;
 
   return (
-    <div className="space-y-6">
-      {/* Dev banner — explicit, no AI claims */}
-      <div className="bg-warning/10 border border-warning/40 rounded-xl p-4 flex gap-3">
-        <Info className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" aria-hidden />
-        <div className="text-sm text-foreground">
-          <p className="font-semibold mb-1">Deterministic rule-based matching active</p>
-          <p>
-            Match scores and rationales are computed by a backend rules engine that intersects your
-            company profile with each investor&apos;s declared preferences (sector, stage, check-size
-            band, geography). LLM-driven personalised matching will replace this when AI provider
-            credentials are configured.
+    <div className="flex-1 bg-[#ededed] overflow-y-auto p-8 flex flex-col gap-6">
+      {/* Page Header */}
+      <div className="flex items-start justify-between gap-6">
+        <div className="flex flex-col gap-2">
+          <h1 className="text-[32px] font-semibold text-[#070707] leading-[40px]">
+            Investor Matching — Phase 8
+          </h1>
+          <p className="text-sm text-[#5e5e5e]">
+            AI has matched your company with {insights?.totalMatches ?? 0} compatible investors.
+            Express interest to begin a conversation.
           </p>
         </div>
+        <span className="flex items-center gap-1.5 bg-[#d4ffe5] border border-black/8 px-3 py-1 rounded-full text-[#157a55] text-sm font-semibold shrink-0">
+          <span className="w-2 h-2 rounded-full bg-[#157a55]" />
+          AI MATCHING LIVE
+        </span>
       </div>
 
-      {/* KPI row — real MatchingInsights */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <MetricCard label="Total matches" value={insights ? String(insights.totalMatches) : undefined} unavailable={insights ? undefined : 'unavailable'} />
-        <MetricCard label="High-score matches" value={insights ? String(insights.highScoreMatches) : undefined} unavailable={insights ? undefined : 'unavailable'} chip="score ≥ 70" chipTone="success" />
-        <MetricCard label="Average match score" value={insights ? String(insights.averageScore) : undefined} unavailable={insights ? undefined : 'unavailable'} />
+      {/* 4 Stat Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* AI Matches */}
+        <div className="bg-[#f9f9fa] border border-white rounded-xl px-4 py-3 flex flex-col gap-2 drop-shadow-sm">
+          <span className="text-[11px] font-medium text-[#606060] uppercase tracking-wide">AI Matches</span>
+          <span className="text-[24px] font-semibold leading-[32px] text-[#070707]">
+            {insights?.totalMatches ?? 0}
+          </span>
+          <span className="text-[11px] text-[#606060]">Compatible investors</span>
+        </div>
+
+        {/* Expressions of Interest */}
+        <div className="bg-[#f9f9fa] border border-white rounded-xl px-4 py-3 flex flex-col gap-2 drop-shadow-sm">
+          <span className="text-[11px] font-medium text-[#606060] uppercase tracking-wide">Expressions</span>
+          <span className="text-[24px] font-semibold leading-[32px] text-[#965f11]">
+            {insights?.highScoreMatches ?? 0}
+          </span>
+          <span className="text-[11px] text-[#606060]">Investors interested</span>
+        </div>
+
+        {/* Handshakes Confirmed */}
+        <div className="bg-[#f9f9fa] border border-white rounded-xl px-4 py-3 flex flex-col gap-2 drop-shadow-sm">
+          <span className="text-[11px] font-medium text-[#606060] uppercase tracking-wide">Handshakes</span>
+          <span className="text-[24px] font-semibold leading-[32px] text-[#157a55]">
+            {acceptedCount}
+          </span>
+          <span className="text-[11px] text-[#606060]">Meeting scheduled</span>
+        </div>
+
+        {/* Profile Views */}
+        <div className="bg-[#f9f9fa] border border-white rounded-xl px-4 py-3 flex flex-col gap-2 drop-shadow-sm">
+          <span className="text-[11px] font-medium text-[#606060] uppercase tracking-wide">Profile Views</span>
+          <span className="text-[24px] font-semibold leading-[32px] text-[#3c61dd]">
+            {insights?.interactionsCount ?? 0}
+          </span>
+          <span className="text-[11px] text-[#606060]">Meeting scheduled</span>
+        </div>
       </div>
-      {insights && (
-        <div>
-          <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
-            <span>Average match score</span><span>{insights.averageScore}/100</span>
-          </div>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-muted" role="progressbar" aria-label="Average match score" aria-valuenow={avg} aria-valuemin={0} aria-valuemax={100}>
-            <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${avg}%` }} />
-          </div>
-        </div>
-      )}
 
-      {/* Funding ask banner — real FundingProfile */}
-      <SectionCard
-        title="Your funding ask is live"
-        headerRight={
-          <Button onClick={handleRegenerate} disabled={isRegenerating} size="sm" className="gap-2">
-            <RefreshCcw className={`w-4 h-4 ${isRegenerating ? 'animate-spin' : ''}`} aria-hidden />
-            {isRegenerating ? 'Generating…' : matches.length > 0 ? 'Re-run matching' : 'Generate matches'}
-          </Button>
-        }
-      >
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-          <span className="text-foreground"><span className="text-muted-foreground">Amount:</span> <span className="font-semibold">{funding?.fundingAskAmount ? eur(funding.fundingAskAmount) : '—'}</span></span>
-          <span className="text-foreground"><span className="text-muted-foreground">Round:</span> <span className="font-semibold">{funding?.fundingRoundType ?? '—'}</span></span>
-          <span className="text-foreground"><span className="text-muted-foreground">Equity offered:</span> <span className="font-semibold">{funding?.equityOfferedPercent ? `${funding.equityOfferedPercent}%` : '—'}</span></span>
-          <Chip tone={investorReady ? 'success' : 'muted'}>{investorReady == null ? 'Status pending' : investorReady ? 'Investor-ready ✓' : 'Not yet investor-ready'}</Chip>
+      {/* Funding Ask Info Bar */}
+      <div className="bg-[#f9f9fa] border border-white rounded-lg px-4 py-3.5 flex justify-between items-center">
+        <div className="flex items-center gap-3 h-full">
+          <span className="text-xs font-semibold text-[#157a55]">Your funding ask is live</span>
+          <div className="w-px h-full bg-black/8" />
+          <span className="text-xs font-medium text-[#070707]">{funding?.fundingRoundType ?? '—'}</span>
+          <div className="w-px h-full bg-black/8" />
+          <span className="text-xs font-medium text-[#070707]">${funding?.fundingAskAmount?.toLocaleString() ?? '—'}</span>
+          <div className="w-px h-full bg-black/8" />
+          <span className="text-xs font-medium text-[#070707]">
+            {funding?.equityOfferedPercent ?? '—'}%{' '}
+            <span className="text-[11px] text-[#5e5e5e]">equity</span>
+          </span>
+          {investorReady && (
+            <>
+              <div className="w-px h-full bg-black/8" />
+              <span className="bg-[#d4ffe5] text-[#157a55] text-[11px] px-2 py-0.5 rounded-full font-medium">
+                Investor-Ready Badge ✓
+              </span>
+            </>
+          )}
         </div>
-      </SectionCard>
+        <button
+          onClick={() => router.push('/dashboard/entrepreneur/phase-5')}
+          className="bg-white border border-black/8 px-4 py-1.5 rounded-lg text-sm text-[#5e5e5e] font-medium hover:bg-[#f9f9fa] transition-colors"
+        >
+          Edit Ask
+        </button>
+      </div>
 
-      {/* Tabs + filters */}
-      <div className="space-y-3">
-        <div role="tablist" aria-label="Match status" className="flex flex-wrap gap-2">
-          {TABS.map((t) => (
+      {/* Tabs */}
+      <div className="border-b-2 border-black/8 flex gap-6 overflow-x-auto" role="tablist">
+        {[
+          { key: 'all', label: `All Matches (${matches.length})` },
+          { key: 'interested', label: `Interested in you (${interestedCount})` },
+          { key: 'accepted', label: `Handshakes (${acceptedCount})` },
+        ].map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            role="tab"
+            aria-selected={activeTab === tab.key}
+            className={`px-2 pb-3.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+              activeTab === tab.key
+                ? 'border-[#3c61dd] text-[#3c61dd]'
+                : 'border-transparent text-[#606060] hover:text-[#3c61dd]'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Filter Dropdowns */}
+      <div className="flex gap-3 flex-wrap">
+        {/* Stage Filter */}
+        <div className="relative group">
+          <button className="bg-white border border-black/8 px-4 py-2.5 rounded-full text-sm text-[#5e5e5e] font-medium flex items-center gap-2 hover:border-black/12 transition-colors">
+            Stage
+            <ChevronDown className="w-4 h-4" />
+          </button>
+          <div className="absolute top-full left-0 mt-2 w-48 bg-white border border-black/8 rounded-lg shadow-lg p-2 z-10 hidden group-hover:block">
             <button
-              key={t.key}
-              role="tab"
-              aria-selected={activeTab === t.key}
-              onClick={() => setActiveTab(t.key)}
-              className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${activeTab === t.key ? 'border-transparent bg-primary text-primary-foreground' : 'border-border bg-card text-foreground hover:border-primary/40'}`}
+              onClick={() => setFilterStage('')}
+              className={`block w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
+                filterStage === '' ? 'bg-[#f1f5ff] text-[#3c61dd] font-medium' : 'text-[#070707] hover:bg-[#f9f9fa]'
+              }`}
             >
-              {t.label} <span className={activeTab === t.key ? 'text-primary-foreground/80' : 'text-muted-foreground'}>({tabCount(t.key)})</span>
+              All Stages
             </button>
-          ))}
+            {stages.map((stage) => (
+              <button
+                key={stage}
+                onClick={() => setFilterStage(stage)}
+                className={`block w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
+                  filterStage === stage ? 'bg-[#f1f5ff] text-[#3c61dd] font-medium' : 'text-[#070707] hover:bg-[#f9f9fa]'
+                }`}
+              >
+                {stage}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="flex flex-wrap items-end gap-3">
-          <div>
-            <label htmlFor="filter-type" className="block text-xs font-medium text-muted-foreground mb-1">Investor type</label>
-            <select id="filter-type" value={filterType} onChange={(e) => setFilterType(e.target.value)} className="h-9 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-              <option value="">All types</option>
-              {types.map((t) => <option key={t} value={t}>{t}</option>)}
-            </select>
+
+        {/* Investor Type Filter */}
+        <div className="relative group">
+          <button className="bg-white border border-black/8 px-4 py-2.5 rounded-full text-sm text-[#5e5e5e] font-medium flex items-center gap-2 hover:border-black/12 transition-colors">
+            VC/Angel
+            <ChevronDown className="w-4 h-4" />
+          </button>
+          <div className="absolute top-full left-0 mt-2 w-48 bg-white border border-black/8 rounded-lg shadow-lg p-2 z-10 hidden group-hover:block">
+            <button
+              onClick={() => setFilterType('')}
+              className={`block w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
+                filterType === '' ? 'bg-[#f1f5ff] text-[#3c61dd] font-medium' : 'text-[#070707] hover:bg-[#f9f9fa]'
+              }`}
+            >
+              All Types
+            </button>
+            {types.map((type) => (
+              <button
+                key={type}
+                onClick={() => setFilterType(type)}
+                className={`block w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
+                  filterType === type ? 'bg-[#f1f5ff] text-[#3c61dd] font-medium' : 'text-[#070707] hover:bg-[#f9f9fa]'
+                }`}
+              >
+                {type}
+              </button>
+            ))}
           </div>
-          <div>
-            <label htmlFor="filter-round" className="block text-xs font-medium text-muted-foreground mb-1">Preferred round</label>
-            <select id="filter-round" value={filterRound} onChange={(e) => setFilterRound(e.target.value)} className="h-9 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-              <option value="">All rounds</option>
-              {rounds.map((r) => <option key={r} value={r}>{r}</option>)}
-            </select>
+        </div>
+
+        {/* Location Filter (Stub) */}
+        <div className="relative group">
+          <button className="bg-white border border-black/8 px-4 py-2.5 rounded-full text-sm text-[#5e5e5e] font-medium flex items-center gap-2 hover:border-black/12 transition-colors">
+            Location
+            <ChevronDown className="w-4 h-4" />
+          </button>
+          <div className="absolute top-full left-0 mt-2 w-48 bg-white border border-black/8 rounded-lg shadow-lg p-2 z-10 hidden group-hover:block">
+            <div className="px-3 py-2 text-xs text-[#5e5e5e]">Coming soon</div>
           </div>
-          <div>
-            <span className="block text-xs font-medium text-muted-foreground mb-1">Location</span>
-            <div className="flex h-9 items-center rounded-md border border-dashed border-border bg-muted/20 px-3"><UnavailableValue /></div>
+        </div>
+
+        {/* Ticket Size Filter */}
+        <div className="relative group">
+          <button className="bg-white border border-black/8 px-4 py-2.5 rounded-full text-sm text-[#5e5e5e] font-medium flex items-center gap-2 hover:border-black/12 transition-colors">
+            Ticket Size
+            <ChevronDown className="w-4 h-4" />
+          </button>
+          <div className="absolute top-full left-0 mt-2 w-48 bg-white border border-black/8 rounded-lg shadow-lg p-2 z-10 hidden group-hover:block">
+            <button
+              onClick={() => setFilterTicketSize('')}
+              className={`block w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
+                filterTicketSize === '' ? 'bg-[#f1f5ff] text-[#3c61dd] font-medium' : 'text-[#070707] hover:bg-[#f9f9fa]'
+              }`}
+            >
+              All Sizes
+            </button>
+            {ticketSizes.map((size) => (
+              <button
+                key={size}
+                onClick={() => setFilterTicketSize(size)}
+                className={`block w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
+                  filterTicketSize === size ? 'bg-[#f1f5ff] text-[#3c61dd] font-medium' : 'text-[#070707] hover:bg-[#f9f9fa]'
+                }`}
+              >
+                {size}
+              </button>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* Match cards */}
-      <div className="space-y-3" aria-live="polite">
+      {/* Match Cards Grid (Responsive) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {matches.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-6 text-sm text-muted-foreground">
-            No matches yet. Click <strong>Generate matches</strong> to run the matcher against the active investor pool.
+          <div className="col-span-2 border border-dashed border-black/8 rounded-2xl bg-white p-12 text-sm text-[#5e5e5e] text-center">
+            No matches yet. Click{' '}
+            <button onClick={handleRegenerate} className="text-[#3c61dd] underline font-medium hover:no-underline">
+              Generate matches
+            </button>{' '}
+            to run the matcher.
           </div>
         ) : visible.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-6 text-sm text-muted-foreground">No matches in this view. Adjust the tab or filters.</div>
+          <div className="col-span-2 text-sm text-[#5e5e5e] text-center py-8">
+            No matches in this view.
+          </div>
         ) : (
-          visible.map((m) => (
-            <div key={m.matchId} className="rounded-2xl border border-border bg-card p-6 space-y-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-base font-bold text-foreground">{m.investorName ?? m.investorId}</p>
-                    <Chip tone={statusTone(m.status)}>{m.status}</Chip>
+          visible.map((m) => {
+            const isHandshake = m.status === 'accepted';
+            return (
+              <div
+                key={m.matchId}
+                className="relative bg-[#f9f9fa] border border-white rounded-[20px] p-5 flex flex-col gap-6 overflow-hidden shadow-[−2px_−1px_17px_rgba(0,0,0,0.02),1px_2px_3px_rgba(0,0,0,0.04)]"
+              >
+                {/* Status Badge */}
+                <span
+                  className={`absolute top-0 right-0 rounded-bl-2xl px-3 py-1 text-[11px] font-medium border border-black/8 ${
+                    isHandshake ? 'bg-[#d4ffe5] text-[#157a55]' : 'bg-[#f1f5ff] text-[#3c61dd]'
+                  }`}
+                >
+                  {isHandshake ? 'HANDSHAKE CONFIRM' : 'ACTION REQUIRED'}
+                </span>
+
+                {/* Card Header */}
+                <div className="flex items-center justify-between pt-1">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-[#070707]">{m.investorName ?? m.investorId}</p>
+                    <p className="text-xs text-[#5e5e5e] mt-0.5">
+                      {m.investorType ?? '—'}
+                      {m.preferredRound ? ` · ${m.preferredRound}` : ''}
+                    </p>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {m.investorType ?? '—'}
-                    {m.investmentRange ? ` · ${m.investmentRange}` : ''}
-                    {m.preferredRound ? ` · ${m.preferredRound}` : ''}
-                  </p>
-                  {m.preferredSectors.length > 0 && (
-                    <div className="mt-1.5 flex flex-wrap gap-1">
-                      {m.preferredSectors.map((s) => <Chip key={s} tone="muted">{s}</Chip>)}
-                    </div>
-                  )}
-                  <p className="mt-1.5 text-xs text-muted-foreground">Location / bio / logo: <UnavailableValue /></p>
+                  <div className="text-right shrink-0 ml-4">
+                    <span className={`text-[20px] font-semibold ${isHandshake ? 'text-[#157a55]' : 'text-[#3c61dd]'}`}>
+                      {m.matchScore}%
+                    </span>
+                    <span className="text-xs font-medium text-[#5e5e5e] ml-1">Match</span>
+                  </div>
                 </div>
-                <div className="text-right shrink-0">
-                  <p className="text-2xl font-bold text-foreground">{m.matchScore}</p>
-                  <Chip tone={scoreTone(m.matchScore)}>match</Chip>
-                </div>
-              </div>
 
-              {m.matchRationale && (
-                <p className="text-xs text-muted-foreground bg-background border border-border rounded-md p-2 font-mono">{m.matchRationale}</p>
-              )}
-
-              <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border">
-                <span className="text-xs text-muted-foreground">{m.engineVersion ? `engine: ${m.engineVersion}` : ''}</span>
-                <div className="flex flex-wrap gap-1">
-                  <Button size="sm" variant="outline" onClick={() => handleStatusUpdate(m.matchId, 'saved')}>
-                    <Bookmark className="w-3 h-3 mr-1" aria-hidden /> Save
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => handleStatusUpdate(m.matchId, 'accepted')}>
-                    <Check className="w-3 h-3 mr-1" aria-hidden /> Accept
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => handleStatusUpdate(m.matchId, 'rejected')}>
-                    <X className="w-3 h-3 mr-1" aria-hidden /> Reject
-                  </Button>
-                  <details className="relative">
-                    <summary className="list-none cursor-pointer">
-                      <Button size="sm" variant="outline" asChild>
-                        <span><MessageSquare className="w-3 h-3 mr-1" aria-hidden /> Log interaction</span>
-                      </Button>
-                    </summary>
-                    <div className="absolute right-0 mt-2 w-48 bg-card border border-border rounded-md shadow-lg p-2 z-10">
-                      {INTERACTION_TYPES.map((kind) => (
-                        <button
-                          key={kind}
-                          className="block w-full text-left px-2 py-1 text-xs text-foreground hover:bg-muted rounded"
-                          onClick={() => handleInteraction(m.matchId, kind)}
-                        >
-                          {kind}
-                        </button>
-                      ))}
-                    </div>
-                  </details>
+                {/* Description */}
+                <div className="border-b border-black/8 pb-6 flex flex-col gap-3">
+                  <p className="text-sm text-[#5e5e5e] leading-5">{m.matchRationale || 'Match rationale'}</p>
+                  <div className="flex gap-2 flex-wrap">
+                    {m.preferredSectors.slice(0, 2).map((s) => (
+                      <span key={s} className="bg-white border border-black/8 px-3 py-1 rounded-lg text-xs text-[#3e3e3e]">
+                        {s}
+                      </span>
+                    ))}
+                  </div>
                 </div>
+
+                {/* Footer */}
+                {isHandshake ? (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <Calendar className="w-4 h-4 text-[#157a55]" />
+                      <span className="text-xs font-medium text-[#157a55]">
+                        Meeting {m.acceptedAt ? new Date(m.acceptedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) + ', 14:00 CET' : 'Scheduled'}
+                      </span>
+                    </div>
+                    <button className="bg-[#157a55] text-white text-xs px-4 py-2 rounded-full font-medium hover:bg-[#0f5c3f] transition-colors">
+                      Prepare
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Lock className="w-4 h-4 text-[#3c61dd]" />
+                      <span className="text-xs font-medium text-[#3c61dd]">Data Room Access</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleStatusUpdate(m.matchId, 'viewed')}
+                        className="border border-[#3c61dd] text-[#3c61dd] text-xs px-4 py-2 rounded-full font-medium hover:bg-[#f1f5ff] transition-colors"
+                      >
+                        View Profile
+                      </button>
+                      <button
+                        onClick={() => handleStatusUpdate(m.matchId, 'interested')}
+                        className="bg-[#3c61dd] text-white text-xs px-4 py-2 rounded-full font-medium hover:bg-[#1F3FAF] transition-colors"
+                      >
+                        Express Interest
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 
       {error && (
-        <div role="alert" className="bg-destructive/10 border border-destructive/30 rounded-xl p-4 flex gap-3">
-          <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" aria-hidden />
-          <p className="text-sm font-semibold text-destructive">{error}</p>
+        <div className="bg-[#fee2e2] border border-[#fca5a5] rounded-xl p-4 flex gap-3 items-start text-sm text-[#dc2626]" role="alert">
+          <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" aria-hidden="true" />
+          {error}
         </div>
       )}
 
