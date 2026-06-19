@@ -125,6 +125,11 @@
   --dr-yellow-alt: #985b07;
   --dr-border: rgba(0, 0, 0, 0.08);
   --dr-border-light: rgba(0, 0, 0, 0.06);
+
+  /* Phase 8 — Investor Matching design tokens (Figma) */
+  --p8-green: #157a55;
+  --p8-green-dark: #0f5c3f;
+  --p8-blue-dark: #1F3FAF;
 }
 
 .dark {
@@ -187,6 +192,11 @@
   --dr-yellow-alt: #fbbf24;
   --dr-border: rgba(255, 255, 255, 0.12);
   --dr-border-light: rgba(255, 255, 255, 0.08);
+
+  /* Phase 8 — Investor Matching design tokens (dark) */
+  --p8-green: #34d399;
+  --p8-green-dark: #10b981;
+  --p8-blue-dark: #60a5fa;
 }
 
 @layer base {
