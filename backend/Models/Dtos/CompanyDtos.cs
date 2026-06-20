@@ -434,6 +434,13 @@ public class TermSheetResponse
     public bool ProRataRights { get; set; }
     public string Status { get; set; }
     public DateTime? SignedAt { get; set; }
+    public string ShareClass { get; set; }
+    public string LiquidationPref { get; set; }
+    public string BoardSeat { get; set; }
+    public bool? HasBoardSeat { get; set; }
+    public string AntiDilutionType { get; set; }
+    public string ClosingDeadline { get; set; }
+    public string ExpiresAt { get; set; }
 }
 
 public class ChecklistItemDto
@@ -448,6 +455,7 @@ public class DealParticipantStatusDto
 {
     public string InvestorId { get; set; }
     public string InvestorName { get; set; }
+    public string InvestorType { get; set; }
     public double CommittedAmount { get; set; }
     public string Status { get; set; }
 }

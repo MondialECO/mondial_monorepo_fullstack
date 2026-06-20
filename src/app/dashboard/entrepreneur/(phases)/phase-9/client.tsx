@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useRef, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Info, RefreshCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -32,6 +32,32 @@ const DEAL_STATUS_OPTIONS: DealStatus[] = [
   'withdrawn',
 ];
 
+const VALID_TRANSITIONS: Record<string, string[]> = {
+  'initiated': ['contacted', 'rejected', 'withdrawn'],
+  'contacted': ['interested', 'rejected', 'withdrawn'],
+  'interested': ['meeting_scheduled', 'rejected', 'withdrawn'],
+  'meeting_scheduled': ['due_diligence', 'negotiating', 'rejected', 'withdrawn'],
+  'due_diligence': ['term_sheet', 'negotiating', 'rejected', 'withdrawn'],
+  'negotiating': ['term_sheet', 'due_diligence', 'rejected', 'withdrawn'],
+  'term_sheet': ['agreement_sent', 'negotiating', 'rejected', 'withdrawn'],
+  'agreement_sent': ['signed', 'negotiating', 'rejected', 'withdrawn'],
+  'signed': ['completed'],
+  'completed': [],
+  'rejected': [],
+  'withdrawn': [],
+};
+
+function getErrorMessage(err: unknown): string {
+  const status = (err as any)?.response?.status;
+  const serverMsg = (err as any)?.response?.data?.message || (err as any)?.response?.data?.error;
+  if (status === 409) return serverMsg || 'This action conflicts with the current deal state.';
+  if (status === 404) return 'The requested deal or term sheet was not found.';
+  if (status === 403) return 'You do not have permission to perform this action.';
+  if (status === 400) return serverMsg || 'Invalid request. Please check your input.';
+  if (status === 500) return 'A server error occurred. Please try again later.';
+  return serverMsg || 'Something went wrong. Please try again.';
+}
+
 export default function Phase9Client() {
   const router = useRouter();
   const { savePhaseData, getPhaseData, applyBackendResponse } =
@@ -39,16 +65,14 @@ export default function Phase9Client() {
 
   const [matches, setMatches] = useState<InvestorMatchResponse[]>([]);
   const [deals, setDeals] = useState<DealStatusResponse[]>([]);
+  const [summary, setSummary] = useState<any>(null);
+  const [termSheet, setTermSheet] = useState<any>(null);
   const [selectedDealId, setSelectedDealId] = useState<string | null>(null);
   const [activity, setActivity] = useState<DealActivityLogResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isMutating, setIsMutating] = useState(false);
   const [error, setError] = useState('');
-
-  // Form state for "Create deal" inline section.
-  const [newDealInvestorId, setNewDealInvestorId] = useState('');
-  const [newDealRaise, setNewDealRaise] = useState('');
-  const [newDealValuation, setNewDealValuation] = useState('');
 
   // Due-diligence form
   const [ddItemName, setDdItemName] = useState('');
@@ -57,6 +81,9 @@ export default function Phase9Client() {
 
   // Checklist form
   const [checklistInput, setChecklistInput] = useState('');
+
+  // Focus management for detail panel
+  const detailPanelRef = useRef<HTMLDivElement>(null);
 
   async function resolveCompanyId(): Promise<string> {
     const existing: Phase9Data = getPhaseData<Phase9Data>(9) ?? {};
@@ -69,12 +96,16 @@ export default function Phase9Client() {
   const reload = async () => {
     try {
       const companyId = await resolveCompanyId();
-      const [m, d] = await Promise.all([
+      const [m, d, s, ts] = await Promise.all([
         entrepreneurApi.getInvestorMatches(companyId).catch(() => []),
         entrepreneurApi.getCompanyDeals(companyId).catch(() => []),
+        entrepreneurApi.getRoundSummary(companyId).catch(() => null),
+        entrepreneurApi.getActiveTermSheet(companyId).catch(() => null),
       ]);
       setMatches(m);
       setDeals(d);
+      setSummary(s);
+      setTermSheet(ts);
 
       const signedCount = d.filter((x) =>
         TERMINAL_SUCCESS.includes(x.status as DealStatus),
@@ -95,13 +126,12 @@ export default function Phase9Client() {
             ? selectedDealId
             : d[0].dealId;
         setSelectedDealId(nextSelected);
-        await loadActivity(nextSelected);
       } else {
         setSelectedDealId(null);
         setActivity([]);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load Phase 9 data');
+      setError(getErrorMessage(e));
     } finally {
       setIsLoading(false);
     }
@@ -117,6 +147,81 @@ export default function Phase9Client() {
   };
 
   useEffect(() => {
+    if (!selectedDealId) {
+      setActivity([]);
+      return;
+    }
+
+    const abortController = new AbortController();
+
+    const load = async () => {
+      try {
+        const log = await entrepreneurApi.getDealActivity(selectedDealId);
+        if (!abortController.signal.aborted) {
+          setActivity(log);
+        }
+      } catch {
+        if (!abortController.signal.aborted) {
+          setActivity([]);
+        }
+      }
+    };
+
+    void load();
+
+    return () => abortController.abort();
+  }, [selectedDealId]);
+
+  useEffect(() => {
+    if (selectedDealId && detailPanelRef.current) {
+      detailPanelRef.current.focus();
+    }
+  }, [selectedDealId]);
+
+  const buildTimeline = (dealId: string): any[] => {
+    return activity.filter((a) => a.dealId === dealId).map((a) => ({
+      id: a.id,
+      eventType: a.eventType,
+      fromStatus: a.fromStatus,
+      toStatus: a.toStatus,
+      occurredAt: a.occurredAt,
+      notes: a.notes,
+      dealId: a.dealId,
+    }));
+  };
+
+  const handleCreateDeal = async (investorId: string, raise: number, valuation: number) => {
+    if (isMutating) return;
+    setIsMutating(true);
+    try {
+      const companyId = await resolveCompanyId();
+      await entrepreneurApi.createDeal(companyId, investorId, {
+        totalRaiseAmount: raise,
+        postMoneyValuation: valuation,
+        equityType: 'preferred',
+        proRataRights: false,
+        liquidationPreference: '1x_non_participating',
+        boardSeats: 0,
+        proposedClosingDate: new Date().toISOString(),
+      });
+      await reload();
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
+  const handleUpdateDealStatus = async (dealId: string, status: DealStatus) => {
+    if (isMutating) return;
+    setIsMutating(true);
+    try {
+      await entrepreneurApi.updateDealStatus(dealId, status);
+      await reload();
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
+  useEffect(() => {
     void reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -126,59 +231,23 @@ export default function Phase9Client() {
     [deals, selectedDealId],
   );
 
-  const handleCreateDeal = async () => {
-    setError('');
-    if (!newDealInvestorId || !newDealRaise || !newDealValuation) {
-      setError('investor, raise amount, and valuation are required');
-      return;
-    }
-    try {
-      const companyId = await resolveCompanyId();
-      const raise = Number(newDealRaise);
-      const valuation = Number(newDealValuation);
-      if (!Number.isFinite(raise) || raise <= 0)
-        throw new Error('raise must be > 0');
-      if (!Number.isFinite(valuation) || valuation <= 0)
-        throw new Error('valuation must be > 0');
-
-      await entrepreneurApi.createDeal(companyId, newDealInvestorId, {
-        totalRaiseAmount: raise,
-        postMoneyValuation: valuation,
-        equityType: 'preferred',
-        proRataRights: false,
-        liquidationPreference: '1x_non_participating',
-        boardSeats: 0,
-        proposedClosingDate: new Date().toISOString(),
-      });
-
-      setNewDealInvestorId('');
-      setNewDealRaise('');
-      setNewDealValuation('');
-
-      const existing: Phase9Data = getPhaseData<Phase9Data>(9) ?? {};
-      savePhaseData(9, {
-        ...existing,
-        lastDealCreatedAt: new Date().toISOString(),
-      });
-      await reload();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Create deal failed');
-    }
-  };
-
   const handleStatusChange = async (status: DealStatus) => {
-    if (!selectedDealId) return;
+    if (!selectedDealId || isMutating) return;
+    setIsMutating(true);
     setError('');
     try {
       await entrepreneurApi.updateDealStatus(selectedDealId, status);
       await reload();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Status update failed');
+      setError(getErrorMessage(e));
+    } finally {
+      setIsMutating(false);
     }
   };
 
   const handleSignTermSheet = async (file: File | null) => {
-    if (!selectedDealId || !file) return;
+    if (!selectedDealId || !file || isMutating) return;
+    setIsMutating(true);
     setError('');
     try {
       await entrepreneurApi.signTermSheet(selectedDealId, file);
@@ -189,12 +258,15 @@ export default function Phase9Client() {
       });
       await reload();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Term sheet sign failed');
+      setError(getErrorMessage(e));
+    } finally {
+      setIsMutating(false);
     }
   };
 
   const handleDueDiligenceSubmit = async () => {
-    if (!selectedDealId || !ddItemName.trim()) return;
+    if (!selectedDealId || !ddItemName.trim() || isMutating) return;
+    setIsMutating(true);
     setError('');
     try {
       await entrepreneurApi.mutateDueDiligenceItem(selectedDealId, {
@@ -205,12 +277,15 @@ export default function Phase9Client() {
       setDdItemName('');
       await reload();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Due diligence update failed');
+      setError(getErrorMessage(e));
+    } finally {
+      setIsMutating(false);
     }
   };
 
   const handleChecklistAdd = async (completed: boolean) => {
-    if (!selectedDealId || !checklistInput.trim()) return;
+    if (!selectedDealId || !checklistInput.trim() || isMutating) return;
+    setIsMutating(true);
     setError('');
     try {
       await entrepreneurApi.progressChecklist(selectedDealId, {
@@ -221,12 +296,15 @@ export default function Phase9Client() {
       setChecklistInput('');
       await reload();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Checklist update failed');
+      setError(getErrorMessage(e));
+    } finally {
+      setIsMutating(false);
     }
   };
 
   const handleChecklistToggle = async (item: string, currentCompleted: boolean) => {
-    if (!selectedDealId) return;
+    if (!selectedDealId || isMutating) return;
+    setIsMutating(true);
     setError('');
     try {
       await entrepreneurApi.progressChecklist(selectedDealId, {
@@ -236,30 +314,37 @@ export default function Phase9Client() {
       });
       await reload();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Checklist toggle failed');
+      setError(getErrorMessage(e));
+    } finally {
+      setIsMutating(false);
     }
   };
 
   const handleDocumentUpload = async (file: File | null) => {
-    if (!selectedDealId || !file) return;
+    if (!selectedDealId || !file || isMutating) return;
+    setIsMutating(true);
     setError('');
     try {
       await entrepreneurApi.uploadDealDocument(selectedDealId, file, 'other');
       await reload();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Document upload failed');
+      setError(getErrorMessage(e));
+    } finally {
+      setIsMutating(false);
     }
   };
 
   const handleCloseDeal = async () => {
-    if (!selectedDealId) return;
+    if (!selectedDealId || isMutating) return;
+    setIsMutating(true);
     setError('');
     try {
-      // Dedicated close endpoint; backend enforces signed -> completed transition.
       await entrepreneurApi.closeDeal(selectedDealId);
       await reload();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Close failed (deal must be signed first)');
+      setError(getErrorMessage(e));
+    } finally {
+      setIsMutating(false);
     }
   };
 
@@ -293,15 +378,13 @@ export default function Phase9Client() {
       await new Promise((r) => setTimeout(r, 300));
       router.push('/dashboard/entrepreneur/phase-10');
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Advance failed');
+      setError(getErrorMessage(e));
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const canAdvance = deals.some((d) =>
-    TERMINAL_SUCCESS.includes(d.status as DealStatus),
-  );
+  const canAdvance = (summary?.closedCount ?? 0) > 0;
 
   if (isLoading) {
     return (
@@ -313,10 +396,21 @@ export default function Phase9Client() {
     );
   }
 
+  const timelineItems: any[] = selectedDealId ? buildTimeline(selectedDealId) : [];
+
   return (
     <div className="space-y-6">
       {/* Figma P9 — pipeline visuals (real data + honest shells) */}
-      <Phase9PipelineVisuals />
+      <Phase9PipelineVisuals
+        deals={deals}
+        summary={summary}
+        termSheet={termSheet}
+        matches={matches}
+        timeline={timelineItems}
+        onDataChanged={() => void reload()}
+        onCreateDeal={handleCreateDeal}
+        onUpdateDealStatus={handleUpdateDealStatus}
+      />
 
       {/* Dev banner — explicit, no AI claims */}
       <div className="bg-warning/10 border border-warning/40 rounded-xl p-4 flex gap-3">
@@ -334,103 +428,23 @@ export default function Phase9Client() {
       </div>
 
       {error && (
-        <div className="bg-destructive/10 border border-destructive/30 rounded-md p-3 text-sm text-destructive">
+        <div role="alert" aria-live="assertive" className="bg-destructive/10 border border-destructive/30 rounded-md p-3 text-sm text-destructive">
           {error}
         </div>
       )}
 
-      {/* Create deal */}
-      <div className="bg-card border-2 border-border rounded-2xl p-6 space-y-4">
-        <h3 className="text-lg font-bold text-foreground">Create deal</h3>
-        <p className="text-xs text-muted-foreground">
-          Pick an investor from your matches and seed the term sheet. The deal
-          starts in <code>initiated</code>; move it through the pipeline via the
-          status selector once created.
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <select
-            aria-label="Select investor for new deal"
-            className="bg-background border border-input rounded-md px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            value={newDealInvestorId}
-            onChange={(e) => setNewDealInvestorId(e.target.value)}
-          >
-            <option value="">Select investor…</option>
-            {matches.map((m) => (
-              <option key={m.matchId} value={m.investorId}>
-                {m.investorName ?? m.investorId} ({m.matchScore})
-              </option>
-            ))}
-          </select>
-          <input
-            className="bg-background border border-input rounded-md px-3 py-2 text-sm"
-            placeholder="Total raise (EUR)"
-            type="number"
-            min="0"
-            value={newDealRaise}
-            onChange={(e) => setNewDealRaise(e.target.value)}
-          />
-          <input
-            className="bg-background border border-input rounded-md px-3 py-2 text-sm"
-            placeholder="Post-money valuation (EUR)"
-            type="number"
-            min="0"
-            value={newDealValuation}
-            onChange={(e) => setNewDealValuation(e.target.value)}
-          />
-        </div>
-        <Button onClick={handleCreateDeal} disabled={matches.length === 0}>
-          Create deal
-        </Button>
-        {matches.length === 0 && (
-          <p className="text-xs text-muted-foreground">
-            No investor matches available — generate matches in Phase 8 first.
-          </p>
-        )}
-      </div>
-
-      {/* Deal list + selector */}
-      <div className="bg-card border-2 border-border rounded-2xl p-6 space-y-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h3 className="text-lg font-bold text-foreground">Deals</h3>
-            <p className="text-xs text-muted-foreground mt-1">
-              {isLoading
-                ? 'Loading…'
-                : deals.length === 0
-                  ? 'No deals yet. Create one above.'
-                  : `${deals.length} deal${deals.length === 1 ? '' : 's'} · ${deals.filter((d) => TERMINAL_SUCCESS.includes(d.status as DealStatus)).length} signed/completed`}
-            </p>
-          </div>
-          <Button variant="outline" onClick={() => void reload()} className="gap-2">
-            <RefreshCcw className="w-4 h-4" /> Refresh
-          </Button>
-        </div>
-
-        {deals.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {deals.map((d) => (
-              <button
-                key={d.dealId}
-                onClick={() => {
-                  setSelectedDealId(d.dealId);
-                  void loadActivity(d.dealId);
-                }}
-                className={`text-xs px-3 py-1.5 rounded-md border ${
-                  d.dealId === selectedDealId
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'bg-background border-input text-foreground'
-                }`}
-              >
-                {d.investors[0]?.investorName ?? d.dealId.slice(-6)} · {d.status}
-              </button>
-            ))}
-          </div>
-        )}
+      {/* Advanced deal controls — full state machine, term-sheet signing, due
+          diligence, checklist and documents. The Figma pipeline above is the
+          primary view; these are the granular operations it builds on. */}
+      <div className="flex items-center gap-3 pt-2">
+        <div className="h-px flex-1 bg-border" />
+        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Advanced deal controls</span>
+        <div className="h-px flex-1 bg-border" />
       </div>
 
       {/* Selected deal detail */}
       {selectedDeal && (
-        <div className="bg-card border-2 border-border rounded-2xl p-6 space-y-4">
+        <div ref={detailPanelRef} tabIndex={-1} className="bg-card border-2 border-border rounded-2xl p-6 space-y-4 focus:outline-none focus:ring-2 focus:ring-ring">
           <div className="flex items-start justify-between gap-3">
             <div>
               <h3 className="text-lg font-bold text-foreground">
@@ -452,7 +466,7 @@ export default function Phase9Client() {
             <Button
               size="sm"
               variant="outline"
-              disabled={selectedDeal.status !== 'signed'}
+              disabled={selectedDeal.status !== 'signed' || isMutating}
               onClick={handleCloseDeal}
             >
               Close deal (signed → completed)
@@ -464,33 +478,51 @@ export default function Phase9Client() {
               <label className="text-xs uppercase text-muted-foreground block mb-1">
                 Advance status
               </label>
+              {/* TODO: Replace with shadcn <Select> primitive for full design-system compliance.
+                  Deferred to avoid visual design changes. See audit report HIGH 1. */}
               <select
                 aria-label="Advance deal status"
-                className="w-full bg-background border border-input rounded-md px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                disabled={isMutating || (VALID_TRANSITIONS[selectedDeal.status]?.length ?? 0) === 0}
+                className="w-full bg-background border border-input rounded-md px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
                 value={selectedDeal.status}
                 onChange={(e) => void handleStatusChange(e.target.value as DealStatus)}
+                title={
+                  (VALID_TRANSITIONS[selectedDeal.status]?.length ?? 0) === 0
+                    ? 'This deal is in a terminal state and cannot be changed'
+                    : undefined
+                }
               >
-                {DEAL_STATUS_OPTIONS.map((s) => (
+                <option value={selectedDeal.status}>{selectedDeal.status}</option>
+                {(VALID_TRANSITIONS[selectedDeal.status] ?? []).map((s) => (
                   <option key={s} value={s}>
                     {s}
                   </option>
                 ))}
               </select>
               <p className="text-xs text-muted-foreground mt-1">
-                Backend enforces the transition graph; illegal moves return 400.
+                {(VALID_TRANSITIONS[selectedDeal.status]?.length ?? 0) === 0
+                  ? 'This deal is complete and cannot be changed.'
+                  : 'Backend enforces the transition graph; illegal moves return 409.'}
               </p>
             </div>
 
             <div>
-              <label className="text-xs uppercase text-muted-foreground block mb-1">
+              <label htmlFor="term-sheet-upload" className="text-xs uppercase text-muted-foreground block mb-1 cursor-pointer">
                 Upload signed term sheet
               </label>
               <input
+                id="term-sheet-upload"
                 type="file"
-                aria-label="Upload signed term sheet"
-                className="block w-full text-xs"
+                aria-label="Upload signed term sheet document"
+                accept=".pdf,.docx,.doc,.xlsx"
+                className="sr-only"
                 onChange={(e) => void handleSignTermSheet(e.target.files?.[0] ?? null)}
               />
+              <div className="inline-flex px-3 py-2 rounded-md border border-input bg-background text-sm text-muted-foreground">
+                <label htmlFor="term-sheet-upload" className="cursor-pointer">
+                  Choose file
+                </label>
+              </div>
               <p className="text-xs text-muted-foreground mt-1">
                 Requires term sheet axis to be in &apos;agreed&apos; first.
               </p>
@@ -510,6 +542,8 @@ export default function Phase9Client() {
               value={ddItemName}
               onChange={(e) => setDdItemName(e.target.value)}
             />
+            {/* TODO: Replace with shadcn <Select> primitive for full design-system compliance.
+                Deferred to avoid visual design changes. See audit report HIGH 1. */}
             <select
               aria-label="Due diligence category"
               className="bg-background border border-input rounded-md px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -521,6 +555,8 @@ export default function Phase9Client() {
               <option value="technical">technical</option>
               <option value="business">business</option>
             </select>
+            {/* TODO: Replace with shadcn <Select> primitive for full design-system compliance.
+                Deferred to avoid visual design changes. See audit report HIGH 1. */}
             <select
               aria-label="Due diligence status"
               className="bg-background border border-input rounded-md px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -533,7 +569,7 @@ export default function Phase9Client() {
               <option value="flagged">flagged</option>
             </select>
           </div>
-          <Button onClick={handleDueDiligenceSubmit}>Add / update item</Button>
+          <Button onClick={handleDueDiligenceSubmit} disabled={isMutating}>Add / update item</Button>
         </div>
       )}
 
@@ -547,11 +583,12 @@ export default function Phase9Client() {
               placeholder="Checklist item (e.g. Sign SPA)"
               value={checklistInput}
               onChange={(e) => setChecklistInput(e.target.value)}
+              disabled={isMutating}
             />
-            <Button variant="outline" onClick={() => handleChecklistAdd(false)}>
+            <Button variant="outline" onClick={() => handleChecklistAdd(false)} disabled={isMutating}>
               Add pending
             </Button>
-            <Button onClick={() => handleChecklistAdd(true)}>Add as done</Button>
+            <Button onClick={() => handleChecklistAdd(true)} disabled={isMutating}>Add as done</Button>
           </div>
           {selectedDeal.closingChecklist.length === 0 ? (
             <p className="text-xs text-muted-foreground">No checklist items yet.</p>
@@ -570,6 +607,7 @@ export default function Phase9Client() {
                     size="sm"
                     variant="outline"
                     onClick={() => handleChecklistToggle(c.item, c.completed)}
+                    disabled={isMutating}
                   >
                     {c.completed ? 'Reopen' : 'Mark done'}
                   </Button>
@@ -589,14 +627,22 @@ export default function Phase9Client() {
             Signed term sheets are uploaded via the deal-detail panel above and
             recorded with kind <code>term_sheet</code>.
           </p>
-          <label className="text-xs uppercase text-muted-foreground block">
+          <label htmlFor="deal-document-upload" className="text-xs uppercase text-muted-foreground block mb-1 cursor-pointer">
             Upload other document
           </label>
           <input
+            id="deal-document-upload"
             type="file"
-            className="block w-full text-xs"
+            aria-label="Upload deal document"
+            accept=".pdf,.docx,.doc,.xlsx,.jpg,.png"
+            className="sr-only"
             onChange={(e) => void handleDocumentUpload(e.target.files?.[0] ?? null)}
           />
+          <div className="inline-flex px-3 py-2 rounded-md border border-input bg-background text-sm text-muted-foreground">
+            <label htmlFor="deal-document-upload" className="cursor-pointer">
+              Choose file
+            </label>
+          </div>
         </div>
       )}
 

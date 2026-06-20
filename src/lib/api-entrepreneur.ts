@@ -517,6 +517,19 @@ export interface UpdateMatchStatusRequest {
 }
 
 // Phase 9
+// Round summary: real-time aggregate of deal committed amounts + round target
+export interface RoundSummaryResponse {
+  totalDeals: number;
+  committedAmountEur: number;
+  roundTargetEur: number;
+  remainingEur: number;
+  percentFilled: number;
+  interestedCount: number;
+  inDiscussionCount: number;
+  termSheetCount: number;
+  closedCount: number;
+}
+
 // 12-state deal lifecycle. Mirrors backend Phase9Requirements.DealStatusWhitelist.
 export type DealStatus =
   | 'initiated'
@@ -544,6 +557,16 @@ export type DueDiligenceStatus =
 export type DealDocumentKind =
   | 'term_sheet' | 'signed_agreement' | 'due_diligence' | 'other';
 
+export interface TimelineItem {
+  id: string;
+  eventType: string;
+  fromStatus?: string;
+  toStatus?: string;
+  occurredAt: string;
+  notes?: string;
+  dealId?: string;
+}
+
 export interface DealStatusResponse {
   dealId: string;
   status: DealStatus | string;
@@ -556,6 +579,13 @@ export interface DealStatusResponse {
     proRataRights: boolean;
     status: TermSheetStatus | string;
     signedAt?: string;
+    shareClass?: string;
+    liquidationPref?: string;
+    boardSeat?: string;
+    hasBoardSeat?: boolean;
+    antiDilutionType?: string;
+    closingDeadline?: string;
+    expiresAt?: string;
   };
   closingChecklist: Array<{
     item: string;
@@ -566,6 +596,7 @@ export interface DealStatusResponse {
   investors: Array<{
     investorId: string;
     investorName: string;
+    investorType?: string;
     committedAmount: number;
     status: ParticipantStatus | string;
   }>;
@@ -1216,6 +1247,29 @@ export const entrepreneurApi = {
   },
 
   // ============ PHASE 9: DEAL EXECUTION ============
+
+  getRoundSummary: async (companyId: string): Promise<RoundSummaryResponse> => {
+    const response = await api.get<RoundSummaryResponse>(
+      `/companies/${companyId}/deals/summary`
+    );
+    return response.data;
+  },
+
+  getActiveTermSheet: async (
+    companyId: string
+  ): Promise<TermSheetResponse | null> => {
+    try {
+      const response = await api.get<TermSheetResponse>(
+        `/companies/${companyId}/term-sheets/active`
+      );
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        return null;
+      }
+      throw error;
+    }
+  },
 
   createDeal: async (
     companyId: string,

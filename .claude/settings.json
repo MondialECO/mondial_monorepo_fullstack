@@ -51,7 +51,22 @@
       "Bash(cat \"C:\\\\Users\\\\Hafiz\\\\.claude\\\\projects\\\\d--GitHub-mondial-monorepo-fullstack\\\\b1b68283-5cba-43ed-a0ff-682af2e6ff1e\\\\tool-results\\\\toolu_01Y8c7KKSeHNNzmJ556gmE6J.json\" *)",
       "Bash(find \"C:\\\\Users\\\\Hafiz\\\\.claude\\\\projects\" -name \"toolu_01Y8c7KKSeHNNzmJ556gmE6J.json\" 2>/dev/null)",
       "Read(//c/Users/Hafiz/.claude/projects/**)",
-      "Bash(node -e ' *)"
+      "Bash(node -e ' *)",
+      "Bash(grep -E \"\\\\.cs$\")",
+      "Bash(cat > *)",
+      "Bash(xargs grep -l \"class.*Deal\\\\|class.*TermSheet\\\\|class.*Investor\")",
+      "Bash(xargs grep -l \"dark:\")",
+      "Bash(xargs grep -l \"TermSheet\\\\|Deal\")",
+      "Bash(xargs grep -l \"class Companies\\\\|class Company\")",
+      "Bash(xargs grep -l \"CreateDealAsync\\\\|UpdateDealStatusAsync\\\\|GetDeal\")",
+      "Bash(xargs grep -l \"Deal\\\\|TermSheet\\\\|RoundSummary\\\\|DueDiligence\")",
+      "Bash(xargs head -5)",
+      "Bash(xargs grep -l \"Phase.9\\\\|Deal\\\\|phase9\")",
+      "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")",
+      "Bash(xargs grep -l \"DealStatus\\\\|DueDiligenceStatus\\\\|DealActivityLogResponse\")",
+      "Bash(xargs grep -l \"CreateDealAsync\")",
+      "Bash(xargs grep -l \"EnsurePhase9Indexes\\\\|CreateIndexModel\")",
+      "Bash(xargs grep -l \"class DealExecution\\\\|class TermSheet\\\\|class Phase9\")"
     ],
     "deny": [
       "Bash(rm -rf:*)",

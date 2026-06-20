@@ -1840,6 +1840,14 @@ public class CompanyController : ControllerBase
             _logger.LogWarning("Authorization failed: {Message}", ex.Message);
             return StatusCode(403, new { error = ex.Message });
         }
+        catch (InvalidOperationException ex)
+        {
+            return StatusCode(409, new { error = ex.Message });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error closing deal");
@@ -1862,6 +1870,16 @@ public class CompanyController : ControllerBase
         {
             _logger.LogWarning("Authorization failed: {Message}", ex.Message);
             return StatusCode(403, new { error = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            // State machine conflict (e.g. terminal state, illegal transition) → 409 Conflict
+            return StatusCode(409, new { error = ex.Message });
+        }
+        catch (ArgumentException ex)
+        {
+            // Validation error (bad input) → 400 Bad Request
+            return BadRequest(new { error = ex.Message });
         }
         catch (Exception ex)
         {
@@ -1886,6 +1904,14 @@ public class CompanyController : ControllerBase
         {
             _logger.LogWarning("Authorization failed: {Message}", ex.Message);
             return StatusCode(403, new { error = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return StatusCode(409, new { error = ex.Message });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
         }
         catch (Exception ex)
         {
@@ -1959,6 +1985,8 @@ public class CompanyController : ControllerBase
             return Ok(result);
         }
         catch (UnauthorizedAccessException ex) { return StatusCode(403, new { error = ex.Message }); }
+        catch (InvalidOperationException ex) { return StatusCode(409, new { error = ex.Message }); }
+        catch (ArgumentException ex) { return BadRequest(new { error = ex.Message }); }
         catch (KeyNotFoundException ex) { return NotFound(new { error = ex.Message }); }
         catch (Exception ex) { _logger.LogError(ex, "Error countering offer"); return BadRequest(new { error = ex.Message }); }
     }
