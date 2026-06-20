@@ -15,6 +15,7 @@ namespace WebApp.DbContext
             EnsureMatchmakingQueueIndexes();
             EnsurePhase4Indexes();
             EnsurePhase6Indexes();
+            EnsurePhase9Indexes();
         }
 
         public MongoDbContext(IMongoDatabase database)
@@ -23,6 +24,7 @@ namespace WebApp.DbContext
             EnsureMatchmakingQueueIndexes();
             EnsurePhase4Indexes();
             EnsurePhase6Indexes();
+            EnsurePhase9Indexes();
         }
 
         // Smart Matchmaking outbox indexes: Status (consumer polling), CompanyId
@@ -129,6 +131,39 @@ namespace WebApp.DbContext
                     new CreateIndexModel<Phase6AccessLog>(
                         Builders<Phase6AccessLog>.IndexKeys
                             .Ascending(x => x.CompanyId).Ascending(x => x.InvestorId),
+                        new CreateIndexOptions { Background = true }),
+                });
+            }
+            catch
+            {
+                // Best-effort; never block or fail context construction.
+            }
+        }
+
+        // Phase 9 deal-pipeline indexes. Primary deal lookup by company + status,
+        // activity timeline by company + timestamp, and deal documents by recency.
+        // Same best-effort + swallowed pattern.
+        private void EnsurePhase9Indexes()
+        {
+            try
+            {
+                DealExecutions.Indexes.CreateMany(new[]
+                {
+                    new CreateIndexModel<DealExecution>(
+                        Builders<DealExecution>.IndexKeys
+                            .Ascending(x => x.CompanyId).Ascending(x => x.Status),
+                        new CreateIndexOptions { Background = true }),
+                    new CreateIndexModel<DealExecution>(
+                        Builders<DealExecution>.IndexKeys
+                            .Ascending(x => x.CompanyId).Descending(x => x.CreatedAt),
+                        new CreateIndexOptions { Background = true }),
+                });
+
+                Phase9DealActivityLogs.Indexes.CreateMany(new[]
+                {
+                    new CreateIndexModel<Phase9DealActivityLog>(
+                        Builders<Phase9DealActivityLog>.IndexKeys
+                            .Ascending(x => x.CompanyId).Descending(x => x.OccurredAt),
                         new CreateIndexOptions { Background = true }),
                 });
             }

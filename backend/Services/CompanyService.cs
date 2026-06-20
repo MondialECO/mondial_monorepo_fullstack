@@ -2110,13 +2110,15 @@ public class CompanyService : ICompanyService
         if (!double.IsFinite(request.TermSheet.PostMoneyValuation) || request.TermSheet.PostMoneyValuation <= 0)
             throw new ArgumentException("termSheet.postMoneyValuation must be > 0");
 
-        // InvestorId must resolve to a live Investor row. Without this, callers
-        // can spawn deals against arbitrary strings and the deal timeline will
-        // render orphaned investor identities forever.
+        // InvestorId must resolve to a live, active Investor row. Without this, callers
+        // can spawn deals against arbitrary strings, deleted investors, or inactive investors,
+        // and the deal timeline will render orphaned investor identities forever.
         var investor = await _dbContext.Investors
-            .Find(i => i.Id == request.InvestorId)
-            .FirstOrDefaultAsync()
-            ?? throw new ArgumentException($"investorId '{request.InvestorId}' does not match any investor");
+            .Find(i => i.Id == request.InvestorId && i.IsActive)
+            .FirstOrDefaultAsync();
+        if (investor == null)
+            throw new ArgumentException(
+                $"Investor '{request.InvestorId}' does not exist or is no longer active.");
 
         var dealId = ObjectId.GenerateNewId().ToString();
         var deal = new DealExecution
@@ -2393,6 +2395,11 @@ public class CompanyService : ICompanyService
                 $"status must be one of: {string.Join(", ", Phase9Requirements.DealStatusWhitelist)}");
 
         var deal = await GetDealOrThrowAsync(dealId);
+
+        // Terminal state immutability: completed, rejected, withdrawn cannot transition.
+        if (Phase9Requirements.DealTerminalStates.Contains(deal.Status))
+            throw new InvalidOperationException(
+                $"Deal '{dealId}' is in terminal state '{deal.Status}' and cannot be modified.");
 
         var from = deal.Status;
         var to = request.Status.ToLowerInvariant();
