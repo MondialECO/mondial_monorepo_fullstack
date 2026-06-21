@@ -1,0 +1,234 @@
+[
+  {
+    "Name": "GridPulse — Smart City Energy Grid",
+    "Problem": {
+      "Description": "Municipal grids waste 12-18% of generated power through legacy load balancing.",
+      "TargetAudience": "Mid-size European municipalities and regional utilities",
+      "ExistingSolutions": "Manual SCADA tuning and yearly grid audits"
+    },
+    "Solution": {
+      "Description": "Real-time load forecasting and automated grid balancing across substations.",
+      "Differentiation": "Edge-deployed model that runs offline; no telemetry leaves the substation.",
+      "StageLabel": "MVP",
+      "Benefits": "Cuts losses by 6-9 pts, pays back in 14 months for a 50k-meter network.",
+      "Vision": "Make every European municipality net-energy-positive by 2032."
+    },
+    "Market": {
+      "PrimaryCustomer": "Municipal utilities (50k-500k meters)",
+      "Geography": "EU",
+      "BuyingBehavior": "Procurement-driven, 9-month sales cycle, pilot-then-rollout",
+      "MarketSize": "EUR 2.1B addressable across EU mid-tier utilities"
+    },
+    "BusinessModel": {
+      "ProductOrService": "SaaS + on-prem appliance hybrid",
+      "Pricing": "EUR 0.04 per meter per month, annual contract",
+      "SalesChannel": "Direct enterprise + utility-industry partners",
+      "StartupCosts": "EUR 450k (hardware certification + first 3 pilots)",
+      "RevenueTarget12Months": "EUR 380k ARR"
+    },
+    "Operations": {
+      "Requirements": "Edge devices certified to IEC 61850, 24/7 NOC, ISO 27001 plan",
+      "ProtoType": "Two pilots running in Lyon and Porto",
+      "Risks": "Regulatory variance across member states"
+    },
+    "Roadmap": {
+      "Days30": "Close third pilot, harden edge OTA pipeline",
+      "Days90": "ISO 27001 audit kick-off, hire 2 grid engineers",
+      "Year1": "12 paying utilities, EUR 1.2M ARR"
+    },
+    "Compliance": {
+      "IsRegulated": "Yes",
+      "LegalRisks": "EU grid-code compliance per country",
+      "Certifications": "IEC 61850, GDPR DPA in place"
+    },
+    "FounderIdentity": {
+      "BusinessName": "GridPulse SAS",
+      "Role": "Founder/CEO",
+      "Experience": ["Power systems", "Edge computing"],
+      "LaunchedBefore": "Yes (acquired 2022)",
+      "WeeklyTimeHours": "60+",
+      "Motivation": "Built grids for a decade; saw the same 15% loss everywhere."
+    },
+    "ImageVideo": [],
+    "DocumentUrls": [],
+    "FundingRequired": 450000,
+    "EquityOffered": 12.0,
+    "ReadinessScore": 78,
+    "Status": "Approved",
+    "IsPublished": true
+  },
+  {
+    "Name": "Halia — Wearable Health Monitoring",
+    "Problem": {
+      "Description": "Post-discharge patients miss 40% of vitals checks, driving readmissions.",
+      "TargetAudience": "Hospital systems running chronic-care programs",
+      "ExistingSolutions": "Phone follow-ups and consumer wearables not cleared for clinical use"
+    },
+    "Solution": {
+      "Description": "Class-IIa wearable streaming continuous ECG + SpO2 to a hospital dashboard.",
+      "Differentiation": "FDA + CE cleared, 14-day battery, automated triage alerts",
+      "StageLabel": "Growth",
+      "Benefits": "Cuts 30-day readmission by 22% in two pilots.",
+      "Vision": "Continuous outpatient cardiology, not episodic."
+    },
+    "Market": {
+      "PrimaryCustomer": "Tier-1 hospital networks",
+      "Geography": "EU, US",
+      "BuyingBehavior": "Clinical evaluation, then network rollout",
+      "MarketSize": "EUR 6.8B remote patient monitoring"
+    },
+    "BusinessModel": {
+      "ProductOrService": "Device + per-patient-day cloud subscription",
+      "Pricing": "EUR 12 per patient-day, device leased",
+      "SalesChannel": "Clinical sales + group-purchasing org partnerships",
+      "StartupCosts": "EUR 1.8M (device tooling + regulatory)",
+      "RevenueTarget12Months": "EUR 2.4M"
+    },
+    "Operations": {
+      "Requirements": "Contract manufacturing partner, 24/7 clinical support",
+      "ProtoType": "Production-grade v2 shipping to pilots",
+      "Risks": "Reimbursement pathway varies by country"
+    },
+    "Roadmap": {
+      "Days30": "Close third hospital pilot",
+      "Days90": "FDA submission for next indication",
+      "Year1": "15 hospital networks, EUR 6M ARR"
+    },
+    "Compliance": {
+      "IsRegulated": "Yes",
+      "LegalRisks": "MDR Class IIa, HIPAA, GDPR",
+      "Certifications": "CE-MDR, FDA 510(k) cleared"
+    },
+    "FounderIdentity": {
+      "BusinessName": "Halia Health Oy",
+      "Role": "Founder/CEO",
+      "Experience": ["Medical devices", "Clinical operations"],
+      "LaunchedBefore": "No",
+      "WeeklyTimeHours": "70",
+      "Motivation": "Lost a parent to a missed post-discharge arrhythmia."
+    },
+    "ImageVideo": [],
+    "DocumentUrls": [],
+    "FundingRequired": 2500000,
+    "EquityOffered": 15.0,
+    "ReadinessScore": 86,
+    "Status": "Approved",
+    "IsPublished": true
+  },
+  {
+    "Name": "Lexion — Compliance Copilot for SMBs",
+    "Problem": {
+      "Description": "EU SMBs spend 6-9 weeks per year just keeping up with regulatory changes.",
+      "TargetAudience": "Owner-operated SMBs (10-200 employees) in regulated trades",
+      "ExistingSolutions": "Outsourced compliance firms (EUR 15-40k/yr) or DIY spreadsheets"
+    },
+    "Solution": {
+      "Description": "SaaS that monitors regulatory changes, maps them to the customer's business, and produces filing-ready packets.",
+      "Differentiation": "Retrieval-grounded summaries with cite-back to source statutes; deterministic backend, no hallucinated obligations.",
+      "StageLabel": "MVP",
+      "Benefits": "Cuts compliance overhead from 9 wk/yr to 2 wk/yr at one-fifth the cost.",
+      "Vision": "Regulatory compliance as a background utility, not a quarterly fire drill."
+    },
+    "Market": {
+      "PrimaryCustomer": "Regulated SMBs in food, fintech-light, and trades",
+      "Geography": "EU",
+      "BuyingBehavior": "Self-serve trial, owner-operator decides in 2 weeks",
+      "MarketSize": "EUR 4.2B EU compliance-software TAM"
+    },
+    "BusinessModel": {
+      "ProductOrService": "SaaS, tiered by employee count",
+      "Pricing": "EUR 149-899/mo, 14-day free trial",
+      "SalesChannel": "Self-serve + accountant partner referrals",
+      "StartupCosts": "EUR 280k (engineering + content licensing)",
+      "RevenueTarget12Months": "EUR 720k ARR"
+    },
+    "Operations": {
+      "Requirements": "Statutes ingestion pipeline, 2 compliance editors on retainer",
+      "ProtoType": "Public beta with 120 active SMBs",
+      "Risks": "Content licensing from official gazettes"
+    },
+    "Roadmap": {
+      "Days30": "Ship France + Germany packs",
+      "Days90": "Hit EUR 200k ARR, hire 2 compliance editors",
+      "Year1": "1500 paying SMBs, EUR 2.1M ARR"
+    },
+    "Compliance": {
+      "IsRegulated": "No (the product itself is informational)",
+      "LegalRisks": "Liability disclaimers on filing-ready outputs",
+      "Certifications": "SOC 2 Type I in progress"
+    },
+    "FounderIdentity": {
+      "BusinessName": "Lexion Tech SAS",
+      "Role": "Founder/CEO",
+      "Experience": ["Regulatory tech", "SaaS growth"],
+      "LaunchedBefore": "Yes (compliance consultancy, exited)",
+      "WeeklyTimeHours": "55",
+      "Motivation": "Watched our last company waste a quarter on a single GDPR audit."
+    },
+    "ImageVideo": [],
+    "DocumentUrls": [],
+    "FundingRequired": 900000,
+    "EquityOffered": 10.0,
+    "ReadinessScore": 73,
+    "Status": "Approved",
+    "IsPublished": true
+  },
+  {
+    "Name": "Verda — Carbon-Negative Packaging",
+    "Problem": {
+      "Description": "EU consumer brands face mounting EPR fines for plastic packaging but have no scalable bio-alternative.",
+      "TargetAudience": "Consumer packaged goods brands (food, cosmetics)",
+      "ExistingSolutions": "Compostable PLA (limited scale) and recycled PET (still net-positive emissions)"
+    },
+    "Solution": {
+      "Description": "Mycelium-based rigid packaging that sequesters more CO2 than it emits, drop-in for existing fill lines.",
+      "Differentiation": "Carbon-negative at scale; certified home-compostable in 8 weeks.",
+      "StageLabel": "MVP",
+      "Benefits": "Eliminates EPR fines, hits brand sustainability targets, lower unit cost than PLA at >1M units/yr.",
+      "Vision": "Be the default rigid packaging substrate for European CPG by 2030."
+    },
+    "Market": {
+      "PrimaryCustomer": "Mid-market European CPG brands",
+      "Geography": "EU",
+      "BuyingBehavior": "Sustainability-led procurement, 6-month qualification cycle",
+      "MarketSize": "EUR 8.3B EU rigid-packaging market"
+    },
+    "BusinessModel": {
+      "ProductOrService": "Direct sale of moulded packaging units",
+      "Pricing": "EUR 0.14 per unit at 1M+ qty, scaling down to EUR 0.09",
+      "SalesChannel": "Direct enterprise + sustainability-consultancy referrals",
+      "StartupCosts": "EUR 1.4M (pilot factory)",
+      "RevenueTarget12Months": "EUR 950k"
+    },
+    "Operations": {
+      "Requirements": "Pilot factory in Brittany operational, 8 staff",
+      "ProtoType": "Three CPG brands in qualification trials",
+      "Risks": "Substrate sourcing variability across seasons"
+    },
+    "Roadmap": {
+      "Days30": "Close first commercial contract",
+      "Days90": "Scale pilot factory to 4M units/yr",
+      "Year1": "EUR 3M revenue, second factory site"
+    },
+    "Compliance": {
+      "IsRegulated": "Yes",
+      "LegalRisks": "EU EN 13432 compostability certification",
+      "Certifications": "EN 13432 in progress, TÜV OK Compost expected Q3"
+    },
+    "FounderIdentity": {
+      "BusinessName": "Verda Bio SAS",
+      "Role": "Co-founder/CEO",
+      "Experience": ["Biotech manufacturing", "Sustainable materials"],
+      "LaunchedBefore": "No",
+      "WeeklyTimeHours": "65",
+      "Motivation": "EU packaging law was passed; somebody has to actually build the alternative."
+    },
+    "ImageVideo": [],
+    "DocumentUrls": [],
+    "FundingRequired": 1600000,
+    "EquityOffered": 14.0,
+    "ReadinessScore": 81,
+    "Status": "Approved",
+    "IsPublished": true
+  }
+]

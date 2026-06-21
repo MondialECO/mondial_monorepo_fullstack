@@ -1,0 +1,1391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mondial.eco — Creator Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;1,9..40,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.44.0/iconfont/tabler-icons.min.css">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#FFFFFF;--sf:#F9F9FA;--sf2:#F1F1F2;
+  --blue:#3C61DD;--yp:#965F11;--yc:#786C22;--gr:#157A55;
+  --bd:#EDEDED;--bd2:#CFCFCF;
+  --t:#070707;--mu:#5E5E5E;--dm:#606060;
+  --fd:'Syne',sans-serif;--fb:'DM Sans',sans-serif;--fm:'JetBrains Mono',monospace;
+  --sh:0 1px 3px rgba(7,7,7,.06),0 4px 16px rgba(7,7,7,.04);
+  --shm:0 2px 8px rgba(7,7,7,.08),0 8px 24px rgba(7,7,7,.06);
+}
+html{scroll-behavior:smooth}
+body{font-family:var(--fb);background:var(--sf);color:var(--t);min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:3px}
+a{text-decoration:none;color:inherit}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+/* pages */
+.page{display:none}.page.active{display:block}
+/* app */
+.app{display:flex;min-height:100vh}
+/* sidebar */
+.sidebar{width:252px;background:var(--bg);border-right:1px solid var(--bd);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:50}
+.sb-brand{padding:17px 18px 13px;display:flex;align-items:center;gap:9px;border-bottom:1px solid var(--bd)}
+.sb-mark{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--blue),#2a4fc4);display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-weight:800;font-size:14px;color:#fff;flex-shrink:0}
+.sb-wm{font-family:var(--fd);font-weight:800;font-size:15px;color:var(--t)}
+.sb-wm span{color:var(--blue)}
+.sb-role{margin:10px 12px 4px;background:var(--sf);border:1px solid var(--bd);border-radius:9px;padding:9px 11px;display:flex;align-items:center;gap:8px;cursor:pointer;transition:border-color .15s}
+.sb-role:hover{border-color:var(--blue)}
+.sb-ric{width:26px;height:26px;border-radius:6px;background:rgba(60,97,221,.1);display:flex;align-items:center;justify-content:center;color:var(--blue);font-size:14px}
+.sb-ri{flex:1;line-height:1.3}
+.sb-ri .rl{font-size:9px;color:var(--dm);text-transform:uppercase;letter-spacing:.08em}
+.sb-ri .rn{font-family:var(--fd);font-weight:700;font-size:12px;color:var(--t)}
+.sb-nav{flex:1;overflow-y:auto;padding:8px 8px 0}
+.sb-sec{font-size:9px;color:var(--dm);text-transform:uppercase;letter-spacing:.12em;font-family:var(--fd);font-weight:700;padding:0 8px;margin:12px 0 5px}
+.sb-sec:first-child{margin-top:2px}
+.sb-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;color:var(--mu);font-size:12.5px;font-weight:500;transition:all .14s;margin-bottom:1px;position:relative;cursor:pointer;border:none;background:none;width:100%;text-align:left}
+.sb-item i{font-size:16px;width:17px;text-align:center;flex-shrink:0}
+.sb-item:hover{background:var(--sf);color:var(--t)}
+.sb-item.active{background:rgba(60,97,221,.08);color:var(--t)}
+.sb-item.active::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:14px;background:var(--blue);border-radius:0 2px 2px 0}
+.sb-item.active i{color:var(--blue)}
+.sb-badge{margin-left:auto;font-size:10px;font-family:var(--fm);font-weight:700;padding:1px 6px;border-radius:100px;min-width:17px;text-align:center}
+.sb-badge.o{background:var(--yp);color:#fff}
+.sb-badge.g{background:var(--gr);color:#fff}
+.sb-badge.b{background:rgba(60,97,221,.12);color:var(--blue)}
+.sb-promo{margin:8px;padding:13px;border-radius:10px;background:linear-gradient(135deg,rgba(60,97,221,.07),rgba(150,95,17,.04));border:1px solid rgba(60,97,221,.15)}
+.sb-promo-t{font-family:var(--fd);font-weight:700;font-size:12px;color:var(--t);display:flex;align-items:center;gap:5px;margin-bottom:4px}
+.sb-promo-s{font-size:11px;color:var(--mu);line-height:1.5;margin-bottom:7px}
+.sb-promo-btn{font-size:11px;color:var(--blue);font-family:var(--fd);font-weight:700;display:inline-flex;align-items:center;gap:4px;cursor:pointer;border:none;background:none}
+/* main */
+.main{flex:1;margin-left:252px;display:flex;flex-direction:column;min-height:100vh}
+/* header */
+.hdr{height:58px;background:rgba(255,255,255,.94);backdrop-filter:blur(10px);border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0;z-index:40}
+.hdr-left{display:flex;align-items:center;gap:14px}
+.hdr-search{display:flex;align-items:center;gap:8px;background:var(--sf);border:1px solid var(--bd);border-radius:9px;padding:7px 13px;width:320px;transition:border-color .15s,box-shadow .15s}
+.hdr-search:focus-within{border-color:var(--blue);box-shadow:0 0 0 3px rgba(60,97,221,.09)}
+.hdr-search i{color:var(--dm);font-size:15px;flex-shrink:0}
+.hdr-search input{background:none;border:none;outline:none;color:var(--t);font-family:var(--fb);font-size:12.5px;width:100%}
+.hdr-search input::placeholder{color:var(--dm)}
+.hdr-search kbd{font-family:var(--fm);font-size:10px;color:var(--dm);background:var(--bg);border:1px solid var(--bd);border-radius:4px;padding:1px 5px;white-space:nowrap}
+.bcr{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--mu)}
+.bcr-cur{color:var(--t);font-family:var(--fd);font-weight:700}
+.hdr-r{display:flex;align-items:center;gap:5px}
+.hib{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--mu);font-size:18px;position:relative;transition:all .14s;border:1px solid transparent;cursor:pointer;background:none}
+.hib:hover{background:var(--sf);border-color:var(--bd);color:var(--t)}
+.hib .dot{position:absolute;top:5px;right:5px;min-width:14px;height:14px;padding:0 3px;border-radius:100px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:8px;font-weight:700;color:#fff;border:2px solid var(--bg)}
+.hib .dot.o{background:var(--yp)}
+.hib .dot.g{background:var(--gr)}
+.hdiv{width:1px;height:22px;background:var(--bd);margin:0 4px}
+.hav{display:flex;align-items:center;gap:7px;padding:3px 7px 3px 3px;border-radius:8px;cursor:pointer;transition:background .14s;border:1px solid transparent}
+.hav:hover{background:var(--sf);border-color:var(--bd)}
+.hav-img{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--yp));display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-weight:700;font-size:11px;color:#fff}
+.hav-n{font-family:var(--fd);font-weight:700;font-size:11.5px;color:var(--t)}
+.hav-r{font-size:10px;color:var(--mu)}
+/* content area */
+.content{flex:1;padding:22px 26px;min-height:calc(100vh - 58px)}
+/* reusable components */
+.card{background:var(--bg);border:1px solid var(--bd);border-radius:14px;padding:18px;box-shadow:var(--sh)}
+.card-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:15px}
+.card-hd h3{font-family:var(--fd);font-weight:700;font-size:14px;color:var(--t);display:flex;align-items:center;gap:7px}
+.card-hd h3 i{font-size:16px}
+.btn{display:inline-flex;align-items:center;gap:6px;border-radius:8px;font-family:var(--fd);font-weight:700;font-size:12px;padding:8px 15px;transition:all .14s;cursor:pointer;border:none}
+.btn-blue{background:var(--blue);color:#fff}
+.btn-blue:hover{background:#2a4fc4}
+.btn-out{background:var(--bg);color:var(--mu);border:1px solid var(--bd)}
+.btn-out:hover{border-color:var(--blue);color:var(--blue)}
+.btn-yp{background:var(--yp);color:#fff}
+.btn-yp:hover{opacity:.9}
+.btn-yc{background:var(--yc);color:#fff}
+.btn-gr{background:var(--gr);color:#fff}
+.btn-ghost{background:none;border:1px solid var(--bd);color:var(--mu);border-radius:8px;font-family:var(--fd);font-weight:700;font-size:12px;padding:8px 15px;cursor:pointer;transition:all .14s;display:inline-flex;align-items:center;gap:6px}
+.btn-ghost:hover{border-color:var(--bd2);color:var(--t)}
+.btn-full{width:100%;margin-top:10px;padding:8px;border-radius:8px;border:1px solid var(--bd);color:var(--mu);font-size:11px;font-weight:500;display:flex;align-items:center;justify-content:center;gap:5px;transition:all .14s;background:none;cursor:pointer}
+.btn-full:hover{border-color:var(--blue);color:var(--blue);background:rgba(60,97,221,.04)}
+.pill{display:inline-flex;align-items:center;gap:4px;border-radius:100px;padding:3px 9px;font-size:10.5px}
+.pill-b{background:rgba(60,97,221,.08);border:1px solid rgba(60,97,221,.2);color:var(--blue)}
+.pill-g{background:rgba(21,122,85,.08);border:1px solid rgba(21,122,85,.2);color:var(--gr)}
+.pill-y{background:rgba(150,95,17,.08);border:1px solid rgba(150,95,17,.2);color:var(--yp)}
+.pill-yc{background:rgba(120,108,34,.08);border:1px solid rgba(120,108,34,.2);color:var(--yc)}
+.tag{font-size:10px;padding:2px 8px;border-radius:100px}
+.tag-b{background:rgba(60,97,221,.08);border:1px solid rgba(60,97,221,.2);color:var(--blue)}
+.tag-y{background:rgba(150,95,17,.08);border:1px solid rgba(150,95,17,.2);color:var(--yp)}
+.tag-g{background:rgba(21,122,85,.08);border:1px solid rgba(21,122,85,.2);color:var(--gr)}
+.hdiv2{height:1px;background:var(--bd);margin:12px 0}
+.pg-hd{margin-bottom:20px}
+.pg-hd h2{font-family:var(--fd);font-weight:800;font-size:22px;color:var(--t);line-height:1.2}
+.pg-hd p{font-size:13px;color:var(--mu);margin-top:4px}
+.eyebrow{font-size:10px;color:var(--blue);text-transform:uppercase;letter-spacing:.1em;font-family:var(--fd);font-weight:700;margin-bottom:4px}
+.sec-ttl{font-family:var(--fd);font-weight:700;font-size:13.5px;color:var(--t);margin-bottom:12px;display:flex;align-items:center;gap:7px}
+/* grid layouts */
+.g2{display:grid;grid-template-columns:1.85fr 1fr;gap:16px}
+.g2e{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+/* kpi */
+.kpi{background:var(--bg);border:1px solid var(--bd);border-radius:13px;padding:16px 17px;box-shadow:var(--sh)}
+.kpi-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:11px}
+.kpi-ic{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:17px}
+.kpi-tr{font-size:10px;font-family:var(--fm);font-weight:700;padding:2px 6px;border-radius:100px}
+.kpi-v{font-family:var(--fm);font-weight:700;font-size:24px;color:var(--t);line-height:1;letter-spacing:-.02em}
+.kpi-l{font-size:11px;color:var(--mu);margin-top:5px}
+/* project hero */
+.proj-hero{display:flex;gap:13px;align-items:flex-start;padding:14px;background:var(--sf);border:1px solid var(--bd);border-radius:11px;margin-bottom:15px}
+.proj-logo{width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,var(--blue),var(--yp));display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-weight:800;font-size:19px;color:#fff;flex-shrink:0}
+/* stepper */
+.stepper{display:flex;align-items:flex-start;justify-content:space-between;position:relative;padding:5px 0 0}
+.stepper::before{content:'';position:absolute;top:16px;left:22px;right:22px;height:2px;background:var(--bd)}
+.st-fill{position:absolute;top:16px;left:22px;height:2px;background:linear-gradient(90deg,var(--gr),var(--blue));width:70%;border-radius:2px}
+.step{display:flex;flex-direction:column;align-items:center;gap:6px;position:relative;z-index:2;flex:1}
+.sn{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:10px;font-weight:700;border:2px solid var(--bd);background:var(--bg);color:var(--dm)}
+.sn.done{background:var(--gr);border-color:var(--gr);color:#fff}
+.sn.active{background:var(--yp);border-color:var(--yp);color:#fff;box-shadow:0 0 0 3px rgba(150,95,17,.15);animation:spu 2s infinite}
+@keyframes spu{0%,100%{box-shadow:0 0 0 3px rgba(150,95,17,.15)}50%{box-shadow:0 0 0 6px rgba(150,95,17,.06)}}
+.sl{font-size:9.5px;color:var(--mu);text-align:center;max-width:55px;line-height:1.3}
+.sl.active{color:var(--yp);font-weight:600}
+/* chart ph */
+.chart-ph{height:140px;background:var(--sf);border:1px solid var(--bd);border-radius:9px;display:flex;align-items:flex-end;padding:10px;gap:3px;overflow:hidden}
+.chart-bar{flex:1;border-radius:3px 3px 0 0;transition:opacity .18s;cursor:pointer}
+.chart-bar:hover{opacity:.75}
+/* clarity ring */
+.cr-wrap{display:flex;align-items:center;gap:15px}
+.cr-ring{position:relative;width:76px;height:76px;flex-shrink:0}
+.cr-ring svg{transform:rotate(-90deg)}
+.cr-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center}
+/* msg/notif */
+.msg-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--bd);cursor:pointer;transition:opacity .14s}
+.msg-row:last-child{border-bottom:none}
+.msg-row:hover{opacity:.8}
+.msg-av{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-weight:700;font-size:11px;color:#fff;flex-shrink:0}
+.notif-row{display:flex;align-items:flex-start;gap:9px;padding:9px 0;border-bottom:1px solid var(--bd)}
+.notif-row:last-child{border-bottom:none}
+/* asset row */
+.asset-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--bd)}
+.asset-row:last-child{border-bottom:none}
+.asset-ic{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+/* sp card */
+.sp-card{display:flex;align-items:center;gap:11px;padding:13px;background:var(--sf);border:1px solid var(--bd);border-radius:11px;margin-bottom:9px;transition:border-color .14s}
+.sp-card:last-child{margin-bottom:0}
+.sp-card:hover{border-color:var(--bd2)}
+.sp-av{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-weight:700;font-size:13px;color:#fff;flex-shrink:0}
+/* crossroads */
+.cr-banner{background:linear-gradient(120deg,rgba(120,108,34,.06),rgba(150,95,17,.04));border:1px solid rgba(120,108,34,.2);border-radius:13px;padding:17px 21px;display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:17px;flex-wrap:wrap}
+/* qa */
+.qa-card{background:var(--bg);border:1px solid var(--bd);border-radius:12px;padding:15px;display:flex;flex-direction:column;align-items:center;gap:7px;text-align:center;cursor:pointer;transition:all .17s;box-shadow:var(--sh)}
+.qa-card:hover{border-color:var(--blue);transform:translateY(-2px);box-shadow:var(--shm)}
+.qa-ic{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:19px}
+/* messenger 3-col */
+.messenger-layout{display:flex;height:calc(100vh - 148px);border:1px solid var(--bd);border-radius:14px;overflow:hidden;background:var(--bg)}
+.ms-threads{width:260px;border-right:1px solid var(--bd);display:flex;flex-direction:column}
+.ms-search{padding:12px;border-bottom:1px solid var(--bd)}
+.ms-search input{width:100%;background:var(--sf);border:1px solid var(--bd);border-radius:8px;padding:7px 11px;font-size:12px;font-family:var(--fb);color:var(--t);outline:none}
+.ms-thread-item{display:flex;align-items:center;gap:9px;padding:11px 14px;border-bottom:1px solid var(--bd);cursor:pointer;transition:background .13s}
+.ms-thread-item:hover{background:var(--sf)}
+.ms-thread-item.active{background:rgba(60,97,221,.07)}
+.ms-chat{flex:1;display:flex;flex-direction:column}
+.ms-chat-hd{padding:14px 18px;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between}
+.ms-messages{flex:1;overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+.ms-bubble{max-width:72%;padding:10px 13px;border-radius:12px;font-size:12.5px;line-height:1.55}
+.ms-bubble.ai{background:var(--sf);border-left:2px solid var(--blue);border-radius:0 12px 12px 12px;color:var(--t)}
+.ms-bubble.user{background:var(--blue);border-radius:12px 0 12px 12px;color:#fff;margin-left:auto}
+.ms-input-area{padding:12px 16px;border-top:1px solid var(--bd);display:flex;gap:9px;align-items:flex-end}
+.ms-input{flex:1;background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:9px 12px;font-size:12.5px;font-family:var(--fb);color:var(--t);outline:none;resize:none}
+/* settings tabs */
+.tab-nav{display:flex;gap:0;border-bottom:2px solid var(--bd);margin-bottom:20px}
+.tab-btn{font-family:var(--fd);font-weight:700;font-size:12.5px;color:var(--mu);padding:10px 18px;cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .14s}
+.tab-btn:hover{color:var(--t)}
+.tab-btn.active{color:var(--blue);border-bottom-color:var(--blue)}
+.tab-pane{display:none}.tab-pane.active{display:block}
+/* phase cards */
+.phase-card{background:var(--bg);border:1px solid var(--bd);border-radius:13px;padding:16px 18px;display:flex;align-items:center;gap:14px;margin-bottom:10px;cursor:pointer;transition:all .15s;box-shadow:var(--sh)}
+.phase-card:hover{border-color:var(--bd2);box-shadow:var(--shm)}
+.phase-card:last-child{margin-bottom:0}
+.phase-num{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-weight:700;font-size:14px;flex-shrink:0}
+/* progress bar */
+.prog-bar{height:5px;background:var(--sf2);border-radius:3px;overflow:hidden;margin-top:5px}
+.prog-fill{height:100%;border-radius:3px;transition:width .3s}
+/* doc list */
+.doc-row{display:flex;align-items:center;gap:12px;padding:12px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;margin-bottom:8px;transition:border-color .14s}
+.doc-row:hover{border-color:var(--bd2)}
+.doc-row:last-child{margin-bottom:0}
+/* form input */
+.form-lbl{font-size:11px;color:var(--mu);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px;font-family:var(--fd);font-weight:700}
+.form-input{width:100%;background:var(--sf);border:1px solid var(--bd);border-radius:9px;padding:10px 13px;font-size:13px;font-family:var(--fb);color:var(--t);outline:none;transition:border-color .14s}
+.form-input:focus{border-color:var(--blue)}
+/* toggle */
+.toggle{width:36px;height:20px;border-radius:100px;position:relative;cursor:pointer;transition:background .2s}
+.toggle.on{background:var(--gr)}
+.toggle.off{background:var(--bd2)}
+.toggle::after{content:'';position:absolute;top:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .2s}
+.toggle.on::after{left:18px}
+.toggle.off::after{left:2px}
+/* ip vault */
+.vault-metric{background:var(--bg);border:1px solid var(--bd);border-radius:12px;padding:14px 16px;text-align:center}
+/* marketplace listing card */
+.listing-card{background:var(--sf);border:1px solid rgba(120,108,34,.3);border-radius:14px;overflow:hidden;margin-bottom:14px}
+.listing-cover{height:120px;background:linear-gradient(135deg,#1a1a2e,#16213e,#0f3460);position:relative;display:flex;align-items:center;justify-content:center}
+/* buyer card */
+.buyer-card{background:var(--bg);border:1px solid var(--bd);border-radius:12px;padding:15px;margin-bottom:9px;transition:border-color .14s}
+.buyer-card:hover{border-color:var(--bd2)}
+/* score bar */
+.score-row{display:flex;align-items:center;gap:9px;margin-bottom:7px}
+.score-row:last-child{margin-bottom:0}
+.score-lbl{font-size:11px;color:var(--mu);width:110px;flex-shrink:0}
+.score-track{flex:1;height:4px;background:var(--sf2);border-radius:2px;overflow:hidden}
+.score-fill{height:100%;border-radius:2px}
+.score-val{font-size:11px;font-family:var(--fm);color:var(--t);width:28px;text-align:right;flex-shrink:0}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sb-brand">
+    <div class="sb-mark">M</div>
+    <div class="sb-wm">mondial<span>.eco</span></div>
+  </div>
+  <div class="sb-role">
+    <div class="sb-ric"><i class="ti ti-bulb"></i></div>
+    <div class="sb-ri"><div class="rl">Current Role</div><div class="rn">Creator</div></div>
+    <i class="ti ti-selector" style="color:var(--dm);font-size:13px"></i>
+  </div>
+  <nav class="sb-nav">
+    <div class="sb-sec">Main</div>
+    <button class="sb-item active" onclick="nav('dashboard',this,'Dashboard')"><i class="ti ti-layout-dashboard"></i>Dashboard</button>
+    <button class="sb-item" onclick="nav('my-idea',this,'My Idea')"><i class="ti ti-bulb"></i>My Idea</button>
+    <button class="sb-item" onclick="nav('project-studio',this,'Project Studio')"><i class="ti ti-rocket"></i>Project Studio</button>
+    <button class="sb-item" onclick="nav('ai-masterplan',this,'AI Masterplan')"><i class="ti ti-chart-histogram"></i>AI Masterplan</button>
+    <button class="sb-item" onclick="nav('offer-pricing',this,'Offer &amp; Pricing')"><i class="ti ti-tag"></i>Offer &amp; Pricing</button>
+    <div class="sb-sec">Growth</div>
+    <button class="sb-item" onclick="nav('crossroads',this,'The Crossroads')"><i class="ti ti-arrows-split-2"></i>The Crossroads<span class="sb-badge b">New</span></button>
+    <button class="sb-item" onclick="nav('marketplace',this,'Marketplace')"><i class="ti ti-building-store"></i>Marketplace</button>
+    <button class="sb-item" onclick="nav('hire-providers',this,'Hire Providers')"><i class="ti ti-users-group"></i>Hire Providers</button>
+    <button class="sb-item" onclick="nav('ip-vault',this,'IP Vault')"><i class="ti ti-certificate"></i>IP Vault</button>
+    <div class="sb-sec">Communication</div>
+    <button class="sb-item" onclick="nav('messenger',this,'Messenger')"><i class="ti ti-message-circle"></i>Messenger<span class="sb-badge o">3</span></button>
+    <button class="sb-item" onclick="nav('notifications',this,'Notifications')"><i class="ti ti-bell"></i>Notifications<span class="sb-badge g">5</span></button>
+    <div class="sb-sec">Assets</div>
+    <button class="sb-item" onclick="nav('asset-library',this,'Asset Library')"><i class="ti ti-folder"></i>Asset Library</button>
+    <button class="sb-item" onclick="nav('documents',this,'Documents')"><i class="ti ti-file-text"></i>Documents</button>
+    <button class="sb-item" onclick="nav('settings',this,'Settings')"><i class="ti ti-settings"></i>Settings</button>
+  </nav>
+  <div class="sb-promo">
+    <div class="sb-promo-t"><i class="ti ti-sparkles" style="color:var(--blue)"></i>Idea Clarity</div>
+    <div class="sb-promo-s">Concept scored 82/100. Sharpen to unlock better matches.</div>
+    <button class="sb-promo-btn" onclick="nav('my-idea',document.querySelectorAll('.sb-item')[1],'My Idea')">Improve score <i class="ti ti-arrow-right"></i></button>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+
+<!-- HEADER -->
+<header class="hdr">
+  <div class="hdr-left">
+    <div class="hdr-search">
+      <i class="ti ti-search"></i>
+      <input type="text" placeholder="Search ideas, providers, marketplace…">
+      <kbd>⌘K</kbd>
+    </div>
+    <div class="bcr">
+      <span>Creator Flow</span>
+      <i class="ti ti-chevron-right" style="font-size:11px;color:var(--bd2)"></i>
+      <span class="bcr-cur" id="bcur">Dashboard</span>
+    </div>
+  </div>
+  <div class="hdr-r">
+    <button class="hib" onclick="nav('messenger',document.querySelectorAll('.sb-item')[9],'Messenger')" title="Messenger">
+      <i class="ti ti-message-circle"></i><span class="dot o">3</span>
+    </button>
+    <button class="hib" onclick="nav('notifications',document.querySelectorAll('.sb-item')[10],'Notifications')" title="Notifications">
+      <i class="ti ti-bell"></i><span class="dot g">5</span>
+    </button>
+    <div class="hdiv"></div>
+    <div class="hav" onclick="nav('settings',document.querySelectorAll('.sb-item')[13],'Settings')">
+      <div class="hav-img">SC</div>
+      <div><div class="hav-n">Sirajul C.</div><div class="hav-r">Creator</div></div>
+      <i class="ti ti-chevron-down" style="color:var(--dm);font-size:12px;margin-left:2px"></i>
+    </div>
+  </div>
+</header>
+
+<main class="content">
+
+<!-- ═══════════ PAGE: DASHBOARD ═══════════ -->
+<div class="page active" id="page-dashboard">
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+    <div><h1 style="font-family:var(--fd);font-weight:800;font-size:22px;color:var(--t)">Good morning, Sirajul 👋</h1><p style="font-size:13px;color:var(--mu);margin-top:3px">AutoInvoice is looking strong. Phase 5 reached!</p></div>
+    <div style="display:flex;gap:8px">
+      <div style="background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:7px 12px;font-size:12px;color:var(--mu);display:flex;align-items:center;gap:6px"><i class="ti ti-calendar" style="font-size:13px"></i>Tuesday, 9 Jun 2026</div>
+      <button class="btn btn-out"><i class="ti ti-plus"></i>New Idea</button>
+      <button class="btn btn-blue"><i class="ti ti-sparkles"></i>AI Tools</button>
+    </div>
+  </div>
+  <!-- KPI -->
+  <div class="g4" style="margin-bottom:16px">
+    <div class="kpi">
+      <div class="kpi-top"><div class="kpi-ic" style="background:rgba(60,97,221,.1);color:var(--blue)"><i class="ti ti-gauge"></i></div><span class="kpi-tr" style="background:rgba(21,122,85,.1);color:var(--gr)"><i class="ti ti-trending-up" style="font-size:9px"></i> +14</span></div>
+      <div class="kpi-v">82<span style="font-size:13px;color:var(--mu)">/100</span></div><div class="kpi-l">Idea Clarity Score</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-top"><div class="kpi-ic" style="background:rgba(21,122,85,.1);color:var(--gr)"><i class="ti ti-files"></i></div><span class="kpi-tr" style="background:rgba(21,122,85,.1);color:var(--gr)"><i class="ti ti-trending-up" style="font-size:9px"></i> +2</span></div>
+      <div class="kpi-v">6</div><div class="kpi-l">AI Assets Generated</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-top"><div class="kpi-ic" style="background:rgba(150,95,17,.1);color:var(--yp)"><i class="ti ti-currency-euro"></i></div><span class="kpi-tr" style="background:rgba(120,108,34,.1);color:var(--yc)"><i class="ti ti-sparkles" style="font-size:9px"></i> AI</span></div>
+      <div class="kpi-v">€25–80<span style="font-size:13px;color:var(--mu)">K</span></div><div class="kpi-l">Est. IP Valuation</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-top"><div class="kpi-ic" style="background:rgba(60,97,221,.1);color:var(--blue)"><i class="ti ti-users"></i></div><span class="kpi-tr" style="background:rgba(21,122,85,.1);color:var(--gr)"><i class="ti ti-trending-up" style="font-size:9px"></i> +3</span></div>
+      <div class="kpi-v">7</div><div class="kpi-l">Interested Buyers</div>
+    </div>
+  </div>
+  <!-- Crossroads banner -->
+  <div class="cr-banner">
+    <div style="display:flex;align-items:center;gap:13px">
+      <div style="width:42px;height:42px;border-radius:11px;background:rgba(120,108,34,.1);display:flex;align-items:center;justify-content:center;font-size:21px;color:var(--yc);flex-shrink:0"><i class="ti ti-arrows-split-2"></i></div>
+      <div>
+        <div style="font-family:var(--fd);font-weight:700;font-size:14px;color:var(--t)">⚡ You've reached The Crossroads — Phase 5</div>
+        <div style="font-size:12px;color:var(--mu);margin-top:2px">Fully packaged idea. Sell/license it OR build your company and unlock investor matching.</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-yc" onclick="nav('crossroads',document.querySelectorAll('.sb-item')[5],'The Crossroads')"><i class="ti ti-tag"></i>Sell / License</button>
+      <button class="btn btn-yp" onclick="nav('crossroads',document.querySelectorAll('.sb-item')[5],'The Crossroads')"><i class="ti ti-rocket"></i>Build It</button>
+    </div>
+  </div>
+  <!-- Main grid -->
+  <div class="g2">
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <!-- project card -->
+      <div class="card">
+        <div class="card-hd"><h3><i class="ti ti-rocket" style="color:var(--yp)"></i>Your Project</h3><span class="pill pill-g"><i class="ti ti-check" style="font-size:9px"></i>Identity Ready</span></div>
+        <div class="proj-hero">
+          <div class="proj-logo">A</div>
+          <div style="flex:1">
+            <div style="font-family:var(--fd);font-weight:700;font-size:16px;color:var(--t)">AutoInvoice</div>
+            <div style="font-size:12.5px;color:var(--mu);line-height:1.5;margin-top:3px">We help freelancers recover unpaid invoices by automating follow-up sequences.</div>
+            <div style="display:flex;gap:5px;margin-top:8px;flex-wrap:wrap">
+              <span class="tag tag-y">FinTech</span><span class="tag tag-y">Creator Economy</span><span class="tag tag-b">SaaS</span>
+            </div>
+          </div>
+          <button class="btn btn-out" style="padding:5px 11px;font-size:11px" onclick="nav('my-idea',document.querySelectorAll('.sb-item')[1],'My Idea')"><i class="ti ti-pencil" style="font-size:12px"></i>Edit</button>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:11px">
+          <span style="font-family:var(--fd);font-weight:700;font-size:12.5px;color:var(--t)">Creator Journey</span>
+          <span style="font-size:11px;color:var(--mu)">Phase 5 of 6 active</span>
+        </div>
+        <div class="stepper">
+          <div class="st-fill"></div>
+          <div class="step"><div class="sn done"><i class="ti ti-check" style="font-size:10px"></i></div><div class="sl">Identity</div></div>
+          <div class="step"><div class="sn done"><i class="ti ti-check" style="font-size:10px"></i></div><div class="sl">Project ID</div></div>
+          <div class="step"><div class="sn done"><i class="ti ti-check" style="font-size:10px"></i></div><div class="sl">Intelligence</div></div>
+          <div class="step"><div class="sn done"><i class="ti ti-check" style="font-size:10px"></i></div><div class="sl">Offer Setup</div></div>
+          <div class="step"><div class="sn active">5</div><div class="sl active">Crossroads</div></div>
+          <div class="step"><div class="sn">6</div><div class="sl">Level Up</div></div>
+        </div>
+      </div>
+      <!-- chart -->
+      <div class="card">
+        <div class="card-hd"><h3><i class="ti ti-chart-line" style="color:var(--blue)"></i>AI Financial Forecast</h3><button class="btn btn-out" style="padding:5px 11px;font-size:11px" onclick="nav('ai-masterplan',document.querySelectorAll('.sb-item')[3],'AI Masterplan')">View full</button></div>
+        <div style="display:flex;gap:18px;margin-bottom:12px">
+          <div><div style="font-size:9.5px;color:var(--dm);text-transform:uppercase;letter-spacing:.08em">Year 3 ARR</div><div style="font-family:var(--fm);font-weight:700;font-size:19px;color:var(--t)">€186,000</div><div style="font-size:11px;color:var(--gr)">+340% from Year 1</div></div>
+          <div><div style="font-size:9.5px;color:var(--dm);text-transform:uppercase;letter-spacing:.08em">Break-even</div><div style="font-family:var(--fm);font-weight:700;font-size:19px;color:var(--t)">Month 14</div><div style="font-size:11px;color:var(--yc)">On track ✓</div></div>
+          <div><div style="font-size:9.5px;color:var(--dm);text-transform:uppercase;letter-spacing:.08em">Confidence</div><div style="font-family:var(--fm);font-weight:700;font-size:19px;color:var(--t)">High</div><div style="font-size:11px;color:var(--gr)">Validated</div></div>
+        </div>
+        <div class="chart-ph">
+          <div class="chart-bar" style="height:22%;background:rgba(60,97,221,.18)"></div>
+          <div class="chart-bar" style="height:30%;background:rgba(60,97,221,.22)"></div>
+          <div class="chart-bar" style="height:27%;background:rgba(60,97,221,.2)"></div>
+          <div class="chart-bar" style="height:38%;background:rgba(60,97,221,.28)"></div>
+          <div class="chart-bar" style="height:42%;background:rgba(60,97,221,.3)"></div>
+          <div class="chart-bar" style="height:35%;background:rgba(60,97,221,.26)"></div>
+          <div class="chart-bar" style="height:55%;background:rgba(60,97,221,.38)"></div>
+          <div class="chart-bar" style="height:62%;background:rgba(60,97,221,.42)"></div>
+          <div class="chart-bar" style="height:58%;background:rgba(60,97,221,.4)"></div>
+          <div class="chart-bar" style="height:74%;background:rgba(21,122,85,.38)"></div>
+          <div class="chart-bar" style="height:80%;background:rgba(21,122,85,.42)"></div>
+          <div class="chart-bar" style="height:88%;background:rgba(21,122,85,.48)"></div>
+        </div>
+      </div>
+      <!-- asset library -->
+      <div class="card">
+        <div class="card-hd"><h3><i class="ti ti-folder" style="color:var(--blue)"></i>Asset Library</h3><button class="btn btn-out" style="padding:5px 11px;font-size:11px" onclick="nav('asset-library',document.querySelectorAll('.sb-item')[11],'Asset Library')">View all</button></div>
+        <div class="asset-row"><div class="asset-ic" style="background:rgba(60,97,221,.1);color:var(--blue)"><i class="ti ti-chart-bar"></i></div><div style="flex:1"><div style="font-size:12.5px;font-weight:500;color:var(--t)">3-Year Financial Forecast</div><div style="font-size:11px;color:var(--mu);margin-top:1px">PDF · AI Generated · 2 days ago</div></div><i class="ti ti-download" style="color:var(--mu);cursor:pointer"></i></div>
+        <div class="asset-row"><div class="asset-ic" style="background:rgba(60,97,221,.1);color:var(--blue)"><i class="ti ti-report"></i></div><div style="flex:1"><div style="font-size:12.5px;font-weight:500;color:var(--t)">AI Business Plan</div><div style="font-size:11px;color:var(--mu);margin-top:1px">PDF + DOCX · 9 sections · Investor-ready</div></div><i class="ti ti-download" style="color:var(--mu);cursor:pointer"></i></div>
+        <div class="asset-row"><div class="asset-ic" style="background:rgba(21,122,85,.1);color:var(--gr)"><i class="ti ti-palette"></i></div><div style="flex:1"><div style="font-size:12.5px;font-weight:500;color:var(--t)">Brand Identity Kit</div><div style="font-size:11px;color:var(--mu);margin-top:1px">Logo · Palette · Fonts</div></div><i class="ti ti-download" style="color:var(--mu);cursor:pointer"></i></div>
+        <div class="asset-row"><div class="asset-ic" style="background:rgba(120,108,34,.1);color:var(--yc)"><i class="ti ti-checklist"></i></div><div style="flex:1"><div style="font-size:12.5px;font-weight:500;color:var(--t)">Legal Checklist</div><div style="font-size:11px;color:var(--mu);margin-top:1px">4 of 12 addressed · 8 remaining</div></div><i class="ti ti-chevron-right" style="color:var(--mu);cursor:pointer"></i></div>
+      </div>
+    </div>
+    <!-- right col -->
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <!-- messages -->
+      <div class="card">
+        <div class="card-hd"><h3><i class="ti ti-message-circle" style="color:var(--yp)"></i>Messages</h3><span class="pill pill-y"><b>3</b> new</span></div>
+        <div class="msg-row"><div class="msg-av" style="background:linear-gradient(135deg,var(--blue),var(--yp))">SC</div><div style="flex:1;min-width:0"><div style="display:flex;justify-content:space-between"><span style="font-size:12px;font-weight:600;color:var(--t)">Sophie Chen</span><span style="font-size:10px;color:var(--dm);font-family:var(--fm)">2m</span></div><div style="font-size:11px;color:var(--mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">Interested in licensing — can we schedule a call?</div></div><div style="width:7px;height:7px;border-radius:50%;background:var(--yp);flex-shrink:0"></div></div>
+        <div class="msg-row"><div class="msg-av" style="background:linear-gradient(135deg,var(--blue),var(--gr))">AK</div><div style="flex:1;min-width:0"><div style="display:flex;justify-content:space-between"><span style="font-size:12px;font-weight:600;color:var(--t)">Ahmed Karim</span><span style="font-size:10px;color:var(--dm);font-family:var(--fm)">1h</span></div><div style="font-size:11px;color:var(--mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">Logo drafts ready for review 🎨</div></div><div style="width:7px;height:7px;border-radius:50%;background:var(--yp);flex-shrink:0"></div></div>
+        <div class="msg-row"><div class="msg-av" style="background:linear-gradient(135deg,var(--yp),var(--yc))">ML</div><div style="flex:1;min-width:0"><div style="display:flex;justify-content:space-between"><span style="font-size:12px;font-weight:600;color:var(--t)">Marie Laurent</span><span style="font-size:10px;color:var(--dm);font-family:var(--fm)">3h</span></div><div style="font-size:11px;color:var(--mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">Sending brand guidelines now.</div></div></div>
+        <button class="btn-full" onclick="nav('messenger',document.querySelectorAll('.sb-item')[9],'Messenger')"><i class="ti ti-message-circle"></i>Open Messenger</button>
+      </div>
+      <!-- notifications -->
+      <div class="card">
+        <div class="card-hd"><h3><i class="ti ti-bell" style="color:var(--gr)"></i>Notifications</h3><span class="pill pill-g"><b>5</b> new</span></div>
+        <div class="notif-row"><div style="width:7px;height:7px;border-radius:50%;background:var(--gr);margin-top:5px;flex-shrink:0"></div><div style="font-size:12px;color:var(--t);line-height:1.45;flex:1">New interest: <b>Sophie Chen</b> — 94% match</div><div style="font-size:10px;color:var(--dm);font-family:var(--fm);flex-shrink:0;margin-top:1px">5m</div></div>
+        <div class="notif-row"><div style="width:7px;height:7px;border-radius:50%;background:var(--blue);margin-top:5px;flex-shrink:0"></div><div style="font-size:12px;color:var(--t);flex:1">Business Plan exported successfully</div><div style="font-size:10px;color:var(--dm);font-family:var(--fm);flex-shrink:0;margin-top:1px">1h</div></div>
+        <div class="notif-row"><div style="width:7px;height:7px;border-radius:50%;background:var(--yp);margin-top:5px;flex-shrink:0"></div><div style="font-size:12px;color:var(--t);flex:1">Ahmed K. accepted your branding project</div><div style="font-size:10px;color:var(--dm);font-family:var(--fm);flex-shrink:0;margin-top:1px">2h</div></div>
+        <div class="notif-row"><div style="width:7px;height:7px;border-radius:50%;background:var(--blue);margin-top:5px;flex-shrink:0"></div><div style="font-size:12px;color:var(--t);flex:1">AI valuation updated to <b>€82K</b></div><div style="font-size:10px;color:var(--dm);font-family:var(--fm);flex-shrink:0;margin-top:1px">1d</div></div>
+        <div class="notif-row"><div style="width:7px;height:7px;border-radius:50%;background:var(--yc);margin-top:5px;flex-shrink:0"></div><div style="font-size:12px;color:var(--t);flex:1">Legal checklist: 8 items still pending</div><div style="font-size:10px;color:var(--dm);font-family:var(--fm);flex-shrink:0;margin-top:1px">1d</div></div>
+        <button class="btn-full" onclick="nav('notifications',document.querySelectorAll('.sb-item')[10],'Notifications')"><i class="ti ti-bell"></i>View all notifications</button>
+      </div>
+      <!-- marketplace -->
+      <div class="card">
+        <div class="card-hd"><h3><i class="ti ti-building-store" style="color:var(--yc)"></i>Marketplace</h3></div>
+        <div style="text-align:center;padding:4px 0">
+          <div style="font-family:var(--fm);font-weight:700;font-size:28px;color:var(--t)">7</div>
+          <div style="font-size:12px;color:var(--mu);margin-bottom:10px">entrepreneurs interested</div>
+          <div style="display:flex;justify-content:center;margin-bottom:11px">
+            <div style="width:28px;height:28px;border-radius:50%;border:2px solid var(--bg);background:linear-gradient(135deg,var(--blue),var(--yp));display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-weight:700;font-size:10px;color:#fff">JM</div>
+            <div style="width:28px;height:28px;border-radius:50%;border:2px solid var(--bg);background:linear-gradient(135deg,var(--blue),var(--gr));display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-weight:700;font-size:10px;color:#fff;margin-left:-6px">RB</div>
+            <div style="width:28px;height:28px;border-radius:50%;border:2px solid var(--bg);background:linear-gradient(135deg,var(--yp),var(--yc));display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-weight:700;font-size:10px;color:#fff;margin-left:-6px">TC</div>
+            <div style="width:28px;height:28px;border-radius:50%;border:2px solid var(--bg);background:var(--sf2);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--mu);margin-left:-6px">+4</div>
+          </div>
+          <button class="btn btn-blue" style="width:100%;justify-content:center" onclick="nav('marketplace',document.querySelectorAll('.sb-item')[6],'Marketplace')"><i class="ti ti-eye"></i>View Buyers</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- quick actions -->
+  <div class="sec-ttl" style="margin-top:4px"><i class="ti ti-bolt" style="color:var(--yp)"></i>Quick Actions</div>
+  <div class="g4">
+    <div class="qa-card" onclick="nav('ai-masterplan',document.querySelectorAll('.sb-item')[3],'AI Masterplan')"><div class="qa-ic" style="background:rgba(60,97,221,.1);color:var(--blue)"><i class="ti ti-file-presentation"></i></div><div style="font-family:var(--fd);font-weight:700;font-size:12.5px;color:var(--t)">Generate Pitch Deck</div><div style="font-size:11px;color:var(--mu)">One-click AI</div></div>
+    <div class="qa-card" onclick="nav('marketplace',document.querySelectorAll('.sb-item')[6],'Marketplace')"><div class="qa-ic" style="background:rgba(120,108,34,.1);color:var(--yc)"><i class="ti ti-building-store"></i></div><div style="font-family:var(--fd);font-weight:700;font-size:12.5px;color:var(--t)">List on Marketplace</div><div style="font-size:11px;color:var(--mu)">Sell or license</div></div>
+    <div class="qa-card" onclick="nav('hire-providers',document.querySelectorAll('.sb-item')[7],'Hire Providers')"><div class="qa-ic" style="background:rgba(21,122,85,.1);color:var(--gr)"><i class="ti ti-users-group"></i></div><div style="font-family:var(--fd);font-weight:700;font-size:12.5px;color:var(--t)">Hire a Provider</div><div style="font-size:11px;color:var(--mu)">M50 marketplace</div></div>
+    <div class="qa-card" onclick="nav('crossroads',document.querySelectorAll('.sb-item')[5],'The Crossroads')"><div class="qa-ic" style="background:rgba(150,95,17,.1);color:var(--yp)"><i class="ti ti-rocket"></i></div><div style="font-family:var(--fd);font-weight:700;font-size:12.5px;color:var(--t)">Build My Company</div><div style="font-size:11px;color:var(--mu)">Level up now</div></div>
+  </div>
+</div>
+
+<!-- ═══════════ PAGE: MY IDEA ═══════════ -->
+<div class="page" id="page-my-idea">
+  <div class="pg-hd" style="display:flex;justify-content:space-between;align-items:flex-start">
+    <div><div class="eyebrow">Phase 2 — Project Identity</div><h2>My Idea</h2><p>AutoInvoice · FinTech SaaS · Idea Clarity 82/100</p></div>
+    <button class="btn btn-blue"><i class="ti ti-pencil"></i>Edit Concept</button>
+  </div>
+  <div class="g2e" style="margin-bottom:16px">
+    <!-- summary card -->
+    <div style="grid-column:1/-1">
+      <div class="card">
+        <div class="card-hd"><h3><i class="ti ti-sparkles" style="color:var(--blue)"></i>✦ Your Idea — First Draft</h3><button class="btn-ghost" style="padding:5px 11px;font-size:11px"><i class="ti ti-pencil" style="font-size:12px"></i>Edit</button></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--bd);border-radius:10px;overflow:hidden">
+          <div style="padding:12px 16px;border-right:1px solid var(--bd);border-bottom:1px solid var(--bd)"><div style="font-size:9px;color:var(--dm);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">CONCEPT</div><div style="font-size:13px;color:var(--t);line-height:1.5">Invoice automation for freelancers</div></div>
+          <div style="padding:12px 16px;border-bottom:1px solid var(--bd)"><div style="font-size:9px;color:var(--dm);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">TARGET USER</div><div style="font-size:13px;color:var(--t);line-height:1.5">Freelance designers, studio owners</div></div>
+          <div style="padding:12px 16px;border-right:1px solid var(--bd);border-bottom:1px solid var(--bd)"><div style="font-size:9px;color:var(--dm);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">CORE PROBLEM</div><div style="font-size:13px;color:var(--t);line-height:1.5">Hours lost on manual payment follow-ups</div></div>
+          <div style="padding:12px 16px;border-bottom:1px solid var(--bd)"><div style="font-size:9px;color:var(--dm);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">YOUR SOLUTION</div><div style="font-size:13px;color:var(--t);line-height:1.5">Automated reminders + escalation</div></div>
+          <div style="padding:12px 16px;border-right:1px solid var(--bd)"><div style="font-size:9px;color:var(--dm);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">MARKET GAP</div><div style="font-size:13px;color:var(--t);line-height:1.5">Existing tools require manual setup</div></div>
+          <div style="padding:12px 16px;"><div style="font-size:9px;color:var(--dm);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">YOUR EDGE</div><div style="font-size:13px;color:var(--t);line-height:1.5">Built from firsthand freelancer experience</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="g2">
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <!-- clarity card -->
+      <div class="card">
+        <div class="card-hd"><h3><i class="ti ti-gauge" style="color:var(--blue)"></i>Idea Clarity Score</h3></div>
+        <div class="cr-wrap">
+          <div class="cr-ring">
+            <svg width="76" height="76"><circle cx="38" cy="38" r="32" fill="none" stroke="var(--sf2)" stroke-width="6"/><circle cx="38" cy="38" r="32" fill="none" stroke="var(--blue)" stroke-width="6" stroke-dasharray="201" stroke-dashoffset="37" stroke-linecap="round"/></svg>
+            <div class="cr-center"><div style="font-family:var(--fm);font-weight:700;font-size:19px;color:var(--t)">82</div><div style="font-size:9px;color:var(--mu)">/ 100</div></div>
+          </div>
+          <div>
+            <div style="font-family:var(--fd);font-weight:700;font-size:13px;color:var(--t)">Well-defined, investor-ready</div>
+            <div style="font-size:12px;color:var(--mu);line-height:1.5;margin-top:3px">Strengthen technical feasibility to push past 90.</div>
+            <div style="display:flex;gap:5px;margin-top:9px;flex-wrap:wrap">
+              <span class="pill pill-g" style="font-size:10px">Market ✓</span>
+              <span class="pill pill-g" style="font-size:10px">Founder ✓</span>
+              <span class="pill pill-y" style="font-size:10px">Tech ↗</span>
+            </div>
+          </div>
+        </div>
+        <div class="hdiv2"></div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div class="score-row"><span class="score-lbl">Target User Clarity</span><div class="score-track"><div class="score-fill" style="width:88%;background:var(--gr)"></div></div><span class="score-val">88</span></div>
+          <div class="score-row"><span class="score-lbl">Problem Concreteness</span><div class="score-track"><div class="score-fill" style="width:85%;background:var(--gr)"></div></div><span class="score-val">85</span></div>
+          <div class="score-row"><span class="score-lbl">Solution Clarity</span><div class="score-track"><div class="score-fill" style="width:80%;background:var(--blue)"></div></div><span class="score-val">80</span></div>
+          <div class="score-row"><span class="score-lbl">Technical Feasibility</span><div class="score-track"><div class="score-fill" style="width:70%;background:var(--yp)"></div></div><span class="score-val">70</span></div>
+          <div class="score-row"><span class="score-lbl">Founder-Market Fit</span><div class="score-track"><div class="score-fill" style="width:90%;background:var(--gr)"></div></div><span class="score-val">90</span></div>
+        </div>
+      </div>
+      <!-- idea journal -->
+      <div class="card">
+        <div class="card-hd"><h3><i class="ti ti-notebook" style="color:var(--yp)"></i>Idea Journal</h3></div>
+        <div style="background:var(--sf);border:1px solid rgba(60,97,221,.2);border-radius:9px;padding:13px;border-left:3px solid var(--blue)">
+          <div style="font-family:var(--fd);font-weight:700;font-size:13px;color:var(--t)">AutoInvoice</div>
+          <div style="font-size:11px;color:var(--mu);margin-top:2px">Saved today · Round 1 · 82/100 clarity</div>
+          <div style="display:flex;gap:5px;margin-top:8px;flex-wrap:wrap"><span class="tag tag-b">FinTech</span><span class="tag tag-y">Creator Economy</span></div>
+          <div class="hdiv2"></div>
+          <div style="font-size:12px;color:var(--mu);line-height:1.55">"Freelancers lose 15–20% of annual revenue from unpaid invoices due to manual follow-up fatigue."</div>
+        </div>
+      </div>
+    </div>
+    <!-- right: project identity -->
+    <div class="card">
+      <div class="card-hd"><h3><i class="ti ti-id-badge" style="color:var(--blue)"></i>Project Identity</h3></div>
+      <div style="text-align:center;padding:16px 0 20px;border-bottom:1px solid var(--bd);margin-bottom:16px">
+        <div style="width:64px;height:64px;border-radius:16px;background:linear-gradient(135deg,var(--blue),var(--yp));display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-weight:800;font-size:26px;color:#fff;margin:0 auto 12px">A</div>
+        <div style="font-family:var(--fd);font-weight:700;font-size:18px;color:var(--t)">AutoInvoice</div>
+        <div style="font-size:12px;color:var(--mu);margin-top:4px;line-height:1.5">We help freelancers recover unpaid invoices by automating follow-up sequences.</div>
+        <div style="display:flex;gap:6px;justify-content:center;margin-top:10px;flex-wrap:wrap"><span class="tag tag-y">FinTech</span><span class="tag tag-b">SaaS</span><span class="tag tag-g">✓ Identity ready</span></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="background:var(--sf);border-radius:9px;padding:11px 13px"><div style="font-size:9px;color:var(--dm);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">TARGET AUDIENCE</div><div style="font-size:12.5px;color:var(--t)">Independent freelancers and small studio owners</div></div>
+        <div style="background:var(--sf);border-radius:9px;padding:11px 13px"><div style="font-size:9px;color:var(--dm);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">BRANDING</div><div style="font-size:12.5px;color:var(--t)">AI Logo Tool · Brand Blue palette</div></div>
+        <div style="background:var(--sf);border-radius:9px;padding:11px 13px"><div style="font-size:9px;color:var(--dm);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">MARKET SIZE</div><div style="font-family:var(--fm);font-weight:700;font-size:18px;color:var(--t)">€4.8B</div><div style="font-size:11px;color:var(--mu)">Global FinTech SaaS (AI estimate)</div></div>
+        <div style="background:var(--sf);border-radius:9px;padding:11px 13px"><div style="font-size:9px;color:var(--dm);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">FEASIBILITY SCORE</div><div style="font-family:var(--fm);font-weight:700;font-size:18px;color:var(--gr)">81 / 100</div><div style="font-size:11px;color:var(--mu)">Strong foundation</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ PAGE: PROJECT STUDIO ═══════════ -->
+<div class="page" id="page-project-studio">
+  <div class="pg-hd" style="display:flex;justify-content:space-between;align-items:flex-start">
+    <div><div class="eyebrow">Creator Journey</div><h2>Project Studio</h2><p>6-phase journey for AutoInvoice · Phase 5 active</p></div>
+    <span class="pill pill-y" style="font-size:12px;padding:6px 14px;font-family:var(--fd);font-weight:700">Phase 5 of 6 Active</span>
+  </div>
+  <!-- Progress overview -->
+  <div class="card" style="margin-bottom:16px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div style="font-family:var(--fd);font-weight:700;font-size:13.5px;color:var(--t)">Overall Progress</div>
+      <span style="font-size:12px;color:var(--mu)">5 of 6 phases reached</span>
+    </div>
+    <div style="height:8px;background:var(--sf2);border-radius:4px;overflow:hidden;margin-bottom:6px">
+      <div style="width:83%;height:100%;background:linear-gradient(90deg,var(--gr),var(--blue),var(--yp));border-radius:4px"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between">
+      <span style="font-size:11px;color:var(--gr)">Phase 1 ✓</span><span style="font-size:11px;color:var(--gr)">Phase 2 ✓</span><span style="font-size:11px;color:var(--gr)">Phase 3 ✓</span><span style="font-size:11px;color:var(--gr)">Phase 4 ✓</span><span style="font-size:11px;color:var(--yp);font-weight:600">Phase 5 ●</span><span style="font-size:11px;color:var(--dm)">Phase 6</span>
+    </div>
+  </div>
+  <!-- Phase cards -->
+  <div class="phase-card" style="border-color:var(--gr)" onclick="nav('my-idea',document.querySelectorAll('.sb-item')[1],'My Idea')">
+    <div class="phase-num" style="background:var(--gr);color:#fff">1</div>
+    <div style="flex:1"><div style="font-family:var(--fd);font-weight:700;font-size:14px;color:var(--t)">Identity & KYC</div><div style="font-size:12px;color:var(--mu);margin-top:2px">Profile verified, role selected, KYC complete</div></div>
+    <span class="pill pill-g" style="font-size:11px">Complete ✓</span>
+    <i class="ti ti-chevron-right" style="color:var(--mu)"></i>
+  </div>
+  <div class="phase-card" style="border-color:var(--gr)" onclick="nav('my-idea',document.querySelectorAll('.sb-item')[1],'My Idea')">
+    <div class="phase-num" style="background:var(--gr);color:#fff">2</div>
+    <div style="flex:1"><div style="font-family:var(--fd);font-weight:700;font-size:14px;color:var(--t)">Project Identity</div><div style="font-size:12px;color:var(--mu);margin-top:2px">Idea clarified, concept named, brand identity created</div></div>
+    <span class="pill pill-g" style="font-size:11px">Complete ✓</span>
+    <i class="ti ti-chevron-right" style="color:var(--mu)"></i>
+  </div>
+  <div class="phase-card" style="border-color:var(--gr)" onclick="nav('ai-masterplan',document.querySelectorAll('.sb-item')[3],'AI Masterplan')">
+    <div class="phase-num" style="background:var(--gr);color:#fff">3</div>
+    <div style="flex:1"><div style="font-family:var(--fd);font-weight:700;font-size:14px;color:var(--t)">AI Masterplan</div><div style="font-size:12px;color:var(--mu);margin-top:2px">Financial forecast + business plan + legal checklist + formation generator</div></div>
+    <span class="pill pill-g" style="font-size:11px">Complete ✓</span>
+    <i class="ti ti-chevron-right" style="color:var(--mu)"></i>
+  </div>
+  <div class="phase-card" style="border-color:var(--gr)" onclick="nav('offer-pricing',document.querySelectorAll('.sb-item')[4],'Offer &amp; Pricing')">
+    <div class="phase-num" style="background:var(--gr);color:#fff">4</div>
+    <div style="flex:1"><div style="font-family:var(--fd);font-weight:700;font-size:14px;color:var(--t)">Offer & Resource Setup</div><div style="font-size:12px;color:var(--mu);margin-top:2px">Pricing defined · €5,500–8,000 launch budget · 4-week GTM timeline</div></div>
+    <span class="pill pill-g" style="font-size:11px">Complete ✓</span>
+    <i class="ti ti-chevron-right" style="color:var(--mu)"></i>
+  </div>
+  <div class="phase-card" style="border-color:var(--yp);background:rgba(150,95,17,.02)" onclick="nav('crossroads',document.querySelectorAll('.sb-item')[5],'The Crossroads')">
+    <div class="phase-num" style="background:var(--yp);color:#fff;box-shadow:0 0 0 4px rgba(150,95,17,.15);animation:spu 2s infinite">5</div>
+    <div style="flex:1"><div style="font-family:var(--fd);font-weight:700;font-size:14px;color:var(--t)">The Crossroads</div><div style="font-size:12px;color:var(--mu);margin-top:2px">Sell / license your idea OR build your company → Entrepreneur transition</div></div>
+    <span class="pill pill-y" style="font-size:11px">⚡ Active now</span>
+    <i class="ti ti-chevron-right" style="color:var(--yp)"></i>
+  </div>
+  <div class="phase-card" style="opacity:.55">
+    <div class="phase-num" style="background:var(--sf2);color:var(--dm);border:2px dashed var(--bd2)">6</div>
+    <div style="flex:1"><div style="font-family:var(--fd);font-weight:700;font-size:14px;color:var(--t)">LEVEL UP 🎉</div><div style="font-size:12px;color:var(--mu);margin-top:2px">Confetti · Verified Entrepreneur badge · Smart Matchmaking unlocks</div></div>
+    <span class="pill" style="background:var(--sf2);border:1px solid var(--bd);color:var(--mu);font-size:11px">Locked</span>
+    <i class="ti ti-lock" style="color:var(--mu)"></i>
+  </div>
+</div>
+
+<!-- ═══════════ PAGE: AI MASTERPLAN ═══════════ -->
+<div class="page" id="page-ai-masterplan">
+  <div class="pg-hd" style="display:flex;justify-content:space-between;align-items:flex-start">
+    <div><div class="eyebrow">Phase 3 — Project Intelligence</div><h2>AI Masterplan</h2><p>Financial forecast · Business plan · Legal checklist · Formation generator</p></div>
+    <button class="btn btn-blue"><i class="ti ti-download"></i>Export All (PDF)</button>
+  </div>
+  <!-- module tabs -->
+  <div style="display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap">
+    <span class="pill pill-g" style="font-size:11px;padding:5px 13px"><i class="ti ti-check" style="font-size:10px"></i>3.1 Financial Forecast</span>
+    <span class="pill pill-g" style="font-size:11px;padding:5px 13px"><i class="ti ti-check" style="font-size:10px"></i>3.2 Business Plan</span>
+    <span class="pill pill-g" style="font-size:11px;padding:5px 13px"><i class="ti ti-check" style="font-size:10px"></i>3.3 Legal Checklist</span>
+    <span class="pill pill-g" style="font-size:11px;padding:5px 13px"><i class="ti ti-check" style="font-size:10px"></i>3.4 Formation</span>
+  </div>
+  <!-- 3-col metrics -->
+  <div class="g3" style="margin-bottom:16px">
+    <div class="kpi"><div class="kpi-top"><div class="kpi-ic" style="background:rgba(60,97,221,.1);color:var(--blue)"><i class="ti ti-currency-euro"></i></div><span class="kpi-tr" style="background:rgba(21,122,85,.1);color:var(--gr)">+340%</span></div><div class="kpi-v">€186K</div><div class="kpi-l">Year 3 ARR Projection</div></div>
+    <div class="kpi"><div class="kpi-top"><div class="kpi-ic" style="background:rgba(21,122,85,.1);color:var(--gr)"><i class="ti ti-trending-up"></i></div><span class="kpi-tr" style="background:rgba(120,108,34,.1);color:var(--yc)">Month 14</span></div><div class="kpi-v" style="font-size:20px">Break-even</div><div class="kpi-l">Profitable from Month 14</div></div>
+    <div class="kpi"><div class="kpi-top"><div class="kpi-ic" style="background:rgba(150,95,17,.1);color:var(--yp)"><i class="ti ti-users"></i></div><span class="kpi-tr" style="background:rgba(60,97,221,.1);color:var(--blue)">AI est.</span></div><div class="kpi-v">€38–65</div><div class="kpi-l">Customer Acquisition Cost</div></div>
+  </div>
+  <div class="g2">
+    <!-- left: business plan -->
+    <div class="card">
+      <div class="card-hd"><h3><i class="ti ti-report" style="color:var(--blue)"></i>AI Business Plan · Draft 1</h3><div style="display:flex;gap:6px"><button class="btn-ghost" style="padding:5px 10px;font-size:11px"><i class="ti ti-download" style="font-size:12px"></i>PDF</button><button class="btn-ghost" style="padding:5px 10px;font-size:11px"><i class="ti ti-download" style="font-size:12px"></i>DOCX</button></div></div>
+      <div style="display:flex;flex-direction:column">
+        <div style="display:flex;align-items:flex-start;gap:10px;padding:11px 0;border-bottom:1px solid var(--bd)"><span style="font-size:10px;color:var(--blue);font-family:var(--fd);font-weight:700;width:22px;flex-shrink:0">01</span><div style="flex:1"><div style="font-family:var(--fd);font-weight:700;font-size:13px;color:var(--t);margin-bottom:5px">Executive Summary</div><div style="font-size:12px;color:var(--mu);line-height:1.55">AutoInvoice is a B2B SaaS platform designed to automate invoice follow-up sequences for freelancers, addressing a €4.8B global market opportunity…</div></div><div style="display:flex;gap:4px;flex-shrink:0"><button class="btn-ghost" style="padding:3px 8px;font-size:10px">Edit</button><button class="btn-ghost" style="padding:3px 8px;font-size:10px">Rewrite</button></div></div>
+        <div style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--bd);cursor:pointer"><span style="font-size:10px;color:var(--blue);font-family:var(--fd);font-weight:700;width:22px;flex-shrink:0">02</span><div style="font-family:var(--fd);font-weight:700;font-size:13px;color:var(--t);flex:1">Problem & Solution Statement</div><i class="ti ti-chevron-right" style="color:var(--mu)"></i></div>
+        <div style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--bd);cursor:pointer"><span style="font-size:10px;color:var(--blue);font-family:var(--fd);font-weight:700;width:22px;flex-shrink:0">03</span><div style="font-family:var(--fd);font-weight:700;font-size:13px;color:var(--t);flex:1">Target Market & Customer Personas</div><i class="ti ti-chevron-right" style="color:var(--mu)"></i></div>
+        <div style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--bd);cursor:pointer"><span style="font-size:10px;color:var(--blue);font-family:var(--fd);font-weight:700;width:22px;flex-shrink:0">04</span><div style="font-family:var(--fd);font-weight:700;font-size:13px;color:var(--t);flex:1">Business Model & Revenue Streams</div><i class="ti ti-chevron-right" style="color:var(--mu)"></i></div>
+        <div style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--bd);cursor:pointer"><span style="font-size:10px;color:var(--blue);font-family:var(--fd);font-weight:700;width:22px;flex-shrink:0">05</span><div style="font-family:var(--fd);font-weight:700;font-size:13px;color:var(--t);flex:1">Competitive Landscape</div><span class="pill pill-b" style="font-size:10px">AI-researched ✦</span><i class="ti ti-chevron-right" style="color:var(--mu);margin-left:4px"></i></div>
+        <div style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--bd);cursor:pointer"><span style="font-size:10px;color:var(--blue);font-family:var(--fd);font-weight:700;width:22px;flex-shrink:0">06</span><div style="font-family:var(--fd);font-weight:700;font-size:13px;color:var(--t);flex:1">Go-to-Market Strategy</div><i class="ti ti-chevron-right" style="color:var(--mu)"></i></div>
+        <div style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--bd);cursor:pointer"><span style="font-size:10px;color:var(--blue);font-family:var(--fd);font-weight:700;width:22px;flex-shrink:0">07</span><div style="font-family:var(--fd);font-weight:700;font-size:13px;color:var(--t);flex:1">Financial Projections</div><span class="pill pill-g" style="font-size:10px">Auto-filled from 3.1 ✓</span><i class="ti ti-chevron-right" style="color:var(--mu);margin-left:4px"></i></div>
+        <div style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--bd);cursor:pointer"><span style="font-size:10px;color:var(--blue);font-family:var(--fd);font-weight:700;width:22px;flex-shrink:0">08</span><div style="font-family:var(--fd);font-weight:700;font-size:13px;color:var(--t);flex:1">Team Needs & Hiring Plan</div><i class="ti ti-chevron-right" style="color:var(--mu)"></i></div>
+        <div style="display:flex;align-items:center;gap:10px;padding:11px 0;cursor:pointer"><span style="font-size:10px;color:var(--blue);font-family:var(--fd);font-weight:700;width:22px;flex-shrink:0">09</span><div style="font-family:var(--fd);font-weight:700;font-size:13px;color:var(--t);flex:1">Funding Requirements</div><span class="pill pill-yc" style="font-size:10px">Used in Phase 5 →</span><i class="ti ti-chevron-right" style="color:var(--mu);margin-left:4px"></i></div>
+      </div>
+    </div>
+    <!-- right: legal + metrics -->
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="card">
+        <div class="card-hd"><h3><i class="ti ti-checklist" style="color:var(--yc)"></i>Legal Checklist</h3><span style="font-size:11px;color:var(--mu)">4 / 12 done</span></div>
+        <div style="height:5px;background:var(--sf2);border-radius:3px;overflow:hidden;margin-bottom:13px"><div style="width:33%;height:100%;background:linear-gradient(90deg,var(--gr),var(--yp));border-radius:3px"></div></div>
+        <div style="display:flex;flex-direction:column;gap:0">
+          <div style="display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--bd)"><div style="width:16px;height:16px;border-radius:4px;background:var(--gr);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-check" style="color:#fff;font-size:10px"></i></div><span style="font-size:12px;color:var(--t);flex:1">Company type: SAS</span></div>
+          <div style="display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--bd)"><div style="width:16px;height:16px;border-radius:4px;background:var(--gr);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-check" style="color:#fff;font-size:10px"></i></div><span style="font-size:12px;color:var(--t);flex:1">IP protection: copyright + trademark</span></div>
+          <div style="display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--bd)"><div style="width:16px;height:16px;border-radius:4px;background:var(--sf2);border:1px solid var(--bd2);flex-shrink:0"></div><span style="font-size:12px;color:var(--mu);flex:1">GDPR + financial services compliance</span><button class="btn-ghost" style="padding:3px 8px;font-size:10px">Find SP</button></div>
+          <div style="display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--bd)"><div style="width:16px;height:16px;border-radius:4px;background:var(--sf2);border:1px solid var(--bd2);flex-shrink:0"></div><span style="font-size:12px;color:var(--mu);flex:1">Terms of Service + Privacy Policy</span><button class="btn-ghost" style="padding:3px 8px;font-size:10px">Find SP</button></div>
+          <div style="display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--bd)"><div style="width:16px;height:16px;border-radius:4px;background:var(--sf2);border:1px solid var(--bd2);flex-shrink:0"></div><span style="font-size:12px;color:var(--mu);flex:1">Shareholder agreement</span></div>
+          <div style="display:flex;align-items:center;gap:9px;padding:8px 0"><div style="width:16px;height:16px;border-radius:4px;background:var(--sf2);border:1px solid var(--bd2);flex-shrink:0"></div><span style="font-size:12px;color:var(--mu);flex:1">Financial services regulatory check</span><span class="pill pill-yc" style="font-size:10px">FinTech</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><h3><i class="ti ti-chart-dots" style="color:var(--blue)"></i>Key Metrics</h3></div>
+        <div class="g2e" style="gap:9px">
+          <div style="background:var(--sf);border-radius:9px;padding:12px;text-align:center"><div style="font-size:9px;color:var(--dm);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">CAC</div><div style="font-family:var(--fm);font-weight:700;font-size:16px;color:var(--t)">€38–65</div></div>
+          <div style="background:var(--sf);border-radius:9px;padding:12px;text-align:center"><div style="font-size:9px;color:var(--dm);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">LTV</div><div style="font-family:var(--fm);font-weight:700;font-size:16px;color:var(--t)">€420–680</div></div>
+          <div style="background:var(--sf);border-radius:9px;padding:12px;text-align:center"><div style="font-size:9px;color:var(--dm);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">Payback</div><div style="font-family:var(--fm);font-weight:700;font-size:16px;color:var(--t)">8–11mo</div></div>
+          <div style="background:var(--sf);border-radius:9px;padding:12px;text-align:center"><div style="font-size:9px;color:var(--dm);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">Growth</div><div style="font-family:var(--fm);font-weight:700;font-size:16px;color:var(--gr)">12%/mo</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ PAGE: OFFER & PRICING ═══════════ -->
+<div class="page" id="page-offer-pricing">
+  <div class="pg-hd" style="display:flex;justify-content:space-between;align-items:flex-start">
+    <div><div class="eyebrow">Phase 4 — Offer & Resource Setup</div><h2>Offer & Pricing</h2><p>Subscription model · 3 packages · AI resource calculator · GTM timeline</p></div>
+    <span class="pill pill-g" style="font-size:12px;padding:6px 14px;font-family:var(--fd);font-weight:700">✓ Phase 4 Complete</span>
+  </div>
+  <!-- packages -->
+  <div class="sec-ttl"><i class="ti ti-tag" style="color:var(--blue)"></i>Pricing Packages · Subscription</div>
+  <div class="g3" style="margin-bottom:18px">
+    <div class="card"><div style="font-family:var(--fd);font-weight:700;font-size:16px;color:var(--t);padding-bottom:11px;border-bottom:1px solid var(--bd);margin-bottom:12px">Basic</div><div style="font-family:var(--fm);font-weight:700;font-size:28px;color:var(--t)">€29<span style="font-size:14px;color:var(--mu);font-family:var(--fb)">/month</span></div><div style="display:flex;flex-direction:column;gap:7px;margin-top:13px"><div style="font-size:12px;color:var(--mu);display:flex;align-items:center;gap:6px"><i class="ti ti-check" style="color:var(--gr);font-size:13px"></i>Up to 5 clients</div><div style="font-size:12px;color:var(--mu);display:flex;align-items:center;gap:6px"><i class="ti ti-check" style="color:var(--gr);font-size:13px"></i>Automated reminders</div><div style="font-size:12px;color:var(--mu);display:flex;align-items:center;gap:6px"><i class="ti ti-check" style="color:var(--gr);font-size:13px"></i>Email support</div></div></div>
+    <div class="card" style="border-color:var(--blue);background:rgba(60,97,221,.02)"><div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:11px;border-bottom:1px solid var(--bd);margin-bottom:12px"><div style="font-family:var(--fd);font-weight:700;font-size:16px;color:var(--t)">Standard</div><span class="pill pill-b" style="font-size:10px">Recommended</span></div><div style="font-family:var(--fm);font-weight:700;font-size:28px;color:var(--blue)">€49<span style="font-size:14px;color:var(--mu);font-family:var(--fb)">/month</span></div><div style="display:flex;flex-direction:column;gap:7px;margin-top:13px"><div style="font-size:12px;color:var(--mu);display:flex;align-items:center;gap:6px"><i class="ti ti-check" style="color:var(--gr);font-size:13px"></i>Up to 20 clients</div><div style="font-size:12px;color:var(--mu);display:flex;align-items:center;gap:6px"><i class="ti ti-check" style="color:var(--gr);font-size:13px"></i>Smart follow-up sequences</div><div style="font-size:12px;color:var(--mu);display:flex;align-items:center;gap:6px"><i class="ti ti-check" style="color:var(--gr);font-size:13px"></i>Escalation engine</div><div style="font-size:12px;color:var(--mu);display:flex;align-items:center;gap:6px"><i class="ti ti-check" style="color:var(--gr);font-size:13px"></i>Priority support</div><div style="font-size:12px;color:var(--blue);display:flex;align-items:center;gap:6px;font-weight:600"><i class="ti ti-star" style="font-size:13px"></i>Most popular</div></div></div>
+    <div class="card"><div style="font-family:var(--fd);font-weight:700;font-size:16px;color:var(--t);padding-bottom:11px;border-bottom:1px solid var(--bd);margin-bottom:12px">Premium</div><div style="font-family:var(--fm);font-weight:700;font-size:28px;color:var(--t)">€99<span style="font-size:14px;color:var(--mu);font-family:var(--fb)">/month</span></div><div style="display:flex;flex-direction:column;gap:7px;margin-top:13px"><div style="font-size:12px;color:var(--mu);display:flex;align-items:center;gap:6px"><i class="ti ti-check" style="color:var(--gr);font-size:13px"></i>Unlimited clients</div><div style="font-size:12px;color:var(--mu);display:flex;align-items:center;gap:6px"><i class="ti ti-check" style="color:var(--gr);font-size:13px"></i>Full automation suite</div><div style="font-size:12px;color:var(--mu);display:flex;align-items:center;gap:6px"><i class="ti ti-check" style="color:var(--gr);font-size:13px"></i>Legal letter generation</div><div style="font-size:12px;color:var(--mu);display:flex;align-items:center;gap:6px"><i class="ti ti-check" style="color:var(--gr);font-size:13px"></i>White-label option</div><div style="font-size:12px;color:var(--mu);display:flex;align-items:center;gap:6px"><i class="ti ti-check" style="color:var(--gr);font-size:13px"></i>Dedicated account manager</div></div></div>
+  </div>
+  <div class="g2">
+    <!-- resource calc -->
+    <div class="card">
+      <div class="card-hd"><h3><i class="ti ti-calculator" style="color:var(--blue)"></i>AI Resource Calculator</h3><span class="pill pill-b" style="font-size:10px">✦ AI Calculated</span></div>
+      <div class="g2e" style="gap:0;border:1px solid var(--bd);border-radius:10px;overflow:hidden;margin-bottom:14px">
+        <div style="padding:14px;border-right:1px solid var(--bd)">
+          <div style="font-size:9.5px;color:var(--dm);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">TEAM REQUIREMENTS</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:12.5px;color:var(--t)">1 Full-stack Developer</div><div style="font-size:11px;color:var(--mu)">Freelance · 3 months</div></div><span style="font-family:var(--fm);font-size:12px;color:var(--yc)">~€3,500</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:12.5px;color:var(--t)">1 UX/UI Designer</div><div style="font-size:11px;color:var(--mu)">Freelance · 6 weeks</div></div><span style="font-family:var(--fm);font-size:12px;color:var(--yc)">~€1,200</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:12.5px;color:var(--t)">1 Legal SP</div><div style="font-size:11px;color:var(--mu)">Setup only</div></div><span style="font-family:var(--fm);font-size:12px;color:var(--yc)">~€1,500</span></div>
+          </div>
+        </div>
+        <div style="padding:14px">
+          <div style="font-size:9.5px;color:var(--dm);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">SAAS STACK</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;justify-content:space-between"><span style="font-size:12px;color:var(--t)">Stripe Payments</span><span style="font-size:11px;color:var(--mu)">1.4%/txn</span></div>
+            <div style="display:flex;justify-content:space-between"><span style="font-size:12px;color:var(--t)">Vercel (Hosting)</span><span style="font-size:11px;color:var(--mu)">€20/mo</span></div>
+            <div style="display:flex;justify-content:space-between"><span style="font-size:12px;color:var(--t)">AWS S3 (Storage)</span><span style="font-size:11px;color:var(--mu)">€15/mo</span></div>
+            <div style="display:flex;justify-content:space-between"><span style="font-size:12px;color:var(--t)">Intercom (Support)</span><span style="font-size:11px;color:var(--mu)">€39/mo</span></div>
+          </div>
+        </div>
+      </div>
+      <div style="background:rgba(60,97,221,.06);border:1px solid rgba(60,97,221,.2);border-radius:9px;padding:13px;display:flex;justify-content:space-between;align-items:center">
+        <div><div style="font-size:10px;color:var(--dm);text-transform:uppercase;letter-spacing:.08em">Total Launch Budget</div><div style="font-family:var(--fm);font-weight:700;font-size:20px;color:var(--t)">€5,500 – €8,000</div></div>
+        <div style="text-align:right"><div style="font-size:11px;color:var(--mu)">Time to launch</div><div style="font-family:var(--fd);font-weight:700;font-size:14px;color:var(--blue)">8–12 weeks</div></div>
+      </div>
+    </div>
+    <!-- GTM -->
+    <div class="card">
+      <div class="card-hd"><h3><i class="ti ti-rocket" style="color:var(--yp)"></i>GTM Timeline</h3></div>
+      <div style="display:flex;flex-direction:column;gap:0">
+        <div style="padding:11px 0 11px 12px;border-left:3px solid var(--blue);border-bottom:1px solid var(--bd);margin-bottom:9px"><div style="font-family:var(--fd);font-weight:700;font-size:12px;color:var(--blue)">Week 1</div><div style="display:flex;gap:5px;margin-top:5px;flex-wrap:wrap"><span class="pill pill-b" style="font-size:10px">Domain setup</span><span class="pill pill-b" style="font-size:10px">Landing page</span><span class="pill pill-b" style="font-size:10px">Socials</span></div></div>
+        <div style="padding:11px 0 11px 12px;border-left:3px solid var(--bd2);border-bottom:1px solid var(--bd);margin-bottom:9px"><div style="font-family:var(--fd);font-weight:700;font-size:12px;color:var(--t)">Week 2</div><div style="font-size:12px;color:var(--mu);margin-top:4px">Beta outreach · Waitlist push · Content plan</div></div>
+        <div style="padding:11px 0 11px 12px;border-left:3px solid var(--bd2);border-bottom:1px solid var(--bd);margin-bottom:9px"><div style="font-family:var(--fd);font-weight:700;font-size:12px;color:var(--t)">Week 3</div><div style="font-size:12px;color:var(--mu);margin-top:4px">ProductHunt prep · Email sequence setup</div></div>
+        <div style="padding:11px 12px;border-left:3px solid var(--gr);background:rgba(21,122,85,.04);border-radius:0 6px 6px 0"><div style="font-family:var(--fd);font-weight:700;font-size:12px;color:var(--gr)">🚀 Week 4 — Launch</div><div style="font-size:12px;color:var(--mu);margin-top:4px">ProductHunt · Direct outreach · First 100 customers</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ PAGE: CROSSROADS ═══════════ -->
+<div class="page" id="page-crossroads">
+  <div style="max-width:900px;margin:0 auto">
+    <!-- project summary -->
+    <div style="background:var(--bg);border:1px solid rgba(120,108,34,.25);border-radius:14px;padding:18px 22px;margin-bottom:28px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+      <div style="width:42px;height:42px;border-radius:11px;background:linear-gradient(135deg,var(--blue),var(--yp));display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-weight:800;font-size:17px;color:#fff;flex-shrink:0">A</div>
+      <div style="flex:1"><div style="font-family:var(--fd);font-weight:700;font-size:16px;color:var(--t)">AutoInvoice</div><div style="font-size:12.5px;color:var(--mu);margin-top:2px">We help freelancers recover unpaid invoices by automating follow-up sequences.</div></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <span class="pill pill-g" style="font-size:10.5px">Business Plan ✓</span>
+        <span class="pill pill-g" style="font-size:10.5px">Forecast Ready ✓</span>
+        <span class="pill pill-yc" style="font-size:10.5px">IP Value: €25K–80K</span>
+      </div>
+    </div>
+    <div style="text-align:center;margin-bottom:28px">
+      <div style="font-family:var(--fd);font-weight:800;font-size:28px;color:var(--t)">⚡ The Crossroads</div>
+      <div style="font-size:14px;color:var(--mu);margin-top:8px">The most important decision of your Creator journey. Choose your path.</div>
+    </div>
+    <!-- two paths -->
+    <div class="g2e">
+      <!-- path A -->
+      <div class="card" style="border-color:var(--yc);border-width:2px;display:flex;flex-direction:column">
+        <span class="pill pill-yc" style="width:fit-content;font-family:var(--fd);font-weight:700;font-size:11px;margin-bottom:13px">PATH A</span>
+        <div style="width:50px;height:50px;border-radius:13px;background:rgba(120,108,34,.1);display:flex;align-items:center;justify-content:center;font-size:24px;color:var(--yc);margin-bottom:14px"><i class="ti ti-tag"></i></div>
+        <div style="font-family:var(--fd);font-weight:700;font-size:19px;color:var(--t);margin-bottom:8px">Sell or License Your Idea</div>
+        <div style="font-size:12.5px;color:var(--mu);line-height:1.65;margin-bottom:18px">Monetize without running a company. Sell once for a lump sum or earn ongoing royalties.</div>
+        <div style="display:flex;flex-direction:column;gap:9px;margin-bottom:20px;flex:1">
+          <div style="display:flex;gap:8px;align-items:flex-start"><i class="ti ti-diamond" style="color:var(--yc);font-size:14px;margin-top:1px;flex-shrink:0"></i><span style="font-size:12.5px;color:var(--t)">AI IP Valuation: €25,000–80,000 est.</span></div>
+          <div style="display:flex;gap:8px;align-items:flex-start"><i class="ti ti-diamond" style="color:var(--yc);font-size:14px;margin-top:1px;flex-shrink:0"></i><span style="font-size:12.5px;color:var(--t)">Ready-to-publish Marketplace Listing</span></div>
+          <div style="display:flex;gap:8px;align-items:flex-start"><i class="ti ti-diamond" style="color:var(--yc);font-size:14px;margin-top:1px;flex-shrink:0"></i><span style="font-size:12.5px;color:var(--t)">NDA + Escrow + Royalty model</span></div>
+          <div style="display:flex;gap:8px;align-items:flex-start"><i class="ti ti-diamond" style="color:var(--yc);font-size:14px;margin-top:1px;flex-shrink:0"></i><span style="font-size:12.5px;color:var(--t)">Creator remains Creator — start a new idea immediately</span></div>
+        </div>
+        <button class="btn" style="background:var(--yc);color:#fff;width:100%;justify-content:center;padding:12px 20px;font-size:13px" onclick="nav('marketplace',document.querySelectorAll('.sb-item')[6],'Marketplace')"><i class="ti ti-tag"></i>Choose Path A — Sell My Idea →</button>
+      </div>
+      <!-- path B -->
+      <div class="card" style="border-color:var(--yp);border-width:2px;display:flex;flex-direction:column">
+        <span class="pill pill-y" style="width:fit-content;font-family:var(--fd);font-weight:700;font-size:11px;margin-bottom:13px">PATH B · Recommended if funded</span>
+        <div style="width:50px;height:50px;border-radius:13px;background:rgba(150,95,17,.1);display:flex;align-items:center;justify-content:center;font-size:24px;color:var(--yp);margin-bottom:14px"><i class="ti ti-rocket"></i></div>
+        <div style="font-family:var(--fd);font-weight:700;font-size:19px;color:var(--t);margin-bottom:8px">Build It Yourself</div>
+        <div style="font-size:12.5px;color:var(--mu);line-height:1.65;margin-bottom:18px">Register your company, get funded, build your vision. You become an Entrepreneur.</div>
+        <div style="display:flex;flex-direction:column;gap:9px;margin-bottom:20px;flex:1">
+          <div style="display:flex;gap:8px;align-items:flex-start"><i class="ti ti-rocket" style="color:var(--yp);font-size:14px;margin-top:1px;flex-shrink:0"></i><span style="font-size:12.5px;color:var(--t)">Official Company Formation (legal SP)</span></div>
+          <div style="display:flex;gap:8px;align-items:flex-start"><i class="ti ti-rocket" style="color:var(--yp);font-size:14px;margin-top:1px;flex-shrink:0"></i><span style="font-size:12.5px;color:var(--t)">Define Seed Funding Ask (€75K default)</span></div>
+          <div style="display:flex;gap:8px;align-items:flex-start"><i class="ti ti-rocket" style="color:var(--yp);font-size:14px;margin-top:1px;flex-shrink:0"></i><span style="font-size:12.5px;color:var(--t)">Smart Investor Matchmaking unlocks</span></div>
+          <div style="display:flex;gap:8px;align-items:flex-start"><i class="ti ti-rocket" style="color:var(--yp);font-size:14px;margin-top:1px;flex-shrink:0"></i><span style="font-size:12.5px;color:var(--t);font-weight:600">LEVEL UP: Creator → Verified Entrepreneur</span></div>
+        </div>
+        <button class="btn btn-yp" style="width:100%;justify-content:center;padding:12px 20px;font-size:13px"><i class="ti ti-rocket"></i>Choose Path B — Build My Company →</button>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:18px;font-size:12.5px;color:var(--mu)">Not sure yet? <a style="color:var(--blue);cursor:pointer;text-decoration:underline">Save for later — decide from your dashboard.</a></div>
+  </div>
+</div>
+
+<!-- ═══════════ PAGE: MARKETPLACE ═══════════ -->
+<div class="page" id="page-marketplace">
+  <div class="pg-hd" style="display:flex;justify-content:space-between;align-items:flex-start">
+    <div><div class="eyebrow">Phase 5A — Sell or License</div><h2>Marketplace</h2><p>Your listing · NDA protected · 7 interested entrepreneurs</p></div>
+    <button class="btn btn-yc"><i class="ti ti-eye"></i>Publish Listing</button>
+  </div>
+  <div class="g2">
+    <!-- listing preview -->
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="card">
+        <div class="card-hd"><h3><i class="ti ti-building-store" style="color:var(--yc)"></i>Your Live Listing</h3><span class="pill pill-yc" style="font-size:10px">● Live</span></div>
+        <div class="listing-card">
+          <div class="listing-cover">
+            <div style="position:absolute;inset:0;background:linear-gradient(135deg,rgba(60,97,221,.3),rgba(150,95,17,.3))"></div>
+            <div style="position:relative;text-align:center"><div style="font-family:var(--fd);font-weight:800;font-size:22px;color:#fff">AutoInvoice</div><div style="font-size:12px;color:rgba(255,255,255,.7);margin-top:4px">FinTech SaaS Concept</div></div>
+          </div>
+          <div style="padding:16px 18px">
+            <span style="background:rgba(120,108,34,.1);border:1px solid rgba(120,108,34,.25);color:var(--yc);padding:2px 9px;border-radius:100px;font-size:10px">🔒 NDA Protected — Full details after signing</span>
+            <div style="font-family:var(--fd);font-weight:700;font-size:15px;color:var(--t);margin-top:10px">AutoInvoice — Automated Payment Recovery</div>
+            <div style="display:flex;gap:5px;margin-top:6px;flex-wrap:wrap"><span class="tag tag-y">FinTech</span><span class="tag tag-y">Creator Economy</span><span class="tag tag-b">SaaS</span></div>
+            <div style="font-size:12px;color:var(--mu);line-height:1.55;margin-top:8px">A B2B SaaS platform automating invoice follow-up sequences for freelancers. €4.8B market opportunity…</div>
+            <div style="display:flex;gap:20px;padding-top:11px;margin-top:11px;border-top:1px solid var(--bd)">
+              <div><div style="font-size:9px;color:var(--dm);text-transform:uppercase;letter-spacing:.08em">Valuation</div><div style="font-family:var(--fm);font-weight:700;font-size:14px;color:var(--t)">€25K–80K</div></div>
+              <div><div style="font-size:9px;color:var(--dm);text-transform:uppercase;letter-spacing:.08em">Confidence</div><div style="font-family:var(--fm);font-weight:700;font-size:14px;color:var(--gr)">High</div></div>
+              <div><div style="font-size:9px;color:var(--dm);text-transform:uppercase;letter-spacing:.08em">Category</div><div style="font-family:var(--fm);font-weight:700;font-size:14px;color:var(--t)">FinTech SaaS</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- matched buyers -->
+      <div class="card">
+        <div class="card-hd"><h3><i class="ti ti-users" style="color:var(--blue)"></i>Matched Buyers</h3><span class="pill pill-b" style="font-size:10px">3 active now</span></div>
+        <div class="buyer-card" style="border-color:rgba(120,108,34,.3)">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div class="sp-av" style="width:40px;height:40px;font-size:12px;background:linear-gradient(135deg,var(--yc),var(--yp))">JM</div>
+              <div><div style="font-family:var(--fd);font-weight:700;font-size:13.5px;color:var(--t)">Jean Martin</div><div style="font-size:11.5px;color:var(--mu)">Serial Entrepreneur · Paris, FR</div></div>
+            </div>
+            <span style="background:var(--yc);color:#fff;padding:3px 11px;border-radius:100px;font-family:var(--fd);font-weight:700;font-size:11px">96% Match</span>
+          </div>
+          <div style="display:flex;gap:16px;margin-top:10px;font-size:12px;color:var(--mu)"><span>Budget: €50K–120K</span><span>Sector: FinTech</span><span>Stage: Acquiring ideas</span></div>
+          <div style="background:var(--sf2);border-radius:7px;padding:9px;margin-top:9px;font-size:12px;color:var(--mu);font-style:italic">Why matched: Sector alignment + Budget fits valuation range + Actively looking for SaaS</div>
+          <div style="display:flex;gap:8px;margin-top:11px"><button class="btn btn-yc" style="padding:7px 14px;font-size:11px"><i class="ti ti-message-circle"></i>Start Conversation</button><button class="btn-ghost" style="padding:7px 14px;font-size:11px">View Profile</button><button class="btn-ghost" style="padding:7px 14px;font-size:11px;border-color:var(--yc);color:var(--yc)">Request NDA</button></div>
+        </div>
+        <div class="buyer-card">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div style="display:flex;align-items:center;gap:9px"><div class="sp-av" style="width:36px;height:36px;font-size:11px;background:linear-gradient(135deg,var(--blue),var(--gr))">RB</div><div><div style="font-family:var(--fd);font-weight:700;font-size:13px;color:var(--t)">Rebecca Blanc</div><div style="font-size:11px;color:var(--mu)">Tech Entrepreneur · Lyon, FR</div></div></div>
+            <span class="pill pill-yc" style="font-size:11px;font-family:var(--fd);font-weight:700">89% Match</span>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:9px"><button class="btn-ghost" style="padding:6px 12px;font-size:11px"><i class="ti ti-message-circle"></i>Connect</button><button class="btn-ghost" style="padding:6px 12px;font-size:11px">View Profile</button></div>
+        </div>
+        <div class="buyer-card">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div style="display:flex;align-items:center;gap:9px"><div class="sp-av" style="width:36px;height:36px;font-size:11px;background:linear-gradient(135deg,var(--yp),var(--yc))">TC</div><div><div style="font-family:var(--fd);font-weight:700;font-size:13px;color:var(--t)">Thomas Chevalier</div><div style="font-size:11px;color:var(--mu)">Product Lead → Entrepreneur · Remote</div></div></div>
+            <span class="pill pill-yc" style="font-size:11px;font-family:var(--fd);font-weight:700">74% Match</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- right: settings -->
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="card">
+        <div class="card-hd"><h3><i class="ti ti-settings" style="color:var(--mu)"></i>Listing Settings</h3></div>
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div><div style="font-size:10.5px;color:var(--mu);font-family:var(--fd);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">VISIBILITY</div>
+            <div style="display:flex;flex-direction:column;gap:7px">
+              <label style="display:flex;align-items:center;gap:9px;cursor:pointer;font-size:12.5px;color:var(--mu)"><input type="radio" name="vis" style="accent-color:var(--blue)">Public — all verified users</label>
+              <label style="display:flex;align-items:center;gap:9px;cursor:pointer;font-size:12.5px;color:var(--t);font-weight:500"><input type="radio" name="vis" checked style="accent-color:var(--blue)">Matched Only (recommended)</label>
+              <label style="display:flex;align-items:center;gap:9px;cursor:pointer;font-size:12.5px;color:var(--mu)"><input type="radio" name="vis" style="accent-color:var(--blue)">Private — direct link only</label>
+            </div>
+          </div>
+          <div class="hdiv2"></div>
+          <div><div style="font-size:10.5px;color:var(--mu);font-family:var(--fd);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">DEAL TYPE</div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:12.5px;color:var(--t)">Open to Full Purchase</span><div class="toggle on"></div></div>
+              <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:12.5px;color:var(--t)">Open to License/Royalties</span><div class="toggle on"></div></div>
+            </div>
+          </div>
+          <div class="hdiv2"></div>
+          <div><div style="font-size:10.5px;color:var(--mu);font-family:var(--fd);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">PROTECTION</div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:12.5px;color:var(--t)">NDA Required</span><div class="toggle on"></div></div>
+              <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:12.5px;color:var(--t)">Watermarked preview</span><div class="toggle on"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><h3><i class="ti ti-chart-bar" style="color:var(--blue)"></i>Listing Stats</h3></div>
+        <div style="display:flex;flex-direction:column;gap:9px">
+          <div style="background:var(--sf);border-radius:9px;padding:11px 13px;display:flex;justify-content:space-between"><span style="font-size:12px;color:var(--mu)">Estimated reach</span><span style="font-family:var(--fm);font-weight:700;font-size:13px;color:var(--t)">340 matched</span></div>
+          <div style="background:var(--sf);border-radius:9px;padding:11px 13px;display:flex;justify-content:space-between"><span style="font-size:12px;color:var(--mu)">Profile views (7d)</span><span style="font-family:var(--fm);font-weight:700;font-size:13px;color:var(--t)">28</span></div>
+          <div style="background:var(--sf);border-radius:9px;padding:11px 13px;display:flex;justify-content:space-between"><span style="font-size:12px;color:var(--mu)">NDA requests</span><span style="font-family:var(--fm);font-weight:700;font-size:13px;color:var(--yp)">3 pending</span></div>
+          <div style="background:var(--sf);border-radius:9px;padding:11px 13px;display:flex;justify-content:space-between"><span style="font-size:12px;color:var(--mu)">Avg. response time</span><span style="font-family:var(--fm);font-weight:700;font-size:13px;color:var(--t)">4 days</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ PAGE: HIRE PROVIDERS ═══════════ -->
+<div class="page" id="page-hire-providers">
+  <div class="pg-hd" style="display:flex;justify-content:space-between;align-items:flex-start">
+    <div><div class="eyebrow">M50 Service Providers</div><h2>Hire Providers</h2><p>AI-matched verified professionals for AutoInvoice · FinTech SaaS</p></div>
+    <button class="btn btn-blue"><i class="ti ti-search"></i>Search All SPs</button>
+  </div>
+  <!-- filter row -->
+  <div style="display:flex;gap:7px;margin-bottom:18px;flex-wrap:wrap">
+    <span style="background:var(--blue);color:#fff;padding:5px 13px;border-radius:100px;font-size:11.5px;font-family:var(--fd);font-weight:700;cursor:pointer">All</span>
+    <span class="pill pill-b" style="cursor:pointer;font-size:11.5px">Design</span>
+    <span class="pill pill-b" style="cursor:pointer;font-size:11.5px">Legal</span>
+    <span class="pill pill-b" style="cursor:pointer;font-size:11.5px">Tech</span>
+    <span class="pill pill-b" style="cursor:pointer;font-size:11.5px">Finance</span>
+    <span class="pill pill-b" style="cursor:pointer;font-size:11.5px">Marketing</span>
+  </div>
+  <!-- sp cards -->
+  <div class="g2e" style="gap:14px">
+    <div class="card" style="border-color:rgba(60,97,221,.35)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:11px">
+        <div style="display:flex;align-items:center;gap:11px">
+          <div class="sp-av" style="background:linear-gradient(135deg,var(--blue),var(--yp))">AK</div>
+          <div><div style="font-family:var(--fd);font-weight:700;font-size:14px;color:var(--t)">Ahmed Karim</div><div style="font-size:12px;color:var(--mu)">Brand Designer · UI/UX Specialist</div></div>
+        </div>
+        <span class="pill pill-b" style="font-size:10px">Best Match</span>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"><span class="pill pill-g" style="font-size:10px">Tier 3 ✓</span><span style="font-size:11px;color:var(--yc)">⭐ 4.9</span><span style="font-size:11px;color:var(--mu)">47 projects</span><span style="font-size:11px;color:var(--mu)">Paris, FR</span></div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px"><span class="tag tag-b">FinTech</span><span class="tag tag-b">SaaS</span><span class="tag tag-b">Startup Branding</span></div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div><div style="font-family:var(--fm);font-weight:700;font-size:14px;color:var(--yc)">€280–380</div><div style="font-size:11px;color:var(--mu)">est. · 4 days</div></div>
+        <button class="btn btn-blue" style="padding:7px 14px;font-size:11px" onclick="nav('messenger',document.querySelectorAll('.sb-item')[9],'Messenger')"><i class="ti ti-message-circle"></i>Book · Open Workroom</button>
+      </div>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:11px">
+        <div style="display:flex;align-items:center;gap:11px">
+          <div class="sp-av" style="background:linear-gradient(135deg,var(--blue),var(--gr))">ML</div>
+          <div><div style="font-family:var(--fd);font-weight:700;font-size:14px;color:var(--t)">Marie Laurent</div><div style="font-size:12px;color:var(--mu)">Brand Strategy · Visual Identity</div></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"><span class="pill pill-g" style="font-size:10px">Tier 2 ✓</span><span style="font-size:11px;color:var(--yc)">⭐ 4.7</span><span style="font-size:11px;color:var(--mu)">31 projects</span><span style="font-size:11px;color:var(--mu)">Lyon, FR</span></div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px"><span class="tag tag-b">Creator Economy</span><span class="tag tag-b">Brand Strategy</span></div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div><div style="font-family:var(--fm);font-weight:700;font-size:14px;color:var(--yc)">€220–320</div><div style="font-size:11px;color:var(--mu)">est. · 5 days</div></div>
+        <button class="btn btn-blue" style="padding:7px 14px;font-size:11px"><i class="ti ti-message-circle"></i>Book Workroom</button>
+      </div>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:11px">
+        <div style="display:flex;align-items:center;gap:11px">
+          <div class="sp-av" style="background:linear-gradient(135deg,var(--yc),var(--yp))">SR</div>
+          <div><div style="font-family:var(--fd);font-weight:700;font-size:14px;color:var(--t)">Sara Roux</div><div style="font-size:12px;color:var(--mu)">Full-stack Designer · Fast turnaround</div></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"><span class="pill pill-g" style="font-size:10px">Tier 2 ✓</span><span style="font-size:11px;color:var(--yc)">⭐ 4.8</span><span style="font-size:11px;color:var(--mu)">58 projects</span><span style="font-size:11px;color:var(--mu)">Remote</span></div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px"><span class="tag tag-b">All sectors</span><span class="tag tag-b">Fast turnaround</span></div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div><div style="font-family:var(--fm);font-weight:700;font-size:14px;color:var(--yc)">€200–280</div><div style="font-size:11px;color:var(--mu)">est. · 3 days</div></div>
+        <button class="btn btn-blue" style="padding:7px 14px;font-size:11px"><i class="ti ti-message-circle"></i>Book Workroom</button>
+      </div>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:11px">
+        <div style="display:flex;align-items:center;gap:11px">
+          <div class="sp-av" style="background:linear-gradient(135deg,var(--gr),var(--blue))">LM</div>
+          <div><div style="font-family:var(--fd);font-weight:700;font-size:14px;color:var(--t)">Legalis Co.</div><div style="font-size:12px;color:var(--mu)">Legal · Company Formation Specialist</div></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"><span class="pill pill-g" style="font-size:10px">M50 Certified ✓</span><span style="font-size:11px;color:var(--yc)">⭐ 4.9</span><span style="font-size:11px;color:var(--mu)">Formation</span></div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px"><span class="tag tag-g">SAS Setup</span><span class="tag tag-g">FinTech Law</span></div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div><div style="font-family:var(--fm);font-weight:700;font-size:14px;color:var(--yc)">€800–1,200</div><div style="font-size:11px;color:var(--mu)">est. · 5–10 days</div></div>
+        <button class="btn btn-blue" style="padding:7px 14px;font-size:11px"><i class="ti ti-message-circle"></i>Book Formation</button>
+      </div>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:11px">
+        <div style="display:flex;align-items:center;gap:11px">
+          <div class="sp-av" style="background:linear-gradient(135deg,var(--blue),#1e40af)">LM2</div>
+          <div><div style="font-family:var(--fd);font-weight:700;font-size:14px;color:var(--t)">Lucas Martin</div><div style="font-size:12px;color:var(--mu)">Full-stack Developer · React · Node.js</div></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"><span class="pill pill-g" style="font-size:10px">Tier 3 ✓</span><span style="font-size:11px;color:var(--yc)">⭐ 4.8</span><span style="font-size:11px;color:var(--mu)">Paris, FR</span></div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px"><span class="tag tag-b">React</span><span class="tag tag-b">Node.js</span><span class="tag tag-b">SaaS</span></div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div><div style="font-family:var(--fm);font-weight:700;font-size:14px;color:var(--yc)">€3,500</div><div style="font-size:11px;color:var(--mu)">est. · 3 months</div></div>
+        <button class="btn btn-blue" style="padding:7px 14px;font-size:11px"><i class="ti ti-message-circle"></i>Book Workroom</button>
+      </div>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:11px">
+        <div style="display:flex;align-items:center;gap:11px">
+          <div class="sp-av" style="background:linear-gradient(135deg,var(--yc),#3d5a00)">TD</div>
+          <div><div style="font-family:var(--fd);font-weight:700;font-size:14px;color:var(--t)">Thomas Duval</div><div style="font-size:12px;color:var(--mu)">Landing Page · GTM Specialist</div></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"><span class="pill pill-g" style="font-size:10px">Tier 2 ✓</span><span style="font-size:11px;color:var(--yc)">⭐ 4.7</span><span style="font-size:11px;color:var(--mu)">Remote</span></div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px"><span class="tag tag-y">Landing Page</span><span class="tag tag-y">ProductHunt</span></div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div><div style="font-family:var(--fm);font-weight:700;font-size:14px;color:var(--yc)">€800</div><div style="font-size:11px;color:var(--mu)">est. · 5 days</div></div>
+        <button class="btn btn-blue" style="padding:7px 14px;font-size:11px"><i class="ti ti-message-circle"></i>Book Workroom</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ PAGE: IP VAULT ═══════════ -->
+<div class="page" id="page-ip-vault">
+  <div class="pg-hd" style="display:flex;justify-content:space-between;align-items:flex-start">
+    <div><div class="eyebrow">Intellectual Property Protection</div><h2>IP Vault</h2><p>AutoInvoice · AI valuation €25K–80K · NDA management · Protection status</p></div>
+    <button class="btn btn-yc"><i class="ti ti-lock"></i>Add Protection</button>
+  </div>
+  <!-- valuation card -->
+  <div class="card" style="background:linear-gradient(135deg,rgba(120,108,34,.05),rgba(150,95,17,.03));border-color:rgba(120,108,34,.25);margin-bottom:16px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:14px">
+      <div>
+        <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px"><i class="ti ti-sparkles" style="color:var(--yc)"></i><span style="font-size:10.5px;color:var(--yc);font-family:var(--fd);font-weight:700;text-transform:uppercase;letter-spacing:.1em">AI IP VALUATION RESULT</span></div>
+        <div style="font-family:var(--fm);font-weight:700;font-size:36px;color:var(--t)">€25,000 – €80,000</div>
+        <div style="font-size:13px;color:var(--mu);margin-top:4px">Estimated Intellectual Property Market Value</div>
+        <span class="pill pill-g" style="margin-top:9px;font-size:11px">Confidence: High ✓</span>
+      </div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <div class="vault-metric"><div style="font-size:9px;color:var(--dm);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Full Purchase</div><div style="font-family:var(--fm);font-weight:700;font-size:15px;color:var(--t)">€25K–80K</div><div style="font-size:11px;color:var(--mu)">one-time</div></div>
+        <div class="vault-metric"><div style="font-size:9px;color:var(--dm);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">License Model</div><div style="font-family:var(--fm);font-weight:700;font-size:15px;color:var(--t)">€500–2K/mo</div><div style="font-size:11px;color:var(--mu)">+ 5–8% royalties</div></div>
+      </div>
+    </div>
+    <div class="hdiv2"></div>
+    <div style="display:flex;flex-direction:column;gap:9px">
+      <div class="score-row"><span class="score-lbl">Concept Clarity</span><div class="score-track"><div class="score-fill" style="width:82%;background:var(--gr)"></div></div><span class="score-val">82</span></div>
+      <div class="score-row"><span class="score-lbl">Market Size Potential</span><div class="score-track"><div class="score-fill" style="width:88%;background:var(--gr)"></div></div><span class="score-val">88</span></div>
+      <div class="score-row"><span class="score-lbl">Technical Feasibility</span><div class="score-track"><div class="score-fill" style="width:74%;background:var(--yp)"></div></div><span class="score-val">74</span></div>
+      <div class="score-row"><span class="score-lbl">Founder Credibility</span><div class="score-track"><div class="score-fill" style="width:79%;background:var(--blue)"></div></div><span class="score-val">79</span></div>
+    </div>
+  </div>
+  <div class="g2">
+    <div class="card">
+      <div class="card-hd"><h3><i class="ti ti-shield" style="color:var(--blue)"></i>Protection Status</h3></div>
+      <div style="display:flex;flex-direction:column;gap:0">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--bd)"><div style="display:flex;align-items:center;gap:8px"><i class="ti ti-check" style="color:var(--gr)"></i><span style="font-size:13px;color:var(--t)">Copyright registered</span></div><span class="pill pill-g" style="font-size:10px">Active</span></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--bd)"><div style="display:flex;align-items:center;gap:8px"><i class="ti ti-check" style="color:var(--gr)"></i><span style="font-size:13px;color:var(--t)">Trademark check complete</span></div><span class="pill pill-g" style="font-size:10px">Clear</span></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--bd)"><div style="display:flex;align-items:center;gap:8px"><i class="ti ti-clock" style="color:var(--yp)"></i><span style="font-size:13px;color:var(--t)">NDA template ready</span></div><span class="pill pill-y" style="font-size:10px">3 pending</span></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 0"><div style="display:flex;align-items:center;gap:8px"><i class="ti ti-alert-circle" style="color:var(--yc)"></i><span style="font-size:13px;color:var(--t)">Patent assessment</span></div><span class="pill" style="background:var(--sf2);border:1px solid var(--bd);color:var(--mu);font-size:10px">Not started</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-hd"><h3><i class="ti ti-file-description" style="color:var(--yc)"></i>NDA Management</h3></div>
+      <div style="display:flex;flex-direction:column;gap:9px">
+        <div style="background:var(--sf);border:1px solid var(--bd);border-radius:9px;padding:11px 13px">
+          <div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:12.5px;font-weight:600;color:var(--t)">Jean Martin</div><div style="font-size:11px;color:var(--mu)">Requested 2h ago</div></div><div style="display:flex;gap:6px"><button class="btn-ghost" style="padding:4px 10px;font-size:11px">Decline</button><button class="btn btn-gr" style="padding:4px 10px;font-size:11px">Approve</button></div></div>
+        </div>
+        <div style="background:var(--sf);border:1px solid var(--bd);border-radius:9px;padding:11px 13px">
+          <div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:12.5px;font-weight:600;color:var(--t)">Rebecca Blanc</div><div style="font-size:11px;color:var(--mu)">Requested 1d ago</div></div><div style="display:flex;gap:6px"><button class="btn-ghost" style="padding:4px 10px;font-size:11px">Decline</button><button class="btn btn-gr" style="padding:4px 10px;font-size:11px">Approve</button></div></div>
+        </div>
+        <div style="background:rgba(21,122,85,.05);border:1px solid rgba(21,122,85,.2);border-radius:9px;padding:11px 13px">
+          <div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:12.5px;font-weight:600;color:var(--t)">Thomas Chevalier</div><div style="font-size:11px;color:var(--gr)">NDA signed ✓</div></div><button class="btn-ghost" style="padding:4px 10px;font-size:11px">View full profile</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ PAGE: MESSENGER ═══════════ -->
+<div class="page" id="page-messenger">
+  <div class="pg-hd" style="margin-bottom:14px"><div class="eyebrow">Communication</div><h2>Messenger</h2></div>
+  <div class="messenger-layout">
+    <!-- threads -->
+    <div class="ms-threads">
+      <div style="padding:12px 14px;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center">
+        <span style="font-family:var(--fd);font-weight:700;font-size:13.5px;color:var(--t)">Messages</span>
+        <span class="pill pill-y" style="font-size:10px">3 new</span>
+      </div>
+      <div class="ms-search"><input type="text" placeholder="Search conversations…"></div>
+      <div style="flex:1;overflow-y:auto">
+        <div class="ms-thread-item active">
+          <div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--yp));display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-weight:700;font-size:11px;color:#fff;flex-shrink:0">SC</div>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;justify-content:space-between"><span style="font-size:12px;font-weight:600;color:var(--t)">Sophie Chen</span><span style="font-size:10px;color:var(--dm)">2m</span></div>
+            <div style="font-size:11px;color:var(--mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Interested in licensing…</div>
+          </div>
+          <div style="width:7px;height:7px;border-radius:50%;background:var(--yp);flex-shrink:0"></div>
+        </div>
+        <div class="ms-thread-item">
+          <div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--gr));display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-weight:700;font-size:11px;color:#fff;flex-shrink:0">AK</div>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;justify-content:space-between"><span style="font-size:12px;font-weight:600;color:var(--t)">Ahmed Karim</span><span style="font-size:10px;color:var(--dm)">1h</span></div>
+            <div style="font-size:11px;color:var(--mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Logo drafts are ready 🎨</div>
+          </div>
+          <div style="width:7px;height:7px;border-radius:50%;background:var(--yp);flex-shrink:0"></div>
+        </div>
+        <div class="ms-thread-item">
+          <div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--yp),var(--yc));display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-weight:700;font-size:11px;color:#fff;flex-shrink:0">ML</div>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;justify-content:space-between"><span style="font-size:12px;font-weight:600;color:var(--t)">Marie Laurent</span><span style="font-size:10px;color:var(--dm)">3h</span></div>
+            <div style="font-size:11px;color:var(--mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Sending brand guidelines now.</div>
+          </div>
+        </div>
+        <div class="ms-thread-item">
+          <div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--gr),var(--blue));display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-weight:700;font-size:11px;color:#fff;flex-shrink:0">JM</div>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;justify-content:space-between"><span style="font-size:12px;font-weight:600;color:var(--t)">Jean Martin</span><span style="font-size:10px;color:var(--dm)">1d</span></div>
+            <div style="font-size:11px;color:var(--mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Thanks for the NDA. Looking at your…</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- chat -->
+    <div class="ms-chat">
+      <div class="ms-chat-hd">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--yp));display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-weight:700;font-size:11px;color:#fff">SC</div>
+          <div><div style="font-family:var(--fd);font-weight:700;font-size:13.5px;color:var(--t)">Sophie Chen</div><div style="font-size:11px;color:var(--mu)">Match Conversation · 94% investor match</div></div>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn-ghost" style="padding:5px 11px;font-size:11px"><i class="ti ti-file-description"></i>NDA</button>
+          <button class="btn-ghost" style="padding:5px 11px;font-size:11px"><i class="ti ti-dots"></i></button>
+        </div>
+      </div>
+      <div class="ms-messages">
+        <div style="display:flex;align-items:flex-start;gap:8px">
+          <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--yp));display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-weight:700;font-size:10px;color:#fff;flex-shrink:0">SC</div>
+          <div><div style="font-size:10px;color:var(--mu);margin-bottom:4px">Sophie Chen · 2 min ago</div><div class="ms-bubble ai">Hello! I came across your AutoInvoice listing. I'm a partner at Lumiere Capital and we're actively looking for FinTech SaaS opportunities in the €25K–150K range. Would you be open to a conversation?</div></div>
+        </div>
+        <div style="display:flex;justify-content:flex-end">
+          <div><div style="font-size:10px;color:var(--mu);margin-bottom:4px;text-align:right">You · 1 min ago</div><div class="ms-bubble user">Hi Sophie, great to hear from you! Yes, absolutely open to a conversation. I've sent over the NDA for your review — once signed I can share the full business plan and financial projections.</div></div>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:8px">
+          <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--yp));display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-weight:700;font-size:10px;color:#fff;flex-shrink:0">SC</div>
+          <div><div style="font-size:10px;color:var(--mu);margin-bottom:4px">Sophie Chen · just now</div><div class="ms-bubble ai">Interested in licensing — can we schedule a call this week? Also, what's your preferred deal structure?</div></div>
+        </div>
+        <!-- AI smart replies -->
+        <div style="margin-top:10px">
+          <div style="font-size:10px;color:var(--mu);margin-bottom:6px;display:flex;align-items:center;gap:5px"><i class="ti ti-sparkles" style="color:var(--blue)"></i>AI Smart Replies</div>
+          <div style="display:flex;gap:7px;flex-wrap:wrap">
+            <span style="background:rgba(60,97,221,.08);border:1px solid rgba(60,97,221,.2);color:var(--blue);padding:5px 11px;border-radius:8px;font-size:11.5px;cursor:pointer">Sure, Thursday works for me!</span>
+            <span style="background:rgba(60,97,221,.08);border:1px solid rgba(60,97,221,.2);color:var(--blue);padding:5px 11px;border-radius:8px;font-size:11.5px;cursor:pointer">I prefer a licensing model</span>
+            <span style="background:rgba(60,97,221,.08);border:1px solid rgba(60,97,221,.2);color:var(--blue);padding:5px 11px;border-radius:8px;font-size:11.5px;cursor:pointer">Can we do a video call?</span>
+          </div>
+        </div>
+      </div>
+      <div class="ms-input-area">
+        <textarea class="ms-input" rows="1" placeholder="Type a message…"></textarea>
+        <button class="btn btn-blue" style="padding:8px 13px;flex-shrink:0"><i class="ti ti-send"></i></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ PAGE: NOTIFICATIONS ═══════════ -->
+<div class="page" id="page-notifications">
+  <div class="pg-hd" style="display:flex;justify-content:space-between;align-items:flex-start">
+    <div><div class="eyebrow">Activity</div><h2>Notifications</h2><p>5 new · 12 total today</p></div>
+    <button class="btn-ghost" style="font-size:11px;padding:7px 13px"><i class="ti ti-check"></i>Mark all read</button>
+  </div>
+  <div style="max-width:680px">
+    <div class="sec-ttl" style="font-size:12px;color:var(--mu)">Today</div>
+    <div class="card" style="margin-bottom:14px">
+      <div style="display:flex;align-items:flex-start;gap:12px;padding:13px 0;border-bottom:1px solid var(--bd)">
+        <div style="width:36px;height:36px;border-radius:50%;background:rgba(21,122,85,.1);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-star" style="color:var(--gr);font-size:18px"></i></div>
+        <div style="flex:1"><div style="font-size:13px;color:var(--t);font-weight:500">New marketplace interest: <b>Sophie Chen</b> — 94% match on your listing</div><div style="font-size:11px;color:var(--mu);margin-top:3px">5 minutes ago · Match Conversation</div></div>
+        <button class="btn btn-blue" style="padding:5px 11px;font-size:11px;flex-shrink:0" onclick="nav('messenger',document.querySelectorAll('.sb-item')[9],'Messenger')">View</button>
+      </div>
+      <div style="display:flex;align-items:flex-start;gap:12px;padding:13px 0;border-bottom:1px solid var(--bd)">
+        <div style="width:36px;height:36px;border-radius:50%;background:rgba(60,97,221,.1);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-report" style="color:var(--blue);font-size:18px"></i></div>
+        <div style="flex:1"><div style="font-size:13px;color:var(--t);font-weight:500">Business Plan exported to PDF + DOCX successfully</div><div style="font-size:11px;color:var(--mu);margin-top:3px">1 hour ago · Asset Library</div></div>
+        <button class="btn-ghost" style="padding:5px 11px;font-size:11px;flex-shrink:0" onclick="nav('asset-library',document.querySelectorAll('.sb-item')[11],'Asset Library')">Open</button>
+      </div>
+      <div style="display:flex;align-items:flex-start;gap:12px;padding:13px 0;border-bottom:1px solid var(--bd)">
+        <div style="width:36px;height:36px;border-radius:50%;background:rgba(150,95,17,.1);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-users-group" style="color:var(--yp);font-size:18px"></i></div>
+        <div style="flex:1"><div style="font-size:13px;color:var(--t);font-weight:500">Ahmed Karim accepted your branding project request</div><div style="font-size:11px;color:var(--mu);margin-top:3px">2 hours ago · Service Workroom opened</div></div>
+        <button class="btn-ghost" style="padding:5px 11px;font-size:11px;flex-shrink:0" onclick="nav('messenger',document.querySelectorAll('.sb-item')[9],'Messenger')">Open</button>
+      </div>
+      <div style="display:flex;align-items:flex-start;gap:12px;padding:13px 0;border-bottom:1px solid var(--bd)">
+        <div style="width:36px;height:36px;border-radius:50%;background:rgba(60,97,221,.1);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-currency-euro" style="color:var(--blue);font-size:18px"></i></div>
+        <div style="flex:1"><div style="font-size:13px;color:var(--t);font-weight:500">AI IP valuation updated to <b>€82,000</b> — high confidence</div><div style="font-size:11px;color:var(--mu);margin-top:3px">1 day ago · IP Vault</div></div>
+        <button class="btn-ghost" style="padding:5px 11px;font-size:11px;flex-shrink:0" onclick="nav('ip-vault',document.querySelectorAll('.sb-item')[8],'IP Vault')">View</button>
+      </div>
+      <div style="display:flex;align-items:flex-start;gap:12px;padding:13px 0">
+        <div style="width:36px;height:36px;border-radius:50%;background:rgba(120,108,34,.1);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-checklist" style="color:var(--yc);font-size:18px"></i></div>
+        <div style="flex:1"><div style="font-size:13px;color:var(--t);font-weight:500">Reminder: 8 legal checklist items still pending</div><div style="font-size:11px;color:var(--mu);margin-top:3px">1 day ago · Legal Checklist</div></div>
+        <button class="btn-ghost" style="padding:5px 11px;font-size:11px;flex-shrink:0" onclick="nav('ai-masterplan',document.querySelectorAll('.sb-item')[3],'AI Masterplan')">View</button>
+      </div>
+    </div>
+    <div class="sec-ttl" style="font-size:12px;color:var(--mu)">Earlier</div>
+    <div class="card">
+      <div style="display:flex;align-items:flex-start;gap:12px;padding:13px 0;border-bottom:1px solid var(--bd)"><div style="width:36px;height:36px;border-radius:50%;background:rgba(21,122,85,.1);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-check" style="color:var(--gr);font-size:18px"></i></div><div style="flex:1"><div style="font-size:13px;color:var(--t);font-weight:500">Phase 4 — Offer & Resource Setup completed</div><div style="font-size:11px;color:var(--mu);margin-top:3px">3 days ago</div></div></div>
+      <div style="display:flex;align-items:flex-start;gap:12px;padding:13px 0;border-bottom:1px solid var(--bd)"><div style="width:36px;height:36px;border-radius:50%;background:rgba(60,97,221,.1);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-sparkles" style="color:var(--blue);font-size:18px"></i></div><div style="flex:1"><div style="font-size:13px;color:var(--t);font-weight:500">AI Business Plan generated — 9 sections ready</div><div style="font-size:11px;color:var(--mu);margin-top:3px">5 days ago</div></div></div>
+      <div style="display:flex;align-items:flex-start;gap:12px;padding:13px 0"><div style="width:36px;height:36px;border-radius:50%;background:rgba(21,122,85,.1);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-check" style="color:var(--gr);font-size:18px"></i></div><div style="flex:1"><div style="font-size:13px;color:var(--t);font-weight:500">Brand Identity Kit saved to Asset Library</div><div style="font-size:11px;color:var(--mu);margin-top:3px">6 days ago</div></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ PAGE: ASSET LIBRARY ═══════════ -->
+<div class="page" id="page-asset-library">
+  <div class="pg-hd" style="display:flex;justify-content:space-between;align-items:flex-start">
+    <div><div class="eyebrow">Your Files</div><h2>Asset Library</h2><p>6 assets · Auto-saved from all phases</p></div>
+    <button class="btn btn-blue"><i class="ti ti-upload"></i>Upload</button>
+  </div>
+  <div class="g3">
+    <div class="card">
+      <div style="height:80px;background:rgba(60,97,221,.08);border-radius:9px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;font-size:32px;color:var(--blue)"><i class="ti ti-chart-bar"></i></div>
+      <div style="font-family:var(--fd);font-weight:700;font-size:13.5px;color:var(--t)">3-Year Financial Forecast</div>
+      <div style="font-size:11.5px;color:var(--mu);margin-top:3px">PDF · AI Generated · Phase 3.1</div>
+      <div style="display:flex;gap:6px;margin-top:10px"><button class="btn btn-blue" style="flex:1;justify-content:center;font-size:11px"><i class="ti ti-download"></i>Download</button><button class="btn-ghost" style="padding:7px 10px"><i class="ti ti-eye" style="font-size:14px"></i></button></div>
+    </div>
+    <div class="card">
+      <div style="height:80px;background:rgba(60,97,221,.08);border-radius:9px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;font-size:32px;color:var(--blue)"><i class="ti ti-report"></i></div>
+      <div style="font-family:var(--fd);font-weight:700;font-size:13.5px;color:var(--t)">AI Business Plan</div>
+      <div style="font-size:11.5px;color:var(--mu);margin-top:3px">PDF + DOCX · 9 sections · Phase 3.2</div>
+      <div style="display:flex;gap:6px;margin-top:10px"><button class="btn btn-blue" style="flex:1;justify-content:center;font-size:11px"><i class="ti ti-download"></i>Download</button><button class="btn-ghost" style="padding:7px 10px"><i class="ti ti-eye" style="font-size:14px"></i></button></div>
+    </div>
+    <div class="card">
+      <div style="height:80px;background:rgba(21,122,85,.08);border-radius:9px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;font-size:32px;color:var(--gr)"><i class="ti ti-palette"></i></div>
+      <div style="font-family:var(--fd);font-weight:700;font-size:13.5px;color:var(--t)">Brand Identity Kit</div>
+      <div style="font-size:11.5px;color:var(--mu);margin-top:3px">Logo · Palette · Fonts · Phase 2.3</div>
+      <div style="display:flex;gap:6px;margin-top:10px"><button class="btn btn-blue" style="flex:1;justify-content:center;font-size:11px"><i class="ti ti-download"></i>Download</button><button class="btn-ghost" style="padding:7px 10px"><i class="ti ti-eye" style="font-size:14px"></i></button></div>
+    </div>
+    <div class="card">
+      <div style="height:80px;background:rgba(120,108,34,.08);border-radius:9px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;font-size:32px;color:var(--yc)"><i class="ti ti-checklist"></i></div>
+      <div style="font-family:var(--fd);font-weight:700;font-size:13.5px;color:var(--t)">Legal Checklist</div>
+      <div style="font-size:11.5px;color:var(--mu);margin-top:3px">4 / 12 done · Phase 3.3</div>
+      <div style="height:4px;background:var(--sf2);border-radius:2px;margin-top:6px;overflow:hidden"><div style="width:33%;height:100%;background:var(--yp)"></div></div>
+      <div style="display:flex;gap:6px;margin-top:10px"><button class="btn btn-blue" style="flex:1;justify-content:center;font-size:11px" onclick="nav('ai-masterplan',document.querySelectorAll('.sb-item')[3],'AI Masterplan')"><i class="ti ti-arrow-right"></i>Continue</button></div>
+    </div>
+    <div class="card">
+      <div style="height:80px;background:rgba(150,95,17,.08);border-radius:9px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;font-size:32px;color:var(--yp)"><i class="ti ti-currency-euro"></i></div>
+      <div style="font-family:var(--fd);font-weight:700;font-size:13.5px;color:var(--t)">IP Valuation Report</div>
+      <div style="font-size:11.5px;color:var(--mu);margin-top:3px">€25K–80K · High confidence · Phase 5</div>
+      <div style="display:flex;gap:6px;margin-top:10px"><button class="btn btn-blue" style="flex:1;justify-content:center;font-size:11px"><i class="ti ti-download"></i>Download</button><button class="btn-ghost" style="padding:7px 10px"><i class="ti ti-eye" style="font-size:14px"></i></button></div>
+    </div>
+    <div class="card">
+      <div style="height:80px;background:rgba(60,97,221,.08);border-radius:9px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;font-size:32px;color:var(--blue)"><i class="ti ti-presentation"></i></div>
+      <div style="font-family:var(--fd);font-weight:700;font-size:13.5px;color:var(--t)">Skill Gap Report</div>
+      <div style="font-size:11.5px;color:var(--mu);margin-top:3px">3 SPs recommended · Phase 3.4</div>
+      <div style="display:flex;gap:6px;margin-top:10px"><button class="btn btn-blue" style="flex:1;justify-content:center;font-size:11px"><i class="ti ti-download"></i>Download</button><button class="btn-ghost" style="padding:7px 10px"><i class="ti ti-eye" style="font-size:14px"></i></button></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ PAGE: DOCUMENTS ═══════════ -->
+<div class="page" id="page-documents">
+  <div class="pg-hd" style="display:flex;justify-content:space-between;align-items:flex-start">
+    <div><div class="eyebrow">Legal & Platform Documents</div><h2>Documents</h2><p>NDAs · Contracts · Platform agreements</p></div>
+    <button class="btn btn-blue"><i class="ti ti-plus"></i>New Document</button>
+  </div>
+  <div style="max-width:760px">
+    <div class="sec-ttl"><i class="ti ti-file-description" style="color:var(--blue)"></i>NDA Documents</div>
+    <div class="doc-row">
+      <div class="asset-ic" style="width:36px;height:36px;border-radius:9px;background:rgba(21,122,85,.1);color:var(--gr);font-size:18px"><i class="ti ti-file-check"></i></div>
+      <div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--t)">NDA — Thomas Chevalier</div><div style="font-size:11.5px;color:var(--mu);margin-top:1px">Signed · AutoInvoice listing · 2 days ago</div></div>
+      <span class="pill pill-g" style="font-size:10px;flex-shrink:0">Signed</span>
+      <i class="ti ti-download" style="color:var(--mu);cursor:pointer;margin-left:8px"></i>
+    </div>
+    <div class="doc-row">
+      <div class="asset-ic" style="width:36px;height:36px;border-radius:9px;background:rgba(150,95,17,.1);color:var(--yp);font-size:18px"><i class="ti ti-file-time"></i></div>
+      <div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--t)">NDA — Jean Martin</div><div style="font-size:11.5px;color:var(--mu);margin-top:1px">Pending signature · Sent 2 hours ago</div></div>
+      <span class="pill pill-y" style="font-size:10px;flex-shrink:0">Pending</span>
+      <i class="ti ti-dots" style="color:var(--mu);cursor:pointer;margin-left:8px"></i>
+    </div>
+    <div class="doc-row">
+      <div class="asset-ic" style="width:36px;height:36px;border-radius:9px;background:rgba(150,95,17,.1);color:var(--yp);font-size:18px"><i class="ti ti-file-time"></i></div>
+      <div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--t)">NDA — Rebecca Blanc</div><div style="font-size:11.5px;color:var(--mu);margin-top:1px">Pending signature · Sent 1 day ago</div></div>
+      <span class="pill pill-y" style="font-size:10px;flex-shrink:0">Pending</span>
+      <i class="ti ti-dots" style="color:var(--mu);cursor:pointer;margin-left:8px"></i>
+    </div>
+    <div class="sec-ttl" style="margin-top:20px"><i class="ti ti-file-text" style="color:var(--blue)"></i>Platform Agreements</div>
+    <div class="doc-row">
+      <div class="asset-ic" style="width:36px;height:36px;border-radius:9px;background:rgba(60,97,221,.1);color:var(--blue);font-size:18px"><i class="ti ti-file-check"></i></div>
+      <div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--t)">Mondial.eco Creator Terms of Service</div><div style="font-size:11.5px;color:var(--mu);margin-top:1px">Signed on registration · Jan 2026</div></div>
+      <span class="pill pill-g" style="font-size:10px;flex-shrink:0">Signed</span>
+      <i class="ti ti-download" style="color:var(--mu);cursor:pointer;margin-left:8px"></i>
+    </div>
+    <div class="doc-row">
+      <div class="asset-ic" style="width:36px;height:36px;border-radius:9px;background:rgba(60,97,221,.1);color:var(--blue);font-size:18px"><i class="ti ti-file-check"></i></div>
+      <div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--t)">IP Transfer Standard Agreement Template</div><div style="font-size:11.5px;color:var(--mu);margin-top:1px">Template · Ready to use</div></div>
+      <span class="pill pill-b" style="font-size:10px;flex-shrink:0">Template</span>
+      <i class="ti ti-download" style="color:var(--mu);cursor:pointer;margin-left:8px"></i>
+    </div>
+    <div class="doc-row">
+      <div class="asset-ic" style="width:36px;height:36px;border-radius:9px;background:rgba(120,108,34,.1);color:var(--yc);font-size:18px"><i class="ti ti-file-description"></i></div>
+      <div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--t)">Royalty License Agreement Template</div><div style="font-size:11.5px;color:var(--mu);margin-top:1px">Template · For Path A licensing</div></div>
+      <span class="pill pill-b" style="font-size:10px;flex-shrink:0">Template</span>
+      <i class="ti ti-download" style="color:var(--mu);cursor:pointer;margin-left:8px"></i>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ PAGE: SETTINGS ═══════════ -->
+<div class="page" id="page-settings">
+  <div class="pg-hd"><div class="eyebrow">Account</div><h2>Settings</h2></div>
+  <div class="settings-wrap">
+    <div class="tab-nav">
+      <button class="tab-btn active" onclick="switchTab(this,'s-profile')">Profile</button>
+      <button class="tab-btn" onclick="switchTab(this,'s-security')">Security</button>
+      <button class="tab-btn" onclick="switchTab(this,'s-notifications')">Notifications</button>
+      <button class="tab-btn" onclick="switchTab(this,'s-billing')">Billing</button>
+    </div>
+    <!-- profile tab -->
+    <div class="tab-pane active" id="s-profile">
+      <div style="max-width:540px">
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-hd"><h3><i class="ti ti-user" style="color:var(--blue)"></i>Profile Details</h3></div>
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;padding-bottom:18px;border-bottom:1px solid var(--bd)">
+            <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--yp));display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-weight:800;font-size:22px;color:#fff">SC</div>
+            <div><div style="font-family:var(--fd);font-weight:700;font-size:15px;color:var(--t)">Sirajul C.</div><div style="font-size:12px;color:var(--mu)">Creator · Mondial.eco</div></div>
+            <button class="btn-ghost" style="margin-left:auto;padding:7px 13px;font-size:11px">Change photo</button>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div><div class="form-lbl">Full Name</div><input class="form-input" type="text" value="Sirajul C."></div>
+            <div><div class="form-lbl">Email</div><input class="form-input" type="email" value="sirajul@mondial.eco"></div>
+            <div><div class="form-lbl">Location</div><input class="form-input" type="text" value="Dhaka, Bangladesh"></div>
+            <div><div class="form-lbl">One-line Bio</div><input class="form-input" type="text" value="Founder building AutoInvoice — FinTech SaaS for freelancers."></div>
+          </div>
+          <button class="btn btn-blue" style="margin-top:18px"><i class="ti ti-check"></i>Save Changes</button>
+        </div>
+        <div class="card">
+          <div class="card-hd"><h3><i class="ti ti-arrows-transfer-up" style="color:var(--blue)"></i>Role Switching</h3></div>
+          <div style="display:flex;flex-direction:column;gap:9px">
+            <div style="background:rgba(60,97,221,.06);border:1px solid rgba(60,97,221,.2);border-radius:10px;padding:13px;display:flex;justify-content:space-between;align-items:center"><div><div style="font-family:var(--fd);font-weight:700;font-size:13px;color:var(--t)">✦ Creator</div><div style="font-size:12px;color:var(--mu);margin-top:2px">Current active role</div></div><span class="pill pill-b" style="font-size:10px">Active</span></div>
+            <div style="background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:13px;display:flex;justify-content:space-between;align-items:center"><div><div style="font-family:var(--fd);font-weight:700;font-size:13px;color:var(--mu)">⚡ Entrepreneur</div><div style="font-size:12px;color:var(--mu);margin-top:2px">Unlocks after Phase 6 LEVEL UP</div></div><span class="pill" style="background:var(--sf2);border:1px solid var(--bd);color:var(--mu);font-size:10px">Locked</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- security tab -->
+    <div class="tab-pane" id="s-security">
+      <div style="max-width:540px">
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-hd"><h3><i class="ti ti-lock" style="color:var(--blue)"></i>Password & Auth</h3></div>
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div><div class="form-lbl">Current Password</div><input class="form-input" type="password" placeholder="••••••••"></div>
+            <div><div class="form-lbl">New Password</div><input class="form-input" type="password" placeholder="Min. 8 characters"></div>
+            <div><div class="form-lbl">Confirm New Password</div><input class="form-input" type="password" placeholder="Re-enter new password"></div>
+          </div>
+          <button class="btn btn-blue" style="margin-top:16px">Update Password</button>
+        </div>
+        <div class="card">
+          <div class="card-hd"><h3><i class="ti ti-shield-check" style="color:var(--gr)"></i>Two-Factor Auth</h3></div>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div><div style="font-size:13px;color:var(--t);font-weight:500">Enable 2FA</div><div style="font-size:12px;color:var(--mu);margin-top:2px">Secure your account with authenticator app</div></div>
+            <div class="toggle off" onclick="this.classList.toggle('on');this.classList.toggle('off')"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- notifications tab -->
+    <div class="tab-pane" id="s-notifications">
+      <div style="max-width:540px">
+        <div class="card">
+          <div class="card-hd"><h3><i class="ti ti-bell" style="color:var(--blue)"></i>Notification Preferences</h3></div>
+          <div style="display:flex;flex-direction:column;gap:0">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--bd)"><div><div style="font-size:13px;color:var(--t)">New marketplace interest</div><div style="font-size:11.5px;color:var(--mu)">When someone expresses interest in your idea</div></div><div class="toggle on"></div></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--bd)"><div><div style="font-size:13px;color:var(--t)">NDA requests</div><div style="font-size:11.5px;color:var(--mu)">When a buyer requests your NDA</div></div><div class="toggle on"></div></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--bd)"><div><div style="font-size:13px;color:var(--t)">New messages</div><div style="font-size:11.5px;color:var(--mu)">Chat and workroom messages</div></div><div class="toggle on"></div></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--bd)"><div><div style="font-size:13px;color:var(--t)">AI valuation updates</div><div style="font-size:11.5px;color:var(--mu)">When IP valuation is recalculated</div></div><div class="toggle on"></div></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0"><div><div style="font-size:13px;color:var(--t)">Platform announcements</div><div style="font-size:11.5px;color:var(--mu)">New features and Mondial.eco updates</div></div><div class="toggle off"></div></div>
+          </div>
+          <button class="btn btn-blue" style="margin-top:16px">Save Preferences</button>
+        </div>
+      </div>
+    </div>
+    <!-- billing tab -->
+    <div class="tab-pane" id="s-billing">
+      <div style="max-width:540px">
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-hd"><h3><i class="ti ti-credit-card" style="color:var(--blue)"></i>Current Plan</h3></div>
+          <div style="background:rgba(60,97,221,.06);border:1px solid rgba(60,97,221,.2);border-radius:11px;padding:16px 18px;display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+            <div><div style="font-family:var(--fd);font-weight:700;font-size:15px;color:var(--t)">Creator Pro</div><div style="font-size:12px;color:var(--mu);margin-top:2px">Billed monthly · Next billing June 25</div></div>
+            <div style="text-align:right"><div style="font-family:var(--fm);font-weight:700;font-size:18px;color:var(--t)">€49/mo</div><span class="pill pill-g" style="font-size:10px">Active</span></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;justify-content:space-between;font-size:12.5px"><span style="color:var(--mu)">AI Masterplan access</span><span class="pill pill-g" style="font-size:10px">✓ Included</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:12.5px"><span style="color:var(--mu)">Marketplace listing</span><span class="pill pill-g" style="font-size:10px">✓ Included</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:12.5px"><span style="color:var(--mu)">IP Vault protection</span><span class="pill pill-g" style="font-size:10px">✓ Included</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-hd"><h3><i class="ti ti-receipt" style="color:var(--blue)"></i>Billing History</h3></div>
+          <div style="display:flex;flex-direction:column;gap:0">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--bd)"><div><div style="font-size:13px;color:var(--t)">Creator Pro · Jun 2026</div><div style="font-size:11px;color:var(--mu)">Jun 1, 2026</div></div><div style="display:flex;align-items:center;gap:8px"><span style="font-family:var(--fm);font-weight:700;font-size:13px;color:var(--t)">€49.00</span><button class="btn-ghost" style="padding:3px 9px;font-size:11px">PDF</button></div></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--bd)"><div><div style="font-size:13px;color:var(--t)">Creator Pro · May 2026</div><div style="font-size:11px;color:var(--mu)">May 1, 2026</div></div><div style="display:flex;align-items:center;gap:8px"><span style="font-family:var(--fm);font-weight:700;font-size:13px;color:var(--t)">€49.00</span><button class="btn-ghost" style="padding:3px 9px;font-size:11px">PDF</button></div></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0"><div><div style="font-size:13px;color:var(--t)">Creator Pro · Apr 2026</div><div style="font-size:11px;color:var(--mu)">Apr 1, 2026</div></div><div style="display:flex;align-items:center;gap:8px"><span style="font-family:var(--fm);font-weight:700;font-size:13px;color:var(--t)">€49.00</span><button class="btn-ghost" style="padding:3px 9px;font-size:11px">PDF</button></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</main>
+</div>
+</div>
+
+<script>
+function nav(pageId, el, label) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + pageId).classList.add('active');
+  document.getElementById('bcur').textContent = label;
+  document.querySelectorAll('.sb-item').forEach(i => i.classList.remove('active'));
+  if (el && el.classList) el.classList.add('active');
+  window.scrollTo(0, 0);
+}
+function switchTab(btn, paneId) {
+  btn.closest('.tab-nav').querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  btn.closest('.settings-wrap').querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.getElementById(paneId).classList.add('active');
+}
+// Toggle handler
+document.querySelectorAll('.toggle').forEach(t => {
+  t.addEventListener('click', function() {
+    this.classList.toggle('on');
+    this.classList.toggle('off');
+  });
+});
+</script>
+</body>
+</html>

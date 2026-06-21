@@ -1,0 +1,190 @@
+04_Investor_Journey_v2.0 (Enterprise Specification)
+Executive Summary
+The Investor Journey is the capital allocation engine of Mondial.eco. It enables Angel Investors, Venture Capital firms and Family Offices to discover, evaluate, manage and invest in high-potential opportunities through structured workflows and intelligence-driven matching.
+Business Objectives
+- Increase qualified investor-founder matches
+- Reduce due diligence time
+- Improve deal quality
+- Create a trusted investment ecosystem
+- Standardize investment workflows
+Investor Types
+- Angel Investors
+- Venture Capital Firms
+- Family Offices
+
+Future:
+- Syndicates
+- Corporate VC
+- Institutional Investors
+Stage 1: Investor Verification
+Requirements:
+- Identity Verification
+- KYC/KYB
+- Investment Background
+- Source of Funds Declaration
+
+Outputs:
+- Verified Investor Badge
+- Investor Trust Score
+Stage 2: Investor Profile
+Fields:
+- Investor Type
+- Investment Thesis
+- Preferred Industries
+- Geography
+- Stage Preference
+- Ticket Size
+- Portfolio Interests
+Stage 3: Investment Thesis Engine
+Defines:
+- Industries of Interest
+- Risk Appetite
+- Check Size
+- Startup Stages
+- Geographic Preferences
+
+Output:
+Investor Matching Profile
+Stage 4: Opportunity Discovery
+Discovery Sources:
+- AI Recommendations
+- Search Filters
+- Trending Opportunities
+- Curated Opportunities
+
+Outputs:
+- Opportunity Feed
+- Watchlist
+Stage 5: Opportunity Scoring
+Scoring Factors:
+- Founder Quality
+- Funding Readiness
+- Team Strength
+- Market Opportunity
+- Traction
+- Risk Indicators
+
+Output:
+Opportunity Score (0-100)
+Stage 6: NDA Workflow
+Before sensitive data access:
+- NDA Request
+- NDA Approval
+- NDA Tracking
+
+Output:
+Authorized Access
+Stage 7: Data Room Access
+Accessible Documents:
+- Pitch Deck
+- Business Plan
+- Financial Forecast
+- Cap Table
+- Legal Documents
+- Team Information
+
+Access logged for audit purposes.
+Stage 8: Deal Pipeline
+Stages:
+- Discovered
+- Interested
+- NDA Signed
+- Due Diligence
+- Negotiation
+- Invested
+- Closed Lost
+
+Output:
+Investor CRM Dashboard
+Stage 9: Due Diligence
+Review Areas:
+- Team
+- Product
+- Market
+- Financials
+- Legal
+
+Output:
+Due Diligence Report
+Stage 10: Investment Tracking
+Track:
+- Active Investments
+- Portfolio Value
+- Funding History
+- Startup Updates
+
+Output:
+Portfolio Dashboard
+Notifications
+Opportunity Match Found
+NDA Request Received
+Data Room Updated
+Meeting Scheduled
+Investment Opportunity Changed
+UX Requirements
+Personalized Dashboard
+Advanced Search
+Watchlists
+Saved Opportunities
+Mobile Responsive Experience
+Validation Rules
+Required:
+- Investor Type
+- Investment Thesis
+- Geography
+- Ticket Size
+
+Optional:
+- Portfolio Website
+- LinkedIn
+- Public Profile
+Database Collections
+Investors
+InvestorProfiles
+InvestmentTheses
+OpportunityViews
+Watchlists
+NDAs
+DealPipelines
+PortfolioRecords
+API Requirements
+POST /investors
+GET /opportunities
+POST /watchlist
+POST /nda/request
+GET /portfolio
+GET /deal-pipeline
+Permissions
+Investor:
+View approved opportunities
+
+Entrepreneur:
+View interested investors
+
+Admin:
+Moderation and compliance access
+Analytics Events
+Investor Registered
+Opportunity Viewed
+NDA Signed
+Data Room Accessed
+Meeting Booked
+Investment Recorded
+Edge Cases
+Incomplete Investor Profile
+Expired NDA
+Duplicate Opportunities
+Inactive Investors
+Conflicting Investment Preferences
+Success Metrics
+Investor Activation Rate
+Opportunity View Rate
+NDA Conversion Rate
+Meeting Conversion Rate
+Investment Completion Rate
+Future Scalability
+AI Deal Flow Assistant
+Automated Due Diligence
+Term Sheet Workflows
+Portfolio Analytics
+Cross-Border Investment Support

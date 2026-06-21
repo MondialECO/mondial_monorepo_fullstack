@@ -1,0 +1,1984 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mondial.eco — Phase 2: Project Identity</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.44.0/iconfont/tabler-icons.min.css">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0A0A0A;--surface:#1A1A1A;--s2:#0F0F0F;
+  --p:#7C3AED;--o:#FF5C00;--g:#00C896;--b:#3B82F6;--am:#F59E0B;
+  --bd:#2A2A2A;--bd2:#3A3A3A;
+  --t:#FFFFFF;--mu:#9CA3AF;--dm:#4B5563;
+  --fd:'Syne',sans-serif;--fb:'DM Sans',sans-serif;
+}
+body{font-family:var(--fb);background:var(--bg);color:var(--t);min-height:100vh;overflow-x:hidden}
+/* === SCREEN SYSTEM === */
+.screen{display:none;flex-direction:column;min-height:100vh;animation:fadeUp .3s ease}
+.screen.active{display:flex}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+/* === NAV === */
+.nav{width:100%;height:58px;background:var(--bg);border-bottom:1px solid var(--bd);
+  display:flex;align-items:center;padding:0 28px;justify-content:space-between;
+  flex-shrink:0;position:sticky;top:0;z-index:100}
+.logo{font-family:var(--fd);font-size:17px;color:var(--t);text-decoration:none}
+.logo span{color:var(--p)}
+.breadcrumb{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--mu)}
+.breadcrumb .cur{color:var(--t)}
+.breadcrumb i{font-size:11px;color:var(--bd2)}
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--surface);
+  border:1px solid var(--bd2);display:flex;align-items:center;justify-content:center;
+  font-family:var(--fd);font-size:11px;color:var(--t)}
+/* === PROGRESS === */
+.pbar{width:100%;height:3px;background:var(--surface);flex-shrink:0}
+.pfill{height:100%;background:var(--p);transition:width .5s ease}
+.pfill.grad{background:linear-gradient(90deg,var(--p),var(--o))}
+/* === TYPOGRAPHY === */
+.eyebrow{font-family:var(--fd);font-size:11px;color:var(--p);
+  text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px}
+.section-lbl{font-size:10px;color:var(--mu);text-transform:uppercase;
+  letter-spacing:.1em;font-family:var(--fd);margin-bottom:12px}
+/* === PILLS === */
+.pill{display:inline-flex;align-items:center;gap:5px;border-radius:100px;
+  padding:4px 12px;font-size:11px;font-family:var(--fb)}
+.pill-p{background:rgba(124,58,237,.12);border:1px solid rgba(124,58,237,.3);color:var(--p)}
+.pill-o{background:rgba(255,92,0,.1);border:1px solid rgba(255,92,0,.3);color:var(--o)}
+.pill-g{background:rgba(0,200,150,.1);border:1px solid rgba(0,200,150,.3);color:var(--g)}
+.pill-dark{background:var(--surface);border:1px solid var(--bd);color:var(--mu)}
+/* === CHIPS === */
+.chip{display:inline-flex;align-items:center;gap:5px;background:var(--surface);
+  border:1px solid var(--bd);border-radius:100px;padding:7px 13px;font-size:12px;
+  color:var(--mu);cursor:pointer;transition:all .18s;user-select:none}
+.chip:hover{border-color:rgba(124,58,237,.5);color:var(--t)}
+.chip.sel{background:rgba(124,58,237,.12);border-color:var(--p);color:var(--t)}
+.chip.sel::before{content:'✓ ';font-size:10px;color:var(--p)}
+/* === BUTTONS === */
+.btn{border:none;border-radius:12px;font-family:var(--fd);font-size:14px;
+  cursor:pointer;transition:opacity .18s,transform .1s;display:inline-flex;
+  align-items:center;gap:7px;padding:11px 24px}
+.btn:hover{opacity:.88;transform:translateY(-1px)}
+.btn:active{transform:scale(.98)}
+.btn-p{background:var(--p);color:#fff}
+.btn-o{background:transparent;border:1px solid var(--o);color:var(--o)}
+.btn-g{background:transparent;border:1px solid var(--bd);color:var(--mu);
+  font-family:var(--fb);font-weight:400}
+.btn-gp{background:transparent;border:1px solid var(--p);color:var(--p)}
+.btn:disabled{opacity:.35;cursor:not-allowed;transform:none}
+/* === DIVIDER === */
+.div{height:1px;background:var(--bd);margin:14px 0}
+/* === SCROLLBAR === */
+::-webkit-scrollbar{width:3px}::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--bd);border-radius:2px}
+/* === STEP 2.2 — CONCEPT & NAME === */
+.s22-layout{display:flex;flex:1;overflow:hidden}
+.s22-main{flex:1;max-width:640px;margin:0 auto;padding:36px 28px;overflow-y:auto}
+.s22-side{width:230px;background:var(--bg);border-left:1px solid var(--bd);padding:26px 18px;overflow-y:auto}
+.field-block{margin-bottom:26px}
+.field-lbl2{font-size:11px;color:var(--mu);text-transform:uppercase;letter-spacing:.08em;
+  font-family:var(--fd);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.field-req{color:var(--o);font-size:10px}
+input[type=text]{width:100%;background:var(--surface);border:1px solid var(--bd);border-radius:12px;
+  padding:13px 16px;color:var(--t);font-family:var(--fb);font-size:14px;outline:none;
+  transition:border-color .2s}
+input[type=text]:focus{border-color:rgba(124,58,237,.5)}
+input[type=text]::placeholder{color:var(--dm)}
+.char-count{font-size:10px;color:var(--dm);text-align:right;margin-top:4px}
+.pitch-builder{background:var(--surface);border:1px solid var(--bd);border-radius:12px;
+  padding:14px 16px;display:flex;flex-wrap:wrap;align-items:center;gap:7px;line-height:1.8}
+.pb-text{font-size:13px;color:var(--mu)}
+.pb-input{background:var(--s2);border:1px solid var(--bd2);border-radius:8px;padding:4px 10px;
+  color:var(--t);font-size:13px;font-family:var(--fb);outline:none;min-width:100px;
+  transition:border-color .2s}
+.pb-input:focus{border-color:var(--p)}
+.pitch-preview{background:var(--s2);border:1px solid rgba(124,58,237,.2);border-radius:10px;
+  padding:12px 16px;margin-top:10px;font-size:13px;color:var(--t);line-height:1.6;
+  border-left:2px solid var(--p)}
+.pitch-preview .plbl{font-size:10px;color:var(--p);text-transform:uppercase;
+  letter-spacing:.08em;font-family:var(--fd);margin-bottom:5px}
+.ai-suggestions{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+.ai-sug{background:var(--surface);border:1px solid var(--bd2);border-radius:100px;
+  padding:6px 13px;font-size:12px;color:var(--mu);cursor:pointer;transition:all .18s}
+.ai-sug:hover{border-color:var(--p);color:var(--t)}
+.preview-card{background:var(--surface);border:1px solid rgba(124,58,237,.25);
+  border-radius:14px;padding:18px;margin-top:14px}
+.preview-card .pc-name{font-family:var(--fd);font-size:18px;color:var(--t);margin-bottom:5px}
+.preview-card .pc-pitch{font-size:13px;color:var(--mu);line-height:1.6}
+/* === STEP 2.3 — BRANDING OPTIONS === */
+.brand-opts{display:flex;gap:18px;padding:28px;flex:1}
+.brand-card{flex:1;background:var(--surface);border:1px solid var(--bd);border-radius:20px;
+  padding:28px 24px;display:flex;flex-direction:column;cursor:pointer;
+  transition:border-color .2s,transform .15s;max-width:380px}
+.brand-card:hover{transform:translateY(-2px)}
+.brand-card.rec{border-color:rgba(124,58,237,.4)}
+.brand-card.ai-opt:hover{border-color:var(--o)}
+.brand-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(124,58,237,.12);
+  border:1px solid rgba(124,58,237,.3);border-radius:100px;padding:3px 10px;
+  font-size:10px;color:var(--p);margin-bottom:14px;width:fit-content}
+.brand-ic{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;
+  justify-content:center;font-size:22px;margin-bottom:14px}
+.brand-ic-p{background:rgba(124,58,237,.12);color:var(--p)}
+.brand-ic-o{background:rgba(255,92,0,.1);color:var(--o)}
+.brand-card h3{font-family:var(--fd);font-size:17px;color:var(--t);margin-bottom:8px}
+.brand-card p{font-size:13px;color:var(--mu);line-height:1.65;flex:1}
+.sp-list{margin-top:18px;display:flex;flex-direction:column;gap:9px}
+.sp-row{background:var(--s2);border:1px solid var(--bd);border-radius:11px;
+  padding:11px 13px;display:flex;align-items:center;gap:11px}
+.sp-av{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-family:var(--fd);font-size:12px;color:#fff;flex-shrink:0}
+.sp-info{flex:1}
+.sp-name{font-size:13px;font-weight:500;color:var(--t);margin-bottom:2px}
+.sp-meta{font-size:11px;color:var(--mu);display:flex;align-items:center;gap:7px}
+.sp-tier{background:rgba(0,200,150,.1);border:1px solid rgba(0,200,150,.3);
+  border-radius:100px;padding:1px 7px;font-size:9px;color:var(--g)}
+.sp-rate{font-size:11px;color:var(--am);font-family:var(--fd)}
+.sp-book{background:var(--p);border:none;border-radius:8px;padding:6px 12px;
+  font-size:11px;font-family:var(--fd);color:#fff;cursor:pointer;
+  transition:opacity .18s;white-space:nowrap}
+.sp-book:hover{opacity:.85}
+/* === AI LOGO TOOL === */
+.ailogo-wrap{flex:1;display:flex;flex-direction:column;padding:28px;overflow-y:auto}
+.logo-gen-hdr{max-width:640px;margin:0 auto 24px;width:100%}
+.logo-options{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;
+  max-width:780px;margin:0 auto;width:100%}
+.logo-opt{background:var(--surface);border:2px solid var(--bd);border-radius:16px;
+  padding:20px;display:flex;flex-direction:column;align-items:center;
+  cursor:pointer;transition:all .2s}
+.logo-opt:hover{border-color:var(--p);transform:translateY(-2px)}
+.logo-opt.chosen{border-color:var(--p);background:rgba(124,58,237,.06)}
+.logo-canvas-wrap{width:100%;aspect-ratio:1;border-radius:10px;overflow:hidden;
+  background:var(--s2);margin-bottom:14px;display:flex;align-items:center;justify-content:center}
+.logo-opt .lo-style{font-size:11px;color:var(--mu);text-transform:uppercase;
+  letter-spacing:.08em;margin-bottom:5px;font-family:var(--fd)}
+.logo-opt .lo-desc{font-size:11px;color:var(--dm);text-align:center;line-height:1.5}
+.palette-row{display:flex;gap:6px;margin-top:9px}
+.pal-dot{width:18px;height:18px;border-radius:50%}
+.brand-output{background:var(--surface);border:1px solid rgba(0,200,150,.3);
+  border-radius:14px;padding:18px;max-width:780px;margin:20px auto 0;width:100%}
+.brand-output .bo-title{font-family:var(--fd);font-size:13px;color:var(--g);margin-bottom:14px;
+  display:flex;align-items:center;gap:7px}
+.brand-row{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.brand-asset{background:var(--s2);border:1px solid var(--bd);border-radius:10px;
+  padding:12px 16px;display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;min-width:130px}
+.ba-lbl{font-size:10px;color:var(--dm);text-transform:uppercase;letter-spacing:.07em}
+/* === PHASE 2 DONE === */
+.p2done-wrap{flex:1;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;padding:40px 20px;gap:24px;overflow-y:auto}
+.done-ring{width:72px;height:72px;border-radius:50%;background:rgba(0,200,150,.1);
+  border:1px solid rgba(0,200,150,.3);display:flex;align-items:center;justify-content:center;
+  font-size:28px;color:var(--g);animation:popIn .4s cubic-bezier(.175,.885,.32,1.275)}
+@keyframes popIn{0%{transform:scale(0);opacity:0}100%{transform:scale(1);opacity:1}}
+.identity-card{background:var(--surface);border:1px solid rgba(124,58,237,.35);
+  border-radius:20px;padding:24px 28px;max-width:580px;width:100%}
+.identity-card .ic-logo-row{display:flex;align-items:center;gap:14px;margin-bottom:18px;
+  padding-bottom:16px;border-bottom:1px solid var(--bd)}
+.logo-preview-circle{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;
+  justify-content:center;font-family:var(--fd);font-size:20px;flex-shrink:0}
+.ic-data-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ic-field{background:var(--s2);border-radius:9px;padding:11px 13px}
+.ic-field .icf-lbl{font-size:9px;color:var(--dm);text-transform:uppercase;
+  letter-spacing:.08em;margin-bottom:3px}
+.ic-field .icf-val{font-size:12px;color:var(--t);line-height:1.5}
+/* =====================
+   SCREEN 1 — SMART GATE
+   ==================== */
+#sg .content{flex:1;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;padding:36px 20px;gap:36px}
+.gate-hd{text-align:center}
+.gate-hd h1{font-family:var(--fd);font-size:30px;color:var(--t);line-height:1.2;
+  max-width:480px;margin:12px auto 10px}
+.gate-hd p{font-size:14px;color:var(--mu);line-height:1.6}
+.gate-cards{display:flex;gap:18px;width:100%;max-width:620px}
+.gcard{flex:1;background:var(--surface);border:1px solid var(--bd);border-radius:20px;
+  padding:26px 22px;display:flex;flex-direction:column;cursor:pointer;
+  transition:border-color .2s,transform .15s}
+.gcard:hover{transform:translateY(-2px)}
+.gcard.yes:hover{border-color:var(--p)}
+.gcard.no:hover{border-color:var(--o)}
+.gcard .ic{width:46px;height:46px;border-radius:13px;display:flex;align-items:center;
+  justify-content:center;font-size:21px;margin-bottom:15px}
+.ic-p{background:rgba(124,58,237,.12);color:var(--p)}
+.ic-o{background:rgba(255,92,0,.1);color:var(--o)}
+.gcard h3{font-family:var(--fd);font-size:16px;color:var(--t);margin-bottom:7px}
+.gcard p{font-size:13px;color:var(--mu);line-height:1.6;flex:1}
+.gcard .gb{margin-top:20px;width:100%;height:44px;border-radius:11px;border:none;
+  font-family:var(--fd);font-size:13px;cursor:pointer;transition:opacity .18s}
+.gb:hover{opacity:.85}
+.gb-yes{background:var(--p);color:#fff}
+.gb-no{background:transparent;border:1px solid var(--o) !important;color:var(--o)}
+.gate-note{font-size:12px;color:var(--dm);text-align:center}
+/* ======================
+   SCREEN 2 — THREE INPUTS
+   ==================== */
+#si .layout{display:flex;flex:1;overflow:hidden}
+#si .main{flex:1;padding:36px 28px;overflow-y:auto}
+#si .side{width:220px;background:var(--bg);border-left:1px solid var(--bd);
+  padding:28px 20px;overflow-y:auto}
+.inp-sec{margin-bottom:32px;transition:opacity .3s}
+.inp-sec.locked{opacity:.3;pointer-events:none}
+.srow{display:flex;align-items:center;gap:11px;margin-bottom:10px}
+.snum{width:27px;height:27px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-family:var(--fd);font-size:12px;flex-shrink:0}
+.snum.act{background:var(--p);color:#fff}
+.snum.done{background:var(--g);color:#fff}
+.snum.pend{background:var(--surface);border:1px solid var(--bd);color:var(--dm)}
+.slbl{font-family:var(--fd);font-size:14px;color:var(--t)}
+.slbl.mu{color:var(--mu)}
+.cgrid{display:flex;flex-wrap:wrap;gap:7px;margin-left:38px}
+.cnt{font-size:11px;color:var(--p);margin-left:38px;margin-top:7px}
+.tawrap{margin-left:38px}
+textarea{width:100%;background:var(--surface);border:1px solid var(--bd);
+  border-radius:12px;padding:12px 14px;color:var(--t);font-family:var(--fb);
+  font-size:13px;line-height:1.6;resize:none;outline:none;
+  transition:border-color .2s;min-height:80px}
+textarea:focus{border-color:rgba(124,58,237,.5)}
+textarea::placeholder{color:var(--dm)}
+.bbar{background:var(--bg);border-top:1px solid var(--bd);padding:14px 28px;
+  display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.hlp{font-size:12px;color:var(--mu);margin-left:38px;margin-bottom:10px;line-height:1.5}
+/* ======================
+   SCREEN 3 — PROCESSING
+   ==================== */
+#sp .content{flex:1;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;padding:40px 20px;gap:28px}
+.proc-logo{font-family:var(--fd);font-size:20px;color:var(--t);text-align:center}
+.proc-logo span{color:var(--p)}
+.ring-wrap{position:relative;width:84px;height:84px}
+.ring-wrap svg{width:84px;height:84px;transform:rotate(-90deg)}
+.rg-bg{fill:none;stroke:var(--surface);stroke-width:4}
+.rg-fill{fill:none;stroke:var(--p);stroke-width:4;stroke-dasharray:220;
+  stroke-dashoffset:55;stroke-linecap:round;animation:rspin 1.4s linear infinite}
+@keyframes rspin{to{stroke-dashoffset:-220}}
+.ring-ic{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  font-size:20px;color:var(--p)}
+.proc-title{font-family:var(--fd);font-size:24px;color:var(--t);text-align:center}
+.proc-steps{display:flex;flex-direction:column;gap:11px;width:300px}
+.pstep{display:flex;align-items:center;gap:11px;font-size:13px}
+.pdot{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:10px;flex-shrink:0}
+.pd-done{background:var(--g);color:#fff}
+.pd-act{background:var(--p)}
+.pd-pend{background:var(--surface);border:1px solid var(--bd);color:var(--dm)}
+.pstep.done{color:var(--t)}
+.pstep.act{color:var(--t)}
+.pstep.pnd{color:var(--dm)}
+.tdots{display:flex;gap:3px;align-items:center}
+.tdots span{width:5px;height:5px;border-radius:50%;background:#fff;
+  animation:dpulse 1.2s infinite}
+.tdots span:nth-child(2){animation-delay:.2s}
+.tdots span:nth-child(3){animation-delay:.4s}
+@keyframes dpulse{0%,80%,100%{opacity:.3;transform:scale(.8)}40%{opacity:1;transform:scale(1.1)}}
+/* ======================
+   SCREEN 4 — IDEA CARDS
+   ==================== */
+#sc .phdr{padding:22px 28px 18px;border-bottom:1px solid var(--bd);
+  display:flex;align-items:flex-end;justify-content:space-between;flex-shrink:0}
+#sc .cgrd{padding:20px 28px 60px;display:grid;grid-template-columns:repeat(2,1fr);
+  gap:18px;overflow-y:auto;flex:1}
+.icard{background:var(--surface);border:1px solid var(--bd);border-radius:18px;
+  overflow:hidden;display:flex;flex-direction:column;
+  transition:border-color .2s,transform .18s;cursor:pointer}
+.icard:hover{transform:translateY(-2px)}
+.icard.feat{border-color:rgba(124,58,237,.45)}
+.icard .cov{width:100%;height:150px;position:relative;flex-shrink:0}
+.icard .cov canvas{width:100%;height:100%;display:block}
+.cov-fade{position:absolute;bottom:0;left:0;right:0;height:70px;pointer-events:none}
+.cov-badge{position:absolute;top:11px;right:11px}
+.cov-tag{position:absolute;bottom:9px;left:11px;background:rgba(10,10,10,.8);
+  border:1px solid var(--bd);border-radius:100px;padding:2px 9px;
+  font-size:10px;color:var(--mu);display:flex;align-items:center;gap:4px}
+.cbody{padding:16px 18px 18px;display:flex;flex-direction:column;flex:1}
+.ctags{display:flex;gap:5px;flex-wrap:wrap}
+.ctitle{font-family:var(--fd);font-size:14px;color:var(--t);
+  line-height:1.3;margin-top:9px}
+.cprob{font-size:12px;color:var(--mu);line-height:1.6;margin-top:7px;flex:1}
+.cmets{display:flex;justify-content:space-between;align-items:center;margin-top:13px}
+.mblk .mlbl{font-size:10px;color:var(--dm);text-transform:uppercase;
+  letter-spacing:.07em;margin-bottom:3px}
+.mblk .mval{font-family:var(--fd);font-size:17px;color:var(--t)}
+.mblk .mval small{font-family:var(--fb);font-size:11px;color:var(--mu)}
+.mbar{width:68px;height:4px;background:var(--bd);border-radius:2px;
+  overflow:hidden;margin-top:4px}
+.mbar-fill{height:100%;border-radius:2px}
+.ccos{margin-top:11px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.copill{background:var(--s2);border:1px solid var(--bd);border-radius:7px;
+  padding:3px 9px;display:flex;align-items:center;gap:5px;
+  font-size:10px;color:var(--mu)}
+.colog{width:13px;height:13px;border-radius:3px;background:var(--bd);flex-shrink:0}
+.ccta{margin-top:13px;width:100%;height:40px;border-radius:10px;
+  font-family:var(--fd);font-size:12px;cursor:pointer;transition:all .18s;border:none}
+.ccta-sel{background:var(--p);color:#fff}
+.ccta-out{background:transparent;border:1px solid var(--p) !important;color:var(--p)}
+/* skeleton */
+.skel{background:linear-gradient(90deg,var(--surface) 25%,var(--bd) 50%,var(--surface) 75%);
+  background-size:200% 100%;animation:skelanim 1.4s infinite;border-radius:4px}
+@keyframes skelanim{0%{background-position:200% 0}100%{background-position:-200% 0}}
+/* bottom bar cards */
+.cbot{width:100%;background:var(--bg);border-top:1px solid var(--bd);
+  padding:13px 28px;display:flex;align-items:center;justify-content:space-between;
+  flex-shrink:0}
+/* ======================
+   SCREEN 5 — CONFIRM
+   ==================== */
+#scf .layout{display:flex;flex:1;overflow:hidden}
+#scf .main{flex:1;padding:36px 28px;overflow-y:auto;display:flex;
+  flex-direction:column;justify-content:flex-start}
+#scf .side{width:220px;background:var(--bg);border-left:1px solid var(--bd);
+  padding:26px 18px}
+.cbadge{display:inline-flex;align-items:center;gap:8px;margin-bottom:18px}
+.cchk{width:29px;height:29px;border-radius:50%;background:rgba(0,200,150,.12);
+  border:1px solid rgba(0,200,150,.3);display:flex;align-items:center;
+  justify-content:center;font-size:13px;color:var(--g)}
+.chd{font-family:var(--fd);font-size:26px;color:var(--t);
+  line-height:1.2;max-width:360px;margin-bottom:11px}
+.csub{font-size:13px;color:var(--mu);line-height:1.65;max-width:360px;margin-bottom:24px}
+.cfc{background:var(--surface);border:1px solid rgba(124,58,237,.35);
+  border-radius:14px;padding:18px;margin-bottom:24px}
+.nsteps{display:flex;flex-direction:column;gap:11px;margin-bottom:24px}
+.nsrow{display:flex;align-items:flex-start;gap:11px}
+.nsnum{width:23px;height:23px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-family:var(--fd);font-size:11px;flex-shrink:0;margin-top:1px}
+.nsa{background:var(--p);color:#fff}
+.nsp{background:var(--surface);border:1px solid var(--bd);color:var(--dm)}
+.nst{font-size:13px;font-weight:500;color:var(--t);margin-bottom:2px}
+.nss{font-size:11px;color:var(--mu)}
+/* phase list (left panels) */
+.plist{display:flex;flex-direction:column;gap:5px}
+.pitem{display:flex;align-items:flex-start;gap:9px;padding:7px 9px;border-radius:9px}
+.pitem.act{background:rgba(124,58,237,.07);border-left:2px solid var(--p);padding-left:7px}
+.pcirc{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-family:var(--fd);font-size:10px;flex-shrink:0}
+.pc-done,.pc-cur{background:var(--p);color:#fff}
+.pc-lock{background:var(--surface);border:1px solid var(--bd);color:var(--dm)}
+.pn{font-size:11px;font-weight:500;color:var(--t);margin-bottom:1px}
+.ps{font-size:10px;color:var(--mu)}
+.pl-lock .pn{color:var(--mu)}
+/* ======================
+   SCREEN 6 — CHAT
+   ==================== */
+#sch .layout{display:flex;flex:1;overflow:hidden}
+#sch .lpanel{width:200px;background:var(--bg);border-right:1px solid var(--bd);
+  padding:22px 18px;overflow-y:auto;flex-shrink:0}
+#sch .ccol{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.chdr{padding:18px 22px 14px;border-bottom:1px solid var(--bd);flex-shrink:0}
+.chdr h2{font-family:var(--fd);font-size:17px;color:var(--t);
+  display:flex;align-items:center;gap:7px}
+.chdr p{font-size:12px;color:var(--mu);margin-top:4px;line-height:1.5}
+.cdots{display:flex;gap:6px;padding:10px 22px;border-bottom:1px solid var(--bd);flex-shrink:0}
+.cdot{width:9px;height:9px;border-radius:50%;background:var(--bd);
+  border:1px solid var(--bd2);transition:background .3s}
+.cdot.on{background:var(--p);border-color:var(--p)}
+.msgs{flex:1;overflow-y:auto;padding:18px 22px;display:flex;
+  flex-direction:column;gap:14px}
+.mrow{display:flex;gap:9px;animation:min .3s ease}
+@keyframes min{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.mrow.usr{flex-direction:row-reverse}
+.mav{width:29px;height:29px;border-radius:50%;background:var(--p);display:flex;
+  align-items:center;justify-content:center;font-family:var(--fd);
+  font-size:11px;color:#fff;flex-shrink:0;margin-top:17px}
+.mcont{max-width:78%}
+.mlbl{font-size:10px;color:var(--mu);margin-bottom:4px}
+.mbub{padding:11px 13px;font-size:13px;line-height:1.6;border-radius:0 13px 13px 13px}
+.ai-bub{background:var(--surface);border-left:2px solid var(--p);color:var(--t)}
+.u-bub{background:var(--p);border-radius:13px 0 13px 13px;color:#fff}
+.tbub{background:var(--surface);border-left:2px solid var(--p);
+  border-radius:0 13px 13px 13px;padding:13px 15px;
+  display:flex;gap:4px;align-items:center}
+.tdot{width:6px;height:6px;border-radius:50%;background:var(--p);
+  animation:dpulse 1.2s infinite}
+.tdot:nth-child(2){animation-delay:.2s}
+.tdot:nth-child(3){animation-delay:.4s}
+.cinput{padding:12px 22px 18px;border-top:1px solid var(--bd);flex-shrink:0}
+.ciwrap{position:relative}
+.ciwrap textarea{min-height:50px;max-height:110px;padding:13px 48px 13px 15px;
+  border-radius:14px;font-size:13px;resize:none;overflow-y:auto}
+.csend{position:absolute;right:9px;bottom:9px;width:34px;height:34px;
+  border-radius:50%;background:var(--p);border:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  color:#fff;font-size:15px;transition:opacity .18s}
+.csend:hover{opacity:.85}
+.csend:disabled{opacity:.35;cursor:not-allowed}
+.chint{display:flex;justify-content:space-between;font-size:10px;
+  color:var(--dm);margin-top:5px}
+#sch .rpanel{width:200px;background:var(--bg);border-left:1px solid var(--bd);
+  padding:22px 18px;overflow-y:auto;flex-shrink:0}
+.bblk{background:var(--surface);border-radius:9px;padding:10px 12px;
+  border-left:2px solid var(--bd);transition:border-color .3s;margin-bottom:7px}
+.bblk.done{border-left-color:var(--g)}
+.bblk.cur{border-left-color:var(--p)}
+.bblk.lck{opacity:.35}
+.bbh{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:500;
+  color:var(--t);margin-bottom:3px}
+.bbv{font-size:10px;color:var(--mu);line-height:1.4}
+.cring{text-align:center;margin-top:14px}
+.cring svg{width:66px;height:66px}
+/* ======================
+   SCREEN 7 — SUMMARY
+   ==================== */
+#ss .scont{flex:1;overflow-y:auto;padding:28px}
+.sumcard{background:var(--surface);border:1px solid rgba(124,58,237,.35);
+  border-radius:18px;padding:22px 26px;max-width:660px;margin:0 auto}
+.sumhdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.sumttl{display:flex;align-items:center;gap:7px;font-family:var(--fd);
+  font-size:12px;color:var(--p);letter-spacing:.08em}
+.sumpg .field-lbl{font-size:9px;color:var(--dm);text-transform:uppercase;
+  letter-spacing:.08em;margin-bottom:3px}
+.sumpg .field-val{font-size:13px;color:var(--t);line-height:1.5}
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.sfield{padding:9px 0;border-bottom:1px solid rgba(42,42,42,.6)}
+.sfield:nth-child(odd){padding-right:20px;border-right:1px solid rgba(42,42,42,.6)}
+.sfield:nth-child(even){padding-left:20px}
+.sscore{margin-top:18px;display:flex;align-items:center;gap:24px}
+.sscl .ssclbl{font-size:9px;color:var(--dm);text-transform:uppercase;
+  letter-spacing:.1em;margin-bottom:5px}
+.sscl .sscnum{font-family:var(--fd);font-size:36px;color:var(--t);line-height:1}
+.sscl .sscok{font-size:11px;color:var(--g);margin-top:4px}
+.sscr{flex:1}
+.sbwrap{width:100%;height:7px;background:var(--s2);border-radius:4px;
+  overflow:hidden;margin-bottom:5px}
+.sbfill{height:100%;border-radius:4px;
+  background:linear-gradient(90deg,var(--p),var(--o));transition:width 1.2s ease}
+.sthresh{display:flex;justify-content:space-between;font-size:9px;color:var(--dm)}
+.sumbtns{display:flex;gap:11px;margin-top:20px;justify-content:flex-end}
+/* info cards for side panels */
+.ifc{background:var(--surface);border-radius:9px;padding:11px 13px;margin-bottom:9px}
+.ifc .iic{font-size:14px;color:var(--p);margin-bottom:4px}
+.ifc .ith{font-size:11px;font-weight:500;color:var(--t);margin-bottom:2px}
+.ifc .itx{font-size:10px;color:var(--mu);line-height:1.5}
+/* stat blocks */
+.statb{background:var(--surface);border-radius:9px;padding:12px;margin-bottom:8px}
+.statb .sv{font-family:var(--fd);font-size:24px;color:var(--t)}
+.statb .sl{font-size:10px;color:var(--mu)}
+.statb .ss{font-size:10px;color:var(--g);margin-top:1px}
+/* journal entry */
+.jentry{background:var(--s2);border:1px solid rgba(124,58,237,.2);
+  border-radius:9px;padding:12px;border-left:3px solid var(--p);margin-bottom:8px}
+.jet{font-size:12px;font-weight:500;color:var(--t);margin-bottom:3px}
+.jes{font-size:10px;color:var(--mu)}
+/* tag small */
+.stag{display:inline-block;background:rgba(124,58,237,.1);
+  border:1px solid rgba(124,58,237,.3);border-radius:100px;
+  padding:2px 9px;font-size:10px;color:var(--p);margin-top:6px}
+</style>
+</head>
+<body>
+
+<!-- ===================== SCREEN 1: SMART GATE ===================== -->
+<div class="screen active" id="sg">
+  <nav class="nav">
+    <span class="logo">mondial<span>.eco</span></span>
+    <div class="breadcrumb"><span>Creator Flow</span><i class="ti ti-chevron-right"></i><span class="cur">Phase 2 — Project Identity</span></div>
+    <div class="avatar">SC</div>
+  </nav>
+  <div class="pbar"><div class="pfill" style="width:14%"></div></div>
+  <div class="content" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:36px 20px;gap:34px">
+    <div class="gate-hd">
+      <div class="pill pill-p">Phase 2 of 6</div>
+      <h1>Do you have a clear idea in mind?</h1>
+      <p>আমরা যেখান থেকেই শুরু করি না কেন — সেটাই সঠিক শুরু।<br><span style="color:var(--dm);font-size:12px">We will build from wherever you are. No judgment.</span></p>
+    </div>
+    <div class="gate-cards">
+      <div class="gcard yes" onclick="showScreen('si')">
+        <div class="ic ic-p"><i class="ti ti-bulb"></i></div>
+        <h3>Yes, I know my idea</h3>
+        <p>I have a concept in mind — let's refine and sharpen it together through focused questions.</p>
+        <button class="gb gb-yes" onclick="event.stopPropagation();showScreen('sch')">Let's sharpen it →</button>
+      </div>
+      <div class="gcard no" onclick="showScreen('si')">
+        <div class="ic ic-o"><i class="ti ti-compass"></i></div>
+        <h3>Not sure yet</h3>
+        <p>আইডিয়া এখনো clear না — I have interests and observations. Help me find my idea.</p>
+        <button class="gb gb-no" onclick="event.stopPropagation();showScreen('si')">Help me find it →</button>
+      </div>
+    </div>
+    <p class="gate-note">Both paths lead to the same destination. There is no wrong choice.</p>
+  </div>
+</div>
+
+<!-- ===================== SCREEN 2: THREE INPUTS ===================== -->
+<div class="screen" id="si">
+  <nav class="nav">
+    <span class="logo">mondial<span>.eco</span></span>
+    <div class="breadcrumb"><span>Creator Flow</span><i class="ti ti-chevron-right"></i><span class="cur">Step 2.1 — Idea Discovery</span></div>
+    <div class="avatar">SC</div>
+  </nav>
+  <div class="pbar"><div class="pfill" style="width:14%"></div></div>
+  <div class="layout">
+    <div class="main">
+      <div class="eyebrow">Step 2.1 — Idea Discovery</div>
+      <h2 style="font-family:var(--fd);font-size:24px;color:var(--t);margin-bottom:6px">Let's find your idea together.</h2>
+      <p style="font-size:13px;color:var(--mu);margin-bottom:28px;line-height:1.6">তিনটা quick question। এটুকুই দরকার আমার।</p>
+      <!-- Input 1: Sectors -->
+      <div class="inp-sec" id="isec1">
+        <div class="srow"><div class="snum act" id="sn1">1</div><span class="slbl">Sectors of interest</span></div>
+        <p class="hlp">Pick up to 3 areas that excite you.</p>
+        <div class="cgrid" id="sec-chips">
+          <div class="chip" data-g="sec" onclick="toggleChip(this,'sec',3)">FinTech</div>
+          <div class="chip" data-g="sec" onclick="toggleChip(this,'sec',3)">EdTech</div>
+          <div class="chip" data-g="sec" onclick="toggleChip(this,'sec',3)">HealthTech</div>
+          <div class="chip" data-g="sec" onclick="toggleChip(this,'sec',3)">SaaS Tools</div>
+          <div class="chip" data-g="sec" onclick="toggleChip(this,'sec',3)">E-commerce</div>
+          <div class="chip" data-g="sec" onclick="toggleChip(this,'sec',3)">Creator Economy</div>
+          <div class="chip" data-g="sec" onclick="toggleChip(this,'sec',3)">Sustainability</div>
+          <div class="chip" data-g="sec" onclick="toggleChip(this,'sec',3)">HR & Workforce</div>
+          <div class="chip" data-g="sec" onclick="toggleChip(this,'sec',3)">Real Estate</div>
+          <div class="chip" data-g="sec" onclick="toggleChip(this,'sec',3)">Legal Tech</div>
+          <div class="chip" data-g="sec" onclick="toggleChip(this,'sec',3)">Food & Hospitality</div>
+          <div class="chip" data-g="sec" onclick="toggleChip(this,'sec',3)">Transport</div>
+        </div>
+        <div class="cnt" id="sec-cnt">0 / 3 selected</div>
+      </div>
+      <!-- Input 2: Problem -->
+      <div class="inp-sec locked" id="isec2">
+        <div class="srow"><div class="snum pend" id="sn2">2</div><span class="slbl mu">Problems you've noticed</span></div>
+        <p class="hlp">What frustrates you, your friends, or people around you? যেটা অনেক বেশি সময় বা টাকা নষ্ট করে?</p>
+        <div class="tawrap">
+          <textarea id="prob-ta" rows="3" placeholder="e.g. My friend runs a small studio. She spends hours every week chasing clients for payments." oninput="checkInputs()"></textarea>
+        </div>
+      </div>
+      <!-- Input 3: Strengths -->
+      <div class="inp-sec locked" id="isec3">
+        <div class="srow"><div class="snum pend" id="sn3">3</div><span class="slbl mu">What you enjoy doing</span></div>
+        <p class="hlp">তুমি কী করতে ভালোবাসো?</p>
+        <div class="cgrid" id="str-chips">
+          <div class="chip" data-g="str" onclick="toggleChip(this,'str',3)">Writing & Content</div>
+          <div class="chip" data-g="str" onclick="toggleChip(this,'str',3)">Design & Visual</div>
+          <div class="chip" data-g="str" onclick="toggleChip(this,'str',3)">Teaching & Coaching</div>
+          <div class="chip" data-g="str" onclick="toggleChip(this,'str',3)">Building & Engineering</div>
+          <div class="chip" data-g="str" onclick="toggleChip(this,'str',3)">Selling & Persuading</div>
+          <div class="chip" data-g="str" onclick="toggleChip(this,'str',3)">Researching & Analyzing</div>
+          <div class="chip" data-g="str" onclick="toggleChip(this,'str',3)">Managing & Organizing</div>
+          <div class="chip" data-g="str" onclick="toggleChip(this,'str',3)">Community & Networking</div>
+        </div>
+        <div class="cnt" id="str-cnt">0 / 3 selected</div>
+      </div>
+    </div>
+    <div class="side">
+      <div class="section-lbl">HOW THIS WORKS</div>
+      <div class="ifc"><div class="iic"><i class="ti ti-brain"></i></div><div class="ith">Your inputs</div><div class="itx">3 signals about you — sector, problem, strength.</div></div>
+      <div class="ifc"><div class="iic"><i class="ti ti-cpu"></i></div><div class="ith">AI analysis</div><div class="itx">Matches against startup patterns and market data.</div></div>
+      <div class="ifc"><div class="iic"><i class="ti ti-cards"></i></div><div class="ith">Idea cards</div><div class="itx">3–5 tailored concepts, each with market size and feasibility.</div></div>
+      <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--bd);font-size:11px;color:var(--dm);line-height:1.6;font-style:italic">"You pick what resonates. AI gives options, not answers."</div>
+    </div>
+  </div>
+  <div class="bbar">
+    <button class="btn btn-g" onclick="showScreen('sg')"><i class="ti ti-arrow-left"></i> Back</button>
+    <button class="btn btn-p" id="gen-btn" disabled onclick="startProcessing()">Generate My Ideas <i class="ti ti-sparkles"></i></button>
+  </div>
+</div>
+
+<!-- ===================== SCREEN 3: PROCESSING ===================== -->
+<div class="screen" id="sp">
+  <nav class="nav">
+    <span class="logo">mondial<span>.eco</span></span>
+    <div class="breadcrumb"><span>Creator Flow</span><i class="ti ti-chevron-right"></i><span class="cur">Phase 2 — Generating Ideas</span></div>
+    <div class="avatar">SC</div>
+  </nav>
+  <div class="pbar"><div class="pfill" style="width:22%;animation:pulsePbar 1.5s infinite alternate" id="proc-pbar"></div></div>
+  <div class="content" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;gap:26px">
+    <div class="proc-logo">mondial<span>.eco</span></div>
+    <div class="ring-wrap">
+      <svg viewBox="0 0 84 84"><circle class="rg-bg" cx="42" cy="42" r="36"/><circle class="rg-fill" cx="42" cy="42" r="36"/></svg>
+      <div class="ring-ic"><i class="ti ti-sparkles"></i></div>
+    </div>
+    <div class="proc-title" id="proc-title">Building your idea cards…</div>
+    <div class="proc-steps">
+      <div class="pstep done" id="ps1"><div class="pdot pd-done"><i class="ti ti-check" style="font-size:10px"></i></div><span>Reading your interests</span></div>
+      <div class="pstep done" id="ps2"><div class="pdot pd-done"><i class="ti ti-check" style="font-size:10px"></i></div><span>Scanning startup patterns</span></div>
+      <div class="pstep act" id="ps3"><div class="pdot pd-act"><div class="tdots"><span></span><span></span><span></span></div></div><span>Matching to your strengths</span></div>
+      <div class="pstep pnd" id="ps4"><div class="pdot pd-pend">4</div><span>Generating idea cards</span></div>
+    </div>
+    <div style="font-size:11px;color:var(--dm);font-style:italic">AI is working — এটা সাধারণত ৩–৫ সেকেন্ড নেয়।</div>
+  </div>
+</div>
+<style>@keyframes pulsePbar{0%{width:16%}100%{width:35%}}</style>
+
+
+<!-- ===================== SCREEN 4: IDEA CARDS ===================== -->
+<div class="screen" id="sc">
+  <nav class="nav">
+    <span class="logo">mondial<span>.eco</span></span>
+    <div class="breadcrumb"><span>Creator Flow</span><i class="ti ti-chevron-right"></i><span class="cur">Phase 2 — Your Idea Cards</span></div>
+    <div class="avatar">SC</div>
+  </nav>
+  <div class="pbar"><div class="pfill" style="width:28%"></div></div>
+  <div class="phdr">
+    <div>
+      <div class="pill pill-p" style="margin-bottom:9px"><i class="ti ti-sparkles"></i> AI Generated · Round 1 of 3</div>
+      <h2 style="font-family:var(--fd);font-size:22px;color:var(--t)">Here are your ideas.</h2>
+      <p style="font-size:12px;color:var(--mu);margin-top:4px" id="cards-sub">Based on your inputs. Cover visuals are AI-generated per concept.</p>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:7px">
+      <div class="pill pill-dark" id="cards-round">4 ideas · 2 rounds left</div>
+      <button class="btn btn-g" style="padding:8px 14px;font-size:12px" onclick="regenCards()"><i class="ti ti-refresh"></i> Generate more</button>
+    </div>
+  </div>
+  <div class="cgrd" id="cards-grid">
+    <!-- Skeleton loading cards -->
+    <div class="icard" id="sk1">
+      <div class="cov" style="background:var(--surface)"><div class="skel" style="width:100%;height:100%"></div></div>
+      <div class="cbody"><div class="skel" style="height:12px;width:60%;margin-bottom:8px"></div><div class="skel" style="height:16px;width:90%;margin-bottom:8px"></div><div class="skel" style="height:10px;width:80%;margin-bottom:5px"></div><div class="skel" style="height:10px;width:70%"></div></div>
+    </div>
+    <div class="icard" id="sk2">
+      <div class="cov" style="background:var(--surface)"><div class="skel" style="width:100%;height:100%"></div></div>
+      <div class="cbody"><div class="skel" style="height:12px;width:55%;margin-bottom:8px"></div><div class="skel" style="height:16px;width:85%;margin-bottom:8px"></div><div class="skel" style="height:10px;width:75%;margin-bottom:5px"></div><div class="skel" style="height:10px;width:65%"></div></div>
+    </div>
+    <div class="icard" id="sk3">
+      <div class="cov" style="background:var(--surface)"><div class="skel" style="width:100%;height:100%"></div></div>
+      <div class="cbody"><div class="skel" style="height:12px;width:50%;margin-bottom:8px"></div><div class="skel" style="height:16px;width:90%;margin-bottom:8px"></div><div class="skel" style="height:10px;width:80%;margin-bottom:5px"></div><div class="skel" style="height:10px;width:70%"></div></div>
+    </div>
+    <div class="icard" id="sk4">
+      <div class="cov" style="background:var(--surface)"><div class="skel" style="width:100%;height:100%"></div></div>
+      <div class="cbody"><div class="skel" style="height:12px;width:65%;margin-bottom:8px"></div><div class="skel" style="height:16px;width:88%;margin-bottom:8px"></div><div class="skel" style="height:10px;width:75%;margin-bottom:5px"></div><div class="skel" style="height:10px;width:60%"></div></div>
+    </div>
+  </div>
+  <div class="cbot">
+    <button class="btn btn-g" style="padding:8px 14px;font-size:12px" onclick="showScreen('si')"><i class="ti ti-pencil"></i> Edit inputs</button>
+    <div style="font-size:12px;color:var(--dm)">None of these? <a href="#" onclick="showScreen('sch');return false" style="color:var(--p);text-decoration:none">Describe your own idea →</a></div>
+    <div style="font-size:11px;color:var(--dm)" id="cards-count">Showing 4 ideas</div>
+  </div>
+</div>
+
+<!-- ===================== SCREEN 5: CONFIRMATION ===================== -->
+<div class="screen" id="scf">
+  <nav class="nav">
+    <span class="logo">mondial<span>.eco</span></span>
+    <div class="breadcrumb"><span>Creator Flow</span><i class="ti ti-chevron-right"></i><span class="cur" style="color:var(--g)">● Idea Selected</span></div>
+    <div class="avatar">SC</div>
+  </nav>
+  <div class="pbar"><div class="pfill grad" style="width:33%"></div></div>
+  <div class="layout">
+    <div class="main">
+      <div class="cbadge"><div class="cchk"><i class="ti ti-check"></i></div><span style="font-size:13px;color:var(--g)">Idea selected</span></div>
+      <h2 class="chd">You've chosen your concept.</h2>
+      <p class="csub">এটা final commitment না — শুধু শুরুর বিন্দু। You will refine it in the next step.</p>
+      <div class="cfc" id="confirm-card-display">
+        <!-- filled by JS -->
+      </div>
+      <div style="margin-bottom:10px"><div class="section-lbl">WHAT HAPPENS NEXT</div></div>
+      <div class="nsteps">
+        <div class="nsrow"><div class="nsnum nsa">1</div><div><div class="nst">Name your project</div><div class="nss">Give your concept an official name and one-liner pitch.</div></div></div>
+        <div class="nsrow"><div class="nsnum nsp">2</div><div><div class="nst" style="color:var(--mu)">Build your brand</div><div class="nss">Logo, colors, visual identity — hire SP or use AI tool.</div></div></div>
+        <div class="nsrow"><div class="nsnum nsp">3</div><div><div class="nst" style="color:var(--mu)">AI Masterplan</div><div class="nss">Financial forecast + business plan — fully generated.</div></div></div>
+      </div>
+      <div style="display:flex;gap:11px;flex-wrap:wrap">
+        <button class="btn btn-p" onclick="goToStep22('card')">Let's go — Name my project →</button>
+        <button class="btn btn-g" onclick="showScreen('sc')">Wait — change my idea</button>
+      </div>
+    </div>
+    <div class="side" id="confirm-side">
+      <div class="section-lbl">IDEA JOURNAL</div>
+      <div class="jentry" id="journal-entry">
+        <div class="jet" id="je-title">—</div>
+        <div class="jes">Saved today · Round 1</div>
+        <div class="stag" id="je-tag">—</div>
+      </div>
+      <div class="div"></div>
+      <div class="section-lbl">ABOUT THIS PATH</div>
+      <div class="statb"><div class="sv" id="s-cards">4</div><div class="sl">cards seen</div><div class="ss">1 round used</div></div>
+      <div class="statb"><div class="sv" id="s-score" style="color:var(--g)">—</div><div class="sl">feasibility score</div><div class="ss" id="s-score-lbl">—</div></div>
+      <p style="font-size:10px;color:var(--dm);line-height:1.6;margin-top:12px">Your idea is saved to your Idea Journal. Revisit anytime from your dashboard.</p>
+    </div>
+  </div>
+</div>
+
+
+<!-- ===================== SCREEN 6: AI CHAT ===================== -->
+<div class="screen" id="sch">
+  <nav class="nav">
+    <span class="logo">mondial<span>.eco</span></span>
+    <div class="breadcrumb"><span>Creator Flow</span><i class="ti ti-chevron-right"></i><span class="cur">Phase 2 — Idea Clarifier</span></div>
+    <div class="avatar">SC</div>
+  </nav>
+  <div class="pbar"><div class="pfill" style="width:22%" id="chat-pbar"></div></div>
+  <div class="layout">
+    <!-- Left panel: phase list -->
+    <div class="lpanel">
+      <div class="section-lbl">CREATOR FLOW</div>
+      <div class="plist">
+        <div class="pitem"><div class="pcirc pc-done"><i class="ti ti-check" style="font-size:10px"></i></div><div><div class="pn">Identity & KYC</div><div class="ps" style="color:var(--g)">Completed ✓</div></div></div>
+        <div class="pitem act"><div class="pcirc pc-cur">2</div><div><div class="pn">Idea Clarifier</div><div class="ps">In progress</div></div></div>
+        <div class="pitem pl-lock"><div class="pcirc pc-lock">3</div><div><div class="pn">Concept & Name</div><div class="ps">Locked</div></div></div>
+        <div class="pitem pl-lock"><div class="pcirc pc-lock">4</div><div><div class="pn">Logo & Branding</div><div class="ps">Locked</div></div></div>
+        <div class="pitem pl-lock"><div class="pcirc pc-lock">5</div><div><div class="pn">AI Masterplan</div><div class="ps">Locked</div></div></div>
+        <div class="pitem pl-lock"><div class="pcirc pc-lock">6</div><div><div class="pn">Offer Setup</div><div class="ps">Locked</div></div></div>
+      </div>
+      <div class="div"></div>
+      <div class="section-lbl">IDEA JOURNAL</div>
+      <div style="border:1px dashed var(--bd);border-radius:8px;padding:12px;text-align:center;font-size:11px;color:var(--dm)">Your refined idea will be saved here</div>
+    </div>
+    <!-- Chat column -->
+    <div class="ccol">
+      <div class="chdr">
+        <h2><i class="ti ti-sparkles" style="color:var(--p)"></i> AI Idea Clarifier</h2>
+        <p>আমি ৬টা focused question করবো তোমার idea sharpen করতে। একটার পর একটা।</p>
+      </div>
+      <div class="cdots" id="chat-dots">
+        <div class="cdot on"></div><div class="cdot"></div><div class="cdot"></div>
+        <div class="cdot"></div><div class="cdot"></div><div class="cdot"></div>
+      </div>
+      <div class="msgs" id="msgs">
+        <!-- Initial AI message -->
+        <div class="mrow">
+          <div class="mav">M</div>
+          <div class="mcont">
+            <div class="mlbl">Mondial AI</div>
+            <div class="mbub ai-bub">Welcome. Tell me your idea — in your own words, however rough it is. Don't overthink it. Just describe what you're imagining.</div>
+          </div>
+        </div>
+      </div>
+      <div class="cinput">
+        <div class="ciwrap">
+          <textarea id="chat-ta" placeholder="Type your answer…" rows="2" onkeydown="handleChatKey(event)" oninput="updateSendBtn()"></textarea>
+          <button class="csend" id="chat-send" onclick="sendChatMsg()" disabled><i class="ti ti-arrow-right"></i></button>
+        </div>
+        <div class="chint"><span>Shift+Enter for new line</span><span id="chat-char">0 / 500</span></div>
+      </div>
+    </div>
+    <!-- Right panel: building blocks -->
+    <div class="rpanel">
+      <div class="section-lbl">BUILDING YOUR IDEA</div>
+      <div class="bblk lck" id="bb1"><div class="bbh"><i class="ti ti-user"></i> Target User</div><div class="bbv">Unlocks after Q1</div></div>
+      <div class="bblk lck" id="bb2"><div class="bbh"><i class="ti ti-alert-circle"></i> Core Problem</div><div class="bbv">Unlocks after Q2</div></div>
+      <div class="bblk lck" id="bb3"><div class="bbh"><i class="ti ti-bulb"></i> Your Solution</div><div class="bbv">Unlocks after Q4</div></div>
+      <div class="bblk lck" id="bb4"><div class="bbh"><i class="ti ti-chart-bar"></i> Market Gap</div><div class="bbv">Unlocks after Q3</div></div>
+      <div class="bblk lck" id="bb5"><div class="bbh"><i class="ti ti-star"></i> Your Edge</div><div class="bbv">Unlocks after Q5</div></div>
+      <div class="div"></div>
+      <div class="cring">
+        <div class="section-lbl">CLARITY SCORE</div>
+        <svg viewBox="0 0 66 66">
+          <circle cx="33" cy="33" r="28" fill="none" stroke="var(--surface)" stroke-width="4"/>
+          <circle cx="33" cy="33" r="28" fill="none" stroke="var(--p)" stroke-width="4"
+            stroke-dasharray="176" id="clarity-arc"
+            stroke-dashoffset="176" stroke-linecap="round"
+            transform="rotate(-90 33 33)" style="transition:stroke-dashoffset 0.8s ease"/>
+        </svg>
+        <div style="font-family:var(--fd);font-size:20px;color:var(--t);margin-top:-50px;margin-bottom:30px" id="clarity-num">0</div>
+        <div style="font-size:10px;color:var(--mu)">/ 100</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== SCREEN 7: SUMMARY ===================== -->
+<div class="screen" id="ss">
+  <nav class="nav">
+    <span class="logo">mondial<span>.eco</span></span>
+    <div class="breadcrumb"><span>Creator Flow</span><i class="ti ti-chevron-right"></i><span class="cur" style="color:var(--g)">● Idea Complete</span></div>
+    <div class="avatar">SC</div>
+  </nav>
+  <div class="pbar"><div class="pfill grad" style="width:33%"></div></div>
+  <div class="scont">
+    <div style="max-width:660px;margin:0 auto">
+      <div style="margin-bottom:20px">
+        <div class="pill pill-g" style="margin-bottom:10px"><i class="ti ti-check"></i> All 6 questions answered</div>
+        <h2 style="font-family:var(--fd);font-size:24px;color:var(--t);margin-bottom:6px">Your idea — first draft.</h2>
+        <p style="font-size:13px;color:var(--mu);line-height:1.6">তোমার নিজের কথা থেকে extract করা। AI শুধু structure দিয়েছে — ownership তোমার।</p>
+      </div>
+      <div class="sumcard">
+        <div class="sumhdr">
+          <div class="sumttl"><i class="ti ti-sparkles"></i> YOUR IDEA — FIRST DRAFT</div>
+          <button class="btn btn-g" style="padding:5px 12px;font-size:11px;border-radius:8px" onclick="showScreen('sch')"><i class="ti ti-pencil"></i> Edit</button>
+        </div>
+        <div class="div" style="margin:10px 0"></div>
+        <div class="sgrid sumpg" id="sum-grid">
+          <div class="sfield"><div class="field-lbl">CONCEPT</div><div class="field-val" id="sf-concept">—</div></div>
+          <div class="sfield"><div class="field-lbl">TARGET USER</div><div class="field-val" id="sf-user">—</div></div>
+          <div class="sfield"><div class="field-lbl">CORE PROBLEM</div><div class="field-val" id="sf-prob">—</div></div>
+          <div class="sfield"><div class="field-lbl">YOUR SOLUTION</div><div class="field-val" id="sf-sol">—</div></div>
+          <div class="sfield"><div class="field-lbl">MARKET GAP</div><div class="field-val" id="sf-gap">—</div></div>
+          <div class="sfield" style="border-bottom:none"><div class="field-lbl">YOUR EDGE</div><div class="field-val" id="sf-edge">—</div></div>
+        </div>
+        <div class="div"></div>
+        <div class="sscore">
+          <div class="sscl">
+            <div class="ssclbl">IDEA CLARITY SCORE</div>
+            <div class="sscnum" id="score-display">—</div>
+            <div class="sscok" id="score-msg">Analyzing…</div>
+          </div>
+          <div class="sscr">
+            <div class="sbwrap"><div class="sbfill" id="score-bar" style="width:0%"></div></div>
+            <div class="sthresh"><span>Vague</span><span>Developing</span><span style="color:var(--g)">Sharp</span></div>
+          </div>
+        </div>
+        <div class="sumbtns">
+          <button class="btn btn-g" onclick="showScreen('sch')"><i class="ti ti-arrow-left"></i> Revisit answers</button>
+          <button class="btn btn-p" onclick="goToStep22('chat')">Looks good — Continue →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ===================== SCREEN 8: STEP 2.2 CONCEPT & NAME ===================== -->
+<div class="screen" id="s22">
+  <nav class="nav">
+    <span class="logo">mondial<span>.eco</span></span>
+    <div class="breadcrumb"><span>Creator Flow</span><i class="ti ti-chevron-right"></i><span class="cur">Step 2.2 — Concept & Name</span></div>
+    <div class="avatar">SC</div>
+  </nav>
+  <div class="pbar"><div class="pfill grad" style="width:50%"></div></div>
+  <!-- Project strip -->
+  <div style="background:var(--surface);border-bottom:1px solid var(--bd);padding:10px 28px;display:flex;align-items:center;gap:12px;flex-shrink:0">
+    <div id="strip-logo" style="width:32px;height:32px;border-radius:8px;background:rgba(124,58,237,.2);display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-size:13px;color:var(--p)">?</div>
+    <div><div style="font-size:12px;font-weight:500;color:var(--t)" id="strip-name">Your Project</div><div style="font-size:11px;color:var(--mu)" id="strip-pitch">One-liner pitch will appear here</div></div>
+    <div style="margin-left:auto"><span class="pill pill-p">Phase 2 of 6</span></div>
+  </div>
+  <div class="s22-layout">
+    <div class="s22-main">
+      <div class="eyebrow" style="margin-bottom:6px">Step 2.2</div>
+      <h2 style="font-family:var(--fd);font-size:24px;color:var(--t);margin-bottom:5px">Name your project.</h2>
+      <p style="font-size:13px;color:var(--mu);margin-bottom:28px;line-height:1.6">তোমার idea-র একটা identity দাও। এটা পরে change করা যাবে।</p>
+      <!-- Project Name -->
+      <div class="field-block">
+        <div class="field-lbl2">Project Name <span class="field-req">* required</span></div>
+        <input type="text" id="proj-name" maxlength="60" placeholder="e.g. AutoInvoice, FreelanceStack, NegotiateAI…" oninput="updateStep22Preview()">
+        <div class="char-count" id="name-count">0 / 60</div>
+        <div class="ai-suggestions" id="name-sugs" style="display:none">
+          <div style="font-size:11px;color:var(--dm);width:100%;margin-bottom:3px"><i class="ti ti-sparkles" style="color:var(--p);font-size:11px"></i> AI suggestions based on your concept:</div>
+        </div>
+      </div>
+      <!-- Problem Statement Builder -->
+      <div class="field-block">
+        <div class="field-lbl2">Core Problem Statement</div>
+        <p style="font-size:11px;color:var(--dm);margin-bottom:10px;line-height:1.5">Fill in the blanks — AI has pre-filled from your idea.</p>
+        <div class="pitch-builder">
+          <span class="pb-text">We help</span>
+          <input class="pb-input" id="pb-who" placeholder="freelancers" oninput="updateStep22Preview()" style="width:130px">
+          <span class="pb-text">to</span>
+          <input class="pb-input" id="pb-what" placeholder="recover unpaid invoices" oninput="updateStep22Preview()" style="width:180px">
+          <span class="pb-text">by</span>
+          <input class="pb-input" id="pb-how" placeholder="automating follow-ups" oninput="updateStep22Preview()" style="width:170px">
+        </div>
+      </div>
+      <!-- Target Audience -->
+      <div class="field-block">
+        <div class="field-lbl2">Target Audience</div>
+        <input type="text" id="proj-audience" placeholder="e.g. Independent freelancers and small studio owners" oninput="updateStep22Preview()">
+      </div>
+      <!-- One-liner Pitch Preview -->
+      <div class="field-block">
+        <div class="field-lbl2"><i class="ti ti-eye" style="font-size:13px;color:var(--p)"></i> Platform Preview</div>
+        <p style="font-size:11px;color:var(--dm);margin-bottom:10px">এভাবে তোমার project platform-এ দেখাবে:</p>
+        <div class="preview-card">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+            <div id="prev-logo" style="width:38px;height:38px;border-radius:10px;background:rgba(124,58,237,.2);display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-size:15px;color:var(--p)">?</div>
+            <div>
+              <div class="pc-name" id="prev-name">Your Project Name</div>
+              <div style="display:flex;gap:5px;margin-top:3px"><span class="pill pill-o" style="font-size:9px;padding:2px 8px" id="prev-sector">—</span></div>
+            </div>
+          </div>
+          <div class="pc-pitch" id="prev-pitch">Your one-liner pitch will appear here as you fill in the fields above.</div>
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--bd);font-size:11px;color:var(--dm)">Audience: <span style="color:var(--mu)" id="prev-audience">—</span></div>
+        </div>
+      </div>
+    </div>
+    <!-- Side panel -->
+    <div class="s22-side">
+      <div class="section-lbl">IDEA SNAPSHOT</div>
+      <div class="ifc" id="snap-concept"><div class="iic"><i class="ti ti-bulb"></i></div><div class="ith">Concept</div><div class="itx" id="snap-c-val">Loading…</div></div>
+      <div class="ifc"><div class="iic"><i class="ti ti-user"></i></div><div class="ith">Target User</div><div class="itx" id="snap-u-val">Loading…</div></div>
+      <div class="ifc"><div class="iic"><i class="ti ti-alert-circle"></i></div><div class="ith">Core Problem</div><div class="itx" id="snap-p-val">Loading…</div></div>
+      <div class="div"></div>
+      <div class="section-lbl">TIPS</div>
+      <div style="font-size:11px;color:var(--dm);line-height:1.7">
+        <div style="margin-bottom:8px">✦ Keep name short — 1-2 words work best.</div>
+        <div style="margin-bottom:8px">✦ Avoid generic words like "Pro", "Hub", "App".</div>
+        <div>✦ The pitch fills automatically — just confirm it.</div>
+      </div>
+    </div>
+  </div>
+  <div class="bbar">
+    <button class="btn btn-g" onclick="showScreen('ss')"><i class="ti ti-arrow-left"></i> Back</button>
+    <button class="btn btn-p" id="s22-next" disabled onclick="goToStep23()">Continue to Branding <i class="ti ti-arrow-right"></i></button>
+  </div>
+</div>
+
+<!-- ===================== SCREEN 9: STEP 2.3 BRANDING OPTIONS ===================== -->
+<div class="screen" id="s23">
+  <nav class="nav">
+    <span class="logo">mondial<span>.eco</span></span>
+    <div class="breadcrumb"><span>Creator Flow</span><i class="ti ti-chevron-right"></i><span class="cur">Step 2.3 — Logo & Branding</span></div>
+    <div class="avatar">SC</div>
+  </nav>
+  <div class="pbar"><div class="pfill grad" style="width:66%"></div></div>
+  <!-- Project strip -->
+  <div style="background:var(--surface);border-bottom:1px solid var(--bd);padding:10px 28px;display:flex;align-items:center;gap:12px;flex-shrink:0">
+    <div id="strip2-logo" style="width:32px;height:32px;border-radius:8px;background:rgba(124,58,237,.2);display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-size:13px;color:var(--p)">?</div>
+    <div><div style="font-size:12px;font-weight:500;color:var(--t)" id="strip2-name">Your Project</div><div style="font-size:11px;color:var(--mu)" id="strip2-pitch">—</div></div>
+    <div style="margin-left:auto"><span class="pill pill-g"><i class="ti ti-check"></i> Name confirmed</span></div>
+  </div>
+  <div style="padding:28px 28px 16px;flex-shrink:0">
+    <div class="eyebrow" style="margin-bottom:6px">Step 2.3</div>
+    <h2 style="font-family:var(--fd);font-size:24px;color:var(--t);margin-bottom:5px">Build your brand identity.</h2>
+    <p style="font-size:13px;color:var(--mu);line-height:1.6">তোমার project-এর visual identity দরকার। দুটো option আছে — choose করো।</p>
+  </div>
+  <div class="brand-opts">
+    <!-- Option 1: M50 Designer -->
+    <div class="brand-card rec" onclick="showScreen('s23sp')">
+      <div class="brand-badge"><i class="ti ti-star-filled" style="font-size:9px"></i> Recommended</div>
+      <div class="brand-ic brand-ic-p"><i class="ti ti-users"></i></div>
+      <h3>Hire Verified M50 Designer</h3>
+      <p>Platform-এর verified designer-দের সাথে directly connect হও। AI pre-filters তোমার sector-এর জন্য best branding specialists দেখাবে।</p>
+      <div style="margin-top:16px;padding:12px;background:var(--s2);border-radius:10px;border:1px solid var(--bd)">
+        <div style="font-size:10px;color:var(--dm);margin-bottom:8px;text-transform:uppercase;letter-spacing:.07em">What you get</div>
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <div style="font-size:12px;color:var(--mu);display:flex;align-items:center;gap:6px"><i class="ti ti-check" style="color:var(--g);font-size:11px"></i>Professional logo (multiple formats)</div>
+          <div style="font-size:12px;color:var(--mu);display:flex;align-items:center;gap:6px"><i class="ti ti-check" style="color:var(--g);font-size:11px"></i>Brand color palette</div>
+          <div style="font-size:12px;color:var(--mu);display:flex;align-items:center;gap:6px"><i class="ti ti-check" style="color:var(--g);font-size:11px"></i>Typography pairing</div>
+          <div style="font-size:12px;color:var(--mu);display:flex;align-items:center;gap:6px"><i class="ti ti-check" style="color:var(--g);font-size:11px"></i>Brand guidelines doc</div>
+        </div>
+        <div style="margin-top:10px;font-size:11px;color:var(--am)"><i class="ti ti-currency-euro" style="font-size:11px"></i> €200–500 · 3–7 days delivery</div>
+      </div>
+      <button class="btn btn-p" style="margin-top:16px;width:100%" onclick="event.stopPropagation();showScreen('s23sp')">Browse Designers <i class="ti ti-arrow-right"></i></button>
+    </div>
+    <!-- Option 2: AI Logo -->
+    <div class="brand-card ai-opt" onclick="showScreen('s23ai')">
+      <div style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,92,0,.08);border:1px solid rgba(255,92,0,.25);border-radius:100px;padding:3px 10px;font-size:10px;color:var(--o);margin-bottom:14px;width:fit-content">Free · Instant</div>
+      <div class="brand-ic brand-ic-o"><i class="ti ti-wand"></i></div>
+      <h3>Use AI Logo Tool</h3>
+      <p>তাৎক্ষণিক। Free। Less professional — but good for early validation. AI তোমার project name আর sector দেখে ৩টা logo option generate করবে।</p>
+      <div style="margin-top:16px;padding:12px;background:var(--s2);border-radius:10px;border:1px solid var(--bd)">
+        <div style="font-size:10px;color:var(--dm);margin-bottom:8px;text-transform:uppercase;letter-spacing:.07em">What you get</div>
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <div style="font-size:12px;color:var(--mu);display:flex;align-items:center;gap:6px"><i class="ti ti-check" style="color:var(--g);font-size:11px"></i>3 AI-generated logo options</div>
+          <div style="font-size:12px;color:var(--mu);display:flex;align-items:center;gap:6px"><i class="ti ti-check" style="color:var(--g);font-size:11px"></i>Auto color palette (3 options)</div>
+          <div style="font-size:12px;color:var(--mu);display:flex;align-items:center;gap:6px"><i class="ti ti-check" style="color:var(--g);font-size:11px"></i>Font pairing suggestion</div>
+          <div style="font-size:12px;color:var(--o);display:flex;align-items:center;gap:6px"><i class="ti ti-info-circle" style="font-size:11px"></i>SVG/PNG download only</div>
+        </div>
+        <div style="margin-top:10px;font-size:11px;color:var(--g)"><i class="ti ti-bolt" style="font-size:11px"></i> Free · Generated in seconds</div>
+      </div>
+      <button class="btn btn-gp" style="margin-top:16px;width:100%" onclick="event.stopPropagation();startAILogo()">Generate with AI <i class="ti ti-sparkles"></i></button>
+    </div>
+  </div>
+  <div class="bbar">
+    <button class="btn btn-g" onclick="showScreen('s22')"><i class="ti ti-arrow-left"></i> Back</button>
+    <button class="btn btn-g" onclick="showScreen('p2done')" style="color:var(--dm);font-size:12px">Skip branding for now →</button>
+  </div>
+</div>
+
+<!-- ===================== SCREEN 10: M50 DESIGNER HIRE ===================== -->
+<div class="screen" id="s23sp">
+  <nav class="nav">
+    <span class="logo">mondial<span>.eco</span></span>
+    <div class="breadcrumb"><span>Creator Flow</span><i class="ti ti-chevron-right"></i><span>Step 2.3</span><i class="ti ti-chevron-right"></i><span class="cur">M50 Designers</span></div>
+    <div class="avatar">SC</div>
+  </nav>
+  <div class="pbar"><div class="pfill grad" style="width:72%"></div></div>
+  <div style="flex:1;overflow-y:auto;padding:28px">
+    <div style="max-width:680px;margin:0 auto">
+      <div class="eyebrow" style="margin-bottom:6px">M50 Service Provider · Branding</div>
+      <h2 style="font-family:var(--fd);font-size:22px;color:var(--t);margin-bottom:6px">Matched designers for your project.</h2>
+      <p style="font-size:13px;color:var(--mu);margin-bottom:24px;line-height:1.6">AI filtered verified M50 designers specialized in <span id="sp-sector" style="color:var(--p)">startup branding</span>. তুমি platform ছেড়ে যাবে না — সব কিছু এখানেই।</p>
+      <!-- SP Cards -->
+      <div style="display:flex;flex-direction:column;gap:14px" id="sp-cards">
+        <!-- SP 1 -->
+        <div style="background:var(--surface);border:1px solid rgba(124,58,237,.3);border-radius:16px;padding:20px;position:relative">
+          <div style="position:absolute;top:14px;right:14px"><span class="pill pill-p" style="font-size:9px;padding:2px 9px">Best Match</span></div>
+          <div style="display:flex;gap:14px;align-items:flex-start">
+            <div style="width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#7C3AED,#FF5C00);display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-size:16px;color:#fff;flex-shrink:0">AK</div>
+            <div style="flex:1">
+              <div style="font-family:var(--fd);font-size:15px;color:var(--t);margin-bottom:3px">Ahmed Karim</div>
+              <div style="font-size:12px;color:var(--mu);margin-bottom:8px">Brand Designer · UI/UX Specialist</div>
+              <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px">
+                <span class="sp-tier">Tier 3 ✓</span>
+                <span style="font-size:11px;color:var(--am)">⭐ 4.9</span>
+                <span style="font-size:11px;color:var(--mu)">47 projects</span>
+                <span style="font-size:11px;color:var(--mu)">Paris, FR</span>
+              </div>
+              <div style="display:flex;gap:6px;margin-bottom:12px">
+                <span class="pill pill-p" style="font-size:9px;padding:2px 8px">FinTech</span>
+                <span class="pill pill-p" style="font-size:9px;padding:2px 8px">SaaS</span>
+                <span class="pill pill-p" style="font-size:9px;padding:2px 8px">Startup Branding</span>
+              </div>
+              <!-- Logo preview samples -->
+              <div style="display:flex;gap:8px;margin-bottom:12px" id="sp1-samples">
+                <div style="width:60px;height:40px;border-radius:6px;background:var(--s2);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center"><canvas id="spc1a" width="56" height="36"></canvas></div>
+                <div style="width:60px;height:40px;border-radius:6px;background:var(--s2);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center"><canvas id="spc1b" width="56" height="36"></canvas></div>
+                <div style="width:60px;height:40px;border-radius:6px;background:var(--s2);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center"><canvas id="spc1c" width="56" height="36"></canvas></div>
+                <div style="font-size:10px;color:var(--dm);align-self:center;margin-left:4px">Sample work</div>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <div style="font-family:var(--fd);font-size:14px;color:var(--am)">€280–380 est. · 4 days</div>
+                <button class="sp-book" onclick="bookSP('Ahmed Karim','€280–380','4 days')">Book · Open Workroom <i class="ti ti-message"></i></button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- SP 2 -->
+        <div style="background:var(--surface);border:1px solid var(--bd);border-radius:16px;padding:20px">
+          <div style="display:flex;gap:14px;align-items:flex-start">
+            <div style="width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#3B82F6,#00C896);display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-size:16px;color:#fff;flex-shrink:0">ML</div>
+            <div style="flex:1">
+              <div style="font-family:var(--fd);font-size:15px;color:var(--t);margin-bottom:3px">Marie Laurent</div>
+              <div style="font-size:12px;color:var(--mu);margin-bottom:8px">Visual Identity Designer</div>
+              <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px">
+                <span class="sp-tier">Tier 2 ✓</span>
+                <span style="font-size:11px;color:var(--am)">⭐ 4.7</span>
+                <span style="font-size:11px;color:var(--mu)">31 projects</span>
+                <span style="font-size:11px;color:var(--mu)">Lyon, FR</span>
+              </div>
+              <div style="display:flex;gap:6px;margin-bottom:12px">
+                <span class="pill pill-p" style="font-size:9px;padding:2px 8px">Creator Economy</span>
+                <span class="pill pill-p" style="font-size:9px;padding:2px 8px">Brand Strategy</span>
+              </div>
+              <div style="display:flex;gap:8px;margin-bottom:12px">
+                <div style="width:60px;height:40px;border-radius:6px;background:var(--s2);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center"><canvas id="spc2a" width="56" height="36"></canvas></div>
+                <div style="width:60px;height:40px;border-radius:6px;background:var(--s2);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center"><canvas id="spc2b" width="56" height="36"></canvas></div>
+                <div style="font-size:10px;color:var(--dm);align-self:center;margin-left:4px">Sample work</div>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <div style="font-family:var(--fd);font-size:14px;color:var(--am)">€220–320 est. · 5 days</div>
+                <button class="sp-book" onclick="bookSP('Marie Laurent','€220–320','5 days')">Book · Open Workroom <i class="ti ti-message"></i></button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- SP 3 -->
+        <div style="background:var(--surface);border:1px solid var(--bd);border-radius:16px;padding:20px">
+          <div style="display:flex;gap:14px;align-items:flex-start">
+            <div style="width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#F59E0B,#FF5C00);display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-size:16px;color:#fff;flex-shrink:0">SR</div>
+            <div style="flex:1">
+              <div style="font-family:var(--fd);font-size:15px;color:var(--t);margin-bottom:3px">Sara Roux</div>
+              <div style="font-size:12px;color:var(--mu);margin-bottom:8px">Logo & Brand Identity · Illustrator</div>
+              <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px">
+                <span class="sp-tier">Tier 2 ✓</span>
+                <span style="font-size:11px;color:var(--am)">⭐ 4.8</span>
+                <span style="font-size:11px;color:var(--mu)">58 projects</span>
+                <span style="font-size:11px;color:var(--mu)">Remote</span>
+              </div>
+              <div style="display:flex;gap:6px;margin-bottom:12px">
+                <span class="pill pill-p" style="font-size:9px;padding:2px 8px">All sectors</span>
+                <span class="pill pill-p" style="font-size:9px;padding:2px 8px">Fast turnaround</span>
+              </div>
+              <div style="display:flex;gap:8px;margin-bottom:12px">
+                <div style="width:60px;height:40px;border-radius:6px;background:var(--s2);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center"><canvas id="spc3a" width="56" height="36"></canvas></div>
+                <div style="width:60px;height:40px;border-radius:6px;background:var(--s2);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center"><canvas id="spc3b" width="56" height="36"></canvas></div>
+                <div style="font-size:10px;color:var(--dm);align-self:center;margin-left:4px">Sample work</div>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <div style="font-family:var(--fd);font-size:14px;color:var(--am)">€200–280 est. · 3 days</div>
+                <button class="sp-book" onclick="bookSP('Sara Roux','€200–280','3 days')">Book · Open Workroom <i class="ti ti-message"></i></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Workroom confirmation (hidden initially) -->
+      <div id="workroom-confirm" style="display:none;background:rgba(0,200,150,.06);border:1px solid rgba(0,200,150,.3);border-radius:14px;padding:18px;margin-top:18px">
+        <div style="display:flex;align-items:center;gap:9px;margin-bottom:12px">
+          <div style="width:30px;height:30px;border-radius:50%;background:rgba(0,200,150,.15);display:flex;align-items:center;justify-content:center;color:var(--g);font-size:14px"><i class="ti ti-check"></i></div>
+          <div style="font-family:var(--fd);font-size:14px;color:var(--g)">Service Workroom opened!</div>
+        </div>
+        <div style="font-size:12px;color:var(--mu);line-height:1.6;margin-bottom:12px">
+          A private channel with <strong id="booked-sp-name" style="color:var(--t)">—</strong> has been created in your Messenger. You can continue the flow while waiting for their response.
+        </div>
+        <div style="background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:12px;margin-bottom:14px">
+          <div style="font-size:10px;color:var(--dm);margin-bottom:6px;text-transform:uppercase;letter-spacing:.07em">Auto-sent to designer</div>
+          <div style="font-size:12px;color:var(--t);line-height:1.6" id="workroom-msg">—</div>
+        </div>
+        <button class="btn btn-p" style="width:100%" onclick="populateDoneScreen('M50 Designer · ' + document.getElementById('booked-sp-name').textContent); showScreen('p2done')">Continue — I'll review designs when ready <i class="ti ti-arrow-right"></i></button>
+      </div>
+    </div>
+  </div>
+  <div class="bbar">
+    <button class="btn btn-g" onclick="showScreen('s23')"><i class="ti ti-arrow-left"></i> Back</button>
+  </div>
+</div>
+
+<!-- ===================== SCREEN 11: AI LOGO TOOL ===================== -->
+<div class="screen" id="s23ai">
+  <nav class="nav">
+    <span class="logo">mondial<span>.eco</span></span>
+    <div class="breadcrumb"><span>Creator Flow</span><i class="ti ti-chevron-right"></i><span>Step 2.3</span><i class="ti ti-chevron-right"></i><span class="cur">AI Logo Tool</span></div>
+    <div class="avatar">SC</div>
+  </nav>
+  <div class="pbar"><div class="pfill grad" style="width:72%"></div></div>
+  <div class="ailogo-wrap">
+    <div class="logo-gen-hdr">
+      <div class="eyebrow" style="margin-bottom:6px">AI Logo Tool · Free</div>
+      <h2 style="font-family:var(--fd);font-size:22px;color:var(--t);margin-bottom:5px" id="ailogo-title">Generating logos for your project…</h2>
+      <p style="font-size:13px;color:var(--mu);line-height:1.6">তোমার project name আর sector-এর উপর based ৩টা logo option। পছন্দেরটা select করো।</p>
+    </div>
+    <!-- Logo Options Grid -->
+    <div class="logo-options" id="logo-opts-grid">
+      <!-- Generated by JS -->
+    </div>
+    <!-- Color Palettes -->
+    <div style="max-width:780px;margin:20px auto 0;width:100%" id="palette-section" style="display:none">
+      <div class="section-lbl">CHOOSE YOUR COLOR PALETTE</div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap" id="palette-opts"></div>
+    </div>
+    <!-- Font Pairing -->
+    <div style="max-width:780px;margin:14px auto 0;width:100%" id="font-section">
+      <div class="section-lbl">FONT PAIRING SUGGESTION</div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap" id="font-opts"></div>
+    </div>
+    <!-- Brand Output Summary -->
+    <div class="brand-output" id="brand-output" style="display:none">
+      <div class="bo-title"><i class="ti ti-check"></i> Brand Assets Ready · Saved to Asset Library</div>
+      <div class="brand-row" id="brand-asset-row"></div>
+    </div>
+    <!-- CTA -->
+    <div style="max-width:780px;margin:20px auto 0;width:100%;display:flex;gap:11px" id="ailogo-cta" style="display:none">
+      <button class="btn btn-g" onclick="showScreen('s23')">Regenerate <i class="ti ti-refresh"></i></button>
+      <button class="btn btn-p" id="ailogo-confirm" onclick="confirmAILogo()" disabled>Use this logo — Continue <i class="ti ti-arrow-right"></i></button>
+    </div>
+  </div>
+  <div class="bbar">
+    <button class="btn btn-g" onclick="showScreen('s23')"><i class="ti ti-arrow-left"></i> Back to options</button>
+  </div>
+</div>
+
+<!-- ===================== SCREEN 12: PHASE 2 COMPLETE ===================== -->
+<div class="screen" id="p2done">
+  <nav class="nav">
+    <span class="logo">mondial<span>.eco</span></span>
+    <div class="breadcrumb"><span>Creator Flow</span><i class="ti ti-chevron-right"></i><span class="cur" style="color:var(--g)">Phase 2 — Complete ✓</span></div>
+    <div class="avatar">SC</div>
+  </nav>
+  <div class="pbar"><div class="pfill grad" style="width:100%"></div></div>
+  <div class="p2done-wrap">
+    <div class="done-ring"><i class="ti ti-check"></i></div>
+    <div style="text-align:center;max-width:460px">
+      <div class="pill pill-g" style="margin-bottom:12px"><i class="ti ti-check"></i> Phase 2 Complete</div>
+      <h2 style="font-family:var(--fd);font-size:28px;color:var(--t);line-height:1.2;margin-bottom:10px">Project Identity Ready.</h2>
+      <p style="font-size:13px;color:var(--mu);line-height:1.65">তোমার project-এর name, concept, আর brand identity তৈরি। এখন Phase 3-এ AI তোমার জন্য একটা complete investor-ready business package বানাবে।</p>
+    </div>
+    <!-- Identity Card -->
+    <div class="identity-card">
+      <div class="ic-logo-row">
+        <div class="logo-preview-circle" id="done-logo-circle" style="background:rgba(124,58,237,.2);color:var(--p)">?</div>
+        <div>
+          <div style="font-family:var(--fd);font-size:20px;color:var(--t)" id="done-proj-name">—</div>
+          <div style="font-size:13px;color:var(--mu);margin-top:3px" id="done-proj-pitch">—</div>
+          <div style="display:flex;gap:6px;margin-top:6px"><span class="pill pill-o" style="font-size:9px;padding:2px 8px" id="done-sector">—</span><span class="pill pill-g" style="font-size:9px;padding:2px 8px"><i class="ti ti-check"></i> Identity ready</span></div>
+        </div>
+      </div>
+      <div class="ic-data-grid">
+        <div class="ic-field"><div class="icf-lbl">Target Audience</div><div class="icf-val" id="done-audience">—</div></div>
+        <div class="ic-field"><div class="icf-lbl">Branding</div><div class="icf-val" id="done-branding">—</div></div>
+        <div class="ic-field"><div class="icf-lbl">Core Problem</div><div class="icf-val" id="done-problem">—</div></div>
+        <div class="ic-field"><div class="icf-lbl">One-liner Pitch</div><div class="icf-val" id="done-oneliner">—</div></div>
+      </div>
+    </div>
+    <!-- What's next -->
+    <div style="max-width:580px;width:100%;background:var(--surface);border-radius:14px;padding:18px;border:1px solid var(--bd)">
+      <div class="section-lbl" style="margin-bottom:12px">PHASE 3 UNLOCKS</div>
+      <div style="display:flex;flex-direction:column;gap:9px">
+        <div style="display:flex;align-items:center;gap:10px;font-size:13px"><div style="width:22px;height:22px;border-radius:50%;background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.3);display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--b)">3.1</div><span style="color:var(--t)">AI Financial Forecast</span><span style="color:var(--mu);font-size:11px;margin-left:auto">1–3 year projection</span></div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:13px"><div style="width:22px;height:22px;border-radius:50%;background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.3);display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--b)">3.2</div><span style="color:var(--t)">AI Business Plan</span><span style="color:var(--mu);font-size:11px;margin-left:auto">Investor-ready document</span></div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:13px"><div style="width:22px;height:22px;border-radius:50%;background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.3);display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--b)">3.3</div><span style="color:var(--t)">Legal & Structural Checklist</span><span style="color:var(--mu);font-size:11px;margin-left:auto">AI-generated</span></div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:13px"><div style="width:22px;height:22px;border-radius:50%;background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.3);display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--b)">3.4</div><span style="color:var(--t)">Formation Generator</span><span style="color:var(--mu);font-size:11px;margin-left:auto">Skill gap + SP match</span></div>
+      </div>
+    </div>
+    <button class="btn btn-p" style="padding:15px 40px;font-size:15px" onclick="alert('Phase 3 — Project Intelligence এখানে শুরু হবে!')">Continue to Phase 3 <i class="ti ti-arrow-right"></i></button>
+  </div>
+</div>
+
+<script>
+/* ===================== STATE ===================== */
+var selSectors = [], selStrengths = [], probText = '';
+var generatedCards = [], selectedCard = null, roundsLeft = 2;
+var chatHistory = [], chatPhase = 0, isChatLoading = false;
+var summaryData = {};
+
+/* ===================== NAVIGATION ===================== */
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  var el = document.getElementById(id);
+  if (el) { el.classList.add('active'); window.scrollTo(0,0); }
+  if (id === 'sp') { startProcessingAnim(); }
+}
+
+/* ===================== CHIP SELECTION ===================== */
+function toggleChip(el, group, max) {
+  var chips = document.querySelectorAll('[data-g="' + group + '"]');
+  var selected = Array.from(chips).filter(c => c.classList.contains('sel'));
+  if (el.classList.contains('sel')) {
+    el.classList.remove('sel');
+  } else {
+    if (selected.length >= max) {
+      var oldest = selected[0];
+      oldest.classList.remove('sel');
+    }
+    el.classList.add('sel');
+  }
+  var now = Array.from(chips).filter(c => c.classList.contains('sel'));
+  if (group === 'sec') {
+    selSectors = now.map(c => c.textContent.replace('✓ ','').trim());
+    document.getElementById('sec-cnt').textContent = selSectors.length + ' / 3 selected';
+    document.getElementById('isec2').classList.toggle('locked', selSectors.length === 0);
+    document.getElementById('sn2').className = 'snum ' + (selSectors.length > 0 ? 'act' : 'pend');
+    document.getElementById('isec2').querySelector('.slbl').className = 'slbl' + (selSectors.length === 0 ? ' mu' : '');
+  } else {
+    selStrengths = now.map(c => c.textContent.replace('✓ ','').trim());
+    document.getElementById('str-cnt').textContent = selStrengths.length + ' / 3 selected';
+  }
+  checkInputs();
+}
+
+function checkInputs() {
+  probText = document.getElementById('prob-ta').value.trim();
+  var hasSec = selSectors.length > 0;
+  var hasProb = probText.length > 10;
+  var hasStr = selStrengths.length > 0;
+  if (hasSec && hasProb) {
+    document.getElementById('isec3').classList.remove('locked');
+    document.getElementById('sn3').className = 'snum act';
+    document.getElementById('isec3').querySelector('.slbl').className = 'slbl';
+  }
+  document.getElementById('gen-btn').disabled = !(hasSec && hasProb && hasStr);
+}
+
+/* ===================== PROCESSING + CARD GENERATION ===================== */
+function startProcessing() {
+  showScreen('sp');
+  setTimeout(generateIdeas, 800);
+}
+
+function startProcessingAnim() {
+  var steps = ['ps1','ps2','ps3','ps4'];
+  var dots = document.getElementById('proc-pbar');
+  // Steps animate progressively
+  var i = 2;
+  var timer = setInterval(function() {
+    if (i >= steps.length) { clearInterval(timer); return; }
+    var el = document.getElementById(steps[i]);
+    if (i === 2) {
+      el.className = 'pstep done';
+      el.querySelector('.pdot').className = 'pdot pd-done';
+      el.querySelector('.pdot').innerHTML = '<i class="ti ti-check" style="font-size:10px"></i>';
+    }
+    if (i === 3) {
+      el.className = 'pstep act';
+      el.querySelector('.pdot').className = 'pdot pd-act';
+      el.querySelector('.pdot').innerHTML = '<div class="tdots"><span></span><span></span><span></span></div>';
+    }
+    i++;
+  }, 1200);
+}
+
+async function generateIdeas() {
+  var prompt = 'Generate exactly 4 startup idea cards as a JSON array for a creator with:\nSectors of interest: ' + selSectors.join(', ') + '\nProblem observed: ' + probText + '\nStrengths/enjoys: ' + selStrengths.join(', ') + '\n\nEach card must have: id(1-4), title("Name — Tagline"), niche(primary), tags(array of 2), problem(2 sentences), market_size("€X.XB"), feasibility(60-90 integer), similar(array of 2 company names), theme("fintech"|"marketplace"|"saas"|"ai"|"health"|"education"). Card 1 is the best match.\n\nReturn ONLY a valid JSON array, no markdown, no explanation.';
+  try {
+    var res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514', max_tokens: 1000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    var data = await res.json();
+    var text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
+    var clean = text.replace(/```json|```/g,'').trim();
+    generatedCards = JSON.parse(clean);
+  } catch(e) {
+    generatedCards = getDefaultCards();
+  }
+  renderCards();
+}
+
+function getDefaultCards() {
+  var s = selSectors[0] || 'SaaS';
+  var p = probText || 'manual processes';
+  return [
+    {id:1,title:'AutoFlow — Intelligent Workflow Automation',niche:s,tags:[s,'AI Tools'],problem:'Professionals waste hours on repetitive manual tasks that could be automated. Existing tools require technical expertise most users lack.',market_size:'€5.2B',feasibility:83,similar:['Zapier','Make.com'],theme:'ai'},
+    {id:2,title:'ConnectHub — Smart B2B Networking Platform',niche:'Marketplace',tags:['Marketplace','B2B'],problem:'Finding the right business partners is time-consuming and unreliable. Current solutions lack intelligent matching and trust verification.',market_size:'€3.1B',feasibility:71,similar:['LinkedIn','Alignable'],theme:'marketplace'},
+    {id:3,title:'DataLens — Business Intelligence for SMEs',niche:'SaaS Tools',tags:['SaaS Tools','Analytics'],problem:'Small businesses lack affordable, easy-to-use analytics dashboards. Enterprise solutions are too complex and costly.',market_size:'€4.7B',feasibility:76,similar:['Tableau','Metabase'],theme:'saas'},
+    {id:4,title:'CreatorOS — All-in-one Creator Business Suite',niche:'Creator Economy',tags:['Creator Economy','SaaS'],problem:'Content creators juggle 5+ tools to manage their business, leading to inefficiency and missed revenue. No unified solution exists.',market_size:'€2.9B',feasibility:68,similar:['Stan Store','Kajabi'],theme:'fintech'}
+  ];
+}
+
+/* ===================== CANVAS COVER ART ===================== */
+function drawCover(canvas, theme) {
+  var ctx = canvas.getContext('2d');
+  var w = canvas.width, h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+  if (theme === 'fintech') drawFintech(ctx, w, h);
+  else if (theme === 'marketplace') drawMarketplace(ctx, w, h);
+  else if (theme === 'saas') drawSaas(ctx, w, h);
+  else if (theme === 'ai') drawAI(ctx, w, h);
+  else if (theme === 'health') drawHealth(ctx, w, h);
+  else if (theme === 'education') drawEducation(ctx, w, h);
+  else drawGeneric(ctx, w, h);
+  // Bottom fade
+  var fade = ctx.createLinearGradient(0, h*0.45, 0, h);
+  fade.addColorStop(0, 'rgba(26,26,26,0)');
+  fade.addColorStop(1, 'rgba(26,26,26,1)');
+  ctx.fillStyle = fade;
+  ctx.fillRect(0, 0, w, h);
+}
+
+function drawFintech(ctx, w, h) {
+  var bg = ctx.createLinearGradient(0,0,w,h);
+  bg.addColorStop(0,'#1E0D04'); bg.addColorStop(1,'#0A0705');
+  ctx.fillStyle = bg; ctx.fillRect(0,0,w,h);
+  ctx.strokeStyle = 'rgba(255,140,0,0.07)'; ctx.lineWidth = 1;
+  for (var y = 0; y < h; y += 18) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
+  [[w*.65,h*.22,0.08,70,50],[w*.75,h*.38,-0.05,60,44],[w*.68,h*.54,0.03,52,38]].forEach(function(d,i){
+    ctx.save(); ctx.translate(d[0],d[1]); ctx.rotate(d[2]);
+    var cw=d[3],ch=d[4];
+    ctx.fillStyle='rgba(38,22,8,0.92)'; ctx.strokeStyle='rgba(255,120,0,'+(0.18-i*.04)+')'; ctx.lineWidth=0.7;
+    ctx.beginPath(); ctx.roundRect(-cw/2,-ch/2,cw,ch,3); ctx.fill(); ctx.stroke();
+    for(var r=0;r<3;r++){ctx.fillStyle='rgba(255,140,60,'+(0.18-r*.04)+')';ctx.fillRect(-cw/2+8,-ch/2+10+r*9,cw-16,2);}
+    ctx.restore();
+  });
+  var g=ctx.createRadialGradient(w*.7,h*.38,5,w*.7,h*.38,75); g.addColorStop(0,'rgba(255,92,0,.18)'); g.addColorStop(1,'transparent');
+  ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
+  ctx.font='36px serif'; ctx.fillStyle='rgba(255,120,0,.05)'; ctx.fillText('€',w*.1,h*.75);
+}
+
+function drawMarketplace(ctx, w, h) {
+  var bg = ctx.createLinearGradient(0,0,w,h); bg.addColorStop(0,'#030F1A'); bg.addColorStop(1,'#020810');
+  ctx.fillStyle=bg; ctx.fillRect(0,0,w,h);
+  var ln=[[w*.18,h*.28],[w*.12,h*.5],[w*.28,h*.65],[w*.08,h*.38]];
+  var rn=[[w*.78,h*.22],[w*.88,h*.42],[w*.72,h*.58],[w*.92,h*.32]];
+  var cn=[w*.5,h*.43];
+  ctx.strokeStyle='rgba(0,150,210,.12)'; ctx.lineWidth=0.6;
+  [...ln,...rn].forEach(function(n){ctx.beginPath();ctx.moveTo(n[0],n[1]);ctx.lineTo(cn[0],cn[1]);ctx.stroke();});
+  ln.forEach(function(l,i){if(rn[i]){ctx.beginPath();ctx.moveTo(l[0],l[1]);ctx.lineTo(rn[i][0],rn[i][1]);ctx.stroke();}});
+  [...ln,...rn].forEach(function(n){ctx.beginPath();ctx.arc(n[0],n[1],3.5,0,Math.PI*2);ctx.fillStyle='rgba(0,160,210,.45)';ctx.fill();});
+  var cg=ctx.createRadialGradient(cn[0],cn[1],0,cn[0],cn[1],32); cg.addColorStop(0,'rgba(0,180,220,.25)'); cg.addColorStop(1,'transparent');
+  ctx.fillStyle=cg; ctx.fillRect(0,0,w,h);
+  ctx.beginPath(); ctx.arc(cn[0],cn[1],7,0,Math.PI*2); ctx.fillStyle='rgba(0,200,230,.75)'; ctx.fill();
+  ctx.beginPath(); ctx.arc(cn[0],cn[1],12,0,Math.PI*2); ctx.strokeStyle='rgba(0,200,230,.2)'; ctx.lineWidth=1; ctx.stroke();
+}
+
+function drawSaas(ctx, w, h) {
+  var bg=ctx.createLinearGradient(0,0,w,h); bg.addColorStop(0,'#04091A'); bg.addColorStop(1,'#020610');
+  ctx.fillStyle=bg; ctx.fillRect(0,0,w,h);
+  var gx=w*.06, gy=h*.08, cw=44, ch=30, gap=7, bars=[[8,14],[16,10],[10,18]];
+  for(var row=0;row<3;row++){for(var col=0;col<4;col++){
+    var x=gx+col*(cw+gap), y=gy+row*(ch+gap);
+    ctx.fillStyle='rgba(25,45,85,.65)'; ctx.strokeStyle='rgba(59,130,246,.18)'; ctx.lineWidth=0.5;
+    ctx.beginPath(); ctx.roundRect(x,y,cw,ch,2); ctx.fill(); ctx.stroke();
+    bars.forEach(function(b,bi){ctx.fillStyle='rgba(59,130,246,'+(0.25+bi*.08)+')';ctx.fillRect(x+7+bi*11,y+ch-b[0]-5,9,b[0]);});
+  }}
+  ctx.beginPath(); ctx.moveTo(w*.62,h*.7); ctx.lineTo(w*.72,h*.48); ctx.lineTo(w*.8,h*.55);
+  ctx.lineTo(w*.87,h*.32); ctx.lineTo(w*.95,h*.22);
+  ctx.strokeStyle='rgba(59,130,246,.55)'; ctx.lineWidth=1.8; ctx.stroke();
+  var dg=ctx.createRadialGradient(w*.5,h*.4,8,w*.5,h*.4,80); dg.addColorStop(0,'rgba(59,130,246,.1)'); dg.addColorStop(1,'transparent');
+  ctx.fillStyle=dg; ctx.fillRect(0,0,w,h);
+}
+
+function drawAI(ctx, w, h) {
+  var bg=ctx.createLinearGradient(0,0,w,h); bg.addColorStop(0,'#0C0518'); bg.addColorStop(1,'#06030F');
+  ctx.fillStyle=bg; ctx.fillRect(0,0,w,h);
+  var layers=[[[w*.1,h*.28],[w*.1,h*.55]],[[w*.3,h*.18],[w*.3,h*.42],[w*.3,h*.65]],[[w*.55,h*.3],[w*.55,h*.55]],[[w*.78,h*.42]]];
+  layers.forEach(function(layer,li){
+    if(li<layers.length-1){layer.forEach(function(fr){layers[li+1].forEach(function(to){
+      ctx.beginPath();ctx.moveTo(fr[0],fr[1]);ctx.lineTo(to[0],to[1]);
+      ctx.strokeStyle='rgba(124,58,237,.14)';ctx.lineWidth=0.6;ctx.stroke();
+    });});}
+  });
+  layers.forEach(function(layer){layer.forEach(function(n){
+    ctx.beginPath();ctx.arc(n[0],n[1],4,0,Math.PI*2);ctx.fillStyle='rgba(124,58,237,.55)';ctx.fill();
+    ctx.beginPath();ctx.arc(n[0],n[1],8,0,Math.PI*2);ctx.strokeStyle='rgba(124,58,237,.18)';ctx.lineWidth=1;ctx.stroke();
+  });});
+  var ag=ctx.createRadialGradient(w*.55,h*.42,5,w*.55,h*.42,65); ag.addColorStop(0,'rgba(124,58,237,.2)'); ag.addColorStop(1,'transparent');
+  ctx.fillStyle=ag; ctx.fillRect(0,0,w,h);
+}
+
+function drawHealth(ctx, w, h) {
+  var bg=ctx.createLinearGradient(0,0,w,h); bg.addColorStop(0,'#041A0F'); bg.addColorStop(1,'#020A07');
+  ctx.fillStyle=bg; ctx.fillRect(0,0,w,h);
+  ctx.strokeStyle='rgba(0,200,150,.12)'; ctx.lineWidth=0.6;
+  for(var y=0;y<h;y+=20){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();}
+  var hg=ctx.createRadialGradient(w*.5,h*.4,5,w*.5,h*.4,60); hg.addColorStop(0,'rgba(0,200,150,.2)'); hg.addColorStop(1,'transparent');
+  ctx.fillStyle=hg; ctx.fillRect(0,0,w,h);
+  ctx.strokeStyle='rgba(0,200,150,.4)'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(w*.4,h*.25); ctx.lineTo(w*.4,h*.55); ctx.moveTo(w*.28,h*.4); ctx.lineTo(w*.52,h*.4); ctx.stroke();
+}
+
+function drawEducation(ctx, w, h) {
+  var bg=ctx.createLinearGradient(0,0,w,h); bg.addColorStop(0,'#1A1204'); bg.addColorStop(1,'#0A0903');
+  ctx.fillStyle=bg; ctx.fillRect(0,0,w,h);
+  var eg=ctx.createRadialGradient(w*.5,h*.4,5,w*.5,h*.4,60); eg.addColorStop(0,'rgba(245,158,11,.18)'); eg.addColorStop(1,'transparent');
+  ctx.fillStyle=eg; ctx.fillRect(0,0,w,h);
+  ctx.strokeStyle='rgba(245,158,11,.15)'; ctx.lineWidth=0.7;
+  for(var i=0;i<4;i++){ctx.beginPath();ctx.moveTo(w*.2+i*w*.15,h*.2);ctx.lineTo(w*.2+i*w*.15,h*.65);ctx.stroke();}
+}
+
+function drawGeneric(ctx, w, h) {
+  var bg=ctx.createLinearGradient(0,0,w,h); bg.addColorStop(0,'#141414'); bg.addColorStop(1,'#0A0A0A');
+  ctx.fillStyle=bg; ctx.fillRect(0,0,w,h);
+  var gg=ctx.createRadialGradient(w*.5,h*.4,5,w*.5,h*.4,55); gg.addColorStop(0,'rgba(124,58,237,.15)'); gg.addColorStop(1,'transparent');
+  ctx.fillStyle=gg; ctx.fillRect(0,0,w,h);
+}
+
+/* ===================== RENDER CARDS ===================== */
+function renderCards() {
+  var grid = document.getElementById('cards-grid');
+  grid.innerHTML = '';
+  if (!generatedCards || !generatedCards.length) { generatedCards = getDefaultCards(); }
+  document.getElementById('cards-sub').textContent = 'Based on: ' + selSectors.join(', ') + '. Cover visuals are AI-generated per concept.';
+  generatedCards.forEach(function(card, idx) {
+    var feat = idx === 0;
+    var fc = card.feasibility || 70;
+    var barColor = fc >= 75 ? '#00C896' : (fc >= 65 ? '#F59E0B' : '#FF5C00');
+    var html = '<div class="icard' + (feat ? ' feat' : '') + '" onclick="selectCard(' + idx + ')">';
+    html += '<div class="cov"><canvas id="cv' + idx + '" width="300" height="150"></canvas>';
+    var gStyle = 'background:linear-gradient(transparent,' + (feat ? '#1A1A1A' : '#1A1A1A') + ')';
+    html += '<div class="cov-fade" style="' + gStyle + '"></div>';
+    if (feat) html += '<div class="cov-badge"><span class="pill pill-p" style="font-size:10px;padding:3px 10px">✦ Top Match</span></div>';
+    html += '<div class="cov-tag"><i class="ti ti-sparkles" style="font-size:9px;color:var(--p)"></i>AI Visual · ' + (card.niche || 'Tech') + '</div>';
+    html += '</div><div class="cbody">';
+    html += '<div class="ctags">';
+    (card.tags || [card.niche]).forEach(function(t){ html += '<span class="pill pill-o" style="font-size:10px;padding:2px 9px">' + t + '</span>'; });
+    html += '</div>';
+    html += '<div class="ctitle">' + (card.title || 'Untitled Concept') + '</div>';
+    html += '<div class="cprob">' + (card.problem || '—') + '</div>';
+    html += '<div class="div" style="margin:11px 0"></div>';
+    html += '<div class="cmets"><div class="mblk"><div class="mlbl">Market Size</div><div class="mval">' + (card.market_size || '—') + '</div></div>';
+    html += '<div class="mblk"><div class="mlbl">Feasibility</div><div class="mval">' + fc + '<small>/100</small></div>';
+    html += '<div class="mbar"><div class="mbar-fill" style="width:' + fc + '%;background:' + barColor + '"></div></div></div></div>';
+    html += '<div class="ccos"><span style="font-size:10px;color:var(--dm)">Compare:</span>';
+    (card.similar || []).forEach(function(c){ html += '<span class="copill"><span class="colog"></span>' + c + '</span>'; });
+    html += '</div>';
+    html += '<button class="ccta ' + (feat ? 'ccta-sel' : 'ccta-out') + '" onclick="event.stopPropagation();selectCard(' + idx + ')">This is my idea →</button>';
+    html += '</div></div>';
+    grid.insertAdjacentHTML('beforeend', html);
+    setTimeout(function(i){ var cv = document.getElementById('cv'+i); if(cv) drawCover(cv, generatedCards[i].theme||'generic'); }, 50 + idx*50, idx);
+  });
+  showScreen('sc');
+}
+
+function regenCards() {
+  if (roundsLeft <= 0) { alert('Maximum 3 rounds reached. Click "I\'ll describe my own idea" to proceed manually.'); return; }
+  roundsLeft--;
+  document.getElementById('cards-round').textContent = '4 ideas · ' + roundsLeft + ' round' + (roundsLeft===1?'':'s') + ' left';
+  showScreen('sp');
+  setTimeout(generateIdeas, 800);
+}
+
+function selectCard(idx) {
+  selectedCard = generatedCards[idx];
+  var fc = selectedCard.feasibility || 70;
+  var barColor = fc >= 75 ? 'var(--g)' : (fc >= 65 ? 'var(--am)' : 'var(--o)');
+  var cdHtml = '<div style="margin-bottom:11px">';
+  cdHtml += '<div class="ctags" style="margin-bottom:9px">';
+  (selectedCard.tags||[selectedCard.niche]).forEach(function(t){cdHtml+='<span class="pill pill-o" style="font-size:10px;padding:2px 9px">'+t+'</span>';});
+  cdHtml += '</div>';
+  cdHtml += '<div style="font-family:var(--fd);font-size:15px;color:var(--t);line-height:1.3;margin-bottom:8px">' + selectedCard.title + '</div>';
+  cdHtml += '<div style="font-size:12px;color:var(--mu);line-height:1.6;margin-bottom:12px">' + selectedCard.problem + '</div>';
+  cdHtml += '<div style="display:flex;gap:24px"><div><span style="font-family:var(--fd);font-size:15px;color:var(--t)">'+selectedCard.market_size+'</span><span style="font-size:11px;color:var(--mu);margin-left:5px">market</span></div>';
+  cdHtml += '<div><span style="font-family:var(--fd);font-size:15px;color:'+barColor+'">'+fc+'</span><span style="font-size:11px;color:var(--mu)">/100 feasibility</span></div></div>';
+  cdHtml += '</div>';
+  document.getElementById('confirm-card-display').innerHTML = cdHtml;
+  document.getElementById('je-title').textContent = selectedCard.title.split(' — ')[0];
+  document.getElementById('je-tag').textContent = selectedCard.niche || selectedCard.tags[0];
+  document.getElementById('s-score').textContent = fc;
+  document.getElementById('s-score').style.color = barColor;
+  document.getElementById('s-score-lbl').textContent = fc >= 75 ? 'Strong foundation' : fc >= 65 ? 'Good potential' : 'Needs refinement';
+  showScreen('scf');
+}
+
+/* ===================== CHAT LOGIC ===================== */
+var CHAT_SYS = 'You are Mondial AI, a startup idea clarification assistant for the Mondial.eco platform. You help creators refine their startup idea through exactly 6 progressive questions, one at a time.\n\nThe 6 questions in sequence:\n1. (already shown as opening) - just respond to their idea warmly, then ask: "who specifically is struggling with this? Not a broad group — the one person you have seen or met who this happens to."\n2. After they identify the person: "What exactly happens to [reference their person] because this problem exists? What do they lose — time, money, opportunity?"\n3. After they describe the cost: "Why has this not been properly solved yet? What stopping people from fixing it — or what existing solutions are failing them?"\n4. After they explain the gap: "Now your solution — how does it work? Walk me through from the moment someone starts using it to the moment their problem is gone."\n5. After solution described: "Last thing: why are YOU the right person to build this? What do you know, have experienced, or have access to that most people do not?"\n6. After founder edge described: Respond with exactly: SUMMARY_READY|||{"concept":"one line concept","targetUser":"specific user","coreProblem":"core problem","solution":"the solution","marketGap":"why existing fails","founderEdge":"why them","clarityScore":72}\n\nRules: Ask ONE question per response. Be warm, curious, never judgmental. Reference what the user actually said. Keep responses to 2-3 sentences max. No filler phrases like "Great answer!". After Q5 answer, output SUMMARY_READY||| followed by JSON object.';
+
+function updateSendBtn() {
+  var ta = document.getElementById('chat-ta');
+  var val = ta.value.trim();
+  document.getElementById('chat-send').disabled = val.length === 0 || isChatLoading;
+  document.getElementById('chat-char').textContent = ta.value.length + ' / 500';
+}
+
+function handleChatKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (!isChatLoading) sendChatMsg(); }
+}
+
+function addMsg(role, text) {
+  var msgs = document.getElementById('msgs');
+  var isAI = role === 'ai';
+  var html = '<div class="mrow' + (isAI ? '' : ' usr') + '">';
+  if (isAI) html += '<div class="mav">M</div>';
+  html += '<div class="mcont">';
+  if (isAI) html += '<div class="mlbl">Mondial AI</div>';
+  html += '<div class="mbub ' + (isAI ? 'ai-bub' : 'u-bub') + '">' + text.replace(/\n/g,'<br>') + '</div>';
+  html += '</div></div>';
+  msgs.insertAdjacentHTML('beforeend', html);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function showTyping() {
+  var msgs = document.getElementById('msgs');
+  var html = '<div class="mrow" id="typing-row"><div class="mav">M</div><div class="mcont"><div class="mlbl">Mondial AI</div><div class="tbub"><div class="tdot"></div><div class="tdot"></div><div class="tdot"></div></div></div></div>';
+  msgs.insertAdjacentHTML('beforeend', html);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function removeTyping() {
+  var t = document.getElementById('typing-row');
+  if (t) t.remove();
+}
+
+function updateDots(phase) {
+  var dots = document.querySelectorAll('.cdot');
+  dots.forEach(function(d, i) { d.classList.toggle('on', i <= phase); });
+  document.getElementById('chat-pbar').style.width = (14 + phase * 3) + '%';
+}
+
+function updateBlocks(phase, text) {
+  var blocks = {1:'bb1',2:'bb2',3:'bb4',4:'bb3',5:'bb5'};
+  var labels = {1:'Target User',2:'Core Problem',3:'Market Gap',4:'Your Solution',5:'Your Edge'};
+  var shortTexts = {
+    1: text.substring(0,45)+'…',
+    2: text.substring(0,45)+'…',
+    3: text.substring(0,45)+'…',
+    4: text.substring(0,45)+'…',
+    5: text.substring(0,45)+'…'
+  };
+  if (blocks[phase]) {
+    var el = document.getElementById(blocks[phase]);
+    el.classList.remove('lck','cur');
+    el.classList.add('done');
+    el.querySelector('.bbh').innerHTML = '<i class="ti ti-check" style="color:var(--g)"></i> ' + labels[phase];
+    el.querySelector('.bbv').textContent = shortTexts[phase];
+  }
+  // Update clarity score
+  var score = Math.min(phase * 18, 90);
+  document.getElementById('clarity-num').textContent = score;
+  var arc = document.getElementById('clarity-arc');
+  var circumference = 176;
+  arc.style.strokeDashoffset = circumference - (circumference * score / 100);
+  // Activate next block
+  var nextBlocks = {1:'bb2',2:'bb4',3:'bb3',4:'bb5'};
+  if (nextBlocks[phase]) {
+    var next = document.getElementById(nextBlocks[phase]);
+    next.classList.remove('lck');
+    next.classList.add('cur');
+  }
+}
+
+async function sendChatMsg() {
+  var ta = document.getElementById('chat-ta');
+  var msg = ta.value.trim();
+  if (!msg || isChatLoading) return;
+  ta.value = ''; updateSendBtn();
+  isChatLoading = true;
+  document.getElementById('chat-send').disabled = true;
+  addMsg('user', msg);
+  chatHistory.push({role:'user', content: msg});
+  showTyping();
+  try {
+    var res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514', max_tokens: 400,
+        system: CHAT_SYS,
+        messages: chatHistory
+      })
+    });
+    var data = await res.json();
+    var text = (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+    removeTyping();
+    chatPhase++;
+    updateDots(chatPhase);
+    updateBlocks(chatPhase, msg);
+    if (text.includes('SUMMARY_READY|||')) {
+      var parts = text.split('SUMMARY_READY|||');
+      var aiText = parts[0].trim();
+      if (aiText) { addMsg('ai', aiText); chatHistory.push({role:'assistant',content:aiText}); }
+      try {
+        var jsonStr = parts[1].trim().replace(/```json|```/g,'').trim();
+        summaryData = JSON.parse(jsonStr);
+        setTimeout(showSummary, 1200);
+      } catch(je) {
+        summaryData = {concept:'Your startup concept',targetUser:'Your identified user',coreProblem:'The core problem',solution:'Your proposed solution',marketGap:'The gap in the market',founderEdge:'Your unique advantage',clarityScore:68};
+        setTimeout(showSummary, 1200);
+      }
+    } else {
+      addMsg('ai', text);
+      chatHistory.push({role:'assistant', content: text});
+    }
+  } catch(e) {
+    removeTyping();
+    addMsg('ai', 'I encountered a connection issue. Please try again or check your network.');
+  }
+  isChatLoading = false;
+  document.getElementById('chat-send').disabled = false;
+}
+
+function showSummary() {
+  document.getElementById('sf-concept').textContent = summaryData.concept || '—';
+  document.getElementById('sf-user').textContent = summaryData.targetUser || '—';
+  document.getElementById('sf-prob').textContent = summaryData.coreProblem || '—';
+  document.getElementById('sf-sol').textContent = summaryData.solution || '—';
+  document.getElementById('sf-gap').textContent = summaryData.marketGap || '—';
+  document.getElementById('sf-edge').textContent = summaryData.founderEdge || '—';
+  var sc = summaryData.clarityScore || 68;
+  document.getElementById('score-display').textContent = sc + ' / 100';
+  document.getElementById('score-msg').textContent = sc >= 75 ? 'Sharp & investor-ready ✓' : sc >= 55 ? 'Well-defined, ready for naming ✓' : 'Needs more sharpening';
+  document.getElementById('score-msg').style.color = sc >= 75 ? 'var(--g)' : sc >= 55 ? 'var(--am)' : 'var(--o)';
+  showScreen('ss');
+  setTimeout(function(){ document.getElementById('score-bar').style.width = sc + '%'; }, 200);
+}
+
+/* ===================== STEP 2.2 — CONCEPT & NAME ===================== */
+var projectData = { name:'', who:'', what:'', how:'', audience:'', pitch:'', source:'' };
+
+function goToStep22(source) {
+  projectData.source = source;
+  // Pre-fill from summaryData (chat path) or selectedCard (card path)
+  var concept = '', user = '', prob = '';
+  if (source === 'chat' && summaryData.concept) {
+    concept = summaryData.concept;
+    user = summaryData.targetUser || '';
+    prob = summaryData.coreProblem || '';
+    document.getElementById('snap-c-val').textContent = concept;
+    document.getElementById('snap-u-val').textContent = user;
+    document.getElementById('snap-p-val').textContent = prob;
+    // Pre-fill pitch builder
+    if (summaryData.targetUser) document.getElementById('pb-who').value = summaryData.targetUser.split(' ')[0] || '';
+    if (summaryData.solution) document.getElementById('pb-what').value = summaryData.solution.substring(0,40);
+  } else if (source === 'card' && selectedCard) {
+    concept = selectedCard.title || '';
+    document.getElementById('snap-c-val').textContent = concept;
+    document.getElementById('snap-u-val').textContent = selectedCard.tags ? selectedCard.tags.join(', ') : '—';
+    document.getElementById('snap-p-val').textContent = selectedCard.problem ? selectedCard.problem.substring(0,80)+'…' : '—';
+    var nameGuess = selectedCard.title ? selectedCard.title.split(' — ')[0] : '';
+    document.getElementById('proj-name').value = nameGuess;
+  }
+  // Generate AI name suggestions
+  generateNameSuggestions(concept);
+  updateStep22Preview();
+  showScreen('s22');
+}
+
+async function generateNameSuggestions(concept) {
+  if (!concept) return;
+  var sugDiv = document.getElementById('name-sugs');
+  sugDiv.style.display = 'flex';
+  sugDiv.innerHTML = '<div style="font-size:11px;color:var(--dm);width:100%;margin-bottom:3px"><i class="ti ti-sparkles" style="color:var(--p);font-size:11px"></i> AI suggestions:</div><span style="font-size:11px;color:var(--dm)">Generating…</span>';
+  try {
+    var res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-20250514', max_tokens:200,
+        messages:[{role:'user', content:'Generate 5 short startup name suggestions (1-2 words each, no generic words like Hub/Pro/App) for this concept: "' + concept + '". Return ONLY a JSON array of strings, e.g. ["Name1","Name2","Name3","Name4","Name5"]. No explanation.'}]
+      })
+    });
+    var data = await res.json();
+    var text = (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+    var clean = text.replace(/```json|```/g,'').trim();
+    var names = JSON.parse(clean);
+    sugDiv.innerHTML = '<div style="font-size:11px;color:var(--dm);width:100%;margin-bottom:5px"><i class="ti ti-sparkles" style="color:var(--p);font-size:11px"></i> AI suggestions:</div>';
+    names.forEach(function(n) {
+      sugDiv.insertAdjacentHTML('beforeend', '<span class="ai-sug" onclick="useNameSuggestion(\''+n+'\')">'+ n +'</span>');
+    });
+  } catch(e) {
+    sugDiv.innerHTML = '';
+  }
+}
+
+function useNameSuggestion(name) {
+  document.getElementById('proj-name').value = name;
+  updateStep22Preview();
+}
+
+function updateStep22Preview() {
+  var name = document.getElementById('proj-name').value.trim();
+  var who = document.getElementById('pb-who').value.trim();
+  var what = document.getElementById('pb-what').value.trim();
+  var how = document.getElementById('pb-how').value.trim();
+  var audience = document.getElementById('proj-audience').value.trim();
+  var initial = name ? name.charAt(0).toUpperCase() : '?';
+  // Character count
+  document.getElementById('name-count').textContent = name.length + ' / 60';
+  // Preview card
+  document.getElementById('prev-name').textContent = name || 'Your Project Name';
+  document.getElementById('prev-logo').textContent = initial;
+  document.getElementById('prev-logo').style.background = name ? 'rgba(124,58,237,.25)' : 'rgba(42,42,42,.5)';
+  // Pitch
+  var pitch = '';
+  if (who || what || how) {
+    pitch = 'We help ' + (who||'[your users]') + ' to ' + (what||'[do something]') + ' by ' + (how||'[your method]') + '.';
+  }
+  document.getElementById('prev-pitch').textContent = pitch || 'Fill in the blanks above to see your pitch.';
+  document.getElementById('prev-audience').textContent = audience || '—';
+  // Sector from card/summary
+  var sec = (selectedCard && selectedCard.niche) ? selectedCard.niche : (selSectors[0] || '—');
+  document.getElementById('prev-sector').textContent = sec;
+  // Strip
+  document.getElementById('strip-name').textContent = name || 'Your Project';
+  document.getElementById('strip-logo').textContent = initial;
+  document.getElementById('strip-pitch').textContent = pitch || 'One-liner pitch will appear here';
+  // Store
+  projectData.name = name; projectData.who = who; projectData.what = what;
+  projectData.how = how; projectData.audience = audience; projectData.pitch = pitch;
+  // Enable next
+  document.getElementById('s22-next').disabled = !(name.length >= 2 && (who || what));
+}
+
+function goToStep23() {
+  // Update strip 2
+  document.getElementById('strip2-name').textContent = projectData.name || 'Your Project';
+  document.getElementById('strip2-logo').textContent = projectData.name ? projectData.name.charAt(0) : '?';
+  document.getElementById('strip2-pitch').textContent = projectData.pitch || '—';
+  // Update SP sector label
+  var sec = (selectedCard && selectedCard.niche) ? selectedCard.niche : (selSectors[0] || 'startup branding');
+  document.getElementById('sp-sector').textContent = sec;
+  showScreen('s23');
+}
+
+/* ===================== SP BOOKING ===================== */
+function bookSP(name, price, days) {
+  document.getElementById('booked-sp-name').textContent = name;
+  document.getElementById('workroom-msg').innerHTML =
+    'Hi ' + name.split(' ')[0] + '! I\'m building <strong>' + (projectData.name||'my project') + '</strong> — a ' +
+    (projectData.pitch || 'startup') + ' I need logo + brand identity. Budget: ' + price + '. Sector: ' +
+    ((selectedCard && selectedCard.niche) || selSectors[0] || 'Tech') + '. Can we start?';
+  document.getElementById('workroom-confirm').style.display = 'block';
+  document.getElementById('workroom-confirm').scrollIntoView({behavior:'smooth'});
+}
+
+/* ===================== AI LOGO TOOL ===================== */
+var selectedLogoIdx = -1, selectedPaletteIdx = 0;
+var logoPalettes = [
+  {name:'Dark Purple', colors:['#7C3AED','#1A1A1A','#FFFFFF','#FF5C00']},
+  {name:'Midnight Blue', colors:['#3B82F6','#0A0A0A','#FFFFFF','#00C896']},
+  {name:'Ember', colors:['#FF5C00','#1A1A1A','#FFFFFF','#F59E0B']},
+  {name:'Forest', colors:['#00C896','#0A0A0A','#FFFFFF','#3B82F6']}
+];
+var logoFonts = [
+  {display:'Syne Bold', body:'DM Sans', preview:'Aa'},
+  {display:'Space Grotesk', body:'Inter', preview:'Aa'},
+  {display:'Plus Jakarta', body:'Manrope', preview:'Aa'}
+];
+
+function startAILogo() {
+  showScreen('s23ai');
+  var name = projectData.name || 'YourProject';
+  document.getElementById('ailogo-title').textContent = 'Generating logos for "' + name + '"…';
+  setTimeout(function() { renderLogoOptions(name); }, 600);
+}
+
+function renderLogoOptions(name) {
+  var grid = document.getElementById('logo-opts-grid');
+  var styles = [
+    {style:'Minimal · Geometric', desc:'Clean shapes, bold initial, modern feel'},
+    {style:'Wordmark · Typo', desc:'Name-based, strong typography focus'},
+    {style:'Icon + Text', desc:'Icon mark paired with project name'}
+  ];
+  grid.innerHTML = '';
+  styles.forEach(function(s, i) {
+    var html = '<div class="logo-opt" id="lo'+i+'" onclick="selectLogo('+i+')">';
+    html += '<div style="font-size:10px;color:var(--p);text-transform:uppercase;letter-spacing:.08em;font-family:var(--fd);margin-bottom:10px">'+s.style+'</div>';
+    html += '<div class="logo-canvas-wrap"><canvas id="lc'+i+'" width="160" height="160"></canvas></div>';
+    html += '<div style="font-size:11px;color:var(--dm);text-align:center;margin-top:8px;line-height:1.5">'+s.desc+'</div>';
+    html += '<div class="palette-row" style="justify-content:center;margin-top:8px" id="lpal'+i+'"></div>';
+    html += '</div>';
+    grid.insertAdjacentHTML('beforeend', html);
+    setTimeout(function(idx, nm) {
+      drawLogoOption(document.getElementById('lc'+idx), idx, nm, logoPalettes[0]);
+      renderMiniPalette('lpal'+idx, logoPalettes[0].colors);
+    }, 80 * i, i, name);
+  });
+  // Render palettes and fonts
+  renderPaletteOptions();
+  renderFontOptions();
+  document.getElementById('palette-section').style.display = 'block';
+  document.getElementById('ailogo-cta').style.display = 'flex';
+  document.getElementById('ailogo-title').textContent = 'Choose your logo style for "' + (projectData.name || 'your project') + '"';
+}
+
+function drawLogoOption(canvas, style, name, palette) {
+  if (!canvas) return;
+  var ctx = canvas.getContext('2d');
+  var w = canvas.width, h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = '#0F0F0F'; ctx.fillRect(0, 0, w, h);
+  var initial = name ? name.charAt(0).toUpperCase() : 'M';
+  var c1 = palette.colors[0], c2 = palette.colors[3];
+  if (style === 0) {
+    // Minimal Geometric
+    var grad = ctx.createLinearGradient(w*.2,h*.2,w*.8,h*.8);
+    grad.addColorStop(0, c1); grad.addColorStop(1, c2);
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.roundRect(w*.25, h*.25, w*.5, h*.5, 14); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = 'bold ' + Math.floor(w*.26) + 'px Syne,sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(initial, w*.5, h*.51);
+  } else if (style === 1) {
+    // Wordmark
+    var shortName = name.length > 7 ? name.substring(0,7) : name;
+    ctx.fillStyle = c1; ctx.font = 'bold ' + Math.floor(w*.18) + 'px Syne,sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(shortName.toUpperCase(), w*.5, h*.42);
+    ctx.fillStyle = 'rgba(255,255,255,.35)';
+    ctx.font = Math.floor(w*.09) + 'px DM Sans,sans-serif';
+    ctx.fillText('by Mondial.eco', w*.5, h*.64);
+    // Underline accent
+    ctx.strokeStyle = c2; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(w*.2, h*.75); ctx.lineTo(w*.8, h*.75); ctx.stroke();
+  } else {
+    // Icon + Text
+    ctx.beginPath(); ctx.arc(w*.35, h*.42, w*.15, 0, Math.PI*2);
+    var g2 = ctx.createRadialGradient(w*.35,h*.42,0,w*.35,h*.42,w*.15);
+    g2.addColorStop(0, c1); g2.addColorStop(1, c2);
+    ctx.fillStyle = g2; ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = 'bold ' + Math.floor(w*.13) + 'px Syne,sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(initial, w*.35, h*.43);
+    var shortN = name.length > 8 ? name.substring(0,8) : name;
+    ctx.fillStyle = '#fff'; ctx.font = 'bold ' + Math.floor(w*.12) + 'px Syne,sans-serif';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText(shortN, w*.55, h*.38);
+    ctx.fillStyle = 'rgba(255,255,255,.4)';
+    ctx.font = Math.floor(w*.08) + 'px DM Sans,sans-serif';
+    ctx.fillText(selSectors[0] || 'Platform', w*.55, h*.55);
+  }
+}
+
+function renderMiniPalette(id, colors) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.innerHTML = colors.map(function(c) {
+    return '<div class="pal-dot" style="background:' + c + ';border:1px solid rgba(255,255,255,.1)"></div>';
+  }).join('');
+}
+
+function selectLogo(idx) {
+  selectedLogoIdx = idx;
+  document.querySelectorAll('.logo-opt').forEach(function(el, i) {
+    el.classList.toggle('chosen', i === idx);
+  });
+  document.getElementById('ailogo-confirm').disabled = false;
+}
+
+function renderPaletteOptions() {
+  var container = document.getElementById('palette-opts');
+  container.innerHTML = '';
+  logoPalettes.forEach(function(pal, i) {
+    var html = '<div onclick="applyPalette('+i+')" style="cursor:pointer;background:var(--surface);border:1px solid ' +
+      (i===0 ? 'var(--p)' : 'var(--bd)') +
+      ';border-radius:10px;padding:9px 12px;display:flex;flex-direction:column;gap:6px;min-width:120px;transition:border-color .2s" id="palopt'+i+'">';
+    html += '<div style="font-size:11px;color:var(--t);font-family:var(--fd)">' + pal.name + '</div>';
+    html += '<div style="display:flex;gap:5px">' + pal.colors.map(function(c){return '<div style="width:16px;height:16px;border-radius:50%;background:'+c+';border:1px solid rgba(255,255,255,.1)"></div>';}).join('') + '</div>';
+    html += '</div>';
+    container.insertAdjacentHTML('beforeend', html);
+  });
+}
+
+function applyPalette(idx) {
+  selectedPaletteIdx = idx;
+  document.querySelectorAll('[id^="palopt"]').forEach(function(el, i) {
+    el.style.borderColor = i === idx ? 'var(--p)' : 'var(--bd)';
+  });
+  var name = projectData.name || 'Project';
+  var pal = logoPalettes[idx];
+  [0,1,2].forEach(function(i) {
+    var cv = document.getElementById('lc'+i);
+    if (cv) drawLogoOption(cv, i, name, pal);
+    renderMiniPalette('lpal'+i, pal.colors);
+  });
+}
+
+function renderFontOptions() {
+  var container = document.getElementById('font-opts');
+  container.innerHTML = '';
+  logoFonts.forEach(function(f, i) {
+    var html = '<div style="background:var(--surface);border:1px solid ' + (i===0?'var(--p)':'var(--bd)') +
+      ';border-radius:10px;padding:10px 14px;cursor:pointer;transition:border-color .2s" onclick="selectFont('+i+',this)" id="fontopt'+i+'">';
+    html += '<div style="font-size:16px;color:var(--t);font-family:var(--fd);margin-bottom:3px">' + f.preview + '</div>';
+    html += '<div style="font-size:11px;color:var(--mu)">' + f.display + ' + ' + f.body + '</div>';
+    html += '</div>';
+    container.insertAdjacentHTML('beforeend', html);
+  });
+}
+
+function selectFont(idx, el) {
+  document.querySelectorAll('[id^="fontopt"]').forEach(function(e, i) {
+    e.style.borderColor = i === idx ? 'var(--p)' : 'var(--bd)';
+  });
+}
+
+function confirmAILogo() {
+  if (selectedLogoIdx < 0) return;
+  var pal = logoPalettes[selectedPaletteIdx];
+  var brandOut = document.getElementById('brand-output');
+  var brandRow = document.getElementById('brand-asset-row');
+  brandRow.innerHTML = '';
+  // Logo asset
+  brandRow.insertAdjacentHTML('beforeend',
+    '<div class="brand-asset"><div class="ba-lbl">LOGO</div><canvas id="final-logo-cv" width="80" height="80" style="border-radius:8px"></canvas><div style="font-size:10px;color:var(--g)">✓ Saved</div></div>');
+  setTimeout(function() {
+    var cv = document.getElementById('final-logo-cv');
+    if (cv) drawLogoOption(cv, selectedLogoIdx, projectData.name||'Project', pal);
+  }, 50);
+  // Color palette asset
+  var palHtml = '<div class="brand-asset"><div class="ba-lbl">COLORS</div><div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:center">' +
+    pal.colors.map(function(c){return '<div style="width:22px;height:22px;border-radius:50%;background:'+c+';border:1px solid rgba(255,255,255,.1)" title="'+c+'"></div>';}).join('') +
+    '</div><div style="font-size:10px;color:var(--g)">✓ Saved</div></div>';
+  brandRow.insertAdjacentHTML('beforeend', palHtml);
+  // Font asset
+  var ft = logoFonts[0];
+  brandRow.insertAdjacentHTML('beforeend',
+    '<div class="brand-asset"><div class="ba-lbl">FONTS</div><div style="font-family:var(--fd);font-size:13px;color:var(--t)">' + ft.display + '</div><div style="font-size:10px;color:var(--mu)">' + ft.body + '</div><div style="font-size:10px;color:var(--g)">✓ Saved</div></div>');
+  brandOut.style.display = 'block';
+  brandOut.scrollIntoView({behavior:'smooth'});
+  // Store branding info
+  projectData.branding = 'AI Logo · ' + logoPalettes[selectedPaletteIdx].name;
+  // Change CTA
+  document.getElementById('ailogo-confirm').textContent = '';
+  document.getElementById('ailogo-confirm').innerHTML = 'Continue to Phase 2 Done <i class="ti ti-arrow-right"></i>';
+  document.getElementById('ailogo-confirm').onclick = function() { populateDoneScreen('AI Logo Tool'); showScreen('p2done'); };
+}
+
+/* SP sample canvas drawings */
+function drawSPSamples() {
+  var samples = [
+    {id:'spc1a', bg:'#7C3AED', txt:'FF'}, {id:'spc1b', bg:'#3B82F6', txt:'NK'}, {id:'spc1c', bg:'#00C896', txt:'SV'},
+    {id:'spc2a', bg:'#F59E0B', txt:'CR'}, {id:'spc2b', bg:'#FF5C00', txt:'BX'},
+    {id:'spc3a', bg:'#9333EA', txt:'MO'}, {id:'spc3b', bg:'#06B6D4', txt:'TP'}
+  ];
+  samples.forEach(function(s) {
+    var cv = document.getElementById(s.id); if (!cv) return;
+    var ctx = cv.getContext('2d');
+    ctx.fillStyle = '#0F0F0F'; ctx.fillRect(0,0,cv.width,cv.height);
+    var grad = ctx.createLinearGradient(0,0,cv.width,cv.height);
+    grad.addColorStop(0, s.bg + 'AA'); grad.addColorStop(1, s.bg + '44');
+    ctx.fillStyle = grad; ctx.beginPath(); ctx.roundRect(6,5,cv.width-12,cv.height-10,4); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 11px Syne,sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(s.txt, cv.width/2, cv.height/2);
+  });
+}
+
+/* ===================== PHASE 2 DONE ===================== */
+function populateDoneScreen(brandingMethod) {
+  var name = projectData.name || '—';
+  var initial = name.charAt(0).toUpperCase();
+  document.getElementById('done-proj-name').textContent = name;
+  document.getElementById('done-proj-pitch').textContent = projectData.pitch || '—';
+  document.getElementById('done-logo-circle').textContent = initial;
+  document.getElementById('done-logo-circle').style.background = 'rgba(124,58,237,.25)';
+  document.getElementById('done-sector').textContent = (selectedCard && selectedCard.niche) || selSectors[0] || '—';
+  document.getElementById('done-audience').textContent = projectData.audience || '—';
+  document.getElementById('done-branding').textContent = brandingMethod || 'Pending';
+  document.getElementById('done-problem').textContent = (summaryData.coreProblem || (selectedCard && selectedCard.problem ? selectedCard.problem.substring(0,60)+'…' : '—'));
+  document.getElementById('done-oneliner').textContent = projectData.pitch || '—';
+}
+
+/* ===================== INIT ===================== */
+document.addEventListener('DOMContentLoaded', function() {
+  // Screen gate is already active via HTML
+  // Draw SP sample canvases when SP screen shown — triggered via showScreen override
+  var origShow = showScreen;
+  showScreen = function(id) {
+    origShow(id);
+    if (id === 's23sp') { setTimeout(drawSPSamples, 80); }
+    if (id === 'p2done') {
+      if (!projectData.branding) populateDoneScreen('Pending');
+    }
+  };
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+export default function CrossroadsPage() {
+  return (
+    <div className="w-full max-w-[1136px] mx-auto space-y-6 pb-8">
+      <div className="space-y-1">
+        <h1 className="text-[28px] font-bold leading-tight text-foreground">
+          The Crossroads
+        </h1>
+        <p className="text-sm font-normal text-muted-foreground">
+          Make pivot decisions and select pathways for your project.
+        </p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Crossroads Decision Hub</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground text-sm">
+            This section is currently under development. Here you will decide project directions (e.g., PATH_A or PATH_B).
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

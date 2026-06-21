@@ -1,0 +1,171 @@
+02_Creator_Journey_v2.0 (Enterprise Specification)
+Executive Summary
+The Creator Journey is the core value engine of Mondial.eco. It helps users transform ideas into validated, structured and investor-ready opportunities through AI-assisted workflows.
+Business Objectives
+- Help users discover or refine ideas.
+- Increase startup creation success rates.
+- Generate investor-ready documentation.
+- Create a repeatable founder journey.
+- Feed the Entrepreneur and Funding engines.
+Target Users
+- First-time founders
+- Innovators
+- Students
+- Professionals with ideas
+- Aspiring startup builders
+Journey Overview
+Authentication → KYC → Intelligence Profile → Idea Discovery → Idea Clarifier → Idea Journal → Business Plan → Financial Forecast → IP Vault → Crossroads
+Stage 1: Onboarding
+Requirements:
+- Account Creation
+- Email Verification
+- KYC
+- User Intelligence Profile
+
+Output:
+Verified Creator Profile
+Stage 2: Idea Discovery
+Entry Paths:
+A. I Have an Idea
+B. I Need an Idea
+
+Features:
+- AI Idea Cards
+- Trend Analysis
+- Industry Discovery
+- Problem Discovery
+
+Output:
+Selected Idea Concept
+Stage 3: AI Idea Clarifier
+AI Interview:
+- Problem Statement
+- Target Audience
+- Pain Points
+- Existing Alternatives
+- Proposed Solution
+
+Outputs:
+- Clarity Score
+- Idea Summary
+- Opportunity Assessment
+- Risk Assessment
+Stage 4: Idea Journal
+Stores:
+- Conversations
+- Idea Revisions
+- AI Outputs
+- Notes
+- Attachments
+
+Business Rule:
+Nothing is deleted permanently without archive.
+Stage 5: Business Plan Generator
+Sections:
+- Executive Summary
+- Market Analysis
+- Competitor Analysis
+- Revenue Model
+- Go-To-Market Strategy
+- Operations Plan
+
+Output:
+Investor-Ready Business Plan
+Stage 6: Financial Forecast
+Generate:
+- Revenue Projections
+- Cost Estimates
+- Cash Flow Forecast
+- Break-even Analysis
+
+Output:
+Funding Preparation Package
+Stage 7: IP Vault
+Purpose:
+Protect founder work.
+
+Stores:
+- Idea Snapshots
+- Timestamps
+- Business Plans
+- Supporting Documents
+
+Output:
+Ownership Evidence Trail
+Stage 8: Crossroads
+Option A:
+Sell Idea
+
+Option B:
+Build Startup
+
+Option C:
+Upgrade to Entrepreneur Profile
+UX Requirements
+- Multi-step workflow
+- Auto-save
+- Progress tracking
+- Resume sessions
+- Mobile-first experience
+Validation Rules
+Required:
+- Idea Title
+- Problem Statement
+- Target Audience
+
+Optional:
+- Attachments
+- References
+Notifications
+- Idea Saved
+- Clarifier Completed
+- Business Plan Ready
+- Forecast Ready
+- Entrepreneur Upgrade Available
+Database Collections
+Ideas
+IdeaJournal
+IdeaVersions
+BusinessPlans
+Forecasts
+IPVaultRecords
+CreatorProgress
+API Requirements
+POST /ideas
+GET /ideas/:id
+POST /idea-clarifier/start
+POST /business-plan/generate
+POST /forecast/generate
+GET /ip-vault/:id
+Permissions
+Creator:
+Own records only
+
+Admin:
+Moderation access
+
+Investor:
+No access until shared by user
+Analytics Events
+Idea Created
+Idea Clarified
+Business Plan Generated
+Forecast Generated
+Entrepreneur Upgrade Started
+Edge Cases
+Incomplete Ideas
+Duplicate Ideas
+Abandoned Sessions
+Conflicting Business Models
+Insufficient Data
+Success Metrics
+Idea Completion Rate
+Business Plan Generation Rate
+Entrepreneur Conversion Rate
+Funding Readiness Score Improvement
+Future Scalability
+AI Co-Founder
+Idea Marketplace
+Patent Assistance
+Advanced Validation Models
+Automated Pitch Deck Generation

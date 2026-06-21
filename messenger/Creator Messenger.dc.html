@@ -1,0 +1,1201 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body { background: #EBEDF1; font-family: 'DM Sans', sans-serif; -webkit-font-smoothing: antialiased; }
+    ::-webkit-scrollbar { width: 9px; height: 9px; }
+    ::-webkit-scrollbar-thumb { background: #E3E6EC; border-radius: 999px; border: 2px solid transparent; background-clip: content-box; }
+    ::-webkit-scrollbar-thumb:hover { background: #cfd3db; background-clip: content-box; }
+    @keyframes mPulse { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.6); opacity: .45; } }
+  </style>
+</helmet>
+<div style="min-height: 100vh; width: 100%; display: flex; align-items: center; justify-content: center; padding: 28px; position: relative;">
+  {{ toast }}
+  <div style="display: flex; flex-shrink: 0; width: 1260px; height: 824px; background: #FFFFFF; border: 1px solid #ECEEF2; border-radius: 22px; box-shadow: 0 24px 60px -20px rgba(26,29,36,.22), 0 6px 18px -8px rgba(26,29,36,.12); overflow: hidden;">
+    {{ leftRail }}
+    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; background: #FFFFFF;">
+      {{ centerHeader }}
+      {{ messageStream }}
+      {{ composer }}
+    </div>
+    {{ rightPanel }}
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const C = {
+  bg:'#FFFFFF', s1:'#F7F8FA', s2:'#F2F3F6', line:'#ECEEF2', strong:'#E3E6EC',
+  tx:'#1A1D24', mut:'#6B7280', faint:'#9AA1AC',
+  blue:'#3C61DD', ink:'#2440A8', blueT:'#EEF2FE',
+  teal:'#0D9488', tealT:'#ECFAF8', green:'#157A55', greenT:'#ECFDF3',
+  amber:'#965F11', amberT:'#FEF6EC', red:'#C0392B', redT:'#FEF0EE'
+};
+const FD = "'Syne', sans-serif", FB = "'DM Sans', sans-serif", FM = "'JetBrains Mono', monospace";
+const TINT = {
+  green:{bg:C.greenT,fg:C.green}, blue:{bg:C.blueT,fg:C.ink}, amber:{bg:C.amberT,fg:C.amber},
+  teal:{bg:C.tealT,fg:C.teal}, gray:{bg:C.s2,fg:C.mut}, red:{bg:C.redT,fg:C.red}
+};
+
+// ---- Left rail channel list ----
+const RAIL = [
+  { g:'AI + Project Setup', items:[
+    { id:'ai', icon:'AI', name:'AI Project Coach', prev:'Business plan ready', badge:'4' },
+    { id:'id', icon:'ID', name:'Identity Support', prev:'Verification complete', badge:'check' },
+  ]},
+  { g:'M50 Providers', items:[
+    { id:'br', icon:'BR', name:'BrandFlow Studio', prev:'Delivery submitted', badge:'2' },
+    { id:'fn', icon:'FN', name:'FinancePro', prev:'Forecast review pending', badge:'1' },
+    { id:'ip', icon:'IP', name:'IP Legal Expert', prev:'Trademark checklist sent', badge:'1' },
+    { id:'lp', icon:'LP', name:'LandingPro', prev:'GTM page in progress' },
+  ]},
+  { g:'Marketplace + Offers', items:[
+    { id:'mk', icon:'MK', name:'Marketplace Listing', prev:'3 entrepreneur interests', badge:'3' },
+    { id:'lena', icon:'LC', name:'Lena Castel', prev:'Full Buyout Offer received', badge:'1', amberPrev:true },
+    { id:'nda', icon:'ND', name:'NDA Gate', prev:'Signature required', badge:'1', amberBadge:true },
+  ]},
+  { g:'Big Jump', items:[
+    { id:'cf', icon:'CF', name:'Company Formation', prev:'Checklist ready' },
+    { id:'lv', icon:'LV', name:'Level Up', prev:'Ready to unlock' },
+  ]},
+  { g:'Entrepreneurs', items:[
+    { id:'marco', icon:'MF', name:'Marco Ferretti', prev:'Co-founder offer sent', badge:'1' },
+    { id:'priya', icon:'PS', name:'Priya Sharma', prev:'Investor interest · NDA signed', badge:'1' },
+  ]},
+  { g:'Investors', items:[
+    { id:'sophie', icon:'SC', name:'Sophie Chen', prev:'Seed term sheet received', badge:'2', amberBadge:false },
+  ]},
+  { g:'Support', items:[
+    { id:'sp', icon:'SP', name:'Support', prev:'Ticket #2841 open' },
+  ]},
+];
+
+// ---- Per-channel screen data ----
+const phases = (arr) => arr; // [label, state]
+const D = {
+  ai: {
+    iconTint:'blue',
+    header:{ icon:'AI', title:'AI Project Coach', meta:'Phase 3 · Project Intelligence · AutoInvoice',
+      pills:[['Verified Creator','green'],['AI Ready','blue'],['62% Ready','amber']] },
+    phases:[['Identity','done'],['Branding','done'],['3 Intelligence','active'],['4 Offer','locked'],['5 Crossroads','locked'],['6 Level Up','locked']],
+    stream:[
+      {t:'div', x:'TODAY · PHASE 3 PROJECT INTELLIGENCE'},
+      {t:'sys', label:'SYSTEM', body:'Phase 1 Identity and Phase 2 Branding complete. You are now in Phase 3 — Project Intelligence and AI Tools.'},
+      {t:'in', name:'AI Project Coach', icon:'AI', it:'blue', body:'Your concept for AutoInvoice is strong. I have analysed your project and found what is missing before we make this investor-ready.',
+        cards:[{k:'stats', icon:'AI', it:'blue', title:'AutoInvoice', cap:'FinTech SaaS · Invoice recovery',
+          tiles:[['SECTOR','FinTech SaaS'],['READINESS','62%'],['FORECAST','Ready'],['BUSINESS PLAN','Draft']]}]},
+      {t:'out', body:'What is still missing to make this investor-ready?'},
+      {t:'sys', tint:'blue', label:'AI ANALYSIS', labelColor:C.blue, body:'Missing items: pricing model, launch cost estimate, legal and IP checklist, and one verified finance provider review.'},
+      {t:'in', name:'AI Project Coach', icon:'AI', it:'blue', body:'Forecast is ready. Three steps to complete the plan before Phase 4:\n1. Define your pricing packages\n2. Confirm launch cost\n3. Review the legal and IP checklist',
+        cards:[{k:'file', icon:'PDF', it:'blue', title:'AutoInvoice_Forecast_3yr.pdf', cap:'Generated by AI · Ready for review'}]},
+      {t:'out', body:'Generate the business plan and prepare it for FinancePro review.'},
+      {t:'in', name:'AI Project Coach', icon:'AI', it:'blue', body:'Done. Business plan draft generated. You can edit it, download it, or share it with a verified M50 provider.',
+        cards:[{k:'file', icon:'DOC', it:'blue', title:'Business_Plan_Draft.docx', cap:'AI draft · Needs human review'}]},
+      {t:'nba', body:'Generate the business plan, then send it to FinancePro for review before moving to Phase 4.', bold:true},
+    ],
+    composer:{ ph:'Type your message or use a smart action', primary:'Generate business plan', pc:'blue',
+      ghosts:['Share with provider','Open forecast','View readiness','Ask AI why'] },
+    right:{ readiness:62,
+      na:{ body:'Generate the business plan, then send it to FinancePro for review.', cta:'Generate business plan', cc:'blue' },
+      sections:[
+        {label:'PROJECT', rows:[['Name','AutoInvoice',null,true],['Sector','FinTech SaaS'],['Phase','Project Intelligence'],['Path','Not chosen yet'],['Next phase','Offer Setup']]},
+        {label:'DOCUMENTS', rows:[['Forecast','Ready','green'],['Business plan','Draft','blue'],['Legal checklist','Missing','amber'],['Brand assets','In progress','blue'],['Pricing','Missing','amber']]},
+        {label:'CROSSROADS OPTIONS', rows:[['Path A','Marketplace Push'],['Path B','The Big Jump'],['AI suggestion','Need more data','amber']]},
+      ],
+      smart:['Generate business plan','Hire FinancePro','Open legal checklist','Move to Phase 4'] }
+  },
+
+  id: {
+    iconTint:'blue',
+    header:{ icon:'ID', title:'Identity Support', meta:'Phase 1 · Identity Verification · Dashboard locked',
+      pills:[['Verification in progress','amber'],['Dashboard locked','gray']] },
+    phases:[['1 Identity','active'],['2 Branding','locked'],['3 Intelligence','locked'],['4 Offer','locked'],['5 Crossroads','locked'],['6 Level Up','locked']],
+    stream:[
+      {t:'div', x:'PHASE 1 · IDENTITY VERIFICATION'},
+      {t:'sys', body:'Identity verification is required. Your Creator Innovation Dashboard is locked until your ID and face scan are complete.'},
+      {t:'in', name:'Identity Support', icon:'ID', it:'blue', body:'Welcome. To unlock your Creator Dashboard you need to complete two steps:\n1. Upload a valid government ID or passport\n2. Complete the face scan\nThis usually takes under 5 minutes.'},
+      {t:'out', body:'I have uploaded my passport.'},
+      {t:'sys', body:'Document received. Face scan is required to complete verification.'},
+      {t:'in', name:'Identity Support', icon:'ID', it:'blue', body:'Thank you. Please complete the face scan using the button below. Make sure your face is well lit and matches the ID photo.',
+        cards:[{k:'stats', icon:'KYC', it:'blue', title:'Verification status', cap:'Tanvir Ahmed · Creator',
+          tiles:[['ID UPLOAD','Complete'],['FACE SCAN','Pending'],['LIVENESS','Not started'],['DASHBOARD','Locked']]}]},
+      {t:'out', body:'Face scan complete. Am I verified now?'},
+      {t:'sys', body:'Face scan processing. This takes up to 60 seconds.'},
+      {t:'in', name:'Identity Support', icon:'ID', it:'blue', body:'Verification complete. Your Creator Innovation Dashboard is now unlocked. Welcome to Phase 2 — Project Identity and Branding.',
+        cards:[{k:'stats', icon:'KYC', it:'green', title:'Verification status', cap:'Tanvir Ahmed · Creator',
+          tiles:[['ID UPLOAD','Complete','green'],['FACE SCAN','Complete','green'],['LIVENESS','Passed','green'],['DASHBOARD','Unlocked','green']]}]},
+      {t:'nba', body:'Your dashboard is unlocked. Begin Phase 2 — add your project idea and start branding.'},
+    ],
+    composer:{ ph:'Type your message or use a smart action', primary:'Enter dashboard', pc:'blue',
+      ghosts:['Retry verification','Contact support','Upload new ID'] },
+    right:{ readiness:15,
+      na:{ body:'Dashboard is now unlocked. Start Phase 2 — add your project and hire a brand designer.', cta:'Start Phase 2', cc:'blue' },
+      sections:[
+        {label:'VERIFICATION STATUS', rows:[['ID Upload','Complete','green'],['Face scan','Complete','green'],['Liveness','Passed','green'],['Dashboard','Unlocked','green']]},
+        {label:'PHASE 1 CHECKLIST', rows:[['Identity verified','Done','green'],['Role selected','Creator','green'],['Dashboard unlocked','Done','green'],['Phase 2 access','Ready','teal']]},
+      ],
+      smart:['Enter dashboard','Start branding','View profile','Contact support'] }
+  },
+
+  br: {
+    iconTint:'teal',
+    header:{ icon:'BR', title:'BrandFlow Studio', meta:'Phase 2 · Branding Workroom · Milestone 1 of 2',
+      pills:[['M50 Verified Provider','teal'],['Escrow Funded','green'],['Delivery submitted','blue']] },
+    phases:[['Identity','done'],['2 Branding','active'],['3 Intelligence','locked'],['4 Offer','locked'],['5 Crossroads','locked'],['6 Level Up','locked']],
+    stream:[
+      {t:'div', x:'BRANDING WORKROOM · MILESTONE 1'},
+      {t:'out', body:'Hi — I need branding for AutoInvoice. Clean, premium, fintech-ready. Target market: invoice-heavy SMEs. Deliverables: logo, colour palette, social avatar, pitch deck cover.'},
+      {t:'in', name:'BrandFlow Studio · M50 Provider', icon:'BR', it:'teal', body:'Thanks — reviewed your brief and AutoInvoice project summary. I can deliver 3 logo concepts plus a full brand colour palette within 5 working days.'},
+      {t:'sys', body:'Escrow funded for Milestone 1. Delivery expected within 5 working days.'},
+      {t:'out', body:'Perfect. Please make sure the design feels premium and tech-forward. Not too startup-generic.'},
+      {t:'in', name:'BrandFlow Studio · M50 Provider', icon:'BR', it:'teal', body:'Understood. I am going for navy, electric blue, and a restrained gold accent. Clean sans-serif logotype. Will send concepts shortly.'},
+      {t:'in', name:'BrandFlow Studio · M50 Provider', icon:'BR', it:'teal', body:'First delivery is ready. Three concepts to review — let me know which direction fits best.',
+        cards:[{k:'file', icon:'ZIP', it:'blue', title:'AutoInvoice_Branding_v1.zip', cap:'3 logo concepts · palette · social avatar · pitch cover'},
+          {k:'milestone', icon:'M1', it:'teal', title:'Logo concepts and brand palette', status:['In review','blue'],
+            rows:[['Provider','BrandFlow Studio'],['Deliverable','Logo × 3, palette, avatar'],['Deadline','5 working days'],['Escrow held','€480'],['Status','Awaiting your review']],
+            btns:[['Approve branding','green'],['Request revision','ghost']]}]},
+      {t:'out', body:'Concept 2 is closest. Push the palette more premium — navy, electric blue, touch of gold. Please revise the colour direction.'},
+      {t:'nba', body:'Review revision when delivered, then approve to release Milestone 1 payment and move to Milestone 2.'},
+    ],
+    composer:{ ph:'Type your message or use a smart action', primary:'Approve branding', pc:'green',
+      ghosts:['Request revision','Download assets','Release payment','View brief'] },
+    right:{ readiness:34,
+      na:{ body:'Review the revision from BrandFlow Studio then approve branding to release payment.', cta:'Review delivery', cc:'green' },
+      sections:[
+        {label:'ORDER STATUS', rows:[['Provider','BrandFlow Studio'],['Milestone','1 of 2'],['Escrow','Funded','green'],['Status','Delivered — in review','blue']]},
+        {label:'DELIVERABLES', rows:[['Logo concepts','In review','blue'],['Colour palette','In review','blue'],['Social avatar','Pending','amber'],['Pitch deck cover','Pending','amber']]},
+        {label:'DOCUMENTS', rows:[['Brand brief','Shared','teal'],['Concepts v1','Received','green'],['Final files','Not yet','amber']]},
+      ],
+      smart:['Approve branding','Request revision','Hire FinancePro','Move to Phase 3'] }
+  },
+
+  fn: {
+    iconTint:'blue',
+    header:{ icon:'FN', title:'FinancePro', meta:'Phase 3 · Finance Review · Forecast shared for review',
+      pills:[['M50 Provider','teal'],['Forecast shared','blue'],['Review pending','amber']] },
+    phases:[['Identity','done'],['Branding','done'],['3 Intelligence','active'],['4 Offer','locked'],['5 Crossroads','locked'],['6 Level Up','locked']],
+    stream:[
+      {t:'div', x:'FINANCE REVIEW · FORECAST SHARED'},
+      {t:'out', body:'Hi — AI generated my 3-year financial forecast for AutoInvoice. Please review the assumptions, revenue model, CAC, monthly operating cost, break-even, and recommended launch budget.',
+        cards:[{k:'file', icon:'PDF', it:'blue', title:'AutoInvoice_Forecast_3yr.pdf', cap:'AI generated · Shared for review'}]},
+      {t:'in', name:'FinancePro · M50 Provider', icon:'FN', it:'blue', body:'Received the forecast. I will review the revenue curve, unit economics, and cost structure. I will come back with detailed notes within 2 working days.'},
+      {t:'sys', body:'Forecast shared with FinancePro. Review period: 2 working days.'},
+      {t:'in', name:'FinancePro · M50 Provider', icon:'FN', it:'blue', body:'Review complete. Overall structure is solid. Two items need adjustment before this is investor-ready:\n\n1. CAC assumption of €18 is too low for cold-outreach B2B SaaS. Realistic is €55 to €90.\n\n2. Monthly operating cost needs updating. Current estimate is €3,200. Revised estimate based on your stack: €5,100.\n\nI recommend revising the launch budget from €5,000 to €8,500 and re-running the model.',
+        cards:[{k:'file', icon:'PDF', it:'blue', title:'Forecast_Review_Notes_FinancePro.pdf', cap:'Review notes · Ready to apply'},
+          {k:'stats', icon:'FN', it:'blue', title:'Review summary', cap:'FinancePro analysis · AutoInvoice',
+            tiles:[['STRUCTURE','Solid','green'],['CAC','Needs revision','amber'],['OP COST','Update needed','amber'],['STATUS','Revise and resubmit','amber']]}]},
+      {t:'out', body:'Understood. I will update the assumptions and send you the revised model.'},
+      {t:'in', name:'FinancePro · M50 Provider', icon:'FN', it:'blue', body:'After revision I will approve and mark this forecast as investor-ready. You can then share it through the NDA-protected data room with any Entrepreneur or Investor.'},
+      {t:'nba', body:'Update CAC to €65 and operating cost to €5,100, then resubmit the revised forecast to FinancePro for final approval.'},
+    ],
+    composer:{ ph:'Type your message or use a smart action', primary:'Share revised forecast', pc:'blue',
+      ghosts:['Update assumptions','Approve forecast','Download review notes','Ask question'] },
+    right:{ readiness:51,
+      na:{ body:'Update the CAC and operating cost assumptions, then send FinancePro the revised forecast for final approval.', cta:'Share revised forecast', cc:'blue' },
+      sections:[
+        {label:'REVIEW STATUS', rows:[['Forecast sent','Done','green'],['Structure','Approved','green'],['CAC','Needs revision','amber'],['Operating cost','Needs revision','amber'],['Approval','Pending','amber']]},
+        {label:'DOCUMENTS', rows:[['Forecast v1','Under review','amber'],['Review notes','Received','green'],['Forecast v2','Not yet','amber'],['Final approval','Not yet','amber']]},
+        {label:'PROVIDER', rows:[['Provider','FinancePro'],['Service','Forecast review'],['Status','Revise and resubmit','amber']]},
+      ],
+      smart:['Update forecast','Share revised','Ask FinancePro','Download notes'] }
+  },
+
+  ip: {
+    iconTint:'amber',
+    header:{ icon:'IP', title:'IP Legal Expert', meta:'Phase 3 · Legal and IP Protection · Checklist in progress',
+      pills:[['M50 Provider','teal'],['Checklist received','blue'],['NDA recommended','amber']] },
+    phases:[['Identity','done'],['Branding','done'],['3 Intelligence','active'],['4 Offer','locked'],['5 Crossroads','locked'],['6 Level Up','locked']],
+    stream:[
+      {t:'div', x:'LEGAL · IP PROTECTION · PHASE 3'},
+      {t:'out', body:'I want to protect the AutoInvoice idea and IP before sharing full details with any Entrepreneur. Please review trademark, copyright, NDA risk, and IP transfer clause exposure.'},
+      {t:'in', name:'IP Legal Expert · M50 Provider', icon:'IP', it:'amber', body:'Before sharing anything beyond the public summary, an NDA is essential. For AutoInvoice we need to prepare four things:\n1. Mutual NDA\n2. IP ownership statement\n3. Transfer clause if a buyout proceeds\n4. Co-founder equity terms if equity deal proceeds',
+        cards:[{k:'stats', icon:'IP', it:'amber', title:'IP checklist status', cap:'AutoInvoice · Pre-deal protection',
+          tiles:[['TRADEMARK','Not filed','amber'],['COPYRIGHT','Default protection','green'],['NDA','Not yet sent','amber'],['TRANSFER CLAUSE','Not prepared','amber']]}]},
+      {t:'sys', body:'IP filing is not required before a deal, but an NDA is required before sharing the full business plan, forecast, or execution strategy.'},
+      {t:'in', name:'IP Legal Expert · M50 Provider', icon:'IP', it:'amber', body:'NDA draft is ready. You must send this to any Entrepreneur before unlocking the full data room. Once signed, you can share the complete business plan, forecast, and IP documents.',
+        cards:[{k:'file', icon:'PDF', it:'amber', title:'AutoInvoice_NDA_Draft_v1.pdf', cap:'Standard mutual NDA · Ready to send'}]},
+      {t:'out', body:'What happens to my IP if the Full Buyout deal is accepted?'},
+      {t:'in', name:'IP Legal Expert · M50 Provider', icon:'IP', it:'amber', body:'Full IP ownership transfers to the Entrepreneur upon payment. You would have no active rights unless an advisor clause is written in. I recommend we add an optional advisor clause and a non-compete exclusion for your next project before signing anything.'},
+      {t:'nba', body:'Send the NDA before sharing any full documents. Then we can prepare the transfer clause and advisor terms.'},
+    ],
+    composer:{ ph:'Type your message or use a smart action', primary:'Request NDA', pc:'amber',
+      ghosts:['Review IP checklist','Prepare equity terms','Prepare transfer clause','Ask legal question'] },
+    right:{ readiness:58,
+      na:{ body:'Send the NDA to any Entrepreneur before unlocking the full business plan, forecast, or IP files.', cta:'Send NDA', cc:'amber' },
+      sections:[
+        {label:'IP CHECKLIST', rows:[['Trademark','Not filed','amber'],['Copyright','Protected','green'],['NDA','Not yet sent','amber'],['Transfer clause','Not prepared','amber'],['Advisor terms','Not prepared','amber']]},
+        {label:'DOCUMENTS', rows:[['NDA draft','Ready','green'],['IP ownership','Not yet','amber'],['Transfer clause','Not yet','amber']]},
+        {label:'PROVIDER', rows:[['Provider','IP Legal Expert'],['Status','Checklist complete','green'],['Next','Send NDA to counterparty']]},
+      ],
+      smart:['Send NDA','IP checklist','Equity terms','Ask provider'] }
+  },
+
+  lp: {
+    iconTint:'teal',
+    header:{ icon:'LP', title:'LandingPro', meta:'Phase 4 · GTM Workroom · Milestone 1 of 2 in progress',
+      pills:[['M50 Provider','teal'],['Escrow Funded','green'],['In Progress','blue']] },
+    phases:[['Identity','done'],['Branding','done'],['Intelligence','done'],['4 Offer','active'],['5 Crossroads','locked'],['6 Level Up','locked']],
+    stream:[
+      {t:'div', x:'GTM WORKROOM · PHASE 4'},
+      {t:'out', body:'I need a landing page and one-page GTM plan for AutoInvoice. Budget: €1,200. Timeline: 12 working days. Deliverables: landing page design and copy, GTM plan, and Google Analytics setup.'},
+      {t:'in', name:'LandingPro · M50 Provider', icon:'LP', it:'teal', body:'Proposal: Landing page design and copy, GTM plan covering acquisition channels and first 90 days, plus Analytics setup. Total: €1,100. 12 working days. Two revision rounds included.'},
+      {t:'sys', body:'Proposal received. Review scope and fund escrow to begin work.'},
+      {t:'out', body:'Accepted. Funding escrow now.'},
+      {t:'sys', body:'Escrow funded: €1,100. LandingPro Milestone 1 has started. Expected delivery: 8 working days.'},
+      {t:'in', name:'LandingPro · M50 Provider', icon:'LP', it:'teal', body:'Starting on the landing page. I will share the wireframe for your review before moving to design. Give me 3 working days for the wireframe.'},
+      {t:'in', name:'LandingPro · M50 Provider', icon:'LP', it:'teal', body:'Wireframe ready for review.',
+        cards:[{k:'file', icon:'PDF', it:'teal', title:'AutoInvoice_Landing_Wireframe_v1.pdf', cap:'Wireframe · 4 sections · ready for feedback'}]},
+      {t:'out', body:'Looks good. Hero section needs a stronger headline. Something about the time saved, not the technology. Please revise and continue.'},
+      {t:'in', name:'LandingPro · M50 Provider', icon:'LP', it:'teal', noBubble:true,
+        cards:[{k:'milestone', icon:'M1', it:'teal', title:'Landing page design and copy', status:['In progress','blue'],
+          rows:[['Provider','LandingPro'],['Deliverable','Design, copy, wireframe'],['Escrow held','€660'],['Timeline','8 working days'],['Progress','Wireframe approved'],['Next','Full design delivery']],
+          btns:[['Review deliverable','disabled'],['Request revision','disabled']]}]},
+      {t:'sys', body:'Milestone 1 is in progress. Deliverable expected in 5 working days.'},
+      {t:'nba', body:'Wait for Milestone 1 delivery, then review and approve to release €660 and start Milestone 2 — GTM plan and Analytics setup.'},
+    ],
+    composer:{ ph:'Type your message or use a smart action', primary:'Review deliverable', pc:'disabled',
+      ghosts:['Send message','View proposal','View escrow','View contract'] },
+    right:{ readiness:70,
+      na:{ body:'Wait for Milestone 1 full delivery, then approve to release €660 and start GTM plan.', cta:'View escrow status', cc:'blue' },
+      sections:[
+        {label:'WORKROOM STATUS', rows:[['Provider','LandingPro'],['Milestone','1 of 2'],['Escrow held','€1,100'],['Status','In progress','blue'],['Delivery in','5 working days']]},
+        {label:'MILESTONE 1', rows:[['Landing page design','In progress','blue'],['Copy','In progress','blue'],['Wireframe','Approved','green'],['Final design','Pending','amber']]},
+        {label:'MILESTONE 2', rows:[['GTM plan','Not started','gray'],['Analytics setup','Not started','gray'],['Payment','Not released']]},
+      ],
+      smart:['View proposal','View escrow','Message provider','View contract'] }
+  },
+
+  mk: {
+    iconTint:'blue',
+    header:{ icon:'MK', title:'Marketplace Listing', meta:'Phase 5 · Path A · Listing live · 3 interests received',
+      pills:[['Listing live','green'],['3 interests','blue'],['1 offer','amber']] },
+    phases:[['Identity','done'],['Branding','done'],['Intelligence','done'],['Offer','done'],['5 Crossroads','active'],['6 Level Up','locked']],
+    stream:[
+      {t:'div', x:'MARKETPLACE · LISTING ACTIVE'},
+      {t:'sys', body:'Your AutoInvoice listing is live. Verified Entrepreneurs can view your public project summary and send interest. Full documents remain locked until NDA.'},
+      {t:'in', name:'Marketplace', icon:'MK', it:'blue', noBubble:true,
+        cards:[{k:'stats', icon:'MK', it:'blue', title:'Listing performance — this week', cap:'AutoInvoice · FinTech SaaS',
+          tiles:[['VIEWS','24'],['INTERESTS','3'],['OFFERS','1'],['CONVERSION','12.5%']]}]},
+      {t:'in', name:'Marketplace', icon:'MK', it:'blue', body:'You have three verified Entrepreneur interests this week. One formal offer has been sent. Here is a summary:',
+        cards:[
+          {k:'interest', icon:'LC', title:'Lena Castel · Studio Vertex', status:['Offer sent','amber'], body:'Message: Love the invoice recovery angle. Sent Full Buyout offer. NDA pending.', btns:[['View offer','blue']]},
+          {k:'interest', icon:'MF', title:'Marco Ferretti · Nexora Labs', status:['Interest','blue'], body:'Message: Looking for B2B SaaS fintech plays. This fits my portfolio. Would like to explore.', btns:[['Accept conversation','blue'],['Decline','ghost']]},
+          {k:'interest', icon:'PS', title:'Priya Sharma · Arclight Ventures', status:['Interest','blue'], body:'Message: Interested in the unit economics and team behind this. Open to discussion.', btns:[['Accept conversation','blue'],['Decline','ghost']]},
+        ]},
+      {t:'in', name:'Marketplace', icon:'MK', it:'blue', body:"AI listing suggestion: Your one-line pitch can be stronger. Add a quantified outcome.\nCurrent: 'AI-powered invoice recovery for SMEs.'\nSuggested: 'Automates invoice recovery for SMEs — reduces overdue payments by up to 40% in the first 90 days.'"},
+      {t:'nba', body:'Review the Lena Castel offer first — NDA is required before documents unlock. Then accept or decline the other two interests.'},
+    ],
+    composer:{ ph:'Type your message or use a smart action', primary:'Review interests', pc:'blue',
+      ghosts:['Improve listing','Accept conversation','Preview listing','Decline interest'] },
+    right:{ readiness:80,
+      na:{ body:'Review the Full Buyout offer from Lena Castel. Respond to the other two interests.', cta:'View Lena Castel offer', cc:'blue' },
+      sections:[
+        {label:'LISTING STATUS', rows:[['Status','Live','green'],['Views this week','24'],['Interests','3'],['Offers','1']]},
+        {label:'INTERESTS', rows:[['Lena Castel','Offer sent','amber'],['Marco Ferretti','Pending response','blue'],['Priya Sharma','Pending response','blue']]},
+        {label:'PROTECTION', rows:[['NDA sent','1 (Lena Castel)'],['Full docs','Locked until NDA']]},
+      ],
+      smart:['Review offer','Improve listing','Accept interest','Preview listing'] }
+  },
+
+  lena: {
+    iconTint:'amber',
+    header:{ icon:'LC', title:'Lena Castel', meta:'Phase 5 · Crossroads · Full Buyout Offer received',
+      pills:[['Verified Entrepreneur','green'],['NDA pending','amber'],['Offer received','blue']] },
+    phases:[['Identity','done'],['Branding','done'],['Intelligence','done'],['Offer','done'],['5 Crossroads','active'],['6 Level Up','locked']],
+    stream:[
+      {t:'div', x:'CROSSROADS · MARKETPLACE OFFER'},
+      {t:'sys', body:'A verified Entrepreneur has sent interest on your AutoInvoice marketplace listing. Only the public summary is visible to them until an NDA is signed.'},
+      {t:'in', name:'Lena Castel · Studio Vertex', icon:'LC', it:'amber', body:'Love the AutoInvoice angle on invoice recovery automation for SMEs. I have been looking for exactly this niche. I would like to acquire the idea and IP outright and build it in-house with my development team at Studio Vertex.'},
+      {t:'in', name:'Lena Castel · Studio Vertex', icon:'LC', it:'amber', body:'Here is a formal offer for your consideration:',
+        cards:[{k:'offer', kind:'buyout', icon:'€', it:'amber', title:'Full Buyout Offer', cap:'Lena Castel · Studio Vertex', status:['Pre-NDA','amber'],
+          rows:[['Offer type','Full Buyout'],['Offer amount','€120,000','money'],['Includes','Plan, forecast, brand, IP'],['Your role after','Optional advisor'],['Payment','One-time lump sum'],['NDA required','Yes — not yet signed'],['Legal review','Strongly recommended']],
+          btns:[['Accept offer','disabled'],['Counter offer','ghost'],['Decline','ghostRed']],
+          warn:'NDA is required before accepting. Sign the NDA first to unlock full documents and proceed with the offer.'}]},
+      {t:'nba', body:'Request an NDA before unlocking the full business plan, forecast, and IP files. Legal review is recommended on any buyout.', bold:true},
+    ],
+    composer:{ ph:'Type your message or use a smart action', primary:'Request NDA first', pc:'amber',
+      ghosts:['View full offer','Counter offer','Ask legal review','Decline'] },
+    right:{ readiness:78,
+      na:{ body:'Request an NDA before unlocking any full documents. Do not accept without legal review.', cta:'Request NDA', cc:'amber' },
+      sections:[
+        {label:'DEAL', rows:[['Counterparty','Lena Castel'],['Offer type','Full Buyout'],['Amount','€120,000','money'],['Stage','Pre-NDA','amber']]},
+        {label:'PROTECTION', rows:[['NDA','Pending','amber'],['Legal review','Recommended','amber'],['Full docs','Locked','amber']]},
+        {label:'OFFER OPTIONS (MVP)', rows:[['Full Buyout','Received','amber'],['Co-founder','Available'],['License','Not available','gray'],['Royalty','Not available','gray']]},
+      ],
+      smart:['Request NDA','Counter offer','Legal review','Decline offer'] }
+  },
+
+  nda: {
+    iconTint:'amber',
+    header:{ icon:'ND', title:'NDA Gate', meta:'Phase 5 · IP Protection · Signature required',
+      pills:[['IP Protected','teal'],['NDA required','amber']] },
+    phases:[['Identity','done'],['Branding','done'],['Intelligence','done'],['Offer','done'],['5 Crossroads','active'],['6 Level Up','locked']],
+    stream:[
+      {t:'div', x:'NDA GATE · IP PROTECTION'},
+      {t:'sys', body:'An NDA is required before any full project details are shared with Lena Castel. Only your public project summary is visible until both parties sign.'},
+      {t:'in', name:'NDA Gate', icon:'ND', it:'amber', body:'Here is a clear breakdown of what each party can see before and after the NDA is signed:',
+        cards:[{k:'nda', icon:'ND', it:'amber', title:'Document access control', cap:'AutoInvoice · Lena Castel',
+          visible:['Public project summary','Problem statement','High-level concept','IP value range','Marketplace listing card'],
+          locked:['Full business plan','Financial forecast (3yr)','Execution strategy','Brand and IP files','Technical specification']}]},
+      {t:'nba', body:'Send the NDA to Lena Castel. Documents will unlock automatically the moment both parties have signed.'},
+      {t:'out', body:'Sending the NDA now.'},
+      {t:'in', name:'NDA Gate', icon:'ND', it:'amber', body:'NDA sent to Lena Castel at Studio Vertex. Awaiting countersignature. You will receive a notification the moment it is signed.',
+        cards:[{k:'file', icon:'PDF', it:'amber', title:'AutoInvoice_NDA_Mutual_v1.pdf', cap:'Sent to Lena Castel · Awaiting signature'}]},
+      {t:'div', x:'— AFTER NDA SIGNED —'},
+      {t:'sys', tint:'green', body:'NDA signed by both parties. Full project documents are now unlocked for Lena Castel. Deal negotiation can proceed.'},
+      {t:'in', name:'NDA Gate', icon:'ND', it:'green', body:'Full documents are now accessible. All locked items in the data room have been unlocked. Offer negotiation can proceed with complete information.',
+        cards:[{k:'file', icon:'PDF', it:'green', title:'AutoInvoice_NDA_Executed.pdf', cap:'Both parties signed · Legally binding'}]},
+      {t:'nba', tint:'green', body:'NDA is signed. You can now proceed to offer discussion with full documents shared.'},
+    ],
+    composer:{ ph:'Type your message or use a smart action', primary:'Open offer negotiation', pc:'green',
+      ghosts:['Download executed NDA','View data room','Contact counterparty'] },
+    right:{ readiness:78,
+      na:{ body:'NDA signed. Proceed to offer discussion with full documents now visible.', cta:'Open offer chat', cc:'green' },
+      sections:[
+        {label:'NDA STATUS', rows:[['Status','Signed','green'],['Counterparty','Lena Castel'],['Template','Standard mutual'],['Signed date','Today']]},
+        {label:'DOCUMENTS', rows:[['Business plan','Shared','teal'],['Forecast','Shared','teal'],['IP files','Shared','teal']]},
+      ],
+      smart:['Send NDA','Review NDA','View documents','Legal provider'] }
+  },
+
+  cf: {
+    iconTint:'blue',
+    header:{ icon:'CF', title:'Company Formation', meta:'Phase 6 · The Big Jump · Formation in progress',
+      pills:[['Big Jump selected','blue'],['Formation started','amber'],['Shareholder module ready','teal']] },
+    phases:[['Identity','done'],['Branding','done'],['Intelligence','done'],['Offer','done'],['Crossroads','done'],['6 Level Up','active']],
+    stream:[
+      {t:'div', x:'BIG JUMP · PHASE 6 · COMPANY FORMATION'},
+      {t:'sys', body:'You selected The Big Jump. You will build AutoInvoice yourself as a verified Entrepreneur. Company formation, shareholder setup, and seed funding input begin now.'},
+      {t:'in', name:'Company Formation', icon:'CF', it:'blue', body:'Welcome to the Big Jump. Let us get your company structure right from the start. First decision: legal structure. Based on your location and the nature of AutoInvoice as a SaaS product targeting European SMEs, I recommend SAS (Société par Actions Simplifiée) if you are in France, or Ltd if in the UK.',
+        cards:[{k:'stats', icon:'CF', it:'blue', title:'Formation checklist', cap:'AutoInvoice · Big Jump',
+          tiles:[['STRUCTURE','SAS selected'],['ADDRESS','Pending'],['FOUNDERS','2 entered'],['DOCUMENTS','In preparation']]}]},
+      {t:'sys', body:'Company name and structure selected. Registered address and incorporation documents are next.'},
+      {t:'in', name:'Company Formation', icon:'CF', it:'blue', noBubble:true,
+        cards:[{k:'file', icon:'PDF', it:'blue', title:'Company_Formation_Checklist.pdf', cap:'AutoInvoice SAS · Step-by-step guide'}]},
+      {t:'out', body:'Formation documents submitted. Can we set up the shareholder module now?'},
+      {t:'in', name:'Company Formation', icon:'CF', it:'blue', body:'Shareholder module is ready. Add founder ownership, co-founder shares, advisor allocation, and ESOP pool reserve.',
+        cards:[{k:'stats', icon:'EQ', it:'blue', title:'Shareholders', cap:'AutoInvoice SAS · Founding structure',
+          tiles:[['FOUNDER 1','72% · Tanvir Ahmed'],['FOUNDER 2','13% · co-founder'],['ADVISOR POOL','5%'],['ESOP RESERVE','10%']]}]},
+      {t:'out', body:'Shareholders confirmed. What is the next step before Level Up?'},
+      {t:'in', name:'Company Formation', icon:'CF', it:'blue', body:'Last step: seed funding input. Add your target raise, use of funds, and pre-money valuation. Once submitted, you are ready to Level Up to Verified Entrepreneur.'},
+      {t:'nba', body:'Add your seed funding target and pre-money valuation. Then Level Up is unlocked.'},
+    ],
+    composer:{ ph:'Type your message or use a smart action', primary:'Add seed funding', pc:'blue',
+      ghosts:['Open shareholder module','Hire legal provider','Download formation docs','Continue to Level Up'] },
+    right:{ readiness:91,
+      na:{ body:'Add your seed funding target and pre-money valuation to unlock Level Up.', cta:'Add seed funding', cc:'blue' },
+      sections:[
+        {label:'BIG JUMP CHECKLIST', rows:[['Legal structure','SAS selected','green'],['Company name','AutoInvoice SAS','green'],['Registered address','Pending','amber'],['Founders','2 entered','green'],['Shareholders','Set','green'],['Seed funding','Pending','amber']]},
+        {label:'SHAREHOLDERS', rows:[['Tanvir Ahmed','72%'],['Co-founder','13%'],['Advisor pool','5%'],['ESOP reserve','10%']]},
+        {label:'SEED FUNDING', rows:[['Target raise','Not entered','amber'],['Pre-money val.','Not entered','amber'],['Use of funds','Not entered','amber']]},
+      ],
+      smart:['Add seed funding','Shareholder module','Formation docs','Level Up preview'] }
+  },
+
+  lv: {
+    iconTint:'green', goldStar:true,
+    header:{ icon:'★', title:'Level Up', meta:'Phase 6 · All phases complete · Verified Entrepreneur unlock ready', headerIconTint:'green',
+      pills:[['Big Jump complete','green'],['Formation done','green'],['Ready to level up','blue']] },
+    phases:[['Identity','done'],['Branding','done'],['Intelligence','done'],['Offer','done'],['Crossroads','done'],['Level Up','gold']],
+    stream:[
+      {t:'div', x:'LEVEL UP · ALL PHASES COMPLETE'},
+      {t:'sys', tint:'green', body:'Company formation complete. Shareholder module set. Seed funding input saved. Every phase of the Creator journey is done. You are ready to Level Up.'},
+      {t:'in', name:'Level Up', icon:'★', it:'amber', body:'You started with an idea. You built AutoInvoice through every phase — identity, branding, AI intelligence, offer setup, and the Big Jump. You are ready to become a Verified Entrepreneur.\n\nConfirming will:\n· Switch your role from Creator to Verified Entrepreneur\n· Unlock the Entrepreneur Dashboard\n· Activate Smart Investor Matchmaking\n· Award your Founder badge',
+        cards:[{k:'levelup', icon:'★', it:'green', title:'Verified Entrepreneur', cap:'Confirm to unlock your dashboard',
+          tiles:[['FROM','Creator'],['TO','Entrepreneur'],['INVESTOR MATCH','Unlocks now'],['BADGE','Founder']],
+          cta:'Confirm Level Up', note:'This action is permanent. Your Creator role transitions to Verified Entrepreneur.'}]},
+      {t:'out', body:'Confirming Level Up.'},
+      {t:'sys', tint:'green', confetti:true, body:'LEVEL UP COMPLETE. You are now a Verified Entrepreneur. The Entrepreneur Dashboard and Smart Investor Matchmaking are now active.'},
+      {t:'in', name:'Level Up', icon:'★', it:'amber', noBubble:true,
+        cards:[{k:'file', icon:'★', it:'amber', title:'AutoInvoice_Founder_Badge.pdf', cap:'Verified Entrepreneur · Tanvir Ahmed · AutoInvoice SAS'}]},
+      {t:'in', name:'Level Up', icon:'★', it:'amber', body:'Welcome to the Entrepreneur journey. Your investor matches are ready. Sophie Chen from Lumiere Capital has been matched at 94% compatibility based on your sector, stage, and fundraising target.'},
+      {t:'nba', tint:'green', body:'Open the Entrepreneur Dashboard and review your investor matches.', bold:true},
+    ],
+    composer:{ ph:'Type your message or use a smart action', primary:'Open Entrepreneur Dashboard', pc:'green', tall:true,
+      ghosts:['View investor matches','Download founder badge','See matchmaking score'] },
+    right:{ readiness:100, greenNa:true,
+      na:{ body:'Open the Entrepreneur Dashboard and review your first investor matches.', cta:'Open dashboard', cc:'green' },
+      sections:[
+        {label:'LEVEL UP STATUS', rows:[['Role','Verified Entrepreneur','green'],['Dashboard','Unlocked','green'],['Investor matching','Active','green'],['Founder badge','Issued','green']]},
+        {label:'FIRST INVESTOR MATCH', rows:[['Investor','Sophie Chen'],['Fund','Lumiere Capital'],['Compatibility','94%'],['Stage fit','Seed','green']]},
+        {label:'BIG JUMP COMPLETE', rows:[['Company','AutoInvoice SAS','green'],['Shareholders','Set','green'],['Seed funding','Entered','green'],['Formation','Complete','green']]},
+      ],
+      smart:['Open dashboard','View matches','Download badge','Share milestone'] }
+  },
+
+  marco: {
+    iconTint:'blue',
+    header:{ icon:'MF', title:'Marco Ferretti', meta:'Phase 5 · Crossroads · Co-founder offer · NDA signed',
+      pills:[['Verified Entrepreneur','green'],['NDA signed','green'],['Co-founder offer','blue']] },
+    phases:[['Identity','done'],['Branding','done'],['Intelligence','done'],['Offer','done'],['5 Crossroads','active'],['6 Level Up','locked']],
+    stream:[
+      {t:'div', x:'CROSSROADS · ENTREPRENEUR CONVERSATION'},
+      {t:'sys', tint:'green', body:'NDA signed by both parties. Full project documents are now unlocked for Marco Ferretti.'},
+      {t:'in', name:'Marco Ferretti · Nexora Labs', icon:'MF', it:'blue', body:'Hi Tanvir — I have been following B2B SaaS fintech plays for the last 18 months and AutoInvoice is exactly the niche I have been waiting for. Invoice recovery automation for SMEs is underserved and the unit economics look strong. I would love to explore this together.'},
+      {t:'out', body:'Thanks Marco. I have reviewed your background at Nexora Labs — the portfolio fit looks solid. What kind of arrangement are you thinking?'},
+      {t:'in', name:'Marco Ferretti · Nexora Labs', icon:'MF', it:'blue', body:'I am not looking to acquire outright. I want to build this with you. I can bring the go-to-market infrastructure, the SME network across France and Germany, and €80,000 in operational funding. In return I am proposing a co-founder arrangement — 20% equity with a 4-year vest and 1-year cliff. You retain majority control and the IP until exit.'},
+      {t:'in', name:'Marco Ferretti · Nexora Labs', icon:'MF', it:'blue', body:'Here is my formal co-founder proposal:',
+        cards:[{k:'offer', kind:'equity', icon:'MF', it:'blue', title:'Co-founder Proposal', cap:'Marco Ferretti · Nexora Labs', status:['Post-NDA','green'],
+          rows:[['Offer type','Co-founder / Equity'],['Equity offered','20%','money'],['Cash contribution','€80,000'],['GTM network','France + Germany SMEs'],['Your equity','80% retained'],['Vesting','4 years, 1 year cliff'],['IP ownership','Creator retains until exit'],['Legal review','Required before signing']],
+          btns:[['Accept proposal','green'],['Counter equity %','ghost'],['Decline','ghostRed']],
+          note:'Shareholder agreement required before signing. Ask your legal provider to review vesting and transfer terms.'}]},
+      {t:'out', body:'This is a strong proposal. I would like to counter at 15% — you bring the network and capital, I bring the full IP, business plan, forecast, and brand. I think that split reflects the asset contribution better.'},
+      {t:'in', name:'Marco Ferretti · Nexora Labs', icon:'MF', it:'blue', body:'Fair point on the IP value. I can meet at 17% with the same vesting terms and add a €10,000 signing bonus to cover your first two months. Final offer from my side — let me know.'},
+      {t:'nba', body:'Ask your legal provider to review the 17% co-founder vesting terms and shareholder agreement before accepting. You can still counter if needed.'},
+    ],
+    composer:{ ph:'Type your message or use a smart action', primary:'Accept 17% offer', pc:'green',
+      ghosts:['Counter equity %','Ask legal provider','Request shareholder terms','Decline'] },
+    right:{ readiness:78,
+      na:{ body:'Legal provider should review the co-founder vesting terms before you accept the 17% equity offer.', cta:'Ask legal provider', cc:'amber' },
+      sections:[
+        {label:'DEAL', rows:[['Counterparty','Marco Ferretti'],['Firm','Nexora Labs'],['Offer type','Co-founder / Equity'],['Equity','17% (counter)'],['Cash','€80,000 + €10k bonus'],['Stage','Counter — awaiting sign','teal']]},
+        {label:'PROTECTION', rows:[['NDA','Signed','green'],['Legal review','In progress','blue'],['Shareholder agr.','Not yet drafted','amber']]},
+        {label:'DOCUMENTS (unlocked)', rows:[['Business plan','Shared','teal'],['Forecast','Shared','teal'],['IP files','Shared','teal'],['Brand assets','Shared','teal']]},
+      ],
+      smart:['Accept offer','Counter equity','Legal review','Decline'] }
+  },
+
+  priya: {
+    iconTint:'blue',
+    header:{ icon:'PS', title:'Priya Sharma', meta:'Phase 5 · Crossroads · Investor interest · NDA signed',
+      pills:[['Verified Investor','teal'],['NDA signed','green'],['Due diligence open','blue']] },
+    phases:[['Identity','done'],['Branding','done'],['Intelligence','done'],['Offer','done'],['5 Crossroads','active'],['6 Level Up','locked']],
+    stream:[
+      {t:'div', x:'CROSSROADS · INVESTOR DUE DILIGENCE'},
+      {t:'sys', tint:'green', body:'NDA signed. Full project documents are now accessible to Priya Sharma. Due diligence period has opened.'},
+      {t:'in', name:'Priya Sharma · Arclight Ventures', icon:'PS', it:'teal', body:'Hi Tanvir — I reviewed your marketplace listing and the public summary caught my attention immediately. Invoice recovery automation in the SME segment is an underexplored vertical. I have been looking for a seed-stage founder in fintech infrastructure. Can we set up a quick call and go through the numbers?'},
+      {t:'out', body:'Thanks Priya — great to connect. I have shared the full business plan and 3-year forecast through the data room. Happy to walk through the unit economics and the go-to-market approach.'},
+      {t:'in', name:'Priya Sharma · Arclight Ventures', icon:'PS', it:'teal', body:'I have reviewed the forecast — the revenue model is credible and the CAC assumptions are conservative now that FinancePro has revised them. Two questions before I go to IC:\n\n1. What is your target raise and how do you plan to deploy the capital in the first 12 months?\n\n2. Is there a co-founder or technical lead, or are you looking to hire one with the seed capital?'},
+      {t:'out', body:'Target raise is €350,000 pre-seed. Deployment plan: 40% product build, 30% GTM and first sales hire, 20% legal and IP, 10% ops reserve. On the technical side — I am in active conversation with a co-founder candidate who has fintech API experience. Expecting confirmation within 2 weeks.'},
+      {t:'in', name:'Priya Sharma · Arclight Ventures', icon:'PS', it:'teal', body:'That allocation makes sense for the stage. I would like to bring this to our IC next week. Arclight typically leads or co-leads pre-seed at €150,000 to €300,000 with a 6–8% equity stake. I am thinking €200,000 for 7% — with a SAFE note structure at a €2.8M cap.',
+        cards:[{k:'offer', kind:'invest', icon:'PS', it:'teal', title:'Pre-Seed Investment Interest', cap:'Priya Sharma · Arclight Ventures', status:['IC pending','blue'],
+          rows:[['Instrument','SAFE note'],['Amount','€200,000','money'],['Equity stake','7% (post-money)'],['Valuation cap','€2.8M'],['Structure','Uncapped discount: 20%'],['Stage','Pre-seed'],['IC date','Next week'],['Legal review','Required']],
+          btns:[['Indicate interest','blue'],['Counter terms','ghost'],['Decline','ghostRed']],
+          note:'This is a non-binding indication of interest pending IC approval. Legal review of SAFE terms is recommended.'}]},
+      {t:'out', body:'Very interested. €200k at 7% on a SAFE with a €2.8M cap works for us. Can we discuss the discount rate — 20% feels low for pre-seed risk at this stage?'},
+      {t:'in', name:'Priya Sharma · Arclight Ventures', icon:'PS', it:'teal', body:'Fair push. I can go to 25% discount. That is our standard pre-seed SAFE. If IC approves next week I will send the term sheet immediately. Looking forward to this one.'},
+      {t:'nba', body:'Indicate interest to Priya Sharma so she can take it to IC next week. Have your legal provider review the SAFE note terms before signing.'},
+    ],
+    composer:{ ph:'Type your message or use a smart action', primary:'Indicate interest', pc:'teal',
+      ghosts:['Counter SAFE terms','Ask legal provider','Request term sheet','Schedule call'] },
+    right:{ readiness:82,
+      na:{ body:'Indicate interest so Priya Sharma can take AutoInvoice to IC next week. Legal review of SAFE terms is recommended.', cta:'Indicate interest', cc:'teal' },
+      sections:[
+        {label:'INVESTMENT INTEREST', rows:[['Investor','Priya Sharma'],['Fund','Arclight Ventures'],['Instrument','SAFE note'],['Amount','€200,000'],['Equity','7%'],['Valuation cap','€2.8M'],['Discount','25%'],['Stage','IC pending','blue']]},
+        {label:'PROTECTION', rows:[['NDA','Signed','green'],['Legal review','Recommended','amber'],['SAFE reviewed','Not yet','amber']]},
+        {label:'DUE DILIGENCE', rows:[['Business plan','Reviewed','green'],['Forecast','Reviewed','green'],['Unit economics','Approved','green'],['Tech lead','Pending','amber']]},
+      ],
+      smart:['Indicate interest','Counter terms','Legal review','Schedule call'] }
+  },
+
+  sophie: {
+    iconTint:'green',
+    header:{ icon:'SC', title:'Sophie Chen', meta:'Phase 6 · Level Up · Lead investor · 94% match · Seed round',
+      pills:[['Verified Investor','teal'],['94% match','green'],['Term sheet received','amber']] },
+    phases:[['Identity','done'],['Branding','done'],['Intelligence','done'],['Offer','done'],['Crossroads','done'],['6 Level Up','active']],
+    stream:[
+      {t:'div', x:'INVESTOR · SEED ROUND · 94% MATCH'},
+      {t:'sys', tint:'green', body:'Sophie Chen from Lumiere Capital has been matched at 94% compatibility. Match based on: FinTech SaaS sector, seed stage, €300k–€600k ticket size, and European SME focus.'},
+      {t:'in', name:'Sophie Chen · Lumiere Capital', icon:'SC', it:'green', body:'Hi Tanvir — I received the AutoInvoice match through the Entrepreneur platform. 94% compatibility is the highest score I have seen this quarter. I have reviewed the public profile and I am genuinely excited about the invoice recovery angle for SMEs. This is a real problem with a clear monetisation path.'},
+      {t:'out', body:'Hi Sophie — really glad to connect. AutoInvoice is now incorporated as AutoInvoice SAS. We have the full business plan, 3-year forecast approved by FinancePro, brand assets, and the founding team is in place. Happy to share the full data room once we have an NDA in place.'},
+      {t:'in', name:'Sophie Chen · Lumiere Capital', icon:'SC', it:'green', body:'NDA is not a problem — we use a standard mutual. Send it over and I will countersign same day. Lumiere leads seed rounds for B2B SaaS founders in Europe, typically €300k to €600k for 8–12% equity. I already have a strong conviction on this one.',
+        cards:[{k:'stats', icon:'SC', it:'green', title:'Match profile — Lumiere Capital', cap:'Sophie Chen · AutoInvoice SAS',
+          tiles:[['MATCH SCORE','94%','green'],['TICKET SIZE','€300k–€600k'],['STAGE','Seed'],['FOCUS','B2B SaaS · EU SME']]}]},
+      {t:'sys', tint:'green', body:'NDA signed by both parties. Full data room unlocked for Sophie Chen.'},
+      {t:'in', name:'Sophie Chen · Lumiere Capital', icon:'SC', it:'green', body:'I have gone through the full data room — business plan, forecast, brand assets, and the IP documents. This is one of the strongest seed-stage packages I have seen. My team has signed off. Here is the formal term sheet:',
+        cards:[{k:'offer', kind:'seed', icon:'SC', it:'green', title:'Seed Investment Term Sheet', cap:'Sophie Chen · Lumiere Capital', status:['Term sheet','green'],
+          rows:[['Round','Seed'],['Instrument','Equity'],['Amount','€450,000','money'],['Pre-money val.','€3.2M'],['Equity stake','12.3%'],['Lead investor','Lumiere Capital'],['Board seat','1 observer seat'],['Pro-rata rights','Next round'],['Closing','4–6 weeks'],['Legal review','Required']],
+          btns:[['Accept term sheet','green'],['Counter terms','ghost'],['Request changes','ghost']],
+          note:'Legal review of investor rights, board terms, and pro-rata clause is strongly recommended before signing.'}]},
+      {t:'out', body:'Sophie — this is a strong offer and the valuation reflects the work we have put in. I would like to discuss the board observer seat. Can we keep it as information rights only for the first 12 months while we find our footing?'},
+      {t:'in', name:'Sophie Chen · Lumiere Capital', icon:'SC', it:'green', body:'That is a reasonable ask for a first-time founder. I can agree to information rights only for the first 12 months — after that we convert to a standard observer seat. I will update the term sheet. Looking forward to building AutoInvoice together.'},
+      {t:'nba', tint:'green', body:'Have your legal provider review the updated term sheet — especially the pro-rata rights and information rights clause — before signing. Closing timeline is 4–6 weeks.', bold:true},
+    ],
+    composer:{ ph:'Type your message or use a smart action', primary:'Accept term sheet', pc:'green',
+      ghosts:['Ask legal provider','Request updated term sheet','Counter valuation','Schedule close call'] },
+    right:{ readiness:100, greenNa:true,
+      na:{ body:'Legal provider should review the updated term sheet before you sign. Closing in 4–6 weeks.', cta:'Ask legal provider', cc:'amber' },
+      sections:[
+        {label:'INVESTMENT DEAL', rows:[['Investor','Sophie Chen'],['Fund','Lumiere Capital'],['Round','Seed'],['Amount','€450,000'],['Pre-money','€3.2M'],['Equity','12.3%'],['Match score','94%','green'],['Stage','Term sheet','green']]},
+        {label:'TERMS', rows:[['Board','Info rights (12 mo)','teal'],['Pro-rata','Next round','green'],['Closing','4–6 weeks'],['Legal review','Recommended','amber']]},
+        {label:'DATA ROOM', rows:[['Business plan','Reviewed','green'],['Forecast','Reviewed','green'],['IP files','Reviewed','green'],['Brand assets','Reviewed','green']]},
+      ],
+      smart:['Accept term sheet','Counter valuation','Legal review','Schedule call'] }
+  },
+
+  sp: {
+    iconTint:'gray',
+    header:{ icon:'SP', title:'Support', meta:'Ticket #2841 · Document access issue · Under review', headerIconTint:'gray',
+      pills:[['Ticket open','amber'],['Response within 24h','gray']] },
+    phases:[['Identity','done'],['Branding','done'],['3 Intelligence','active'],['4 Offer','locked'],['5 Crossroads','locked'],['6 Level Up','locked']],
+    stream:[
+      {t:'div', x:'SUPPORT · TICKET #2841'},
+      {t:'out', body:'I need help with a document access issue. Project: AutoInvoice. Problem: my legal checklist file is showing as missing even though I uploaded it two days ago. Urgency: Medium.'},
+      {t:'in', name:'Support Team', icon:'SP', it:'gray', body:'Thanks for reaching out. We have received your request. Ticket #2841 has been created. Our team will review the document upload and update you in this thread within 24 hours.',
+        cards:[{k:'stats', icon:'SP', it:'gray', title:'Ticket #2841', cap:'Document access · Medium urgency',
+          tiles:[['STATUS','Under review'],['PRIORITY','Medium'],['CREATED','Today'],['RESPONSE','Within 24h']]}]},
+      {t:'sys', body:'Ticket #2841 created. Expected response: within 24 hours. You can upload proof or additional screenshots below.'},
+      {t:'out', body:'Here is a screenshot showing the upload confirmation from two days ago.',
+        cards:[{k:'file', icon:'PNG', it:'gray', title:'Upload_confirmation_screenshot.png', cap:'Proof of upload · 2 days ago'}]},
+      {t:'in', name:'Support Team', icon:'SP', it:'gray', body:'Thank you for the screenshot. We can see the upload succeeded on our side. The display issue is a caching error. We are applying a fix now and your legal checklist will appear correctly within the next 30 minutes. Apologies for the inconvenience.'},
+      {t:'sys', tint:'green', body:'Issue resolved. Legal checklist is now showing correctly in your document panel. Ticket #2841 closed.'},
+      {t:'in', name:'Support Team', icon:'SP', it:'gray', body:'The fix has been applied. Your legal checklist is now visible. If you experience any further issues please open a new ticket. Thank you for your patience.',
+        cards:[{k:'stats', icon:'SP', it:'green', title:'Ticket #2841', cap:'Document access · Medium urgency',
+          tiles:[['STATUS','Resolved','green'],['PRIORITY','Medium'],['RESOLVED','Today'],['TIME TO FIX','31 minutes','green']]}]},
+    ],
+    composer:{ ph:'Type your message or use a smart action', primary:'Open new ticket', pc:'blue',
+      ghosts:['Upload proof','View ticket status','Contact admin','Close ticket'] },
+    right:{ readiness:51,
+      na:{ header:'TICKET STATUS', body:'Ticket #2841 resolved. Legal checklist is now visible in your documents panel.', cta:'Back to project', cc:'green' },
+      sections:[
+        {label:'TICKET #2841', rows:[['Status','Resolved','green'],['Issue','Document display error'],['Urgency','Medium'],['Opened','Today'],['Resolved','Today (31 min)']]},
+        {label:'RECENT TICKETS', rows:[['#2841','Resolved','green'],['#2802','Resolved','green'],['#2771','Resolved','green']]},
+        {label:'QUICK HELP', rows:[['Payment issue','Open ticket'],['Access problem','Open ticket'],['Verification help','Open ticket']]},
+      ],
+      smart:['Open new ticket','View all tickets','Escrow dispute','Contact admin'] }
+  },
+};
+
+class Component extends DCLogic {
+  state = { active:'ai', rightOpen:true, inputs:{}, chState:{}, extraMsgs:{}, toast:null };
+
+  // ---- navigation ----
+  sel(id){ this.setState({ active:id }); setTimeout(()=>this.scrollStream(),80); }
+  toggleRight(){ this.setState(s=>({ rightOpen:!s.rightOpen })); }
+  scrollStream(){ const el=document.querySelector('[data-stream]'); if(el) el.scrollTop=el.scrollHeight; }
+
+  // ---- toast ----
+  showToast(msg,color){
+    if(this._tt) clearTimeout(this._tt);
+    this.setState({ toast:{ msg, color:color||C.green } });
+    this._tt=setTimeout(()=>this.setState({toast:null}),3000);
+  }
+
+  // ---- per-channel state ----
+  ch(id){ return this.state.chState[id]||{}; }
+  setCh(id,patch){ this.setState(s=>({ chState:{...s.chState,[id]:{...(s.chState[id]||{}),...patch}} })); }
+
+  // ---- input ----
+  getInput(id){ return this.state.inputs[id]||''; }
+  setInput(id,val){ this.setState(s=>({ inputs:{...s.inputs,[id]:val} })); }
+
+  // ---- messages ----
+  addMsgs(id,...msgs){
+    this.setState(s=>({ extraMsgs:{...s.extraMsgs,[id]:[...(s.extraMsgs[id]||[]),...msgs]} }),()=>this.scrollStream());
+  }
+  sendTyped(){
+    const id=this.state.active, text=this.getInput(id);
+    if(!text.trim()) return;
+    this.setInput(id,'');
+    const d=D[id];
+    this.addMsgs(id,
+      {t:'out',body:text},
+      {t:'in',name:d?.header?.title||'Assistant',icon:d?.header?.icon||'AI',it:d?.iconTint||'blue',body:'Thanks — I will look into that and get back to you shortly.'}
+    );
+  }
+
+  // ---- central action handler ----
+  handleAction(label){
+    const id=this.state.active, ch=this.ch(id);
+    // navigation map
+    const NAV={
+      'Request NDA first':'nda','Request NDA':'nda','Send NDA':'nda','Review NDA':'nda','NDA Gate':'nda',
+      'Open offer negotiation':'lena','Open offer chat':'lena','Contact counterparty':'lena',
+      'Review offer':'lena','Review interests':'lena','View Lena Castel offer':'lena','View offer':'lena',
+      'Ask legal provider':'ip','Legal review':'ip','Ask legal review':'ip','Hire legal provider':'ip',
+      'Open legal checklist':'ip','Equity terms':'ip','IP checklist':'ip','Legal provider':'ip',
+      'Hire FinancePro':'fn','Ask FinancePro':'fn',
+      'Move to Phase 3':'ai','Enter dashboard':'ai','Back to project':'ai',
+      'Start branding':'br','Start Phase 2':'br',
+      'View escrow status':'lp','Message provider':'lp','Move to Phase 4':'lp',
+      'Continue to Level Up':'lv','Level Up preview':'lv','Open dashboard':'lv',
+      'View investor matches':'sophie','View matches':'sophie','Open Entrepreneur Dashboard':'sophie',
+      'Contact support':'sp','View all tickets':'sp',
+      'Accept conversation':'marco',
+    };
+    if(NAV[label]){ this.sel(NAV[label]); return; }
+    switch(id){
+      case 'ai':
+        if(label==='Generate business plan'){
+          if(!ch.bp){ this.setCh(id,{bp:true});
+            this.addMsgs(id,{t:'out',body:'Generate the full business plan now.'},{t:'sys',body:'AI is generating your business plan…'},
+              {t:'in',name:'AI Project Coach',icon:'AI',it:'blue',body:'Business plan generated. Download it or share it with FinancePro for review.',cards:[{k:'file',icon:'DOC',it:'blue',title:'Business_Plan_Final.docx',cap:'AI generated · '+new Date().toLocaleDateString()}]},
+              {t:'nba',body:'Business plan is ready. Share it with FinancePro before Phase 4.'});
+          } else this.showToast('Business plan already generated ✓',C.green); return;
+        }
+        if(label==='Share with provider'){ this.sel('fn'); return; }
+        if(label==='Open forecast'){ this.addMsgs(id,{t:'in',name:'AI Project Coach',icon:'AI',it:'blue',body:'Here is the 3-year forecast.',cards:[{k:'file',icon:'PDF',it:'blue',title:'AutoInvoice_Forecast_3yr.pdf',cap:'AI generated · FinancePro reviewed'}]}); return; }
+        if(label==='View readiness'){ this.addMsgs(id,{t:'sys',tint:'blue',label:'READINESS BREAKDOWN',labelColor:C.blue,body:'Identity 100% · Branding 100% · Forecast ready · Business plan draft · Legal checklist missing · Pricing missing'}); return; }
+        if(label==='Ask AI why'){ this.addMsgs(id,{t:'out',body:'Why is the readiness only 62%?'},{t:'in',name:'AI Project Coach',icon:'AI',it:'blue',body:'Three items are incomplete: a confirmed pricing model, a finalised launch cost, and an approved legal and IP checklist. Complete those three to exceed 85% and unlock Phase 4.'}); return; }
+        if(label==='Move to Phase 4'){ this.sel('lp'); return; }
+        break;
+      case 'br':
+        if(label==='Approve branding'){
+          if(!ch.approved){ this.setCh(id,{approved:true});
+            this.addMsgs(id,{t:'out',body:'Branding approved. Releasing Milestone 1 payment.'},{t:'sys',tint:'green',body:'Branding approved. €480 released to BrandFlow Studio.'},
+              {t:'in',name:'BrandFlow Studio · M50 Provider',icon:'BR',it:'teal',body:'Payment received. Starting Milestone 2 — pitch deck cover and final brand guide. Delivery in 4 working days.'});
+          } else this.showToast('Branding already approved ✓',C.green); return;
+        }
+        if(label==='Request revision'){
+          if(!ch.revision){ this.setCh(id,{revision:true});
+            this.addMsgs(id,{t:'out',body:'Please revise the palette — push further into navy and electric blue, gold accent more restrained.'},{t:'in',name:'BrandFlow Studio · M50 Provider',icon:'BR',it:'teal',body:'Understood — deeper navy, stronger electric blue, gold as a single accent only. Revised concepts in 2 working days.'});
+          } else this.showToast('Revision already requested',C.amber); return;
+        }
+        if(label==='Download assets'){ this.showToast('Downloading AutoInvoice_Branding_v1.zip…',C.blue); return; }
+        if(label==='Release payment'){ if(ch.approved) this.showToast('€480 already released ✓',C.green); else this.addMsgs(id,{t:'sys',body:'Approve the branding delivery first before releasing payment.'}); return; }
+        if(label==='View brief'){ this.addMsgs(id,{t:'in',name:'BrandFlow Studio · M50 Provider',icon:'BR',it:'teal',body:'Original brief: Clean, premium, fintech-ready. Target: invoice-heavy SMEs.',cards:[{k:'file',icon:'PDF',it:'teal',title:'AutoInvoice_Brand_Brief.pdf',cap:'Original brief · Shared at project start'}]}); return; }
+        if(label==='Hire FinancePro'){ this.sel('fn'); return; }
+        if(label==='Move to Phase 3'){ this.sel('ai'); return; }
+        break;
+      case 'fn':
+        if(label==='Share revised forecast'){
+          if(!ch.shared){ this.setCh(id,{shared:true});
+            this.addMsgs(id,{t:'out',body:'Sharing revised forecast — CAC €65, operating cost €5,100.',cards:[{k:'file',icon:'PDF',it:'blue',title:'AutoInvoice_Forecast_3yr_v2.pdf',cap:'Revised · CAC €65 · Op cost €5,100'}]},
+              {t:'sys',body:'Revised forecast shared with FinancePro.'},{t:'in',name:'FinancePro · M50 Provider',icon:'FN',it:'blue',body:'Received. Updated assumptions look correct. Confirming final approval within 1 working day.'});
+          } else this.showToast('Revised forecast already shared ✓',C.green); return;
+        }
+        if(label==='Update assumptions'){ this.addMsgs(id,{t:'out',body:'Updating CAC to €65 and operating cost to €5,100.'},{t:'sys',body:'Assumptions updated. Forecast v2 ready to share.'}); return; }
+        if(label==='Approve forecast'){
+          if(ch.shared){ this.setCh(id,{approved:true}); this.addMsgs(id,{t:'sys',tint:'green',body:'Forecast approved by FinancePro. Marked as investor-ready.'},{t:'in',name:'FinancePro · M50 Provider',icon:'FN',it:'blue',body:'Forecast is now investor-ready. Share it through the NDA-protected data room.'}); }
+          else this.addMsgs(id,{t:'sys',body:'Share the revised forecast first before requesting approval.'});
+          return;
+        }
+        if(label==='Download review notes'){ this.showToast('Downloading Forecast_Review_Notes_FinancePro.pdf…',C.blue); return; }
+        if(label==='Ask question'){ this.setInput(id,'What is a realistic revenue target for Year 1 given these assumptions?'); return; }
+        break;
+      case 'ip':
+        if(label==='Request NDA'){
+          if(!ch.ndaDone){ this.setCh(id,{ndaDone:true});
+            this.addMsgs(id,{t:'out',body:'Please prepare the NDA for Lena Castel at Studio Vertex.'},
+              {t:'in',name:'IP Legal Expert · M50 Provider',icon:'IP',it:'amber',body:'NDA prepared. Use the NDA Gate channel to send it securely.',cards:[{k:'file',icon:'PDF',it:'amber',title:'AutoInvoice_NDA_v1.pdf',cap:'Ready to send via NDA Gate'}]},
+              {t:'nba',body:'Go to the NDA Gate channel to send the NDA to Lena Castel.'});
+          } else this.showToast('NDA already prepared ✓',C.green); return;
+        }
+        if(label==='Review IP checklist'){ this.addMsgs(id,{t:'out',body:'Show me the full IP checklist.'},{t:'in',name:'IP Legal Expert · M50 Provider',icon:'IP',it:'amber',body:'Current IP checklist:',cards:[{k:'stats',icon:'IP',it:'amber',title:'IP checklist',cap:'AutoInvoice · Current status',tiles:[['TRADEMARK','Not filed','amber'],['COPYRIGHT','Protected','green'],['NDA','Ready','blue'],['TRANSFER','Prepared','green']]}]}); return; }
+        if(label==='Prepare equity terms'){ this.addMsgs(id,{t:'out',body:'Prepare equity terms for a co-founder arrangement.'},{t:'in',name:'IP Legal Expert · M50 Provider',icon:'IP',it:'amber',body:'Equity terms prepared.',cards:[{k:'file',icon:'PDF',it:'amber',title:'AutoInvoice_Equity_Terms_v1.pdf',cap:'Co-founder equity · Ready for review'}]}); return; }
+        if(label==='Prepare transfer clause'){ this.addMsgs(id,{t:'out',body:'Prepare the IP transfer clause for a Full Buyout scenario.'},{t:'in',name:'IP Legal Expert · M50 Provider',icon:'IP',it:'amber',body:'Transfer clause prepared with advisor clause and non-compete exclusion.',cards:[{k:'file',icon:'PDF',it:'amber',title:'AutoInvoice_IP_Transfer_Clause.pdf',cap:'Full Buyout · Transfer clause'}]}); return; }
+        if(label==='Ask legal question'){ this.setInput(id,'What is the risk of sharing the business plan without an NDA?'); return; }
+        if(label==='Send NDA'){ this.sel('nda'); return; }
+        break;
+      case 'lp':
+        if(label==='Review deliverable') return;
+        if(label==='View proposal'){ this.addMsgs(id,{t:'in',name:'LandingPro · M50 Provider',icon:'LP',it:'teal',body:'Proposal: Landing page + copy, GTM plan, Analytics setup. €1,100. Two revisions included.',cards:[{k:'file',icon:'PDF',it:'teal',title:'LandingPro_Proposal_AutoInvoice.pdf',cap:'Accepted · Escrow funded'}]}); return; }
+        if(label==='View escrow'){ this.addMsgs(id,{t:'sys',body:'Escrow: €1,100 total · M1: €660 pending delivery · M2: €440 not started.'}); return; }
+        if(label==='View contract'){ this.addMsgs(id,{t:'in',name:'LandingPro · M50 Provider',icon:'LP',it:'teal',body:'Service contract for reference.',cards:[{k:'file',icon:'PDF',it:'teal',title:'LandingPro_ServiceContract.pdf',cap:'Signed · Escrow funded'}]}); return; }
+        if(label==='Send message'){ this.sendTyped(); return; }
+        break;
+      case 'mk':
+        if(label==='Accept conversation'){ this.sel('marco'); return; }
+        if(label==='Improve listing'){
+          if(!ch.improved){ this.setCh(id,{improved:true});
+            this.addMsgs(id,{t:'out',body:"Updating pitch: 'Automates invoice recovery for SMEs — reduces overdue payments by up to 40% in the first 90 days.'"},{t:'sys',tint:'green',body:'Listing pitch updated. New headline is live.'},{t:'in',name:'Marketplace',icon:'MK',it:'blue',body:'Great update — quantified outcome pitches convert significantly better.'});
+          } else this.showToast('Listing already improved ✓',C.green); return;
+        }
+        if(label==='Preview listing'){ this.addMsgs(id,{t:'in',name:'Marketplace',icon:'MK',it:'blue',body:'AutoInvoice preview:',cards:[{k:'stats',icon:'MK',it:'blue',title:'AutoInvoice — Marketplace',cap:'FinTech SaaS · Invoice recovery',tiles:[['STAGE','Seed-ready'],['SECTOR','FinTech SaaS'],['READINESS','78%'],['PRICE','Offer-based']]}]}); return; }
+        if(label==='Decline interest'){ this.addMsgs(id,{t:'out',body:'Declining this interest — not a fit at this stage.'},{t:'sys',body:'Interest declined. The entrepreneur has been notified.'}); return; }
+        break;
+      case 'lena':
+        if(label==='Counter offer'){ this.setInput(id,'I would like to discuss the offer structure before proceeding.'); return; }
+        if(label==='View full offer'){ this.showToast('Viewing full offer terms',C.blue); return; }
+        if(label==='Decline'){
+          if(!ch.declined){ this.setCh(id,{declined:true});
+            this.addMsgs(id,{t:'out',body:'I appreciate the offer but I am pursuing a different path for AutoInvoice.'},{t:'in',name:'Lena Castel · Studio Vertex',icon:'LC',it:'amber',body:'Understood — good luck with AutoInvoice, and reach out if plans change.'},{t:'sys',body:'Offer declined. Lena Castel notified. Your listing remains live.'});
+          } else this.showToast('Offer already declined',C.red); return;
+        }
+        break;
+      case 'nda':
+        if(label==='Send NDA'){
+          if(!ch.sent){ this.setCh(id,{sent:true});
+            this.addMsgs(id,{t:'out',body:'Sending the NDA to Lena Castel now.'},{t:'in',name:'NDA Gate',icon:'ND',it:'amber',body:'NDA sent to Lena Castel at Studio Vertex. Awaiting countersignature.',cards:[{k:'file',icon:'PDF',it:'amber',title:'AutoInvoice_NDA_Mutual_v2.pdf',cap:'Sent · Awaiting signature from Lena Castel'}]});
+          } else this.showToast('NDA already sent ✓',C.green); return;
+        }
+        if(label==='Review NDA'){ this.addMsgs(id,{t:'in',name:'NDA Gate',icon:'ND',it:'amber',body:'NDA for review.',cards:[{k:'file',icon:'PDF',it:'amber',title:'AutoInvoice_NDA_Mutual_v1.pdf',cap:'Standard mutual NDA · Ready to review'}]}); return; }
+        if(label==='Keep locked'){ this.addMsgs(id,{t:'sys',body:'Documents remain locked. No NDA sent. Project details are protected.'}); return; }
+        if(label==='View documents'){ this.addMsgs(id,{t:'in',name:'NDA Gate',icon:'ND',it:'green',body:'Data room unlocked for Lena Castel.',cards:[{k:'stats',icon:'ND',it:'green',title:'Data room',cap:'Post-NDA · Lena Castel',tiles:[['BUSINESS PLAN','Shared','teal'],['FORECAST','Shared','teal'],['IP FILES','Shared','teal'],['BRAND ASSETS','Shared','teal']]}]}); return; }
+        if(label==='Download executed NDA'){ this.showToast('Downloading AutoInvoice_NDA_Executed.pdf…',C.green); return; }
+        if(label==='Contact counterparty'){ this.sel('lena'); return; }
+        if(label==='Ask legal provider'){ this.sel('ip'); return; }
+        break;
+      case 'cf':
+        if(label==='Add seed funding'){
+          if(!ch.seed){ this.setCh(id,{seed:true});
+            this.addMsgs(id,{t:'out',body:'Adding seed funding: €350,000 target · €3.2M pre-money · 40% product, 30% GTM, 20% legal, 10% ops.'},{t:'sys',tint:'green',body:'Seed funding saved. Target: €350,000 · Pre-money: €3.2M'},
+              {t:'in',name:'Company Formation',icon:'CF',it:'blue',body:'Formation complete. Open the Level Up channel to become a Verified Entrepreneur.',cards:[{k:'file',icon:'PDF',it:'blue',title:'AutoInvoice_SeedFunding_Summary.pdf',cap:'€350k target · €3.2M pre-money'}]},
+              {t:'nba',body:'All steps complete. Open Level Up to transition to Verified Entrepreneur.'});
+          } else this.showToast('Seed funding already saved ✓',C.green); return;
+        }
+        if(label==='Open shareholder module'||label==='Shareholder module'){ this.addMsgs(id,{t:'in',name:'Company Formation',icon:'CF',it:'blue',body:'Shareholder module open.',cards:[{k:'stats',icon:'EQ',it:'blue',title:'Shareholders',cap:'AutoInvoice SAS',tiles:[['FOUNDER 1','72% · Tanvir'],['FOUNDER 2','13% · co-founder'],['ADVISOR POOL','5%'],['ESOP','10%']]}]}); return; }
+        if(label==='Download formation docs'||label==='Formation docs'){ this.showToast('Downloading Company_Formation_Checklist.pdf…',C.blue); return; }
+        if(label==='Hire legal provider'){ this.sel('ip'); return; }
+        break;
+      case 'lv':
+        if(label==='Confirm Level Up'){
+          if(!ch.leveled){ this.setCh(id,{leveled:true}); this.showToast('🎉 Level Up confirmed! You are now a Verified Entrepreneur.',C.green); }
+          else this.showToast('Already leveled up ✓',C.green); return;
+        }
+        if(label==='Download founder badge'||label==='Download badge'){ this.showToast('Downloading AutoInvoice_Founder_Badge.pdf… ★',C.amber); return; }
+        if(label==='See matchmaking score'){ this.addMsgs(id,{t:'in',name:'Level Up',icon:'★',it:'amber',body:'Top investor match:',cards:[{k:'stats',icon:'SC',it:'green',title:'Sophie Chen · Lumiere Capital',cap:'Seed · B2B SaaS · EU Focus',tiles:[['MATCH SCORE','94%','green'],['STAGE FIT','Seed','green'],['SECTOR FIT','FinTech SaaS','green'],['TICKET SIZE','€300k–€600k']]}]}); return; }
+        if(label==='Share milestone'){ this.showToast('Sharing milestone to your network…',C.green); return; }
+        break;
+      case 'sp':
+        if(label==='Open new ticket'){
+          if(!ch.newTicket){ this.setCh(id,{newTicket:true}); this.addMsgs(id,{t:'out',body:'Opening a new support ticket.'},{t:'in',name:'Support Team',icon:'SP',it:'gray',body:'New ticket created. Please describe your issue.',cards:[{k:'stats',icon:'SP',it:'gray',title:'Ticket #2842',cap:'New ticket · Open',tiles:[['STATUS','Open'],['PRIORITY','Medium'],['CREATED','Today'],['RESPONSE','Within 24h']]}]}); }
+          else this.showToast('Ticket #2842 already open',C.blue); return;
+        }
+        if(label==='Upload proof'){ this.addMsgs(id,{t:'sys',body:'Select a file to attach as evidence for your ticket.'}); return; }
+        if(label==='View ticket status'){ this.addMsgs(id,{t:'in',name:'Support Team',icon:'SP',it:'gray',body:'Ticket #2841: Resolved in 31 minutes. Legal checklist is now visible in your documents panel.'}); return; }
+        if(label==='Contact admin'){ this.addMsgs(id,{t:'out',body:'I need to speak with an admin directly about an urgent issue.'},{t:'in',name:'Support Team',icon:'SP',it:'gray',body:'Admin notified — joining within 2 hours. For urgent matters: admin@mondial.eco'}); return; }
+        if(label==='Close ticket'){ this.addMsgs(id,{t:'out',body:'Closing ticket #2841. Issue resolved.'},{t:'sys',tint:'green',body:'Ticket #2841 closed by user.'}); return; }
+        if(label==='Escrow dispute'){ this.addMsgs(id,{t:'out',body:'I need to raise an escrow dispute for a provider payment.'},{t:'in',name:'Support Team',icon:'SP',it:'gray',body:'Escrow dispute started. Describe the provider and milestone involved. Team will mediate within 48 hours.'}); return; }
+        if(label==='View all tickets'){ this.addMsgs(id,{t:'in',name:'Support Team',icon:'SP',it:'gray',body:'Recent tickets: #2841 Resolved · #2802 Resolved · #2771 Resolved. No open tickets.'}); return; }
+        break;
+      case 'marco':
+        if(label==='Accept 17% offer'){
+          if(!ch.accepted){ this.setCh(id,{accepted:true});
+            this.addMsgs(id,{t:'out',body:'Marco — I accept the 17% co-founder arrangement with €80,000 + €10,000 signing bonus. Let us proceed to the shareholder agreement.'},{t:'sys',tint:'green',body:'Co-founder offer accepted. Shareholder agreement preparation begins.'},{t:'in',name:'Marco Ferretti · Nexora Labs',icon:'MF',it:'blue',body:'Excellent! Shareholder agreement sent to both legal teams within 5 working days. Looking forward to building AutoInvoice together.'});
+          } else this.showToast('Co-founder offer already accepted ✓',C.green); return;
+        }
+        if(label==='Counter equity %'){ this.setInput(id,'Marco — I would like to counter at 15%. Given I am contributing the full IP, business plan, forecast, and brand, that split better reflects the asset contribution.'); return; }
+        if(label==='Request shareholder terms'){ this.addMsgs(id,{t:'out',body:'Can you share the draft shareholder terms for review?'},{t:'in',name:'Marco Ferretti · Nexora Labs',icon:'MF',it:'blue',body:'Sending the draft shareholder agreement to your legal provider now.',cards:[{k:'file',icon:'PDF',it:'blue',title:'AutoInvoice_Shareholder_Agreement_v1.pdf',cap:'Draft · Sent to IP Legal Expert'}]}); return; }
+        if(label==='Decline'){
+          if(!ch.declined){ this.setCh(id,{declined:true}); this.addMsgs(id,{t:'out',body:'Marco — I appreciate the proposal but I will be declining. Pursuing a different structure for AutoInvoice.'},{t:'in',name:'Marco Ferretti · Nexora Labs',icon:'MF',it:'blue',body:'No problem — good luck with AutoInvoice, and reach out if plans change.'}); }
+          else this.showToast('Offer already declined',C.red); return;
+        }
+        break;
+      case 'priya':
+        if(label==='Indicate interest'){
+          if(!ch.indicated){ this.setCh(id,{indicated:true});
+            this.addMsgs(id,{t:'out',body:'Priya — indicating formal interest in the €200,000 SAFE at €2.8M cap, 25% discount. Please proceed to IC.'},{t:'sys',tint:'teal',body:'Interest indicated. Priya Sharma will present to Arclight IC next week.'},{t:'in',name:'Priya Sharma · Arclight Ventures',icon:'PS',it:'teal',body:'Confirmed — presenting to IC on Thursday. IC outcome and updated term sheet by end of next week. Very excited about this one.'});
+          } else this.showToast('Interest already indicated ✓',C.teal); return;
+        }
+        if(label==='Counter SAFE terms'){ this.setInput(id,'Priya — I would like to counter the valuation cap. I believe €3.2M better reflects current traction and IP value.'); return; }
+        if(label==='Request term sheet'){ this.addMsgs(id,{t:'out',body:'Could you share a draft term sheet ahead of IC for parallel legal review?'},{t:'in',name:'Priya Sharma · Arclight Ventures',icon:'PS',it:'teal',body:'Happy to — sending draft now. Subject to IC approval.',cards:[{k:'file',icon:'PDF',it:'teal',title:'Arclight_SAFE_Draft_AutoInvoice.pdf',cap:'Draft · Pending IC approval'}]}); return; }
+        if(label==='Schedule call'){ this.addMsgs(id,{t:'out',body:'Could we schedule a call to discuss terms before IC?'},{t:'in',name:'Priya Sharma · Arclight Ventures',icon:'PS',it:'teal',body:'Free Thursday 10am or Friday 2pm CET. Which works for you?'}); return; }
+        break;
+      case 'sophie':
+        if(label==='Accept term sheet'){
+          if(!ch.accepted){ this.setCh(id,{accepted:true});
+            this.addMsgs(id,{t:'out',body:'Sophie — accepting the seed term sheet. €450,000 for 12.3% at €3.2M pre-money, information rights for 12 months.'},{t:'sys',tint:'green',confetti:true,body:'Seed term sheet accepted. Round closing started. Estimated close: 4–6 weeks. Congratulations!'},{t:'in',name:'Sophie Chen · Lumiere Capital',icon:'SC',it:'green',body:'Brilliant! Engaging legal team today. Closing documents with you within 2 weeks. Welcome to the Lumiere Capital portfolio — looking forward to building AutoInvoice together.'});
+          } else this.showToast('Term sheet accepted — closing in progress ✓',C.green); return;
+        }
+        if(label==='Counter valuation'){ this.setInput(id,'Sophie — I would like to counter the pre-money valuation. Based on the approved forecast and IP assets, €3.8M better reflects the current value.'); return; }
+        if(label==='Request updated term sheet'){ this.addMsgs(id,{t:'out',body:'Could you send the updated term sheet with the revised information rights clause?'},{t:'in',name:'Sophie Chen · Lumiere Capital',icon:'SC',it:'green',body:'Sending updated term sheet now.',cards:[{k:'file',icon:'PDF',it:'green',title:'Lumiere_TermSheet_AutoInvoice_v2.pdf',cap:'Updated · Info rights (12 mo) · €3.2M pre-money'}]}); return; }
+        if(label==='Schedule close call'){ this.addMsgs(id,{t:'out',body:'Can we schedule the closing call?'},{t:'in',name:'Sophie Chen · Lumiere Capital',icon:'SC',it:'green',body:'Free next Tuesday 2pm or Wednesday 10am CET. Legal team and CFO will join. Which works?'}); return; }
+        break;
+    }
+    // fallback: fill input
+    this.setInput(id, label);
+  }
+
+  // ---------- helpers ----------
+  iconBadge(text, tint, size, rad){
+    const t = TINT[tint] || TINT.gray;
+    return React.createElement('div', { style:{
+      width:size, height:size, minWidth:size, borderRadius:rad, background:t.bg, color:t.fg,
+      display:'flex', alignItems:'center', justifyContent:'center', fontFamily:FM, fontWeight:600,
+      fontSize: size>=36?13: size>=32?11:11, letterSpacing:'.3px'
+    }}, text);
+  }
+  pill(text, tint){
+    const t = TINT[tint] || TINT.gray;
+    return React.createElement('span', { style:{
+      background:t.bg, color:t.fg, fontFamily:FB, fontWeight:600, fontSize:11.5,
+      padding:'4px 10px', borderRadius:999, whiteSpace:'nowrap', lineHeight:1.1
+    }}, text);
+  }
+  statusPill(text, tint){
+    const t = TINT[tint] || TINT.gray;
+    return React.createElement('span', { style:{
+      background:t.bg, color:t.fg, fontFamily:FB, fontWeight:600, fontSize:11,
+      padding:'3px 9px', borderRadius:999, whiteSpace:'nowrap'
+    }}, text);
+  }
+
+  // ---------- LEFT RAIL ----------
+  buildLeftRail(){
+    const h = React.createElement;
+    const active = this.state.active;
+    const groups = RAIL.map((grp, gi) => {
+      const items = grp.items.map((it) => {
+        const isActive = it.id === active;
+        const badgeEl = it.badge ? (
+          it.badge === 'check'
+            ? h('span', { style:{ minWidth:18, height:18, borderRadius:999, background:C.greenT, color:C.green, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, padding:'0 5px' } }, '✓')
+            : h('span', { style:{ minWidth:18, height:18, borderRadius:999, padding:'0 5px',
+                background: isActive ? '#fff' : (it.amberBadge ? C.amberT : C.s2),
+                color: isActive ? C.blue : (it.amberBadge ? C.amber : C.mut),
+                display:'flex', alignItems:'center', justifyContent:'center', fontFamily:FB, fontWeight:700, fontSize:10 } }, it.badge)
+        ) : null;
+        return h('button', {
+          key: it.id, onClick: () => this.sel(it.id),
+          style:{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:9, borderRadius:10,
+            border:'none', cursor:'pointer', textAlign:'left', marginBottom:2,
+            background: isActive ? C.blueT : 'transparent', transition:'background .12s' },
+          onMouseEnter: e => { if(!isActive) e.currentTarget.style.background = C.s1; },
+          onMouseLeave: e => { if(!isActive) e.currentTarget.style.background = 'transparent'; }
+        }, [
+          h('div', { key:'ic', style:{ width:32, height:32, minWidth:32, borderRadius:9,
+            background: isActive ? C.blue : C.s2, color: isActive ? '#fff' : C.mut,
+            display:'flex', alignItems:'center', justifyContent:'center', fontFamily:FM, fontWeight:600, fontSize:11 } }, it.icon),
+          h('div', { key:'tx', style:{ flex:1, minWidth:0 } }, [
+            h('div', { key:'n', style:{ fontFamily:FB, fontWeight:600, fontSize:13, color:C.tx, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' } }, it.name),
+            h('div', { key:'p', style:{ fontFamily:FB, fontSize:12, color: it.amberPrev?C.amber:C.mut, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', marginTop:1 } }, it.prev),
+          ]),
+          badgeEl
+        ]);
+      });
+      return h('div', { key:gi, style:{ marginBottom:2 } }, [
+        h('div', { key:'l', style:{ fontFamily:FM, fontSize:10, textTransform:'uppercase', letterSpacing:'1px', color:C.faint, margin:'14px 6px 6px' } }, grp.g),
+        ...items
+      ]);
+    });
+
+    return h('div', { style:{ width:284, minWidth:284, height:'100%', borderRight:`1px solid ${C.line}`, display:'flex', flexDirection:'column', background:'#fff' } }, [
+      h('div', { key:'top', style:{ padding:'18px 18px 12px' } }, [
+        h('div', { key:'brand', style:{ display:'flex', alignItems:'center', gap:8, marginBottom:14 } }, [
+          h('span', { key:'dot', style:{ width:7, height:7, borderRadius:999, background:C.green } }),
+          h('span', { key:'t', style:{ fontFamily:FD, fontWeight:700, fontSize:15, color:C.tx } }, 'Messenger'),
+        ]),
+        h('div', { key:'creator', style:{ display:'flex', alignItems:'center', gap:10, padding:11, background:C.s1, border:`1px solid ${C.line}`, borderRadius:12, marginBottom:12 } }, [
+          h('div', { key:'av', style:{ width:36, height:36, minWidth:36, borderRadius:10, background:C.blueT, color:C.ink, display:'flex', alignItems:'center', justifyContent:'center', fontFamily:FB, fontWeight:700, fontSize:14 } }, 'TA'),
+          h('div', { key:'i', style:{ flex:1, minWidth:0 } }, [
+            h('div', { key:'n', style:{ fontFamily:FB, fontWeight:600, fontSize:13.5, color:C.tx } }, 'Tanvir Ahmed'),
+            h('div', { key:'r', style:{ display:'flex', alignItems:'center', gap:6, marginTop:2 } }, [
+              h('span', { key:'d', style:{ width:6, height:6, borderRadius:999, background:C.green } }),
+              h('span', { key:'t', style:{ fontFamily:FB, fontSize:12, color:C.mut } }, 'Creator · Verified'),
+            ]),
+          ]),
+        ]),
+        h('input', { key:'s', placeholder:'Search conversations, files, deals', readOnly:true, style:{
+          width:'100%', border:`1px solid ${C.line}`, borderRadius:10, background:C.s1, padding:'9px 11px',
+          fontFamily:FB, fontSize:13, color:C.tx, outline:'none' } }),
+      ]),
+      h('div', { key:'list', style:{ flex:1, overflowY:'auto', padding:'0 12px 16px' } }, groups),
+    ]);
+  }
+
+  // ---------- CENTER HEADER ----------
+  buildHeader(d){
+    const h = React.createElement;
+    const hd = d.header;
+    const rightOpen = this.state.rightOpen;
+    return h('div', { style:{ height:64, minHeight:64, display:'flex', alignItems:'center', gap:13, padding:'0 18px', borderBottom:`1px solid ${C.line}` } }, [
+      this.iconBadge(hd.icon, hd.headerIconTint || d.iconTint, 38, 11),
+      h('div', { key:'t', style:{ flex:1, minWidth:0 } }, [
+        h('div', { key:'ti', style:{ fontFamily:FD, fontWeight:700, fontSize:18, color:C.tx, lineHeight:1.1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' } }, hd.title),
+        h('div', { key:'m', style:{ fontFamily:FB, fontSize:12, color:C.mut, marginTop:3, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' } }, hd.meta),
+      ]),
+      h('div', { key:'p', style:{ display:'flex', gap:6, flexShrink:0 } }, hd.pills.map((p,i)=> h('span',{key:i},[this.pill(p[0],p[1])]))),
+      h('button', { key:'tog', title: rightOpen ? 'Hide context panel' : 'Show context panel',
+        onClick: () => this.toggleRight(),
+        style:{ marginLeft:6, width:34, height:34, minWidth:34, borderRadius:9, border:`1px solid ${C.line}`,
+          background: rightOpen ? C.blueT : '#fff', cursor:'pointer',
+          display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, transition:'background .15s' },
+        onMouseEnter: e => e.currentTarget.style.background = rightOpen ? C.blueT : C.s1,
+        onMouseLeave: e => e.currentTarget.style.background = rightOpen ? C.blueT : '#fff',
+      },
+        h('svg', { width:16, height:16, viewBox:'0 0 24 24', fill:'none' }, [
+          h('rect', { key:'a', x:3, y:3, width:18, height:18, rx:3, stroke: rightOpen?C.ink:C.mut, strokeWidth:1.8, fill:'none' }),
+          h('line', { key:'b', x1:16, y1:3, x2:16, y2:21, stroke: rightOpen?C.ink:C.mut, strokeWidth:1.8 }),
+          rightOpen
+            ? h('path', { key:'c', d:'M19 9l-2 3 2 3', stroke:C.ink, strokeWidth:1.8, strokeLinecap:'round', fill:'none' })
+            : h('path', { key:'c', d:'M13 9l2 3-2 3', stroke:C.mut, strokeWidth:1.8, strokeLinecap:'round', fill:'none' }),
+        ])
+      ),
+    ]);
+  }
+
+  // ---------- PHASE STRIP ----------
+  buildPhaseStrip(d){
+    const h = React.createElement;
+    const chips = d.phases.map((p,i)=>{
+      const [label, st] = p;
+      let bg, fg, sym;
+      if(st==='done'){ bg=C.greenT; fg=C.green; sym='✓'; }
+      else if(st==='active'){ bg=C.blue; fg='#fff'; sym='●'; }
+      else if(st==='gold'){ bg=C.amberT; fg=C.amber; sym='✓'; }
+      else { bg=C.s1; fg=C.faint; sym='○'; }
+      return h('div', { key:i, style:{ display:'flex', alignItems:'center', gap:6, background:bg, color:fg,
+        padding:'6px 12px', borderRadius:999, fontFamily:FB, fontWeight:600, fontSize:12.5, whiteSpace:'nowrap', flexShrink:0 } }, [
+        h('span', { key:'s', style:{ fontSize: st==='active'?9:11 } }, sym),
+        h('span', { key:'l' }, label),
+      ]);
+    });
+    return h('div', { style:{ display:'flex', gap:8, padding:'11px 18px', borderBottom:`1px solid ${C.line}`, overflowX:'auto' } }, chips);
+  }
+
+  // ---------- CARDS ----------
+  card(c){
+    const h = React.createElement;
+    if(c.k==='file') return this.fileCard(c);
+    if(c.k==='stats') return this.statsCard(c);
+    if(c.k==='milestone') return this.milestoneCard(c);
+    if(c.k==='offer') return this.offerCard(c);
+    if(c.k==='nda') return this.ndaCard(c);
+    if(c.k==='interest') return this.interestCard(c);
+    if(c.k==='levelup') return this.levelupCard(c);
+    return null;
+  }
+  cardHeader(icon, it, title, cap, statusPill){
+    const h = React.createElement;
+    return h('div', { style:{ display:'flex', alignItems:'center', gap:10 } }, [
+      this.iconBadge(icon, it, 30, 9),
+      h('div', { key:'t', style:{ flex:1, minWidth:0 } }, [
+        h('div', { key:'ti', style:{ fontFamily:FB, fontWeight:600, fontSize:13, color:C.tx } }, title),
+        cap ? h('div', { key:'c', style:{ fontFamily:FB, fontSize:11, color:C.mut, marginTop:1 } }, cap) : null,
+      ]),
+      statusPill ? h('span',{key:'sp'},[this.statusPill(statusPill[0], statusPill[1])]) : null,
+    ]);
+  }
+  shell(children, extra){
+    const h = React.createElement;
+    return h('div', { style: Object.assign({ border:`1px solid ${C.line}`, borderRadius:12, background:'#fff', padding:13, marginTop:10, maxWidth:'82%' }, extra||{}) }, children);
+  }
+  fileCard(c){ return this.shell([this.cardHeader(c.icon, c.it, c.title, c.cap)]); }
+  statsCard(c){
+    const h = React.createElement;
+    const tiles = c.tiles.map((t,i)=> h('div', { key:i, style:{ background:C.s1, border:`1px solid ${C.line}`, borderRadius:10, padding:9 } }, [
+      h('div', { key:'l', style:{ fontFamily:FM, fontSize:10, textTransform:'uppercase', letterSpacing:'.5px', color:C.mut } }, t[0]),
+      h('div', { key:'v', style:{ fontFamily:FB, fontWeight:700, fontSize:14, marginTop:4, color: t[2]?(TINT[t[2]].fg):C.tx } }, t[1]),
+    ]));
+    return this.shell([
+      this.cardHeader(c.icon, c.it, c.title, c.cap),
+      h('div', { key:'g', style:{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginTop:11 } }, tiles),
+    ]);
+  }
+  kvRows(rows){
+    const h = React.createElement;
+    return rows.map((r,i)=> h('div', { key:i, style:{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'7px 0', borderTop: i?`1px solid ${C.line}`:'none', gap:12 } }, [
+      h('span', { key:'k', style:{ fontFamily:FB, fontSize:13, color:C.mut } }, r[0]),
+      r[2]==='money'
+        ? h('span', { key:'v', style:{ fontFamily:FM, fontWeight:600, fontSize:13, color:C.ink, background:C.blueT, padding:'2px 9px', borderRadius:7 } }, r[1])
+        : h('span', { key:'v', style:{ fontFamily:FB, fontWeight:600, fontSize:13, color:C.tx, textAlign:'right' } }, r[1]),
+    ]));
+  }
+  btnRow(btns){
+    const h = React.createElement;
+    return h('div', { style:{ display:'flex', gap:8, marginTop:12, flexWrap:'wrap' } }, btns.map((b,i)=> this.button(b[0], b[1], i, ()=>this.handleAction(b[0]))));
+  }
+  button(label, variant, key, onClick){
+    const h = React.createElement;
+    let s = { fontFamily:FB, fontWeight:700, fontSize:13, padding:'10px 14px', borderRadius:12, border:'none', cursor:'pointer', whiteSpace:'nowrap' };
+    if(variant==='blue'){ s.background=C.blue; s.color='#fff'; }
+    else if(variant==='green'){ s.background=C.green; s.color='#fff'; }
+    else if(variant==='teal'){ s.background=C.teal; s.color='#fff'; }
+    else if(variant==='amber'){ s.background=C.amber; s.color='#fff'; }
+    else if(variant==='red'){ s.background=C.red; s.color='#fff'; }
+    else if(variant==='ghost'){ s.background='#fff'; s.border=`1px solid ${C.line}`; s.color=C.tx; s.fontWeight=600; s.fontSize=12; }
+    else if(variant==='ghostRed'){ s.background='#fff'; s.border=`1px solid ${C.line}`; s.color=C.red; s.fontWeight=600; s.fontSize=12; }
+    else if(variant==='disabled'){ s.background=C.s2; s.color=C.faint; s.cursor='not-allowed'; }
+    const handler = variant==='disabled' ? undefined : (onClick || (()=>this.handleAction(label)));
+    return h('button', { key, style:s, onClick:handler }, label);
+  }
+  milestoneCard(c){
+    const h = React.createElement;
+    return this.shell([
+      this.cardHeader(c.icon, c.it, c.title, null, c.status),
+      h('div', { key:'kv', style:{ marginTop:10 } }, this.kvRows(c.rows)),
+      this.btnRow(c.btns),
+    ]);
+  }
+  offerCard(c){
+    const h = React.createElement;
+    return this.shell([
+      this.cardHeader(c.icon, c.it, c.title, c.cap, c.status),
+      h('div', { key:'kv', style:{ marginTop:11 } }, this.kvRows(c.rows)),
+      this.btnRow(c.btns),
+      c.warn ? h('div', { key:'w', style:{ background:C.redT, color:C.red, borderRadius:8, padding:10, marginTop:12, fontFamily:FB, fontSize:12, lineHeight:1.45 } }, c.warn) : null,
+      c.note ? h('div', { key:'n', style:{ background:C.blueT, color:C.mut, borderRadius:8, padding:10, marginTop:12, fontFamily:FB, fontSize:12, lineHeight:1.45 } }, c.note) : null,
+    ], { maxWidth:'88%' });
+  }
+  ndaCard(c){
+    const h = React.createElement;
+    const col = (label, labelColor, items, dotColor, muted) => h('div', { style:{ flex:1, padding:'0 4px' } }, [
+      h('div', { key:'l', style:{ fontFamily:FM, fontSize:10, textTransform:'uppercase', letterSpacing:'.5px', color:labelColor, marginBottom:9 } }, label),
+      ...items.map((t,i)=> h('div', { key:i, style:{ display:'flex', alignItems:'center', gap:8, padding:'5px 0' } }, [
+        h('span', { key:'d', style:{ width:5, height:5, minWidth:5, borderRadius:999, background:dotColor } }),
+        h('span', { key:'t', style:{ fontFamily:FB, fontSize:12, color: muted?C.faint:C.tx } }, t),
+      ])),
+    ]);
+    return this.shell([
+      this.cardHeader(c.icon, c.it, c.title, c.cap),
+      h('div', { key:'cols', style:{ display:'flex', marginTop:12, gap:0 } }, [
+        col('VISIBLE NOW', C.green, c.visible, C.green, false),
+        h('div', { key:'div', style:{ width:1, background:C.line, margin:'0 4px' } }),
+        col('LOCKED UNTIL NDA', C.amber, c.locked, C.strong, true),
+      ]),
+    ], { maxWidth:'88%' });
+  }
+  interestCard(c){
+    const h = React.createElement;
+    return h('div', { style:{ border:`1px solid ${C.line}`, borderRadius:12, background:'#fff', padding:12, marginTop:8 } }, [
+      this.cardHeader(c.icon, 'blue', c.title, null, c.status),
+      h('div', { key:'b', style:{ fontFamily:FB, fontSize:12.5, color:C.tx, lineHeight:1.5, marginTop:9 } }, c.body),
+      this.btnRow(c.btns),
+    ]);
+  }
+  levelupCard(c){
+    const h = React.createElement;
+    const tiles = c.tiles.map((t,i)=> h('div', { key:i, style:{ background:C.s1, border:`1px solid ${C.line}`, borderRadius:10, padding:9 } }, [
+      h('div', { key:'l', style:{ fontFamily:FM, fontSize:10, textTransform:'uppercase', letterSpacing:'.5px', color:C.mut } }, t[0]),
+      h('div', { key:'v', style:{ fontFamily:FB, fontWeight:700, fontSize:14, marginTop:4, color:C.tx } }, t[1]),
+    ]));
+    return this.shell([
+      this.cardHeader(c.icon, c.it, c.title, c.cap),
+      h('div', { key:'g', style:{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginTop:11 } }, tiles),
+      h('button', { key:'cta', onClick:()=>this.handleAction(c.cta), style:{ width:'100%', height:44, marginTop:12, background:C.green, color:'#fff', border:'none', borderRadius:12, fontFamily:FD, fontWeight:700, fontSize:15, cursor:'pointer' } }, c.cta),
+      h('div', { key:'n', style:{ fontFamily:FB, fontSize:12, color:C.mut, textAlign:'center', marginTop:9, lineHeight:1.4 } }, c.note),
+    ], { maxWidth:'82%' });
+  }
+
+  // ---------- MESSAGE ----------
+  message(m, i){
+    const h = React.createElement;
+    if(m.t==='div') return h('div', { key:i, style:{ textAlign:'center', fontFamily:FM, fontSize:10.5, textTransform:'uppercase', letterSpacing:'.5px', color:C.faint, padding:'4px 0' } }, m.x);
+    if(m.t==='sys' || m.t==='nba'){
+      const isNba = m.t==='nba';
+      let bg = C.s1, labelText = m.label || 'SYSTEM', labelColor = C.faint, bodyColor = C.tx;
+      if(isNba){ bg = m.tint==='green'?C.greenT:C.blueT; labelText='NEXT BEST ACTION'; labelColor = m.tint==='green'?C.green:C.blue; }
+      else if(m.tint==='blue'){ bg=C.blueT; labelColor=m.labelColor||C.blue; }
+      else if(m.tint==='green'){ bg=C.greenT; labelColor=C.green; }
+      const style = { background:bg, borderRadius:12, padding:'11px 13px', border: (m.tint||isNba)?'1px solid transparent':`1px solid ${C.line}` };
+      if(m.confetti){ style.backgroundImage = 'radial-gradient(circle, rgba(60,97,221,.18) 1.2px, transparent 1.2px), radial-gradient(circle, rgba(21,122,85,.18) 1.2px, transparent 1.2px), radial-gradient(circle, rgba(150,95,17,.18) 1.2px, transparent 1.2px)'; style.backgroundSize='22px 22px, 30px 30px, 26px 26px'; style.backgroundPosition='0 0, 11px 9px, 6px 15px'; }
+      return h('div', { key:i, style }, [
+        h('div', { key:'l', style:{ fontFamily:FM, fontSize:9.5, textTransform:'uppercase', letterSpacing:'.6px', color:labelColor, marginBottom:4, fontWeight:600 } }, labelText),
+        h('div', { key:'b', style:{ fontFamily:FB, fontSize:13, color:bodyColor, lineHeight:1.5, fontWeight: m.bold?600:400, whiteSpace:'pre-line' } }, m.body),
+      ]);
+    }
+    if(m.t==='out'){
+      return h('div', { key:i, style:{ display:'flex', justifyContent:'flex-end' } }, [
+        h('div', { style:{ maxWidth:'78%', background:C.blue, color:'#fff', borderRadius:14, borderBottomRightRadius:4, padding:'10px 14px', fontFamily:FB, fontSize:13.5, lineHeight:1.5, whiteSpace:'pre-line' } }, m.body),
+      ]);
+    }
+    // incoming
+    const cards = (m.cards||[]).map((c,ci)=> h('div', { key:ci }, [this.card(c)]));
+    return h('div', { key:i, style:{ display:'flex', flexDirection:'column', alignItems:'flex-start', maxWidth:'82%' } }, [
+      h('div', { key:'n', style:{ fontFamily:FB, fontSize:11, color:C.faint, margin:'0 0 4px 2px' } }, m.name),
+      m.noBubble ? null : h('div', { key:'b', style:{ background:C.s1, border:`1px solid ${C.line}`, borderRadius:14, borderBottomLeftRadius:4, padding:'11px 14px', fontFamily:FB, fontSize:13.5, color:C.tx, lineHeight:1.55, whiteSpace:'pre-line' } }, m.body),
+      ...cards,
+    ]);
+  }
+
+  buildStream(d){
+    const h = React.createElement;
+    const extra = this.state.extraMsgs[this.state.active] || [];
+    const all = [...d.stream, ...extra];
+    return h('div', { 'data-stream':'1', style:{ flex:1, minHeight:0, overflowY:'auto', padding:22, display:'flex', flexDirection:'column', gap:14 } },
+      all.map((m,i)=> this.message(m,i)));
+  }
+
+  // ---------- COMPOSER ----------
+  buildComposer(d){
+    const h = React.createElement;
+    const co = d.composer;
+    const id = this.state.active;
+    const primaryDisabled = co.pc==='disabled';
+    return h('div', { style:{ borderTop:`1px solid ${C.line}`, padding:'14px 18px', background:'#fff' } }, [
+      h('div', { key:'inrow', style:{ display:'flex', alignItems:'center', gap:9, marginBottom:11 } }, [
+        h('input', { key:'in', placeholder:co.ph,
+          value: this.getInput(id),
+          onChange: e => this.setInput(id, e.target.value),
+          onKeyDown: e => { if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); this.sendTyped(); } },
+          style:{ flex:1, minWidth:0, border:`1px solid ${C.line}`, borderRadius:12, background:C.s1, padding:'12px 14px', fontFamily:FB, fontSize:13.5, color:C.tx, outline:'none' } }),
+        h('button', { key:'send', title:'Send', onClick:()=>this.sendTyped(),
+          style:{ width:42, height:42, minWidth:42, borderRadius:12, background:C.blue, border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 },
+          onMouseEnter: e => e.currentTarget.style.background = C.ink,
+          onMouseLeave: e => e.currentTarget.style.background = C.blue },
+          h('svg', { key:'svg', width:18, height:18, viewBox:'0 0 24 24', fill:'none' }, [
+            h('path', { key:'p', d:'M3.4 20.4 21 12 3.4 3.6 3.4 10.2 15 12 3.4 13.8z', fill:'#fff' })
+          ])),
+      ]),
+      h('div', { key:'row', style:{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' } }, [
+        this.button(co.primary, primaryDisabled?'disabled':co.pc, 'p', primaryDisabled ? undefined : ()=>this.handleAction(co.primary)),
+        ...co.ghosts.map((g,i)=> h('button', { key:i, onClick:()=>this.handleAction(g),
+          style:{ fontFamily:FB, fontWeight:600, fontSize:12, color:C.tx, background:'#fff', border:`1px solid ${C.line}`, borderRadius:9, padding:'7px 11px', cursor:'pointer' } }, g)),
+      ]),
+    ]);
+  }
+
+  // ---------- RIGHT PANEL ----------
+  buildRight(d){
+    const h = React.createElement;
+    const r = d.right;
+    const pct = r.readiness;
+    const naGreen = r.greenNa;
+    const sections = r.sections.map((sec,si)=> h('div', { key:si, style:{ marginBottom:20 } }, [
+      h('div', { key:'l', style:{ fontFamily:FM, fontSize:10, textTransform:'uppercase', letterSpacing:'1px', color:C.faint, marginBottom:8 } }, sec.label),
+      ...sec.rows.map((row,ri)=> h('div', { key:ri, style:{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'6px 0', borderTop: ri?`1px solid ${C.line}`:'none', gap:10 } }, [
+        h('span', { key:'k', style:{ fontFamily:FB, fontSize:12.5, color:C.mut } }, row[0]),
+        row[2]
+          ? h('span', { key:'v' }, [this.statusPill(row[1], row[2])])
+          : h('span', { key:'v', style:{ fontFamily:FB, fontWeight:600, fontSize:12.5, color:C.tx, textAlign:'right' } }, row[1]),
+      ])),
+    ]));
+
+    const smart = h('div', { style:{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 } }, r.smart.map((s,i)=> h('button', { key:i, onClick:()=>this.handleAction(s), style:{ fontFamily:FB, fontWeight:600, fontSize:12, color:C.tx, background:'#fff', border:`1px solid ${C.line}`, borderRadius:10, padding:'10px 8px', cursor:'pointer', lineHeight:1.25 } }, s)));
+
+    const ctaVariant = r.na.cc || 'blue';
+    return h('div', { style:{ width:320, minWidth:320, height:'100%', borderLeft:`1px solid ${C.line}`, overflowY:'auto', padding:18, background:'#fff' } }, [
+      // readiness
+      h('div', { key:'rd', style:{ marginBottom:18 } }, [
+        h('div', { key:'l', style:{ fontFamily:FM, fontSize:10, textTransform:'uppercase', letterSpacing:'1px', color:C.faint, marginBottom:8 } }, 'READINESS'),
+        h('div', { key:'n', style:{ display:'flex', alignItems:'baseline', gap:8 } }, [
+          h('span', { key:'p', style:{ fontFamily:FD, fontWeight:800, fontSize:30, color: pct===100?C.green:C.tx } }, pct+'%'),
+          h('span', { key:'t', style:{ fontFamily:FB, fontSize:12, color:C.mut } }, 'project ready'),
+        ]),
+        h('div', { key:'bar', style:{ height:7, background:C.s2, borderRadius:999, marginTop:9, overflow:'hidden' } }, [
+          h('div', { key:'f', style:{ height:'100%', width:pct+'%', background: pct===100?C.green:C.blue, borderRadius:999 } }),
+        ]),
+      ]),
+      // next action card
+      h('div', { key:'na', style:{ border:`1px solid ${C.line}`, borderRadius:14, overflow:'hidden', marginBottom:20 } }, [
+        h('div', { key:'hb', style:{ background: naGreen?C.green:C.blue, color:'#fff', fontFamily:FM, fontSize:10, fontWeight:600, letterSpacing:'.6px', padding:'7px 13px' } }, r.na.header || 'NEXT ACTION'),
+        h('div', { key:'bd', style:{ padding:13 } }, [
+          h('div', { key:'t', style:{ fontFamily:FB, fontSize:13, color:C.tx, lineHeight:1.5, marginBottom:11 } }, r.na.body),
+          h('button', { key:'c', onClick:()=>this.handleAction(r.na.cta), style:{ width:'100%', padding:'11px', border:'none', borderRadius:12, cursor:'pointer', fontFamily:FB, fontWeight:700, fontSize:13,
+            background: ctaVariant==='green'?C.green: ctaVariant==='amber'?C.amber: C.blue, color:'#fff' } }, r.na.cta),
+        ]),
+      ]),
+      ...sections,
+      h('div', { key:'sm', style:{ marginBottom:4 } }, [
+        h('div', { key:'l', style:{ fontFamily:FM, fontSize:10, textTransform:'uppercase', letterSpacing:'1px', color:C.faint, marginBottom:8 } }, 'SMART ACTIONS'),
+        smart,
+      ]),
+    ]);
+  }
+
+  renderVals(){
+    const h = React.createElement;
+    const d = D[this.state.active] || D.ai;
+    const t = this.state.toast;
+    const toast = t ? h('div', { style:{
+      position:'fixed', bottom:28, left:'50%', transform:'translateX(-50%)',
+      background: t.color, color:'#fff', fontFamily:FB, fontWeight:600, fontSize:13.5,
+      padding:'12px 22px', borderRadius:12, zIndex:9999,
+      boxShadow:'0 8px 24px rgba(0,0,0,.18)', whiteSpace:'nowrap',
+      animation:'none', pointerEvents:'none'
+    }}, t.msg) : null;
+    return {
+      toast,
+      leftRail: this.buildLeftRail(),
+      centerHeader: this.buildHeader(d),
+      messageStream: this.buildStream(d),
+      composer: this.buildComposer(d),
+      rightPanel: this.state.rightOpen ? this.buildRight(d) : null,
+    };
+  }
+}
+</script>
+</body>
+</html>

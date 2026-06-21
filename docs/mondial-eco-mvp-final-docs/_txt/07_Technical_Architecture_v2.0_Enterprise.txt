@@ -1,0 +1,200 @@
+07_Technical_Architecture_v2.0 (Enterprise Specification)
+Executive Summary
+This document defines the engineering foundation of Mondial.eco. It specifies the system architecture, infrastructure, data architecture, security model, deployment strategy and scalability requirements.
+Technology Stack
+Frontend:
+- Next.js
+- Tailwind CSS
+- TypeScript
+
+Backend:
+- Node.js
+- NestJS/Express
+
+Database:
+- MongoDB
+
+Caching:
+- Redis
+
+AI:
+- OpenRouter
+- OpenAI
+- Anthropic
+System Architecture
+Layers:
+1. Presentation Layer
+2. API Layer
+3. Business Logic Layer
+4. AI Service Layer
+5. Data Layer
+6. Infrastructure Layer
+Frontend Architecture
+Modules:
+- Authentication
+- Creator Portal
+- Entrepreneur Portal
+- Investor Portal
+- Service Provider Portal
+- Admin Dashboard
+
+Requirements:
+- Mobile First
+- Responsive
+- Accessibility Ready
+Backend Architecture
+Services:
+- Auth Service
+- User Intelligence Service
+- Creator Service
+- Entrepreneur Service
+- Investor Service
+- Marketplace Service
+- AI Service
+- Notification Service
+Authentication & Authorization
+Authentication:
+- Email
+- Social Login
+- MFA (future)
+
+Authorization:
+- RBAC
+- Permission Matrix
+- Role-based Access Control
+Database Strategy
+Primary Database:
+MongoDB
+
+Collections:
+- Users
+- Ideas
+- Companies
+- Investors
+- Services
+- FundingRequests
+- AIInsights
+- Reviews
+Redis Strategy
+Use Cases:
+- Session Caching
+- Rate Limiting
+- AI Response Caching
+- Queue Coordination
+Event Architecture
+Events:
+- UserRegistered
+- IdeaCreated
+- FundingPublished
+- InvestorMatched
+- ProposalAccepted
+- EscrowReleased
+Queue System
+Recommended:
+- BullMQ
+
+Use Cases:
+- AI Jobs
+- Email Jobs
+- Notifications
+- Report Generation
+AI Service Architecture
+Components:
+- Prompt Layer
+- Routing Layer
+- Model Layer
+- Response Layer
+- Monitoring Layer
+File Storage
+Stores:
+- Pitch Decks
+- Business Plans
+- Legal Documents
+- Data Room Files
+
+Recommended:
+Cloud Storage Provider
+Data Room Architecture
+Access Control:
+- NDA Required
+- Audit Logs
+- Expiring Access Links
+- Download Tracking
+Escrow Architecture
+Workflow:
+Funds Reserved
+→ Milestone Approved
+→ Release Funds
+
+All transactions logged.
+API Standards
+REST API
+Versioning Required
+JWT Authentication
+Pagination Standards
+Error Standards
+Error Handling Standards
+Error Categories:
+- Validation Errors
+- Business Errors
+- Security Errors
+- AI Errors
+- Infrastructure Errors
+Logging & Monitoring
+Monitoring:
+- Application Logs
+- API Logs
+- AI Usage Logs
+- Audit Logs
+
+Tools:
+- Centralized Logging Platform
+Security Requirements
+- Encryption at Rest
+- Encryption in Transit
+- RBAC
+- Audit Logs
+- Input Validation
+- Rate Limiting
+CI/CD Strategy
+Pipeline:
+Code
+→ Test
+→ Build
+→ Deploy
+→ Monitor
+Deployment Architecture
+Environment:
+- Development
+- Staging
+- Production
+
+Containerized Deployment Recommended
+Scalability Strategy
+Horizontal Scaling
+Queue Workers
+Database Optimization
+AI Cost Optimization
+CDN Usage
+Analytics Architecture
+Track:
+- User Activity
+- Funding Activity
+- AI Usage
+- Marketplace Activity
+Disaster Recovery
+Backups
+Recovery Procedures
+Redundancy
+Failover Planning
+Success Metrics
+System Uptime
+API Response Time
+AI Latency
+Funding Transactions
+Marketplace Transactions
+Future Architecture
+Microservices
+Multi-Region Deployment
+Dedicated AI Infrastructure
+Enterprise Integrations

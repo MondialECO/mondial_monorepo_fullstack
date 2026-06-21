@@ -1,0 +1,111 @@
+name: Backend Deploy
+
+on:
+  workflow_run:
+    workflows: ["Backend CI"]
+    types:
+      - completed
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy-staging:
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch'
+    environment:
+      name: staging
+      url: https://api-staging.mondialbusiness.eu
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore backend/backend/WebApp.csproj
+
+      - name: Build for staging
+        run: dotnet build backend/backend/WebApp.csproj --no-restore --configuration Release
+
+      - name: Publish for staging
+        run: dotnet publish backend/backend/WebApp.csproj --no-build --configuration Release --output ./publish
+
+      - name: Deploy to staging
+        run: |
+          echo "Deploying to staging API server..."
+          # Replace with your actual deployment command
+          # Example: scp -r ./publish/* user@staging-api.server:/app/
+          echo "Staging API deployment would happen here"
+
+      - name: Notify Slack
+        if: always()
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          payload: |
+            {
+              "text": "Backend Staging Deploy: ${{ job.status }}",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Backend Staging Deploy*\nStatus: ${{ job.status }}\nBranch: ${{ github.ref_name }}\nCommit: ${{ github.sha }}"
+                  }
+                }
+              ]
+            }
+
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    if: github.event_name == 'workflow_dispatch'
+    environment:
+      name: production
+      url: https://api.mondialbusiness.eu
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore backend/backend/WebApp.csproj
+
+      - name: Build for production
+        run: dotnet build backend/backend/WebApp.csproj --no-restore --configuration Release
+
+      - name: Publish for production
+        run: dotnet publish backend/backend/WebApp.csproj --no-build --configuration Release --output ./publish
+
+      - name: Deploy to production
+        run: |
+          echo "Deploying to production API server..."
+          # Replace with your actual deployment command
+          # Example: scp -r ./publish/* user@api.server:/app/
+          echo "Production API deployment would happen here"
+
+      - name: Notify Slack
+        if: always()
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          payload: |
+            {
+              "text": "Backend Production Deploy: ${{ job.status }}",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Backend Production Deploy*\nStatus: ${{ job.status }}\nBranch: ${{ github.ref_name }}\nCommit: ${{ github.sha }}"
+                  }
+                }
+              ]
+            }
