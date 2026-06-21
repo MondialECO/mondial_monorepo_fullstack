@@ -155,4 +155,10 @@ public interface ICompanyService
     Task<InvestorSessionResponse> GetInvestorSessionAsync(string investorId, string companyId);
 
     Task<DiligenceProgressResponse> GetDiligenceProgressAsync(string investorId, string companyId);
+
+    Task<RoundSummaryResponse> GetRoundSummaryAsync(string companyId);
+
+    Task<TermSheetResponse> GetActiveTermSheetAsync(string companyId);
+
+    Task<List<TimelineEventResponse>> GetDealTimelineAsync(string companyId);
 }

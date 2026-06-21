@@ -165,6 +165,18 @@ namespace WebApp.DbContext
                         Builders<Phase9DealActivityLog>.IndexKeys
                             .Ascending(x => x.CompanyId).Descending(x => x.OccurredAt),
                         new CreateIndexOptions { Background = true }),
+                    new CreateIndexModel<Phase9DealActivityLog>(
+                        Builders<Phase9DealActivityLog>.IndexKeys
+                            .Ascending(x => x.DealId).Descending(x => x.OccurredAt),
+                        new CreateIndexOptions { Background = true }),
+                });
+
+                Phase9DealTimelineEvents.Indexes.CreateMany(new[]
+                {
+                    new CreateIndexModel<Phase9DealTimelineEvent>(
+                        Builders<Phase9DealTimelineEvent>.IndexKeys
+                            .Ascending(x => x.CompanyId).Ascending(x => x.EventDate),
+                        new CreateIndexOptions { Background = true }),
                 });
             }
             catch
@@ -211,6 +223,7 @@ namespace WebApp.DbContext
 
         // Phase 9 sub-collections
         public virtual IMongoCollection<Phase9DealActivityLog> Phase9DealActivityLogs => _database.GetCollection<Phase9DealActivityLog>("Phase9DealActivityLogs");
+        public virtual IMongoCollection<Phase9DealTimelineEvent> Phase9DealTimelineEvents => _database.GetCollection<Phase9DealTimelineEvent>("Phase9DealTimelineEvents");
 
         // Extra collections
         public virtual IMongoCollection<ContactModel> Contacts => _database.GetCollection<ContactModel>("Contacts");

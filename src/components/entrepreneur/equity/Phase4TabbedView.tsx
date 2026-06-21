@@ -28,7 +28,7 @@ export interface Phase4Context {
 
 export function Phase4TabbedView() {
   const router = useRouter();
-  const { progress, getPhaseData, applyBackendResponse } = useEntrepreneurProgress();
+  const { progress, getPhaseData, applyBackendResponse, currentPhase } = useEntrepreneurProgress();
 
   const [active, setActive] = useState<Phase4Tab>('overview');
   const [companyId, setCompanyId] = useState<string>('');
@@ -160,9 +160,9 @@ export function Phase4TabbedView() {
               <CheckCircle2 className="w-4 h-4" /> Phase 4 complete
             </div>
           ) : (
-            <Button onClick={handleComplete} disabled={completing} className="gap-2">
+            <Button onClick={handleComplete} disabled={completing || currentPhase! > 4} className="gap-2">
               {completing && <Loader2 className="w-4 h-4 animate-spin" />}
-              Complete Phase 4
+              {currentPhase! > 4 ? 'Phase 4 Complete' : 'Complete Phase 4'}
             </Button>
           )}
         </div>

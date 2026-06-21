@@ -30,6 +30,7 @@ function Phase2Step4PageContent() {
     moveToNextStep,
     getPhaseData,
     applyBackendResponse,
+    currentPhase,
   } = useEntrepreneurProgress();
 
   // Backend-authoritative submission state. UI shows pending until backend confirms
@@ -312,7 +313,7 @@ function Phase2Step4PageContent() {
             <Button
               type="button"
               onClick={handleContinue}
-              disabled={isCompleting}
+              disabled={isCompleting || currentPhase! > 2}
               className="flex-1 gap-2 h-12"
             >
               {isCompleting ? (
@@ -322,7 +323,7 @@ function Phase2Step4PageContent() {
                 </>
               ) : (
                 <>
-                  Submit & Complete Phase 2
+                  {currentPhase! > 2 ? 'Phase 2 Complete' : 'Submit & Complete Phase 2'}
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}

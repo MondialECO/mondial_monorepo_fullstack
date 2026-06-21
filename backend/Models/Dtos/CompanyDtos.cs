@@ -390,7 +390,7 @@ public class MatchingInsightsResponse
 public class CreateDealRequest
 {
     public string InvestorId { get; set; }
-    public List<DealParticipantDto> AdditionalInvestors { get; set; }
+    public List<DealParticipantDto> AdditionalInvestors { get; set; } = new();
     public TermSheetRequest TermSheet { get; set; }
 }
 
@@ -423,6 +423,19 @@ public class DealStatusResponse
     // Offer system (Phase D-4): whose turn it is + the offer/counter history.
     public string CurrentTurn { get; set; } = "";
     public List<TermSheetRevisionResponse> Revisions { get; set; } = new();
+}
+
+public class RoundSummaryResponse
+{
+    public int TotalDeals { get; set; }
+    public double CommittedAmountEur { get; set; }
+    public double RoundTargetEur { get; set; }
+    public double RemainingEur { get; set; }
+    public double PercentFilled { get; set; }
+    public int InterestedCount { get; set; }
+    public int InDiscussionCount { get; set; }
+    public int TermSheetCount { get; set; }
+    public int ClosedCount { get; set; }
 }
 
 public class TermSheetResponse
@@ -976,4 +989,57 @@ public class DiligenceProgressResponse
     public int Pending { get; set; }
     public int Flagged { get; set; }
     public int PercentComplete { get; set; }
+}
+
+// ============ PHASE 9: MATCHMAKING PROCESS TIMELINE ============
+
+public class TimelineEventResponse
+{
+    public string EventId { get; set; }
+    public DateTime EventDate { get; set; }
+    public string Title { get; set; }
+    public string Subtitle { get; set; }
+    public string Status { get; set; }
+    public string Color { get; set; }
+}
+
+// ============ PHASE 9: ADDITIONAL REQUEST DTOs ============
+
+public class UpdateTermSheetRequest
+{
+    public double TotalRaiseAmount { get; set; }
+    public double PostMoneyValuation { get; set; }
+    public double PreMoneyValuation { get; set; }
+    public string EquityType { get; set; }
+    public double InvestorEquityPercent { get; set; }
+    public bool ProRataRights { get; set; }
+    public string LiquidationPreference { get; set; }
+    public int BoardSeats { get; set; }
+    public string AntiDilutionProtection { get; set; }
+}
+
+public class CounterOfferRequest
+{
+    public string Note { get; set; }
+    public UpdateTermSheetRequest ProposedTerms { get; set; }
+}
+
+public class ChecklistItemRequest
+{
+    public string Item { get; set; }
+    public string Owner { get; set; }
+    public DateTime? DueDate { get; set; }
+}
+
+public class ToggleChecklistRequest
+{
+    public string ItemId { get; set; }
+    public bool Completed { get; set; }
+}
+
+public class UploadDocumentRequest
+{
+    public string Name { get; set; }
+    public string DocumentType { get; set; }
+    public string StorageUrl { get; set; }
 }

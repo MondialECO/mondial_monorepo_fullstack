@@ -6,12 +6,14 @@ import { Info, RefreshCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useEntrepreneurProgress } from '@/hooks/useEntrepreneurProgress';
 import { Phase9PipelineVisuals } from '@/components/entrepreneur/deals/Phase9PipelineVisuals';
+import { MatchmakingTimeline } from '@/components/entrepreneur/deals/MatchmakingTimeline';
 import entrepreneurApi, {
   DealActivityLogResponse,
   DealStatus,
   DealStatusResponse,
   DueDiligenceStatus,
   InvestorMatchResponse,
+  TimelineEventResponse,
 } from '@/lib/api-entrepreneur';
 import { Phase9Data } from '@/types/entrepreneur';
 
@@ -35,12 +37,12 @@ const DEAL_STATUS_OPTIONS: DealStatus[] = [
 const VALID_TRANSITIONS: Record<string, string[]> = {
   'initiated': ['contacted', 'rejected', 'withdrawn'],
   'contacted': ['interested', 'rejected', 'withdrawn'],
-  'interested': ['meeting_scheduled', 'rejected', 'withdrawn'],
+  'interested': ['meeting_scheduled', 'due_diligence', 'rejected', 'withdrawn'],
   'meeting_scheduled': ['due_diligence', 'negotiating', 'rejected', 'withdrawn'],
-  'due_diligence': ['term_sheet', 'negotiating', 'rejected', 'withdrawn'],
-  'negotiating': ['term_sheet', 'due_diligence', 'rejected', 'withdrawn'],
+  'due_diligence': ['negotiating', 'rejected', 'withdrawn'],
+  'negotiating': ['term_sheet', 'rejected', 'withdrawn'],
   'term_sheet': ['agreement_sent', 'negotiating', 'rejected', 'withdrawn'],
-  'agreement_sent': ['signed', 'negotiating', 'rejected', 'withdrawn'],
+  'agreement_sent': ['signed', 'rejected', 'withdrawn'],
   'signed': ['completed'],
   'completed': [],
   'rejected': [],
@@ -67,6 +69,7 @@ export default function Phase9Client() {
   const [deals, setDeals] = useState<DealStatusResponse[]>([]);
   const [summary, setSummary] = useState<any>(null);
   const [termSheet, setTermSheet] = useState<any>(null);
+  const [timeline, setTimeline] = useState<TimelineEventResponse[]>([]);
   const [selectedDealId, setSelectedDealId] = useState<string | null>(null);
   const [activity, setActivity] = useState<DealActivityLogResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -96,16 +99,18 @@ export default function Phase9Client() {
   const reload = async () => {
     try {
       const companyId = await resolveCompanyId();
-      const [m, d, s, ts] = await Promise.all([
+      const [m, d, s, ts, tl] = await Promise.all([
         entrepreneurApi.getInvestorMatches(companyId).catch(() => []),
         entrepreneurApi.getCompanyDeals(companyId).catch(() => []),
         entrepreneurApi.getRoundSummary(companyId).catch(() => null),
         entrepreneurApi.getActiveTermSheet(companyId).catch(() => null),
+        entrepreneurApi.getTimeline(companyId).catch(() => []),
       ]);
       setMatches(m);
       setDeals(d);
       setSummary(s);
       setTermSheet(ts);
+      setTimeline(tl);
 
       const signedCount = d.filter((x) =>
         TERMINAL_SUCCESS.includes(x.status as DealStatus),
@@ -412,6 +417,9 @@ export default function Phase9Client() {
         onUpdateDealStatus={handleUpdateDealStatus}
       />
 
+      {/* Matchmaking Process timeline — round-level events (Phase 5/8 seeded) */}
+      <MatchmakingTimeline events={timeline} />
+
       {/* Dev banner — explicit, no AI claims */}
       <div className="bg-warning/10 border border-warning/40 rounded-xl p-4 flex gap-3">
         <Info className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
@@ -428,8 +436,14 @@ export default function Phase9Client() {
       </div>
 
       {error && (
-        <div role="alert" aria-live="assertive" className="bg-destructive/10 border border-destructive/30 rounded-md p-3 text-sm text-destructive">
-          {error}
+        <div role="alert" aria-live="assertive" className="bg-destructive/10 border border-destructive/30 rounded-md p-3 text-sm text-destructive flex items-center justify-between">
+          <span>{error}</span>
+          <button
+            onClick={() => setError('')}
+            className="ml-3 underline hover:no-underline"
+          >
+            Dismiss
+          </button>
         </div>
       )}
 
@@ -469,7 +483,7 @@ export default function Phase9Client() {
               disabled={selectedDeal.status !== 'signed' || isMutating}
               onClick={handleCloseDeal}
             >
-              Close deal (signed → completed)
+              {isMutating ? 'Closing…' : 'Close deal (signed → completed)'}
             </Button>
           </div>
 
@@ -542,8 +556,6 @@ export default function Phase9Client() {
               value={ddItemName}
               onChange={(e) => setDdItemName(e.target.value)}
             />
-            {/* TODO: Replace with shadcn <Select> primitive for full design-system compliance.
-                Deferred to avoid visual design changes. See audit report HIGH 1. */}
             <select
               aria-label="Due diligence category"
               className="bg-background border border-input rounded-md px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -555,8 +567,6 @@ export default function Phase9Client() {
               <option value="technical">technical</option>
               <option value="business">business</option>
             </select>
-            {/* TODO: Replace with shadcn <Select> primitive for full design-system compliance.
-                Deferred to avoid visual design changes. See audit report HIGH 1. */}
             <select
               aria-label="Due diligence status"
               className="bg-background border border-input rounded-md px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -569,7 +579,33 @@ export default function Phase9Client() {
               <option value="flagged">flagged</option>
             </select>
           </div>
-          <Button onClick={handleDueDiligenceSubmit} disabled={isMutating}>Add / update item</Button>
+          <Button onClick={handleDueDiligenceSubmit} disabled={isMutating}>
+            {isMutating ? 'Saving…' : 'Add / update item'}
+          </Button>
+
+          {selectedDeal.dueDiligenceChecklist && selectedDeal.dueDiligenceChecklist.length > 0 ? (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground font-semibold">Items:</p>
+              <ul className="space-y-1">
+                {selectedDeal.dueDiligenceChecklist.map((item) => (
+                  <li
+                    key={item.itemName}
+                    className="flex items-center justify-between text-sm bg-background border border-input rounded-md px-3 py-2"
+                  >
+                    <span className="text-foreground">
+                      <span className="font-semibold">{item.itemName}</span>
+                      <span className="text-xs text-muted-foreground ml-2">[{item.category}]</span>
+                      <span className="text-xs bg-muted/40 px-2 py-0.5 rounded ml-2 inline-block">
+                        {item.status}
+                      </span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">No due diligence items yet.</p>
+          )}
         </div>
       )}
 
@@ -586,9 +622,11 @@ export default function Phase9Client() {
               disabled={isMutating}
             />
             <Button variant="outline" onClick={() => handleChecklistAdd(false)} disabled={isMutating}>
-              Add pending
+              {isMutating ? 'Adding…' : 'Add pending'}
             </Button>
-            <Button onClick={() => handleChecklistAdd(true)} disabled={isMutating}>Add as done</Button>
+            <Button onClick={() => handleChecklistAdd(true)} disabled={isMutating}>
+              {isMutating ? 'Adding…' : 'Add as done'}
+            </Button>
           </div>
           {selectedDeal.closingChecklist.length === 0 ? (
             <p className="text-xs text-muted-foreground">No checklist items yet.</p>
@@ -628,7 +666,7 @@ export default function Phase9Client() {
             recorded with kind <code>term_sheet</code>.
           </p>
           <label htmlFor="deal-document-upload" className="text-xs uppercase text-muted-foreground block mb-1 cursor-pointer">
-            Upload other document
+            Upload document
           </label>
           <input
             id="deal-document-upload"
@@ -643,13 +681,59 @@ export default function Phase9Client() {
               Choose file
             </label>
           </div>
+
+          {selectedDeal.dealDocuments && selectedDeal.dealDocuments.length > 0 ? (
+            <div className="space-y-2 mt-4">
+              <p className="text-xs text-muted-foreground font-semibold">Uploaded documents:</p>
+              <ul className="space-y-1">
+                {selectedDeal.dealDocuments.map((doc) => (
+                  <li
+                    key={doc.documentId}
+                    className="flex items-center justify-between text-sm bg-background border border-input rounded-md px-3 py-2"
+                  >
+                    <div>
+                      <span className="font-semibold text-foreground">{doc.fileName}</span>
+                      <span className="text-xs text-muted-foreground ml-2">({(doc.fileSize / 1024).toFixed(1)} KB)</span>
+                      {doc.uploadedAt && (
+                        <span className="text-xs text-muted-foreground block">
+                          {new Date(doc.uploadedAt).toLocaleDateString()}
+                        </span>
+                      )}
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        const a = document.createElement('a');
+                        a.href = `/api/companies/deals/${selectedDeal.dealId}/documents/${doc.documentId}`;
+                        a.download = doc.fileName;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                      }}
+                      disabled={isMutating}
+                    >
+                      Download
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">No documents uploaded yet.</p>
+          )}
         </div>
       )}
 
       {/* Activity timeline (backend-derived) */}
       {selectedDeal && (
         <div className="bg-card border-2 border-border rounded-2xl p-6 space-y-3">
-          <h3 className="text-lg font-bold text-foreground">Activity timeline</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-bold text-foreground">Activity timeline</h3>
+            <span className="text-xs bg-muted/60 px-2 py-1 rounded text-muted-foreground">
+              Deal {selectedDeal.dealId.slice(-6)}
+            </span>
+          </div>
           {activity.length === 0 ? (
             <p className="text-xs text-muted-foreground">No activity yet.</p>
           ) : (

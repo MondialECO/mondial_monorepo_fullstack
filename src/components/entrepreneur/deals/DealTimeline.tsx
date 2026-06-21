@@ -3,9 +3,9 @@ import { Chip } from '@/components/entrepreneur/phase3/FinancialWidgets';
 import { statusTone } from './PipelineBoard';
 
 /**
- * Phase 9 matchmaking / deal activity timeline — built from DealActivityLogResponse.
- * Pure presentational; real events only; honest empty state. Figma "Matchmaking
- * Process" vertical timeline with status-colored dots.
+ * Phase 9 deal activity timeline — built from DealActivityLogResponse.
+ * Pure presentational; real events only; honest empty state. Figma vertical
+ * timeline with status-colored dots.
  */
 
 export interface TimelineItem {
