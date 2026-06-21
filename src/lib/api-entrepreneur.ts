@@ -208,6 +208,8 @@ export interface SaveFundingAskRequest {
   /** Optional at write time; required at Phase 5 advancement. */
   equityOfferedPercent?: number;
   shareType?: "preferred" | "safe" | "note";
+  /** Explicit minimum cheque size (EUR). Optional at write time. */
+  minimumTicketEur?: number;
   capitalAllocation: CapitalAllocation[];
   resourceMap: ResourceMap;
 }
@@ -239,9 +241,11 @@ export interface FundingProfileResponse {
   preMoneyValuation?: number;
   equityOfferedPercent?: number;
   shareType?: string;
+  minimumTicketEur?: number;
   capitalAllocation: CapitalAllocation[];
   resourceMap?: ResourceMap;
   pitchDeckFileName?: string;
+  pitchDeckFileSize?: number;
   pitchDeckUploadedAt?: string;
   fundingNarrative?: string;
   hasOutreachCampaign: boolean;
@@ -392,6 +396,8 @@ export interface DataRoomAccessGrant {
 export interface DataRoomStatusResponse {
   isLive: boolean;
   ndaRequired: boolean;
+  /** Set once an investor has signed; NDA can no longer be disabled. */
+  ndaLockedAt?: string | null;
   totalDocuments: number;
   documents: DataRoomDocumentResponse[];
   accessGrants: DataRoomAccessGrant[];
@@ -449,11 +455,21 @@ export interface ScoreBreakdownDto {
   overallScore: number;
 }
 
+export interface PitchDeckAnalysis {
+  grade: string;
+  averageScore: number;
+  clarityNarrative: number;
+  marketSizeProof: number;
+  tractionMetrics: number;
+  teamPedigree: number;
+}
+
 export interface AiReviewResponse {
   overallScore: number;
   scoreBreakdown: ScoreBreakdownDto;
   investorReadyBadge: boolean;
   recommendations: RecommendationDto[];
+  pitchDeckAnalysis: PitchDeckAnalysis;
   reviewedAt: string;
 }
 
@@ -464,6 +480,7 @@ export interface AiReviewHistoryEntry {
   scoreBreakdown: ScoreBreakdownDto;
   investorReadyBadge: boolean;
   recommendations: RecommendationDto[];
+  pitchDeckAnalysis: PitchDeckAnalysis;
   reviewedAt: string;
   engineVersion: string;
 }
@@ -500,6 +517,47 @@ export interface UpdateMatchStatusRequest {
 }
 
 // Phase 9
+// Round summary: real-time aggregate of deal committed amounts + round target
+// Active term sheet — mirrors backend TermSheetResponse DTO (camelCased).
+export interface TermSheetResponse {
+  totalRaiseAmount: number;
+  postMoneyValuation: number;
+  equityType: string;
+  investorEquityPercent: number;
+  proRataRights: boolean;
+  status: string;
+  signedAt?: string | null;
+  shareClass: string;
+  liquidationPref: string;
+  boardSeat: string;
+  hasBoardSeat?: boolean | null;
+  antiDilutionType: string;
+  closingDeadline: string;
+  expiresAt: string;
+}
+
+export interface RoundSummaryResponse {
+  totalDeals: number;
+  committedAmountEur: number;
+  roundTargetEur: number;
+  remainingEur: number;
+  percentFilled: number;
+  interestedCount: number;
+  inDiscussionCount: number;
+  termSheetCount: number;
+  closedCount: number;
+}
+
+// Matchmaking Process timeline — round-level events (auto-seeded from Phase 5/8).
+export interface TimelineEventResponse {
+  eventId: string;
+  eventDate: string;
+  title: string;
+  subtitle: string;
+  status: "completed" | "active" | "pending";
+  color: "green" | "blue" | "amber" | "gray";
+}
+
 // 12-state deal lifecycle. Mirrors backend Phase9Requirements.DealStatusWhitelist.
 export type DealStatus =
   | 'initiated'
@@ -527,6 +585,16 @@ export type DueDiligenceStatus =
 export type DealDocumentKind =
   | 'term_sheet' | 'signed_agreement' | 'due_diligence' | 'other';
 
+export interface TimelineItem {
+  id: string;
+  eventType: string;
+  fromStatus?: string;
+  toStatus?: string;
+  occurredAt: string;
+  notes?: string;
+  dealId?: string;
+}
+
 export interface DealStatusResponse {
   dealId: string;
   status: DealStatus | string;
@@ -539,6 +607,13 @@ export interface DealStatusResponse {
     proRataRights: boolean;
     status: TermSheetStatus | string;
     signedAt?: string;
+    shareClass?: string;
+    liquidationPref?: string;
+    boardSeat?: string;
+    hasBoardSeat?: boolean;
+    antiDilutionType?: string;
+    closingDeadline?: string;
+    expiresAt?: string;
   };
   closingChecklist: Array<{
     item: string;
@@ -546,9 +621,18 @@ export interface DealStatusResponse {
     owner: string;
     dueDate?: string;
   }>;
+  dueDiligenceChecklist: Array<{
+    itemName: string;
+    category: 'legal' | 'financial' | 'technical' | 'business';
+    status: 'pending' | 'in_progress' | 'completed' | 'flagged';
+    owner?: string;
+    addedAt?: string;
+  }>;
+  dealDocuments: DealDocumentResponse[];
   investors: Array<{
     investorId: string;
     investorName: string;
+    investorType?: string;
     committedAmount: number;
     status: ParticipantStatus | string;
   }>;
@@ -971,6 +1055,10 @@ export const entrepreneurApi = {
     return response.data;
   },
 
+  markExitReviewed: async (companyId: string): Promise<void> => {
+    await api.post(`/companies/${companyId}/exit-reviewed`);
+  },
+
   // ============ PHASE 6: DATA ROOM ============
 
   uploadDataRoomDocument: async (companyId: string, formData: FormData) => {
@@ -993,13 +1081,13 @@ export const entrepreneurApi = {
 
   grantDataRoomAccess: async (
     companyId: string,
-    investorId: string,
+    investorEmail: string,
     accessLevel: string,
     daysValid: number = 7
   ) => {
     const response = await api.post(
       `/companies/${companyId}/dataroom/access`,
-      { investorId, accessLevel, daysValid }
+      { investorEmail, accessLevel, daysValid }
     );
     return response.data;
   },
@@ -1012,7 +1100,14 @@ export const entrepreneurApi = {
   },
 
   updateNdaRequirement: async (companyId: string, required: boolean) => {
-    const response = await api.put(`/companies/${companyId}/dataroom/nda`, required);
+    // Backend binds [FromBody] bool, which requires a raw JSON literal (true/false).
+    // Axios only serializes a primitive boolean when the JSON content type is set
+    // explicitly; without this header the body is unparseable and the API returns 400.
+    const response = await api.put(
+      `/companies/${companyId}/dataroom/nda`,
+      required,
+      { headers: { "Content-Type": "application/json" } }
+    );
     return response.data;
   },
 
@@ -1072,6 +1167,15 @@ export const entrepreneurApi = {
   ): Promise<Phase6AccessLogResponse[]> => {
     const response = await api.get<Phase6AccessLogResponse[]>(
       `/companies/${companyId}/dataroom/activity-timeline`
+    );
+    return response.data;
+  },
+
+  getDataRoomInvestorEngagement: async (
+    companyId: string
+  ): Promise<InvestorEngagementResponse[]> => {
+    const response = await api.get<InvestorEngagementResponse[]>(
+      `/companies/${companyId}/dataroom/investor-engagement`
     );
     return response.data;
   },
@@ -1179,6 +1283,36 @@ export const entrepreneurApi = {
   },
 
   // ============ PHASE 9: DEAL EXECUTION ============
+
+  getRoundSummary: async (companyId: string): Promise<RoundSummaryResponse> => {
+    const response = await api.get<RoundSummaryResponse>(
+      `/companies/${companyId}/deals/summary`
+    );
+    return response.data;
+  },
+
+  getTimeline: async (companyId: string): Promise<TimelineEventResponse[]> => {
+    const response = await api.get<TimelineEventResponse[]>(
+      `/companies/${companyId}/deals/timeline`
+    );
+    return response.data;
+  },
+
+  getActiveTermSheet: async (
+    companyId: string
+  ): Promise<TermSheetResponse | null> => {
+    try {
+      const response = await api.get<TermSheetResponse>(
+        `/companies/${companyId}/term-sheets/active`
+      );
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        return null;
+      }
+      throw error;
+    }
+  },
 
   createDeal: async (
     companyId: string,

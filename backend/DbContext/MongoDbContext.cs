@@ -13,12 +13,18 @@ namespace WebApp.DbContext
             var client = new MongoClient(settings.Value.ConnectionString);
             _database = client.GetDatabase(settings.Value.DatabaseName);
             EnsureMatchmakingQueueIndexes();
+            EnsurePhase4Indexes();
+            EnsurePhase6Indexes();
+            EnsurePhase9Indexes();
         }
 
         public MongoDbContext(IMongoDatabase database)
         {
             _database = database;
             EnsureMatchmakingQueueIndexes();
+            EnsurePhase4Indexes();
+            EnsurePhase6Indexes();
+            EnsurePhase9Indexes();
         }
 
         // Smart Matchmaking outbox indexes: Status (consumer polling), CompanyId
@@ -43,6 +49,135 @@ namespace WebApp.DbContext
                         new CreateIndexOptions { Background = true }),
                 };
                 MatchmakingQueue.Indexes.CreateMany(models);
+            }
+            catch
+            {
+                // Best-effort; never block or fail context construction.
+            }
+        }
+
+        // Phase 4 sub-collection indexes. Same best-effort + swallowed pattern as
+        // the matchmaking outbox: lookup by CompanyId, ordering by RecordedAt/
+        // EventDate/IssuedAt/Version, plus a unique composite {CompanyId, GrantId}
+        // on vesting schedules that enforces the upsert-key invariant at the DB
+        // level. Background builds; never block or fail context construction.
+        private void EnsurePhase4Indexes()
+        {
+            try
+            {
+                Phase4CapTables.Indexes.CreateMany(new[]
+                {
+                    new CreateIndexModel<Phase4CapTable>(
+                        Builders<Phase4CapTable>.IndexKeys.Ascending(x => x.CompanyId),
+                        new CreateIndexOptions { Background = true }),
+                    new CreateIndexModel<Phase4CapTable>(
+                        Builders<Phase4CapTable>.IndexKeys.Descending(x => x.RecordedAt),
+                        new CreateIndexOptions { Background = true }),
+                    new CreateIndexModel<Phase4CapTable>(
+                        Builders<Phase4CapTable>.IndexKeys.Descending(x => x.Version),
+                        new CreateIndexOptions { Background = true }),
+                });
+
+                Phase4VestingSchedules.Indexes.CreateMany(new[]
+                {
+                    new CreateIndexModel<Phase4VestingSchedule>(
+                        Builders<Phase4VestingSchedule>.IndexKeys.Ascending(x => x.CompanyId),
+                        new CreateIndexOptions { Background = true }),
+                    new CreateIndexModel<Phase4VestingSchedule>(
+                        Builders<Phase4VestingSchedule>.IndexKeys
+                            .Ascending(x => x.CompanyId).Ascending(x => x.GrantId),
+                        new CreateIndexOptions { Background = true, Unique = true }),
+                });
+
+                Phase4OwnershipHistories.Indexes.CreateMany(new[]
+                {
+                    new CreateIndexModel<Phase4OwnershipHistory>(
+                        Builders<Phase4OwnershipHistory>.IndexKeys.Ascending(x => x.CompanyId),
+                        new CreateIndexOptions { Background = true }),
+                    new CreateIndexModel<Phase4OwnershipHistory>(
+                        Builders<Phase4OwnershipHistory>.IndexKeys.Descending(x => x.EventDate),
+                        new CreateIndexOptions { Background = true }),
+                });
+
+                Phase4ShareIssuances.Indexes.CreateMany(new[]
+                {
+                    new CreateIndexModel<Phase4ShareIssuance>(
+                        Builders<Phase4ShareIssuance>.IndexKeys.Ascending(x => x.CompanyId),
+                        new CreateIndexOptions { Background = true }),
+                    new CreateIndexModel<Phase4ShareIssuance>(
+                        Builders<Phase4ShareIssuance>.IndexKeys.Descending(x => x.IssuedAt),
+                        new CreateIndexOptions { Background = true }),
+                });
+            }
+            catch
+            {
+                // Best-effort; never block or fail context construction.
+            }
+        }
+
+        // Phase 6 data-room access-log indexes. Analytics and the activity
+        // timeline both query by CompanyId; the timeline sorts by OccurredAt and
+        // engagement groups by InvestorId. Same best-effort + swallowed pattern.
+        private void EnsurePhase6Indexes()
+        {
+            try
+            {
+                Phase6AccessLogs.Indexes.CreateMany(new[]
+                {
+                    new CreateIndexModel<Phase6AccessLog>(
+                        Builders<Phase6AccessLog>.IndexKeys
+                            .Ascending(x => x.CompanyId).Descending(x => x.OccurredAt),
+                        new CreateIndexOptions { Background = true }),
+                    new CreateIndexModel<Phase6AccessLog>(
+                        Builders<Phase6AccessLog>.IndexKeys
+                            .Ascending(x => x.CompanyId).Ascending(x => x.InvestorId),
+                        new CreateIndexOptions { Background = true }),
+                });
+            }
+            catch
+            {
+                // Best-effort; never block or fail context construction.
+            }
+        }
+
+        // Phase 9 deal-pipeline indexes. Primary deal lookup by company + status,
+        // activity timeline by company + timestamp, and deal documents by recency.
+        // Same best-effort + swallowed pattern.
+        private void EnsurePhase9Indexes()
+        {
+            try
+            {
+                DealExecutions.Indexes.CreateMany(new[]
+                {
+                    new CreateIndexModel<DealExecution>(
+                        Builders<DealExecution>.IndexKeys
+                            .Ascending(x => x.CompanyId).Ascending(x => x.Status),
+                        new CreateIndexOptions { Background = true }),
+                    new CreateIndexModel<DealExecution>(
+                        Builders<DealExecution>.IndexKeys
+                            .Ascending(x => x.CompanyId).Descending(x => x.CreatedAt),
+                        new CreateIndexOptions { Background = true }),
+                });
+
+                Phase9DealActivityLogs.Indexes.CreateMany(new[]
+                {
+                    new CreateIndexModel<Phase9DealActivityLog>(
+                        Builders<Phase9DealActivityLog>.IndexKeys
+                            .Ascending(x => x.CompanyId).Descending(x => x.OccurredAt),
+                        new CreateIndexOptions { Background = true }),
+                    new CreateIndexModel<Phase9DealActivityLog>(
+                        Builders<Phase9DealActivityLog>.IndexKeys
+                            .Ascending(x => x.DealId).Descending(x => x.OccurredAt),
+                        new CreateIndexOptions { Background = true }),
+                });
+
+                Phase9DealTimelineEvents.Indexes.CreateMany(new[]
+                {
+                    new CreateIndexModel<Phase9DealTimelineEvent>(
+                        Builders<Phase9DealTimelineEvent>.IndexKeys
+                            .Ascending(x => x.CompanyId).Ascending(x => x.EventDate),
+                        new CreateIndexOptions { Background = true }),
+                });
             }
             catch
             {
@@ -88,6 +223,7 @@ namespace WebApp.DbContext
 
         // Phase 9 sub-collections
         public virtual IMongoCollection<Phase9DealActivityLog> Phase9DealActivityLogs => _database.GetCollection<Phase9DealActivityLog>("Phase9DealActivityLogs");
+        public virtual IMongoCollection<Phase9DealTimelineEvent> Phase9DealTimelineEvents => _database.GetCollection<Phase9DealTimelineEvent>("Phase9DealTimelineEvents");
 
         // Extra collections
         public virtual IMongoCollection<ContactModel> Contacts => _database.GetCollection<ContactModel>("Contacts");

@@ -9,6 +9,7 @@ import {
   getOpportunities,
   getOpportunity,
   getOpportunityDocuments,
+  trackDocumentDownload,
 } from "@/lib/api-investor-opportunities";
 import type {
   NdaAcceptanceResult,
@@ -80,6 +81,33 @@ export function useInvestorPipeline() {
     queryKey: investorQueryKeys.pipeline(),
     queryFn: getInvestorPipeline,
     staleTime: 15_000,
+  });
+}
+
+interface UseTrackDownloadVars {
+  companyId: string;
+  documentId: string;
+}
+
+/**
+ * Records a document-download engagement event. Best-effort: the download
+ * itself already succeeded before this fires, so a tracking error is swallowed
+ * by TanStack Query's mutation state rather than surfaced to the user. On
+ * success it refreshes the investor's own session-activity and diligence cards.
+ */
+export function useTrackDocumentDownload() {
+  const queryClient = useQueryClient();
+  return useMutation<void, unknown, UseTrackDownloadVars>({
+    mutationFn: ({ companyId, documentId }) =>
+      trackDocumentDownload(companyId, documentId),
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({
+        queryKey: investorQueryKeys.session(vars.companyId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: investorQueryKeys.diligence(vars.companyId),
+      });
+    },
   });
 }
 

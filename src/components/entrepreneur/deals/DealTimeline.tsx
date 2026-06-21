@@ -3,8 +3,9 @@ import { Chip } from '@/components/entrepreneur/phase3/FinancialWidgets';
 import { statusTone } from './PipelineBoard';
 
 /**
- * Phase 9 matchmaking / deal activity timeline — built from DealActivityLogResponse.
- * Pure presentational; real events only; honest empty state.
+ * Phase 9 deal activity timeline — built from DealActivityLogResponse.
+ * Pure presentational; real events only; honest empty state. Figma vertical
+ * timeline with status-colored dots.
  */
 
 export interface TimelineItem {
@@ -17,6 +18,33 @@ export interface TimelineItem {
 }
 
 const humanize = (s: string) => (s || '').replace(/_/g, ' ');
+
+// Dot color is a theme token chosen from the event's terminal status (when the
+// event is a transition) or the event type. green = success/closed,
+// amber = in-progress, primary = active negotiation, muted = neutral.
+function dotClass(it: TimelineItem): string {
+  const tone = it.toStatus ? statusTone(it.toStatus) : eventTone(it.eventType);
+  switch (tone) {
+    case 'success':
+      return 'bg-success-text';
+    case 'warning':
+      return 'bg-warning';
+    case 'primary':
+      return 'bg-primary';
+    case 'destructive':
+      return 'bg-destructive';
+    default:
+      return 'bg-muted-foreground';
+  }
+}
+
+function eventTone(eventType: string): 'success' | 'warning' | 'primary' | 'muted' {
+  const e = (eventType || '').toLowerCase();
+  if (e.includes('closed') || e.includes('signed') || e.includes('accepted')) return 'success';
+  if (e.includes('countered') || e.includes('due_diligence')) return 'warning';
+  if (e.includes('offer') || e.includes('term_sheet') || e.includes('status_changed')) return 'primary';
+  return 'muted';
+}
 
 export function DealTimeline({ items }: { items: TimelineItem[] }) {
   if (!items.length) {
@@ -31,7 +59,7 @@ export function DealTimeline({ items }: { items: TimelineItem[] }) {
       {items.map((it, i) => (
         <li key={it.id} className="flex gap-3">
           <div className="flex flex-col items-center">
-            <span className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-primary" aria-hidden />
+            <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${dotClass(it)}`} aria-hidden />
             {i < items.length - 1 && <span className="my-1 w-px flex-1 bg-border" aria-hidden />}
           </div>
           <div className="pb-4">

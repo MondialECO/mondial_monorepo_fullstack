@@ -26,11 +26,18 @@ public static class Phase5Requirements
     };
 
     public const int NarrativeMinLength = 200;
+    public const int NarrativeMaxLength = 5000;
     public const double ValuationMin = 1.0;
     public const double EquityOfferedMin = 0.0001;
     public const double EquityOfferedMax = 100.0;
     public const double AllocationMinTotalPercent = 95.0;
     public const double AllocationMaxTotalPercent = 105.0;
+
+    // Completion-event score increments (clamped to 100 on apply) and the
+    // idempotency-cache TTL used to dedupe retried write/advance requests.
+    public const int InvestorReadyScoreIncrement = 13;
+    public const int TrustScoreIncrement = 10;
+    public const int IdempotencyCacheTtlSeconds = 300;
 
     public static bool IsValidShareType(string s)
         => !string.IsNullOrWhiteSpace(s)
@@ -98,8 +105,8 @@ public static class Phase5Requirements
             {
                 if (!double.IsFinite(h.Salary))
                     errors.Add($"Hiring '{label}': salary must be a finite number");
-                else if (h.Salary < 0)
-                    errors.Add($"Hiring '{label}': salary must be >= 0");
+                else if (h.Salary <= 0)
+                    errors.Add($"Hiring '{label}': salary must be > 0");
 
                 if (!IsValidHiringPriority(h.Priority))
                     errors.Add(

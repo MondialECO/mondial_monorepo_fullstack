@@ -52,6 +52,7 @@ public interface ICompanyService
 
     Task<CapTableSnapshotResponse> SubmitCapTableAsync(string companyId, SubmitCapTableRequest request);
     Task<CapTableSnapshotResponse?> GetLatestCapTableSnapshotAsync(string companyId);
+    Task SetExitWaterfallReviewedAsync(string companyId);
     Task<List<VestingScheduleResponse>> SaveVestingSchedulesAsync(string companyId, SaveVestingScheduleRequest request);
     Task<List<VestingScheduleResponse>> GetVestingSchedulesAsync(string companyId);
     Task<List<OwnershipHistoryResponse>> SaveOwnershipHistoryAsync(string companyId, SaveOwnershipHistoryRequest request);
@@ -154,4 +155,10 @@ public interface ICompanyService
     Task<InvestorSessionResponse> GetInvestorSessionAsync(string investorId, string companyId);
 
     Task<DiligenceProgressResponse> GetDiligenceProgressAsync(string investorId, string companyId);
+
+    Task<RoundSummaryResponse> GetRoundSummaryAsync(string companyId);
+
+    Task<TermSheetResponse> GetActiveTermSheetAsync(string companyId);
+
+    Task<List<TimelineEventResponse>> GetDealTimelineAsync(string companyId);
 }

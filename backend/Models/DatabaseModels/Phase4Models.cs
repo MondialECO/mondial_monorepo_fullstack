@@ -62,6 +62,13 @@ public class Phase4CapTable
     public int EsopVestingMonths { get; set; }
     public List<EquityGrant> Grants { get; set; } = new();
 
+    /// <summary>
+    /// True once the founder has reviewed the exit waterfall for this snapshot.
+    /// Required (alongside a recorded dilution simulation) before Phase 4 can
+    /// be completed. Set via POST /api/companies/{companyId}/exit-reviewed.
+    /// </summary>
+    public bool ExitWaterfallReviewed { get; set; } = false;
+
     public DateTime RecordedAt { get; set; } = DateTime.UtcNow;
 }
 
@@ -129,4 +136,12 @@ public class Phase4ShareIssuance
     public double? PricePerShare { get; set; }
     public DateTime IssuedAt { get; set; } = DateTime.UtcNow;
     public string Reason { get; set; }
+
+    /// <summary>
+    /// SAFE-note conversion outputs (null for non-SAFE issuances or when the
+    /// SAFE conversion inputs were not supplied). Computed by
+    /// <see cref="WebApp.Services.Implementations.Phase4Requirements.ComputeSafeConversion"/>.
+    /// </summary>
+    public double? ConversionPrice { get; set; }
+    public string ConversionMethod { get; set; }   // "cap" | "discount" | null
 }

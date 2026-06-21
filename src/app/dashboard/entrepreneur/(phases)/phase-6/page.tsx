@@ -1,47 +1,180 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+// Figma Design Implementation: Phase 6 Data Room
+// Design: https://figma.com/design/5oHxoppTAyS4zb2DfUdYwy?node-id=23357:54662
+
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useRouter } from 'next/navigation';
-import { AlertCircle, FileText, Plus, ShieldCheck, Trash2, Upload } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import {
+  AlertCircle,
+  AlertTriangle,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Download,
+  Upload,
+} from 'lucide-react';
 import { useEntrepreneurProgress } from '@/hooks/useEntrepreneurProgress';
 import { RouteGuard } from '@/components/entrepreneur/RouteGuard';
-import { EntrepreneurLayout } from '@/components/entrepreneur/EntrepreneurLayout';
-import { PhaseHeader } from '@/components/entrepreneur/PhaseHeader';
 import { StepFooter } from '@/components/entrepreneur/StepFooter';
-import { Phase6DataRoomVisuals } from '@/components/entrepreneur/dataroom/Phase6DataRoomVisuals';
 import entrepreneurApi, {
   DataRoomAccessGrant,
-  DataRoomAnalyticsResponse,
-  DataRoomDocumentResponse,
   DataRoomStatusResponse,
 } from '@/lib/api-entrepreneur';
 import { Phase6Data } from '@/types/entrepreneur';
 
-const ALLOWED_CATEGORIES = ['legal', 'financial', 'business', 'ip', 'team'] as const;
 const REQUIRED_CATEGORIES = ['legal', 'financial', 'business'] as const;
-type Category = (typeof ALLOWED_CATEGORIES)[number];
+const CATEGORY_LABELS: Record<string, string> = {
+  legal: 'Legal & Compliance',
+  financial: 'Financial',
+  business: 'Business',
+  ip: 'IP & Technology',
+  team: 'Team',
+};
+const CATEGORY_EMOJIS: Record<string, string> = {
+  legal: '📁',
+  financial: '📁',
+  business: '💼',
+  ip: '🔬',
+  team: '👥',
+};
+type Category = 'legal' | 'financial' | 'business' | 'ip' | 'team';
+
+const MAX_FILE_SIZE = 52_428_800;
+const ALLOWED_FILE_TYPES = [
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-excel',
+];
+
+// Figma design tokens — defined in globals.css (:root + .dark) as --dr-* vars.
+const C = {
+  bgPage: 'var(--dr-bg-page)',
+  bgCard: 'var(--dr-bg-card)',
+  bgWhite: 'var(--dr-bg-white)',
+  bgBlue: 'var(--dr-bg-blue)',
+  bgGreen: 'var(--dr-bg-green)',
+  bgYellow: 'var(--dr-bg-yellow)',
+  bgIcon: 'var(--dr-bg-icon)',
+  primary: 'var(--dr-primary)',
+  primaryToggle: 'var(--dr-primary-toggle)',
+  textPrimary: 'var(--dr-text-primary)',
+  textSecondary: 'var(--dr-text-secondary)',
+  textMuted: 'var(--dr-text-muted)',
+  green: 'var(--dr-green)',
+  yellow: 'var(--dr-yellow)',
+  yellowAlt: 'var(--dr-yellow-alt)',
+  border: 'var(--dr-border)',
+  borderLight: 'var(--dr-border-light)',
+};
+const SHADOW_CARD = '0px 0px 44px 0px rgba(0,0,0,0.06)';
+const SHADOW_BLUR = '-2px -1px 17px 0px rgba(0,0,0,0.02), 1px 2px 3px 0px rgba(0,0,0,0.04)';
+
+function Toggle({ on, disabled, onChange }: { on: boolean; disabled?: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      disabled={disabled}
+      onClick={() => onChange(!on)}
+      className="relative inline-flex shrink-0 items-center rounded-full transition-colors disabled:opacity-60"
+      style={{ width: 36, height: 20, padding: '1px 2px', backgroundColor: on ? C.primaryToggle : 'rgba(0,0,0,0.15)' }}
+    >
+      <span
+        className="rounded-full bg-white transition-transform"
+        style={{ width: 16, height: 16, boxShadow: '0 1px 2px rgba(0,0,0,0.2)', transform: on ? 'translateX(16px)' : 'translateX(0)' }}
+      />
+    </button>
+  );
+}
+
+function Donut({ percent }: { percent: number }) {
+  const r = 38;
+  const circ = 2 * Math.PI * r;
+  const filled = (circ * Math.min(100, Math.max(0, percent))) / 100;
+  return (
+    <div className="relative" style={{ width: 100, height: 100 }}>
+      <svg width={100} height={100} viewBox="0 0 100 100">
+        <circle cx={50} cy={50} r={r} fill="none" stroke="rgba(0,0,0,0.08)" strokeWidth={8} />
+        <circle
+          cx={50}
+          cy={50}
+          r={r}
+          fill="none"
+          stroke={C.primary}
+          strokeWidth={8}
+          strokeLinecap="round"
+          strokeDasharray={`${filled} ${circ - filled}`}
+          transform="rotate(-90 50 50)"
+        />
+      </svg>
+      <span
+        className="absolute inset-0 flex items-center justify-center font-semibold"
+        style={{ fontSize: 16, color: C.textPrimary }}
+      >
+        {percent}%
+      </span>
+    </div>
+  );
+}
+
+const REQUIRED_CATEGORY_OPTIONS: { value: Category; label: string }[] = [
+  { value: 'legal', label: '📁 Legal & Compliance' },
+  { value: 'financial', label: '📁 Financial' },
+  { value: 'business', label: '💼 Business' },
+];
+
+function Skeleton({ className = '', style }: { className?: string; style?: CSSProperties }) {
+  return (
+    <div
+      className={`animate-pulse rounded-lg ${className}`}
+      style={{ backgroundColor: 'rgba(0,0,0,0.08)', ...style }}
+    />
+  );
+}
+
+function Phase6LoadingState() {
+  return (
+    <div className="flex flex-col gap-6">
+      <Skeleton style={{ height: 56 }} />
+      <div className="flex flex-col gap-6 lg:flex-row">
+        <div className="flex min-w-0 flex-1 flex-col gap-5">
+          <div className="flex gap-3">
+            {[0, 1, 2, 3].map((i) => (
+              <Skeleton key={i} className="flex-1" style={{ height: 130 }} />
+            ))}
+          </div>
+          <Skeleton style={{ height: 320 }} />
+        </div>
+        <div className="flex flex-col gap-6 lg:w-[360px] lg:shrink-0">
+          <Skeleton style={{ height: 220 }} />
+          <Skeleton style={{ height: 320 }} />
+          <Skeleton style={{ height: 200 }} />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function Phase6Content() {
   const router = useRouter();
-  const { savePhaseData, moveToNextStep, getPhaseData, applyBackendResponse } =
+  const { savePhaseData, moveToNextStep, getPhaseData, applyBackendResponse, currentPhase } =
     useEntrepreneurProgress();
 
   const [status, setStatus] = useState<DataRoomStatusResponse | null>(null);
-  const [analytics, setAnalytics] = useState<DataRoomAnalyticsResponse | null>(null);
-
-  const [uploadTitle, setUploadTitle] = useState('');
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({ legal: true });
+  const [emailAlerts, setEmailAlerts] = useState(true);
   const [uploadCategory, setUploadCategory] = useState<Category>('legal');
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-
-  const [grantInvestorId, setGrantInvestorId] = useState('');
-  const [grantAccessLevel, setGrantAccessLevel] = useState('view_only');
-  const [grantDaysValid, setGrantDaysValid] = useState('30');
-
   const [error, setError] = useState('');
+  const [uploadError, setUploadError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const pendingCategory = useRef<Category>('legal');
 
   async function resolveCompanyId(): Promise<string> {
     const existing: Phase6Data = getPhaseData<Phase6Data>(6) ?? {};
@@ -53,13 +186,11 @@ function Phase6Content() {
 
   const reload = async () => {
     try {
+      setError('');
+      setIsLoading(true);
       const companyId = await resolveCompanyId();
-      const [s, a] = await Promise.all([
-        entrepreneurApi.getDataRoom(companyId),
-        entrepreneurApi.getDataRoomAnalytics(companyId).catch(() => null),
-      ]);
+      const s = await entrepreneurApi.getDataRoom(companyId);
       setStatus(s);
-      setAnalytics(a);
       const existing: Phase6Data = getPhaseData<Phase6Data>(6) ?? {};
       savePhaseData(6, {
         ...existing,
@@ -67,8 +198,12 @@ function Phase6Content() {
         documentsUploadedCount: s.documents.length,
         accessGrantsCount: s.accessGrants.length,
       });
-    } catch {
-      // hydration failure is acceptable; user can still try to act
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Failed to load data room';
+      console.error('reload error:', e);
+      setError(msg);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -77,52 +212,42 @@ function Phase6Content() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleUpload = async () => {
-    setError('');
-    if (!uploadFile) { setError('Pick a file to upload'); return; }
-    if (!uploadTitle.trim()) { setError('Title is required'); return; }
-    setIsUploading(true);
+  const validateFile = (file: File): string => {
+    if (file.size > MAX_FILE_SIZE) {
+      return `File too large: ${(file.size / 1048576).toFixed(1)}MB. Maximum is 50MB.`;
+    }
+    if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+      return 'Unsupported file type. Accepted: PDF, PPTX, DOCX, XLSX.';
+    }
+    return '';
+  };
+
+  const triggerUpload = (category: Category) => {
+    pendingCategory.current = category;
+    setUploadCategory(category);
+    setUploadError('');
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelected = async (file: File | null) => {
+    if (!file) return;
+    setUploadError('');
+    const msg = validateFile(file);
+    if (msg) { setUploadError(msg); return; }
     try {
       const companyId = await resolveCompanyId();
+      const title = file.name.replace(/\.[^.]+$/, '');
       const fd = new FormData();
-      fd.append('file', uploadFile);
-      fd.append('title', uploadTitle.trim());
-      fd.append('category', uploadCategory);
+      fd.append('file', file);
+      fd.append('title', title);
+      fd.append('category', pendingCategory.current);
       fd.append('isRequired', 'false');
       await entrepreneurApi.uploadDataRoomDocument(companyId, fd);
-      setUploadFile(null);
-      setUploadTitle('');
       await reload();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Upload failed');
+      setUploadError(e instanceof Error ? e.message : 'Upload failed');
     } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const handleGrant = async () => {
-    setError('');
-    if (!grantInvestorId.trim()) { setError('Investor id is required'); return; }
-    const days = parseInt(grantDaysValid, 10);
-    if (!Number.isFinite(days) || days <= 0) { setError('Days valid must be > 0'); return; }
-    try {
-      const companyId = await resolveCompanyId();
-      await entrepreneurApi.grantDataRoomAccess(companyId, grantInvestorId.trim(), grantAccessLevel, days);
-      setGrantInvestorId('');
-      await reload();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Grant failed');
-    }
-  };
-
-  const handleRevoke = async (investorId: string) => {
-    setError('');
-    try {
-      const companyId = await resolveCompanyId();
-      await entrepreneurApi.revokeDataRoomAccess(companyId, investorId);
-      await reload();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Revoke failed');
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -137,21 +262,12 @@ function Phase6Content() {
     }
   };
 
-  const handleDownload = async (doc: DataRoomDocumentResponse) => {
-    setError('');
+  const goManageAccess = async () => {
     try {
       const companyId = await resolveCompanyId();
-      const blob = await entrepreneurApi.downloadDataRoomDocument(companyId, doc.documentId);
-      await entrepreneurApi.trackDataRoomDownload(companyId, doc.documentId);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = doc.fileName || doc.title;
-      a.click();
-      URL.revokeObjectURL(url);
-      await reload();
+      router.push(`/dashboard/entrepreneur/phase-6/manage-access?companyId=${companyId}`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Download failed');
+      setError(e instanceof Error ? e.message : 'Navigation failed');
     }
   };
 
@@ -193,212 +309,563 @@ function Phase6Content() {
   const docs = status?.documents ?? [];
   const grants = status?.accessGrants ?? [];
   const uploadedCategories = new Set(docs.map((d) => d.category?.toLowerCase()));
+  const completedCategories = REQUIRED_CATEGORIES.filter((c) => uploadedCategories.has(c));
   const missingRequired = REQUIRED_CATEGORIES.filter((c) => !uploadedCategories.has(c));
+  const missingCount = REQUIRED_CATEGORIES.length - completedCategories.length;
+  const readinessPercent = Math.round((completedCategories.length / REQUIRED_CATEGORIES.length) * 100);
+  const isLive = status?.isLive ?? false;
+  const ndaActive = status?.ndaRequired ?? false;
+  const ndaLocked = !!status?.ndaLockedAt;
+  const totalBytes = docs.reduce((sum, d) => sum + (d.fileSize ?? 0), 0);
+  const totalSizeMb = (totalBytes / 1048576).toFixed(1);
+  // Always surface the three required folders so users can upload into each.
+  const folderCategories = REQUIRED_CATEGORIES;
+  const defaultExpiryDays = 30;
+
+  function getDocs(category: string) {
+    return docs.filter((d) => d.category?.toLowerCase() === category.toLowerCase());
+  }
+  const toggleFolder = (c: string) => setExpanded((p) => ({ ...p, [c]: !p[c] }));
+
+  if (isLoading && !status) {
+    return <Phase6LoadingState />;
+  }
 
   return (
-    <div className="space-y-6">
-      {/* Figma P6 — data room visuals (real data + honest shells) */}
-      <Phase6DataRoomVisuals />
+    <div className="flex flex-col gap-6">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".pdf,.pptx,.docx,.xlsx,.xls"
+        onChange={(e) => handleFileSelected(e.target.files?.[0] ?? null)}
+        className="hidden"
+        aria-hidden="true"
+        tabIndex={-1}
+      />
 
-      {missingRequired.length > 0 && (
-        <div className="bg-warning/10 border border-warning/30 rounded-xl p-4 flex gap-3">
-          <AlertCircle className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-warning">
-            Missing required categories: <strong>{missingRequired.join(', ')}</strong>.
-            Each must have at least one document before you can submit.
+      {/* SECTION 1 — PAGE HEADER */}
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-3">
+            <h1 className="font-semibold" style={{ fontSize: 32, lineHeight: '40px', color: C.textPrimary }}>
+              Data Room—Secure Repository
+            </h1>
+            <span
+              className="inline-flex items-center gap-2 rounded-full"
+              style={{ backgroundColor: isLive ? C.bgGreen : C.bgYellow, border: `1px solid ${C.border}`, padding: '4px 12px' }}
+            >
+              <span className="rounded-full" style={{ width: 8, height: 8, backgroundColor: isLive ? C.green : C.yellow }} />
+              <span className="font-semibold" style={{ fontSize: 14, color: isLive ? C.green : C.yellow }}>
+                {isLive ? (ndaActive ? '● Live · NDA Active' : '● Live') : '○ Draft'}
+              </span>
+            </span>
+          </div>
+          <p style={{ fontSize: 14, lineHeight: '20px', color: C.textSecondary }}>
+            Define your cap table, record stakeholders, setup ESOP, and simulate future funding rounds
           </p>
         </div>
-      )}
-
-      <div className="bg-card border-2 border-border rounded-2xl p-6 space-y-4">
-        <h3 className="text-lg font-bold text-foreground">Upload document</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <Input
-            type="text"
-            value={uploadTitle}
-            onChange={(e) => setUploadTitle(e.target.value)}
-            placeholder="Document title"
-            aria-label="Document title"
-            className="h-10 bg-background border-input"
-          />
-          <select
-            value={uploadCategory}
-            onChange={(e) => setUploadCategory(e.target.value as Category)}
-            aria-label="Document category"
-            className="h-10 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        <div className="flex items-center gap-3">
+          {/* TODO: wire to export endpoint when available */}
+          <button
+            type="button"
+            disabled
+            title="Export report coming soon"
+            className="inline-flex cursor-not-allowed items-center gap-2 rounded-lg opacity-50"
+            style={{ backgroundColor: C.bgWhite, border: `1px solid ${C.border}`, padding: '10px 16px' }}
           >
-            {ALLOWED_CATEGORIES.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
-          <input
-            type="file"
-            onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
-            aria-label="Document file"
-            className="h-10 text-sm"
-          />
+            <Download size={16} style={{ color: C.textSecondary }} />
+            <span style={{ fontSize: 14, fontWeight: 500, color: C.textSecondary }}>Export Report</span>
+          </button>
+          <button
+            type="button"
+            onClick={goManageAccess}
+            className="inline-flex items-center rounded-lg"
+            style={{ backgroundColor: C.primary, padding: '10px 16px' }}
+          >
+            <span className="font-semibold" style={{ fontSize: 13, color: '#f7f7f7' }}>Manage Access</span>
+          </button>
         </div>
-        <Button onClick={handleUpload} disabled={isUploading || !uploadFile} className="gap-2">
-          <Upload className="w-4 h-4" />
-          {isUploading ? 'Uploading…' : 'Upload'}
-        </Button>
       </div>
 
-      <div className="bg-card border-2 border-border rounded-2xl p-6 space-y-3">
-        <h3 className="text-lg font-bold text-foreground">Documents</h3>
-        {docs.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No documents uploaded yet.</p>
-        ) : (
-          <div className="space-y-2">
-            {docs.map((d) => (
+      {/* SECTION 2 — STATUS BAR */}
+      <div
+        className="flex items-center justify-between rounded-lg"
+        style={{ backgroundColor: C.bgCard, border: `2px solid ${C.bgWhite}`, boxShadow: SHADOW_BLUR, padding: '8px 12px' }}
+      >
+        <div className="flex items-center gap-2">
+          <span className="rounded-full" style={{ width: 12, height: 12, backgroundColor: isLive ? C.green : C.yellow }} />
+          <span className="font-semibold" style={{ fontSize: 12, color: isLive ? C.green : C.yellow }}>
+            {isLive ? 'Data Room Live' : 'Data Room Draft'}
+          </span>
+          <span style={{ fontSize: 12, fontWeight: 500, color: isLive ? C.green : C.yellow }}>
+            {isLive
+              ? ndaActive
+                ? '— investors can request access · NDA required'
+                : '— investors can request access'
+              : '— not visible to investors'}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          {[
+            `📄 ${docs.length} docs`,
+            '📁 3 folders',
+            ndaActive ? '🔐 NDA active' : '🔓 No NDA',
+            `👁 ${grants.length} investors`,
+          ].map((label) => (
+            <span
+              key={label}
+              className="rounded-md"
+              style={{ backgroundColor: C.bgWhite, border: `1px solid ${C.borderLight}`, boxShadow: SHADOW_BLUR, padding: '4px 12px', fontSize: 12, fontWeight: 500, color: C.textSecondary }}
+            >
+              {label}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* SECTION 3 — TWO-COLUMN LAYOUT */}
+      <div className="flex flex-col gap-6 lg:flex-row">
+        {/* LEFT COLUMN */}
+        <div className="flex min-w-0 flex-1 flex-col gap-5">
+          {/* 3A — STAT CARDS ROW */}
+          <div className="flex gap-3">
+            {([
+              {
+                icon: '📄',
+                label: 'Documents',
+                value: `${docs.length}`,
+                sub: `${completedCategories.length} / ${REQUIRED_CATEGORIES.length}`,
+                badge: missingCount > 0 ? `${missingCount} categor${missingCount === 1 ? 'y' : 'ies'} missing` : 'All complete',
+                badgeBg: missingCount > 0 ? C.bgYellow : C.bgGreen,
+                badgeColor: missingCount > 0 ? C.yellow : C.green,
+              },
+              { icon: '📁', label: 'Folders', value: '3', sub: 'legal · financial · business' },
+              { icon: '💾', label: 'Total File Size', value: totalSizeMb, suffix: 'MB', sub: `${docs.length} files` },
+              {
+                icon: '👁',
+                label: 'Data Room Access',
+                value: `${grants.length}`,
+                badge: ndaActive ? 'NDA active' : 'No NDA',
+                badgeBg: ndaActive ? C.bgGreen : C.bgYellow,
+                badgeColor: ndaActive ? C.green : C.yellow,
+              },
+            ] as const).map((card) => (
               <div
-                key={d.documentId}
-                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 bg-background border-2 border-input rounded-xl p-3"
+                key={card.label}
+                className="flex flex-1 flex-col items-center gap-4 rounded-xl"
+                style={{ backgroundColor: C.bgCard, border: `2px solid ${C.bgWhite}`, boxShadow: SHADOW_BLUR, padding: '16px 12px' }}
               >
-                <div className="flex items-start gap-3 flex-1 min-w-0">
-                  <FileText className="w-5 h-5 text-muted-foreground mt-0.5" />
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-foreground truncate">{d.title}</p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {d.category} · {d.fileName} · {(d.fileSize / 1024).toFixed(1)} KB
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Views: {d.viewCount} · Downloads: {d.downloadCount}
-                    </p>
+                <div
+                  className="flex items-center justify-center rounded-lg"
+                  style={{ width: 40, height: 40, backgroundColor: C.bgWhite, border: `1px solid ${C.border}`, fontSize: 20 }}
+                >
+                  {card.icon}
+                </div>
+                <div className="flex flex-col items-center gap-1">
+                  <span style={{ fontSize: 12, fontWeight: 500, color: C.textPrimary }}>{card.label}</span>
+                  <div className="flex items-baseline gap-1">
+                    <span className="font-semibold" style={{ fontSize: 24, lineHeight: '32px', color: C.textPrimary }}>{card.value}</span>
+                    {'suffix' in card && card.suffix && (
+                      <span style={{ fontSize: 13, fontWeight: 500, color: C.textMuted }}>{card.suffix}</span>
+                    )}
+                  </div>
+                  {'sub' in card && card.sub && (
+                    <span className="text-center" style={{ fontSize: 11, color: C.textMuted }}>{card.sub}</span>
+                  )}
+                  {'badge' in card && card.badge && (
+                    <span className="rounded-full" style={{ backgroundColor: card.badgeBg, padding: '2px 8px', fontSize: 11, color: card.badgeColor }}>
+                      {card.badge}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* 3B — DOCUMENTS MAIN CONTAINER */}
+          <div
+            className="flex flex-col gap-5 rounded-2xl"
+            style={{ backgroundColor: C.bgCard, border: `2px solid ${C.bgWhite}`, boxShadow: SHADOW_BLUR, padding: 20 }}
+          >
+            <div className="flex items-center gap-3">
+              <span style={{ fontSize: 18, color: C.textPrimary }}>
+                <span className="font-bold">📄</span> ALL DOCUMENTS
+              </span>
+              <span
+                className="rounded-lg font-semibold"
+                style={{ backgroundColor: C.bgBlue, border: `1px solid ${C.border}`, padding: '4px 12px', fontSize: 14, color: C.primary }}
+              >
+                {docs.length} items
+              </span>
+            </div>
+
+            {uploadError && (
+              <div className="flex items-start gap-2 rounded-lg" style={{ backgroundColor: C.bgYellow, padding: 12 }}>
+                <AlertTriangle size={16} style={{ color: C.yellow, marginTop: 2 }} />
+                <p style={{ fontSize: 13, fontWeight: 500, color: C.yellow }}>{uploadError}</p>
+              </div>
+            )}
+
+            {/* Category picker + upload — lets users add docs to any required category */}
+            <div className="flex items-center gap-2 rounded-lg" style={{ backgroundColor: C.bgWhite, border: `1px solid ${C.border}`, padding: 12 }}>
+              <label htmlFor="upload-category" className="sr-only">Upload category</label>
+              <select
+                id="upload-category"
+                value={uploadCategory}
+                onChange={(e) => setUploadCategory(e.target.value as Category)}
+                className="flex-1 rounded-lg"
+                style={{ border: `1px solid ${C.border}`, backgroundColor: C.bgCard, padding: '8px 12px', fontSize: 14, color: C.textPrimary }}
+              >
+                {REQUIRED_CATEGORY_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => triggerUpload(uploadCategory)}
+                className="inline-flex items-center justify-center gap-2 rounded-lg"
+                style={{ backgroundColor: C.bgIcon, border: `1px dashed ${C.border}`, padding: '8px 20px' }}
+              >
+                <span style={{ fontSize: 14, fontWeight: 500, color: C.textSecondary }}>Upload New</span>
+                <Upload size={18} style={{ color: C.textSecondary }} />
+              </button>
+            </div>
+
+            {(
+              <div className="flex flex-col gap-4">
+                {folderCategories.map((category) => {
+                  const catDocs = getDocs(category);
+                  const isOpen = !!expanded[category];
+                  const emoji = CATEGORY_EMOJIS[category] ?? '📁';
+                  const label = CATEGORY_LABELS[category] ?? category;
+
+                  if (!isOpen) {
+                    return (
+                      <div
+                        key={category}
+                        className="flex items-center justify-between rounded-xl"
+                        style={{ backgroundColor: C.bgWhite, border: `1px solid ${C.border}`, boxShadow: SHADOW_CARD, padding: 16 }}
+                      >
+                        <span className="font-semibold" style={{ fontSize: 16, color: C.textPrimary }}>
+                          {emoji} {label} ({catDocs.length})
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => toggleFolder(category)}
+                          aria-label={`Expand ${label}`}
+                          className="flex items-center justify-center rounded-full"
+                          style={{ width: 28, height: 28, backgroundColor: C.bgPage, border: `1px solid ${C.border}` }}
+                        >
+                          <ChevronDown size={20} style={{ color: C.textSecondary }} />
+                        </button>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div
+                      key={category}
+                      className="flex flex-col gap-5 overflow-hidden rounded-2xl"
+                      style={{ backgroundColor: C.bgWhite, border: `1px solid ${C.border}`, boxShadow: SHADOW_CARD }}
+                    >
+                      <div
+                        className="flex items-center justify-between"
+                        style={{ backgroundColor: C.bgBlue, borderBottom: `1px solid ${C.border}`, padding: 16 }}
+                      >
+                        <span className="font-semibold" style={{ fontSize: 16, color: C.textPrimary }}>
+                          {emoji} {label}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => toggleFolder(category)}
+                          aria-label={`Collapse ${label}`}
+                          className="flex items-center justify-center rounded-full"
+                          style={{ width: 28, height: 28, backgroundColor: C.bgPage, border: `1px solid ${C.border}` }}
+                        >
+                          <ChevronUp size={20} style={{ color: C.textSecondary }} />
+                        </button>
+                      </div>
+
+                      <div className="flex gap-3" style={{ paddingLeft: 20, paddingRight: 16, paddingBottom: 4 }}>
+                        <div className="rounded" style={{ width: 1, backgroundColor: C.borderLight }} />
+                        <div className="flex flex-1 flex-col gap-3">
+                          {catDocs.map((d) => {
+                            const isPublished = d.status === 'published';
+                            return (
+                              <div
+                                key={d.documentId}
+                                className="flex items-center justify-between rounded-xl"
+                                style={{ backgroundColor: isPublished ? C.bgWhite : C.bgYellow, border: `1px solid ${C.border}`, padding: 20 }}
+                              >
+                                <div className="flex min-w-0 items-center gap-3">
+                                  <div
+                                    className="flex shrink-0 items-center justify-center rounded-lg"
+                                    style={{ width: 32, height: 32, backgroundColor: C.bgIcon, fontSize: 20 }}
+                                  >
+                                    📄
+                                  </div>
+                                  <div className="flex min-w-0 flex-col gap-0.5">
+                                    <span className="truncate font-semibold" style={{ fontSize: 14, color: C.textPrimary }}>
+                                      {d.fileName}
+                                    </span>
+                                    <span style={{ fontSize: 12, color: C.textSecondary }}>
+                                      {d.title} · {label} · {(d.fileSize / 1048576).toFixed(1)} MB
+                                    </span>
+                                    <span style={{ fontSize: 11, color: C.textMuted }}>
+                                      👁 {d.viewCount ?? 0}  ⬇ {d.downloadCount ?? 0}
+                                    </span>
+                                  </div>
+                                </div>
+                                {isPublished ? (
+                                  <span
+                                    className="shrink-0 rounded"
+                                    style={{ backgroundColor: C.bgGreen, border: `1px solid ${C.border}`, padding: '4px 12px', fontSize: 11, fontWeight: 500, color: C.green }}
+                                  >
+                                    PUBLISHED
+                                  </span>
+                                ) : (
+                                  <div className="flex shrink-0 items-center gap-2">
+                                    <span
+                                      className="inline-flex items-center gap-1 rounded-full"
+                                      style={{ backgroundColor: C.yellow, padding: '4px 12px', fontSize: 11, fontWeight: 500, color: '#f7f7f7' }}
+                                    >
+                                      <AlertTriangle size={12} /> DRAFT
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => triggerUpload(category)}
+                                      className="rounded-full"
+                                      style={{ backgroundColor: C.primary, padding: '4px 12px', fontSize: 11, fontWeight: 500, color: '#f7f7f7' }}
+                                    >
+                                      Re-upload
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+
+                          <button
+                            type="button"
+                            onClick={() => triggerUpload(category)}
+                            className="flex items-center justify-center gap-2 rounded-lg"
+                            style={{ backgroundColor: C.bgIcon, border: `1px dashed ${C.border}`, padding: '12px 24px' }}
+                          >
+                            <span style={{ fontSize: 16, fontWeight: 500, color: C.textSecondary }}>Upload New</span>
+                            <Upload size={20} style={{ color: C.textSecondary }} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* RIGHT COLUMN */}
+        <div className="flex flex-col gap-6 lg:w-[360px] lg:shrink-0">
+          {/* 3C — ACCESS CONTROL */}
+          <div
+            className="flex flex-col gap-4 overflow-hidden rounded-xl pb-4"
+            style={{ backgroundColor: C.bgCard, border: `2px solid ${C.bgWhite}`, boxShadow: SHADOW_BLUR }}
+          >
+            <div style={{ backgroundColor: C.bgBlue, borderBottom: `1px solid ${C.border}`, padding: '16px 20px' }}>
+              <span className="font-semibold" style={{ fontSize: 16, color: C.textPrimary }}>🔒 Access Control</span>
+            </div>
+
+            <div className="flex flex-col gap-3" style={{ paddingLeft: 20, paddingRight: 20 }}>
+              {/* NDA row */}
+              <div className="flex items-center justify-between" style={{ borderBottom: `1px solid ${C.borderLight}`, paddingBottom: 12 }}>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-center rounded-lg" style={{ width: 32, height: 32, backgroundColor: C.borderLight, fontSize: 16 }}>🔐</div>
+                  <div className="flex flex-col">
+                    <span style={{ fontSize: 14, fontWeight: 500, color: C.textPrimary }}>NDA required</span>
+                    <span style={{ fontSize: 12, color: C.textSecondary }}>
+                      {ndaLocked ? 'Locked — investor signed' : 'Digital signature before access'}
+                    </span>
                   </div>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => handleDownload(d)}>
-                  Download
-                </Button>
+                <Toggle on={ndaActive} disabled={ndaLocked} onChange={handleNdaToggle} />
               </div>
-            ))}
-          </div>
-        )}
-      </div>
 
-      <div className="bg-card border-2 border-border rounded-2xl p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-bold text-foreground">Access grants</h3>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={status?.ndaRequired ?? false}
-              onChange={(e) => handleNdaToggle(e.target.checked)}
-            />
-            NDA required
-          </label>
-        </div>
-
-        <div className="grid grid-cols-12 gap-2 items-end">
-          <Input
-            type="text"
-            value={grantInvestorId}
-            onChange={(e) => setGrantInvestorId(e.target.value)}
-            placeholder="Investor id"
-            aria-label="Investor ID"
-            className="col-span-5 h-9 bg-background border-input"
-          />
-          <select
-            value={grantAccessLevel}
-            onChange={(e) => setGrantAccessLevel(e.target.value)}
-            aria-label="Access level"
-            className="col-span-3 h-9 rounded-md border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <option value="view_only">view_only</option>
-            <option value="download">download</option>
-            <option value="comment">comment</option>
-          </select>
-          <Input
-            type="number"
-            min={1}
-            value={grantDaysValid}
-            onChange={(e) => setGrantDaysValid(e.target.value)}
-            placeholder="Days"
-            aria-label="Days valid"
-            className="col-span-2 h-9 bg-background border-input"
-          />
-          <Button onClick={handleGrant} className="col-span-2 gap-2">
-            <Plus className="w-4 h-4" /> Grant
-          </Button>
-        </div>
-
-        {grants.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No access grants yet.</p>
-        ) : (
-          <div className="space-y-2">
-            {grants.map((g: DataRoomAccessGrant) => (
-              <div
-                key={g.investorId}
-                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 bg-background border-2 border-input rounded-xl p-3"
-              >
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-foreground truncate">{g.investorId}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {g.accessLevel} · granted {new Date(g.grantedAt).toLocaleString()} · expires{' '}
-                    {new Date(g.expiresAt).toLocaleString()}
-                  </p>
+              {/* Email alerts row */}
+              {/* TODO: persist to Companies.EmailAlertsEnabled when backend field is added */}
+              <div className="flex items-center justify-between" style={{ borderBottom: `1px solid ${C.borderLight}`, paddingBottom: 12 }}>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-center rounded-lg" style={{ width: 32, height: 32, backgroundColor: C.borderLight, fontSize: 16 }}>📩</div>
+                  <div className="flex flex-col">
+                    <span style={{ fontSize: 14, fontWeight: 500, color: C.textPrimary }}>Email alerts</span>
+                    <span style={{ fontSize: 12, color: C.textSecondary }}>Notify on every access</span>
+                    {!emailAlerts && (
+                      <span style={{ fontSize: 10, color: C.yellow }}>(not saved)</span>
+                    )}
+                  </div>
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => handleRevoke(g.investorId)} aria-label="Revoke">
-                  <Trash2 className="w-4 h-4" />
-                </Button>
+                <Toggle on={emailAlerts} onChange={setEmailAlerts} />
               </div>
-            ))}
-          </div>
-        )}
-      </div>
 
-      <div className="bg-card border-2 border-border rounded-2xl p-6 space-y-3">
-        <h3 className="text-lg font-bold text-foreground">Engagement (backend-derived)</h3>
-        {!analytics || analytics.totalViews + analytics.totalDownloads === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            No engagement events recorded yet. Numbers will populate as investors view or download documents.
-          </p>
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-            <div>
-              <p className="text-xs uppercase text-muted-foreground">Total views</p>
-              <p className="font-bold text-foreground">{analytics.totalViews}</p>
+              {/* Access expiry row — expiry is configured per-grant on manage-access page */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-center rounded-lg" style={{ width: 32, height: 32, backgroundColor: C.borderLight, fontSize: 16 }}>🕓</div>
+                  <div className="flex flex-col">
+                    <span style={{ fontSize: 14, fontWeight: 500, color: C.textPrimary }}>Access expiry</span>
+                    <span style={{ fontSize: 12, color: C.textSecondary }}>
+                      Auto-revoke after <span style={{ fontWeight: 500, color: C.textPrimary }}>{defaultExpiryDays}</span> days
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={goManageAccess}
+                  className="rounded-full font-semibold"
+                  style={{ backgroundColor: C.bgYellow, border: `1px solid ${C.border}`, padding: '4px 12px', fontSize: 11, color: C.yellowAlt }}
+                >
+                  Set
+                </button>
+              </div>
             </div>
-            <div>
-              <p className="text-xs uppercase text-muted-foreground">Total downloads</p>
-              <p className="font-bold text-foreground">{analytics.totalDownloads}</p>
-            </div>
-            <div>
-              <p className="text-xs uppercase text-muted-foreground">Unique investors</p>
-              <p className="font-bold text-foreground">{analytics.uniqueInvestorsEngaged}</p>
-            </div>
-            <div>
-              <p className="text-xs uppercase text-muted-foreground">Documents tracked</p>
-              <p className="font-bold text-foreground">{analytics.documentEngagement.length}</p>
+
+            {/* Footer — node status */}
+            <div className="flex items-center justify-between" style={{ paddingLeft: 20, paddingRight: 20 }}>
+              <span style={{ fontSize: 13, color: C.textMuted }}>Node Status: Stable</span>
+              <div className="flex items-end" style={{ gap: 7 }}>
+                {[1, 0.8, 0.5, 0].map((op, i) => (
+                  <span key={i} className="rounded-sm" style={{ width: 4, height: 10, backgroundColor: op === 0 ? C.borderLight : C.primary, opacity: op === 0 ? 1 : op }} />
+                ))}
+              </div>
             </div>
           </div>
-        )}
-      </div>
 
-      <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 flex gap-3">
-        <ShieldCheck className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-        <p className="text-sm text-primary">
-          Submitting Phase 6 publishes your data room and sends it for compliance review.
-          Investors with valid grants (and a signed NDA if required) can then access documents.
-          Verified data-room status is awarded separately after review.
-        </p>
+          {/* 3D — DATA ROOM READINESS */}
+          <div
+            className="flex flex-col gap-4 overflow-hidden rounded-xl pb-2"
+            style={{ backgroundColor: C.bgCard, border: `2px solid ${C.bgWhite}`, boxShadow: SHADOW_BLUR }}
+          >
+            <div className="flex items-center justify-between" style={{ backgroundColor: C.bgBlue, borderBottom: `1px solid ${C.border}`, padding: '16px 20px' }}>
+              <span className="font-semibold" style={{ fontSize: 16, color: C.textPrimary }}>Data Room Readiness</span>
+              <span className="font-semibold" style={{ fontSize: 16, color: C.primary }}>{readinessPercent}%</span>
+            </div>
+
+            <div className="flex flex-col items-center gap-4" style={{ borderBottom: `1px solid ${C.border}`, paddingTop: 16, paddingBottom: 16 }}>
+              <Donut percent={readinessPercent} />
+              <p className="px-5 text-center">
+                <span className="font-semibold" style={{ fontSize: 14, color: C.textPrimary }}>
+                  {completedCategories.length} of {REQUIRED_CATEGORIES.length}
+                </span>
+                <span style={{ fontSize: 14, color: C.textMuted }}>
+                  {' '}required categories uploaded.{' '}
+                  {missingCount > 0
+                    ? `Upload ${missingCount} more categor${missingCount === 1 ? 'y' : 'ies'} to unlock Phase 7 AI Review.`
+                    : 'All required documents uploaded. Ready for Phase 7.'}
+                </span>
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-3" style={{ paddingLeft: 20, paddingRight: 20 }}>
+              <span style={{ fontSize: 14, fontWeight: 500, color: C.textSecondary }}>Required Documents</span>
+              <div className="flex flex-col gap-2">
+                {REQUIRED_CATEGORY_OPTIONS.map((item) => {
+                  const done = uploadedCategories.has(item.value);
+                  return (
+                    <div key={item.value} className="flex items-center gap-2" style={{ borderBottom: `1px solid ${C.border}`, paddingBottom: 8 }}>
+                      {done ? (
+                        <span className="flex items-center justify-center rounded-full" style={{ width: 16, height: 16, backgroundColor: C.primary }}>
+                          <Check size={11} color="#fff" strokeWidth={3} />
+                        </span>
+                      ) : (
+                        <span className="rounded-full" style={{ width: 16, height: 16, border: `1.5px solid ${C.textMuted}`, opacity: 0.6 }} />
+                      )}
+                      <span style={{ fontSize: 13, color: C.textSecondary, textDecoration: done ? 'line-through' : 'none' }}>
+                        {item.label}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* 3E — MANAGE ACCESS */}
+          <div
+            className="flex flex-col gap-4 overflow-hidden rounded-xl"
+            style={{ backgroundColor: C.bgCard, border: `2px solid ${C.bgWhite}`, boxShadow: SHADOW_BLUR }}
+          >
+            <div className="flex items-center justify-between" style={{ backgroundColor: C.bgBlue, borderBottom: `1px solid ${C.border}`, padding: '16px 20px' }}>
+              <span className="font-semibold" style={{ fontSize: 16, color: C.textPrimary }}>Manage Access</span>
+              <button
+                type="button"
+                onClick={goManageAccess}
+                className="rounded font-semibold"
+                style={{ backgroundColor: C.bgWhite, border: `1px solid ${C.border}`, padding: '6px 16px', fontSize: 12, color: C.textSecondary }}
+              >
+                Manage
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-4" style={{ paddingLeft: 16, paddingRight: 16, paddingBottom: 16 }}>
+              {grants.length === 0 ? (
+                <p className="text-center" style={{ fontSize: 13, color: C.textMuted, paddingTop: 8, paddingBottom: 8 }}>
+                  No investors have access yet.
+                </p>
+              ) : (
+                grants.map((g: DataRoomAccessGrant, i) => {
+                  const name = g.investorName || g.investorId;
+                  const initials = name.slice(0, 2).toUpperCase();
+                  const isLast = i === grants.length - 1;
+                  return (
+                    <div
+                      key={g.investorId}
+                      className="flex items-center gap-3"
+                      style={isLast ? undefined : { borderBottom: `1px solid ${C.borderLight}`, paddingBottom: 8 }}
+                    >
+                      <div
+                        className="flex shrink-0 items-center justify-center rounded-full font-semibold"
+                        style={{ width: 48, height: 48, background: `linear-gradient(135deg, ${C.primary}, ${C.primaryToggle})`, color: '#fff', fontSize: 16 }}
+                      >
+                        {initials}
+                      </div>
+                      <div className="flex min-w-0 flex-1 flex-col">
+                        <span className="truncate" style={{ fontSize: 16, fontWeight: 500, color: C.textPrimary }}>{name}</span>
+                        <span className="truncate" style={{ fontSize: 11, color: C.textSecondary }}>
+                          Expires {new Date(g.expiresAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      {/* TODO: show "NDA Signed" badge when grant.ndaSigned === true */}
+                      {/* Backend DataRoomAccessGrant does not yet carry this field. */}
+                      <div className="flex shrink-0 items-center">
+                        <span className="rounded-2xl" style={{ backgroundColor: 'rgba(0,0,0,0.06)', padding: '2px 8px', fontSize: 11, fontWeight: 500, color: C.textSecondary }}>
+                          {g.accessLevel}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
       {error && (
-        <div className="bg-destructive/10 border-2 border-destructive/30 rounded-xl p-4 flex gap-3">
-          <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
-          <p className="text-sm font-semibold text-destructive">{error}</p>
+        <div className="flex items-start gap-3 rounded-xl p-4" style={{ backgroundColor: 'rgba(220,38,38,0.1)', border: '2px solid rgba(220,38,38,0.3)' }}>
+          <AlertCircle size={20} style={{ color: '#dc2626', marginTop: 2 }} />
+          <p style={{ fontSize: 14, fontWeight: 600, color: '#dc2626' }}>{error}</p>
         </div>
       )}
 
-      <StepFooter
-        backUrl="/dashboard/entrepreneur/phase-5"
-        onNextClick={handleSubmit}
-        isLoading={isSubmitting}
-        nextLabel="Publish &amp; Complete Phase 6"
-        nextValidationError={error}
-        isNextDisabled={docs.length === 0 || missingRequired.length > 0}
-      />
+      {currentPhase! <= 6 && (
+        <StepFooter
+          backUrl="/dashboard/entrepreneur/phase-5"
+          onNextClick={handleSubmit}
+          isLoading={isSubmitting}
+          nextLabel="Publish & Complete Phase 6"
+          nextValidationError={error}
+          isNextDisabled={isLoading || docs.length === 0 || missingRequired.length > 0}
+        />
+      )}
     </div>
   );
 }
@@ -406,18 +873,11 @@ function Phase6Content() {
 export default function Phase6Page() {
   return (
     <RouteGuard requiredPhase={6}>
-      <EntrepreneurLayout sidebar={<div />}>
-        <div className="space-y-6 md:space-y-8">
-          <PhaseHeader
-            title="Data Room Submission"
-            subtitle="Upload required documents, manage investor access, and submit for compliance review."
-            progressLabel="PROGRESS"
-            progressValue="Phase 6 of 9"
-            progressPercentage={67}
-          />
-          <Phase6Content />
-        </div>
-      </EntrepreneurLayout>
+      <div className="space-y-6 md:space-y-8" style={{ backgroundColor: C.bgPage }}>
+        <Phase6Content />
+      </div>
     </RouteGuard>
   );
 }
+
+

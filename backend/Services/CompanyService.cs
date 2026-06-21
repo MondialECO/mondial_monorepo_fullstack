@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using WebApp.Models.DatabaseModels;
@@ -17,6 +18,7 @@ public class CompanyService : ICompanyService
     private readonly IDocumentManager _documentManager;
     private readonly IPhaseValidator _phaseValidator;
     private readonly IDealEventPublisher _dealEvents;
+    private readonly ILogger<CompanyService>? _logger;
 
     public CompanyService(
         MongoDbContext dbContext,
@@ -26,7 +28,8 @@ public class CompanyService : ICompanyService
         IAiReviewEngine aiReviewEngine,
         IDocumentManager documentManager,
         IPhaseValidator phaseValidator,
-        IDealEventPublisher dealEvents)
+        IDealEventPublisher dealEvents,
+        ILogger<CompanyService>? logger = null)
     {
         _dbContext = dbContext;
         _valuationEngine = valuationEngine;
@@ -36,6 +39,7 @@ public class CompanyService : ICompanyService
         _documentManager = documentManager;
         _phaseValidator = phaseValidator;
         _dealEvents = dealEvents;
+        _logger = logger;
     }
 
     // ============ PHASE FLOW ============
@@ -86,7 +90,17 @@ public class CompanyService : ICompanyService
         if (!company.CompletedPhases.Contains(phaseToComplete))
             company.CompletedPhases.Add(phaseToComplete);
 
-        company.CurrentPhase = phaseToComplete + 1;
+        // Special case: Phase 8 completion auto-completes Phase 9
+        if (phaseToComplete == 8)
+        {
+            if (!company.CompletedPhases.Contains(9))
+                company.CompletedPhases.Add(9);
+            company.CurrentPhase = 10;
+        }
+        else
+        {
+            company.CurrentPhase = phaseToComplete + 1;
+        }
 
         company.UpdatedAt = DateTime.UtcNow;
 
@@ -97,6 +111,12 @@ public class CompanyService : ICompanyService
         // its own errors) so it can never block or fail the phase advance.
         if (phaseToComplete == 3)
             await Phase3CompletionEvents.RunAsync(_dbContext, company);
+
+        if (phaseToComplete == 4)
+            await Phase4CompletionEvents.RunAsync(_dbContext, company);
+
+        if (phaseToComplete == 5)
+            await Phase5CompletionEvents.RunAsync(_dbContext, company, _logger);
 
         return BuildProgressResponse(company);
     }
@@ -450,6 +470,11 @@ public class CompanyService : ICompanyService
         if (!double.IsFinite(request.PreMoneyValuation) ||
             request.PreMoneyValuation < Phase5Requirements.ValuationMin)
             throw new ArgumentException($"preMoneyValuation must be >= {Phase5Requirements.ValuationMin}");
+        if (request.PreMoneyValuation < request.RaiseAmount)
+            throw new ArgumentException("preMoneyValuation must be >= raiseAmount");
+        if (request.MinimumTicketEur.HasValue &&
+            (!double.IsFinite(request.MinimumTicketEur.Value) || request.MinimumTicketEur.Value < 0))
+            throw new ArgumentException("minimumTicketEur must be a finite number >= 0");
 
         // EquityOfferedPercent is optional at write time (Phase 3 doesn't collect it).
         // Phase 5 validator enforces it before phase advancement.
@@ -491,6 +516,8 @@ public class CompanyService : ICompanyService
             company.EquityOfferedPercent = request.EquityOfferedPercent.Value;
         if (!string.IsNullOrWhiteSpace(request.ShareType))
             company.ShareType = request.ShareType.ToLowerInvariant();
+        if (request.MinimumTicketEur.HasValue)
+            company.MinimumTicketEur = request.MinimumTicketEur.Value;
         company.CapitalAllocation = request.CapitalAllocation;
         company.ResourceMap = request.ResourceMap;
         company.UpdatedAt = DateTime.UtcNow;
@@ -997,6 +1024,25 @@ public class CompanyService : ICompanyService
         return latest == null ? null : MapCapTableSnapshot(latest);
     }
 
+    /// <summary>
+    /// Marks the latest cap-table snapshot's exit waterfall as reviewed. Required
+    /// (alongside a recorded dilution simulation) before Phase 4 advancement.
+    /// </summary>
+    public async Task SetExitWaterfallReviewedAsync(string companyId)
+    {
+        await GetCompanyAsync(companyId);
+        var latest = await _dbContext.Phase4CapTables
+            .Find(c => c.CompanyId == companyId)
+            .SortByDescending(c => c.RecordedAt)
+            .FirstOrDefaultAsync();
+        if (latest == null)
+            throw new ArgumentException("No cap table snapshot found to mark exit waterfall reviewed");
+
+        await _dbContext.Phase4CapTables.UpdateOneAsync(
+            Builders<Phase4CapTable>.Filter.Eq(c => c.Id, latest.Id),
+            Builders<Phase4CapTable>.Update.Set(c => c.ExitWaterfallReviewed, true));
+    }
+
     public async Task<List<VestingScheduleResponse>> SaveVestingSchedulesAsync(string companyId, SaveVestingScheduleRequest request)
     {
         if (request?.Entries == null || request.Entries.Count == 0)
@@ -1148,6 +1194,27 @@ public class CompanyService : ICompanyService
             IssuedAt = DateTime.UtcNow,
         };
 
+        // SAFE-note conversion: when issuing a SAFE and all conversion inputs are
+        // supplied, derive the conversion price, share count, and method used.
+        if (string.Equals(doc.ShareClass, ShareClasses.Safe, StringComparison.OrdinalIgnoreCase)
+            && request.SafePrincipal is > 0
+            && request.ValuationCap is > 0
+            && request.RoundPricePerShare is > 0
+            && request.DiscountRate is >= 0 and < 1
+            && request.TotalSharesPreRound is > 0)
+        {
+            var conversion = Phase4Requirements.ComputeSafeConversion(
+                request.SafePrincipal.Value,
+                request.ValuationCap.Value,
+                request.DiscountRate.Value,
+                request.RoundPricePerShare.Value,
+                request.TotalSharesPreRound.Value);
+
+            doc.SharesIssued = conversion.SharesIssued;
+            doc.ConversionPrice = conversion.ConversionPrice;
+            doc.ConversionMethod = conversion.MethodUsed;
+        }
+
         await _dbContext.Phase4ShareIssuances.InsertOneAsync(doc);
 
         return new ShareIssuanceResponse
@@ -1159,6 +1226,8 @@ public class CompanyService : ICompanyService
             PricePerShare = doc.PricePerShare,
             Reason = doc.Reason,
             IssuedAt = doc.IssuedAt,
+            ConversionPrice = doc.ConversionPrice,
+            ConversionMethod = doc.ConversionMethod,
         };
     }
 
@@ -1312,6 +1381,20 @@ public class CompanyService : ICompanyService
     public async Task<FundingProfileResponse> GetFundingProfileAsync(string companyId)
     {
         var company = await GetCompanyAsync(companyId);
+
+        // amount is DERIVED on read from the single source of truth
+        // (raise × percent / 100) — never persisted, so it can never drift
+        // from FundingAskAmount.
+        var raise = company.FundingAskAmount ?? 0;
+        var allocation = (company.CapitalAllocation ?? new List<CapitalAllocationDto>())
+            .Select(c => new CapitalAllocationDto
+            {
+                Category = c.Category,
+                Percent = c.Percent,
+                Amount = double.IsFinite(c.Percent) ? raise * c.Percent / 100.0 : 0,
+            })
+            .ToList();
+
         return new FundingProfileResponse
         {
             FundingAskAmount = company.FundingAskAmount,
@@ -1319,9 +1402,11 @@ public class CompanyService : ICompanyService
             PreMoneyValuation = company.PreMoneyValuation,
             EquityOfferedPercent = company.EquityOfferedPercent,
             ShareType = company.ShareType,
-            CapitalAllocation = company.CapitalAllocation ?? new List<CapitalAllocationDto>(),
+            MinimumTicketEur = company.MinimumTicketEur,
+            CapitalAllocation = allocation,
             ResourceMap = company.ResourceMap,
             PitchDeckFileName = company.PitchDeckFileName,
+            PitchDeckFileSize = company.PitchDeckFileSize,
             PitchDeckUploadedAt = company.PitchDeckUploadedAt,
             FundingNarrative = company.FundingNarrative,
             HasOutreachCampaign = !string.IsNullOrWhiteSpace(company.OutreachCampaignTemplate),
@@ -1626,6 +1711,17 @@ public class CompanyService : ICompanyService
         await _dbContext.Phase6NdaAcceptances.ReplaceOneAsync(
             filter, nda, new ReplaceOptions { IsUpsert = true });
 
+        // Lock NDA enforcement on first signature: once an investor relies on
+        // the NDA the entrepreneur can no longer disable it. Only sets the
+        // timestamp if not already locked.
+        await _dbContext.Companies.UpdateOneAsync(
+            Builders<Companies>.Filter.And(
+                Builders<Companies>.Filter.Eq(c => c.Id, companyId),
+                Builders<Companies>.Filter.Eq(c => c.DataRoomNdaLockedAt, (DateTime?)null)),
+            Builders<Companies>.Update
+                .Set(c => c.DataRoomNdaLockedAt, acceptedAt)
+                .Set(c => c.UpdatedAt, DateTime.UtcNow));
+
         // Notification emission is the controller's responsibility — IPhaseNotificationService
         // depends on ICompanyService, so injecting it here would create a DI cycle.
         return new NdaAcceptanceResponse
@@ -1643,6 +1739,7 @@ public class CompanyService : ICompanyService
         {
             IsLive = company.IsDataRoomLive,
             NdaRequired = company.IsDataRoomNdaRequired,
+            NdaLockedAt = company.DataRoomNdaLockedAt,
             TotalDocuments = company.DataRoomDocuments?.Count ?? 0,
             Documents = company.DataRoomDocuments ?? new List<DataRoomDocumentResponse>(),
             AccessGrants = company.DataRoomAccessRecords ?? new List<DataRoomAccessRecord>()
@@ -1651,20 +1748,58 @@ public class CompanyService : ICompanyService
 
     public async Task<DataRoomStatusResponse> GrantDataRoomAccessAsync(string companyId, DataRoomAccessRequest request)
     {
+        var email = request?.InvestorEmail?.Trim();
+        var investorId = request?.InvestorId?.Trim();
+        if (string.IsNullOrWhiteSpace(email) && string.IsNullOrWhiteSpace(investorId))
+            throw new ArgumentException("investorEmail is required");
+
         var company = await GetCompanyAsync(companyId);
+
+        // The identifier must resolve to a live Investor row — without this, grants
+        // can be created for arbitrary strings, leaving orphaned access records
+        // that no real investor can ever use. Mirrors the deal-creation guard.
+        // Email is the primary path (case-insensitive); InvestorId is kept as a
+        // back-compat fallback for any direct API callers.
+        Investor investor;
+        if (!string.IsNullOrWhiteSpace(email))
+        {
+            var emailFilter = Builders<Investor>.Filter.Regex(
+                i => i.PrimaryEmail,
+                new BsonRegularExpression($"^{System.Text.RegularExpressions.Regex.Escape(email)}$", "i"));
+            investor = await _dbContext.Investors.Find(emailFilter).FirstOrDefaultAsync()
+                ?? throw new ArgumentException(
+                    $"No verified investor found with email '{email}'. Only verified investors can be granted data room access.");
+        }
+        else
+        {
+            investor = await _dbContext.Investors
+                .Find(i => i.Id == investorId)
+                .FirstOrDefaultAsync()
+                ?? throw new ArgumentException(
+                    $"Investor '{investorId}' not found. Only verified investors can be granted data room access.");
+        }
+
+        // Always store the resolved investor's real Id so dedupe + revoke key on it.
+        var resolvedInvestorId = investor.Id;
 
         var accessRecord = new DataRoomAccessRecord
         {
-            InvestorId = request.InvestorId,
+            InvestorId = resolvedInvestorId,
+            InvestorName = investor.Name,
             AccessLevel = request.AccessLevel,
             GrantedAt = DateTime.UtcNow,
             ExpiresAt = DateTime.UtcNow.AddDays(request.DaysValid)
         };
 
-        if (company.DataRoomAccessRecords == null)
-            company.DataRoomAccessRecords = new List<DataRoomAccessRecord>();
+        company.DataRoomAccessRecords ??= new List<DataRoomAccessRecord>();
 
-        company.DataRoomAccessRecords.Add(accessRecord);
+        // Dedupe by investor: re-granting the same investor updates their
+        // existing grant (expiry + access level) instead of stacking a second
+        // record. Exactly one grant per investor.
+        company.DataRoomAccessRecords = company.DataRoomAccessRecords
+            .Where(r => !string.Equals(r.InvestorId, resolvedInvestorId, StringComparison.Ordinal))
+            .Append(accessRecord)
+            .ToList();
         company.UpdatedAt = DateTime.UtcNow;
 
         var filter = Builders<Companies>.Filter.Eq(c => c.Id, companyId);
@@ -1692,6 +1827,13 @@ public class CompanyService : ICompanyService
     public async Task UpdateNdaRequirementAsync(string companyId, bool required)
     {
         var company = await GetCompanyAsync(companyId);
+
+        // NDA enforcement cannot be disabled once an investor has signed —
+        // disabling it would retroactively strip the protection they relied on.
+        if (!required && company.DataRoomNdaLockedAt.HasValue)
+            throw new InvalidOperationException(
+                "NDA enforcement cannot be disabled after investors have signed. Revoke individual access instead.");
+
         company.IsDataRoomNdaRequired = required;
         company.UpdatedAt = DateTime.UtcNow;
 
@@ -1713,6 +1855,9 @@ public class CompanyService : ICompanyService
         company.LastAiReviewAt = review.ReviewedAt;
         company.UpdatedAt = DateTime.UtcNow;
 
+        if (review.InvestorReadyBadge)
+            company.IsInvestorReady = true;
+
         var filter = Builders<Companies>.Filter.Eq(c => c.Id, companyId);
         await _dbContext.Companies.ReplaceOneAsync(filter, company);
 
@@ -1726,10 +1871,23 @@ public class CompanyService : ICompanyService
             ScoreBreakdown = review.ScoreBreakdown,
             InvestorReadyBadge = review.InvestorReadyBadge,
             Recommendations = review.Recommendations ?? new List<RecommendationDto>(),
+            PitchDeckAnalysis = review.PitchDeckAnalysis,
             ReviewedAt = review.ReviewedAt,
             EngineVersion = "rule_based_v1",
         };
         await _dbContext.Phase7ReviewSnapshots.InsertOneAsync(snapshot);
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var scoreUpdate = Builders<Companies>.Update
+                    .Inc(c => c.InvestorReadyScore, 15);
+                await _dbContext.Companies.UpdateOneAsync(
+                    c => c.Id == companyId, scoreUpdate);
+            }
+            catch { /* swallow — completion events must never block phase */ }
+        });
 
         return review;
     }
@@ -1962,13 +2120,15 @@ public class CompanyService : ICompanyService
         if (!double.IsFinite(request.TermSheet.PostMoneyValuation) || request.TermSheet.PostMoneyValuation <= 0)
             throw new ArgumentException("termSheet.postMoneyValuation must be > 0");
 
-        // InvestorId must resolve to a live Investor row. Without this, callers
-        // can spawn deals against arbitrary strings and the deal timeline will
-        // render orphaned investor identities forever.
+        // InvestorId must resolve to a live, active Investor row. Without this, callers
+        // can spawn deals against arbitrary strings, deleted investors, or inactive investors,
+        // and the deal timeline will render orphaned investor identities forever.
         var investor = await _dbContext.Investors
-            .Find(i => i.Id == request.InvestorId)
-            .FirstOrDefaultAsync()
-            ?? throw new ArgumentException($"investorId '{request.InvestorId}' does not match any investor");
+            .Find(i => i.Id == request.InvestorId && i.IsActive)
+            .FirstOrDefaultAsync();
+        if (investor == null)
+            throw new ArgumentException(
+                $"Investor '{request.InvestorId}' does not exist or is no longer active.");
 
         var dealId = ObjectId.GenerateNewId().ToString();
         var deal = new DealExecution
@@ -2245,6 +2405,11 @@ public class CompanyService : ICompanyService
                 $"status must be one of: {string.Join(", ", Phase9Requirements.DealStatusWhitelist)}");
 
         var deal = await GetDealOrThrowAsync(dealId);
+
+        // Terminal state immutability: completed, rejected, withdrawn cannot transition.
+        if (Phase9Requirements.DealTerminalStates.Contains(deal.Status))
+            throw new InvalidOperationException(
+                $"Deal '{dealId}' is in terminal state '{deal.Status}' and cannot be modified.");
 
         var from = deal.Status;
         var to = request.Status.ToLowerInvariant();
@@ -3444,5 +3609,136 @@ public class CompanyService : ICompanyService
             GeographyFit = Clamp(matchScore - 5),
             TeamScore = Clamp(matchScore + 2),
         };
+    }
+
+    public async Task<RoundSummaryResponse> GetRoundSummaryAsync(string companyId)
+    {
+        var deals = await _dbContext.DealExecutions
+            .Find(d => d.CompanyId == companyId)
+            .ToListAsync();
+
+        var committed = deals
+            .SelectMany(d => d.Investors)
+            .Where(p => p.Status == "committed")
+            .Sum(p => p.CommittedAmount);
+
+        var termSheets = deals.Count(d => d.Status == "term-sheet");
+        var closed = deals.Count(d => Phase9Requirements.DealTerminalStates.Contains(d.Status));
+        var interested = deals.Count(d => d.Status == "interested");
+        var inDiscussion = deals.Count(d => d.Status == "in-discussion");
+
+        var roundTarget = 0.0;
+        var remaining = Math.Max(0, roundTarget - committed);
+        var percentFilled = roundTarget > 0 ? (committed / roundTarget) * 100 : 0;
+
+        return new RoundSummaryResponse
+        {
+            TotalDeals = deals.Count,
+            CommittedAmountEur = committed,
+            RoundTargetEur = roundTarget,
+            RemainingEur = remaining,
+            PercentFilled = percentFilled,
+            InterestedCount = interested,
+            InDiscussionCount = inDiscussion,
+            TermSheetCount = termSheets,
+            ClosedCount = closed
+        };
+    }
+
+    public async Task<TermSheetResponse> GetActiveTermSheetAsync(string companyId)
+    {
+        var deal = await _dbContext.DealExecutions
+            .Find(d => d.CompanyId == companyId && d.Status == "term-sheet")
+            .FirstOrDefaultAsync();
+
+        if (deal?.TermSheet == null)
+            return null;
+
+        return new TermSheetResponse
+        {
+            TotalRaiseAmount = deal.TermSheet.TotalRaiseAmount,
+            PostMoneyValuation = deal.TermSheet.PostMoneyValuation,
+            EquityType = deal.TermSheet.EquityType,
+            InvestorEquityPercent = deal.TermSheet.InvestorEquityPercent,
+            ProRataRights = deal.TermSheet.ProRataRights,
+            Status = deal.TermSheet.Status,
+            SignedAt = deal.TermSheet.SignedAt,
+            ShareClass = string.Empty,
+            LiquidationPref = deal.TermSheet.LiquidationPreference,
+            BoardSeat = deal.TermSheet.BoardSeats.ToString(),
+            HasBoardSeat = deal.TermSheet.BoardSeats > 0,
+            AntiDilutionType = deal.TermSheet.AntiDilutionProtection,
+            ClosingDeadline = deal.TermSheet.ProposedClosingDate?.ToString() ?? "",
+            ExpiresAt = ""
+        };
+    }
+
+    /// <summary>
+    /// Round-level matchmaking timeline. Idempotently seeds two events from
+    /// Phase 5 (funding ask) and Phase 8 (AI matches) data on first access,
+    /// then returns all events for the company sorted by date ascending.
+    /// </summary>
+    public async Task<List<TimelineEventResponse>> GetDealTimelineAsync(string companyId)
+    {
+        var existingCount = await _dbContext.Phase9DealTimelineEvents
+            .CountDocumentsAsync(e => e.CompanyId == companyId);
+
+        if (existingCount == 0)
+        {
+            var company = await _dbContext.Companies
+                .Find(c => c.Id == companyId)
+                .FirstOrDefaultAsync();
+
+            var roundType = string.IsNullOrWhiteSpace(company?.FundingRoundType)
+                ? "Funding"
+                : company.FundingRoundType;
+
+            // FundingAskPublishedAt is not tracked on the company; fall back to 7 days ago.
+            var event1Date = DateTime.UtcNow.AddDays(-7);
+
+            var matchCount = await _dbContext.InvestorMatches
+                .CountDocumentsAsync(m => m.CompanyId == companyId);
+
+            var seedEvents = new List<Phase9DealTimelineEvent>
+            {
+                new Phase9DealTimelineEvent
+                {
+                    CompanyId = companyId,
+                    Title = "Funding ask published",
+                    Subtitle = $"{roundType} round live on marketplace",
+                    Status = "completed",
+                    Color = "green",
+                    EventDate = event1Date,
+                    IsAutoGenerated = true,
+                },
+                new Phase9DealTimelineEvent
+                {
+                    CompanyId = companyId,
+                    Title = $"{matchCount} AI matches identified",
+                    Subtitle = "Top matched investors from your profile",
+                    Status = "completed",
+                    Color = "green",
+                    EventDate = event1Date.AddDays(1),
+                    IsAutoGenerated = true,
+                },
+            };
+
+            await _dbContext.Phase9DealTimelineEvents.InsertManyAsync(seedEvents);
+        }
+
+        var events = await _dbContext.Phase9DealTimelineEvents
+            .Find(e => e.CompanyId == companyId)
+            .SortBy(e => e.EventDate)
+            .ToListAsync();
+
+        return events.Select(e => new TimelineEventResponse
+        {
+            EventId = e.Id,
+            EventDate = e.EventDate,
+            Title = e.Title,
+            Subtitle = e.Subtitle,
+            Status = e.Status,
+            Color = e.Color,
+        }).ToList();
     }
 }

@@ -6,7 +6,7 @@ import Phase5Client from './client';
 export default function Phase5Page() {
   return (
     <RouteGuard requiredPhase={5}>
-      <EntrepreneurLayout sidebar={<div />}>
+      {/* <EntrepreneurLayout sidebar={<div />}> */}
         <div className="space-y-6 md:space-y-8">
           <PhaseHeader
             title="Funding Submission"
@@ -17,7 +17,7 @@ export default function Phase5Page() {
           />
           <Phase5Client />
         </div>
-      </EntrepreneurLayout>
+      {/* </EntrepreneurLayout> */}
     </RouteGuard>
   );
 }
