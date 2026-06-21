@@ -21,7 +21,7 @@ import { Phase8Data } from '@/types/entrepreneur';
 
 export default function Phase8Client() {
   const router = useRouter();
-  const { savePhaseData, moveToNextStep, getPhaseData, applyBackendResponse } =
+  const { savePhaseData, moveToNextStep, getPhaseData, applyBackendResponse, currentPhase } =
     useEntrepreneurProgress();
 
   const [matches, setMatches] = useState<InvestorMatchResponse[]>([]);
@@ -121,13 +121,16 @@ export default function Phase8Client() {
     try {
       const companyId = await resolveCompanyId();
       const advanceResponse = await entrepreneurApi.advancePhase(companyId, 8, {});
-      if (advanceResponse?.currentPhase !== 9) {
+      if (advanceResponse?.currentPhase !== 10) {
         throw new Error(
-          `Phase advancement failed - expected currentPhase=9, got ${advanceResponse?.currentPhase}`,
+          `Phase advancement failed - expected currentPhase=10, got ${advanceResponse?.currentPhase}`,
         );
       }
       if (!advanceResponse?.completedPhases?.includes(8)) {
         throw new Error('Phase 8 not marked as completed in backend response');
+      }
+      if (!advanceResponse?.completedPhases?.includes(9)) {
+        throw new Error('Phase 9 not auto-completed in backend response');
       }
       applyBackendResponse(advanceResponse);
       const existing: Phase8Data = getPhaseData<Phase8Data>(8) ?? {};
@@ -543,14 +546,16 @@ export default function Phase8Client() {
         </div>
       )}
 
-      <StepFooter
-        backUrl="/dashboard/entrepreneur/phase-7"
-        onNextClick={handleSubmit}
-        isLoading={isSubmitting}
-        nextLabel="Submit &amp; Complete Phase 8"
-        nextValidationError={error}
-        isNextDisabled={!canAdvance}
-      />
+      {currentPhase! <= 8 && (
+        <StepFooter
+          backUrl="/dashboard/entrepreneur/phase-7"
+          onNextClick={handleSubmit}
+          isLoading={isSubmitting}
+          nextLabel="Submit &amp; Complete Phase 8"
+          nextValidationError={error}
+          isNextDisabled={!canAdvance}
+        />
+      )}
     </div>
   );
 }

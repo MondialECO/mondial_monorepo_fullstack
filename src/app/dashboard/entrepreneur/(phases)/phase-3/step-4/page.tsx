@@ -371,16 +371,17 @@ function Phase3ConceptOverviewClient() {
         </div>
 
         <div className="mt-6">
-          <StepFooter
-            backUrl="/dashboard/entrepreneur/phase-3/step-3"
-            onNextClick={handleComplete}
-            isLoading={isSubmitting}
-            nextLabel={currentPhase! > 3 ? 'Phase 3 Complete' : 'Complete Phase 3'}
-            showSaveDraft
-            onSaveDraft={handleSaveDraft}
-            nextValidationError={validationError}
-            isNextDisabled={currentPhase! > 3}
-          />
+          {currentPhase! <= 3 && (
+            <StepFooter
+              backUrl="/dashboard/entrepreneur/phase-3/step-3"
+              onNextClick={handleComplete}
+              isLoading={isSubmitting}
+              nextLabel="Complete Phase 3"
+              showSaveDraft
+              onSaveDraft={handleSaveDraft}
+              nextValidationError={validationError}
+            />
+          )}
         </div>
       </Phase3Container>
     </EntrepreneurLayout>

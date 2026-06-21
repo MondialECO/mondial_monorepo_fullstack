@@ -309,11 +309,11 @@ function Phase2Step4PageContent() {
               Continue to Phase 3: Investor Outreach
               <ArrowRight className="w-4 h-4" />
             </Button>
-          ) : (
+          ) : currentPhase! <= 2 ? (
             <Button
               type="button"
               onClick={handleContinue}
-              disabled={isCompleting || currentPhase! > 2}
+              disabled={isCompleting}
               className="flex-1 gap-2 h-12"
             >
               {isCompleting ? (
@@ -323,12 +323,12 @@ function Phase2Step4PageContent() {
                 </>
               ) : (
                 <>
-                  {currentPhase! > 2 ? 'Phase 2 Complete' : 'Submit & Complete Phase 2'}
+                  Submit & Complete Phase 2
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
             </Button>
-          )}
+          ) : null}
         </div>
       </div>
     </div>

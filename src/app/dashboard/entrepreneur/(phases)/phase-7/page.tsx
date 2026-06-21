@@ -172,7 +172,9 @@ function Phase7Content() {
         </div>
       )}
 
-      <StepFooter backUrl="/dashboard/entrepreneur/phase-6" onNextClick={handleSubmit} isLoading={isSubmitting} nextLabel={currentPhase! > 7 ? 'Phase 7 Complete' : 'Submit & Complete Phase 7'} nextValidationError={error} isNextDisabled={!review || !meetsThreshold || !badge || currentPhase! > 7} />
+      {currentPhase! <= 7 && (
+        <StepFooter backUrl="/dashboard/entrepreneur/phase-6" onNextClick={handleSubmit} isLoading={isSubmitting} nextLabel="Submit & Complete Phase 7" nextValidationError={error} isNextDisabled={!review || !meetsThreshold || !badge} />
+      )}
     </div>
   );
 }

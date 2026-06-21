@@ -686,11 +686,11 @@ export default function Phase5Client() {
           <Button onClick={handleNextStep} disabled={isSubmitting} className="gap-2 ml-auto">
             Next <ChevronRight className="w-4 h-4" />
           </Button>
-        ) : (
-          <Button onClick={handleSubmit} disabled={isSubmitting || currentPhase! > 5} className="gap-2 ml-auto">
-            {isSubmitting ? 'Submitting…' : currentPhase! > 5 ? 'Phase 5 Complete' : 'Complete Phase 5'}
+        ) : currentPhase! <= 5 ? (
+          <Button onClick={handleSubmit} disabled={isSubmitting} className="gap-2 ml-auto">
+            {isSubmitting ? 'Submitting…' : 'Complete Phase 5'}
           </Button>
-        )}
+        ) : null}
       </div>
     </div>
   );

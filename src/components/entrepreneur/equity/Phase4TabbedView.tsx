@@ -157,14 +157,14 @@ export function Phase4TabbedView() {
           </p>
           {phase4Done ? (
             <div className="flex items-center gap-2 text-success-text text-sm font-semibold">
-              <CheckCircle2 className="w-4 h-4" /> Phase 4 complete
+              <CheckCircle2 className="w-4 h-4" /> Phase 4 Completed
             </div>
-          ) : (
-            <Button onClick={handleComplete} disabled={completing || currentPhase! > 4} className="gap-2">
+          ) : currentPhase! <= 4 ? (
+            <Button onClick={handleComplete} disabled={completing} className="gap-2">
               {completing && <Loader2 className="w-4 h-4 animate-spin" />}
-              {currentPhase! > 4 ? 'Phase 4 Complete' : 'Complete Phase 4'}
+              Complete Phase 4
             </Button>
-          )}
+          ) : null}
         </div>
       </div>
     </div>

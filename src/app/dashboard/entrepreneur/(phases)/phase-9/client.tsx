@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Info, RefreshCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useEntrepreneurProgress } from '@/hooks/useEntrepreneurProgress';
@@ -61,8 +60,7 @@ function getErrorMessage(err: unknown): string {
 }
 
 export default function Phase9Client() {
-  const router = useRouter();
-  const { savePhaseData, getPhaseData, applyBackendResponse } =
+  const { savePhaseData, getPhaseData } =
     useEntrepreneurProgress();
 
   const [matches, setMatches] = useState<InvestorMatchResponse[]>([]);
@@ -73,7 +71,6 @@ export default function Phase9Client() {
   const [selectedDealId, setSelectedDealId] = useState<string | null>(null);
   const [activity, setActivity] = useState<DealActivityLogResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isMutating, setIsMutating] = useState(false);
   const [error, setError] = useState('');
 
@@ -353,43 +350,6 @@ export default function Phase9Client() {
     }
   };
 
-  const handleAdvance = async () => {
-    setError('');
-    setIsSubmitting(true);
-    try {
-      const companyId = await resolveCompanyId();
-      const advanceResponse = await entrepreneurApi.advancePhase(
-        companyId,
-        9,
-        {},
-      );
-      if (advanceResponse?.currentPhase !== 10) {
-        throw new Error(
-          `Phase advancement failed - expected currentPhase=10, got ${advanceResponse?.currentPhase}`,
-        );
-      }
-      if (!advanceResponse?.completedPhases?.includes(9)) {
-        throw new Error('Phase 9 not marked as completed in backend response');
-      }
-      applyBackendResponse(advanceResponse);
-
-      const existing: Phase9Data = getPhaseData<Phase9Data>(9) ?? {};
-      savePhaseData(9, {
-        ...existing,
-        __companyId: companyId,
-        submittedAt: new Date().toISOString(),
-      });
-
-      await new Promise((r) => setTimeout(r, 300));
-      router.push('/dashboard/entrepreneur/phase-10');
-    } catch (e) {
-      setError(getErrorMessage(e));
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const canAdvance = (summary?.closedCount ?? 0) > 0;
 
   if (isLoading) {
     return (
@@ -756,19 +716,11 @@ export default function Phase9Client() {
         </div>
       )}
 
-      {/* Advance footer */}
+      {/* Info footer - Phase 9 auto-completes when Phase 8 completes */}
       <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-input">
         <p className="text-xs text-muted-foreground">
-          {canAdvance
-            ? 'At least one deal is signed/completed — Phase 9 can advance.'
-            : 'At least one deal must reach signed or completed before Phase 9 can advance.'}
+          Phase 9 auto-completes when Phase 8 is completed. View your deal pipeline below.
         </p>
-        <Button
-          onClick={handleAdvance}
-          disabled={!canAdvance || isSubmitting}
-        >
-          {isSubmitting ? 'Advancing…' : 'Complete Phase 9'}
-        </Button>
       </div>
     </div>
   );
