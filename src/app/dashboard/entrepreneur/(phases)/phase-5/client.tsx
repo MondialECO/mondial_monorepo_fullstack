@@ -32,7 +32,7 @@ const NARRATIVE_MAX_LENGTH = 5000;
 
 export default function Phase5Client() {
   const router = useRouter();
-  const { savePhaseData, getPhaseData, applyBackendResponse } =
+  const { savePhaseData, getPhaseData, applyBackendResponse, currentPhase } =
     useEntrepreneurProgress();
 
   // Step management
@@ -687,8 +687,8 @@ export default function Phase5Client() {
             Next <ChevronRight className="w-4 h-4" />
           </Button>
         ) : (
-          <Button onClick={handleSubmit} disabled={isSubmitting} className="gap-2 ml-auto">
-            {isSubmitting ? 'Submitting…' : 'Complete Phase 5'}
+          <Button onClick={handleSubmit} disabled={isSubmitting || currentPhase! > 5} className="gap-2 ml-auto">
+            {isSubmitting ? 'Submitting…' : currentPhase! > 5 ? 'Phase 5 Complete' : 'Complete Phase 5'}
           </Button>
         )}
       </div>

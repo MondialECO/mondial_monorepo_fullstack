@@ -518,6 +518,24 @@ export interface UpdateMatchStatusRequest {
 
 // Phase 9
 // Round summary: real-time aggregate of deal committed amounts + round target
+// Active term sheet — mirrors backend TermSheetResponse DTO (camelCased).
+export interface TermSheetResponse {
+  totalRaiseAmount: number;
+  postMoneyValuation: number;
+  equityType: string;
+  investorEquityPercent: number;
+  proRataRights: boolean;
+  status: string;
+  signedAt?: string | null;
+  shareClass: string;
+  liquidationPref: string;
+  boardSeat: string;
+  hasBoardSeat?: boolean | null;
+  antiDilutionType: string;
+  closingDeadline: string;
+  expiresAt: string;
+}
+
 export interface RoundSummaryResponse {
   totalDeals: number;
   committedAmountEur: number;
@@ -528,6 +546,16 @@ export interface RoundSummaryResponse {
   inDiscussionCount: number;
   termSheetCount: number;
   closedCount: number;
+}
+
+// Matchmaking Process timeline — round-level events (auto-seeded from Phase 5/8).
+export interface TimelineEventResponse {
+  eventId: string;
+  eventDate: string;
+  title: string;
+  subtitle: string;
+  status: "completed" | "active" | "pending";
+  color: "green" | "blue" | "amber" | "gray";
 }
 
 // 12-state deal lifecycle. Mirrors backend Phase9Requirements.DealStatusWhitelist.
@@ -593,6 +621,14 @@ export interface DealStatusResponse {
     owner: string;
     dueDate?: string;
   }>;
+  dueDiligenceChecklist: Array<{
+    itemName: string;
+    category: 'legal' | 'financial' | 'technical' | 'business';
+    status: 'pending' | 'in_progress' | 'completed' | 'flagged';
+    owner?: string;
+    addedAt?: string;
+  }>;
+  dealDocuments: DealDocumentResponse[];
   investors: Array<{
     investorId: string;
     investorName: string;
@@ -1251,6 +1287,13 @@ export const entrepreneurApi = {
   getRoundSummary: async (companyId: string): Promise<RoundSummaryResponse> => {
     const response = await api.get<RoundSummaryResponse>(
       `/companies/${companyId}/deals/summary`
+    );
+    return response.data;
+  },
+
+  getTimeline: async (companyId: string): Promise<TimelineEventResponse[]> => {
+    const response = await api.get<TimelineEventResponse[]>(
+      `/companies/${companyId}/deals/timeline`
     );
     return response.data;
   },

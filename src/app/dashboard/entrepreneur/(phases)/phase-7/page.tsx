@@ -39,7 +39,7 @@ function KPICard({ title, value, subtext, badge, badgeColor }: { title: string; 
 
 function Phase7Content() {
   const router = useRouter();
-  const { savePhaseData, moveToNextStep, getPhaseData, applyBackendResponse } = useEntrepreneurProgress();
+  const { savePhaseData, moveToNextStep, getPhaseData, applyBackendResponse, currentPhase } = useEntrepreneurProgress();
 
   const [review, setReview] = useState<AiReviewResponse | null>(null);
   const [isRunning, setIsRunning] = useState(false);
@@ -172,7 +172,7 @@ function Phase7Content() {
         </div>
       )}
 
-      <StepFooter backUrl="/dashboard/entrepreneur/phase-6" onNextClick={handleSubmit} isLoading={isSubmitting} nextLabel="Submit &amp; Complete Phase 7" nextValidationError={error} isNextDisabled={!review || !meetsThreshold || !badge} />
+      <StepFooter backUrl="/dashboard/entrepreneur/phase-6" onNextClick={handleSubmit} isLoading={isSubmitting} nextLabel={currentPhase! > 7 ? 'Phase 7 Complete' : 'Submit & Complete Phase 7'} nextValidationError={error} isNextDisabled={!review || !meetsThreshold || !badge || currentPhase! > 7} />
     </div>
   );
 }

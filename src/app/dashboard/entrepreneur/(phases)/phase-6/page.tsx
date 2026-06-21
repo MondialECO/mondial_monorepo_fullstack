@@ -161,7 +161,7 @@ function Phase6LoadingState() {
 
 function Phase6Content() {
   const router = useRouter();
-  const { savePhaseData, moveToNextStep, getPhaseData, applyBackendResponse } =
+  const { savePhaseData, moveToNextStep, getPhaseData, applyBackendResponse, currentPhase } =
     useEntrepreneurProgress();
 
   const [status, setStatus] = useState<DataRoomStatusResponse | null>(null);
@@ -860,9 +860,9 @@ function Phase6Content() {
         backUrl="/dashboard/entrepreneur/phase-5"
         onNextClick={handleSubmit}
         isLoading={isSubmitting}
-        nextLabel="Publish &amp; Complete Phase 6"
+        nextLabel={currentPhase! > 6 ? 'Phase 6 Complete' : 'Publish & Complete Phase 6'}
         nextValidationError={error}
-        isNextDisabled={isLoading || docs.length === 0 || missingRequired.length > 0}
+        isNextDisabled={isLoading || docs.length === 0 || missingRequired.length > 0 || currentPhase! > 6}
       />
     </div>
   );

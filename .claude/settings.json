@@ -66,7 +66,17 @@
       "Bash(xargs grep -l \"DealStatus\\\\|DueDiligenceStatus\\\\|DealActivityLogResponse\")",
       "Bash(xargs grep -l \"CreateDealAsync\")",
       "Bash(xargs grep -l \"EnsurePhase9Indexes\\\\|CreateIndexModel\")",
-      "Bash(xargs grep -l \"class DealExecution\\\\|class TermSheet\\\\|class Phase9\")"
+      "Bash(xargs grep -l \"class DealExecution\\\\|class TermSheet\\\\|class Phase9\")",
+      "Bash(taskkill /F /IM WebApp.exe)",
+      "Bash(awk '{print $2}')",
+      "Bash(xargs -r kill -9)",
+      "Bash(taskkill /PID 10576 /F)",
+      "Bash(kill -9 10576)",
+      "Bash(dotnet run *)",
+      "Bash(curl -s http://localhost:5093/api/companies/6a32afa34357b8ae853c60a2/term-sheets/active)",
+      "Bash(pkill -f \"dotnet run\")",
+      "Bash(pkill -f WebApp)",
+      "Bash(curl -i http://localhost:5093/api/companies/6a32afa34357b8ae853c60a2/term-sheets/active)"
     ],
     "deny": [
       "Bash(rm -rf:*)",

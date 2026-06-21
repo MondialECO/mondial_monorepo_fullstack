@@ -56,7 +56,7 @@ function generateSectorTags(text: string, businessModel: string): string[] {
 
 function Phase3ConceptOverviewClient() {
   const router = useRouter();
-  const { progress, savePhaseData, moveToNextStep, getPhaseData, applyBackendResponse } =
+  const { progress, savePhaseData, moveToNextStep, getPhaseData, applyBackendResponse, currentPhase } =
     useEntrepreneurProgress();
 
   const [elevatorPitch, setElevatorPitch] = useState('');
@@ -375,10 +375,11 @@ function Phase3ConceptOverviewClient() {
             backUrl="/dashboard/entrepreneur/phase-3/step-3"
             onNextClick={handleComplete}
             isLoading={isSubmitting}
-            nextLabel="Complete Phase 3"
+            nextLabel={currentPhase! > 3 ? 'Phase 3 Complete' : 'Complete Phase 3'}
             showSaveDraft
             onSaveDraft={handleSaveDraft}
             nextValidationError={validationError}
+            isNextDisabled={currentPhase! > 3}
           />
         </div>
       </Phase3Container>

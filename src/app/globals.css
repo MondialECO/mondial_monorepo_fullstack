@@ -130,6 +130,17 @@
   --p8-green: #157a55;
   --p8-green-dark: #0f5c3f;
   --p8-blue-dark: #1F3FAF;
+
+  /* Phase 9 — Deal Pipeline design tokens (Figma) */
+  --p9-timeline-green: #157a55;
+  --p9-timeline-blue-light: #d5dcf1;
+  --p9-timeline-amber: #965f11;
+  --p9-timeline-text-default: #5e5e5e;
+  --p9-timeline-text-dark: #070707;
+  --p9-card-bg: #f9f9fa;
+  --p9-bullet-gray: rgba(0, 0, 0, 0.08);
+  --p9-bullet-gray-dot: rgba(0, 0, 0, 0.2);
+  --p9-connector-bg: rgba(0, 0, 0, 0.08);
 }
 
 .dark {
