@@ -223,6 +223,18 @@ public class PhaseValidator : IPhaseValidator
                 v.CliffMonths, v.TotalVestMonths, $"vesting for {v.StakeholderName}"));
         }
 
+        // Dilution simulation must be reviewed: at least one ownership-history
+        // record (a recorded dilution event) is required before completion.
+        var ownershipHistory = await _dbContext.Phase4OwnershipHistories
+            .Find(h => h.CompanyId == company.Id)
+            .ToListAsync();
+        if (ownershipHistory.Count == 0)
+            errors.Add("Dilution simulation must be reviewed before completing Phase 4");
+
+        // Exit waterfall must be reviewed on the latest snapshot.
+        if (!capTable.ExitWaterfallReviewed)
+            errors.Add("Exit waterfall must be reviewed before completing Phase 4");
+
         return (errors.Count == 0, errors);
     }
 
@@ -231,6 +243,11 @@ public class PhaseValidator : IPhaseValidator
         return await Task.Run(() =>
         {
             var errors = new List<string>();
+
+            // Pitch deck checked first — cheapest gate, fast-fails the common
+            // "forgot to upload" case before any numeric validation.
+            if (string.IsNullOrWhiteSpace(company.PitchDeckFileName))
+                errors.Add("Pitch deck must be uploaded");
 
             if (company.FundingAskAmount == null ||
                 !double.IsFinite(company.FundingAskAmount.Value) ||
@@ -244,6 +261,10 @@ public class PhaseValidator : IPhaseValidator
                 !double.IsFinite(company.PreMoneyValuation.Value) ||
                 company.PreMoneyValuation < Phase5Requirements.ValuationMin)
                 errors.Add($"Pre-money valuation must be >= {Phase5Requirements.ValuationMin}");
+            else if (company.FundingAskAmount.HasValue &&
+                double.IsFinite(company.FundingAskAmount.Value) &&
+                company.PreMoneyValuation.Value < company.FundingAskAmount.Value)
+                errors.Add("Pre-money valuation must be >= the raise amount");
 
             if (company.EquityOfferedPercent == null ||
                 !double.IsFinite(company.EquityOfferedPercent.Value) ||
@@ -280,12 +301,11 @@ public class PhaseValidator : IPhaseValidator
                 errors.AddRange(Phase5Requirements.ValidateHiringPlanRows(company.ResourceMap.HiringPlan));
             }
 
-            if (string.IsNullOrWhiteSpace(company.PitchDeckFileName))
-                errors.Add("Pitch deck must be uploaded");
-
             if (string.IsNullOrWhiteSpace(company.FundingNarrative) ||
                 company.FundingNarrative.Trim().Length < Phase5Requirements.NarrativeMinLength)
                 errors.Add($"Funding narrative must be at least {Phase5Requirements.NarrativeMinLength} characters");
+            else if (company.FundingNarrative.Trim().Length > Phase5Requirements.NarrativeMaxLength)
+                errors.Add($"Funding narrative must be at most {Phase5Requirements.NarrativeMaxLength} characters");
 
             return (errors.Count == 0, errors);
         });

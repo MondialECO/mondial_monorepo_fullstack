@@ -1,201 +1,288 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Trophy, BarChart3, Sparkles } from 'lucide-react';
-import entrepreneurApi, {
-  type AiReviewResponse,
-  type AiReviewHistoryEntry,
-} from '@/lib/api-entrepreneur';
-import { SectionCard, MetricCard, StatusRing, Chip, UnavailableValue, type Tone } from '@/components/entrepreneur/phase3/FinancialWidgets';
+import { Sparkles, CheckCircle2, AlertCircle, Trophy } from 'lucide-react';
+import { type AiReviewResponse } from '@/lib/api-entrepreneur';
 
-const scoreTone = (v: number): Tone => (v >= 80 ? 'success' : v >= 60 ? 'warning' : 'destructive');
-const scoreLabel = (v: number) => (v >= 80 ? 'Strong' : v >= 60 ? 'Fair' : 'Low');
-const priorityTone = (p: string): Tone => (p === 'high' ? 'destructive' : p === 'medium' ? 'warning' : 'primary');
+interface Phase7ReviewVisualsProps {
+  review: AiReviewResponse | null;
+}
 
-function ScoreBar({ label, value }: { label: string; value: number }) {
-  const v = Math.max(0, Math.min(100, value || 0));
+
+function StageRow({ icon: Icon, label, value, status }: { icon: React.ElementType; label: string; value: number; status: 'completed' | 'missing' }) {
+  const isCompleted = status === 'completed';
   return (
-    <div>
-      <div className="mb-1 flex items-center justify-between text-sm">
-        <span className="text-foreground">{label}</span>
-        <span className="flex items-center gap-2 text-muted-foreground">
-          {v}% <Chip tone={scoreTone(v)}>{scoreLabel(v)}</Chip>
-        </span>
+    <div className="flex h-14 items-center justify-between px-4 border-b last:border-0">
+      <div className="flex gap-3 items-center w-40">
+        <Icon className="w-5 h-5 text-primary" />
+        <p className="text-sm font-medium text-foreground">{label}</p>
       </div>
-      <div className="h-2 w-full overflow-hidden rounded-full bg-muted" role="progressbar" aria-label={`${label} score`} aria-valuenow={v} aria-valuemin={0} aria-valuemax={100}>
-        <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${v}%` }} />
+      <div className="flex gap-2 items-center w-40">
+        <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+          <div className="h-full bg-primary rounded-full" style={{ width: `${value}%` }} />
+        </div>
+        <p className="text-sm font-medium text-muted-foreground text-right w-10">{value}%</p>
+      </div>
+      <div className="w-40 text-right">
+        {isCompleted ? (
+          <div className="inline-flex items-center gap-1 bg-success/10 px-3 py-1 rounded-full">
+            <CheckCircle2 className="w-4 h-4 text-success-text" />
+            <span className="text-xs font-medium text-success-text">Completed</span>
+          </div>
+        ) : (
+          <div className="inline-flex items-center gap-1 bg-destructive/10 px-3 py-1 rounded-full">
+            <AlertCircle className="w-4 h-4 text-destructive" />
+            <span className="text-xs font-medium text-destructive">Missing</span>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-function Skeleton() {
+function RecommendationCard({ title, description, points, action }: { title: string; description: string; points: number; action: string }) {
   return (
-    <div className="space-y-4" aria-busy="true" aria-live="polite">
-      <span className="sr-only">Loading AI review…</span>
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="h-24 animate-pulse rounded-xl border border-border bg-muted/40" />
-        ))}
+    <div className="flex items-center justify-between gap-4 p-4 border-b last:border-0">
+      <div className="flex gap-3 items-center flex-1 min-w-0">
+        <div className="bg-primary/10 rounded-full p-2.5 shrink-0 w-10 h-10 flex items-center justify-center">
+          <Sparkles className="w-5 h-5 text-primary" />
+        </div>
+        <div className="flex flex-col gap-1 flex-1 min-w-0">
+          <div className="flex gap-2 items-center">
+            <p className="text-sm font-semibold text-foreground">{title}</p>
+            <div className="bg-primary/10 px-2 py-0.5 rounded-full shrink-0">
+              <p className="text-xs font-semibold text-primary">+{points} pts</p>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">{description}</p>
+        </div>
       </div>
-      <div className="h-48 animate-pulse rounded-xl border border-border bg-muted/40" />
+      <button className="shrink-0 px-4 py-2 border border-border rounded-md text-sm font-medium text-foreground hover:bg-muted transition-colors">
+        {action}
+      </button>
     </div>
   );
 }
 
-export function Phase7ReviewVisuals() {
-  const [loading, setLoading] = useState(true);
-  const [review, setReview] = useState<AiReviewResponse | null>(null);
-  const [history, setHistory] = useState<AiReviewHistoryEntry[]>([]);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const prog = await entrepreneurApi.getCurrentPhase();
-        const id = prog.companyId;
-        if (!id) {
-          if (!cancelled) setLoading(false);
-          return;
-        }
-        const [rev, hist] = await Promise.allSettled([
-          entrepreneurApi.getAiReview(id),
-          entrepreneurApi.getAiReviewHistory(id),
-        ]);
-        if (cancelled) return;
-        if (rev.status === 'fulfilled') setReview(rev.value);
-        if (hist.status === 'fulfilled') setHistory(Array.isArray(hist.value) ? hist.value : []);
-      } catch {
-        if (!cancelled) setError('Could not load the AI review.');
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  if (loading) return <Skeleton />;
-
+export function Phase7ReviewVisuals({ review }: Phase7ReviewVisualsProps) {
   if (!review) {
     return (
-      <SectionCard title="Investor-ready review">
-        <div className="flex h-32 items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 px-4 text-center">
-          <span className="text-sm italic text-muted-foreground">No review yet — run the readiness review below to generate your score.</span>
-        </div>
-      </SectionCard>
+      <div className="bg-card border border-border rounded-xl p-8 text-center">
+        <span className="text-sm text-muted-foreground">No review yet — run the readiness review to generate your score.</span>
+      </div>
     );
   }
 
   const sb = review.scoreBreakdown;
   const recs = review.recommendations ?? [];
-  const stageBars: Array<{ label: string; value: number }> = [
-    { label: 'Verification', value: sb.verificationScore },
-    { label: 'Financials', value: sb.financialScore },
-    { label: 'Equity & cap table', value: sb.equityScore },
-    { label: 'Funding ask', value: sb.fundingScore },
-    { label: 'Data room', value: sb.dataRoomScore },
-  ];
 
   return (
-    <div className="space-y-4 md:space-y-6">
-      {error && (
-        <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
-      )}
-
-      {/* Stat cards */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <MetricCard label="Readiness score" value={`${review.overallScore}/100`} chip={scoreLabel(review.overallScore)} chipTone={scoreTone(review.overallScore)} />
-        <MetricCard label="Actions remaining" value={String(recs.length)} chip={recs.length ? `+${recs.reduce((s, r) => s + (r.potentialPointGain || 0), 0)} pts` : undefined} chipTone="muted" />
-        <MetricCard label="Missing documents" unavailable="unavailable" />
-        <MetricCard label="Pitch-deck grade" unavailable="unavailable" />
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[260px_1fr]">
-        {/* Score ring + badge */}
-        <div className="space-y-4">
-          <StatusRing percent={review.overallScore} label="Investor-ready profile" sublabel={`Reviewed ${review.reviewedAt ? new Date(review.reviewedAt).toLocaleDateString() : ''}`} />
-          <SectionCard title="Investor-ready badge">
-            <div className="flex items-start gap-3">
-              <span className="rounded-lg bg-primary/10 p-2 text-primary"><Trophy className="h-5 w-5" aria-hidden /></span>
-              <div>
-                <p className="text-sm font-semibold text-foreground">{review.overallScore}/100</p>
-                <p className="text-xs text-muted-foreground">
-                  {review.investorReadyBadge ? 'Threshold met — badge eligible' : 'Below investor-ready threshold'}
-                </p>
-                <div className="mt-2"><Chip tone={review.investorReadyBadge ? 'success' : 'muted'}>{review.investorReadyBadge ? 'Eligible' : 'Pending'}</Chip></div>
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* LEFT COLUMN (2 cols): Profile + Stages + Recommendations + History */}
+      <div className="lg:col-span-2 space-y-6">
+        {/* Investor-Ready Profile */}
+        <div className="bg-card border border-border rounded-2xl p-6">
+          <div className="flex gap-6">
+            {/* Circular progress bar */}
+            <div className="relative w-40 h-40 flex items-center justify-center flex-shrink-0">
+              <svg className="w-full h-full" viewBox="0 0 120 120">
+                {/* Background circle */}
+                <circle cx="60" cy="60" r="50" fill="none" stroke="currentColor" strokeWidth="6" className="text-muted" />
+                {/* Progress circle */}
+                <circle
+                  cx="60"
+                  cy="60"
+                  r="50"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="6"
+                  strokeDasharray={`${(review.overallScore / 100) * 2 * Math.PI * 50} ${2 * Math.PI * 50}`}
+                  strokeLinecap="round"
+                  className="text-primary transition-all"
+                  style={{ transform: 'rotate(-90deg)', transformOrigin: '60px 60px' }}
+                />
+              </svg>
+              {/* Center content */}
+              <div className="absolute text-center">
+                <p className="text-4xl font-bold text-primary">{review.overallScore}</p>
+                <p className="text-xs font-medium text-muted-foreground">/100</p>
               </div>
             </div>
-          </SectionCard>
+
+            {/* Content */}
+            <div className="flex-1 flex flex-col gap-4">
+              <div className="space-y-2">
+                <h2 className="text-2xl font-bold text-foreground">Investor-Ready Profile</h2>
+                <p className="text-sm text-muted-foreground">
+                  Your profile scores {review.overallScore}/100. Complete {recs.length} actions to unlock Phase 8.
+                </p>
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                <div className="bg-success/10 px-3 py-1.5 rounded-full">
+                  <p className="text-xs font-semibold text-success-text">
+                    {review.investorReadyBadge ? '✓ Badge Eligible' : '⊘ Below Threshold'}
+                  </p>
+                </div>
+                <div className="bg-primary/10 px-3 py-1.5 rounded-full">
+                  <p className="text-xs font-semibold text-primary">{recs.length} Actions</p>
+                </div>
+                <div className="bg-warning/10 px-3 py-1.5 rounded-full">
+                  <p className="text-xs font-semibold text-warning">Phase 7 of 9</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Stage breakdown */}
-        <SectionCard title="Readiness by stage" subtitle="Score across your verified phases.">
-          <div className="space-y-4">
-            {stageBars.map((s) => (
-              <ScoreBar key={s.label} label={s.label} value={s.value} />
-            ))}
+        {/* Stage Progress Table */}
+        <div className="bg-card border border-border rounded-2xl overflow-hidden">
+          <div className="bg-primary/5 flex items-center justify-between px-4 py-3 border-b border-border">
+            <div className="w-40">
+              <p className="text-sm font-semibold text-foreground">Stage</p>
+            </div>
+            <div className="w-40">
+              <p className="text-sm font-semibold text-foreground">Progress</p>
+            </div>
+            <div className="w-40 text-right">
+              <p className="text-sm font-semibold text-foreground">Status</p>
+            </div>
           </div>
-        </SectionCard>
+          <div className="divide-y divide-border">
+            <StageRow icon={CheckCircle2} label="Verification" value={sb.verificationScore} status="completed" />
+            <StageRow icon={CheckCircle2} label="Equity & Cap Table" value={sb.equityScore} status="completed" />
+            <StageRow icon={CheckCircle2} label="Financials" value={sb.financialScore} status="completed" />
+            <StageRow icon={CheckCircle2} label="Funding Ask" value={sb.fundingScore} status="completed" />
+            <StageRow icon={AlertCircle} label="Data Room" value={sb.dataRoomScore} status={sb.dataRoomScore === 100 ? 'completed' : 'missing'} />
+          </div>
+        </div>
+
+        {/* AI Recommendations */}
+        <div className="bg-card border border-border rounded-2xl overflow-hidden">
+          <div className="bg-primary/5 flex items-center justify-between px-4 py-3 border-b border-border">
+            <div className="flex gap-2 items-center">
+              <Sparkles className="w-4 h-4 text-primary" />
+              <p className="text-sm font-semibold text-foreground">AI Recommendations</p>
+            </div>
+            <div className="bg-primary/10 px-3 py-1.5 rounded-md">
+              <p className="text-xs font-semibold text-primary">{recs.length} Actions</p>
+            </div>
+          </div>
+          <div className="divide-y divide-border">
+            {recs.length === 0 ? (
+              <div className="flex h-20 items-center justify-center text-sm text-muted-foreground p-4">
+                No recommendations — profile is complete.
+              </div>
+            ) : (
+              recs.map((r, i) => (
+                <RecommendationCard
+                  key={`${r.title}-${i}`}
+                  title={r.title}
+                  description={r.description || ''}
+                  points={r.potentialPointGain || 0}
+                  action={r.priority === 'high' ? 'Fix Now' : 'Apply'}
+                />
+              ))
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* AI recommendations */}
-      <SectionCard
-        title="AI recommendations"
-        headerRight={recs.length ? <Chip tone="primary">{`${recs.length} actions`}</Chip> : undefined}
-      >
-        {recs.length === 0 ? (
-          <div className="flex h-20 items-center justify-center rounded-xl border border-dashed border-border bg-muted/20">
-            <span className="text-sm italic text-muted-foreground">No open recommendations — your profile looks complete.</span>
-          </div>
-        ) : (
-          <ul className="space-y-3">
-            {recs.map((r, i) => (
-              <li key={`${r.title}-${i}`} className="rounded-xl border border-border bg-background p-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-sm font-semibold text-foreground">{r.title}</p>
-                  <span className="flex items-center gap-2">
-                    <Chip tone={priorityTone(r.priority)}>{r.priority}</Chip>
-                    {r.potentialPointGain > 0 && <Chip tone="success">{`+${r.potentialPointGain} pts`}</Chip>}
-                  </span>
-                </div>
-                {r.description && <p className="mt-1 text-sm text-muted-foreground">{r.description}</p>}
-              </li>
-            ))}
-          </ul>
-        )}
-      </SectionCard>
-
-      {/* Pitch-deck analysis (Backend Gap — honest shell) */}
-      <SectionCard
-        title="Pitch-deck analysis"
-        headerRight={<span className="inline-flex items-center gap-1 text-xs text-muted-foreground"><Sparkles className="h-4 w-4" aria-hidden /> AI</span>}
-      >
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {['Clarity & narrative', 'Market size proof', 'Traction & metrics', 'Team pedigree'].map((d) => (
-            <div key={d} className="flex items-center justify-between rounded-xl border border-border bg-background p-3">
-              <span className="text-sm text-foreground">{d}</span>
-              <UnavailableValue kind="integration" />
+      {/* RIGHT COLUMN (1 col): Pitch Deck + Badge (Sticky) */}
+      <div className="lg:col-span-1 space-y-6">
+        {/* Pitch Deck Analysis Card */}
+        {review?.pitchDeckAnalysis && (
+          <div className="bg-card border border-border rounded-2xl overflow-hidden sticky top-6 h-fit shadow-sm">
+            {/* Top Visual Badge */}
+            <div className="bg-primary/5 px-4 py-3 flex items-center justify-between border-b border-border">
+              <div className="flex gap-2 items-center">
+                <p className="text-sm font-semibold text-foreground">Pitch Deck Analysis</p>
+              </div>
+              <div className="bg-background border border-border rounded-full px-2 py-1">
+                <p className="text-sm font-bold text-primary">{review.pitchDeckAnalysis.grade}</p>
+              </div>
             </div>
-          ))}
-        </div>
-        <p className="mt-2 text-xs italic text-muted-foreground">Per-slide pitch-deck scoring requires a backend field that isn&apos;t exposed yet.</p>
-      </SectionCard>
+            {/* Content */}
+            <div className="px-5 py-6 space-y-6">
+              {/* Average Score Card */}
+              <div className="bg-background rounded-xl p-4 border border-border/50 text-center">
+                <p className="text-xs font-medium text-muted-foreground mb-2">Average Score</p>
+                <p className="text-3xl font-bold text-warning">{review.pitchDeckAnalysis.averageScore}/10</p>
+              </div>
 
-      {history.length > 0 && (
-        <SectionCard title="Review history" headerRight={<span className="inline-flex items-center gap-1 text-xs text-muted-foreground"><BarChart3 className="h-4 w-4" aria-hidden /> {history.length}</span>}>
-          <ul className="space-y-2 text-sm">
-            {history.map((h) => (
-              <li key={h.id} className="flex items-center justify-between gap-2 border-b border-border/60 pb-2 last:border-0">
-                <span className="text-foreground">{h.overallScore}/100 <Chip tone={h.investorReadyBadge ? 'success' : 'muted'}>{h.investorReadyBadge ? 'Eligible' : 'Pending'}</Chip></span>
-                <span className="text-xs text-muted-foreground">{h.reviewedAt ? new Date(h.reviewedAt).toLocaleString() : ''} · {h.engineVersion}</span>
-              </li>
-            ))}
-          </ul>
-        </SectionCard>
-      )}
+              {/* Score breakdown with compact progress bars */}
+              <div className="space-y-3.5">
+                {[
+                  { label: 'Clarity & Narrative', score: review.pitchDeckAnalysis.clarityNarrative, color: 'bg-primary' },
+                  { label: 'Market Size Proof', score: review.pitchDeckAnalysis.marketSizeProof, color: 'bg-info' },
+                  { label: 'Traction & Metrics', score: review.pitchDeckAnalysis.tractionMetrics, color: 'bg-success' },
+                  { label: 'Team Pedigree', score: review.pitchDeckAnalysis.teamPedigree, color: 'bg-warning' },
+                ].map(({ label, score, color }) => (
+                  <div key={label} className="space-y-1.5">
+                    {/* Label + Score */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-foreground truncate pr-2">{label}</span>
+                      <span className="text-xs font-semibold text-foreground">{score}/10</span>
+                    </div>
+                    {/* Progress bar */}
+                    <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full ${color} transition-all duration-300`} style={{ width: `${(score / 10) * 100}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Investor-Ready Badge Card */}
+          {review?.investorReadyBadge && (
+            <div className="bg-card border border-success/30 p-6 shadow-sm space-y-4">
+              {/* Badge Icon + Score */}
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center border border-success/30">
+                  <Trophy className="w-8 h-8 text-success-text" />
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-foreground">{review.overallScore}</p>
+                  <p className="text-xs text-muted-foreground">/100</p>
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="text-center space-y-2">
+                <h3 className="text-base font-semibold text-foreground">Investor-Ready Badge</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  You've achieved a {review.overallScore}/100 readiness score. Claiming this badge unlocks Phase 8 matchmaking.
+                </p>
+              </div>
+
+              {/* Benefits List */}
+              <div className="space-y-2 py-3 border-t border-b border-border/50">
+                {[
+                  'Priority listing in Marketplace',
+                  '"Verified Investor Ready" tag',
+                  'Unlock Phase 8: Capital Matchmaking',
+                ].map((benefit) => (
+                  <div key={benefit} className="flex gap-2 items-start">
+                    <CheckCircle2 className="w-4 h-4 text-success-text flex-shrink-0 mt-0.5" />
+                    <span className="text-xs text-foreground">{benefit}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="space-y-2">
+                <button className="w-full px-4 py-2.5 bg-success hover:bg-success/90 text-white rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-2">
+                  <Trophy className="w-4 h-4" />
+                  Claim Badge
+                </button>
+                <button className="w-full px-4 py-2.5 bg-primary hover:bg-primary/90 text-white rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-2">
+                  Unlock Phase 8
+                  <AlertCircle className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+      </div>
     </div>
   );
 }

@@ -1104,6 +1104,29 @@ public class CompanyController : ControllerBase
         }
     }
 
+    [HttpPost("{companyId}/exit-reviewed")]
+    public async Task<ActionResult> MarkExitWaterfallReviewed(string companyId)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureCompanyOwnershipAsync(companyId);
+            await _companyService.SetExitWaterfallReviewedAsync(companyId);
+            return Ok();
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error marking exit waterfall reviewed");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
     // ============ PHASE 6: DATA ROOM ============
 
     [HttpPost("{companyId}/dataroom/documents")]
@@ -1755,6 +1778,85 @@ public class CompanyController : ControllerBase
         }
     }
 
+    [HttpGet("{companyId}/deals/summary")]
+    public async Task<ActionResult<RoundSummaryResponse>> GetDealsSummary(string companyId)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureCompanyOwnershipAsync(companyId);
+            var result = await _companyService.GetRoundSummaryAsync(companyId);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting deals summary");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpGet("{companyId}/deals/timeline")]
+    public async Task<ActionResult<List<TimelineEventResponse>>> GetDealTimeline(string companyId)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureCompanyOwnershipAsync(companyId);
+            var result = await _companyService.GetDealTimelineAsync(companyId);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return StatusCode(409, new { error = ex.Message });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting deal timeline");
+            return StatusCode(500, new { error = "Something went wrong" });
+        }
+    }
+
+    [HttpGet("{companyId}/term-sheets/active")]
+    public async Task<ActionResult<TermSheetResponse>> GetActiveTermSheet(string companyId)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureCompanyOwnershipAsync(companyId);
+            var result = await _companyService.GetActiveTermSheetAsync(companyId);
+            if (result == null)
+                return NotFound();
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting active term sheet");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
     [HttpPut("deals/{dealId}/term-sheet")]
     public async Task<ActionResult<DealStatusResponse>> UpdateTermSheet(string dealId, [FromBody] TermSheetRequest request)
     {
@@ -1817,6 +1919,14 @@ public class CompanyController : ControllerBase
             _logger.LogWarning("Authorization failed: {Message}", ex.Message);
             return StatusCode(403, new { error = ex.Message });
         }
+        catch (InvalidOperationException ex)
+        {
+            return StatusCode(409, new { error = ex.Message });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error closing deal");
@@ -1839,6 +1949,16 @@ public class CompanyController : ControllerBase
         {
             _logger.LogWarning("Authorization failed: {Message}", ex.Message);
             return StatusCode(403, new { error = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            // State machine conflict (e.g. terminal state, illegal transition) → 409 Conflict
+            return StatusCode(409, new { error = ex.Message });
+        }
+        catch (ArgumentException ex)
+        {
+            // Validation error (bad input) → 400 Bad Request
+            return BadRequest(new { error = ex.Message });
         }
         catch (Exception ex)
         {
@@ -1863,6 +1983,14 @@ public class CompanyController : ControllerBase
         {
             _logger.LogWarning("Authorization failed: {Message}", ex.Message);
             return StatusCode(403, new { error = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return StatusCode(409, new { error = ex.Message });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
         }
         catch (Exception ex)
         {
@@ -1936,6 +2064,8 @@ public class CompanyController : ControllerBase
             return Ok(result);
         }
         catch (UnauthorizedAccessException ex) { return StatusCode(403, new { error = ex.Message }); }
+        catch (InvalidOperationException ex) { return StatusCode(409, new { error = ex.Message }); }
+        catch (ArgumentException ex) { return BadRequest(new { error = ex.Message }); }
         catch (KeyNotFoundException ex) { return NotFound(new { error = ex.Message }); }
         catch (Exception ex) { _logger.LogError(ex, "Error countering offer"); return BadRequest(new { error = ex.Message }); }
     }

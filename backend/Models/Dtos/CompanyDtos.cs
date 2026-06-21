@@ -109,6 +109,8 @@ public class SaveFundingAskRequest
     /// <summary>Optional at write time; required at Phase 5 advancement.</summary>
     public double? EquityOfferedPercent { get; set; }
     public string ShareType { get; set; } // preferred, safe, note
+    /// <summary>Explicit minimum cheque size (EUR). Optional at write time.</summary>
+    public double? MinimumTicketEur { get; set; }
     public List<CapitalAllocationDto> CapitalAllocation { get; set; }
     public ResourceMapDto ResourceMap { get; set; }
 }
@@ -206,7 +208,10 @@ public class UploadDataRoomDocumentRequest
 
 public class DataRoomAccessRequest
 {
-    public string InvestorId { get; set; }
+    // Both identifiers are optional at the model level; the service requires
+    // exactly one (email is the primary path, id is the back-compat fallback).
+    public string? InvestorId { get; set; }
+    public string? InvestorEmail { get; set; } // resolved to an Investor by PrimaryEmail
     public string AccessLevel { get; set; } // view_only, download, comment
     public int DaysValid { get; set; } = 7;
 }
@@ -282,6 +287,8 @@ public class DataRoomStatusResponse
 {
     public bool IsLive { get; set; }
     public bool NdaRequired { get; set; }
+    /// <summary>Set once an investor has signed; NDA can no longer be disabled.</summary>
+    public DateTime? NdaLockedAt { get; set; }
     public int TotalDocuments { get; set; }
     public List<DataRoomDocumentResponse> Documents { get; set; }
     public List<DataRoomAccessRecord> AccessGrants { get; set; }
@@ -304,6 +311,7 @@ public class AiReviewResponse
     public ScoreBreakdownDto ScoreBreakdown { get; set; }
     public bool InvestorReadyBadge { get; set; }
     public List<RecommendationDto> Recommendations { get; set; }
+    public PitchDeckAnalysisDto PitchDeckAnalysis { get; set; }
     public DateTime ReviewedAt { get; set; }
 }
 
@@ -323,6 +331,16 @@ public class RecommendationDto
     public string Description { get; set; }
     public string Priority { get; set; } // high, medium, low
     public int PotentialPointGain { get; set; }
+}
+
+public class PitchDeckAnalysisDto
+{
+    public string Grade { get; set; }
+    public int AverageScore { get; set; }
+    public int ClarityNarrative { get; set; }
+    public int MarketSizeProof { get; set; }
+    public int TractionMetrics { get; set; }
+    public int TeamPedigree { get; set; }
 }
 
 // ============ PHASE 8: INVESTOR MATCHING ============
@@ -372,7 +390,7 @@ public class MatchingInsightsResponse
 public class CreateDealRequest
 {
     public string InvestorId { get; set; }
-    public List<DealParticipantDto> AdditionalInvestors { get; set; }
+    public List<DealParticipantDto> AdditionalInvestors { get; set; } = new();
     public TermSheetRequest TermSheet { get; set; }
 }
 
@@ -407,6 +425,19 @@ public class DealStatusResponse
     public List<TermSheetRevisionResponse> Revisions { get; set; } = new();
 }
 
+public class RoundSummaryResponse
+{
+    public int TotalDeals { get; set; }
+    public double CommittedAmountEur { get; set; }
+    public double RoundTargetEur { get; set; }
+    public double RemainingEur { get; set; }
+    public double PercentFilled { get; set; }
+    public int InterestedCount { get; set; }
+    public int InDiscussionCount { get; set; }
+    public int TermSheetCount { get; set; }
+    public int ClosedCount { get; set; }
+}
+
 public class TermSheetResponse
 {
     public double TotalRaiseAmount { get; set; }
@@ -416,6 +447,13 @@ public class TermSheetResponse
     public bool ProRataRights { get; set; }
     public string Status { get; set; }
     public DateTime? SignedAt { get; set; }
+    public string ShareClass { get; set; }
+    public string LiquidationPref { get; set; }
+    public string BoardSeat { get; set; }
+    public bool? HasBoardSeat { get; set; }
+    public string AntiDilutionType { get; set; }
+    public string ClosingDeadline { get; set; }
+    public string ExpiresAt { get; set; }
 }
 
 public class ChecklistItemDto
@@ -430,6 +468,7 @@ public class DealParticipantStatusDto
 {
     public string InvestorId { get; set; }
     public string InvestorName { get; set; }
+    public string InvestorType { get; set; }
     public double CommittedAmount { get; set; }
     public string Status { get; set; }
 }
@@ -725,6 +764,16 @@ public class RecordShareIssuanceRequest
     public int SharesIssued { get; set; }
     public double? PricePerShare { get; set; }
     public string Reason { get; set; }
+
+    // Optional SAFE-note conversion inputs. When ShareClass == "safe" and all of
+    // these are supplied, the service computes the conversion (price, shares,
+    // method) via Phase4Requirements.ComputeSafeConversion. Backward compatible:
+    // omitted for ordinary issuances.
+    public double? SafePrincipal { get; set; }
+    public double? ValuationCap { get; set; }
+    public double? DiscountRate { get; set; }
+    public double? RoundPricePerShare { get; set; }
+    public int? TotalSharesPreRound { get; set; }
 }
 
 public class ShareIssuanceResponse
@@ -736,6 +785,10 @@ public class ShareIssuanceResponse
     public double? PricePerShare { get; set; }
     public string Reason { get; set; }
     public DateTime IssuedAt { get; set; }
+
+    // Populated only for SAFE conversions (otherwise null).
+    public double? ConversionPrice { get; set; }
+    public string ConversionMethod { get; set; }
 }
 
 // ============ PHASE 5: PITCH DECK / NARRATIVE / FUNDING PROFILE ============
@@ -765,9 +818,11 @@ public class FundingProfileResponse
     public double? PreMoneyValuation { get; set; }
     public double? EquityOfferedPercent { get; set; }
     public string ShareType { get; set; }
+    public double? MinimumTicketEur { get; set; }
     public List<CapitalAllocationDto> CapitalAllocation { get; set; } = new();
     public ResourceMapDto ResourceMap { get; set; }
     public string PitchDeckFileName { get; set; }
+    public long? PitchDeckFileSize { get; set; }
     public DateTime? PitchDeckUploadedAt { get; set; }
     public string FundingNarrative { get; set; }
     public bool HasOutreachCampaign { get; set; }
@@ -934,4 +989,57 @@ public class DiligenceProgressResponse
     public int Pending { get; set; }
     public int Flagged { get; set; }
     public int PercentComplete { get; set; }
+}
+
+// ============ PHASE 9: MATCHMAKING PROCESS TIMELINE ============
+
+public class TimelineEventResponse
+{
+    public string EventId { get; set; }
+    public DateTime EventDate { get; set; }
+    public string Title { get; set; }
+    public string Subtitle { get; set; }
+    public string Status { get; set; }
+    public string Color { get; set; }
+}
+
+// ============ PHASE 9: ADDITIONAL REQUEST DTOs ============
+
+public class UpdateTermSheetRequest
+{
+    public double TotalRaiseAmount { get; set; }
+    public double PostMoneyValuation { get; set; }
+    public double PreMoneyValuation { get; set; }
+    public string EquityType { get; set; }
+    public double InvestorEquityPercent { get; set; }
+    public bool ProRataRights { get; set; }
+    public string LiquidationPreference { get; set; }
+    public int BoardSeats { get; set; }
+    public string AntiDilutionProtection { get; set; }
+}
+
+public class CounterOfferRequest
+{
+    public string Note { get; set; }
+    public UpdateTermSheetRequest ProposedTerms { get; set; }
+}
+
+public class ChecklistItemRequest
+{
+    public string Item { get; set; }
+    public string Owner { get; set; }
+    public DateTime? DueDate { get; set; }
+}
+
+public class ToggleChecklistRequest
+{
+    public string ItemId { get; set; }
+    public bool Completed { get; set; }
+}
+
+public class UploadDocumentRequest
+{
+    public string Name { get; set; }
+    public string DocumentType { get; set; }
+    public string StorageUrl { get; set; }
 }

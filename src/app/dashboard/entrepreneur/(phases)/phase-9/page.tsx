@@ -6,7 +6,7 @@ import Phase9Client from './client';
 export default function Phase9Page() {
   return (
     <RouteGuard requiredPhase={9}>
-      <EntrepreneurLayout sidebar={<div />}>
+      {/* <EntrepreneurLayout sidebar={<div />}> */}
         <div className="space-y-6 md:space-y-8">
           <PhaseHeader
             title="Deal Execution"
@@ -17,7 +17,7 @@ export default function Phase9Page() {
           />
           <Phase9Client />
         </div>
-      </EntrepreneurLayout>
+      {/* </EntrepreneurLayout> */}
     </RouteGuard>
   );
 }

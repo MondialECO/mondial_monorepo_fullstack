@@ -15,14 +15,16 @@ namespace WebApp.Tests.Unit;
 /// Phase 4 completes only when the latest Phase4CapTable snapshot has:
 /// total shares > 0, at least one founder, no negative grants, issued shares
 /// reconcile to 90-100% of total, valid share classes, no duplicate rows,
-/// ESOP allocation sane, and every per-grant + standalone vesting schedule
-/// has cliff <= total.
+/// ESOP allocation sane, every per-grant + standalone vesting schedule has
+/// cliff &lt;= total, the dilution simulation has been reviewed (>=1 ownership
+/// history record), and the exit waterfall has been reviewed on the snapshot.
 /// </summary>
 public class Phase4ValidatorTests
 {
     private readonly Mock<MongoDbContext> _mockDbContext;
     private readonly Mock<IMongoCollection<Phase4CapTable>> _mockCapTableCollection;
     private readonly Mock<IMongoCollection<Phase4VestingSchedule>> _mockVestingCollection;
+    private readonly Mock<IMongoCollection<Phase4OwnershipHistory>> _mockOwnershipCollection;
     private readonly PhaseValidator _validator;
 
     public Phase4ValidatorTests()
@@ -31,11 +33,20 @@ public class Phase4ValidatorTests
             new MongoClient("mongodb://localhost:27017").GetDatabase("mondial_test"));
         _mockCapTableCollection = new Mock<IMongoCollection<Phase4CapTable>>();
         _mockVestingCollection = new Mock<IMongoCollection<Phase4VestingSchedule>>();
+        _mockOwnershipCollection = new Mock<IMongoCollection<Phase4OwnershipHistory>>();
 
         _mockDbContext.Setup(x => x.Phase4CapTables).Returns(_mockCapTableCollection.Object);
         _mockDbContext.Setup(x => x.Phase4VestingSchedules).Returns(_mockVestingCollection.Object);
+        _mockDbContext.Setup(x => x.Phase4OwnershipHistories).Returns(_mockOwnershipCollection.Object);
 
         _validator = new PhaseValidator(_mockDbContext.Object);
+
+        // Default: dilution simulation reviewed (one ownership-history record).
+        // Tests that need it absent override via SetupOwnershipHistory(empty).
+        SetupOwnershipHistory(new[]
+        {
+            new Phase4OwnershipHistory { CompanyId = "comp-1", RoundName = "Seed" },
+        });
     }
 
     private static Companies CompanyWithId(string id = "comp-1") => new()
@@ -55,6 +66,7 @@ public class Phase4ValidatorTests
         TotalShares = 1_000_000,
         EsopPoolPercent = 10,
         EsopVestingMonths = 48,
+        ExitWaterfallReviewed = true,
         Grants = new List<EquityGrant>
         {
             new() { StakeholderName = "Founder A", StakeholderType = "founder", ShareClass = "common", SharesGranted = 800_000, CliffMonths = 12, TotalVestMonths = 48 },
@@ -96,6 +108,22 @@ public class Phase4ValidatorTests
             .ReturnsAsync(cursor.Object);
     }
 
+    private void SetupOwnershipHistory(IEnumerable<Phase4OwnershipHistory> history)
+    {
+        var list = history.ToList();
+        var cursor = new Mock<IAsyncCursor<Phase4OwnershipHistory>>();
+        cursor.Setup(c => c.Current).Returns(list);
+        cursor.SetupSequence(c => c.MoveNextAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(list.Count > 0)
+            .ReturnsAsync(false);
+
+        _mockOwnershipCollection.Setup(c => c.FindAsync(
+            It.IsAny<FilterDefinition<Phase4OwnershipHistory>>(),
+            It.IsAny<FindOptions<Phase4OwnershipHistory, Phase4OwnershipHistory>>(),
+            It.IsAny<CancellationToken>()))
+            .ReturnsAsync(cursor.Object);
+    }
+
     [Fact]
     public async Task Phase4_AllValid_Passes()
     {
@@ -103,6 +131,65 @@ public class Phase4ValidatorTests
         SetupVesting(Enumerable.Empty<Phase4VestingSchedule>());
 
         var (isValid, errors) = await _validator.ValidatePhase4Async(CompanyWithId());
+
+        isValid.Should().BeTrue();
+        errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Phase4_ValidCapTable_WithOwnershipHistory_ExitReviewed_Passes()
+    {
+        SetupCapTable(GoodCapTable());
+        SetupVesting(Enumerable.Empty<Phase4VestingSchedule>());
+        SetupOwnershipHistory(new[]
+        {
+            new Phase4OwnershipHistory { CompanyId = "comp-1", RoundName = "Seed" },
+        });
+
+        var (isValid, errors) = await _validator.ValidatePhase4Async(CompanyWithId());
+
+        isValid.Should().BeTrue();
+        errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Phase4_MissingOwnershipHistory_Fails()
+    {
+        SetupCapTable(GoodCapTable());
+        SetupVesting(Enumerable.Empty<Phase4VestingSchedule>());
+        SetupOwnershipHistory(Enumerable.Empty<Phase4OwnershipHistory>());
+
+        var (isValid, errors) = await _validator.ValidatePhase4Async(CompanyWithId());
+
+        isValid.Should().BeFalse();
+        errors.Should().Contain("Dilution simulation must be reviewed before completing Phase 4");
+    }
+
+    [Fact]
+    public async Task Phase4_ExitWaterfallNotReviewed_Fails()
+    {
+        var ct = GoodCapTable();
+        ct.ExitWaterfallReviewed = false;
+        SetupCapTable(ct);
+        SetupVesting(Enumerable.Empty<Phase4VestingSchedule>());
+
+        var (isValid, errors) = await _validator.ValidatePhase4Async(CompanyWithId());
+
+        isValid.Should().BeFalse();
+        errors.Should().Contain("Exit waterfall must be reviewed before completing Phase 4");
+    }
+
+    [Fact]
+    public async Task Phase4_DoesNotRequirePhase5Data()
+    {
+        // A valid Phase 4 cap table must pass even when no Phase 5 funding data
+        // exists on the company.
+        SetupCapTable(GoodCapTable());
+        SetupVesting(Enumerable.Empty<Phase4VestingSchedule>());
+
+        var company = new Companies { Id = "comp-1" }; // no funding ask / valuation / etc.
+
+        var (isValid, errors) = await _validator.ValidatePhase4Async(company);
 
         isValid.Should().BeTrue();
         errors.Should().BeEmpty();
@@ -153,7 +240,7 @@ public class Phase4ValidatorTests
     }
 
     [Fact]
-    public async Task Phase4_NoFounder_Fails()
+    public async Task Phase4_NoFounderGrant_Fails()
     {
         var ct = GoodCapTable();
         ct.Grants[0].StakeholderType = "investor";
@@ -181,7 +268,7 @@ public class Phase4ValidatorTests
     }
 
     [Fact]
-    public async Task Phase4_DuplicateRows_Fail()
+    public async Task Phase4_DuplicateStakeholderShareClass_Fails()
     {
         var ct = GoodCapTable();
         ct.Grants.Add(new EquityGrant
@@ -231,7 +318,7 @@ public class Phase4ValidatorTests
     }
 
     [Fact]
-    public async Task Phase4_UnderReconciledTotals_Fails()
+    public async Task Phase4_OwnershipOutsideRange_Fails()
     {
         // 700k of 1M = 70% → outside 90-100 band
         var ct = GoodCapTable();

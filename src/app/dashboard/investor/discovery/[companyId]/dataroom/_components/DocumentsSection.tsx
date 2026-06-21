@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { downloadDataRoomDocument } from "@/lib/api-investor-opportunities";
+import { useTrackDocumentDownload } from "@/hooks/queries/investor-opportunities";
 import type { InvestorDocumentListItem } from "@/types/investor/opportunities";
 
 interface DocumentsSectionProps {
@@ -50,6 +51,7 @@ function totalSize(items: InvestorDocumentListItem[]): string {
 export default function DocumentsSection({ companyId, items }: DocumentsSectionProps) {
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [errorId, setErrorId] = useState<string | null>(null);
+  const trackDownload = useTrackDocumentDownload();
 
   async function handleDownload(doc: InvestorDocumentListItem) {
     setErrorId(null);
@@ -65,6 +67,8 @@ export default function DocumentsSection({ companyId, items }: DocumentsSectionP
       a.remove();
       // Defer revoke so the browser can complete the download.
       setTimeout(() => URL.revokeObjectURL(url), 1_000);
+      // Best-effort engagement tracking — never blocks or fails the download.
+      trackDownload.mutate({ companyId, documentId: doc.documentId });
     } catch {
       setErrorId(doc.documentId);
     } finally {

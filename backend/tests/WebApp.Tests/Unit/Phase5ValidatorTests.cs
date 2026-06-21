@@ -255,7 +255,43 @@ public class Phase5ValidatorTests
         };
         var (isValid, errors) = await _validator.ValidatePhase5Async(c);
         isValid.Should().BeFalse();
-        errors.Should().Contain(e => e.Contains("salary must be >= 0"));
+        errors.Should().Contain(e => e.Contains("salary must be > 0"));
+    }
+
+    [Fact]
+    public async Task Phase5_ZeroHiringSalary_Fails()
+    {
+        var c = GoodCompany();
+        c.ResourceMap = new ResourceMapDto
+        {
+            HiringPlan = new List<HiringPlanDto>
+            {
+                new() { Role = "Engineer", Salary = 0, Timeline = "Q1", Priority = "high" },
+            },
+        };
+        var (isValid, errors) = await _validator.ValidatePhase5Async(c);
+        isValid.Should().BeFalse();
+        errors.Should().Contain(e => e.Contains("salary must be > 0"));
+    }
+
+    [Fact]
+    public async Task Phase5_PreMoneyLessThanRaise_Fails()
+    {
+        var c = GoodCompany();
+        c.FundingAskAmount = 6_000_000; // exceeds the 5M pre-money valuation
+        var (isValid, errors) = await _validator.ValidatePhase5Async(c);
+        isValid.Should().BeFalse();
+        errors.Should().Contain(e => e.Contains("Pre-money valuation must be >= the raise amount"));
+    }
+
+    [Fact]
+    public async Task Phase5_NarrativeTooLong_Fails()
+    {
+        var c = GoodCompany();
+        c.FundingNarrative = new string('x', Phase5Requirements.NarrativeMaxLength + 1);
+        var (isValid, errors) = await _validator.ValidatePhase5Async(c);
+        isValid.Should().BeFalse();
+        errors.Should().Contain(e => e.Contains("Funding narrative must be at most"));
     }
 
     [Fact]
@@ -288,5 +324,30 @@ public class Phase5ValidatorTests
         var (isValid, errors) = await _validator.ValidatePhase5Async(c);
         isValid.Should().BeFalse();
         errors.Should().Contain(e => e.Contains("priority must be one of"));
+    }
+
+    [Fact]
+    public async Task Phase5_NoFundingAsk_Fails()
+    {
+        var c = GoodCompany();
+        c.FundingAskAmount = null;
+        var (isValid, errors) = await _validator.ValidatePhase5Async(c);
+        isValid.Should().BeFalse();
+        errors.Should().Contain("Funding ask amount is required");
+    }
+
+    [Fact]
+    public async Task Phase5_DoesNotRequirePhase6DataRoom()
+    {
+        // A valid Phase 5 funding submission must pass without any Phase 6 data
+        // room state set on the company.
+        var c = GoodCompany();
+        c.IsDataRoomLive = false;
+        c.DataRoomDocuments = new List<DataRoomDocumentResponse>();
+
+        var (isValid, errors) = await _validator.ValidatePhase5Async(c);
+
+        isValid.Should().BeTrue();
+        errors.Should().BeEmpty();
     }
 }

@@ -55,6 +55,36 @@ public static class Phase4Requirements
     }
 
     /// <summary>
+    /// Result of converting a SAFE note into shares: the price per share used,
+    /// the number of shares issued, and which method produced the (lower) price.
+    /// </summary>
+    public readonly record struct SafeConversionResult(double ConversionPrice, int SharesIssued, string MethodUsed);
+
+    /// <summary>
+    /// Compute a SAFE-note conversion. The investor converts at the more
+    /// favourable (lower) of the valuation-cap price and the discounted round
+    /// price; the cheaper price yields more shares.
+    ///   conversionPrice_cap      = valuationCap / totalSharesPreRound
+    ///   conversionPrice_discount = roundPricePerShare * (1 - discountRate)
+    ///   conversionPrice          = min(cap, discount)
+    ///   sharesIssued             = (int)(safePrincipal / conversionPrice)
+    /// </summary>
+    public static SafeConversionResult ComputeSafeConversion(
+        double safePrincipal,
+        double valuationCap,
+        double discountRate,
+        double roundPricePerShare,
+        int totalSharesPreRound)
+    {
+        var conversionPriceCap = valuationCap / totalSharesPreRound;
+        var conversionPriceDiscount = roundPricePerShare * (1 - discountRate);
+        var conversionPrice = Math.Min(conversionPriceCap, conversionPriceDiscount);
+        var methodUsed = conversionPriceCap <= conversionPriceDiscount ? "cap" : "discount";
+        var sharesIssued = (int)(safePrincipal / conversionPrice);
+        return new SafeConversionResult(conversionPrice, sharesIssued, methodUsed);
+    }
+
+    /// <summary>
     /// Validate vesting params on an individual grant. Returns the list of
     /// human-readable errors (empty if OK). Used both at write time (controller
     /// + service) and in ValidatePhase4Async.
