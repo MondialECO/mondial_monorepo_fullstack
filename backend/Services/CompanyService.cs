@@ -90,7 +90,17 @@ public class CompanyService : ICompanyService
         if (!company.CompletedPhases.Contains(phaseToComplete))
             company.CompletedPhases.Add(phaseToComplete);
 
-        company.CurrentPhase = phaseToComplete + 1;
+        // Special case: Phase 8 completion auto-completes Phase 9
+        if (phaseToComplete == 8)
+        {
+            if (!company.CompletedPhases.Contains(9))
+                company.CompletedPhases.Add(9);
+            company.CurrentPhase = 10;
+        }
+        else
+        {
+            company.CurrentPhase = phaseToComplete + 1;
+        }
 
         company.UpdatedAt = DateTime.UtcNow;
 

@@ -856,14 +856,16 @@ function Phase6Content() {
         </div>
       )}
 
-      <StepFooter
-        backUrl="/dashboard/entrepreneur/phase-5"
-        onNextClick={handleSubmit}
-        isLoading={isSubmitting}
-        nextLabel={currentPhase! > 6 ? 'Phase 6 Complete' : 'Publish & Complete Phase 6'}
-        nextValidationError={error}
-        isNextDisabled={isLoading || docs.length === 0 || missingRequired.length > 0 || currentPhase! > 6}
-      />
+      {currentPhase! <= 6 && (
+        <StepFooter
+          backUrl="/dashboard/entrepreneur/phase-5"
+          onNextClick={handleSubmit}
+          isLoading={isSubmitting}
+          nextLabel="Publish & Complete Phase 6"
+          nextValidationError={error}
+          isNextDisabled={isLoading || docs.length === 0 || missingRequired.length > 0}
+        />
+      )}
     </div>
   );
 }
