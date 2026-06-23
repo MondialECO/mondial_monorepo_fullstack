@@ -231,6 +231,63 @@ public class CompanyService : ICompanyService
         return "Other";
     }
 
+    public async Task<Companies> EnsureLevelUpCompanyAsync(
+        string userId, string sourceLink, string legalStructure, double? fundingAsk,
+        IClientSessionHandle session = null)
+    {
+        // Idempotent by OwnerId — the Entrepreneur resolver (GetCompanyByUserIdAsync)
+        // keys on OwnerId, so we converge on a single doc. Reuse an existing company
+        // rather than creating a second (single-active-company assumption).
+        // Every driver call takes the session when present so it joins the Level Up txn.
+        var existing = session is null
+            ? await _dbContext.Companies.Find(c => c.OwnerId == userId).FirstOrDefaultAsync()
+            : await _dbContext.Companies.Find(session, c => c.OwnerId == userId).FirstOrDefaultAsync();
+
+        if (existing != null)
+        {
+            // Backfill plan/provenance fields only where empty — never clobber data
+            // the entrepreneur may already have entered (e.g. on a Level Up retry).
+            var changed = false;
+            if (string.IsNullOrWhiteSpace(existing.SourceBusinessIdeaId) && !string.IsNullOrWhiteSpace(sourceLink))
+            { existing.SourceBusinessIdeaId = sourceLink; changed = true; }
+            if (string.IsNullOrWhiteSpace(existing.LegalStructure) && !string.IsNullOrWhiteSpace(legalStructure))
+            { existing.LegalStructure = legalStructure; changed = true; }
+            if (existing.FundingAskAmount == null && fundingAsk.HasValue)
+            { existing.FundingAskAmount = fundingAsk; changed = true; }
+            if (changed)
+            {
+                existing.UpdatedAt = DateTime.UtcNow;
+                if (session is null)
+                    await _dbContext.Companies.ReplaceOneAsync(c => c.Id == existing.Id, existing);
+                else
+                    await _dbContext.Companies.ReplaceOneAsync(session, c => c.Id == existing.Id, existing);
+            }
+            return existing;
+        }
+
+        // Create following Entrepreneur conventions exactly (stored-status model).
+        // PLAN pre-fills LegalStructure + FundingAskAmount; PROOF fields stay empty.
+        var company = new Companies
+        {
+            Id = ObjectId.GenerateNewId().ToString(),
+            OwnerId = userId,
+            SourceBusinessIdeaId = sourceLink,   // provenance: businessIdeaId, else journey id
+            CurrentPhase = 2,                    // universal Phase 1 already complete
+            CompletedPhases = new List<int>(),
+            LegalStructure = legalStructure,     // plan (creator confirms in Phase 2)
+            FundingAskAmount = fundingAsk,       // plan: Phase-5 totalAsk is authoritative
+            TrustScore = 0,
+            IsInvestorReady = false,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+        };
+        if (session is null)
+            await _dbContext.Companies.InsertOneAsync(company);
+        else
+            await _dbContext.Companies.InsertOneAsync(session, company);
+        return company;
+    }
+
     public async Task<Companies> GetCompanyAsync(string companyId)
     {
         return await _dbContext.Companies.Find(c => c.Id == companyId).FirstOrDefaultAsync()

@@ -92,6 +92,40 @@ namespace WebApp.Services.Ai.Jobs
 
             var userContext = string.Join("\n\n", contextLines);
 
+            // Single-section rewrite (audit P1.8): regenerate ONLY the requested C-3
+            // field, with the existing plan as consistency context. InterpretAsync
+            // splices just that field back, so the other sections never change.
+            var sectionId = Field("sectionId");
+            if (sectionId.Length > 0 && BusinessPlanSections.Resolve(sectionId) is { } resolved)
+            {
+                var sessionId = Field("sessionId");
+                var session = sessionId.Length > 0
+                    ? await _sessions.GetOwnedAsync(sessionId, request.OwnerUserId)
+                    : null;
+                var current = session?.Versions.FirstOrDefault(v => v.Version == session.CurrentVersion);
+                var existingPlan = current?.Content?.ToJson() ?? "(no current plan)";
+
+                var sectionContext =
+                    "EXISTING BUSINESS PLAN (keep every OTHER section unchanged — only the " +
+                    $"'{resolved.Field}' section is being rewritten):\n{existingPlan}";
+                var singleUserContext = string.Join("\n\n",
+                    new[] { userContext, sectionContext }.Where(s => !string.IsNullOrEmpty(s)));
+
+                var singleTask =
+                    $"Rewrite ONLY the '{resolved.Field}' section of the business plan above, keeping it " +
+                    "consistent with the clarified opportunity and the rest of the plan. Return a JSON " +
+                    $"object with exactly one key, \"{resolved.Field}\", whose value matches that " +
+                    "section's structure in the existing plan. Do not include any other section.";
+
+                return new AiHandlerRequest(
+                    PromptKey: PromptTemplate.BusinessPlan.Key,
+                    TaskType: "BusinessPlan",
+                    UserContext: singleUserContext,
+                    Task: singleTask,
+                    MaxTokens: MaxOutputTokens,
+                    Temperature: Temperature);
+            }
+
             const string task =
                 "Produce a complete, structured business plan for the clarified " +
                 "opportunity above, following the output contract exactly. Base every " +
@@ -113,6 +147,16 @@ namespace WebApp.Services.Ai.Jobs
                             && request.InputPayload.TryGetValue("sessionId", out var sid) && sid.IsString
                 ? sid.AsString
                 : null;
+            var sectionId = request.InputPayload != null
+                            && request.InputPayload.TryGetValue("sectionId", out var secId) && secId.IsString
+                ? secId.AsString
+                : null;
+
+            // Single-section rewrite: splice ONLY the requested field into a clone of the
+            // current plan. Even if the model returns extra sections, only this field is
+            // taken — the others are guaranteed byte-for-byte preserved.
+            if (sectionId != null && BusinessPlanSections.Resolve(sectionId) is { } resolved)
+                return await InterpretSingleSectionAsync(request, completion, sessionId, resolved.Field);
 
             if (!BusinessPlanOutputParser.TryParse(completion.Text, out var contract, out var parseError))
             {
@@ -148,6 +192,55 @@ namespace WebApp.Services.Ai.Jobs
             }
 
             return new AiHandlerResult(OutputPayload: contract);
+        }
+
+        /// <summary>
+        /// Terminal handling for a single-section rewrite: parse just the one field from
+        /// the model output, splice it into the current plan via the shared
+        /// <see cref="BusinessPlanSections.ReplaceField"/> (source "rewrite" → status
+        /// "generated"), and append it as a new immutable version. Other sections and the
+        /// cross-module wiring carried in the plan document are preserved untouched.
+        /// </summary>
+        private async Task<AiHandlerResult> InterpretSingleSectionAsync(
+            AiRequest request, AiCompletion completion, string? sessionId, string field)
+        {
+            if (sessionId is null)
+            {
+                _logger.LogWarning("BusinessPlan single-section rewrite {RequestId} had no sessionId.", request.Id);
+                return new AiHandlerResult(OutputPayload: null);
+            }
+
+            var session = await _sessions.GetOwnedAsync(sessionId, request.OwnerUserId);
+            var current = session?.Versions.FirstOrDefault(v => v.Version == session.CurrentVersion);
+            if (current?.Content is null)
+            {
+                await _sessions.SetNeedsReviewAsync(sessionId, "No current plan to splice the rewritten section into.");
+                return new AiHandlerResult(OutputPayload: null);
+            }
+
+            if (!BusinessPlanOutputParser.TryParseField(completion.Text, field, out var newValue, out var fieldError))
+            {
+                _logger.LogWarning("BusinessPlan single-section rewrite {RequestId} could not parse '{Field}': {Error}",
+                    request.Id, field, fieldError);
+                await _sessions.SetNeedsReviewAsync(sessionId, fieldError);
+                return new AiHandlerResult(OutputPayload: null);
+            }
+
+            var spliced = BusinessPlanSections.ReplaceField(current.Content, field, newValue, "rewrite");
+            spliced["schemaVersion"] = BusinessPlanOutputDto.CurrentSchemaVersion;
+
+            await _sessions.AppendGeneratedVersionAsync(sessionId, spliced, request.Id);
+
+            await _insights.WriteAsync(new AiInsight
+            {
+                OwnerUserId = request.OwnerUserId,
+                Type = AiJobType.BusinessPlan.ToString(),
+                Payload = spliced,
+                SourceRequestId = request.Id,
+                CreatedAt = DateTime.UtcNow,
+            });
+
+            return new AiHandlerResult(OutputPayload: spliced);
         }
 
         /// <summary>Compact, label-led summary of the founder's idea for secondary context.</summary>
@@ -237,6 +330,60 @@ namespace WebApp.Services.Ai.Jobs
 
             contract = doc;
             return true;
+        }
+
+        /// <summary>
+        /// Lenient single-field extract for the per-section rewrite path: strips fences,
+        /// extracts the first JSON object, and returns the named field's value. Tolerates
+        /// a model that wraps the section or emits extra siblings (only <paramref name="field"/>
+        /// is taken). If the model returned a bare object that IS the section (no matching
+        /// key), that object is used as the section value.
+        /// </summary>
+        public static bool TryParseField(string? rawText, string field, out BsonValue value, out string error)
+        {
+            value = BsonNull.Value;
+            error = string.Empty;
+
+            if (string.IsNullOrWhiteSpace(rawText))
+            {
+                error = "Model returned empty output.";
+                return false;
+            }
+
+            var json = ExtractJsonObject(StripFences(rawText));
+            if (json is null)
+            {
+                error = "No JSON object found in model output.";
+                return false;
+            }
+
+            BsonDocument doc;
+            try
+            {
+                doc = BsonDocument.Parse(json);
+            }
+            catch (Exception ex)
+            {
+                error = $"Output was not valid JSON: {ex.Message}";
+                return false;
+            }
+
+            if (doc.TryGetValue(field, out var v))
+            {
+                value = v;
+                return true;
+            }
+
+            // Fallback: the model returned the section object directly, without the
+            // requested wrapper key. Treat the whole object as the section value.
+            if (doc.ElementCount > 0)
+            {
+                value = doc;
+                return true;
+            }
+
+            error = $"Output did not contain the '{field}' section.";
+            return false;
         }
 
         /// <summary>Removes a leading/trailing ```json … ``` (or bare ```) fence if present.</summary>

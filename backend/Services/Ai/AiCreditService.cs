@@ -38,6 +38,14 @@ namespace WebApp.Services.Ai
             if (cost <= 0)
                 return; // free job (e.g. Probe) — no ledger interaction
 
+            // Guarantee every user owns a starter ledger before their first debit.
+            // Idempotent: TryGrantInitialAsync only inserts when absent (unique
+            // OwnerUserId index), so an existing — even fully-spent — balance is
+            // never topped up. This covers creators who signed up after the boot
+            // backfill ran, so the very first paid job seeds their StarterCredits.
+            if (_settings.StarterCredits > 0)
+                await _credits.TryGrantInitialAsync(ownerUserId, _settings.StarterCredits);
+
             var debited = await _credits.TryDebitAsync(ownerUserId, cost, new AiCreditDebit
             {
                 Amount = cost,

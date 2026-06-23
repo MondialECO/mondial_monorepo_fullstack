@@ -3,10 +3,10 @@ import BillingHeader from "@/components/billing/BillingHeader"
 import BillingTable from "@/components/billing/BillingTable"
 import Pagination from "@/components/billing/Pagination"
 import { useBillingHistory } from "@/hooks/queries/creator"
-import { Loader2 } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 export default function BillingHistoryPage() {
-    const { data, isLoading, isError, error } = useBillingHistory()
+    const { data, isLoading, isError, error, refetch } = useBillingHistory()
     const billingItems = data ?? []
 
     return (
@@ -25,10 +25,11 @@ export default function BillingHistoryPage() {
                 )}
 
                 {isError && (
-                    <div className="px-5 sm:px-6 md:px-8 py-8 flex justify-center items-center">
+                    <div className="px-5 sm:px-6 md:px-8 py-8 flex flex-col gap-3 justify-center items-center text-center">
                         <div className="text-destructive">
-                            Failed to load billing history. {error instanceof Error ? error.message : 'Please try again later.'}
+                            Couldn&apos;t load billing history. {error instanceof Error ? error.message : 'Please try again.'}
                         </div>
+                        <Button variant="outline" size="sm" onClick={() => refetch()}>Retry</Button>
                     </div>
                 )}
 

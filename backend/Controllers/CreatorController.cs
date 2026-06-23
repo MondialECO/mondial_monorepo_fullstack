@@ -25,12 +25,14 @@ namespace WebApp.Controllers
         private readonly SaveFile _saveFile;
         private readonly MongoDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly ICreatorJourneyService _journeys;
         public CreatorController(IBusinessIdeasService service,
             IInvestmentsService investmentsService,
             ITransactionsService transactionsService,
              SaveFile saveFile,
              MongoDbContext context,
-             UserManager<ApplicationUser> userManager)
+             UserManager<ApplicationUser> userManager,
+             ICreatorJourneyService journeys)
         {
             _serviceIdea = service;
             _investmentsService = investmentsService;
@@ -38,6 +40,7 @@ namespace WebApp.Controllers
             _saveFile = saveFile;
             _context = context;
             _userManager = userManager;
+            _journeys = journeys;
         }
 
         private string GetUserId()
@@ -162,7 +165,11 @@ namespace WebApp.Controllers
                 };
             }).ToList();
 
-            // 7️ Final Response
+            // 7️ Investor-readiness score (computed at Phase-3 masterplan completion)
+            var journey = await _journeys.GetOrCreateAsync(userId);
+            var investorReadinessScore = journey.Phase3Data?.InvestorReadinessScore;
+
+            // 8️ Final Response
             var response = new
             {
                 totalIdeas,
@@ -171,6 +178,7 @@ namespace WebApp.Controllers
                 totalRequired,
                 totalEquity,
                 activeInvestors,
+                investorReadinessScore,
                 ideas = ideaSummaries
             };
 

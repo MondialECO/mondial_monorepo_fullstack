@@ -1,5 +1,6 @@
 using WebApp.Services;
 using WebApp.Services.Implementations;
+using WebApp.Services.Interface;
 
 namespace WebApp.Extensions;
 
@@ -30,6 +31,15 @@ public static class ServiceCollectionExtensions
         // Register notification and background job services
         services.AddScoped<IPhaseNotificationService, PhaseNotificationService>();
         services.AddScoped<IBackgroundJobService, BackgroundJobService>();
+
+        // Creator journey (Phases 2–6 source of truth; derived-status engine)
+        services.AddScoped<ICreatorJourneyService, CreatorJourneyService>();
+
+        // Shared M50 SP match formula (Phase 2 designers + Phase 3 formation)
+        services.AddScoped<ISpMatchingService, SpMatchingService>();
+
+        // Shared smart-matching formula (Phase 5 buyers + Phase 6 investors)
+        services.AddScoped<ISmartMatchingService, SmartMatchingService>();
 
         return services;
     }

@@ -40,12 +40,20 @@
             {
                 isValid = allowedImageExt.Contains(extension);
             }
+            else if (folderName == "branding")
+            {
+                // Phase-2 logo uploads: PNG / SVG / JPEG only.
+                var allowedLogoExt = new[] { ".png", ".svg", ".jpg", ".jpeg" };
+                isValid = allowedLogoExt.Contains(extension);
+            }
 
             if (!isValid)
                 throw new ArgumentException($"Invalid file type: {extension}");
 
-            // Max size: 30MB for media, 20MB for documents
-            long maxSize = folderName == "media" ? 30 * 1024 * 1024 : 20 * 1024 * 1024;
+            // Max size: 30MB media, 5MB branding logos, 20MB everything else.
+            long maxSize = folderName == "media" ? 30 * 1024 * 1024
+                : folderName == "branding" ? 5 * 1024 * 1024
+                : 20 * 1024 * 1024;
             if (file.Length > maxSize)
                 throw new ArgumentException($"File too large. Max allowed: {maxSize / (1024 * 1024)}MB");
 

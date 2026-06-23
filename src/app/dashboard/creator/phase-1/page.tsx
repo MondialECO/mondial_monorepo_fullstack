@@ -1,4 +1,5 @@
-import UniversalPhase1 from '@/components/onboarding/UniversalPhase1';
+import { OnboardingProvider } from "@/providers/OnboardingProvider";
+import CreatorPhase1Client from "./client";
 
 export const metadata = {
   title: 'Identity Verification | Mondial',
@@ -6,5 +7,9 @@ export const metadata = {
 };
 
 export default function CreatorPhase1Page() {
-  return <UniversalPhase1 />;
+  return (
+    <OnboardingProvider>
+      <CreatorPhase1Client />
+    </OnboardingProvider>
+  );
 }

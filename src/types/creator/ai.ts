@@ -135,6 +135,9 @@ export interface BusinessPlanOutput {
     impact?: string;
     mitigation?: string;
   }[];
+  // Per-section provenance, keyed by C-3 field name (e.g. "executiveSummary").
+  // Stamped server-side by the shared splice: "generated" (AI rewrite) | "edited" (manual).
+  _sectionMeta?: Record<string, { status?: 'generated' | 'edited'; lastEditedAt?: string }>;
 }
 
 export interface BusinessPlanSession {
@@ -153,8 +156,18 @@ export interface BusinessPlanSession {
 // ---------- C-4 Financial Forecast ----------
 
 export interface StartForecastRequest {
-  businessPlanSessionId: string;
+  // Forecast requires a completed business plan (enforced at ForecastController.Start,
+  // 422 business_plan_required / not_found / not_complete). The businessPlanSessionId
+  // is required-in-flow and serves as the authoritative context; it is nullable at
+  // the storage layer ([BsonIgnoreIfNull]) for backwards compatibility with older sessions.
+  businessPlanSessionId?: string;
   businessIdeaId?: string;
+  arpu?: number;
+  opex?: number;
+  monthlyGrowthPct?: number;
+  tam?: number;
+  // Monthly churn as a percent (e.g. 3 = 3%/month). Drives the readiness LTV/CAC.
+  monthlyChurnPct?: number;
 }
 
 export interface ForecastRevenueMonth {
