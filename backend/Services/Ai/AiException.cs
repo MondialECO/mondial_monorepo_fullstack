@@ -17,12 +17,30 @@ namespace WebApp.Services.Ai
     }
 
     /// <summary>
-    /// Raised when the provider rejects a request for lack of credits/quota
-    /// (OpenRouter returns HTTP 402). Distinct so the job layer can surface a
-    /// clear "insufficient credits" state rather than a generic failure.
+    /// Identifies which side ran out of credits, so the API layer can return the
+    /// correct status: a local zero-balance is the user's exhausted allocation
+    /// (402, "upgrade"), while a provider payment-required is an upstream billing
+    /// gap on our OpenRouter account (503, "temporary service issue").
+    /// </summary>
+    public enum CreditFailureSource
+    {
+        /// <summary>The creator's own AI credit balance is exhausted.</summary>
+        LocalBalance,
+        /// <summary>OpenRouter returned 402 — our provider account/billing issue.</summary>
+        ProviderPaymentRequired,
+    }
+
+    /// <summary>
+    /// Raised when a request is rejected for lack of credits. <see cref="Source"/>
+    /// distinguishes a local zero-balance (the default — a creator's allocation is
+    /// spent) from an upstream OpenRouter 402 (our provider billing gap), so the
+    /// API layer maps them to different HTTP statuses (402 vs 503).
     /// </summary>
     public class InsufficientCreditsException : AiProviderException
     {
+        /// <summary>Which side is out of credits. Defaults to <see cref="CreditFailureSource.LocalBalance"/>.</summary>
+        public CreditFailureSource Source { get; init; } = CreditFailureSource.LocalBalance;
+
         public InsufficientCreditsException(string message, int? statusCode = 402, Exception? inner = null)
             : base(message, statusCode, inner)
         {

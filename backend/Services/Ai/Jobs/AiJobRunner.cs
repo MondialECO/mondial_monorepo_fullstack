@@ -137,7 +137,9 @@ namespace WebApp.Services.Ai.Jobs
                 await _completion.OnFailedAsync(request, ex.Message);
 
                 _logger.LogError(ex, "AI job {RequestId} ({JobType}) failed.", requestId, request.JobType);
-                throw; // let Hangfire record the failure (and retry up to the limit)
+                // Let Hangfire record the failure. Transient errors retry up to the limit;
+                // permanent ones (StopRetryOnPermanentAiFailure) go straight to Failed.
+                throw;
             }
         }
     }

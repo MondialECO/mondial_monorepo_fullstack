@@ -11,6 +11,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { ForecastView } from '@/components/creator/ai/ForecastView';
 import { useForecastSessionTimed, useStartForecast } from '@/hooks/queries/creator-ai';
 import { creatorJourneyApi } from '@/lib/api-creator-journey';
+import { toAiError, type AiError } from '@/lib/ai-errors';
 import { hasAiOutput, type ForecastOutput } from '@/types/creator/ai';
 
 // Recharts series from the live monthly arrays — null-safe per the audit note.
@@ -45,7 +46,7 @@ export default function ForecastResultsPage() {
   const [forecastSessionId, setForecastSessionId] = useState<string | null>(null);
   const [businessPlanSessionId, setBusinessPlanSessionId] = useState<string | null>(null);
   const [inputs, setInputs] = useState({ arpu: 49, opex: 8000, growth: 12, tam: 50_000_000, churn: 5 });
-  const [startError, setStartError] = useState<string | null>(null);
+  const [startError, setStartError] = useState<AiError | null>(null);
 
   const startForecast = useStartForecast();
   const session = useForecastSessionTimed(forecastSessionId);
@@ -72,7 +73,7 @@ export default function ForecastResultsPage() {
   const handleStart = async () => {
     setStartError(null);
     if (!businessPlanSessionId) {
-      setStartError('Generate your Business Plan first — the forecast builds on it.');
+      setStartError({ kind: 'other', message: 'Generate your Business Plan first — the forecast builds on it.' });
       return;
     }
     try {
@@ -87,7 +88,8 @@ export default function ForecastResultsPage() {
       await creatorJourneyApi.setPhase3Session('forecast', res.sessionId);
       setForecastSessionId(res.sessionId);
     } catch (e) {
-      setStartError(e instanceof Error ? e.message : 'Could not start the forecast.');
+      // 402 (your credits are out) vs 503 (provider issue) read differently to the user.
+      setStartError(toAiError(e, 'Could not start the forecast.'));
     }
   };
 
@@ -129,7 +131,24 @@ export default function ForecastResultsPage() {
           {warnings.length > 0 && warnings.map((wn) => (
             <Alert key={wn}><AlertTriangle className="h-4 w-4" /><AlertDescription>{wn}</AlertDescription></Alert>
           ))}
-          {startError && <p className="text-sm text-destructive">{startError}</p>}
+          {startError && (
+            <Alert variant={startError.kind === 'service' || startError.kind === 'rateLimited' ? 'default' : 'destructive'}>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription className="flex flex-col items-start gap-2">
+                <span>{startError.message}</span>
+                {/* Credits exhausted is NOT retryable — point to support, not a retry. */}
+                {startError.kind === 'credits' && (
+                  <span className="text-xs text-muted-foreground">Contact support to add more AI credits to your account.</span>
+                )}
+                {/* Provider/rate-limit issues are transient — offer a retry, not an upgrade. */}
+                {(startError.kind === 'service' || startError.kind === 'rateLimited') && (
+                  <Button variant="outline" size="sm" onClick={handleStart} disabled={startForecast.isPending} className="gap-1.5">
+                    <RotateCw className="h-3.5 w-3.5" /> Try again
+                  </Button>
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
           <div className="flex gap-2">
             {!businessPlanSessionId && (
               <Button variant="outline" onClick={() => router.push('/dashboard/creator/phase-3/business-plan')}>
