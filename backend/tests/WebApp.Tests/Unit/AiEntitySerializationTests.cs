@@ -207,7 +207,7 @@ public class AiEntitySerializationTests
             LifetimeSpent = 1,
             Debits = new List<AiCreditDebit>
             {
-                new() { Amount = 1, Reason = "Probe", RequestId = ObjectId.GenerateNewId().ToString() },
+                new() { Amount = 1, Reason = "Probe" },
             },
         };
 

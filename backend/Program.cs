@@ -393,6 +393,10 @@ builder.Services.AddRateLimiter(options =>
 
     // C-1: per-user AI policy. AI calls are expensive/rate-limited upstream, so
     // cap enqueues per authenticated user (falling back to IP before auth runs).
+    // "ai" policy: 20 requests per MINUTE per authenticated user (IP fallback).
+    // This covers all AI job endpoints: clarifier, business plan, forecast, and
+    // the phase-2 controller. NOT per hour — a creator running Phase 3 (clarifier
+    // + plan + forecast sequentially) uses 3 of the 20 in ~15s.
     options.AddPolicy("ai", httpContext =>
         RateLimitPartition.GetFixedWindowLimiter(
             partitionKey: httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value

@@ -45,10 +45,6 @@ namespace WebApp.Models.DatabaseModels.Ai
         [BsonElement("Reason")]
         public string Reason { get; set; } = "";
 
-        [BsonElement("RequestId")]
-        [BsonRepresentation(BsonType.ObjectId)]
-        public string? RequestId { get; set; }
-
         [BsonElement("At")]
         public DateTime At { get; set; } = DateTime.UtcNow;
     }

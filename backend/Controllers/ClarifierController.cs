@@ -86,6 +86,10 @@ namespace WebApp.Controllers
             }
             catch (InsufficientCreditsException ex)
             {
+                // Upstream provider 402 (our billing) is a transient service issue → 503;
+                // don't fail the session for it. Local zero-balance is the user's → 402.
+                if (ex.Source == CreditFailureSource.ProviderPaymentRequired)
+                    return StatusCode(503, ApiResponse.Error("AI service temporarily unavailable. Please try again later.", HttpContext.TraceIdentifier));
                 await _sessions.SetFailedAsync(session.Id, "Insufficient credits.");
                 return StatusCode(402, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }

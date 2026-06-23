@@ -55,7 +55,8 @@ namespace WebApp.Services.Ai
 
             if (!debited)
                 throw new InsufficientCreditsException(
-                    $"Insufficient AI credits for '{jobType}' (requires {cost}).", statusCode: 402);
+                    $"Insufficient AI credits for '{jobType}' (requires {cost}).", statusCode: 402)
+                    { Source = CreditFailureSource.LocalBalance };
         }
     }
 }

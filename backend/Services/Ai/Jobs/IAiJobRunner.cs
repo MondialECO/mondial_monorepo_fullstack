@@ -15,6 +15,9 @@ namespace WebApp.Services.Ai.Jobs
     {
         [Queue("ai")]
         [AutomaticRetry(Attempts = 2, DelaysInSeconds = new[] { 30, 120 })]
+        // Permanent failures (local zero-balance, provider 4xx) skip the retries above
+        // and go straight to Hangfire's Failed state — no wasted 30s+120s delay.
+        [StopRetryOnPermanentAiFailure]
         Task RunAsync(string requestId);
     }
 }

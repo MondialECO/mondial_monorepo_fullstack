@@ -37,7 +37,7 @@ namespace WebApp.Services.Ai.Providers
             client.Timeout = TimeSpan.FromSeconds(settings.TimeoutSeconds);
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", settings.ApiKey);
             client.DefaultRequestHeaders.Add("HTTP-Referer", settings.HttpReferer);
-            client.DefaultRequestHeaders.Add("X-Title", settings.AppTitle);
+            client.DefaultRequestHeaders.Add("X-OpenRouter-Title", settings.AppTitle);
         }
 
         public async Task<AiCompletion> CompleteAsync(AiCompletionRequest request, CancellationToken cancellationToken = default)
@@ -128,8 +128,9 @@ namespace WebApp.Services.Ai.Providers
 
             throw response.StatusCode switch
             {
-                HttpStatusCode.PaymentRequired // 402
-                    => new InsufficientCreditsException(message, status),
+                HttpStatusCode.PaymentRequired // 402 — upstream provider billing, NOT the user's balance
+                    => new InsufficientCreditsException(message, status)
+                        { Source = CreditFailureSource.ProviderPaymentRequired },
                 HttpStatusCode.TooManyRequests // 429
                     => new AiRateLimitException(message, ReadRetryAfter(response), status),
                 _ => new AiProviderException(message, status),

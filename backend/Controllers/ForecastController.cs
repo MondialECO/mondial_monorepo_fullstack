@@ -250,6 +250,10 @@ namespace WebApp.Controllers
             }
             catch (InsufficientCreditsException)
             {
+                // DebitForJobAsync only raises a LOCAL zero-balance failure here (it never
+                // calls the provider), so null always means the user's own credits are
+                // exhausted → caller returns 402. An upstream provider 402 surfaces later
+                // via the async job-failure path (see AiJobRunner), never on this request.
                 // Only fail the session on the very first attempt; a regenerate keeps
                 // the existing completed forecast intact.
                 if (session.CurrentVersion <= 0)

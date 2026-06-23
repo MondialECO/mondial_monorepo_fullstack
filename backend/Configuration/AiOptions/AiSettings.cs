@@ -19,9 +19,6 @@ namespace WebApp.Configuration.AiOptions
         /// <summary>Default credit cost charged per AI job, by task type.</summary>
         public Dictionary<string, int> CreditCosts { get; set; } = new();
 
-        /// <summary>Max regenerations allowed per source request.</summary>
-        public int RegenerationLimit { get; set; } = 3;
-
         /// <summary>Cache TTL (seconds) for cacheable AI responses.</summary>
         public int CacheTtlSeconds { get; set; } = 86400;
 
