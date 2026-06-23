@@ -77,24 +77,49 @@ namespace WebApp.Controllers
             if (!_settings.Features.Forecast)
                 return StatusCode(503, ApiResponse.Error("The Forecast generator is currently disabled.", HttpContext.TraceIdentifier));
 
-            if (!ObjectId.TryParse(request.BusinessPlanSessionId, out _))
-                return NotFound(ApiResponse.Error("Business plan session not found.", HttpContext.TraceIdentifier));
+            // The forecast REQUIRES a completed business plan (new order: plan = step 2,
+            // forecast = step 3). Enforced server-side so a direct API call can't bypass
+            // the frontend guard — both layers express the same rule (no R3-class divergence).
+            // The numeric Inputs still apply; businessPlanSessionId is required-in-flow here
+            // but stays nullable/BsonIgnoreIfNull at the storage layer.
+            if (string.IsNullOrWhiteSpace(request.BusinessPlanSessionId) || !ObjectId.TryParse(request.BusinessPlanSessionId, out _))
+                return UnprocessableEntity(ApiResponse.Error("business_plan_required", HttpContext.TraceIdentifier,
+                    new { message = "Generate your business plan before running the forecast." }));
 
-            // The business plan's current version is the authoritative input: require a
-            // completed business-plan session owned by the caller.
             var plan = await _businessPlans.GetOwnedAsync(request.BusinessPlanSessionId, owner);
             if (plan is null)
-                return NotFound(ApiResponse.Error("Business plan session not found.", HttpContext.TraceIdentifier));
+                return UnprocessableEntity(ApiResponse.Error("business_plan_not_found", HttpContext.TraceIdentifier,
+                    new { message = "Business plan not found." }));
             if (!IsPlanUsable(plan))
-                return Conflict(ApiResponse.Error("The business plan must be completed before generating a forecast.", HttpContext.TraceIdentifier));
+                return UnprocessableEntity(ApiResponse.Error("business_plan_not_complete", HttpContext.TraceIdentifier,
+                    new { message = "Complete your business plan before running the forecast." }));
 
+            // Churn is required-in-flow (drives the readiness LTV/CAC), nullable-at-storage
+            // for older sessions. Bound: 0 < churn <= 50 (%/month) — above ~50%/month a
+            // subscription business is non-viable, so we reject rather than score it.
+            if (!request.MonthlyChurnPct.HasValue)
+                return UnprocessableEntity(ApiResponse.Error("churn_required", HttpContext.TraceIdentifier,
+                    new { message = "Enter your monthly churn rate before running the forecast." }));
+            if (request.MonthlyChurnPct.Value <= 0 || request.MonthlyChurnPct.Value > 50)
+                return UnprocessableEntity(ApiResponse.Error("churn_out_of_range", HttpContext.TraceIdentifier,
+                    new { message = "Monthly churn must be between 0 and 50%." }));
+
+            var planSessionId = request.BusinessPlanSessionId;
             var businessIdeaId = string.IsNullOrWhiteSpace(request.BusinessIdeaId) ? null : request.BusinessIdeaId;
 
             // Create the session first so it owns the lifecycle (source of truth).
             var session = new ForecastSession
             {
                 OwnerUserId = owner,
-                BusinessPlanSessionId = request.BusinessPlanSessionId,
+                BusinessPlanSessionId = planSessionId,
+                Inputs = new ForecastInputs
+                {
+                    Arpu = request.Arpu,
+                    Opex = request.Opex,
+                    MonthlyGrowthPct = request.MonthlyGrowthPct,
+                    Tam = request.Tam,
+                    MonthlyChurnPct = request.MonthlyChurnPct,
+                },
                 BusinessIdeaId = businessIdeaId,
                 Status = "Pending",
                 CreatedAt = DateTime.UtcNow,
@@ -158,10 +183,8 @@ namespace WebApp.Controllers
             if (session is null)
                 return NotFound(ApiResponse.Error("Session not found.", HttpContext.TraceIdentifier));
 
-            // Re-validate the authoritative input still exists and is usable.
-            var plan = await _businessPlans.GetOwnedAsync(session.BusinessPlanSessionId, owner);
-            if (plan is null || !IsPlanUsable(plan))
-                return Conflict(ApiResponse.Error("The source business plan is no longer available or not completed.", HttpContext.TraceIdentifier));
+            // Regenerate re-runs from the session's stored inputs + its linked business
+            // plan (validated at Start). The plan is the forecast's authoritative context.
 
             _audit.Record("Forecast.Regenerate", owner, success: true,
                 new { sessionId = session.Id, currentVersion = session.CurrentVersion });
@@ -234,13 +257,20 @@ namespace WebApp.Controllers
                 return null;
             }
 
-            var input = new BsonDocument
-            {
-                ["sessionId"] = session.Id,
-                ["businessPlanSessionId"] = session.BusinessPlanSessionId,
-            };
+            var input = new BsonDocument { ["sessionId"] = session.Id };
+            if (!string.IsNullOrEmpty(session.BusinessPlanSessionId))
+                input["businessPlanSessionId"] = session.BusinessPlanSessionId;
             if (session.BusinessIdeaId != null)
                 input["businessIdeaId"] = session.BusinessIdeaId;
+            // Standalone forecast inputs → the handler computes from these.
+            if (session.Inputs is not null)
+            {
+                if (session.Inputs.Arpu.HasValue) input["arpu"] = session.Inputs.Arpu.Value;
+                if (session.Inputs.Opex.HasValue) input["opex"] = session.Inputs.Opex.Value;
+                if (session.Inputs.MonthlyGrowthPct.HasValue) input["monthlyGrowthPct"] = session.Inputs.MonthlyGrowthPct.Value;
+                if (session.Inputs.Tam.HasValue) input["tam"] = session.Inputs.Tam.Value;
+                if (session.Inputs.MonthlyChurnPct.HasValue) input["monthlyChurnPct"] = session.Inputs.MonthlyChurnPct.Value;
+            }
 
             var jobId = await _jobService.EnqueueAsync(AiJobType.Forecast, owner, input);
             await _sessions.SetRequestIdAsync(session.Id, jobId);

@@ -1,70 +1,68 @@
+/**
+ * Creator dashboard client.
+ *
+ * Shares ONE error contract with the journey and AI clients (audit R11):
+ *   - unwrap the ApiResponse envelope via `unwrap` (tolerates a raw payload, since
+ *     the dashboard controller returns bare `Ok(obj)` while newer controllers wrap
+ *     in { success, message, data });
+ *   - PROPAGATE every failure — no silent {}/[]/mock fallbacks. TanStack Query
+ *     catches the throw and exposes `isError` so the UI can show a real error
+ *     state instead of an empty list masquerading as "you have nothing".
+ */
+
 import api from '@/lib/axios';
 import { BillingItem } from '@/types/billing';
-import { billingData } from '@/data/billingData';
 import type { DashboardStats, Idea } from '@/types/creator/dashboard';
 import type { CreateIdeaModel, SaveIdeaResponse } from '@/types/creator/create-idea-model';
 
-export const getDashboardStats = async (): Promise<DashboardStats> => {
-  try {
-    const res = await api.get('/creator/dashboard/stats');
-    return res.data;
-  } catch {
-    return { totalIdeas: 0, totalClicksLast14Days: 0, totalFundRaised: 0, totalRequired: 0, totalEquity: 0, activeInvestors: 0, ideas: [] };
+interface ApiEnvelope<T> {
+  success: boolean;
+  message: string;
+  data: T;
+  traceId?: string | null;
+}
+
+/** Unwrap the ApiResponse envelope, tolerating a raw payload as a fallback. */
+const unwrap = <T>(body: ApiEnvelope<T> | T): T => {
+  if (body && typeof body === 'object' && 'data' in (body as ApiEnvelope<T>)) {
+    return (body as ApiEnvelope<T>).data;
   }
+  return body as T;
+};
+
+export const getDashboardStats = async (): Promise<DashboardStats> => {
+  const res = await api.get('/creator/dashboard/stats');
+  return unwrap<DashboardStats>(res.data);
 };
 
 export const getDashboardMyIdeas = async (): Promise<Idea[]> => {
-  try {
-    const res = await api.get('/creator/ideas');
-    return res.data;
-  } catch {
-    return [];
-  }
+  const res = await api.get('/creator/ideas');
+  return unwrap<Idea[]>(res.data);
 };
 
-export const getInvestorIdeas = async () => {
-  try {
-    const res = await api.get('/ideas');
-    return res.data;
-  } catch {
-    return [];
-  }
+export const getInvestorIdeas = async (): Promise<Idea[]> => {
+  const res = await api.get('/ideas');
+  return unwrap<Idea[]>(res.data);
 };
 
 export const getProfile = async () => {
-  try {
-    const res = await api.get('/creator/profile');
-    return res.data;
-  } catch {
-    return {};
-  }
+  const res = await api.get('/creator/profile');
+  return unwrap(res.data);
 };
 
 export const getBilling = async () => {
-  try {
-    const res = await api.get('/creator/billing');
-    return res.data;
-  } catch {
-    return {};
-  }
+  const res = await api.get('/creator/billing');
+  return unwrap(res.data);
 };
 
 export const getSettings = async () => {
-  try {
-    const res = await api.get('/creator/settings');
-    return res.data;
-  } catch {
-    return {};
-  }
+  const res = await api.get('/creator/settings');
+  return unwrap(res.data);
 };
 
 export const getBillingHistory = async (): Promise<BillingItem[]> => {
-  try {
-    const res = await api.get('/creator/billing-history');
-    return res.data;
-  } catch {
-    return billingData;
-  }
+  const res = await api.get('/creator/billing-history');
+  return unwrap<BillingItem[]>(res.data);
 };
 
 /**
@@ -88,16 +86,12 @@ export const saveIdeaDraftApi = async (
 
   const url = id ? `/creator/new-idea/${id}` : '/creator/new-idea';
   const res = await api.post<SaveIdeaResponse>(url, form);
-  return res.data;
+  return unwrap<SaveIdeaResponse>(res.data);
 };
 
 export const pauseIdeaApi = async (ideaId: string) => {
-  try {
-    const res = await api.patch(`/creator/ideas/${ideaId}/pause`);
-    return res.data;
-  } catch {
-    return { success: false };
-  }
+  const res = await api.patch(`/creator/ideas/${ideaId}/pause`);
+  return unwrap(res.data);
 };
 
 export interface CreateCompanyFromIdeaResponse {
@@ -110,5 +104,5 @@ export const createCompanyFromIdea = async (
   ideaId: string,
 ): Promise<CreateCompanyFromIdeaResponse> => {
   const res = await api.post(`/companies/from-idea/${ideaId}`);
-  return res.data;
+  return unwrap<CreateCompanyFromIdeaResponse>(res.data);
 };

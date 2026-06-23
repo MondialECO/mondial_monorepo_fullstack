@@ -29,16 +29,21 @@ namespace WebApp.Configuration.AiOptions
         public AiFeatureFlags Features { get; set; } = new();
 
         /// <summary>
-        /// Starter AI credit balance granted to each existing user at startup
-        /// when <see cref="GrantStarterCreditsToExisting"/> is on. 0 = no grant.
+        /// Starter AI credit balance every user receives. Granted two ways, both
+        /// idempotent (a ledger is created only when absent — an existing balance,
+        /// even fully spent, is never topped up):
+        ///   • at startup to all existing users when <see cref="GrantStarterCreditsToExisting"/> is on;
+        ///   • lazily on a user's first paid AI job (covers signups after boot).
+        /// 0 = no grant.
         /// </summary>
-        public int StarterCredits { get; set; } = 0;
+        public int StarterCredits { get; set; } = 100;
 
         /// <summary>
-        /// Config gate for the one-time idempotent starter-credit backfill. Off
-        /// by default — must be opted into per environment.
+        /// Config gate for the one-time idempotent starter-credit backfill of
+        /// existing users at startup. The per-user lazy grant on first AI job is
+        /// independent of this flag.
         /// </summary>
-        public bool GrantStarterCreditsToExisting { get; set; } = false;
+        public bool GrantStarterCreditsToExisting { get; set; } = true;
     }
 
     public class AiFeatureFlags

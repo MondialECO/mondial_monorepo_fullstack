@@ -44,6 +44,8 @@ namespace WebApp.Controllers
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         };
 
+        private readonly StackExchange.Redis.IConnectionMultiplexer? _redis;
+
         public BusinessPlanController(
             IBusinessPlanSessionStore sessions,
             IClarifierSessionStore clarifiers,
@@ -51,7 +53,8 @@ namespace WebApp.Controllers
             IAiCreditService creditService,
             IAuditLogger audit,
             IOptions<AiSettings> settings,
-            ILogger<BusinessPlanController> logger)
+            ILogger<BusinessPlanController> logger,
+            IServiceProvider services)
         {
             _sessions = sessions;
             _clarifiers = clarifiers;
@@ -60,6 +63,7 @@ namespace WebApp.Controllers
             _audit = audit;
             _settings = settings.Value;
             _logger = logger;
+            _redis = services.GetService(typeof(StackExchange.Redis.IConnectionMultiplexer)) as StackExchange.Redis.IConnectionMultiplexer;
         }
 
         private string CurrentUserId =>
@@ -176,6 +180,117 @@ namespace WebApp.Controllers
             return Ok(ApiResponse.Ok("Business plan regeneration started.", new { sessionId = session.Id, jobId }));
         }
 
+        /// <summary>
+        /// Re-run C-3 to refresh a SINGLE section (audit P1.8). Rate-limited to
+        /// 100/day/user. The job is scoped to one section: the handler regenerates only
+        /// the requested C-3 field and splices it into a clone of the current plan via
+        /// <see cref="WebApp.Services.Ai.Jobs.BusinessPlanSections.ReplaceField"/>, so the
+        /// other sections are byte-for-byte preserved, the version is bumped, and a new
+        /// immutable snapshot is appended. Only the 5 rewritable display sections are
+        /// accepted (the 4 derived sections come from other modules).
+        /// </summary>
+        [HttpPost("rewrite-section")]
+        public async Task<IActionResult> RewriteSection([FromBody] RewriteSectionRequest request)
+        {
+            var owner = CurrentUserId;
+
+            if (!_settings.Enabled || !_settings.Features.BusinessPlan)
+                return StatusCode(503, ApiResponse.Error("The Business Plan generator is currently disabled.", HttpContext.TraceIdentifier));
+            if (string.IsNullOrWhiteSpace(request?.BusinessPlanSessionId) || string.IsNullOrWhiteSpace(request.SectionId))
+                return BadRequest(ApiResponse.Error("businessPlanSessionId and sectionId are required.", HttpContext.TraceIdentifier));
+            if (!ObjectId.TryParse(request.BusinessPlanSessionId, out _))
+                return NotFound(ApiResponse.Error("Session not found.", HttpContext.TraceIdentifier));
+            if (!BusinessPlanSections.IsRewritable(request.SectionId))
+                return UnprocessableEntity(ApiResponse.Error("section_not_editable", HttpContext.TraceIdentifier,
+                    new { sectionId = request.SectionId }));
+
+            // 100/day/user (Redis sliding-ish daily counter). Permissive if Redis is off.
+            if (_redis != null)
+            {
+                var db = _redis.GetDatabase();
+                var key = $"rate:bp_rewrite:{owner}";
+                var count = await db.StringIncrementAsync(key);
+                if (count == 1) await db.KeyExpireAsync(key, TimeSpan.FromSeconds(86400));
+                if (count > 100)
+                {
+                    var ttl = await db.KeyTimeToLiveAsync(key);
+                    return StatusCode(429, ApiResponse.Error("rate_limit_exceeded", HttpContext.TraceIdentifier,
+                        new { retryAfterSeconds = (int)(ttl?.TotalSeconds ?? 86400) }));
+                }
+            }
+
+            var session = await _sessions.GetOwnedAsync(request.BusinessPlanSessionId, owner);
+            if (session is null)
+                return NotFound(ApiResponse.Error("Session not found.", HttpContext.TraceIdentifier));
+            if (session.CurrentVersion <= 0)
+                return Conflict(ApiResponse.Error("There is no generated plan to rewrite a section of yet.", HttpContext.TraceIdentifier));
+
+            var clarifier = await _clarifiers.GetOwnedAsync(session.ClarifierSessionId, owner);
+            if (clarifier is null || !string.Equals(clarifier.Status, "Completed", StringComparison.Ordinal) || clarifier.Output is null)
+                return Conflict(ApiResponse.Error("The source clarifier session is no longer available or not completed.", HttpContext.TraceIdentifier));
+
+            _audit.Record("BusinessPlan.RewriteSection", owner, success: true,
+                new { sessionId = session.Id, sectionId = request.SectionId });
+
+            var jobId = await EnqueueGenerationAsync(session, owner, request.SectionId);
+            if (jobId is null)
+                return StatusCode(402, ApiResponse.Error("Insufficient credits.", HttpContext.TraceIdentifier));
+
+            await _sessions.SetProcessingAsync(session.Id);
+            return Ok(ApiResponse.Ok("Section rewrite started.", new { sessionId = session.Id, jobId, sectionId = request.SectionId }));
+        }
+
+        /// <summary>
+        /// Persist a MANUAL edit of one display section's primary text to the canonical
+        /// plan (no AI run). Goes through the SAME splice the AI rewrite uses
+        /// (<see cref="WebApp.Services.Ai.Jobs.BusinessPlanSections"/>, source "edit" →
+        /// section status "edited"): other sections preserved, version bumped, a new
+        /// immutable snapshot appended (locked C-3 decision #5). Only the 5 rewritable
+        /// display sections are editable.
+        /// </summary>
+        [HttpPatch("{sessionId}/section")]
+        public async Task<IActionResult> EditSection(string sessionId, [FromBody] EditSectionRequest request)
+        {
+            if (!ObjectId.TryParse(sessionId, out _))
+                return NotFound(ApiResponse.Error("Session not found.", HttpContext.TraceIdentifier));
+            if (string.IsNullOrWhiteSpace(request?.SectionId))
+                return BadRequest(ApiResponse.Error("sectionId is required.", HttpContext.TraceIdentifier));
+            if (!BusinessPlanSections.IsRewritable(request.SectionId))
+                return UnprocessableEntity(ApiResponse.Error("section_not_editable", HttpContext.TraceIdentifier,
+                    new { sectionId = request.SectionId }));
+
+            var owner = CurrentUserId;
+            var session = await _sessions.GetOwnedAsync(sessionId, owner);
+            if (session is null)
+                return NotFound(ApiResponse.Error("Session not found.", HttpContext.TraceIdentifier));
+            if (session.CurrentVersion <= 0)
+                return Conflict(ApiResponse.Error("There is no generated plan to edit yet.", HttpContext.TraceIdentifier));
+
+            var current = session.Versions.FirstOrDefault(v => v.Version == session.CurrentVersion);
+            if (current?.Content is null)
+                return Conflict(ApiResponse.Error("There is no current plan content to edit.", HttpContext.TraceIdentifier));
+
+            BsonDocument spliced;
+            try
+            {
+                spliced = BusinessPlanSections.ReplaceSectionText(current.Content, request.SectionId, request.Content ?? string.Empty);
+            }
+            catch (ArgumentException ex)
+            {
+                return UnprocessableEntity(ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+            spliced["schemaVersion"] = BusinessPlanOutputDto.CurrentSchemaVersion;
+
+            // Same append-only persistence as the AI path: bump version + append snapshot.
+            await _sessions.AppendGeneratedVersionAsync(session.Id, spliced, "manual-edit");
+
+            _audit.Record("BusinessPlan.EditSection", owner, success: true,
+                new { sessionId = session.Id, sectionId = request.SectionId, version = session.CurrentVersion + 1 });
+
+            var updated = await _sessions.GetOwnedAsync(session.Id, owner);
+            return Ok(ApiResponse.Ok("Section updated.", ToDto(updated!, includeVersionContent: true)));
+        }
+
         /// <summary>Edit the current version's plan in place — no AI run (locked decision #6).</summary>
         [HttpPut("{sessionId}")]
         public async Task<IActionResult> Edit(string sessionId, [FromBody] EditBusinessPlanRequest request)
@@ -216,7 +331,7 @@ namespace WebApp.Controllers
         /// Debit the BusinessPlan credit cost and enqueue one engine job. Returns the
         /// job id, or null when the owner has insufficient credits (caller maps to 402).
         /// </summary>
-        private async Task<string?> EnqueueGenerationAsync(BusinessPlanSession session, string owner)
+        private async Task<string?> EnqueueGenerationAsync(BusinessPlanSession session, string owner, string? sectionId = null)
         {
             try
             {
@@ -238,6 +353,10 @@ namespace WebApp.Controllers
             };
             if (session.BusinessIdeaId != null)
                 input["businessIdeaId"] = session.BusinessIdeaId;
+            // Single-section scope: the handler regenerates only this section and splices
+            // it into the current plan, leaving the others untouched.
+            if (!string.IsNullOrWhiteSpace(sectionId))
+                input["sectionId"] = sectionId;
 
             var jobId = await _jobService.EnqueueAsync(AiJobType.BusinessPlan, owner, input);
             await _sessions.SetRequestIdAsync(session.Id, jobId);

@@ -97,6 +97,42 @@ export const creatorAiApi = {
     });
     return unwrap<ForecastSession[]>(res.data) ?? [];
   },
+
+  // Per-section rewrite (P1.8). Re-runs C-3; returns a session to poll (inherits R12).
+  rewriteSection: async (
+    businessPlanSessionId: string,
+    sectionId: string,
+  ): Promise<StartSessionResult & { sectionId: string }> => {
+    const res = await api.post("/ai/business-plan/rewrite-section", {
+      businessPlanSessionId,
+      sectionId,
+    });
+    return unwrap<StartSessionResult & { sectionId: string }>(res.data);
+  },
+
+  // Manual in-place edit of the current plan version — no AI run (C-3 decision #6).
+  editBusinessPlan: async (
+    sessionId: string,
+    plan: Record<string, unknown>,
+  ): Promise<BusinessPlanSession> => {
+    const res = await api.put(`/ai/business-plan/${sessionId}`, { plan });
+    return unwrap<BusinessPlanSession>(res.data);
+  },
+
+  // Durable manual edit of ONE display section — no AI run. Goes through the same
+  // server-side splice as the rewrite (status "edited"); bumps version, appends a
+  // snapshot, returns the refreshed session. Survives reload.
+  editSection: async (
+    sessionId: string,
+    sectionId: string,
+    content: string,
+  ): Promise<BusinessPlanSession> => {
+    const res = await api.patch(`/ai/business-plan/${sessionId}/section`, {
+      sectionId,
+      content,
+    });
+    return unwrap<BusinessPlanSession>(res.data);
+  },
 };
 
 export default creatorAiApi;

@@ -1,3 +1,4 @@
+using MongoDB.Driver;
 using WebApp.Models.DatabaseModels;
 using WebApp.Models.Dtos;
 
@@ -17,6 +18,21 @@ public interface ICompanyService
     Task<(Companies Company, bool AlreadyExisted)> CreateCompanyFromIdeaAsync(string userId, string ideaId);
     Task<Companies> GetCompanyAsync(string companyId);
     Task<Companies> GetCompanyByUserIdAsync(string userId);
+
+    /// <summary>
+    /// Creator → Entrepreneur bridge (Path B Level Up). Idempotent by OwnerId:
+    /// returns the user's existing company or creates one following Entrepreneur
+    /// conventions (CurrentPhase = 2, CompletedPhases = []). Pre-fills the formation
+    /// PLAN (legal structure, funding ask) + provenance link; verification PROOF
+    /// (legal name, reg number, documents, beneficial owners) stays empty.
+    /// </summary>
+    /// <param name="session">
+    /// Optional Mongo session so this write joins the Level Up transaction. When null,
+    /// writes run without a session (non-transactional fallback path).
+    /// </param>
+    Task<Companies> EnsureLevelUpCompanyAsync(
+        string userId, string sourceLink, string legalStructure, double? fundingAsk,
+        IClientSessionHandle session = null);
 
     // ============ PHASE 2: LEGAL INFO & DOCUMENTS ============
 

@@ -16,6 +16,7 @@ namespace WebApp.DbContext
             EnsurePhase4Indexes();
             EnsurePhase6Indexes();
             EnsurePhase9Indexes();
+            EnsureCreatorJourneyIndexes();
         }
 
         public MongoDbContext(IMongoDatabase database)
@@ -25,6 +26,7 @@ namespace WebApp.DbContext
             EnsurePhase4Indexes();
             EnsurePhase6Indexes();
             EnsurePhase9Indexes();
+            EnsureCreatorJourneyIndexes();
         }
 
         // Smart Matchmaking outbox indexes: Status (consumer polling), CompanyId
@@ -185,7 +187,46 @@ namespace WebApp.DbContext
             }
         }
 
+        // Creator journey (Phases 2–6 source of truth). One doc per user; status is
+        // DERIVED on read, never stored. Unique {UserId} enforces one-per-user;
+        // {BusinessIdeaId}/{CompanyId} support reverse lookups. Same best-effort +
+        // swallowed pattern as the other Ensure*Indexes methods.
+        private void EnsureCreatorJourneyIndexes()
+        {
+            try
+            {
+                CreatorJourneys.Indexes.CreateMany(new[]
+                {
+                    new CreateIndexModel<CreatorJourney>(
+                        Builders<CreatorJourney>.IndexKeys.Ascending(x => x.UserId),
+                        new CreateIndexOptions { Background = true, Unique = true }),
+                    new CreateIndexModel<CreatorJourney>(
+                        Builders<CreatorJourney>.IndexKeys.Ascending(x => x.BusinessIdeaId),
+                        new CreateIndexOptions { Background = true }),
+                    new CreateIndexModel<CreatorJourney>(
+                        Builders<CreatorJourney>.IndexKeys.Ascending(x => x.CompanyId),
+                        new CreateIndexOptions { Background = true }),
+                });
+            }
+            catch
+            {
+                // Best-effort; never block or fail context construction.
+            }
+        }
+
         public virtual IMongoCollection<ApplicationUser> ApplicationUsers => _database.GetCollection<ApplicationUser>("ApplicationUsers");
+
+        // Creator journey collection (Phases 2–6 source of truth)
+        public virtual IMongoCollection<CreatorJourney> CreatorJourneys => _database.GetCollection<CreatorJourney>("CreatorJourneys");
+
+        // IP valuation audit log (Phase 5 Path A)
+        public virtual IMongoCollection<IpValuationRecord> IpValuations => _database.GetCollection<IpValuationRecord>("IpValuations");
+
+        // Entrepreneur profiles created at Level Up (Phase 6)
+        public virtual IMongoCollection<EntrepreneurProfileRecord> EntrepreneurProfiles => _database.GetCollection<EntrepreneurProfileRecord>("EntrepreneurProfiles");
+
+        // Smart-match run snapshots (Phase 6)
+        public virtual IMongoCollection<SmartMatchRun> SmartMatchRuns => _database.GetCollection<SmartMatchRun>("SmartMatchRuns");
 
         // Business Collections
         public virtual IMongoCollection<BusinessIdeas> BusinessIdeas => _database.GetCollection<BusinessIdeas>("BusinessIdeas");

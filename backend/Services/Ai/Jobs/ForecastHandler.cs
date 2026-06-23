@@ -50,39 +50,49 @@ namespace WebApp.Services.Ai.Jobs
 
             string Field(string key) =>
                 input != null && input.TryGetValue(key, out var v) && v.IsString ? v.AsString.Trim() : string.Empty;
+            double? Num(string key) =>
+                input != null && input.TryGetValue(key, out var v) && v.IsNumeric ? v.ToDouble() : (double?)null;
+
+            // The business plan (revenue model, market analysis from C-3) is the
+            // AUTHORITATIVE context again (forecast follows the plan in the new order).
+            // The numeric inputs (ARPU/OPEX/growth/TAM) are explicit supporting parameters.
+            var arpu = Num("arpu");
+            var opex = Num("opex");
+            var growth = Num("monthlyGrowthPct");
+            var tam = Num("tam");
 
             var businessPlanSessionId = Field("businessPlanSessionId");
-
-            // Authoritative input: the parent business plan's CURRENT EDITABLE version
-            // (Content, not GeneratedContent). Must be owner-scoped and Completed.
             var plan = businessPlanSessionId.Length > 0
                 ? await _businessPlans.GetOwnedAsync(businessPlanSessionId, request.OwnerUserId)
                 : null;
-
             var planContent = CurrentVersionContent(plan);
 
             var contextLines = new List<string>();
             if (planContent is not null)
+                contextLines.Add("BUSINESS PLAN (authoritative source — base the forecast on this):\n" + planContent.ToJson());
+
+            var inputLines = new List<string>();
+            if (arpu.HasValue) inputLines.Add($"ARPU (€/month): {arpu.Value}");
+            if (opex.HasValue) inputLines.Add($"OPEX (€/month): {opex.Value}");
+            if (growth.HasValue) inputLines.Add($"Monthly growth rate (%): {growth.Value}");
+            if (tam.HasValue) inputLines.Add($"TAM (€): {tam.Value}");
+            if (inputLines.Count > 0)
+                contextLines.Add("FORECAST PARAMETERS (supporting figures):\n" + string.Join("\n", inputLines));
+
+            if (contextLines.Count == 0)
             {
-                contextLines.Add(
-                    "BUSINESS PLAN (authoritative source — base the forecast on this):\n" +
-                    planContent.ToJson());
-            }
-            else
-            {
-                _logger.LogWarning(
-                    "Forecast request {RequestId} has no usable business-plan content (businessPlanSessionId={PlanId}, status={Status}).",
-                    request.Id, businessPlanSessionId, plan?.Status ?? "(missing)");
-                contextLines.Add("BUSINESS PLAN: (unavailable — proceed cautiously and state assumptions)");
+                _logger.LogWarning("Forecast request {RequestId} has neither a business plan nor inputs.", request.Id);
+                contextLines.Add("CONTEXT: (none provided — state conservative assumptions explicitly).");
             }
 
             var userContext = string.Join("\n\n", contextLines);
 
             const string task =
-                "Produce a 12-month financial forecast for the business plan above, " +
+                "Produce a 12-month financial forecast grounded in the BUSINESS PLAN above " +
+                "and refined by the FORECAST PARAMETERS (ARPU, OPEX, monthly growth, TAM), " +
                 "following the output contract exactly: 12 consecutive monthly periods, " +
-                "numeric monthly arrays, no funding ask. Base every figure on the plan " +
-                "and state the assumptions you make. Return only the JSON object.";
+                "numeric monthly arrays, no funding ask. State every assumption. " +
+                "Return only the JSON object.";
 
             return new AiHandlerRequest(
                 PromptKey: PromptTemplate.Forecast.Key,

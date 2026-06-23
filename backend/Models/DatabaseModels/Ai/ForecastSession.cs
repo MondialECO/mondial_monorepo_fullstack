@@ -25,11 +25,20 @@ namespace WebApp.Models.DatabaseModels.Ai
 
         /// <summary>
         /// The authoritative input: the <c>BusinessPlanSessions</c> document whose
-        /// active plan seeds this forecast. Required.
+        /// active plan seeds this forecast. Required at Start (ForecastController.Start
+        /// enforces via 422 guards: business_plan_required, business_plan_not_found,
+        /// business_plan_not_complete). Nullable at storage layer ([BsonIgnoreIfNull])
+        /// for backwards compatibility with older sessions.
         /// </summary>
         [BsonElement("BusinessPlanSessionId")]
         [BsonRepresentation(BsonType.ObjectId)]
-        public string BusinessPlanSessionId { get; set; } = "";
+        [BsonIgnoreIfNull]
+        public string? BusinessPlanSessionId { get; set; }
+
+        /// <summary>Standalone forecast inputs (ARPU / OPEX / monthly growth / TAM).</summary>
+        [BsonElement("Inputs")]
+        [BsonIgnoreIfNull]
+        public ForecastInputs? Inputs { get; set; }
 
         /// <summary>Optional source <c>BusinessIdeas</c> document — secondary context only.</summary>
         [BsonElement("BusinessIdeaId")]
@@ -112,5 +121,23 @@ namespace WebApp.Models.DatabaseModels.Ai
 
         [BsonElement("UpdatedAt")]
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    }
+
+    /// <summary>Standalone forecast inputs the engine computes from (no plan required).</summary>
+    public sealed class ForecastInputs
+    {
+        public double? Arpu { get; set; }
+        public double? Opex { get; set; }
+        public double? MonthlyGrowthPct { get; set; }
+        public double? Tam { get; set; }
+
+        /// <summary>
+        /// Monthly customer churn, as a PERCENT number (e.g. 3 = 3%/month), matching the
+        /// MonthlyGrowthPct convention. Drives the readiness LTV/CAC sub-score
+        /// (LTV = ARPU / churn) so it discriminates real unit economics. Nullable at
+        /// storage (old sessions / not entered) → readiness falls back to the documented
+        /// prior constant. See <see cref="WebApp.Services.Implementations.CreatorScoring.LtvCacHealthy"/>.
+        /// </summary>
+        public double? MonthlyChurnPct { get; set; }
     }
 }

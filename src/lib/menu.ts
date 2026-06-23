@@ -19,6 +19,15 @@ import {
   PieChart,
   FolderOpen,
   TrendingUp,
+  Store,
+  GitFork,
+  Brain,
+  DollarSign,
+  Folder,
+  FileText,
+  Bell,
+  Lock,
+  Layers,
 } from "lucide-react";
 
 export type MenuItem = {
@@ -51,50 +60,92 @@ export const menu: Record<UserRole, MenuSection[]> = {
     },
   ],
 
-  [UserRole.CREATOR]: [
+[UserRole.CREATOR]: [
     {
-      title: "Dashboard",
+      title: "Main",
       items: [
         {
-          label: "Overview",
+          label: "Dashboard",
           href: "/dashboard/creator",
           icon: LayoutDashboard,
         },
         {
-          label: "My Ideas",
+          label: "My Idea",
           href: "/dashboard/creator/myideas",
           icon: Lightbulb,
         },
         {
-          label: "AI Studio",
-          href: "/dashboard/creator/ai",
-          icon: Sparkles,
+          label: "Project Studio",
+          href: "/dashboard/creator/project-studio",
+          icon: Layers,
         },
         {
-          label: "Investors",
-          href: "/dashboard/creator/investors",
-          icon: Users,
+          label: "AI Masterplan",
+          href: "/dashboard/creator/ai-masterplan",
+          icon: Brain,
         },
         {
-          label: "Messages",
-          href: "/dashboard/creator/messages",
-          icon: MessageSquare,
+          label: "Offer & Pricing",
+          href: "/dashboard/creator/offer-pricing",
+          icon: DollarSign,
         },
       ],
     },
 
     {
-      title: "Account",
+      title: "Growth",
       items: [
         {
-          label: "Profile",
-          href: "/dashboard/creator/profile",
-          icon: User,
+          label: "The Crossroads",
+          href: "/dashboard/creator/crossroads",
+          icon: GitFork,
         },
         {
-          label: "Billing History",
-          href: "/dashboard/creator/billinghistory",
-          icon: CreditCard,
+          label: "Marketplace",
+          href: "/dashboard/creator/marketplace",
+          icon: Store,
+        },
+        {
+          label: "Hire Providers",
+          href: "/dashboard/creator/hire-providers",
+          icon: Users,
+        },
+        {
+          label: "IP Vault",
+          href: "/dashboard/creator/ip-vault",
+          icon: Lock,
+        },
+      ],
+    },
+
+    {
+      title: "Communication",
+      items: [
+        {
+          label: "Messages",
+          href: "/dashboard/creator/messages",
+          icon: MessageSquare,
+        },
+        {
+          label: "Notifications",
+          href: "/dashboard/creator/notifications",
+          icon: Bell,
+        },
+      ],
+    },
+
+    {
+      title: "Assets",
+      items: [
+        {
+          label: "Asset Library",
+          href: "/dashboard/creator/asset-library",
+          icon: Folder,
+        },
+        {
+          label: "Documents",
+          href: "/dashboard/creator/documents",
+          icon: FileText,
         },
         {
           label: "Settings",
@@ -191,7 +242,7 @@ export const menu: Record<UserRole, MenuSection[]> = {
         },
         {
           label: "Deals",
-          href: "/dashboard/entrepreneur/deals",
+          href: "/dashboard/entrepreneur/phase-9",
           icon: Users,
         },
         {
