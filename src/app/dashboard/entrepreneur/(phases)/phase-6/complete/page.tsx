@@ -56,8 +56,7 @@ function Phase6CompleteContent() {
         { icon: ShieldCheck, label: 'NDA protection', value: ndaActive ? 'Active' : 'Off', tone: ndaActive ? 'success' : undefined, sub: 'Per access grant' },
         { icon: Sparkles, label: 'Phase 7', value: 'Unlocked', tone: 'success', sub: 'AI Expert Review' },
       ]}
-      score={prog ? prog.trustScore : null}
-      scoreSub="Backend-awarded after Phase 6"
+      score={null}
       unlocked={[
         { label: 'Data room published', sub: 'Sent for compliance review' },
         { label: 'Phase 7 — AI Expert Review now accessible' },

@@ -4,6 +4,7 @@ import { use, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { FileText, TrendingUp, PieChart, Users, FileStack, Lock } from "lucide-react";
 import ErrorState from "@/components/shared/ErrorState";
 import NDARequiredCard from "@/components/investor/NDARequiredCard";
 import NDAAcceptModal from "@/components/investor/NDAAcceptModal";
@@ -61,32 +62,41 @@ export default function OpportunityDetailPage({ params }: PageProps) {
         <div className="min-w-0">
           <Tabs defaultValue="overview">
             <TabsList className="w-full overflow-x-auto">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="traction">Traction</TabsTrigger>
-              <TabsTrigger value="cap-table">
+              <TabsTrigger value="overview" className="gap-2">
+                <FileText className="h-4 w-4" aria-hidden />
+                Overview
+              </TabsTrigger>
+              <TabsTrigger value="traction" className="gap-2">
+                <TrendingUp className="h-4 w-4" aria-hidden />
+                Traction
+              </TabsTrigger>
+              <TabsTrigger value="cap-table" className="gap-2">
+                <PieChart className="h-4 w-4" aria-hidden />
                 Cap Table
                 {!data.ndaAccepted ? (
-                  <Badge variant="outline" className="ml-1.5 text-[10px]">
-                    Locked
+                  <Badge variant="outline" className="ml-1 text-[10px]" title="NDA required to view">
+                    <Lock className="h-2.5 w-2.5 mr-0.5" aria-hidden />
                   </Badge>
                 ) : null}
               </TabsTrigger>
-              <TabsTrigger value="team">
+              <TabsTrigger value="team" className="gap-2">
+                <Users className="h-4 w-4" aria-hidden />
                 Team
                 {!data.ndaAccepted ? (
-                  <Badge variant="outline" className="ml-1.5 text-[10px]">
-                    Locked
+                  <Badge variant="outline" className="ml-1 text-[10px]" title="NDA required to view">
+                    <Lock className="h-2.5 w-2.5 mr-0.5" aria-hidden />
                   </Badge>
                 ) : null}
               </TabsTrigger>
-              <TabsTrigger value="documents">
+              <TabsTrigger value="documents" className="gap-2">
+                <FileStack className="h-4 w-4" aria-hidden />
                 Documents
                 {!data.ndaAccepted ? (
-                  <Badge variant="outline" className="ml-1.5 text-[10px]">
-                    Locked
+                  <Badge variant="outline" className="ml-1 text-[10px]" title="NDA required to view">
+                    <Lock className="h-2.5 w-2.5 mr-0.5" aria-hidden />
                   </Badge>
                 ) : (
-                  <Badge variant="secondary" className="ml-1.5 text-[10px]">
+                  <Badge variant="secondary" className="ml-1 text-[10px]">
                     {data.documentsCount}
                   </Badge>
                 )}

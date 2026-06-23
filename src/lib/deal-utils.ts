@@ -99,13 +99,23 @@ export interface SignatureState {
   bothSigned: boolean;
 }
 
-// Per-slot signature state. The deal payload doesn't expose individual slots,
-// so derive them: termSheet.status === "signed" means BOTH signed; otherwise
-// read the term_sheet_signed activity notes ("signed by founder|investor|both").
+// Per-slot signature state. Primary source is the authoritative, persisted
+// signature records on the deal payload (founderSignature / investorSignature
+// from DealStatusResponse). The activity-log note parsing is retained only as a
+// fallback for legacy payloads that predate those fields.
 export function deriveSignatures(
   deal: DealStatus,
-  activity: DealActivityEntry[]
+  activity: DealActivityEntry[] = []
 ): SignatureState {
+  // Authoritative path: persisted signature records.
+  if (deal.founderSignature !== undefined || deal.investorSignature !== undefined) {
+    const founderSigned = !!deal.founderSignature?.signedAt;
+    const investorSigned = !!deal.investorSignature?.signedAt;
+    return { founderSigned, investorSigned, bothSigned: founderSigned && investorSigned };
+  }
+
+  // Fallback (legacy payloads only): termSheet.status === "signed" means BOTH
+  // signed; otherwise read the term_sheet_signed activity notes.
   const bothSigned = deal.termSheet.status === "signed";
   let founderSigned = bothSigned;
   let investorSigned = bothSigned;

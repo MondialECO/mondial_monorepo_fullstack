@@ -69,6 +69,19 @@ builder.Services.Configure<MongoDbSettings>(builder.Configuration.GetSection("Mo
 // instead of blocking request threads, an explicit connection pool so
 // spiky traffic cannot exhaust connections, and retryable reads/writes
 // so transient primary elections recover transparently.
+// Tolerate forward/backward schema drift: ignore BSON elements present in
+// stored documents but absent from the C# model (e.g. legacy/seed-only fields
+// like ProfileScore or TrustScore). Registered once at startup, before any
+// (de)serialization, so it applies to every collection and prevents a single
+// stale field from 500/400-ing an endpoint as models evolve.
+MongoDB.Bson.Serialization.Conventions.ConventionRegistry.Register(
+    "IgnoreExtraElements",
+    new MongoDB.Bson.Serialization.Conventions.ConventionPack
+    {
+        new MongoDB.Bson.Serialization.Conventions.IgnoreExtraElementsConvention(true)
+    },
+    _ => true);
+
 builder.Services.AddSingleton<IMongoClient>(sp =>
 {
     var settings = sp.GetRequiredService<IOptions<MongoDbSettings>>().Value;
@@ -163,11 +176,27 @@ var allowedOrigins = builder.Configuration
     .GetSection("Cors:AllowedOrigins").Get<string[]>()
     ?? new[] { "http://localhost:3000", "https://mondialbusiness.eu" };
 
+var isDevEnv = builder.Environment.IsDevelopment();
+
+// Origin check: explicit configured origins always pass. In Development we also
+// allow ANY loopback origin, because the Next.js dev server hops ports
+// (3000 -> 3001 -> 3002 ...) when one is taken, and config can't keep up.
+// This keeps credentialed CORS valid (an explicit origin is reflected, never "*").
+bool IsAllowedOrigin(string origin)
+{
+    if (string.IsNullOrWhiteSpace(origin)) return false;
+    if (Array.Exists(allowedOrigins, o => string.Equals(o, origin, StringComparison.OrdinalIgnoreCase)))
+        return true;
+    if (isDevEnv && Uri.TryCreate(origin, UriKind.Absolute, out var uri))
+        return uri.Host is "localhost" or "127.0.0.1";
+    return false;
+}
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.WithOrigins(allowedOrigins)
+        policy.SetIsOriginAllowed(IsAllowedOrigin)
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
@@ -404,14 +433,20 @@ builder.Services.AddRateLimiter(options =>
                 QueueLimit = 0
             }));
 
+    // Global safety-net limiter (per IP, evaluated before auth so it cannot
+    // partition per user). 100/min was too low for normal SPA usage: a single
+    // page load fans out many reads (auth/me, current-phase, onboarding/status,
+    // dashboard widgets) and React dev double-invokes effects, so legitimate
+    // sessions tripped 429 — which the client mis-handled as a logout. Raised to
+    // a comfortable ceiling that still blocks abuse; QueueLimit smooths bursts.
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
         RateLimitPartition.GetFixedWindowLimiter(
             partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             factory: _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 100,
+                PermitLimit = 600,
                 Window = TimeSpan.FromMinutes(1),
-                QueueLimit = 0
+                QueueLimit = 20
             }));
 });
 

@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1480" height="860" viewBox="0 0 1480 860" font-family="Inter, Segoe UI, Arial, sans-serif">
+  <defs>
+    <style>
+      .title{font-size:25px;font-weight:700;fill:#0f172a}
+      .sub{font-size:13px;fill:#64748b}
+      .ch{font-size:14px;font-weight:700;fill:#ffffff}
+      .it{font-size:12.5px;fill:#0f172a}
+      .note{font-size:11px;fill:#475569}
+      .foot{font-size:12.5px;fill:#334155}
+    </style>
+  </defs>
+  <rect width="1480" height="860" fill="#ffffff"/>
+  <text x="40" y="42" class="title">Investor Preservation &amp; Redesign Authority — Final Map</text>
+  <text x="40" y="64" class="sub">Every investor item bucketed. Logic is always preserved; REMOVE = dead code only. Optimized for deal creation, trust, clarity &amp; enterprise UX — not Figma parity.</text>
+
+  <!-- 5 columns -->
+  <!-- col x positions: 40, 330, 620, 910, 1200 ; width 270 -->
+
+  <!-- COL 1 MUST PRESERVE green -->
+  <rect x="40" y="92" width="272" height="40" rx="8" fill="#16a34a"/>
+  <text x="56" y="117" class="ch">🟢 MUST PRESERVE</text>
+  <rect x="40" y="136" width="272" height="600" rx="8" fill="#f0fdf4" stroke="#bbf7d0"/>
+  <g class="it" transform="translate(56,160)">
+    <text y="0">Cap Table (donut + table)</text>
+    <text y="26">Match-score donut</text>
+    <text y="52">Investment Thesis capture</text>
+    <text y="78">Profile Completion card</text>
+    <text y="104">Make Offer CTA</text>
+    <text y="130">Term-Sheet Builder (restore)</text>
+    <text y="156">Negotiation workspace</text>
+    <text y="182">Data Room (capability)</text>
+    <text y="208">Messages workspace</text>
+    <text y="234">Revision/Deal/Activity timelines</text>
+    <text y="260">Session Activity feed</text>
+    <text y="286">Profile Edit form</text>
+    <text y="312">Loading skeletons</text>
+    <text y="338">Notifications</text>
+    <text y="364">Dark mode</text>
+  </g>
+  <text x="56" y="552" class="note" transform="translate(0,160)">≥ Figma or unique to live — keep.</text>
+
+  <!-- COL 2 NEVER TOUCH slate -->
+  <rect x="330" y="92" width="272" height="40" rx="8" fill="#334155"/>
+  <text x="346" y="117" class="ch">⬛ NEVER TOUCH (logic)</text>
+  <rect x="330" y="136" width="272" height="600" rx="8" fill="#f8fafc" stroke="#cbd5e1"/>
+  <g class="it" transform="translate(346,160)">
+    <text y="0">Discovery scoring / ranking</text>
+    <text y="26">NDA gating &amp; unlock</text>
+    <text y="52">Data-room access control</text>
+    <text y="78">Offer state machine</text>
+    <text y="104">  (create/counter/accept/reject/close)</text>
+    <text y="130">Term-sheet derivation</text>
+    <text y="156">Signing &amp; completion</text>
+    <text y="182">Signature / audit records</text>
+    <text y="208">Auth / role routing</text>
+    <text y="234">Realtime deal sync (SignalR)</text>
+    <text y="260">All investor/deals API contracts</text>
+  </g>
+  <text x="346" y="468" class="note" transform="translate(0,160)">The engine. Presentation wraps it,</text>
+  <text x="346" y="486" class="note" transform="translate(0,160)">never reaches into it.</text>
+
+  <!-- COL 3 IMPROVE UX amber -->
+  <rect x="620" y="92" width="272" height="40" rx="8" fill="#ca8a04"/>
+  <text x="636" y="117" class="ch">🟡 IMPROVE UX</text>
+  <rect x="620" y="136" width="272" height="600" rx="8" fill="#fefce8" stroke="#fde68a"/>
+  <g class="it" transform="translate(636,160)">
+    <text y="0">Dashboard: MOIC + "Your move" band</text>
+    <text y="26">Discovery: insights + recommended action</text>
+    <text y="52">Opportunity: fix Score 0%</text>
+    <text y="78">Opportunity: funding progress</text>
+    <text y="104">Verification + Trust Score (surface)</text>
+    <text y="130">Founder identity (combine)</text>
+    <text y="156">Pipeline: Portfolio Snapshot + nudge</text>
+    <text y="182">Portfolio: MOIC / returns / sectors</text>
+    <text y="208">Messages: real names + context</text>
+    <text y="234">Negotiation: offer-diff / whose-turn</text>
+    <text y="260">Public Profile: track record</text>
+    <text y="286">Data-room empty → actionable</text>
+    <text y="312">Funnel IA + global trust strip</text>
+    <text y="338">Error states: stop masking</text>
+  </g>
+  <text x="636" y="528" class="note" transform="translate(0,160)">Surface existing data — no logic change.</text>
+
+  <!-- COL 4 REDESIGN blue -->
+  <rect x="910" y="92" width="272" height="40" rx="8" fill="#2563eb"/>
+  <text x="926" y="117" class="ch">🔵 REDESIGN UI ONLY</text>
+  <rect x="910" y="136" width="272" height="290" rx="8" fill="#eff6ff" stroke="#bfdbfe"/>
+  <g class="it" transform="translate(926,160)">
+    <text y="0">Data Room shell</text>
+    <text y="22" class="note">  (+ Next-Steps; viewer = core track)</text>
+    <text y="52">NDA accept / sign modal</text>
+    <text y="74" class="note">  (Figma polish; gating untouched)</text>
+  </g>
+  <text x="926" y="300" class="note" transform="translate(0,160)">Re-skin only. Zero logic touched.</text>
+
+  <!-- COL 4b BUILD NEW (core, separate) -->
+  <rect x="910" y="446" width="272" height="40" rx="8" fill="#7c3aed"/>
+  <text x="926" y="471" class="ch">⬡ BUILD NEW (core track)</text>
+  <rect x="910" y="490" width="272" height="246" rx="8" fill="#f5f3ff" stroke="#ddd6fe"/>
+  <g class="it" transform="translate(926,514)">
+    <text y="0">Data-room document viewer</text>
+    <text y="26">Data-room AI analysis</text>
+    <text y="52">Private notes / comments</text>
+    <text y="78">Search (discovery)</text>
+  </g>
+  <text x="926" y="640" class="note" transform="translate(0,514)">Out of "presentation-only" remit —</text>
+  <text x="926" y="658" class="note" transform="translate(0,514)">scope as core work.</text>
+
+  <!-- COL 5 REMOVE red -->
+  <rect x="1200" y="92" width="240" height="40" rx="8" fill="#dc2626"/>
+  <text x="1216" y="117" class="ch">🔴 REMOVE (dead only)</text>
+  <rect x="1200" y="136" width="240" height="600" rx="8" fill="#fef2f2" stroke="#fecaca"/>
+  <g class="it" transform="translate(1216,160)">
+    <text y="0">phase-1 onboarding shim</text>
+    <text y="26">phase-5 "Deal Discovery"</text>
+    <text y="52">Dead Save / Share buttons</text>
+    <text y="78">Dashboard self-link CTAs</text>
+    <text y="104">Unused ProfileStatsCard import</text>
+    <text y="130">Orphaned counterpartyRole util</text>
+    <text y="156">Dead dashboard data path</text>
+    <text y="182">"1 of 0" placeholder display</text>
+  </g>
+  <text x="1216" y="380" class="note" transform="translate(0,160)">No live capability lost.</text>
+  <text x="1216" y="398" class="note" transform="translate(0,160)">Functionality/logic/workflow</text>
+  <text x="1216" y="416" class="note" transform="translate(0,160)">are never removed.</text>
+
+  <line x1="40" y1="772" x2="1440" y2="772" stroke="#e2e8f0"/>
+  <text x="40" y="800" class="foot">Final ruling: preserve the engine + strong components · redesign only the Data-Room shell &amp; NDA modal · improve by exposing existing data · remove only provably-dead code.</text>
+  <text x="40" y="824" class="foot">Top P0s (deal-creation &amp; trust): restore Term-Sheet 404 · fix Score-Breakdown 0% · resolve founder/conversation names. All preserve 100% of workflow integrity.</text>
+</svg>

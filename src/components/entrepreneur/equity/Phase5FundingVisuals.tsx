@@ -161,7 +161,7 @@ export function Phase5FundingVisuals() {
         <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
           <MetricCard label="Capital raised" value={capitalRaised > 0 ? eur(capitalRaised) : undefined} unavailable={capitalRaised > 0 ? undefined : 'unavailable'} />
           <MetricCard label="Current valuation" value={postMoney > 0 ? eur(postMoney) : preMoney > 0 ? eur(preMoney) : undefined} unavailable={postMoney > 0 || preMoney > 0 ? undefined : 'unavailable'} />
-          <MetricCard label="Investor-ready score" value={progress ? `${progress.trustScore}/100` : undefined} unavailable={progress ? undefined : 'unavailable'} />
+          <MetricCard label="Investor-ready score" value={undefined} unavailable={'unavailable'} />
           <MetricCard label="Marketplace" value={funding?.hasOutreachCampaign ? 'Published' : 'Not published'} chip={funding?.hasOutreachCampaign ? 'Live' : undefined} chipTone="success" />
         </div>
       </SectionCard>
@@ -172,7 +172,7 @@ export function Phase5FundingVisuals() {
         headerRight={<span className="inline-flex items-center gap-1 text-xs text-muted-foreground"><Rocket className="h-4 w-4" aria-hidden /> Phase 5</span>}
       >
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <MetricCard label="Investor-ready score" value={progress ? `${progress.trustScore}/100` : undefined} unavailable={progress ? undefined : 'unavailable'} />
+          <MetricCard label="Investor-ready score" value={undefined} unavailable={'unavailable'} />
           <MetricCard label="Overall progress" value={progress ? `${progress.overallProgressPercent}%` : undefined} unavailable={progress ? undefined : 'unavailable'} />
           <MetricCard label="Verification" value={progress ? (progress.isInvestorReady ? 'Institutional ready' : 'Pending review') : undefined} unavailable={progress ? undefined : 'unavailable'} />
         </div>

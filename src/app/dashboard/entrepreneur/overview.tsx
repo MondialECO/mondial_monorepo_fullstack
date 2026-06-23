@@ -253,14 +253,6 @@ export default function EntrepreneurOverview() {
               ) : (
                 <Skeleton className="h-28 w-28 rounded-full" />
               )}
-              <div className="rounded-xl border bg-background px-5 py-4 text-right">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">Trust score</p>
-                {progress ? (
-                  <p className="text-3xl font-bold text-primary">{progress.trustScore}/100</p>
-                ) : (
-                  <Skeleton className="mt-1 h-9 w-24" />
-                )}
-              </div>
             </div>
           </div>
           <div className="space-y-2" role="status" aria-live="polite">
@@ -308,12 +300,6 @@ export default function EntrepreneurOverview() {
               value={target > 0 ? eur(target) : '—'}
               hint={funding?.fundingRoundType ? funding.fundingRoundType.replace('_', ' ') : 'No funding ask yet'}
               icon={Target}
-            />
-            <StatCard
-              label="Trust Score"
-              value={progress ? `${progress.trustScore}/100` : '—'}
-              hint={progress?.isInvestorReady ? 'Investor ready' : 'In progress'}
-              icon={CheckCircle2}
             />
             <StatCard
               label="Investor Matches"

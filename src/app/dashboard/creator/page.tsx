@@ -9,7 +9,6 @@ import { format } from "date-fns";
 import {
   CheckCircle2,
   Clock,
-  TrendingUp,
   Users,
   Lightbulb,
   DollarSign
@@ -76,13 +75,7 @@ export default function CreatorDashboard() {
               <div className="text-foreground text-[28px] font-bold">{data.totalIdeas.toString().padStart(2, "0")}</div>
             </div>
           </div>
-          <div className="flex justify-between items-center mt-4">
-            <div className="text-muted-foreground text-xs font-medium">+{data.totalClicksLast14Days} views today</div>
-            <div className="flex items-center gap-1 text-[#10B981]">
-              <TrendingUp className="h-3 w-3" />
-              <div className="text-xs font-semibold">4.1%</div>
-            </div>
-          </div>
+          <div className="text-muted-foreground text-xs font-medium mt-4">+{data.totalClicksLast14Days} views today</div>
         </div>
 
         {/* Funds Raised */}

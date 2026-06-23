@@ -9,6 +9,17 @@
     }
   },
   "profiles": {
+    "LocalVerify": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": false,
+      "applicationUrl": "http://localhost:5093",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "MongoDbSettings__ConnectionString": "mongodb://localhost:27017",
+        "MongoDbSettings__DatabaseName": "MondialEcoInvestorVerify"
+      }
+    },
     "http": {
       "commandName": "Project",
       "dotnetRunMessages": true,

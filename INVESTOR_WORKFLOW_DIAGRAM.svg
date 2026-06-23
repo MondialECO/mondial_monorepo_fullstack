@@ -1,0 +1,172 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1480" height="1180" viewBox="0 0 1480 1180" font-family="Inter, Segoe UI, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#475569"/>
+    </marker>
+    <marker id="arrowD" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#94a3b8"/>
+    </marker>
+    <style>
+      .title{font-size:30px;font-weight:700;fill:#0f172a}
+      .sub{font-size:15px;fill:#64748b}
+      .ph{font-size:15px;font-weight:700}
+      .rt{font-size:12px;font-family:Menlo,Consolas,monospace}
+      .api{font-size:11px;font-family:Menlo,Consolas,monospace}
+      .lbl{font-size:12px;fill:#475569}
+      .lblbad{font-size:12px;fill:#b91c1c;font-weight:600}
+      .sect{font-size:13px;font-weight:700;fill:#475569;letter-spacing:.04em}
+      .lg{font-size:13px;fill:#334155}
+    </style>
+  </defs>
+
+  <rect width="1480" height="1180" fill="#ffffff"/>
+  <text x="40" y="48" class="title">Investor Ecosystem — Phase &amp; Workflow Map</text>
+  <text x="40" y="74" class="sub">Mondial.Client · 2026-06-23 · green = complete, amber = partial/has gaps, red = dead/orphaned, indigo = ambient/gate</text>
+
+  <!-- ===================== MAIN SPINE (left column) ===================== -->
+  <!-- START -->
+  <rect x="120" y="104" rx="22" ry="22" width="300" height="40" fill="#e0e7ff" stroke="#4f46e5"/>
+  <text x="270" y="129" text-anchor="middle" class="ph" fill="#312e81">Login as Investor</text>
+
+  <!-- P0 -->
+  <rect x="90" y="168" rx="10" width="360" height="66" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="106" y="192" class="ph" fill="#14532d">Phase 0 · Onboarding (Universal Phase-1)</text>
+  <text x="106" y="211" class="rt" fill="#166534">/onboarding</text>
+  <text x="106" y="227" class="api" fill="#166534">GET /onboarding/status</text>
+
+  <!-- P1 -->
+  <rect x="90" y="258" rx="10" width="360" height="66" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="106" y="282" class="ph" fill="#14532d">Phase 1 · Investment Thesis</text>
+  <text x="106" y="301" class="rt" fill="#166534">/investor/thesis</text>
+  <text x="106" y="317" class="api" fill="#166534">GET + PUT /investor/profile</text>
+
+  <!-- P2 -->
+  <rect x="90" y="348" rx="10" width="360" height="66" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="106" y="372" class="ph" fill="#14532d">Phase 2 · Discovery Feed</text>
+  <text x="106" y="391" class="rt" fill="#166534">/investor/discovery</text>
+  <text x="106" y="407" class="api" fill="#166534">GET /companies/opportunities</text>
+
+  <!-- P3 -->
+  <rect x="90" y="438" rx="10" width="360" height="74" fill="#fef9c3" stroke="#ca8a04"/>
+  <text x="106" y="462" class="ph" fill="#713f12">Phase 3 · Opportunity Detail</text>
+  <text x="106" y="481" class="rt" fill="#854d0e">/investor/discovery/[companyId]</text>
+  <text x="106" y="497" class="api" fill="#854d0e">GET .../{id}</text>
+  <text x="106" y="510" class="lblbad">dead Save / Share buttons</text>
+
+  <!-- NDA gate -->
+  <polygon points="270,528 470,568 270,608 70,568" fill="#e0e7ff" stroke="#4f46e5"/>
+  <text x="270" y="563" text-anchor="middle" class="ph" fill="#312e81">Accept NDA?</text>
+  <text x="270" y="582" text-anchor="middle" class="api" fill="#3730a3">POST .../nda/accept</text>
+
+  <!-- P4 -->
+  <rect x="90" y="624" rx="10" width="360" height="66" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="106" y="648" class="ph" fill="#14532d">Phase 4 · Data Room (diligence)</text>
+  <text x="106" y="667" class="rt" fill="#166534">/discovery/[id]/dataroom</text>
+  <text x="106" y="683" class="api" fill="#166534">documents · my-session · diligence-progress</text>
+
+  <!-- P5 -->
+  <rect x="90" y="714" rx="10" width="360" height="74" fill="#fef9c3" stroke="#ca8a04"/>
+  <text x="106" y="738" class="ph" fill="#713f12">Phase 5 · Term Sheet (read-only)</text>
+  <text x="106" y="757" class="rt" fill="#854d0e">/discovery/[id]/term-sheet</text>
+  <text x="106" y="773" class="api" fill="#854d0e">no endpoint — derived client-side</text>
+  <text x="332" y="773" class="lblbad">Download disabled</text>
+
+  <!-- P6 -->
+  <rect x="90" y="800" rx="10" width="360" height="74" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="106" y="824" class="ph" fill="#14532d">Phase 6 · Term Sheet Builder</text>
+  <text x="106" y="843" class="rt" fill="#166534">/term-sheet/build</text>
+  <text x="106" y="859" class="api" fill="#166534">POST /investor/term-sheet/{id}/create</text>
+
+  <!-- P7 -->
+  <rect x="90" y="900" rx="10" width="360" height="74" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="106" y="924" class="ph" fill="#14532d">Phase 7 · Deals / Negotiation</text>
+  <text x="106" y="943" class="rt" fill="#166534">/investor/deals</text>
+  <text x="106" y="959" class="api" fill="#166534">counter · accept · reject · sign · close</text>
+
+  <!-- P8 -->
+  <rect x="90" y="1000" rx="10" width="360" height="74" fill="#fef9c3" stroke="#ca8a04"/>
+  <text x="106" y="1024" class="ph" fill="#713f12">Phase 8 · Portfolio (Investments)</text>
+  <text x="106" y="1043" class="rt" fill="#854d0e">/investor  (dashboard root)</text>
+  <text x="106" y="1059" class="api" fill="#854d0e">GET /investor/stats</text>
+  <text x="300" y="1059" class="lblbad">self-link CTAs</text>
+
+  <!-- spine arrows -->
+  <line x1="270" y1="144" x2="270" y2="166" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="270" y1="234" x2="270" y2="256" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="270" y1="324" x2="270" y2="346" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="270" y1="414" x2="270" y2="436" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="270" y1="512" x2="270" y2="526" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="270" y1="608" x2="270" y2="622" stroke="#16a34a" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="284" y="620" class="lbl">yes</text>
+  <line x1="270" y1="690" x2="270" y2="712" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="270" y1="788" x2="270" y2="798" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="270" y1="874" x2="270" y2="898" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="284" y="892" class="lbl">send offer</text>
+  <line x1="270" y1="974" x2="270" y2="998" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+  <!-- NDA 'no' loop back to P3 -->
+  <path d="M70,568 C30,540 30,490 88,478" fill="none" stroke="#dc2626" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+  <text x="20" y="520" class="lbl" fill="#b91c1c">no</text>
+
+  <!-- ===================== RIGHT: ambient modules ===================== -->
+  <text x="640" y="172" class="sect">AMBIENT MODULES (sidebar, not phase-bound)</text>
+
+  <rect x="640" y="190" rx="10" width="360" height="70" fill="#fef9c3" stroke="#ca8a04"/>
+  <text x="656" y="214" class="ph" fill="#713f12">Pipeline (Kanban)</text>
+  <text x="656" y="233" class="rt" fill="#854d0e">/investor/pipeline</text>
+  <text x="656" y="249" class="lblbad">display-only — NO drag &amp; drop, no persist</text>
+
+  <rect x="640" y="278" rx="10" width="360" height="70" fill="#fef9c3" stroke="#ca8a04"/>
+  <text x="656" y="302" class="ph" fill="#713f12">Public Profile</text>
+  <text x="656" y="321" class="rt" fill="#854d0e">/investor/profile</text>
+  <text x="656" y="337" class="lblbad">dead import: ProfileStatsCard</text>
+
+  <rect x="640" y="366" rx="10" width="360" height="62" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="656" y="390" class="ph" fill="#14532d">Profile Edit</text>
+  <text x="656" y="409" class="rt" fill="#166534">/investor/profile/edit · PUT /investor/profile</text>
+
+  <rect x="640" y="446" rx="10" width="360" height="62" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="656" y="470" class="ph" fill="#14532d">Messages</text>
+  <text x="656" y="489" class="rt" fill="#166534">/investor/messages (shared workspace)</text>
+
+  <line x1="820" y1="348" x2="820" y2="364" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- pipeline -> P3 deep link -->
+  <path d="M640,225 C540,225 470,360 452,470" fill="none" stroke="#94a3b8" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#arrowD)"/>
+  <text x="500" y="330" class="lbl">card click → detail</text>
+
+  <!-- P8 should link to pipeline (broken) -->
+  <path d="M452,1030 C560,1010 600,300 638,250" fill="none" stroke="#dc2626" stroke-width="1.4" stroke-dasharray="4 4" marker-end="url(#arrowD)"/>
+  <text x="600" y="640" class="lblbad">CTA should reach Pipeline — currently self-links</text>
+
+  <!-- ===================== RIGHT-LOWER: orphans ===================== -->
+  <rect x="640" y="560" rx="12" width="800" height="200" fill="#fff" stroke="#dc2626" stroke-dasharray="6 5"/>
+  <text x="660" y="588" class="sect" fill="#b91c1c">UNREACHABLE FROM ANY NAVIGATION (orphaned)</text>
+
+  <rect x="660" y="606" rx="10" width="360" height="64" fill="#fee2e2" stroke="#dc2626"/>
+  <text x="676" y="630" class="ph" fill="#7f1d1d">ORPHAN · phase-1</text>
+  <text x="676" y="649" class="rt" fill="#991b1b">/investor/phase-1 — legacy onboarding shim</text>
+  <text x="676" y="663" class="lbl" fill="#991b1b">only referenced by AuthGuard allow-list</text>
+
+  <rect x="1060" y="606" rx="10" width="360" height="64" fill="#fee2e2" stroke="#dc2626"/>
+  <text x="1076" y="630" class="ph" fill="#7f1d1d">DEAD · phase-5 “Deal Discovery”</text>
+  <text x="1076" y="649" class="rt" fill="#991b1b">/investor/phase-5</text>
+  <text x="1076" y="663" class="lblbad">GET /api/investor/deals → 404</text>
+
+  <rect x="660" y="686" rx="10" width="760" height="58" fill="#fef2f2" stroke="#fca5a5"/>
+  <text x="676" y="710" class="lbl" fill="#7f1d1d">Dead data path: useInvestorPortfolio / useInvestorSettings / dashboard useInvestorProfile (+ their API fns)</text>
+  <text x="676" y="729" class="lbl" fill="#7f1d1d">never imported. Only getInvestorStats / useInvestorStats is live in api-investor-dashboard.ts.</text>
+
+  <!-- ===================== LEGEND ===================== -->
+  <text x="640" y="800" class="sect">STATUS LEGEND</text>
+  <rect x="640" y="814" width="20" height="20" rx="4" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="668" y="829" class="lg">Complete &amp; API-wired</text>
+  <rect x="850" y="814" width="20" height="20" rx="4" fill="#fef9c3" stroke="#ca8a04"/>
+  <text x="878" y="829" class="lg">Partial / has gaps</text>
+  <rect x="1050" y="814" width="20" height="20" rx="4" fill="#fee2e2" stroke="#dc2626"/>
+  <text x="1078" y="829" class="lg">Dead / orphaned</text>
+  <rect x="1250" y="814" width="20" height="20" rx="4" fill="#e0e7ff" stroke="#4f46e5"/>
+  <text x="1278" y="829" class="lg">Ambient / gate</text>
+
+  <text x="640" y="880" class="sub">Sidebar nav exposes 7 of 14 investor routes. 5 more are reachable only via in-app deep links</text>
+  <text x="640" y="902" class="sub">(opportunity detail, dataroom, term-sheet, term-sheet/build, profile/edit). 2 are fully orphaned.</text>
+</svg>

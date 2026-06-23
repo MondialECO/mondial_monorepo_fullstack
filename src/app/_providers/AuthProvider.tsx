@@ -42,6 +42,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
   const [isBackendVerified, setIsBackendVerified] = useState(false);
+  // True while the initial /auth/me verification is in flight, so the AuthGuard
+  // shows a loading state instead of bouncing a valid session to /login during
+  // the round-trip or while retrying a transient failure (e.g. a 429).
+  const [isVerifying, setIsVerifying] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -75,56 +79,106 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Verify token with backend after hydration (must succeed before authorizing dashboard)
   useEffect(() => {
-    if (!isHydrated || !token) {
+    if (!isHydrated) return; // still hydrating — keep isVerifying true (shows loading)
+    if (!token) {
       setIsBackendVerified(false);
+      setIsVerifying(false);
       return;
     }
 
+    let cancelled = false;
+    setIsVerifying(true);
+
+    const expireSession = () => {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      setToken(null);
+      setUser(null);
+      setIsBackendVerified(false);
+      if (typeof window !== 'undefined' && window.location.pathname.includes('/dashboard')) {
+        router.push('/login?reason=session_expired');
+      }
+    };
+
     const verifyToken = async () => {
-      try {
-        const response = await api.get('/auth/me');
-        const authData = response.data?.data ?? response.data;
+      // Retry transient failures (429 rate-limit, 5xx, network) instead of
+      // discarding the session. ONLY a definitive 401/403 expires the token —
+      // a rate-limited /auth/me must never log a valid user out.
+      const MAX_ATTEMPTS = 3;
+      for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+        try {
+          const response = await api.get('/auth/me');
+          if (cancelled) return;
+          const authData = response.data?.data ?? response.data;
+          if (!authData) {
+            throw new Error('No user data from /auth/me');
+          }
 
-        if (!authData) {
-          throw new Error('No user data from /auth/me');
-        }
+          const apiRoles = authData.roles ?? authData.Roles ?? [];
+          if (!apiRoles || apiRoles.length === 0) {
+            throw new Error('Backend user has no roles; cannot authorize session');
+          }
+          const resolvedRole = parseStrictUserRole(apiRoles[0]);
+          if (!resolvedRole) {
+            throw new Error(`Unknown role from backend: "${apiRoles[0]}". Cannot authorize session.`);
+          }
 
-        const apiRoles = authData.roles ?? authData.Roles ?? [];
-        if (!apiRoles || apiRoles.length === 0) {
-          throw new Error('Backend user has no roles; cannot authorize session');
-        }
+          const updatedUser: User = {
+            id: authData.id,
+            name: authData.name,
+            role: resolvedRole,
+            onboardingPhase: authData.onboarding?.phase ?? 0,
+          };
+          localStorage.setItem('user', JSON.stringify(updatedUser));
+          setUser(updatedUser);
+          setIsBackendVerified(true);
+          return;
+        } catch (error) {
+          if (cancelled) return;
+          const status = isAxiosError(error) ? error.response?.status : undefined;
 
-        const resolvedRole = parseStrictUserRole(apiRoles[0]);
-        if (!resolvedRole) {
-          throw new Error(`Unknown role from backend: "${apiRoles[0]}". Cannot authorize session.`);
-        }
+          // Definitive auth failure: the token was rejected. Expire the session.
+          if (status === 401 || status === 403) {
+            expireSession();
+            return;
+          }
 
-        const updatedUser: User = {
-          id: authData.id,
-          name: authData.name,
-          role: resolvedRole,
-          onboardingPhase: authData.onboarding?.phase ?? 0,
-        };
-        localStorage.setItem('user', JSON.stringify(updatedUser));
-        setUser(updatedUser);
-        setIsBackendVerified(true);
-      } catch (error) {
-        const status = isAxiosError(error) ? error.response?.status : undefined;
-        const shouldExpireSession = status === 401 || status === 403;
+          // Transient failure — back off and retry; never discard the token.
+          if (attempt < MAX_ATTEMPTS - 1) {
+            await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
+            continue;
+          }
 
-        console.log('Token validation failed, clearing auth:', error instanceof Error ? error.message : String(error));
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        setToken(null);
-        setUser(null);
-        setIsBackendVerified(false);
-        if (typeof window !== 'undefined' && window.location.pathname.includes('/dashboard')) {
-          router.push('/login?reason=invalid_role');
+          // Retries exhausted (e.g. sustained 429). Keep the still-valid token
+          // and fall back to the cached identity so a logged-in user is not
+          // bounced to /login over a transient backend hiccup.
+          console.warn('[auth] /auth/me transient failure; keeping session.', status);
+          const cachedUser =
+            typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+          if (cachedUser) {
+            try {
+              setUser(JSON.parse(cachedUser) as User);
+              setIsBackendVerified(true);
+              return;
+            } catch {
+              // malformed cache — fall through
+            }
+          }
+          // No cached identity: leave the token intact but unverified (do NOT
+          // logout). A later navigation re-runs this verification.
+          setIsBackendVerified(false);
+          return;
         }
       }
     };
 
-    verifyToken();
+    verifyToken().finally(() => {
+      if (!cancelled) setIsVerifying(false);
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [isHydrated, token, router]);
 
   const login = async (email: string, password: string) => {
@@ -208,8 +262,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem('user', JSON.stringify(updatedUser));
       setUser(updatedUser);
     } catch (error) {
-      console.error('Failed to refresh auth:', error);
-      logout();
+      // Only a definitive 401/403 means the token is invalid — log out then.
+      // A transient failure (e.g. a 429 rate-limit right after onboarding
+      // completion) must NOT log the user out; keep the current session.
+      const status = isAxiosError(error) ? error.response?.status : undefined;
+      if (status === 401 || status === 403) {
+        logout();
+        return;
+      }
+      console.warn('[auth] refreshAuthMe transient failure; keeping session.', status);
     }
   };
 
@@ -219,7 +280,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         token,
         user,
         isAuthenticated: !!user && !!token && isBackendVerified,
-        isLoading: !isHydrated,
+        isLoading: !isHydrated || isVerifying,
         isBackendVerified,
         login,
         logout,

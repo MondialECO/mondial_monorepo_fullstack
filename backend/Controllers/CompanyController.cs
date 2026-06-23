@@ -1160,13 +1160,17 @@ public class CompanyController : ControllerBase
             await EnsureUniversalPhase1CompleteAsync(userId);
 
             // Determine if the caller is the company owner; if not, the service
-            // performs the grant + NDA check internally (no IDOR — caller's own
-            // user id is what's checked against the grant list).
+            // performs the grant + NDA check internally (no IDOR — the caller's own
+            // identity is what's checked against the grant list). The data-room
+            // access policy (grants, NDA acceptances, access logs) is keyed on the
+            // *catalogue Investor id* — the same id NDA acceptance is persisted under
+            // — so non-owner callers must be resolved to that id, NOT the raw user id.
             var company = await _companyService.GetCompanyAsync(companyId);
             var callerIsOwner = string.Equals(company.OwnerId, userId, StringComparison.Ordinal);
+            var accessorId = callerIsOwner ? userId : await EnsureInvestorIdentityAsync(userId);
 
             var (bytes, doc) = await _companyService.DownloadDataRoomDocumentAsync(
-                companyId, documentId, userId, callerIsOwner);
+                companyId, documentId, accessorId, callerIsOwner);
 
             return File(bytes, doc.MimeType ?? "application/octet-stream", doc.FileName);
         }
@@ -1206,8 +1210,9 @@ public class CompanyController : ControllerBase
             // Same authorization policy as a real document access.
             var company = await _companyService.GetCompanyAsync(companyId);
             var callerIsOwner = string.Equals(company.OwnerId, userId, StringComparison.Ordinal);
+            var accessorId = callerIsOwner ? userId : await EnsureInvestorIdentityAsync(userId);
             var result = await _companyService.TrackDataRoomEventAsync(
-                companyId, request?.DocumentId, userId, callerIsOwner, "view", HashIp(HttpContext));
+                companyId, request?.DocumentId, accessorId, callerIsOwner, "view", HashIp(HttpContext));
             return Ok(result);
         }
         catch (UnauthorizedAccessException ex)
@@ -1231,8 +1236,9 @@ public class CompanyController : ControllerBase
             await EnsureUniversalPhase1CompleteAsync(userId);
             var company = await _companyService.GetCompanyAsync(companyId);
             var callerIsOwner = string.Equals(company.OwnerId, userId, StringComparison.Ordinal);
+            var accessorId = callerIsOwner ? userId : await EnsureInvestorIdentityAsync(userId);
             var result = await _companyService.TrackDataRoomEventAsync(
-                companyId, request?.DocumentId, userId, callerIsOwner, "download", HashIp(HttpContext));
+                companyId, request?.DocumentId, accessorId, callerIsOwner, "download", HashIp(HttpContext));
             return Ok(result);
         }
         catch (UnauthorizedAccessException ex)

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, BadgeCheck, MapPin, Share2, Bookmark } from "lucide-react";
+import { ArrowLeft, MapPin, Share2, Bookmark } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import NDAStatusChip from "@/components/investor/NDAStatusChip";
@@ -60,17 +60,9 @@ export default function OpportunityHeader({ detail }: OpportunityHeaderProps) {
               {initials(detail.companyName)}
             </div>
             <div className="min-w-0 space-y-2">
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                <h1 className="text-2xl font-bold leading-tight text-foreground sm:text-[32px] truncate">
-                  {detail.companyName}
-                </h1>
-                {detail.isInvestorReady ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary border border-primary/30">
-                    <BadgeCheck className="h-3.5 w-3.5" aria-hidden />
-                    Investor-Ready
-                  </span>
-                ) : null}
-              </div>
+              <h1 className="text-2xl font-bold leading-tight text-foreground sm:text-[32px] truncate">
+                {detail.companyName}
+              </h1>
               {detail.tagline ? (
                 <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed">
                   {detail.tagline}
@@ -93,21 +85,23 @@ export default function OpportunityHeader({ detail }: OpportunityHeaderProps) {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
-            <Button variant="outline" size="sm" type="button">
-              <Bookmark className="h-4 w-4" aria-hidden />
-              Save
-            </Button>
-            <Button variant="outline" size="sm" type="button">
-              <Share2 className="h-4 w-4" aria-hidden />
-              Share
-            </Button>
+          <div className="flex flex-col gap-2 shrink-0 sm:flex-row">
+            <MakeOfferButton companyId={detail.companyId} />
             <MessageFounderButton
               companyId={detail.companyId}
               label="Contact Founder"
               variant="outline"
             />
-            <MakeOfferButton companyId={detail.companyId} />
+            <div className="flex flex-wrap gap-2">
+              <Button variant="ghost" size="sm" type="button" title="Save for later">
+                <Bookmark className="h-4 w-4" aria-hidden />
+                <span className="hidden sm:inline ml-1">Save</span>
+              </Button>
+              <Button variant="ghost" size="sm" type="button" title="Share this opportunity">
+                <Share2 className="h-4 w-4" aria-hidden />
+                <span className="hidden sm:inline ml-1">Share</span>
+              </Button>
+            </div>
           </div>
         </div>
       </div>

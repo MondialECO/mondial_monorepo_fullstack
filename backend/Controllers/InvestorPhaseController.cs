@@ -147,27 +147,7 @@ public class InvestorPhaseController : ControllerBase
                 }
             }
 
-            return Ok(new
-            {
-                id = catalog?.Id,
-                userId = user.Id.ToString(),
-                name = catalog?.Name ?? user.Name,
-                email = catalog?.PrimaryEmail ?? user.Email,
-                type = catalog?.Type,
-                bio = catalog?.Bio ?? user.Bio,
-                website = catalog?.Website,
-                logoUrl = catalog?.LogoUrl ?? user.ImagePath,
-                preferredSectors = catalog?.PreferredSectors ?? new List<string>(),
-                preferredStages = catalog?.PreferredStages ?? new List<string>(),
-                minCheckSize = catalog?.MinCheckSize ?? 0,
-                maxCheckSize = catalog?.MaxCheckSize ?? 0,
-                preferredGeographies = catalog?.PreferredGeographies ?? new List<string>(),
-                primaryContact = catalog?.PrimaryContact ?? user.Name,
-                primaryPhone = catalog?.PrimaryPhone ?? user.PhoneNumber,
-                profileScore = catalog?.ProfileScore ?? 0,
-                isActive = catalog?.IsActive ?? true,
-                linked = catalog != null
-            });
+            return Ok(BuildProfileResponse(catalog, user));
         }
         catch (UnauthorizedAccessException ex)
         {
@@ -179,6 +159,142 @@ public class InvestorPhaseController : ControllerBase
             return StatusCode(500, new { error = "Failed to build investor profile" });
         }
     }
+
+    // Investor self-service write. Resolves the caller's OWN linked catalogue
+    // Investor (never an id from the route/body), so an investor can only edit
+    // their own profile — no admin privileges. The Admin-only full-document
+    // PUT /api/investors/{id} stays separate.
+    [HttpPut("profile")]
+    [Authorize(Roles = "Investor")]
+    public async Task<IActionResult> UpdateProfile([FromBody] UpdateInvestorProfileRequest request)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+
+            if (request == null)
+                return BadRequest(new { error = "Request body required" });
+
+            var user = await _userManager.FindByIdAsync(userId)
+                ?? throw new UnauthorizedAccessException("User not found");
+
+            var catalogId = user.InvestorProfile?.InvestorId;
+            if (string.IsNullOrWhiteSpace(catalogId))
+                return StatusCode(403, new { error = "No linked investor profile to update." });
+
+            Investor catalog;
+            try
+            {
+                catalog = await _investorService.GetInvestorAsync(catalogId);
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound(new { error = "Linked investor profile not found." });
+            }
+
+            // Validation consistent with existing patterns (BadRequest on bad input).
+            var min = request.MinCheckSize ?? catalog.MinCheckSize;
+            var max = request.MaxCheckSize ?? catalog.MaxCheckSize;
+            if (min < 0 || max < 0)
+                return BadRequest(new { error = "Check sizes must be non-negative." });
+            if (max > 0 && min > max)
+                return BadRequest(new { error = "minCheckSize cannot exceed maxCheckSize." });
+            if (request.SuccessfulExits is < 0)
+                return BadRequest(new { error = "successfulExits must be non-negative." });
+            if (request.AverageCheckSize is < 0)
+                return BadRequest(new { error = "averageCheckSize must be non-negative." });
+
+            // Apply ONLY provided fields (partial update). Identity/system fields
+            // (Id, LinkedUserId, CompletedDeals, ActiveInvestments, CreatedAt)
+            // are deliberately left untouched.
+            if (request.Name != null) catalog.Name = request.Name;
+            if (request.Type != null) catalog.Type = request.Type;
+            if (request.PrimaryContact != null) catalog.PrimaryContact = request.PrimaryContact;
+            if (request.PrimaryPhone != null) catalog.PrimaryPhone = request.PrimaryPhone;
+
+            if (request.PreferredSectors != null) catalog.PreferredSectors = request.PreferredSectors;
+            if (request.PreferredStages != null) catalog.PreferredStages = request.PreferredStages;
+            if (request.MinCheckSize.HasValue) catalog.MinCheckSize = request.MinCheckSize.Value;
+            if (request.MaxCheckSize.HasValue) catalog.MaxCheckSize = request.MaxCheckSize.Value;
+            if (request.PreferredGeographies != null) catalog.PreferredGeographies = request.PreferredGeographies;
+            if (request.RequiresProRataRights.HasValue) catalog.RequiresProRataRights = request.RequiresProRataRights.Value;
+            if (request.RequiresBoardSeat.HasValue) catalog.RequiresBoardSeat = request.RequiresBoardSeat.Value;
+            if (request.PreferredEquityTypes != null) catalog.PreferredEquityTypes = request.PreferredEquityTypes;
+
+            if (request.ThesisStatement != null) catalog.ThesisStatement = request.ThesisStatement;
+            if (request.TargetReturnMultiple != null) catalog.TargetReturnMultiple = request.TargetReturnMultiple;
+            if (request.FollowOnPolicy != null) catalog.FollowOnPolicy = request.FollowOnPolicy;
+            if (request.PreferredRole != null) catalog.PreferredRole = request.PreferredRole;
+            if (request.BoardParticipationLevel != null) catalog.BoardParticipationLevel = request.BoardParticipationLevel;
+
+            if (request.Headline != null) catalog.Headline = request.Headline;
+            if (request.Bio != null) catalog.Bio = request.Bio;
+            if (request.Website != null) catalog.Website = request.Website;
+            if (request.LogoUrl != null) catalog.LogoUrl = request.LogoUrl;
+            if (request.CoverImageUrl != null) catalog.CoverImageUrl = request.CoverImageUrl;
+            if (request.SocialLinks != null) catalog.SocialLinks = request.SocialLinks;
+            if (request.IsPublic.HasValue) catalog.IsPublic = request.IsPublic.Value;
+
+            if (request.SuccessfulExits.HasValue) catalog.SuccessfulExits = request.SuccessfulExits.Value;
+            if (request.AverageCheckSize.HasValue) catalog.AverageCheckSize = request.AverageCheckSize.Value;
+
+            catalog.LastActiveAt = DateTime.UtcNow;
+
+            // UpdateInvestorAsync does a full replace + bumps UpdatedAt.
+            var updated = await _investorService.UpdateInvestorAsync(catalogId, catalog);
+
+            return Ok(BuildProfileResponse(updated, user));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating investor profile");
+            return StatusCode(500, new { error = "Failed to update investor profile" });
+        }
+    }
+
+    // Single Model -> Response mapping, reused by GET and PUT so the two never
+    // drift. Preserves the original fallbacks to the ApplicationUser slice.
+    private static InvestorProfileResponse BuildProfileResponse(Investor? catalog, ApplicationUser user) => new()
+    {
+        Id = catalog?.Id,
+        UserId = user.Id.ToString(),
+        Name = catalog?.Name ?? user.Name,
+        Email = catalog?.PrimaryEmail ?? user.Email,
+        Type = catalog?.Type,
+        Headline = catalog?.Headline,
+        Bio = catalog?.Bio ?? user.Bio,
+        Website = catalog?.Website,
+        LogoUrl = catalog?.LogoUrl ?? user.ImagePath,
+        CoverImageUrl = catalog?.CoverImageUrl,
+        SocialLinks = catalog?.SocialLinks ?? new Dictionary<string, string>(),
+        IsPublic = catalog?.IsPublic ?? false,
+        PreferredSectors = catalog?.PreferredSectors ?? new List<string>(),
+        PreferredStages = catalog?.PreferredStages ?? new List<string>(),
+        MinCheckSize = catalog?.MinCheckSize ?? 0,
+        MaxCheckSize = catalog?.MaxCheckSize ?? 0,
+        PreferredGeographies = catalog?.PreferredGeographies ?? new List<string>(),
+        RequiresProRataRights = catalog?.RequiresProRataRights ?? false,
+        RequiresBoardSeat = catalog?.RequiresBoardSeat ?? false,
+        PreferredEquityTypes = catalog?.PreferredEquityTypes ?? new List<string>(),
+        ThesisStatement = catalog?.ThesisStatement,
+        TargetReturnMultiple = catalog?.TargetReturnMultiple,
+        FollowOnPolicy = catalog?.FollowOnPolicy,
+        PreferredRole = catalog?.PreferredRole,
+        BoardParticipationLevel = catalog?.BoardParticipationLevel,
+        SuccessfulExits = catalog?.SuccessfulExits ?? 0,
+        AverageCheckSize = catalog?.AverageCheckSize ?? 0,
+        CompletedDeals = catalog?.CompletedDeals ?? 0,
+        ActiveInvestments = catalog?.ActiveInvestments ?? 0,
+        PrimaryContact = catalog?.PrimaryContact ?? user.Name,
+        PrimaryPhone = catalog?.PrimaryPhone ?? user.PhoneNumber,
+        IsActive = catalog?.IsActive ?? true,
+        Linked = catalog != null,
+    };
 
     [HttpGet("settings")]
     public async Task<IActionResult> GetSettings()

@@ -309,7 +309,6 @@ export function Phase3FinancialDashboard({ companyId: companyIdProp }: { company
         <div className="mt-4">
           <div className="mb-2 flex items-center justify-between">
             <p className="text-sm font-semibold text-foreground">Business health</p>
-            {progress && <Chip tone="primary">{`Trust score ${progress.trustScore}/100`}</Chip>}
           </div>
           <DataTable columns={['Metric', 'Value', 'Status']} rows={healthRows} caption="Business health metrics" />
         </div>

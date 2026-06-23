@@ -87,35 +87,12 @@ export function roundNameFromType(type: string | null): string {
   return ROUND_LABEL[type] ?? type;
 }
 
-/** Deterministic per-stage instrument label. MVP defaults; no DealExecution read. */
-export function instrumentForRound(type: string | null): string {
-  if (type === "series_a" || type === "series_b" || type === "series_c") {
-    return "Preferred Equity";
-  }
-  return "Preferred Equity (SAFE-compatible)";
-}
-
-export function investorRightsForRound(type: string | null): string[] {
-  const base = ["Pro-rata participation rights", "Information rights"];
-  if (type === "series_a" || type === "series_b" || type === "series_c") {
-    return [...base, "Board observer seat"];
-  }
-  return base;
-}
-
-export function governanceForRound(type: string | null): string[] {
-  const base = ["Standard founder governance", "ESOP pool reserved"];
-  if (type === "series_a" || type === "series_b" || type === "series_c") {
-    return [...base, "Protective provisions on major actions"];
-  }
-  return base;
-}
-
-export const KEY_CONDITIONS: string[] = [
-  "Closing subject to satisfactory completion of legal and financial diligence",
-  "Standard EU SAFE / Preferred Equity template (non-binding term sheet)",
-  "Governing law: France · Jurisdiction: Paris Commercial Court",
-];
+// REMOVED (runtime-stabilization): instrumentForRound, investorRightsForRound,
+// governanceForRound, and KEY_CONDITIONS fabricated instrument/rights/governance
+// and specific legal facts (e.g. "Governing law: France · Jurisdiction: Paris
+// Commercial Court") purely from the round type and rendered them as if they were
+// real deal terms. The read-only term-sheet preview no longer asserts them. Real
+// term-sheet fields belong to the Phase-8 builder bound to DealExecution.TermSheet.
 
 export interface ActivityEntry {
   /** Stable id derived from event + timestamp. */

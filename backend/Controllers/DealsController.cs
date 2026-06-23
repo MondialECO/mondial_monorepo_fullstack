@@ -46,10 +46,11 @@ namespace WebApp.Controllers
                 if (user == null || (user.Onboarding?.Phase ?? 0) < 1)
                     return StatusCode(403, new { error = "Universal Phase 1 must be complete." });
 
-                var company = await _companyService.GetCompanyByUserIdAsync(userId);
                 var investorId = user.InvestorProfile?.InvestorId;
 
-                var result = await _companyService.GetDealsForParticipantAsync(company?.Id, investorId);
+                // Pass the founder's user id so the service matches deals on ANY
+                // company they own (a founder may own multiple companies).
+                var result = await _companyService.GetDealsForParticipantAsync(userId, investorId);
                 return Ok(result);
             }
             catch (UnauthorizedAccessException ex)

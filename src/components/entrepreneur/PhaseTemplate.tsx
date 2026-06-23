@@ -10,7 +10,6 @@ interface PhaseTemplateProps {
   title: string;
   subtitle: string;
   icon: LucideIcon;
-  trustScore: number;
   isLocked: boolean;
   requirements: Array<{
     icon: LucideIcon;
@@ -29,7 +28,6 @@ export function PhaseTemplate({
   title,
   subtitle,
   icon: Icon,
-  trustScore,
   isLocked,
   requirements,
   features,
@@ -52,17 +50,11 @@ export function PhaseTemplate({
 
           {/* Status Card */}
           <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-4 sm:p-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-0">
-              <div>
-                <p className="text-xs sm:text-sm text-neutral-5 font-medium uppercase">PHASE STATUS</p>
-                <p className="text-2xl sm:text-3xl font-bold text-neutral-1 mt-2">
-                  {isLocked ? 'Locked' : 'In Progress'}
-                </p>
-              </div>
-              <div className="text-left sm:text-right">
-                <p className="text-xs sm:text-sm text-neutral-5 font-medium uppercase">TRUST SCORE</p>
-                <p className="text-2xl sm:text-3xl font-bold text-primary mt-2">+{trustScore}</p>
-              </div>
+            <div>
+              <p className="text-xs sm:text-sm text-neutral-5 font-medium uppercase">PHASE STATUS</p>
+              <p className="text-2xl sm:text-3xl font-bold text-neutral-1 mt-2">
+                {isLocked ? 'Locked' : 'In Progress'}
+              </p>
             </div>
 
             {isLocked && (

@@ -1,13 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import type { OpportunityDetail } from "@/types/investor/opportunities";
-import {
-  instrumentForRound,
-  investorRightsForRound,
-  governanceForRound,
-  roundNameFromType,
-  KEY_CONDITIONS,
-} from "@/lib/term-sheet-derivation";
+import { roundNameFromType } from "@/lib/term-sheet-derivation";
 
 interface DealTermsSectionProps {
   detail: OpportunityDetail;
@@ -28,10 +22,13 @@ function Row({
   );
 }
 
+// NOTE: this read-only preview is NOT bound to a real DealExecution/TermSheet
+// (that binding is the Phase-8 Term Sheet Builder, out of scope here). It must
+// therefore NOT assert instrument, investor rights, governance, governing law,
+// or jurisdiction - those were previously fabricated from the round type and
+// shown as if real. We surface only the genuinely-known round stage and tell
+// the investor where the binding terms actually come from.
 export default function DealTermsSection({ detail }: DealTermsSectionProps) {
-  const rights = investorRightsForRound(detail.fundingRoundType);
-  const gov = governanceForRound(detail.fundingRoundType);
-
   return (
     <Card className="border-border rounded-2xl">
       <CardHeader>
@@ -40,45 +37,18 @@ export default function DealTermsSection({ detail }: DealTermsSectionProps) {
       <CardContent>
         <dl className="space-y-4">
           <Row
-            label="Instrument Type"
-            value={instrumentForRound(detail.fundingRoundType)}
-          />
-          <Separator />
-          <Row
             label="Round Stage"
             value={roundNameFromType(detail.fundingRoundType)}
           />
           <Separator />
           <Row
-            label="Investor Rights"
+            label="Detailed Terms"
             value={
-              <ul className="list-disc list-outside pl-4 space-y-0.5">
-                {rights.map((r) => (
-                  <li key={r}>{r}</li>
-                ))}
-              </ul>
-            }
-          />
-          <Separator />
-          <Row
-            label="Governance"
-            value={
-              <ul className="list-disc list-outside pl-4 space-y-0.5">
-                {gov.map((g) => (
-                  <li key={g}>{g}</li>
-                ))}
-              </ul>
-            }
-          />
-          <Separator />
-          <Row
-            label="Key Conditions"
-            value={
-              <ul className="list-disc list-outside pl-4 space-y-0.5">
-                {KEY_CONDITIONS.map((c) => (
-                  <li key={c}>{c}</li>
-                ))}
-              </ul>
+              <p className="text-sm text-muted-foreground">
+                Instrument, investor rights, governance, and closing terms (including
+                governing law and jurisdiction) are agreed on the term sheet during
+                negotiation. They are not shown here until an offer is on the table.
+              </p>
             }
           />
         </dl>

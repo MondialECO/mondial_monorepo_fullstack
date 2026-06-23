@@ -8,7 +8,6 @@ export interface EntrepreneurProgress {
   completedPhases: Set<PhaseNumber>;
   completedSteps: Set<string>; // Format: "2-1", "2-2", etc.
   phaseData: Record<string, unknown>;
-  trustScore: number;
   lastUpdated: number;
 }
 
@@ -16,7 +15,6 @@ export interface PhaseConfig {
   phase: PhaseNumber;
   title: string;
   description: string;
-  trustScore: number;
   hasSteps: boolean;
   stepCount?: number;
 }

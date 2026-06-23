@@ -1,5 +1,6 @@
 'use client';
 
+import { useWatch } from 'react-hook-form';
 import { useEntrepreneurProgress } from '@/hooks/useEntrepreneurProgress';
 import { usePhase2Step1Form } from '@/hooks/usePhase2Step1Form';
 import { EntrepreneurLayout } from '@/components/entrepreneur/EntrepreneurLayout';
@@ -20,6 +21,19 @@ const PHASE_2_STEPS = [
 export default function Phase2Step1Client() {
   const { progress } = useEntrepreneurProgress();
   const { form, formState, autosave, handleSaveDraft, handleNextClick } = usePhase2Step1Form();
+
+  // Hooks must run unconditionally on every render — keep these ABOVE any early
+  // return. Subscribe with useWatch (NOT watch() in render): under the React
+  // Compiler a watch()-in-render result is over-memoized and the Next button
+  // never re-enables. useWatch re-renders this component whenever the field changes.
+  const { register } = form;
+  const companyName = useWatch({ control: form.control, name: 'companyName' });
+  const registrationNumber = useWatch({
+    control: form.control,
+    name: 'registrationNumber',
+  });
+  const isFormFilled =
+    Boolean(companyName?.trim()) && Boolean(registrationNumber?.trim());
 
   const statusMap = progress
     ? {
@@ -54,10 +68,6 @@ export default function Phase2Step1Client() {
       </div>
     );
   }
-
-  const { register, watch } = form;
-  const formValues = watch();
-  const isFormFilled = formValues.companyName && formValues.registrationNumber;
 
   return (
     <EntrepreneurLayout sidebar={sidebarContent || <div />}>

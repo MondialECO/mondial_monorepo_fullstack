@@ -393,7 +393,6 @@ namespace WebApp.Controllers
                         Type = "angel",
                         PrimaryEmail = user.Email,
                         IsActive = true,
-                        ProfileScore = 50,
                         LinkedUserId = user.Id.ToString()
                     };
 

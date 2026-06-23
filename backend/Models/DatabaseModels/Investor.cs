@@ -3,6 +3,7 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace WebApp.Models.DatabaseModels;
 
+[BsonIgnoreExtraElements]
 public class Investor
 {
     [BsonId]
@@ -23,12 +24,25 @@ public class Investor
     public bool RequiresBoardSeat { get; set; } = false;
     public List<string> PreferredEquityTypes { get; set; } = new(); // preferred, safe, note
 
+    // Investment Thesis (Phase 3). Additive/nullable — legacy docs read as null.
+    public string ThesisStatement { get; set; }
+    public string TargetReturnMultiple { get; set; } // e.g. "5-10x"
+    public string FollowOnPolicy { get; set; }       // e.g. "always_pro_rata", "selective", "none"
+    public string PreferredRole { get; set; }        // e.g. "lead", "co_investor", "follower"
+    public string BoardParticipationLevel { get; set; } // e.g. "board_seat", "observer", "none"
+
     // Profile
     public string Bio { get; set; }
     public string Website { get; set; }
     public string LogoUrl { get; set; }
     public int SuccessfulExits { get; set; }
     public double AverageCheckSize { get; set; }
+
+    // Public Profile (Phase 4). Additive/nullable — legacy docs read as null/default.
+    public string Headline { get; set; }
+    public string CoverImageUrl { get; set; }
+    public Dictionary<string, string> SocialLinks { get; set; } = new();
+    public bool IsPublic { get; set; } = false;
 
     // Activity
     public int CompletedDeals { get; set; }
@@ -42,7 +56,6 @@ public class Investor
 
     // Metadata
     public bool IsActive { get; set; } = true;
-    public int ProfileScore { get; set; } // 0-100, higher = more attractive
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 

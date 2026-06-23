@@ -19,6 +19,7 @@ import {
   PieChart,
   FolderOpen,
   TrendingUp,
+  Target,
 } from "lucide-react";
 
 export type MenuItem = {
@@ -118,6 +119,16 @@ export const menu: Record<UserRole, MenuSection[]> = {
           label: "Discovery",
           href: "/dashboard/investor/discovery",
           icon: Compass,
+        },
+        {
+          label: "Investment Thesis",
+          href: "/dashboard/investor/thesis",
+          icon: Target,
+        },
+        {
+          label: "Public Profile",
+          href: "/dashboard/investor/profile",
+          icon: User,
         },
         {
           label: "Pipeline",

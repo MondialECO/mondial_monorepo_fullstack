@@ -8,14 +8,26 @@ import type { OpportunityCard } from "@/types/investor/opportunities";
 
 interface KanbanColumnProps {
   title: string;
+  status?: "new" | "review" | "nda" | "dataroom" | "negotiation" | "closed";
   accent?: "default" | "primary";
   cards: OpportunityCard[];
   emptyLabel?: string;
 }
 
-export default function KanbanColumn({ title, accent = "default", cards, emptyLabel }: KanbanColumnProps) {
+const statusColors: Record<string, { bg: string; border: string }> = {
+  new: { bg: "bg-blue-50 border-blue-200", border: "border-l-4 border-l-blue-500" },
+  review: { bg: "bg-amber-50 border-amber-200", border: "border-l-4 border-l-amber-500" },
+  nda: { bg: "bg-emerald-50 border-emerald-200", border: "border-l-4 border-l-emerald-500" },
+  dataroom: { bg: "bg-teal-50 border-teal-200", border: "border-l-4 border-l-teal-500" },
+  negotiation: { bg: "bg-orange-50 border-orange-200", border: "border-l-4 border-l-orange-500" },
+  closed: { bg: "bg-gray-50 border-gray-200", border: "border-l-4 border-l-gray-500" },
+};
+
+export default function KanbanColumn({ title, status = "new", accent = "default", cards, emptyLabel }: KanbanColumnProps) {
+  const colors = statusColors[status] || statusColors.new;
+
   return (
-    <div className="flex h-full min-w-[280px] flex-col rounded-2xl border border-border bg-muted/30 p-3">
+    <div className={`flex h-full min-w-[280px] flex-col rounded-2xl border ${colors.bg} p-3 ${colors.border.split(" ")[0]}`}>
       <div className="mb-3 flex items-center justify-between gap-2 px-1">
         <h3 className="text-sm font-semibold text-foreground">{title}</h3>
         <Badge

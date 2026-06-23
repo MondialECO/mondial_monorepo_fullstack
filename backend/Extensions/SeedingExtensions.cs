@@ -183,13 +183,41 @@ public static class SeedingExtensions
                     Type = "angel",
                     PrimaryEmail = investor.Email,
                     IsActive = true,
-                    ProfileScore = 60,
                     LinkedUserId = investor.Id.ToString(),
                     PreferredSectors = new List<string> { "SaaS", "HealthTech", "ClimaTech" },
                     PreferredStages = new List<string> { "seed", "series_a" },
                     MinCheckSize = 50000,
                     MaxCheckSize = 750000,
-                    PreferredGeographies = new List<string> { "EU" }
+                    PreferredGeographies = new List<string> { "EU" },
+
+                    // Deal preferences
+                    RequiresProRataRights = true,
+                    RequiresBoardSeat = false,
+                    PreferredEquityTypes = new List<string> { "preferred", "safe" },
+
+                    // Investment thesis (Phase 3) — realistic demo content
+                    ThesisStatement = "We back technical founders building category-defining software for European SMEs. We look for early pull — paying customers, fast iteration, and a clear wedge into a large, underserved market.",
+                    TargetReturnMultiple = "5-10x",
+                    FollowOnPolicy = "selective",
+                    PreferredRole = "co_investor",
+                    BoardParticipationLevel = "observer",
+
+                    // Public profile (Phase 4) — realistic demo content
+                    Headline = "Early-stage operator-investor — SaaS, HealthTech & ClimaTech across the EU",
+                    Bio = "Former operator turned angel. Twelve years building and scaling B2B software in Europe before investing full-time. Hands-on with go-to-market, hiring, and fundraising strategy.",
+                    Website = "https://mondialbusiness.eu",
+                    SocialLinks = new Dictionary<string, string>
+                    {
+                        ["linkedin"] = "https://www.linkedin.com/company/mondial-eco",
+                        ["website"] = "https://mondialbusiness.eu"
+                    },
+                    IsPublic = true,
+
+                    // Track record (Phase 4 "notable investments")
+                    SuccessfulExits = 3,
+                    AverageCheckSize = 250000,
+                    CompletedDeals = 8,
+                    ActiveInvestments = 5
                 };
 
                 var created = await investorService.CreateInvestorAsync(stub);
@@ -584,12 +612,31 @@ public static class SeedingExtensions
                 NdaTextHash = ndaTextHash,
                 IpHash = "DEMO_SEED",
             });
+
+            // The seed writes NDA acceptances directly (bypassing AcceptDataRoomNdaAsync),
+            // so it must also create the matching download-level access grant — otherwise
+            // the demo investor can see the data-room document list but every download /
+            // track call 403s with "No data-room access grant". Keyed on the catalogue
+            // Investor id, consistent with the NDA row and EnsureDataRoomAccessAsync.
+            co.DataRoomAccessRecords ??= new List<DataRoomAccessRecord>();
+            co.DataRoomAccessRecords.RemoveAll(g =>
+                string.Equals(g.InvestorId, investorId, StringComparison.Ordinal));
+            co.DataRoomAccessRecords.Add(new DataRoomAccessRecord
+            {
+                InvestorId = investorId,
+                InvestorName = investorUser.Name ?? string.Empty,
+                AccessLevel = "download", // "download"/"full_access" permit downloads (Phase6Requirements)
+                GrantedAt = now.AddDays(-3),
+                ExpiresAt = now.AddYears(1),
+            });
+            await dbContext.Companies.ReplaceOneAsync(
+                Builders<Companies>.Filter.Eq(c => c.Id, co.Id), co);
         }
 
         if (docs.Count > 0)
         {
             await dbContext.Phase6NdaAcceptances.InsertManyAsync(docs);
-            Log.Information("Seeded {Count} demo NDA acceptance(s)", docs.Count);
+            Log.Information("Seeded {Count} demo NDA acceptance(s) + data-room grant(s)", docs.Count);
         }
     }
 
@@ -798,6 +845,7 @@ public static class SeedingExtensions
         {
             Id = ObjectId.GenerateNewId().ToString(),
             CompanyId = rousseau.Id,
+            CompanyNameSnapshot = rousseau.CompanyName,
             Status = "initiated",
             Investors = new List<DealParticipant>
             {

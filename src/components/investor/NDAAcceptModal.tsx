@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { CheckCircle2, FileText, ShieldCheck } from "lucide-react";
+import { CheckCircle2, FileText, ShieldCheck, Sparkles } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -38,7 +38,7 @@ The Investor agrees to use Confidential Information solely for evaluating the in
 No obligations apply to information that is already public, was rightfully known prior to disclosure, or is independently developed.
 
 4. TERM
-This Agreement remains in effect for 24 months from the date of acceptance.
+This Agreement remains in effect for 3 years from the date of acceptance.
 
 5. NO LICENSE
 Nothing herein grants any rights to intellectual property or any obligation to enter into a future transaction.
@@ -95,7 +95,7 @@ export default function NDAAcceptModal({
             <div className="space-y-3">
               <h4 className="text-sm font-semibold text-foreground">Key Terms</h4>
               <ul className="space-y-1.5 text-xs text-muted-foreground">
-                <li>&bull; Confidentiality &mdash; 24 months from signing</li>
+                <li>&bull; Confidentiality &mdash; 3 years from signing</li>
                 <li>&bull; No reverse engineering of disclosed information</li>
                 <li>&bull; No solicitation of customers learned during diligence</li>
               </ul>
@@ -107,6 +107,30 @@ export default function NDAAcceptModal({
                   </pre>
                 </ScrollArea>
               </div>
+
+              {/* Full AI analysis: no investor-facing AI-analysis route/data
+                  exists yet, so this is an explicit, honest disabled state
+                  rather than a dead link. */}
+              <div className="flex items-center justify-between rounded-md border border-dashed border-border bg-muted/30 px-3 py-2">
+                <span className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Sparkles className="h-3.5 w-3.5 text-primary" aria-hidden />
+                  View full AI analysis
+                </span>
+                <Button
+                  variant="link"
+                  size="sm"
+                  disabled
+                  className="h-auto p-0 text-xs"
+                  title="AI analysis isn't available for this opportunity yet"
+                >
+                  Not available yet
+                </Button>
+              </div>
+
+              <p className="text-[11px] text-muted-foreground">
+                Standard EU mutual NDA template &middot; eIDAS-compatible
+                e-signature &middot; Non-binding demo
+              </p>
             </div>
 
             <DialogFooter>

@@ -58,8 +58,7 @@ function Phase5CompleteContent() {
         { icon: PieChart, label: 'Equity offered', value: equity > 0 ? `${equity}%` : undefined, unavailable: equity > 0 ? undefined : 'unavailable' },
         { icon: Clock, label: 'Runway', unavailable: 'unavailable' },
       ]}
-      score={prog ? prog.trustScore : null}
-      scoreSub="Backend-awarded after Phase 5"
+      score={null}
       unlocked={[
         { label: 'Funding ask submitted for compliance review', sub: funding?.hasOutreachCampaign ? 'Published to the investor marketplace' : 'Publishes after review' },
         { label: 'Phase 6 — Data Room setup', sub: 'Upload & organise your documents' },

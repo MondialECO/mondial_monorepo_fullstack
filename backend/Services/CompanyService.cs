@@ -51,7 +51,6 @@ public class CompanyService : ICompanyService
                 CurrentPhase = 2,
                 CompletedPhases = new List<int>(),
                 OverallProgressPercent = 0,
-                TrustScore = 0,
                 IsInvestorReady = false,
                 CreatedAt = DateTime.UtcNow,
                 LastUpdatedAt = DateTime.UtcNow
@@ -1336,7 +1335,7 @@ public class CompanyService : ICompanyService
 
     public async Task<NdaAcceptanceResponse> AcceptDataRoomNdaAsync(string companyId, string investorId, string ndaText, string ipHash)
     {
-        await GetCompanyAsync(companyId);
+        var company = await GetCompanyAsync(companyId);
 
         var ndaTextHash = Convert.ToHexString(
             System.Security.Cryptography.SHA256.HashData(
@@ -1358,6 +1357,28 @@ public class CompanyService : ICompanyService
             Builders<Phase6NdaAcceptance>.Filter.Eq(n => n.InvestorId, investorId));
         await _dbContext.Phase6NdaAcceptances.ReplaceOneAsync(
             filter, nda, new ReplaceOptions { IsUpsert = true });
+
+        // Accepting the NDA is what unlocks the data room, so it must also grant
+        // the investor a download-level access record — otherwise the document
+        // download / track endpoints 403 with "No data-room access grant" even
+        // though the gate the user just passed (the NDA) was the intended control.
+        // Keyed on the catalogue Investor id, consistent with the NDA row above and
+        // the access policy in EnsureDataRoomAccessAsync. Idempotent: replace any
+        // prior grant for this investor so re-accepting never stacks duplicates.
+        company.DataRoomAccessRecords ??= new List<DataRoomAccessRecord>();
+        company.DataRoomAccessRecords.RemoveAll(g =>
+            string.Equals(g.InvestorId, investorId, StringComparison.Ordinal));
+        company.DataRoomAccessRecords.Add(new DataRoomAccessRecord
+        {
+            InvestorId = investorId,
+            InvestorName = string.Empty,
+            AccessLevel = Phase6Requirements.DownloadPermittedAccessLevels[0], // "download"
+            GrantedAt = acceptedAt,
+            ExpiresAt = acceptedAt.AddYears(1),
+        });
+        company.UpdatedAt = DateTime.UtcNow;
+        await _dbContext.Companies.ReplaceOneAsync(
+            Builders<Companies>.Filter.Eq(c => c.Id, companyId), company);
 
         // Notification emission is the controller's responsibility — IPhaseNotificationService
         // depends on ICompanyService, so injecting it here would create a DI cycle.
@@ -1703,6 +1724,11 @@ public class CompanyService : ICompanyService
             .FirstOrDefaultAsync()
             ?? throw new ArgumentException($"investorId '{request.InvestorId}' does not match any investor");
 
+        // Snapshot the counterparty company name so the investor inbox renders a
+        // real name (validates the company exists, too).
+        var company = await GetCompanyAsync(companyId)
+            ?? throw new KeyNotFoundException($"Company {companyId} not found");
+
         var dealId = ObjectId.GenerateNewId().ToString();
         var deal = new DealExecution
         {
@@ -1711,6 +1737,7 @@ public class CompanyService : ICompanyService
             Status = Phase9Requirements.DealStatusInitiated,
             InvestorNameSnapshot = investor.Name,
             InvestorTypeSnapshot = investor.Type,
+            CompanyNameSnapshot = company.CompanyName,
             CreatedByUserId = actorUserId,
             Investors = new List<DealParticipant>
             {
@@ -1809,12 +1836,24 @@ public class CompanyService : ICompanyService
         return await GetDealActivityAsync(ctx.Deal.Id);
     }
 
-    public async Task<List<DealStatusResponse>> GetDealsForParticipantAsync(string? ownedCompanyId, string? investorId)
+    public async Task<List<DealStatusResponse>> GetDealsForParticipantAsync(string? founderUserId, string? investorId)
     {
         var f = Builders<DealExecution>.Filter;
         var clauses = new List<FilterDefinition<DealExecution>>();
-        if (!string.IsNullOrWhiteSpace(ownedCompanyId))
-            clauses.Add(f.Eq(d => d.CompanyId, ownedCompanyId));
+
+        // Founder side: a user can own MORE THAN ONE company, so match deals on
+        // ANY company they own. Resolving a single company (FirstOrDefault)
+        // previously hid every deal on the founder's other companies.
+        if (!string.IsNullOrWhiteSpace(founderUserId))
+        {
+            var owned = await _dbContext.Companies
+                .Find(c => c.OwnerId == founderUserId)
+                .ToListAsync();
+            var ownedCompanyIds = owned.Select(c => c.Id).ToList();
+            if (ownedCompanyIds.Count > 0)
+                clauses.Add(f.In(d => d.CompanyId, ownedCompanyIds));
+        }
+
         if (!string.IsNullOrWhiteSpace(investorId))
             clauses.Add(f.ElemMatch(d => d.Investors, i => i.InvestorId == investorId));
 
@@ -1942,13 +1981,17 @@ public class CompanyService : ICompanyService
             throw new InvalidOperationException(
                 "Cannot close deal: both founder and investor must sign the term sheet first.");
 
-        // Close = transition Status -> "completed". Enforced via the deal
-        // state machine, so callers can't bypass the "signed" precondition.
+        // Close = transition Status -> "completed". Mutual signature (verified
+        // above) is the canonical close precondition. The CRM status axis may
+        // not have been walked to 'signed' during negotiation (signing only
+        // auto-advances the axis from 'agreement_sent'), so reconcile it here
+        // rather than dead-ending a fully-signed deal. Reject only if the deal
+        // is already in a terminal state.
         var from = deal.Status;
         var to = Phase9Requirements.DealStatusCompleted;
-        if (!Phase9Requirements.IsValidDealTransition(from, to))
+        if (Phase9Requirements.IsTerminalDealStatus(from))
             throw new InvalidOperationException(
-                $"Cannot close deal: illegal transition '{from}' -> '{to}'. Deal must be in 'signed' before completion.");
+                $"Cannot close deal: already in terminal status '{from}'.");
 
         deal.Status = to;
         deal.ClosedAt = DateTime.UtcNow;
@@ -2310,7 +2353,6 @@ public class CompanyService : ICompanyService
             CurrentPhase = company.CurrentPhase,
             CompletedPhases = company.CompletedPhases ?? new List<int>(),
             OverallProgressPercent = CalculateOverallProgress(company),
-            TrustScore = company.TrustScore,
             IsInvestorReady = company.IsInvestorReady,
             CreatedAt = company.CreatedAt,
             LastUpdatedAt = company.UpdatedAt
@@ -2348,8 +2390,23 @@ public class CompanyService : ICompanyService
         if (string.IsNullOrWhiteSpace(investorId))
             throw new ArgumentException("investorId is required");
 
-        _ = await GetCompanyAsync(companyId)
+        var company = await GetCompanyAsync(companyId)
             ?? throw new KeyNotFoundException($"Company {companyId} not found");
+
+        // Gate: an investor cannot open an offer thread on a company whose data
+        // room requires (and they have not signed) an NDA. Without this, an offer
+        // can push a deal into "negotiation" while the opportunity still reads
+        // "NDA Required" — the exact pipeline/state inconsistency seen in audit.
+        // Keyed on the catalogue Investor id, same as the NDA acceptance row.
+        if (company.IsDataRoomNdaRequired)
+        {
+            var nda = await _dbContext.Phase6NdaAcceptances
+                .Find(n => n.CompanyId == companyId && n.InvestorId == investorId)
+                .FirstOrDefaultAsync();
+            if (nda == null)
+                throw new UnauthorizedAccessException(
+                    "NDA acceptance is required before making an offer on this company.");
+        }
 
         var investor = await _dbContext.Investors
             .Find(i => i.Id == investorId)
@@ -2375,6 +2432,7 @@ public class CompanyService : ICompanyService
                 Status = Phase9Requirements.DealStatusInitiated,
                 InvestorNameSnapshot = investor.Name,
                 InvestorTypeSnapshot = investor.Type,
+                CompanyNameSnapshot = company.CompanyName,
                 CreatedByUserId = actorUserId,
                 Investors = new List<DealParticipant>
                 {
@@ -2710,6 +2768,7 @@ public class CompanyService : ICompanyService
         {
             DealId = deal.Id,
             Status = deal.Status,
+            CompanyName = deal.CompanyNameSnapshot ?? "",
             ProgressPercent = CalculateDealProgress(deal),
             TermSheet = new TermSheetResponse
             {
@@ -2756,7 +2815,18 @@ public class CompanyService : ICompanyService
                         Status = r.Terms.Status,
                         SignedAt = r.Terms.SignedAt,
                     }
-                }).ToList()
+                }).ToList(),
+            // Map persisted signatures to API response
+            FounderSignature = deal.Signatures != null ? new SignatureRecordDto
+            {
+                SignedAt = deal.Signatures.FounderSignedAt,
+                SignedBy = deal.Signatures.FounderSignedByUserId ?? null
+            } : null,
+            InvestorSignature = deal.Signatures != null ? new SignatureRecordDto
+            {
+                SignedAt = deal.Signatures.InvestorSignedAt,
+                SignedBy = deal.Signatures.InvestorSignedByInvestorId ?? null
+            } : null
         };
     }
 
@@ -2878,12 +2948,21 @@ public class CompanyService : ICompanyService
             EquityOfferedPercent = company.EquityOfferedPercent,
             PreMoneyValuation = company.PreMoneyValuation,
             Valuation = company.Valuation,
-            TrustScore = company.TrustScore,
-            IsInvestorReady = company.IsInvestorReady,
             MatchScore = match.MatchScore,
             MatchStatus = match.Status,
             MatchRationale = match.MatchRationale,
-            ScoreBreakdown = BuildScoreBreakdown(match.MatchScore),
+            ScoreBreakdown = new OpportunityScoreBreakdownDto
+            {
+                SectorFit = match.ScoreComponents?.SectorScore ?? 0,
+                StageFit = match.ScoreComponents?.StageScore ?? 0,
+                CheckSizeFit = match.ScoreComponents?.CheckSizeScore ?? 0,
+                GeographyFit = match.ScoreComponents?.GeographyScore ?? 0,
+                EquityTypeFit = match.ScoreComponents?.EquityTypeScore ?? 0,
+                InvestmentHistoryFit = match.ScoreComponents?.InvestmentHistoryScore ?? 0,
+                RevenueStageScore = match.ScoreComponents?.RevenueStageScore ?? 0,
+                MarketSizeScore = match.ScoreComponents?.MarketSizeScore ?? 0,
+                GrowthPotentialScore = match.ScoreComponents?.GrowthPotentialScore ?? 0,
+            },
             NdaRequired = company.IsDataRoomNdaRequired,
             NdaAccepted = ndaAccepted,
             NdaAcceptedAt = nda?.AcceptedAt,
@@ -2920,7 +2999,7 @@ public class CompanyService : ICompanyService
         if (matches.Count == 0)
             return new InvestorPipelineResponse
             {
-                Summary = new InvestorPipelineSummaryDto { ActiveDeals = 0, CapitalCommitted = 0, AverageMatchScore = 0, Moic = 0 },
+                Summary = new InvestorPipelineSummaryDto { ActiveDeals = 0, CapitalCommitted = 0, AverageMatchScore = 0, Moic = null },
                 Columns = new InvestorPipelineColumnsDto(),
             };
 
@@ -2990,8 +3069,9 @@ public class CompanyService : ICompanyService
                 ActiveDeals = activeDeals,
                 CapitalCommitted = capitalCommitted,
                 AverageMatchScore = Math.Round(avgScore, 1),
-                // Demo placeholder until a per-investment current-valuation field exists.
-                Moic = capitalCommitted > 0 ? 1.44 : 0,
+                // MOIC needs per-investment current/realized valuation, which is not
+                // tracked yet. Null until real data exists — no fabricated figure.
+                Moic = null,
             },
             Columns = columns,
         };
@@ -3147,23 +3227,7 @@ public class CompanyService : ICompanyService
             Valuation = co.Valuation,
             MatchScore = m.MatchScore,
             MatchStatus = m.Status,
-            IsInvestorReady = co.IsInvestorReady,
             LastUpdatedAt = co.UpdatedAt,
         };
 
-    /// <summary>
-    /// Derives 4 factor bars from the overall match score. Deterministic, clamped 0-100.
-    /// Cheap stand-in until <see cref="InvestorMatch.MatchRationale"/> becomes a typed shape.
-    /// </summary>
-    private static OpportunityScoreBreakdownDto BuildScoreBreakdown(int matchScore)
-    {
-        static int Clamp(int v) => Math.Clamp(v, 0, 100);
-        return new OpportunityScoreBreakdownDto
-        {
-            SectorFit = Clamp(matchScore),
-            StageFit = Clamp(matchScore - 3),
-            GeographyFit = Clamp(matchScore - 5),
-            TeamScore = Clamp(matchScore + 2),
-        };
-    }
 }

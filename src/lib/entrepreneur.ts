@@ -11,14 +11,12 @@ const PHASE_CONFIG: Record<PhaseNumber, PhaseConfig> = {
     phase: 1,
     title: 'Identity & Onboarding',
     description: 'KYC verified, Tier 2 access',
-    trustScore: 44,
     hasSteps: false,
   },
   2: {
     phase: 2,
     title: 'Company Verification',
     description: 'Verified Company badge',
-    trustScore: 18,
     hasSteps: true,
     stepCount: 4,
   },
@@ -26,7 +24,6 @@ const PHASE_CONFIG: Record<PhaseNumber, PhaseConfig> = {
     phase: 3,
     title: 'Financial Valuation & KPI',
     description: 'Valuation EUR 3.78M, KPI baseline',
-    trustScore: 22,
     hasSteps: true,
     stepCount: 3,
   },
@@ -34,7 +31,6 @@ const PHASE_CONFIG: Record<PhaseNumber, PhaseConfig> = {
     phase: 4,
     title: 'Equity Structure & Ownership',
     description: 'Cap table, ESOP, vesting, ownership history',
-    trustScore: 12,
     hasSteps: true,
     stepCount: 3,
   },
@@ -42,42 +38,36 @@ const PHASE_CONFIG: Record<PhaseNumber, PhaseConfig> = {
     phase: 5,
     title: 'Funding Submission',
     description: 'Submit funding ask, pitch deck, and narrative for review',
-    trustScore: 8,
     hasSteps: false,
   },
   6: {
     phase: 6,
     title: 'Data Room',
     description: 'Secure document vault',
-    trustScore: 3,
     hasSteps: false,
   },
   7: {
     phase: 7,
     title: 'AI Expert Review',
     description: 'Investor-Ready Badge',
-    trustScore: 5,
     hasSteps: false,
   },
   8: {
     phase: 8,
     title: 'Investor Matching',
     description: 'Automated rule-based matching against active investor pool',
-    trustScore: 5,
     hasSteps: false,
   },
   9: {
     phase: 9,
     title: 'Deal Execution',
     description: 'Term sheets, round close',
-    trustScore: 0, // Finalize
     hasSteps: false,
   },
   10: {
     phase: 10,
     title: 'Journey Complete',
     description: 'Round closed and recorded',
-    trustScore: 0,
     hasSteps: false,
   },
 };
@@ -127,16 +117,6 @@ export function getPhaseProgress(
 
   const completed = getAllCompletedSteps(phase, completedSteps);
   return Math.round((completed / config.stepCount) * 100);
-}
-
-export function calculateTotalTrustScore(
-  completedPhases: Set<PhaseNumber>
-): number {
-  let total = 0;
-  for (const phase of completedPhases) {
-    total += getPhaseConfig(phase as PhaseNumber).trustScore;
-  }
-  return total;
 }
 
 export function canMoveToNextStep(
@@ -209,7 +189,6 @@ export function deserializeProgress(data: string): EntrepreneurProgress {
     completedPhases,
     completedSteps,
     phaseData: parsed.phaseData || {},
-    trustScore: typeof parsed.trustScore === 'number' ? Math.max(0, parsed.trustScore) : 0,
     lastUpdated: typeof parsed.lastUpdated === 'number' ? parsed.lastUpdated : Date.now(),
   };
 }
@@ -220,7 +199,6 @@ export const INITIAL_PROGRESS: EntrepreneurProgress = {
   completedPhases: new Set(),
   completedSteps: new Set(),
   phaseData: {},
-  trustScore: 0,
   lastUpdated: 0, // Set at runtime, not during module init
 };
 

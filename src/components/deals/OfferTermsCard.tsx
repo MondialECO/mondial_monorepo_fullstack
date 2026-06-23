@@ -8,11 +8,11 @@ interface OfferTermsCardProps {
   title?: string;
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, value, prominent = false }: { label: string; value: string; prominent?: boolean }) {
   return (
     <div className="rounded-xl border border-border bg-muted/30 p-3">
       <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
-      <div className="mt-1 text-base font-semibold text-foreground tabular-nums">{value}</div>
+      <div className={`mt-1 font-semibold text-foreground tabular-nums ${prominent ? "text-lg" : "text-base"}`}>{value}</div>
     </div>
   );
 }
@@ -25,11 +25,12 @@ export default function OfferTermsCard({ terms, title = "Current Terms" }: Offer
         <DealStatusBadge status={terms.status} />
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Stat label="Raise" value={formatCurrency(terms.totalRaiseAmount)} />
-        <Stat label="Post-Money" value={formatCurrency(terms.postMoneyValuation)} />
+        <Stat label="Raise" value={formatCurrency(terms.totalRaiseAmount)} prominent />
+        <Stat label="Post-Money" value={formatCurrency(terms.postMoneyValuation)} prominent />
         <Stat
           label="Equity"
           value={terms.investorEquityPercent ? `${terms.investorEquityPercent.toFixed(2)}%` : "—"}
+          prominent
         />
         <Stat label="Type" value={terms.equityType || "—"} />
       </div>

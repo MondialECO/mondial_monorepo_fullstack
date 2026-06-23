@@ -1,0 +1,188 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="900" viewBox="0 0 1180 900" font-family="Inter, Segoe UI, Arial, sans-serif">
+  <defs>
+    <style>
+      .title{font-size:25px;font-weight:700;fill:#0f172a}
+      .sub{font-size:13px;fill:#64748b}
+      .h{font-size:12px;font-weight:700;fill:#475569;letter-spacing:.03em}
+      .scr{font-size:13.5px;font-weight:600;fill:#0f172a}
+      .cell{font-size:15px;font-weight:700}
+      .cls{font-size:11px;font-weight:600;fill:#334155}
+      .lg{font-size:12px;fill:#334155}
+    </style>
+  </defs>
+  <rect width="1180" height="900" fill="#ffffff"/>
+  <text x="40" y="42" class="title">Investor Screens — Exists in Figma / Code / Live?</text>
+  <text x="40" y="64" class="sub">✓ present · ~ shell/partial · ✗ absent or unreachable · judged for presence, not parity</text>
+
+  <!-- column headers -->
+  <text x="48" y="98" class="h">SCREEN</text>
+  <text x="556" y="98" class="h" text-anchor="middle">FIGMA</text>
+  <text x="648" y="98" class="h" text-anchor="middle">CODE</text>
+  <text x="740" y="98" class="h" text-anchor="middle">LIVE</text>
+  <text x="812" y="98" class="h">CLASSIFICATION</text>
+  <line x1="40" y1="106" x2="1140" y2="106" stroke="#e2e8f0"/>
+
+  <!-- rows -->
+  <!-- helper cell coords: Figma x=556, Code x=648, Live x=740, cell box w=44 centered -->
+  <g font-family="Inter">
+  <!-- Row generator manually -->
+  <!-- 1 -->
+  <g transform="translate(0,116)">
+    <text x="48" y="22" class="scr">Investments Dashboard</text>
+    <rect x="534" y="6" width="44" height="26" rx="6" fill="#dcfce7"/><text x="556" y="24" text-anchor="middle" class="cell" fill="#16a34a">✓</text>
+    <rect x="626" y="6" width="44" height="26" rx="6" fill="#dcfce7"/><text x="648" y="24" text-anchor="middle" class="cell" fill="#16a34a">✓</text>
+    <rect x="718" y="6" width="44" height="26" rx="6" fill="#dcfce7"/><text x="740" y="24" text-anchor="middle" class="cell" fill="#16a34a">✓</text>
+    <text x="812" y="24" class="cls">All three</text>
+  </g>
+  <!-- 2 -->
+  <g transform="translate(0,150)">
+    <text x="48" y="22" class="scr">Discovery Feed</text>
+    <rect x="534" y="6" width="44" height="26" rx="6" fill="#dcfce7"/><text x="556" y="24" text-anchor="middle" class="cell" fill="#16a34a">✓</text>
+    <rect x="626" y="6" width="44" height="26" rx="6" fill="#dcfce7"/><text x="648" y="24" text-anchor="middle" class="cell" fill="#16a34a">✓</text>
+    <rect x="718" y="6" width="44" height="26" rx="6" fill="#dcfce7"/><text x="740" y="24" text-anchor="middle" class="cell" fill="#16a34a">✓</text>
+    <text x="812" y="24" class="cls">All three</text>
+  </g>
+  <!-- 3 -->
+  <g transform="translate(0,184)">
+    <text x="48" y="22" class="scr">Opportunity Detail (+ tabs)</text>
+    <rect x="534" y="6" width="44" height="26" rx="6" fill="#dcfce7"/><text x="556" y="24" text-anchor="middle" class="cell" fill="#16a34a">✓</text>
+    <rect x="626" y="6" width="44" height="26" rx="6" fill="#dcfce7"/><text x="648" y="24" text-anchor="middle" class="cell" fill="#16a34a">✓</text>
+    <rect x="718" y="6" width="44" height="26" rx="6" fill="#dcfce7"/><text x="740" y="24" text-anchor="middle" class="cell" fill="#16a34a">✓</text>
+    <text x="812" y="24" class="cls">All three</text>
+  </g>
+  <!-- 4 -->
+  <g transform="translate(0,218)">
+    <text x="48" y="22" class="scr">NDA accept / sign modal</text>
+    <rect x="534" y="6" width="44" height="26" rx="6" fill="#dcfce7"/><text x="556" y="24" text-anchor="middle" class="cell" fill="#16a34a">✓</text>
+    <rect x="626" y="6" width="44" height="26" rx="6" fill="#dcfce7"/><text x="648" y="24" text-anchor="middle" class="cell" fill="#16a34a">✓</text>
+    <rect x="718" y="6" width="44" height="26" rx="6" fill="#dcfce7"/><text x="740" y="24" text-anchor="middle" class="cell" fill="#16a34a">✓</text>
+    <text x="812" y="24" class="cls">All three</text>
+  </g>
+  <!-- 5 Data room -->
+  <g transform="translate(0,252)">
+    <text x="48" y="22" class="scr">Data Room</text>
+    <rect x="534" y="6" width="44" height="26" rx="6" fill="#dcfce7"/><text x="556" y="24" text-anchor="middle" class="cell" fill="#16a34a">✓</text>
+    <rect x="626" y="6" width="44" height="26" rx="6" fill="#fef9c3"/><text x="648" y="24" text-anchor="middle" class="cell" fill="#ca8a04">~</text>
+    <rect x="718" y="6" width="44" height="26" rx="6" fill="#fef9c3"/><text x="740" y="24" text-anchor="middle" class="cell" fill="#ca8a04">~</text>
+    <text x="812" y="24" class="cls">All three — Figma ≫ Code/Live (shell)</text>
+  </g>
+  <!-- 6 Thesis -->
+  <g transform="translate(0,286)">
+    <text x="48" y="22" class="scr">Investment Thesis wizard</text>
+    <rect x="534" y="6" width="44" height="26" rx="6" fill="#dcfce7"/><text x="556" y="24" text-anchor="middle" class="cell" fill="#16a34a">✓</text>
+    <rect x="626" y="6" width="44" height="26" rx="6" fill="#dcfce7"/><text x="648" y="24" text-anchor="middle" class="cell" fill="#16a34a">✓</text>
+    <rect x="718" y="6" width="44" height="26" rx="6" fill="#dcfce7"/><text x="740" y="24" text-anchor="middle" class="cell" fill="#16a34a">✓</text>
+    <text x="812" y="24" class="cls">All three (live arguably better)</text>
+  </g>
+  <!-- 7 Public profile -->
+  <g transform="translate(0,320)">
+    <text x="48" y="22" class="scr">Public Profile</text>
+    <rect x="534" y="6" width="44" height="26" rx="6" fill="#dcfce7"/><text x="556" y="24" text-anchor="middle" class="cell" fill="#16a34a">✓</text>
+    <rect x="626" y="6" width="44" height="26" rx="6" fill="#dcfce7"/><text x="648" y="24" text-anchor="middle" class="cell" fill="#16a34a">✓</text>
+    <rect x="718" y="6" width="44" height="26" rx="6" fill="#dcfce7"/><text x="740" y="24" text-anchor="middle" class="cell" fill="#16a34a">✓</text>
+    <text x="812" y="24" class="cls">All three (Figma richer)</text>
+  </g>
+  <!-- 8 Profile edit -->
+  <g transform="translate(0,354)">
+    <text x="48" y="22" class="scr">Profile Edit</text>
+    <rect x="534" y="6" width="44" height="26" rx="6" fill="#dcfce7"/><text x="556" y="24" text-anchor="middle" class="cell" fill="#16a34a">✓</text>
+    <rect x="626" y="6" width="44" height="26" rx="6" fill="#dcfce7"/><text x="648" y="24" text-anchor="middle" class="cell" fill="#16a34a">✓</text>
+    <rect x="718" y="6" width="44" height="26" rx="6" fill="#dcfce7"/><text x="740" y="24" text-anchor="middle" class="cell" fill="#16a34a">✓</text>
+    <text x="812" y="24" class="cls">All three</text>
+  </g>
+  <!-- 9 Pipeline -->
+  <g transform="translate(0,388)">
+    <text x="48" y="22" class="scr">Pipeline</text>
+    <rect x="534" y="6" width="44" height="26" rx="6" fill="#dcfce7"/><text x="556" y="24" text-anchor="middle" class="cell" fill="#16a34a">✓</text>
+    <rect x="626" y="6" width="44" height="26" rx="6" fill="#dcfce7"/><text x="648" y="24" text-anchor="middle" class="cell" fill="#16a34a">✓</text>
+    <rect x="718" y="6" width="44" height="26" rx="6" fill="#dcfce7"/><text x="740" y="24" text-anchor="middle" class="cell" fill="#16a34a">✓</text>
+    <text x="812" y="24" class="cls">All three (Figma richer)</text>
+  </g>
+  <!-- 10 Term sheet RO -->
+  <g transform="translate(0,422)">
+    <text x="48" y="22" class="scr">Term Sheet (read-only)</text>
+    <rect x="534" y="6" width="44" height="26" rx="6" fill="#dcfce7"/><text x="556" y="24" text-anchor="middle" class="cell" fill="#16a34a">✓</text>
+    <rect x="626" y="6" width="44" height="26" rx="6" fill="#dcfce7"/><text x="648" y="24" text-anchor="middle" class="cell" fill="#16a34a">✓</text>
+    <rect x="718" y="6" width="44" height="26" rx="6" fill="#fee2e2"/><text x="740" y="24" text-anchor="middle" class="cell" fill="#dc2626">✗</text>
+    <text x="812" y="24" class="cls" fill="#b91c1c">Figma + Code, NOT Live (404 · stale build)</text>
+  </g>
+  <!-- 11 Term sheet builder -->
+  <g transform="translate(0,456)">
+    <text x="48" y="22" class="scr">Term Sheet Builder (send offer)</text>
+    <rect x="534" y="6" width="44" height="26" rx="6" fill="#dcfce7"/><text x="556" y="24" text-anchor="middle" class="cell" fill="#16a34a">✓</text>
+    <rect x="626" y="6" width="44" height="26" rx="6" fill="#dcfce7"/><text x="648" y="24" text-anchor="middle" class="cell" fill="#16a34a">✓</text>
+    <rect x="718" y="6" width="44" height="26" rx="6" fill="#fee2e2"/><text x="740" y="24" text-anchor="middle" class="cell" fill="#dc2626">✗</text>
+    <text x="812" y="24" class="cls" fill="#b91c1c">Figma + Code, NOT Live (404 · stale build)</text>
+  </g>
+  <!-- 12 Deals -->
+  <g transform="translate(0,490)">
+    <text x="48" y="22" class="scr">Deals / Negotiation workspace</text>
+    <rect x="534" y="6" width="44" height="26" rx="6" fill="#fee2e2"/><text x="556" y="24" text-anchor="middle" class="cell" fill="#dc2626">✗</text>
+    <rect x="626" y="6" width="44" height="26" rx="6" fill="#dcfce7"/><text x="648" y="24" text-anchor="middle" class="cell" fill="#16a34a">✓</text>
+    <rect x="718" y="6" width="44" height="26" rx="6" fill="#dcfce7"/><text x="740" y="24" text-anchor="middle" class="cell" fill="#16a34a">✓</text>
+    <text x="812" y="24" class="cls" fill="#312e81">Code + Live, NOT Figma — better than Figma</text>
+  </g>
+  <!-- 13 Messages -->
+  <g transform="translate(0,524)">
+    <text x="48" y="22" class="scr">Messages</text>
+    <rect x="534" y="6" width="44" height="26" rx="6" fill="#fee2e2"/><text x="556" y="24" text-anchor="middle" class="cell" fill="#dc2626">✗</text>
+    <rect x="626" y="6" width="44" height="26" rx="6" fill="#dcfce7"/><text x="648" y="24" text-anchor="middle" class="cell" fill="#16a34a">✓</text>
+    <rect x="718" y="6" width="44" height="26" rx="6" fill="#dcfce7"/><text x="740" y="24" text-anchor="middle" class="cell" fill="#16a34a">✓</text>
+    <text x="812" y="24" class="cls" fill="#312e81">Code + Live, NOT Figma</text>
+  </g>
+  <!-- 14 Dark mode -->
+  <g transform="translate(0,558)">
+    <text x="48" y="22" class="scr">Dark mode (all screens)</text>
+    <rect x="534" y="6" width="44" height="26" rx="6" fill="#fee2e2"/><text x="556" y="24" text-anchor="middle" class="cell" fill="#dc2626">✗</text>
+    <rect x="626" y="6" width="44" height="26" rx="6" fill="#dcfce7"/><text x="648" y="24" text-anchor="middle" class="cell" fill="#16a34a">✓</text>
+    <rect x="718" y="6" width="44" height="26" rx="6" fill="#dcfce7"/><text x="740" y="24" text-anchor="middle" class="cell" fill="#16a34a">✓</text>
+    <text x="812" y="24" class="cls" fill="#312e81">Code + Live, NOT Figma — keep</text>
+  </g>
+  <!-- 15 Declaration -->
+  <g transform="translate(0,592)">
+    <text x="48" y="22" class="scr">Investment Declaration (Phase 2)</text>
+    <rect x="534" y="6" width="44" height="26" rx="6" fill="#dcfce7"/><text x="556" y="24" text-anchor="middle" class="cell" fill="#16a34a">✓</text>
+    <rect x="626" y="6" width="44" height="26" rx="6" fill="#fee2e2"/><text x="648" y="24" text-anchor="middle" class="cell" fill="#dc2626">✗</text>
+    <rect x="718" y="6" width="44" height="26" rx="6" fill="#fee2e2"/><text x="740" y="24" text-anchor="middle" class="cell" fill="#dc2626">✗</text>
+    <text x="812" y="24" class="cls">Figma only — superseded by Thesis (skip)</text>
+  </g>
+  <!-- 16 Settings -->
+  <g transform="translate(0,626)">
+    <text x="48" y="22" class="scr">Investor Settings page</text>
+    <rect x="534" y="6" width="44" height="26" rx="6" fill="#dcfce7"/><text x="556" y="24" text-anchor="middle" class="cell" fill="#16a34a">✓</text>
+    <rect x="626" y="6" width="44" height="26" rx="6" fill="#fee2e2"/><text x="648" y="24" text-anchor="middle" class="cell" fill="#dc2626">✗</text>
+    <rect x="718" y="6" width="44" height="26" rx="6" fill="#fee2e2"/><text x="740" y="24" text-anchor="middle" class="cell" fill="#dc2626">✗</text>
+    <text x="812" y="24" class="cls">Figma only — defer</text>
+  </g>
+  <!-- 17 Portfolio chart -->
+  <g transform="translate(0,660)">
+    <text x="48" y="22" class="scr">Portfolio Performance chart</text>
+    <rect x="534" y="6" width="44" height="26" rx="6" fill="#dcfce7"/><text x="556" y="24" text-anchor="middle" class="cell" fill="#16a34a">✓</text>
+    <rect x="626" y="6" width="44" height="26" rx="6" fill="#fee2e2"/><text x="648" y="24" text-anchor="middle" class="cell" fill="#dc2626">✗</text>
+    <rect x="718" y="6" width="44" height="26" rx="6" fill="#fee2e2"/><text x="740" y="24" text-anchor="middle" class="cell" fill="#dc2626">✗</text>
+    <text x="812" y="24" class="cls">Figma only — optional borrow</text>
+  </g>
+  <!-- 18 phase-1 -->
+  <g transform="translate(0,694)">
+    <text x="48" y="22" class="scr">phase-1 onboarding shim</text>
+    <rect x="534" y="6" width="44" height="26" rx="6" fill="#fee2e2"/><text x="556" y="24" text-anchor="middle" class="cell" fill="#dc2626">✗</text>
+    <rect x="626" y="6" width="44" height="26" rx="6" fill="#dcfce7"/><text x="648" y="24" text-anchor="middle" class="cell" fill="#16a34a">✓</text>
+    <rect x="718" y="6" width="44" height="26" rx="6" fill="#fef9c3"/><text x="740" y="24" text-anchor="middle" class="cell" fill="#ca8a04">~</text>
+    <text x="812" y="24" class="cls" fill="#b91c1c">Code only (orphaned) — remove</text>
+  </g>
+  <!-- 19 phase-5 -->
+  <g transform="translate(0,728)">
+    <text x="48" y="22" class="scr">phase-5 "Deal Discovery"</text>
+    <rect x="534" y="6" width="44" height="26" rx="6" fill="#fee2e2"/><text x="556" y="24" text-anchor="middle" class="cell" fill="#dc2626">✗</text>
+    <rect x="626" y="6" width="44" height="26" rx="6" fill="#dcfce7"/><text x="648" y="24" text-anchor="middle" class="cell" fill="#16a34a">✓</text>
+    <rect x="718" y="6" width="44" height="26" rx="6" fill="#fee2e2"/><text x="740" y="24" text-anchor="middle" class="cell" fill="#dc2626">✗</text>
+    <text x="812" y="24" class="cls" fill="#b91c1c">Code only (dead · 404 endpoint) — remove</text>
+  </g>
+  </g>
+
+  <line x1="40" y1="772" x2="1140" y2="772" stroke="#e2e8f0"/>
+  <text x="40" y="800" class="h">VERDICT HIGHLIGHTS</text>
+  <text x="40" y="824" class="lg">• Live is AHEAD of Figma on negotiation, messaging, Make-Offer, dark mode (keep).  • Behind on conversion nudges + trust surfacing (improve).</text>
+  <text x="40" y="846" class="lg">• 3 defects block goals: Term-Sheet 404 (deal creation) · Score-Breakdown 0% (trust) · unresolved founder/conversation names (communication).</text>
+  <text x="40" y="868" class="lg">• Do NOT: add Pipeline drag-drop · build Phase-2 Declaration · chase pixel parity · rename the Entrepreneur role. Every fix is presentation-layer.</text>
+</svg>

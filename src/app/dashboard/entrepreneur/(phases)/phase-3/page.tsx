@@ -18,7 +18,6 @@ function Phase3PageContent() {
       title="Phase 3: Financial Submission"
       subtitle="Submit revenue, cash position, KPI baseline, and required financial reports for compliance review"
       icon={BarChart3}
-      trustScore={22}
       isLocked={!isPhase2Complete}
       startHref="/dashboard/entrepreneur/phase-3/step-1"
       requirements={[

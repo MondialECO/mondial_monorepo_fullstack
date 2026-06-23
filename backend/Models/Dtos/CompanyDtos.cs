@@ -378,6 +378,9 @@ public class DealStatusResponse
 {
     public string DealId { get; set; }
     public string Status { get; set; }
+    // Counterparty company name (snapshot). Empty for legacy deals created
+    // before the snapshot existed; the client falls back gracefully.
+    public string CompanyName { get; set; } = "";
     public double ProgressPercent { get; set; }
     public TermSheetResponse TermSheet { get; set; }
     public List<ChecklistItemDto> ClosingChecklist { get; set; }
@@ -386,6 +389,10 @@ public class DealStatusResponse
     // Offer system (Phase D-4): whose turn it is + the offer/counter history.
     public string CurrentTurn { get; set; } = "";
     public List<TermSheetRevisionResponse> Revisions { get; set; } = new();
+
+    // Signature state — persisted on deal, not derived from activity log.
+    public SignatureRecordDto FounderSignature { get; set; }
+    public SignatureRecordDto InvestorSignature { get; set; }
 }
 
 public class TermSheetResponse
@@ -413,6 +420,13 @@ public class DealParticipantStatusDto
     public string InvestorName { get; set; }
     public double CommittedAmount { get; set; }
     public string Status { get; set; }
+}
+
+// Signature record for deal — tracks when and by whom a party signed.
+public class SignatureRecordDto
+{
+    public DateTime? SignedAt { get; set; }
+    public string SignedBy { get; set; }  // UserId of the signer
 }
 
 public class UpdateDealStatusRequest
@@ -486,7 +500,6 @@ public class CompanyProgressResponse
     public int CurrentPhase { get; set; }
     public List<int> CompletedPhases { get; set; }
     public int OverallProgressPercent { get; set; }
-    public int TrustScore { get; set; }
     public bool IsInvestorReady { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime LastUpdatedAt { get; set; }
@@ -743,7 +756,6 @@ public class OpportunityCardResponse
     public double? Valuation { get; set; }
     public int MatchScore { get; set; }
     public string MatchStatus { get; set; }
-    public bool IsInvestorReady { get; set; }
     public DateTime LastUpdatedAt { get; set; }
 }
 
@@ -756,10 +768,32 @@ public class OpportunityFeedResponse
 
 public class OpportunityScoreBreakdownDto
 {
+    /// <summary>Sector match score: 0-25. Real value persisted from InvestorMatch.ScoreComponents.SectorScore.</summary>
     public int SectorFit { get; set; }
+
+    /// <summary>Funding stage score: 0-15. Real value persisted from InvestorMatch.ScoreComponents.StageScore.</summary>
     public int StageFit { get; set; }
+
+    /// <summary>Check-size band fit: 0-20. Real value persisted from InvestorMatch.ScoreComponents.CheckSizeScore.</summary>
+    public int CheckSizeFit { get; set; }
+
+    /// <summary>Geography match score: 0-10. Real value persisted from InvestorMatch.ScoreComponents.GeographyScore.</summary>
     public int GeographyFit { get; set; }
-    public int TeamScore { get; set; }
+
+    /// <summary>Equity type match: 0-5. Real value persisted from InvestorMatch.ScoreComponents.EquityTypeScore.</summary>
+    public int EquityTypeFit { get; set; }
+
+    /// <summary>Investment history fit: 0-10. Real value persisted from InvestorMatch.ScoreComponents.InvestmentHistoryScore.</summary>
+    public int InvestmentHistoryFit { get; set; }
+
+    /// <summary>Revenue stage alignment: 0-7. Real value persisted from InvestorMatch.ScoreComponents.RevenueStageScore.</summary>
+    public int RevenueStageScore { get; set; }
+
+    /// <summary>Market size band: 0-4. Real value persisted from InvestorMatch.ScoreComponents.MarketSizeScore.</summary>
+    public int MarketSizeScore { get; set; }
+
+    /// <summary>Growth potential: 0-4. Real value persisted from InvestorMatch.ScoreComponents.GrowthPotentialScore.</summary>
+    public int GrowthPotentialScore { get; set; }
 }
 
 public class OpportunityCapTableSummaryDto
@@ -787,8 +821,6 @@ public class OpportunityDetailResponse
     public double? EquityOfferedPercent { get; set; }
     public double? PreMoneyValuation { get; set; }
     public double? Valuation { get; set; }
-    public int TrustScore { get; set; }
-    public bool IsInvestorReady { get; set; }
     public int MatchScore { get; set; }
     public string MatchStatus { get; set; }
     public string MatchRationale { get; set; }
@@ -810,8 +842,10 @@ public class InvestorPipelineSummaryDto
     public int ActiveDeals { get; set; }
     public double CapitalCommitted { get; set; }
     public double AverageMatchScore { get; set; }
-    /// <summary>Multiple-on-invested-capital. Demo placeholder until per-investment current-valuation field exists.</summary>
-    public double Moic { get; set; }
+    /// <summary>Multiple-on-invested-capital. Requires per-investment current/realized
+    /// valuation, which is not tracked yet, so this is null until real data exists.
+    /// Never a hardcoded figure.</summary>
+    public double? Moic { get; set; }
 }
 
 public class InvestorPipelineColumnsDto

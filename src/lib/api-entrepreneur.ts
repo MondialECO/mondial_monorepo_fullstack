@@ -7,7 +7,6 @@ export interface CompanyProgressResponse {
   currentPhase: number;
   completedPhases: number[];
   overallProgressPercent: number;
-  trustScore: number;
   isInvestorReady: boolean;
   createdAt: string;
   lastUpdatedAt: string;

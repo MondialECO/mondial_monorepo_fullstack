@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="760" viewBox="0 0 1120 760" font-family="Inter, Segoe UI, Arial, sans-serif">
+  <defs>
+    <style>
+      .title{font-size:24px;font-weight:700;fill:#0f172a}
+      .sub{font-size:13px;fill:#64748b}
+      .axis{font-size:13px;font-weight:700;fill:#475569}
+      .quad{font-size:13px;font-weight:700;letter-spacing:.02em}
+      .lbl{font-size:11.5px;fill:#0f172a}
+      .lg{font-size:12px;fill:#334155}
+    </style>
+  </defs>
+  <rect width="1120" height="760" fill="#ffffff"/>
+  <text x="40" y="40" class="title">Investor Initiatives — Priority Quadrant (Impact × Effort)</text>
+  <text x="40" y="62" class="sub">All presentation-layer · bubble color = class: red Must · green High-ROI · blue Nice · grey Ignore/Core</text>
+
+  <!-- plot frame -->
+  <rect x="120" y="100" width="860" height="520" fill="#f8fafc" stroke="#e2e8f0"/>
+  <!-- quadrant divider lines -->
+  <line x1="550" y1="100" x2="550" y2="620" stroke="#cbd5e1" stroke-dasharray="5 5"/>
+  <line x1="120" y1="360" x2="980" y2="360" stroke="#cbd5e1" stroke-dasharray="5 5"/>
+
+  <!-- quadrant labels -->
+  <text x="135" y="122" class="quad" fill="#16a34a">DO NOW — high impact · low effort</text>
+  <text x="565" y="122" class="quad" fill="#2563eb">PLAN — high impact · more effort</text>
+  <text x="135" y="610" class="quad" fill="#64748b">QUICK POLISH</text>
+  <text x="700" y="610" class="quad" fill="#b91c1c">AVOID / OUT-OF-SCOPE</text>
+
+  <!-- axes -->
+  <text x="550" y="650" text-anchor="middle" class="axis">EFFORT  →  (S · M · L)</text>
+  <text x="40" y="360" class="axis" transform="rotate(-90 40 360)" text-anchor="middle">IMPACT  →  (★ · ★★ · ★★★)</text>
+  <text x="180" y="638" class="sub">S</text><text x="540" y="638" class="sub">M</text><text x="900" y="638" class="sub">L</text>
+
+  <!-- helper bubble: circle + label. radius ~12 -->
+  <!-- DO NOW (red must) top-left -->
+  <g>
+    <circle cx="200" cy="160" r="13" fill="#dc2626" opacity="0.9"/><text x="218" y="164" class="lbl">Restore Term-Sheet 404</text>
+    <circle cx="300" cy="195" r="13" fill="#dc2626" opacity="0.9"/><text x="318" y="199" class="lbl">Fix Score-Breakdown 0%</text>
+    <circle cx="210" cy="235" r="13" fill="#dc2626" opacity="0.9"/><text x="228" y="239" class="lbl">Fix Unknown-founder names</text>
+    <circle cx="380" cy="175" r="13" fill="#dc2626" opacity="0.9"/><text x="398" y="179" class="lbl">Dashboard "Your move" band</text>
+    <circle cx="360" cy="250" r="13" fill="#dc2626" opacity="0.9"/><text x="378" y="254" class="lbl">Data-Room Next-Steps panel</text>
+    <circle cx="250" cy="300" r="12" fill="#16a34a" opacity="0.9"/><text x="268" y="304" class="lbl">Global trust strip</text>
+    <circle cx="430" cy="320" r="12" fill="#dc2626" opacity="0.9"/><text x="448" y="324" class="lbl">Founder names in deals/msgs</text>
+    <circle cx="300" cy="345" r="12" fill="#16a34a" opacity="0.9"/><text x="318" y="349" class="lbl">Trust badge + % round-filled</text>
+  </g>
+
+  <!-- PLAN (top-right) -->
+  <g>
+    <circle cx="610" cy="170" r="13" fill="#dc2626" opacity="0.9"/><text x="628" y="174" class="lbl">Funding progress + Deal Score</text>
+    <circle cx="690" cy="210" r="13" fill="#dc2626" opacity="0.9"/><text x="708" y="214" class="lbl">Verification + Trust Score (global)</text>
+    <circle cx="600" cy="250" r="13" fill="#dc2626" opacity="0.9"/><text x="618" y="254" class="lbl">Discovery Insights + Recommended Action</text>
+    <circle cx="585" cy="300" r="12" fill="#16a34a" opacity="0.9"/><text x="603" y="304" class="lbl">Negotiation offer-diff + whose-turn</text>
+    <circle cx="720" cy="300" r="12" fill="#16a34a" opacity="0.9"/><text x="738" y="304" class="lbl">Net MOIC / Current Value</text>
+    <circle cx="660" cy="345" r="12" fill="#16a34a" opacity="0.9"/><text x="678" y="349" class="lbl">Portfolio Snapshot (donut + perf)</text>
+  </g>
+
+  <!-- QUICK POLISH (bottom-left, blue nice) -->
+  <g>
+    <circle cx="250" cy="430" r="11" fill="#2563eb" opacity="0.85"/><text x="266" y="434" class="lbl">"Data as of" labels</text>
+    <circle cx="360" cy="470" r="11" fill="#2563eb" opacity="0.85"/><text x="376" y="474" class="lbl">Thesis MOIC field + labeled stepper</text>
+    <circle cx="250" cy="520" r="11" fill="#2563eb" opacity="0.85"/><text x="266" y="524" class="lbl">Funnel-ordered nav</text>
+  </g>
+
+  <!-- AVOID / OUT-OF-SCOPE (bottom-right + right, grey) -->
+  <g>
+    <circle cx="600" cy="470" r="11" fill="#94a3b8" opacity="0.85"/><text x="616" y="474" class="lbl">Image thumbnails</text>
+    <circle cx="640" cy="520" r="11" fill="#2563eb" opacity="0.85"/><text x="656" y="524" class="lbl">Discovery search + chip states</text>
+    <circle cx="880" cy="500" r="12" fill="#94a3b8" opacity="0.85"/><text x="760" y="556" class="lbl">Pipeline drag-and-drop (misrepresents state)</text>
+    <circle cx="900" cy="230" r="13" fill="#94a3b8" opacity="0.85"/><text x="740" y="210" class="lbl">Data-room doc viewer / AI  [CORE — separate track]</text>
+  </g>
+
+  <!-- legend -->
+  <circle cx="140" cy="690" r="8" fill="#dc2626"/><text x="154" y="694" class="lg">Must Have</text>
+  <circle cx="270" cy="690" r="8" fill="#16a34a"/><text x="284" y="694" class="lg">High ROI</text>
+  <circle cx="390" cy="690" r="8" fill="#2563eb"/><text x="404" y="694" class="lg">Nice To Have</text>
+  <circle cx="540" cy="690" r="8" fill="#94a3b8"/><text x="554" y="694" class="lg">Ignore / Core (out of remit)</text>
+  <text x="140" y="722" class="sub">North star: on every screen the investor can see — why this fits me · can I trust it · what's my next move — from data the product already stores.</text>
+</svg>

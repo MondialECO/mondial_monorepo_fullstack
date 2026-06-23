@@ -1,0 +1,139 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="940" viewBox="0 0 1240 940" font-family="Inter, Segoe UI, Arial, sans-serif">
+  <defs>
+    <style>
+      .title{font-size:26px;font-weight:700;fill:#0f172a}
+      .sub{font-size:14px;fill:#64748b}
+      .h{font-size:12px;font-weight:700;fill:#475569;letter-spacing:.03em}
+      .scr{font-size:14px;font-weight:600;fill:#0f172a}
+      .rt{font-size:11px;font-family:Menlo,Consolas,monospace;fill:#64748b}
+      .cls{font-size:11px;font-weight:700}
+      .pct{font-size:13px;font-weight:700;fill:#0f172a}
+      .lg{font-size:12px;fill:#334155}
+      .note{font-size:11px;fill:#b91c1c}
+    </style>
+  </defs>
+  <rect width="1240" height="940" fill="#ffffff"/>
+  <text x="40" y="44" class="title">Investor UI — Figma vs Implementation Parity Scorecard</text>
+  <text x="40" y="68" class="sub">2026-06-23 · live = localhost:3000 (Demo Investor) · bars = parity vs Figma (code state) · ≈57% overall code / ≈50% live-reachable</text>
+
+  <!-- column headers -->
+  <text x="48" y="104" class="h">SCREEN / ROUTE</text>
+  <text x="560" y="104" class="h">CLASSIFICATION</text>
+  <text x="820" y="104" class="h">PARITY vs FIGMA</text>
+  <line x1="40" y1="112" x2="1200" y2="112" stroke="#e2e8f0"/>
+
+  <!-- rows: y base -->
+  <!-- helper: each row 58px tall starting at 124 -->
+  <!-- Row template colors: green #16a34a/#dcfce7 amber #ca8a04/#fef9c3 red #dc2626/#fee2e2 indigo #4f46e5/#e0e7ff -->
+
+  <!-- 1 Dashboard -->
+  <g transform="translate(0,124)">
+    <text x="48" y="20" class="scr">Investments Dashboard</text>
+    <text x="48" y="38" class="rt">/dashboard/investor</text>
+    <rect x="560" y="6" rx="9" width="150" height="22" fill="#fef9c3" stroke="#ca8a04"/><text x="568" y="21" class="cls" fill="#713f12">Major Diff</text>
+    <rect x="820" y="12" width="300" height="12" rx="6" fill="#eef2f7"/><rect x="820" y="12" width="165" height="12" rx="6" fill="#ca8a04"/>
+    <text x="1130" y="22" class="pct">55%</text>
+  </g>
+  <!-- 2 Discovery -->
+  <g transform="translate(0,182)">
+    <text x="48" y="20" class="scr">Discovery Feed</text>
+    <text x="48" y="38" class="rt">/discovery</text>
+    <rect x="560" y="6" rx="9" width="150" height="22" fill="#fef9c3" stroke="#ca8a04"/><text x="568" y="21" class="cls" fill="#713f12">Major Diff</text>
+    <rect x="820" y="12" width="300" height="12" rx="6" fill="#eef2f7"/><rect x="820" y="12" width="195" height="12" rx="6" fill="#ca8a04"/>
+    <text x="1130" y="22" class="pct">65%</text>
+  </g>
+  <!-- 3 Opp detail -->
+  <g transform="translate(0,240)">
+    <text x="48" y="20" class="scr">Opportunity Detail</text>
+    <text x="48" y="38" class="rt">/discovery/[companyId]</text>
+    <rect x="560" y="6" rx="9" width="172" height="22" fill="#fef9c3" stroke="#ca8a04"/><text x="568" y="21" class="cls" fill="#713f12">Major / Missing</text>
+    <rect x="820" y="12" width="300" height="12" rx="6" fill="#eef2f7"/><rect x="820" y="12" width="180" height="12" rx="6" fill="#ca8a04"/>
+    <text x="1130" y="22" class="pct">60%</text>
+    <text x="1060" y="38" class="note">score 0% bug · P1</text>
+  </g>
+  <!-- 4 Data room -->
+  <g transform="translate(0,298)">
+    <text x="48" y="20" class="scr">Data Room</text>
+    <text x="48" y="38" class="rt">/discovery/[id]/dataroom</text>
+    <rect x="560" y="6" rx="9" width="186" height="22" fill="#fee2e2" stroke="#dc2626"/><text x="568" y="21" class="cls" fill="#7f1d1d">Largely Missing</text>
+    <rect x="820" y="12" width="300" height="12" rx="6" fill="#eef2f7"/><rect x="820" y="12" width="75" height="12" rx="6" fill="#dc2626"/>
+    <text x="1130" y="22" class="pct">25%</text>
+    <text x="1035" y="38" class="note">biggest gap · P1</text>
+  </g>
+  <!-- 5 Term sheet RO -->
+  <g transform="translate(0,356)">
+    <text x="48" y="20" class="scr">Term Sheet (read-only)</text>
+    <text x="48" y="38" class="rt">/term-sheet</text>
+    <rect x="560" y="6" rx="9" width="150" height="22" fill="#fee2e2" stroke="#dc2626"/><text x="568" y="21" class="cls" fill="#7f1d1d">404 live</text>
+    <rect x="820" y="12" width="300" height="12" rx="6" fill="#eef2f7"/><rect x="820" y="12" width="210" height="12" rx="6" fill="#dc2626"/>
+    <text x="1125" y="22" class="pct">70% / 0%</text>
+  </g>
+  <!-- 6 Term sheet builder -->
+  <g transform="translate(0,414)">
+    <text x="48" y="20" class="scr">Term Sheet Builder</text>
+    <text x="48" y="38" class="rt">/term-sheet/build</text>
+    <rect x="560" y="6" rx="9" width="210" height="22" fill="#fee2e2" stroke="#dc2626"/><text x="568" y="21" class="cls" fill="#7f1d1d">Matches code · 404 live</text>
+    <rect x="820" y="12" width="300" height="12" rx="6" fill="#eef2f7"/><rect x="820" y="12" width="270" height="12" rx="6" fill="#dc2626"/>
+    <text x="1125" y="22" class="pct">90% / 0%</text>
+  </g>
+  <!-- 7 Thesis -->
+  <g transform="translate(0,472)">
+    <text x="48" y="20" class="scr">Investment Thesis</text>
+    <text x="48" y="38" class="rt">/thesis</text>
+    <rect x="560" y="6" rx="9" width="150" height="22" fill="#fef9c3" stroke="#ca8a04"/><text x="568" y="21" class="cls" fill="#713f12">Major Diff</text>
+    <rect x="820" y="12" width="300" height="12" rx="6" fill="#eef2f7"/><rect x="820" y="12" width="210" height="12" rx="6" fill="#ca8a04"/>
+    <text x="1130" y="22" class="pct">70%</text>
+  </g>
+  <!-- 8 Public profile -->
+  <g transform="translate(0,530)">
+    <text x="48" y="20" class="scr">Public Profile</text>
+    <text x="48" y="38" class="rt">/profile</text>
+    <rect x="560" y="6" rx="9" width="172" height="22" fill="#fef9c3" stroke="#ca8a04"/><text x="568" y="21" class="cls" fill="#713f12">Major / Missing</text>
+    <rect x="820" y="12" width="300" height="12" rx="6" fill="#eef2f7"/><rect x="820" y="12" width="135" height="12" rx="6" fill="#ca8a04"/>
+    <text x="1130" y="22" class="pct">45%</text>
+  </g>
+  <!-- 9 Profile edit -->
+  <g transform="translate(0,588)">
+    <text x="48" y="20" class="scr">Profile Edit</text>
+    <text x="48" y="38" class="rt">/profile/edit</text>
+    <rect x="560" y="6" rx="9" width="150" height="22" fill="#dcfce7" stroke="#16a34a"/><text x="568" y="21" class="cls" fill="#14532d">Minor Diff</text>
+    <rect x="820" y="12" width="300" height="12" rx="6" fill="#eef2f7"/><rect x="820" y="12" width="270" height="12" rx="6" fill="#16a34a"/>
+    <text x="1130" y="22" class="pct">90%</text>
+  </g>
+  <!-- 10 Pipeline -->
+  <g transform="translate(0,646)">
+    <text x="48" y="20" class="scr">Pipeline</text>
+    <text x="48" y="38" class="rt">/pipeline</text>
+    <rect x="560" y="6" rx="9" width="172" height="22" fill="#fef9c3" stroke="#ca8a04"/><text x="568" y="21" class="cls" fill="#713f12">Major / Missing</text>
+    <rect x="820" y="12" width="300" height="12" rx="6" fill="#eef2f7"/><rect x="820" y="12" width="150" height="12" rx="6" fill="#ca8a04"/>
+    <text x="1130" y="22" class="pct">50%</text>
+    <text x="1040" y="38" class="note">no drag-drop · P2</text>
+  </g>
+  <!-- 11 Deals -->
+  <g transform="translate(0,704)">
+    <text x="48" y="20" class="scr">Deals / Negotiation</text>
+    <text x="48" y="38" class="rt">/deals</text>
+    <rect x="560" y="6" rx="9" width="226" height="22" fill="#e0e7ff" stroke="#4f46e5"/><text x="568" y="21" class="cls" fill="#312e81">Extra · Better than Figma</text>
+    <rect x="820" y="12" width="300" height="12" rx="6" fill="#eef2f7"/><rect x="820" y="12" width="300" height="12" rx="6" fill="#4f46e5"/>
+    <text x="1118" y="22" class="pct">keep</text>
+  </g>
+  <!-- 12 Messages -->
+  <g transform="translate(0,762)">
+    <text x="48" y="20" class="scr">Messages</text>
+    <text x="48" y="38" class="rt">/messages</text>
+    <rect x="560" y="6" rx="9" width="210" height="22" fill="#e0e7ff" stroke="#4f46e5"/><text x="568" y="21" class="cls" fill="#312e81">Extra · not in Figma</text>
+    <rect x="820" y="12" width="300" height="12" rx="6" fill="#eef2f7"/><rect x="820" y="12" width="300" height="12" rx="6" fill="#4f46e5"/>
+    <text x="1118" y="22" class="pct">keep</text>
+    <text x="1030" y="38" class="note">generic labels · P2</text>
+  </g>
+
+  <line x1="40" y1="826" x2="1200" y2="826" stroke="#e2e8f0"/>
+  <!-- legend -->
+  <rect x="48" y="846" width="16" height="16" rx="4" fill="#dcfce7" stroke="#16a34a"/><text x="72" y="859" class="lg">Exact / Minor</text>
+  <rect x="200" y="846" width="16" height="16" rx="4" fill="#fef9c3" stroke="#ca8a04"/><text x="224" y="859" class="lg">Major / partly Missing</text>
+  <rect x="420" y="846" width="16" height="16" rx="4" fill="#fee2e2" stroke="#dc2626"/><text x="444" y="859" class="lg">Missing / broken live</text>
+  <rect x="630" y="846" width="16" height="16" rx="4" fill="#e0e7ff" stroke="#4f46e5"/><text x="654" y="859" class="lg">Extra (impl-only) — keep</text>
+
+  <text x="48" y="900" class="sub">Top P1s: Term-Sheet routes 404 (stale build) · Opportunity Score-Breakdown 0% · "Unknown founder" / "Entrepreneur · F4CC" names unresolved.</text>
+  <text x="48" y="922" class="sub">Biggest parity gap: Data Room document viewer (~25%). Implementation adds Deals + Messages surfaces Figma never designed.</text>
+</svg>

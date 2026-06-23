@@ -1,0 +1,52 @@
+%%{init: {'theme':'base','themeVariables':{'fontFamily':'Inter, Arial, sans-serif','fontSize':'14px','lineColor':'#64748b'}}}%%
+flowchart TD
+    classDef complete fill:#dcfce7,stroke:#16a34a,color:#14532d,stroke-width:1.5px;
+    classDef partial fill:#fef9c3,stroke:#ca8a04,color:#713f12,stroke-width:1.5px;
+    classDef dead fill:#fee2e2,stroke:#dc2626,color:#7f1d1d,stroke-width:1.5px;
+    classDef ambient fill:#e0e7ff,stroke:#4f46e5,color:#312e81,stroke-width:1.5px;
+
+    START([Login as Investor]):::ambient
+
+    P0["Phase 0 · Onboarding<br/>/onboarding (Universal Phase-1)<br/>GET /onboarding/status"]:::complete
+    P1["Phase 1 · Thesis Setup<br/>/investor/thesis<br/>GET+PUT /investor/profile"]:::complete
+    P2["Phase 2 · Discovery Feed<br/>/investor/discovery<br/>GET /companies/opportunities"]:::complete
+    P3["Phase 3 · Opportunity Detail<br/>/investor/discovery/[id]<br/>GET .../{id} · dead Save/Share btns"]:::partial
+    NDA{"Accept NDA?<br/>POST .../nda/accept"}:::ambient
+    P4["Phase 4 · Data Room<br/>/discovery/[id]/dataroom<br/>docs · session · diligence"]:::complete
+    P5["Phase 5 · Term Sheet (read-only)<br/>/discovery/[id]/term-sheet<br/>derived · Download disabled"]:::partial
+    P6["Phase 6 · Term Sheet Builder<br/>/term-sheet/build<br/>POST /investor/term-sheet/{id}/create"]:::complete
+    P7["Phase 7 · Deals / Negotiation<br/>/investor/deals<br/>counter · accept · sign · close"]:::complete
+    P8["Phase 8 · Portfolio<br/>/investor (Investments)<br/>GET /investor/stats · self-link CTAs"]:::partial
+
+    PIPE["Pipeline (Kanban)<br/>/investor/pipeline<br/>GET .../pipeline · NO drag-drop"]:::partial
+    PROF["Public Profile<br/>/investor/profile · dead ProfileStatsCard import"]:::partial
+    PEDIT["Profile Edit<br/>/investor/profile/edit"]:::complete
+    MSG["Messages<br/>/investor/messages"]:::complete
+
+    ORPH1["ORPHAN · phase-1<br/>legacy onboarding shim<br/>no inbound nav"]:::dead
+    ORPH5["DEAD · phase-5 'Deal Discovery'<br/>GET /api/investor/deals = 404<br/>no inbound nav"]:::dead
+
+    START --> P0 --> P1 --> P2 --> P3 --> NDA
+    NDA -- yes --> P4 --> P5 --> P6 -- send offer --> P7 --> P8
+    NDA -- no --> P3
+    P8 -.next steps CTA broken.-> P8
+
+    PIPE -. card click .-> P3
+    PROF --> PEDIT
+    P8 -. should link, doesn't .-> PIPE
+
+    START -. sidebar .-> PIPE
+    START -. sidebar .-> PROF
+    START -. sidebar .-> MSG
+
+    subgraph LEGACY [" Unreachable from any navigation "]
+        ORPH1
+        ORPH5
+    end
+
+    subgraph LEGEND [" Status legend "]
+        L1[Complete]:::complete
+        L2[Partial / has gaps]:::partial
+        L3[Dead / orphaned]:::dead
+        L4[Ambient / gate]:::ambient
+    end

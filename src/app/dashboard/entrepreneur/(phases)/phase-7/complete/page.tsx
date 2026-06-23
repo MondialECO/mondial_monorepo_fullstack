@@ -55,8 +55,7 @@ function Phase7CompleteContent() {
         { icon: BadgeCheck, label: 'Badge status', value: badge ? 'Active' : 'Pending', tone: badge ? 'success' : undefined, sub: badge ? 'On your profile' : 'Below threshold' },
         { icon: Rocket, label: 'Phase 8', value: 'Live now', tone: 'success', sub: 'Investor matching' },
       ]}
-      score={prog ? prog.trustScore : null}
-      scoreSub="Backend-awarded after Phase 7"
+      score={null}
       unlocked={[
         { label: 'Investor-Ready Badge', sub: badge ? 'Visible on your public profile' : 'Awarded at threshold' },
         { label: 'Phase 8 — Investor Matching is now live' },

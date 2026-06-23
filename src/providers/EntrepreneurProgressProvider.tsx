@@ -15,7 +15,6 @@ interface EntrepreneurProgressContextType {
   backendFetchFailed: boolean;
   currentPhase?: PhaseNumber;
   currentStep?: StepNumber;
-  trustScore: number;
 
   isStepComplete: (phase: PhaseNumber, step: StepNumber) => boolean;
   getPhaseProgress: (phase: PhaseNumber) => number;

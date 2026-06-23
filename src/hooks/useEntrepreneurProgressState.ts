@@ -94,7 +94,6 @@ export function useEntrepreneurProgressState() {
           currentPhase,
           currentStep: safeStep,
           completedPhases,
-          trustScore: Math.max(0, serverProgress.trustScore || 0),
           lastUpdated: Date.now(),
           phaseData: {
             ...prev.phaseData,
@@ -299,7 +298,6 @@ export function useEntrepreneurProgressState() {
     backendFetchFailed,
     currentPhase: progress?.currentPhase,
     currentStep: progress?.currentStep,
-    trustScore: progress?.trustScore ?? 0,
 
     // Queries
     isStepComplete: (phase: PhaseNumber, step: StepNumber) =>
