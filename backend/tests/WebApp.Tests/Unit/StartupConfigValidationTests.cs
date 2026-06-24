@@ -25,7 +25,7 @@ public class StartupConfigValidationTests
         ["EmailSettings:SmtpServer"] = "smtp.test",
         ["EmailSettings:Email"] = "a@b.com",
         ["EmailSettings:Password"] = "pw",
-        ["OpenRouter:ApiKey"] = "sk-or-test-key",
+        ["Anthropic:ApiKey"] = "sk-ant-test-key",
     };
 
     [Fact]
@@ -49,15 +49,15 @@ public class StartupConfigValidationTests
     }
 
     [Fact]
-    public void Throws_when_openrouter_api_key_missing()
+    public void Throws_when_anthropic_api_key_missing()
     {
         var cfg = ValidConfig();
-        cfg["OpenRouter:ApiKey"] = "";
+        cfg["Anthropic:ApiKey"] = "";
         var builder = BuilderWith(cfg);
 
         var act = () => builder.ValidateRequiredConfiguration();
         act.Should().Throw<InvalidOperationException>()
-           .WithMessage("*OpenRouter:ApiKey*");
+           .WithMessage("*Anthropic:ApiKey*");
     }
 
     [Fact]

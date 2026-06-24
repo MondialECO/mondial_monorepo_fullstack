@@ -14,6 +14,7 @@ import { useBusinessPlanSessionTimed, useStartBusinessPlan } from '@/hooks/queri
 import { creatorJourneyApi } from '@/lib/api-creator-journey';
 import { creatorAiApi } from '@/lib/api-creator-ai';
 import { hasAiOutput, type BusinessPlanOutput } from '@/types/creator/ai';
+import { toAiError, type AiError } from '@/lib/ai-errors';
 
 type SectionBadge = 'auto_built_phase2' | 'ai_researched' | 'auto_built_43' | 'auto_filled_31' | 'used_in_phase5' | null;
 const BADGE_LABEL: Record<NonNullable<SectionBadge>, string> = {
@@ -83,7 +84,7 @@ export default function BusinessPlanPage() {
   const [clarifierSessionId, setClarifierSessionId] = useState<string | null>(null);
   const [project, setProject] = useState({ problem: '', solution: '', targetUser: '' });
   const [cross, setCross] = useState({ hasForecast: false, hasGtm: false, youNeed: [] as string[], seedAsk: null as number | null });
-  const [startError, setStartError] = useState<string | null>(null);
+  const [startError, setStartError] = useState<AiError | null>(null);
   // The section being AI-rewritten + the plan version at rewrite-start, so we can clear
   // the single-section skeleton once the new (incremented) version lands.
   const [rewriting, setRewriting] = useState<{ sectionId: string; baseVersion: number } | null>(null);
@@ -143,13 +144,14 @@ export default function BusinessPlanPage() {
 
   const handleStart = async () => {
     setStartError(null);
-    if (!clarifierSessionId) { setStartError('Complete the Idea Clarifier first — the plan builds on it.'); return; }
+    if (!clarifierSessionId) { setStartError({ kind: 'other', message: 'Complete the Idea Clarifier first — the plan builds on it.' }); return; }
     try {
       const res = await startBp.mutateAsync({ clarifierSessionId });
       await creatorJourneyApi.setPhase3Session('businessPlan', res.sessionId);
       setBpSessionId(res.sessionId);
     } catch (e) {
-      setStartError(e instanceof Error ? e.message : 'Could not start the business plan.');
+      // 402 (your credits are out) vs 503/429 (provider/rate-limit) read differently.
+      setStartError(toAiError(e, 'Could not start the business plan.'));
     }
   };
 
@@ -163,7 +165,7 @@ export default function BusinessPlanPage() {
       // The skeleton clears via the version-increment effect once the splice lands.
       session.retry();
     } catch (e) {
-      setStartError(friendlyError(e, 'Rewrite failed.'));
+      setStartError({ kind: 'other', message: friendlyError(e, 'Rewrite failed.') });
       setRewriting(null);
     }
   };
@@ -203,8 +205,22 @@ export default function BusinessPlanPage() {
         <Card className="rounded-2xl border border-border bg-card p-6 space-y-4 max-w-xl">
           <h3 className="font-bold text-sm">Generate your business plan</h3>
           <p className="text-sm text-muted-foreground">We&apos;ll build a nine-section plan from your clarified idea (C-3).</p>
-          {startError && <p className="text-sm text-destructive">{startError}</p>}
-          <Button onClick={handleStart} disabled={startBp.isPending} className="gap-2">
+          {startError && (
+            <div className="space-y-2">
+              <p className="text-sm text-destructive">{startError.message}</p>
+              {/* Credits exhausted is NOT retryable — point to support, not a retry. */}
+              {startError.kind === 'credits' && (
+                <p className="text-xs text-muted-foreground">Contact support to add more AI credits to your account.</p>
+              )}
+              {/* Provider/rate-limit issues are transient — offer a retry, not an upgrade. */}
+              {(startError.kind === 'service' || startError.kind === 'rateLimited') && (
+                <Button variant="outline" size="sm" onClick={handleStart} disabled={startBp.isPending} className="gap-1.5">
+                  <RotateCw className="h-3.5 w-3.5" /> Try again
+                </Button>
+              )}
+            </div>
+          )}
+          <Button onClick={handleStart} disabled={startBp.isPending || startError?.kind === 'credits'} className="gap-2">
             {startBp.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />} Generate plan
           </Button>
         </Card>

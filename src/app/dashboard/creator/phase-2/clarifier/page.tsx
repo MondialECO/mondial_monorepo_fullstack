@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Send, Sparkles, Check, Lock, Loader2, ArrowLeft } from "lucide-react";
+import { Send, Sparkles, Check, Lock, Loader2, ArrowLeft, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { creatorJourneyApi } from "@/lib/api-creator-journey";
 import { creatorAiApi } from "@/lib/api-creator-ai";
+import { toAiError, type AiError } from "@/lib/ai-errors";
 import { isTerminalStatus, hasAiOutput } from "@/types/creator/ai";
 // ONE shared poll policy (audit R12) — never redefine these locally.
 import { POLL_INTERVAL_MS as POLL_MS, POLL_MAX_ATTEMPTS, POLL_MAX_MS } from "@/hooks/queries/creator-ai";
@@ -30,7 +31,7 @@ export default function ClarifierChatPage() {
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<AiError | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Load persisted transcript from the backend journey (resume-after-abandon).
@@ -50,7 +51,7 @@ export default function ClarifierChatPage() {
         setQuestionIndex(existing.filter((m) => m.sender === "user").length);
         setClarityScore(journey.project?.clarityScore ?? 0);
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Couldn't load your conversation.");
+        setError({ kind: "other", message: e instanceof Error ? e.message : "Couldn't load your conversation." });
       }
     })();
     return () => { active = false; };
@@ -97,7 +98,8 @@ export default function ClarifierChatPage() {
       setClarityScore(result.clarityScore);
       router.push(`/dashboard/creator/phase-2/idea-summary${result.aiParseFailed ? "?review=1" : ""}`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong finalizing your idea.");
+      // 402 (your credits are out) vs 503/429 (provider/rate-limit) read differently.
+      setError(toAiError(e, "Something went wrong finalizing your idea."));
       setFinalizing(false);
     }
   }, [router]);
@@ -116,7 +118,7 @@ export default function ClarifierChatPage() {
       setQuestionIndex(res.questionIndex);
       if (res.summaryReady) await runClarifier(mapped);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't send your message.");
+      setError(toAiError(e, "Couldn't send your message."));
     } finally {
       setSending(false);
     }
@@ -158,7 +160,21 @@ export default function ClarifierChatPage() {
             )}
           </div>
 
-          {error && <div className="px-5 py-2 text-xs text-destructive border-t border-border">{error}</div>}
+          {error && (
+            <div className="border-t border-border px-5 py-2.5 space-y-2">
+              <p className="text-xs text-destructive">{error.message}</p>
+              {/* Credits exhausted is NOT retryable — point to support, not a retry. */}
+              {error.kind === "credits" && (
+                <p className="text-[11px] text-muted-foreground">Contact support to add more AI credits to your account.</p>
+              )}
+              {/* Provider/rate-limit issues are transient — offer a retry, not an upgrade. */}
+              {(error.kind === "service" || error.kind === "rateLimited") && (
+                <Button variant="outline" size="sm" onClick={() => runClarifier(messages)} disabled={finalizing} className="h-7 gap-1.5 text-xs">
+                  <RotateCw className="h-3.5 w-3.5" /> Try again
+                </Button>
+              )}
+            </div>
+          )}
 
           <div className="flex items-center gap-2 border-t border-border p-3">
             <input

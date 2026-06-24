@@ -4,13 +4,13 @@ using Polly.Extensions.Http;
 namespace WebApp.Services.Ai.Providers
 {
     /// <summary>
-    /// Polly retry policy for the typed OpenRouter HttpClient. Retries transient
+    /// Polly retry policy for the typed Anthropic HttpClient. Retries transient
     /// HTTP failures (5xx, 408) and 429 rate-limits with caller-supplied backoff.
     /// Backoff is injected (not hard-coded) so unit tests can run with zero delay
-    /// while production uses exponential backoff. Kept low — Hangfire adds its
-    /// own retry layer, so compounding would multiply paid AI calls.
+    /// while production uses exponential backoff. Kept low — Hangfire adds its own
+    /// retry layer, so compounding would multiply paid AI calls.
     /// </summary>
-    public static class OpenRouterResiliencePolicies
+    public static class AnthropicResiliencePolicies
     {
         public static IAsyncPolicy<HttpResponseMessage> Retry(
             int maxRetries,

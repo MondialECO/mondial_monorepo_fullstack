@@ -32,9 +32,9 @@ namespace WebApp.Configuration
             Require("EmailSettings:Email");
             Require("EmailSettings:Password");
 
-            // AI infrastructure (C-1): OpenRouter is the sole provider; the app
-            // must refuse to boot without its API key (secret, env-supplied).
-            Require("OpenRouter:ApiKey");
+            // AI infrastructure (C-1): Anthropic (Claude) is the sole provider; the
+            // app must refuse to boot without its API key (secret, env-supplied).
+            Require("Anthropic:ApiKey");
 
             var jwtKey = cfg["JwtSettings:Key"];
             if (string.IsNullOrWhiteSpace(jwtKey))

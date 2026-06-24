@@ -1,3 +1,4 @@
+using MongoDB.Bson;
 using WebApp.Models.DatabaseModels.Ai;
 using WebApp.Services.Ai.Providers;
 using WebApp.Services.Ai.Prompts;
@@ -22,6 +23,9 @@ namespace WebApp.Services.Ai.Jobs
         private readonly IModelRouter _modelRouter;
         private readonly IAiProvider _provider;
         private readonly IAiJobCompletionHandler _completion;
+        private readonly IClarifierSessionStore _clarifierSessions;
+        private readonly IBusinessPlanSessionStore _businessPlanSessions;
+        private readonly IForecastSessionStore _forecastSessions;
         private readonly ILogger<AiJobRunner> _logger;
 
         public AiJobRunner(
@@ -34,6 +38,9 @@ namespace WebApp.Services.Ai.Jobs
             IModelRouter modelRouter,
             IAiProvider provider,
             IAiJobCompletionHandler completion,
+            IClarifierSessionStore clarifierSessions,
+            IBusinessPlanSessionStore businessPlanSessions,
+            IForecastSessionStore forecastSessions,
             ILogger<AiJobRunner> logger)
         {
             _requests = requests;
@@ -45,6 +52,9 @@ namespace WebApp.Services.Ai.Jobs
             _modelRouter = modelRouter;
             _provider = provider;
             _completion = completion;
+            _clarifierSessions = clarifierSessions;
+            _businessPlanSessions = businessPlanSessions;
+            _forecastSessions = forecastSessions;
             _logger = logger;
         }
 
@@ -133,6 +143,11 @@ namespace WebApp.Services.Ai.Jobs
             {
                 await _requests.SetFailedAsync(requestId, ex.Message);
 
+                // Sync the user-facing session (a SEPARATE document from the AIRequest)
+                // to Failed too. Without this the session stays "Pending" forever and the
+                // frontend poller spins to its 3-minute cap instead of surfacing the error.
+                await MarkSessionFailedAsync(request, ex.Message);
+
                 // Terminal failure: notification + realtime (best-effort, never throws).
                 await _completion.OnFailedAsync(request, ex.Message);
 
@@ -140,6 +155,45 @@ namespace WebApp.Services.Ai.Jobs
                 // Let Hangfire record the failure. Transient errors retry up to the limit;
                 // permanent ones (StopRetryOnPermanentAiFailure) go straight to Failed.
                 throw;
+            }
+        }
+
+        /// <summary>
+        /// Marks the user-facing session document failed, keyed by job type. The session id
+        /// rides on the request input under "sessionId" (set by each controller). Best-effort:
+        /// a sync failure is logged but never masks the original job error. Probe has no session.
+        /// </summary>
+        private async Task MarkSessionFailedAsync(AiRequest request, string error)
+        {
+            var sessionId =
+                request.InputPayload != null
+                && request.InputPayload.TryGetValue("sessionId", out var v)
+                && v.IsString
+                    ? v.AsString
+                    : null;
+            if (string.IsNullOrEmpty(sessionId)) return;
+            if (!Enum.TryParse<AiJobType>(request.JobType, out var jobType)) return;
+
+            try
+            {
+                switch (jobType)
+                {
+                    case AiJobType.IdeaClarifier:
+                        await _clarifierSessions.SetFailedAsync(sessionId, error);
+                        break;
+                    case AiJobType.BusinessPlan:
+                        await _businessPlanSessions.SetFailedAsync(sessionId, error);
+                        break;
+                    case AiJobType.Forecast:
+                        await _forecastSessions.SetFailedAsync(sessionId, error);
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex,
+                    "Could not sync session {SessionId} to Failed for request {RequestId} ({JobType}).",
+                    sessionId, request.Id, request.JobType);
             }
         }
     }

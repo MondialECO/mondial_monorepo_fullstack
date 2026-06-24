@@ -1,4 +1,3 @@
-using System.Net.Http.Headers;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using WebApp.Configuration.AiOptions;
@@ -6,20 +5,20 @@ using WebApp.Configuration.AiOptions;
 namespace WebApp.HealthChecks
 {
     /// <summary>
-    /// Readiness check for the OpenRouter provider. By default this is a cheap
+    /// Readiness check for the Anthropic provider. By default this is a cheap
     /// config-presence check (API key + valid base URL) — no network call — so
     /// /health/ready stays fast and offline-safe. When
-    /// <c>OpenRouter:EnableHealthCheckPing</c> is true it additionally performs
-    /// a lightweight authenticated GET /key to confirm the credential works.
+    /// <c>Anthropic:EnableHealthCheckPing</c> is true it additionally performs a
+    /// lightweight authenticated GET /v1/models to confirm the credential works.
     /// </summary>
-    public class OpenRouterHealthCheck : IHealthCheck
+    public class AnthropicHealthCheck : IHealthCheck
     {
-        private readonly OpenRouterSettings _settings;
+        private readonly AnthropicSettings _settings;
         private readonly IHttpClientFactory _httpClientFactory;
 
-        public const string PingClientName = "openrouter-health";
+        public const string PingClientName = "anthropic-health";
 
-        public OpenRouterHealthCheck(IOptions<OpenRouterSettings> settings, IHttpClientFactory httpClientFactory)
+        public AnthropicHealthCheck(IOptions<AnthropicSettings> settings, IHttpClientFactory httpClientFactory)
         {
             _settings = settings.Value;
             _httpClientFactory = httpClientFactory;
@@ -30,31 +29,32 @@ namespace WebApp.HealthChecks
             CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(_settings.ApiKey))
-                return HealthCheckResult.Unhealthy("OpenRouter:ApiKey is not configured.");
+                return HealthCheckResult.Unhealthy("Anthropic:ApiKey is not configured.");
 
             if (!Uri.TryCreate(_settings.BaseUrl, UriKind.Absolute, out var baseUri))
-                return HealthCheckResult.Unhealthy($"OpenRouter:BaseUrl is not a valid absolute URL ('{_settings.BaseUrl}').");
+                return HealthCheckResult.Unhealthy($"Anthropic:BaseUrl is not a valid absolute URL ('{_settings.BaseUrl}').");
 
             if (!_settings.EnableHealthCheckPing)
-                return HealthCheckResult.Healthy("OpenRouter configured (config-only check).");
+                return HealthCheckResult.Healthy("Anthropic configured (config-only check).");
 
             try
             {
                 var client = _httpClientFactory.CreateClient(PingClientName);
                 client.Timeout = TimeSpan.FromSeconds(Math.Min(10, _settings.TimeoutSeconds));
 
-                var url = baseUri.AbsoluteUri.TrimEnd('/') + "/key";
+                var url = baseUri.AbsoluteUri.TrimEnd('/') + "/v1/models";
                 using var req = new HttpRequestMessage(HttpMethod.Get, url);
-                req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _settings.ApiKey);
+                req.Headers.Add("x-api-key", _settings.ApiKey);
+                req.Headers.Add("anthropic-version", _settings.ApiVersion);
 
                 using var resp = await client.SendAsync(req, cancellationToken);
                 return resp.IsSuccessStatusCode
-                    ? HealthCheckResult.Healthy("OpenRouter reachable and credential valid.")
-                    : HealthCheckResult.Unhealthy($"OpenRouter ping failed: HTTP {(int)resp.StatusCode}.");
+                    ? HealthCheckResult.Healthy("Anthropic reachable and credential valid.")
+                    : HealthCheckResult.Unhealthy($"Anthropic ping failed: HTTP {(int)resp.StatusCode}.");
             }
             catch (Exception ex)
             {
-                return HealthCheckResult.Unhealthy("OpenRouter ping failed (network error).", ex);
+                return HealthCheckResult.Unhealthy("Anthropic ping failed (network error).", ex);
             }
         }
     }

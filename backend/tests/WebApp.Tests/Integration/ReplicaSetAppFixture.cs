@@ -75,7 +75,7 @@ public sealed class ReplicaSetAppFixture : IAsyncLifetime
                             ["EmailSettings:SmtpServer"] = "smtp.test",
                             ["EmailSettings:Email"] = "test@test.com",
                             ["EmailSettings:Password"] = "pw",
-                            ["OpenRouter:ApiKey"] = "sk-or-test-key",
+                            ["Anthropic:ApiKey"] = "sk-ant-test-key",
                             ["Redis:Configuration"] = _redis.GetConnectionString(),
                             ["Redis:InstanceName"] = "Test",
                         });

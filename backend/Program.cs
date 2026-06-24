@@ -339,6 +339,7 @@ builder.Services.AddCompanyServices(builder.Configuration);
 // IBackgroundJobService (registered above) is now backed by this Hangfire
 // infrastructure.
 builder.Services.AddAiServices(builder.Configuration);
+Log.Information("AI services registered (provider: Anthropic / Claude).");
 
 // Health checks: liveness (process up) is the bare endpoint; readiness
 // (tagged "ready") verifies MongoDB + Redis so the orchestrator only routes
@@ -347,10 +348,10 @@ var healthChecks = builder.Services.AddHealthChecks()
     .AddCheck<MongoHealthCheck>(
         "mongodb",
         tags: new[] { "ready" })
-    // C-1: OpenRouter readiness. Config-only by default (no network); does a
-    // live auth ping only when OpenRouter:EnableHealthCheckPing is set.
-    .AddCheck<OpenRouterHealthCheck>(
-        "openrouter",
+    // C-1: Anthropic readiness. Config-only by default (no network); does a
+    // live auth ping only when Anthropic:EnableHealthCheckPing is set.
+    .AddCheck<AnthropicHealthCheck>(
+        "anthropic",
         tags: new[] { "ready" });
 
 if (useRedis)

@@ -52,8 +52,8 @@ public sealed class AppFixture : IAsyncLifetime
                             ["EmailSettings:Password"] = "pw",
                             // C-1: required by StartupConfigValidation. The
                             // Hangfire job engine runs against the Mongo
-                            // container; no real OpenRouter call is made.
-                            ["OpenRouter:ApiKey"] = "sk-or-test-key",
+                            // container; no real Anthropic call is made.
+                            ["Anthropic:ApiKey"] = "sk-ant-test-key",
                             ["Redis:Configuration"] = _redis.GetConnectionString(),
                             ["Redis:InstanceName"] = "Test",
                         });

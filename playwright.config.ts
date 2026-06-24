@@ -30,5 +30,7 @@ export default defineConfig({
   },
 
   timeout: 60000,
-  globalTimeout: 600000,
+  // Raised so creator-ai-flow.spec.ts (three live AI jobs back-to-back, each up to
+  // ~3 min) can finish; fast specs are unaffected. Per-test overrides via test.setTimeout.
+  globalTimeout: 30 * 60 * 1000,
 });
