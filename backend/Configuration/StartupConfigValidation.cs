@@ -32,8 +32,7 @@ namespace WebApp.Configuration
             Require("EmailSettings:Email");
             Require("EmailSettings:Password");
 
-            // AI infrastructure (C-1): Anthropic (Claude) is the sole provider; the
-            // app must refuse to boot without its API key (secret, env-supplied).
+            // AI infrastructure (C-1): Anthropic (Claude) is the sole provider
             Require("Anthropic:ApiKey");
 
             var jwtKey = cfg["JwtSettings:Key"];
