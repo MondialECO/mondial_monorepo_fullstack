@@ -40,7 +40,7 @@
   "exclude": [
     "node_modules",
     "frontend/**",
-    "tests/e2e/**",
+    "e2e/**",
     "src/__tests__/**",
     "playwright.config.ts",
     "vitest.config.ts"
