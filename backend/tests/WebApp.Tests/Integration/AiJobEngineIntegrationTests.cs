@@ -46,6 +46,9 @@ public class AiJobEngineIntegrationTests : IClassFixture<AppFixture>
         Services.GetRequiredService<IModelRouter>(),
         provider,
         Services.GetRequiredService<IAiJobCompletionHandler>(),
+        Services.GetRequiredService<IClarifierSessionStore>(),
+        Services.GetRequiredService<IBusinessPlanSessionStore>(),
+        Services.GetRequiredService<IForecastSessionStore>(),
         NullLogger<AiJobRunner>.Instance);
 
     [SkippableFact]
