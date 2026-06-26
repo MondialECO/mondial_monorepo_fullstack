@@ -79,7 +79,7 @@ export default function FormationPage() {
 
   return (
     <Phase3SetupShell
-      stepEyebrow="Step 3.4"
+      stepEyebrow="Step 3.5"
       title="Company Formation & Team"
       description="A recommended legal structure for your idea, plus the specialists you'll want on board."
       stepLabel="Phase 3 Step 5 of 6"

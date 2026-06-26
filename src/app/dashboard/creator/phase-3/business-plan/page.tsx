@@ -193,11 +193,11 @@ export default function BusinessPlanPage() {
 
   return (
     <Phase3SetupShell
-      stepEyebrow="Step 3.3"
+      stepEyebrow="Step 3.2"
       title="AI Business Plan"
       description="Your plan in nine sections, drafted from your clarified idea. Edit any section or ask the AI to rewrite it."
-      stepLabel="Phase 3 Step 3 of 6"
-      progress={50}
+      stepLabel="Phase 3 Step 2 of 6"
+      progress={33}
     >
       {loading && <div className="flex items-center gap-2 text-muted-foreground py-12 justify-center"><Loader2 className="h-5 w-5 animate-spin" /> Loading…</div>}
 

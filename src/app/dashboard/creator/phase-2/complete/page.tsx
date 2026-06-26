@@ -5,6 +5,7 @@ import { ChevronRight, Sparkles, CheckCircle2, ArrowLeft, ArrowRight, ShieldChec
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
+import { creatorJourneyApi } from "@/lib/api-creator-journey";
 import { useState, useEffect } from "react";
 
 export default function Phase2CompletePage() {
@@ -17,10 +18,28 @@ export default function Phase2CompletePage() {
   const [isNavigating, setIsNavigating] = useState(false);
   const [isSkipping, setIsSkipping] = useState(false);
 
-  const handleNextPhase = () => {
+  const handleNextPhase = async () => {
     setIsNavigating(true);
     // Branding is already persisted via uploadAiLogo() in logo-tool page
     advancePhase(2);
+
+    // Poll backend to confirm phase 3 is unlocked before navigating
+    let unlocked = false;
+    for (let i = 0; i < 10; i++) {
+      await new Promise(r => setTimeout(r, 500));
+      try {
+        const { journey } = await creatorJourneyApi.get();
+        const computedStatus = (journey as any)?.computedStatus || (journey as any)?.journeyState;
+        if (computedStatus?.phase3?.status === 'available') {
+          unlocked = true;
+          break;
+        }
+      } catch (e) {
+        // continue polling on error
+      }
+    }
+
+    router.push('/dashboard/creator/phase-3');
   };
 
   const handleSkip = () => {
