@@ -1,11 +1,13 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import { Calculator, ArrowRight, ArrowLeft, TrendingUp, ShieldCheck, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useCreatorProgress } from '@/providers/CreatorProgressProvider';
 import { Phase3SetupShell } from '@/components/creator/Phase3SetupShell';
+import { creatorJourneyApi } from '@/lib/api-creator-journey';
 
 // Tier-2 reconciliation: this step used to collect price/conversion/churn/growth/
 // startup-cost inputs that DEAD-ENDED — the C-4 forecast engine never reads them; it
@@ -19,9 +21,25 @@ export default function Phase3FinancialModelingPage() {
   const router = useRouter();
   const { state, completeStep } = useCreatorProgress();
   const projectName = state.project.name || 'your concept';
+  const [isNavigating, setIsNavigating] = useState(false);
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
+    setIsNavigating(true);
     completeStep(3, 1); // Step 3.1 acknowledged
+    // Verify clarifier exists before navigating
+    try {
+      const { journey } = await creatorJourneyApi.get();
+      const p3 = journey?.phase3Data as any;
+      const p2 = journey?.phase2Data as any;
+      const clarifierSessionId = p3?.clarifierSessionId ?? p2?.clarifierSessionId;
+      if (!clarifierSessionId) {
+        alert('Complete the Idea Clarifier in Phase 2 first — the business plan builds on it.');
+        setIsNavigating(false);
+        return;
+      }
+    } catch (e) {
+      console.error('Failed to verify clarifier:', e);
+    }
     // New order: business plan (step 2) precedes the forecast (step 3).
     router.push('/dashboard/creator/phase-3/business-plan');
   };
@@ -84,8 +102,8 @@ export default function Phase3FinancialModelingPage() {
         <Button variant="ghost" onClick={() => router.push('/dashboard/creator')} className="text-xs font-bold text-muted-foreground hover:text-foreground rounded-xl self-start sm:self-center">
           <ArrowLeft className="w-4 h-4 mr-1.5" /> Back to Dashboard
         </Button>
-        <Button onClick={handleContinue} className="w-full sm:w-auto bg-primary hover:bg-primary/95 text-primary-foreground font-bold rounded-xl py-5 px-6 text-sm flex items-center justify-center gap-1.5 shadow-sm">
-          Continue to Business Plan <ArrowRight className="w-4 h-4" />
+        <Button onClick={handleContinue} disabled={isNavigating} className="w-full sm:w-auto bg-primary hover:bg-primary/95 text-primary-foreground font-bold rounded-xl py-5 px-6 text-sm flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-60">
+          Continue to Business Plan {!isNavigating && <ArrowRight className="w-4 h-4" />}
         </Button>
       </div>
     </Phase3SetupShell>
