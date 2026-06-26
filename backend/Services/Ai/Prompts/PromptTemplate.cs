@@ -174,7 +174,50 @@ namespace WebApp.Services.Ai.Prompts
                 "capital request, or valuation field of any kind.",
         };
 
+        /// <summary>
+        /// Phase 2 Idea Generator (one-shot, JSON array). Synthesizes 3 distinct
+        /// venture concepts from market sectors, observed problem, and founder
+        /// strengths. Output is an array of ideas with title, problem, solution,
+        /// marketGap, and score (0–100). The output contract is the locked
+        /// hand-off shape for the discovery-branch idea-cards flow.
+        /// </summary>
+        public static readonly PromptTemplate IdeaGenerator = new()
+        {
+            Key = "idea-generator",
+            Version = 1,
+            SystemText =
+                "You are Mondial's Idea Generator. In a single pass, synthesize 3 " +
+                "distinct, viable venture concepts grounded in the founder's market " +
+                "sectors, observed problem, and core strengths. Each concept must be " +
+                "specific and differentiated: a unique title, the problem it solves, " +
+                "a concrete solution, the market gap, and a viability score (0–100). " +
+                "Ground every statement in the input; do not invent markets or " +
+                "competitors. Concepts should span different angles or verticals " +
+                "where possible to maximize novelty. Be realistic: avoid saturated " +
+                "markets but do not overstate TAM. Score clarity, differentiation, " +
+                "and founder-strength fit (higher scores for ideas that leverage " +
+                "the strengths provided).",
+            OutputContract =
+                "Respond with ONE JSON array and nothing else — no markdown, no code " +
+                "fences, no commentary before or after. It MUST be an array of exactly " +
+                "3 objects, each matching this schema exactly (camelCase keys, all " +
+                "keys present; add no extra keys):\n" +
+                "[\n" +
+                "  {\n" +
+                "    \"title\": string (venture concept name),\n" +
+                "    \"problem\": string (the core problem it solves),\n" +
+                "    \"solution\": string (the proposed solution),\n" +
+                "    \"marketGap\": string (the market gap or opportunity),\n" +
+                "    \"score\": number (viability score, 0–100)\n" +
+                "  },\n" +
+                "  ...\n" +
+                "]\n" +
+                "MUST contain exactly 3 idea objects. score MUST be a number " +
+                "between 0 and 100 (integer or decimal). All fields must be strings " +
+                "or numbers; all keys must be present. Do not include extra fields.",
+        };
+
         /// <summary>All in-code templates seeded into <c>PromptVersions</c> on startup.</summary>
-        public static readonly IReadOnlyList<PromptTemplate> All = new[] { Probe, IdeaClarifier, BusinessPlan, Forecast };
+        public static readonly IReadOnlyList<PromptTemplate> All = new[] { Probe, IdeaGenerator, IdeaClarifier, BusinessPlan, Forecast };
     }
 }

@@ -57,6 +57,9 @@ public static class AiServiceCollectionExtensions
         services.AddSingleton<AiInsightRepository>();
         services.AddSingleton<AiCreditLedgerRepository>();
 
+        // ---- Phase 2 Discovery: Idea Generator (source-of-truth session store) ----
+        services.AddSingleton<Services.Repository.Ai.IIdeaGenerationSessionRepository, Services.Repository.Ai.IdeaGenerationSessionRepository>();
+
         // ---- C-2 Idea Clarifier (source-of-truth session store) ----
         services.AddSingleton<ClarifierSessionRepository>();
         services.AddSingleton<IClarifierSessionStore>(sp => sp.GetRequiredService<ClarifierSessionRepository>());
@@ -81,6 +84,7 @@ public static class AiServiceCollectionExtensions
         // type->handler map. C-1 ships only the Probe handler. Runner + service
         // are scoped (Hangfire resolves the runner in a fresh per-job scope).
         services.AddScoped<Services.Ai.Jobs.IAiTaskHandler, Services.Ai.Jobs.NoOpProbeHandler>();
+        services.AddScoped<Services.Ai.Jobs.IAiTaskHandler, Services.Ai.Jobs.IdeaGeneratorHandler>();   // Phase 2 Discovery
         services.AddScoped<Services.Ai.Jobs.IAiTaskHandler, Services.Ai.Jobs.IdeaClarifierHandler>(); // C-2
         services.AddScoped<Services.Ai.Jobs.IAiTaskHandler, Services.Ai.Jobs.BusinessPlanHandler>();  // C-3
         services.AddScoped<Services.Ai.Jobs.IAiTaskHandler, Services.Ai.Jobs.ForecastHandler>();      // C-4

@@ -45,6 +45,7 @@ namespace WebApp.Configuration.AiOptions
 
     public class AiFeatureFlags
     {
+        public bool IdeaGenerator { get; set; } = true;
         public bool Clarifier { get; set; } = true;
         public bool BusinessPlan { get; set; } = true;
         public bool Forecast { get; set; } = true;
