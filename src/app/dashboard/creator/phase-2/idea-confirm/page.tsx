@@ -16,6 +16,7 @@ export default function IdeaConfirmPage() {
   const concept = concepts.find((c) => c.id === selectedConceptId);
 
   const handleConfirm = () => {
+    if (!concept) return;
     // Persist the chosen concept to the backend project (source of truth).
     void creatorJourneyApi
       .updateProject({
