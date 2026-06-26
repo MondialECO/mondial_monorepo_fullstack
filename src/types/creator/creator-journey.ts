@@ -6,6 +6,25 @@ export type CreatorPhaseStatus =
   | 'completed' 
   | 'skipped_for_now';
 
+// The Phase-2 Discovery card / canvas shape rendered by the idea pages. Mirrors
+// the AI-generated ideas mapped onto display fields (see lib/creator/map-generated-ideas).
+export interface Phase2Concept {
+  id: string;
+  title: string;
+  category: string;
+  description: string;
+  score: number;
+  tam: string;
+  saturation: string;
+  similarTo: string;
+  concept: string;
+  targetUser: string;
+  coreProblem: string;
+  solution: string;
+  marketGap: string;
+  founderEdge: string;
+}
+
 export interface PhaseState {
   status: CreatorPhaseStatus;
   currentStep: number;
@@ -17,6 +36,12 @@ export interface PhaseState {
   selectedEntryPath?: 'already_have_idea' | null;
   // Conversational clarifier transcript (persisted to CreatorJourneys.phase2Data).
   chatMessages?: Array<{ id: string; sender: 'ai' | 'user'; text: string }>;
+  // Phase-2 client-cached working state (not backend-authoritative; survives via
+  // the localStorage draft). Populated by the Discovery + Naming flows.
+  generatedConcepts?: Phase2Concept[];
+  selectedConceptId?: string | null;
+  nameSuggestions?: string[];
+  discoveryInputs?: { sectors?: string[]; observedProblem?: string; strengths?: string[] };
 }
 
 export interface CreatorJourneyState {

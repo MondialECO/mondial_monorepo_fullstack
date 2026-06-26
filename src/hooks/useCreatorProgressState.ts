@@ -344,7 +344,7 @@ export function useCreatorProgressState() {
   }, [applyResponse]);
 
   // With derived status, "advancing" just means the phase's artifacts are
-  // complete — re-fetch so the authoritative computed status reflects it.
+  // complete. Update local state immediately (don't sync backend yet to avoid race).
   const advancePhase = useCallback((phaseNum: number) => {
     setState((prev) => {
       const currentKey = `phase${phaseNum}` as keyof CreatorJourneyState;
@@ -354,11 +354,7 @@ export function useCreatorProgressState() {
       if (js[nextKey]) js[nextKey] = { ...prev.journeyState[nextKey], status: 'available', currentStep: 1 };
       return { ...prev, journeyState: js };
     });
-    creatorJourneyApi
-      .get()
-      .then(({ journey, computedStatus }) => applyResponse(journey, computedStatus))
-      .catch((err) => setError(err as Error));
-  }, [applyResponse]);
+  }, []);
 
   const resetJourney = useCallback(() => {
     setState((prev) => ({

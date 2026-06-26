@@ -1,216 +1,596 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Send, Sparkles, Check, Lock, Loader2, ArrowLeft, RotateCw } from "lucide-react";
+import {
+  Check,
+  Lock,
+  Send,
+  FileText,
+  Sparkles,
+  MessageSquare,
+  Loader2,
+  ArrowRight,
+  ArrowLeft,
+  BarChart3,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { creatorJourneyApi } from "@/lib/api-creator-journey";
+import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
 import { creatorAiApi } from "@/lib/api-creator-ai";
-import { toAiError, type AiError } from "@/lib/ai-errors";
-import { isTerminalStatus, hasAiOutput } from "@/types/creator/ai";
-// ONE shared poll policy (audit R12) — never redefine these locally.
-import { POLL_INTERVAL_MS as POLL_MS, POLL_MAX_ATTEMPTS, POLL_MAX_MS } from "@/hooks/queries/creator-ai";
+import { creatorJourneyApi } from "@/lib/api-creator-journey";
+import { isTerminalStatus } from "@/types/creator/ai";
+import { toAiError } from "@/lib/ai-errors";
 
-type ChatMsg = { id: string; sender: "ai" | "user"; text: string };
+type Message = {
+  id: string;
+  sender: "ai" | "user";
+  text: string;
+};
 
+type CanvasBlock = {
+  title: string;
+  unlockQ: number;
+  value: string;
+  key: string;
+};
+
+// The opener (first question) is shown client-side before the first turn; the
+// backend chat-message endpoint drives every follow-up question and the
+// completion line, so the rest of the script lives server-side (6 questions).
+const OPENER =
+  "Welcome. Tell me your idea — in your own words, however rough it is. What problem are you solving?";
 const TOTAL_QUESTIONS = 6;
+const POLL_INTERVAL_MS = 2500;
+const MAX_POLL_ATTEMPTS = 100;
 
-const BLOCKS = [
-  { title: "Core Problem", unlockAt: 1 },
-  { title: "Target User", unlockAt: 2 },
-  { title: "Market Gap", unlockAt: 3 },
-  { title: "Solution", unlockAt: 4 },
-  { title: "Your Edge", unlockAt: 5 },
-];
-
-export default function ClarifierChatPage() {
+export default function AIClarifierPage() {
   const router = useRouter();
-  const [messages, setMessages] = useState<ChatMsg[]>([]);
-  const [questionIndex, setQuestionIndex] = useState(0);
-  const [clarityScore, setClarityScore] = useState(0);
-  const [draft, setDraft] = useState("");
-  const [sending, setSending] = useState(false);
+  const { state, setState, refetch } = useCreatorProgress();
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [inputValue, setInputValue] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+  const [currentStep, setCurrentStep] = useState(1);
+  const [ideaScore, setIdeaScore] = useState(0);
+  const [showRightPanel, setShowRightPanel] = useState(false);
+  const [summaryReady, setSummaryReady] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
-  const [error, setError] = useState<AiError | null>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const [finalizeError, setFinalizeError] = useState<string | null>(null);
 
-  // Load persisted transcript from the backend journey (resume-after-abandon).
+  const [canvasBlocks, setCanvasBlocks] = useState<CanvasBlock[]>([
+    { title: "CONCEPT", unlockQ: 2, value: "", key: "concept" },
+    { title: "TARGET USER", unlockQ: 3, value: "", key: "targetUser" },
+    { title: "CORE PROBLEM", unlockQ: 4, value: "", key: "problem" },
+    { title: "YOUR SOLUTION", unlockQ: 5, value: "", key: "solution" },
+    { title: "YOUR EDGE", unlockQ: 6, value: "", key: "creatorEdge" },
+  ]);
+
+  const [journalText, setJournalText] = useState("Your refined idea will be saved here automatically.");
+
+  // Load chat history and current status from global state
   useEffect(() => {
-    let active = true;
-    (async () => {
-      try {
-        const { journey } = await creatorJourneyApi.get();
-        if (!active) return;
-        const existing: ChatMsg[] = (journey.phase2Data?.chatMessages ?? []).map((m) => ({
-          id: m.id, sender: m.sender, text: m.text,
-        }));
-        if (existing.length === 0) {
-          existing.push({ id: "seed", sender: "ai", text: "In one sentence, what problem are you solving?" });
-        }
-        setMessages(existing);
-        setQuestionIndex(existing.filter((m) => m.sender === "user").length);
-        setClarityScore(journey.project?.clarityScore ?? 0);
-      } catch (e) {
-        setError({ kind: "other", message: e instanceof Error ? e.message : "Couldn't load your conversation." });
-      }
-    })();
-    return () => { active = false; };
-  }, []);
+    const savedMessages = state.journeyState?.phase2?.chatMessages;
+    if (savedMessages && savedMessages.length > 0) {
+      setMessages(savedMessages);
+      // Determine current step based on user answers
+      const userAnswersCount = savedMessages.filter(m => m.sender === "user").length;
+      const step = userAnswersCount + 1;
+      setCurrentStep(step);
+      setIdeaScore(Math.min((step - 1) * 20, 100));
+      setSummaryReady(userAnswersCount >= TOTAL_QUESTIONS);
 
-  useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages]);
-
-  // After the 6th answer: start the real C-2 session from the collected answers,
-  // poll to terminal (hard cap), then finalize → map output → summary.
-  const runClarifier = useCallback(async (collected: ChatMsg[]) => {
-    setFinalizing(true);
-    setError(null);
-    try {
-      const answers = collected.filter((m) => m.sender === "user").map((m) => m.text);
-      const start = await creatorAiApi.startClarifier({
-        rawIdea: {
-          title: answers[0]?.slice(0, 60) || "My idea",
-          problemStatement: answers[0] || "",
-          targetAudience: answers[1] || "",
-          existingAlternatives: answers[2] || "",
-          description: [answers[3], answers[4], answers[5]].filter(Boolean).join(" — "),
+      // Re-populate canvas blocks from user answers
+      const userMsgs = savedMessages.filter(m => m.sender === "user");
+      if (userMsgs[0]) setJournalText(userMsgs[0].text);
+      setCanvasBlocks((prev) =>
+        prev.map((block, i) => {
+          const answer = userMsgs[i]?.text;
+          return {
+            ...block,
+            value: answer ? (answer.length > 30 ? answer.substring(0, 28) + "..." : answer) : "",
+          };
+        })
+      );
+    } else {
+      // Initialize with the opener (follow-ups come from the backend).
+      const initialMsgs: Message[] = [{ id: "1", sender: "ai", text: OPENER }];
+      setMessages(initialMsgs);
+      setCurrentStep(1);
+      setIdeaScore(0);
+      setState((prev) => ({
+        ...prev,
+        journeyState: {
+          ...prev.journeyState,
+          phase2: {
+            ...prev.journeyState.phase2,
+            chatMessages: initialMsgs,
+          },
         },
-      });
-
-      let attempts = 0;
-      const startedAt = Date.now();
-      for (;;) {
-        // Shared R12 policy: cap on attempts OR wall-clock, whichever first.
-        if (attempts++ >= POLL_MAX_ATTEMPTS || Date.now() - startedAt >= POLL_MAX_MS)
-          throw new Error("The clarifier took too long. Please retry.");
-        await new Promise((r) => setTimeout(r, POLL_MS));
-        const session = await creatorAiApi.getClarifier(start.sessionId);
-        if (isTerminalStatus(session.status)) {
-          if (session.status === "Failed" && !hasAiOutput(session.status)) {
-            throw new Error(session.error || "The clarifier failed. Please retry.");
-          }
-          break;
-        }
-      }
-
-      const result = await creatorJourneyApi.finalizeClarifier(start.sessionId);
-      setClarityScore(result.clarityScore);
-      router.push(`/dashboard/creator/phase-2/idea-summary${result.aiParseFailed ? "?review=1" : ""}`);
-    } catch (e) {
-      // 402 (your credits are out) vs 503/429 (provider/rate-limit) read differently.
-      setError(toAiError(e, "Something went wrong finalizing your idea."));
-      setFinalizing(false);
+      }));
     }
-  }, [router]);
+  }, [state.journeyState?.phase2?.chatMessages, setState]);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isTyping]);
 
   const handleSend = async () => {
-    const text = draft.trim();
-    if (!text || sending || finalizing) return;
-    setSending(true);
-    setError(null);
-    setMessages((prev) => [...prev, { id: `local-${Date.now()}`, sender: "user", text }]);
-    setDraft("");
+    if (!inputValue.trim() || isTyping || summaryReady || finalizing) return;
+    const userText = inputValue.trim();
+    const userMsgId = Date.now().toString();
+    const priorMessages = messages;
+
+    // 1. Optimistically add the user message.
+    const updatedMessages = [...messages, { id: userMsgId, sender: "user" as const, text: userText }];
+    setMessages(updatedMessages);
+    setInputValue("");
+
+    // Mirror the answer onto the project + canvas preview.
+    const blockKey = canvasBlocks[currentStep - 1]?.key;
+    const projectFieldsToUpdate: Record<string, string> = {};
+    if (blockKey) projectFieldsToUpdate[blockKey] = userText;
+    if (currentStep === 1) setJournalText(userText);
+
+    setCanvasBlocks((prev) =>
+      prev.map((block) =>
+        block.unlockQ === currentStep + 1
+          ? { ...block, value: userText.length > 30 ? userText.substring(0, 28) + "..." : userText }
+          : block
+      )
+    );
+
+    setState((prev) => ({
+      ...prev,
+      project: { ...prev.project, ...projectFieldsToUpdate, exists: true },
+      journeyState: {
+        ...prev.journeyState,
+        phase2: { ...prev.journeyState.phase2, chatMessages: updatedMessages },
+      },
+    }));
+
+    // 2. Real AI turn — backend persists the transcript and returns the next question.
+    setIsTyping(true);
     try {
-      const res = await creatorJourneyApi.chatMessage(text);
-      const mapped: ChatMsg[] = res.messages.map((m) => ({ id: m.id, sender: m.sender, text: m.text }));
-      setMessages(mapped);
-      setQuestionIndex(res.questionIndex);
-      if (res.summaryReady) await runClarifier(mapped);
-    } catch (e) {
-      setError(toAiError(e, "Couldn't send your message."));
+      const res = await creatorJourneyApi.chatMessage(userText);
+      const lastAi = [...res.messages].reverse().find((m) => m.sender === "ai");
+      const aiText = lastAi?.text ?? "Thanks — let's continue.";
+      const aiMsgId = (Date.now() + 1).toString();
+      const finalMessages = [...updatedMessages, { id: aiMsgId, sender: "ai" as const, text: aiText }];
+      setMessages(finalMessages);
+      setCurrentStep(res.questionIndex + 1);
+      setIdeaScore(Math.min(Math.round((res.questionIndex / TOTAL_QUESTIONS) * 100), 100));
+      setSummaryReady(res.summaryReady);
+
+      setState((prev) => ({
+        ...prev,
+        journeyState: {
+          ...prev.journeyState,
+          phase2: { ...prev.journeyState.phase2, chatMessages: finalMessages },
+        },
+      }));
+    } catch (err) {
+      // Roll back the optimistic turn, restore the draft, and surface the reason.
+      const note: Message = { id: `err-${Date.now()}`, sender: "ai", text: toAiError(err).message };
+      setMessages([...priorMessages, note]);
+      setInputValue(userText);
+      setState((prev) => ({
+        ...prev,
+        journeyState: {
+          ...prev.journeyState,
+          phase2: { ...prev.journeyState.phase2, chatMessages: priorMessages },
+        },
+      }));
     } finally {
-      setSending(false);
+      setIsTyping(false);
     }
   };
 
-  const clarityLabel = clarityScore >= 75 ? "Sharp" : clarityScore >= 55 ? "Developing" : "Vague";
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  // Poll the C-2 clarifier session until it reaches a terminal status.
+  const pollClarifier = async (sessionId: string) => {
+    for (let i = 0; i < MAX_POLL_ATTEMPTS; i++) {
+      const session = await creatorAiApi.getClarifier(sessionId);
+      if (isTerminalStatus(session.status)) return session;
+      await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+    }
+    return null;
+  };
+
+  const handleComplete = async () => {
+    if (finalizing) return;
+    setFinalizeError(null);
+    setFinalizing(true);
+    try {
+      const answers = messages.filter((m) => m.sender === "user").map((m) => m.text);
+      const rawIdea = {
+        title: state.project?.name?.trim() || (answers[0]?.slice(0, 60) ?? "My idea"),
+        problemStatement: answers[0] ?? "",
+        targetAudience: answers[1] ?? "",
+        description: answers[3] ?? answers[0] ?? "",
+        existingAlternatives: answers[2] ?? "",
+      };
+
+      // Start the C-2 AI clarifier (1 credit), poll it, then map onto the project.
+      const { sessionId } = await creatorAiApi.startClarifier({ rawIdea });
+      const session = await pollClarifier(sessionId);
+      if (!session) throw new Error("This is taking longer than expected. Please try again.");
+
+      // finalize-clarifier is tolerant of a partial/failed output (falls back to a
+      // 50 clarity score + editable summary), so we map on any terminal status.
+      const result = await creatorJourneyApi.finalizeClarifier(sessionId);
+
+      // Compute final values with proper fallbacks BEFORE spreading result.project
+      const firstAnswer = answers[0]?.trim() || "";
+      const clarityScoreFinal = Math.round(result.clarityScore ?? 50);
+      const conceptFinal =
+        (result.project?.concept as string) ||
+        firstAnswer.slice(0, 100) ||
+        "My Idea";
+
+      setState((prev) => ({
+        ...prev,
+        project: {
+          ...prev.project,
+          ...(result.project || {}),
+          clarityScore: clarityScoreFinal,
+          concept: conceptFinal,
+          exists: true,
+        },
+      }));
+
+      // Navigate — idea-summary will show data from local state immediately
+      router.push("/dashboard/creator/phase-2/idea-summary");
+    } catch (err) {
+      setFinalizeError(toAiError(err).message);
+      setFinalizing(false);
+    }
+  };
+
+  const unlockedCount = canvasBlocks.filter((b) => currentStep >= b.unlockQ).length;
 
   return (
-    <div className="w-full min-h-screen flex flex-col bg-background text-foreground">
-      <header className="flex items-center justify-between border-b border-border bg-card/50 px-6 py-4">
-        <Button variant="ghost" onClick={() => router.push("/dashboard/creator/phase-2")} className="gap-2 text-xs font-semibold text-muted-foreground">
-          <ArrowLeft className="h-4 w-4" /> Back
+    <div className="flex flex-col h-full w-full bg-background text-foreground">
+      {/* ── HEADER ── */}
+      <header className="flex items-center justify-between border-b border-border bg-card/80 backdrop-blur-sm px-4 sm:px-6 py-3 shrink-0 z-10">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => router.push("/dashboard/creator/phase-2")}
+          className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Back
         </Button>
         <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-          <Sparkles className="h-3 w-3" /> AI Idea Clarifier
+          <Sparkles className="h-3 w-3" />
+          <span className="hidden sm:inline">Phase 2 of 6 —</span> Refinement Chat
         </div>
       </header>
 
-      <div className="flex items-center justify-center gap-2 py-4">
-        {Array.from({ length: TOTAL_QUESTIONS }).map((_, i) => (
-          <span key={i} className={`h-2.5 w-2.5 rounded-full transition-colors ${i < questionIndex ? "bg-primary" : "bg-muted"}`} />
-        ))}
+      {/* ── PROGRESS BAR ── */}
+      <div className="h-[3px] w-full bg-muted shrink-0">
+        <div
+          className="h-full bg-primary transition-all duration-500 ease-out"
+          style={{ width: `${Math.min(28 + (currentStep - 1) * 10, 78)}%` }}
+        />
       </div>
 
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 px-6 pb-6 max-w-6xl mx-auto w-full">
-        <div className="lg:col-span-2 flex flex-col rounded-2xl border border-border bg-card overflow-hidden">
-          <div ref={scrollRef} className="flex-1 overflow-y-auto p-5 space-y-4 max-h-[60vh]">
-            {messages.map((m) => (
-              <div key={m.id} className={`flex ${m.sender === "user" ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${m.sender === "user" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"}`}>
-                  {m.text}
+      {/* ── THREE-COLUMN WORKSPACE ── */}
+      <div className="flex-1 flex min-h-0 overflow-hidden">
+
+        {/* ─── LEFT SIDEBAR (hidden below lg) ─── */}
+        <aside className="hidden lg:flex w-[220px] border-r border-border flex-col justify-between p-5 bg-card shrink-0 overflow-y-auto">
+          {/* Stepper */}
+          <div className="space-y-1">
+            {/* Phase 1 — done */}
+            <div className="flex items-center gap-3 px-2 py-2 rounded-lg text-xs font-medium text-muted-foreground">
+              <div className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                <Check className="w-3 h-3" strokeWidth={3} />
+              </div>
+              <span className="line-through">Phase 1: Identity & KYC</span>
+            </div>
+
+            {/* Phase 2 — active */}
+            <div className="flex items-center gap-3 px-2 py-2 rounded-lg bg-primary/5 border border-primary/10 text-xs font-bold text-foreground">
+              <div className="w-5 h-5 rounded-full border-2 border-primary flex items-center justify-center shrink-0">
+                <div className="w-2.5 h-2.5 rounded-full bg-primary" />
+              </div>
+              <span className="flex-1">Phase 2: Refinement</span>
+              <span className="bg-primary/10 text-primary text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                active
+              </span>
+            </div>
+
+            {/* Phases 3-6 — locked */}
+            {["Concept & Name", "Logo & Branding", "AI Masterplan", "Offer Setup"].map((phase, idx) => (
+              <div
+                key={phase}
+                className="flex items-center gap-3 px-2 py-2 rounded-lg text-xs font-medium text-muted-foreground"
+              >
+                <Lock className="w-3.5 h-3.5 text-muted shrink-0" />
+                <span>
+                  Phase {idx + 3}: {phase}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* Idea Journal */}
+          <div className="border border-dashed border-border rounded-xl p-4 flex flex-col gap-3 bg-muted/30 mt-5">
+            <span className="text-[10px] font-bold text-muted-foreground tracking-wider uppercase">
+              Idea Journal
+            </span>
+            <div className="flex items-start gap-2.5">
+              <FileText className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+              <p className="text-xs text-muted-foreground leading-relaxed break-words font-medium line-clamp-4">
+                {journalText}
+              </p>
+            </div>
+          </div>
+        </aside>
+
+        {/* ─── MIDDLE: CHAT PANEL (always visible, takes remaining space) ─── */}
+        <section className="flex-1 flex flex-col min-w-0 min-h-0 bg-card">
+          {/* Chat header */}
+          <div className="px-4 sm:px-6 py-3.5 border-b border-border flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
+                <MessageSquare className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="font-bold text-sm text-foreground truncate">AI Idea Clarifier</h2>
+                <p className="text-[10px] text-muted-foreground font-medium mt-0.5 truncate">
+                  5 focused questions to sharpen your idea
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 shrink-0 ml-3">
+              {/* Step dots */}
+              <div className="flex gap-1">
+                {[1, 2, 3, 4, 5].map((step) => (
+                  <div
+                    key={step}
+                    className={`w-4 h-1.5 rounded-full transition-colors duration-300 ${
+                      step < currentStep
+                        ? "bg-primary"
+                        : step === currentStep && currentStep <= 5
+                          ? "bg-primary animate-pulse"
+                          : "bg-muted"
+                    }`}
+                  />
+                ))}
+              </div>
+
+              {/* Mobile: toggle right panel */}
+              <Button
+                variant="outline"
+                size="sm"
+                className="lg:hidden flex items-center gap-1.5 text-xs h-8 px-2.5 rounded-lg"
+                onClick={() => setShowRightPanel(true)}
+              >
+                <BarChart3 className="h-3.5 w-3.5" />
+                <span className="font-bold">{ideaScore}</span>
+              </Button>
+            </div>
+          </div>
+
+          {/* Chat messages — scrollable */}
+          <div className="flex-1 overflow-y-auto min-h-0 p-4 sm:p-6 space-y-4">
+            {messages.map((msg, idx) => (
+              <div
+                key={msg.id}
+                className={`flex items-start gap-3 max-w-[88%] sm:max-w-[80%] animate-in fade-in-0 slide-in-from-bottom-2 duration-300 ${
+                  msg.sender === "user" ? "ml-auto flex-row-reverse" : "mr-auto"
+                }`}
+                style={{ animationDelay: `${idx * 50}ms` }}
+              >
+                {msg.sender === "ai" && (
+                  <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-xs shrink-0 select-none shadow-sm">
+                    M
+                  </div>
+                )}
+                <div
+                  className={`px-4 py-3 text-[13px] sm:text-sm font-medium leading-relaxed ${
+                    msg.sender === "user"
+                      ? "bg-primary text-primary-foreground rounded-2xl rounded-tr-sm shadow-sm"
+                      : "bg-muted text-foreground rounded-2xl rounded-tl-sm border border-border"
+                  }`}
+                >
+                  {msg.text}
                 </div>
               </div>
             ))}
-            {finalizing && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" /> Building your clarified summary…
+
+            {isTyping && (
+              <div className="flex items-start gap-3 max-w-[80%] animate-in fade-in-0 duration-200">
+                <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-xs shrink-0 select-none shadow-sm">
+                  M
+                </div>
+                <div className="px-4 py-3 rounded-2xl rounded-tl-sm bg-muted border border-border flex items-center gap-2">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
+                  <span className="text-xs text-muted-foreground font-medium">Thinking...</span>
+                </div>
+              </div>
+            )}
+            <div ref={chatEndRef} />
+          </div>
+
+          {/* Chat input — pinned bottom */}
+          <div className="p-3 sm:p-4 border-t border-border bg-card shrink-0">
+            {!summaryReady ? (
+              <>
+                <div className="relative flex items-end gap-2 border border-border rounded-xl focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20 transition-all bg-background p-1">
+                  <textarea
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    onKeyDown={handleKeyPress}
+                    placeholder="Type your answer..."
+                    rows={1}
+                    disabled={isTyping}
+                    className="flex-1 resize-none border-none outline-none py-2.5 px-3 text-sm text-foreground placeholder:text-muted-foreground bg-transparent min-h-[40px] max-h-[120px]"
+                  />
+                  <Button
+                    onClick={handleSend}
+                    disabled={!inputValue.trim() || isTyping}
+                    size="icon"
+                    className="w-9 h-9 rounded-lg shrink-0"
+                  >
+                    <Send className="w-4 h-4" />
+                  </Button>
+                </div>
+                <span className="block text-[10px] text-center text-muted-foreground mt-2">
+                  Press Enter to send · Shift+Enter for new line
+                </span>
+              </>
+            ) : (
+              <div className="w-full flex flex-col items-center gap-3 py-4 text-center">
+                <div className="w-11 h-11 rounded-full bg-green-100 dark:bg-green-950/30 flex items-center justify-center text-green-600 dark:text-green-400">
+                  <Check className="w-5 h-5" strokeWidth={3} />
+                </div>
+                <h3 className="font-bold text-foreground text-sm">Idea Clarified Successfully!</h3>
+                {finalizeError && (
+                  <p className="text-xs text-destructive max-w-xs">{finalizeError}</p>
+                )}
+                <Button
+                  onClick={handleComplete}
+                  disabled={finalizing}
+                  className="font-semibold py-2.5 px-6 rounded-xl flex items-center gap-2 text-xs shadow-sm disabled:opacity-60"
+                >
+                  {finalizing ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Building your summary…
+                    </>
+                  ) : (
+                    <>
+                      {finalizeError ? "Try again" : "Proceed to Concept & Name"}
+                      <ArrowRight className="h-4 w-4" />
+                    </>
+                  )}
+                </Button>
               </div>
             )}
           </div>
+        </section>
 
-          {error && (
-            <div className="border-t border-border px-5 py-2.5 space-y-2">
-              <p className="text-xs text-destructive">{error.message}</p>
-              {/* Credits exhausted is NOT retryable — point to support, not a retry. */}
-              {error.kind === "credits" && (
-                <p className="text-[11px] text-muted-foreground">Contact support to add more AI credits to your account.</p>
-              )}
-              {/* Provider/rate-limit issues are transient — offer a retry, not an upgrade. */}
-              {(error.kind === "service" || error.kind === "rateLimited") && (
-                <Button variant="outline" size="sm" onClick={() => runClarifier(messages)} disabled={finalizing} className="h-7 gap-1.5 text-xs">
-                  <RotateCw className="h-3.5 w-3.5" /> Try again
-                </Button>
-              )}
+        {/* ─── RIGHT SIDEBAR — desktop: always visible / mobile: slide-over ─── */}
+
+        {/* Mobile overlay backdrop */}
+        {showRightPanel && (
+          <div
+            className="fixed inset-0 bg-black/40 z-40 lg:hidden animate-in fade-in-0 duration-200"
+            onClick={() => setShowRightPanel(false)}
+          />
+        )}
+
+        <aside
+          className={`
+            ${showRightPanel ? "translate-x-0" : "translate-x-full"}
+            lg:translate-x-0
+            fixed right-0 top-0 bottom-0 z-50
+            lg:static lg:z-auto
+            w-[280px] lg:w-[260px]
+            border-l border-border
+            p-5 flex flex-col items-center gap-5
+            bg-card shrink-0 overflow-y-auto
+            transition-transform duration-300 ease-out
+          `}
+        >
+          {/* Close button — mobile only */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="lg:hidden absolute top-3 right-3 h-8 w-8 rounded-lg"
+            onClick={() => setShowRightPanel(false)}
+          >
+            <X className="w-4 h-4" />
+          </Button>
+
+          {/* Idea Score Ring */}
+          <div className="flex flex-col items-center pt-2 lg:pt-0">
+            <div className="relative w-28 h-28 flex items-center justify-center mb-2">
+              <svg className="w-full h-full transform -rotate-90">
+                <circle
+                  cx="56"
+                  cy="56"
+                  r="48"
+                  className="text-muted"
+                  strokeWidth="6"
+                  fill="transparent"
+                  stroke="currentColor"
+                />
+                <circle
+                  cx="56"
+                  cy="56"
+                  r="48"
+                  className="text-primary transition-all duration-700 ease-out"
+                  strokeWidth="6"
+                  fill="transparent"
+                  strokeDasharray={2 * Math.PI * 48}
+                  strokeDashoffset={2 * Math.PI * 48 * (1 - ideaScore / 100)}
+                  strokeLinecap="round"
+                  stroke="currentColor"
+                />
+              </svg>
+              <span className="absolute text-lg font-extrabold text-foreground tabular-nums">
+                {ideaScore}{" "}
+                <span className="text-[10px] font-semibold text-muted-foreground">/ 100</span>
+              </span>
             </div>
-          )}
-
-          <div className="flex items-center gap-2 border-t border-border p-3">
-            <input
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") handleSend(); }}
-              placeholder="Type your answer…"
-              aria-label="Message"
-              disabled={sending || finalizing}
-              className="flex-1 rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:border-primary disabled:opacity-60"
-            />
-            <Button onClick={handleSend} disabled={sending || finalizing || !draft.trim()} aria-label="Send message" className="rounded-xl">
-              {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            </Button>
+            <span className="text-[10px] font-bold text-muted-foreground tracking-wider uppercase text-center">
+              Idea Score
+            </span>
+            <span className="text-[10px] text-muted-foreground font-medium mt-0.5">
+              {unlockedCount}/5 blocks unlocked
+            </span>
           </div>
-        </div>
 
-        <div className="space-y-4">
-          <div className="rounded-2xl border border-border bg-card p-5 text-center">
-            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Clarity Score</div>
-            <div className="text-4xl font-extrabold text-primary">{clarityScore}</div>
-            <div className="text-xs text-muted-foreground mt-1">{clarityLabel}</div>
-          </div>
-          <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
-            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Building Blocks</div>
-            {BLOCKS.map((b) => {
-              const unlocked = questionIndex >= b.unlockAt;
+          {/* Canvas Blocks */}
+          <div className="w-full space-y-2.5">
+            {canvasBlocks.map((block) => {
+              const isLocked = currentStep < block.unlockQ;
               return (
-                <div key={b.title} className="flex items-center gap-2 text-sm">
-                  {unlocked ? <Check className="h-4 w-4 text-primary" /> : <Lock className="h-4 w-4 text-muted-foreground" />}
-                  <span className={unlocked ? "text-foreground" : "text-muted-foreground"}>{b.title}</span>
+                <div
+                  key={block.title}
+                  className={`border rounded-xl p-3.5 flex items-center justify-between transition-all duration-300 ${
+                    isLocked
+                      ? "bg-muted/40 border-border opacity-60"
+                      : "bg-card border-primary/20 shadow-sm ring-1 ring-primary/5"
+                  }`}
+                >
+                  <div className="min-w-0">
+                    <span className="block text-[10px] font-bold text-foreground tracking-wide uppercase">
+                      {block.title}
+                    </span>
+                    <span
+                      className={`block text-xs font-semibold mt-0.5 truncate max-w-[160px] ${
+                        isLocked ? "text-muted-foreground" : "text-primary"
+                      }`}
+                    >
+                      {isLocked ? `Unlocks after Q${block.unlockQ - 1}` : block.value || "Filled ✓"}
+                    </span>
+                  </div>
+                  {isLocked ? (
+                    <Lock className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                  ) : (
+                    <div className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                      <Check className="w-3 h-3" strokeWidth={3} />
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
-        </div>
+        </aside>
       </div>
     </div>
   );

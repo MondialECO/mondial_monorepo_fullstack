@@ -24,23 +24,23 @@ public static class AiServiceCollectionExtensions
     public static IServiceCollection AddAiServices(this IServiceCollection services, IConfiguration configuration)
     {
         // ---- AI configuration binding ----
-        services.Configure<AnthropicSettings>(configuration.GetSection(AnthropicSettings.SectionName));
+        services.Configure<OpenRouterSettings>(configuration.GetSection(OpenRouterSettings.SectionName));
         services.Configure<AiSettings>(configuration.GetSection(AiSettings.SectionName));
 
-        // ---- Anthropic (Claude) provider: typed HttpClient + model routing ----
+        // ---- OpenRouter provider: typed HttpClient + model routing ----
         services.AddSingleton<IModelRouter, ModelRouter>();
 
-        // Typed client. Auth (x-api-key) + anthropic-version headers + BaseAddress
-        // come from AnthropicSettings; a Polly retry policy (429/5xx) is layered on top.
-        services.AddHttpClient<IAiProvider, AnthropicClient>((sp, client) =>
+        // Typed client. Auth (Bearer) + attribution headers + BaseAddress come from
+        // OpenRouterSettings; a Polly retry policy (429/5xx) is layered on top.
+        services.AddHttpClient<IAiProvider, OpenRouterClient>((sp, client) =>
         {
-            var s = sp.GetRequiredService<IOptions<AnthropicSettings>>().Value;
-            AnthropicClient.ConfigureHttpClient(client, s);
+            var s = sp.GetRequiredService<IOptions<OpenRouterSettings>>().Value;
+            OpenRouterClient.ConfigureHttpClient(client, s);
         })
         .AddPolicyHandler((sp, _) =>
         {
-            var s = sp.GetRequiredService<IOptions<AnthropicSettings>>().Value;
-            return AnthropicResiliencePolicies.Default(s.MaxRetries);
+            var s = sp.GetRequiredService<IOptions<OpenRouterSettings>>().Value;
+            return OpenRouterResiliencePolicies.Default(s.MaxRetries);
         });
 
         // Separate client for the readiness ping (opt-in); headers set per-request.

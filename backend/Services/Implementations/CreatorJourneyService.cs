@@ -295,7 +295,7 @@ namespace WebApp.Services.Implementations
 
         public async Task<CreatorJourney> ApplyClarifierMappingAsync(
             string userId, string clarifierSessionId, string problem, string targetUser,
-            string solution, double clarityScore, List<string> tags)
+            string solution, double clarityScore, List<string> tags, string marketGap = "", string creatorEdge = "")
         {
             var j = await GetOrCreateAsync(userId);
             var p = j.Project ??= new CreatorJourneyProject();
@@ -303,6 +303,8 @@ namespace WebApp.Services.Implementations
             p.TargetUser = targetUser ?? p.TargetUser;
             p.Solution = solution ?? p.Solution;
             p.ClarityScore = clarityScore;
+            if (!string.IsNullOrWhiteSpace(marketGap)) p.MarketGap = marketGap;
+            if (!string.IsNullOrWhiteSpace(creatorEdge)) p.CreatorEdge = creatorEdge;
             if (tags != null && tags.Count > 0) p.Tags = tags;
 
             (j.Phase2Data ??= new CreatorPhase2Data()).ClarifierSessionId = clarifierSessionId;

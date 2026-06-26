@@ -3,12 +3,6 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace WebApp.Models.DatabaseModels.Ai
 {
-    /// <summary>
-    /// Phase 2 Idea Generation session: synthesizes 3 venture concepts from
-    /// sectors, observed problem, and strengths. Stored in MongoDB, source of truth
-    /// for the discovery branch (steps 2–5). Status workflow: Pending → Processing →
-    /// Completed/Failed/NeedsReview (terminal).
-    /// </summary>
     [BsonIgnoreExtraElements]
     public class IdeaGenerationSession
     {
@@ -20,25 +14,49 @@ namespace WebApp.Models.DatabaseModels.Ai
         [BsonIgnoreIfNull]
         public string? BusinessIdeaId { get; set; }
 
-        public string Status { get; set; } = "Pending";
+        public string Status { get; set; } = "Pending"; // Pending/Processing/Completed/Failed/NeedsReview
 
-        /// <summary>Input payload: sectors[], observedProblem, strengths[]</summary>
+        public IdeaGenerationInput Input { get; set; } = new();
+
         [BsonIgnoreIfNull]
-        public BsonDocument? Input { get; set; }
+        public IdeaGenerationOutput? Output { get; set; }
 
-        /// <summary>Output: ideas[] array. Populated when status=Completed.</summary>
-        [BsonIgnoreIfNull]
-        public BsonDocument? Output { get; set; }
-
-        /// <summary>The job request ID (Hangfire) that processed this session.</summary>
         [BsonIgnoreIfNull]
         public string? RequestId { get; set; }
 
-        /// <summary>Error message if status=Failed or NeedsReview.</summary>
         [BsonIgnoreIfNull]
-        public string? Error { get; set; }
+        public string? ErrorMessage { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    }
+
+    public class IdeaGenerationInput
+    {
+        public string[] Sectors { get; set; } = Array.Empty<string>();
+        public string ObservedProblem { get; set; } = "";
+        public string[] Strengths { get; set; } = Array.Empty<string>();
+    }
+
+    public class IdeaGenerationOutput
+    {
+        public GeneratedIdea[] Ideas { get; set; } = Array.Empty<GeneratedIdea>();
+        public int SchemaVersion { get; set; } = 1;
+    }
+
+    public class GeneratedIdea
+    {
+        public string Title { get; set; } = "";
+        public string Problem { get; set; } = "";
+        public string Solution { get; set; } = "";
+        public string MarketGap { get; set; } = "";
+        public double Score { get; set; } // 0-100
+
+        // Intelligence-panel fields (qualitative — small models estimate these).
+        public string Tam { get; set; } = "";              // e.g. "$2.5B"
+        public string Saturation { get; set; } = "";       // Low / Medium / High
+        public string SimilarTo { get; set; } = "";        // comparable company
+        public string TargetUser { get; set; } = "";       // primary customer segment
+        public string FounderEdge { get; set; } = "";      // why this founder wins
     }
 }

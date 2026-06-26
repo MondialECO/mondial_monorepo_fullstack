@@ -7,13 +7,6 @@ using WebApp.Services.Repository.Ai;
 
 namespace WebApp.Services.Ai.Jobs
 {
-    /// <summary>
-    /// Phase 2 Idea Generator handler (one-shot). Mirrors IdeaClarifierHandler pattern.
-    /// PrepareAsync shapes the request's sectors/problem/strengths into prompt context.
-    /// InterpretAsync parses the model's JSON array of ideas, validates output contract,
-    /// writes the IdeaGenerationSession and AiInsight. Parse/validation failure:
-    /// session marked NeedsReview (raw text preserved on response), job completes normally.
-    /// </summary>
     public sealed class IdeaGeneratorHandler : IAiTaskHandler
     {
         private const int MaxOutputTokens = 2000;
@@ -39,32 +32,30 @@ namespace WebApp.Services.Ai.Jobs
         {
             var input = request.InputPayload;
 
-            string ArrayField(string key) =>
-                input?.TryGetValue(key, out var v) == true && v.IsBsonArray
-                    ? string.Join(", ", v.AsBsonArray.Select(e => e.AsString))
-                    : string.Empty;
-
-            string StringField(string key) =>
-                input?.TryGetValue(key, out var v) == true && v.IsString
-                    ? v.AsString.Trim()
-                    : string.Empty;
-
-            var sectors = ArrayField("sectors");
-            var problem = StringField("observedProblem");
-            var strengths = ArrayField("strengths");
+            var sectors = input?.TryGetValue("sectors", out var sv) == true && sv.IsBsonArray
+                ? string.Join(", ", sv.AsBsonArray.Select(e => e.AsString))
+                : "";
+            var problem = input?.TryGetValue("observedProblem", out var pv) == true && pv.IsString
+                ? pv.AsString.Trim()
+                : "";
+            var strengths = input?.TryGetValue("strengths", out var stv) == true && stv.IsBsonArray
+                ? string.Join(", ", stv.AsBsonArray.Select(e => e.AsString))
+                : "";
 
             var contextLines = new List<string>();
-            if (sectors.Length > 0) contextLines.Add($"Market sectors: {sectors}");
-            if (problem.Length > 0) contextLines.Add($"Observed problem: {problem}");
-            if (strengths.Length > 0) contextLines.Add($"Core strengths: {strengths}");
+            if (!string.IsNullOrEmpty(sectors)) contextLines.Add($"Market sectors: {sectors}");
+            if (!string.IsNullOrEmpty(problem)) contextLines.Add($"Observed problem: {problem}");
+            if (!string.IsNullOrEmpty(strengths)) contextLines.Add($"Core strengths: {strengths}");
 
             var userContext = contextLines.Count > 0
                 ? string.Join("\n", contextLines)
                 : "(no input provided)";
 
             const string task =
-                "Generate 3 distinct venture concepts optimized for market viability, TAM, and competitive saturation. " +
-                "Return ONLY a JSON array with objects: { title, problem, solution, marketGap, score (0-100) }.";
+                "Generate exactly 3 distinct venture concepts optimized for market viability. " +
+                "Return ONLY a JSON array with objects: { title, problem, solution, marketGap, " +
+                "score (0-100), tam, saturation (Low/Medium/High), similarTo, targetUser, founderEdge }. " +
+                "No markdown, no code fences, no commentary.";
 
             return Task.FromResult(new AiHandlerRequest(
                 PromptKey: PromptTemplate.IdeaGenerator.Key,
@@ -81,7 +72,7 @@ namespace WebApp.Services.Ai.Jobs
                 ? sid.AsString
                 : null;
 
-            if (!IdeaGeneratorOutputParser.TryParse(completion.Text, out var contract, out var parseError))
+            if (!IdeaGeneratorOutputParser.TryParse(completion.Text, out var output, out var parseError))
             {
                 _logger.LogWarning("IdeaGenerator output for request {RequestId} could not be parsed: {Error}",
                     request.Id, parseError);
@@ -94,40 +85,31 @@ namespace WebApp.Services.Ai.Jobs
 
             if (sessionId != null)
             {
-                await _sessions.SetCompletedAsync(sessionId, contract, cancellationToken);
+                await _sessions.SetCompletedAsync(sessionId, output, cancellationToken);
 
                 await _insights.WriteAsync(new AiInsight
                 {
                     OwnerUserId = request.OwnerUserId,
                     Type = AiJobType.IdeaGenerator.ToString(),
-                    Payload = contract,
+                    Payload = BsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(output)),
                     SourceRequestId = request.Id,
                     CreatedAt = DateTime.UtcNow,
                 });
             }
             else
             {
-                _logger.LogWarning("IdeaGenerator request {RequestId} had no sessionId; skipped session/insight writes.",
-                    request.Id);
+                _logger.LogWarning("IdeaGenerator request {RequestId} had no sessionId; skipped session/insight writes.", request.Id);
             }
 
-            return new AiHandlerResult(OutputPayload: contract);
+            return new AiHandlerResult(OutputPayload: null);
         }
     }
 
-    /// <summary>
-    /// Tolerant parser for the model's idea generation output. Extracts the first
-    /// JSON array, validates required fields per idea, clamps score to 0–100 using
-    /// .ToDouble() (not .AsDouble() which crashes on BsonInt32), wraps in
-    /// { ideas: [...], schemaVersion: 1 } document.
-    /// </summary>
     internal static class IdeaGeneratorOutputParser
     {
-        private static readonly string[] RequiredFields = { "title", "problem", "solution", "marketGap", "score" };
-
-        public static bool TryParse(string? rawText, out BsonDocument contract, out string error)
+        public static bool TryParse(string? rawText, out IdeaGenerationOutput output, out string error)
         {
-            contract = new BsonDocument();
+            output = new IdeaGenerationOutput();
             error = string.Empty;
 
             if (string.IsNullOrWhiteSpace(rawText))
@@ -154,49 +136,76 @@ namespace WebApp.Services.Ai.Jobs
                 return false;
             }
 
-            if (ideas.Count == 0)
+            if (ideas.Count < 1)
             {
                 error = "Output array is empty.";
                 return false;
             }
 
-            var validIdeas = new BsonArray();
+            var parsedIdeas = new List<GeneratedIdea>();
             foreach (var ideaVal in ideas)
             {
                 if (ideaVal is not BsonDocument idea)
+                    continue; // skip stray non-object elements rather than failing the whole run
+
+                // Lenient field extraction — small models (llama-3.1-8b) drop fields or
+                // vary key casing. Default missing text; derive a neutral score when absent.
+                var title = Str(idea, "title", "name");
+                var problem = Str(idea, "problem", "coreProblem");
+                var solution = Str(idea, "solution", "proposedSolution");
+                var marketGap = Str(idea, "marketGap", "gap", "opportunity");
+
+                // An idea with no substantive content at all is unusable — skip it.
+                if (string.IsNullOrWhiteSpace(title) &&
+                    string.IsNullOrWhiteSpace(problem) &&
+                    string.IsNullOrWhiteSpace(solution))
                 {
-                    error = "Array contains non-object element.";
-                    return false;
+                    continue;
                 }
 
-                foreach (var field in RequiredFields)
-                {
-                    if (!idea.Contains(field))
-                    {
-                        error = $"Idea missing required field '{field}'.";
-                        return false;
-                    }
-                }
-
-                if (!idea["score"].IsNumeric)
-                {
-                    error = "Field 'score' is not a number.";
-                    return false;
-                }
-
-                var scoreVal = idea["score"].ToDouble();
+                double scoreVal = 70; // neutral default when missing/non-numeric
+                if (idea.Contains("score") && idea["score"].IsNumeric)
+                    scoreVal = idea["score"].ToDouble(); // CRITICAL: .ToDouble() not .AsDouble()
                 var clampedScore = Math.Clamp(Math.Round(scoreVal), 0, 100);
-                idea["score"] = clampedScore;
 
-                validIdeas.Add(idea);
+                parsedIdeas.Add(new GeneratedIdea
+                {
+                    Title = string.IsNullOrWhiteSpace(title) ? "Untitled concept" : title,
+                    Problem = problem,
+                    Solution = solution,
+                    MarketGap = marketGap,
+                    Score = clampedScore,
+                    Tam = Str(idea, "tam", "marketSize", "TAM"),
+                    Saturation = Str(idea, "saturation", "competitorSaturation"),
+                    SimilarTo = Str(idea, "similarTo", "comparable", "similarCompany"),
+                    TargetUser = Str(idea, "targetUser", "targetCustomer", "audience"),
+                    FounderEdge = Str(idea, "founderEdge", "creatorEdge", "advantage")
+                });
             }
 
-            contract = new BsonDocument
+            if (parsedIdeas.Count < 1)
             {
-                { "ideas", validIdeas },
-                { "schemaVersion", 1 }
-            };
+                error = "No usable ideas parsed from model output.";
+                return false;
+            }
+
+            output.Ideas = parsedIdeas.ToArray();
+            output.SchemaVersion = 1;
             return true;
+        }
+
+        // Returns the first present, non-empty string value among the candidate keys; "" otherwise.
+        private static string Str(BsonDocument doc, params string[] keys)
+        {
+            foreach (var key in keys)
+            {
+                if (doc.Contains(key) && doc[key].IsString)
+                {
+                    var v = doc[key].AsString;
+                    if (!string.IsNullOrWhiteSpace(v)) return v.Trim();
+                }
+            }
+            return string.Empty;
         }
 
         private static string StripFences(string text)

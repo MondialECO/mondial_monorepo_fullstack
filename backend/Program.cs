@@ -339,7 +339,7 @@ builder.Services.AddCompanyServices(builder.Configuration);
 // IBackgroundJobService (registered above) is now backed by this Hangfire
 // infrastructure.
 builder.Services.AddAiServices(builder.Configuration);
-Log.Information("AI services registered (provider: Anthropic / Claude).");
+Log.Information("AI services registered (provider: OpenRouter).");
 
 // Health checks: liveness (process up) is the bare endpoint; readiness
 // (tagged "ready") verifies MongoDB + Redis so the orchestrator only routes

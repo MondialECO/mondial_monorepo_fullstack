@@ -206,11 +206,12 @@ export default function CreatorDashboard() {
           </Badge>
           {dashboardState === 'A' ? (
             <Button variant="outline" asChild className="rounded-lg border-border bg-card text-foreground font-semibold text-xs px-4 h-9">
-              <Link href={action.route}>New Idea</Link>
+              <Link href="/dashboard/creator/phase-2">New Idea</Link>
             </Button>
           ) : (
             <Button variant="outline" asChild className="rounded-lg border-border bg-card text-foreground text-xs px-4 h-9">
-              <Link href="/dashboard/creator/phase-2">Edit Concept</Link>
+              {/* <Link href="/dashboard/creator/phase-2">Edit Concept</Link> */}
+              <Link href={action.route}>Edit Concept</Link>
             </Button>
           )}
           <Button variant="outline" className="rounded-lg border-border bg-card text-foreground font-semibold text-xs px-4 h-9">

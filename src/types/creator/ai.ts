@@ -240,3 +240,47 @@ export interface StartSessionResult {
   sessionId: string;
   jobId: string;
 }
+
+// ---------- Phase 2 Idea Generator (Discovery branch) ----------
+
+export interface GeneratedIdea {
+  title: string;
+  problem: string;
+  solution: string;
+  marketGap: string;
+  score: number;
+  // Intelligence-panel fields (optional — older sessions won't have them).
+  tam?: string;
+  saturation?: string;
+  similarTo?: string;
+  targetUser?: string;
+  founderEdge?: string;
+}
+
+export interface IdeaGenerationInput {
+  sectors: string[];
+  observedProblem: string;
+  strengths: string[];
+}
+
+export interface IdeaGenerationOutput {
+  ideas: GeneratedIdea[];
+  schemaVersion: number;
+}
+
+export interface IdeaGenerationSession {
+  sessionId: string;
+  status: AiSessionStatus;
+  businessIdeaId?: string | null;
+  input: IdeaGenerationInput;
+  output?: IdeaGenerationOutput | null;
+  errorMessage?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StartIdeaGenerationRequest {
+  sectors: string[];
+  observedProblem: string;
+  strengths: string[];
+}

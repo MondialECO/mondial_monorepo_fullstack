@@ -1,42 +1,47 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Sparkles, ArrowLeft, ArrowRight, Target, ShieldAlert, Award, Compass, Heart, Rocket } from "lucide-react";
+import { Sparkles, ArrowLeft, ArrowRight, Target, Compass, Heart, Rocket, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
-
-const DEFAULT_CONCEPTS = [
-  {
-    id: "concept-1",
-    title: "EcoRetail Hub",
-    category: "Environment",
-    description: "A collaborative sustainability platform aligning local businesses with carbon offset programs, featuring automated compliance tracking.",
-    score: 87,
-    tam: "$2.5B",
-    saturation: "Low",
-    similarTo: "Watershed",
-    concept: "A carbon offset matching hub for local retail.",
-    targetUser: "Small and medium business owners looking to go green.",
-    coreProblem: "High cost and complexity of tracking carbon offsets.",
-    solution: "A simple micro-offset engine that calculates footprints automatically.",
-    marketGap: "Lack of localized carbon offset micro-transactions.",
-    founderEdge: "Proprietary algorithm matching local green initiatives.",
-  },
-];
+import { creatorJourneyApi } from "@/lib/api-creator-journey";
 
 export default function IdeaConfirmPage() {
   const router = useRouter();
   const { state, setState } = useCreatorProgress();
 
   const selectedConceptId = state.journeyState?.phase2?.selectedConceptId;
-  const concepts = state.journeyState?.phase2?.generatedConcepts || DEFAULT_CONCEPTS;
-  const concept = concepts.find((c) => c.id === selectedConceptId) || concepts[0];
+  const concepts = state.journeyState?.phase2?.generatedConcepts ?? [];
+  const concept = concepts.find((c) => c.id === selectedConceptId);
 
   const handleConfirm = () => {
+    // Persist the chosen concept to the backend project (source of truth).
+    void creatorJourneyApi
+      .updateProject({
+        concept: concept.concept || concept.description,
+        targetUser: concept.targetUser || "",
+        problem: concept.coreProblem || "",
+        solution: concept.solution || "",
+        marketGap: concept.marketGap || "",
+        creatorEdge: concept.founderEdge || "",
+        category: concept.category || "",
+        clarityScore: concept.score || 0,
+      })
+      .catch(() => {
+        /* optimistic local state below still advances the UI */
+      });
+
     // Save concept to project state
     setState((prev) => ({
       ...prev,
+      journeyState: {
+        ...prev.journeyState,
+        phase2: {
+          ...prev.journeyState.phase2,
+          currentStep: 7,
+        },
+      },
       project: {
         ...prev.project,
         concept: concept.concept || concept.description,
@@ -51,14 +56,13 @@ export default function IdeaConfirmPage() {
       },
     }));
 
-    // Route to discovery AI chat to deep dive on this concept
-    router.push("/dashboard/creator/phase-2/ai-chat");
+    router.push("/dashboard/creator/phase-2/idea-summary");
   };
 
   return (
     <div className="w-full flex-1 flex flex-col bg-background text-foreground min-h-screen">
       {/* Isolated Onboarding Header */}
-      <header className="flex items-center justify-between border-b border-border bg-card/50 backdrop-blur-xs px-6 py-4">
+      {/* <header className="flex items-center justify-between border-b border-border bg-card/50 backdrop-blur-xs px-6 py-4">
         <Button
           variant="ghost"
           onClick={() => router.push("/dashboard/creator/phase-2/idea-cards")}
@@ -71,7 +75,7 @@ export default function IdeaConfirmPage() {
           <Sparkles className="h-3 w-3" />
           Phase 2 of 6 — Confirm Idea
         </div>
-      </header>
+      </header> */}
 
       {/* Progress Bar (42% filled) */}
       <div className="h-[3px] w-full bg-muted">
@@ -79,7 +83,7 @@ export default function IdeaConfirmPage() {
       </div>
 
       <main className="flex-1 max-w-[1140px] mx-auto w-full px-6 py-10 space-y-8">
-        
+
         {/* Page title */}
         <div className="space-y-2">
           <div className="text-xs font-bold text-primary uppercase tracking-wider">Venture Concept Canvas</div>
@@ -89,7 +93,30 @@ export default function IdeaConfirmPage() {
           </p>
         </div>
 
+        {/* Empty state — no concept selected */}
+        {!concept && (
+          <div className="flex flex-col items-center justify-center gap-4 py-20 text-center">
+            <div className="h-14 w-14 rounded-full bg-destructive/10 text-destructive flex items-center justify-center">
+              <AlertTriangle className="h-7 w-7" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-lg font-bold">No concept selected</h3>
+              <p className="text-sm text-muted-foreground max-w-md">
+                Go back to the candidates page and select an idea to continue.
+              </p>
+            </div>
+            <Button
+              onClick={() => router.push("/dashboard/creator/phase-2/idea-cards")}
+              className="rounded-xl px-6 py-5 text-sm font-bold bg-primary text-primary-foreground hover:bg-primary/95 flex items-center gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to Candidates
+            </Button>
+          </div>
+        )}
+
         {/* 2 Column Details */}
+        {concept && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
           {/* Concept Details (Spans 2/3) */}
@@ -185,8 +212,10 @@ export default function IdeaConfirmPage() {
           </div>
 
         </div>
+        )}
 
         {/* Action Panel */}
+        {concept && (
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-border pt-6">
           <Button
             variant="ghost"
@@ -204,6 +233,7 @@ export default function IdeaConfirmPage() {
             <ArrowRight className="h-4 w-4" />
           </Button>
         </div>
+        )}
 
       </main>
     </div>

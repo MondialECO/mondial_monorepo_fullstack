@@ -12,9 +12,11 @@ import type {
   BusinessPlanSession,
   ClarifierSession,
   ForecastSession,
+  IdeaGenerationSession,
   StartBusinessPlanRequest,
   StartClarifierRequest,
   StartForecastRequest,
+  StartIdeaGenerationRequest,
   StartSessionResult,
 } from "@/types/creator/ai";
 
@@ -34,6 +36,19 @@ const unwrap = <T>(body: ApiEnvelope<T> | T): T => {
 };
 
 export const creatorAiApi = {
+  // ---------- Phase 2 Idea Generator ----------
+  startIdeaGeneration: async (
+    payload: StartIdeaGenerationRequest,
+  ): Promise<{ sessionId: string; jobId: string }> => {
+    const res = await api.post("/ai/idea-generator", payload);
+    return unwrap<{ sessionId: string; jobId: string }>(res.data);
+  },
+
+  getIdeaGeneration: async (sessionId: string): Promise<IdeaGenerationSession> => {
+    const res = await api.get(`/ai/idea-generator/${sessionId}`);
+    return unwrap<IdeaGenerationSession>(res.data);
+  },
+
   // ---------- C-2 Idea Clarifier ----------
   startClarifier: async (
     payload: StartClarifierRequest,
