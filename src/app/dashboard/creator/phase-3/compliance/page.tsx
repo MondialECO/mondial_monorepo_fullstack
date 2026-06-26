@@ -94,8 +94,6 @@ export default function CompliancePage() {
       stepEyebrow="Step 3.4"
       title="Legal & Compliance Checklist"
       description="A tailored checklist for your sector. Mark items as you progress — you can finish these anytime."
-      stepLabel="Phase 3 Step 4 of 6"
-      progress={66}
     >
       {loading && <div className="flex items-center gap-2 text-muted-foreground py-12 justify-center"><Loader2 className="h-5 w-5 animate-spin" /> Generating your checklist…</div>}
 
@@ -123,35 +121,77 @@ export default function CompliancePage() {
             <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 text-sm text-primary">{workroomNote}</div>
           )}
 
-          {[{ title: 'Mandatory', items: mandatory }, { title: 'Optional', items: optional }].map((group) => (
-            <div key={group.title} className="space-y-2">
-              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{group.title}</div>
-              {group.items.map((item) => (
-                <Card key={item.id} className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
-                  <div className="flex items-center gap-3">
+          {/* Mandatory Section */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5 text-destructive" />
+              <h3 className="text-sm font-bold text-foreground">Required Items</h3>
+              <span className="text-xs text-muted-foreground">({mandatory.length})</span>
+            </div>
+            <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4 space-y-2">
+              {mandatory.map((item) => (
+                <Card key={item.id} className="flex items-center justify-between rounded-xl border border-border bg-card p-4 hover:border-destructive/30 transition-colors">
+                  <div className="flex items-center gap-3 flex-1">
                     <button onClick={() => cycle(item)} disabled={busyItem === item.id}
-                      className={`h-6 w-6 rounded-md border flex items-center justify-center ${item.status === 'done' ? 'bg-primary border-primary text-primary-foreground' : item.status === 'in_progress' ? 'border-warning' : 'border-border'}`}>
+                      className={`h-6 w-6 rounded-md border flex items-center justify-center shrink-0 ${item.status === 'done' ? 'bg-primary border-primary text-primary-foreground' : item.status === 'in_progress' ? 'border-warning bg-warning/5' : 'border-destructive/30 bg-destructive/5'}`}>
                       {busyItem === item.id ? <Loader2 className="h-3 w-3 animate-spin" /> : item.status === 'done' ? <Check className="h-4 w-4" /> : null}
                     </button>
-                    <div>
-                      <div className="flex items-center gap-2">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
                         <span className="text-sm font-medium text-foreground">{item.label}</span>
-                        {item.badge === 'urgent' && <Badge className="bg-destructive text-white gap-1"><AlertTriangle className="h-3 w-3" /> Urgent</Badge>}
-                        {item.badge === 'fintech' && <Badge className="bg-warning text-white">FinTech</Badge>}
-                        {item.aiGenerable && <Badge variant="outline" className="gap-1"><Sparkles className="h-3 w-3" /> AI-generable</Badge>}
+                        {item.badge === 'urgent' && <Badge className="bg-destructive text-white gap-1 text-xs"><AlertTriangle className="h-3 w-3" /> Urgent</Badge>}
+                        {item.badge === 'fintech' && <Badge className="bg-warning text-white text-xs">FinTech</Badge>}
+                        {item.aiGenerable && <Badge variant="outline" className="gap-1 text-xs"><Sparkles className="h-3 w-3" /> AI-generable</Badge>}
                       </div>
                       <span className={`text-xs ${statusColor(item.status)}`}>{item.status.replace('_', ' ')}</span>
                     </div>
                   </div>
                   {item.showFindSp && (
-                    <Button variant="outline" size="sm" onClick={() => findSp(item)} disabled={findingSp === item.id} className="gap-1.5 shrink-0">
+                    <Button variant="outline" size="sm" onClick={() => findSp(item)} disabled={findingSp === item.id} className="gap-1.5 shrink-0 ml-2">
                       {findingSp === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />} Find SP
                     </Button>
                   )}
                 </Card>
               ))}
             </div>
-          ))}
+          </div>
+
+          {/* Optional Section */}
+          {optional.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Check className="h-5 w-5 text-muted-foreground" />
+                <h3 className="text-sm font-semibold text-muted-foreground">Optional Items</h3>
+                <span className="text-xs text-muted-foreground">({optional.length})</span>
+              </div>
+              <div className="space-y-2">
+                {optional.map((item) => (
+                  <Card key={item.id} className="flex items-center justify-between rounded-xl border border-border bg-card p-4 hover:border-primary/30 transition-colors">
+                    <div className="flex items-center gap-3 flex-1">
+                      <button onClick={() => cycle(item)} disabled={busyItem === item.id}
+                        className={`h-6 w-6 rounded-md border flex items-center justify-center shrink-0 ${item.status === 'done' ? 'bg-primary border-primary text-primary-foreground' : item.status === 'in_progress' ? 'border-warning bg-warning/5' : 'border-border'}`}>
+                        {busyItem === item.id ? <Loader2 className="h-3 w-3 animate-spin" /> : item.status === 'done' ? <Check className="h-4 w-4" /> : null}
+                      </button>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-sm font-medium text-foreground">{item.label}</span>
+                          {item.badge === 'urgent' && <Badge className="bg-destructive text-white gap-1 text-xs"><AlertTriangle className="h-3 w-3" /> Urgent</Badge>}
+                          {item.badge === 'fintech' && <Badge className="bg-warning text-white text-xs">FinTech</Badge>}
+                          {item.aiGenerable && <Badge variant="outline" className="gap-1 text-xs"><Sparkles className="h-3 w-3" /> AI-generable</Badge>}
+                        </div>
+                        <span className={`text-xs ${statusColor(item.status)}`}>{item.status.replace('_', ' ')}</span>
+                      </div>
+                    </div>
+                    {item.showFindSp && (
+                      <Button variant="outline" size="sm" onClick={() => findSp(item)} disabled={findingSp === item.id} className="gap-1.5 shrink-0 ml-2">
+                        {findingSp === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />} Find SP
+                      </Button>
+                    )}
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="flex justify-between pt-2">
             <Button variant="outline" onClick={() => router.push('/dashboard/creator/phase-3')}><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>

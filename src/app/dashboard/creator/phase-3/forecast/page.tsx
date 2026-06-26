@@ -106,8 +106,6 @@ export default function ForecastResultsPage() {
       stepEyebrow="Step 3.3"
       title="Financial Projections & Simulations"
       description="A 36-month forecast computed from your inputs — revenue, costs, cash flow, and break-even."
-      stepLabel="Phase 3 Step 3 of 6"
-      progress={50}
     >
       {loadingJourney && (
         <div className="flex items-center gap-2 text-muted-foreground py-12 justify-center"><Loader2 className="h-5 w-5 animate-spin" /> Loading…</div>

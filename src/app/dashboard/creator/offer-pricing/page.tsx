@@ -16,12 +16,12 @@ export default function OfferPricingPage() {
 
   return (
     <div className="w-full min-h-screen bg-background text-foreground">
-      <header className="flex items-center justify-between border-b border-border bg-card/50 px-6 py-4">
+      {/* <header className="flex items-center justify-between border-b border-border bg-card/50 px-6 py-4">
         <h1 className="text-sm font-bold">Phase 4 — Offer &amp; Resource Setup</h1>
         <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
           <Sparkles className="h-3 w-3" /> Step {Math.min(step + 1, STEPS.length)} of {STEPS.length}
         </div>
-      </header>
+      </header> */}
 
       {/* Stepper */}
       <div className="flex items-center gap-2 px-6 py-4 max-w-5xl mx-auto w-full overflow-x-auto">

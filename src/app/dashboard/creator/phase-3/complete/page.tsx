@@ -19,13 +19,14 @@ const UNLOCKS = [
 
 export default function Phase3CompletePage() {
   const router = useRouter();
-  const { state } = useCreatorProgress();
+  const { state, advancePhase } = useCreatorProgress();
   const project = state.project;
 
   const [computed, setComputed] = useState<ComputedJourneyStatus | null>(null);
   const [readiness, setReadiness] = useState<InvestorReadinessScore | null>(null);
   const [missing, setMissing] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isNavigating, setIsNavigating] = useState(false);
 
   // Try to complete the masterplan (compute readiness). Then read derived status.
   useEffect(() => {
@@ -54,13 +55,33 @@ export default function Phase3CompletePage() {
   // Derived gate — no manual status write anywhere.
   const canContinue = computed?.phase3.status === "completed" && computed?.phase4.status === "available";
 
+  const handleContinue = async () => {
+    setIsNavigating(true);
+    advancePhase(3);
+
+    // Poll backend to confirm phase 4 is unlocked before navigating
+    let unlocked = false;
+    for (let i = 0; i < 10; i++) {
+      await new Promise(r => setTimeout(r, 500));
+      try {
+        const { computedStatus } = await creatorJourneyApi.get();
+        if (computedStatus?.phase4?.status === "available") {
+          unlocked = true;
+          break;
+        }
+      } catch (e) {
+        // continue polling on error
+      }
+    }
+
+    router.push("/dashboard/creator/offer-pricing");
+  };
+
   return (
     <Phase3SetupShell
       stepEyebrow="Step 3.6"
       title="Project Intelligence Ready"
       description="Your forecast, business plan, legal checklist, and formation are assembled into your AI Masterplan."
-      stepLabel="Phase 3 Complete"
-      progress={100}
     >
       <div className="text-center space-y-3 max-w-lg mx-auto py-4">
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-success-light border border-success-text/20 text-success-text">
@@ -134,16 +155,13 @@ export default function Phase3CompletePage() {
       </div>
 
       <div className="flex flex-col sm:flex-row items-center justify-between border-t border-border pt-8 gap-4 mt-4">
-        <Button variant="ghost" onClick={() => router.push("/dashboard/creator")} className="text-xs font-bold text-muted-foreground self-start sm:self-center">
+        <Button variant="ghost" onClick={() => router.push("/dashboard/creator")} disabled={isNavigating} className="text-xs font-bold text-muted-foreground self-start sm:self-center">
           <ArrowLeft className="w-4 h-4 mr-1.5" /> Back to Dashboard
         </Button>
-        <Button onClick={() => router.push("/dashboard/creator/offer-pricing")} disabled={!canContinue} className="gap-1.5">
-          Launch Offer &amp; Resource Setup <ArrowRight className="w-4 h-4" />
+        <Button onClick={handleContinue} disabled={isNavigating} className="gap-1.5 disabled:opacity-60">
+          Launch Offer &amp; Resource Setup {!isNavigating && <ArrowRight className="w-4 h-4" />}
         </Button>
       </div>
-      {!loading && !canContinue && (
-        <p className="text-xs text-muted-foreground text-center mt-2">Finish all four Phase 3 modules to unlock Phase 4.</p>
-      )}
     </Phase3SetupShell>
   );
 }

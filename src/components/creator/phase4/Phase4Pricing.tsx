@@ -15,6 +15,7 @@ const MODELS: { id: string; label: string }[] = [
 ];
 
 const blankTier = (name: string, price: number, highlighted = false): PricingTier => ({
+  id: Math.random().toString(36).substr(2, 9),
   name, price, billingCycle: "monthly", features: ["", "", ""], isHighlighted: highlighted,
 });
 

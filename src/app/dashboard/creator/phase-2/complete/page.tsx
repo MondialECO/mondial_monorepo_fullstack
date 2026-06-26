@@ -63,7 +63,7 @@ export default function Phase2CompletePage() {
   return (
     <div className="w-full flex-1 flex flex-col bg-background text-foreground min-h-screen">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-6 py-4 border-b border-border bg-card/50 backdrop-blur-xs gap-4">
+      {/* <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-6 py-4 border-b border-border bg-card/50 backdrop-blur-xs gap-4">
         <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground font-medium">
           <span>Creator Flow</span>
           <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/30" />
@@ -75,7 +75,7 @@ export default function Phase2CompletePage() {
           <Sparkles className="w-3 h-3" />
           Phase 2 Complete
         </div>
-      </div>
+      </div> */}
 
       {/* Progress bar (100% for Phase 2) */}
       <div className="w-full h-[3px] bg-muted">
