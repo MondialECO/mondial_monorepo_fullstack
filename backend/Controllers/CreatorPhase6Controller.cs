@@ -1,0 +1,313 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
+using MongoDB.Bson;
+using MongoDB.Driver;
+using WebApp.DbContext;
+using WebApp.Models;
+using WebApp.Models.DatabaseModels;
+using WebApp.Models.Dtos;
+using WebApp.Services;
+using WebApp.Services.Interface;
+
+namespace WebApp.Controllers
+{
+    /// <summary>
+    /// Phase 6 — Smart Matchmaking + Level Up. Phase 6 only unlocks on Path B
+    /// (chosenPath === "build"); the derived engine gates it. Reads/writes
+    /// CreatorJourneys.phase6Data; versions carry phase: 6. Level Up is permanent,
+    /// atomic, and idempotent. No manual status writes.
+    /// </summary>
+    [Route("api/creator")]
+    [ApiController]
+    [Authorize]
+    public class CreatorPhase6Controller : ControllerBase
+    {
+        private readonly ICreatorJourneyService _journeys;
+        private readonly ISmartMatchingService _matching;
+        private readonly MongoDbContext _context;
+        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly RoleManager<ApplicationRole> _roleManager;
+        private readonly IDealEventPublisher _events;
+        private readonly ICompanyService _companies;
+        private readonly IMongoClient _mongoClient;
+        private readonly bool _transactionsEnabled;
+        private readonly ILogger<CreatorPhase6Controller> _logger;
+
+        public CreatorPhase6Controller(
+            ICreatorJourneyService journeys, ISmartMatchingService matching,
+            MongoDbContext context, UserManager<ApplicationUser> userManager,
+            RoleManager<ApplicationRole> roleManager, IDealEventPublisher events,
+            ICompanyService companies, IMongoClient mongoClient, IConfiguration config,
+            ILogger<CreatorPhase6Controller> logger)
+        {
+            _journeys = journeys;
+            _matching = matching;
+            _context = context;
+            _userManager = userManager;
+            _roleManager = roleManager;
+            _events = events;
+            _companies = companies;
+            _mongoClient = mongoClient;
+            // Multi-doc transactions require a replica set / Atlas. Production runs a
+            // replica set, so this defaults TRUE. Standalone-local dev sets it false
+            // ("Mongo:TransactionsEnabled": false) to use the logged ordered-writes
+            // fallback. Never a silent downgrade — the fallback path WARN-logs.
+            _transactionsEnabled = config.GetValue("Mongo:TransactionsEnabled", true);
+            _logger = logger;
+        }
+
+        private string GetUserId() =>
+            User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? throw new UnauthorizedAccessException("User not authenticated");
+
+        // Maps the Phase-5 ownership PLAN (percentages) → a Phase-4 cap-table request
+        // and writes it via the canonical SubmitCapTableAsync path (no parallel writer).
+        // Percentages are converted to shares against a conventional total; the
+        // entrepreneur refines real share counts in Phase 4.
+        private async Task SeedCapTableFromPlanAsync(string companyId, List<CreatorOwnershipEntry> ownership)
+        {
+            const int totalShares = 1_000_000;
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var grants = new List<EquityGrantDto>();
+            int i = 0;
+            foreach (var o in ownership)
+            {
+                i++;
+                if (o.Percent <= 0) continue; // shares must be > 0 (validation)
+                var name = string.IsNullOrWhiteSpace(o.Holder) ? $"Holder {i}" : o.Holder.Trim();
+                // De-dup on (name, shareClass) — validation rejects duplicates.
+                while (!seen.Add($"{name.ToLowerInvariant()}::common")) name = $"{name} {i}";
+                grants.Add(new EquityGrantDto
+                {
+                    StakeholderName = name,
+                    StakeholderType = o.IsFounder ? "founder" : o.IsEsop ? "esop" : "investor",
+                    ShareClass = "common",
+                    SharesGranted = Math.Max(1, (int)Math.Round(o.Percent / 100.0 * totalShares)),
+                });
+            }
+            if (grants.Count == 0) return;
+
+            var esopPct = ownership.Where(o => o.IsEsop).Sum(o => o.Percent);
+            var request = new SubmitCapTableRequest
+            {
+                TotalShares = totalShares,
+                EsopPoolPercent = esopPct,
+                EsopVestingMonths = esopPct > 0 ? 48 : 0, // required > 0 when ESOP pool non-zero
+                Grants = grants,
+            };
+            await _companies.SubmitCapTableAsync(companyId, request);
+        }
+
+        private static readonly string[] MatchingTips =
+        {
+            "A complete business plan lifts your match quality with most funds.",
+            "Investors respond fastest when your raise fits their typical check size.",
+            "Sector-focused funds convert better than generalists — target tightly.",
+        };
+
+        private async Task<string> CountryOfAsync(string userId)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            return user?.Address?.Country ?? user?.Geography ?? "";
+        }
+
+        // GET /api/creator/smart-matches?phaseContext=5|6
+        [HttpGet("smart-matches")]
+        public async Task<IActionResult> SmartMatches([FromQuery] int phaseContext = 6)
+        {
+            try
+            {
+                var userId = GetUserId();
+                var journey = await _journeys.GetOrCreateAsync(userId);
+                var country = await CountryOfAsync(userId);
+
+                var matches = await _matching.MatchAsync(journey, country, phaseContext);
+
+                // Snapshot + version (phase: 6).
+                await _context.SmartMatchRuns.InsertOneAsync(new SmartMatchRun
+                {
+                    UserId = userId, PhaseContext = phaseContext,
+                    MatchCount = matches.Count, TopScore = matches.FirstOrDefault()?.FinalScore ?? 0,
+                });
+                await _journeys.AppendOutputAsync(userId, new Models.Dtos.AppendOutputRequest
+                {
+                    OutputKey = "matchingRuns", Phase = 6,
+                    Payload = new Dictionary<string, object> { ["phaseContext"] = phaseContext, ["matchCount"] = matches.Count },
+                });
+
+                return Ok(ApiResponse.Ok("OK", new { matches, isEmpty = matches.Count == 0 }));
+            }
+            catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
+            catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
+        }
+
+        // GET /api/creator/investors  → { featured, qualified[], matchingTip }
+        [HttpGet("investors")]
+        public async Task<IActionResult> Investors()
+        {
+            try
+            {
+                var userId = GetUserId();
+                var journey = await _journeys.GetOrCreateAsync(userId);
+                var country = await CountryOfAsync(userId);
+
+                var matches = await _matching.MatchAsync(journey, country, 6);
+                var featured = matches.FirstOrDefault();
+                var qualified = matches.Skip(1).ToList();
+                // Rotate the tip deterministically by match count (no Random in this env).
+                var tip = MatchingTips[matches.Count % MatchingTips.Length];
+
+                return Ok(ApiResponse.Ok("OK", new { featured, qualified, matchingTip = tip, isEmpty = matches.Count == 0 }));
+            }
+            catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
+            catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
+        }
+
+        // POST /api/creator/level-up — permanent, atomic, idempotent.
+        [HttpPost("level-up")]
+        public async Task<IActionResult> LevelUp()
+        {
+            try
+            {
+                var userId = GetUserId();
+                var journey = await _journeys.GetOrCreateAsync(userId);
+                var p5 = journey.Phase5Data ?? new CreatorPhase5Data();
+                var p6 = journey.Phase6Data ??= new CreatorPhase6Data();
+
+                // Idempotency: already leveled up → return the existing result, no second profile.
+                if (p6.LevelUpTriggered && !string.IsNullOrEmpty(p6.EntrepreneurProfileId))
+                {
+                    return Ok(ApiResponse.Ok("Already leveled up", new
+                    {
+                        levelUpComplete = true,
+                        entrepreneurProfileId = p6.EntrepreneurProfileId,
+                        redirectTo = "/dashboard/entrepreneur",
+                    }));
+                }
+
+                // Hard gate.
+                var missing = new List<string>();
+                bool phase5Done = p5.ChosenPath == "build" && p5.PathB?.SeedFunding != null;
+                if (p5.ChosenPath != "build") missing.Add("build_path");
+                if (p5.PathB?.SeedFunding == null) missing.Add("seed_funding");
+                if (!phase5Done) // proxy for "phasesCompleted includes 5"
+                    if (!missing.Contains("seed_funding") && !missing.Contains("build_path")) missing.Add("phase5_complete");
+                if (missing.Count > 0)
+                    return UnprocessableEntity(ApiResponse.Error("prerequisites_not_met", HttpContext.TraceIdentifier, new { missing }));
+
+                // Provenance + plan inputs. (The Phase-5 spin stays dead intentionally;
+                // the company is created here keyed by OwnerId at CurrentPhase=2.)
+                var formation = p5.PathB?.CompanyFormation;
+                var seed = p5.PathB?.SeedFunding;
+                var sourceLink = !string.IsNullOrEmpty(journey.BusinessIdeaId) ? journey.BusinessIdeaId : journey.Id;
+                double? fundingAsk = seed?.TotalAsk > 0 ? (double?)(double)seed.TotalAsk : null; // Phase-5 totalAsk is authoritative
+
+                // UserManager can't take a Mongo session, so we write the role + companyId
+                // directly to the user doc inside the transaction. Read the role id first.
+                var entRole = await _roleManager.FindByNameAsync("Entrepreneur");
+                if (entRole == null)
+                    _logger.LogWarning("Level Up: 'Entrepreneur' role missing in DB; user role will not be set for {UserId}.", userId);
+                Guid.TryParse(userId, out var userGuid);
+
+                // Pre-generate the profile id so the journey can reference it in the same txn.
+                var profile = new EntrepreneurProfileRecord
+                {
+                    Id = ObjectId.GenerateNewId().ToString(),
+                    UserId = userId,
+                    BusinessIdeaId = journey.BusinessIdeaId,
+                    Project = journey.Project,
+                    OfferSetup = journey.Phase4Data,
+                    Masterplan = journey.Phase3Data,
+                    PathB = p5.PathB,
+                };
+                string companyId = null;
+
+                // The ATOMIC CORE: company + entrepreneur profile + journey flag + user
+                // (role + companyId). All commit together or roll back together. Because
+                // levelUpTriggered is written HERE, a rollback leaves it unset → a retry
+                // starts clean and complete. Cap table + SignalR are intentionally NOT here.
+                async Task CoreWritesAsync(IClientSessionHandle session)
+                {
+                    var company = await _companies.EnsureLevelUpCompanyAsync(
+                        userId, sourceLink, formation?.SelectedType, fundingAsk, session);
+                    companyId = company.Id;
+                    profile.CompanyId = companyId;
+
+                    if (session is null) await _context.EntrepreneurProfiles.InsertOneAsync(profile);
+                    else await _context.EntrepreneurProfiles.InsertOneAsync(session, profile);
+
+                    journey.CompanyId = companyId;
+                    p6.LevelUpTriggered = true;
+                    p6.LevelUpTriggeredAt = DateTime.UtcNow;
+                    p6.EntrepreneurProfileId = profile.Id;
+                    (p6.SmartMatchmaking ??= new CreatorSmartMatchmaking()).Status = "live";
+                    if (session is null) await _journeys.ReplaceAsync(journey);
+                    else await _journeys.ReplaceAsync(journey, session);
+
+                    if (userGuid != Guid.Empty)
+                    {
+                        var upd = Builders<ApplicationUser>.Update.Set(u => u.EntrepreneurProfile.CompanyId, companyId);
+                        if (entRole != null) upd = upd.AddToSet(u => u.Roles, entRole.Id); // idempotent
+                        if (session is null) await _context.ApplicationUsers.UpdateOneAsync(u => u.Id == userGuid, upd);
+                        else await _context.ApplicationUsers.UpdateOneAsync(session, u => u.Id == userGuid, upd);
+                    }
+                }
+
+                if (_transactionsEnabled)
+                {
+                    using var session = await _mongoClient.StartSessionAsync();
+                    session.StartTransaction();
+                    try
+                    {
+                        await CoreWritesAsync(session);
+                        await session.CommitTransactionAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        try { await session.AbortTransactionAsync(); } catch { /* nothing to abort */ }
+                        _logger.LogError(ex, "Level Up transaction aborted for {UserId}; rolled back (nothing persisted).", userId);
+                        return StatusCode(500, ApiResponse.Error("Level up failed and was rolled back. Please retry.", HttpContext.TraceIdentifier));
+                    }
+                }
+                else
+                {
+                    // Documented standalone-dev fallback: ordered writes, NOT atomic.
+                    // WARN-logged so it is never a silent downgrade. Production MUST run a
+                    // replica set with Mongo:TransactionsEnabled=true.
+                    _logger.LogWarning("Mongo:TransactionsEnabled=false — Level Up using non-atomic ordered-writes fallback (standalone dev only) for {UserId}.", userId);
+                    await CoreWritesAsync(null);
+                }
+
+                // ---- Post-commit, best-effort (NOT part of the atomic guarantee) ----
+                // Cap table (Option B): plan data, re-enterable at Phase 4 — a leveled-up
+                // user with an empty cap table is a valid recoverable state. Never blocks.
+                if ((formation?.Ownership?.Count ?? 0) > 0)
+                {
+                    try { await SeedCapTableFromPlanAsync(companyId, formation.Ownership); }
+                    catch (Exception ex) { _logger.LogWarning(ex, "Cap-table seed failed post-Level-Up for {CompanyId}; re-enterable at Phase 4.", companyId); }
+                }
+                // SignalR notification (not data) — a miss is a missed toast, not inconsistency.
+                try
+                {
+                    await _events.PublishAsync(new[] { userId }, "LevelUpComplete", new
+                    {
+                        entrepreneurProfileId = profile.Id,
+                        redirectTo = "/dashboard/entrepreneur",
+                    });
+                }
+                catch (Exception ex) { _logger.LogWarning(ex, "LevelUpComplete SignalR emit failed for {UserId}.", userId); }
+
+                return Ok(ApiResponse.Ok("Level up complete", new
+                {
+                    levelUpComplete = true,
+                    entrepreneurProfileId = profile.Id,
+                    redirectTo = "/dashboard/entrepreneur",
+                }));
+            }
+            catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
+            catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
+        }
+    }
+}

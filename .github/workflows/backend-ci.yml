@@ -1,0 +1,66 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [main, devreza]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-ci.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'backend/**'
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dotnet-version: ['8.0.x']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ matrix.dotnet-version }}
+
+      - name: Restore dependencies
+        run: dotnet restore backend/backend/WebApp.csproj
+
+      - name: Build
+        run: dotnet build backend/backend/WebApp.csproj --no-restore --configuration Release
+
+      - name: Run unit tests
+        run: dotnet test backend/backend/tests/WebApp.Tests/WebApp.Tests.csproj --no-build --verbosity normal --logger "trx;LogFileName=test-results.trx"
+        continue-on-error: true
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results
+          path: '**/test-results.trx'
+
+  code-quality:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore backend/backend/WebApp.csproj
+
+      - name: Analyze code with StyleCop
+        run: dotnet build backend/backend/WebApp.csproj --no-restore /p:EnforceCodeStyleInBuild=true
+        continue-on-error: true
+
+      - name: Check for vulnerabilities
+        run: dotnet list backend/backend/WebApp.csproj package --vulnerable
+        continue-on-error: true

@@ -1,0 +1,150 @@
+10_Permission_Matrix_v2.0 (Enterprise Specification)
+Executive Summary
+Defines the Role-Based Access Control (RBAC) framework for Mondial.eco, including permissions, restrictions, moderation rights, audit rights and data access policies.
+Permission Philosophy
+Principles:
+- Least Privilege Access
+- Role-Based Permissions
+- Auditability
+- Separation of Duties
+- Secure by Default
+Roles Overview
+1. Creator
+2. Entrepreneur
+3. Investor
+4. Service Provider
+5. Admin
+6. Super Admin
+Creator Permissions
+Allowed:
+- Create Ideas
+- Edit Own Ideas
+- Generate Business Plans
+- Generate Forecasts
+- Access IP Vault
+
+Restricted:
+- Investor Data Access
+- Admin Functions
+Entrepreneur Permissions
+Allowed:
+- Manage Company Profiles
+- Create Funding Requests
+- Manage Data Rooms
+- View Investor Interest
+- Manage Cap Tables
+
+Restricted:
+- Admin Controls
+- Other Company Records
+Investor Permissions
+Allowed:
+- Browse Opportunities
+- Create Watchlists
+- Access Approved Data Rooms
+- Track Investments
+
+Restricted:
+- Edit Founder Data
+- Access Unapproved Records
+Service Provider Permissions
+Allowed:
+- Publish Services
+- Send Proposals
+- Manage Projects
+- Access Workrooms
+
+Restricted:
+- Investor Functions
+- Funding Functions
+Admin Permissions
+Allowed:
+- User Moderation
+- Verification Review
+- Content Review
+- Marketplace Moderation
+- Analytics Access
+
+Restricted:
+- System Configuration
+Super Admin Permissions
+Allowed:
+- Full System Access
+- Configuration Management
+- Permission Management
+- Audit Access
+- Security Controls
+Data Room Permissions
+Founder:
+Manage Data Room
+
+Investor:
+View Approved Documents
+
+Admin:
+Audit Access
+Escrow Permissions
+Client:
+Fund Escrow
+
+Provider:
+View Escrow Status
+
+Admin:
+Dispute Resolution
+
+Super Admin:
+Override Controls
+AI Permissions
+Users:
+Generate Personal AI Outputs
+
+Admins:
+Usage Monitoring
+
+Super Admin:
+Model Configuration
+Moderation Permissions
+Review Reports
+Suspend Accounts
+Approve Verification
+Resolve Disputes
+Audit Permissions
+Access:
+- Audit Logs
+- Security Logs
+- Funding Logs
+- Escrow Logs
+
+Limited to Admin and Super Admin.
+Permission Matrix Rules
+Users may have multiple roles.
+Highest privilege evaluated carefully.
+Conflict resolution required.
+Database Requirements
+Collections:
+Roles
+Permissions
+RoleAssignments
+AuditLogs
+API Requirements
+GET /permissions
+POST /roles
+PUT /role-assignment
+GET /audit-logs
+Security Requirements
+RBAC Enforcement
+Permission Checks
+Audit Trails
+Session Tracking
+Analytics
+Track:
+Permission Changes
+Role Assignments
+Unauthorized Attempts
+Escalation Events
+Success Metrics
+Permission Accuracy
+Security Incidents
+Audit Coverage
+Unauthorized Access Attempts

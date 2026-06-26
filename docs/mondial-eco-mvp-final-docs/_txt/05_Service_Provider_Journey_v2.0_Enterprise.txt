@@ -1,0 +1,195 @@
+05_Service_Provider_Journey_v2.0 (Enterprise Specification)
+Executive Summary
+The Service Provider Journey is the execution engine of Mondial.eco. It connects founders and businesses with verified professionals who can help execute projects, deliver services and support startup growth.
+Business Objectives
+- Enable startup execution
+- Create trusted service transactions
+- Improve founder success rates
+- Standardize project delivery workflows
+- Generate marketplace revenue
+Supported Categories
+1. Development
+2. Design
+3. Marketing
+4. Legal
+5. Finance
+6. Accounting
+7. Operations
+8. Strategy
+9. Due Diligence
+10. Fundraising Support
+11. AI Automation
+12. HR / Recruitment
+Stage 1: Verification & Onboarding
+Requirements:
+- Identity Verification
+- Professional Information
+- Skills Verification
+- Portfolio Submission
+
+Outputs:
+- Verified Provider Badge
+- Trust Score
+Stage 2: Provider Profile
+Fields:
+- Headline
+- Bio
+- Skills
+- Services
+- Industries
+- Portfolio
+- Languages
+- Pricing Models
+Stage 3: Service Catalog
+Each provider can create:
+- Fixed Price Services
+- Custom Services
+- Consultation Services
+
+Outputs:
+- Public Service Listings
+Stage 4: Discovery & Matching
+Matching Factors:
+- Skills
+- Industry
+- Budget
+- Geography
+- Reputation
+- Availability
+
+Outputs:
+- Recommended Providers
+- Match Scores
+Stage 5: Proposal Engine
+Proposal Contents:
+- Scope
+- Timeline
+- Deliverables
+- Pricing
+- Terms
+
+Outputs:
+- Proposal Record
+- Negotiation Thread
+Stage 6: Workroom
+Features:
+- Messaging
+- File Sharing
+- Activity Timeline
+- Task Tracking
+- Milestone Tracking
+Stage 7: Milestone Management
+Milestone Elements:
+- Deliverable
+- Deadline
+- Approval Status
+- Payment Status
+
+Outputs:
+- Project Progress Dashboard
+Stage 8: Escrow System
+Workflow:
+Client Funds Escrow
+→ Milestone Delivery
+→ Approval
+→ Release Payment
+
+Outputs:
+- Secure Transaction History
+
+Business Rule:
+Funds remain protected until approval conditions are met.
+Stage 9: Reviews & Reputation
+Review Categories:
+- Communication
+- Quality
+- Timeliness
+- Professionalism
+
+Outputs:
+- Reputation Score
+- Review History
+Stage 10: Service Lifecycle
+Discovery
+→ Proposal
+→ Agreement
+→ Workroom
+→ Delivery
+→ Approval
+→ Payment
+→ Review
+Notifications
+Proposal Received
+Proposal Accepted
+Milestone Due
+Milestone Approved
+Escrow Released
+Review Received
+UX Requirements
+Marketplace Search
+Provider Profiles
+Project Dashboard
+Workroom Interface
+Escrow Tracking
+Mobile Support
+Validation Rules
+Required:
+- Profile Completion
+- Service Definition
+- Portfolio Evidence
+
+Optional:
+- Certifications
+- External Links
+Database Collections
+ServiceProviders
+ProviderProfiles
+Services
+Proposals
+Projects
+Workrooms
+Milestones
+EscrowTransactions
+Reviews
+API Requirements
+POST /providers
+POST /services
+POST /proposals
+GET /projects
+POST /milestones
+POST /escrow/release
+GET /reviews
+Permissions
+Provider:
+Own services and projects
+
+Client:
+Own projects and payments
+
+Admin:
+Moderation and dispute resolution
+Analytics Events
+Provider Registered
+Service Published
+Proposal Sent
+Proposal Accepted
+Milestone Approved
+Review Submitted
+Edge Cases
+Provider Inactive
+Client Dispute
+Missed Deadline
+Escrow Disagreement
+Incomplete Deliverables
+Success Metrics
+Provider Activation Rate
+Proposal Acceptance Rate
+Project Completion Rate
+Escrow Completion Rate
+Marketplace Revenue
+Future Scalability
+AI Provider Matching
+Smart Pricing Recommendations
+Automated Contract Generation
+Global Payments
+Advanced Reputation Systems

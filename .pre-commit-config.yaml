@@ -1,0 +1,28 @@
+# Pre-commit hooks. Install once per developer machine:
+#
+#   pip install pre-commit           # or:  brew install pre-commit
+#   pre-commit install --install-hooks
+#
+# `default_install_hook_types` below ensures the single `pre-commit
+# install` command activates BOTH the pre-commit and pre-push stages,
+# so devs no longer need a separate `--hook-type pre-push` step.
+#
+# Runs the gitleaks secret scanner on every commit and every push.
+# Bypass requires explicit --no-verify AND reviewer approval per the
+# project's git-safety policy.
+
+default_install_hook_types:
+  - pre-commit
+  - pre-push
+
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.2   # Pin to a SHA before broad rollout; this tag is a
+                   # documented stable release at config-creation time.
+    hooks:
+      - id: gitleaks
+        name: gitleaks (staged changes)
+        # Default behaviour scans staged diff only — sub-second on a
+        # typical commit. CI runs the full-history scan separately.
+        args: ["--config=.gitleaks.toml", "--redact"]
+        stages: [pre-commit, pre-push]
