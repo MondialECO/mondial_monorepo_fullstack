@@ -1,5 +1,6 @@
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
+using System.Text.Json.Serialization;
 
 namespace WebApp.Models.DatabaseModels
 {
@@ -379,6 +380,7 @@ namespace WebApp.Models.DatabaseModels
 
         /// <summary>Inline typed payload for non-session outputs (valuation/legal/formation/pricing/gtm).</summary>
         [BsonExtraElements]
+        [JsonIgnore]
         public BsonDocument Data { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
