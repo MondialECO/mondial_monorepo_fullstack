@@ -33,12 +33,12 @@ export default function CrossroadsPage() {
 
   return (
     <div className="w-full min-h-screen bg-background text-foreground">
-      <header className="flex items-center justify-between border-b border-border bg-card/50 px-6 py-4">
+      {/* <header className="flex items-center justify-between border-b border-border bg-card/50 px-6 py-4">
         <h1 className="text-sm font-bold">Phase 5 — The Crossroads</h1>
         <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
           <Sparkles className="h-3 w-3" /> Decision point
         </div>
-      </header>
+      </header> */}
 
       <main className="max-w-5xl mx-auto w-full p-6 space-y-6">
         {/* Project strip */}

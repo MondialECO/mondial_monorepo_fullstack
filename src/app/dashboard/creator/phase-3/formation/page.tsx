@@ -82,8 +82,6 @@ export default function FormationPage() {
       stepEyebrow="Step 3.5"
       title="Company Formation & Team"
       description="A recommended legal structure for your idea, plus the specialists you'll want on board."
-      stepLabel="Phase 3 Step 5 of 6"
-      progress={83}
     >
       {loading && <div className="flex items-center gap-2 text-muted-foreground py-12 justify-center"><Loader2 className="h-5 w-5 animate-spin" /> Analyzing your formation…</div>}
 
