@@ -2,10 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Sparkles, ArrowLeft, ArrowRight, Lightbulb, Check } from "lucide-react";
+import { Sparkles, ArrowLeft, ArrowRight, Lightbulb, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
+import { creatorAiApi } from "@/lib/api-creator-ai";
+import { toAiError } from "@/lib/ai-errors";
 
 const TOPICS = [
   { id: "tech", label: "Technology", emoji: "💻" },
@@ -33,6 +35,10 @@ const COMPLEMENTS = [
   { id: "community", label: "Community Building", emoji: "👥" },
 ];
 
+// AI prompt wants human-readable text, not internal ids.
+const sectorLabel = (id: string) => TOPICS.find((t) => t.id === id)?.label ?? id;
+const strengthLabel = (id: string) => COMPLEMENTS.find((c) => c.id === id)?.label ?? id;
+
 const arraysEqual = (a: string[], b: string[]) =>
   a.length === b.length && a.every((item, index) => item === b[index]);
 
@@ -51,6 +57,8 @@ export default function IdeaDiscoveryPage() {
   const [sectors, setSectors] = useState<string[]>([]);
   const [observedProblem, setObservedProblem] = useState("");
   const [strengths, setStrengths] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const hasHydratedInputsRef = useRef(false);
   const savedInputs = state.journeyState?.phase2?.discoveryInputs;
 
@@ -71,7 +79,10 @@ export default function IdeaDiscoveryPage() {
       const currentInputs = prev.journeyState.phase2.discoveryInputs;
       const nextInputs = { sectors: nextSectors, observedProblem: nextProblem, strengths: nextStrengths };
 
-      if (currentInputs && discoveryInputsEqual(currentInputs, nextInputs)) {
+      if (currentInputs && discoveryInputsEqual(
+        { sectors: currentInputs.sectors ?? [], observedProblem: currentInputs.observedProblem ?? "", strengths: currentInputs.strengths ?? [] },
+        nextInputs,
+      )) {
         return prev;
       }
 
@@ -89,19 +100,25 @@ export default function IdeaDiscoveryPage() {
   };
 
   const toggleSector = (id: string) => {
-    setSectors((prev) => {
-      const next = prev.includes(id) ? prev.filter((t) => t !== id) : prev.length < 3 ? [...prev, id] : prev;
-      saveInputsToProvider(next, observedProblem, strengths);
-      return next;
-    });
+    const next = sectors.includes(id)
+      ? sectors.filter((sector) => sector !== id)
+      : sectors.length < 3
+        ? [...sectors, id]
+        : sectors;
+
+    setSectors(next);
+    saveInputsToProvider(next, observedProblem, strengths);
   };
 
   const toggleStrength = (id: string) => {
-    setStrengths((prev) => {
-      const next = prev.includes(id) ? prev.filter((t) => t !== id) : prev.length < 3 ? [...prev, id] : prev;
-      saveInputsToProvider(sectors, observedProblem, next);
-      return next;
-    });
+    const next = strengths.includes(id)
+      ? strengths.filter((strength) => strength !== id)
+      : strengths.length < 3
+        ? [...strengths, id]
+        : strengths;
+
+    setStrengths(next);
+    saveInputsToProvider(sectors, observedProblem, next);
   };
 
   const isFormValid =
@@ -111,10 +128,33 @@ export default function IdeaDiscoveryPage() {
     strengths.length >= 1 &&
     strengths.length <= 3;
 
-  const handleNext = () => {
-    if (!isFormValid) return;
+  const handleNext = async () => {
+    if (!isFormValid || loading) return;
+    setError(null);
+    setLoading(true);
     saveInputsToProvider(sectors, observedProblem, strengths);
-    router.push("/dashboard/creator/phase-2/ai-processing");
+    setState((prev) => ({
+      ...prev,
+      journeyState: {
+        ...prev.journeyState,
+        phase2: {
+          ...prev.journeyState.phase2,
+          currentStep: 3,
+        },
+      },
+    }));
+
+    try {
+      const result = await creatorAiApi.startIdeaGeneration({
+        sectors: sectors.map(sectorLabel),
+        observedProblem,
+        strengths: strengths.map(strengthLabel),
+      });
+      router.push(`/dashboard/creator/phase-2/ai-processing?session=${result.sessionId}`);
+    } catch (err) {
+      setError(toAiError(err).message);
+      setLoading(false);
+    }
   };
 
   const handleBack = () => {
@@ -125,7 +165,7 @@ export default function IdeaDiscoveryPage() {
   return (
     <div className="w-full flex-1 flex flex-col bg-background text-foreground min-h-screen">
       {/* Isolated Onboarding Header */}
-      <header className="flex items-center justify-between border-b border-border bg-card/50 backdrop-blur-xs px-6 py-4">
+      {/* <header className="flex items-center justify-between border-b border-border bg-card/50 backdrop-blur-xs px-6 py-4">
         <Button
           variant="ghost"
           onClick={handleBack}
@@ -138,7 +178,7 @@ export default function IdeaDiscoveryPage() {
           <Sparkles className="h-3 w-3" />
           Phase 2 of 6 — Idea Discovery
         </div>
-      </header>
+      </header> */}
 
       {/* Progress Bar (28% filled for Step 2) */}
       <div className="h-[3px] w-full bg-muted">
@@ -147,15 +187,21 @@ export default function IdeaDiscoveryPage() {
 
       <main className="flex-1 max-w-[1140px] mx-auto w-full px-6 py-12 md:py-16">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
+
           {/* Main Form (Left Column, spans 2/3) */}
           <div className="lg:col-span-2 space-y-8">
             <div className="space-y-3">
               <h1 className="text-3xl font-extrabold tracking-tight">Idea Discovery</h1>
               <p className="text-sm text-muted-foreground">
-                Let’s find your idea together. Provide three inputs to collaborate. We need three data points to synthesize.
+                Let&apos;s find your idea together. Provide three inputs to collaborate. We need three data points to synthesize.
               </p>
             </div>
+
+            {error && (
+              <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+                {error}
+              </div>
+            )}
 
             {/* Section 1: Market Verticals */}
             <div className="space-y-4">
@@ -244,9 +290,10 @@ export default function IdeaDiscoveryPage() {
             <div className="flex justify-end pt-4 border-t border-border">
               <Button
                 onClick={handleNext}
-                disabled={!isFormValid}
+                disabled={!isFormValid || loading}
                 className="rounded-xl px-6 py-5 text-sm font-bold bg-primary text-primary-foreground hover:bg-primary/95 flex items-center gap-2 disabled:opacity-40"
               >
+                {loading && <Loader2 className="h-4 w-4 animate-spin" />}
                 Initialize Generation
                 <ArrowRight className="h-4 w-4" />
               </Button>
@@ -261,13 +308,13 @@ export default function IdeaDiscoveryPage() {
                   <Lightbulb className="h-5 w-5" />
                   <span className="text-sm uppercase tracking-wider">How this works</span>
                 </div>
-                
+
                 <div className="space-y-4 text-sm leading-relaxed">
                   <div className="space-y-1">
                     <h4 className="font-bold text-foreground">Your inputs</h4>
                     <p className="text-xs text-muted-foreground">We collect signals based on your interests and capabilities.</p>
                   </div>
-                  
+
                   <div className="space-y-1">
                     <h4 className="font-bold text-foreground">AI analysis</h4>
                     <p className="text-xs text-muted-foreground">Our engine cross-references gaps in the market based on real-world demand patterns.</p>

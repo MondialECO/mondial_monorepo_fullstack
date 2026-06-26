@@ -39,7 +39,7 @@ namespace WebApp.Services.Interface
         /// </summary>
         Task<CreatorJourney> ApplyClarifierMappingAsync(
             string userId, string clarifierSessionId, string problem, string targetUser,
-            string solution, double clarityScore, List<string> tags);
+            string solution, double clarityScore, List<string> tags, string marketGap = "", string creatorEdge = "");
 
         /// <summary>
         /// Set branding (asset + type + method), optionally persisting the chosen

@@ -128,7 +128,7 @@ namespace WebApp.Controllers
                     return NotFound(ApiResponse.Error("Clarifier session not found."));
 
                 bool aiParseFailed = false;
-                string problem = "", targetUser = "", solution = "";
+                string problem = "", targetUser = "", solution = "", marketGap = "", creatorEdge = "";
                 double clarityScore = session.ClarityScore ?? 0;
                 var tags = new List<string>();
 
@@ -140,8 +140,10 @@ namespace WebApp.Controllers
                         .AsBsonDocument.GetValue("statement", "").AsString;
                     targetUser = o.GetValue("targetAudience", new BsonDocument())
                         .AsBsonDocument.GetValue("primarySegment", "").AsString;
-                    solution = o.GetValue("proposedSolution", new BsonDocument())
-                        .AsBsonDocument.GetValue("summary", "").AsString;
+                    var proposedSolution = o.GetValue("proposedSolution", new BsonDocument()).AsBsonDocument;
+                    solution = proposedSolution.GetValue("summary", "").AsString;
+                    marketGap = proposedSolution.GetValue("valueProposition", "").AsString;
+                    creatorEdge = proposedSolution.GetValue("differentiation", "").AsString;
                     if (o.TryGetValue("clarityScore", out var cs) && cs.IsNumeric) clarityScore = cs.ToDouble();
                     if (o.TryGetValue("tags", out var t) && t.IsBsonArray)
                         tags = t.AsBsonArray.Where(x => x.IsString).Select(x => x.AsString).ToList();
@@ -157,7 +159,7 @@ namespace WebApp.Controllers
                 }
 
                 var journey = await _journeys.ApplyClarifierMappingAsync(
-                    userId, session.Id, problem, targetUser, solution, clarityScore, tags);
+                    userId, session.Id, problem, targetUser, solution, clarityScore, tags, marketGap, creatorEdge);
 
                 return Ok(ApiResponse.Ok("Clarifier finalized", new
                 {

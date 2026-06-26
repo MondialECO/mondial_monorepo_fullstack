@@ -1,76 +1,64 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { Sparkles, ArrowLeft, ArrowRight, Check, RefreshCw, BarChart2, ShieldAlert, Award, AlertTriangle } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Sparkles, ArrowLeft, ArrowRight, Check, RefreshCw, BarChart2, ShieldAlert, Award, AlertTriangle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
-
-const DEFAULT_CONCEPTS = [
-  {
-    id: "concept-1",
-    title: "EcoRetail Hub",
-    category: "Environment",
-    description: "A collaborative sustainability platform aligning local businesses with carbon offset programs, featuring automated compliance tracking.",
-    score: 87,
-    tam: "$2.5B",
-    saturation: "Low",
-    similarTo: "Watershed",
-    concept: "A carbon offset matching hub for local retail.",
-    targetUser: "Small and medium business owners looking to go green.",
-    coreProblem: "High cost and complexity of tracking carbon offsets.",
-    solution: "A simple micro-offset engine that calculates footprints automatically.",
-    marketGap: "Lack of localized carbon offset micro-transactions.",
-    founderEdge: "Proprietary algorithm matching local green initiatives.",
-  },
-  {
-    id: "concept-2",
-    title: "FreelanceSync CRM",
-    category: "Business Tools",
-    description: "An AI-powered client interaction pipeline that auto-drafts updates, tracks milestones, and automates invoices.",
-    score: 82,
-    tam: "$4.1B",
-    saturation: "Medium",
-    similarTo: "HoneyBook",
-    concept: "An automation first CRM for independent professionals.",
-    targetUser: "Freelance developers, designers, and consultants.",
-    coreProblem: "Wasted hours managing non-billable client interactions.",
-    solution: "AI summarizing emails and generating tasks & invoices dynamically.",
-    marketGap: "No tool natively connects task tracking directly with auto-invoicing based on email content.",
-    founderEdge: "Direct experience with freelance workflow friction.",
-  },
-  {
-    id: "concept-3",
-    title: "MicroFlow Analytics",
-    category: "AI & Automation",
-    description: "A plug-and-play visual telemetry network designed for small ecommerce operations to track product-market fit.",
-    score: 76,
-    tam: "$800M",
-    saturation: "Low",
-    similarTo: "Mixpanel",
-    concept: "Ultra-simplified real-time customer behavior maps.",
-    targetUser: "Boutique Shopify and WooCommerce merchants.",
-    coreProblem: "Standard analytics tools are too complex and expensive.",
-    solution: "Three metrics only: absolute visual heat, click friction, and churn alerts.",
-    marketGap: "No analytics tool tailored exclusively to non-technical store owners.",
-    founderEdge: "Deep understanding of shop merchant workflows.",
-  },
-];
+import { creatorAiApi } from "@/lib/api-creator-ai";
+import { mapGeneratedIdeas } from "@/lib/creator/map-generated-ideas";
+import type { UiConcept } from "@/lib/creator/map-generated-ideas";
 
 export default function IdeaCardsPage() {
   const router = useRouter();
+  const params = useSearchParams();
+  const sessionId = params.get("session");
   const { state, setState, resetJourney } = useCreatorProgress();
   const [selected, setSelected] = useState<string | null>(null);
   const [showConfirmReset, setShowConfirmReset] = useState(false);
+  const [hydrating, setHydrating] = useState(false);
 
-  const concepts = state.journeyState?.phase2?.generatedConcepts || DEFAULT_CONCEPTS;
+  const concepts: UiConcept[] = state.journeyState?.phase2?.generatedConcepts ?? [];
 
   useEffect(() => {
     if (state.journeyState?.phase2?.selectedConceptId) {
       setSelected(state.journeyState.phase2.selectedConceptId);
     }
   }, [state]);
+
+  // Source of truth is the AI session. If local state is empty (fresh load, reload,
+  // or direct navigation), fetch + map the generated ideas from the backend.
+  useEffect(() => {
+    const existing = state.journeyState?.phase2?.generatedConcepts;
+    if ((existing && existing.length) || !sessionId) return;
+    let cancelled = false;
+    setHydrating(true);
+    creatorAiApi
+      .getIdeaGeneration(sessionId)
+      .then((session) => {
+        if (cancelled || session.status !== "Completed") return;
+        const mapped = mapGeneratedIdeas(session.output?.ideas ?? [], session.input?.sectors ?? []);
+        if (!mapped.length) return;
+        setState((prev) => ({
+          ...prev,
+          journeyState: {
+            ...prev.journeyState,
+            phase2: { ...prev.journeyState.phase2, generatedConcepts: mapped },
+          },
+        }));
+      })
+      .catch(() => {
+        /* network/parse failure — empty state below offers a retry path */
+      })
+      .finally(() => {
+        if (!cancelled) setHydrating(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId]);
 
   const handleSelect = (id: string) => {
     setSelected(id);
@@ -88,6 +76,16 @@ export default function IdeaCardsPage() {
 
   const handleConfirm = () => {
     if (!selected) return;
+    setState((prev) => ({
+      ...prev,
+      journeyState: {
+        ...prev.journeyState,
+        phase2: {
+          ...prev.journeyState.phase2,
+          currentStep: 5,
+        },
+      },
+    }));
     router.push("/dashboard/creator/phase-2/idea-confirm");
   };
 
@@ -100,7 +98,7 @@ export default function IdeaCardsPage() {
   return (
     <div className="w-full flex-1 flex flex-col bg-background text-foreground min-h-screen">
       {/* Isolated Onboarding Header */}
-      <header className="flex items-center justify-between border-b border-border bg-card/50 backdrop-blur-xs px-6 py-4">
+      {/* <header className="flex items-center justify-between border-b border-border bg-card/50 backdrop-blur-xs px-6 py-4">
         <Button
           variant="ghost"
           onClick={() => router.push("/dashboard/creator/phase-2/discovery")}
@@ -113,7 +111,7 @@ export default function IdeaCardsPage() {
           <Sparkles className="h-3 w-3" />
           Phase 2 of 6 — Idea Candidates
         </div>
-      </header>
+      </header> */}
 
       {/* Progress Bar (35% filled) */}
       <div className="h-[3px] w-full bg-muted">
@@ -152,7 +150,38 @@ export default function IdeaCardsPage() {
           </div>
         </div>
 
+        {/* Loading state — fetching the AI session */}
+        {hydrating && concepts.length === 0 && (
+          <div className="flex flex-col items-center justify-center gap-3 py-20 text-muted-foreground">
+            <Loader2 className="h-7 w-7 animate-spin text-primary" />
+            <p className="text-sm font-semibold">Loading your generated concepts…</p>
+          </div>
+        )}
+
+        {/* Empty state — no concepts and nothing in flight */}
+        {!hydrating && concepts.length === 0 && (
+          <div className="flex flex-col items-center justify-center gap-4 py-20 text-center">
+            <div className="h-14 w-14 rounded-full bg-destructive/10 text-destructive flex items-center justify-center">
+              <AlertTriangle className="h-7 w-7" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-lg font-bold">No concepts to show</h3>
+              <p className="text-sm text-muted-foreground max-w-md">
+                We couldn&apos;t load generated concepts for this session. Head back to Discovery to generate a fresh set.
+              </p>
+            </div>
+            <Button
+              onClick={() => router.push("/dashboard/creator/phase-2/discovery")}
+              className="rounded-xl px-6 py-5 text-sm font-bold bg-primary text-primary-foreground hover:bg-primary/95 flex items-center gap-2"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Back to Discovery
+            </Button>
+          </div>
+        )}
+
         {/* Concept Cards Grid */}
+        {concepts.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {concepts.map((concept) => {
             const isSelected = selected === concept.id;
@@ -216,7 +245,7 @@ export default function IdeaCardsPage() {
                       <span className="text-muted-foreground flex items-center gap-1.5 font-semibold">
                         Similar to
                       </span>
-                      <span className="font-medium text-foreground italic">{concept.similarTo}</span>
+                      <span className="font-medium text-foreground italic"> {concept.similarTo}</span>
                     </div>
                   </div>
                 </CardContent>
@@ -224,6 +253,7 @@ export default function IdeaCardsPage() {
             );
           })}
         </div>
+        )}
 
         {/* Bottom Panel */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-border pt-6">
@@ -232,7 +262,7 @@ export default function IdeaCardsPage() {
             <Button
               variant="link"
               className="p-0 h-auto text-primary font-bold inline-flex items-center gap-0.5 hover:underline"
-              onClick={() => router.push("/dashboard/creator/phase-2/clarifier")}
+              onClick={() => router.push("/dashboard/creator/phase-2/discovery")}
             >
               Describe your own idea
             </Button>

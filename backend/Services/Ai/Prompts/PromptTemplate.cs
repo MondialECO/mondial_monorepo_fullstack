@@ -208,13 +208,19 @@ namespace WebApp.Services.Ai.Prompts
                 "    \"problem\": string (the core problem it solves),\n" +
                 "    \"solution\": string (the proposed solution),\n" +
                 "    \"marketGap\": string (the market gap or opportunity),\n" +
-                "    \"score\": number (viability score, 0–100)\n" +
+                "    \"score\": number (viability score, 0–100),\n" +
+                "    \"tam\": string (rough total addressable market, e.g. \"$2.5B\"),\n" +
+                "    \"saturation\": string (competitor saturation: \"Low\", \"Medium\", or \"High\"),\n" +
+                "    \"similarTo\": string (one comparable existing company),\n" +
+                "    \"targetUser\": string (primary customer segment),\n" +
+                "    \"founderEdge\": string (why the founder's strengths give an advantage)\n" +
                 "  },\n" +
                 "  ...\n" +
                 "]\n" +
                 "MUST contain exactly 3 idea objects. score MUST be a number " +
-                "between 0 and 100 (integer or decimal). All fields must be strings " +
-                "or numbers; all keys must be present. Do not include extra fields.",
+                "between 0 and 100 (integer or decimal). saturation MUST be one of " +
+                "Low, Medium, or High. tam is a rough qualitative estimate. All keys " +
+                "must be present. Do not include extra fields.",
         };
 
         /// <summary>All in-code templates seeded into <c>PromptVersions</c> on startup.</summary>

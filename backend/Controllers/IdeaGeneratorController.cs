@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using MongoDB.Bson;
 using WebApp.Configuration.AiOptions;
 using WebApp.Models;
 using WebApp.Models.DatabaseModels.Ai;
@@ -12,13 +13,8 @@ using WebApp.Services.Repository.Ai;
 
 namespace WebApp.Controllers
 {
-    /// <summary>
-    /// Phase 2 Idea Generator endpoints. Two operations:
-    /// 1. POST /api/ai/idea-generator — credit check FIRST, then create session, then enqueue job
-    /// 2. GET /api/ai/idea-generator/{sessionId} — return session with ideas array
-    /// </summary>
     [ApiController]
-    [Route("api/ai/[controller]")]
+    [Route("api/ai/idea-generator")]
     [Authorize]
     public class IdeaGeneratorController : ControllerBase
     {
@@ -46,10 +42,6 @@ namespace WebApp.Controllers
             User.FindFirst(ClaimTypes.NameIdentifier)?.Value
             ?? throw new UnauthorizedAccessException();
 
-        /// <summary>
-        /// Start Phase 2 Idea Generation. Credit check happens FIRST (402 if insufficient).
-        /// Then creates session, enqueues job. Returns ApiResponse with { sessionId, jobId }.
-        /// </summary>
         [HttpPost]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -65,12 +57,11 @@ namespace WebApp.Controllers
             if (!_settings.Features.IdeaGenerator)
                 return StatusCode(503, ApiResponse.Error("The Idea Generator is currently disabled.", HttpContext.TraceIdentifier));
 
-            if (request.Sectors == null || request.Sectors.Length < 1 || request.Sectors.Length > 3)
-                return BadRequest(ApiResponse.Error("sectors must have 1-3 items", HttpContext.TraceIdentifier));
-            if (string.IsNullOrWhiteSpace(request.ObservedProblem) || request.ObservedProblem.Length < 10)
-                return BadRequest(ApiResponse.Error("observedProblem must be at least 10 characters", HttpContext.TraceIdentifier));
-            if (request.Strengths == null || request.Strengths.Length < 1 || request.Strengths.Length > 3)
-                return BadRequest(ApiResponse.Error("strengths must have 1-3 items", HttpContext.TraceIdentifier));
+            if (!ModelState.IsValid)
+            {
+                var errors = string.Join("; ", ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage));
+                return BadRequest(ApiResponse.Error(errors, HttpContext.TraceIdentifier));
+            }
 
             try
             {
@@ -79,8 +70,7 @@ namespace WebApp.Controllers
             }
             catch (InsufficientCreditsException ex)
             {
-                _logger.LogWarning("User {UserId} insufficient credits for IdeaGenerator: {Message}",
-                    owner, ex.Message);
+                _logger.LogWarning("User {UserId} insufficient credits for IdeaGenerator", owner);
                 return StatusCode(402, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
             catch (AiRateLimitException ex)
@@ -88,43 +78,45 @@ namespace WebApp.Controllers
                 return StatusCode(429, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
 
-            // Now create the session
+            // Create session AFTER credit check passes
             var session = new IdeaGenerationSession
             {
                 OwnerUserId = owner,
-                BusinessIdeaId = request.BusinessIdeaId,
                 Status = "Pending",
-                Input = new()
+                Input = new IdeaGenerationInput
                 {
-                    { "sectors", new MongoDB.Bson.BsonArray(request.Sectors) },
-                    { "observedProblem", request.ObservedProblem },
-                    { "strengths", new MongoDB.Bson.BsonArray(request.Strengths) },
+                    Sectors = request.Sectors,
+                    ObservedProblem = request.ObservedProblem,
+                    Strengths = request.Strengths
                 },
                 CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             };
 
             var created = await _sessions.CreateAsync(session, cancellationToken);
 
-            // Enqueue the job (add sessionId to input for the handler)
-            var input = new MongoDB.Bson.BsonDocument(session.Input!) { ["sessionId"] = created.Id };
-            var jobId = await _jobService.EnqueueAsync(
-                AiJobType.IdeaGenerator,
-                owner,
-                input);
+            // Enqueue job
+            var input = new BsonDocument
+            {
+                { "sectors", new BsonArray(request.Sectors) },
+                { "observedProblem", request.ObservedProblem },
+                { "strengths", new BsonArray(request.Strengths) },
+                { "sessionId", created.Id.ToString() }
+            };
+
+            var jobId = await _jobService.EnqueueAsync(AiJobType.IdeaGenerator, owner, input);
 
             return Ok(ApiResponse.Ok("Idea generation started.", new { sessionId = created.Id.ToString(), jobId }));
         }
 
-        /// <summary>
-        /// Retrieve Phase 2 Idea Generation session by ID. Returns ApiResponse with session
-        /// containing ideas array (when status=Completed).
-        /// </summary>
         [HttpGet("{sessionId}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Get(string sessionId, CancellationToken cancellationToken)
         {
+            if (!ObjectId.TryParse(sessionId, out _))
+                return NotFound(ApiResponse.Error("Session not found.", HttpContext.TraceIdentifier));
+
             var session = await _sessions.GetByIdAsync(sessionId, cancellationToken);
             if (session == null)
                 return NotFound(ApiResponse.Error("Session not found.", HttpContext.TraceIdentifier));
@@ -136,9 +128,9 @@ namespace WebApp.Controllers
                 BusinessIdeaId = session.BusinessIdeaId,
                 Input = session.Input,
                 Output = session.Output,
-                Error = session.Error,
+                ErrorMessage = session.ErrorMessage,
                 CreatedAt = session.CreatedAt,
-                UpdatedAt = session.UpdatedAt,
+                UpdatedAt = session.UpdatedAt
             };
 
             return Ok(ApiResponse.Ok("OK", dto));

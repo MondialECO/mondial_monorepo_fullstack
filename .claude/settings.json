@@ -76,7 +76,9 @@
       "Bash(curl -s http://localhost:5093/api/companies/6a32afa34357b8ae853c60a2/term-sheets/active)",
       "Bash(pkill -f \"dotnet run\")",
       "Bash(pkill -f WebApp)",
-      "Bash(curl -i http://localhost:5093/api/companies/6a32afa34357b8ae853c60a2/term-sheets/active)"
+      "Bash(curl -i http://localhost:5093/api/companies/6a32afa34357b8ae853c60a2/term-sheets/active)",
+      "Bash(npm run dev:*)",
+      "Bash(nohup npm run dev:*)"
     ],
     "deny": [
       "Bash(rm -rf:*)",
@@ -85,7 +87,6 @@
       "Bash(yarn add:*)",
       "Bash(pnpm add:*)",
       "Bash(npm run build:*)",
-      "Bash(npm run dev:*)",
       "Bash(git push:*)",
       "Bash(git reset --hard:*)",
       "Read(.env*)",

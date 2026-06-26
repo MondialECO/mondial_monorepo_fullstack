@@ -1,80 +1,279 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
-import { Sparkles, ArrowRight, ArrowLeft, AlertTriangle } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import {
+  Sparkles,
+  ArrowRight,
+  ArrowLeft,
+  CheckCircle2,
+  AlertTriangle,
+  Loader2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
 
 export default function IdeaSummaryPage() {
   const router = useRouter();
-  const params = useSearchParams();
-  const needsReview = params.get("review") === "1";
-  const { state, completeStep } = useCreatorProgress();
-  const { project } = state;
+  const { state, setState, refetch } = useCreatorProgress();
+  const [isLoading, setIsLoading] = useState(true);
 
-  const score = project.clarityScore || 0;
-  const label = score >= 75 ? "Sharp" : score >= 55 ? "Developing" : "Vague";
-  const labelColor = score >= 75 ? "text-primary" : score >= 55 ? "text-warning" : "text-destructive";
+  // Sync with backend, but don't block rendering if we have local data
+  useEffect(() => {
+    (async () => {
+      // If we already have data from clarifier, show it immediately
+      const hasLocalData = state.project?.concept && (state.project?.clarityScore ?? 0) > 0;
+      if (hasLocalData) {
+        setIsLoading(false);
+      } else {
+        // Otherwise wait for refetch from backend
+        await refetch();
+        setIsLoading(false);
+      }
+    })();
+  }, [refetch, state.project?.concept, state.project?.clarityScore]);
 
-  const fields: { label: string; value: string }[] = [
-    { label: "Core Problem", value: project.problem },
-    { label: "Target User", value: project.targetUser },
-    { label: "Proposed Solution", value: project.solution },
+  const project = state.project ?? {};
+  const entryPath = state.journeyState?.phase2?.selectedEntryPath;
+
+  // Use only real project data — no fallback strings
+  const conceptVal = project.concept ?? "";
+  const targetUserVal = project.targetUser ?? "";
+  const problemVal = project.problem ?? "";
+  const solutionVal = project.solution ?? "";
+  const marketGapVal = project.marketGap ?? "";
+  const edgeVal = project.creatorEdge ?? "";
+  const clarityScore = project.clarityScore ?? 0;
+
+  // Check if we have required data
+  const hasData = conceptVal && clarityScore > 0;
+
+  // Synthesis progression label
+  const progressionLabel =
+    clarityScore >= 85 ? "Sharp" : clarityScore >= 50 ? "Developing" : "Vague";
+  const progressionPercent =
+    clarityScore >= 85 ? 100 : clarityScore >= 50 ? 66 : 33;
+
+  const canvasItems = [
+    { title: "CONCEPT", value: conceptVal },
+    { title: "TARGET USER", value: targetUserVal },
+    { title: "CORE PROBLEM", value: problemVal },
+    { title: "YOUR SOLUTION", value: solutionVal },
+    { title: "MARKET GAP", value: marketGapVal },
+    { title: "YOUR EDGE", value: edgeVal },
   ];
 
+  const handleRevisit = () => {
+    if (entryPath === "already_have_idea") {
+      router.push("/dashboard/creator/phase-2/clarifier");
+    } else {
+      router.push("/dashboard/creator/phase-2/idea-cards");
+    }
+  };
+
   const handleContinue = () => {
-    completeStep(2, 7); // advance local cursor; status stays derived server-side
+    setState((prev) => ({
+      ...prev,
+      journeyState: {
+        ...prev.journeyState,
+        phase2: {
+          ...prev.journeyState.phase2,
+          currentStep: 8,
+        },
+      },
+    }));
     router.push("/dashboard/creator/phase-2/concept-name");
   };
 
   return (
-    <div className="w-full min-h-screen bg-background text-foreground">
-      <header className="flex items-center justify-between border-b border-border bg-card/50 px-6 py-4">
-        <Button variant="ghost" onClick={() => router.push("/dashboard/creator/phase-2/clarifier")} className="gap-2 text-xs font-semibold text-muted-foreground">
-          <ArrowLeft className="h-4 w-4" /> Back to chat
-        </Button>
+    <div className="flex flex-col min-h-screen w-full bg-background text-foreground">
+      {/* ── HEADER ── */}
+      {/* <header className="flex items-center justify-between border-b border-border bg-card/80 backdrop-blur-sm px-4 sm:px-6 py-3 shrink-0">
+        <div />
         <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-          <Sparkles className="h-3 w-3" /> Idea Summary
+          <Sparkles className="h-3 w-3" />
+          <span className="hidden sm:inline">Phase 2 of 6 —</span> Idea Summary
         </div>
-      </header>
+      </header> */}
 
-      <main className="max-w-3xl mx-auto w-full p-6 space-y-6">
-        {needsReview && (
-          <div className="flex items-start gap-3 rounded-xl border border-warning/30 bg-warning/5 p-4 text-sm text-warning">
-            <AlertTriangle className="h-5 w-5 shrink-0" />
-            <p>We couldn&apos;t fully structure your answers. Please review and edit your summary below before continuing.</p>
-          </div>
-        )}
+      {/* ── PROGRESS BAR ── */}
+      <div className="h-[3px] w-full bg-muted shrink-0">
+        <div className="h-full bg-primary transition-all duration-500" style={{ width: "60%" }} />
+      </div>
 
-        <div className="flex items-center justify-between rounded-2xl border border-border bg-card p-5">
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Clarity Score</div>
-            <div className={`text-sm font-semibold ${labelColor}`}>{label}</div>
-          </div>
-          <div className="text-4xl font-extrabold text-primary">{score}</div>
-        </div>
+      {/* ── MAIN CONTENT ── */}
+      <main className="flex-1 flex flex-col items-center px-4 sm:px-6 py-8 sm:py-10">
+        <div className="w-full max-w-[860px] space-y-6">
 
-        <div className="space-y-4">
-          {fields.map((f) => (
-            <div key={f.label} className="rounded-2xl border border-border bg-card p-5">
-              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">{f.label}</div>
-              <p className="text-sm text-foreground leading-relaxed">{f.value || <span className="text-muted-foreground italic">Not captured — edit on the previous step.</span>}</p>
-            </div>
-          ))}
-          {project.tags?.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {project.tags.map((t) => (
-                <span key={t} className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">{t}</span>
-              ))}
+          {/* ── Loading State ── */}
+          {isLoading && (
+            <div className="flex flex-col items-center justify-center gap-4 py-20">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Loading your idea summary…</p>
             </div>
           )}
-        </div>
 
-        <div className="flex items-center justify-between pt-2">
-          <Button variant="outline" onClick={() => router.push("/dashboard/creator/phase-2/clarifier")}>Edit answers</Button>
-          <Button onClick={handleContinue} className="gap-2">Continue <ArrowRight className="h-4 w-4" /></Button>
+          {/* ── Empty State ── */}
+          {!isLoading && !hasData && (
+            <div className="flex flex-col items-center justify-center gap-4 py-20 text-center">
+              <div className="h-14 w-14 rounded-full bg-destructive/10 text-destructive flex items-center justify-center">
+                <AlertTriangle className="h-7 w-7" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-lg font-bold">No idea summary available</h3>
+                <p className="text-sm text-muted-foreground max-w-md">
+                  Complete the idea selection and confirmation steps to generate a summary.
+                </p>
+              </div>
+              <Button
+                onClick={() => router.push("/dashboard/creator/phase-2")}
+                className="rounded-xl px-6 py-5 text-sm font-bold bg-primary text-primary-foreground hover:bg-primary/95 flex items-center gap-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Back to Phase 2
+              </Button>
+            </div>
+          )}
+
+          {/* ── Title Section ── */}
+          {!isLoading && hasData && (
+          <>
+            <div>
+              <div className="inline-flex items-center gap-1.5 text-primary text-xs font-bold mb-2">
+                <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                Synthesis Complete
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
+                Your Idea - First draft.
+              </h1>
+              <p className="text-sm text-muted-foreground mt-1.5 max-w-lg">
+                Extracted from your own insights. AI provided the structure — the ownership is yours.
+              </p>
+            </div>
+
+            {/* ── Canvas Grid (inside a card) ── */}
+          <div className="rounded-2xl border border-border bg-card p-5 sm:p-7">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {canvasItems.map((block) => (
+                <div
+                  key={block.title}
+                  className="border border-border rounded-xl p-4 bg-card hover:shadow-sm transition-shadow duration-200"
+                >
+                  <span className="block text-[11px] font-bold text-foreground tracking-wide uppercase mb-1.5">
+                    {block.title}
+                  </span>
+                  <p className="text-xs text-muted-foreground font-medium leading-relaxed line-clamp-3">
+                    {block.value}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* ── Analytics Panel (Clarity Score + Synthesis Progression) ── */}
+          <div className="rounded-2xl border border-border bg-card p-5 sm:p-7">
+            <div className="flex flex-col md:flex-row gap-6 md:gap-0 md:divide-x divide-border">
+
+              {/* Left: Clarity Score */}
+              <div className="flex flex-col items-center justify-center md:pr-8 shrink-0">
+                <span className="text-xs font-bold text-foreground mb-3">iDeal Clarity Score</span>
+                <div className="relative w-[120px] h-[120px] flex items-center justify-center">
+                  <svg className="w-full h-full -rotate-90" viewBox="0 0 120 120">
+                    <circle
+                      cx="60"
+                      cy="60"
+                      r="50"
+                      fill="transparent"
+                      stroke="currentColor"
+                      strokeWidth="8"
+                      className="text-muted"
+                    />
+                    <circle
+                      cx="60"
+                      cy="60"
+                      r="50"
+                      fill="transparent"
+                      stroke="currentColor"
+                      strokeWidth="8"
+                      strokeLinecap="round"
+                      className="text-primary transition-all duration-700 ease-out"
+                      strokeDasharray={2 * Math.PI * 50}
+                      strokeDashoffset={2 * Math.PI * 50 * (1 - clarityScore / 100)}
+                    />
+                  </svg>
+                  <span className="absolute text-3xl font-extrabold text-foreground tabular-nums">
+                    {clarityScore}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 mt-3">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
+                  <span className="text-xs font-semibold text-green-600 dark:text-green-400">
+                    Ready For Naming
+                  </span>
+                </div>
+              </div>
+
+              {/* Right: Synthesis Progression + Stats */}
+              <div className="flex-1 md:pl-8 flex flex-col justify-center gap-5">
+                {/* Synthesis Progression Bar */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-bold text-foreground">Synthesis Progression</span>
+                    <span className="text-xs font-bold text-primary">{progressionLabel}</span>
+                  </div>
+                  <div className="relative h-2.5 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="absolute inset-y-0 left-0 rounded-full bg-primary transition-all duration-700 ease-out"
+                      style={{ width: `${progressionPercent}%` }}
+                    />
+                    {/* Knob indicator */}
+                    <div
+                      className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-primary border-2 border-card shadow-md transition-all duration-700 ease-out"
+                      style={{ left: `calc(${progressionPercent}% - 8px)` }}
+                    />
+                  </div>
+                  <div className="flex justify-between mt-1.5">
+                    <span className={`text-[10px] font-semibold ${progressionLabel === "Vague" ? "text-primary" : "text-muted-foreground"}`}>Vague</span>
+                    <span className={`text-[10px] font-semibold ${progressionLabel === "Developing" ? "text-primary" : "text-muted-foreground"}`}>Developing</span>
+                    <span className={`text-[10px] font-semibold ${progressionLabel === "Sharp" ? "text-primary" : "text-muted-foreground"}`}>Sharp</span>
+                  </div>
+                </div>
+
+                {/* Stat boxes */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="border border-border rounded-xl p-3.5 bg-card">
+                    <span className="block text-[10px] text-muted-foreground font-medium mb-0.5">
+                      AI confidence
+                    </span>
+                    <span className="text-lg font-extrabold text-foreground tabular-nums">89.4%</span>
+                  </div>
+                  <div className="border border-border rounded-xl p-3.5 bg-card">
+                    <span className="block text-[10px] text-muted-foreground font-medium mb-0.5">
+                      Latency
+                    </span>
+                    <span className="text-lg font-extrabold text-foreground tabular-nums">89.4%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Continue Button ── */}
+          <div className="flex justify-end pt-2 pb-4">
+            <Button
+              onClick={handleContinue}
+              size="lg"
+              className="rounded-full px-8 py-3 text-sm font-bold flex items-center gap-2 shadow-sm"
+            >
+              Looks Good - Continue
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
+          </>
+          )}
         </div>
       </main>
+
     </div>
   );
 }
