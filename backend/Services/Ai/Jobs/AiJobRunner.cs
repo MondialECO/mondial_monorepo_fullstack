@@ -23,6 +23,7 @@ namespace WebApp.Services.Ai.Jobs
         private readonly IModelRouter _modelRouter;
         private readonly IAiProvider _provider;
         private readonly IAiJobCompletionHandler _completion;
+        private readonly IIdeaGenerationSessionRepository _ideaGenerationSessions;
         private readonly IClarifierSessionStore _clarifierSessions;
         private readonly IBusinessPlanSessionStore _businessPlanSessions;
         private readonly IForecastSessionStore _forecastSessions;
@@ -38,6 +39,7 @@ namespace WebApp.Services.Ai.Jobs
             IModelRouter modelRouter,
             IAiProvider provider,
             IAiJobCompletionHandler completion,
+            IIdeaGenerationSessionRepository ideaGenerationSessions,
             IClarifierSessionStore clarifierSessions,
             IBusinessPlanSessionStore businessPlanSessions,
             IForecastSessionStore forecastSessions,
@@ -52,6 +54,7 @@ namespace WebApp.Services.Ai.Jobs
             _modelRouter = modelRouter;
             _provider = provider;
             _completion = completion;
+            _ideaGenerationSessions = ideaGenerationSessions;
             _clarifierSessions = clarifierSessions;
             _businessPlanSessions = businessPlanSessions;
             _forecastSessions = forecastSessions;
@@ -178,6 +181,9 @@ namespace WebApp.Services.Ai.Jobs
             {
                 switch (jobType)
                 {
+                    case AiJobType.IdeaGenerator:
+                        await _ideaGenerationSessions.SetFailedAsync(sessionId, error);
+                        break;
                     case AiJobType.IdeaClarifier:
                         await _clarifierSessions.SetFailedAsync(sessionId, error);
                         break;

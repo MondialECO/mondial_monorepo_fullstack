@@ -7,6 +7,7 @@ namespace WebApp.Services.Ai.Jobs
     /// </summary>
     public enum AiJobType
     {
+        IdeaGenerator,
         IdeaClarifier,
         BusinessPlan,
         Forecast,
