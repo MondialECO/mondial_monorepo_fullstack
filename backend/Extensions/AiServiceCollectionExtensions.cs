@@ -4,7 +4,6 @@ using Hangfire.Mongo.Migration.Strategies;
 using Hangfire.Mongo.Migration.Strategies.Backup;
 using Microsoft.Extensions.Options;
 using WebApp.Configuration.AiOptions;
-using WebApp.HealthChecks;
 using WebApp.Services.Ai.Providers;
 using WebApp.Services.Repository;
 using WebApp.Services.Repository.Ai;
@@ -42,9 +41,6 @@ public static class AiServiceCollectionExtensions
             var s = sp.GetRequiredService<IOptions<OpenRouterSettings>>().Value;
             return OpenRouterResiliencePolicies.Default(s.MaxRetries);
         });
-
-        // Separate client for the readiness ping (opt-in); headers set per-request.
-        services.AddHttpClient(AnthropicHealthCheck.PingClientName);
 
         // ---- AI persistence (Phase 2): repositories for the 7 AI collections ----
         // Singletons (like NotificationRepository / BackgroundJobRepository) so the

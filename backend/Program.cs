@@ -347,11 +347,6 @@ Log.Information("AI services registered (provider: OpenRouter).");
 var healthChecks = builder.Services.AddHealthChecks()
     .AddCheck<MongoHealthCheck>(
         "mongodb",
-        tags: new[] { "ready" })
-    // C-1: Anthropic readiness. Config-only by default (no network); does a
-    // live auth ping only when Anthropic:EnableHealthCheckPing is set.
-    .AddCheck<AnthropicHealthCheck>(
-        "anthropic",
         tags: new[] { "ready" });
 
 if (useRedis)
