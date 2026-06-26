@@ -1,0 +1,1045 @@
+namespace WebApp.Models.Dtos;
+
+// ============ PHASE 1: IDENTITY & ONBOARDING ============
+
+public class CreateCompanyDto
+{
+    public string CompanyName { get; set; }
+    public string Industry { get; set; }
+    public string Website { get; set; }
+    public string Tagline { get; set; }
+}
+
+public class CreateCompanyFromIdeaResponse
+{
+    public string CompanyId { get; set; }
+    public string SourceBusinessIdeaId { get; set; }
+    public bool AlreadyExisted { get; set; }
+}
+
+// ============ PHASE 2: LEGAL INFO & DOCUMENTS ============
+
+public class UpdateLegalInfoRequest
+{
+    public string LegalName { get; set; }
+    public string RegistrationNumber { get; set; } // SIRET
+    public string LegalStructure { get; set; }
+    public string IncorporationDate { get; set; }
+    public string RegisteredAddress { get; set; }
+    public string Country { get; set; }
+    public string NafCode { get; set; }
+}
+
+public class UpdateBeneficialOwnersRequest
+{
+    public List<BeneficialOwnerDto> Owners { get; set; }
+}
+
+public class BeneficialOwnerDto
+{
+    // Canonical required fields shared by frontend and backend.
+    public string FullName { get; set; }
+    public string Email { get; set; }
+    public double OwnershipPercent { get; set; }
+
+    public string? Role { get; set; }
+    public string Nationality { get; set; }
+}
+
+public class BeneficialOwnerResponse
+{
+    public string FullName { get; set; }
+    public string Email { get; set; }
+    public double OwnershipPercent { get; set; }
+    public string Nationality { get; set; }
+}
+
+public class DocumentUploadRequest
+{
+    // Multipart form upload. `File` carries the actual upload stream;
+    // `DocumentType` is the document category (kbis, rib, tax_cert, articles, license, insurance, etc).
+    public Microsoft.AspNetCore.Http.IFormFile File { get; set; }
+    public string DocumentType { get; set; }
+}
+
+public class DocumentStatusResponse
+{
+    public string DocumentId { get; set; }
+    public string Type { get; set; }
+    public string FileName { get; set; }
+    public string Status { get; set; } // pending, approved, rejected
+    public DateTime UploadedAt { get; set; }
+    public string ReviewNote { get; set; }
+    public string StoragePath { get; set; }
+    public long FileSize { get; set; }
+}
+
+// ============ PHASE 3: FINANCIAL ============
+
+public class SaveRevenueDataRequest
+{
+    public double Q1Revenue { get; set; }
+    public double Q2Revenue { get; set; }
+    public double Q3Revenue { get; set; }
+    public double Q4Revenue { get; set; }
+}
+
+public class SaveEquityStructureRequest
+{
+    public List<EquityEntryDto> Entries { get; set; }
+    public double EsopPoolPercent { get; set; }
+    public int EsopVestingMonths { get; set; }
+    public int TotalShares { get; set; } = 1000000;
+}
+
+public class EquityEntryDto
+{
+    public string StakeholderName { get; set; }
+    public string Type { get; set; } // founder, investor, esop, advisor
+    public int SharesOwned { get; set; }
+    public int? VestingMonths { get; set; }
+    public double? InvestmentAmount { get; set; }
+}
+
+public class SaveFundingAskRequest
+{
+    public double RaiseAmount { get; set; }
+    public string RoundType { get; set; } // pre_seed, seed, series_a
+    public double PreMoneyValuation { get; set; }
+    /// <summary>Optional at write time; required at Phase 5 advancement.</summary>
+    public double? EquityOfferedPercent { get; set; }
+    public string ShareType { get; set; } // preferred, safe, note
+    /// <summary>Explicit minimum cheque size (EUR). Optional at write time.</summary>
+    public double? MinimumTicketEur { get; set; }
+    public List<CapitalAllocationDto> CapitalAllocation { get; set; }
+    public ResourceMapDto ResourceMap { get; set; }
+}
+
+public class CapitalAllocationDto
+{
+    public string Category { get; set; }
+    public double Amount { get; set; }
+    public double Percent { get; set; }
+}
+
+public class ResourceMapDto
+{
+    public List<HiringPlanDto> HiringPlan { get; set; } = new();
+    public List<ServiceProviderDto> ServiceProviders { get; set; } = new();
+    public List<TechToolDto> TechTools { get; set; } = new();
+}
+
+public class HiringPlanDto
+{
+    public string Role { get; set; }
+    public double Salary { get; set; }
+    public string Timeline { get; set; }
+    public string Priority { get; set; }
+}
+
+public class ServiceProviderDto
+{
+    public string Name { get; set; }
+    public double EstimatedCost { get; set; }
+}
+
+public class TechToolDto
+{
+    public string Name { get; set; }
+    public double MonthlyCost { get; set; }
+}
+
+public class QuarterlyRevenueResponse
+{
+    public string Quarter { get; set; } // "Q1", "Q2", "Q3", "Q4"
+    public double Revenue { get; set; }
+    public int MonthCount { get; set; } // How many months aggregated
+}
+
+public class FinancialSummaryResponse
+{
+    public double TotalRevenue { get; set; }
+    public double FinalValuation { get; set; }
+    public double MonthlyRecurringRevenue { get; set; }
+    public double AnnualRecurringRevenue { get; set; }
+    public int RunwayMonths { get; set; }
+    public double GrowthRate { get; set; }
+    // Phase 3 valuation-model outputs (Step 2 display).
+    public int ConfidenceScore { get; set; }
+    public double RiskDiscountRate { get; set; }
+    public double RevenueMultiple { get; set; }
+    public string? Industry { get; set; }
+    public DateTime LastUpdatedAt { get; set; }
+}
+
+// ============ PHASE 4: DILUTION SIMULATION ============
+
+public class SimulateDilutionRequest
+{
+    public double FundingAmount { get; set; }
+    public double PostMoneyValuation { get; set; }
+    public string RoundType { get; set; } // seed, series_a, series_b
+}
+
+public class DilutionSimulationResponse
+{
+    public List<DilutionScenarioDto> Scenarios { get; set; }
+}
+
+public class DilutionScenarioDto
+{
+    public string Round { get; set; }
+    public double FounderOwnershipBefore { get; set; }
+    public double FounderOwnershipAfter { get; set; }
+    public double InvestorOwnership { get; set; }
+    public double Valuation { get; set; }
+}
+
+// ============ PHASE 6: DATA ROOM ============
+
+public class UploadDataRoomDocumentRequest
+{
+    // Multipart: the actual file stream.
+    public Microsoft.AspNetCore.Http.IFormFile File { get; set; }
+    public string Title { get; set; }
+    public string Category { get; set; } // legal | financial | business | ip | team
+    public bool IsRequired { get; set; }
+}
+
+public class DataRoomAccessRequest
+{
+    // Both identifiers are optional at the model level; the service requires
+    // exactly one (email is the primary path, id is the back-compat fallback).
+    public string? InvestorId { get; set; }
+    public string? InvestorEmail { get; set; } // resolved to an Investor by PrimaryEmail
+    public string AccessLevel { get; set; } // view_only, download, comment
+    public int DaysValid { get; set; } = 7;
+}
+
+public class DataRoomDocumentResponse
+{
+    public string DocumentId { get; set; }
+    public string Title { get; set; }
+    public string Category { get; set; }
+    public string Status { get; set; } // draft, published
+    public DateTime UploadedAt { get; set; }
+    public int ViewCount { get; set; }
+    public int DownloadCount { get; set; }
+    public string FileName { get; set; }
+    public string MimeType { get; set; }
+    public long FileSize { get; set; }
+    public string StoragePath { get; set; }
+    public string UploadedBy { get; set; }
+}
+
+// ============ PHASE 6: PUBLISH / DOWNLOAD / TRACKING / NDA ============
+
+public class TrackDataRoomEventRequest
+{
+    public string DocumentId { get; set; }
+}
+
+public class Phase6AccessLogResponse
+{
+    public string Id { get; set; }
+    public string DocumentId { get; set; }
+    public string InvestorId { get; set; }
+    public string EventType { get; set; } // view | download
+    public DateTime OccurredAt { get; set; }
+}
+
+public class DocumentEngagementResponse
+{
+    public string DocumentId { get; set; }
+    public string Title { get; set; }
+    public string Category { get; set; }
+    public int ViewCount { get; set; }
+    public int DownloadCount { get; set; }
+    public int UniqueInvestors { get; set; }
+    public DateTime? LastEventAt { get; set; }
+}
+
+public class InvestorEngagementResponse
+{
+    public string InvestorId { get; set; }
+    public int ViewCount { get; set; }
+    public int DownloadCount { get; set; }
+    public int DocumentsTouched { get; set; }
+    public DateTime? LastEventAt { get; set; }
+}
+
+public class DataRoomAnalyticsResponse
+{
+    public int TotalDocuments { get; set; }
+    public int TotalViews { get; set; }
+    public int TotalDownloads { get; set; }
+    public int UniqueInvestorsEngaged { get; set; }
+    public List<DocumentEngagementResponse> DocumentEngagement { get; set; } = new();
+    public List<InvestorEngagementResponse> InvestorEngagement { get; set; } = new();
+}
+
+public class AcceptNdaRequest
+{
+    public string NdaText { get; set; }
+}
+
+public class DataRoomStatusResponse
+{
+    public bool IsLive { get; set; }
+    public bool NdaRequired { get; set; }
+    /// <summary>Set once an investor has signed; NDA can no longer be disabled.</summary>
+    public DateTime? NdaLockedAt { get; set; }
+    public int TotalDocuments { get; set; }
+    public List<DataRoomDocumentResponse> Documents { get; set; }
+    public List<DataRoomAccessRecord> AccessGrants { get; set; }
+}
+
+public class DataRoomAccessRecord
+{
+    public string InvestorId { get; set; }
+    public string InvestorName { get; set; }
+    public string AccessLevel { get; set; }
+    public DateTime GrantedAt { get; set; }
+    public DateTime ExpiresAt { get; set; }
+}
+
+// ============ PHASE 7: AI REVIEW ============
+
+public class AiReviewResponse
+{
+    public int OverallScore { get; set; }
+    public ScoreBreakdownDto ScoreBreakdown { get; set; }
+    public bool InvestorReadyBadge { get; set; }
+    public List<RecommendationDto> Recommendations { get; set; }
+    public PitchDeckAnalysisDto PitchDeckAnalysis { get; set; }
+    public DateTime ReviewedAt { get; set; }
+}
+
+public class ScoreBreakdownDto
+{
+    public int VerificationScore { get; set; }
+    public int FinancialScore { get; set; }
+    public int EquityScore { get; set; }
+    public int FundingScore { get; set; }
+    public int DataRoomScore { get; set; }
+    public int OverallScore { get; set; }
+}
+
+public class RecommendationDto
+{
+    public string Title { get; set; }
+    public string Description { get; set; }
+    public string Priority { get; set; } // high, medium, low
+    public int PotentialPointGain { get; set; }
+}
+
+public class PitchDeckAnalysisDto
+{
+    public string Grade { get; set; }
+    public int AverageScore { get; set; }
+    public int ClarityNarrative { get; set; }
+    public int MarketSizeProof { get; set; }
+    public int TractionMetrics { get; set; }
+    public int TeamPedigree { get; set; }
+}
+
+// ============ PHASE 8: INVESTOR MATCHING ============
+
+public class InvestorMatchResponse
+{
+    public string MatchId { get; set; }
+    public string InvestorId { get; set; }
+    public string InvestorName { get; set; }
+    public int MatchScore { get; set; }
+    public string InvestorType { get; set; }
+    public string PreferredRound { get; set; }
+    public string InvestmentRange { get; set; }
+    public List<string> PreferredSectors { get; set; } = new();
+    public string Status { get; set; }
+    public string MatchRationale { get; set; }
+    public string EngineVersion { get; set; }
+    public DateTime? MatchedAt { get; set; }
+    public DateTime? SavedAt { get; set; }
+    public DateTime? AcceptedAt { get; set; }
+    public DateTime? RejectedAt { get; set; }
+}
+
+public class RecordInteractionRequest
+{
+    public string MatchId { get; set; }
+    public string InteractionType { get; set; } // view | message | call | proposal_sent | term_sheet
+    public string Details { get; set; }
+}
+
+public class UpdateMatchStatusRequest
+{
+    public string Status { get; set; } // saved | accepted | rejected | viewed | new | passed | interested | reviewing | matched
+}
+
+public class MatchingInsightsResponse
+{
+    public int TotalMatches { get; set; }
+    public int HighScoreMatches { get; set; }
+    public int InteractionsCount { get; set; }
+    public double AverageScore { get; set; }
+    public DateTime? LastMatchedAt { get; set; }
+}
+
+// ============ PHASE 9: DEAL EXECUTION ============
+
+public class CreateDealRequest
+{
+    public string InvestorId { get; set; }
+    public List<DealParticipantDto> AdditionalInvestors { get; set; } = new();
+    public TermSheetRequest TermSheet { get; set; }
+}
+
+public class DealParticipantDto
+{
+    public string InvestorId { get; set; }
+    public double CommittedAmount { get; set; }
+}
+
+public class TermSheetRequest
+{
+    public double TotalRaiseAmount { get; set; }
+    public double PostMoneyValuation { get; set; }
+    public string EquityType { get; set; }
+    public bool ProRataRights { get; set; }
+    public string LiquidationPreference { get; set; }
+    public int BoardSeats { get; set; }
+    public DateTime ProposedClosingDate { get; set; }
+}
+
+public class DealStatusResponse
+{
+    public string DealId { get; set; }
+    public string Status { get; set; }
+    public double ProgressPercent { get; set; }
+    public TermSheetResponse TermSheet { get; set; }
+    public List<ChecklistItemDto> ClosingChecklist { get; set; }
+    public List<DealParticipantStatusDto> Investors { get; set; }
+
+    // Offer system (Phase D-4): whose turn it is + the offer/counter history.
+    public string CurrentTurn { get; set; } = "";
+    public List<TermSheetRevisionResponse> Revisions { get; set; } = new();
+}
+
+public class RoundSummaryResponse
+{
+    public int TotalDeals { get; set; }
+    public double CommittedAmountEur { get; set; }
+    public double RoundTargetEur { get; set; }
+    public double RemainingEur { get; set; }
+    public double PercentFilled { get; set; }
+    public int InterestedCount { get; set; }
+    public int InDiscussionCount { get; set; }
+    public int TermSheetCount { get; set; }
+    public int ClosedCount { get; set; }
+}
+
+public class TermSheetResponse
+{
+    public double TotalRaiseAmount { get; set; }
+    public double PostMoneyValuation { get; set; }
+    public string EquityType { get; set; }
+    public double InvestorEquityPercent { get; set; }
+    public bool ProRataRights { get; set; }
+    public string Status { get; set; }
+    public DateTime? SignedAt { get; set; }
+    public string ShareClass { get; set; }
+    public string LiquidationPref { get; set; }
+    public string BoardSeat { get; set; }
+    public bool? HasBoardSeat { get; set; }
+    public string AntiDilutionType { get; set; }
+    public string ClosingDeadline { get; set; }
+    public string ExpiresAt { get; set; }
+}
+
+public class ChecklistItemDto
+{
+    public string Item { get; set; }
+    public bool Completed { get; set; }
+    public string Owner { get; set; }
+    public DateTime? DueDate { get; set; }
+}
+
+public class DealParticipantStatusDto
+{
+    public string InvestorId { get; set; }
+    public string InvestorName { get; set; }
+    public string InvestorType { get; set; }
+    public double CommittedAmount { get; set; }
+    public string Status { get; set; }
+}
+
+public class UpdateDealStatusRequest
+{
+    public string Status { get; set; }
+    public string Notes { get; set; }
+}
+
+public class SignTermSheetRequest
+{
+    public Microsoft.AspNetCore.Http.IFormFile File { get; set; }
+}
+
+public class MutateDueDiligenceItemRequest
+{
+    public string ItemName { get; set; }
+    public string Category { get; set; }
+    public string Status { get; set; }
+    public string AssignedTo { get; set; }
+    public DateTime? DueDate { get; set; }
+    public string Notes { get; set; }
+}
+
+public class UploadDealDocumentRequest
+{
+    public Microsoft.AspNetCore.Http.IFormFile File { get; set; }
+    public string DocumentKind { get; set; }
+}
+
+public class DealDocumentResponse
+{
+    public string DocumentId { get; set; }
+    public string FileName { get; set; }
+    public long FileSize { get; set; }
+    public string MimeType { get; set; }
+    public string DocumentKind { get; set; }
+    public string UploadedBy { get; set; }
+    public DateTime UploadedAt { get; set; }
+}
+
+public class DealActivityLogResponse
+{
+    public string Id { get; set; }
+    public string DealId { get; set; }
+    public string EventType { get; set; }
+    public string FromStatus { get; set; }
+    public string ToStatus { get; set; }
+    public string ActorUserId { get; set; }
+    public DateTime OccurredAt { get; set; }
+    public string Notes { get; set; }
+}
+
+// ============ PHASE 5: FUNDING ASK & PITCH ============
+
+public class SaveFundingNarrativeRequest
+{
+    public string Narrative { get; set; }
+}
+
+public class SaveOutreachCampaignRequest
+{
+    public List<string> InvestorIds { get; set; }
+    public string Template { get; set; }
+}
+
+// ============ GENERAL RESPONSES ============
+
+public class CompanyProgressResponse
+{
+    public string CompanyId { get; set; }
+    public int CurrentPhase { get; set; }
+    public List<int> CompletedPhases { get; set; }
+    public int OverallProgressPercent { get; set; }
+    public int TrustScore { get; set; }
+    public bool IsInvestorReady { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime LastUpdatedAt { get; set; }
+}
+
+public class AdvancePhaseRequest
+{
+    public int PhaseNumber { get; set; }
+}
+
+// ============ PHASE 3: CASH POSITION / KPI / MONTHLY REVENUE / REPORTS ============
+
+public class SaveCashPositionRequest
+{
+    public double CurrentFunds { get; set; }
+    public double MonthlyBurn { get; set; }
+}
+
+public class SaveMonthlyRevenueRequest
+{
+    public List<MonthlyRevenueEntryDto> Entries { get; set; } = new();
+}
+
+public class MonthlyRevenueEntryDto
+{
+    /// <summary>YYYY-MM, e.g. "2026-05".</summary>
+    public string YearMonth { get; set; }
+    public double Revenue { get; set; }
+    public Dictionary<string, double> SectorBreakdown { get; set; } = new();
+}
+
+public class MonthlyRevenueResponse
+{
+    public string YearMonth { get; set; }
+    public double Revenue { get; set; }
+    public Dictionary<string, double> SectorBreakdown { get; set; } = new();
+    public DateTime RecordedAt { get; set; }
+}
+
+public class SaveKpiBaselineRequest
+{
+    public double Mrr { get; set; }
+    public double Arr { get; set; }
+    public double GrossMarginPercent { get; set; }
+    public double Cac { get; set; }
+    public double Ltv { get; set; }
+    public double ChurnPercent { get; set; }
+    public int ActiveAccounts { get; set; }
+
+    // Optional Phase 3 Step-3 extras. Null = not provided (kept backward compatible).
+    public double? BurnRate { get; set; }   // → Companies.MonthlyBurn (>= 0)
+    public int? Nps { get; set; }           // → Companies.Nps (0–100)
+}
+
+// ============ PHASE 3: CONCEPT OVERVIEW (STEP 4) ============
+
+public class SaveConceptRequest
+{
+    public string OneLiner { get; set; }
+    public string ProblemStatement { get; set; }
+    public string SolutionDescription { get; set; }
+    public string Stage { get; set; }
+    public string BusinessModel { get; set; }
+    public List<string> SectorTags { get; set; } = new();
+    public List<string> KeywordTags { get; set; } = new();
+}
+
+public class ConceptResponse
+{
+    public string OneLiner { get; set; }
+    public string ProblemStatement { get; set; }
+    public string SolutionDescription { get; set; }
+    public string Stage { get; set; }
+    public string BusinessModel { get; set; }
+    public List<string> SectorTags { get; set; } = new();
+    public List<string> KeywordTags { get; set; } = new();
+    public int ClarityScore { get; set; }
+    public DateTime RecordedAt { get; set; }
+}
+
+public class KpiBaselineResponse
+{
+    public double Mrr { get; set; }
+    public double Arr { get; set; }
+    public double GrossMarginPercent { get; set; }
+    public double Cac { get; set; }
+    public double Ltv { get; set; }
+    public double ChurnPercent { get; set; }
+    public int ActiveAccounts { get; set; }
+    public double? BurnRate { get; set; }
+    public int? Nps { get; set; }
+    public DateTime RecordedAt { get; set; }
+}
+
+public class FinancialReportUploadRequest
+{
+    public Microsoft.AspNetCore.Http.IFormFile File { get; set; }
+    /// <summary>pnl | balance | audit | other</summary>
+    public string ReportType { get; set; }
+}
+
+public class FinancialReportResponse
+{
+    public string ReportId { get; set; }
+    public string Type { get; set; }
+    public string FileName { get; set; }
+    public string Status { get; set; }
+    public DateTime UploadedAt { get; set; }
+    public long FileSize { get; set; }
+    public string StoragePath { get; set; }
+    public string ReviewNote { get; set; }
+}
+
+// ============ PHASE 4: CAP TABLE / VESTING / OWNERSHIP HISTORY / ISSUANCE ============
+
+public class EquityGrantDto
+{
+    // Optional on submit: new grants don't carry an id yet. The service
+    // (SubmitCapTableAsync) generates one when null/empty. Must be nullable so
+    // ASP.NET's implicit non-nullable-reference-type "required" model validation
+    // doesn't 400 new-grant submissions before the service can assign an id.
+    public string? GrantId { get; set; }
+    public string StakeholderName { get; set; }
+    public string StakeholderType { get; set; } // founder | investor | advisor | esop
+    public string ShareClass { get; set; }       // common | preferred | safe | note
+    public int SharesGranted { get; set; }
+    public double? InvestmentAmount { get; set; }
+    public DateTime? GrantDate { get; set; }
+    public int CliffMonths { get; set; }
+    public int TotalVestMonths { get; set; }
+}
+
+public class SubmitCapTableRequest
+{
+    public int TotalShares { get; set; }
+    public double EsopPoolPercent { get; set; }
+    public int EsopVestingMonths { get; set; }
+    public List<EquityGrantDto> Grants { get; set; } = new();
+}
+
+public class CapTableSnapshotResponse
+{
+    public string CapTableId { get; set; }
+    public int Version { get; set; }
+    public int TotalShares { get; set; }
+    public double EsopPoolPercent { get; set; }
+    public int EsopVestingMonths { get; set; }
+    public List<EquityGrantDto> Grants { get; set; } = new();
+    public DateTime RecordedAt { get; set; }
+}
+
+public class SaveVestingScheduleRequest
+{
+    public List<VestingScheduleEntryDto> Entries { get; set; } = new();
+}
+
+public class VestingScheduleEntryDto
+{
+    // Optional on submit: a vesting row seeded from a new grant has no id yet.
+    // SaveVestingSchedulesAsync generates one when null/empty. Must be nullable
+    // so ASP.NET's implicit non-nullable-reference-type "required" validation
+    // doesn't 400 the request before the service can assign an id.
+    public string? GrantId { get; set; }
+    public string StakeholderName { get; set; }
+    public int SharesGranted { get; set; }
+    public DateTime GrantDate { get; set; }
+    public int CliffMonths { get; set; }
+    public int TotalVestMonths { get; set; }
+}
+
+public class VestingScheduleResponse
+{
+    public string GrantId { get; set; }
+    public string StakeholderName { get; set; }
+    public int SharesGranted { get; set; }
+    public DateTime GrantDate { get; set; }
+    public int CliffMonths { get; set; }
+    public int TotalVestMonths { get; set; }
+    public double VestedPercentNow { get; set; }
+    public int VestedSharesNow { get; set; }
+}
+
+public class SaveOwnershipHistoryRequest
+{
+    public List<OwnershipHistoryEntryDto> Entries { get; set; } = new();
+}
+
+public class OwnershipHistoryEntryDto
+{
+    public string RoundName { get; set; }
+    public DateTime? EventDate { get; set; }
+    public double FounderOwnershipBefore { get; set; }
+    public double FounderOwnershipAfter { get; set; }
+    public double InvestorOwnership { get; set; }
+    public double EsopOwnership { get; set; }
+    public double Valuation { get; set; }
+    public string Notes { get; set; }
+}
+
+public class OwnershipHistoryResponse
+{
+    public string RoundName { get; set; }
+    public DateTime EventDate { get; set; }
+    public double FounderOwnershipBefore { get; set; }
+    public double FounderOwnershipAfter { get; set; }
+    public double InvestorOwnership { get; set; }
+    public double EsopOwnership { get; set; }
+    public double Valuation { get; set; }
+    public string Notes { get; set; }
+    public DateTime RecordedAt { get; set; }
+}
+
+public class RecordShareIssuanceRequest
+{
+    public string IssuedTo { get; set; }
+    public string ShareClass { get; set; }
+    public int SharesIssued { get; set; }
+    public double? PricePerShare { get; set; }
+    public string Reason { get; set; }
+
+    // Optional SAFE-note conversion inputs. When ShareClass == "safe" and all of
+    // these are supplied, the service computes the conversion (price, shares,
+    // method) via Phase4Requirements.ComputeSafeConversion. Backward compatible:
+    // omitted for ordinary issuances.
+    public double? SafePrincipal { get; set; }
+    public double? ValuationCap { get; set; }
+    public double? DiscountRate { get; set; }
+    public double? RoundPricePerShare { get; set; }
+    public int? TotalSharesPreRound { get; set; }
+}
+
+public class ShareIssuanceResponse
+{
+    public string IssuanceId { get; set; }
+    public string IssuedTo { get; set; }
+    public string ShareClass { get; set; }
+    public int SharesIssued { get; set; }
+    public double? PricePerShare { get; set; }
+    public string Reason { get; set; }
+    public DateTime IssuedAt { get; set; }
+
+    // Populated only for SAFE conversions (otherwise null).
+    public double? ConversionPrice { get; set; }
+    public string ConversionMethod { get; set; }
+}
+
+// ============ PHASE 5: PITCH DECK / NARRATIVE / FUNDING PROFILE ============
+
+public class PitchDeckUploadRequest
+{
+    public Microsoft.AspNetCore.Http.IFormFile File { get; set; }
+}
+
+public class PitchDeckResponse
+{
+    public string FileName { get; set; }
+    public string StoragePath { get; set; }
+    public long FileSize { get; set; }
+    public DateTime UploadedAt { get; set; }
+}
+
+public class FundingNarrativeResponse
+{
+    public string Narrative { get; set; }
+}
+
+public class FundingProfileResponse
+{
+    public double? FundingAskAmount { get; set; }
+    public string FundingRoundType { get; set; }
+    public double? PreMoneyValuation { get; set; }
+    public double? EquityOfferedPercent { get; set; }
+    public string ShareType { get; set; }
+    public double? MinimumTicketEur { get; set; }
+    public List<CapitalAllocationDto> CapitalAllocation { get; set; } = new();
+    public ResourceMapDto ResourceMap { get; set; }
+    public string PitchDeckFileName { get; set; }
+    public long? PitchDeckFileSize { get; set; }
+    public DateTime? PitchDeckUploadedAt { get; set; }
+    public string FundingNarrative { get; set; }
+    public bool HasOutreachCampaign { get; set; }
+}
+
+public class OutreachCampaignResponse
+{
+    public string Template { get; set; }
+    public List<string> InvestorIds { get; set; } = new();
+    public DateTime? StartedAt { get; set; }
+}
+
+// ============ INVESTOR-SIDE READS (Phase B/C/D — June 10 demo) ============
+
+public class OpportunityCardResponse
+{
+    public string CompanyId { get; set; }
+    public string CompanyName { get; set; }
+    public string Tagline { get; set; }
+    public string Industry { get; set; }
+    public string Country { get; set; }
+    public string FundingRoundType { get; set; }
+    public double? FundingAskAmount { get; set; }
+    public double? Valuation { get; set; }
+    public int MatchScore { get; set; }
+    public string MatchStatus { get; set; }
+    public bool IsInvestorReady { get; set; }
+    public DateTime LastUpdatedAt { get; set; }
+}
+
+public class OpportunityFeedResponse
+{
+    public int TotalMatches { get; set; }
+    public int NewMatchesToday { get; set; }
+    public List<OpportunityCardResponse> Items { get; set; } = new();
+}
+
+public class OpportunityScoreBreakdownDto
+{
+    public int SectorFit { get; set; }
+    public int StageFit { get; set; }
+    public int GeographyFit { get; set; }
+    public int TeamScore { get; set; }
+}
+
+public class OpportunityCapTableSummaryDto
+{
+    public int TotalShares { get; set; }
+    public double EsopPoolPercent { get; set; }
+    public List<EquityEntryDto> Entries { get; set; } = new();
+}
+
+public class OpportunityTeamMemberDto
+{
+    public string Name { get; set; }
+    public string Role { get; set; }
+}
+
+public class OpportunityDetailResponse
+{
+    public string CompanyId { get; set; }
+    public string CompanyName { get; set; }
+    public string Tagline { get; set; }
+    public string Industry { get; set; }
+    public string Country { get; set; }
+    public string FundingRoundType { get; set; }
+    public double? FundingAskAmount { get; set; }
+    public double? EquityOfferedPercent { get; set; }
+    public double? PreMoneyValuation { get; set; }
+    public double? Valuation { get; set; }
+    public int TrustScore { get; set; }
+    public bool IsInvestorReady { get; set; }
+    public int MatchScore { get; set; }
+    public string MatchStatus { get; set; }
+    public string MatchRationale { get; set; }
+    public OpportunityScoreBreakdownDto ScoreBreakdown { get; set; }
+    public bool NdaRequired { get; set; }
+    public bool NdaAccepted { get; set; }
+    public DateTime? NdaAcceptedAt { get; set; }
+    /// <summary>Set only when NdaAccepted == true.</summary>
+    public OpportunityCapTableSummaryDto CapTableSummary { get; set; }
+    /// <summary>Set only when NdaAccepted == true.</summary>
+    public List<OpportunityTeamMemberDto> Team { get; set; }
+    public int DocumentsCount { get; set; }
+    public int? AiReviewScore { get; set; }
+    public DateTime LastUpdatedAt { get; set; }
+}
+
+public class InvestorPipelineSummaryDto
+{
+    public int ActiveDeals { get; set; }
+    public double CapitalCommitted { get; set; }
+    public double AverageMatchScore { get; set; }
+    /// <summary>Multiple-on-invested-capital. Demo placeholder until per-investment current-valuation field exists.</summary>
+    public double Moic { get; set; }
+}
+
+public class InvestorPipelineColumnsDto
+{
+    public List<OpportunityCardResponse> NewMatches { get; set; } = new();
+    public List<OpportunityCardResponse> InReview { get; set; } = new();
+    public List<OpportunityCardResponse> NdaSigned { get; set; } = new();
+    public List<OpportunityCardResponse> DataRoom { get; set; } = new();
+    public List<OpportunityCardResponse> Negotiation { get; set; } = new();
+}
+
+public class InvestorPipelineResponse
+{
+    public InvestorPipelineSummaryDto Summary { get; set; }
+    public InvestorPipelineColumnsDto Columns { get; set; }
+}
+
+// ============ Phase C — NDA accept response ============
+
+public class NdaAcceptanceResponse
+{
+    public DateTime AcceptedAt { get; set; }
+    public string NdaTextHash { get; set; }
+}
+
+// ============ Phase D — Data Room investor reads ============
+
+public class InvestorDocumentListItemDto
+{
+    public string DocumentId { get; set; }
+    public string Title { get; set; }
+    public string Category { get; set; }
+    public string FileName { get; set; }
+    public string MimeType { get; set; }
+    public long FileSize { get; set; }
+    public DateTime UploadedAt { get; set; }
+}
+
+public class InvestorDocumentListResponse
+{
+    public bool NdaRequired { get; set; }
+    public bool NdaAccepted { get; set; }
+    public List<InvestorDocumentListItemDto> Items { get; set; } = new();
+}
+
+public class InvestorReviewedDocumentDto
+{
+    public string DocumentId { get; set; }
+    public string Title { get; set; }
+    public DateTime ViewedAt { get; set; }
+}
+
+public class InvestorSessionResponse
+{
+    public int ViewedDocsCount { get; set; }
+    public int TotalDocsCount { get; set; }
+    public int ViewEventsCount { get; set; }
+    public int DownloadEventsCount { get; set; }
+    public DateTime? FirstAccessAt { get; set; }
+    public DateTime? LastAccessAt { get; set; }
+    public List<InvestorReviewedDocumentDto> ReviewedDocuments { get; set; } = new();
+}
+
+public class DiligenceProgressResponse
+{
+    public int TotalItems { get; set; }
+    public int Completed { get; set; }
+    public int InProgress { get; set; }
+    public int Pending { get; set; }
+    public int Flagged { get; set; }
+    public int PercentComplete { get; set; }
+}
+
+// ============ PHASE 9: MATCHMAKING PROCESS TIMELINE ============
+
+public class TimelineEventResponse
+{
+    public string EventId { get; set; }
+    public DateTime EventDate { get; set; }
+    public string Title { get; set; }
+    public string Subtitle { get; set; }
+    public string Status { get; set; }
+    public string Color { get; set; }
+}
+
+// ============ PHASE 9: ADDITIONAL REQUEST DTOs ============
+
+public class UpdateTermSheetRequest
+{
+    public double TotalRaiseAmount { get; set; }
+    public double PostMoneyValuation { get; set; }
+    public double PreMoneyValuation { get; set; }
+    public string EquityType { get; set; }
+    public double InvestorEquityPercent { get; set; }
+    public bool ProRataRights { get; set; }
+    public string LiquidationPreference { get; set; }
+    public int BoardSeats { get; set; }
+    public string AntiDilutionProtection { get; set; }
+}
+
+public class CounterOfferRequest
+{
+    public string Note { get; set; }
+    public UpdateTermSheetRequest ProposedTerms { get; set; }
+}
+
+public class ChecklistItemRequest
+{
+    public string Item { get; set; }
+    public string Owner { get; set; }
+    public DateTime? DueDate { get; set; }
+}
+
+public class ToggleChecklistRequest
+{
+    public string ItemId { get; set; }
+    public bool Completed { get; set; }
+}
+
+public class UploadDocumentRequest
+{
+    public string Name { get; set; }
+    public string DocumentType { get; set; }
+    public string StorageUrl { get; set; }
+}

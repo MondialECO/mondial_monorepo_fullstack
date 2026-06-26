@@ -1,0 +1,11 @@
+/* Define CSS variables for fonts */
+:root {
+    --font-instrument: "Instrument Sans", "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+    --font-playfair: "Playfair Display", Georgia, "Times New Roman", serif;
+}
+
+/* Set default font family globally */
+html,
+body {
+    font-family: var(--font-instrument);
+}

@@ -1,0 +1,141 @@
+09_API_Specification_v2.0 (Enterprise Specification)
+Executive Summary
+Defines all public and internal API contracts, authentication standards, request/response formats, error handling, versioning and rate limiting for Mondial.eco.
+API Standards
+Architecture: REST API
+Format: JSON
+Versioning: /api/v1/
+Authentication: JWT
+Transport: HTTPS only
+Authentication APIs
+POST /auth/register
+POST /auth/login
+POST /auth/logout
+POST /auth/refresh-token
+POST /auth/verify-email
+POST /auth/reset-password
+User Intelligence APIs
+GET /intelligence/profile
+PUT /intelligence/profile
+GET /intelligence/score
+GET /intelligence/insights
+POST /intelligence/recalculate
+Creator APIs
+POST /ideas
+GET /ideas
+GET /ideas/{id}
+PUT /ideas/{id}
+DELETE /ideas/{id}
+
+POST /business-plan/generate
+POST /forecast/generate
+Entrepreneur APIs
+POST /companies
+GET /companies/{id}
+
+POST /valuation/calculate
+
+POST /funding-requests
+GET /funding-requests
+
+POST /data-room
+Investor APIs
+POST /investor/profile
+GET /opportunities
+POST /watchlist
+POST /nda/request
+GET /deal-pipeline
+GET /portfolio
+Marketplace APIs
+POST /services
+GET /services
+
+POST /proposals
+GET /projects
+
+POST /milestones
+POST /escrow/release
+AI APIs
+POST /ai/idea-generator
+POST /ai/idea-clarifier
+POST /ai/business-plan
+POST /ai/forecast
+POST /ai/funding-readiness
+Notification APIs
+GET /notifications
+PUT /notifications/read
+POST /notifications/preferences
+Admin APIs
+GET /admin/users
+GET /admin/reports
+POST /admin/moderation
+POST /admin/verification
+Request Standards
+Headers:
+Authorization: Bearer Token
+Content-Type: application/json
+Accept: application/json
+Response Standards
+Success:
+{
+  success: true,
+  data: {}
+}
+
+Error:
+{
+  success: false,
+  errorCode: '',
+  message: ''
+}
+Error Codes
+400 Validation Error
+401 Unauthorized
+403 Forbidden
+404 Not Found
+409 Conflict
+429 Rate Limited
+500 Internal Error
+Rate Limiting
+Anonymous:
+100 requests/hour
+
+Authenticated:
+1000 requests/hour
+
+AI Endpoints:
+Credit-based limits
+API Versioning Strategy
+Current:
+/api/v1/
+
+Future:
+/api/v2/
+
+Backward compatibility maintained where possible.
+Webhook Strategy
+Events:
+Funding Published
+Investor Interested
+Proposal Accepted
+Escrow Released
+AI Job Completed
+Security Requirements
+JWT Validation
+RBAC Enforcement
+Input Validation
+Rate Limiting
+Audit Logging
+Monitoring & Analytics
+Track:
+Latency
+Error Rates
+Endpoint Usage
+AI Consumption
+Conversion Events
+Success Metrics
+API Availability
+Response Times
+Error Rate
+Developer Adoption
+Integration Success

@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard/
+Disallow: /api/
+Disallow: /admin/
+Disallow: /_next/
+Disallow: /public/
+
+Crawl-delay: 1
+
+Sitemap: https://mondialbusiness.eu/sitemap.xml

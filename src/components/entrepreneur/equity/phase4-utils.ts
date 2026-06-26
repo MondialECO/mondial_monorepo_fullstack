@@ -1,0 +1,86 @@
+import { CapTableSnapshotResponse, EquityGrantDto } from '@/lib/api-entrepreneur';
+
+export type StakeType = 'founder' | 'investor' | 'advisor' | 'esop';
+
+export interface DerivedHolder {
+  name: string;
+  type: StakeType;
+  shareClass: string;
+  shares: number;
+  investment?: number;
+  ownershipPct: number;
+}
+
+export interface CapTableDerived {
+  totalShares: number;
+  totalIssued: number;
+  holders: DerivedHolder[];
+  founderPct: number;
+  investorPct: number;
+  advisorPct: number;
+  esopPct: number;
+  founderCount: number;
+  investorCount: number;
+}
+
+export function deriveCapTable(snapshot: CapTableSnapshotResponse | null): CapTableDerived {
+  const grants: EquityGrantDto[] = snapshot?.grants ?? [];
+  const totalShares = snapshot?.totalShares ?? 0;
+  const totalIssued = grants.reduce((s, g) => s + (g.sharesGranted ?? 0), 0);
+  const denom = totalIssued > 0 ? totalIssued : 1;
+
+  const holders: DerivedHolder[] = grants.map((g) => ({
+    name: g.stakeholderName,
+    type: g.stakeholderType,
+    shareClass: g.shareClass,
+    shares: g.sharesGranted,
+    investment: g.investmentAmount,
+    ownershipPct: (g.sharesGranted / denom) * 100,
+  }));
+
+  const sumBy = (t: StakeType) =>
+    holders.filter((h) => h.type === t).reduce((s, h) => s + h.ownershipPct, 0);
+
+  return {
+    totalShares,
+    totalIssued,
+    holders,
+    founderPct: sumBy('founder'),
+    investorPct: sumBy('investor'),
+    advisorPct: sumBy('advisor'),
+    esopPct: sumBy('esop'),
+    founderCount: holders.filter((h) => h.type === 'founder').length,
+    investorCount: holders.filter((h) => h.type === 'investor').length,
+  };
+}
+
+export function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+export const TYPE_LABEL: Record<StakeType, string> = {
+  founder: 'Founder',
+  investor: 'Investor',
+  advisor: 'Advisor',
+  esop: 'ESOP',
+};
+
+// Chart token per stakeholder type (theme tokens from globals.css).
+export const TYPE_CHART_VAR: Record<StakeType, string> = {
+  founder: 'var(--chart-1)',
+  investor: 'var(--chart-2)',
+  advisor: 'var(--chart-3)',
+  esop: 'var(--chart-4)',
+};
+
+export function fmtNum(n: number): string {
+  return Math.round(n).toLocaleString();
+}
+
+export function fmtPct(n: number, digits = 1): string {
+  if (!Number.isFinite(n)) return '—';
+  return `${n.toFixed(digits)}%`;
+}

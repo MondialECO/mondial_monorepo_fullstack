@@ -1,0 +1,153 @@
+00_Master_Product_Blueprint_v2.0 (Enterprise Edition - Expanded)
+1. Executive Summary
+Mondial.eco is a Founder-to-Funding Platform powered by Project Intelligence.
+The platform helps creators, founders, startups, SMEs and investors move from idea,
+validation, planning, funding and execution through a single ecosystem.
+2. Vision
+Enable anyone with an idea, startup or business to become funding-ready through AI-powered intelligence,
+structured execution and trusted investment workflows.
+3. Mission
+Reduce friction between ideas, founders, investors and execution partners.
+4. Product Positioning
+Official Positioning:
+Founder-to-Funding Platform powered by Project Intelligence.
+
+Not:
+- Social Network
+- Freelancer Marketplace
+- Startup Directory
+
+Instead:
+- Founder Intelligence Platform
+- Startup Creation Platform
+- Funding Infrastructure Platform
+5. User Personas
+Creator
+Entrepreneur
+Investor
+Service Provider
+
+Creator can evolve into Entrepreneur.
+Existing businesses can directly join as Entrepreneur.
+6. Core Architecture
+Identity Layer
+Intelligence Layer
+Creation Layer
+Funding Layer
+Execution Layer
+7. User Intelligence Layer
+Stores:
+- Skills
+- Experience
+- Goals
+- Founder DNA
+- Collaboration Profile
+- Availability
+- Matching Vector
+- Reputation Inputs
+
+Outputs:
+- Builder Type
+- Investor Compatibility
+- Co-founder Compatibility
+- Funding Readiness
+8. Creator Journey
+Authentication
+KYC
+Intelligence Profile
+AI Idea Discovery
+AI Idea Clarifier
+Concept Naming
+Business Plan Generator
+Financial Forecast
+IP Vault
+Crossroads
+9. Entrepreneur Journey
+Startup Verification
+Valuation
+Cap Table
+ESOP Management
+Funding Ask
+Data Room
+Investor Matching
+Fundraising Pipeline
+10. Investor Journey
+Verification
+Investment Thesis
+Opportunity Discovery
+AI Matching
+NDA
+Data Room
+SAFE / Equity Review
+Portfolio Tracking
+11. Service Provider Journey
+Verification
+Portfolio
+Marketplace Listing
+Proposal
+Workroom
+Milestones
+Escrow
+Reviews
+12. Funding Instruments
+MVP:
+- Equity
+- SAFE-style agreements
+
+Future:
+- Convertible Notes
+- Debt Financing
+13. Revenue Model
+Subscriptions
+Marketplace Fees
+Premium AI Credits
+
+Future:
+Funding Success Fees
+14. AI Strategy
+OpenRouter
+OpenAI
+Anthropic
+
+Future:
+Smart Routing
+Proprietary Models
+15. Business Rules
+No funding listing without verification.
+No investor access without approval.
+No data room access before NDA.
+All AI-generated outputs remain editable by users.
+16. Success Metrics
+Projects Funded
+Investor Matches
+Business Plans Generated
+Marketplace Transactions
+Verified Users
+17. Governance
+No feature enters development without:
+- Product Specification
+- User Journey
+- Database Requirement
+- API Requirement
+18. MVP Scope
+Included:
+Creator
+Entrepreneur
+Investor
+Service Provider
+Funding Engine
+AI Planning Engine
+
+Excluded:
+Crowdfunding
+Secondary Markets
+Corporate VC
+19. Expansion Strategy
+France
+EU
+Global
+20. Strategic Outcome
+Ideas become businesses.
+Businesses become investment opportunities.
+Investment opportunities become funded projects.
+Funded projects become scalable companies.
