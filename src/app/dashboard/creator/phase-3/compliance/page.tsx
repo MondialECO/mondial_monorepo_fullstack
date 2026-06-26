@@ -91,7 +91,7 @@ export default function CompliancePage() {
 
   return (
     <Phase3SetupShell
-      stepEyebrow="Step 3.3"
+      stepEyebrow="Step 3.4"
       title="Legal & Compliance Checklist"
       description="A tailored checklist for your sector. Mark items as you progress — you can finish these anytime."
       stepLabel="Phase 3 Step 4 of 6"
