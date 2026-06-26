@@ -94,67 +94,123 @@ export default function FormationPage() {
 
       {formation && !loading && (
         <div className="space-y-6">
-          {/* Recommended type + selection */}
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Recommended structure</div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {TYPES.map((t) => {
-                const isRec = formation.recommendedType === t;
-                const isSel = formation.selectedType === t;
-                const facts = TYPE_FACTS[t];
-                return (
-                  <button key={t} onClick={() => selectType(t)} disabled={selecting}
-                    className={`rounded-2xl border-2 p-4 text-left transition-all ${isSel ? 'border-primary bg-primary/5' : isRec ? 'border-primary/40' : 'border-border'}`}>
-                    <div className="flex items-center justify-between">
-                      <span className="text-lg font-extrabold">{t}</span>
-                      {isSel ? <CheckCircle2 className="h-5 w-5 text-primary" /> : isRec ? <Badge className="bg-primary text-primary-foreground">Recommended</Badge> : null}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">{facts.note}</p>
-                    <div className="mt-3 space-y-1 text-xs">
-                      <div><span className="text-muted-foreground">Capital:</span> {facts.capital}</div>
-                      <div><span className="text-muted-foreground">Time:</span> {facts.time}</div>
-                      <div><span className="text-muted-foreground">Cost:</span> {facts.cost}</div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
           {workroomNote && <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 text-sm text-primary">{workroomNote}</div>}
 
-          {/* Skill gap */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card className="rounded-2xl border border-border bg-card p-5">
-              <div className="text-sm font-semibold mb-3 flex items-center gap-2"><Check className="h-4 w-4 text-primary" /> You Have</div>
-              {formation.youHave.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Add strengths on your idea to populate this.</p>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {formation.youHave.map((h) => <span key={h} className="rounded-full bg-primary/10 text-primary px-3 py-1 text-xs">{h}</span>)}
+          {/* Grid layout: Main content + Sidebar */}
+          <div className="grid gap-6 md:grid-cols-3">
+            {/* Main content - 2/3 width */}
+            <Card className="md:col-span-2 rounded-2xl border border-border bg-card p-6 space-y-6">
+              <h3 className="font-bold text-xs text-foreground uppercase tracking-wider">Legal Structure & Team Gaps</h3>
+
+              {/* Formation Types */}
+              <div className="space-y-4">
+                <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Recommended structure</div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {TYPES.map((t) => {
+                    const isRec = formation.recommendedType === t;
+                    const isSel = formation.selectedType === t;
+                    const facts = TYPE_FACTS[t];
+                    return (
+                      <button key={t} onClick={() => selectType(t)} disabled={selecting}
+                        className={`rounded-xl border-2 p-4 text-left transition-all ${isSel ? 'border-primary bg-primary/5' : isRec ? 'border-primary/40' : 'border-border'}`}>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-bold text-sm">{t}</span>
+                          {isSel ? <CheckCircle2 className="h-4 w-4 text-primary" /> : isRec ? <Badge className="bg-primary text-primary-foreground text-[10px]">Recommended</Badge> : null}
+                        </div>
+                        <p className="text-[10px] text-muted-foreground">{facts.note}</p>
+                        <div className="mt-2.5 space-y-1 text-[10px]">
+                          <div><span className="text-muted-foreground">Capital:</span> {facts.capital}</div>
+                          <div><span className="text-muted-foreground">Time:</span> {facts.time}</div>
+                          <div><span className="text-muted-foreground">Cost:</span> {facts.cost}</div>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
-              )}
+              </div>
+
+              {/* Team Competency */}
+              <div className="space-y-4 border-t border-border pt-4">
+                <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Team competency</div>
+
+                {/* You Have */}
+                {formation.youHave.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-primary">
+                      <Check className="h-4 w-4" /> Strengths
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {formation.youHave.map((h) => (
+                        <span key={h} className="rounded-full bg-primary/10 text-primary px-3 py-1 text-[10px] font-medium">{h}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* You Need */}
+                {formation.youNeed.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-warning">
+                      <Building2 className="h-4 w-4" /> Skill Gaps
+                    </div>
+                    <div className="space-y-2">
+                      {formation.youNeed.map((n) => (
+                        <div key={n.label} className="flex items-center justify-between gap-2 p-3 rounded-lg border border-border/50 bg-muted/20">
+                          <span className="text-xs font-medium text-foreground">{n.label}</span>
+                          <Button variant="outline" size="sm" onClick={() => findSp(n.spSpecialty, n.label)} disabled={findingSp === n.spSpecialty} className="gap-1.5 shrink-0 text-[11px] h-8">
+                            {findingSp === n.spSpecialty ? <Loader2 className="h-3 w-3 animate-spin" /> : <UserPlus className="h-3 w-3" />} Find SP
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {formation.youNeed.length === 0 && formation.youHave.length > 0 && (
+                  <p className="text-xs text-muted-foreground italic">Your team looks covered. 🎉</p>
+                )}
+              </div>
             </Card>
 
-            <Card className="rounded-2xl border border-border bg-card p-5">
-              <div className="text-sm font-semibold mb-3 flex items-center gap-2"><Building2 className="h-4 w-4 text-warning" /> You Need</div>
-              <div className="space-y-2">
-                {formation.youNeed.length === 0 && <p className="text-sm text-muted-foreground">Your team looks covered. 🎉</p>}
-                {formation.youNeed.map((n) => (
-                  <div key={n.label} className="flex items-center justify-between gap-2">
-                    <span className="text-sm">{n.label}</span>
-                    <Button variant="outline" size="sm" onClick={() => findSp(n.spSpecialty, n.label)} disabled={findingSp === n.spSpecialty} className="gap-1.5 shrink-0">
-                      {findingSp === n.spSpecialty ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />} Find SP
-                    </Button>
+            {/* Sidebar - 1/3 width */}
+            <Card className="rounded-2xl border border-border bg-card shadow-sm p-6 flex flex-col justify-between">
+              <div className="space-y-4">
+                <span className="text-xs font-bold text-primary uppercase tracking-widest block">Formation guide</span>
+                <h4 className="font-bold text-foreground leading-snug text-sm">Structure Selection Tips</h4>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {formation.selectedType
+                    ? `You've selected ${formation.selectedType} — a ${TYPE_FACTS[formation.selectedType].note.toLowerCase()}`
+                    : `Based on your idea, we recommend ${formation.recommendedType} — ${TYPE_FACTS[formation.recommendedType].note.toLowerCase()}`}
+                </p>
+
+                {formation.matchedSpIds.length > 0 && (
+                  <div className="space-y-2.5 pt-2">
+                    <div className="text-[10px] font-bold text-muted-foreground uppercase">Matched specialists</div>
+                    {formation.matchedSpIds.slice(0, 2).map((spId) => (
+                      <div key={spId} className="p-3 rounded-xl border border-border/80 bg-muted/20 text-[10px]">
+                        <span className="font-semibold block text-foreground">Specialist ID</span>
+                        <span className="text-muted-foreground text-[9px]">{spId.substring(0, 12)}...</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                )}
+              </div>
+
+              <div className="p-3 bg-primary/5 border border-primary/10 rounded-xl flex items-start gap-2 text-[10px] text-muted-foreground leading-relaxed mt-4 font-medium">
+                <Building2 className="h-4 w-4 shrink-0 text-primary mt-0.5" />
+                <span>Formation is non-binding. You can change it anytime before Phase 4.</span>
               </div>
             </Card>
           </div>
 
-          <div className="flex justify-between pt-2">
-            <Button variant="outline" onClick={() => router.push('/dashboard/creator/phase-3/compliance')}><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>
-            <Button onClick={handleContinue} className="gap-2">Continue <ArrowRight className="h-4 w-4" /></Button>
+          {/* Action Bar */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-border pt-6 mt-8">
+            <Button variant="ghost" onClick={() => router.push('/dashboard/creator/phase-3/compliance')} className="text-xs font-bold text-muted-foreground hover:text-foreground rounded-xl self-start sm:self-center">
+              <ArrowLeft className="w-4 h-4 mr-1.5" /> Back
+            </Button>
+            <Button onClick={handleContinue} className="w-full sm:w-auto bg-primary hover:bg-primary/95 text-primary-foreground font-bold rounded-xl py-5 px-6 text-sm flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-60" disabled={selecting}>
+              Continue to Phase Complete {!selecting && <ArrowRight className="w-4 h-4" />}
+            </Button>
           </div>
         </div>
       )}
