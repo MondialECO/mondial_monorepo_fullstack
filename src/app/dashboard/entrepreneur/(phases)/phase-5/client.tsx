@@ -93,6 +93,18 @@ export default function Phase5Client() {
         if (profile.shareType) setShareType(profile.shareType as ShareType);
         if (profile.minimumTicketEur != null) setMinimumTicket(String(profile.minimumTicketEur));
 
+        // Pre-money valuation is authoritative from the Phase 3 valuation model —
+        // it is displayed read-only, not user-entered. Prefer the backend-computed
+        // finalValuation; the funding-profile value above is only a fallback.
+        try {
+          const fin = await entrepreneurApi.getFinancialSummary(id);
+          if (!cancelled && fin?.finalValuation != null && fin.finalValuation > 0) {
+            setPreMoneyValuation(String(Math.round(fin.finalValuation)));
+          }
+        } catch {
+          /* keep the funding-profile pre-money value already set above */
+        }
+
         if (profile.capitalAllocation?.length) {
           setAllocations(
             profile.capitalAllocation.map((c) => ({
@@ -186,13 +198,11 @@ export default function Phase5Client() {
       setValidationError('Raise amount must be greater than 0');
       return false;
     }
+    // Pre-money valuation is backend-derived (Phase 3 finalValuation) and read-only,
+    // so we only assert it exists — the user can't adjust it to satisfy a raise cap.
     const preMoney = parseFloat(preMoneyValuation);
     if (!Number.isFinite(preMoney) || preMoney <= 0) {
-      setValidationError('Pre-money valuation must be greater than 0');
-      return false;
-    }
-    if (preMoney < raise) {
-      setValidationError('Pre-money valuation must be at least the raise amount');
+      setValidationError('Pre-money valuation unavailable — complete your Phase 3 valuation first.');
       return false;
     }
     const equity = parseFloat(equityOfferedPercent);
@@ -344,32 +354,6 @@ export default function Phase5Client() {
 
   return (
     <div className="space-y-6">
-      {/* Step indicator */}
-      <div className="flex items-center gap-2">
-        {[1, 2, 3].map((step) => (
-          <div key={step} className="flex items-center gap-2">
-            <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
-                step === currentStep
-                  ? 'bg-primary text-primary-foreground'
-                  : step < currentStep
-                    ? 'bg-success-light text-success-text'
-                    : 'bg-muted text-muted-foreground'
-              }`}
-            >
-              {step}
-            </div>
-            {step < 3 && (
-              <div
-                className={`w-8 h-0.5 ${
-                  step < currentStep ? 'bg-success-light' : 'bg-muted'
-                }`}
-              />
-            )}
-          </div>
-        ))}
-      </div>
-
       <div className="space-y-2">
         <h1 className="text-2xl md:text-3xl font-bold text-foreground">
           {currentStep === 1
@@ -389,41 +373,43 @@ export default function Phase5Client() {
 
       {/* Step 1: Capital Allocation */}
       {currentStep === 1 && (
-        <div className="bg-card border-2 border-border rounded-2xl p-6 space-y-4">
+        <div className="bg-card border-2 border-border rounded-2xl p-4 sm:p-6 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-bold text-foreground">Capital allocation</h3>
-            <Button variant="outline" size="sm" onClick={addAllocation} className="gap-2">
+            <Button size="sm" onClick={addAllocation} className="gap-2">
               <Plus className="w-4 h-4" /> Add category
             </Button>
           </div>
           <div className="space-y-2">
             {allocations.map((a, idx) => (
-              <div key={idx} className="grid grid-cols-12 gap-2 items-end">
+              <div key={idx} className="grid grid-cols-1 sm:grid-cols-12 gap-2 sm:items-end">
                 <Input
                   type="text"
                   value={a.category}
                   onChange={(e) => updateAllocation(idx, { category: e.target.value })}
                   placeholder="Category"
-                  className="col-span-7 h-9 bg-background border-input"
+                  className="sm:col-span-7 h-9 bg-background border-input"
                 />
-                <Input
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={a.percent}
-                  onChange={(e) => updateAllocation(idx, { percent: e.target.value })}
-                  placeholder="%"
-                  className="col-span-4 h-9 bg-background border-input"
-                />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="col-span-1"
-                  onClick={() => removeAllocation(idx)}
-                  aria-label="Remove"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
+                <div className="flex gap-2 sm:contents">
+                  <Input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={a.percent}
+                    onChange={(e) => updateAllocation(idx, { percent: e.target.value })}
+                    placeholder="%"
+                    className="flex-1 sm:col-span-4 h-9 bg-background border-input"
+                  />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="sm:col-span-1"
+                    onClick={() => removeAllocation(idx)}
+                    aria-label="Remove"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
@@ -441,22 +427,22 @@ export default function Phase5Client() {
 
       {/* Step 2: Resource Mapping */}
       {currentStep === 2 && (
-        <div className="bg-card border-2 border-border rounded-2xl p-6 space-y-4">
+        <div className="bg-card border-2 border-border rounded-2xl p-4 sm:p-6 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-bold text-foreground">Hiring plan</h3>
-            <Button variant="outline" size="sm" onClick={addHiring} className="gap-2">
+            <Button size="sm" onClick={addHiring} className="gap-2">
               <Plus className="w-4 h-4" /> Add role
             </Button>
           </div>
           <div className="space-y-2">
             {hiring.map((h, idx) => (
-              <div key={idx} className="grid grid-cols-12 gap-2 items-end">
+              <div key={idx} className="grid grid-cols-1 sm:grid-cols-12 gap-2 sm:items-end">
                 <Input
                   type="text"
                   value={h.role}
                   onChange={(e) => updateHiring(idx, { role: e.target.value })}
                   placeholder="Role"
-                  className="col-span-3 h-9 bg-background border-input"
+                  className="sm:col-span-3 h-9 bg-background border-input"
                 />
                 <Input
                   type="number"
@@ -464,34 +450,36 @@ export default function Phase5Client() {
                   value={h.salary}
                   onChange={(e) => updateHiring(idx, { salary: e.target.value })}
                   placeholder="Salary (€)"
-                  className="col-span-3 h-9 bg-background border-input"
+                  className="sm:col-span-3 h-9 bg-background border-input"
                 />
                 <Input
                   type="text"
                   value={h.timeline}
                   onChange={(e) => updateHiring(idx, { timeline: e.target.value })}
                   placeholder="Timeline"
-                  className="col-span-3 h-9 bg-background border-input"
+                  className="sm:col-span-3 h-9 bg-background border-input"
                 />
-                <select
-                  value={h.priority}
-                  onChange={(e) => updateHiring(idx, { priority: e.target.value })}
-                  aria-label={`Hiring row ${idx + 1} priority`}
-                  className="col-span-2 h-9 rounded-md border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  <option value="high">high</option>
-                  <option value="medium">medium</option>
-                  <option value="low">low</option>
-                </select>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="col-span-1"
-                  onClick={() => removeHiring(idx)}
-                  aria-label="Remove"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
+                <div className="flex gap-2 sm:contents">
+                  <select
+                    value={h.priority}
+                    onChange={(e) => updateHiring(idx, { priority: e.target.value })}
+                    aria-label={`Hiring row ${idx + 1} priority`}
+                    className="flex-1 sm:col-span-2 h-9 rounded-md border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <option value="high">high</option>
+                    <option value="medium">medium</option>
+                    <option value="low">low</option>
+                  </select>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="sm:col-span-1"
+                    onClick={() => removeHiring(idx)}
+                    aria-label="Remove"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
@@ -502,7 +490,7 @@ export default function Phase5Client() {
       {currentStep === 3 && (
         <div className="space-y-6">
           {/* Funding ask */}
-          <div className="bg-card border-2 border-border rounded-2xl p-6 space-y-4">
+          <div className="bg-card border-2 border-border rounded-2xl p-4 sm:p-6 space-y-4">
             <h3 className="text-lg font-bold text-foreground">Funding ask</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -527,9 +515,14 @@ export default function Phase5Client() {
                   type="number"
                   min={0}
                   value={preMoneyValuation}
-                  onChange={(e) => setPreMoneyValuation(e.target.value)}
-                  className="h-10 bg-background border-input"
+                  readOnly
+                  disabled
+                  aria-readonly
+                  className="h-10 bg-muted border-input text-muted-foreground cursor-not-allowed"
                 />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Auto-calculated from your Phase 3 valuation.
+                </p>
               </div>
               <div>
                 <label htmlFor="p5-equity" className="block text-sm font-semibold text-foreground mb-2">
@@ -593,7 +586,7 @@ export default function Phase5Client() {
           </div>
 
           {/* Pitch deck */}
-          <div className="bg-card border-2 border-border rounded-2xl p-6 space-y-4">
+          <div className="bg-card border-2 border-border rounded-2xl p-4 sm:p-6 space-y-4">
             <h3 className="text-lg font-bold text-foreground">Pitch deck</h3>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-background border-2 border-input rounded-xl p-4">
               <div className="flex items-start gap-3 flex-1">
@@ -637,7 +630,7 @@ export default function Phase5Client() {
           </div>
 
           {/* Funding narrative */}
-          <div className="bg-card border-2 border-border rounded-2xl p-6 space-y-3">
+          <div className="bg-card border-2 border-border rounded-2xl p-4 sm:p-6 space-y-3">
             <h3 className="text-lg font-bold text-foreground">Funding narrative</h3>
             <p className="text-xs text-muted-foreground">
               Describe your funding needs, use of capital, and traction. Minimum{' '}
@@ -672,7 +665,7 @@ export default function Phase5Client() {
       )}
 
       {/* Navigation */}
-      <div className="flex gap-3 pt-4">
+      <div className="flex flex-wrap gap-3 pt-4">
         <Button
           variant="outline"
           onClick={handlePrevStep}

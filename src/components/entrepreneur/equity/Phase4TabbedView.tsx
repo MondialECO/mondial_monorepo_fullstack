@@ -122,38 +122,45 @@ export function Phase4TabbedView() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="space-y-2">
-        <h1 className="text-2xl md:text-3xl font-bold text-foreground">
-          Equity Structure &amp; Ownership
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Define your cap table, record stakeholders, setup ESOP, and simulate future funding rounds.
-        </p>
-      </div>
+    <div className="w-full space-y-6">
+      {/* Main Card */}
+      <div className="flex flex-col gap-8">
+        {/* Header */}
+        <div className="flex flex-col gap-2">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-medium text-foreground leading-tight">
+            Equity Structure &amp; Ownership
+          </h1>
+          <p className="text-xs sm:text-sm text-muted-foreground">
+            Define your cap table, record stakeholders, setup ESOP, and simulate future funding rounds.
+          </p>
+        </div>
 
-      <Phase4Tabs active={active} onChange={setActive} />
+        {/* Tabs */}
+        <div className="border-b border-border">
+          <Phase4Tabs active={active} onChange={setActive} />
+        </div>
 
-      <div className="min-h-[400px]">
-        {active === 'overview' && <Phase4OverviewTab ctx={ctx} onNavigate={setActive} />}
-        {active === 'cap-table' && <Phase4CapTableTab ctx={ctx} />}
-        {active === 'esop' && <Phase4EsopTab ctx={ctx} />}
-        {active === 'dilution' && <Phase4DilutionTab ctx={ctx} />}
-        {active === 'history' && <Phase4HistoryTab ctx={ctx} />}
-      </div>
+        {/* Content */}
+        <div className="min-h-[400px]">
+          {active === 'overview' && <Phase4OverviewTab ctx={ctx} onNavigate={setActive} />}
+          {active === 'cap-table' && <Phase4CapTableTab ctx={ctx} />}
+          {active === 'esop' && <Phase4EsopTab ctx={ctx} />}
+          {active === 'dilution' && <Phase4DilutionTab ctx={ctx} />}
+          {active === 'history' && <Phase4HistoryTab ctx={ctx} />}
+        </div>
 
-      {/* Completion footer */}
-      <div className="border-t border-border pt-5 flex flex-col gap-3">
+        {/* Completion footer */}
         {completionError && (
-          <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-3 flex gap-2 items-start">
+          <div className="mx-6 mb-6 bg-destructive/10 border border-destructive/20 rounded-lg p-3 flex gap-2 items-start">
             <AlertCircle className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
             <p className="text-sm font-medium text-destructive">{completionError}</p>
           </div>
         )}
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <p className="text-xs text-muted-foreground max-w-md">
-            Completing Phase 4 locks your cap table, marks the exit waterfall reviewed, and unlocks Phase 5.
+
+        {/* Footer */}
+        <div className="flex items-center justify-between border-t-2 border-background p-6 gap-3 flex-wrap">
+          <p className="text-xs text-muted-foreground">
+            Completing Phase 4 locks your cap table and unlocks Phase 5.
           </p>
           {phase4Done ? (
             <div className="flex items-center gap-2 text-success-text text-sm font-semibold">

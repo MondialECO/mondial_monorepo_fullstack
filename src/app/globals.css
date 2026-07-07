@@ -108,6 +108,13 @@
   --info: #0369A1;
   --info-foreground: #FFFFFF;
 
+  /* Equity / cap-table chart palette (Figma Phase 4) — holder donut segments */
+  --chart-1: #F97316; /* orange */
+  --chart-2: #3C61DD; /* blue */
+  --chart-3: #1E3A8A; /* navy */
+  --chart-4: #00A854; /* green */
+  --chart-5: #06B6D4; /* cyan */
+
   /* Typography Scale (Figma) */
   --text-size-sm: 13px;
   --text-size-md: 14px;
@@ -202,6 +209,13 @@
   --warning-foreground: #08090A;
   --info: #38BDF8;
   --info-foreground: #08090A;
+
+  /* Equity / cap-table chart palette (Figma Phase 4) */
+  --chart-1: #FB923C;
+  --chart-2: #6B8AFD;
+  --chart-3: #3B5BBF;
+  --chart-4: #34D399;
+  --chart-5: #22D3EE;
 
   /* Phase 6 — Data Room design tokens (dark) */
   --dr-bg-page: #08090A;

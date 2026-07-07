@@ -8,13 +8,10 @@ export default function Phase5Page() {
     <RouteGuard requiredPhase={5}>
       {/* <EntrepreneurLayout sidebar={<div />}> */}
         <div className="space-y-6 md:space-y-8">
-          <PhaseHeader
+          {/* <PhaseHeader
             title="Funding Submission"
             subtitle="Submit your funding ask, pitch deck, and narrative for compliance review. Verification is awarded separately after review."
-            progressLabel="PROGRESS"
-            progressValue="Phase 5 of 9"
-            progressPercentage={56}
-          />
+          /> */}
           <Phase5Client />
         </div>
       {/* </EntrepreneurLayout> */}
