@@ -16,7 +16,7 @@ export function PhaseHeader({
   subtitle,
   progressLabel = 'Verification',
   progressValue = 'From 80% Filled',
-  progressPercentage = 80,
+  progressPercentage,
   className,
 }: PhaseHeaderProps) {
   return (

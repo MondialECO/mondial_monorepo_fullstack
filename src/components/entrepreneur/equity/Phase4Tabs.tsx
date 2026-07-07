@@ -37,7 +37,7 @@ export function Phase4Tabs({
           >
             {tab.label}
             {isActive && (
-              <span className="absolute -bottom-0.5 left-0 right-0 h-0.5 rounded-full bg-primary" />
+              <span className="absolute -bottom-0.5 left-0 right-0  rounded-full bg-primary" />
             )}
           </button>
         );

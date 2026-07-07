@@ -75,9 +75,9 @@ function Phase7CompleteContent() {
 export default function Phase7CompletePage() {
   return (
     <RouteGuard requiredPhase={7}>
-      <EntrepreneurLayout sidebar={<div />}>
+      {/* <EntrepreneurLayout sidebar={<div />}> */}
         <Phase7CompleteContent />
-      </EntrepreneurLayout>
+      {/* </EntrepreneurLayout> */}
     </RouteGuard>
   );
 }

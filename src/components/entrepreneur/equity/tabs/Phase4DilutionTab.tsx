@@ -88,8 +88,8 @@ export function Phase4DilutionTab({ ctx }: { ctx: Phase4Context }) {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="bg-card border border-border rounded-2xl p-6 space-y-6">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="bg-card border border-border rounded-2xl p-6 space-y-4 sm:space-y-6">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <h3 className="font-bold text-foreground">Dilution Sim</h3>
           <span className="text-xs font-semibold text-primary bg-primary/10 rounded-lg px-3 py-1">

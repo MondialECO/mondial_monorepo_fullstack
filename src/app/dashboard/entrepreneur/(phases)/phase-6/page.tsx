@@ -142,7 +142,7 @@ function Phase6LoadingState() {
       <Skeleton style={{ height: 56 }} />
       <div className="flex flex-col gap-6 lg:flex-row">
         <div className="flex min-w-0 flex-1 flex-col gap-5">
-          <div className="flex gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[0, 1, 2, 3].map((i) => (
               <Skeleton key={i} className="flex-1" style={{ height: 130 }} />
             ))}
@@ -344,9 +344,9 @@ function Phase6Content() {
       />
 
       {/* SECTION 1 — PAGE HEADER */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <h1 className="font-semibold" style={{ fontSize: 32, lineHeight: '40px', color: C.textPrimary }}>
               Data Room—Secure Repository
             </h1>
@@ -389,7 +389,7 @@ function Phase6Content() {
 
       {/* SECTION 2 — STATUS BAR */}
       <div
-        className="flex items-center justify-between rounded-lg"
+        className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-lg"
         style={{ backgroundColor: C.bgCard, border: `2px solid ${C.bgWhite}`, boxShadow: SHADOW_BLUR, padding: '8px 12px' }}
       >
         <div className="flex items-center gap-2">
@@ -405,7 +405,7 @@ function Phase6Content() {
               : '— not visible to investors'}
           </span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {[
             `📄 ${docs.length} docs`,
             '📁 3 folders',
@@ -428,7 +428,7 @@ function Phase6Content() {
         {/* LEFT COLUMN */}
         <div className="flex min-w-0 flex-1 flex-col gap-5">
           {/* 3A — STAT CARDS ROW */}
-          <div className="flex gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {([
               {
                 icon: '📄',

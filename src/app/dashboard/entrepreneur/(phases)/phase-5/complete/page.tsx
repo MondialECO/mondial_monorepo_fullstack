@@ -78,9 +78,9 @@ function Phase5CompleteContent() {
 export default function Phase5CompletePage() {
   return (
     <RouteGuard requiredPhase={5}>
-      <EntrepreneurLayout sidebar={<div />}>
+      {/* <EntrepreneurLayout sidebar={<div />}> */}
         <Phase5CompleteContent />
-      </EntrepreneurLayout>
+      {/* </EntrepreneurLayout> */}
     </RouteGuard>
   );
 }

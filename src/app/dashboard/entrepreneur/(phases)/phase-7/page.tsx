@@ -128,7 +128,7 @@ function Phase7Content() {
       {/* Run Review */}
       {!review && (
         <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h3 className="text-lg font-bold text-foreground">Start Readiness Review</h3>
               <p className="text-xs text-muted-foreground mt-1">Run the automated review engine to score your company</p>
@@ -144,7 +144,7 @@ function Phase7Content() {
 
       {review && (
         <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h3 className="text-lg font-bold text-foreground">Review Controls</h3>
               <p className="text-xs text-muted-foreground mt-1">Last run {new Date(review.reviewedAt).toLocaleString()}</p>

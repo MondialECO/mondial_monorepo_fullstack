@@ -81,9 +81,9 @@ export function Phase7ReviewVisuals({ review }: Phase7ReviewVisualsProps) {
       <div className="lg:col-span-2 space-y-6">
         {/* Investor-Ready Profile */}
         <div className="bg-card border border-border rounded-2xl p-6">
-          <div className="flex gap-6">
+          <div className="flex flex-col sm:flex-row gap-6">
             {/* Circular progress bar */}
-            <div className="relative w-40 h-40 flex items-center justify-center flex-shrink-0">
+            <div className="relative w-40 h-40 flex items-center justify-center flex-shrink-0 mx-auto sm:mx-0">
               <svg className="w-full h-full" viewBox="0 0 120 120">
                 {/* Background circle */}
                 <circle cx="60" cy="60" r="50" fill="none" stroke="currentColor" strokeWidth="6" className="text-muted" />
@@ -135,6 +135,8 @@ export function Phase7ReviewVisuals({ review }: Phase7ReviewVisualsProps) {
 
         {/* Stage Progress Table */}
         <div className="bg-card border border-border rounded-2xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <div className="min-w-[520px]">
           <div className="bg-primary/5 flex items-center justify-between px-4 py-3 border-b border-border">
             <div className="w-40">
               <p className="text-sm font-semibold text-foreground">Stage</p>
@@ -152,6 +154,8 @@ export function Phase7ReviewVisuals({ review }: Phase7ReviewVisualsProps) {
             <StageRow icon={CheckCircle2} label="Financials" value={sb.financialScore} status="completed" />
             <StageRow icon={CheckCircle2} label="Funding Ask" value={sb.fundingScore} status="completed" />
             <StageRow icon={AlertCircle} label="Data Room" value={sb.dataRoomScore} status={sb.dataRoomScore === 100 ? 'completed' : 'missing'} />
+          </div>
+            </div>
           </div>
         </div>
 

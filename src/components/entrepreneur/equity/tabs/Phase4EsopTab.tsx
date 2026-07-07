@@ -69,9 +69,9 @@ export function Phase4EsopTab({ ctx }: { ctx: Phase4Context }) {
   }
 
   return (
-    <div className="grid md:grid-cols-2 gap-6">
+    <div className="grid md:grid-cols-2 gap-4 sm:gap-6">
       {/* Left: configuration */}
-      <div className="bg-primary/5 border border-primary/15 rounded-2xl p-6 space-y-6">
+      <div className="bg-primary/5 border border-primary/15 rounded-2xl p-6 space-y-4 sm:space-y-6">
         <div className="flex items-center justify-between gap-3">
           <h3 className="font-bold text-foreground">ESOP Pool — Quick Setup</h3>
           <span className="text-xs font-semibold text-success-text bg-success-light rounded-lg px-3 py-1">
@@ -81,7 +81,7 @@ export function Phase4EsopTab({ ctx }: { ctx: Phase4Context }) {
 
         <div className="bg-card rounded-2xl p-6 space-y-5">
           <div className="text-center">
-            <p className="text-4xl font-bold text-primary">{pool}%</p>
+            <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-primary">{pool}%</p>
             <p className="text-sm text-muted-foreground mt-1">
               = {fmtNum(reservedShares)} shares reserved
             </p>
@@ -112,7 +112,7 @@ export function Phase4EsopTab({ ctx }: { ctx: Phase4Context }) {
         </div>
 
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-foreground">Cliff period</label>
               <Select value={cliff} onValueChange={(v) => { setCliff(v); setSaved(false); }}>

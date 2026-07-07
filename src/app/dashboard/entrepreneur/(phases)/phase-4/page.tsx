@@ -6,7 +6,7 @@ import { Phase4TabbedView } from '@/components/entrepreneur/equity/Phase4TabbedV
 function Phase4PageContent() {
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto px-4 py-6 md:px-8 md:py-8">
+      <div className="max-w-7xl mx-auto">
         <Phase4TabbedView />
       </div>
     </div>
