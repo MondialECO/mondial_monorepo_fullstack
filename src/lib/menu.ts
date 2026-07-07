@@ -203,6 +203,11 @@ export const menu: Record<UserRole, MenuSection[]> = {
           icon: BarChart3,
         },
         {
+          label: "KPI Tracker",
+          href: "/dashboard/entrepreneur/phase-3/kpi-tracker",
+          icon: TrendingUp,
+        },
+        {
           label: "Equity & Cap Table",
           href: "/dashboard/entrepreneur/phase-4",
           icon: PieChart,
