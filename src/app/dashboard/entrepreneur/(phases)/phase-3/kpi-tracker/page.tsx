@@ -109,7 +109,7 @@ function CircularGauge({ percentage }: { percentage: number }) {
   const offset = circumference - (percentage / 100) * circumference;
 
   return (
-    <div className="relative w-48 h-48">
+    <div className="relative w-32 h-32 sm:w-40 sm:h-40 lg:w-48 lg:h-48 mx-auto">
       <svg width="192" height="192" viewBox="0 0 192 192" className="w-full h-full">
         <circle cx="96" cy="96" r="90" fill="none" stroke="hsl(var(--muted))" strokeWidth="8" />
         <circle
@@ -126,8 +126,8 @@ function CircularGauge({ percentage }: { percentage: number }) {
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <p className="text-4xl font-bold text-foreground">{percentage}%</p>
-        <p className="text-sm text-muted-foreground mt-1">+{(percentage * 0.048).toFixed(1)}% Mon</p>
+        <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground">{percentage}%</p>
+        <p className="text-xs sm:text-sm text-muted-foreground mt-1">+{(percentage * 0.048).toFixed(1)}% Mon</p>
       </div>
     </div>
   );
@@ -226,20 +226,19 @@ function Phase3KpiTrackerClient() {
     <div className="bg-background relative w-full min-h-screen overflow-x-hidden overflow-y-auto">
 
       {/* Main Content */}
-      <div className="pt-16 pb-8 px-4 sm:px-6 lg:px-8 w-full">
-        <div className="max-w-7xl mx-auto space-y-6">
-          {/* Header */}
-          <div>
-            <h1 className="text-4xl font-semibold text-foreground">KPI Tracker</h1>
-            <p className="text-sm text-muted-foreground mt-2">
-              Phase 3 complete · Tracking since Apr 1, 2026
-            </p>
-          </div>
+      <div className="w-full space-y-6">
+        {/* Header */}
+        <div>
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-semibold text-foreground">KPI Tracker</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-2">
+            Phase 3 complete · Tracking since Apr 1, 2026
+          </p>
+        </div>
 
-          {/* Main Grid: Left + Right */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Left: Operational Mastery Card */}
-            <Surface className="p-8 flex flex-col gap-8 h-fit">
+        {/* Main Grid: Left + Right */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+          {/* Left: Operational Mastery Card */}
+          <Surface className="p-4 sm:p-6 lg:p-8 flex flex-col gap-6 sm:gap-8 h-fit">
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Core Efficiency</p>
                 <h2 className="text-2xl font-semibold text-foreground">Operational Mastery</h2>
@@ -249,9 +248,9 @@ function Phase3KpiTrackerClient() {
                 <CircularGauge percentage={confidenceScore} />
               </div>
 
-              <div className="grid grid-cols-2 gap-8">
+              <div className="grid grid-cols-2 gap-4 sm:gap-8">
                 <div className="space-y-2">
-                  <p className="text-xs font-medium text-muted-foreground uppercase">System Health</p>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">System Health</p>
                   <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Optimal</p>
                   <div className="flex gap-1">
                     {[0, 1, 2, 3].map((i) => (
@@ -294,8 +293,8 @@ function Phase3KpiTrackerClient() {
               </div>
             </Surface>
 
-            {/* Right: Metrics Stack */}
-            <div className="flex flex-col gap-4 h-fit">
+          {/* Right: Metrics Stack */}
+          <div className="flex flex-col gap-4 h-fit">
               {/* Row 1: MRR, Churn */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Surface className="p-5 space-y-6">
@@ -346,39 +345,38 @@ function Phase3KpiTrackerClient() {
               {/* Row 2: CAC/LTV Card */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Row 2: CAC/LTV Card */}
-                <Surface className="p-6 grid grid-cols-3 gap-4 space-y-6">
-                  <div className="space-y-6">
+                <Surface className="p-4 sm:p-6 grid grid-cols-3 gap-2 sm:gap-4 space-y-6">
+                  <div className="space-y-3 sm:space-y-6">
                     <p className="text-xs uppercase tracking-wide text-muted-foreground">CAC</p>
-                    <p className="text-2xl font-semibold text-foreground">{kpi?.cac != null ? eur(kpi.cac) : '—'}</p>
+                    <p className="text-lg sm:text-2xl font-semibold text-foreground">{kpi?.cac != null ? eur(kpi.cac) : '—'}</p>
                   </div>
                   <div className="border-l border-border/50" />
-                  <div className="space-y-6">
+                  <div className="space-y-3 sm:space-y-6">
                     <p className="text-xs uppercase tracking-wide text-muted-foreground">LTV</p>
-                    <p className="text-2xl font-semibold text-emerald-600 dark:text-emerald-400">
+                    <p className="text-lg sm:text-2xl font-semibold text-emerald-600 dark:text-emerald-400">
                       {kpi?.ltv != null ? eur(kpi.ltv) : '—'}
                     </p>
                   </div>
-                  
                 </Surface>
-                <Surface className="p-5 space-y-6">
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground">TOTAL RUNWAY</p>
-                    <div className="flex items-baseline gap-1">
-                      <p className="text-3xl font-bold text-primary">
-                        {runway > 0 ? Math.round(runway) : '—'}
-                      </p>
-                      <p className="text-sm text-muted-foreground">months</p>
-                    </div>
+                <Surface className="p-4 sm:p-5 space-y-3 sm:space-y-6">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">TOTAL RUNWAY</p>
+                  <div className="flex items-baseline gap-1">
+                    <p className="text-2xl sm:text-3xl font-bold text-primary">
+                      {runway > 0 ? Math.round(runway) : '—'}
+                    </p>
+                    <p className="text-xs sm:text-sm text-muted-foreground">months</p>
+                  </div>
                 </Surface>
               </div>
             </div>
           </div>
 
-          {/* Revenue Trend + Business Health */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Revenue Trend + Business Health */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           {/* Burn Rate Chart */}
-            <Surface className="p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-foreground">Monthly Burn Rate</h3>
+          <Surface className="p-4 sm:p-6 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <h3 className="text-base sm:text-lg font-semibold text-foreground">Monthly Burn Rate</h3>
                 <Button
                   size="sm"
                   variant="outline"
@@ -389,7 +387,7 @@ function Phase3KpiTrackerClient() {
                   <RefreshCw className={cn('w-4 h-4', refreshing && 'animate-spin')} />
                   {refreshing ? 'Refreshing…' : 'Refresh'}
                 </Button>
-              </div>
+            </div>
               <div className="space-y-3">
                 <p className="text-2xl font-semibold text-foreground">{burnRate != null ? eur(burnRate) : '—'}</p>
                 {burnRate != null && (
@@ -407,20 +405,20 @@ function Phase3KpiTrackerClient() {
               </div>
             </Surface>
 
-            <Surface className="p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-foreground">Revenue trend (Q1-Q4 2026)</h3>
-                <Chip tone="success">{yoyGrowth}</Chip>
-              </div>
-              <RevenueBars data={chartData} height={180} />
-            </Surface>
-          </div>
+          <Surface className="p-4 sm:p-6 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <h3 className="text-base sm:text-lg font-semibold text-foreground">Revenue trend (Q1-Q4 2026)</h3>
+              <Chip tone="success">{yoyGrowth}</Chip>
+            </div>
+            <RevenueBars data={chartData} height={140} />
+          </Surface>
+        </div>
 
-            <Surface className="p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-foreground">Business Health</h3>
-                <Chip tone="success">Score {confidenceScore}/100</Chip>
-              </div>
+        <Surface className="p-4 sm:p-6 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <h3 className="text-base sm:text-lg font-semibold text-foreground">Business Health</h3>
+            <Chip tone="success">Score {confidenceScore}/100</Chip>
+          </div>
               <div className="space-y-3 text-sm">
                 <HealthStatusRow
                   label="LTV / CAC ratio"
@@ -443,16 +441,16 @@ function Phase3KpiTrackerClient() {
                   status={churnStatus}
                 />
               </div>
-            </Surface>
-          {/* Actions */}
-          <div className="flex gap-3">
-            <Button variant="outline" onClick={() => router.push('/dashboard/entrepreneur/phase-3/step-3')}>
-              Update KPIs
-            </Button>
-            <Button onClick={() => router.push('/dashboard/entrepreneur/phase-4')}>
-              Continue to Phase 4
-            </Button>
-          </div>
+        </Surface>
+
+        {/* Actions */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <Button variant="outline" onClick={() => router.push('/dashboard/entrepreneur/phase-3/step-3')} className="w-full sm:w-auto">
+            Update KPIs
+          </Button>
+          <Button onClick={() => router.push('/dashboard/entrepreneur/phase-4')} className="w-full sm:w-auto">
+            Continue to Phase 4
+          </Button>
         </div>
       </div>
     </div>
