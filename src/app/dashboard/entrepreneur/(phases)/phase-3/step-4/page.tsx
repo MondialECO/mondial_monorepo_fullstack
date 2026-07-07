@@ -245,7 +245,7 @@ function Phase3ConceptOverviewClient() {
                 value={targetMarket}
                 onChange={(e) => setTargetMarket(e.target.value)}
                 placeholder="e.g. B2B SaaS companies…"
-                className="h-11"
+                className="h-11 bg-popover"
               />
             </div>
 
@@ -258,7 +258,7 @@ function Phase3ConceptOverviewClient() {
                   id="business-model"
                   value={businessModel}
                   onChange={(e) => setBusinessModel(e.target.value)}
-                  className="h-11 w-full appearance-none rounded-md border border-input bg-background px-3 pr-10 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="h-11 w-full appearance-none rounded-md border border-input bg-popover px-3 pr-10 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <option value="" disabled>
                     Select a business model…
@@ -289,7 +289,7 @@ function Phase3ConceptOverviewClient() {
                         'h-9 px-5 rounded-full text-sm font-medium border transition-colors',
                         active
                           ? 'bg-primary text-primary-foreground border-primary'
-                          : 'bg-background text-muted-foreground border-border hover:bg-accent'
+                          : 'bg-popover text-muted-foreground border-border hover:bg-accent'
                       )}
                     >
                       {s}
@@ -303,7 +303,7 @@ function Phase3ConceptOverviewClient() {
           {/* Right rail */}
           <div className="flex flex-col gap-4">
             {/* Investor preview */}
-            <Surface className="overflow-hidden">
+            <Surface className="overflow-hidden bg-popover">
               <div className="p-4 border-b border-border">
                 <p className="text-sm font-semibold text-foreground">How Investors will see this</p>
                 <p className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
@@ -428,7 +428,7 @@ function RichTextArea({
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           maxLength={maxLength}
-          className="min-h-[96px] resize-none border-0 rounded-none focus-visible:ring-0 bg-background"
+          className="min-h-[96px] resize-none border-0 rounded-none focus-visible:ring-0 bg-popover"
         />
         {maxLength ? (
           <div className="px-3 pb-2 text-right text-xs text-muted-foreground tabular-nums">

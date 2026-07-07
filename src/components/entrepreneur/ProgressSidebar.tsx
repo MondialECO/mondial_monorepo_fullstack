@@ -27,10 +27,10 @@ export function ProgressSidebar({
   scoreDescription = 'Complete Step 1 to unlock to identity checks module.',
 }: ProgressSidebarProps) {
   return (
-    <div className="space-y-4 sm:space-y-6 md:space-y-8">
+    <div className="space-y-4 sm:space-y-6 md:space-y-8 bg-card border border-border rounded-2xl p-4 sm:p-5 md:p-6 lg:p-7">
       {/* Progress Section */}
       <div>
-        <h2 className="text-lg font-semibold tracking-tight text-foreground mb-5 sm:mb-6">
+        <h2 className="text-lg font-semibold  tracking-tight text-foreground mb-5 sm:mb-6">
           {title}
         </h2>
 

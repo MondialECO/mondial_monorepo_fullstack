@@ -141,7 +141,7 @@ function Phase3ValuationClient() {
         <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4">
           {/* Left rail: ownership / multiplier / logic */}
           <div className="flex flex-col gap-4">
-            <Surface className="p-5 space-y-3">
+            <Surface className="p-5 space-y-3 bg-popover">
               <div className="flex items-center gap-2">
                 <Users className="w-4 h-4 text-muted-foreground" aria-hidden />
                 <h2 className="text-sm font-semibold text-foreground">Beneficial Ownership</h2>
@@ -179,7 +179,7 @@ function Phase3ValuationClient() {
               )}
             </Surface>
 
-            <Surface className="p-5 space-y-3">
+            <Surface className="p-5 space-y-3 bg-popover">
               <label htmlFor="multiplier" className="block text-sm font-semibold text-foreground">
                 Select Multiplier
               </label>
@@ -215,28 +215,7 @@ function Phase3ValuationClient() {
 
           {/* Right column */}
           <div className="flex flex-col gap-4">
-            {/* Applicant header */}
-            {/* <Surface className="p-4 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3 min-w-0">
-                <span className="grid place-items-center size-12 rounded-full bg-primary/10 text-primary shrink-0">
-                  <Users className="w-5 h-5" aria-hidden />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Primary Applicant</p>
-                  <p className="text-sm font-semibold text-foreground truncate">Entrepreneur Verification</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                disabled
-                className="inline-flex items-center gap-1 text-sm font-medium text-primary disabled:opacity-60 disabled:cursor-not-allowed"
-                aria-label="View audit details (available after compliance review)"
-              >
-                View Audit Details
-                <ChevronRight className="w-4 h-4" aria-hidden />
-              </button>
-            </Surface> */}
-
+           
             {/* Valuation summary cards */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <MetricTile label="Annual Revenue" value={financial ? eur(financial.totalRevenue) : '—'} available={!!financial} />
@@ -262,7 +241,7 @@ function Phase3ValuationClient() {
             </div>
 
             {/* Revenue chart */}
-            <Surface className="p-6">
+            <Surface className="p-6 bg-popover">
               <h2 className="text-lg font-semibold text-foreground mb-6">Revenue Growth Report Card</h2>
               {quarterly.length > 0 ? (
                 <RevenueBars data={chartData} />

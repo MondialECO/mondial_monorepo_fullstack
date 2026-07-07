@@ -40,7 +40,7 @@ function Bullet({ color, status }: { color: string; status: string }) {
   }
   if (color === 'amber') {
     return (
-      <span className="flex h-6 w-6 items-center justify-center rounded-[12px] bg-[#f9f2e8]" aria-hidden>
+      <span className="flex h-6 w-6 items-center justify-center rounded-[12px] bg-[var(--dr-bg-yellow)]" aria-hidden>
         <span className="h-3 w-3 rounded-full bg-[var(--p9-timeline-amber)]" />
       </span>
     );
@@ -105,8 +105,8 @@ export function MatchmakingTimeline({
                     <span className={`text-[13px] font-medium ${dateColorClass(ev.color, ev.status)}`}>
                       {formatEventDate(ev.eventDate)}
                     </span>
-                    <span className="text-[14px] font-normal text-[#5e5e5e]">{ev.subtitle}</span>
-                    <span className="text-[18px] font-medium text-[#070707]">{ev.title}</span>
+                    <span className="text-[14px] font-normal text-secondary">{ev.subtitle}</span>
+                    <span className="text-[18px] font-medium text-foreground">{ev.title}</span>
                   </div>
                 </li>
               );

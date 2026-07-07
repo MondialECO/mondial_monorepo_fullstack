@@ -32,13 +32,13 @@ export function JobProgressIndicator({
   const getStatusIcon = () => {
     switch (jobStatus.status) {
       case "completed":
-        return <CheckCircle2 className="w-6 h-6 text-green-600" />;
+        return <CheckCircle2 className="w-6 h-6 text-success-text" />;
       case "failed":
-        return <AlertCircle className="w-6 h-6 text-red-600" />;
+        return <AlertCircle className="w-6 h-6 text-destructive" />;
       case "processing":
         return <Loader2 className="w-6 h-6 text-primary animate-spin" />;
       default:
-        return <Clock className="w-6 h-6 text-neutral-5" />;
+        return <Clock className="w-6 h-6 text-muted-foreground" />;
     }
   };
 
@@ -60,13 +60,13 @@ export function JobProgressIndicator({
   const getBgColor = () => {
     switch (jobStatus.status) {
       case "completed":
-        return "bg-green-50 border-green-200";
+        return "bg-success-light border-success-text/20";
       case "failed":
-        return "bg-red-50 border-red-200";
+        return "bg-destructive/10 border-destructive/20";
       case "processing":
-        return "bg-blue-50 border-blue-200";
+        return "bg-primary/10 border-primary/20";
       default:
-        return "bg-neutral-50 border-neutral-200";
+        return "bg-muted border-border";
     }
   };
 
@@ -76,17 +76,17 @@ export function JobProgressIndicator({
         {getStatusIcon()}
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
-            <h4 className="font-semibold text-neutral-1">{title}</h4>
-            <span className="text-xs font-medium text-neutral-5">
+            <h4 className="font-semibold text-foreground">{title}</h4>
+            <span className="text-xs font-medium text-muted-foreground">
               {getStatusText()}
             </span>
           </div>
           {description && (
-            <p className="text-sm text-neutral-5 mb-2">{description}</p>
+            <p className="text-sm text-muted-foreground mb-2">{description}</p>
           )}
 
           {/* Progress Bar */}
-          <div className="w-full bg-neutral-200 rounded-full h-2 mb-2">
+          <div className="w-full bg-input rounded-full h-2 mb-2">
             <div
               className="bg-primary h-2 rounded-full transition-all duration-300"
               style={{
@@ -97,10 +97,10 @@ export function JobProgressIndicator({
 
           {/* Result or Error Message */}
           {jobStatus.status === "completed" && jobStatus.result && (
-            <p className="text-sm text-green-700">{jobStatus.result}</p>
+            <p className="text-sm text-success-text">{jobStatus.result}</p>
           )}
           {jobStatus.status === "failed" && jobStatus.errorMessage && (
-            <p className="text-sm text-red-700">{jobStatus.errorMessage}</p>
+            <p className="text-sm text-destructive">{jobStatus.errorMessage}</p>
           )}
         </div>
       </div>

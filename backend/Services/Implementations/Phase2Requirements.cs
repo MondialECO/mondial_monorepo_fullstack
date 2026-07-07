@@ -19,8 +19,8 @@ public static class Phase2Requirements
     public static readonly IReadOnlyList<string> RequiredDocumentTypes = new[]
     {
         "kbis",
-        "articles",
-        "license",
+        "rib",
+        "insurance",
         "tax",
     };
 

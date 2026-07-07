@@ -187,9 +187,9 @@ export function Phase4EsopTab({ ctx }: { ctx: Phase4Context }) {
 
         <div className="space-y-3">
               {/* Green: Attract top talent */}
-              <div className="border-l-3 border-green-600 bg-white rounded-lg p-3 space-y-1">
+              <div className="border-l-3 border-success-text bg-popover rounded-lg p-3 space-y-1">
                 <div className="flex gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-green-600 flex-shrink-0 mt-1.5"></div>
+                  <div className="w-1.5 h-1.5 rounded-full bg-success-text flex-shrink-0 mt-1.5"></div>
                   <div className="flex-1">
                     <p className="font-semibold text-sm text-foreground">Attract top talent</p>
                     <p className="text-xs text-muted-foreground">
@@ -200,9 +200,9 @@ export function Phase4EsopTab({ ctx }: { ctx: Phase4Context }) {
               </div>
 
               {/* Orange: Dilute before raise */}
-              <div className="border-l-3 border-orange-500 bg-white rounded-lg p-3 space-y-1">
+              <div className="border-l-3 border-warning bg-popover rounded-lg p-3 space-y-1">
                 <div className="flex gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-orange-500 flex-shrink-0 mt-1.5"></div>
+                  <div className="w-1.5 h-1.5 rounded-full bg-warning flex-shrink-0 mt-1.5"></div>
                   <div className="flex-1">
                     <p className="font-semibold text-sm text-foreground">Dilute before raise</p>
                     <p className="text-xs text-muted-foreground">
@@ -213,7 +213,7 @@ export function Phase4EsopTab({ ctx }: { ctx: Phase4Context }) {
               </div>
 
               {/* Blue: Investor confidence */}
-              <div className="border-l-3 border-primary bg-white rounded-lg p-3 space-y-1">
+              <div className="border-l-3 border-primary bg-popover rounded-lg p-3 space-y-1">
                 <div className="flex gap-2">
                   <div className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0 mt-1.5"></div>
                   <div className="flex-1">

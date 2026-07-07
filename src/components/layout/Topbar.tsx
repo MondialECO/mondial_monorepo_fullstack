@@ -14,8 +14,8 @@ export default function Topbar() {
   const { logout } = useAuth();
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-border bg-card text-muted-foreground">
-      <div className="flex h-[72px] items-center justify-between px-4 lg:px-8">
+    <header className="sticky top-0 z-40 w-full border-b border-sidebar-border bg-card text-muted-foreground">
+      <div className="flex h-[72px] items-center justify-between px-4 sm:px-5 md:px-5 lg:px-5">
 
         {/* LEFT */}
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">

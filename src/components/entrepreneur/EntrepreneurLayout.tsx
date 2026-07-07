@@ -17,14 +17,14 @@ export function EntrepreneurLayout({
   return (
     <div
       className={cn(
-        'min-h-screen bg-background flex lg:flex-row flex-col gap-3 p-3 sm:p-4 md:gap-4 md:p-4 lg:gap-6 lg:p-8 max-w-7xl lg:mx-auto',
+        'min-h-screen bg-background flex lg:flex-row flex-col gap-4 sm:gap-5 md:gap-5 lg:gap-6 max-w-7xl lg:mx-auto',
         className
       )}
     >
       {/* Sidebar - rendered once, single instance */}
       <div className="lg:w-80 lg:flex-shrink-0">
         <details
-          className="w-full bg-card border border-border rounded-2xl md:rounded-3xl p-3 sm:p-4 md:p-6 lg:bg-transparent lg:border-0 lg:rounded-none lg:p-0"
+          className="w-full bg-card border border-border rounded-2xl md:rounded-3xl lg:bg-transparent lg:border-0 lg:rounded-none lg:p-0"
           open
         >
           <summary className="font-semibold text-foreground cursor-pointer text-sm md:text-base lg:hidden list-none">

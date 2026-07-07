@@ -2,13 +2,20 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Upload, FileCheck, AlertCircle, Archive, Loader } from 'lucide-react';
+import {
+  Upload,
+  FileCheck,
+  AlertCircle,
+  Loader,
+  FileText,
+  Building2,
+  Receipt,
+  ShieldCheck,
+  Lightbulb,
+  Lock,
+} from 'lucide-react';
 import { useEntrepreneurProgress } from '@/hooks/useEntrepreneurProgress';
 import entrepreneurApi from '@/lib/api-entrepreneur';
-import { EntrepreneurLayout } from '@/components/entrepreneur/EntrepreneurLayout';
-import { ProgressSidebar } from '@/components/entrepreneur/ProgressSidebar';
-import { PhaseHeader } from '@/components/entrepreneur/PhaseHeader';
-import { StepFooter } from '@/components/entrepreneur/StepFooter';
 import { RouteGuard } from '@/components/entrepreneur/RouteGuard';
 import { Button } from '@/components/ui/button';
 import { Phase2Data } from '@/types/entrepreneur';
@@ -18,33 +25,30 @@ const requiredDocuments = [
     id: 'kbis',
     name: 'KBIS / Extrait Kbis',
     description: 'Official company registration extract from the French national trade registry (Registre du Commerce)',
-    mandatory: true
+    mandatory: true,
+    icon: FileText,
   },
   {
-    id: 'articles',
-    name: 'Articles of Association',
-    description: 'Official articles of association or corporate bylaws filed with the commercial register',
-    mandatory: true
-  },
-  {
-    id: 'license',
-    name: 'Business License',
-    description: 'Professional license or permit required to conduct your specific business activities',
-    mandatory: true
+    id: 'rib',
+    name: "Bank RIB / Relevé d'Identité Bancaire",
+    description: 'Your company bank account details for payment verification and fund transfers',
+    mandatory: true,
+    icon: Building2,
   },
   {
     id: 'tax',
     name: 'Tax Certificate / Attestation Fiscale',
     description: 'Certificate of tax compliance issued by the Direction Générale des Finances Publiques',
-    mandatory: true
+    mandatory: true,
+    icon: Receipt,
   },
-];
-
-const PHASE_2_STEPS = [
-  { step: 1 as const, title: 'Legal Identity', subtitle: 'Enter company info' },
-  { step: 2 as const, title: 'Required Documentation', subtitle: 'Upload documents' },
-  { step: 3 as const, title: 'Ownership & KYC', subtitle: 'Verify owners' },
-  { step: 4 as const, title: 'Financial Preview', subtitle: 'Review summary' },
+  {
+    id: 'insurance',
+    name: 'Professional Insurance / Attestation RC Pro',
+    description: 'Valid professional liability insurance certificate covering your current business activities',
+    mandatory: true,
+    icon: ShieldCheck,
+  },
 ];
 
 function Phase2Step2PageContent() {
@@ -100,7 +104,6 @@ function Phase2Step2PageContent() {
   const handleDocUpload = async (docId: string) => {
     const fileInput = fileInputRefs.current[docId];
     if (!fileInput) return;
-
     fileInput.click();
   };
 
@@ -108,7 +111,7 @@ function Phase2Step2PageContent() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    setUploadingDocs(prev => new Set(prev).add(docId));
+    setUploadingDocs((prev) => new Set(prev).add(docId));
     try {
       const existingData: Phase2Data = getPhaseData<Phase2Data>(2) ?? {};
       let companyId = existingData.__companyId;
@@ -132,7 +135,7 @@ function Phase2Step2PageContent() {
       const msg = error instanceof Error ? error.message : 'Upload failed';
       setValidationError(`Failed to upload ${docId}: ${msg}`);
     } finally {
-      setUploadingDocs(prev => {
+      setUploadingDocs((prev) => {
         const newSet = new Set(prev);
         newSet.delete(docId);
         return newSet;
@@ -174,7 +177,7 @@ function Phase2Step2PageContent() {
       savePhaseData(2, { ...existingData, documentsVerified: true });
       moveToNextStep(2, 2);
 
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise((resolve) => setTimeout(resolve, 300));
       router.push('/dashboard/entrepreneur/phase-2/step-3');
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Failed to proceed';
@@ -186,134 +189,111 @@ function Phase2Step2PageContent() {
 
   if (!progress || isLoading) return null;
 
-  const statusMap = {
-    1: progress.completedSteps.has('2-1') ? 'completed' : progress.currentStep === 1 ? 'current' : 'pending',
-    2: progress.completedSteps.has('2-2') ? 'completed' : progress.currentStep === 2 ? 'current' : 'pending',
-    3: progress.completedSteps.has('2-3') ? 'completed' : progress.currentStep === 3 ? 'current' : 'pending',
-    4: progress.completedSteps.has('2-4') ? 'completed' : progress.currentStep === 4 ? 'current' : 'pending',
-  };
-
-  const stepIndicators = PHASE_2_STEPS.map((step) => ({
-    ...step,
-    status: statusMap[step.step as keyof typeof statusMap] as any,
-  }));
-
-  const sidebarContent = (
-    <ProgressSidebar
-      title="Verification Progress"
-      steps={stepIndicators}
-      overallScore={40}
-      scoreLabel="OVERALL SCORE"
-      scoreDescription="Upload all documents to continue."
-    />
-  );
-
   return (
-    <EntrepreneurLayout sidebar={sidebarContent}>
-      <div className="space-y-4 md:space-y-6">
-        <PhaseHeader
-          title="Document Upload"
-          subtitle="Upload required company documents for verification. These documents will be securely stored and reviewed by our compliance team."
-          progressLabel="PROGRESS"
-          progressValue="Step 2 of 4"
-          progressPercentage={50}
-        />
-
-        {/* Header Section with Progress */}
-        <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-4 sm:p-6 md:p-8">
-          <div className="flex items-start justify-between gap-4 mb-6 pb-6 border-b border-neutral-2">
-            <div className="flex-1">
-              <h2 className="text-2xl sm:text-3xl font-semibold text-neutral-1 mb-2">Document Submission</h2>
-              <p className="text-sm text-neutral-4">
-                Please provide the following legal documents to certify your company's existence and compliance. Only PDF, JPG, or PNG formats are accepted.
-              </p>
-            </div>
-            <div className="text-right flex-shrink-0">
-              <p className="text-xs font-semibold text-neutral-5 uppercase mb-1">PROGRESS</p>
-              <p className="text-base font-semibold text-neutral-1">{uploadedDocs.size} of {requiredDocuments.length} Required</p>
-            </div>
-          </div>
-
-          {/* 2x2 Grid of Document Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {requiredDocuments.map((doc) => {
-              const isUploaded = uploadedDocs.has(doc.id);
-              const isUploading = uploadingDocs.has(doc.id);
-              return (
-                <div
-                  key={doc.id}
-                  className="bg-background border border-neutral-2 rounded-2xl p-5 flex flex-col gap-4"
-                >
-                  {/* Document Header with Mandatory Badge */}
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-base font-semibold text-neutral-1 mb-1">{doc.name}</h3>
-                      <p className="text-xs text-neutral-5 leading-relaxed">{doc.description}</p>
-                    </div>
-                    {doc.mandatory && (
-                      <div className="flex-shrink-0 bg-yellow-100 px-2 py-1 rounded-sm">
-                        <span className="text-xs font-semibold text-yellow-700">Mandatory</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Dashed Upload Zone */}
-                  <div
-                    onClick={() => !isUploaded && !isUploading && handleDocUpload(doc.id)}
-                    className={`border-2 border-dashed rounded-lg p-6 min-h-48 flex flex-col items-center justify-center cursor-pointer transition ${
-                      isUploaded
-                        ? 'bg-green-50 border-green-200'
-                        : 'bg-neutral-100 border-neutral-300 hover:border-primary/50 hover:bg-neutral-150'
-                    }`}
-                  >
-                    <div className="flex flex-col items-center gap-3">
-                      {isUploaded ? (
-                        <FileCheck className="w-9 h-9 text-green-600" />
-                      ) : isUploading ? (
-                        <Loader className="w-9 h-9 text-neutral-5 animate-spin" />
-                      ) : (
-                        <Upload className="w-9 h-9 text-neutral-5 opacity-60" />
-                      )}
-                      <p className="text-sm text-neutral-5 text-center">
-                        {isUploaded ? 'Document Uploaded' : isUploading ? 'Uploading...' : 'Click to upload document or drag and drop'}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* File Hint */}
-                  <div className="bg-neutral-100 border border-neutral-300 rounded-lg px-4 py-3 flex items-center gap-2">
-                    <Archive className="w-5 h-5 text-neutral-5 flex-shrink-0" />
-                    <p className="text-xs text-neutral-4">PDF, JPG, PNG — max 10MB</p>
-                  </div>
-
-                  <input
-                    ref={(el) => { if (el) fileInputRefs.current[doc.id] = el; }}
-                    type="file"
-                    onChange={(e) => handleFileSelected(doc.id, e)}
-                    className="hidden"
-                    accept=".pdf,.jpg,.jpeg,.png"
-                  />
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Info Panel */}
-        <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-6 flex gap-4">
-          <AlertCircle className="w-6 h-6 text-blue-600 flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm font-semibold text-blue-900 mb-2">Why need this information</p>
-            <p className="text-sm text-blue-800">
-              These documents are required for legal compliance and to protect the mondial.eco ecosystem. We use them to verify that your business is in good standing before unlocking access to specialized eco-funding and commercial partnerships.
+    <div className="w-full  space-y-6">
+      {/* Main Card */}
+      <div className="flex flex-col gap-8 bg-card border-2 border-background rounded-[20px] shadow-sm">
+        {/* Header Section */}
+        <div className="flex flex-col gap-4 border-b border-border p-6 md:flex-row md:items-end md:gap-8">
+          <div className="min-w-0 flex-1 space-y-2">
+            <h1 className="text-2xl sm:text-3xl font-medium text-foreground leading-tight">Document Submission</h1>
+            <p className="text-sm text-muted-foreground">
+              Please provide the following legal documents to certify your company&apos;s existence and compliance. Only PDF, JPG, or PNG formats are accepted.
             </p>
           </div>
+          <div className="flex shrink-0 items-center gap-[18px]">
+            <div className="flex flex-col items-end gap-1 text-right">
+              <p className="text-[13px] text-muted-foreground">PROGRESS</p>
+              <p className="text-base font-medium text-foreground">
+                {uploadedDocs.size} of {requiredDocuments.length} Required
+              </p>
+            </div>
+            <div className="flex size-12 items-center justify-center rounded-full bg-primary">
+              <FileText className="size-6 text-primary-foreground" />
+            </div>
+          </div>
         </div>
 
-        <div className="border-t border-neutral-2 pt-6 flex items-center justify-between">
+        {/* 2x2 Grid of Document Cards */}
+        <div className="grid grid-cols-1 gap-6 px-6 md:grid-cols-2">
+          {requiredDocuments.map((doc) => {
+            const isUploaded = uploadedDocs.has(doc.id);
+            const isUploading = uploadingDocs.has(doc.id);
+            const DocIcon = doc.icon;
+            return (
+              <div key={doc.id} className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-5">
+                {/* Document Header with Mandatory Badge */}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="mb-1 text-base font-semibold text-foreground">{doc.name}</h3>
+                    <p className="text-xs leading-relaxed text-muted-foreground">{doc.description}</p>
+                  </div>
+                  {doc.mandatory && (
+                    <div className="flex-shrink-0 rounded-md bg-[var(--dr-bg-yellow)] px-2 py-1">
+                      <span className="text-xs font-semibold text-[var(--dr-yellow)]">Mandatory</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Dashed Upload Zone */}
+                <div
+                  onClick={() => !isUploaded && !isUploading && handleDocUpload(doc.id)}
+                  className={`flex min-h-48 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-6 transition ${
+                    isUploaded
+                      ? 'border-success-text/30 bg-success-light'
+                      : 'border-border bg-muted hover:border-primary/50 hover:bg-accent'
+                  }`}
+                >
+                  <div className="flex flex-col items-center gap-3">
+                    {isUploaded ? (
+                      <FileCheck className="h-9 w-9 text-success-text" />
+                    ) : isUploading ? (
+                      <Loader className="h-9 w-9 animate-spin text-muted-foreground" />
+                    ) : (
+                      <DocIcon className="h-9 w-9 text-muted-foreground opacity-60" />
+                    )}
+                    <p className="text-center text-sm text-muted-foreground">
+                      {isUploaded
+                        ? 'Document Uploaded'
+                        : isUploading
+                        ? 'Uploading...'
+                        : 'Click to upload document or drag and drop'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* File Hint */}
+                <div className="flex items-center gap-2 rounded-lg border border-border bg-muted px-4 py-3">
+                  <Upload className="h-5 w-5 flex-shrink-0 text-muted-foreground" />
+                  <p className="text-xs text-muted-foreground">PDF, JPG, PNG — max 10MB</p>
+                </div>
+
+                <input
+                  ref={(el) => {
+                    if (el) fileInputRefs.current[doc.id] = el;
+                  }}
+                  type="file"
+                  onChange={(e) => handleFileSelected(doc.id, e)}
+                  className="hidden"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                />
+              </div>
+            );
+          })}
+        </div>
+
+        {validationError && (
+          <div className="mx-6 flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            {validationError}
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="flex items-center justify-between border-t-2 border-background p-6">
           <button
             onClick={handleSaveForLater}
-            className="text-sm text-neutral-4 font-medium hover:text-neutral-1 transition"
+            className="text-sm font-medium text-muted-foreground transition hover:text-foreground"
           >
             Save For Later
           </button>
@@ -325,23 +305,38 @@ function Phase2Step2PageContent() {
             >
               Cancel
             </Button>
-            <Button
-              onClick={handleNextClick}
-              disabled={!allDocsUploaded || isValidating}
-              className="px-6 gap-2"
-            >
+            <Button onClick={handleNextClick} disabled={!allDocsUploaded || isValidating} className="gap-2 px-6">
               Next
             </Button>
           </div>
         </div>
-        {validationError && (
-          <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 flex-shrink-0" />
-            {validationError}
-          </div>
-        )}
       </div>
-    </EntrepreneurLayout>
+
+      {/* Info Panel */}
+      <div className="flex gap-4 rounded-2xl border border-border bg-secondary p-6">
+        <Lightbulb className="h-6 w-6 flex-shrink-0 text-primary" />
+        <div className="space-y-1">
+          <p className="font-semibold text-foreground">Why need this information</p>
+          <p className="text-sm text-muted-foreground">
+            These documents are required for legal compliance and to protect the mondial.eco ecosystem. We use them to verify that your business is in good standing before unlocking access to specialized eco-funding and commercial partnerships.
+          </p>
+        </div>
+      </div>
+
+      {/* Next Step Preview (locked) */}
+      <div className="flex items-center justify-between rounded-2xl border border-border bg-card p-6 opacity-60">
+        <div className="flex items-center gap-4">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted text-sm font-semibold text-muted-foreground">
+            3
+          </div>
+          <div>
+            <p className="font-semibold text-foreground">Ownership &amp; KYC Checks</p>
+            <p className="text-sm text-muted-foreground">Identity verification for legal representatives</p>
+          </div>
+        </div>
+        <Lock className="h-5 w-5 text-muted-foreground" />
+      </div>
+    </div>
   );
 }
 

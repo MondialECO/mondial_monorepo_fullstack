@@ -2,28 +2,21 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ShieldCheck, Activity, ArrowRight } from 'lucide-react';
+import { TrendingUp, Activity, ArrowRight, AlertCircle } from 'lucide-react';
 import { useEntrepreneurProgress } from '@/hooks/useEntrepreneurProgress';
-import { EntrepreneurLayout } from '@/components/entrepreneur/EntrepreneurLayout';
 import { ProgressSidebar } from '@/components/entrepreneur/ProgressSidebar';
-import { StepFooter } from '@/components/entrepreneur/StepFooter';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import {
-  Phase3Container,
-  Surface,
-  IconStatCard,
-  RevenueBars,
-} from '@/components/entrepreneur/phase3/Phase3Ui';
 import { PHASE_3_STEPS } from '@/components/entrepreneur/phase3/steps';
+import { Surface, RevenueBars } from '@/components/entrepreneur/phase3/Phase3Ui';
 import entrepreneurApi, { type FinancialSummaryResponse } from '@/lib/api-entrepreneur';
 import { Phase3Data } from '@/types/entrepreneur';
 
 const QUARTERS = [
-  ['Q1 Revenue (Jan – Mar)', 'q1'],
-  ['Q2 Revenue (Apr – Jun)', 'q2'],
-  ['Q3 Revenue (Jul – Sep)', 'q3'],
-  ['Q4 Revenue (Oct – Dec)', 'q4'],
+  { label: 'Q1 Revenue (Jan – Mar)', key: 'q1' },
+  { label: 'Q2 Revenue (Apr – Jun)', key: 'q2' },
+  { label: 'Q3 Revenue (Jul – Sep)', key: 'q3' },
+  { label: 'Q4 Revenue (Oct – Dec)', key: 'q4' },
 ] as const;
 
 export function Phase3RevenueInputClient() {
@@ -150,6 +143,8 @@ export function Phase3RevenueInputClient() {
     }
   }
 
+  const hasValuation = !!financial && financial.finalValuation > 0;
+
   const statusMap = {
     1: progress.completedSteps.has('3-1') ? 'completed' : progress.currentStep === 1 ? 'current' : 'pending',
     2: progress.completedSteps.has('3-2') ? 'completed' : progress.currentStep === 2 ? 'current' : 'pending',
@@ -161,51 +156,50 @@ export function Phase3RevenueInputClient() {
     status: statusMap[s.step as 1 | 2 | 3 | 4] as 'completed' | 'current' | 'pending',
   }));
 
-  const sidebar = (
-    <ProgressSidebar
-      title="Verification Progress"
-      steps={stepIndicators}
-      overallScore={25}
-      scoreLabel="OVERALL SCORE"
-      scoreDescription="Complete Step 1 to unlock the automated valuation module."
-    />
-  );
-
-  const hasValuation = !!financial && financial.finalValuation > 0;
-
   return (
-    <EntrepreneurLayout sidebar={sidebar}>
-      <Phase3Container
-        crumbs={['Entrepreneur Verification', 'Revenue Input']}
-        title="Revenue Input"
-        subtitle="Please provide your company's revenue data for the last four quarters to calculate your valuation."
-      >
-        <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-4">
-          {/* Quarterly revenue + recalculate */}
-          <Surface className="p-5 flex flex-col gap-6">
+    <div className="flex flex-col gap-6 lg:flex-row lg:gap-6">
+      {/* Left: Progress Sidebar */}
+      <div className="hidden w-80 flex-shrink-0 lg:block">
+        <ProgressSidebar
+          title="Verification Progress"
+          steps={stepIndicators}
+          overallScore={25}
+          scoreLabel="OVERALL SCORE"
+          scoreDescription="Complete Step 1 to unlock the automated valuation module."
+        />
+      </div>
+
+      {/* Right: Main Card */}
+      <div className="flex-1 min-w-0">
+        <div className="flex flex-col gap-8 bg-card border-2 border-background rounded-[20px] shadow-sm">
+        {/* Header */}
+        <div className="flex flex-col gap-2 border-b border-border p-6">
+          <h1 className="text-2xl sm:text-3xl font-medium text-foreground leading-tight">Revenue Input</h1>
+          <p className="text-sm text-muted-foreground">
+            Please provide your company's revenue data for the last four quarters to calculate your valuation.
+          </p>
+        </div>
+
+        {/* Content Grid */}
+        <div className="grid grid-cols-1 gap-6 px-6 md:grid-cols-[300px_1fr]">
+          {/* Left: Quarterly Revenue Inputs */}
+          <div className="space-y-4 bg-popover border border-border rounded-lg p-6">
             <h2 className="text-lg font-semibold text-foreground">Quarterly Revenue (EUR)</h2>
-            <div className="space-y-4">
-              {QUARTERS.map(([label, key]) => (
+            <div className="space-y-3">
+              {QUARTERS.map(({ label, key }) => (
                 <div key={key}>
-                  <label
-                    htmlFor={`rev-${key}`}
-                    className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2"
-                  >
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
                     {label}
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground" aria-hidden>
-                      €
-                    </span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">€</span>
                     <Input
-                      id={`rev-${key}`}
                       type="number"
                       min={0}
                       value={values[key]}
                       onChange={(e) => setters[key](e.target.value)}
                       placeholder="0.00"
-                      aria-label={`${label} in euros`}
-                      className="h-10 pl-7"
+                      className="h-10 pl-7 bg-popover border-border rounded-lg"
                     />
                   </div>
                 </div>
@@ -222,51 +216,83 @@ export function Phase3RevenueInputClient() {
               className="w-full gap-2"
             >
               {isRecalculating ? 'Recalculating…' : 'Recalculate'}
-              <ArrowRight className="w-4 h-4" aria-hidden />
+              <ArrowRight className="w-4 h-4" />
             </Button>
-          </Surface>
+          </div>
 
-          {/* Report card + health */}
+          {/* Right: Revenue Chart & Health Cards */}
           <div className="flex flex-col gap-4">
-            <Surface className="p-6 lg:p-8 flex-1">
+            {/* Chart */}
+            <Surface className="p-6 lg:p-8 flex-1 bg-popover">
               <h2 className="text-lg font-semibold text-foreground mb-6">Revenue Growth Report Card</h2>
               <RevenueBars data={chartData} />
             </Surface>
-            <div className="flex flex-col sm:flex-row gap-4" role="status" aria-live="polite">
-              <IconStatCard
-                label="Verification Status"
-                icon={ShieldCheck}
-                value={investorReady == null ? '—' : investorReady ? 'Institutional Ready' : 'Pending Review'}
-                sub={investorReady ? 'All regulatory checks approved' : 'Set by backend compliance checks'}
-              />
-              <IconStatCard
-                label="Financial Health"
-                icon={Activity}
-                value={
-                  financial && financial.growthRate
-                    ? `${financial.growthRate > 0 ? '+' : ''}${(financial.growthRate * 100).toFixed(1)}% Yearly Growth`
-                    : 'Awaiting calculation'
-                }
-                sub={
-                  hasValuation
-                    ? `Estimated valuation €${(financial!.finalValuation / 1000).toFixed(1)}K`
-                    : 'Strong year-over-year revenue scaling'
-                }
-              />
+
+            {/* Health Cards */}
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1 rounded-lg border border-border bg-popover p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <TrendingUp className="w-4 h-4 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground">VERIFICATION STATUS</p>
+                    <p className="text-sm font-semibold text-foreground">
+                      {investorReady == null ? '—' : investorReady ? 'Institutional Ready' : 'Pending Review'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="flex-1 rounded-lg border border-border bg-popover p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <Activity className="w-4 h-4 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground">FINANCIAL HEALTH</p>
+                    <p className="text-sm font-semibold text-foreground">
+                      {financial && financial.growthRate
+                        ? `${financial.growthRate > 0 ? '+' : ''}${(financial.growthRate * 100).toFixed(1)}% Growth`
+                        : 'Awaiting calculation'}
+                    </p>
+                  </div>
+                </div>
+                {hasValuation && (
+                  <p className="text-xs text-muted-foreground">
+                    Estimated valuation €{(financial!.finalValuation / 1000).toFixed(1)}K
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="mt-6">
-          <StepFooter
-            backUrl="/dashboard/entrepreneur/phase-2"
-            onNextClick={() => persistAndCalculate(true)}
-            isLoading={isSubmitting}
-            nextLabel="Save &amp; Continue"
-            nextValidationError={validationError}
-          />
+        {validationError && (
+          <div className="mx-6 flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            {validationError}
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="flex items-center justify-between border-t-2 border-background p-6">
+          <button
+            onClick={() => router.push('/dashboard/entrepreneur/phase-3')}
+            className="text-sm font-medium text-muted-foreground transition hover:text-foreground"
+          >
+            Back
+          </button>
+          <Button
+            onClick={() => persistAndCalculate(true)}
+            disabled={isSubmitting}
+            className="gap-2 px-6"
+          >
+            {isSubmitting ? 'Saving…' : 'Save & Continue'}
+            <ArrowRight className="h-4 w-4" />
+          </Button>
         </div>
-      </Phase3Container>
-    </EntrepreneurLayout>
+        </div>
+      </div>
+    </div>
   );
 }
