@@ -31,18 +31,18 @@ export function PhaseFormWrapper({
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-neutral-1">{title}</h1>
+        <h1 className="text-3xl font-bold text-foreground">{title}</h1>
         {description && (
-          <p className="text-neutral-5 mt-2">{description}</p>
+          <p className="text-muted-foreground mt-2">{description}</p>
         )}
       </div>
 
       {/* Success Banner */}
       {success && (
-        <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4 flex items-start gap-3">
-          <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+        <div className="bg-success-light border-2 border-success-text/20 rounded-lg p-4 flex items-start gap-3">
+          <CheckCircle2 className="w-5 h-5 text-success-text flex-shrink-0 mt-0.5" />
           <div>
-            <p className="font-semibold text-green-900">
+            <p className="font-semibold text-success-text">
               {successMessage || "Saved successfully!"}
             </p>
           </div>
@@ -51,19 +51,19 @@ export function PhaseFormWrapper({
 
       {/* Error Banner */}
       {error && (
-        <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4">
+        <div className="bg-destructive/10 border-2 border-destructive/20 rounded-lg p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
               <div>
-                <p className="font-semibold text-red-900 mb-1">Error</p>
-                <p className="text-red-800 text-sm">{error}</p>
+                <p className="font-semibold text-destructive mb-1">Error</p>
+                <p className="text-destructive text-sm">{error}</p>
               </div>
             </div>
             {onDismissError && (
               <button
                 onClick={onDismissError}
-                className="text-red-600 hover:text-red-700 flex-shrink-0"
+                className="text-destructive hover:text-destructive/80 flex-shrink-0"
               >
                 ✕
               </button>
@@ -74,7 +74,7 @@ export function PhaseFormWrapper({
               onClick={onRetry}
               variant="outline"
               size="sm"
-              className="mt-4 border-red-300"
+              className="mt-4 border-destructive/20"
             >
               Retry
             </Button>
@@ -85,15 +85,15 @@ export function PhaseFormWrapper({
       {/* Loading Overlay */}
       {isLoading && (
         <div className="fixed inset-0 bg-black/10 flex items-center justify-center z-50 rounded-lg">
-          <div className="bg-white rounded-lg p-6 flex flex-col items-center gap-3">
+          <div className="bg-popover rounded-lg p-6 flex flex-col items-center gap-3">
             <Loader2 className="w-8 h-8 text-primary animate-spin" />
-            <p className="text-neutral-5 text-sm">Saving your changes...</p>
+            <p className="text-muted-foreground text-sm">Saving your changes...</p>
           </div>
         </div>
       )}
 
       {/* Content */}
-      <div className="bg-white border-2 border-neutral-2 rounded-xl p-6 md:p-8">
+      <div className="bg-popover border-2 border-border rounded-xl p-6 md:p-8">
         {children}
       </div>
     </div>

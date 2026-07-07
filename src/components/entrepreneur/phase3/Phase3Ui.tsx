@@ -80,7 +80,7 @@ export function IconStatCard({
         ? 'text-muted-foreground'
         : 'text-primary';
   return (
-    <Surface className="flex-1 min-w-0 px-4 py-5 flex flex-col gap-3 justify-center">
+    <Surface className="flex-1 min-w-0 px-4 py-5 flex flex-col bg-popover gap-3 justify-center">
       <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
       <div className="flex items-center gap-3">
         <span className="shrink-0 grid place-items-center size-12 rounded-full bg-primary/10 text-primary">
@@ -115,7 +115,7 @@ export function MetricTile({
   className?: string;
 }) {
   return (
-    <Surface className={cn('p-5 flex flex-col gap-3', className)}>
+    <Surface className={cn('p-5 flex flex-col gap-3 bg-popover', className)}>
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
         {Icon ? <Icon className="w-4 h-4 text-muted-foreground" aria-hidden /> : null}

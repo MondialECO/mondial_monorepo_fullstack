@@ -2,251 +2,217 @@
 
 import { useEntrepreneurProgress } from '@/hooks/useEntrepreneurProgress';
 import { usePhase2Step1Form } from '@/hooks/usePhase2Step1Form';
-import { EntrepreneurLayout } from '@/components/entrepreneur/EntrepreneurLayout';
-import { ProgressSidebar } from '@/components/entrepreneur/ProgressSidebar';
-import { PhaseHeader } from '@/components/entrepreneur/PhaseHeader';
-import { StepFooter } from '@/components/entrepreneur/StepFooter';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { AlertCircle, CheckCircle2, FileText, ArrowRight, Lightbulb, Lock } from 'lucide-react';
 import { useWatch } from 'react-hook-form';
 
-const PHASE_2_STEPS = [
-  { step: 1 as const, title: 'Legal Identity', subtitle: 'Enter company info' },
-  { step: 2 as const, title: 'Required Documentation', subtitle: 'Upload documents' },
-  { step: 3 as const, title: 'Ownership & KYC', subtitle: 'Verify owners' },
-  { step: 4 as const, title: 'Financial Preview', subtitle: 'Review summary' },
-];
+const labelClass = 'block text-sm font-medium text-foreground uppercase tracking-wide mb-2';
+const inputClass =
+  'h-auto bg-popover border-border rounded-lg px-4 py-3.5 text-sm text-foreground placeholder:text-muted-foreground';
 
 export default function Phase2Step1Client() {
   const { progress } = useEntrepreneurProgress();
   const { form, formState, autosave, handleSaveDraft, handleNextClick } = usePhase2Step1Form();
 
-  const statusMap = progress
-    ? {
-        1: progress.completedSteps.has('2-1') ? 'completed' : progress.currentStep === 1 ? 'current' : 'pending',
-        2: progress.completedSteps.has('2-2') ? 'completed' : progress.currentStep === 2 ? 'current' : 'pending',
-        3: progress.completedSteps.has('2-3') ? 'completed' : progress.currentStep === 3 ? 'current' : 'pending',
-        4: progress.completedSteps.has('2-4') ? 'completed' : progress.currentStep === 4 ? 'current' : 'pending',
-      }
-    : null;
-
-  const stepIndicators = PHASE_2_STEPS.map((step) => ({
-    ...step,
-    status: statusMap ? (statusMap[step.step as keyof typeof statusMap] as any) : 'pending',
-  }));
-
-  const sidebarContent = progress ? (
-    <ProgressSidebar
-      title="Verification Progress"
-      steps={stepIndicators}
-      overallScore={20}
-      scoreLabel="OVERALL SCORE"
-      scoreDescription="Complete Step 1 to unlock identity checks."
-    />
-  ) : null;
+  const { register } = form;
+  const formValues = useWatch({ control: form.control });
+  const isFormFilled = !!(formValues?.companyName?.trim() && formValues?.registrationNumber?.trim());
 
   if (!progress) {
     return (
-      <div className="min-h-screen bg-neutral-100 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="text-center">
-          <p className="text-neutral-5 text-sm">Loading...</p>
+          <p className="text-muted-foreground text-sm">Loading...</p>
         </div>
       </div>
     );
   }
 
-  const { register } = form;
-  const formValues = useWatch({ control: form.control });
-  const isFormFilled = !!(formValues?.companyName?.trim() && formValues?.registrationNumber?.trim());
-
   return (
-    <EntrepreneurLayout sidebar={sidebarContent || <div />}>
-      <div className="space-y-4 md:space-y-6">
-        <PhaseHeader
-          title="Legal Identity"
-          subtitle="Enter your company's official registered information. This data will be verified against the national trade registry."
-          progressLabel="PROGRESS"
-          progressValue="Step 1 of 4"
-          progressPercentage={25}
-        />
-
-        {/* Main Form Card */}
-        <div className="bg-neutral-3 border-2 border-neutral-4 rounded-2xl p-4 sm:p-6 md:p-8">
-          {/* Section 1: Company Identity */}
-          <div className="space-y-4 pb-6 border-b border-neutral-2">
-            <h3 className="text-xs font-semibold text-neutral-5 uppercase tracking-wide">Company Identity</h3>
-            <div className="space-y-4">
-              {/* Company Name */}
-              <div>
-                <label className="block text-sm font-semibold text-neutral-1 mb-2">
-                  Company Legal Name
-                </label>
-                <Input
-                  {...register('companyName')}
-                  placeholder="Enter official company name"
-                  className="h-12 bg-background border-neutral-2 placeholder:text-neutral-5"
-                />
-                <p className="text-xs text-neutral-5 mt-1">Must match your official registration documents</p>
-              </div>
-
-              {/* Registration Number (SIRET) */}
-              <div>
-                <label className="block text-sm font-semibold text-neutral-1 mb-2">
-                  Registration Number (SIRET)
-                </label>
-                <Input
-                  {...register('registrationNumber')}
-                  placeholder="e.g., 12345678901234"
-                  maxLength={14}
-                  className="h-12 bg-background border-neutral-2 placeholder:text-neutral-5 font-mono"
-                />
-                <p className="text-xs text-neutral-5 mt-1">14-digit SIRET number for verification</p>
-              </div>
-
-              {/* Legal Form */}
-              <div>
-                <label className="block text-sm font-semibold text-neutral-1 mb-2">
-                  Legal Structure
-                </label>
-                <Select value={formValues?.legalForm || ''} onValueChange={(value) => {
-                  form.setValue('legalForm', value);
-                }}>
-                  <SelectTrigger className="h-12 bg-background border-neutral-2">
-                    <SelectValue placeholder="Select legal structure" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="SARL">SARL</SelectItem>
-                    <SelectItem value="SAS">SAS</SelectItem>
-                    <SelectItem value="EIRL">EIRL</SelectItem>
-                    <SelectItem value="SA">SA</SelectItem>
-                    <SelectItem value="MICRO">Micro-Enterprise</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-
-          {/* Section 2: Registration Details */}
-          <div className="space-y-4 py-6 border-b border-neutral-2">
-            <h3 className="text-xs font-semibold text-neutral-5 uppercase tracking-wide">Registration Details</h3>
-            <div className="space-y-4">
-              {/* Incorporation Date */}
-              <div>
-                <label className="block text-sm font-semibold text-neutral-1 mb-2">
-                  Incorporation Date
-                </label>
-                <Input
-                  {...register('incorporationDate')}
-                  type="date"
-                  className="h-12 bg-background border-neutral-2"
-                />
-              </div>
-
-              {/* Country */}
-              <div>
-                <label className="block text-sm font-semibold text-neutral-1 mb-2">
-                  Country of Registration
-                </label>
-                <Select value={formValues?.countryOfRegistration || ''} onValueChange={(value) => {
-                  form.setValue('countryOfRegistration', value);
-                }}>
-                  <SelectTrigger className="h-12 bg-background border-neutral-2">
-                    <SelectValue placeholder="Select country" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="France">France</SelectItem>
-                    <SelectItem value="Germany">Germany</SelectItem>
-                    <SelectItem value="Netherlands">Netherlands</SelectItem>
-                    <SelectItem value="Belgium">Belgium</SelectItem>
-                    <SelectItem value="Luxembourg">Luxembourg</SelectItem>
-                    <SelectItem value="Spain">Spain</SelectItem>
-                    <SelectItem value="Italy">Italy</SelectItem>
-                    <SelectItem value="Austria">Austria</SelectItem>
-                    <SelectItem value="Portugal">Portugal</SelectItem>
-                    <SelectItem value="Greece">Greece</SelectItem>
-                    <SelectItem value="Ireland">Ireland</SelectItem>
-                    <SelectItem value="United Kingdom">United Kingdom</SelectItem>
-                    <SelectItem value="Denmark">Denmark</SelectItem>
-                    <SelectItem value="Sweden">Sweden</SelectItem>
-                    <SelectItem value="Norway">Norway</SelectItem>
-                    <SelectItem value="Switzerland">Switzerland</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-
-          {/* Section 3: Business Information */}
-          <div className="space-y-4 pt-6">
-            <h3 className="text-xs font-semibold text-neutral-5 uppercase tracking-wide">Business Information</h3>
-            <div className="space-y-4">
-              {/* Registered Address */}
-              <div>
-                <label className="block text-sm font-semibold text-neutral-1 mb-2">
-                  Registered Address
-                </label>
-                <Textarea
-                  {...register('registeredAddress')}
-                  placeholder="Full registered address including street, postal code, city"
-                  className="bg-background border-neutral-2 placeholder:text-neutral-5 min-h-[100px] resize-none"
-                />
-                <p className="text-xs text-neutral-5 mt-1">Include street address, postal code, and city</p>
-              </div>
-
-              {/* Industry Code */}
-              <div>
-                <label className="block text-sm font-semibold text-neutral-1 mb-2">
-                  Industry Code (NAF)
-                </label>
-                <Input
-                  {...register('industryCode')}
-                  placeholder="e.g., 6202A"
-                  className="h-12 bg-background border-neutral-2 placeholder:text-neutral-5"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Auto-save indicator */}
-        {autosave.status === 'saved' && (
-          <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 border border-green-200 rounded-lg p-3">
-            <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-            Auto-saved successfully
-          </div>
-        )}
-
-        {formState.error && (
-          <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">
-            <AlertCircle className="w-4 h-4 flex-shrink-0" />
-            {formState.error}
-          </div>
-        )}
-
-        {/* Info Box */}
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex gap-3">
-          <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm font-semibold text-blue-900 mb-1">Verification Required</p>
-            <p className="text-sm text-blue-800">
-              Your company will be automatically verified against the national trade registry. This helps ensure all information on the platform is accurate and trustworthy.
+    <div className="mx-auto w-full max-w-[1072px] space-y-6">
+      {/* Main Card */}
+      <div className="flex flex-col gap-8 bg-card border-2 border-background rounded-[20px] shadow-sm">
+        {/* Header Section */}
+        <div className="flex flex-col gap-4 border-b border-border p-6 md:flex-row md:items-end md:gap-8">
+          <div className="min-w-0 flex-1 space-y-2">
+            <h1 className="text-2xl sm:text-3xl font-medium text-foreground leading-tight">Legal Identity</h1>
+            <p className="text-sm text-muted-foreground">
+              Enter your company&apos;s official registered information. This data will be automatically verified against the national trade registry.
             </p>
           </div>
+          <div className="flex shrink-0 items-center gap-[18px]">
+            <div className="flex flex-col items-end gap-1 text-right">
+              <p className="text-[13px] text-muted-foreground">PROGRESS</p>
+              <p className="text-base font-medium text-foreground">From 80% Filled</p>
+            </div>
+            <div className="flex size-12 items-center justify-center rounded-full border border-border bg-secondary">
+              <FileText className="size-6 text-primary" />
+            </div>
+          </div>
         </div>
 
-        <StepFooter
-          backUrl="/dashboard/entrepreneur"
-          onNextClick={handleNextClick}
-          isLoading={formState.status === 'navigating'}
-          isNextDisabled={!isFormFilled}
-          showSaveDraft={true}
-          onSaveDraft={handleSaveDraft}
-          nextLabel="Next"
-          nextValidationError={formState.error || undefined}
-        />
+        {/* Details Section */}
+        <div className="flex flex-col gap-6 px-6">
+          {/* Company Name */}
+          <div>
+            <label className={labelClass}>Official Company Name</label>
+            <Input
+              {...register('companyName')}
+              placeholder="Enter official company name"
+              className={inputClass}
+            />
+          </div>
+
+          {/* Registration + Legal Form */}
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            <div>
+              <label className={labelClass}>Registration (SIREN/SIRET)</label>
+              <Input
+                {...register('registrationNumber')}
+                placeholder="e.g., 987 876 5684"
+                maxLength={14}
+                className={`${inputClass} font-mono`}
+              />
+            </div>
+            <div>
+              <label className={labelClass}>Legal Form</label>
+              <Select value={formValues?.legalForm || ''} onValueChange={(value) => form.setValue('legalForm', value)}>
+                <SelectTrigger className={inputClass}>
+                  <SelectValue placeholder="Select legal form" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="SARL">SARL</SelectItem>
+                  <SelectItem value="SAS">SAS / SASU</SelectItem>
+                  <SelectItem value="EIRL">EIRL</SelectItem>
+                  <SelectItem value="SA">SA</SelectItem>
+                  <SelectItem value="MICRO">Micro-Enterprise</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Incorporation Date + Country */}
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            <div>
+              <label className={labelClass}>Incorporation Date</label>
+              <Input {...register('incorporationDate')} type="date" className={inputClass} />
+            </div>
+            <div>
+              <label className={labelClass}>Country of Registration</label>
+              <Select
+                value={formValues?.countryOfRegistration || ''}
+                onValueChange={(value) => form.setValue('countryOfRegistration', value)}
+              >
+                <SelectTrigger className={inputClass}>
+                  <SelectValue placeholder="Select country" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="France">France</SelectItem>
+                  <SelectItem value="Germany">Germany</SelectItem>
+                  <SelectItem value="Netherlands">Netherlands</SelectItem>
+                  <SelectItem value="Belgium">Belgium</SelectItem>
+                  <SelectItem value="Luxembourg">Luxembourg</SelectItem>
+                  <SelectItem value="Spain">Spain</SelectItem>
+                  <SelectItem value="Italy">Italy</SelectItem>
+                  <SelectItem value="Austria">Austria</SelectItem>
+                  <SelectItem value="Portugal">Portugal</SelectItem>
+                  <SelectItem value="Greece">Greece</SelectItem>
+                  <SelectItem value="Ireland">Ireland</SelectItem>
+                  <SelectItem value="United Kingdom">United Kingdom</SelectItem>
+                  <SelectItem value="Denmark">Denmark</SelectItem>
+                  <SelectItem value="Sweden">Sweden</SelectItem>
+                  <SelectItem value="Norway">Norway</SelectItem>
+                  <SelectItem value="Switzerland">Switzerland</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Registered Address */}
+          <div>
+            <label className={labelClass}>Registered Address</label>
+            <Textarea
+              {...register('registeredAddress')}
+              placeholder="Full registered address including street, postal code, city"
+              className={`${inputClass} min-h-[100px] resize-none`}
+            />
+          </div>
+
+          {/* Industry Code */}
+          <div className="md:max-w-[486px]">
+            <label className={labelClass}>Industry Code (NAF / APE)</label>
+            <Input {...register('industryCode')} placeholder="e.g., 90.875" className={inputClass} />
+          </div>
+        </div>
+
+        {/* Auto-save + error indicators */}
+        {(autosave.status === 'saved' || formState.error) && (
+          <div className="px-6 space-y-3">
+            {autosave.status === 'saved' && (
+              <div className="flex items-center gap-2 rounded-lg border border-success-text/20 bg-success-light p-3 text-sm text-success-text">
+                <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
+                Auto-saved successfully
+              </div>
+            )}
+            {formState.error && (
+              <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
+                <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                {formState.error}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-3 border-t-2 border-background p-6">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleSaveDraft}
+            className="border-primary px-6 py-3 font-medium text-primary hover:bg-primary/5"
+          >
+            Save Draft
+          </Button>
+          <Button
+            type="button"
+            onClick={handleNextClick}
+            disabled={!isFormFilled || formState.status === 'navigating'}
+            className="gap-2 px-6 py-3"
+          >
+            {formState.status === 'navigating' ? 'Processing…' : 'Next'}
+            {formState.status !== 'navigating' && <ArrowRight className="h-5 w-5" />}
+          </Button>
+        </div>
       </div>
-    </EntrepreneurLayout>
+
+      {/* Info Panel */}
+      <div className="flex gap-4 rounded-2xl border border-border bg-secondary p-6">
+        <Lightbulb className="h-6 w-6 flex-shrink-0 text-primary" />
+        <div className="space-y-1">
+          <p className="font-semibold text-foreground">Why need this information</p>
+          <p className="text-sm text-muted-foreground">
+            Legal details are used to verify your business status with governmental APIs. This ensures all entrepreneurs on{' '}
+            <span className="font-medium text-primary">mondial.eco</span> are legally compliant and eligible for eco-grants.
+          </p>
+        </div>
+      </div>
+
+      {/* Next Step Preview (locked) */}
+      <div className="flex items-center justify-between rounded-2xl border border-border bg-card p-6 opacity-60">
+        <div className="flex items-center gap-4">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted text-sm font-semibold text-muted-foreground">
+            2
+          </div>
+          <div>
+            <p className="font-semibold text-foreground">Required Documentation</p>
+            <p className="text-sm text-muted-foreground">KIBS, RIB, Insurance, Tax Certificates</p>
+          </div>
+        </div>
+        <Lock className="h-5 w-5 text-muted-foreground" />
+      </div>
+    </div>
   );
 }

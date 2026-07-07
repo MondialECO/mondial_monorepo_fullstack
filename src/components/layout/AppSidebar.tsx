@@ -76,11 +76,11 @@ export default function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="p-4 gap-4 mt-auto">
-        <div className="rounded-xl bg-blue-50 dark:bg-blue-900/20 p-4 border border-blue-100 dark:border-blue-900/30 group-data-[collapsible=icon]:hidden">
-          <p className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-2">
+        <div className="rounded-xl bg-primary/10 dark:bg-primary/20 p-4 border border-primary/20 dark:border-primary/30 group-data-[collapsible=icon]:hidden">
+          <p className="text-sm font-semibold text-primary dark:text-primary/90 mb-2">
             Upgrade Now
           </p>
-          <p className="text-xs text-blue-700 dark:text-blue-300 mb-3">
+          <p className="text-xs text-primary/80 dark:text-primary/70 mb-3">
             Get more views and reach more investors.
           </p>
           <button className="w-full py-2 bg-primary text-white text-xs font-semibold rounded-lg hover:bg-primary/90 transition-colors">
@@ -89,7 +89,7 @@ export default function AppSidebar() {
         </div>
 
         <div className="flex items-center gap-3 py-2 border-t border-sidebar-border pt-4">
-          <div className="h-10 w-10 min-w-10 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center overflow-hidden">
+          <div className="h-10 w-10 min-w-10 rounded-full bg-muted dark:bg-muted/80 flex items-center justify-center overflow-hidden">
             <span className="text-xs font-bold">
               {user.name?.charAt(0).toUpperCase() || "U"}
             </span>

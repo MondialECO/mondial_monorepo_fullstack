@@ -275,7 +275,7 @@ function IntegrationCard({
   buttonClass: string;
 }) {
   return (
-    <div className="border border-border rounded-2xl p-5 flex flex-col items-center gap-3 text-center">
+    <div className="border border-border bg-popover rounded-2xl p-5 flex flex-col items-center gap-3 text-center">
       <span className={cn('grid place-items-center size-12 rounded-full border-2 text-lg font-bold', colorClass)}>
         {letter}
       </span>
@@ -316,7 +316,7 @@ function KpiField({
       <label htmlFor={`kpi-${id}`} className="block text-sm font-medium text-foreground mb-2">
         {label}
       </label>
-      <div className="relative">
+      <div className="relative bg-popover">
         {prefix ? (
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground" aria-hidden>
             {prefix}
@@ -359,7 +359,7 @@ function HealthRow({
   tone: 'success' | 'primary' | 'destructive' | 'neutral';
 }) {
   return (
-    <div className="border border-border rounded-xl p-4 flex items-center justify-between gap-3">
+    <div className="bg-popover border border-border rounded-xl p-4 flex items-center justify-between gap-3">
       <div>
         <p className="text-xs text-muted-foreground">{label}</p>
         <p className="text-lg font-semibold text-foreground tabular-nums">
