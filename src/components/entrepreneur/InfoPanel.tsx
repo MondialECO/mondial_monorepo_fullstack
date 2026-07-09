@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import { AlertCircle } from 'lucide-react';
 
 interface InfoPanelProps {
-  icon?: ReactNode;
+  icon?: React.ComponentType<{ className?: string }>;
   title: string;
   description: string;
   variant?: 'info' | 'warning' | 'error';
