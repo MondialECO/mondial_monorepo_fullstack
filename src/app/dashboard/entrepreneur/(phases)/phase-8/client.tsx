@@ -187,7 +187,7 @@ export default function Phase8Client() {
   });
 
   return (
-    <div className="flex-1 overflow-y-auto p-8 flex flex-col gap-6" style={{ backgroundColor: 'var(--dr-bg-page)' }}>
+    <div className="flex-1 overflow-y-auto flex flex-col" style={{ backgroundColor: 'var(--dr-bg-page)' }}>
       {/* Page Header */}
       <div className="flex items-start justify-between gap-6">
         <div className="flex flex-col gap-2">
