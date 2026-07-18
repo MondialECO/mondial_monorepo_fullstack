@@ -78,9 +78,6 @@ export const menu: Record<UserRole, MenuSection[]> = {
           href: "/dashboard/creator/project-studio",
           icon: Layers,
         },
-        // "AI Masterplan" (/dashboard/creator/ai-masterplan) unlinked: the page still
-        // renders hardcoded mock financials. Re-link once it's wired to the real
-        // forecast/stats sources as its own gate.
         {
           label: "Offer & Pricing",
           href: "/dashboard/creator/offer-pricing",

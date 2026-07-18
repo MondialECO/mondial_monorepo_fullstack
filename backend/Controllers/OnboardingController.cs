@@ -60,17 +60,13 @@ namespace WebApp.Controllers
 
         // ----- Constants and helpers --------------------------------------
 
-        /// <summary>The base 4 mandatory items every role must verify.</summary>
-        private static readonly string[] CoreRequired =
-            { "identity", "face", "phone", "email" };
-
         /// <summary>Optional supplementary documents kept outside the universal Phase 1 gate.</summary>
         private static readonly string[] AllSupplementary =
             { "residence", "income", "tax", "license" };
 
-        /// <summary>Required item set for universal Phase 1. Every role completes the same core 4.</summary>
+        /// <summary>Required item set for universal Phase 1. Delegates to the shared gate.</summary>
         private static HashSet<string> RequiredItemsFor(string role)
-            => new(CoreRequired, StringComparer.OrdinalIgnoreCase);
+            => OnboardingGate.RequiredItemsFor(role);
 
         private async Task<ApplicationUser> CurrentUserAsync()
         {
@@ -95,40 +91,10 @@ namespace WebApp.Controllers
         }
 
         private static bool IsItemVerified(ApplicationUser user, string key)
-        {
-            var ob = user.Onboarding;
-            return key.ToLowerInvariant() switch
-            {
-                "identity"  => ob.IdentityDocumentVerified,
-                "face"      => ob.FaceVerified,
-                "phone"     => ob.PhoneVerified,
-                "email"     => ob.EmailOtpVerified,
-                "residence" => ob.Residence?.Uploaded ?? false,
-                "income"    => ob.Income?.Uploaded ?? false,
-                "tax"       => ob.Tax?.Uploaded ?? false,
-                "license"   => ob.License?.Uploaded ?? false,
-                _ => false,
-            };
-        }
+            => OnboardingGate.IsItemVerified(user, key);
 
-        private async Task PromotePhaseIfCompleteAsync(ApplicationUser user)
-        {
-            var required = RequiredItemsFor(user.User ?? "");
-            var allRequiredDone = required.All(key => IsItemVerified(user, key));
-
-            if (allRequiredDone && user.Onboarding.Phase < 1)
-            {
-                user.Onboarding.Phase = 1;
-                user.Onboarding.CompletedAt = DateTime.UtcNow;
-                // Mirror the legacy KycStatus so older code keeps working.
-                user.KycStatus = "VERIFIED";
-                user.Kyc.Status = VerificationStatus.Verified;
-                user.Kyc.VerifiedAt = DateTime.UtcNow;
-                if (user.Tier_level < 1) user.Tier_level = 1;
-                await _userManager.UpdateAsync(user);
-                _audit.Record("onboarding_complete", user.Email!, true, new { role = user.User });
-            }
-        }
+        private Task PromotePhaseIfCompleteAsync(ApplicationUser user)
+            => OnboardingGate.PromoteIfCompleteAsync(user, _userManager, _audit);
 
         // ----- Status -----------------------------------------------------
 

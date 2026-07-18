@@ -113,7 +113,25 @@ namespace WebApp.Controllers
             return user?.Address?.Country ?? user?.Geography ?? "";
         }
 
-        // GET /api/creator/smart-matches?phaseContext=5|6
+        /// <summary>
+        /// Server-derived match phase context. Matchmaking is a Phase-6 privilege:
+        /// the real, derived engine unlocks Phase 6 only on the Build path after
+        /// Level Up. We return 6 ONLY when the derived Phase-6 status is unlocked;
+        /// otherwise a non-6 context, which the match service honours as an empty
+        /// pool. Callers must never pass a client-supplied or hardcoded 6.
+        /// </summary>
+        private async Task<int> DerivedMatchContextAsync(string userId, CreatorJourney journey)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            var phase1Complete = (user?.Onboarding?.Phase ?? 0) >= 1;
+            var computed = _journeys.ComputePhaseStatus(journey, phase1Complete);
+            return computed.Phase6.Status != "locked" ? 6 : 5;
+        }
+
+        // GET /api/creator/smart-matches
+        // NOTE: the phaseContext query param is accepted for backwards compatibility
+        // but IGNORED — the phase is derived server-side so a client can no longer
+        // unlock matches by passing ?phaseContext=6 before Level Up.
         [HttpGet("smart-matches")]
         public async Task<IActionResult> SmartMatches([FromQuery] int phaseContext = 6)
         {
@@ -123,18 +141,19 @@ namespace WebApp.Controllers
                 var journey = await _journeys.GetOrCreateAsync(userId);
                 var country = await CountryOfAsync(userId);
 
-                var matches = await _matching.MatchAsync(journey, country, phaseContext);
+                var context = await DerivedMatchContextAsync(userId, journey);
+                var matches = await _matching.MatchAsync(journey, country, context);
 
                 // Snapshot + version (phase: 6).
                 await _context.SmartMatchRuns.InsertOneAsync(new SmartMatchRun
                 {
-                    UserId = userId, PhaseContext = phaseContext,
+                    UserId = userId, PhaseContext = context,
                     MatchCount = matches.Count, TopScore = matches.FirstOrDefault()?.FinalScore ?? 0,
                 });
                 await _journeys.AppendOutputAsync(userId, new Models.Dtos.AppendOutputRequest
                 {
                     OutputKey = "matchingRuns", Phase = 6,
-                    Payload = new Dictionary<string, object> { ["phaseContext"] = phaseContext, ["matchCount"] = matches.Count },
+                    Payload = new Dictionary<string, object> { ["phaseContext"] = context, ["matchCount"] = matches.Count },
                 });
 
                 return Ok(ApiResponse.Ok("OK", new { matches, isEmpty = matches.Count == 0 }));
@@ -153,7 +172,9 @@ namespace WebApp.Controllers
                 var journey = await _journeys.GetOrCreateAsync(userId);
                 var country = await CountryOfAsync(userId);
 
-                var matches = await _matching.MatchAsync(journey, country, 6);
+                // Derived — below Phase 6 this returns an empty pool (no leak).
+                var context = await DerivedMatchContextAsync(userId, journey);
+                var matches = await _matching.MatchAsync(journey, country, context);
                 var featured = matches.FirstOrDefault();
                 var qualified = matches.Skip(1).ToList();
                 // Rotate the tip deterministically by match count (no Random in this env).
