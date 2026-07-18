@@ -62,6 +62,20 @@ namespace WebApp.Controllers
             return user?.Address?.Country ?? user?.Geography ?? "";
         }
 
+        /// <summary>
+        /// Server-derived match phase context. Matchmaking unlocks only at Phase 6
+        /// (Build path, post Level Up). During Phase 5 the derived Phase-6 status is
+        /// still "locked", so this returns a non-6 context and the match service
+        /// yields an empty pool — a Phase-5 caller never sees a matched count.
+        /// </summary>
+        private async Task<int> DerivedMatchContextAsync(string userId, CreatorJourney journey)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            var phase1Complete = (user?.Onboarding?.Phase ?? 0) >= 1;
+            var computed = _journeys.ComputePhaseStatus(journey, phase1Complete);
+            return computed.Phase6.Status != "locked" ? 6 : 5;
+        }
+
         private string GetUserId() =>
             User.FindFirst(ClaimTypes.NameIdentifier)?.Value
             ?? throw new UnauthorizedAccessException("User not authenticated");
@@ -260,10 +274,13 @@ namespace WebApp.Controllers
                 var monthlyRunning = journey.Phase4Data?.ResourceCalculation?.MonthlyRunningCost ?? 0;
                 double? runway = monthlyRunning > 0 ? (double)(request.TotalAsk / monthlyRunning) : null;
 
-                // Real investor matched-count via the shared service (phaseContext=6).
-                // Empty pool → 0, honestly (not a stub).
+                // Investor matched-count via the shared service, gated on the
+                // SERVER-DERIVED phase — not a hardcoded 6. In Phase 5 matchmaking is
+                // still locked, so this is an honest 0; the real count first appears
+                // after Level Up unlocks Phase 6.
                 var country = await CountryOfAsync(userId);
-                var investorMatches = await _smartMatching.MatchAsync(journey, country, 6);
+                var matchContext = await DerivedMatchContextAsync(userId, journey);
+                var investorMatches = await _smartMatching.MatchAsync(journey, country, matchContext);
                 int matchedInvestorCount = investorMatches.Count;
 
                 var seed = new CreatorSeedFunding
