@@ -1,22 +1,59 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { CheckCircle2, ChevronRight, Loader2, ShieldCheck } from "lucide-react";
+import { CheckCircle2, ChevronRight, Loader2, ShieldCheck, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useOnboarding } from "@/providers/OnboardingProvider";
+import { useAuth } from "@/app/_providers/AuthProvider";
 import { ONBOARDING_ITEMS, OnboardingItem } from "@/lib/onboarding-routes";
+import { ROLE_DASHBOARD_ROUTES } from "@/lib/roles";
 import { cn } from "@/lib/utils";
+import api from "@/lib/axios";
 
 export default function OnboardingHubPage() {
   const router = useRouter();
-  const { status, isLoading, isComplete, nextRequired } = useOnboarding();
+  const { status, isLoading, isComplete, nextRequired, refresh } = useOnboarding();
+  const { refreshAuthMe } = useAuth();
+  const [completing, setCompleting] = useState(false);
+  const [completeError, setCompleteError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isLoading) return;
-    if (isComplete) router.replace("/onboarding/complete");
-  }, [isLoading, isComplete, router]);
+
+    // If already Phase 1, redirect to dashboard immediately (prevent race conditions)
+    if (status?.phase >= 1) {
+      const dashboardRoute = ROLE_DASHBOARD_ROUTES[status.role];
+      router.replace(dashboardRoute || "/");
+      return;
+    }
+
+    // If all items verified, show completion page
+    if (isComplete) {
+      router.replace("/onboarding/complete");
+    }
+  }, [isLoading, isComplete, status, router]);
+
+  // Calculate if all core items are verified
+  const core = ONBOARDING_ITEMS.filter((i) => i.group === "core");
+  const allCoreVerified = core.every((i) => status?.items[i.key]?.verified);
+
+  async function handleComplete() {
+    setCompleteError(null);
+    setCompleting(true);
+    try {
+      await api.post("/onboarding/complete");
+      // Refresh both onboarding status AND auth context with Phase=1
+      await Promise.all([refresh(), refreshAuthMe()]);
+      router.push("/onboarding/complete");
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setCompleteError(msg ?? "Failed to complete verification. Please try again.");
+    } finally {
+      setCompleting(false);
+    }
+  }
 
   if (isLoading || !status) {
     return (
@@ -27,7 +64,6 @@ export default function OnboardingHubPage() {
     );
   }
 
-  const core = ONBOARDING_ITEMS.filter((i) => i.group === "core");
   const supplementary = ONBOARDING_ITEMS.filter((i) => i.group === "supplementary");
 
   // Show supplementary items the role requires PLUS any user-uploaded optional
@@ -98,6 +134,14 @@ export default function OnboardingHubPage() {
         </div>
       </section>
 
+      {/* Error Message */}
+      {completeError && (
+        <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 flex gap-3 text-sm text-destructive mb-6">
+          <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+          <span>{completeError}</span>
+        </div>
+      )}
+
       {/* CTA */}
       <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center gap-5">
         <div className="flex items-start gap-4 flex-1">
@@ -108,11 +152,28 @@ export default function OnboardingHubPage() {
             Verification is mandatory for compliance with global AML/KYC regulations. Mondial.eco uses enterprise-grade encryption. Your private information is never shared with third parties.
           </p>
         </div>
-        <Button asChild className="w-full sm:w-auto whitespace-nowrap" disabled={!nextRequired}>
-          <Link href={nextRequired?.href ?? "/onboarding"}>
-            {nextRequired ? "Start verification" : "All required steps done"}
-          </Link>
-        </Button>
+        {allCoreVerified ? (
+          <Button
+            onClick={handleComplete}
+            disabled={completing}
+            className="w-full sm:w-auto whitespace-nowrap"
+          >
+            {completing ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                Completing...
+              </>
+            ) : (
+              "Complete Verification"
+            )}
+          </Button>
+        ) : (
+          <Button asChild className="w-full sm:w-auto whitespace-nowrap" disabled={!nextRequired}>
+            <Link href={nextRequired?.href ?? "/onboarding"}>
+              {nextRequired ? "Start verification" : "All required steps done"}
+            </Link>
+          </Button>
+        )}
       </div>
     </div>
   );

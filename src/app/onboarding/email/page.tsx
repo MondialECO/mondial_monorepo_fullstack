@@ -2,17 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Mail } from "lucide-react";
+import { Loader2, AlertCircle } from "lucide-react";
 import api from "@/lib/axios";
 import { useOnboarding } from "@/providers/OnboardingProvider";
 import { Button } from "@/components/ui/button";
-import BackToHub from "@/components/onboarding/BackToHub";
 
 export default function OnboardingEmailPage() {
   const router = useRouter();
   const { refresh, status } = useOnboarding();
   const [code, setCode] = useState("");
-  const [stage, setStage] = useState<"need-send" | "enter-code">("need-send");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -21,7 +19,6 @@ export default function OnboardingEmailPage() {
     setBusy(true);
     try {
       await api.post("/onboarding/send-email-otp");
-      setStage("enter-code");
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       setError(msg ?? "Failed to send code. Try again.");
@@ -37,6 +34,8 @@ export default function OnboardingEmailPage() {
     try {
       await api.post("/onboarding/verify-email-otp", { code });
       await refresh();
+      // Redirect to hub, NOT to completion
+      // Hub will show "Complete" button for manual promotion
       router.push("/onboarding");
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
@@ -46,68 +45,84 @@ export default function OnboardingEmailPage() {
     }
   }
 
+
   useEffect(() => {
-    // Auto-trigger the send on first arrival so the user just sees the code
-    // input. They can use "Resend code" if needed.
-    if (stage === "need-send") void sendCode();
+    // Auto-trigger the send on first arrival
+    if (status?.email) void sendCode();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [status?.email]);
 
   const maskedEmail = status?.email ? maskEmail(status.email) : "your email";
 
   return (
-    <div className="mx-auto max-w-[560px] px-4 sm:px-6 py-10 sm:py-14 space-y-6">
-      <BackToHub />
+    <div className="min-h-screen bg-muted flex items-center justify-center p-6">
+        <div className="bg-card border border-border rounded-lg p-6 w-full max-w-[400px] space-y-6">
+          {/* Title Section */}
+          <div className="space-y-4">
+            <h1 className="text-2xl font-semibold text-foreground">Email Verification</h1>
+            <p className="text-base text-muted-foreground">
+              Your information is encrypted and secured by VeriSure, our trusted security partner.
+            </p>
+          </div>
 
-      <div className="flex items-center gap-4">
-        <span className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center">
-          <Mail className="w-5 h-5 text-primary" />
-        </span>
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground">Email Verification</h1>
-          <p className="text-sm text-muted-foreground">
-            A 6-digit verification code was sent to {maskedEmail}.
-          </p>
+          {/* Error */}
+          {error && (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive flex gap-3">
+              <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {/* Code Input Form */}
+          <form onSubmit={verifyCode} className="space-y-6">
+            <div className="flex flex-col gap-2">
+              <label htmlFor="email-code" className="text-sm font-medium text-foreground">
+                Verification Code
+              </label>
+              <input
+                id="email-code"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]{6}"
+                maxLength={6}
+                required
+                autoComplete="one-time-code"
+                placeholder="000000"
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+                className="w-full px-4 py-3 border border-border rounded-lg bg-card text-foreground text-center text-2xl tracking-widest font-mono outline-none focus:ring-2 focus:ring-primary/50 transition"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Sent to {maskedEmail}.{" "}
+                <button
+                  type="button"
+                  className="text-primary hover:underline"
+                  onClick={sendCode}
+                  disabled={busy}
+                >
+                  Resend code
+                </button>
+              </p>
+            </div>
+
+            {/* Verify Button */}
+            <Button
+              type="submit"
+              disabled={busy || code.length !== 6}
+              className="w-full"
+            >
+              {busy ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  Verifying...
+                </>
+              ) : (
+                "Verify Code"
+              )}
+            </Button>
+          </form>
         </div>
       </div>
-
-      {error && (
-        <div className="rounded-lg border border-red-500/30 bg-red-500/5 px-4 py-3 text-sm text-red-700 dark:text-red-300">
-          {error}
-        </div>
-      )}
-
-      <form onSubmit={verifyCode} className="space-y-4">
-        <div>
-          <label htmlFor="email-code" className="block text-sm font-medium text-foreground mb-1.5">
-            6-digit code
-          </label>
-          <input
-            id="email-code"
-            type="text"
-            inputMode="numeric"
-            pattern="[0-9]{6}"
-            maxLength={6}
-            required
-            autoComplete="one-time-code"
-            placeholder="123456"
-            value={code}
-            onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-            className="w-full px-4 py-2.5 border border-border rounded-xl outline-none focus:ring-2 focus:ring-ring transition tracking-[0.4em] text-center font-mono bg-card"
-          />
-          <p className="mt-1.5 text-xs text-muted-foreground">
-            Didn&apos;t receive it?{" "}
-            <button type="button" className="text-primary hover:underline" onClick={sendCode}>
-              Resend code
-            </button>
-          </p>
-        </div>
-        <Button type="submit" disabled={busy || code.length !== 6} className="w-full">
-          {busy && <Loader2 className="w-4 h-4 animate-spin" />}
-          Verify code
-        </Button>
-      </form>
-    </div>
   );
 }
 

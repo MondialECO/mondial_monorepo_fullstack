@@ -42,9 +42,13 @@
             }
             else if (folderName == "branding")
             {
-                // Phase-2 logo uploads: PNG / SVG / JPEG only.
                 var allowedLogoExt = new[] { ".png", ".svg", ".jpg", ".jpeg" };
                 isValid = allowedLogoExt.Contains(extension);
+            }
+            else if (folderName == "identity/documents")
+            {
+                var allowedIdentityExt = new[] { ".png", ".jpg", ".jpeg" };
+                isValid = allowedIdentityExt.Contains(extension);
             }
 
             if (!isValid)

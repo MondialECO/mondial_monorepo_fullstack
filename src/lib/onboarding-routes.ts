@@ -49,9 +49,7 @@ export const ONBOARDING_ITEMS: OnboardingItem[] = [
   },
   {
     key: "face",
-    // Per product: identity and face share a single SUMSUB session. Clicking
-    // either card lands on /onboarding/identity; completing it flips both.
-    href: "/onboarding/identity",
+    href: "/onboarding/face-verification",
     title: "Facial verification",
     description: "Quick face scan for bio-matching",
     icon: Smile,

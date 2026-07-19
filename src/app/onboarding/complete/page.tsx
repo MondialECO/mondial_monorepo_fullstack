@@ -1,49 +1,57 @@
-"use client";
+'use client';
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { CheckCircle2, Loader2 } from "lucide-react";
-import { useOnboarding } from "@/providers/OnboardingProvider";
-import { useAuth } from "@/app/_providers/AuthProvider";
-import { ROLE_DASHBOARD_ROUTES } from "@/lib/role-routes";
-import { UserRole } from "@/lib/roles";
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/app/_providers/AuthProvider';
+import { ROLE_DASHBOARD_ROUTES } from '@/lib/roles';
+import { CheckCircle2, Shield } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 
-export default function OnboardingCompletePage() {
-  const router = useRouter();
+export default function CompletePage() {
   const { user } = useAuth();
-  const { isComplete, isLoading, refresh } = useOnboarding();
+  const router = useRouter();
 
+  // If already Phase 1, redirect to dashboard (prevent race conditions)
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
-
-  useEffect(() => {
-    if (isLoading) return;
-    if (!isComplete) {
-      router.replace("/onboarding");
-      return;
+    if (user && (user.onboardingPhase ?? 0) >= 1) {
+      const dashboardRoute = ROLE_DASHBOARD_ROUTES[user.role];
+      router.replace(dashboardRoute || "/");
     }
-    const role = user?.role ?? UserRole.CREATOR;
-    const dest = ROLE_DASHBOARD_ROUTES[role] ?? "/dashboard";
-    const t = setTimeout(() => router.replace(dest), 1600);
-    return () => clearTimeout(t);
-  }, [isComplete, isLoading, router, user?.role]);
+  }, [user, router]);
 
   return (
-    <div className="mx-auto max-w-[480px] px-4 sm:px-6 py-16">
-      <div className="rounded-3xl border border-border bg-card p-10 text-center space-y-6">
-        <div className="w-16 h-16 rounded-full bg-green-600/15 flex items-center justify-center mx-auto">
-          <CheckCircle2 className="w-9 h-9 text-green-600" />
-        </div>
-        <div className="space-y-2">
-          <h1 className="text-2xl font-semibold text-foreground">Documents Verified</h1>
-          <p className="text-sm text-muted-foreground">
-            All required verifications complete. Taking you to your dashboard.
-          </p>
-        </div>
-        <div className="inline-flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="w-4 h-4 animate-spin" />
-          Redirecting…
+    <div className="min-h-screen bg-background flex items-center justify-center px-4">
+      <div className="max-w-md w-full">
+        <div className="text-center space-y-8">
+          {/* Success Icon */}
+          <div>
+            <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6">
+              <CheckCircle2 className="w-12 h-12 text-primary" />
+            </div>
+            <h2 className="text-2xl font-bold text-foreground mb-2">Verification Complete</h2>
+            <p className="text-muted-foreground">
+              Your identity has been verified successfully. You now have full access to Mondial.eco.
+            </p>
+          </div>
+
+          {/* Security Info */}
+          <div className="bg-card border-2 border-border rounded-lg p-6 space-y-4">
+            <div className="flex items-start gap-3">
+              <Shield className="w-5 h-5 text-primary flex-shrink-0 mt-1" />
+              <div className="text-left text-sm">
+                <p className="font-semibold text-foreground">Enterprise-grade encryption</p>
+                <p className="text-muted-foreground">protecting your personal and biometric data.</p>
+              </div>
+            </div>
+          </div>
+
+          {/* CTA Button */}
+          <Button asChild size="lg" className="w-full">
+            <Link href={user?.role ? (ROLE_DASHBOARD_ROUTES[user.role] ?? '/') : '/'}>
+              Go to Dashboard
+            </Link>
+          </Button>
         </div>
       </div>
     </div>

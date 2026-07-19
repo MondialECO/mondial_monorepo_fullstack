@@ -19,8 +19,21 @@ export default function DashboardPage() {
       return;
     }
 
-    router.replace(ROLE_DASHBOARD_ROUTES[user.role]);
+    const dashboardRoute = ROLE_DASHBOARD_ROUTES[user.role];
+    if (!dashboardRoute) {
+      router.replace('/');
+      return;
+    }
+
+    router.replace(dashboardRoute);
   }, [isLoading, user, router]);
 
-  return null;
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="flex flex-col items-center gap-4">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <p className="text-muted-foreground">Redirecting to your dashboard...</p>
+      </div>
+    </div>
+  );
 }

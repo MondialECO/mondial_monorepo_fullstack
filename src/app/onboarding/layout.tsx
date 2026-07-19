@@ -13,7 +13,7 @@ export default function OnboardingLayout({ children }: { children: React.ReactNo
                 <span className="font-semibold text-foreground">Mondial</span>
               </div>
               <span className="text-xs text-muted-foreground uppercase tracking-wide">
-                Phase 1 · Verification
+                Verification
               </span>
             </div>
           </header>
