@@ -1,31 +1,24 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/_providers/AuthProvider';
 import api from '@/lib/axios';
 import {
   CheckCircle2,
   AlertCircle,
   Loader2,
-  ArrowRight,
+  ChevronRight,
   Shield,
   Phone,
   Mail,
   FileText,
   DollarSign,
-  BadgeCheck,
   Home,
+  Lock,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import Link from 'next/link';
+import { cn } from '@/lib/utils';
 
 interface OnboardingItem {
   key: string;
@@ -50,87 +43,39 @@ interface OnboardingStatus {
   };
 }
 
-const CORE_ITEM_KEYS = ['identity', 'face', 'phone', 'email'] as const;
+type CoreItemKey = 'identity' | 'face' | 'phone' | 'email';
+const CORE_ITEM_KEYS: CoreItemKey[] = ['identity', 'face', 'phone', 'email'];
 
-const PHONE_COUNTRY_OPTIONS = [
-  { value: '+880', label: 'Bangladesh', region: 'BD' },
-  { value: '+33', label: 'France', region: 'Europe' },
-  { value: '+44', label: 'United Kingdom', region: 'Europe' },
-  { value: '+49', label: 'Germany', region: 'Europe' },
-  { value: '+39', label: 'Italy', region: 'Europe' },
-  { value: '+34', label: 'Spain', region: 'Europe' },
-  { value: '+31', label: 'Netherlands', region: 'Europe' },
-  { value: '+32', label: 'Belgium', region: 'Europe' },
-  { value: '+41', label: 'Switzerland', region: 'Europe' },
-  { value: '+45', label: 'Denmark', region: 'Europe' },
-  { value: '+46', label: 'Sweden', region: 'Europe' },
-  { value: '+47', label: 'Norway', region: 'Europe' },
-  { value: '+48', label: 'Poland', region: 'Europe' },
-  { value: '+351', label: 'Portugal', region: 'Europe' },
+const MANDATORY_ITEMS = {
+  identity: { label: 'Identity Document', description: 'Upload Passport or Government ID', icon: FileText },
+  face: { label: 'Facial verification', description: 'Quick face scan for bio-matching', icon: Shield },
+  phone: { label: 'Phone Verification', description: 'Verify your mobile number via SMS', icon: Phone },
+  email: { label: 'Email Verification', description: 'Confirm your secure primary email', icon: Mail },
+};
+
+const OPTIONAL_ITEMS = [
+  { id: 'residence', label: 'Proof of Residence', description: 'Utility bill or bank statement', icon: Home },
+  { id: 'income', label: 'Proof of Income', description: 'Pay slips or tax returns', icon: DollarSign },
+  { id: 'tax', label: 'Tax Documents', description: 'Utility bill or bank statement', icon: FileText },
+  { id: 'license', label: "Driver's license", description: 'Supplementary ID Document', icon: Lock },
 ];
 
-function splitPhoneNumber(rawPhone?: string | null) {
-  const compactPhone = (rawPhone ?? '').replace(/[^\d+]/g, '');
-  const matchedOption = [...PHONE_COUNTRY_OPTIONS]
-    .sort((left, right) => right.value.length - left.value.length)
-    .find((option) => compactPhone.startsWith(option.value));
-
-  if (!matchedOption) {
-    return {
-      countryCode: '+880',
-      nationalNumber: compactPhone.startsWith('+') ? compactPhone : compactPhone.replace(/^0+/, ''),
-    };
-  }
-
-  return {
-    countryCode: matchedOption.value,
-    nationalNumber: compactPhone.slice(matchedOption.value.length).replace(/^0+/, ''),
-  };
-}
-
-function toE164Phone(countryCode: string, nationalNumber: string) {
-  const compactNumber = nationalNumber.replace(/[^\d+]/g, '');
-  if (compactNumber.startsWith('+')) return compactNumber;
-
-  const withoutLeadingZeroes = compactNumber.replace(/^0+/, '');
-  return `${countryCode}${withoutLeadingZeroes}`;
-}
-
-const ITEM_ICONS = {
-  identity: FileText,
-  face: Shield,
-  phone: Phone,
-  email: Mail,
-  residence: Home,
-  income: DollarSign,
-  tax: FileText,
-  license: BadgeCheck,
-};
-
-const ITEM_LABELS = {
-  identity: 'Legal Identity',
-  face: 'Face Verification',
-  phone: 'Phone Number',
-  email: 'Email Address',
-  residence: 'Residence Proof',
-  income: 'Income Statement',
-  tax: 'Tax Return',
-  license: 'Professional License',
-};
-
 export default function UniversalPhase1() {
+  const router = useRouter();
   const { user, refreshAuthMe } = useAuth();
   const [status, setStatus] = useState<OnboardingStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [verifying, setVerifying] = useState<string | null>(null);
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [phoneCountryCode, setPhoneCountryCode] = useState('+880');
-  const [otpCodes, setOtpCodes] = useState<Record<string, string>>({});
-  const [otpSent, setOtpSent] = useState<Record<string, boolean>>({});
 
-  const isPhaseComplete = (status?.phase ?? 0) >= 1;
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => setSuccessMessage(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage]);
 
   useEffect(() => {
     const fetchStatus = async () => {
@@ -138,10 +83,7 @@ export default function UniversalPhase1() {
         setLoading(true);
         const response = await api.get('/onboarding/status');
         const data = response.data?.data ?? response.data;
-        const parsedPhone = splitPhoneNumber(data?.phone);
         setStatus(data);
-        setPhoneCountryCode(parsedPhone.countryCode);
-        setPhoneNumber(parsedPhone.nationalNumber);
         setLoadError(null);
       } catch (err) {
         setLoadError('Failed to load onboarding status');
@@ -156,92 +98,26 @@ export default function UniversalPhase1() {
     }
   }, [user]);
 
-  const handleVerifyItem = async (itemKey: string) => {
-    try {
-      setVerifying(itemKey);
-      setActionError(null);
-      const item = status?.items[itemKey as keyof typeof status.items];
-      if (!item || item.verified) return;
+  const handleVerifyItem = (itemKey: CoreItemKey) => {
+    setActionError(null);
+    const item = status?.items[itemKey];
+    if (!item || item.verified) return;
 
-      let endpoint = '';
-      let payload: Record<string, unknown> = {};
-
-      switch (itemKey) {
-        case 'identity':
-          setActionError('Identity verification is not configured yet. Connect the production KYC provider to start this step.');
-          return;
-        case 'face':
-          setActionError('Identity verification is not configured yet. Connect the production KYC provider to start this step.');
-          return;
-        case 'phone':
-          if (otpSent.phone) {
-            const code = otpCodes.phone?.trim() ?? '';
-            if (code.length !== 6) {
-              setActionError('Enter the 6-digit phone verification code.');
-              return;
-            }
-            endpoint = '/onboarding/verify-otp';
-            payload = { code };
-          } else if (phoneNumber.trim()) {
-            endpoint = '/onboarding/send-otp';
-            payload = { phone: toE164Phone(phoneCountryCode, phoneNumber) };
-          } else {
-            setActionError('Enter your phone number before requesting a verification code.');
-            return;
-          }
-          break;
-        case 'email':
-          if (otpSent.email) {
-            const code = otpCodes.email?.trim() ?? '';
-            if (code.length !== 6) {
-              setActionError('Enter the 6-digit email verification code.');
-              return;
-            }
-            endpoint = '/onboarding/verify-email-otp';
-            payload = { code };
-          } else {
-            endpoint = '/onboarding/send-email-otp';
-          }
-          break;
-        default:
-          setActionError(`No verification action configured for ${itemKey}`);
-          return;
-      }
-
-      // Do NOT mark as verified locally before backend response
-      await api.post(endpoint, payload);
-
-      if (endpoint.endsWith('send-otp') || endpoint.endsWith('send-email-otp')) {
-        setOtpSent((current) => ({ ...current, [itemKey]: true }));
-        return;
-      }
-
-      // Refetch both status endpoints to confirm backend state
-      const statusResponse = await api.get('/onboarding/status');
-      const statusData = statusResponse.data?.data ?? statusResponse.data;
-      const parsedPhone = splitPhoneNumber(statusData?.phone);
-      setStatus(statusData);
-      setPhoneCountryCode(parsedPhone.countryCode);
-      setPhoneNumber(parsedPhone.nationalNumber || phoneNumber);
-      setOtpCodes((current) => ({ ...current, [itemKey]: '' }));
-      setOtpSent((current) => ({ ...current, [itemKey]: false }));
-
-      // Refresh AuthProvider with updated user state from backend
-      await refreshAuthMe();
-    } catch (err) {
-      console.error(`Failed to verify ${itemKey}:`, err);
-      setActionError(`Verification failed for ${itemKey}. Please try again.`);
-    } finally {
-      setVerifying(null);
+    if (itemKey === 'identity' || itemKey === 'face') {
+      router.push('/onboarding/identity');
+      return;
     }
+
+    // Phone and email OTP flows would be handled in a separate modal/step
+    setActionError(`${itemKey} verification coming soon`);
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-neutral-100 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto mb-4" />
-          <p className="text-neutral-600">Loading verification status...</p>
+          <p className="text-muted-foreground">Loading verification status...</p>
         </div>
       </div>
     );
@@ -249,14 +125,14 @@ export default function UniversalPhase1() {
 
   if (loadError || !status) {
     return (
-      <div className="min-h-screen bg-neutral-100 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="max-w-md">
-          <div className="bg-red-50 border-2 border-red-200 rounded-xl p-6">
+          <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-6">
             <div className="flex items-center gap-3 mb-4">
-              <AlertCircle className="w-6 h-6 text-red-600" />
-              <h3 className="font-bold text-red-900">Error Loading Verification</h3>
+              <AlertCircle className="w-6 h-6 text-destructive" />
+              <h3 className="font-semibold text-destructive">Error Loading Verification</h3>
             </div>
-            <p className="text-red-800 text-sm mb-4">{loadError}</p>
+            <p className="text-destructive/80 text-sm mb-4">{loadError}</p>
             <Button className="w-full" onClick={() => window.location.reload()}>
               Retry
             </Button>
@@ -266,193 +142,137 @@ export default function UniversalPhase1() {
     );
   }
 
-  // Determine next action route based on role
-  const nextRouteMap: Record<string, string> = {
-    Entrepreneur: '/dashboard/entrepreneur/phase-2',
-    Creator: '/dashboard/creator',
-    Investor: '/dashboard/investor',
-    ServiceProvider: '/dashboard/serviceprovider',
-  };
-
-  const nextRoute = nextRouteMap[status.role] || '/dashboard';
+  const completedCount = CORE_ITEM_KEYS.filter((key) => status?.items[key]?.verified).length;
 
   return (
-    <div className="min-h-screen bg-neutral-100">
-      {/* Header */}
-      <header className="bg-white border-b border-neutral-200 sticky top-0 z-40">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 md:px-8 h-16 md:h-20 flex items-center">
+    <div className="min-h-screen bg-background">
+      <div className="max-w-2xl mx-auto px-6 py-12">
+        {/* Header */}
+        <div className="mb-12">
+          <h1 className="text-4xl font-bold text-foreground mb-2">Profile Verification</h1>
+          <p className="text-base text-muted-foreground">
+            Your data is encrypted and handled by our certified security partner.
+          </p>
+        </div>
+
+        {/* Errors */}
+        {(loadError || actionError) && (
+          <div className="mb-6 p-4 bg-destructive/10 border border-destructive/30 rounded-lg flex gap-3">
+            <AlertCircle className="text-destructive flex-shrink-0 mt-0.5" size={20} />
+            <p className="text-sm text-destructive">{loadError || actionError}</p>
+          </div>
+        )}
+
+        {/* Success Message */}
+        {successMessage && (
+          <div className="mb-6 p-4 bg-success-bg border border-success-border rounded-lg flex gap-3">
+            <CheckCircle2 className="text-success flex-shrink-0 mt-0.5" size={20} />
+            <p className="text-sm text-success">{successMessage}</p>
+          </div>
+        )}
+
+        <div className="space-y-8">
+          {/* Mandatory Steps */}
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-neutral-900">
-              Identity & Onboarding Verification
-            </h1>
-            <p className="text-sm text-neutral-600 mt-1">
-              {isPhaseComplete ? 'Verification Complete' : 'Complete all required items to proceed'}
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-semibold text-foreground">Mandatory Steps</h2>
+                <span className="inline-flex items-center justify-center bg-primary text-white text-xs font-medium px-3 py-1 rounded-full">
+                  Required
+                </span>
+              </div>
+              <p className="text-sm text-muted-foreground">{completedCount} of 4 Completed</p>
+            </div>
+
+            <div className="space-y-3">
+              {CORE_ITEM_KEYS.map((key) => {
+                const item = status.items[key];
+                const config = MANDATORY_ITEMS[key];
+                if (!item) return null;
+
+                const Icon = config.icon;
+                const isCompleted = item.verified;
+
+                return (
+                  <button
+                    key={key}
+                    onClick={() => handleVerifyItem(key)}
+                    disabled={verifying === key || isCompleted}
+                    className={cn(
+                      'w-full p-4 rounded-lg border border-border bg-background flex items-center justify-between',
+                      'transition-all duration-200 text-left',
+                      isCompleted && 'opacity-60 cursor-not-allowed',
+                      !isCompleted && 'hover:border-primary hover:bg-accent cursor-pointer active:scale-[0.98]'
+                    )}
+                  >
+                    <div className="flex items-center gap-4 flex-1">
+                      <div className="bg-primary/10 rounded-lg p-3 flex-shrink-0">
+                        <Icon className="w-6 h-6 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-foreground text-sm">{config.label}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{config.description}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex-shrink-0 ml-4">
+                      {verifying === key ? (
+                        <Loader2 className="text-muted-foreground animate-spin" size={20} />
+                      ) : isCompleted ? (
+                        <CheckCircle2 className="text-success" size={20} />
+                      ) : (
+                        <ChevronRight className="text-muted-foreground" size={20} />
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Optional Documents */}
+          <div>
+            <div className="flex items-center gap-2 mb-6">
+              <h2 className="text-lg font-semibold text-foreground">Additional Document</h2>
+              <span className="inline-flex items-center justify-center bg-muted text-foreground text-xs font-medium px-3 py-1 rounded-full">
+                Optional
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              {OPTIONAL_ITEMS.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <div
+                    key={item.id}
+                    className="border border-border rounded-lg p-4 bg-background hover:border-primary/30 transition-colors"
+                  >
+                    <div className="flex gap-3 items-start">
+                      <div className="bg-primary/10 rounded-lg p-2.5 flex-shrink-0">
+                        <Icon className="w-5 h-5 text-primary" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-semibold text-foreground text-sm">{item.label}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{item.description}</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Info Box */}
+          <div className="bg-muted border border-border rounded-lg p-6 flex gap-4">
+            <div className="bg-primary rounded-full p-3 flex-shrink-0">
+              <CheckCircle2 className="w-6 h-6 text-white" />
+            </div>
+            <p className="text-sm text-foreground leading-relaxed">
+              Verification is mandatory for compliance with global AML/KYC regulations. Mondial.eco
+              uses SecureShield AI's enterprise-grade encryption. Your private information is never
+              shared with third parties.
             </p>
           </div>
-        </div>
-      </header>
-
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 md:px-8 py-6 md:py-8 space-y-8">
-        {/* Status Banner */}
-        {isPhaseComplete ? (
-          <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-2xl p-6 sm:p-8">
-            <div className="flex items-start gap-4">
-              <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-                <CheckCircle2 className="w-8 h-8 text-green-600" />
-              </div>
-              <div className="flex-1">
-                <h2 className="text-2xl font-bold text-green-900 mb-2">All Verifications Complete</h2>
-                <p className="text-green-800 mb-4">
-                  Your identity has been fully verified. You now have access to all platform features.
-                </p>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="bg-gradient-to-r from-blue-50 to-sky-50 border-2 border-blue-200 rounded-2xl p-6 sm:p-8">
-            <div className="flex items-start gap-4">
-              <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                <Shield className="w-8 h-8 text-blue-600" />
-              </div>
-              <div className="flex-1">
-                <h2 className="text-2xl font-bold text-blue-900 mb-2">Verification Required</h2>
-                <p className="text-blue-800">
-                  Please complete all required verification items to unlock full platform access.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Verification Items Grid */}
-        {actionError && (
-          <div className="border-2 border-destructive/30 bg-destructive/10 rounded-lg p-4 text-sm text-destructive">
-            {actionError}
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {CORE_ITEM_KEYS.map((key) => {
-            const item = status.items[key];
-            if (!item) return null;
-
-            const Icon = ITEM_ICONS[key as keyof typeof ITEM_ICONS] || FileText;
-            const label = ITEM_LABELS[key as keyof typeof ITEM_LABELS] || key;
-
-            return (
-              <div
-                key={key}
-                className={`bg-white border-2 rounded-lg p-4 flex items-start gap-4 transition ${item.verified
-                  ? 'border-green-200 bg-green-50'
-                  : 'border-neutral-200 bg-white'
-                  }`}
-              >
-                <div className="flex-shrink-0 mt-1">
-                  {item.verified ? (
-                    <CheckCircle2 className="w-6 h-6 text-green-600" />
-                  ) : (
-                    <div className="w-6 h-6 rounded-full border-2 border-neutral-300" />
-                  )}
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Icon className="w-4 h-4 text-neutral-600 flex-shrink-0" />
-                    <p className="font-semibold text-neutral-900">{label}</p>
-                    {item.required && (
-                      <span className="text-xs bg-neutral-900 text-white px-2 py-0.5 rounded">
-                        Required
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-neutral-600">
-                    {item.verified
-                      ? 'Verified'
-                      : otpSent[key]
-                        ? 'Code sent'
-                        : 'Not verified'}
-                  </p>
-
-                  {key === 'phone' && !item.verified && !isPhaseComplete && (
-                    <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                      {!otpSent.phone && (
-                        <Select value={phoneCountryCode} onValueChange={setPhoneCountryCode}>
-                          <SelectTrigger aria-label="Phone country code" className="h-10 sm:w-44">
-                            <SelectValue placeholder="+880" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {PHONE_COUNTRY_OPTIONS.map((option) => (
-                              <SelectItem key={`${option.value}-${option.label}`} value={option.value}>
-                                {option.region} - {option.label} {option.value}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                      <Input
-                        value={otpSent.phone ? otpCodes.phone ?? '' : phoneNumber}
-                        onChange={(event) => {
-                          const value = event.target.value;
-                          if (otpSent.phone) {
-                            setOtpCodes((current) => ({ ...current, phone: value }));
-                          } else {
-                            setPhoneNumber(value);
-                          }
-                        }}
-                        className="h-10"
-                        aria-label={otpSent.phone ? 'Phone verification code' : 'Phone number'}
-                        placeholder={otpSent.phone ? '6-digit code' : '1712345678'}
-                        inputMode={otpSent.phone ? 'numeric' : 'tel'}
-                      />
-                    </div>
-                  )}
-
-                  {key === 'email' && otpSent.email && !item.verified && !isPhaseComplete && (
-                    <Input
-                      value={otpCodes.email ?? ''}
-                      onChange={(event) =>
-                        setOtpCodes((current) => ({ ...current, email: event.target.value }))
-                      }
-                      className="mt-3"
-                      placeholder="6-digit code"
-                      inputMode="numeric"
-                    />
-                  )}
-                </div>
-
-                {!item.verified && !isPhaseComplete && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleVerifyItem(key)}
-                    disabled={verifying === key}
-                    className="shrink-0"
-                  >
-                    {verifying === key ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      otpSent[key] ? 'Submit' : 'Verify'
-                    )}
-                  </Button>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* CTA */}
-        <div className="flex gap-3 flex-col sm:flex-row">
-          <Button variant="outline" asChild className="flex-1 h-12">
-            <Link href="/dashboard">Back</Link>
-          </Button>
-          {isPhaseComplete && (
-            <Button asChild className="flex-1 h-12 gap-2">
-              <Link href={nextRoute}>
-                Continue
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-            </Button>
-          )}
         </div>
       </div>
     </div>

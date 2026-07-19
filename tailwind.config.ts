@@ -84,6 +84,7 @@ const config: Config = {
                 "skin-tone-4": "var(--skin-tone-4)",
                 "success-light": "var(--success-light)",
                 "success-text": "var(--success-text)",
+                "success": "var(--success-text)",
                 "text-secondary": "var(--text-secondary)",
             },
         },

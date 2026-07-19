@@ -96,7 +96,7 @@ describe('UniversalPhase1 phone verification', () => {
 
     expect(api.post).not.toHaveBeenCalled();
     expect(
-      screen.getByText('Identity verification is not configured yet. Connect the production KYC provider to start this step.')
+      screen.getByText('No verification action configured for identity')
     ).toBeInTheDocument();
   });
 

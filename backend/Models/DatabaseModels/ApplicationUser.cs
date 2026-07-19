@@ -102,6 +102,10 @@ namespace WebApp.Models.DatabaseModels
         // Per product: two hub cards but a single shared SUMSUB session;
         // completing one verifies both. Dev shortcut flips both flags at once.
         public bool IdentityDocumentVerified { get; set; }
+        public string IdentityDocumentType { get; set; } // passport, national_id, drivers_license
+        public string IdentityFrontImagePath { get; set; }
+        public string IdentityBackImagePath { get; set; }
+        public DateTime? IdentityDocumentUploadedAt { get; set; }
         public bool FaceVerified { get; set; }
 
         // --- Optional / role-conditional documents ---

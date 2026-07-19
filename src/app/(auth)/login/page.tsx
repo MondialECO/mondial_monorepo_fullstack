@@ -4,7 +4,10 @@ import { useState, useEffect } from "react";
 import { z } from "zod";
 import { useAuth } from "@/app/_providers/AuthProvider";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2, AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import Link from "next/link";
 import { ROLE_DASHBOARD_ROUTES } from "@/lib/roles";
 
 const loginSchema = z.object({
@@ -28,11 +31,17 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Redirect logged-in users to their dashboard
+  // Redirect logged-in users based on phase
   useEffect(() => {
     if (user && !authLoading) {
-      const dashboardRoute = ROLE_DASHBOARD_ROUTES[user.role];
-      router.replace(dashboardRoute);
+      // If Phase < 1, redirect to onboarding (universal phase 1 gate)
+      if ((user.onboardingPhase ?? 0) < 1) {
+        router.replace("/onboarding");
+      } else {
+        // Phase >= 1, redirect to role dashboard
+        const dashboardRoute = ROLE_DASHBOARD_ROUTES[user.role];
+        router.replace(dashboardRoute);
+      }
     }
   }, [user, authLoading, router]);
 
@@ -69,8 +78,8 @@ export default function LoginPage() {
   // Show loading state while hydrating
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background dark:bg-background px-4">
-        <div className="w-full max-w-md space-y-8 p-8 bg-card dark:bg-card rounded-2xl shadow-lg border border-border text-center">
+      <div className="min-h-screen flex items-center justify-center bg-background px-4">
+        <div className="w-full max-w-md space-y-8 p-8 bg-card rounded-2xl shadow-lg border border-border text-center">
           <div className="flex flex-col items-center gap-4">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
             <p className="text-muted-foreground">Loading...</p>
@@ -80,45 +89,14 @@ export default function LoginPage() {
     );
   }
 
-  // Show "Already logged in" message with redirect and logout options
+  // If already logged in, redirect silently (useEffect handles it)
   if (user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background dark:bg-background px-4">
-        <div className="w-full max-w-md space-y-8 p-8 bg-card dark:bg-card rounded-2xl shadow-lg border border-border">
-          <div className="text-center space-y-4">
-            <h1 className="text-3xl font-bold tracking-tight text-foreground">
-              Already logged in
-            </h1>
-            <p className="text-muted-foreground">
-              Welcome back, {user.name}!
-            </p>
-            <p className="text-sm text-muted-foreground">
-              You are already logged in as a {user.role}.
-            </p>
-          </div>
-
-          <div className="space-y-3">
-            <button
-              onClick={() => router.replace(ROLE_DASHBOARD_ROUTES[user.role])}
-              className="w-full px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90 transition-colors"
-            >
-              Go to Dashboard
-            </button>
-            <button
-              onClick={logout}
-              className="w-full px-6 py-3 bg-gray-200 text-gray-900 dark:bg-gray-800 dark:text-gray-100 rounded-lg font-medium hover:opacity-90 transition-colors"
-            >
-              Logout
-            </button>
-          </div>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background dark:bg-background px-4">
-      <div className="w-full max-w-md space-y-8 p-8 bg-card dark:bg-card rounded-2xl shadow-lg border border-border">
+    <div className="min-h-screen flex items-center justify-center bg-background px-4">
+      <div className="w-full max-w-md space-y-8 p-8 bg-card rounded-2xl shadow-lg border border-border">
         {/* Header */}
         <div className="text-center">
           <h1 className="text-3xl font-bold tracking-tight text-foreground">
@@ -132,8 +110,9 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Error message */}
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-              {error}
+            <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive flex gap-3">
+              <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+              <span>{error}</span>
             </div>
           )}
 
@@ -145,18 +124,12 @@ export default function LoginPage() {
             >
               Email address
             </label>
-            <input
+            <Input
               id="email"
               type="email"
               autoComplete="email"
               required
               placeholder="name@example.com"
-              className={`
-                w-full px-4 py-3 rounded-lg border border-border
-                focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent
-                transition-all duration-200
-                disabled:opacity-60
-              `}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={isLoading}
@@ -172,65 +145,55 @@ export default function LoginPage() {
               Password
             </label>
             <div className="relative">
-              <input
+              <Input
                 id="password"
                 type={showPassword ? "text" : "password"}
                 autoComplete="current-password"
                 required
                 placeholder="••••••••"
-                className={`
-                  w-full px-4 py-3 rounded-lg border border-border
-                  focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent
-                  transition-all duration-200 pr-11
-                  disabled:opacity-60
-                `}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={isLoading}
+                className="pr-11"
               />
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="sm"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                className="absolute right-0 top-1/2 -translate-y-1/2 h-10 w-10 rounded-r-lg"
                 tabIndex={-1}
                 disabled={isLoading}
               >
                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-              </button>
+              </Button>
             </div>
           </div>
 
           {/* Submit */}
-          <button
+          <Button
             type="submit"
             disabled={isLoading || authLoading}
-            className={`
-              w-full flex items-center justify-center gap-2
-              bg-primary text-primary-foreground font-medium
-              py-3.5 rounded-lg
-              hover:opacity-90 transition-colors
-              focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring
-              disabled:opacity-60 disabled:cursor-not-allowed
-              shadow-sm
-            `}
+            className="w-full gap-2"
+            size="lg"
           >
             {(isLoading || authLoading) && <Loader2 className="h-5 w-5 animate-spin" />}
             {isLoading ? "Signing in..." : authLoading ? "Loading..." : "Sign in"}
-          </button>
+          </Button>
         </form>
 
         {/* Footer links */}
         <div className="text-center text-sm text-muted-foreground space-y-2 pt-4">
           <div>
-            <a href="/forgot-password" className="text-primary hover:underline font-medium">
+            <Link href="/forgot-password" className="text-primary hover:underline font-medium">
               Forgot password?
-            </a>
+            </Link>
           </div>
           <div>
             Don&#39;t have an account?{" "}
-            <a href="/signup" className="text-primary font-medium hover:underline">
+            <Link href="/signup" className="text-primary font-medium hover:underline">
               Sign up
-            </a>
+            </Link>
           </div>
         </div>
       </div>

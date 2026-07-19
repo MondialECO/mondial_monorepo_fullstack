@@ -330,6 +330,7 @@ builder.Services.AddHostedService<EmailBackgroundService>();
 builder.Services.AddScoped<EmailService>();
 builder.Services.AddScoped<SaveFile>();
 builder.Services.AddScoped<TwilioService>();
+builder.Services.AddHttpClient<SumsubService>();
 
 // Company Services: 9-phase entrepreneur onboarding system
 builder.Services.AddCompanyServices(builder.Configuration);

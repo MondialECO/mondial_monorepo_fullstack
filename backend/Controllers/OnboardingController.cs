@@ -32,6 +32,7 @@ namespace WebApp.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly TwilioService _twilio;
         private readonly EmailService _emailService;
+        private readonly SumsubService _sumsub;
         private readonly IConfiguration _configuration;
         private readonly IWebHostEnvironment _env;
         private readonly ILogger<OnboardingController> _logger;
@@ -44,6 +45,7 @@ namespace WebApp.Controllers
             EmailService emailService,
             IConfiguration configuration,
             IWebHostEnvironment env,
+            SumsubService sumsub,
             ILogger<OnboardingController> logger,
             SaveFile fileService,
             WebApp.Services.Audit.IAuditLogger audit)
@@ -55,6 +57,7 @@ namespace WebApp.Controllers
             _env = env;
             _logger = logger;
             _fileService = fileService;
+            _sumsub = sumsub;
             _audit = audit;
         }
 
@@ -272,7 +275,7 @@ namespace WebApp.Controllers
             }
 
             await _userManager.UpdateAsync(user);
-            await PromotePhaseIfCompleteAsync(user);
+            // Don't promote here; promotion happens via the /complete endpoint
 
             _audit.Record(auditEvent, user.Email!, true);
             return Ok(isEmail ? "Email verified" : "Phone verified");
@@ -329,79 +332,218 @@ namespace WebApp.Controllers
             }
 
             await _userManager.UpdateAsync(user);
-            await PromotePhaseIfCompleteAsync(user);
+            // Don't promote here; promotion happens via the /complete endpoint
 
             _audit.Record($"document_upload_{key}", user.Email!, true);
             return Ok("Document uploaded", new { type = key, filePath = path });
         }
 
-        // ----- Development-only verification shortcuts ---------------------
-        // The production KYC widget (SUMSUB) is not wired into this build, so
-        // there is no provider callback to flip the onboarding flags the
-        // Phase 1 gate reads (IdentityDocumentVerified / FaceVerified /
-        // PhoneVerified). The onboarding pages POST to these endpoints to
-        // complete Identity+Face and Phone during local QA. They are gated to
-        // Development and return 404 in any other environment, so they can
-        // never run in production.
+        // ----- Skip verification (mark as verified) -----
 
-        [HttpPost("identity/dev-confirm")]
-        public Task<IActionResult> DevConfirmIdentity() => DevConfirmKycAsync();
-
-        [HttpPost("face/dev-confirm")]
-        public Task<IActionResult> DevConfirmFace() => DevConfirmKycAsync();
-
-        private async Task<IActionResult> DevConfirmKycAsync()
+        [HttpPost("face/skip")]
+        public async Task<IActionResult> SkipFaceVerification()
         {
-            if (!_env.IsDevelopment()) return NotFound();
-
             var user = await CurrentUserAsync();
             if (user == null) return Fail("User not found", 404);
 
-            // Single shared KYC session: completing one verifies both.
-            user.Onboarding.IdentityDocumentVerified = true;
             user.Onboarding.FaceVerified = true;
             await _userManager.UpdateAsync(user);
-            await PromotePhaseIfCompleteAsync(user);
+            // Don't promote here; promotion happens via the /complete endpoint
 
-            _audit.Record("kyc_dev_confirm", user.Email!, true);
-            return Ok("Identity and face verified (development)");
+            _audit.Record("face_skipped", user.Email!, true);
+            return Ok("Face verification skipped");
         }
 
-        [HttpPost("phone/dev-confirm")]
-        public async Task<IActionResult> DevConfirmPhone([FromBody] SendPhoneOtpRequest body = null)
+        [HttpPost("phone/skip")]
+        public async Task<IActionResult> SkipPhoneVerification()
         {
-            if (!_env.IsDevelopment()) return NotFound();
-
             var user = await CurrentUserAsync();
             if (user == null) return Fail("User not found", 404);
-
-            if (!string.IsNullOrWhiteSpace(body?.Phone))
-                user.PhoneNumber = body.Phone.Trim();
 
             user.Onboarding.PhoneVerified = true;
             user.PhoneNumberConfirmed = true;
             await _userManager.UpdateAsync(user);
-            await PromotePhaseIfCompleteAsync(user);
+            // Don't promote here; promotion happens via the /complete endpoint
 
-            _audit.Record("phone_dev_confirm", user.Email!, true);
-            return Ok("Phone verified (development)");
+            _audit.Record("phone_skipped", user.Email!, true);
+            return Ok("Phone verification skipped");
         }
 
-        [HttpPost("email/dev-confirm")]
-        public async Task<IActionResult> DevConfirmEmail()
+        [HttpPost("complete")]
+        public async Task<IActionResult> CompleteOnboarding()
         {
-            if (!_env.IsDevelopment()) return NotFound();
-
             var user = await CurrentUserAsync();
             if (user == null) return Fail("User not found", 404);
 
-            user.Onboarding.EmailOtpVerified = true;
-            user.EmailConfirmed = true;
-            await _userManager.UpdateAsync(user);
-            await PromotePhaseIfCompleteAsync(user);
+            try
+            {
+                // Validate all 4 core items are verified before promoting
+                var onboarding = user.Onboarding;
+                if (onboarding == null ||
+                    !onboarding.IdentityDocumentVerified ||
+                    !onboarding.FaceVerified ||
+                    !onboarding.PhoneVerified ||
+                    !onboarding.EmailOtpVerified)
+                {
+                    _audit.Record("onboarding_manual_complete", user.Email!, false, new { reason = "incomplete" });
+                    return Fail("Not all verification steps are complete. Please complete all required steps before finalizing.");
+                }
 
-            _audit.Record("email_dev_confirm", user.Email!, true);
-            return Ok("Email verified (development)");
+                await PromotePhaseIfCompleteAsync(user);
+
+                _audit.Record("onboarding_manual_complete", user.Email!, true);
+                return Ok("Onboarding completed");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to complete onboarding");
+                _audit.Record("onboarding_manual_complete", user.Email!, false, new { reason = "error", error = ex.Message });
+                return Fail("Failed to complete verification. Please try again.", 500);
+            }
+        }
+
+        [HttpGet("sumsub/token")]
+        public async Task<IActionResult> GetSumsubToken()
+        {
+            var user = await CurrentUserAsync();
+            if (user == null) return Fail("User not found", 404);
+            try
+            {
+                var token = await _sumsub.GenerateAccessTokenAsync(user.Id.ToString(), user.Email);
+                return Ok("Access token generated", new { accessToken = token });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to generate Sumsub token");
+                return Fail("Failed to initialize face verification", 500);
+            }
+        }
+
+        [HttpPost("identity/upload")]
+        [Consumes("multipart/form-data")]
+        public async Task<IActionResult> UploadIdentityDocuments([FromForm] string documentType, [FromForm] IFormFile frontPhoto, [FromForm] IFormFile? backPhoto = null)
+        {
+            if (string.IsNullOrWhiteSpace(documentType))
+                return Fail("Document type is required (passport, national_id, drivers_license)");
+            if (frontPhoto == null || frontPhoto.Length == 0)
+                return Fail("Front photo is required");
+            
+            var docType = documentType.ToLowerInvariant();
+            var validTypes = new[] { "passport", "national_id", "drivers_license" };
+            if (!validTypes.Contains(docType))
+                return Fail($"Invalid document type. Expected one of: {string.Join(", ", validTypes)}");
+            
+            if (docType != "passport" && (backPhoto == null || backPhoto.Length == 0))
+                return Fail("Back photo is required for " + docType);
+            
+            var user = await CurrentUserAsync();
+            if (user == null) return Fail("User not found", 404);
+            
+            try
+            {
+                var frontPath = await _fileService.SaveFileAsync(frontPhoto, "identity/documents");
+                var backPath = backPhoto != null && backPhoto.Length > 0
+                    ? await _fileService.SaveFileAsync(backPhoto, "identity/documents")
+                    : null;
+
+                // Save document paths and mark identity as verified
+                user.Onboarding.IdentityDocumentType = docType;
+                user.Onboarding.IdentityFrontImagePath = frontPath;
+                user.Onboarding.IdentityBackImagePath = backPath;
+                user.Onboarding.IdentityDocumentUploadedAt = DateTime.UtcNow;
+                user.Onboarding.IdentityDocumentVerified = true;
+
+                await _userManager.UpdateAsync(user);
+                // Don't promote here; promotion happens via the /complete endpoint
+
+                _audit.Record("identity_document_upload", user.Email!, true, new { documentType = docType });
+                return Ok("Identity documents uploaded", new { documentType = docType, frontPath, backPath });
+            }
+            catch (ArgumentException ex)
+            {
+                return Fail(ex.Message);
+            }
+        }
+
+        [HttpPost("face/verify-sumsub")]
+        public async Task<IActionResult> VerifySumsubFace()
+        {
+            var user = await CurrentUserAsync();
+            if (user == null) return Fail("User not found", 404);
+            try
+            {
+                var status = await _sumsub.GetVerificationStatusAsync(user.Id.ToString());
+                if (status.IsError)
+                    return Fail("Unable to verify status. Please try again.", 500);
+                if (!status.FaceVerified)
+                {
+                    _audit.Record("face_sumsub_verify", user.Email!, false, new { reason = "face_not_approved" });
+                    return Fail("Face verification not approved yet. Please try again or contact support.");
+                }
+                if (user.Onboarding == null)
+                    user.Onboarding = new OnboardingState();
+                user.Onboarding.FaceVerified = true;
+                await _userManager.UpdateAsync(user);
+                // Don't promote here; promotion happens via the /complete endpoint
+                _audit.Record("face_sumsub_verify", user.Email!, true);
+                return Ok("Face verification complete");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to confirm face verification");
+                return Fail("Failed to complete face verification", 500);
+            }
+        }
+
+        [HttpPost("sumsub/webhook")]
+        [AllowAnonymous]
+        public async Task<IActionResult> HandleSumsubWebhook()
+        {
+            try
+            {
+                var requestBody = await new StreamReader(Request.Body).ReadToEndAsync();
+                if (string.IsNullOrEmpty(requestBody))
+                    return BadRequest("Empty body");
+                var signature = Request.Headers["X-Sumsub-Signature"].ToString();
+                if (!_sumsub.VerifyWebhookSignature(requestBody, signature))
+                {
+                    _logger.LogWarning("Invalid Sumsub webhook signature");
+                    return Unauthorized("Invalid signature");
+                }
+                var payload = System.Text.Json.JsonSerializer.Deserialize<SumsubWebhookPayload>(requestBody);
+                if (payload == null)
+                    return BadRequest("Invalid payload");
+                var user = await _userManager.FindByIdAsync(payload.ExternalUserId);
+                if (user == null)
+                    return Ok();
+                if (user.Onboarding == null)
+                    user.Onboarding = new OnboardingState();
+                switch (payload.ReviewStatus)
+                {
+                    case "APPROVED":
+                        user.Onboarding.IdentityDocumentVerified = true;
+                        user.Onboarding.FaceVerified = true;
+                        await _userManager.UpdateAsync(user);
+                        // Don't promote here; promotion happens via the /complete endpoint
+                        _audit.Record("sumsub_webhook_approved", user.Email!, true);
+                        break;
+                    case "REJECTED":
+                        user.Onboarding.IdentityDocumentVerified = false;
+                        user.Onboarding.FaceVerified = false;
+                        await _userManager.UpdateAsync(user);
+                        _audit.Record("sumsub_webhook_rejected", user.Email!, false);
+                        break;
+                    case "PENDING":
+                        _audit.Record("sumsub_webhook_pending", user.Email!, true);
+                        break;
+                }
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing Sumsub webhook");
+                return StatusCode(500);
+            }
         }
     }
 }
