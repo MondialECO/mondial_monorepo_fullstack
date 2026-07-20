@@ -7,6 +7,7 @@ import type {
   CreatorJourneyState,
   CreatorOutputKey,
   CreatorProject,
+  PhaseState,
 } from '@/types/creator/creator-journey';
 import type {
   BackendCreatorJourney,
@@ -33,7 +34,11 @@ const INITIAL_STATE: CreatorJourneyData = {
       currentStep: 1,
       completedSteps: [],
       selectedEntryPath: null,
+      clarifierSessionId: null,
       chatMessages: [],
+      discoveryInputs: undefined,
+      generatedConcepts: undefined,
+      selectedConceptId: null,
     },
     phase3: { status: 'locked', currentStep: 1, completedSteps: [] },
     phase4: { status: 'locked', currentStep: 1, completedSteps: [] },
@@ -132,9 +137,38 @@ function readCache(): CreatorJourneyData | null {
   }
 }
 
+// The cache stores ONLY progress-tracking per phase (status/currentStep/completedSteps
+// + optional progress timestamps). All content — project, chat, discovery, phase5 path,
+// outputs, documents, conversations — is backend-sourced on every load and never cached.
+// Read back via readCache(), which re-inflates missing content fields from INITIAL_STATE.
+function pickPhaseProgress(p: PhaseState): PhaseState {
+  return {
+    status: p.status,
+    currentStep: p.currentStep,
+    completedSteps: p.completedSteps,
+    ...(p.startedAt !== undefined ? { startedAt: p.startedAt } : {}),
+    ...(p.lastSavedAt !== undefined ? { lastSavedAt: p.lastSavedAt } : {}),
+    ...(p.completedAt !== undefined ? { completedAt: p.completedAt } : {}),
+  };
+}
+
+function trimForCache(state: CreatorJourneyData): { journeyState: CreatorJourneyState } {
+  const js = state.journeyState;
+  return {
+    journeyState: {
+      phase1: pickPhaseProgress(js.phase1),
+      phase2: pickPhaseProgress(js.phase2),
+      phase3: pickPhaseProgress(js.phase3),
+      phase4: pickPhaseProgress(js.phase4),
+      phase5: pickPhaseProgress(js.phase5),
+      phase6: pickPhaseProgress(js.phase6),
+    },
+  };
+}
+
 // Overlay the backend-authoritative journey + derived status onto a local state.
 // Backend owns: phase statuses (DERIVED), project fields, entry path, chosen path.
-// Local cache keeps: outputs, documents, chatMessages, completedSteps.
+// Local cache keeps: progress-tracking only (status/currentStep/completedSteps).
 function reconcile(prev: CreatorJourneyData, backend: BackendCreatorJourney, computed: ComputedJourneyStatus): CreatorJourneyData {
   const next = fresh(prev);
   const js = next.journeyState;
@@ -146,6 +180,28 @@ function reconcile(prev: CreatorJourneyData, backend: BackendCreatorJourney, com
   const entry = backend.phase2Data?.selectedEntryPath;
   if (entry === 'already_have_idea') js.phase2.selectedEntryPath = entry;
   if (backend.phase5Data?.chosenPath) js.phase5.selectedPath = backend.phase5Data.chosenPath;
+
+  // Phase 2 hydration: restore persisted fields from backend.
+  // chatMessages is append-only: only hydrate if backend has equal-or-more messages
+  // (prevents data loss if reconcile races with in-flight edits).
+  const backendChatMessages = backend.phase2Data?.chatMessages ?? [];
+  const localChatMessages = js.phase2.chatMessages ?? [];
+  if (backendChatMessages.length >= localChatMessages.length) {
+    js.phase2.chatMessages = backendChatMessages;
+  }
+  // Other phase2 fields: backend-authoritative snapshots, backend wins if present.
+  if (backend.phase2Data?.clarifierSessionId) {
+    js.phase2.clarifierSessionId = backend.phase2Data.clarifierSessionId;
+  }
+  if (backend.phase2Data?.discoveryInputs) {
+    js.phase2.discoveryInputs = backend.phase2Data.discoveryInputs;
+  }
+  if (backend.phase2Data?.generatedConcepts) {
+    js.phase2.generatedConcepts = backend.phase2Data.generatedConcepts;
+  }
+  if (backend.phase2Data?.selectedConceptId !== undefined) {
+    js.phase2.selectedConceptId = backend.phase2Data.selectedConceptId;
+  }
 
   const bp = backend.project;
   if (bp) {
@@ -179,24 +235,28 @@ function reconcile(prev: CreatorJourneyData, backend: BackendCreatorJourney, com
 }
 
 export function useCreatorProgressState() {
-  const [state, setState] = useState<CreatorJourneyData>(() => fresh(INITIAL_STATE));
+  // First paint: seed progress (phase status/currentStep/completedSteps) from the
+  // trimmed cache so navigation paints fast. readCache() re-inflates all content
+  // fields from INITIAL_STATE, so content is empty until hydrate() fetches the
+  // backend and reconcile() overrides everything. Cache is never authoritative.
+  const [state, setState] = useState<CreatorJourneyData>(() => readCache() ?? fresh(INITIAL_STATE));
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const projectPatchRef = useRef<UpdateProjectPayload>({});
 
   const hydrate = useCallback(async () => {
-    // 1) Instant load from cache so the UI isn't blocked on the network.
-    const cached = readCache();
-    if (cached) setState(cached);
-
-    // 2) Backend is the source of truth — fetch and reconcile.
+    // Backend is the authoritative source of truth. Fetch + reconcile from a clean
+    // base, then render THAT — the cache is never read/rendered as truth here.
+    // (The debounced write-through effect below persists state to cache for the
+    // next-load speedup once loading completes.)
     try {
       const { journey, computedStatus } = await creatorJourneyApi.get();
-      setState((prev) => reconcile(cached ?? prev, journey, computedStatus));
+      setState(reconcile(INITIAL_STATE, journey, computedStatus));
       setError(null);
     } catch (err) {
-      // Degrade to the cache (offline / transient). Surface the error for UI.
+      // Backend error: surface an honest error state. Do NOT fall back to rendering
+      // stale cache — cache is never a fallback rendering source.
       setError(err as Error);
     } finally {
       setIsLoading(false);
@@ -208,13 +268,14 @@ export function useCreatorProgressState() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Debounced write-through cache (instant resume). Backend already persisted.
+  // Debounced write-through cache — progress-tracking ONLY (see trimForCache).
+  // Content is backend-authoritative and is never written here.
   useEffect(() => {
     if (isLoading) return;
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => {
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(trimForCache(state)));
       } catch {
         /* quota / private mode — cache is best-effort */
       }
