@@ -34,8 +34,10 @@ export interface PhaseState {
   completedAt?: string;
   // Discovery path removed — only "already_have_idea" remains.
   selectedEntryPath?: 'already_have_idea' | null;
+  // Clarifier session ID (backend-authoritative; used by Phase 3 to validate completion).
+  clarifierSessionId?: string | null;
   // Conversational clarifier transcript (persisted to CreatorJourneys.phase2Data).
-  chatMessages?: Array<{ id: string; sender: 'ai' | 'user'; text: string }>;
+  chatMessages?: Array<{ id: string; sender: 'ai' | 'user'; text: string; timestamp?: string }>;
   // Phase-2 client-cached working state (not backend-authoritative; survives via
   // the localStorage draft). Populated by the Discovery + Naming flows.
   generatedConcepts?: Phase2Concept[];
