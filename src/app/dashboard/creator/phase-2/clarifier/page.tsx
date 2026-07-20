@@ -99,6 +99,34 @@ export default function AIClarifierPage() {
       setMessages(initialMsgs);
       setCurrentStep(1);
       setIdeaScore(0);
+
+      // Pre-seed from Discovery concept if available (cosmetic UX only, seed is not used for rawIdea creation)
+      const selectedConceptId = state.journeyState?.phase2?.selectedConceptId;
+      const concepts = state.journeyState?.phase2?.generatedConcepts ?? [];
+      const discoveredConcept = concepts.find((c) => c.id === selectedConceptId);
+
+      if (discoveredConcept) {
+        // Pre-populate canvas blocks with concept fields for Discovery users
+        const conceptData = {
+          concept: discoveredConcept.concept || "",
+          targetUser: discoveredConcept.targetUser || "",
+          problem: discoveredConcept.coreProblem || "",
+          solution: discoveredConcept.solution || "",
+          creatorEdge: discoveredConcept.founderEdge || "",
+        };
+        setCanvasBlocks((prev) =>
+          prev.map((block) => {
+            const seedValue = conceptData[block.key as keyof typeof conceptData] || "";
+            return {
+              ...block,
+              value: seedValue ? (seedValue.length > 30 ? seedValue.substring(0, 28) + "..." : seedValue) : "",
+            };
+          })
+        );
+        // Pre-fill journal with concept title
+        if (discoveredConcept.title) setJournalText(discoveredConcept.title);
+      }
+
       setState((prev) => ({
         ...prev,
         journeyState: {
@@ -110,7 +138,7 @@ export default function AIClarifierPage() {
         },
       }));
     }
-  }, [state.journeyState?.phase2?.chatMessages, setState]);
+  }, [state.journeyState?.phase2?.chatMessages, state.journeyState?.phase2?.selectedConceptId, state.journeyState?.phase2?.generatedConcepts, setState]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });

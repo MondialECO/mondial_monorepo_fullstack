@@ -57,7 +57,7 @@ export default function IdeaConfirmPage() {
       },
     }));
 
-    router.push("/dashboard/creator/phase-2/idea-summary");
+    router.push("/dashboard/creator/phase-2/clarifier");
   };
 
   return (
