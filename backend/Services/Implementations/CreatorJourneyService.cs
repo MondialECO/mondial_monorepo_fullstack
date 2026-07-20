@@ -328,6 +328,56 @@ namespace WebApp.Services.Implementations
             return j;
         }
 
+        // ---- Discovery path working state (independent, targeted $set writes) ----
+
+        public async Task<CreatorJourney> SetDiscoveryInputsAsync(string userId, CreatorDiscoveryInputs inputs)
+        {
+            if (inputs == null)
+                throw new CreatorJourneyException(400, "inputs is required.");
+
+            var j = await GetOrCreateAsync(userId);
+            j.Phase2Data ??= new CreatorPhase2Data();
+            j.Phase2Data.DiscoveryInputs = inputs;
+
+            await _context.CreatorJourneys.UpdateOneAsync(
+                f => f.Id == j.Id,
+                Builders<CreatorJourney>.Update.Set(x => x.Phase2Data.DiscoveryInputs, inputs));
+
+            return j;
+        }
+
+        public async Task<CreatorJourney> SetGeneratedConceptsAsync(string userId, List<CreatorDiscoveryConcept> concepts)
+        {
+            if (concepts == null)
+                throw new CreatorJourneyException(400, "concepts is required.");
+
+            var j = await GetOrCreateAsync(userId);
+            j.Phase2Data ??= new CreatorPhase2Data();
+            j.Phase2Data.GeneratedConcepts = concepts;
+
+            await _context.CreatorJourneys.UpdateOneAsync(
+                f => f.Id == j.Id,
+                Builders<CreatorJourney>.Update.Set(x => x.Phase2Data.GeneratedConcepts, concepts));
+
+            return j;
+        }
+
+        public async Task<CreatorJourney> SetSelectedConceptIdAsync(string userId, string conceptId)
+        {
+            if (string.IsNullOrWhiteSpace(conceptId))
+                throw new CreatorJourneyException(400, "conceptId is required.");
+
+            var j = await GetOrCreateAsync(userId);
+            j.Phase2Data ??= new CreatorPhase2Data();
+            j.Phase2Data.SelectedConceptId = conceptId;
+
+            await _context.CreatorJourneys.UpdateOneAsync(
+                f => f.Id == j.Id,
+                Builders<CreatorJourney>.Update.Set(x => x.Phase2Data.SelectedConceptId, conceptId));
+
+            return j;
+        }
+
         // ---- Phase 3 deterministic modules ----
 
         public async Task<CreatorJourney> SetLegalChecklistAsync(string userId, CreatorLegalChecklist checklist)

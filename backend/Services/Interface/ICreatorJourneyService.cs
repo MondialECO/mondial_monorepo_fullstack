@@ -50,6 +50,15 @@ namespace WebApp.Services.Interface
             string userId, string logoAsset, string logoType, string brandingMethod,
             List<string> colorPalette = null, string paletteName = null, string typographyPairing = null);
 
+        /// <summary>Persist Discovery input form (sectors, problem, strengths) via targeted $set.</summary>
+        Task<CreatorJourney> SetDiscoveryInputsAsync(string userId, CreatorDiscoveryInputs inputs);
+
+        /// <summary>Persist AI-generated concepts via targeted $set (async-safe field update).</summary>
+        Task<CreatorJourney> SetGeneratedConceptsAsync(string userId, List<CreatorDiscoveryConcept> concepts);
+
+        /// <summary>Persist the selected concept ID via targeted $set.</summary>
+        Task<CreatorJourney> SetSelectedConceptIdAsync(string userId, string conceptId);
+
         // ---- Phase 3 deterministic modules ----
 
         /// <summary>Persist a generated legal checklist + append a phase-3 version.</summary>

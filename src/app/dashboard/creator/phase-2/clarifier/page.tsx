@@ -21,6 +21,11 @@ import { creatorAiApi } from "@/lib/api-creator-ai";
 import { creatorJourneyApi } from "@/lib/api-creator-journey";
 import { isTerminalStatus } from "@/types/creator/ai";
 import { toAiError } from "@/lib/ai-errors";
+import {
+  POLL_INTERVAL_MS as SHARED_POLL_INTERVAL_MS,
+  POLL_MAX_ATTEMPTS as SHARED_POLL_MAX_ATTEMPTS,
+  POLL_MAX_MS,
+} from "@/hooks/queries/creator-ai";
 
 type Message = {
   id: string;
@@ -41,6 +46,9 @@ type CanvasBlock = {
 const OPENER =
   "Welcome. Tell me your idea — in your own words, however rough it is. What problem are you solving?";
 const TOTAL_QUESTIONS = 6;
+// TODO (R12-consolidation): Replace with shared POLL_INTERVAL_MS / POLL_MAX_ATTEMPTS from creator-ai.ts
+// This page currently hardcodes 100 attempts (≈4.2min) instead of the canonical 60/3-min policy.
+// New code (retry path, below) uses the shared policy; this will be fixed in a separate consolidation change.
 const POLL_INTERVAL_MS = 2500;
 const MAX_POLL_ATTEMPTS = 100;
 
@@ -232,6 +240,23 @@ export default function AIClarifierPage() {
     return null;
   };
 
+  // Poll for retry using the shared R12 timeout policy (60 attempts / 3 minutes wall-clock).
+  // Used when aiParseFailed=true and user clicks "Try again" to start a fresh clarifier session.
+  const pollClarifierWithR12 = async (sessionId: string) => {
+    const startTime = Date.now();
+    for (let i = 0; i < SHARED_POLL_MAX_ATTEMPTS; i++) {
+      const session = await creatorAiApi.getClarifier(sessionId);
+      if (isTerminalStatus(session.status)) return session;
+
+      // Check wall-clock timeout (3 minutes)
+      const elapsed = Date.now() - startTime;
+      if (elapsed >= POLL_MAX_MS) return null;
+
+      await new Promise((r) => setTimeout(r, SHARED_POLL_INTERVAL_MS));
+    }
+    return null;
+  };
+
   const handleComplete = async () => {
     if (finalizing) return;
     setFinalizeError(null);
@@ -254,6 +279,16 @@ export default function AIClarifierPage() {
       // finalize-clarifier is tolerant of a partial/failed output (falls back to a
       // 50 clarity score + editable summary), so we map on any terminal status.
       const result = await creatorJourneyApi.finalizeClarifier(sessionId);
+
+      // If the AI output couldn't be parsed, show an honest error and allow retry.
+      // Do NOT navigate or spread empty fields into state on parse failure.
+      if (result.aiParseFailed) {
+        setFinalizeError(
+          "We couldn't process that just now. Please try again, or reword your idea and resubmit."
+        );
+        setFinalizing(false);
+        return;
+      }
 
       // Compute final values with proper fallbacks BEFORE spreading result.project
       const firstAnswer = answers[0]?.trim() || "";

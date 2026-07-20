@@ -6,6 +6,7 @@ import { Sparkles, Brain, Cpu, BarChart3, Network, CheckCircle2, ArrowLeft, Aler
 import { Button } from "@/components/ui/button";
 import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
 import { creatorAiApi } from "@/lib/api-creator-ai";
+import { creatorJourneyApi } from "@/lib/api-creator-journey";
 import { mapGeneratedIdeas } from "@/lib/creator/map-generated-ideas";
 import { toAiError } from "@/lib/ai-errors";
 import { useSignalRHub, hubEvent } from "@/lib/realtime";
@@ -60,6 +61,12 @@ export default function AIProcessingPage() {
           phase2: { ...prev.journeyState.phase2, generatedConcepts: concepts, currentStep: 4 },
         },
       }));
+
+      // Persist generated concepts to backend
+      void creatorJourneyApi.saveGeneratedConcepts(concepts).catch((err) => {
+        console.error("Failed to persist concepts:", err);
+      });
+
       setActiveStage(PROCESSING_STAGES.length - 1);
       setDone(true);
       setTimeout(() => router.push(`/dashboard/creator/phase-2/idea-cards?session=${session.sessionId}`), 900);
