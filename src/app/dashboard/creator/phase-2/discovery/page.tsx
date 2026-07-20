@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
 import { creatorAiApi } from "@/lib/api-creator-ai";
+import { creatorJourneyApi } from "@/lib/api-creator-journey";
 import { toAiError } from "@/lib/ai-errors";
 
 const TOPICS = [
@@ -145,6 +146,13 @@ export default function IdeaDiscoveryPage() {
     }));
 
     try {
+      // Persist discovery inputs to backend before generating concepts
+      await creatorJourneyApi.saveDiscoveryInputs({
+        sectors,
+        observedProblem,
+        strengths,
+      });
+
       const result = await creatorAiApi.startIdeaGeneration({
         sectors: sectors.map(sectorLabel),
         observedProblem,

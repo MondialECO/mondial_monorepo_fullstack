@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useOnboarding } from "@/providers/OnboardingProvider";
 import { useAuth } from "@/app/_providers/AuthProvider";
 import { ONBOARDING_ITEMS, OnboardingItem } from "@/lib/onboarding-routes";
-import { ROLE_DASHBOARD_ROUTES } from "@/lib/roles";
+import { ROLE_DASHBOARD_ROUTES, type UserRole } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 import api from "@/lib/axios";
 
@@ -23,8 +23,8 @@ export default function OnboardingHubPage() {
     if (isLoading) return;
 
     // If already Phase 1, redirect to dashboard immediately (prevent race conditions)
-    if (status?.phase >= 1) {
-      const dashboardRoute = ROLE_DASHBOARD_ROUTES[status.role];
+    if (status && status.phase != null && status.phase >= 1 && status.role) {
+      const dashboardRoute = ROLE_DASHBOARD_ROUTES[status.role as UserRole];
       router.replace(dashboardRoute || "/");
       return;
     }

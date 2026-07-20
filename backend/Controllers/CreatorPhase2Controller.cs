@@ -257,6 +257,90 @@ namespace WebApp.Controllers
             catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
         }
 
+        // ---- Discovery path working state (independent targeted $set writes) ----
+
+        // POST /api/creator/journey/phase2/discovery-inputs
+        // Persist Discovery input form (sectors, problem, strengths) at step 2.
+        [HttpPost("discovery-inputs")]
+        public async Task<IActionResult> SaveDiscoveryInputs([FromBody] SaveDiscoveryInputsRequest request)
+        {
+            try
+            {
+                var userId = GetUserId();
+                if (request?.Inputs == null)
+                    return BadRequest(ApiResponse.Error("inputs is required."));
+
+                var inputs = new CreatorDiscoveryInputs
+                {
+                    Sectors = request.Inputs.Sectors ?? new List<string>(),
+                    ObservedProblem = request.Inputs.ObservedProblem ?? string.Empty,
+                    Strengths = request.Inputs.Strengths ?? new List<string>(),
+                };
+
+                var journey = await _journeys.SetDiscoveryInputsAsync(userId, inputs);
+                return Ok(ApiResponse.Ok("Discovery inputs saved", new { phase2Data = journey.Phase2Data }));
+            }
+            catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
+            catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
+            catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
+        }
+
+        // POST /api/creator/journey/phase2/generated-concepts
+        // Persist AI-generated concepts after generation completes (step 3).
+        [HttpPost("generated-concepts")]
+        public async Task<IActionResult> SaveGeneratedConcepts([FromBody] SaveGeneratedConceptsRequest request)
+        {
+            try
+            {
+                var userId = GetUserId();
+                if (request?.Concepts == null || request.Concepts.Count == 0)
+                    return BadRequest(ApiResponse.Error("concepts array is required."));
+
+                var concepts = request.Concepts.Select(c => new CreatorDiscoveryConcept
+                {
+                    Id = c.Id,
+                    Title = c.Title,
+                    Category = c.Category,
+                    Description = c.Description,
+                    Score = c.Score,
+                    Tam = c.Tam,
+                    Saturation = c.Saturation,
+                    SimilarTo = c.SimilarTo,
+                    Concept = c.Concept,
+                    TargetUser = c.TargetUser,
+                    CoreProblem = c.CoreProblem,
+                    Solution = c.Solution,
+                    MarketGap = c.MarketGap,
+                    FounderEdge = c.FounderEdge,
+                }).ToList();
+
+                var journey = await _journeys.SetGeneratedConceptsAsync(userId, concepts);
+                return Ok(ApiResponse.Ok("Concepts saved", new { phase2Data = journey.Phase2Data }));
+            }
+            catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
+            catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
+            catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
+        }
+
+        // POST /api/creator/journey/phase2/selected-concept
+        // Persist the selected concept ID when user picks (step 4).
+        [HttpPost("selected-concept")]
+        public async Task<IActionResult> SaveSelectedConceptId([FromBody] SaveSelectedConceptIdRequest request)
+        {
+            try
+            {
+                var userId = GetUserId();
+                if (string.IsNullOrWhiteSpace(request?.ConceptId))
+                    return BadRequest(ApiResponse.Error("conceptId is required."));
+
+                var journey = await _journeys.SetSelectedConceptIdAsync(userId, request.ConceptId);
+                return Ok(ApiResponse.Ok("Concept selected", new { phase2Data = journey.Phase2Data }));
+            }
+            catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
+            catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
+            catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
+        }
+
         // GET /api/creator/journey/phase2/m50-designers
         // Verified branding/design SPs (tier>=2), ranked by the SP match formula.
         [HttpGet("m50-designers")]
@@ -365,6 +449,53 @@ namespace WebApp.Controllers
                 $"Ze{stem.ToLowerInvariant()}",
                 $"{stem}mint",
             };
+        }
+
+        // ---- Request DTOs ----
+
+        public class ChatMessageRequest { public string Message { get; set; } }
+        public class FinalizeClarifierRequest { public string SessionId { get; set; } }
+        public class NameSuggestionsRequest { public string Concept { get; set; } }
+        public class BookDesignerRequest { public string SpId { get; set; } }
+
+        public class SaveDiscoveryInputsRequest
+        {
+            public DiscoveryInputsDto Inputs { get; set; }
+        }
+
+        public class DiscoveryInputsDto
+        {
+            public List<string> Sectors { get; set; }
+            public string ObservedProblem { get; set; }
+            public List<string> Strengths { get; set; }
+        }
+
+        public class SaveGeneratedConceptsRequest
+        {
+            public List<DiscoveryConceptDto> Concepts { get; set; }
+        }
+
+        public class DiscoveryConceptDto
+        {
+            public string Id { get; set; }
+            public string Title { get; set; }
+            public string Category { get; set; }
+            public string Description { get; set; }
+            public double Score { get; set; }
+            public string Tam { get; set; }
+            public string Saturation { get; set; }
+            public string SimilarTo { get; set; }
+            public string Concept { get; set; }
+            public string TargetUser { get; set; }
+            public string CoreProblem { get; set; }
+            public string Solution { get; set; }
+            public string MarketGap { get; set; }
+            public string FounderEdge { get; set; }
+        }
+
+        public class SaveSelectedConceptIdRequest
+        {
+            public string ConceptId { get; set; }
         }
     }
 }

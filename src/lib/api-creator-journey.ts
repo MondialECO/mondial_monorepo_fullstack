@@ -132,6 +132,23 @@ export const creatorJourneyApi = {
     await api.post('/creator/journey/phase2/branding/skip', {});
   },
 
+  // ---- Discovery path working state ----
+
+  saveDiscoveryInputs: async (inputs: { sectors: string[]; observedProblem: string; strengths: string[] }): Promise<JourneyResponse> => {
+    const res = await api.post('/creator/journey/phase2/discovery-inputs', { inputs });
+    return unwrap<JourneyResponse>(res.data);
+  },
+
+  saveGeneratedConcepts: async (concepts: any[]): Promise<JourneyResponse> => {
+    const res = await api.post('/creator/journey/phase2/generated-concepts', { concepts });
+    return unwrap<JourneyResponse>(res.data);
+  },
+
+  saveSelectedConceptId: async (conceptId: string): Promise<JourneyResponse> => {
+    const res = await api.post('/creator/journey/phase2/selected-concept', { conceptId });
+    return unwrap<JourneyResponse>(res.data);
+  },
+
   // ---- Phase 3 (deterministic modules) ----
 
   generateLegalChecklist: async (): Promise<LegalChecklist> => {

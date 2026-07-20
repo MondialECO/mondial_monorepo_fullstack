@@ -87,6 +87,11 @@ namespace WebApp.Models.DatabaseModels
         public string SelectedEntryPath { get; set; }
         public List<CreatorChatMessage> ChatMessages { get; set; } = new();
         public string ClarifierSessionId { get; set; }
+
+        // Discovery path working state (independent, additive, additive, never touch existing fields above).
+        public CreatorDiscoveryInputs DiscoveryInputs { get; set; }
+        public List<CreatorDiscoveryConcept> GeneratedConcepts { get; set; }
+        public string SelectedConceptId { get; set; }
     }
 
     public class CreatorChatMessage
@@ -95,6 +100,31 @@ namespace WebApp.Models.DatabaseModels
         public string Sender { get; set; } // "ai" | "user"
         public string Text { get; set; }
         public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+    }
+
+    public class CreatorDiscoveryInputs
+    {
+        public List<string> Sectors { get; set; } = new();
+        public string ObservedProblem { get; set; }
+        public List<string> Strengths { get; set; } = new();
+    }
+
+    public class CreatorDiscoveryConcept
+    {
+        public string Id { get; set; }
+        public string Title { get; set; }
+        public string Category { get; set; }
+        public string Description { get; set; }
+        public double Score { get; set; }
+        public string Tam { get; set; }
+        public string Saturation { get; set; }
+        public string SimilarTo { get; set; }
+        public string Concept { get; set; }
+        public string TargetUser { get; set; }
+        public string CoreProblem { get; set; }
+        public string Solution { get; set; }
+        public string MarketGap { get; set; }
+        public string FounderEdge { get; set; }
     }
 
     // ---------------- Phase 3 ----------------
