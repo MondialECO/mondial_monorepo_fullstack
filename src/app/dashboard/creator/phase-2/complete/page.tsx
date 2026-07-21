@@ -12,6 +12,25 @@ export default function Phase2CompletePage() {
   const router = useRouter();
   const { state, isLoading, error, refetch, advancePhase } = useCreatorProgress();
 
+  // All hooks are declared unconditionally at the top so hook order is stable
+  // across every render (rules-of-hooks). The isLoading/error gates below gate
+  // only the RENDER, never the hooks.
+  const [logoError, setLogoError] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
+  const [isSkipping, setIsSkipping] = useState(false);
+
+  useEffect(() => {
+    if (isNavigating && state.journeyState.phase3.status === 'available') {
+      router.push("/dashboard/creator/phase-3");
+    }
+  }, [isNavigating, state.journeyState.phase3.status, router]);
+
+  useEffect(() => {
+    if (isSkipping && state.journeyState.phase3.status === 'available') {
+      router.push("/dashboard/creator");
+    }
+  }, [isSkipping, state.journeyState.phase3.status, router]);
+
   // Gate: don't render real content until backend hydration completes.
   if (isLoading) {
     return (
@@ -34,10 +53,6 @@ export default function Phase2CompletePage() {
 
   const project = state.project;
   const branding = project.branding;
-  const [logoError, setLogoError] = useState(false);
-
-  const [isNavigating, setIsNavigating] = useState(false);
-  const [isSkipping, setIsSkipping] = useState(false);
 
   const handleNextPhase = async () => {
     setIsNavigating(true);
@@ -68,18 +83,6 @@ export default function Phase2CompletePage() {
     // Branding is already persisted via uploadAiLogo() in logo-tool page
     advancePhase(2);
   };
-
-  useEffect(() => {
-    if (isNavigating && state.journeyState.phase3.status === 'available') {
-      router.push("/dashboard/creator/phase-3");
-    }
-  }, [isNavigating, state.journeyState.phase3.status, router]);
-
-  useEffect(() => {
-    if (isSkipping && state.journeyState.phase3.status === 'available') {
-      router.push("/dashboard/creator");
-    }
-  }, [isSkipping, state.journeyState.phase3.status, router]);
 
   return (
     <div className="w-full flex-1 flex flex-col bg-background text-foreground min-h-screen">
