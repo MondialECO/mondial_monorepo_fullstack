@@ -34,7 +34,6 @@ export default function IdeaSummaryPage() {
   }, [refetch, state.project?.concept, state.project?.clarityScore]);
 
   const project = state.project ?? {};
-  const entryPath = state.journeyState?.phase2?.selectedEntryPath;
 
   // Use only real project data — no fallback strings
   const conceptVal = project.concept ?? "";
@@ -64,11 +63,10 @@ export default function IdeaSummaryPage() {
   ];
 
   const handleRevisit = () => {
-    if (entryPath === "already_have_idea") {
-      router.push("/dashboard/creator/phase-2/clarifier");
-    } else {
-      router.push("/dashboard/creator/phase-2/idea-cards");
-    }
+    // ALPHA: Discovery entry is hidden, so revisit always returns to the clarifier
+    // (Path-B). The idea-cards deep-link (Discovery revisit) is intentionally not
+    // reachable for alpha; it returns when the Discovery chain is re-enabled.
+    router.push("/dashboard/creator/phase-2/clarifier");
   };
 
   const handleContinue = () => {
