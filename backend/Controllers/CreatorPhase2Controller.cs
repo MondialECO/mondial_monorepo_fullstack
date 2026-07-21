@@ -201,23 +201,75 @@ namespace WebApp.Controllers
 
                 // Build the ClarifierOutput contract straight from the concept.
                 var clarityScore = Math.Clamp((int)Math.Round(concept.Score), 0, 100);
+
+                // Map every piece of concept data into the Output so a Discovery plan is
+                // grounded comparably to a Path-B (clarifier) plan. painPoints, severity,
+                // audience characteristics, and sizeQualitative stay empty: the concept
+                // carries no equivalent, and the contract forbids a specific figure in
+                // sizeQualitative (the TAM lives in assumptions instead). Optional fields
+                // degrade gracefully when absent.
+                var valueProp = !string.IsNullOrWhiteSpace(concept.Description)
+                    ? concept.Description : (concept.MarketGap ?? "");
+
+                var existingAlternatives = new BsonArray();
+                if (!string.IsNullOrWhiteSpace(concept.SimilarTo))
+                    existingAlternatives.Add(new BsonDocument
+                    {
+                        { "name", concept.SimilarTo },
+                        { "gap", concept.MarketGap ?? "" },
+                    });
+
+                var riskAssessment = new BsonArray();
+                if (!string.IsNullOrWhiteSpace(concept.Saturation))
+                {
+                    var sat = concept.Saturation.Trim().ToLowerInvariant();
+                    var likelihood = sat.Contains("high") ? "high" : sat.Contains("low") ? "low" : "medium";
+                    riskAssessment.Add(new BsonDocument
+                    {
+                        { "category", "Market competition" },
+                        { "description", $"Competitor saturation assessed as {concept.Saturation}." },
+                        { "likelihood", likelihood },
+                        { "mitigation", concept.FounderEdge ?? "" },
+                    });
+                }
+
+                var assumptions = new BsonArray();
+                if (!string.IsNullOrWhiteSpace(concept.Tam))
+                    assumptions.Add($"Assumes a total addressable market of approximately {concept.Tam}.");
+
+                var tags = new BsonArray();
+                if (!string.IsNullOrWhiteSpace(concept.Category)) tags.Add(concept.Category);
+                if (!string.IsNullOrWhiteSpace(concept.Saturation)) tags.Add($"saturation:{concept.Saturation}");
+
                 var output = new BsonDocument
                 {
                     { "schemaVersion", 1 },
-                    { "problemDefinition", new BsonDocument { { "statement", concept.CoreProblem ?? "" } } },
-                    { "targetAudience", new BsonDocument { { "primarySegment", concept.TargetUser ?? "" } } },
-                    { "existingAlternatives", new BsonArray() },
+                    { "problemDefinition", new BsonDocument
+                        {
+                            { "statement", concept.CoreProblem ?? "" },
+                            { "painPoints", new BsonArray() },   // no concept source
+                            { "severity", "" },                  // no concept source
+                        } },
+                    { "targetAudience", new BsonDocument
+                        {
+                            { "primarySegment", concept.TargetUser ?? "" },
+                            { "characteristics", new BsonArray() }, // no concept source
+                            { "sizeQualitative", "" },              // contract forbids a figure; TAM is in assumptions
+                        } },
+                    { "existingAlternatives", existingAlternatives },
                     { "proposedSolution", new BsonDocument
                         {
                             { "summary", concept.Solution ?? "" },
-                            { "valueProposition", concept.MarketGap ?? "" },
                             { "differentiation", concept.FounderEdge ?? "" },
+                            { "valueProposition", valueProp },
                         } },
-                    { "riskAssessment", new BsonArray() },
-                    { "assumptions", new BsonArray() },
+                    { "riskAssessment", riskAssessment },
+                    { "assumptions", assumptions },
                     { "clarityScore", clarityScore },
-                    { "clarityRationale", "Derived from an AI-generated Discovery concept the founder confirmed." },
-                    { "tags", new BsonArray(string.IsNullOrWhiteSpace(concept.Category) ? new string[0] : new[] { concept.Category }) },
+                    { "clarityRationale", string.IsNullOrWhiteSpace(concept.Category)
+                        ? "Derived from an AI-generated Discovery concept the founder confirmed."
+                        : $"Derived from an AI-generated Discovery concept the founder confirmed (category: {concept.Category})." },
+                    { "tags", tags },
                 };
 
                 // Seed a completed clarifier session (source of truth for C-3).
