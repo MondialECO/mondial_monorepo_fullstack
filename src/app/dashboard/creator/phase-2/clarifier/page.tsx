@@ -514,31 +514,52 @@ export default function AIClarifierPage() {
                   Press Enter to send · Shift+Enter for new line
                 </span>
               </>
-            ) : (
+            ) : finalizeError ? (
+              /* ERROR + RETRY — never shown alongside the success header */
               <div className="w-full flex flex-col items-center gap-3 py-4 text-center">
-                <div className="w-11 h-11 rounded-full bg-green-100 dark:bg-green-950/30 flex items-center justify-center text-green-600 dark:text-green-400">
-                  <Check className="w-5 h-5" strokeWidth={3} />
+                <div className="w-11 h-11 rounded-full bg-destructive/10 flex items-center justify-center text-destructive">
+                  <X className="w-5 h-5" strokeWidth={3} />
                 </div>
-                <h3 className="font-bold text-foreground text-sm">Idea Clarified Successfully!</h3>
-                {finalizeError && (
-                  <p className="text-xs text-destructive max-w-xs">{finalizeError}</p>
-                )}
+                <h3 className="font-bold text-foreground text-sm">We couldn&apos;t finish that</h3>
+                <p className="text-xs text-destructive max-w-xs">{finalizeError}</p>
                 <Button
                   onClick={handleComplete}
                   disabled={finalizing}
                   className="font-semibold py-2.5 px-6 rounded-xl flex items-center gap-2 text-xs shadow-sm disabled:opacity-60"
                 >
-                  {finalizing ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Building your summary…
-                    </>
-                  ) : (
-                    <>
-                      {finalizeError ? "Try again" : "Proceed to Concept & Name"}
-                      <ArrowRight className="h-4 w-4" />
-                    </>
-                  )}
+                  Try again
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : finalizing ? (
+              /* PROCESSING — finalize in progress */
+              <div className="w-full flex flex-col items-center gap-3 py-4 text-center">
+                <div className="w-11 h-11 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                </div>
+                <h3 className="font-bold text-foreground text-sm">Clarifying your idea…</h3>
+                <Button
+                  disabled
+                  className="font-semibold py-2.5 px-6 rounded-xl flex items-center gap-2 text-xs shadow-sm disabled:opacity-60"
+                >
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Building your summary…
+                </Button>
+              </div>
+            ) : (
+              /* READY — chat complete, ready to finalize (navigates away on success) */
+              <div className="w-full flex flex-col items-center gap-3 py-4 text-center">
+                <div className="w-11 h-11 rounded-full bg-green-100 dark:bg-green-950/30 flex items-center justify-center text-green-600 dark:text-green-400">
+                  <Check className="w-5 h-5" strokeWidth={3} />
+                </div>
+                <h3 className="font-bold text-foreground text-sm">Idea clarified — ready to continue</h3>
+                <Button
+                  onClick={handleComplete}
+                  disabled={finalizing}
+                  className="font-semibold py-2.5 px-6 rounded-xl flex items-center gap-2 text-xs shadow-sm disabled:opacity-60"
+                >
+                  Proceed to Concept &amp; Name
+                  <ArrowRight className="h-4 w-4" />
                 </Button>
               </div>
             )}
