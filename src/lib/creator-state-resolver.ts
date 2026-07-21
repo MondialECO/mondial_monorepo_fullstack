@@ -20,17 +20,30 @@ export function getNextCreatorAction(state: CreatorJourneyState): NextAction {
     };
   }
 
-  // Phase 2 Check: Project Identity.
-  // ALPHA: the Discovery entry (steps 2–5: discovery / ai-processing / idea-cards /
-  // idea-confirm) is hidden — the chain code is retained but unreachable, so this
-  // resolver only maps the Path-B steps (6–12). Any legacy/unmapped step below 6
-  // falls through to the Smart Gate default, and backend step-derivation resolves an
-  // unclarified user to step 6 (clarifier) — never a broken Discovery mid-state.
-  // Discovery mapping returns post-alpha with backend derivation (2C-2/2C-3).
+  // Phase 2 Check: Project Identity. Step numbers match backend DerivePhase2Step (2C-2):
+  //   2=discovery form, 3=ai-processing, 4=idea-cards, 5=idea-confirm,
+  //   6=clarifier, 7=idea-summary, 8=concept-name, 9=branding,
+  //   10=hire-designer, 11=logo-tool, 12=complete.
+  // Discovery steps 3–5 resume from hydrated state. Step 3 (ai-processing) needs a live
+  // generation session it can't recover from a bare route, so it resumes to the discovery
+  // form (pre-filled from hydrated inputs; the user re-generates). Step 2 isn't backend-
+  // derivable, and a fresh user with no chosen path also derives to 6 — both must land on
+  // the Smart Gate to choose, not the clarifier. So step 6 routes to the clarifier ONLY
+  // when the user is actually on Path-B / has clarifier activity; otherwise the Smart Gate.
+  // (The Discovery entry card is still hidden for alpha; this mapping is ready for it.)
   if (state.phase2.status !== 'completed') {
     const step = state.phase2.currentStep;
-    let route = '/dashboard/creator/phase-2';
-    if (step === 6) route = '/dashboard/creator/phase-2/clarifier';
+    const p2 = state.phase2;
+    const inClarifier =
+      p2.selectedEntryPath === 'already_have_idea' ||
+      !!p2.clarifierSessionId ||
+      (p2.chatMessages?.length ?? 0) > 0;
+
+    let route = '/dashboard/creator/phase-2'; // Smart Gate — fresh user (no path chosen) / step 2
+    if (step === 3) route = '/dashboard/creator/phase-2/discovery';       // ai-processing not bare-route-resumable
+    else if (step === 4) route = '/dashboard/creator/phase-2/idea-cards';
+    else if (step === 5) route = '/dashboard/creator/phase-2/idea-confirm';
+    else if (step === 6) route = inClarifier ? '/dashboard/creator/phase-2/clarifier' : '/dashboard/creator/phase-2';
     else if (step === 7) route = '/dashboard/creator/phase-2/idea-summary';
     else if (step === 8) route = '/dashboard/creator/phase-2/concept-name';
     else if (step === 9) route = '/dashboard/creator/phase-2/branding';
