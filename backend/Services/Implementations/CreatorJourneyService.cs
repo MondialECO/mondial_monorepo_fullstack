@@ -163,12 +163,37 @@ namespace WebApp.Services.Implementations
             return s;
         }
 
-        // Phase 2 has only the "already_have_idea" path now (discovery removed).
-        // 6=clarifier, 7=idea-summary, 8=concept-name, 9=branding,
-        // 10=hire-designer, 11=logo-tool, 12=complete.
+        // Phase 2 step derivation.
+        //   2=discovery form, 3=ai-processing, 4=idea-cards, 5=idea-confirm,
+        //   6=clarifier, 7=idea-summary, 8=concept-name, 9=branding,
+        //   10=hire-designer, 11=logo-tool, 12=complete.
+        // Discovery steps 3–5 (2C-2) are derived from the persisted Discovery
+        // working-state (DiscoveryInputs/GeneratedConcepts/SelectedConceptId), but only
+        // for a user actually on the Discovery path. The reliable discriminator is
+        // SelectedEntryPath: the backend only ever stores "already_have_idea" (Path-B);
+        // Discovery leaves it null. We gate on "NOT Path-B" so that a path-switcher —
+        // someone who tried Discovery (leaving stale DiscoveryInputs/GeneratedConcepts)
+        // then chose already-have-idea and is now clarifying — is NOT pulled back into
+        // Discovery by that stale data; they correctly derive to 6 (clarifier). Once
+        // clarified, both entry paths converge into the shared 6+ tail below. Step 2
+        // (blank discovery form) persists no data, so it is not field-derivable — such a
+        // user resolves to the entry/Smart Gate; the field-derivable range here is 3–5.
         private static int DerivePhase2Step(CreatorJourneyProject p, CreatorPhase2Data p2, bool brandingResolved, bool clarified)
         {
-            if (!clarified) return 6;                                   // still clarifying
+            if (!clarified)
+            {
+                // Discovery steps apply only when the user is NOT on Path-B. Path-B is
+                // positively identified by SelectedEntryPath == "already_have_idea".
+                bool onPathB = p2.SelectedEntryPath == "already_have_idea";
+                if (!onPathB)
+                {
+                    // Discovery working-state, newest signal first.
+                    if (!string.IsNullOrWhiteSpace(p2.SelectedConceptId)) return 5;  // concept picked → confirm
+                    if ((p2.GeneratedConcepts?.Count ?? 0) > 0) return 4;            // concepts ready → pick
+                    if (p2.DiscoveryInputs != null) return 3;                        // inputs saved → generating
+                }
+                return 6;                                                            // Path-B / no Discovery → clarifying
+            }
             if (string.IsNullOrEmpty(p.Solution) || string.IsNullOrEmpty(p.Problem)) return 7; // confirm summary
             if (string.IsNullOrWhiteSpace(p.Name)) return 8;            // name the concept
             if (!brandingResolved) return 9;                            // branding decision
