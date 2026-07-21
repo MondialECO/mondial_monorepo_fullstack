@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Lightbulb, ArrowRight } from "lucide-react";
+import { Lightbulb, Compass, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
@@ -10,7 +10,7 @@ import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
 export default function SmartGatePage() {
   const router = useRouter();
   const { setEntryPath, updateProject } = useCreatorProgress();
-  const [hovered, setHovered] = useState(false);
+  const [hoveredCard, setHoveredCard] = useState<"left" | "right" | null>(null);
 
   const handleSelectRefinement = () => {
     setEntryPath("already_have_idea");
@@ -18,12 +18,13 @@ export default function SmartGatePage() {
     router.push("/dashboard/creator/phase-2/clarifier");
   };
 
-  // ALPHA: the "Explore & Discovery" entry is intentionally hidden so Path-B
-  // (already-have-idea -> clarifier) is the single entry. The Discovery chain
-  // (/phase-2/discovery, ai-processing, idea-cards, idea-confirm, the IdeaGenerator
-  // job, and backend persistence) is RETAINED, just unreachable — it returns
-  // post-alpha once backend step-derivation (2C-2/2C-3) for Discovery steps 2–5
-  // is completed. Do not delete the chain; only this entry card was removed.
+  const handleSelectDiscovery = () => {
+    // Discovery deliberately does NOT set a server-side entry path — the backend
+    // discriminates a Discovery user by persisted working-state (2C-2), and steps
+    // 3–5 resume refresh-safe via the resolver (2C-3). Enter the Discovery form.
+    updateProject({ exists: true });
+    router.push("/dashboard/creator/phase-2/discovery");
+  };
 
   return (
     <div className="w-full flex-1 flex flex-col bg-background text-foreground min-h-screen">
@@ -40,15 +41,15 @@ export default function SmartGatePage() {
           </p>
         </div>
 
-        {/* Entry card — single Path-B option (Discovery entry hidden for alpha) */}
-        <div className="grid grid-cols-1 gap-6 w-full max-w-[420px] mx-auto mb-12">
-          {/* Active Project Refinement */}
+        {/* Choice Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-[760px] mb-12">
+          {/* LEFT CARD — Active Project Refinement */}
           <Card
             onClick={handleSelectRefinement}
-            onMouseEnter={() => setHovered(true)}
-            onMouseLeave={() => setHovered(false)}
+            onMouseEnter={() => setHoveredCard("left")}
+            onMouseLeave={() => setHoveredCard(null)}
             className={`flex flex-col justify-between rounded-2xl border p-6 text-left transition-all duration-300 cursor-pointer ${
-              hovered
+              hoveredCard === "left"
                 ? "border-primary bg-primary/5 shadow-lg shadow-primary/5 -translate-y-0.5"
                 : "border-border bg-card hover:border-primary/40"
             }`}
@@ -63,14 +64,14 @@ export default function SmartGatePage() {
                     Active Project Refinement
                   </h3>
                   <p className="text-xs sm:text-sm leading-relaxed text-muted-foreground">
-                    Bring your defined concept. We&apos;ll use structured logic to sharpen your value proposition.
+                    Choose this if you have a defined concept. We&apos;ll use structured logic to sharpen your value proposition.
                   </p>
                 </div>
               </div>
               <div>
                 <span className="text-[10px] text-muted-foreground block font-semibold uppercase tracking-wider mb-4">About 15 minutes · Strategic focus</span>
                 <Button
-                  variant={hovered ? "default" : "outline"}
+                  variant={hoveredCard === "left" ? "default" : "outline"}
                   className="group w-full rounded-xl py-5 text-xs font-bold sm:text-sm bg-primary text-primary-foreground hover:bg-primary/95"
                 >
                   Let&apos;s sharpen it
@@ -79,6 +80,49 @@ export default function SmartGatePage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* RIGHT CARD — Explore & Discovery */}
+          <Card
+            onClick={handleSelectDiscovery}
+            onMouseEnter={() => setHoveredCard("right")}
+            onMouseLeave={() => setHoveredCard(null)}
+            className={`flex flex-col justify-between rounded-2xl border p-6 text-left transition-all duration-300 cursor-pointer ${
+              hoveredCard === "right"
+                ? "border-amber-500 bg-amber-500/5 shadow-lg shadow-amber-500/5 -translate-y-0.5"
+                : "border-border bg-card hover:border-amber-500/40"
+            }`}
+          >
+            <CardContent className="p-0 flex flex-col justify-between h-full min-h-[260px]">
+              <div className="space-y-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/10 text-amber-500">
+                  <Compass className="h-6 w-6" />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-lg font-bold text-foreground sm:text-xl">
+                    Explore & Discovery
+                  </h3>
+                  <p className="text-xs sm:text-sm leading-relaxed text-muted-foreground">
+                    Not quite sure? We&apos;ll help you connect your interests with real market observations.
+                  </p>
+                </div>
+              </div>
+              <div>
+                <span className="text-[10px] text-muted-foreground block font-semibold uppercase tracking-wider mb-4">Interest mapping · Problem-space discovery</span>
+                <Button
+                  variant={hoveredCard === "right" ? "default" : "outline"}
+                  className="group w-full rounded-xl py-5 text-xs font-bold sm:text-sm border-amber-500 text-amber-500 hover:bg-amber-500/5"
+                >
+                  Help me find it
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Bottom Note */}
+        <div className="w-full max-w-[400px] border-t border-border pt-6 text-xs font-medium text-muted-foreground sm:text-sm">
+          Both paths lead to the same destination. There is no wrong choice.
         </div>
       </main>
     </div>
