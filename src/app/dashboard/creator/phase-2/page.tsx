@@ -19,7 +19,9 @@ export default function SmartGatePage() {
   };
 
   const handleSelectDiscovery = () => {
-    // Discovery has no server-side entry path (only "already_have_idea" exists); just proceed.
+    // Discovery deliberately does NOT set a server-side entry path — the backend
+    // discriminates a Discovery user by persisted working-state (2C-2), and steps
+    // 3–5 resume refresh-safe via the resolver (2C-3). Enter the Discovery form.
     updateProject({ exists: true });
     router.push("/dashboard/creator/phase-2/discovery");
   };

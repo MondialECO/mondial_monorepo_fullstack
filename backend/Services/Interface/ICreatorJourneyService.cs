@@ -42,6 +42,14 @@ namespace WebApp.Services.Interface
             string solution, double clarityScore, List<string> tags, string marketGap = "", string creatorEdge = "");
 
         /// <summary>
+        /// Discovery convergence: map a confirmed Discovery concept onto the project and
+        /// link the concept-seeded clarifier session (so Phase 3's prerequisite passes
+        /// without the clarifier Q&amp;A). Also sets Concept/Category.
+        /// </summary>
+        Task<CreatorJourney> ApplyDiscoveryMappingAsync(
+            string userId, string clarifierSessionId, CreatorDiscoveryConcept concept);
+
+        /// <summary>
         /// Set branding (asset + type + method), optionally persisting the chosen
         /// palette + typography (AI logo tool). Pass null logoAsset to mark
         /// designer-pending / skipped without a delivered logo.
@@ -49,6 +57,15 @@ namespace WebApp.Services.Interface
         Task<CreatorJourney> SetBrandingLogoAsync(
             string userId, string logoAsset, string logoType, string brandingMethod,
             List<string> colorPalette = null, string paletteName = null, string typographyPairing = null);
+
+        /// <summary>Persist Discovery input form (sectors, problem, strengths) via targeted $set.</summary>
+        Task<CreatorJourney> SetDiscoveryInputsAsync(string userId, CreatorDiscoveryInputs inputs);
+
+        /// <summary>Persist AI-generated concepts via targeted $set (async-safe field update).</summary>
+        Task<CreatorJourney> SetGeneratedConceptsAsync(string userId, List<CreatorDiscoveryConcept> concepts);
+
+        /// <summary>Persist the selected concept ID via targeted $set.</summary>
+        Task<CreatorJourney> SetSelectedConceptIdAsync(string userId, string conceptId);
 
         // ---- Phase 3 deterministic modules ----
 

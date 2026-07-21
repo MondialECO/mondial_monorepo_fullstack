@@ -63,6 +63,9 @@ export type BackendCreatorJourney = {
     selectedEntryPath: string | null;
     chatMessages: Array<{ id: string; sender: 'ai' | 'user'; text: string; timestamp: string }>;
     clarifierSessionId: string | null;
+    discoveryInputs?: { sectors?: string[]; observedProblem?: string; strengths?: string[] };
+    generatedConcepts?: Array<{ id: string; title: string; category: string; description: string; score: number; tam: string; saturation: string; similarTo: string; concept: string; targetUser: string; coreProblem: string; solution: string; marketGap: string; founderEdge: string }>;
+    selectedConceptId?: string | null;
   };
   phase3Data: Record<string, unknown>;
   phase4Data: Record<string, unknown>;

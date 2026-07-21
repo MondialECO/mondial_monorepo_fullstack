@@ -75,6 +75,12 @@ namespace WebApp.Models.Dtos
         public string SessionId { get; set; }
     }
 
+    public class FinalizeDiscoveryRequest
+    {
+        // Optional: defaults to the journey's persisted SelectedConceptId.
+        public string ConceptId { get; set; }
+    }
+
     public class NameSuggestionsRequest
     {
         public string Concept { get; set; }

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
 import { creatorAiApi } from "@/lib/api-creator-ai";
+import { creatorJourneyApi } from "@/lib/api-creator-journey";
 import { mapGeneratedIdeas } from "@/lib/creator/map-generated-ideas";
 import type { UiConcept } from "@/lib/creator/map-generated-ideas";
 
@@ -72,6 +73,11 @@ export default function IdeaCardsPage() {
         },
       },
     }));
+
+    // Persist selected concept ID to backend
+    void creatorJourneyApi.saveSelectedConceptId(id).catch((err) => {
+      console.error("Failed to persist selected concept:", err);
+    });
   };
 
   const handleConfirm = () => {

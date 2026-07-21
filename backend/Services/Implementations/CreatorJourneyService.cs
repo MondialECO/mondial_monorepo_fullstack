@@ -163,12 +163,37 @@ namespace WebApp.Services.Implementations
             return s;
         }
 
-        // Phase 2 has only the "already_have_idea" path now (discovery removed).
-        // 6=clarifier, 7=idea-summary, 8=concept-name, 9=branding,
-        // 10=hire-designer, 11=logo-tool, 12=complete.
+        // Phase 2 step derivation.
+        //   2=discovery form, 3=ai-processing, 4=idea-cards, 5=idea-confirm,
+        //   6=clarifier, 7=idea-summary, 8=concept-name, 9=branding,
+        //   10=hire-designer, 11=logo-tool, 12=complete.
+        // Discovery steps 3–5 (2C-2) are derived from the persisted Discovery
+        // working-state (DiscoveryInputs/GeneratedConcepts/SelectedConceptId), but only
+        // for a user actually on the Discovery path. The reliable discriminator is
+        // SelectedEntryPath: the backend only ever stores "already_have_idea" (Path-B);
+        // Discovery leaves it null. We gate on "NOT Path-B" so that a path-switcher —
+        // someone who tried Discovery (leaving stale DiscoveryInputs/GeneratedConcepts)
+        // then chose already-have-idea and is now clarifying — is NOT pulled back into
+        // Discovery by that stale data; they correctly derive to 6 (clarifier). Once
+        // clarified, both entry paths converge into the shared 6+ tail below. Step 2
+        // (blank discovery form) persists no data, so it is not field-derivable — such a
+        // user resolves to the entry/Smart Gate; the field-derivable range here is 3–5.
         private static int DerivePhase2Step(CreatorJourneyProject p, CreatorPhase2Data p2, bool brandingResolved, bool clarified)
         {
-            if (!clarified) return 6;                                   // still clarifying
+            if (!clarified)
+            {
+                // Discovery steps apply only when the user is NOT on Path-B. Path-B is
+                // positively identified by SelectedEntryPath == "already_have_idea".
+                bool onPathB = p2.SelectedEntryPath == "already_have_idea";
+                if (!onPathB)
+                {
+                    // Discovery working-state, newest signal first.
+                    if (!string.IsNullOrWhiteSpace(p2.SelectedConceptId)) return 5;  // concept picked → confirm
+                    if ((p2.GeneratedConcepts?.Count ?? 0) > 0) return 4;            // concepts ready → pick
+                    if (p2.DiscoveryInputs != null) return 3;                        // inputs saved → generating
+                }
+                return 6;                                                            // Path-B / no Discovery → clarifying
+            }
             if (string.IsNullOrEmpty(p.Solution) || string.IsNullOrEmpty(p.Problem)) return 7; // confirm summary
             if (string.IsNullOrWhiteSpace(p.Name)) return 8;            // name the concept
             if (!brandingResolved) return 9;                            // branding decision
@@ -312,6 +337,31 @@ namespace WebApp.Services.Implementations
             return j;
         }
 
+        // Discovery convergence: map a confirmed Discovery concept onto the project and
+        // link the concept-seeded clarifier session (created by the finalize-discovery
+        // endpoint) so the shared tail + Phase 3 prerequisite are satisfied WITHOUT the
+        // clarifier Q&A. Mirrors ApplyClarifierMappingAsync but also sets Concept/Category
+        // (which the concept carries) in a single write. Path-B's mapping is untouched.
+        public async Task<CreatorJourney> ApplyDiscoveryMappingAsync(
+            string userId, string clarifierSessionId, CreatorDiscoveryConcept concept)
+        {
+            var j = await GetOrCreateAsync(userId);
+            var p = j.Project ??= new CreatorJourneyProject();
+            if (!string.IsNullOrWhiteSpace(concept.CoreProblem)) p.Problem = concept.CoreProblem;
+            if (!string.IsNullOrWhiteSpace(concept.TargetUser)) p.TargetUser = concept.TargetUser;
+            if (!string.IsNullOrWhiteSpace(concept.Solution)) p.Solution = concept.Solution;
+            if (!string.IsNullOrWhiteSpace(concept.MarketGap)) p.MarketGap = concept.MarketGap;
+            if (!string.IsNullOrWhiteSpace(concept.FounderEdge)) p.CreatorEdge = concept.FounderEdge;
+            var conceptText = !string.IsNullOrWhiteSpace(concept.Concept) ? concept.Concept : concept.Description;
+            if (!string.IsNullOrWhiteSpace(conceptText)) p.Concept = conceptText;
+            if (!string.IsNullOrWhiteSpace(concept.Category)) { p.Category = concept.Category; p.Tags = new List<string> { concept.Category }; }
+            p.ClarityScore = concept.Score;
+
+            (j.Phase2Data ??= new CreatorPhase2Data()).ClarifierSessionId = clarifierSessionId;
+            await ReplaceAsync(j);
+            return j;
+        }
+
         public async Task<CreatorJourney> SetBrandingLogoAsync(
             string userId, string logoAsset, string logoType, string brandingMethod,
             List<string> colorPalette = null, string paletteName = null, string typographyPairing = null)
@@ -325,6 +375,56 @@ namespace WebApp.Services.Implementations
             if (paletteName != null) b.PaletteName = paletteName;
             if (typographyPairing != null) b.TypographyPairing = typographyPairing;
             await ReplaceAsync(j);
+            return j;
+        }
+
+        // ---- Discovery path working state (independent, targeted $set writes) ----
+
+        public async Task<CreatorJourney> SetDiscoveryInputsAsync(string userId, CreatorDiscoveryInputs inputs)
+        {
+            if (inputs == null)
+                throw new CreatorJourneyException(400, "inputs is required.");
+
+            var j = await GetOrCreateAsync(userId);
+            j.Phase2Data ??= new CreatorPhase2Data();
+            j.Phase2Data.DiscoveryInputs = inputs;
+
+            await _context.CreatorJourneys.UpdateOneAsync(
+                f => f.Id == j.Id,
+                Builders<CreatorJourney>.Update.Set(x => x.Phase2Data.DiscoveryInputs, inputs));
+
+            return j;
+        }
+
+        public async Task<CreatorJourney> SetGeneratedConceptsAsync(string userId, List<CreatorDiscoveryConcept> concepts)
+        {
+            if (concepts == null)
+                throw new CreatorJourneyException(400, "concepts is required.");
+
+            var j = await GetOrCreateAsync(userId);
+            j.Phase2Data ??= new CreatorPhase2Data();
+            j.Phase2Data.GeneratedConcepts = concepts;
+
+            await _context.CreatorJourneys.UpdateOneAsync(
+                f => f.Id == j.Id,
+                Builders<CreatorJourney>.Update.Set(x => x.Phase2Data.GeneratedConcepts, concepts));
+
+            return j;
+        }
+
+        public async Task<CreatorJourney> SetSelectedConceptIdAsync(string userId, string conceptId)
+        {
+            if (string.IsNullOrWhiteSpace(conceptId))
+                throw new CreatorJourneyException(400, "conceptId is required.");
+
+            var j = await GetOrCreateAsync(userId);
+            j.Phase2Data ??= new CreatorPhase2Data();
+            j.Phase2Data.SelectedConceptId = conceptId;
+
+            await _context.CreatorJourneys.UpdateOneAsync(
+                f => f.Id == j.Id,
+                Builders<CreatorJourney>.Update.Set(x => x.Phase2Data.SelectedConceptId, conceptId));
+
             return j;
         }
 

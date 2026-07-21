@@ -41,7 +41,7 @@ function DomainCheck({ name }: { name: string }) {
 
 export default function ConceptNamePage() {
   const router = useRouter();
-  const { state, setState } = useCreatorProgress();
+  const { state, isLoading, error, refetch, setState } = useCreatorProgress();
 
   const [selectedSuggestion, setSelectedSuggestion] = useState<number | null>(null);
   const [customName, setCustomName] = useState("");
@@ -166,6 +166,26 @@ export default function ConceptNamePage() {
 
     router.push("/dashboard/creator/phase-2/branding");
   };
+
+  // Gate: don't render real content until backend hydration completes.
+  if (isLoading) {
+    return (
+      <div className="w-full flex-1 flex flex-col bg-background text-foreground min-h-screen items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <p className="mt-4 text-sm text-muted-foreground">Loading your project...</p>
+      </div>
+    );
+  }
+
+  // Hydration failed — show an honest error/retry state, never empty data as if real.
+  if (error) {
+    return (
+      <div className="w-full flex-1 flex flex-col bg-background text-foreground min-h-screen items-center justify-center gap-3">
+        <p className="text-destructive text-sm">Couldn&apos;t load your data. Please try again.</p>
+        <Button variant="outline" size="sm" onClick={() => refetch()}>Retry</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full flex-1 flex flex-col bg-background text-foreground min-h-screen">

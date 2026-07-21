@@ -8,6 +8,7 @@ using System.Security.Claims;
 using WebApp.DbContext;
 using WebApp.Models;
 using WebApp.Models.DatabaseModels;
+using WebApp.Models.DatabaseModels.Ai;
 using WebApp.Models.Dtos;
 using WebApp.Services;
 using WebApp.Services.Implementations;
@@ -172,6 +173,130 @@ namespace WebApp.Controllers
             catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
         }
 
+        // POST /api/creator/journey/phase2/finalize-discovery
+        // Discovery convergence: the user has confirmed an AI-generated concept, so the
+        // clarifier Q&A is redundant. We seed a COMPLETED clarifier session directly from
+        // the concept (its Output satisfies the C-3 prerequisite — BusinessPlanController
+        // requires a completed session with Output), map the concept onto the project, and
+        // link the session. No AI call, no clarifier UI. Path-B's finalize-clarifier is
+        // untouched. The user proceeds to idea-summary → name → branding → Phase 3.
+        [HttpPost("finalize-discovery")]
+        public async Task<IActionResult> FinalizeDiscovery([FromBody] FinalizeDiscoveryRequest request)
+        {
+            try
+            {
+                var userId = GetUserId();
+
+                var journey = await _journeys.GetOrCreateAsync(userId);
+                var p2 = journey.Phase2Data;
+                var conceptId = !string.IsNullOrWhiteSpace(request?.ConceptId)
+                    ? request.ConceptId
+                    : p2?.SelectedConceptId;
+                if (string.IsNullOrWhiteSpace(conceptId))
+                    return BadRequest(ApiResponse.Error("No selected concept to finalize."));
+
+                var concept = p2?.GeneratedConcepts?.FirstOrDefault(c => c.Id == conceptId);
+                if (concept is null)
+                    return NotFound(ApiResponse.Error("Selected concept not found."));
+
+                // Build the ClarifierOutput contract straight from the concept.
+                var clarityScore = Math.Clamp((int)Math.Round(concept.Score), 0, 100);
+
+                // Map every piece of concept data into the Output so a Discovery plan is
+                // grounded comparably to a Path-B (clarifier) plan. painPoints, severity,
+                // audience characteristics, and sizeQualitative stay empty: the concept
+                // carries no equivalent, and the contract forbids a specific figure in
+                // sizeQualitative (the TAM lives in assumptions instead). Optional fields
+                // degrade gracefully when absent.
+                var valueProp = !string.IsNullOrWhiteSpace(concept.Description)
+                    ? concept.Description : (concept.MarketGap ?? "");
+
+                var existingAlternatives = new BsonArray();
+                if (!string.IsNullOrWhiteSpace(concept.SimilarTo))
+                    existingAlternatives.Add(new BsonDocument
+                    {
+                        { "name", concept.SimilarTo },
+                        { "gap", concept.MarketGap ?? "" },
+                    });
+
+                var riskAssessment = new BsonArray();
+                if (!string.IsNullOrWhiteSpace(concept.Saturation))
+                {
+                    var sat = concept.Saturation.Trim().ToLowerInvariant();
+                    var likelihood = sat.Contains("high") ? "high" : sat.Contains("low") ? "low" : "medium";
+                    riskAssessment.Add(new BsonDocument
+                    {
+                        { "category", "Market competition" },
+                        { "description", $"Competitor saturation assessed as {concept.Saturation}." },
+                        { "likelihood", likelihood },
+                        { "mitigation", concept.FounderEdge ?? "" },
+                    });
+                }
+
+                var assumptions = new BsonArray();
+                if (!string.IsNullOrWhiteSpace(concept.Tam))
+                    assumptions.Add($"Assumes a total addressable market of approximately {concept.Tam}.");
+
+                var tags = new BsonArray();
+                if (!string.IsNullOrWhiteSpace(concept.Category)) tags.Add(concept.Category);
+                if (!string.IsNullOrWhiteSpace(concept.Saturation)) tags.Add($"saturation:{concept.Saturation}");
+
+                var output = new BsonDocument
+                {
+                    { "schemaVersion", 1 },
+                    { "problemDefinition", new BsonDocument
+                        {
+                            { "statement", concept.CoreProblem ?? "" },
+                            { "painPoints", new BsonArray() },   // no concept source
+                            { "severity", "" },                  // no concept source
+                        } },
+                    { "targetAudience", new BsonDocument
+                        {
+                            { "primarySegment", concept.TargetUser ?? "" },
+                            { "characteristics", new BsonArray() }, // no concept source
+                            { "sizeQualitative", "" },              // contract forbids a figure; TAM is in assumptions
+                        } },
+                    { "existingAlternatives", existingAlternatives },
+                    { "proposedSolution", new BsonDocument
+                        {
+                            { "summary", concept.Solution ?? "" },
+                            { "differentiation", concept.FounderEdge ?? "" },
+                            { "valueProposition", valueProp },
+                        } },
+                    { "riskAssessment", riskAssessment },
+                    { "assumptions", assumptions },
+                    { "clarityScore", clarityScore },
+                    { "clarityRationale", string.IsNullOrWhiteSpace(concept.Category)
+                        ? "Derived from an AI-generated Discovery concept the founder confirmed."
+                        : $"Derived from an AI-generated Discovery concept the founder confirmed (category: {concept.Category})." },
+                    { "tags", tags },
+                };
+
+                // Seed a completed clarifier session (source of truth for C-3).
+                var session = new ClarifierSession
+                {
+                    OwnerUserId = userId,
+                    BusinessIdeaId = journey.BusinessIdeaId,
+                    Status = "Completed",
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                };
+                await _clarifier.AddAsync(session);                       // assigns ObjectId
+                await _clarifier.SetCompletedAsync(session.Id, output, clarityScore);
+
+                var updated = await _journeys.ApplyDiscoveryMappingAsync(userId, session.Id, concept);
+
+                return Ok(ApiResponse.Ok("Discovery finalized", new
+                {
+                    clarifierSessionId = session.Id,
+                    clarityScore,
+                    project = updated.Project,
+                }));
+            }
+            catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
+            catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
+        }
+
         // POST /api/creator/journey/phase2/name-suggestions
         // Synchronous. 3 per journey lifetime (Redis permanent counter). Deterministic
         // generator (no generic suffixes); LLM wiring is a follow-up.
@@ -254,6 +379,90 @@ namespace WebApp.Controllers
                 return Ok(ApiResponse.Ok("Branding skipped", new { branding = journey.Project?.Branding }));
             }
             catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
+            catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
+        }
+
+        // ---- Discovery path working state (independent targeted $set writes) ----
+
+        // POST /api/creator/journey/phase2/discovery-inputs
+        // Persist Discovery input form (sectors, problem, strengths) at step 2.
+        [HttpPost("discovery-inputs")]
+        public async Task<IActionResult> SaveDiscoveryInputs([FromBody] SaveDiscoveryInputsRequest request)
+        {
+            try
+            {
+                var userId = GetUserId();
+                if (request?.Inputs == null)
+                    return BadRequest(ApiResponse.Error("inputs is required."));
+
+                var inputs = new CreatorDiscoveryInputs
+                {
+                    Sectors = request.Inputs.Sectors ?? new List<string>(),
+                    ObservedProblem = request.Inputs.ObservedProblem ?? string.Empty,
+                    Strengths = request.Inputs.Strengths ?? new List<string>(),
+                };
+
+                var journey = await _journeys.SetDiscoveryInputsAsync(userId, inputs);
+                return Ok(ApiResponse.Ok("Discovery inputs saved", new { phase2Data = journey.Phase2Data }));
+            }
+            catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
+            catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
+            catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
+        }
+
+        // POST /api/creator/journey/phase2/generated-concepts
+        // Persist AI-generated concepts after generation completes (step 3).
+        [HttpPost("generated-concepts")]
+        public async Task<IActionResult> SaveGeneratedConcepts([FromBody] SaveGeneratedConceptsRequest request)
+        {
+            try
+            {
+                var userId = GetUserId();
+                if (request?.Concepts == null || request.Concepts.Count == 0)
+                    return BadRequest(ApiResponse.Error("concepts array is required."));
+
+                var concepts = request.Concepts.Select(c => new CreatorDiscoveryConcept
+                {
+                    Id = c.Id,
+                    Title = c.Title,
+                    Category = c.Category,
+                    Description = c.Description,
+                    Score = c.Score,
+                    Tam = c.Tam,
+                    Saturation = c.Saturation,
+                    SimilarTo = c.SimilarTo,
+                    Concept = c.Concept,
+                    TargetUser = c.TargetUser,
+                    CoreProblem = c.CoreProblem,
+                    Solution = c.Solution,
+                    MarketGap = c.MarketGap,
+                    FounderEdge = c.FounderEdge,
+                }).ToList();
+
+                var journey = await _journeys.SetGeneratedConceptsAsync(userId, concepts);
+                return Ok(ApiResponse.Ok("Concepts saved", new { phase2Data = journey.Phase2Data }));
+            }
+            catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
+            catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
+            catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
+        }
+
+        // POST /api/creator/journey/phase2/selected-concept
+        // Persist the selected concept ID when user picks (step 4).
+        [HttpPost("selected-concept")]
+        public async Task<IActionResult> SaveSelectedConceptId([FromBody] SaveSelectedConceptIdRequest request)
+        {
+            try
+            {
+                var userId = GetUserId();
+                if (string.IsNullOrWhiteSpace(request?.ConceptId))
+                    return BadRequest(ApiResponse.Error("conceptId is required."));
+
+                var journey = await _journeys.SetSelectedConceptIdAsync(userId, request.ConceptId);
+                return Ok(ApiResponse.Ok("Concept selected", new { phase2Data = journey.Phase2Data }));
+            }
+            catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
+            catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
             catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
         }
 
@@ -365,6 +574,53 @@ namespace WebApp.Controllers
                 $"Ze{stem.ToLowerInvariant()}",
                 $"{stem}mint",
             };
+        }
+
+        // ---- Request DTOs ----
+
+        public class ChatMessageRequest { public string Message { get; set; } }
+        public class FinalizeClarifierRequest { public string SessionId { get; set; } }
+        public class NameSuggestionsRequest { public string Concept { get; set; } }
+        public class BookDesignerRequest { public string SpId { get; set; } }
+
+        public class SaveDiscoveryInputsRequest
+        {
+            public DiscoveryInputsDto Inputs { get; set; }
+        }
+
+        public class DiscoveryInputsDto
+        {
+            public List<string> Sectors { get; set; }
+            public string ObservedProblem { get; set; }
+            public List<string> Strengths { get; set; }
+        }
+
+        public class SaveGeneratedConceptsRequest
+        {
+            public List<DiscoveryConceptDto> Concepts { get; set; }
+        }
+
+        public class DiscoveryConceptDto
+        {
+            public string Id { get; set; }
+            public string Title { get; set; }
+            public string Category { get; set; }
+            public string Description { get; set; }
+            public double Score { get; set; }
+            public string Tam { get; set; }
+            public string Saturation { get; set; }
+            public string SimilarTo { get; set; }
+            public string Concept { get; set; }
+            public string TargetUser { get; set; }
+            public string CoreProblem { get; set; }
+            public string Solution { get; set; }
+            public string MarketGap { get; set; }
+            public string FounderEdge { get; set; }
+        }
+
+        public class SaveSelectedConceptIdRequest
+        {
+            public string ConceptId { get; set; }
         }
     }
 }

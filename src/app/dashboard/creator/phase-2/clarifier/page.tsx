@@ -21,6 +21,11 @@ import { creatorAiApi } from "@/lib/api-creator-ai";
 import { creatorJourneyApi } from "@/lib/api-creator-journey";
 import { isTerminalStatus } from "@/types/creator/ai";
 import { toAiError } from "@/lib/ai-errors";
+import {
+  POLL_INTERVAL_MS as SHARED_POLL_INTERVAL_MS,
+  POLL_MAX_ATTEMPTS as SHARED_POLL_MAX_ATTEMPTS,
+  POLL_MAX_MS,
+} from "@/hooks/queries/creator-ai";
 
 type Message = {
   id: string;
@@ -41,6 +46,9 @@ type CanvasBlock = {
 const OPENER =
   "Welcome. Tell me your idea — in your own words, however rough it is. What problem are you solving?";
 const TOTAL_QUESTIONS = 6;
+// TODO (R12-consolidation): Replace with shared POLL_INTERVAL_MS / POLL_MAX_ATTEMPTS from creator-ai.ts
+// This page currently hardcodes 100 attempts (≈4.2min) instead of the canonical 60/3-min policy.
+// New code (retry path, below) uses the shared policy; this will be fixed in a separate consolidation change.
 const POLL_INTERVAL_MS = 2500;
 const MAX_POLL_ATTEMPTS = 100;
 
@@ -99,6 +107,34 @@ export default function AIClarifierPage() {
       setMessages(initialMsgs);
       setCurrentStep(1);
       setIdeaScore(0);
+
+      // Pre-seed from Discovery concept if available (cosmetic UX only, seed is not used for rawIdea creation)
+      const selectedConceptId = state.journeyState?.phase2?.selectedConceptId;
+      const concepts = state.journeyState?.phase2?.generatedConcepts ?? [];
+      const discoveredConcept = concepts.find((c) => c.id === selectedConceptId);
+
+      if (discoveredConcept) {
+        // Pre-populate canvas blocks with concept fields for Discovery users
+        const conceptData = {
+          concept: discoveredConcept.concept || "",
+          targetUser: discoveredConcept.targetUser || "",
+          problem: discoveredConcept.coreProblem || "",
+          solution: discoveredConcept.solution || "",
+          creatorEdge: discoveredConcept.founderEdge || "",
+        };
+        setCanvasBlocks((prev) =>
+          prev.map((block) => {
+            const seedValue = conceptData[block.key as keyof typeof conceptData] || "";
+            return {
+              ...block,
+              value: seedValue ? (seedValue.length > 30 ? seedValue.substring(0, 28) + "..." : seedValue) : "",
+            };
+          })
+        );
+        // Pre-fill journal with concept title
+        if (discoveredConcept.title) setJournalText(discoveredConcept.title);
+      }
+
       setState((prev) => ({
         ...prev,
         journeyState: {
@@ -110,7 +146,7 @@ export default function AIClarifierPage() {
         },
       }));
     }
-  }, [state.journeyState?.phase2?.chatMessages, setState]);
+  }, [state.journeyState?.phase2?.chatMessages, state.journeyState?.phase2?.selectedConceptId, state.journeyState?.phase2?.generatedConcepts, setState]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -204,6 +240,23 @@ export default function AIClarifierPage() {
     return null;
   };
 
+  // Poll for retry using the shared R12 timeout policy (60 attempts / 3 minutes wall-clock).
+  // Used when aiParseFailed=true and user clicks "Try again" to start a fresh clarifier session.
+  const pollClarifierWithR12 = async (sessionId: string) => {
+    const startTime = Date.now();
+    for (let i = 0; i < SHARED_POLL_MAX_ATTEMPTS; i++) {
+      const session = await creatorAiApi.getClarifier(sessionId);
+      if (isTerminalStatus(session.status)) return session;
+
+      // Check wall-clock timeout (3 minutes)
+      const elapsed = Date.now() - startTime;
+      if (elapsed >= POLL_MAX_MS) return null;
+
+      await new Promise((r) => setTimeout(r, SHARED_POLL_INTERVAL_MS));
+    }
+    return null;
+  };
+
   const handleComplete = async () => {
     if (finalizing) return;
     setFinalizeError(null);
@@ -226,6 +279,16 @@ export default function AIClarifierPage() {
       // finalize-clarifier is tolerant of a partial/failed output (falls back to a
       // 50 clarity score + editable summary), so we map on any terminal status.
       const result = await creatorJourneyApi.finalizeClarifier(sessionId);
+
+      // If the AI output couldn't be parsed, show an honest error and allow retry.
+      // Do NOT navigate or spread empty fields into state on parse failure.
+      if (result.aiParseFailed) {
+        setFinalizeError(
+          "We couldn't process that just now. Please try again, or reword your idea and resubmit."
+        );
+        setFinalizing(false);
+        return;
+      }
 
       // Compute final values with proper fallbacks BEFORE spreading result.project
       const firstAnswer = answers[0]?.trim() || "";
@@ -451,31 +514,52 @@ export default function AIClarifierPage() {
                   Press Enter to send · Shift+Enter for new line
                 </span>
               </>
-            ) : (
+            ) : finalizeError ? (
+              /* ERROR + RETRY — never shown alongside the success header */
               <div className="w-full flex flex-col items-center gap-3 py-4 text-center">
-                <div className="w-11 h-11 rounded-full bg-green-100 dark:bg-green-950/30 flex items-center justify-center text-green-600 dark:text-green-400">
-                  <Check className="w-5 h-5" strokeWidth={3} />
+                <div className="w-11 h-11 rounded-full bg-destructive/10 flex items-center justify-center text-destructive">
+                  <X className="w-5 h-5" strokeWidth={3} />
                 </div>
-                <h3 className="font-bold text-foreground text-sm">Idea Clarified Successfully!</h3>
-                {finalizeError && (
-                  <p className="text-xs text-destructive max-w-xs">{finalizeError}</p>
-                )}
+                <h3 className="font-bold text-foreground text-sm">We couldn&apos;t finish that</h3>
+                <p className="text-xs text-destructive max-w-xs">{finalizeError}</p>
                 <Button
                   onClick={handleComplete}
                   disabled={finalizing}
                   className="font-semibold py-2.5 px-6 rounded-xl flex items-center gap-2 text-xs shadow-sm disabled:opacity-60"
                 >
-                  {finalizing ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Building your summary…
-                    </>
-                  ) : (
-                    <>
-                      {finalizeError ? "Try again" : "Proceed to Concept & Name"}
-                      <ArrowRight className="h-4 w-4" />
-                    </>
-                  )}
+                  Try again
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : finalizing ? (
+              /* PROCESSING — finalize in progress */
+              <div className="w-full flex flex-col items-center gap-3 py-4 text-center">
+                <div className="w-11 h-11 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                </div>
+                <h3 className="font-bold text-foreground text-sm">Clarifying your idea…</h3>
+                <Button
+                  disabled
+                  className="font-semibold py-2.5 px-6 rounded-xl flex items-center gap-2 text-xs shadow-sm disabled:opacity-60"
+                >
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Building your summary…
+                </Button>
+              </div>
+            ) : (
+              /* READY — chat complete, ready to finalize (navigates away on success) */
+              <div className="w-full flex flex-col items-center gap-3 py-4 text-center">
+                <div className="w-11 h-11 rounded-full bg-green-100 dark:bg-green-950/30 flex items-center justify-center text-green-600 dark:text-green-400">
+                  <Check className="w-5 h-5" strokeWidth={3} />
+                </div>
+                <h3 className="font-bold text-foreground text-sm">Idea clarified — ready to continue</h3>
+                <Button
+                  onClick={handleComplete}
+                  disabled={finalizing}
+                  className="font-semibold py-2.5 px-6 rounded-xl flex items-center gap-2 text-xs shadow-sm disabled:opacity-60"
+                >
+                  Proceed to Concept &amp; Name
+                  <ArrowRight className="h-4 w-4" />
                 </Button>
               </div>
             )}

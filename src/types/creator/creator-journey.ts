@@ -32,10 +32,14 @@ export interface PhaseState {
   startedAt?: string;
   lastSavedAt?: string;
   completedAt?: string;
-  // Discovery path removed — only "already_have_idea" remains.
+  // ALPHA: Discovery entry is hidden, so "already_have_idea" is the only entry
+  // path set today. The Discovery chain is retained (unreachable) for post-alpha;
+  // the server-side entry path enum stays single-valued until it returns.
   selectedEntryPath?: 'already_have_idea' | null;
+  // Clarifier session ID (backend-authoritative; used by Phase 3 to validate completion).
+  clarifierSessionId?: string | null;
   // Conversational clarifier transcript (persisted to CreatorJourneys.phase2Data).
-  chatMessages?: Array<{ id: string; sender: 'ai' | 'user'; text: string }>;
+  chatMessages?: Array<{ id: string; sender: 'ai' | 'user'; text: string; timestamp?: string }>;
   // Phase-2 client-cached working state (not backend-authoritative; survives via
   // the localStorage draft). Populated by the Discovery + Naming flows.
   generatedConcepts?: Phase2Concept[];

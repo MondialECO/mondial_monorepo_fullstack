@@ -1,63 +1,56 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Sparkles, ArrowLeft, ArrowRight, Target, Compass, Heart, Rocket, AlertTriangle } from "lucide-react";
+import { useState } from "react";
+import { Sparkles, ArrowLeft, ArrowRight, Target, Compass, Heart, Rocket, AlertTriangle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
 import { creatorJourneyApi } from "@/lib/api-creator-journey";
+import { toAiError } from "@/lib/ai-errors";
 
 export default function IdeaConfirmPage() {
   const router = useRouter();
   const { state, setState } = useCreatorProgress();
+  const [finalizing, setFinalizing] = useState(false);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
 
   const selectedConceptId = state.journeyState?.phase2?.selectedConceptId;
   const concepts = state.journeyState?.phase2?.generatedConcepts ?? [];
   const concept = concepts.find((c) => c.id === selectedConceptId);
 
-  const handleConfirm = () => {
-    if (!concept) return;
-    // Persist the chosen concept to the backend project (source of truth).
-    void creatorJourneyApi
-      .updateProject({
-        concept: concept.concept || concept.description,
-        targetUser: concept.targetUser || "",
-        problem: concept.coreProblem || "",
-        solution: concept.solution || "",
-        marketGap: concept.marketGap || "",
-        creatorEdge: concept.founderEdge || "",
-        category: concept.category || "",
-        clarityScore: concept.score || 0,
-      })
-      .catch(() => {
-        /* optimistic local state below still advances the UI */
-      });
+  const handleConfirm = async () => {
+    if (!concept || finalizing) return;
+    setConfirmError(null);
+    setFinalizing(true);
+    try {
+      // Discovery skips the clarifier: the backend seeds a completed clarifier session
+      // from this concept (satisfying the Phase 3 prerequisite) and maps it onto the
+      // project. On success we go straight to the idea-summary → name → branding tail.
+      const result = await creatorJourneyApi.finalizeDiscovery(concept.id);
 
-    // Save concept to project state
-    setState((prev) => ({
-      ...prev,
-      journeyState: {
-        ...prev.journeyState,
-        phase2: {
-          ...prev.journeyState.phase2,
-          currentStep: 7,
+      setState((prev) => ({
+        ...prev,
+        journeyState: {
+          ...prev.journeyState,
+          phase2: {
+            ...prev.journeyState.phase2,
+            clarifierSessionId: result.clarifierSessionId,
+            currentStep: 7,
+          },
         },
-      },
-      project: {
-        ...prev.project,
-        concept: concept.concept || concept.description,
-        targetUser: concept.targetUser || "",
-        problem: concept.coreProblem || "",
-        solution: concept.solution || "",
-        marketGap: concept.marketGap || "",
-        creatorEdge: concept.founderEdge || "",
-        category: concept.category || "",
-        clarityScore: concept.score || 0,
-        exists: true,
-      },
-    }));
+        project: {
+          ...prev.project,
+          ...(result.project || {}),
+          exists: true,
+        },
+      }));
 
-    router.push("/dashboard/creator/phase-2/idea-summary");
+      router.push("/dashboard/creator/phase-2/idea-summary");
+    } catch (err) {
+      setConfirmError(toAiError(err).message);
+      setFinalizing(false);
+    }
   };
 
   return (
@@ -217,22 +210,38 @@ export default function IdeaConfirmPage() {
 
         {/* Action Panel */}
         {concept && (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-border pt-6">
-          <Button
-            variant="ghost"
-            className="text-xs font-bold text-muted-foreground hover:text-foreground rounded-xl"
-            onClick={() => router.push("/dashboard/creator/phase-2/idea-cards")}
-          >
-            Change My Idea
-          </Button>
+        <div className="flex flex-col gap-3 border-t border-border pt-6">
+          {confirmError && (
+            <p className="text-xs text-destructive text-center sm:text-right">{confirmError}</p>
+          )}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <Button
+              variant="ghost"
+              disabled={finalizing}
+              className="text-xs font-bold text-muted-foreground hover:text-foreground rounded-xl"
+              onClick={() => router.push("/dashboard/creator/phase-2/idea-cards")}
+            >
+              Change My Idea
+            </Button>
 
-          <Button
-            onClick={handleConfirm}
-            className="rounded-xl px-6 py-5 text-sm font-bold bg-primary text-primary-foreground hover:bg-primary/95 flex items-center gap-2"
-          >
-            Let’s go — Name my project
-            <ArrowRight className="h-4 w-4" />
-          </Button>
+            <Button
+              onClick={handleConfirm}
+              disabled={finalizing}
+              className="rounded-xl px-6 py-5 text-sm font-bold bg-primary text-primary-foreground hover:bg-primary/95 flex items-center gap-2 disabled:opacity-60"
+            >
+              {finalizing ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Confirming…
+                </>
+              ) : (
+                <>
+                  {confirmError ? "Try again" : "Confirm & continue"}
+                  <ArrowRight className="h-4 w-4" />
+                </>
+              )}
+            </Button>
+          </div>
         </div>
         )}
 

@@ -31,6 +31,11 @@ secrets.json
 # Key ring is persisted to disk only in Development; production uses Redis.
 .dataprotection-keys/
 
+# ---- Stray temp copies (never commit; e.g. editor/scanner atomic-write temps) ----
+*.tmp
+*.tmp.*
+appsettings.json.tmp.*
+
 # ---- Misc ----
 *.log
 Thumbs.db

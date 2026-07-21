@@ -2,56 +2,19 @@
 #   - .pre-commit-config.yaml (developer machine)
 #   - .github/workflows/secret-scan.yml (CI)
 #
-# Extends the upstream default ruleset; do not REPLACE it. The custom
-# rules below catch re-introduction of the specific tokens that leaked
-# pre-SEC-01 so the project never regresses to that state.
+# Extends the upstream default ruleset; do not REPLACE it.
+#
+# NOTE (SEC-01): This config MUST NOT contain raw secret values. The
+# historical pre-SEC-01 tokens that once leaked have been rotated and
+# purged from the entire git history. Detection of NEW secrets relies on
+# the upstream default ruleset (useDefault = true), which catches the same
+# credential shapes (Mongo URIs, JWT keys, Twilio SIDs/tokens, SMTP creds)
+# without embedding any literal secret in this file.
 
 title = "Mondial gitleaks config"
 
 [extend]
 useDefault = true
-
-# --- Custom rules: tripwires for historically-leaked tokens ---------------
-# Any commit that re-introduces one of these specific strings fails the
-# scan immediately, regardless of file extension. Values are kept here
-# (intentionally) so they are detectable; they are not live secrets any
-# longer once rotation completes (see SEC-01 follow-up).
-
-[[rules]]
-id      = "mondial-historical-mongo-password"
-description = "Pre-SEC-01 Mongo Atlas user password (rotated; must never reappear)"
-regex   = '''hr11100010'''
-tags    = ["mondial", "historical-leak"]
-
-[[rules]]
-id      = "mondial-historical-jwt-key"
-description = "Pre-SEC-01 weak JWT signing key string (rotated; must never reappear)"
-regex   = '''SuperSecretKey1234567890'''
-tags    = ["mondial", "historical-leak"]
-
-[[rules]]
-id      = "mondial-historical-smtp-password"
-description = "Pre-SEC-01 SMTP password (rotated; must never reappear)"
-regex   = '''Sirajul700\.23'''
-tags    = ["mondial", "historical-leak"]
-
-[[rules]]
-id      = "mondial-historical-twilio-sid"
-description = "Pre-SEC-01 Twilio AccountSid (rotated; must never reappear)"
-regex   = '''AC53230babcb99f25e62647d5e5065c17d'''
-tags    = ["mondial", "historical-leak"]
-
-[[rules]]
-id      = "mondial-historical-twilio-token"
-description = "Pre-SEC-01 Twilio AuthToken (rotated; must never reappear)"
-regex   = '''e6a5cb58f62689cb198535ca9d100092'''
-tags    = ["mondial", "historical-leak"]
-
-[[rules]]
-id      = "mondial-atlas-cluster-id"
-description = "Production Atlas cluster identifier (deployment topology leak)"
-regex   = '''cluster0\.nsfffx4'''
-tags    = ["mondial", "topology-leak"]
 
 # --- Allowlist: documented false positives -------------------------------
 # These paths and patterns are known-safe. Anything not listed here will
@@ -61,9 +24,6 @@ tags    = ["mondial", "topology-leak"]
 description = "Mondial allowlist"
 
 paths = [
-    '''(^|/)\.gitleaks\.toml$''',        # This config holds the historical
-                                         # token strings as detection rules;
-                                         # scanning it would self-match.
     '''(^|/)docs/archive/''',            # Historical / archived docs
     '''(^|/)node_modules/''',
     '''(^|/)\.next/''',
