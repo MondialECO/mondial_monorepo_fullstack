@@ -42,6 +42,14 @@ namespace WebApp.Services.Interface
             string solution, double clarityScore, List<string> tags, string marketGap = "", string creatorEdge = "");
 
         /// <summary>
+        /// Discovery convergence: map a confirmed Discovery concept onto the project and
+        /// link the concept-seeded clarifier session (so Phase 3's prerequisite passes
+        /// without the clarifier Q&amp;A). Also sets Concept/Category.
+        /// </summary>
+        Task<CreatorJourney> ApplyDiscoveryMappingAsync(
+            string userId, string clarifierSessionId, CreatorDiscoveryConcept concept);
+
+        /// <summary>
         /// Set branding (asset + type + method), optionally persisting the chosen
         /// palette + typography (AI logo tool). Pass null logoAsset to mark
         /// designer-pending / skipped without a delivered logo.
