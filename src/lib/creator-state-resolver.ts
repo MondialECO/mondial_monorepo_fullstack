@@ -21,8 +21,12 @@ export function getNextCreatorAction(state: CreatorJourneyState): NextAction {
   }
 
   // Phase 2 Check: Project Identity.
-  // Discovery path removed — Phase 2 starts at the clarifier (step 6).
-  // Steps 2–5 (discovery / ai-processing / idea-cards / idea-confirm) no longer exist.
+  // ALPHA: the Discovery entry (steps 2–5: discovery / ai-processing / idea-cards /
+  // idea-confirm) is hidden — the chain code is retained but unreachable, so this
+  // resolver only maps the Path-B steps (6–12). Any legacy/unmapped step below 6
+  // falls through to the Smart Gate default, and backend step-derivation resolves an
+  // unclarified user to step 6 (clarifier) — never a broken Discovery mid-state.
+  // Discovery mapping returns post-alpha with backend derivation (2C-2/2C-3).
   if (state.phase2.status !== 'completed') {
     const step = state.phase2.currentStep;
     let route = '/dashboard/creator/phase-2';
