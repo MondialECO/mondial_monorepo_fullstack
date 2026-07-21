@@ -337,6 +337,31 @@ namespace WebApp.Services.Implementations
             return j;
         }
 
+        // Discovery convergence: map a confirmed Discovery concept onto the project and
+        // link the concept-seeded clarifier session (created by the finalize-discovery
+        // endpoint) so the shared tail + Phase 3 prerequisite are satisfied WITHOUT the
+        // clarifier Q&A. Mirrors ApplyClarifierMappingAsync but also sets Concept/Category
+        // (which the concept carries) in a single write. Path-B's mapping is untouched.
+        public async Task<CreatorJourney> ApplyDiscoveryMappingAsync(
+            string userId, string clarifierSessionId, CreatorDiscoveryConcept concept)
+        {
+            var j = await GetOrCreateAsync(userId);
+            var p = j.Project ??= new CreatorJourneyProject();
+            if (!string.IsNullOrWhiteSpace(concept.CoreProblem)) p.Problem = concept.CoreProblem;
+            if (!string.IsNullOrWhiteSpace(concept.TargetUser)) p.TargetUser = concept.TargetUser;
+            if (!string.IsNullOrWhiteSpace(concept.Solution)) p.Solution = concept.Solution;
+            if (!string.IsNullOrWhiteSpace(concept.MarketGap)) p.MarketGap = concept.MarketGap;
+            if (!string.IsNullOrWhiteSpace(concept.FounderEdge)) p.CreatorEdge = concept.FounderEdge;
+            var conceptText = !string.IsNullOrWhiteSpace(concept.Concept) ? concept.Concept : concept.Description;
+            if (!string.IsNullOrWhiteSpace(conceptText)) p.Concept = conceptText;
+            if (!string.IsNullOrWhiteSpace(concept.Category)) { p.Category = concept.Category; p.Tags = new List<string> { concept.Category }; }
+            p.ClarityScore = concept.Score;
+
+            (j.Phase2Data ??= new CreatorPhase2Data()).ClarifierSessionId = clarifierSessionId;
+            await ReplaceAsync(j);
+            return j;
+        }
+
         public async Task<CreatorJourney> SetBrandingLogoAsync(
             string userId, string logoAsset, string logoType, string brandingMethod,
             List<string> colorPalette = null, string paletteName = null, string typographyPairing = null)

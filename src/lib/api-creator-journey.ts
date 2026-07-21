@@ -91,6 +91,14 @@ export const creatorJourneyApi = {
     return unwrap<FinalizeClarifierResult>(res.data);
   },
 
+  // Discovery convergence: seed a completed clarifier session from the confirmed
+  // concept (satisfies the Phase 3 prerequisite) and map it onto the project.
+  // conceptId is optional — the backend defaults to the persisted SelectedConceptId.
+  finalizeDiscovery: async (conceptId?: string): Promise<FinalizeDiscoveryResult> => {
+    const res = await api.post('/creator/journey/phase2/finalize-discovery', { conceptId });
+    return unwrap<FinalizeDiscoveryResult>(res.data);
+  },
+
   nameSuggestions: async (concept: string): Promise<{ names: string[] }> => {
     const res = await api.post('/creator/journey/phase2/name-suggestions', { concept });
     return unwrap<{ names: string[] }>(res.data);
@@ -366,6 +374,12 @@ export interface ChatMessageResult {
 
 export interface FinalizeClarifierResult {
   aiParseFailed: boolean;
+  clarityScore: number;
+  project: Record<string, unknown>;
+}
+
+export interface FinalizeDiscoveryResult {
+  clarifierSessionId: string;
   clarityScore: number;
   project: Record<string, unknown>;
 }

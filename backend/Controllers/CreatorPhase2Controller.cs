@@ -8,6 +8,7 @@ using System.Security.Claims;
 using WebApp.DbContext;
 using WebApp.Models;
 using WebApp.Models.DatabaseModels;
+using WebApp.Models.DatabaseModels.Ai;
 using WebApp.Models.Dtos;
 using WebApp.Services;
 using WebApp.Services.Implementations;
@@ -166,6 +167,78 @@ namespace WebApp.Controllers
                     aiParseFailed,
                     clarityScore,
                     project = journey.Project,
+                }));
+            }
+            catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
+            catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
+        }
+
+        // POST /api/creator/journey/phase2/finalize-discovery
+        // Discovery convergence: the user has confirmed an AI-generated concept, so the
+        // clarifier Q&A is redundant. We seed a COMPLETED clarifier session directly from
+        // the concept (its Output satisfies the C-3 prerequisite — BusinessPlanController
+        // requires a completed session with Output), map the concept onto the project, and
+        // link the session. No AI call, no clarifier UI. Path-B's finalize-clarifier is
+        // untouched. The user proceeds to idea-summary → name → branding → Phase 3.
+        [HttpPost("finalize-discovery")]
+        public async Task<IActionResult> FinalizeDiscovery([FromBody] FinalizeDiscoveryRequest request)
+        {
+            try
+            {
+                var userId = GetUserId();
+
+                var journey = await _journeys.GetOrCreateAsync(userId);
+                var p2 = journey.Phase2Data;
+                var conceptId = !string.IsNullOrWhiteSpace(request?.ConceptId)
+                    ? request.ConceptId
+                    : p2?.SelectedConceptId;
+                if (string.IsNullOrWhiteSpace(conceptId))
+                    return BadRequest(ApiResponse.Error("No selected concept to finalize."));
+
+                var concept = p2?.GeneratedConcepts?.FirstOrDefault(c => c.Id == conceptId);
+                if (concept is null)
+                    return NotFound(ApiResponse.Error("Selected concept not found."));
+
+                // Build the ClarifierOutput contract straight from the concept.
+                var clarityScore = Math.Clamp((int)Math.Round(concept.Score), 0, 100);
+                var output = new BsonDocument
+                {
+                    { "schemaVersion", 1 },
+                    { "problemDefinition", new BsonDocument { { "statement", concept.CoreProblem ?? "" } } },
+                    { "targetAudience", new BsonDocument { { "primarySegment", concept.TargetUser ?? "" } } },
+                    { "existingAlternatives", new BsonArray() },
+                    { "proposedSolution", new BsonDocument
+                        {
+                            { "summary", concept.Solution ?? "" },
+                            { "valueProposition", concept.MarketGap ?? "" },
+                            { "differentiation", concept.FounderEdge ?? "" },
+                        } },
+                    { "riskAssessment", new BsonArray() },
+                    { "assumptions", new BsonArray() },
+                    { "clarityScore", clarityScore },
+                    { "clarityRationale", "Derived from an AI-generated Discovery concept the founder confirmed." },
+                    { "tags", new BsonArray(string.IsNullOrWhiteSpace(concept.Category) ? new string[0] : new[] { concept.Category }) },
+                };
+
+                // Seed a completed clarifier session (source of truth for C-3).
+                var session = new ClarifierSession
+                {
+                    OwnerUserId = userId,
+                    BusinessIdeaId = journey.BusinessIdeaId,
+                    Status = "Completed",
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                };
+                await _clarifier.AddAsync(session);                       // assigns ObjectId
+                await _clarifier.SetCompletedAsync(session.Id, output, clarityScore);
+
+                var updated = await _journeys.ApplyDiscoveryMappingAsync(userId, session.Id, concept);
+
+                return Ok(ApiResponse.Ok("Discovery finalized", new
+                {
+                    clarifierSessionId = session.Id,
+                    clarityScore,
+                    project = updated.Project,
                 }));
             }
             catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
