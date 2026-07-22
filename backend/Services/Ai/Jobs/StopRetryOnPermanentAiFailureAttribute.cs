@@ -46,10 +46,19 @@ namespace WebApp.Services.Ai.Jobs
             // finds the same empty ledger. Upstream provider 402 (ProviderPaymentRequired)
             // is NOT permanent here — it falls through to the base case below.
             InsufficientCreditsException ice => ice.Source == CreditFailureSource.LocalBalance,
-            // Rate-limit (429) is transient by definition.
+            // Rate-limit (429) is transient by definition — a delayed retry (once the
+            // 20/min window resets) can succeed.
             AiRateLimitException => false,
-            // A 4xx client error from the provider won't fix itself on retry; 5xx,
-            // timeouts and unparseable-200 bodies (StatusCode null/2xx) are transient.
+            // HTTP timeout (HttpClient.Timeout elapsed): surfaces as an AiProviderException
+            // with no StatusCode, wrapping a TaskCanceledException/OperationCanceledException.
+            // On an already-slow model a retry almost certainly times out AGAIN, burning
+            // another (likely-billed, mid-generation) free-tier request for ~zero gain — so
+            // treat it as permanent and fail fast. The runner has already marked the session
+            // Failed with this error, so the UI still shows an honest message + manual retry.
+            // (Only the timeout matches here: the network-error path wraps HttpRequestException.)
+            AiProviderException { InnerException: OperationCanceledException } => true,
+            // A 4xx client error from the provider won't fix itself on retry; 5xx and
+            // unparseable-200 bodies (StatusCode null/2xx, non-timeout) stay transient.
             AiProviderException ape => ape.StatusCode is >= 400 and < 500,
             _ => false,
         };
