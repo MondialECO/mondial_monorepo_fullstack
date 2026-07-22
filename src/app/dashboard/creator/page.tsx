@@ -512,7 +512,7 @@ export default function CreatorDashboard() {
                   </p>
                 </div>
                 <Button asChild size="sm" className="rounded-lg bg-primary text-white hover:bg-primary/95 text-xs">
-                  <Link href="/dashboard/creator/phase-3/forecast">Run your forecast</Link>
+                  <Link href="/dashboard/creator/phase-3/forecast-inputs">Run your forecast</Link>
                 </Button>
               </div>
             ) : forecastLoading ? (

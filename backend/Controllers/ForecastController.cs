@@ -293,6 +293,7 @@ namespace WebApp.Controllers
                 BusinessIdeaId = s.BusinessIdeaId,
                 CurrentVersion = s.CurrentVersion,
                 SchemaVersion = s.SchemaVersion,
+                Inputs = s.Inputs, // the five stored generation inputs, for form pre-fill
                 Output = current?.Content is null ? null : BsonTypeMapper.MapToDotNetValue(current.Content),
                 Versions = s.Versions
                     .OrderBy(v => v.Version)

@@ -236,6 +236,15 @@ export interface ForecastSession {
   schemaVersion: number;
   output?: ForecastOutput | null;
   error?: string | null;
+  // The five stored generation inputs (camelCase, matching the start payload). Absent on
+  // legacy sessions created before the API exposed them → the form falls back to defaults.
+  inputs?: {
+    arpu?: number | null;
+    opex?: number | null;
+    monthlyGrowthPct?: number | null;
+    tam?: number | null;
+    monthlyChurnPct?: number | null;
+  } | null;
   createdAt: string;
   updatedAt: string;
 }

@@ -1,3 +1,5 @@
+using WebApp.Models.DatabaseModels.Ai;
+
 namespace WebApp.Models.Dtos.Ai
 {
     /// <summary>
@@ -34,6 +36,14 @@ namespace WebApp.Models.Dtos.Ai
         public List<ForecastVersionDto> Versions { get; set; } = new();
 
         public string? Error { get; set; }
+
+        /// <summary>
+        /// The five stored generation inputs (arpu / opex / monthlyGrowthPct / tam /
+        /// monthlyChurnPct), so the client can pre-fill the form from the last run.
+        /// Null on sessions created before this field was exposed. Reuses the domain
+        /// model, which carries exactly these five values — no internal fields.
+        /// </summary>
+        public ForecastInputs? Inputs { get; set; }
 
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
