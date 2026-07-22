@@ -289,3 +289,55 @@
     @apply border-t-0;
   }
 }
+
+/* ====================================================================
+   Print export (Phase-3 Plan + Forecast, PlanForecastPrintView).
+   The .print-document token override is SCOPED to that opt-in component
+   only — no on-screen page carries this class, so screen rendering is
+   unchanged. It forces the LIGHT token set (documents print on white)
+   and enables exact color so the chart gradient/fills survive.
+   ==================================================================== */
+.print-document {
+  --background: #ffffff;
+  --foreground: #070707;
+  --card: #ffffff;
+  --primary: #3c61dd;
+  --muted-foreground: #5e5e5e;
+  --border: rgba(0, 0, 0, 0.14);
+  --warning: #b45309;
+  --success-text: #00a854;
+  color: var(--foreground);
+  background: #ffffff;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+/* Print rules only — never affect screen. Isolation is keyed off
+   body.printing-active (set by the overlay while open) so a normal Ctrl+P
+   on any other page is untouched. */
+@media print {
+  .no-print { display: none !important; }
+
+  body.printing-active * { visibility: hidden !important; }
+  body.printing-active .print-document,
+  body.printing-active .print-document * { visibility: visible !important; }
+  body.printing-active .print-document {
+    position: absolute !important;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0 !important;
+    padding: 0 14mm !important;
+    box-shadow: none !important;
+  }
+
+  @page { margin: 16mm 0; }
+
+  .print-section { break-inside: avoid; }
+  .print-section h1,
+  .print-section h2,
+  .print-section h3 { break-after: avoid; }
+  .print-table { break-inside: auto; }
+  .print-row,
+  .print-table tr { break-inside: avoid; }
+}

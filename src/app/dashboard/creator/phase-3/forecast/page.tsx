@@ -7,12 +7,13 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Phase3SetupShell } from '@/components/creator/Phase3SetupShell';
+import PlanForecastPrintView from '@/components/creator/PlanForecastPrintView';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { ForecastView } from '@/components/creator/ai/ForecastView';
-import { useForecastSessionTimed, useStartForecast } from '@/hooks/queries/creator-ai';
+import { useForecastSessionTimed, useBusinessPlanSessionTimed, useStartForecast } from '@/hooks/queries/creator-ai';
 import { creatorJourneyApi } from '@/lib/api-creator-journey';
 import { toAiError, type AiError } from '@/lib/ai-errors';
-import { hasAiOutput, type ForecastOutput } from '@/types/creator/ai';
+import { hasAiOutput, type ForecastOutput, type BusinessPlanOutput } from '@/types/creator/ai';
 
 // Recharts series from the live monthly arrays — null-safe per the audit note.
 function toChartData(output?: ForecastOutput) {
@@ -47,19 +48,35 @@ export default function ForecastResultsPage() {
   const [businessPlanSessionId, setBusinessPlanSessionId] = useState<string | null>(null);
   const [inputs, setInputs] = useState({ arpu: 49, opex: 8000, growth: 12, tam: 50_000_000, churn: 5 });
   const [startError, setStartError] = useState<AiError | null>(null);
+  // Export (combined plan + forecast) — same document as the business-plan page.
+  const [showExport, setShowExport] = useState(false);
+  const [project, setProject] = useState({ name: '', problem: '', solution: '', targetUser: '' });
+  const [cross, setCross] = useState({ youNeed: [] as string[], seedAsk: null as number | null });
 
   const startForecast = useStartForecast();
   const session = useForecastSessionTimed(forecastSessionId);
+  // Reuse the existing plan hook so the export renders the full plan alongside the forecast.
+  const planSession = useBusinessPlanSessionTimed(businessPlanSessionId);
+  const planOutput = (planSession.data as { output?: BusinessPlanOutput } | undefined)?.output ?? null;
 
   useEffect(() => {
     let active = true;
     (async () => {
       try {
         const { journey } = await creatorJourneyApi.get();
-        const p3 = journey.phase3Data as { forecastSessionId?: string; businessPlanSessionId?: string };
+        const p3 = journey.phase3Data as {
+          forecastSessionId?: string; businessPlanSessionId?: string;
+          formationGenerator?: { youNeed?: { label: string }[] };
+        };
+        const p5 = journey.phase5Data as { pathB?: { seedFunding?: { totalAsk?: number } } };
         if (!active) return;
         setForecastSessionId(p3?.forecastSessionId ?? null);
         setBusinessPlanSessionId(p3?.businessPlanSessionId ?? null);
+        setProject({ name: journey.project?.name ?? '', problem: journey.project?.problem ?? '', solution: journey.project?.solution ?? '', targetUser: journey.project?.targetUser ?? '' });
+        setCross({
+          youNeed: (p3?.formationGenerator?.youNeed ?? []).map((n) => n.label),
+          seedAsk: p5?.pathB?.seedFunding?.totalAsk ?? null,
+        });
       } finally {
         if (active) setLoadingJourney(false);
       }
@@ -102,6 +119,16 @@ export default function ForecastResultsPage() {
   const handleNext = () => router.push('/dashboard/creator/phase-3/compliance');
 
   return (
+    <>
+    <PlanForecastPrintView
+      open={showExport}
+      onClose={() => setShowExport(false)}
+      projectName={project.name}
+      project={project}
+      plan={planOutput}
+      forecast={output ?? null}
+      cross={cross}
+    />
     <Phase3SetupShell
       stepEyebrow="Step 3.3"
       title="Financial Projections & Simulations"
@@ -220,10 +247,14 @@ export default function ForecastResultsPage() {
 
           <div className="flex justify-between border-t border-border pt-6">
             <Button variant="ghost" onClick={() => router.back()}><ArrowLeft className="w-4 h-4 mr-1.5" /> Back</Button>
-            <Button onClick={handleNext} className="gap-1.5">Proceed to Compliance <ArrowRight className="w-4 h-4" /></Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setShowExport(true)}>Export PDF</Button>
+              <Button onClick={handleNext} className="gap-1.5">Proceed to Compliance <ArrowRight className="w-4 h-4" /></Button>
+            </div>
           </div>
         </div>
       )}
     </Phase3SetupShell>
+    </>
   );
 }
