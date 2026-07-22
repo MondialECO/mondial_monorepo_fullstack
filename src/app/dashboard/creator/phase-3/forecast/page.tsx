@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { TrendingUp, ArrowLeft, ArrowRight, Loader2, AlertTriangle, RotateCw, FileWarning } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -52,12 +52,41 @@ export default function ForecastResultsPage() {
   const [showExport, setShowExport] = useState(false);
   const [project, setProject] = useState({ name: '', problem: '', solution: '', targetUser: '' });
   const [cross, setCross] = useState({ youNeed: [] as string[], seedAsk: null as number | null });
+  const [editingInputs, setEditingInputs] = useState(false);
 
   const startForecast = useStartForecast();
   const session = useForecastSessionTimed(forecastSessionId);
   // Reuse the existing plan hook so the export renders the full plan alongside the forecast.
   const planSession = useBusinessPlanSessionTimed(businessPlanSessionId);
   const planOutput = (planSession.data as { output?: BusinessPlanOutput } | undefined)?.output ?? null;
+
+  // The inputs that actually produced the loaded forecast (camelCase from the API).
+  // Drives the read-only "Inputs used" summary and seeds the editable form.
+  const sessionInputs = (session.data as {
+    inputs?: { arpu?: number | null; opex?: number | null; monthlyGrowthPct?: number | null; tam?: number | null; monthlyChurnPct?: number | null } | null;
+  } | undefined)?.inputs ?? null;
+
+  // Seed the form ONCE from the last generation's stored inputs, when they arrive.
+  // Guarded so it never re-seeds or clobbers what the user is currently typing; falls
+  // back to the hardcoded defaults for fresh users / legacy sessions with no inputs.
+  const seededRef = useRef(false);
+  useEffect(() => {
+    if (seededRef.current || !sessionInputs) return;
+    seededRef.current = true;
+    setInputs((prev) => ({
+      arpu: sessionInputs.arpu ?? prev.arpu,
+      opex: sessionInputs.opex ?? prev.opex,
+      growth: sessionInputs.monthlyGrowthPct ?? prev.growth,
+      tam: sessionInputs.tam ?? prev.tam,
+      churn: sessionInputs.monthlyChurnPct ?? prev.churn,
+    }));
+  }, [sessionInputs]);
+
+  // A (re)generation that starts polling collapses the edit panel; on failure the panel
+  // stays open so its error shows. Keeps the summary (not stale edits) after regenerating.
+  useEffect(() => {
+    if (session.phase === 'polling') setEditingInputs(false);
+  }, [session.phase]);
 
   useEffect(() => {
     let active = true;
@@ -123,6 +152,37 @@ export default function ForecastResultsPage() {
 
   const handleNext = () => router.push('/dashboard/creator/phase-3/compliance');
 
+  // Cancel an in-progress edit: discard pending changes by restoring the form from the
+  // inputs that actually produced the loaded forecast, then collapse the panel.
+  const cancelEdit = () => {
+    if (sessionInputs) {
+      setInputs((prev) => ({
+        arpu: sessionInputs.arpu ?? prev.arpu,
+        opex: sessionInputs.opex ?? prev.opex,
+        growth: sessionInputs.monthlyGrowthPct ?? prev.growth,
+        tam: sessionInputs.tam ?? prev.tam,
+        churn: sessionInputs.monthlyChurnPct ?? prev.churn,
+      }));
+    }
+    setEditingInputs(false);
+  };
+
+  // The 5-field editable input grid, reused by the no-session form and the completed-view
+  // "Adjust & regenerate" panel (single source of truth for the fields/labels).
+  const inputGrid = (
+    <div className="grid grid-cols-2 gap-4">
+      {([
+        ['arpu', 'ARPU (€/mo)'], ['opex', 'OPEX (€/mo)'], ['growth', 'Growth (% MoM)'], ['tam', 'TAM (€)'], ['churn', 'Monthly churn (%)'],
+      ] as const).map(([k, label]) => (
+        <label key={k} className="text-sm space-y-1">
+          <span className="text-muted-foreground">{label}</span>
+          <input type="number" value={inputs[k]} onChange={(e) => setInputs((s) => ({ ...s, [k]: Number(e.target.value) }))}
+            className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
+        </label>
+      ))}
+    </div>
+  );
+
   return (
     <>
     <PlanForecastPrintView
@@ -147,17 +207,7 @@ export default function ForecastResultsPage() {
       {!loadingJourney && !forecastSessionId && (
         <Card className="rounded-2xl border border-border bg-card p-6 space-y-4 max-w-xl">
           <h3 className="font-bold text-sm">Forecast inputs</h3>
-          <div className="grid grid-cols-2 gap-4">
-            {([
-              ['arpu', 'ARPU (€/mo)'], ['opex', 'OPEX (€/mo)'], ['growth', 'Growth (% MoM)'], ['tam', 'TAM (€)'], ['churn', 'Monthly churn (%)'],
-            ] as const).map(([k, label]) => (
-              <label key={k} className="text-sm space-y-1">
-                <span className="text-muted-foreground">{label}</span>
-                <input type="number" value={inputs[k]} onChange={(e) => setInputs((s) => ({ ...s, [k]: Number(e.target.value) }))}
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
-              </label>
-            ))}
-          </div>
+          {inputGrid}
           {warnings.length > 0 && warnings.map((wn) => (
             <Alert key={wn}><AlertTriangle className="h-4 w-4" /><AlertDescription>{wn}</AlertDescription></Alert>
           ))}
@@ -248,6 +298,43 @@ export default function ForecastResultsPage() {
       {/* Completed → real chart + ForecastView (live data only) */}
       {completed && output && (
         <div className="space-y-6">
+          {/* Inputs behind THIS forecast: shown read-only for transparency, editable on
+              demand → regenerate via the same start path (persists the new inputs). */}
+          {sessionInputs && (
+            <Card className="rounded-2xl border border-border bg-card p-4 space-y-3">
+              {!editingInputs ? (
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="text-xs text-muted-foreground">
+                    <span className="font-semibold text-foreground">Inputs used:</span>{' '}
+                    ARPU €{sessionInputs.arpu ?? '—'}/mo · OPEX €{sessionInputs.opex ?? '—'}/mo · Growth {sessionInputs.monthlyGrowthPct ?? '—'}%/mo · TAM €{(sessionInputs.tam ?? 0).toLocaleString()} · Churn {sessionInputs.monthlyChurnPct ?? '—'}%/mo
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => setEditingInputs(true)} className="gap-1.5">
+                    <RotateCw className="h-3.5 w-3.5" /> Adjust &amp; regenerate
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-bold text-sm">Adjust inputs</h3>
+                    <Button variant="ghost" size="sm" onClick={cancelEdit} disabled={startForecast.isPending}>Cancel</Button>
+                  </div>
+                  {inputGrid}
+                  {warnings.length > 0 && warnings.map((wn) => (
+                    <Alert key={wn}><AlertTriangle className="h-4 w-4" /><AlertDescription>{wn}</AlertDescription></Alert>
+                  ))}
+                  {startError && (
+                    <Alert variant={startError.kind === 'service' || startError.kind === 'rateLimited' ? 'default' : 'destructive'}>
+                      <AlertTriangle className="h-4 w-4" /><AlertDescription>{startError.message}</AlertDescription>
+                    </Alert>
+                  )}
+                  <Button onClick={handleStart} disabled={startForecast.isPending} className="gap-2">
+                    {startForecast.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCw className="h-4 w-4" />} Regenerate forecast
+                  </Button>
+                </>
+              )}
+            </Card>
+          )}
+
           {/* Non-blocking warnings against the COMPLETED output (FG-5: year3Arr is now
               real, so the small-TAM check can actually fire). */}
           {warnings.length > 0 && warnings.map((wn) => (
