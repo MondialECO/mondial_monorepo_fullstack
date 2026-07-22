@@ -27,13 +27,13 @@ jobs:
           dotnet-version: ${{ matrix.dotnet-version }}
 
       - name: Restore dependencies
-        run: dotnet restore backend/backend/WebApp.csproj
+        run: dotnet restore backend/WebApp.csproj
 
       - name: Build
-        run: dotnet build backend/backend/WebApp.csproj --no-restore --configuration Release
+        run: dotnet build backend/WebApp.csproj --no-restore --configuration Release
 
       - name: Run unit tests
-        run: dotnet test backend/backend/tests/WebApp.Tests/WebApp.Tests.csproj --no-build --verbosity normal --logger "trx;LogFileName=test-results.trx"
+        run: dotnet test backend/tests/WebApp.Tests/WebApp.Tests.csproj --no-build --verbosity normal --logger "trx;LogFileName=test-results.trx"
         continue-on-error: true
 
       - name: Upload test results
@@ -55,12 +55,12 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: Restore dependencies
-        run: dotnet restore backend/backend/WebApp.csproj
+        run: dotnet restore backend/WebApp.csproj
 
       - name: Analyze code with StyleCop
-        run: dotnet build backend/backend/WebApp.csproj --no-restore /p:EnforceCodeStyleInBuild=true
+        run: dotnet build backend/WebApp.csproj --no-restore /p:EnforceCodeStyleInBuild=true
         continue-on-error: true
 
       - name: Check for vulnerabilities
-        run: dotnet list backend/backend/WebApp.csproj package --vulnerable
+        run: dotnet list backend/WebApp.csproj package --vulnerable
         continue-on-error: true
