@@ -280,11 +280,20 @@ export default function AIClarifierPage() {
       // 50 clarity score + editable summary), so we map on any terminal status.
       const result = await creatorJourneyApi.finalizeClarifier(sessionId);
 
-      // If the AI output couldn't be parsed, show an honest error and allow retry.
-      // Do NOT navigate or spread empty fields into state on parse failure.
-      if (result.aiParseFailed) {
+      // Two distinct failure kinds — show an honest, specific message and allow retry.
+      // Do NOT navigate or spread empty fields into state on either failure.
+      if (result.aiRequestFailed) {
+        // The AI service was unavailable (unreachable / rate-limited) — rewording won't help.
         setFinalizeError(
-          "We couldn't process that just now. Please try again, or reword your idea and resubmit."
+          "The AI service is temporarily unavailable. Please try again in a moment."
+        );
+        setFinalizing(false);
+        return;
+      }
+      if (result.aiParseFailed) {
+        // The AI replied but we couldn't interpret it — rewording the idea can help.
+        setFinalizeError(
+          "We couldn't interpret that just now. Please try again, or reword your idea and resubmit."
         );
         setFinalizing(false);
         return;
