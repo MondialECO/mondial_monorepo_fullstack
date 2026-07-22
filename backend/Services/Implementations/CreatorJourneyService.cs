@@ -305,6 +305,7 @@ namespace WebApp.Services.Implementations
             var j = await GetOrCreateAsync(userId);
             var snaps = j.OutputSnapshots ??= new CreatorOutputSnapshots();
 
+            // Select the in-memory list (updates the returned object + computes Version).
             var list = r.OutputKey switch
             {
                 "forecastVersions" => snaps.ForecastVersions,
@@ -319,8 +320,29 @@ namespace WebApp.Services.Implementations
             };
 
             var data = r.Payload != null ? BsonDocument.Parse(r.Payload.ToJson()) : null;
-            CreatorJourneyVersioning.Append(list, r.Phase, r.SessionId, data); // newest LAST, own phase
-            await ReplaceAsync(j);
+            var entry = CreatorJourneyVersioning.Append(list, r.Phase, r.SessionId, data); // newest LAST, own phase
+
+            // Atomic $push so a concurrent output save can't clobber this entry (a
+            // full-document ReplaceAsync would lose one). Typed Push per key keeps the
+            // class-map serialization byte-identical — no string paths. The default arm
+            // is unreachable (the list switch above already threw on unknown keys) but
+            // stays loud so a bad key can never push to a wrong/new field.
+            var update = r.OutputKey switch
+            {
+                "forecastVersions" => Builders<CreatorJourney>.Update.Push(x => x.OutputSnapshots.ForecastVersions, entry),
+                "businessPlanVersions" => Builders<CreatorJourney>.Update.Push(x => x.OutputSnapshots.BusinessPlanVersions, entry),
+                "ipValuationVersions" => Builders<CreatorJourney>.Update.Push(x => x.OutputSnapshots.IpValuationVersions, entry),
+                "legalChecklistVersions" => Builders<CreatorJourney>.Update.Push(x => x.OutputSnapshots.LegalChecklistVersions, entry),
+                "formationVersions" => Builders<CreatorJourney>.Update.Push(x => x.OutputSnapshots.FormationVersions, entry),
+                "pricingVersions" => Builders<CreatorJourney>.Update.Push(x => x.OutputSnapshots.PricingVersions, entry),
+                "gtmPlanVersions" => Builders<CreatorJourney>.Update.Push(x => x.OutputSnapshots.GtmPlanVersions, entry),
+                "matchingRuns" => Builders<CreatorJourney>.Update.Push(x => x.OutputSnapshots.MatchingRuns, entry),
+                _ => throw new CreatorJourneyException(400, $"Unknown outputKey \"{r.OutputKey}\"."),
+            };
+
+            await _context.CreatorJourneys.UpdateOneAsync(
+                f => f.Id == j.Id,
+                update.Set(x => x.UpdatedAt, DateTime.UtcNow));
             return j;
         }
 
@@ -330,16 +352,29 @@ namespace WebApp.Services.Implementations
                 throw new CreatorJourneyException(400, "sender must be \"ai\" or \"user\".");
 
             var j = await GetOrCreateAsync(userId);
-            var p2 = j.Phase2Data ??= new CreatorPhase2Data();
-            p2.ChatMessages ??= new List<CreatorChatMessage>();
-            p2.ChatMessages.Add(new CreatorChatMessage
+            var message = new CreatorChatMessage
             {
                 Id = ObjectId.GenerateNewId().ToString(),
                 Sender = sender,
                 Text = text ?? string.Empty,
                 Timestamp = DateTime.UtcNow,
-            });
-            await ReplaceAsync(j);
+            };
+
+            // Atomic $push: two concurrent appends must both persist, in order. A
+            // full-document ReplaceAsync would let the second write clobber the first
+            // and silently drop a message. $push also creates Phase2Data.ChatMessages
+            // if absent. UpdatedAt is set in the same update to preserve the bump that
+            // ReplaceAsync used to apply — one atomic write, not two.
+            await _context.CreatorJourneys.UpdateOneAsync(
+                f => f.Id == j.Id,
+                Builders<CreatorJourney>.Update
+                    .Push(x => x.Phase2Data.ChatMessages, message)
+                    .Set(x => x.UpdatedAt, DateTime.UtcNow));
+
+            // Reflect the persisted append on the returned object (unchanged contract).
+            var p2 = j.Phase2Data ??= new CreatorPhase2Data();
+            p2.ChatMessages ??= new List<CreatorChatMessage>();
+            p2.ChatMessages.Add(message);
             return j;
         }
 
@@ -533,21 +568,35 @@ namespace WebApp.Services.Implementations
             var p3 = j.Phase3Data ??= new CreatorPhase3Data();
             var snaps = j.OutputSnapshots ??= new CreatorOutputSnapshots();
 
+            // Atomic targeted update: $set only the ONE session-id field + $push its
+            // version entry. A full-document ReplaceAsync would let a concurrent
+            // forecast/businessPlan start clobber the other's session id — silently
+            // breaking Phase-3 gating. Because we $set a single field, the sibling
+            // session id is never touched. UpdatedAt bumped in the same write.
+            UpdateDefinition<CreatorJourney> update;
             switch (kind)
             {
                 case "forecast":
                     p3.ForecastSessionId = sessionId;
-                    CreatorJourneyVersioning.Append(snaps.ForecastVersions, 3, sessionId, null);
+                    update = Builders<CreatorJourney>.Update
+                        .Set(x => x.Phase3Data.ForecastSessionId, sessionId)
+                        .Push(x => x.OutputSnapshots.ForecastVersions,
+                              CreatorJourneyVersioning.Append(snaps.ForecastVersions, 3, sessionId, null));
                     break;
                 case "businessPlan":
                     p3.BusinessPlanSessionId = sessionId;
-                    CreatorJourneyVersioning.Append(snaps.BusinessPlanVersions, 3, sessionId, null);
+                    update = Builders<CreatorJourney>.Update
+                        .Set(x => x.Phase3Data.BusinessPlanSessionId, sessionId)
+                        .Push(x => x.OutputSnapshots.BusinessPlanVersions,
+                              CreatorJourneyVersioning.Append(snaps.BusinessPlanVersions, 3, sessionId, null));
                     break;
                 default:
                     throw new CreatorJourneyException(400, "kind must be \"forecast\" or \"businessPlan\".");
             }
 
-            await ReplaceAsync(j);
+            await _context.CreatorJourneys.UpdateOneAsync(
+                f => f.Id == j.Id,
+                update.Set(x => x.UpdatedAt, DateTime.UtcNow));
             return j;
         }
 
@@ -567,10 +616,21 @@ namespace WebApp.Services.Implementations
             var p4 = j.Phase4Data ??= new CreatorPhase4Data();
             p4.PricingModel = pricingModel;
             p4.Tiers = tiers ?? new List<CreatorPricingTier>();
-            CreatorJourneyVersioning.Append(
+            var entry = CreatorJourneyVersioning.Append(
                 (j.OutputSnapshots ??= new CreatorOutputSnapshots()).PricingVersions, 4, null,
                 new BsonDocument { ["pricingModel"] = pricingModel, ["tierCount"] = p4.Tiers.Count });
-            await ReplaceAsync(j);
+
+            // Atomic: $set only this method's own Phase4Data fields + $push its own
+            // version array. Pricing/Resource/Gtm own disjoint fields, so a full-doc
+            // ReplaceAsync (which a Gtm save could clobber) is replaced by a targeted
+            // update that can't interfere with a sibling Phase-4 save.
+            await _context.CreatorJourneys.UpdateOneAsync(
+                f => f.Id == j.Id,
+                Builders<CreatorJourney>.Update
+                    .Set(x => x.Phase4Data.PricingModel, p4.PricingModel)
+                    .Set(x => x.Phase4Data.Tiers, p4.Tiers)
+                    .Push(x => x.OutputSnapshots.PricingVersions, entry)
+                    .Set(x => x.UpdatedAt, DateTime.UtcNow));
             return j;
         }
 
@@ -578,10 +638,18 @@ namespace WebApp.Services.Implementations
         {
             var j = await GetOrCreateAsync(userId);
             (j.Phase4Data ??= new CreatorPhase4Data()).ResourceCalculation = calc;
-            CreatorJourneyVersioning.Append(
+            var entry = CreatorJourneyVersioning.Append(
                 (j.OutputSnapshots ??= new CreatorOutputSnapshots()).ResourcePlanVersions, 4, null,
                 calc?.ToBsonDocument());
-            await ReplaceAsync(j);
+
+            // Atomic: $set only ResourceCalculation + $push its own version array —
+            // disjoint from Pricing/Gtm, so sibling Phase-4 saves can't clobber it.
+            await _context.CreatorJourneys.UpdateOneAsync(
+                f => f.Id == j.Id,
+                Builders<CreatorJourney>.Update
+                    .Set(x => x.Phase4Data.ResourceCalculation, calc)
+                    .Push(x => x.OutputSnapshots.ResourcePlanVersions, entry)
+                    .Set(x => x.UpdatedAt, DateTime.UtcNow));
             return j;
         }
 
@@ -589,10 +657,18 @@ namespace WebApp.Services.Implementations
         {
             var j = await GetOrCreateAsync(userId);
             (j.Phase4Data ??= new CreatorPhase4Data()).GtmSetup = gtm;
-            CreatorJourneyVersioning.Append(
+            var entry = CreatorJourneyVersioning.Append(
                 (j.OutputSnapshots ??= new CreatorOutputSnapshots()).GtmPlanVersions, 4, null,
                 gtm?.ToBsonDocument());
-            await ReplaceAsync(j);
+
+            // Atomic: $set only GtmSetup + $push its own version array — disjoint from
+            // Pricing/Resource, so sibling Phase-4 saves can't clobber it.
+            await _context.CreatorJourneys.UpdateOneAsync(
+                f => f.Id == j.Id,
+                Builders<CreatorJourney>.Update
+                    .Set(x => x.Phase4Data.GtmSetup, gtm)
+                    .Push(x => x.OutputSnapshots.GtmPlanVersions, entry)
+                    .Set(x => x.UpdatedAt, DateTime.UtcNow));
             return j;
         }
 

@@ -67,7 +67,7 @@ export default function MyIdeasPage() {
         </div>
 
         <div className="grid grid-cols-1 gap-6 max-w-md mt-10">
-          {/* Single entry — AI Idea Clarifier (discovery path removed) */}
+          {/* From My Ideas, resume via the Path-B clarifier; the Smart Gate offers both entry paths. */}
           <Card className="flex flex-col justify-between rounded-2xl border border-border bg-card p-6 sm:p-8 hover:border-primary/50 hover:shadow-md transition-all duration-300">
             <div className="space-y-6">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">

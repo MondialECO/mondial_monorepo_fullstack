@@ -11,7 +11,7 @@ import { toAiError } from "@/lib/ai-errors";
 
 export default function IdeaConfirmPage() {
   const router = useRouter();
-  const { state, setState } = useCreatorProgress();
+  const { state, setState, isLoading, error, refetch } = useCreatorProgress();
   const [finalizing, setFinalizing] = useState(false);
   const [confirmError, setConfirmError] = useState<string | null>(null);
 
@@ -52,6 +52,27 @@ export default function IdeaConfirmPage() {
       setFinalizing(false);
     }
   };
+
+  // Gate AFTER all hooks (rules-of-hooks). While hydrating, show the spinner —
+  // NOT the "No concept selected" empty state, which is a genuinely-absent state.
+  if (isLoading) {
+    return (
+      <div className="w-full flex-1 flex flex-col bg-background text-foreground min-h-screen items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <p className="mt-4 text-sm text-muted-foreground">Loading your idea...</p>
+      </div>
+    );
+  }
+
+  // Hydration failed — show an honest error/retry state, never empty data as if real.
+  if (error) {
+    return (
+      <div className="w-full flex-1 flex flex-col bg-background text-foreground min-h-screen items-center justify-center gap-3">
+        <p className="text-destructive text-sm">Couldn&apos;t load your data. Please try again.</p>
+        <Button variant="outline" size="sm" onClick={() => refetch()}>Retry</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full flex-1 flex flex-col bg-background text-foreground min-h-screen">
@@ -145,7 +166,9 @@ export default function IdeaConfirmPage() {
                     <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                       <Compass className="h-4 w-4 text-primary" /> Key Strategic Levers
                     </h4>
-                    <p className="text-sm text-foreground leading-relaxed">Leverages customized API feeds and integrations to automate compliance checks for target businesses.</p>
+                    <p className="text-sm text-foreground leading-relaxed">
+                      {concept.founderEdge?.trim() || <span className="text-muted-foreground italic">Not specified</span>}
+                    </p>
                   </div>
 
                   <div className="space-y-1">
@@ -185,11 +208,6 @@ export default function IdeaConfirmPage() {
                   <div className="space-y-1 flex justify-between items-center border-b border-border pb-2">
                     <span className="font-semibold text-muted-foreground text-xs">Competitor Saturation</span>
                     <span className="font-bold text-foreground">{concept.saturation}</span>
-                  </div>
-
-                  <div className="space-y-1 flex justify-between items-center border-b border-border pb-2">
-                    <span className="font-semibold text-muted-foreground text-xs">Project Validity</span>
-                    <span className="font-bold text-green-600 dark:text-green-400">High Confidence</span>
                   </div>
 
                   <div className="space-y-1 flex justify-between items-center pb-2">

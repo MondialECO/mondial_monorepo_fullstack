@@ -25,7 +25,7 @@ public class StartupConfigValidationTests
         ["EmailSettings:SmtpServer"] = "smtp.test",
         ["EmailSettings:Email"] = "a@b.com",
         ["EmailSettings:Password"] = "pw",
-        ["Anthropic:ApiKey"] = "sk-ant-test-key",
+        ["OpenRouter:ApiKey"] = "sk-or-test-key",
     };
 
     [Fact]
@@ -48,16 +48,18 @@ public class StartupConfigValidationTests
            .WithMessage("*MongoDbSettings:ConnectionString*");
     }
 
+    // Replaces the obsolete Anthropic test: the app consolidated to a single OpenRouter
+    // provider, so the fail-fast now guards OpenRouter:ApiKey (the only remaining AI key).
     [Fact]
-    public void Throws_when_anthropic_api_key_missing()
+    public void Throws_when_openrouter_api_key_missing()
     {
         var cfg = ValidConfig();
-        cfg["Anthropic:ApiKey"] = "";
+        cfg["OpenRouter:ApiKey"] = "";
         var builder = BuilderWith(cfg);
 
         var act = () => builder.ValidateRequiredConfiguration();
         act.Should().Throw<InvalidOperationException>()
-           .WithMessage("*Anthropic:ApiKey*");
+           .WithMessage("*OpenRouter:ApiKey*");
     }
 
     [Fact]

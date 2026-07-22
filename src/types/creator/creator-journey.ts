@@ -32,9 +32,9 @@ export interface PhaseState {
   startedAt?: string;
   lastSavedAt?: string;
   completedAt?: string;
-  // ALPHA: Discovery entry is hidden, so "already_have_idea" is the only entry
-  // path set today. The Discovery chain is retained (unreachable) for post-alpha;
-  // the server-side entry path enum stays single-valued until it returns.
+  // "already_have_idea" is the only server-side entry-path value: Path-B sets it,
+  // while Discovery (also live) deliberately sets no entry path — the backend
+  // discriminates a Discovery user by persisted working-state instead (2C-2).
   selectedEntryPath?: 'already_have_idea' | null;
   // Clarifier session ID (backend-authoritative; used by Phase 3 to validate completion).
   clarifierSessionId?: string | null;

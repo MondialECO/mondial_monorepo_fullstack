@@ -11,6 +11,12 @@ import { mapGeneratedIdeas } from "@/lib/creator/map-generated-ideas";
 import { toAiError } from "@/lib/ai-errors";
 import { useSignalRHub, hubEvent } from "@/lib/realtime";
 import type { IdeaGenerationSession } from "@/types/creator/ai";
+// Shared R12 AI-session poll policy (60 attempts / 3-minute wall-clock / 2500ms).
+import {
+  POLL_INTERVAL_MS,
+  POLL_MAX_ATTEMPTS,
+  POLL_MAX_MS,
+} from "@/hooks/queries/creator-ai";
 
 const PROCESSING_STAGES = [
   { icon: Brain, label: "Market calibration", delay: 0 },
@@ -18,9 +24,6 @@ const PROCESSING_STAGES = [
   { icon: BarChart3, label: "Competitor analysis", delay: 4500 },
   { icon: Cpu, label: "Concept synthesis", delay: 6000 },
 ];
-
-const POLL_INTERVAL_MS = 2500;
-const MAX_POLL_ATTEMPTS = 100; // ~4 min ceiling
 
 export default function AIProcessingPage() {
   const router = useRouter();
@@ -97,12 +100,14 @@ export default function AIProcessingPage() {
     }
   }, [sessionId, handleCompleted, handleFailed]);
 
-  // Polling loop: 2.5s, capped at MAX_POLL_ATTEMPTS.
+  // Polling loop — shared R12 policy: 2500ms interval, capped at POLL_MAX_ATTEMPTS
+  // (60) or POLL_MAX_MS (3-minute wall-clock), whichever comes first.
   useEffect(() => {
     if (!sessionId) {
       setError("Missing session. Please restart discovery.");
       return;
     }
+    const startTime = Date.now();
     void poll();
     const id = setInterval(() => {
       if (settledRef.current) {
@@ -110,7 +115,7 @@ export default function AIProcessingPage() {
         return;
       }
       attemptsRef.current += 1;
-      if (attemptsRef.current >= MAX_POLL_ATTEMPTS) {
+      if (attemptsRef.current >= POLL_MAX_ATTEMPTS || Date.now() - startTime >= POLL_MAX_MS) {
         clearInterval(id);
         handleFailed("This is taking longer than expected. Please try again.");
         return;

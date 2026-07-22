@@ -375,7 +375,7 @@ export function useCreatorProgressState() {
   }, []);
 
   const setEntryPath = useCallback((path: 'already_have_idea' | null) => {
-    if (path !== 'already_have_idea') return; // discovery path removed
+    if (path !== 'already_have_idea') return; // Discovery deliberately sets no server entry path (2C-2); only Path-B does
     setState((prev) => ({
       ...prev,
       journeyState: {

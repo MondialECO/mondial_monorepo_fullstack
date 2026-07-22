@@ -46,11 +46,6 @@ type CanvasBlock = {
 const OPENER =
   "Welcome. Tell me your idea — in your own words, however rough it is. What problem are you solving?";
 const TOTAL_QUESTIONS = 6;
-// TODO (R12-consolidation): Replace with shared POLL_INTERVAL_MS / POLL_MAX_ATTEMPTS from creator-ai.ts
-// This page currently hardcodes 100 attempts (≈4.2min) instead of the canonical 60/3-min policy.
-// New code (retry path, below) uses the shared policy; this will be fixed in a separate consolidation change.
-const POLL_INTERVAL_MS = 2500;
-const MAX_POLL_ATTEMPTS = 100;
 
 export default function AIClarifierPage() {
   const router = useRouter();
@@ -230,28 +225,14 @@ export default function AIClarifierPage() {
     }
   };
 
-  // Poll the C-2 clarifier session until it reaches a terminal status.
+  // Poll the C-2 clarifier session until terminal, using the shared R12 policy
+  // (60 attempts / 3-minute wall-clock / 2500ms — creator-ai.ts). Returns null on timeout.
   const pollClarifier = async (sessionId: string) => {
-    for (let i = 0; i < MAX_POLL_ATTEMPTS; i++) {
-      const session = await creatorAiApi.getClarifier(sessionId);
-      if (isTerminalStatus(session.status)) return session;
-      await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
-    }
-    return null;
-  };
-
-  // Poll for retry using the shared R12 timeout policy (60 attempts / 3 minutes wall-clock).
-  // Used when aiParseFailed=true and user clicks "Try again" to start a fresh clarifier session.
-  const pollClarifierWithR12 = async (sessionId: string) => {
     const startTime = Date.now();
     for (let i = 0; i < SHARED_POLL_MAX_ATTEMPTS; i++) {
       const session = await creatorAiApi.getClarifier(sessionId);
       if (isTerminalStatus(session.status)) return session;
-
-      // Check wall-clock timeout (3 minutes)
-      const elapsed = Date.now() - startTime;
-      if (elapsed >= POLL_MAX_MS) return null;
-
+      if (Date.now() - startTime >= POLL_MAX_MS) return null; // 3-minute wall-clock cap
       await new Promise((r) => setTimeout(r, SHARED_POLL_INTERVAL_MS));
     }
     return null;
