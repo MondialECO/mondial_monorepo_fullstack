@@ -374,6 +374,9 @@ export interface ChatMessageResult {
 
 export interface FinalizeClarifierResult {
   aiParseFailed: boolean;
+  // True when the AI request itself failed (unreachable / rate-limited / timeout):
+  // distinct from aiParseFailed (AI replied but the output couldn't be interpreted).
+  aiRequestFailed?: boolean;
   clarityScore: number;
   project: Record<string, unknown>;
 }

@@ -128,6 +128,42 @@ namespace WebApp.Controllers
                 if (session is null)
                     return NotFound(ApiResponse.Error("Clarifier session not found."));
 
+                // Distinguish the two failure kinds by the session's terminal status, and
+                // NEVER link a non-succeeded session to the project (a linked failed/unparsable
+                // session id has no Output → Phase 3 would 409 and strand the user). On any
+                // failure we leave the project untouched so a fresh retry can succeed and reach
+                // Phase 3 normally; a successful retry overwrites any previously-linked id.
+                //   Failed      → AI-request failure (401/402/429/timeout): service unavailable
+                //   NeedsReview → parse failure (AI replied but JSON was rejected)
+                //   Completed   → success (Output validated) — but still guard the nested extraction
+
+                // (1) AI-request failure — the AI never produced output.
+                if (string.Equals(session.Status, "Failed", StringComparison.Ordinal))
+                {
+                    var journeyNow = await _journeys.GetOrCreateAsync(userId);
+                    return Ok(ApiResponse.Ok("Clarifier AI request failed", new
+                    {
+                        aiRequestFailed = true,
+                        aiParseFailed = false,
+                        clarityScore = 0.0,
+                        project = journeyNow.Project, // unchanged — not mapped
+                    }));
+                }
+
+                // (2) Not a completed run with output (NeedsReview, or no Output) — parse failure.
+                if (!string.Equals(session.Status, "Completed", StringComparison.Ordinal) || session.Output == null)
+                {
+                    var journeyNow = await _journeys.GetOrCreateAsync(userId);
+                    return Ok(ApiResponse.Ok("Clarifier output could not be interpreted", new
+                    {
+                        aiRequestFailed = false,
+                        aiParseFailed = true,
+                        clarityScore = 0.0,
+                        project = journeyNow.Project, // unchanged — not mapped
+                    }));
+                }
+
+                // (3) Completed with output — extract the mapped fields.
                 bool aiParseFailed = false;
                 string problem = "", targetUser = "", solution = "", marketGap = "", creatorEdge = "";
                 double clarityScore = session.ClarityScore ?? 0;
@@ -136,7 +172,6 @@ namespace WebApp.Controllers
                 try
                 {
                     var o = session.Output;
-                    if (o == null) throw new FormatException("No output");
                     problem = o.GetValue("problemDefinition", new BsonDocument())
                         .AsBsonDocument.GetValue("statement", "").AsString;
                     targetUser = o.GetValue("targetAudience", new BsonDocument())
@@ -154,17 +189,31 @@ namespace WebApp.Controllers
                 }
                 catch
                 {
-                    // Malformed/incomplete — fallback, let the user edit. Don't fail the session.
+                    // Completed but the nested content is unusable — treat as a parse failure and
+                    // do NOT link/map (would otherwise poison the project with an unusable session).
                     aiParseFailed = true;
-                    if (clarityScore <= 0) clarityScore = 50;
                 }
 
+                if (aiParseFailed)
+                {
+                    var journeyNow = await _journeys.GetOrCreateAsync(userId);
+                    return Ok(ApiResponse.Ok("Clarifier output could not be interpreted", new
+                    {
+                        aiRequestFailed = false,
+                        aiParseFailed = true,
+                        clarityScore = 0.0,
+                        project = journeyNow.Project, // unchanged — not mapped
+                    }));
+                }
+
+                // Success — map the clarified opportunity onto the project and link the session.
                 var journey = await _journeys.ApplyClarifierMappingAsync(
                     userId, session.Id, problem, targetUser, solution, clarityScore, tags, marketGap, creatorEdge);
 
                 return Ok(ApiResponse.Ok("Clarifier finalized", new
                 {
-                    aiParseFailed,
+                    aiRequestFailed = false,
+                    aiParseFailed = false,
                     clarityScore,
                     project = journey.Project,
                 }));
