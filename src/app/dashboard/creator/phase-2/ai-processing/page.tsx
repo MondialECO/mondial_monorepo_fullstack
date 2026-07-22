@@ -101,7 +101,9 @@ export default function AIProcessingPage() {
   }, [sessionId, handleCompleted, handleFailed]);
 
   // Polling loop — shared R12 policy: 2500ms interval, capped at POLL_MAX_ATTEMPTS
-  // (60) or POLL_MAX_MS (3-minute wall-clock), whichever comes first.
+  // or POLL_MAX_MS (wall-clock), whichever comes first. Values are the shared
+  // constants in creator-ai.ts (kept above the backend worst case so we never
+  // abandon a job that still succeeds).
   useEffect(() => {
     if (!sessionId) {
       setError("Missing session. Please restart discovery.");

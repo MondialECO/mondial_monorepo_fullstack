@@ -9,11 +9,12 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Phase3SetupShell } from '@/components/creator/Phase3SetupShell';
+import PlanForecastPrintView from '@/components/creator/PlanForecastPrintView';
 import { useCreatorProgress } from '@/providers/CreatorProgressProvider';
-import { useBusinessPlanSessionTimed, useStartBusinessPlan } from '@/hooks/queries/creator-ai';
+import { useBusinessPlanSessionTimed, useForecastSessionTimed, useStartBusinessPlan } from '@/hooks/queries/creator-ai';
 import { creatorJourneyApi } from '@/lib/api-creator-journey';
 import { creatorAiApi } from '@/lib/api-creator-ai';
-import { hasAiOutput, type BusinessPlanOutput } from '@/types/creator/ai';
+import { hasAiOutput, type BusinessPlanOutput, type ForecastOutput } from '@/types/creator/ai';
 import { toAiError, type AiError } from '@/lib/ai-errors';
 
 type SectionBadge = 'auto_built_phase2' | 'ai_researched' | 'auto_built_43' | 'auto_filled_31' | 'used_in_phase5' | null;
@@ -81,8 +82,10 @@ export default function BusinessPlanPage() {
 
   const [loading, setLoading] = useState(true);
   const [bpSessionId, setBpSessionId] = useState<string | null>(null);
+  const [forecastSessionId, setForecastSessionId] = useState<string | null>(null);
   const [clarifierSessionId, setClarifierSessionId] = useState<string | null>(null);
-  const [project, setProject] = useState({ problem: '', solution: '', targetUser: '' });
+  const [project, setProject] = useState({ name: '', problem: '', solution: '', targetUser: '' });
+  const [showExport, setShowExport] = useState(false);
   const [cross, setCross] = useState({ hasForecast: false, hasGtm: false, youNeed: [] as string[], seedAsk: null as number | null });
   const [startError, setStartError] = useState<AiError | null>(null);
   // The section being AI-rewritten + the plan version at rewrite-start, so we can clear
@@ -95,6 +98,9 @@ export default function BusinessPlanPage() {
 
   const startBp = useStartBusinessPlan();
   const session = useBusinessPlanSessionTimed(bpSessionId);
+  // Reuse the existing forecast hook so the export can render the real §7 forecast.
+  const forecastSession = useForecastSessionTimed(forecastSessionId);
+  const forecastOutput = (forecastSession.data as { output?: ForecastOutput } | undefined)?.output ?? null;
   const currentVersion = (session.data as { currentVersion?: number } | undefined)?.currentVersion ?? 0;
 
   // A single-section rewrite re-enters Processing; clear the skeleton only once the
@@ -116,8 +122,9 @@ export default function BusinessPlanPage() {
         const p2 = journey.phase2Data as { clarifierSessionId?: string };
         const p5 = journey.phase5Data as { pathB?: { seedFunding?: { totalAsk?: number } } };
         setBpSessionId(p3?.businessPlanSessionId ?? null);
+        setForecastSessionId(p3?.forecastSessionId ?? null);
         setClarifierSessionId(p3?.clarifierSessionId ?? p2?.clarifierSessionId ?? null);
-        setProject({ problem: journey.project?.problem ?? '', solution: journey.project?.solution ?? '', targetUser: journey.project?.targetUser ?? '' });
+        setProject({ name: journey.project?.name ?? '', problem: journey.project?.problem ?? '', solution: journey.project?.solution ?? '', targetUser: journey.project?.targetUser ?? '' });
         setCross({
           hasForecast: !!p3?.forecastSessionId,
           hasGtm: !!(journey.phase4Data as { gtmSetup?: unknown })?.gtmSetup,
@@ -136,6 +143,14 @@ export default function BusinessPlanPage() {
   // Keep the section grid visible during a single-section rewrite (the session briefly
   // re-enters Processing) so only the rewritten section shows a skeleton, not the page.
   const showGrid = completed || (!!rewriting && !!bpOutput);
+
+  // Terminal but no usable plan → the linked session settled as Failed (or the rare
+  // null-output). Parse issues become NeedsReview (which HAS output and renders), so
+  // this bucket is an AI-service request failure — never a blank body. Mutually
+  // exclusive with showGrid (both derive from `completed`).
+  const bpError = (session.data as { error?: string | null } | undefined)?.error ?? null;
+  const terminalFailed = !!bpSessionId && session.phase === 'terminal' && !completed && !rewriting;
+  const failedIsCredits = /402|credit|insufficient|payment/i.test(bpError ?? '');
 
   const sections = useMemo(
     () => buildSections(bpOutput, project, cross),
@@ -192,6 +207,16 @@ export default function BusinessPlanPage() {
   };
 
   return (
+    <>
+    <PlanForecastPrintView
+      open={showExport}
+      onClose={() => setShowExport(false)}
+      projectName={project.name}
+      project={project}
+      plan={bpOutput}
+      forecast={forecastOutput}
+      cross={{ youNeed: cross.youNeed, seedAsk: cross.seedAsk }}
+    />
     <Phase3SetupShell
       stepEyebrow="Step 3.2"
       title="AI Business Plan"
@@ -245,6 +270,34 @@ export default function BusinessPlanPage() {
           <p className="text-sm text-destructive">The plan failed to load.</p>
           <Button variant="outline" onClick={session.retry} className="gap-2"><RotateCw className="h-4 w-4" /> Retry</Button>
         </div>
+      )}
+
+      {terminalFailed && (
+        <Card className="rounded-2xl border border-border bg-card p-6 space-y-4 max-w-xl">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-destructive" />
+            <h3 className="font-bold text-sm">We couldn&apos;t generate your business plan</h3>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {failedIsCredits
+              ? 'The AI service ran out of credits, so your plan couldn’t be generated. This isn’t anything you did.'
+              : 'The AI service was temporarily unavailable (a provider error, rate limit, or timeout), so your plan didn’t finish. This isn’t anything you did — please try again.'}
+          </p>
+          {failedIsCredits && (
+            <p className="text-xs text-muted-foreground">Contact support to add more AI credits, then generate again.</p>
+          )}
+          {startError && (
+            <div className="space-y-1">
+              <p className="text-sm text-destructive">{startError.message}</p>
+              {startError.kind === 'credits' && (
+                <p className="text-xs text-muted-foreground">Contact support to add more AI credits to your account.</p>
+              )}
+            </div>
+          )}
+          <Button onClick={handleStart} disabled={startBp.isPending || startError?.kind === 'credits'} className="gap-2">
+            {startBp.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCw className="h-4 w-4" />} Generate again
+          </Button>
+        </Card>
       )}
 
       {showGrid && (
@@ -333,13 +386,13 @@ export default function BusinessPlanPage() {
           <div className="flex items-center justify-between border-t border-border pt-6">
             <Button variant="ghost" onClick={() => router.back()}><ArrowLeft className="w-4 h-4 mr-1.5" /> Back</Button>
             <div className="flex gap-2">
-              <Button variant="outline" disabled aria-disabled="true" aria-describedby="export-pdf-hint" title="Document export coming soon">Export PDF</Button>
-              <span id="export-pdf-hint" className="sr-only">Coming soon — document export isn&apos;t available yet.</span>
+              <Button variant="outline" onClick={() => setShowExport(true)}>Export PDF</Button>
               <Button onClick={handleNext} className="gap-1.5">Proceed to Forecast <ArrowRight className="w-4 h-4" /></Button>
             </div>
           </div>
         </div>
       )}
     </Phase3SetupShell>
+    </>
   );
 }

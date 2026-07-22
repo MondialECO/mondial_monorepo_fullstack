@@ -7,12 +7,13 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Phase3SetupShell } from '@/components/creator/Phase3SetupShell';
+import PlanForecastPrintView from '@/components/creator/PlanForecastPrintView';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { ForecastView } from '@/components/creator/ai/ForecastView';
-import { useForecastSessionTimed, useStartForecast } from '@/hooks/queries/creator-ai';
+import { useForecastSessionTimed, useBusinessPlanSessionTimed, useStartForecast } from '@/hooks/queries/creator-ai';
 import { creatorJourneyApi } from '@/lib/api-creator-journey';
 import { toAiError, type AiError } from '@/lib/ai-errors';
-import { hasAiOutput, type ForecastOutput } from '@/types/creator/ai';
+import { hasAiOutput, type ForecastOutput, type BusinessPlanOutput } from '@/types/creator/ai';
 
 // Recharts series from the live monthly arrays — null-safe per the audit note.
 function toChartData(output?: ForecastOutput) {
@@ -47,19 +48,35 @@ export default function ForecastResultsPage() {
   const [businessPlanSessionId, setBusinessPlanSessionId] = useState<string | null>(null);
   const [inputs, setInputs] = useState({ arpu: 49, opex: 8000, growth: 12, tam: 50_000_000, churn: 5 });
   const [startError, setStartError] = useState<AiError | null>(null);
+  // Export (combined plan + forecast) — same document as the business-plan page.
+  const [showExport, setShowExport] = useState(false);
+  const [project, setProject] = useState({ name: '', problem: '', solution: '', targetUser: '' });
+  const [cross, setCross] = useState({ youNeed: [] as string[], seedAsk: null as number | null });
 
   const startForecast = useStartForecast();
   const session = useForecastSessionTimed(forecastSessionId);
+  // Reuse the existing plan hook so the export renders the full plan alongside the forecast.
+  const planSession = useBusinessPlanSessionTimed(businessPlanSessionId);
+  const planOutput = (planSession.data as { output?: BusinessPlanOutput } | undefined)?.output ?? null;
 
   useEffect(() => {
     let active = true;
     (async () => {
       try {
         const { journey } = await creatorJourneyApi.get();
-        const p3 = journey.phase3Data as { forecastSessionId?: string; businessPlanSessionId?: string };
+        const p3 = journey.phase3Data as {
+          forecastSessionId?: string; businessPlanSessionId?: string;
+          formationGenerator?: { youNeed?: { label: string }[] };
+        };
+        const p5 = journey.phase5Data as { pathB?: { seedFunding?: { totalAsk?: number } } };
         if (!active) return;
         setForecastSessionId(p3?.forecastSessionId ?? null);
         setBusinessPlanSessionId(p3?.businessPlanSessionId ?? null);
+        setProject({ name: journey.project?.name ?? '', problem: journey.project?.problem ?? '', solution: journey.project?.solution ?? '', targetUser: journey.project?.targetUser ?? '' });
+        setCross({
+          youNeed: (p3?.formationGenerator?.youNeed ?? []).map((n) => n.label),
+          seedAsk: p5?.pathB?.seedFunding?.totalAsk ?? null,
+        });
       } finally {
         if (active) setLoadingJourney(false);
       }
@@ -95,6 +112,11 @@ export default function ForecastResultsPage() {
 
   const output = (session.data as { output?: ForecastOutput } | undefined)?.output;
   const completed = session.phase === 'terminal' && hasAiOutput((session.data as { status?: import('@/types/creator/ai').AiSessionStatus })?.status) && !!output;
+  // Terminal but no usable forecast → the session settled as Failed (AI-service request
+  // failure; parse issues become NeedsReview, which has output). Never a blank body.
+  const fcError = (session.data as { error?: string | null } | undefined)?.error ?? null;
+  const terminalFailed = !!forecastSessionId && session.phase === 'terminal' && !completed;
+  const failedIsCredits = /402|credit|insufficient|payment/i.test(fcError ?? '');
   const chartData = toChartData(output);
   const year3Arr = (output?.revenueForecast?.monthly?.[35]?.amount ?? 0) * 12;
   const warnings = inputWarnings(inputs.arpu, inputs.opex, inputs.growth, inputs.tam, year3Arr, inputs.churn);
@@ -102,6 +124,16 @@ export default function ForecastResultsPage() {
   const handleNext = () => router.push('/dashboard/creator/phase-3/compliance');
 
   return (
+    <>
+    <PlanForecastPrintView
+      open={showExport}
+      onClose={() => setShowExport(false)}
+      projectName={project.name}
+      project={project}
+      plan={planOutput}
+      forecast={output ?? null}
+      cross={cross}
+    />
     <Phase3SetupShell
       stepEyebrow="Step 3.3"
       title="Financial Projections & Simulations"
@@ -186,6 +218,33 @@ export default function ForecastResultsPage() {
         </div>
       )}
 
+      {/* Terminal but no usable forecast (Failed request) → honest message + fresh retry */}
+      {terminalFailed && (
+        <Card className="rounded-2xl border border-border bg-card p-6 space-y-4 max-w-xl">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-destructive" />
+            <h3 className="font-bold text-sm">We couldn&apos;t generate your forecast</h3>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {failedIsCredits
+              ? 'The AI service ran out of credits, so your forecast couldn’t be generated. This isn’t anything you did.'
+              : 'The AI service was temporarily unavailable (a provider error, rate limit, or timeout), so your forecast didn’t finish. This isn’t anything you did — please try again.'}
+          </p>
+          {failedIsCredits && (
+            <p className="text-xs text-muted-foreground">Contact support to add more AI credits, then generate again.</p>
+          )}
+          {startError && (
+            <Alert variant={startError.kind === 'service' || startError.kind === 'rateLimited' ? 'default' : 'destructive'}>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>{startError.message}</AlertDescription>
+            </Alert>
+          )}
+          <Button onClick={handleStart} disabled={startForecast.isPending || startError?.kind === 'credits'} className="gap-2">
+            {startForecast.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCw className="h-4 w-4" />} Generate again
+          </Button>
+        </Card>
+      )}
+
       {/* Completed → real chart + ForecastView (live data only) */}
       {completed && output && (
         <div className="space-y-6">
@@ -220,10 +279,14 @@ export default function ForecastResultsPage() {
 
           <div className="flex justify-between border-t border-border pt-6">
             <Button variant="ghost" onClick={() => router.back()}><ArrowLeft className="w-4 h-4 mr-1.5" /> Back</Button>
-            <Button onClick={handleNext} className="gap-1.5">Proceed to Compliance <ArrowRight className="w-4 h-4" /></Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setShowExport(true)}>Export PDF</Button>
+              <Button onClick={handleNext} className="gap-1.5">Proceed to Compliance <ArrowRight className="w-4 h-4" /></Button>
+            </div>
           </div>
         </div>
       )}
     </Phase3SetupShell>
+    </>
   );
 }

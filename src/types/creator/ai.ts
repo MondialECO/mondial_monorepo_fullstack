@@ -192,6 +192,10 @@ export interface ForecastCashFlowMonth {
 
 export interface ForecastOutput {
   schemaVersion?: number;
+  // How many leading months were produced by the AI. Months with month > aiMonthCount
+  // are deterministically projected (13-36). Absent on legacy 12-month sessions →
+  // consumers default it to the array length, so nothing is flagged as projected.
+  aiMonthCount?: number;
   revenueForecast?: {
     currency?: string;
     summary?: string;
