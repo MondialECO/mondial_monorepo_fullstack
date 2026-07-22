@@ -117,7 +117,8 @@ public class ForecastHandlerTests
             ["businessPlanSessionId"] = ObjectId.GenerateNewId().ToString(),
         }));
 
-        prep.UserContext.Should().Contain("unavailable");
+        // A plan the caller does not own must never reach the prompt (owner-scoping).
+        prep.UserContext.Should().NotContain("BUSINESS PLAN");
         prep.Task.Should().NotBeNullOrWhiteSpace();
     }
 
@@ -135,7 +136,8 @@ public class ForecastHandlerTests
             ["businessPlanSessionId"] = planId,
         }));
 
-        prep.UserContext.Should().Contain("unavailable");
+        // A non-Completed plan must be gated out — neither its block nor its content appears.
+        prep.UserContext.Should().NotContain("BUSINESS PLAN");
         prep.UserContext.Should().NotContain("Edited plan.");
     }
 

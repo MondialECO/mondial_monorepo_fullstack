@@ -31,6 +31,7 @@ namespace WebApp.Configuration
             Require("EmailSettings:SmtpServer");
             Require("EmailSettings:Email");
             Require("EmailSettings:Password");
+            Require("OpenRouter:ApiKey");
 
             var jwtKey = cfg["JwtSettings:Key"];
             if (string.IsNullOrWhiteSpace(jwtKey))
