@@ -330,16 +330,29 @@ namespace WebApp.Services.Implementations
                 throw new CreatorJourneyException(400, "sender must be \"ai\" or \"user\".");
 
             var j = await GetOrCreateAsync(userId);
-            var p2 = j.Phase2Data ??= new CreatorPhase2Data();
-            p2.ChatMessages ??= new List<CreatorChatMessage>();
-            p2.ChatMessages.Add(new CreatorChatMessage
+            var message = new CreatorChatMessage
             {
                 Id = ObjectId.GenerateNewId().ToString(),
                 Sender = sender,
                 Text = text ?? string.Empty,
                 Timestamp = DateTime.UtcNow,
-            });
-            await ReplaceAsync(j);
+            };
+
+            // Atomic $push: two concurrent appends must both persist, in order. A
+            // full-document ReplaceAsync would let the second write clobber the first
+            // and silently drop a message. $push also creates Phase2Data.ChatMessages
+            // if absent. UpdatedAt is set in the same update to preserve the bump that
+            // ReplaceAsync used to apply — one atomic write, not two.
+            await _context.CreatorJourneys.UpdateOneAsync(
+                f => f.Id == j.Id,
+                Builders<CreatorJourney>.Update
+                    .Push(x => x.Phase2Data.ChatMessages, message)
+                    .Set(x => x.UpdatedAt, DateTime.UtcNow));
+
+            // Reflect the persisted append on the returned object (unchanged contract).
+            var p2 = j.Phase2Data ??= new CreatorPhase2Data();
+            p2.ChatMessages ??= new List<CreatorChatMessage>();
+            p2.ChatMessages.Add(message);
             return j;
         }
 
