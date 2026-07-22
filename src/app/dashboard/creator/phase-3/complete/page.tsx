@@ -56,6 +56,10 @@ export default function Phase3CompletePage() {
   const canContinue = computed?.phase3.status === "completed" && computed?.phase4.status === "available";
 
   const handleContinue = async () => {
+    // Respect the derived gate: never advance to Phase 4 unless the backend says Phase 3
+    // is genuinely completed (all AI jobs succeeded) and Phase 4 is available. The
+    // "missing module" banner above explains what still needs attention.
+    if (!canContinue) return;
     setIsNavigating(true);
     advancePhase(3);
 
@@ -158,7 +162,7 @@ export default function Phase3CompletePage() {
         <Button variant="ghost" onClick={() => router.push("/dashboard/creator")} disabled={isNavigating} className="text-xs font-bold text-muted-foreground self-start sm:self-center">
           <ArrowLeft className="w-4 h-4 mr-1.5" /> Back to Dashboard
         </Button>
-        <Button onClick={handleContinue} disabled={isNavigating} className="gap-1.5 disabled:opacity-60">
+        <Button onClick={handleContinue} disabled={isNavigating || !canContinue} className="gap-1.5 disabled:opacity-60">
           Launch Offer &amp; Resource Setup {!isNavigating && <ArrowRight className="w-4 h-4" />}
         </Button>
       </div>

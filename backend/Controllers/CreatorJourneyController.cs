@@ -44,7 +44,7 @@ namespace WebApp.Controllers
         private async Task<IActionResult> OkJourneyAsync(string userId, CreatorJourney journey, string message)
         {
             var phase1 = await IsPhase1CompleteAsync(userId);
-            var computedStatus = _journeys.ComputePhaseStatus(journey, phase1);
+            var computedStatus = await _journeys.ComputePhaseStatusAsync(journey, phase1);
             return Ok(ApiResponse.Ok(message, new { journey, computedStatus }));
         }
 

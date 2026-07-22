@@ -124,7 +124,7 @@ namespace WebApp.Controllers
         {
             var user = await _userManager.FindByIdAsync(userId);
             var phase1Complete = (user?.Onboarding?.Phase ?? 0) >= 1;
-            var computed = _journeys.ComputePhaseStatus(journey, phase1Complete);
+            var computed = await _journeys.ComputePhaseStatusAsync(journey, phase1Complete);
             return computed.Phase6.Status != "locked" ? 6 : 5;
         }
 
