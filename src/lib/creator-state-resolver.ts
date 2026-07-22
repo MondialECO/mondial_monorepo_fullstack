@@ -30,7 +30,7 @@ export function getNextCreatorAction(state: CreatorJourneyState): NextAction {
   // derivable, and a fresh user with no chosen path also derives to 6 — both must land on
   // the Smart Gate to choose, not the clarifier. So step 6 routes to the clarifier ONLY
   // when the user is actually on Path-B / has clarifier activity; otherwise the Smart Gate.
-  // (The Discovery entry card is still hidden for alpha; this mapping is ready for it.)
+  // (Both entry cards ship; this mapping routes the live Discovery chain, steps 3-5.)
   if (state.phase2.status !== 'completed') {
     const step = state.phase2.currentStep;
     const p2 = state.phase2;
