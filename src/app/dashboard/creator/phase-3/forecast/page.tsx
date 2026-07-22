@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { TrendingUp, ArrowLeft, ArrowRight, Loader2, AlertTriangle, RotateCw, FileWarning } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Loader2, AlertTriangle, RotateCw, FileWarning } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -10,10 +10,11 @@ import { Phase3SetupShell } from '@/components/creator/Phase3SetupShell';
 import PlanForecastPrintView from '@/components/creator/PlanForecastPrintView';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { ForecastView } from '@/components/creator/ai/ForecastView';
-import { useForecastSessionTimed, useBusinessPlanSessionTimed, useStartForecast } from '@/hooks/queries/creator-ai';
+import { useForecastSessionTimed, useBusinessPlanSessionTimed } from '@/hooks/queries/creator-ai';
 import { creatorJourneyApi } from '@/lib/api-creator-journey';
-import { toAiError, type AiError } from '@/lib/ai-errors';
 import { hasAiOutput, type ForecastOutput, type BusinessPlanOutput } from '@/types/creator/ai';
+
+const INPUTS_ROUTE = '/dashboard/creator/phase-3/forecast-inputs';
 
 // Recharts series from the live monthly arrays — null-safe per the audit note.
 function toChartData(output?: ForecastOutput) {
@@ -29,7 +30,7 @@ function toChartData(output?: ForecastOutput) {
   }));
 }
 
-// Non-blocking input-validation warnings.
+// Non-blocking warnings against the inputs that produced the loaded forecast.
 function inputWarnings(arpu: number, opex: number, growth: number, tam: number, year3Arr: number, churn: number) {
   const w: string[] = [];
   if (arpu > 0 && opex > 0 && arpu < opex / 10) w.push('Tight unit economics: ARPU is low relative to OPEX.');
@@ -46,47 +47,21 @@ export default function ForecastResultsPage() {
   const [loadingJourney, setLoadingJourney] = useState(true);
   const [forecastSessionId, setForecastSessionId] = useState<string | null>(null);
   const [businessPlanSessionId, setBusinessPlanSessionId] = useState<string | null>(null);
-  const [inputs, setInputs] = useState({ arpu: 49, opex: 8000, growth: 12, tam: 50_000_000, churn: 5 });
-  const [startError, setStartError] = useState<AiError | null>(null);
   // Export (combined plan + forecast) — same document as the business-plan page.
   const [showExport, setShowExport] = useState(false);
   const [project, setProject] = useState({ name: '', problem: '', solution: '', targetUser: '' });
   const [cross, setCross] = useState({ youNeed: [] as string[], seedAsk: null as number | null });
-  const [editingInputs, setEditingInputs] = useState(false);
 
-  const startForecast = useStartForecast();
   const session = useForecastSessionTimed(forecastSessionId);
   // Reuse the existing plan hook so the export renders the full plan alongside the forecast.
   const planSession = useBusinessPlanSessionTimed(businessPlanSessionId);
   const planOutput = (planSession.data as { output?: BusinessPlanOutput } | undefined)?.output ?? null;
 
-  // The inputs that actually produced the loaded forecast (camelCase from the API).
-  // Drives the read-only "Inputs used" summary and seeds the editable form.
+  // The inputs that actually produced the loaded forecast (camelCase from the API) —
+  // drives the read-only "Inputs used" summary.
   const sessionInputs = (session.data as {
     inputs?: { arpu?: number | null; opex?: number | null; monthlyGrowthPct?: number | null; tam?: number | null; monthlyChurnPct?: number | null } | null;
   } | undefined)?.inputs ?? null;
-
-  // Seed the form ONCE from the last generation's stored inputs, when they arrive.
-  // Guarded so it never re-seeds or clobbers what the user is currently typing; falls
-  // back to the hardcoded defaults for fresh users / legacy sessions with no inputs.
-  const seededRef = useRef(false);
-  useEffect(() => {
-    if (seededRef.current || !sessionInputs) return;
-    seededRef.current = true;
-    setInputs((prev) => ({
-      arpu: sessionInputs.arpu ?? prev.arpu,
-      opex: sessionInputs.opex ?? prev.opex,
-      growth: sessionInputs.monthlyGrowthPct ?? prev.growth,
-      tam: sessionInputs.tam ?? prev.tam,
-      churn: sessionInputs.monthlyChurnPct ?? prev.churn,
-    }));
-  }, [sessionInputs]);
-
-  // A (re)generation that starts polling collapses the edit panel; on failure the panel
-  // stays open so its error shows. Keeps the summary (not stale edits) after regenerating.
-  useEffect(() => {
-    if (session.phase === 'polling') setEditingInputs(false);
-  }, [session.phase]);
 
   useEffect(() => {
     let active = true;
@@ -113,31 +88,11 @@ export default function ForecastResultsPage() {
     return () => { active = false; };
   }, []);
 
-  // Forecast (step 3) consumes the business plan (step 2). The plan provides revenue
-  // model + market context; the numeric inputs (ARPU/OPEX/growth/TAM) are still sent.
-  // The guard below is now CORRECT because the plan genuinely precedes the forecast.
-  const handleStart = async () => {
-    setStartError(null);
-    if (!businessPlanSessionId) {
-      setStartError({ kind: 'other', message: 'Generate your Business Plan first — the forecast builds on it.' });
-      return;
-    }
-    try {
-      const res = await startForecast.mutateAsync({
-        businessPlanSessionId,
-        arpu: inputs.arpu,
-        opex: inputs.opex,
-        monthlyGrowthPct: inputs.growth,
-        tam: inputs.tam,
-        monthlyChurnPct: inputs.churn,
-      });
-      await creatorJourneyApi.setPhase3Session('forecast', res.sessionId);
-      setForecastSessionId(res.sessionId);
-    } catch (e) {
-      // 402 (your credits are out) vs 503 (provider issue) read differently to the user.
-      setStartError(toAiError(e, 'Could not start the forecast.'));
-    }
-  };
+  // No forecast to show → send the user to the inputs page to generate one (covers a
+  // fresh user, a direct URL, or browser-back with no session). Never an empty results page.
+  useEffect(() => {
+    if (!loadingJourney && !forecastSessionId) router.replace(INPUTS_ROUTE);
+  }, [loadingJourney, forecastSessionId, router]);
 
   const output = (session.data as { output?: ForecastOutput } | undefined)?.output;
   const completed = session.phase === 'terminal' && hasAiOutput((session.data as { status?: import('@/types/creator/ai').AiSessionStatus })?.status) && !!output;
@@ -148,40 +103,11 @@ export default function ForecastResultsPage() {
   const failedIsCredits = /402|credit|insufficient|payment/i.test(fcError ?? '');
   const chartData = toChartData(output);
   const year3Arr = (output?.revenueForecast?.monthly?.[35]?.amount ?? 0) * 12;
-  const warnings = inputWarnings(inputs.arpu, inputs.opex, inputs.growth, inputs.tam, year3Arr, inputs.churn);
+  const warnings = sessionInputs
+    ? inputWarnings(sessionInputs.arpu ?? 0, sessionInputs.opex ?? 0, sessionInputs.monthlyGrowthPct ?? 0, sessionInputs.tam ?? 0, year3Arr, sessionInputs.monthlyChurnPct ?? 0)
+    : [];
 
   const handleNext = () => router.push('/dashboard/creator/phase-3/compliance');
-
-  // Cancel an in-progress edit: discard pending changes by restoring the form from the
-  // inputs that actually produced the loaded forecast, then collapse the panel.
-  const cancelEdit = () => {
-    if (sessionInputs) {
-      setInputs((prev) => ({
-        arpu: sessionInputs.arpu ?? prev.arpu,
-        opex: sessionInputs.opex ?? prev.opex,
-        growth: sessionInputs.monthlyGrowthPct ?? prev.growth,
-        tam: sessionInputs.tam ?? prev.tam,
-        churn: sessionInputs.monthlyChurnPct ?? prev.churn,
-      }));
-    }
-    setEditingInputs(false);
-  };
-
-  // The 5-field editable input grid, reused by the no-session form and the completed-view
-  // "Adjust & regenerate" panel (single source of truth for the fields/labels).
-  const inputGrid = (
-    <div className="grid grid-cols-2 gap-4">
-      {([
-        ['arpu', 'ARPU (€/mo)'], ['opex', 'OPEX (€/mo)'], ['growth', 'Growth (% MoM)'], ['tam', 'TAM (€)'], ['churn', 'Monthly churn (%)'],
-      ] as const).map(([k, label]) => (
-        <label key={k} className="text-sm space-y-1">
-          <span className="text-muted-foreground">{label}</span>
-          <input type="number" value={inputs[k]} onChange={(e) => setInputs((s) => ({ ...s, [k]: Number(e.target.value) }))}
-            className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
-        </label>
-      ))}
-    </div>
-  );
 
   return (
     <>
@@ -203,43 +129,9 @@ export default function ForecastResultsPage() {
         <div className="flex items-center gap-2 text-muted-foreground py-12 justify-center"><Loader2 className="h-5 w-5 animate-spin" /> Loading…</div>
       )}
 
-      {/* No session yet → input form (never mock) */}
+      {/* No session → the effect above redirects to the inputs page; show a spinner meanwhile. */}
       {!loadingJourney && !forecastSessionId && (
-        <Card className="rounded-2xl border border-border bg-card p-6 space-y-4 max-w-xl">
-          <h3 className="font-bold text-sm">Forecast inputs</h3>
-          {inputGrid}
-          {warnings.length > 0 && warnings.map((wn) => (
-            <Alert key={wn}><AlertTriangle className="h-4 w-4" /><AlertDescription>{wn}</AlertDescription></Alert>
-          ))}
-          {startError && (
-            <Alert variant={startError.kind === 'service' || startError.kind === 'rateLimited' ? 'default' : 'destructive'}>
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription className="flex flex-col items-start gap-2">
-                <span>{startError.message}</span>
-                {/* Credits exhausted is NOT retryable — point to support, not a retry. */}
-                {startError.kind === 'credits' && (
-                  <span className="text-xs text-muted-foreground">Contact support to add more AI credits to your account.</span>
-                )}
-                {/* Provider/rate-limit issues are transient — offer a retry, not an upgrade. */}
-                {(startError.kind === 'service' || startError.kind === 'rateLimited') && (
-                  <Button variant="outline" size="sm" onClick={handleStart} disabled={startForecast.isPending} className="gap-1.5">
-                    <RotateCw className="h-3.5 w-3.5" /> Try again
-                  </Button>
-                )}
-              </AlertDescription>
-            </Alert>
-          )}
-          <div className="flex gap-2">
-            {!businessPlanSessionId && (
-              <Button variant="outline" onClick={() => router.push('/dashboard/creator/phase-3/business-plan')}>
-                Go to Business Plan
-              </Button>
-            )}
-            <Button onClick={handleStart} disabled={startForecast.isPending || !businessPlanSessionId} className="gap-2">
-              {startForecast.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <TrendingUp className="h-4 w-4" />} Generate forecast
-            </Button>
-          </div>
-        </Card>
+        <div className="flex items-center gap-2 text-muted-foreground py-12 justify-center"><Loader2 className="h-5 w-5 animate-spin" /> Opening forecast inputs…</div>
       )}
 
       {/* Session in flight → skeleton (NOT mock) */}
@@ -259,7 +151,7 @@ export default function ForecastResultsPage() {
         </div>
       )}
 
-      {/* Failed */}
+      {/* Failed to load (network/query error, not a job failure) */}
       {forecastSessionId && session.isError && session.phase !== 'polling' && (
         <div className="flex flex-col items-center gap-3 py-12 text-center">
           <AlertTriangle className="h-8 w-8 text-destructive" />
@@ -268,7 +160,7 @@ export default function ForecastResultsPage() {
         </div>
       )}
 
-      {/* Terminal but no usable forecast (Failed request) → honest message + fresh retry */}
+      {/* Terminal but no usable forecast (Failed request) → honest message + back to inputs */}
       {terminalFailed && (
         <Card className="rounded-2xl border border-border bg-card p-6 space-y-4 max-w-xl">
           <div className="flex items-center gap-2">
@@ -283,14 +175,8 @@ export default function ForecastResultsPage() {
           {failedIsCredits && (
             <p className="text-xs text-muted-foreground">Contact support to add more AI credits, then generate again.</p>
           )}
-          {startError && (
-            <Alert variant={startError.kind === 'service' || startError.kind === 'rateLimited' ? 'default' : 'destructive'}>
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>{startError.message}</AlertDescription>
-            </Alert>
-          )}
-          <Button onClick={handleStart} disabled={startForecast.isPending || startError?.kind === 'credits'} className="gap-2">
-            {startForecast.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCw className="h-4 w-4" />} Generate again
+          <Button onClick={() => router.push(INPUTS_ROUTE)} className="gap-2">
+            <RotateCw className="h-4 w-4" /> Adjust inputs &amp; retry
           </Button>
         </Card>
       )}
@@ -298,45 +184,23 @@ export default function ForecastResultsPage() {
       {/* Completed → real chart + ForecastView (live data only) */}
       {completed && output && (
         <div className="space-y-6">
-          {/* Inputs behind THIS forecast: shown read-only for transparency, editable on
-              demand → regenerate via the same start path (persists the new inputs). */}
+          {/* Inputs behind THIS forecast: read-only for transparency, with a link to the
+              inputs page to edit and regenerate (same start path, persists the new inputs). */}
           {sessionInputs && (
-            <Card className="rounded-2xl border border-border bg-card p-4 space-y-3">
-              {!editingInputs ? (
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="text-xs text-muted-foreground">
-                    <span className="font-semibold text-foreground">Inputs used:</span>{' '}
-                    ARPU €{sessionInputs.arpu ?? '—'}/mo · OPEX €{sessionInputs.opex ?? '—'}/mo · Growth {sessionInputs.monthlyGrowthPct ?? '—'}%/mo · TAM €{(sessionInputs.tam ?? 0).toLocaleString()} · Churn {sessionInputs.monthlyChurnPct ?? '—'}%/mo
-                  </div>
-                  <Button variant="outline" size="sm" onClick={() => setEditingInputs(true)} className="gap-1.5">
-                    <RotateCw className="h-3.5 w-3.5" /> Adjust &amp; regenerate
-                  </Button>
+            <Card className="rounded-2xl border border-border bg-card p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="text-xs text-muted-foreground">
+                  <span className="font-semibold text-foreground">Inputs used:</span>{' '}
+                  ARPU €{sessionInputs.arpu ?? '—'}/mo · OPEX €{sessionInputs.opex ?? '—'}/mo · Growth {sessionInputs.monthlyGrowthPct ?? '—'}%/mo · TAM €{(sessionInputs.tam ?? 0).toLocaleString()} · Churn {sessionInputs.monthlyChurnPct ?? '—'}%/mo
                 </div>
-              ) : (
-                <>
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-bold text-sm">Adjust inputs</h3>
-                    <Button variant="ghost" size="sm" onClick={cancelEdit} disabled={startForecast.isPending}>Cancel</Button>
-                  </div>
-                  {inputGrid}
-                  {warnings.length > 0 && warnings.map((wn) => (
-                    <Alert key={wn}><AlertTriangle className="h-4 w-4" /><AlertDescription>{wn}</AlertDescription></Alert>
-                  ))}
-                  {startError && (
-                    <Alert variant={startError.kind === 'service' || startError.kind === 'rateLimited' ? 'default' : 'destructive'}>
-                      <AlertTriangle className="h-4 w-4" /><AlertDescription>{startError.message}</AlertDescription>
-                    </Alert>
-                  )}
-                  <Button onClick={handleStart} disabled={startForecast.isPending} className="gap-2">
-                    {startForecast.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCw className="h-4 w-4" />} Regenerate forecast
-                  </Button>
-                </>
-              )}
+                <Button variant="outline" size="sm" onClick={() => router.push(INPUTS_ROUTE)} className="gap-1.5">
+                  <RotateCw className="h-3.5 w-3.5" /> Adjust &amp; regenerate
+                </Button>
+              </div>
             </Card>
           )}
 
-          {/* Non-blocking warnings against the COMPLETED output (FG-5: year3Arr is now
-              real, so the small-TAM check can actually fire). */}
+          {/* Non-blocking warnings against the COMPLETED output (year3Arr is real here). */}
           {warnings.length > 0 && warnings.map((wn) => (
             <Alert key={wn}><AlertTriangle className="h-4 w-4" /><AlertDescription>{wn}</AlertDescription></Alert>
           ))}

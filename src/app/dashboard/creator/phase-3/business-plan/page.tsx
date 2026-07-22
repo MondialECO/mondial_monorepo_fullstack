@@ -203,7 +203,7 @@ export default function BusinessPlanPage() {
   // Business plan is step 2; the forecast (step 3) consumes it next.
   const handleNext = () => {
     completeStep(3, 2);
-    router.push('/dashboard/creator/phase-3/forecast');
+    router.push('/dashboard/creator/phase-3/forecast-inputs');
   };
 
   return (
