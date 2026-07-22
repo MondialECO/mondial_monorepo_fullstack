@@ -144,6 +144,14 @@ export default function BusinessPlanPage() {
   // re-enters Processing) so only the rewritten section shows a skeleton, not the page.
   const showGrid = completed || (!!rewriting && !!bpOutput);
 
+  // Terminal but no usable plan → the linked session settled as Failed (or the rare
+  // null-output). Parse issues become NeedsReview (which HAS output and renders), so
+  // this bucket is an AI-service request failure — never a blank body. Mutually
+  // exclusive with showGrid (both derive from `completed`).
+  const bpError = (session.data as { error?: string | null } | undefined)?.error ?? null;
+  const terminalFailed = !!bpSessionId && session.phase === 'terminal' && !completed && !rewriting;
+  const failedIsCredits = /402|credit|insufficient|payment/i.test(bpError ?? '');
+
   const sections = useMemo(
     () => buildSections(bpOutput, project, cross),
     [bpOutput, project, cross],
@@ -262,6 +270,34 @@ export default function BusinessPlanPage() {
           <p className="text-sm text-destructive">The plan failed to load.</p>
           <Button variant="outline" onClick={session.retry} className="gap-2"><RotateCw className="h-4 w-4" /> Retry</Button>
         </div>
+      )}
+
+      {terminalFailed && (
+        <Card className="rounded-2xl border border-border bg-card p-6 space-y-4 max-w-xl">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-destructive" />
+            <h3 className="font-bold text-sm">We couldn&apos;t generate your business plan</h3>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {failedIsCredits
+              ? 'The AI service ran out of credits, so your plan couldn’t be generated. This isn’t anything you did.'
+              : 'The AI service was temporarily unavailable (a provider error, rate limit, or timeout), so your plan didn’t finish. This isn’t anything you did — please try again.'}
+          </p>
+          {failedIsCredits && (
+            <p className="text-xs text-muted-foreground">Contact support to add more AI credits, then generate again.</p>
+          )}
+          {startError && (
+            <div className="space-y-1">
+              <p className="text-sm text-destructive">{startError.message}</p>
+              {startError.kind === 'credits' && (
+                <p className="text-xs text-muted-foreground">Contact support to add more AI credits to your account.</p>
+              )}
+            </div>
+          )}
+          <Button onClick={handleStart} disabled={startBp.isPending || startError?.kind === 'credits'} className="gap-2">
+            {startBp.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCw className="h-4 w-4" />} Generate again
+          </Button>
+        </Card>
       )}
 
       {showGrid && (

@@ -112,6 +112,11 @@ export default function ForecastResultsPage() {
 
   const output = (session.data as { output?: ForecastOutput } | undefined)?.output;
   const completed = session.phase === 'terminal' && hasAiOutput((session.data as { status?: import('@/types/creator/ai').AiSessionStatus })?.status) && !!output;
+  // Terminal but no usable forecast → the session settled as Failed (AI-service request
+  // failure; parse issues become NeedsReview, which has output). Never a blank body.
+  const fcError = (session.data as { error?: string | null } | undefined)?.error ?? null;
+  const terminalFailed = !!forecastSessionId && session.phase === 'terminal' && !completed;
+  const failedIsCredits = /402|credit|insufficient|payment/i.test(fcError ?? '');
   const chartData = toChartData(output);
   const year3Arr = (output?.revenueForecast?.monthly?.[35]?.amount ?? 0) * 12;
   const warnings = inputWarnings(inputs.arpu, inputs.opex, inputs.growth, inputs.tam, year3Arr, inputs.churn);
@@ -211,6 +216,33 @@ export default function ForecastResultsPage() {
           <p className="text-sm text-destructive">The forecast failed to load.</p>
           <Button variant="outline" onClick={session.retry} className="gap-2"><RotateCw className="h-4 w-4" /> Retry</Button>
         </div>
+      )}
+
+      {/* Terminal but no usable forecast (Failed request) → honest message + fresh retry */}
+      {terminalFailed && (
+        <Card className="rounded-2xl border border-border bg-card p-6 space-y-4 max-w-xl">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-destructive" />
+            <h3 className="font-bold text-sm">We couldn&apos;t generate your forecast</h3>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {failedIsCredits
+              ? 'The AI service ran out of credits, so your forecast couldn’t be generated. This isn’t anything you did.'
+              : 'The AI service was temporarily unavailable (a provider error, rate limit, or timeout), so your forecast didn’t finish. This isn’t anything you did — please try again.'}
+          </p>
+          {failedIsCredits && (
+            <p className="text-xs text-muted-foreground">Contact support to add more AI credits, then generate again.</p>
+          )}
+          {startError && (
+            <Alert variant={startError.kind === 'service' || startError.kind === 'rateLimited' ? 'default' : 'destructive'}>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>{startError.message}</AlertDescription>
+            </Alert>
+          )}
+          <Button onClick={handleStart} disabled={startForecast.isPending || startError?.kind === 'credits'} className="gap-2">
+            {startForecast.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCw className="h-4 w-4" />} Generate again
+          </Button>
+        </Card>
       )}
 
       {/* Completed → real chart + ForecastView (live data only) */}
