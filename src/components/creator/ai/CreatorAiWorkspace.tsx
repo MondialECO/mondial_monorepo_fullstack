@@ -375,7 +375,7 @@ export function CreatorAiWorkspace() {
           <StageShell
             icon={LineChart}
             title="Financial Forecast"
-            description="A 12-month financial projection from your business plan."
+            description="A 36-month financial projection (12 AI + 24 projected) from your business plan."
             status={forecastData?.status}
           >
             {!planReady ? (
@@ -388,7 +388,7 @@ export function CreatorAiWorkspace() {
               <EmptyState
                 icon={LineChart}
                 title="No forecast yet"
-                description="Generate a 12-month financial forecast from your plan."
+                description="Generate a 36-month financial forecast (12 AI + 24 projected) from your plan."
                 action={
                   <Button
                     className="gap-2"

@@ -58,6 +58,52 @@ function Bullets({ items }: { items: string[] }) {
   );
 }
 
+// Split a monthly series into 12-month year blocks (Year 1 = months 1-12, …).
+function yearChunks<T extends { month: number }>(monthly: T[]) {
+  const years: { year: number; months: T[] }[] = [];
+  for (const m of monthly) {
+    const y = Math.max(1, Math.ceil(m.month / 12));
+    let bucket = years.find((b) => b.year === y);
+    if (!bucket) { bucket = { year: y, months: [] }; years.push(bucket); }
+    bucket.months.push(m);
+  }
+  return years;
+}
+
+// A forecast series rendered as year-grouped 12-row blocks. Each year block is a
+// .print-section (break-inside: avoid) so it stays on one page, with a subtotal row.
+function YearGroupedTable<T extends { month: number }>({ title, head, monthly, cells, subtotal }: {
+  title: string;
+  head: string[];
+  monthly: T[];
+  cells: (m: T) => React.ReactNode[];
+  subtotal: (months: T[]) => React.ReactNode[];
+}) {
+  return (
+    <>
+      <Sub>{title}</Sub>
+      {yearChunks(monthly).map((y) => (
+        <div key={y.year} className="print-section mb-3">
+          <div className="mb-1 text-[11px] font-bold text-muted-foreground">
+            Year {y.year} (months {y.months[0].month}–{y.months[y.months.length - 1].month})
+          </div>
+          <table className="print-table w-full border-collapse text-[12px] font-mono">
+            <thead><tr className="border-b border-border text-left text-muted-foreground">{head.map((h, i) => <th key={i} className="py-1 pr-3 font-semibold">{h}</th>)}</tr></thead>
+            <tbody>
+              {y.months.map((m) => (
+                <tr key={m.month} className="print-row border-b border-border/60">{cells(m).map((c, i) => <td key={i} className="py-1 pr-3">{c}</td>)}</tr>
+              ))}
+              <tr className="border-t border-border font-semibold">
+                <td className="py-1 pr-3">Total</td>{subtotal(y.months).map((c, i) => <td key={i} className="py-1 pr-3">{c}</td>)}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      ))}
+    </>
+  );
+}
+
 export default function PlanForecastPrintView({ open, onClose, projectName, project, plan, forecast, cross }: PrintProps) {
   // Scope print-isolation to when the overlay is actually open, so a normal Ctrl+P on
   // any other page is unaffected (globals.css keys the isolation off body.printing-active).
@@ -83,6 +129,10 @@ export default function PlanForecastPrintView({ open, onClose, projectName, proj
   const cash = forecast?.cashFlowProjection?.monthly ?? [];
   const be = forecast?.breakEvenAnalysis;
   const rows = forecast ? chartRows(forecast) : [];
+  const fcTotal = rev.length;
+  const fcAi = forecast?.aiMonthCount ?? fcTotal; // legacy sessions → all AI, no projection label
+  const fcProjected = fcTotal > fcAi;
+  const num = (x?: number | null) => (typeof x === "number" ? x : 0);
 
   return (
     <div className="fixed inset-0 z-[100] overflow-auto bg-neutral-200 print:bg-white">
@@ -180,6 +230,12 @@ export default function PlanForecastPrintView({ open, onClose, projectName, proj
           ) : (
             <>
               {has(forecast.revenueForecast?.summary) && <Body>{forecast.revenueForecast!.summary}</Body>}
+              {fcProjected && (
+                <p className="mb-2 text-[11px] italic text-muted-foreground">
+                  Months 1–{fcAi} are AI-generated. Months {fcAi + 1}–{fcTotal} are projected
+                  deterministically from your monthly growth rate — not model output.
+                </p>
+              )}
               {rows.length > 0 && (
                 <div className="my-3">
                   <AreaChart width={680} height={240} data={rows} margin={{ top: 8, right: 12, left: -12, bottom: 0 }}>
@@ -187,7 +243,7 @@ export default function PlanForecastPrintView({ open, onClose, projectName, proj
                       <linearGradient id="pRev" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="var(--primary)" stopOpacity={0.25} /><stop offset="95%" stopColor="var(--primary)" stopOpacity={0} /></linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
-                    <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={10} tickLine={false} axisLine={false} interval={2} />
+                    <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={10} tickLine={false} axisLine={false} interval={5} />
                     <YAxis stroke="var(--muted-foreground)" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(v) => (v != null ? `€${Math.round(Number(v) / 1000)}k` : "")} />
                     <Legend iconType="circle" />
                     <Area type="monotone" dataKey="Revenue" stroke="var(--primary)" strokeWidth={2.5} fill="url(#pRev)" isAnimationActive={false} />
@@ -198,32 +254,45 @@ export default function PlanForecastPrintView({ open, onClose, projectName, proj
               )}
 
               {arr(rev) && (
-                <><Sub>Monthly revenue</Sub>
-                  <table className="print-table mb-3 w-full border-collapse text-[12px] font-mono">
-                    <thead><tr className="border-b border-border text-left text-muted-foreground"><th className="py-1 pr-3 font-semibold">Month</th><th className="py-1 pr-3 font-semibold">Revenue</th></tr></thead>
-                    <tbody>{rev.map((m) => <tr key={m.month} className="print-row border-b border-border/60"><td className="py-1 pr-3">M{m.month}</td><td className="py-1 pr-3">{eur(m.amount)}</td></tr>)}</tbody>
-                  </table></>
+                <YearGroupedTable
+                  title="Monthly revenue"
+                  head={["Month", "Revenue"]}
+                  monthly={rev}
+                  cells={(m) => [`M${m.month}`, eur(m.amount)]}
+                  subtotal={(ms) => [eur(ms.reduce((s, m) => s + num(m.amount), 0))]}
+                />
               )}
 
               {arr(cost) && (
-                <><Sub>Monthly costs</Sub>
-                  <table className="print-table mb-3 w-full border-collapse text-[12px] font-mono">
-                    <thead><tr className="border-b border-border text-left text-muted-foreground"><th className="py-1 pr-3 font-semibold">Month</th><th className="py-1 pr-3 font-semibold">Fixed</th><th className="py-1 pr-3 font-semibold">Variable</th><th className="py-1 pr-3 font-semibold">Total</th></tr></thead>
-                    <tbody>{cost.map((m) => <tr key={m.month} className="print-row border-b border-border/60"><td className="py-1 pr-3">M{m.month}</td><td className="py-1 pr-3">{eur(m.fixedCosts)}</td><td className="py-1 pr-3">{eur(m.variableCosts)}</td><td className="py-1 pr-3">{eur((m.fixedCosts ?? 0) + (m.variableCosts ?? 0))}</td></tr>)}</tbody>
-                  </table></>
+                <YearGroupedTable
+                  title="Monthly costs"
+                  head={["Month", "Fixed", "Variable", "Total"]}
+                  monthly={cost}
+                  cells={(m) => [`M${m.month}`, eur(m.fixedCosts), eur(m.variableCosts), eur(num(m.fixedCosts) + num(m.variableCosts))]}
+                  subtotal={(ms) => [
+                    eur(ms.reduce((s, m) => s + num(m.fixedCosts), 0)),
+                    eur(ms.reduce((s, m) => s + num(m.variableCosts), 0)),
+                    eur(ms.reduce((s, m) => s + num(m.fixedCosts) + num(m.variableCosts), 0)),
+                  ]}
+                />
               )}
 
               {arr(cash) && (
-                <><Sub>Cash flow</Sub>
-                  <table className="print-table mb-3 w-full border-collapse text-[12px] font-mono">
-                    <thead><tr className="border-b border-border text-left text-muted-foreground"><th className="py-1 pr-3 font-semibold">Month</th><th className="py-1 pr-3 font-semibold">Net cash flow</th><th className="py-1 pr-3 font-semibold">Ending balance</th></tr></thead>
-                    <tbody>{cash.map((m) => <tr key={m.month} className="print-row border-b border-border/60"><td className="py-1 pr-3">M{m.month}</td><td className="py-1 pr-3">{eur(m.netCashFlow)}</td><td className="py-1 pr-3">{eur(m.endingBalance)}</td></tr>)}</tbody>
-                  </table></>
+                <YearGroupedTable
+                  title="Cash flow"
+                  head={["Month", "Net cash flow", "Ending balance"]}
+                  monthly={cash}
+                  cells={(m) => [`M${m.month}`, eur(m.netCashFlow), eur(m.endingBalance)]}
+                  subtotal={(ms) => [
+                    eur(ms.reduce((s, m) => s + num(m.netCashFlow), 0)),
+                    eur(num(ms[ms.length - 1]?.endingBalance)), // year-end balance, not a sum
+                  ]}
+                />
               )}
 
               {be && (has(be.summary) || be.breakEvenMonth != null) && (
                 <><Sub>Break-even</Sub>
-                  <Body>{be.breakEvenMonth != null ? `Break-even in month ${be.breakEvenMonth}${be.isAchievedWithinHorizon === false ? " (beyond the 12-month horizon)" : ""}. ` : ""}{be.summary ?? ""}</Body></>
+                  <Body>{be.breakEvenMonth != null ? `Break-even in month ${be.breakEvenMonth}. ` : `Break-even not reached within the ${fcTotal || 36}-month horizon. `}{be.summary ?? ""}</Body></>
               )}
             </>
           )}
