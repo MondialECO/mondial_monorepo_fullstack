@@ -62,10 +62,12 @@ export function getNextCreatorAction(state: CreatorJourneyState): NextAction {
   // Phase 3 Check: Project Intelligence
   if (state.phase3.status !== 'completed') {
     const step = state.phase3.currentStep;
-    let route = '/dashboard/creator/phase-3';
-    // Business plan first (step 2, from clarifier), then forecast (step 3, consumes plan).
-    if (step === 2) route = '/dashboard/creator/phase-3/business-plan';
-    else if (step === 3) route = '/dashboard/creator/phase-3/forecast';
+    // Default = business plan (the new first screen). The removed 3.1 input screen means
+    // the derivation never emits step 1, but any unmapped/legacy value (incl. a stale
+    // local step 1) resolves here rather than the old /phase-3 root. Derivation steps are
+    // unchanged: business plan = 2 (from clarifier), forecast = 3 (consumes plan), etc.
+    let route = '/dashboard/creator/phase-3/business-plan';
+    if (step === 3) route = '/dashboard/creator/phase-3/forecast';
     else if (step === 4) route = '/dashboard/creator/phase-3/compliance';
     else if (step === 5) route = '/dashboard/creator/phase-3/formation';
     else if (step === 6) route = '/dashboard/creator/phase-3/complete';
