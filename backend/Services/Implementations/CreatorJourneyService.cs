@@ -616,10 +616,21 @@ namespace WebApp.Services.Implementations
             var p4 = j.Phase4Data ??= new CreatorPhase4Data();
             p4.PricingModel = pricingModel;
             p4.Tiers = tiers ?? new List<CreatorPricingTier>();
-            CreatorJourneyVersioning.Append(
+            var entry = CreatorJourneyVersioning.Append(
                 (j.OutputSnapshots ??= new CreatorOutputSnapshots()).PricingVersions, 4, null,
                 new BsonDocument { ["pricingModel"] = pricingModel, ["tierCount"] = p4.Tiers.Count });
-            await ReplaceAsync(j);
+
+            // Atomic: $set only this method's own Phase4Data fields + $push its own
+            // version array. Pricing/Resource/Gtm own disjoint fields, so a full-doc
+            // ReplaceAsync (which a Gtm save could clobber) is replaced by a targeted
+            // update that can't interfere with a sibling Phase-4 save.
+            await _context.CreatorJourneys.UpdateOneAsync(
+                f => f.Id == j.Id,
+                Builders<CreatorJourney>.Update
+                    .Set(x => x.Phase4Data.PricingModel, p4.PricingModel)
+                    .Set(x => x.Phase4Data.Tiers, p4.Tiers)
+                    .Push(x => x.OutputSnapshots.PricingVersions, entry)
+                    .Set(x => x.UpdatedAt, DateTime.UtcNow));
             return j;
         }
 
@@ -627,10 +638,18 @@ namespace WebApp.Services.Implementations
         {
             var j = await GetOrCreateAsync(userId);
             (j.Phase4Data ??= new CreatorPhase4Data()).ResourceCalculation = calc;
-            CreatorJourneyVersioning.Append(
+            var entry = CreatorJourneyVersioning.Append(
                 (j.OutputSnapshots ??= new CreatorOutputSnapshots()).ResourcePlanVersions, 4, null,
                 calc?.ToBsonDocument());
-            await ReplaceAsync(j);
+
+            // Atomic: $set only ResourceCalculation + $push its own version array —
+            // disjoint from Pricing/Gtm, so sibling Phase-4 saves can't clobber it.
+            await _context.CreatorJourneys.UpdateOneAsync(
+                f => f.Id == j.Id,
+                Builders<CreatorJourney>.Update
+                    .Set(x => x.Phase4Data.ResourceCalculation, calc)
+                    .Push(x => x.OutputSnapshots.ResourcePlanVersions, entry)
+                    .Set(x => x.UpdatedAt, DateTime.UtcNow));
             return j;
         }
 
@@ -638,10 +657,18 @@ namespace WebApp.Services.Implementations
         {
             var j = await GetOrCreateAsync(userId);
             (j.Phase4Data ??= new CreatorPhase4Data()).GtmSetup = gtm;
-            CreatorJourneyVersioning.Append(
+            var entry = CreatorJourneyVersioning.Append(
                 (j.OutputSnapshots ??= new CreatorOutputSnapshots()).GtmPlanVersions, 4, null,
                 gtm?.ToBsonDocument());
-            await ReplaceAsync(j);
+
+            // Atomic: $set only GtmSetup + $push its own version array — disjoint from
+            // Pricing/Resource, so sibling Phase-4 saves can't clobber it.
+            await _context.CreatorJourneys.UpdateOneAsync(
+                f => f.Id == j.Id,
+                Builders<CreatorJourney>.Update
+                    .Set(x => x.Phase4Data.GtmSetup, gtm)
+                    .Push(x => x.OutputSnapshots.GtmPlanVersions, entry)
+                    .Set(x => x.UpdatedAt, DateTime.UtcNow));
             return j;
         }
 
