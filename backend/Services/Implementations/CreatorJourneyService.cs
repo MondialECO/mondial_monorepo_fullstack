@@ -305,6 +305,7 @@ namespace WebApp.Services.Implementations
             var j = await GetOrCreateAsync(userId);
             var snaps = j.OutputSnapshots ??= new CreatorOutputSnapshots();
 
+            // Select the in-memory list (updates the returned object + computes Version).
             var list = r.OutputKey switch
             {
                 "forecastVersions" => snaps.ForecastVersions,
@@ -319,8 +320,29 @@ namespace WebApp.Services.Implementations
             };
 
             var data = r.Payload != null ? BsonDocument.Parse(r.Payload.ToJson()) : null;
-            CreatorJourneyVersioning.Append(list, r.Phase, r.SessionId, data); // newest LAST, own phase
-            await ReplaceAsync(j);
+            var entry = CreatorJourneyVersioning.Append(list, r.Phase, r.SessionId, data); // newest LAST, own phase
+
+            // Atomic $push so a concurrent output save can't clobber this entry (a
+            // full-document ReplaceAsync would lose one). Typed Push per key keeps the
+            // class-map serialization byte-identical — no string paths. The default arm
+            // is unreachable (the list switch above already threw on unknown keys) but
+            // stays loud so a bad key can never push to a wrong/new field.
+            var update = r.OutputKey switch
+            {
+                "forecastVersions" => Builders<CreatorJourney>.Update.Push(x => x.OutputSnapshots.ForecastVersions, entry),
+                "businessPlanVersions" => Builders<CreatorJourney>.Update.Push(x => x.OutputSnapshots.BusinessPlanVersions, entry),
+                "ipValuationVersions" => Builders<CreatorJourney>.Update.Push(x => x.OutputSnapshots.IpValuationVersions, entry),
+                "legalChecklistVersions" => Builders<CreatorJourney>.Update.Push(x => x.OutputSnapshots.LegalChecklistVersions, entry),
+                "formationVersions" => Builders<CreatorJourney>.Update.Push(x => x.OutputSnapshots.FormationVersions, entry),
+                "pricingVersions" => Builders<CreatorJourney>.Update.Push(x => x.OutputSnapshots.PricingVersions, entry),
+                "gtmPlanVersions" => Builders<CreatorJourney>.Update.Push(x => x.OutputSnapshots.GtmPlanVersions, entry),
+                "matchingRuns" => Builders<CreatorJourney>.Update.Push(x => x.OutputSnapshots.MatchingRuns, entry),
+                _ => throw new CreatorJourneyException(400, $"Unknown outputKey \"{r.OutputKey}\"."),
+            };
+
+            await _context.CreatorJourneys.UpdateOneAsync(
+                f => f.Id == j.Id,
+                update.Set(x => x.UpdatedAt, DateTime.UtcNow));
             return j;
         }
 
@@ -546,21 +568,35 @@ namespace WebApp.Services.Implementations
             var p3 = j.Phase3Data ??= new CreatorPhase3Data();
             var snaps = j.OutputSnapshots ??= new CreatorOutputSnapshots();
 
+            // Atomic targeted update: $set only the ONE session-id field + $push its
+            // version entry. A full-document ReplaceAsync would let a concurrent
+            // forecast/businessPlan start clobber the other's session id — silently
+            // breaking Phase-3 gating. Because we $set a single field, the sibling
+            // session id is never touched. UpdatedAt bumped in the same write.
+            UpdateDefinition<CreatorJourney> update;
             switch (kind)
             {
                 case "forecast":
                     p3.ForecastSessionId = sessionId;
-                    CreatorJourneyVersioning.Append(snaps.ForecastVersions, 3, sessionId, null);
+                    update = Builders<CreatorJourney>.Update
+                        .Set(x => x.Phase3Data.ForecastSessionId, sessionId)
+                        .Push(x => x.OutputSnapshots.ForecastVersions,
+                              CreatorJourneyVersioning.Append(snaps.ForecastVersions, 3, sessionId, null));
                     break;
                 case "businessPlan":
                     p3.BusinessPlanSessionId = sessionId;
-                    CreatorJourneyVersioning.Append(snaps.BusinessPlanVersions, 3, sessionId, null);
+                    update = Builders<CreatorJourney>.Update
+                        .Set(x => x.Phase3Data.BusinessPlanSessionId, sessionId)
+                        .Push(x => x.OutputSnapshots.BusinessPlanVersions,
+                              CreatorJourneyVersioning.Append(snaps.BusinessPlanVersions, 3, sessionId, null));
                     break;
                 default:
                     throw new CreatorJourneyException(400, "kind must be \"forecast\" or \"businessPlan\".");
             }
 
-            await ReplaceAsync(j);
+            await _context.CreatorJourneys.UpdateOneAsync(
+                f => f.Id == j.Id,
+                update.Set(x => x.UpdatedAt, DateTime.UtcNow));
             return j;
         }
 
