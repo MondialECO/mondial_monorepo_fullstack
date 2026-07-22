@@ -5,7 +5,7 @@ namespace WebApp.Services.Interface
 {
     /// <summary>
     /// Owns the Creator journey (Phases 2–6). The journey document holds artifacts
-    /// ONLY; phase/step status is derived on demand by <see cref="ComputePhaseStatus"/>.
+    /// ONLY; phase/step status is derived on demand by <see cref="ComputePhaseStatusAsync"/>.
     /// </summary>
     public interface ICreatorJourneyService
     {
@@ -16,7 +16,7 @@ namespace WebApp.Services.Interface
         /// The derived-status engine. Pure function of the journey's artifacts plus the
         /// user's Phase-1 onboarding completion. Never persisted — call on every read.
         /// </summary>
-        ComputedJourneyStatus ComputePhaseStatus(CreatorJourney journey, bool phase1Complete);
+        Task<ComputedJourneyStatus> ComputePhaseStatusAsync(CreatorJourney journey, bool phase1Complete);
 
         /// <summary>Shallow-merge validated project fields. Returns the updated journey.</summary>
         Task<CreatorJourney> UpdateProjectAsync(string userId, UpdateProjectRequest request);

@@ -4,6 +4,7 @@ using WebApp.DbContext;
 using WebApp.Models.DatabaseModels;
 using WebApp.Models.Dtos;
 using WebApp.Services.Interface;
+using WebApp.Services.Repository.Ai;
 
 namespace WebApp.Services.Implementations
 {
@@ -20,13 +21,26 @@ namespace WebApp.Services.Implementations
     public class CreatorJourneyService : ICreatorJourneyService
     {
         private readonly MongoDbContext _context;
+        // Phase-3 completion is gated on the linked AI sessions actually succeeding
+        // (Status=Completed with Content), not on the session id merely existing —
+        // ids are linked at generation start, so a failed/pending job must not complete P3.
+        private readonly IBusinessPlanSessionStore _businessPlans;
+        private readonly IForecastSessionStore _forecasts;
         private static readonly TimeSpan PathSwitchWindow = TimeSpan.FromHours(72);
 
         // Legacy Path-A value, retired in P1.10. Centralized here so the one-time
         // read-coercion is the ONLY reference to it; no consumer branches on it.
         private const string LegacyPathAlias = "buyout";
 
-        public CreatorJourneyService(MongoDbContext context) => _context = context;
+        public CreatorJourneyService(
+            MongoDbContext context,
+            IBusinessPlanSessionStore businessPlans,
+            IForecastSessionStore forecasts)
+        {
+            _context = context;
+            _businessPlans = businessPlans;
+            _forecasts = forecasts;
+        }
 
         public async Task<CreatorJourney> GetOrCreateAsync(string userId)
         {
@@ -73,7 +87,7 @@ namespace WebApp.Services.Implementations
         // Pure function of artifact presence + Phase-1 completion. Never stored.
         // Computed sequentially p1→p6 so each phase can gate on the previous.
         // =================================================================
-        public ComputedJourneyStatus ComputePhaseStatus(CreatorJourney j, bool phase1Complete)
+        public async Task<ComputedJourneyStatus> ComputePhaseStatusAsync(CreatorJourney j, bool phase1Complete)
         {
             var s = new ComputedJourneyStatus();
 
@@ -109,17 +123,28 @@ namespace WebApp.Services.Implementations
 
             // ---- Phase 3 ----
             var p3 = j.Phase3Data ?? new CreatorPhase3Data();
-            bool hasForecast = !string.IsNullOrEmpty(p3.ForecastSessionId);
-            bool hasPlan = !string.IsNullOrEmpty(p3.BusinessPlanSessionId);
+            // "Started" = a session id is linked (linked at generation start). "Completed" =
+            // the AI job genuinely succeeded (Status=Completed with Content). A linked-but-
+            // failed/pending session counts as started (keeps P3 in_progress + resumable),
+            // but NOT as complete (so a failed job can't unlock Phase 4 with no real output).
+            bool planStarted = !string.IsNullOrEmpty(p3.BusinessPlanSessionId);
+            bool forecastStarted = !string.IsNullOrEmpty(p3.ForecastSessionId);
+            var planSession = planStarted ? await _businessPlans.GetOwnedAsync(p3.BusinessPlanSessionId, j.UserId) : null;
+            var forecastSession = forecastStarted ? await _forecasts.GetOwnedAsync(p3.ForecastSessionId, j.UserId) : null;
+            bool hasPlan = planSession != null
+                && string.Equals(planSession.Status, "Completed", StringComparison.Ordinal) && planSession.CurrentVersion > 0;
+            bool hasForecast = forecastSession != null
+                && string.Equals(forecastSession.Status, "Completed", StringComparison.Ordinal) && forecastSession.CurrentVersion > 0;
             bool hasLegal = p3.LegalChecklist != null;
             bool hasFormation = p3.FormationGenerator != null;
-            bool anyP3 = hasForecast || hasPlan || hasLegal || hasFormation;
+            bool anyP3 = planStarted || forecastStarted || hasLegal || hasFormation;
 
             if (!p2Done) s.Phase3.Status = "locked";
             else if (hasForecast && hasPlan && hasLegal && hasFormation) s.Phase3.Status = "completed";
             else if (anyP3) s.Phase3.Status = "in_progress";
             else s.Phase3.Status = "available";
             // Step order: business plan (2) → forecast (3) → legal (4) → formation (5) → complete (6).
+            // Uses success-gated hasPlan/hasForecast so a failed/pending job routes back to that step.
             s.Phase3.CurrentStep = !hasPlan ? 2 : !hasForecast ? 3 : !hasLegal ? 4 : !hasFormation ? 5 : 6;
 
             bool p3Done = s.Phase3.Status == "completed";

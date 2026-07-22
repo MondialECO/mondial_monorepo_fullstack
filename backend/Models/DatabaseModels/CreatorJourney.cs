@@ -8,7 +8,7 @@ namespace WebApp.Models.DatabaseModels
     /// Source of truth for the Creator journey, Phases 2–6. One document per user.
     ///
     /// ARCHITECTURE NOTE — phase/step status is NEVER stored here. It is DERIVED on
-    /// every read by <c>ICreatorJourneyService.ComputePhaseStatus</c> from the
+    /// every read by <c>ICreatorJourneyService.ComputePhaseStatusAsync</c> from the
     /// presence of artifacts in this document plus the user's onboarding state.
     /// Storing status caused audit risks R1 (mutation-on-load corrupting a shared
     /// constant) and R2 (non-monotonic regression); deriving it makes both
