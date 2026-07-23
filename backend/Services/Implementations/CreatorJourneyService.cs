@@ -566,6 +566,43 @@ namespace WebApp.Services.Implementations
             return j;
         }
 
+        // 3.5b: persist self-declared skills + derived gaps + optional co-founder draft.
+        // Targeted atomic $set/$push (single UpdateOneAsync) — no full-document replace, so a
+        // concurrent write can't clobber it. Sets SkillsDeclared=true (direction B of the
+        // clobber guard: declaration always supersedes the ExtractStrengths echo).
+        public async Task<CreatorJourney> DeclareFormationSkillsAsync(
+            string userId, List<string> youHave, List<CreatorSkillGap> youNeed,
+            List<string> matchedSpIds, CreatorCofounderDraft cofounder)
+        {
+            var j = await GetOrCreateAsync(userId);
+            var formation = j.Phase3Data?.FormationGenerator
+                ?? throw new CreatorJourneyException(404, "Formation not generated yet.");
+
+            // Reflect on the in-memory object (returned to the caller + version snapshot).
+            formation.YouHave = youHave;
+            formation.YouNeed = youNeed;
+            formation.MatchedSpIds = matchedSpIds;
+            formation.SkillsDeclared = true;
+            if (cofounder != null) formation.CofounderDraft = cofounder;
+
+            var entry = CreatorJourneyVersioning.Append(
+                (j.OutputSnapshots ??= new CreatorOutputSnapshots()).FormationVersions, 3, null,
+                formation.ToBsonDocument());
+
+            var update = Builders<CreatorJourney>.Update
+                .Set(x => x.Phase3Data.FormationGenerator.YouHave, youHave)
+                .Set(x => x.Phase3Data.FormationGenerator.YouNeed, youNeed)
+                .Set(x => x.Phase3Data.FormationGenerator.MatchedSpIds, matchedSpIds)
+                .Set(x => x.Phase3Data.FormationGenerator.SkillsDeclared, true)
+                .Push(x => x.OutputSnapshots.FormationVersions, entry)
+                .Set(x => x.UpdatedAt, DateTime.UtcNow);
+            if (cofounder != null)
+                update = update.Set(x => x.Phase3Data.FormationGenerator.CofounderDraft, cofounder);
+
+            await _context.CreatorJourneys.UpdateOneAsync(f => f.Id == j.Id, update);
+            return j;
+        }
+
         public async Task<CreatorJourney> SetPhase3SessionAsync(string userId, string kind, string sessionId)
         {
             if (string.IsNullOrWhiteSpace(sessionId))

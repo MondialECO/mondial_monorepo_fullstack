@@ -103,6 +103,19 @@ namespace WebApp.Models.Dtos
         public string SelectedType { get; set; }
     }
 
+    public class DeclareFormationSkillsRequest
+    {
+        public List<string> YouHave { get; set; } = new();
+        public CofounderDraftDto Cofounder { get; set; }
+    }
+
+    public class CofounderDraftDto
+    {
+        public string RoleNeeded { get; set; }
+        public string EquityRange { get; set; }
+        public string LocationPreference { get; set; }
+    }
+
     public class OpenWorkroomRequest
     {
         public string SpId { get; set; }

@@ -50,6 +50,24 @@ namespace WebApp.Controllers
 
         private static readonly string[] FinTechKeywords = { "payment", "invoice", "billing", "transaction", "bank" };
 
+        // 3.5b — the fixed set of skills a creator can DECLARE ("You have"). Mirrored on the frontend.
+        private static readonly HashSet<string> DeclarableSkills = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "Tech/Engineering", "Finance", "Legal", "Sales", "Operations",
+            "Design", "Community", "Product", "Domain expertise", "Marketing",
+        };
+
+        // 3.5b gap baseline — SP-BACKED areas only, so every "You need" item resolves to a
+        // real specialist (Sales/Product have no marketplace category → excluded to avoid dead
+        // Find-SP buttons). (declarable skill, SP specialty, gap label). Not per-venture analysis.
+        private static readonly (string Skill, string Specialty, string Label)[] GapBaseline =
+        {
+            ("Tech/Engineering", "development", "Full-stack Developer"),
+            ("Finance", "finance", "Financial Advisor"),
+            ("Legal", "legal", "Legal Specialist"),
+            ("Design", "branding", "Brand Designer"),
+        };
+
         // ========================= MODULE 3.3 — LEGAL CHECKLIST =========================
 
         // POST /api/creator/ai/legal-checklist/generate
@@ -183,13 +201,21 @@ namespace WebApp.Controllers
                     matchedSpIds.AddRange(matches.Select(m => m.User.Id.ToString()));
                 }
 
+                // CLOBBER GUARD (direction A): once the creator has self-declared skills on
+                // 3.5b, never overwrite YouHave/YouNeed/MatchedSpIds with the rule-based echo —
+                // preserve their declarations. RecommendedType is always refreshed (the type
+                // suggestion and the declared skills are deliberately decoupled).
+                var existingF = journey.Phase3Data?.FormationGenerator;
+                bool declared = existingF?.SkillsDeclared == true;
                 var formation = new CreatorFormationGenerator
                 {
                     RecommendedType = recommendedType,
-                    YouHave = youHave,
-                    YouNeed = youNeed,
-                    MatchedSpIds = matchedSpIds.Distinct().ToList(),
-                    SelectedType = journey.Phase3Data?.FormationGenerator?.SelectedType,
+                    YouHave = declared ? existingF.YouHave : youHave,
+                    YouNeed = declared ? existingF.YouNeed : youNeed,
+                    MatchedSpIds = declared ? existingF.MatchedSpIds : matchedSpIds.Distinct().ToList(),
+                    SelectedType = existingF?.SelectedType,
+                    SkillsDeclared = declared,
+                    CofounderDraft = existingF?.CofounderDraft,
                 };
 
                 journey = await _journeys.SetFormationAsync(userId, formation);
@@ -212,6 +238,52 @@ namespace WebApp.Controllers
                     formation = journey.Phase3Data.FormationGenerator,
                     legalChecklist = journey.Phase3Data.LegalChecklist,
                 }));
+            }
+            catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
+            catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
+            catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
+        }
+
+        // PATCH /api/creator/formation/skills — 3.5b: persist self-declared skills, derive the
+        // SP-backed gaps deterministically (no AI), match specialists, and store the optional
+        // co-founder DRAFT (matched at Level Up, never here). Requires a generated formation.
+        [HttpPatch("formation/skills")]
+        public async Task<IActionResult> DeclareFormationSkills([FromBody] DeclareFormationSkillsRequest request)
+        {
+            try
+            {
+                var userId = GetUserId();
+                var declared = (request?.YouHave ?? new List<string>())
+                    .Where(DeclarableSkills.Contains).Distinct().ToList();
+
+                // youNeed = SP-backed baseline minus declared. Every gap maps to a real specialty.
+                var youNeed = new List<CreatorSkillGap>();
+                foreach (var (skill, specialty, label) in GapBaseline)
+                    if (!declared.Contains(skill, StringComparer.OrdinalIgnoreCase))
+                        youNeed.Add(new() { Label = label, SpSpecialty = specialty });
+
+                // Match SPs per gap — reuse the P1.6 formula, top 3 each.
+                var journey0 = await _journeys.GetOrCreateAsync(userId);
+                var sector = journey0.Project?.Sector ?? "";
+                var matchedSpIds = new List<string>();
+                foreach (var need in youNeed)
+                {
+                    var cat = SpecialtyToCategory(need.SpSpecialty);
+                    if (cat == null) continue;
+                    var matches = await _spMatching.MatchAsync(cat.Value, sector, 3);
+                    matchedSpIds.AddRange(matches.Select(m => m.User.Id.ToString()));
+                }
+
+                CreatorCofounderDraft cofounder = request?.Cofounder == null ? null : new CreatorCofounderDraft
+                {
+                    RoleNeeded = request.Cofounder.RoleNeeded,
+                    EquityRange = request.Cofounder.EquityRange,
+                    LocationPreference = request.Cofounder.LocationPreference,
+                };
+
+                var journey = await _journeys.DeclareFormationSkillsAsync(
+                    userId, declared, youNeed, matchedSpIds.Distinct().ToList(), cofounder);
+                return Ok(ApiResponse.Ok("Skills declared", journey.Phase3Data.FormationGenerator));
             }
             catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
             catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }

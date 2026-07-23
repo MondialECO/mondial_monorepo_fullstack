@@ -177,6 +177,22 @@ namespace WebApp.Models.DatabaseModels
         public List<CreatorSkillGap> YouNeed { get; set; } = new();
         public List<string> MatchedSpIds { get; set; } = new();
         public string SelectedType { get; set; }
+
+        // True once the creator SELF-DECLARES skills on 3.5b — YouHave then holds their
+        // declared chip set, not the ExtractStrengths echo. Guards the generate path from
+        // overwriting declarations (see GenerateFormation).
+        public bool SkillsDeclared { get; set; }
+
+        // Co-founder preferences captured on 3.5b. Stored now; matched at Level Up (P6),
+        // never in Phase 3 (matchmaking is a P6 privilege).
+        public CreatorCofounderDraft CofounderDraft { get; set; }
+    }
+
+    public class CreatorCofounderDraft
+    {
+        public string RoleNeeded { get; set; }
+        public string EquityRange { get; set; }
+        public string LocationPreference { get; set; } // remote | local | either
     }
 
     public class CreatorSkillGap

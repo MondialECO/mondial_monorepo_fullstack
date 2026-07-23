@@ -179,6 +179,13 @@ export const creatorJourneyApi = {
     return unwrap<{ formation: FormationGenerator; legalChecklist: LegalChecklist }>(res.data);
   },
 
+  // 3.5b: persist self-declared skills (+ optional co-founder draft). Backend derives the
+  // SP-backed gaps + matches; returns the updated formation.
+  declareFormationSkills: async (youHave: string[], cofounder?: CofounderDraft): Promise<FormationGenerator> => {
+    const res = await api.patch('/creator/formation/skills', { youHave, cofounder: cofounder ?? null });
+    return unwrap<FormationGenerator>(res.data);
+  },
+
   spMatches: async (specialty: string): Promise<SpMatchDto[]> => {
     const res = await api.get('/creator/sp-matches', { params: { specialty } });
     return unwrap<SpMatchDto[]>(res.data);
@@ -335,12 +342,20 @@ export interface SkillGap {
   spSpecialty: string;
 }
 
+export interface CofounderDraft {
+  roleNeeded?: string;
+  equityRange?: string;
+  locationPreference?: string;
+}
+
 export interface FormationGenerator {
   recommendedType: string;
   youHave: string[];
   youNeed: SkillGap[];
   matchedSpIds: string[];
   selectedType: string | null;
+  skillsDeclared?: boolean;
+  cofounderDraft?: CofounderDraft | null;
 }
 
 export interface SpMatchDto {
