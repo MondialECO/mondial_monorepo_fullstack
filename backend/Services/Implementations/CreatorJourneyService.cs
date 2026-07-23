@@ -132,7 +132,12 @@ namespace WebApp.Services.Implementations
             j.Phase3Data = idea.Phase3Data ??= new CreatorPhase3Data();
             j.Phase4Data = idea.Phase4Data ??= new CreatorPhase4Data();
             j.Phase5Data = idea.Phase5Data ??= new CreatorPhase5Data();
-            (j.Phase6Data ??= new CreatorPhase6Data()).SmartMatchmaking = idea.SmartMatchmaking ??= new CreatorSmartMatchmaking();
+            var p6 = j.Phase6Data ??= new CreatorPhase6Data();
+            p6.SmartMatchmaking = idea.SmartMatchmaking ??= new CreatorSmartMatchmaking();
+            // Phase 6 is PER-IDEA (step 6iii): only THE leveled-up idea shows Level-Up
+            // completion — the user's other ideas never inherit it. Strict equality:
+            // the step-1 backfill guarantees LeveledUpIdeaId for every leveled-up user.
+            p6.LevelUpTriggered = !string.IsNullOrEmpty(j.LeveledUpIdeaId) && j.LeveledUpIdeaId == idea.Id;
             j.OutputSnapshots = idea.OutputSnapshots ??= new CreatorOutputSnapshots();
             return j;
         }
@@ -140,14 +145,6 @@ namespace WebApp.Services.Implementations
         /// <summary>Targeted atomic write on the idea (source of truth).</summary>
         private Task WriteIdeaAsync(CreatorIdea idea, UpdateDefinition<CreatorIdea> update)
             => _creatorIdeas.UpdateAsync(idea.Id, idea.UserId, update);
-
-        /// <summary>
-        /// MIRROR predicate — remove in/before step 6. Journey mirroring is only
-        /// defined while the write targets the ACTIVE idea (one journey can't mirror
-        /// two ideas); an explicit non-active target skips the mirror.
-        /// </summary>
-        private static bool MirrorToJourney(CreatorJourney j, CreatorIdea idea)
-            => idea.Id == j.ActiveIdeaId;
 
         public async Task<CreatorJourney> GetOrCreateComposedAsync(string userId, string ideaId = null)
         {
@@ -380,7 +377,6 @@ namespace WebApp.Services.Implementations
             if (r.ClarityScore.HasValue) p.ClarityScore = r.ClarityScore.Value;
 
             await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update.Set(x => x.Project, p));
-            if (MirrorToJourney(j, idea)) await ReplaceAsync(j); // MIRROR — remove in/before step 6
             return j;
         }
 
@@ -397,7 +393,6 @@ namespace WebApp.Services.Implementations
             (j.Phase2Data ??= new CreatorPhase2Data()).SelectedEntryPath = path;
 
             await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update.Set(x => x.Phase2Data.SelectedEntryPath, path));
-            if (MirrorToJourney(j, idea)) await ReplaceAsync(j); // MIRROR — remove in/before step 6
             return j;
         }
 
@@ -427,7 +422,6 @@ namespace WebApp.Services.Implementations
                 p5.PathSelectedAt = DateTime.UtcNow;
             }
             await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update.Set(x => x.Phase5Data, p5));
-            if (MirrorToJourney(j, idea)) await ReplaceAsync(j); // MIRROR — remove in/before step 6
             return j;
         }
 
@@ -471,26 +465,6 @@ namespace WebApp.Services.Implementations
                 _ => throw new CreatorJourneyException(400, $"Unknown outputKey \"{r.OutputKey}\"."),
             };
             await WriteIdeaAsync(idea, ideaUpdate);
-
-            // MIRROR — remove in/before step 6.
-            if (MirrorToJourney(j, idea))
-            {
-                var update = r.OutputKey switch
-                {
-                    "forecastVersions" => Builders<CreatorJourney>.Update.Push(x => x.OutputSnapshots.ForecastVersions, entry),
-                    "businessPlanVersions" => Builders<CreatorJourney>.Update.Push(x => x.OutputSnapshots.BusinessPlanVersions, entry),
-                    "ipValuationVersions" => Builders<CreatorJourney>.Update.Push(x => x.OutputSnapshots.IpValuationVersions, entry),
-                    "legalChecklistVersions" => Builders<CreatorJourney>.Update.Push(x => x.OutputSnapshots.LegalChecklistVersions, entry),
-                    "formationVersions" => Builders<CreatorJourney>.Update.Push(x => x.OutputSnapshots.FormationVersions, entry),
-                    "pricingVersions" => Builders<CreatorJourney>.Update.Push(x => x.OutputSnapshots.PricingVersions, entry),
-                    "gtmPlanVersions" => Builders<CreatorJourney>.Update.Push(x => x.OutputSnapshots.GtmPlanVersions, entry),
-                    "matchingRuns" => Builders<CreatorJourney>.Update.Push(x => x.OutputSnapshots.MatchingRuns, entry),
-                    _ => throw new CreatorJourneyException(400, $"Unknown outputKey \"{r.OutputKey}\"."),
-                };
-                await _context.CreatorJourneys.UpdateOneAsync(
-                    f => f.Id == j.Id,
-                    update.Set(x => x.UpdatedAt, DateTime.UtcNow));
-            }
             return j;
         }
 
@@ -512,14 +486,6 @@ namespace WebApp.Services.Implementations
 
             // Idea = source of truth: atomic $push (two concurrent appends both persist).
             await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update.Push(x => x.Phase2Data.ChatMessages, message));
-
-            // MIRROR — remove in/before step 6.
-            if (MirrorToJourney(j, idea))
-                await _context.CreatorJourneys.UpdateOneAsync(
-                    f => f.Id == j.Id,
-                    Builders<CreatorJourney>.Update
-                        .Push(x => x.Phase2Data.ChatMessages, message)
-                        .Set(x => x.UpdatedAt, DateTime.UtcNow));
 
             // Reflect the persisted append on the returned object (unchanged contract).
             var p2 = j.Phase2Data ??= new CreatorPhase2Data();
@@ -554,7 +520,6 @@ namespace WebApp.Services.Implementations
             await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update
                 .Set(x => x.Project, p)
                 .Set(x => x.Phase2Data, j.Phase2Data));
-            if (MirrorToJourney(j, idea)) await ReplaceAsync(j); // MIRROR — remove in/before step 6
             return j;
         }
 
@@ -589,7 +554,6 @@ namespace WebApp.Services.Implementations
             await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update
                 .Set(x => x.Project, p)
                 .Set(x => x.Phase2Data, j.Phase2Data));
-            if (MirrorToJourney(j, idea)) await ReplaceAsync(j); // MIRROR — remove in/before step 6
             return j;
         }
 
@@ -610,7 +574,6 @@ namespace WebApp.Services.Implementations
             if (typographyPairing != null) b.TypographyPairing = typographyPairing;
 
             await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update.Set(x => x.Project.Branding, b));
-            if (MirrorToJourney(j, idea)) await ReplaceAsync(j); // MIRROR — remove in/before step 6
             return j;
         }
 
@@ -628,11 +591,6 @@ namespace WebApp.Services.Implementations
             j.Phase2Data.DiscoveryInputs = inputs;
 
             await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update.Set(x => x.Phase2Data.DiscoveryInputs, inputs));
-            if (MirrorToJourney(j, idea)) // MIRROR — remove in/before step 6
-                await _context.CreatorJourneys.UpdateOneAsync(
-                    f => f.Id == j.Id,
-                    Builders<CreatorJourney>.Update.Set(x => x.Phase2Data.DiscoveryInputs, inputs));
-
             return j;
         }
 
@@ -648,11 +606,6 @@ namespace WebApp.Services.Implementations
             j.Phase2Data.GeneratedConcepts = concepts;
 
             await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update.Set(x => x.Phase2Data.GeneratedConcepts, concepts));
-            if (MirrorToJourney(j, idea)) // MIRROR — remove in/before step 6
-                await _context.CreatorJourneys.UpdateOneAsync(
-                    f => f.Id == j.Id,
-                    Builders<CreatorJourney>.Update.Set(x => x.Phase2Data.GeneratedConcepts, concepts));
-
             return j;
         }
 
@@ -668,11 +621,6 @@ namespace WebApp.Services.Implementations
             j.Phase2Data.SelectedConceptId = conceptId;
 
             await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update.Set(x => x.Phase2Data.SelectedConceptId, conceptId));
-            if (MirrorToJourney(j, idea)) // MIRROR — remove in/before step 6
-                await _context.CreatorJourneys.UpdateOneAsync(
-                    f => f.Id == j.Id,
-                    Builders<CreatorJourney>.Update.Set(x => x.Phase2Data.SelectedConceptId, conceptId));
-
             return j;
         }
 
@@ -694,7 +642,6 @@ namespace WebApp.Services.Implementations
             await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update
                 .Set(x => x.Phase3Data.LegalChecklist, checklist)
                 .Push(x => x.OutputSnapshots.LegalChecklistVersions, entry));
-            if (MirrorToJourney(j, idea)) await ReplaceAsync(j); // MIRROR — remove in/before step 6
             return j;
         }
 
@@ -716,7 +663,6 @@ namespace WebApp.Services.Implementations
             checklist.CompletedCount = checklist.Items.Count(i => i.Status == "done");
 
             await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update.Set(x => x.Phase3Data.LegalChecklist, checklist));
-            if (MirrorToJourney(j, idea)) await ReplaceAsync(j); // MIRROR — remove in/before step 6
             return j;
         }
 
@@ -734,7 +680,6 @@ namespace WebApp.Services.Implementations
             await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update
                 .Set(x => x.Phase3Data.FormationGenerator, formation)
                 .Push(x => x.OutputSnapshots.FormationVersions, entry));
-            if (MirrorToJourney(j, idea)) await ReplaceAsync(j); // MIRROR — remove in/before step 6
             return j;
         }
 
@@ -763,7 +708,6 @@ namespace WebApp.Services.Implementations
             }
 
             await WriteIdeaAsync(idea, ideaUpdate);
-            if (MirrorToJourney(j, idea)) await ReplaceAsync(j); // MIRROR — remove in/before step 6
             return j;
         }
 
@@ -801,21 +745,6 @@ namespace WebApp.Services.Implementations
             if (cofounder != null)
                 ideaUpdate = ideaUpdate.Set(x => x.Phase3Data.FormationGenerator.CofounderDraft, cofounder);
             await WriteIdeaAsync(idea, ideaUpdate);
-
-            // MIRROR — remove in/before step 6.
-            if (MirrorToJourney(j, idea))
-            {
-                var update = Builders<CreatorJourney>.Update
-                    .Set(x => x.Phase3Data.FormationGenerator.YouHave, youHave)
-                    .Set(x => x.Phase3Data.FormationGenerator.YouNeed, youNeed)
-                    .Set(x => x.Phase3Data.FormationGenerator.MatchedSpIds, matchedSpIds)
-                    .Set(x => x.Phase3Data.FormationGenerator.SkillsDeclared, true)
-                    .Push(x => x.OutputSnapshots.FormationVersions, entry)
-                    .Set(x => x.UpdatedAt, DateTime.UtcNow);
-                if (cofounder != null)
-                    update = update.Set(x => x.Phase3Data.FormationGenerator.CofounderDraft, cofounder);
-                await _context.CreatorJourneys.UpdateOneAsync(f => f.Id == j.Id, update);
-            }
             return j;
         }
 
@@ -832,40 +761,29 @@ namespace WebApp.Services.Implementations
 
             // Atomic targeted update: $set only the ONE session-id field + $push its
             // version entry, so a concurrent forecast/businessPlan start can't clobber
-            // the sibling session id. Idea = source of truth; journey mirrored below.
+            // the sibling session id. Idea = the only write target.
             UpdateDefinition<CreatorIdea> ideaUpdate;
-            UpdateDefinition<CreatorJourney> update;
             switch (kind)
             {
                 case "forecast":
                     p3.ForecastSessionId = sessionId;
-                    var fcEntry = CreatorJourneyVersioning.Append(snaps.ForecastVersions, 3, sessionId, null);
                     ideaUpdate = Builders<CreatorIdea>.Update
                         .Set(x => x.Phase3Data.ForecastSessionId, sessionId)
-                        .Push(x => x.OutputSnapshots.ForecastVersions, fcEntry);
-                    update = Builders<CreatorJourney>.Update
-                        .Set(x => x.Phase3Data.ForecastSessionId, sessionId)
-                        .Push(x => x.OutputSnapshots.ForecastVersions, fcEntry);
+                        .Push(x => x.OutputSnapshots.ForecastVersions,
+                              CreatorJourneyVersioning.Append(snaps.ForecastVersions, 3, sessionId, null));
                     break;
                 case "businessPlan":
                     p3.BusinessPlanSessionId = sessionId;
-                    var bpEntry = CreatorJourneyVersioning.Append(snaps.BusinessPlanVersions, 3, sessionId, null);
                     ideaUpdate = Builders<CreatorIdea>.Update
                         .Set(x => x.Phase3Data.BusinessPlanSessionId, sessionId)
-                        .Push(x => x.OutputSnapshots.BusinessPlanVersions, bpEntry);
-                    update = Builders<CreatorJourney>.Update
-                        .Set(x => x.Phase3Data.BusinessPlanSessionId, sessionId)
-                        .Push(x => x.OutputSnapshots.BusinessPlanVersions, bpEntry);
+                        .Push(x => x.OutputSnapshots.BusinessPlanVersions,
+                              CreatorJourneyVersioning.Append(snaps.BusinessPlanVersions, 3, sessionId, null));
                     break;
                 default:
                     throw new CreatorJourneyException(400, "kind must be \"forecast\" or \"businessPlan\".");
             }
 
             await WriteIdeaAsync(idea, ideaUpdate);
-            if (MirrorToJourney(j, idea)) // MIRROR — remove in/before step 6
-                await _context.CreatorJourneys.UpdateOneAsync(
-                    f => f.Id == j.Id,
-                    update.Set(x => x.UpdatedAt, DateTime.UtcNow));
             return j;
         }
 
@@ -877,7 +795,6 @@ namespace WebApp.Services.Implementations
             (j.Phase3Data ??= new CreatorPhase3Data()).InvestorReadinessScore = score;
 
             await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update.Set(x => x.Phase3Data.InvestorReadinessScore, score));
-            if (MirrorToJourney(j, idea)) await ReplaceAsync(j); // MIRROR — remove in/before step 6
             return j;
         }
 
@@ -901,14 +818,6 @@ namespace WebApp.Services.Implementations
                 .Set(x => x.Phase4Data.PricingModel, p4.PricingModel)
                 .Set(x => x.Phase4Data.Tiers, p4.Tiers)
                 .Push(x => x.OutputSnapshots.PricingVersions, entry));
-            if (MirrorToJourney(j, idea)) // MIRROR — remove in/before step 6
-                await _context.CreatorJourneys.UpdateOneAsync(
-                    f => f.Id == j.Id,
-                    Builders<CreatorJourney>.Update
-                        .Set(x => x.Phase4Data.PricingModel, p4.PricingModel)
-                        .Set(x => x.Phase4Data.Tiers, p4.Tiers)
-                        .Push(x => x.OutputSnapshots.PricingVersions, entry)
-                        .Set(x => x.UpdatedAt, DateTime.UtcNow));
             return j;
         }
 
@@ -927,13 +836,6 @@ namespace WebApp.Services.Implementations
             await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update
                 .Set(x => x.Phase4Data.ResourceCalculation, calc)
                 .Push(x => x.OutputSnapshots.ResourcePlanVersions, entry));
-            if (MirrorToJourney(j, idea)) // MIRROR — remove in/before step 6
-                await _context.CreatorJourneys.UpdateOneAsync(
-                    f => f.Id == j.Id,
-                    Builders<CreatorJourney>.Update
-                        .Set(x => x.Phase4Data.ResourceCalculation, calc)
-                        .Push(x => x.OutputSnapshots.ResourcePlanVersions, entry)
-                        .Set(x => x.UpdatedAt, DateTime.UtcNow));
             return j;
         }
 
@@ -952,13 +854,6 @@ namespace WebApp.Services.Implementations
             await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update
                 .Set(x => x.Phase4Data.GtmSetup, gtm)
                 .Push(x => x.OutputSnapshots.GtmPlanVersions, entry));
-            if (MirrorToJourney(j, idea)) // MIRROR — remove in/before step 6
-                await _context.CreatorJourneys.UpdateOneAsync(
-                    f => f.Id == j.Id,
-                    Builders<CreatorJourney>.Update
-                        .Set(x => x.Phase4Data.GtmSetup, gtm)
-                        .Push(x => x.OutputSnapshots.GtmPlanVersions, entry)
-                        .Set(x => x.UpdatedAt, DateTime.UtcNow));
             return j;
         }
 
@@ -978,7 +873,6 @@ namespace WebApp.Services.Implementations
             await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update
                 .Set(x => x.Phase5Data.PathA, pathA)
                 .Push(x => x.OutputSnapshots.IpValuationVersions, entry));
-            if (MirrorToJourney(j, idea)) await ReplaceAsync(j); // MIRROR — remove in/before step 6
             return j;
         }
 
@@ -992,7 +886,6 @@ namespace WebApp.Services.Implementations
             if (matchedBuyerIds != null) pathA.MatchedBuyerIds = matchedBuyerIds;
 
             await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update.Set(x => x.Phase5Data.PathA, pathA));
-            if (MirrorToJourney(j, idea)) await ReplaceAsync(j); // MIRROR — remove in/before step 6
             return j;
         }
 
@@ -1005,7 +898,6 @@ namespace WebApp.Services.Implementations
             pathB.CompanyFormation = formation;
 
             await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update.Set(x => x.Phase5Data.PathB, pathB));
-            if (MirrorToJourney(j, idea)) await ReplaceAsync(j); // MIRROR — remove in/before step 6
             return j;
         }
 
@@ -1021,7 +913,14 @@ namespace WebApp.Services.Implementations
             if (!string.IsNullOrEmpty(companyId)) j.CompanyId = companyId; // R10: journey-level company link (user-level, not per-idea)
 
             await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update.Set(x => x.Phase5Data, p5));
-            if (MirrorToJourney(j, idea)) await ReplaceAsync(j); // MIRROR — remove in/before step 6 (also persists CompanyId)
+            // CompanyId is USER-LEVEL (survives mirror removal) — targeted $set, never a
+            // phase-block write. Only fires when a company link actually exists.
+            if (!string.IsNullOrEmpty(companyId))
+                await _context.CreatorJourneys.UpdateOneAsync(
+                    f => f.Id == j.Id,
+                    Builders<CreatorJourney>.Update
+                        .Set(x => x.CompanyId, companyId)
+                        .Set(x => x.UpdatedAt, DateTime.UtcNow));
             return j;
         }
     }

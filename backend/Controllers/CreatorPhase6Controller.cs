@@ -204,15 +204,23 @@ namespace WebApp.Controllers
                 var p5 = journey.Phase5Data ?? new CreatorPhase5Data();
                 var p6 = journey.Phase6Data ??= new CreatorPhase6Data();
 
-                // Idempotency: already leveled up → return the existing result, no second profile.
-                if (p6.LevelUpTriggered && !string.IsNullOrEmpty(p6.EntrepreneurProfileId))
+                // Idempotency is USER-LEVEL (step 6iii): the composed p6.LevelUpTriggered
+                // is now per-idea, so the once-per-user guard reads the journey's
+                // LeveledUpIdeaId directly. Same idea → idempotent return; a DIFFERENT
+                // idea → 409 (the entrepreneur side stays 1:1 — one company per user).
+                if (!string.IsNullOrEmpty(journey.LeveledUpIdeaId) ||
+                    !string.IsNullOrEmpty(p6.EntrepreneurProfileId)) // defensive legacy marker
                 {
-                    return Ok(ApiResponse.Ok("Already leveled up", new
+                    if (journey.LeveledUpIdeaId == levelUpIdeaId || string.IsNullOrEmpty(journey.LeveledUpIdeaId))
                     {
-                        levelUpComplete = true,
-                        entrepreneurProfileId = p6.EntrepreneurProfileId,
-                        redirectTo = "/dashboard/entrepreneur",
-                    }));
+                        return Ok(ApiResponse.Ok("Already leveled up", new
+                        {
+                            levelUpComplete = true,
+                            entrepreneurProfileId = p6.EntrepreneurProfileId,
+                            redirectTo = "/dashboard/entrepreneur",
+                        }));
+                    }
+                    return StatusCode(409, ApiResponse.Error("Another idea has already been taken through Level Up.", HttpContext.TraceIdentifier));
                 }
 
                 // Hard gate.
@@ -273,8 +281,19 @@ namespace WebApp.Controllers
                     p6.LevelUpTriggeredAt = DateTime.UtcNow;
                     p6.EntrepreneurProfileId = profile.Id;
                     (p6.SmartMatchmaking ??= new CreatorSmartMatchmaking()).Status = "live";
-                    if (session is null) await _journeys.ReplaceAsync(journey);
-                    else await _journeys.ReplaceAsync(journey, session);
+                    // Step 6iii: TARGETED user-level $set — never ReplaceAsync(journey),
+                    // which would write the composed (idea) phase blocks onto the frozen
+                    // journey copy. Only pointers + Level-Up markers are journey writes now.
+                    var journeyUpdate = Builders<CreatorJourney>.Update
+                        .Set(x => x.CompanyId, companyId)
+                        .Set(x => x.LeveledUpIdeaId, levelUpIdeaId)
+                        .Set(x => x.Phase6Data.LevelUpTriggered, true)
+                        .Set(x => x.Phase6Data.LevelUpTriggeredAt, p6.LevelUpTriggeredAt)
+                        .Set(x => x.Phase6Data.EntrepreneurProfileId, profile.Id)
+                        .Set(x => x.Phase6Data.SmartMatchmaking, p6.SmartMatchmaking)
+                        .Set(x => x.UpdatedAt, DateTime.UtcNow);
+                    if (session is null) await _context.CreatorJourneys.UpdateOneAsync(x => x.Id == journey.Id, journeyUpdate);
+                    else await _context.CreatorJourneys.UpdateOneAsync(session, x => x.Id == journey.Id, journeyUpdate);
 
                     if (userGuid != Guid.Empty)
                     {
