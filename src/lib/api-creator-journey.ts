@@ -261,11 +261,53 @@ export const creatorJourneyApi = {
     return unwrap<{ featured: SmartMatch | null; qualified: SmartMatch[]; matchingTip: string; isEmpty: boolean }>(res.data);
   },
 
-  levelUp: async (): Promise<LevelUpResult> => {
-    const res = await api.post('/creator/level-up', {});
+  // Optional ideaId (step 6ii): Level Up a SPECIFIC idea (my-ideas card, later).
+  // Existing callers pass nothing — the backend falls back to the active idea.
+  levelUp: async (ideaId?: string): Promise<LevelUpResult> => {
+    const res = await api.post('/creator/level-up', {}, ideaId ? { params: { ideaId } } : undefined);
     return unwrap<LevelUpResult>(res.data);
   },
+
+  // ---- Idea management (step 6ii — unused until the my-ideas UI lands) ----
+
+  /** All the user's ideas, most-recently-active first. Empty array is valid (fresh user). */
+  listIdeas: async (): Promise<IdeaCard[]> => {
+    const res = await api.get('/creator/ideas');
+    return unwrap<{ ideas: IdeaCard[] }>(res.data).ideas ?? [];
+  },
+
+  /** Mint a blank idea and make it active. The caller re-hydrates and routes to Phase 2. */
+  createIdea: async (): Promise<{ ideaId: string }> => {
+    const res = await api.post('/creator/ideas', {});
+    return unwrap<{ ideaId: string }>(res.data);
+  },
+
+  /** Switch the active idea (owned-check 404 server-side, never a fallback). */
+  setActiveIdea: async (ideaId: string): Promise<{ activeIdeaId: string }> => {
+    const res = await api.patch('/creator/ideas/active', { ideaId });
+    return unwrap<{ activeIdeaId: string }>(res.data);
+  },
 };
+
+/**
+ * COARSE display hint only (artifact presence, not the derived engine status).
+ * Never gate logic on it — "Continue" routes into the app, where the authoritative
+ * per-idea derivation runs.
+ */
+export type IdeaPhaseReached = 2 | 3 | 4 | 5 | 6;
+
+/** Lightweight card DTO from GET /creator/ideas. */
+export interface IdeaCard {
+  ideaId: string;
+  name: string;
+  concept: string;
+  status: 'active' | 'archived';
+  createdAt: string;
+  lastActiveAt: string;
+  isActive: boolean;
+  isLeveledUp: boolean;
+  phaseReached: IdeaPhaseReached;
+}
 
 export interface SmartMatch {
   candidateId: string;
