@@ -35,6 +35,10 @@ public static class ServiceCollectionExtensions
         // Creator journey (Phases 2–6 source of truth; derived-status engine)
         services.AddScoped<ICreatorJourneyService, CreatorJourneyService>();
 
+        // Multi-idea STEP 3: idea resolution/management. Registered but NOT yet called
+        // by any controller — cutover happens in step 4 all at once.
+        services.AddScoped<ICreatorIdeaService, CreatorIdeaService>();
+
         // Shared M50 SP match formula (Phase 2 designers + Phase 3 formation)
         services.AddScoped<ISpMatchingService, SpMatchingService>();
 

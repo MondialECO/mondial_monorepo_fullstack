@@ -24,6 +24,9 @@ namespace WebApp.Services.Repository
 
         /// <summary>Resolve the idea that owns a given business-plan session (owner-scoped).</summary>
         Task<CreatorIdea?> GetByBusinessPlanAsync(string businessPlanSessionId, string ownerUserId);
+
+        /// <summary>Bump LastActiveAt/UpdatedAt (owner-scoped) — keeps the my-ideas sort honest.</summary>
+        Task TouchAsync(string ideaId, string ownerUserId);
     }
 
     /// <summary>
@@ -77,5 +80,15 @@ namespace WebApp.Services.Repository
         public async Task<CreatorIdea?> GetByBusinessPlanAsync(string businessPlanSessionId, string ownerUserId)
             => await _collection.Find(x => x.Phase3Data.BusinessPlanSessionId == businessPlanSessionId && x.UserId == ownerUserId)
                 .FirstOrDefaultAsync();
+
+        public Task TouchAsync(string ideaId, string ownerUserId)
+        {
+            var now = DateTime.UtcNow;
+            return _collection.UpdateOneAsync(
+                x => x.Id == ideaId && x.UserId == ownerUserId,
+                Builders<CreatorIdea>.Update
+                    .Set(x => x.LastActiveAt, now)
+                    .Set(x => x.UpdatedAt, now));
+        }
     }
 }
