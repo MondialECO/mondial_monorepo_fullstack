@@ -84,7 +84,7 @@ namespace WebApp.Controllers
 
         // GET /api/creator/ip-valuation
         [HttpGet("ip-valuation")]
-        public async Task<IActionResult> IpValuation()
+        public async Task<IActionResult> IpValuation([FromQuery] string ideaId = null)
         {
             try
             {
@@ -105,7 +105,7 @@ namespace WebApp.Controllers
                     }
                 }
 
-                var journey = await _journeys.GetOrCreateAsync(userId);
+                var journey = await _journeys.GetOrCreateComposedAsync(userId, ideaId); // idea-sourced inputs
                 var p = journey.Project ?? new CreatorJourneyProject();
                 var p3 = journey.Phase3Data ?? new CreatorPhase3Data();
 
@@ -148,7 +148,7 @@ namespace WebApp.Controllers
                     },
                 };
 
-                journey = await _journeys.SetIpValuationAsync(userId, valuation);
+                journey = await _journeys.SetIpValuationAsync(userId, valuation, ideaId);
 
                 // Audit log.
                 await _context.IpValuations.InsertOneAsync(new IpValuationRecord
@@ -171,12 +171,12 @@ namespace WebApp.Controllers
 
         // POST /api/creator/marketplace/publish
         [HttpPost("marketplace/publish")]
-        public async Task<IActionResult> Publish([FromBody] MarketplacePublishRequest request)
+        public async Task<IActionResult> Publish([FromBody] MarketplacePublishRequest request, [FromQuery] string ideaId = null)
         {
             try
             {
                 var userId = GetUserId();
-                var journey = await _journeys.GetOrCreateAsync(userId);
+                var journey = await _journeys.GetOrCreateComposedAsync(userId, ideaId); // idea-sourced path gate
 
                 if (journey.Phase5Data?.ChosenPath != "sell_license")
                     return UnprocessableEntity(ApiResponse.Error("Marketplace publishing requires the sell_license path."));
@@ -206,7 +206,7 @@ namespace WebApp.Controllers
                     matchedBuyerIds = buyerMatches.Select(m => m.CandidateId).ToList();
                 }
 
-                journey = await _journeys.SetMarketplaceListingAsync(userId, listing, matchedBuyerIds);
+                journey = await _journeys.SetMarketplaceListingAsync(userId, listing, matchedBuyerIds, ideaId);
                 return Ok(ApiResponse.Ok("Listing published", new
                 {
                     listing = journey.Phase5Data.PathA.MarketplaceListing,
@@ -222,7 +222,7 @@ namespace WebApp.Controllers
 
         // POST /api/creator/company-formation
         [HttpPost("company-formation")]
-        public async Task<IActionResult> CompanyFormation([FromBody] CompanyFormationRequest request)
+        public async Task<IActionResult> CompanyFormation([FromBody] CompanyFormationRequest request, [FromQuery] string ideaId = null)
         {
             try
             {
@@ -248,7 +248,7 @@ namespace WebApp.Controllers
                     Status = "drafted",
                 };
 
-                var journey = await _journeys.SetCompanyFormationAsync(userId, formation);
+                var journey = await _journeys.SetCompanyFormationAsync(userId, formation, ideaId);
                 return Ok(ApiResponse.Ok("Formation saved", new { formation = journey.Phase5Data.PathB.CompanyFormation, warnings }));
             }
             catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
@@ -257,7 +257,7 @@ namespace WebApp.Controllers
 
         // POST /api/creator/seed-funding
         [HttpPost("seed-funding")]
-        public async Task<IActionResult> SeedFunding([FromBody] SeedFundingRequest request)
+        public async Task<IActionResult> SeedFunding([FromBody] SeedFundingRequest request, [FromQuery] string ideaId = null)
         {
             try
             {
@@ -270,7 +270,7 @@ namespace WebApp.Controllers
                 if ((request?.TotalAsk ?? 0) < 10000)
                     return UnprocessableEntity(ApiResponse.Error("Total ask must be at least €10,000."));
 
-                var journey = await _journeys.GetOrCreateAsync(userId);
+                var journey = await _journeys.GetOrCreateComposedAsync(userId, ideaId); // idea-sourced cross-phase reads
                 var monthlyRunning = journey.Phase4Data?.ResourceCalculation?.MonthlyRunningCost ?? 0;
                 double? runway = monthlyRunning > 0 ? (double)(request.TotalAsk / monthlyRunning) : null;
 
@@ -294,7 +294,7 @@ namespace WebApp.Controllers
 
                 // The company is created at Level Up (CompanyService.EnsureLevelUpCompanyAsync),
                 // not here — Phase 5 only records seed funding against the existing companyId.
-                journey = await _journeys.SetSeedFundingAsync(userId, seed, journey.CompanyId);
+                journey = await _journeys.SetSeedFundingAsync(userId, seed, journey.CompanyId, ideaId);
                 return Ok(ApiResponse.Ok("Seed funding saved", new
                 {
                     seedFunding = journey.Phase5Data.PathB.SeedFunding,

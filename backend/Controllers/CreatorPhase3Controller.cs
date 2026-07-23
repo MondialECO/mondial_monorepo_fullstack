@@ -72,12 +72,12 @@ namespace WebApp.Controllers
 
         // POST /api/creator/ai/legal-checklist/generate
         [HttpPost("ai/legal-checklist/generate")]
-        public async Task<IActionResult> GenerateLegalChecklist()
+        public async Task<IActionResult> GenerateLegalChecklist([FromQuery] string ideaId = null)
         {
             try
             {
                 var userId = GetUserId();
-                var journey = await _journeys.GetOrCreateAsync(userId);
+                var journey = await _journeys.GetOrCreateComposedAsync(userId, ideaId); // idea-sourced sector/solution
                 var p = journey.Project ?? new CreatorJourneyProject();
 
                 bool isFinTech =
@@ -123,7 +123,7 @@ namespace WebApp.Controllers
                 }
 
                 var checklist = new CreatorLegalChecklist { Items = items };
-                journey = await _journeys.SetLegalChecklistAsync(userId, checklist);
+                journey = await _journeys.SetLegalChecklistAsync(userId, checklist, ideaId);
                 return Ok(ApiResponse.Ok("Legal checklist generated", journey.Phase3Data.LegalChecklist));
             }
             catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
@@ -132,12 +132,12 @@ namespace WebApp.Controllers
 
         // PATCH /api/creator/legal-checklist/item/{itemId}
         [HttpPatch("legal-checklist/item/{itemId}")]
-        public async Task<IActionResult> UpdateLegalItem(string itemId, [FromBody] UpdateChecklistItemRequest request)
+        public async Task<IActionResult> UpdateLegalItem(string itemId, [FromBody] UpdateChecklistItemRequest request, [FromQuery] string ideaId = null)
         {
             try
             {
                 var userId = GetUserId();
-                var journey = await _journeys.UpdateLegalChecklistItemAsync(userId, itemId, request?.Status);
+                var journey = await _journeys.UpdateLegalChecklistItemAsync(userId, itemId, request?.Status, ideaId);
                 return Ok(ApiResponse.Ok("Item updated", journey.Phase3Data.LegalChecklist));
             }
             catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
@@ -149,12 +149,12 @@ namespace WebApp.Controllers
 
         // POST /api/creator/ai/formation-generator/start
         [HttpPost("ai/formation-generator/start")]
-        public async Task<IActionResult> GenerateFormation()
+        public async Task<IActionResult> GenerateFormation([FromQuery] string ideaId = null)
         {
             try
             {
                 var userId = GetUserId();
-                var journey = await _journeys.GetOrCreateAsync(userId);
+                var journey = await _journeys.GetOrCreateComposedAsync(userId, ideaId); // idea-sourced cross-phase reads
                 var p = journey.Project ?? new CreatorJourneyProject();
                 var p3 = journey.Phase3Data ?? new CreatorPhase3Data();
                 var p4 = journey.Phase4Data ?? new CreatorPhase4Data();
@@ -218,7 +218,7 @@ namespace WebApp.Controllers
                     CofounderDraft = existingF?.CofounderDraft,
                 };
 
-                journey = await _journeys.SetFormationAsync(userId, formation);
+                journey = await _journeys.SetFormationAsync(userId, formation, ideaId);
                 return Ok(ApiResponse.Ok("Formation generated", journey.Phase3Data.FormationGenerator));
             }
             catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
@@ -227,12 +227,12 @@ namespace WebApp.Controllers
 
         // PATCH /api/creator/formation/select-type
         [HttpPatch("formation/select-type")]
-        public async Task<IActionResult> SelectFormationType([FromBody] SelectFormationTypeRequest request)
+        public async Task<IActionResult> SelectFormationType([FromBody] SelectFormationTypeRequest request, [FromQuery] string ideaId = null)
         {
             try
             {
                 var userId = GetUserId();
-                var journey = await _journeys.SelectFormationTypeAsync(userId, request?.SelectedType);
+                var journey = await _journeys.SelectFormationTypeAsync(userId, request?.SelectedType, ideaId);
                 return Ok(ApiResponse.Ok("Type selected", new
                 {
                     formation = journey.Phase3Data.FormationGenerator,
@@ -248,7 +248,7 @@ namespace WebApp.Controllers
         // SP-backed gaps deterministically (no AI), match specialists, and store the optional
         // co-founder DRAFT (matched at Level Up, never here). Requires a generated formation.
         [HttpPatch("formation/skills")]
-        public async Task<IActionResult> DeclareFormationSkills([FromBody] DeclareFormationSkillsRequest request)
+        public async Task<IActionResult> DeclareFormationSkills([FromBody] DeclareFormationSkillsRequest request, [FromQuery] string ideaId = null)
         {
             try
             {
@@ -263,7 +263,7 @@ namespace WebApp.Controllers
                         youNeed.Add(new() { Label = label, SpSpecialty = specialty });
 
                 // Match SPs per gap — reuse the P1.6 formula, top 3 each.
-                var journey0 = await _journeys.GetOrCreateAsync(userId);
+                var journey0 = await _journeys.GetOrCreateComposedAsync(userId, ideaId); // idea-sourced sector
                 var sector = journey0.Project?.Sector ?? "";
                 var matchedSpIds = new List<string>();
                 foreach (var need in youNeed)
@@ -282,7 +282,7 @@ namespace WebApp.Controllers
                 };
 
                 var journey = await _journeys.DeclareFormationSkillsAsync(
-                    userId, declared, youNeed, matchedSpIds.Distinct().ToList(), cofounder);
+                    userId, declared, youNeed, matchedSpIds.Distinct().ToList(), cofounder, ideaId);
                 return Ok(ApiResponse.Ok("Skills declared", journey.Phase3Data.FormationGenerator));
             }
             catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
@@ -294,7 +294,7 @@ namespace WebApp.Controllers
 
         // GET /api/creator/sp-matches?specialty=legal|compliance|finance|development|branding
         [HttpGet("sp-matches")]
-        public async Task<IActionResult> SpMatches([FromQuery] string specialty)
+        public async Task<IActionResult> SpMatches([FromQuery] string specialty, [FromQuery] string ideaId = null)
         {
             try
             {
@@ -302,7 +302,7 @@ namespace WebApp.Controllers
                 var cat = SpecialtyToCategory(specialty);
                 if (cat == null) return BadRequest(ApiResponse.Error("Unknown specialty."));
 
-                var journey = await _journeys.GetOrCreateAsync(userId);
+                var journey = await _journeys.GetOrCreateComposedAsync(userId, ideaId); // idea-sourced sector
                 var matches = await _spMatching.MatchAsync(cat.Value, journey.Project?.Sector ?? "", 5);
 
                 var dtos = matches.Select(m => new
@@ -324,7 +324,7 @@ namespace WebApp.Controllers
         // POST /api/creator/workroom/open  { spId, context }
         // Generic Find-SP workroom (no branding side-effects). Reuses the chat infra.
         [HttpPost("workroom/open")]
-        public async Task<IActionResult> OpenWorkroom([FromBody] OpenWorkroomRequest request)
+        public async Task<IActionResult> OpenWorkroom([FromBody] OpenWorkroomRequest request, [FromQuery] string ideaId = null)
         {
             try
             {
@@ -334,7 +334,7 @@ namespace WebApp.Controllers
                 if (!Guid.TryParse(userId, out var creatorGuid))
                     return StatusCode(403, ApiResponse.Error("Invalid user."));
 
-                var journey = await _journeys.GetOrCreateAsync(userId);
+                var journey = await _journeys.GetOrCreateComposedAsync(userId, ideaId); // idea-sourced brief
                 var p = journey.Project ?? new CreatorJourneyProject();
 
                 var (conversation, _) = await _chat.GetOrCreateConversation(creatorGuid, spGuid);
@@ -361,12 +361,12 @@ namespace WebApp.Controllers
 
         // POST /api/creator/journey/phase3/session  { kind: "forecast"|"businessPlan", sessionId }
         [HttpPost("journey/phase3/session")]
-        public async Task<IActionResult> SetPhase3Session([FromBody] Phase3SessionRequest request)
+        public async Task<IActionResult> SetPhase3Session([FromBody] Phase3SessionRequest request, [FromQuery] string ideaId = null)
         {
             try
             {
                 var userId = GetUserId();
-                var journey = await _journeys.SetPhase3SessionAsync(userId, request?.Kind, request?.SessionId);
+                var journey = await _journeys.SetPhase3SessionAsync(userId, request?.Kind, request?.SessionId, ideaId);
                 return Ok(ApiResponse.Ok("Session linked", journey.Phase3Data));
             }
             catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
@@ -379,12 +379,12 @@ namespace WebApp.Controllers
         // Status is NOT written — the derived engine flips Phase 3 to completed once
         // forecast + plan + legal + formation are all present.
         [HttpPatch("masterplan/complete")]
-        public async Task<IActionResult> CompleteMasterplan()
+        public async Task<IActionResult> CompleteMasterplan([FromQuery] string ideaId = null)
         {
             try
             {
                 var userId = GetUserId();
-                var journey = await _journeys.GetOrCreateAsync(userId);
+                var journey = await _journeys.GetOrCreateComposedAsync(userId, ideaId); // idea-sourced modules
                 var p3 = journey.Phase3Data ?? new CreatorPhase3Data();
 
                 // Verify forecast module (session set + completed).
@@ -408,7 +408,7 @@ namespace WebApp.Controllers
                     return UnprocessableEntity(ApiResponse.Error("Missing module: formation_generator"));
 
                 var score = ComputeReadiness(journey, forecast);
-                journey = await _journeys.SetInvestorReadinessAsync(userId, score);
+                journey = await _journeys.SetInvestorReadinessAsync(userId, score, ideaId);
 
                 return Ok(ApiResponse.Ok("Masterplan complete", new
                 {

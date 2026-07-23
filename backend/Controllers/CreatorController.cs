@@ -166,7 +166,7 @@ namespace WebApp.Controllers
             }).ToList();
 
             // 7️ Investor-readiness score (computed at Phase-3 masterplan completion)
-            var journey = await _journeys.GetOrCreateAsync(userId);
+            var journey = await _journeys.GetOrCreateComposedAsync(userId); // STEP 4: idea-sourced
             var investorReadinessScore = journey.Phase3Data?.InvestorReadinessScore;
 
             // 8️ Final Response

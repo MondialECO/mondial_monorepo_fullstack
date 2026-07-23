@@ -51,38 +51,109 @@ namespace WebApp.Services.Implementations
             _clarifiers = clarifiers;
         }
 
+        // =================================================================
+        // STEP 4 CUTOVER — per-idea resolution + dual-write plumbing.
+        // The IDEA document is the source of truth; every write mirrors to the
+        // journey (MIRROR — remove in/before step 6: mirroring is undefined once a
+        // user has two ideas). Reads come from the idea via the composed view.
+        // =================================================================
+
         /// <summary>
-        /// Multi-idea STEP 2 convergence point. Ensures the journey has an ActiveIdeaId
-        /// (minting one CreatorIdea if absent) and stamps the anchoring clarifier's
-        /// BusinessIdeaId with it. Called by BOTH Phase-2 finalize paths
-        /// (clarifier-first + discovery) so they land on exactly one idea regardless of
-        /// order; guarded on ActiveIdeaId so re-finalize / the other path never mints a
-        /// second document. ADDITIVE: no live read path consumes the new data yet.
+        /// Resolve the caller's idea. Explicit id → owned-or-404 (NEVER a silent
+        /// fallback — a foreign/stale route id must not "work" with the wrong data).
+        /// No id → the active idea; a stale pointer repoints to the most recent idea;
+        /// no ideas at all → mint the first from the journey's inline blocks.
+        /// Persists any pointer change atomically and reflects it on the in-memory j.
         /// </summary>
-        private async Task EnsureIdeaAndStampClarifierAsync(CreatorJourney j, string clarifierSessionId)
+        private async Task<CreatorIdea> ResolveIdeaAsync(CreatorJourney j, string ideaId)
         {
-            if (string.IsNullOrEmpty(j.ActiveIdeaId))
+            if (!string.IsNullOrEmpty(ideaId))
             {
-                var idea = new CreatorIdea
-                {
-                    UserId = j.UserId,
-                    Status = "active",
-                    Project = j.Project ?? new CreatorJourneyProject(),
-                    Phase2Data = j.Phase2Data ?? new CreatorPhase2Data(),
-                    Phase3Data = j.Phase3Data ?? new CreatorPhase3Data(),
-                    Phase4Data = j.Phase4Data ?? new CreatorPhase4Data(),
-                    Phase5Data = j.Phase5Data ?? new CreatorPhase5Data(),
-                    SmartMatchmaking = j.Phase6Data?.SmartMatchmaking ?? new CreatorSmartMatchmaking(),
-                    OutputSnapshots = j.OutputSnapshots ?? new CreatorOutputSnapshots(),
-                };
-                await _creatorIdeas.AddAsync(idea); // ObjectId id assigned on insert
-                j.ActiveIdeaId = idea.Id;
+                var owned = await _creatorIdeas.GetOwnedAsync(ideaId, j.UserId);
+                if (owned == null)
+                    throw new CreatorJourneyException(404, "Idea not found.");
+                return owned;
             }
 
-            // Point the (possibly new) clarifier at the active idea. Plan/forecast inherit
-            // this anchor down the chain at their own creation.
-            if (!string.IsNullOrEmpty(clarifierSessionId))
-                await _clarifiers.SetBusinessIdeaIdAsync(clarifierSessionId, j.ActiveIdeaId);
+            if (!string.IsNullOrEmpty(j.ActiveIdeaId))
+            {
+                var active = await _creatorIdeas.GetOwnedAsync(j.ActiveIdeaId, j.UserId);
+                if (active != null)
+                    return active;
+                // Stale pointer — fall through to recovery.
+            }
+
+            var existing = await _creatorIdeas.ListByUserAsync(j.UserId);
+            if (existing.Count > 0)
+            {
+                await SetActiveIdeaPointerAsync(j, existing[0].Id);
+                return existing[0];
+            }
+
+            var idea = new CreatorIdea
+            {
+                UserId = j.UserId,
+                Status = "active",
+                Project = j.Project ?? new CreatorJourneyProject(),
+                Phase2Data = j.Phase2Data ?? new CreatorPhase2Data(),
+                Phase3Data = j.Phase3Data ?? new CreatorPhase3Data(),
+                Phase4Data = j.Phase4Data ?? new CreatorPhase4Data(),
+                Phase5Data = j.Phase5Data ?? new CreatorPhase5Data(),
+                SmartMatchmaking = j.Phase6Data?.SmartMatchmaking ?? new CreatorSmartMatchmaking(),
+                OutputSnapshots = j.OutputSnapshots ?? new CreatorOutputSnapshots(),
+            };
+            await _creatorIdeas.AddAsync(idea); // ObjectId id assigned on insert
+            await SetActiveIdeaPointerAsync(j, idea.Id);
+            return idea;
+        }
+
+        /// <summary>Atomic ActiveIdeaId repoint ($set only) + in-memory reflection.</summary>
+        private async Task SetActiveIdeaPointerAsync(CreatorJourney j, string ideaId)
+        {
+            j.ActiveIdeaId = ideaId;
+            await _context.CreatorJourneys.UpdateOneAsync(
+                f => f.Id == j.Id,
+                Builders<CreatorJourney>.Update
+                    .Set(x => x.ActiveIdeaId, ideaId)
+                    .Set(x => x.UpdatedAt, DateTime.UtcNow));
+        }
+
+        /// <summary>
+        /// Overlay the idea's per-idea blocks onto the in-memory journey object, so
+        /// (a) existing mutation/read logic operates on the IDEA's data, and (b) the
+        /// returned object serializes idea-sourced content in the unchanged response
+        /// shape. Journey-level fields (ActiveIdeaId, LeveledUpIdeaId, CompanyId,
+        /// Phase-6 Level-Up markers) stay the journey's own. Never persisted by itself.
+        /// </summary>
+        private static CreatorJourney OverlayIdea(CreatorJourney j, CreatorIdea idea)
+        {
+            j.Project = idea.Project ??= new CreatorJourneyProject();
+            j.Phase2Data = idea.Phase2Data ??= new CreatorPhase2Data();
+            j.Phase3Data = idea.Phase3Data ??= new CreatorPhase3Data();
+            j.Phase4Data = idea.Phase4Data ??= new CreatorPhase4Data();
+            j.Phase5Data = idea.Phase5Data ??= new CreatorPhase5Data();
+            (j.Phase6Data ??= new CreatorPhase6Data()).SmartMatchmaking = idea.SmartMatchmaking ??= new CreatorSmartMatchmaking();
+            j.OutputSnapshots = idea.OutputSnapshots ??= new CreatorOutputSnapshots();
+            return j;
+        }
+
+        /// <summary>Targeted atomic write on the idea (source of truth).</summary>
+        private Task WriteIdeaAsync(CreatorIdea idea, UpdateDefinition<CreatorIdea> update)
+            => _creatorIdeas.UpdateAsync(idea.Id, idea.UserId, update);
+
+        /// <summary>
+        /// MIRROR predicate — remove in/before step 6. Journey mirroring is only
+        /// defined while the write targets the ACTIVE idea (one journey can't mirror
+        /// two ideas); an explicit non-active target skips the mirror.
+        /// </summary>
+        private static bool MirrorToJourney(CreatorJourney j, CreatorIdea idea)
+            => idea.Id == j.ActiveIdeaId;
+
+        public async Task<CreatorJourney> GetOrCreateComposedAsync(string userId, string ideaId = null)
+        {
+            var j = await GetOrCreateAsync(userId);
+            var idea = await ResolveIdeaAsync(j, ideaId);
+            return OverlayIdea(j, idea);
         }
 
         public async Task<CreatorJourney> GetOrCreateAsync(string userId)
@@ -278,9 +349,11 @@ namespace WebApp.Services.Implementations
         // =================================================================
         // Mutations
         // =================================================================
-        public async Task<CreatorJourney> UpdateProjectAsync(string userId, UpdateProjectRequest r)
+        public async Task<CreatorJourney> UpdateProjectAsync(string userId, UpdateProjectRequest r, string ideaId = null)
         {
             var j = await GetOrCreateAsync(userId);
+            var idea = await ResolveIdeaAsync(j, ideaId);
+            OverlayIdea(j, idea); // mutation below operates on the IDEA's blocks
             var p = j.Project ??= new CreatorJourneyProject();
 
             if (r.Name != null)
@@ -306,11 +379,12 @@ namespace WebApp.Services.Implementations
             if (r.Tags != null) p.Tags = r.Tags;
             if (r.ClarityScore.HasValue) p.ClarityScore = r.ClarityScore.Value;
 
-            await ReplaceAsync(j);
+            await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update.Set(x => x.Project, p));
+            if (MirrorToJourney(j, idea)) await ReplaceAsync(j); // MIRROR — remove in/before step 6
             return j;
         }
 
-        public async Task<CreatorJourney> SetEntryPathAsync(string userId, string path)
+        public async Task<CreatorJourney> SetEntryPathAsync(string userId, string path, string ideaId = null)
         {
             if (path == "needs_discovery")
                 throw new CreatorJourneyException(400, "Discovery path is no longer available.");
@@ -318,12 +392,16 @@ namespace WebApp.Services.Implementations
                 throw new CreatorJourneyException(400, "Invalid entry path.");
 
             var j = await GetOrCreateAsync(userId);
+            var idea = await ResolveIdeaAsync(j, ideaId);
+            OverlayIdea(j, idea);
             (j.Phase2Data ??= new CreatorPhase2Data()).SelectedEntryPath = path;
-            await ReplaceAsync(j);
+
+            await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update.Set(x => x.Phase2Data.SelectedEntryPath, path));
+            if (MirrorToJourney(j, idea)) await ReplaceAsync(j); // MIRROR — remove in/before step 6
             return j;
         }
 
-        public async Task<CreatorJourney> SetCrossroadsPathAsync(string userId, string path)
+        public async Task<CreatorJourney> SetCrossroadsPathAsync(string userId, string path, string ideaId = null)
         {
             // Only the two canonical values are accepted; the legacy alias and any
             // other value are rejected here with 400.
@@ -331,6 +409,8 @@ namespace WebApp.Services.Implementations
                 throw new CreatorJourneyException(400, "Path must be \"sell_license\" or \"build\".");
 
             var j = await GetOrCreateAsync(userId);
+            var idea = await ResolveIdeaAsync(j, ideaId);
+            OverlayIdea(j, idea);
             var p5 = j.Phase5Data ??= new CreatorPhase5Data();
 
             // 72-hour switch lock: once a path is chosen, switching is allowed only
@@ -346,13 +426,16 @@ namespace WebApp.Services.Implementations
                 p5.ChosenPath = path;
                 p5.PathSelectedAt = DateTime.UtcNow;
             }
-            await ReplaceAsync(j);
+            await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update.Set(x => x.Phase5Data, p5));
+            if (MirrorToJourney(j, idea)) await ReplaceAsync(j); // MIRROR — remove in/before step 6
             return j;
         }
 
-        public async Task<CreatorJourney> AppendOutputAsync(string userId, AppendOutputRequest r)
+        public async Task<CreatorJourney> AppendOutputAsync(string userId, AppendOutputRequest r, string ideaId = null)
         {
             var j = await GetOrCreateAsync(userId);
+            var idea = await ResolveIdeaAsync(j, ideaId);
+            OverlayIdea(j, idea); // snaps below = the IDEA's version history (source of truth)
             var snaps = j.OutputSnapshots ??= new CreatorOutputSnapshots();
 
             // Select the in-memory list (updates the returned object + computes Version).
@@ -372,36 +455,53 @@ namespace WebApp.Services.Implementations
             var data = r.Payload != null ? BsonDocument.Parse(r.Payload.ToJson()) : null;
             var entry = CreatorJourneyVersioning.Append(list, r.Phase, r.SessionId, data); // newest LAST, own phase
 
-            // Atomic $push so a concurrent output save can't clobber this entry (a
-            // full-document ReplaceAsync would lose one). Typed Push per key keeps the
-            // class-map serialization byte-identical — no string paths. The default arm
-            // is unreachable (the list switch above already threw on unknown keys) but
-            // stays loud so a bad key can never push to a wrong/new field.
-            var update = r.OutputKey switch
+            // Idea = source of truth: atomic typed $push so a concurrent output save
+            // can't clobber this entry. The default arm is unreachable (the list switch
+            // above already threw) but stays loud so a bad key can never push wrong.
+            var ideaUpdate = r.OutputKey switch
             {
-                "forecastVersions" => Builders<CreatorJourney>.Update.Push(x => x.OutputSnapshots.ForecastVersions, entry),
-                "businessPlanVersions" => Builders<CreatorJourney>.Update.Push(x => x.OutputSnapshots.BusinessPlanVersions, entry),
-                "ipValuationVersions" => Builders<CreatorJourney>.Update.Push(x => x.OutputSnapshots.IpValuationVersions, entry),
-                "legalChecklistVersions" => Builders<CreatorJourney>.Update.Push(x => x.OutputSnapshots.LegalChecklistVersions, entry),
-                "formationVersions" => Builders<CreatorJourney>.Update.Push(x => x.OutputSnapshots.FormationVersions, entry),
-                "pricingVersions" => Builders<CreatorJourney>.Update.Push(x => x.OutputSnapshots.PricingVersions, entry),
-                "gtmPlanVersions" => Builders<CreatorJourney>.Update.Push(x => x.OutputSnapshots.GtmPlanVersions, entry),
-                "matchingRuns" => Builders<CreatorJourney>.Update.Push(x => x.OutputSnapshots.MatchingRuns, entry),
+                "forecastVersions" => Builders<CreatorIdea>.Update.Push(x => x.OutputSnapshots.ForecastVersions, entry),
+                "businessPlanVersions" => Builders<CreatorIdea>.Update.Push(x => x.OutputSnapshots.BusinessPlanVersions, entry),
+                "ipValuationVersions" => Builders<CreatorIdea>.Update.Push(x => x.OutputSnapshots.IpValuationVersions, entry),
+                "legalChecklistVersions" => Builders<CreatorIdea>.Update.Push(x => x.OutputSnapshots.LegalChecklistVersions, entry),
+                "formationVersions" => Builders<CreatorIdea>.Update.Push(x => x.OutputSnapshots.FormationVersions, entry),
+                "pricingVersions" => Builders<CreatorIdea>.Update.Push(x => x.OutputSnapshots.PricingVersions, entry),
+                "gtmPlanVersions" => Builders<CreatorIdea>.Update.Push(x => x.OutputSnapshots.GtmPlanVersions, entry),
+                "matchingRuns" => Builders<CreatorIdea>.Update.Push(x => x.OutputSnapshots.MatchingRuns, entry),
                 _ => throw new CreatorJourneyException(400, $"Unknown outputKey \"{r.OutputKey}\"."),
             };
+            await WriteIdeaAsync(idea, ideaUpdate);
 
-            await _context.CreatorJourneys.UpdateOneAsync(
-                f => f.Id == j.Id,
-                update.Set(x => x.UpdatedAt, DateTime.UtcNow));
+            // MIRROR — remove in/before step 6.
+            if (MirrorToJourney(j, idea))
+            {
+                var update = r.OutputKey switch
+                {
+                    "forecastVersions" => Builders<CreatorJourney>.Update.Push(x => x.OutputSnapshots.ForecastVersions, entry),
+                    "businessPlanVersions" => Builders<CreatorJourney>.Update.Push(x => x.OutputSnapshots.BusinessPlanVersions, entry),
+                    "ipValuationVersions" => Builders<CreatorJourney>.Update.Push(x => x.OutputSnapshots.IpValuationVersions, entry),
+                    "legalChecklistVersions" => Builders<CreatorJourney>.Update.Push(x => x.OutputSnapshots.LegalChecklistVersions, entry),
+                    "formationVersions" => Builders<CreatorJourney>.Update.Push(x => x.OutputSnapshots.FormationVersions, entry),
+                    "pricingVersions" => Builders<CreatorJourney>.Update.Push(x => x.OutputSnapshots.PricingVersions, entry),
+                    "gtmPlanVersions" => Builders<CreatorJourney>.Update.Push(x => x.OutputSnapshots.GtmPlanVersions, entry),
+                    "matchingRuns" => Builders<CreatorJourney>.Update.Push(x => x.OutputSnapshots.MatchingRuns, entry),
+                    _ => throw new CreatorJourneyException(400, $"Unknown outputKey \"{r.OutputKey}\"."),
+                };
+                await _context.CreatorJourneys.UpdateOneAsync(
+                    f => f.Id == j.Id,
+                    update.Set(x => x.UpdatedAt, DateTime.UtcNow));
+            }
             return j;
         }
 
-        public async Task<CreatorJourney> AppendChatMessageAsync(string userId, string sender, string text)
+        public async Task<CreatorJourney> AppendChatMessageAsync(string userId, string sender, string text, string ideaId = null)
         {
             if (sender != "ai" && sender != "user")
                 throw new CreatorJourneyException(400, "sender must be \"ai\" or \"user\".");
 
             var j = await GetOrCreateAsync(userId);
+            var idea = await ResolveIdeaAsync(j, ideaId);
+            OverlayIdea(j, idea);
             var message = new CreatorChatMessage
             {
                 Id = ObjectId.GenerateNewId().ToString(),
@@ -410,16 +510,16 @@ namespace WebApp.Services.Implementations
                 Timestamp = DateTime.UtcNow,
             };
 
-            // Atomic $push: two concurrent appends must both persist, in order. A
-            // full-document ReplaceAsync would let the second write clobber the first
-            // and silently drop a message. $push also creates Phase2Data.ChatMessages
-            // if absent. UpdatedAt is set in the same update to preserve the bump that
-            // ReplaceAsync used to apply — one atomic write, not two.
-            await _context.CreatorJourneys.UpdateOneAsync(
-                f => f.Id == j.Id,
-                Builders<CreatorJourney>.Update
-                    .Push(x => x.Phase2Data.ChatMessages, message)
-                    .Set(x => x.UpdatedAt, DateTime.UtcNow));
+            // Idea = source of truth: atomic $push (two concurrent appends both persist).
+            await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update.Push(x => x.Phase2Data.ChatMessages, message));
+
+            // MIRROR — remove in/before step 6.
+            if (MirrorToJourney(j, idea))
+                await _context.CreatorJourneys.UpdateOneAsync(
+                    f => f.Id == j.Id,
+                    Builders<CreatorJourney>.Update
+                        .Push(x => x.Phase2Data.ChatMessages, message)
+                        .Set(x => x.UpdatedAt, DateTime.UtcNow));
 
             // Reflect the persisted append on the returned object (unchanged contract).
             var p2 = j.Phase2Data ??= new CreatorPhase2Data();
@@ -432,7 +532,11 @@ namespace WebApp.Services.Implementations
             string userId, string clarifierSessionId, string problem, string targetUser,
             string solution, double clarityScore, List<string> tags, string marketGap = "", string creatorEdge = "")
         {
+            // Mint/converge semantics: this finalize maps onto the ACTIVE idea (minting
+            // the first one for a brand-new user) — an explicit ideaId is meaningless here.
             var j = await GetOrCreateAsync(userId);
+            var idea = await ResolveIdeaAsync(j, null);
+            OverlayIdea(j, idea);
             var p = j.Project ??= new CreatorJourneyProject();
             p.Problem = problem ?? p.Problem;
             p.TargetUser = targetUser ?? p.TargetUser;
@@ -443,8 +547,14 @@ namespace WebApp.Services.Implementations
             if (tags != null && tags.Count > 0) p.Tags = tags;
 
             (j.Phase2Data ??= new CreatorPhase2Data()).ClarifierSessionId = clarifierSessionId;
-            await EnsureIdeaAndStampClarifierAsync(j, clarifierSessionId);
-            await ReplaceAsync(j);
+            // STEP 2 anchor: the (possibly new) clarifier joins this idea; plan/forecast inherit it.
+            if (!string.IsNullOrEmpty(clarifierSessionId))
+                await _clarifiers.SetBusinessIdeaIdAsync(clarifierSessionId, idea.Id);
+
+            await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update
+                .Set(x => x.Project, p)
+                .Set(x => x.Phase2Data, j.Phase2Data));
+            if (MirrorToJourney(j, idea)) await ReplaceAsync(j); // MIRROR — remove in/before step 6
             return j;
         }
 
@@ -456,7 +566,11 @@ namespace WebApp.Services.Implementations
         public async Task<CreatorJourney> ApplyDiscoveryMappingAsync(
             string userId, string clarifierSessionId, CreatorDiscoveryConcept concept)
         {
+            // Mint/converge semantics — same active-idea convergence as the clarifier path,
+            // so discovery-then-clarify (either order) lands on exactly ONE idea.
             var j = await GetOrCreateAsync(userId);
+            var idea = await ResolveIdeaAsync(j, null);
+            OverlayIdea(j, idea);
             var p = j.Project ??= new CreatorJourneyProject();
             if (!string.IsNullOrWhiteSpace(concept.CoreProblem)) p.Problem = concept.CoreProblem;
             if (!string.IsNullOrWhiteSpace(concept.TargetUser)) p.TargetUser = concept.TargetUser;
@@ -469,16 +583,24 @@ namespace WebApp.Services.Implementations
             p.ClarityScore = concept.Score;
 
             (j.Phase2Data ??= new CreatorPhase2Data()).ClarifierSessionId = clarifierSessionId;
-            await EnsureIdeaAndStampClarifierAsync(j, clarifierSessionId);
-            await ReplaceAsync(j);
+            if (!string.IsNullOrEmpty(clarifierSessionId))
+                await _clarifiers.SetBusinessIdeaIdAsync(clarifierSessionId, idea.Id);
+
+            await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update
+                .Set(x => x.Project, p)
+                .Set(x => x.Phase2Data, j.Phase2Data));
+            if (MirrorToJourney(j, idea)) await ReplaceAsync(j); // MIRROR — remove in/before step 6
             return j;
         }
 
         public async Task<CreatorJourney> SetBrandingLogoAsync(
             string userId, string logoAsset, string logoType, string brandingMethod,
-            List<string> colorPalette = null, string paletteName = null, string typographyPairing = null)
+            List<string> colorPalette = null, string paletteName = null, string typographyPairing = null,
+            string ideaId = null)
         {
             var j = await GetOrCreateAsync(userId);
+            var idea = await ResolveIdeaAsync(j, ideaId);
+            OverlayIdea(j, idea);
             var b = (j.Project ??= new CreatorJourneyProject()).Branding ??= new CreatorBranding();
             if (logoAsset != null) b.LogoAsset = logoAsset;
             if (logoType != null) b.LogoType = logoType;
@@ -486,83 +608,104 @@ namespace WebApp.Services.Implementations
             if (colorPalette != null) b.ColorPalette = colorPalette;
             if (paletteName != null) b.PaletteName = paletteName;
             if (typographyPairing != null) b.TypographyPairing = typographyPairing;
-            await ReplaceAsync(j);
+
+            await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update.Set(x => x.Project.Branding, b));
+            if (MirrorToJourney(j, idea)) await ReplaceAsync(j); // MIRROR — remove in/before step 6
             return j;
         }
 
         // ---- Discovery path working state (independent, targeted $set writes) ----
 
-        public async Task<CreatorJourney> SetDiscoveryInputsAsync(string userId, CreatorDiscoveryInputs inputs)
+        public async Task<CreatorJourney> SetDiscoveryInputsAsync(string userId, CreatorDiscoveryInputs inputs, string ideaId = null)
         {
             if (inputs == null)
                 throw new CreatorJourneyException(400, "inputs is required.");
 
             var j = await GetOrCreateAsync(userId);
+            var idea = await ResolveIdeaAsync(j, ideaId);
+            OverlayIdea(j, idea);
             j.Phase2Data ??= new CreatorPhase2Data();
             j.Phase2Data.DiscoveryInputs = inputs;
 
-            await _context.CreatorJourneys.UpdateOneAsync(
-                f => f.Id == j.Id,
-                Builders<CreatorJourney>.Update.Set(x => x.Phase2Data.DiscoveryInputs, inputs));
+            await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update.Set(x => x.Phase2Data.DiscoveryInputs, inputs));
+            if (MirrorToJourney(j, idea)) // MIRROR — remove in/before step 6
+                await _context.CreatorJourneys.UpdateOneAsync(
+                    f => f.Id == j.Id,
+                    Builders<CreatorJourney>.Update.Set(x => x.Phase2Data.DiscoveryInputs, inputs));
 
             return j;
         }
 
-        public async Task<CreatorJourney> SetGeneratedConceptsAsync(string userId, List<CreatorDiscoveryConcept> concepts)
+        public async Task<CreatorJourney> SetGeneratedConceptsAsync(string userId, List<CreatorDiscoveryConcept> concepts, string ideaId = null)
         {
             if (concepts == null)
                 throw new CreatorJourneyException(400, "concepts is required.");
 
             var j = await GetOrCreateAsync(userId);
+            var idea = await ResolveIdeaAsync(j, ideaId);
+            OverlayIdea(j, idea);
             j.Phase2Data ??= new CreatorPhase2Data();
             j.Phase2Data.GeneratedConcepts = concepts;
 
-            await _context.CreatorJourneys.UpdateOneAsync(
-                f => f.Id == j.Id,
-                Builders<CreatorJourney>.Update.Set(x => x.Phase2Data.GeneratedConcepts, concepts));
+            await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update.Set(x => x.Phase2Data.GeneratedConcepts, concepts));
+            if (MirrorToJourney(j, idea)) // MIRROR — remove in/before step 6
+                await _context.CreatorJourneys.UpdateOneAsync(
+                    f => f.Id == j.Id,
+                    Builders<CreatorJourney>.Update.Set(x => x.Phase2Data.GeneratedConcepts, concepts));
 
             return j;
         }
 
-        public async Task<CreatorJourney> SetSelectedConceptIdAsync(string userId, string conceptId)
+        public async Task<CreatorJourney> SetSelectedConceptIdAsync(string userId, string conceptId, string ideaId = null)
         {
             if (string.IsNullOrWhiteSpace(conceptId))
                 throw new CreatorJourneyException(400, "conceptId is required.");
 
             var j = await GetOrCreateAsync(userId);
+            var idea = await ResolveIdeaAsync(j, ideaId);
+            OverlayIdea(j, idea);
             j.Phase2Data ??= new CreatorPhase2Data();
             j.Phase2Data.SelectedConceptId = conceptId;
 
-            await _context.CreatorJourneys.UpdateOneAsync(
-                f => f.Id == j.Id,
-                Builders<CreatorJourney>.Update.Set(x => x.Phase2Data.SelectedConceptId, conceptId));
+            await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update.Set(x => x.Phase2Data.SelectedConceptId, conceptId));
+            if (MirrorToJourney(j, idea)) // MIRROR — remove in/before step 6
+                await _context.CreatorJourneys.UpdateOneAsync(
+                    f => f.Id == j.Id,
+                    Builders<CreatorJourney>.Update.Set(x => x.Phase2Data.SelectedConceptId, conceptId));
 
             return j;
         }
 
         // ---- Phase 3 deterministic modules ----
 
-        public async Task<CreatorJourney> SetLegalChecklistAsync(string userId, CreatorLegalChecklist checklist)
+        public async Task<CreatorJourney> SetLegalChecklistAsync(string userId, CreatorLegalChecklist checklist, string ideaId = null)
         {
             var j = await GetOrCreateAsync(userId);
+            var idea = await ResolveIdeaAsync(j, ideaId);
+            OverlayIdea(j, idea);
             checklist.TotalCount = checklist.Items?.Count ?? 0;
             checklist.CompletedCount = checklist.Items?.Count(i => i.Status == "done") ?? 0;
             (j.Phase3Data ??= new CreatorPhase3Data()).LegalChecklist = checklist;
 
-            CreatorJourneyVersioning.Append(
+            var entry = CreatorJourneyVersioning.Append(
                 (j.OutputSnapshots ??= new CreatorOutputSnapshots()).LegalChecklistVersions,
                 3, null, checklist.ToBsonDocument());
 
-            await ReplaceAsync(j);
+            await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update
+                .Set(x => x.Phase3Data.LegalChecklist, checklist)
+                .Push(x => x.OutputSnapshots.LegalChecklistVersions, entry));
+            if (MirrorToJourney(j, idea)) await ReplaceAsync(j); // MIRROR — remove in/before step 6
             return j;
         }
 
-        public async Task<CreatorJourney> UpdateLegalChecklistItemAsync(string userId, string itemId, string status)
+        public async Task<CreatorJourney> UpdateLegalChecklistItemAsync(string userId, string itemId, string status, string ideaId = null)
         {
             if (status != "pending" && status != "in_progress" && status != "done")
                 throw new CreatorJourneyException(400, "status must be pending | in_progress | done.");
 
             var j = await GetOrCreateAsync(userId);
+            var idea = await ResolveIdeaAsync(j, ideaId);
+            OverlayIdea(j, idea);
             var checklist = j.Phase3Data?.LegalChecklist
                 ?? throw new CreatorJourneyException(404, "Legal checklist not generated yet.");
 
@@ -571,32 +714,43 @@ namespace WebApp.Services.Implementations
 
             item.Status = status;
             checklist.CompletedCount = checklist.Items.Count(i => i.Status == "done");
-            await ReplaceAsync(j);
+
+            await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update.Set(x => x.Phase3Data.LegalChecklist, checklist));
+            if (MirrorToJourney(j, idea)) await ReplaceAsync(j); // MIRROR — remove in/before step 6
             return j;
         }
 
-        public async Task<CreatorJourney> SetFormationAsync(string userId, CreatorFormationGenerator formation)
+        public async Task<CreatorJourney> SetFormationAsync(string userId, CreatorFormationGenerator formation, string ideaId = null)
         {
             var j = await GetOrCreateAsync(userId);
+            var idea = await ResolveIdeaAsync(j, ideaId);
+            OverlayIdea(j, idea);
             (j.Phase3Data ??= new CreatorPhase3Data()).FormationGenerator = formation;
 
-            CreatorJourneyVersioning.Append(
+            var entry = CreatorJourneyVersioning.Append(
                 (j.OutputSnapshots ??= new CreatorOutputSnapshots()).FormationVersions,
                 3, null, formation.ToBsonDocument());
 
-            await ReplaceAsync(j);
+            await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update
+                .Set(x => x.Phase3Data.FormationGenerator, formation)
+                .Push(x => x.OutputSnapshots.FormationVersions, entry));
+            if (MirrorToJourney(j, idea)) await ReplaceAsync(j); // MIRROR — remove in/before step 6
             return j;
         }
 
-        public async Task<CreatorJourney> SelectFormationTypeAsync(string userId, string selectedType)
+        public async Task<CreatorJourney> SelectFormationTypeAsync(string userId, string selectedType, string ideaId = null)
         {
             if (selectedType != "SAS" && selectedType != "SARL" && selectedType != "SAS-U")
                 throw new CreatorJourneyException(400, "selectedType must be SAS | SARL | SAS-U.");
 
             var j = await GetOrCreateAsync(userId);
+            var idea = await ResolveIdeaAsync(j, ideaId);
+            OverlayIdea(j, idea);
             var formation = j.Phase3Data?.FormationGenerator
                 ?? throw new CreatorJourneyException(404, "Formation not generated yet.");
             formation.SelectedType = selectedType;
+
+            var ideaUpdate = Builders<CreatorIdea>.Update.Set(x => x.Phase3Data.FormationGenerator.SelectedType, selectedType);
 
             // Flip legal item 1 (company type selection) to done, if the checklist exists.
             var item1 = j.Phase3Data.LegalChecklist?.Items?.FirstOrDefault(i => i.Id == "company-type");
@@ -605,9 +759,11 @@ namespace WebApp.Services.Implementations
                 item1.Status = "done";
                 j.Phase3Data.LegalChecklist.CompletedCount =
                     j.Phase3Data.LegalChecklist.Items.Count(i => i.Status == "done");
+                ideaUpdate = ideaUpdate.Set(x => x.Phase3Data.LegalChecklist, j.Phase3Data.LegalChecklist);
             }
 
-            await ReplaceAsync(j);
+            await WriteIdeaAsync(idea, ideaUpdate);
+            if (MirrorToJourney(j, idea)) await ReplaceAsync(j); // MIRROR — remove in/before step 6
             return j;
         }
 
@@ -617,9 +773,11 @@ namespace WebApp.Services.Implementations
         // clobber guard: declaration always supersedes the ExtractStrengths echo).
         public async Task<CreatorJourney> DeclareFormationSkillsAsync(
             string userId, List<string> youHave, List<CreatorSkillGap> youNeed,
-            List<string> matchedSpIds, CreatorCofounderDraft cofounder)
+            List<string> matchedSpIds, CreatorCofounderDraft cofounder, string ideaId = null)
         {
             var j = await GetOrCreateAsync(userId);
+            var idea = await ResolveIdeaAsync(j, ideaId);
+            OverlayIdea(j, idea);
             var formation = j.Phase3Data?.FormationGenerator
                 ?? throw new CreatorJourneyException(404, "Formation not generated yet.");
 
@@ -634,74 +792,102 @@ namespace WebApp.Services.Implementations
                 (j.OutputSnapshots ??= new CreatorOutputSnapshots()).FormationVersions, 3, null,
                 formation.ToBsonDocument());
 
-            var update = Builders<CreatorJourney>.Update
+            var ideaUpdate = Builders<CreatorIdea>.Update
                 .Set(x => x.Phase3Data.FormationGenerator.YouHave, youHave)
                 .Set(x => x.Phase3Data.FormationGenerator.YouNeed, youNeed)
                 .Set(x => x.Phase3Data.FormationGenerator.MatchedSpIds, matchedSpIds)
                 .Set(x => x.Phase3Data.FormationGenerator.SkillsDeclared, true)
-                .Push(x => x.OutputSnapshots.FormationVersions, entry)
-                .Set(x => x.UpdatedAt, DateTime.UtcNow);
+                .Push(x => x.OutputSnapshots.FormationVersions, entry);
             if (cofounder != null)
-                update = update.Set(x => x.Phase3Data.FormationGenerator.CofounderDraft, cofounder);
+                ideaUpdate = ideaUpdate.Set(x => x.Phase3Data.FormationGenerator.CofounderDraft, cofounder);
+            await WriteIdeaAsync(idea, ideaUpdate);
 
-            await _context.CreatorJourneys.UpdateOneAsync(f => f.Id == j.Id, update);
+            // MIRROR — remove in/before step 6.
+            if (MirrorToJourney(j, idea))
+            {
+                var update = Builders<CreatorJourney>.Update
+                    .Set(x => x.Phase3Data.FormationGenerator.YouHave, youHave)
+                    .Set(x => x.Phase3Data.FormationGenerator.YouNeed, youNeed)
+                    .Set(x => x.Phase3Data.FormationGenerator.MatchedSpIds, matchedSpIds)
+                    .Set(x => x.Phase3Data.FormationGenerator.SkillsDeclared, true)
+                    .Push(x => x.OutputSnapshots.FormationVersions, entry)
+                    .Set(x => x.UpdatedAt, DateTime.UtcNow);
+                if (cofounder != null)
+                    update = update.Set(x => x.Phase3Data.FormationGenerator.CofounderDraft, cofounder);
+                await _context.CreatorJourneys.UpdateOneAsync(f => f.Id == j.Id, update);
+            }
             return j;
         }
 
-        public async Task<CreatorJourney> SetPhase3SessionAsync(string userId, string kind, string sessionId)
+        public async Task<CreatorJourney> SetPhase3SessionAsync(string userId, string kind, string sessionId, string ideaId = null)
         {
             if (string.IsNullOrWhiteSpace(sessionId))
                 throw new CreatorJourneyException(400, "sessionId is required.");
 
             var j = await GetOrCreateAsync(userId);
+            var idea = await ResolveIdeaAsync(j, ideaId);
+            OverlayIdea(j, idea);
             var p3 = j.Phase3Data ??= new CreatorPhase3Data();
             var snaps = j.OutputSnapshots ??= new CreatorOutputSnapshots();
 
             // Atomic targeted update: $set only the ONE session-id field + $push its
-            // version entry. A full-document ReplaceAsync would let a concurrent
-            // forecast/businessPlan start clobber the other's session id — silently
-            // breaking Phase-3 gating. Because we $set a single field, the sibling
-            // session id is never touched. UpdatedAt bumped in the same write.
+            // version entry, so a concurrent forecast/businessPlan start can't clobber
+            // the sibling session id. Idea = source of truth; journey mirrored below.
+            UpdateDefinition<CreatorIdea> ideaUpdate;
             UpdateDefinition<CreatorJourney> update;
             switch (kind)
             {
                 case "forecast":
                     p3.ForecastSessionId = sessionId;
+                    var fcEntry = CreatorJourneyVersioning.Append(snaps.ForecastVersions, 3, sessionId, null);
+                    ideaUpdate = Builders<CreatorIdea>.Update
+                        .Set(x => x.Phase3Data.ForecastSessionId, sessionId)
+                        .Push(x => x.OutputSnapshots.ForecastVersions, fcEntry);
                     update = Builders<CreatorJourney>.Update
                         .Set(x => x.Phase3Data.ForecastSessionId, sessionId)
-                        .Push(x => x.OutputSnapshots.ForecastVersions,
-                              CreatorJourneyVersioning.Append(snaps.ForecastVersions, 3, sessionId, null));
+                        .Push(x => x.OutputSnapshots.ForecastVersions, fcEntry);
                     break;
                 case "businessPlan":
                     p3.BusinessPlanSessionId = sessionId;
+                    var bpEntry = CreatorJourneyVersioning.Append(snaps.BusinessPlanVersions, 3, sessionId, null);
+                    ideaUpdate = Builders<CreatorIdea>.Update
+                        .Set(x => x.Phase3Data.BusinessPlanSessionId, sessionId)
+                        .Push(x => x.OutputSnapshots.BusinessPlanVersions, bpEntry);
                     update = Builders<CreatorJourney>.Update
                         .Set(x => x.Phase3Data.BusinessPlanSessionId, sessionId)
-                        .Push(x => x.OutputSnapshots.BusinessPlanVersions,
-                              CreatorJourneyVersioning.Append(snaps.BusinessPlanVersions, 3, sessionId, null));
+                        .Push(x => x.OutputSnapshots.BusinessPlanVersions, bpEntry);
                     break;
                 default:
                     throw new CreatorJourneyException(400, "kind must be \"forecast\" or \"businessPlan\".");
             }
 
-            await _context.CreatorJourneys.UpdateOneAsync(
-                f => f.Id == j.Id,
-                update.Set(x => x.UpdatedAt, DateTime.UtcNow));
+            await WriteIdeaAsync(idea, ideaUpdate);
+            if (MirrorToJourney(j, idea)) // MIRROR — remove in/before step 6
+                await _context.CreatorJourneys.UpdateOneAsync(
+                    f => f.Id == j.Id,
+                    update.Set(x => x.UpdatedAt, DateTime.UtcNow));
             return j;
         }
 
-        public async Task<CreatorJourney> SetInvestorReadinessAsync(string userId, CreatorInvestorReadinessScore score)
+        public async Task<CreatorJourney> SetInvestorReadinessAsync(string userId, CreatorInvestorReadinessScore score, string ideaId = null)
         {
             var j = await GetOrCreateAsync(userId);
+            var idea = await ResolveIdeaAsync(j, ideaId);
+            OverlayIdea(j, idea);
             (j.Phase3Data ??= new CreatorPhase3Data()).InvestorReadinessScore = score;
-            await ReplaceAsync(j);
+
+            await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update.Set(x => x.Phase3Data.InvestorReadinessScore, score));
+            if (MirrorToJourney(j, idea)) await ReplaceAsync(j); // MIRROR — remove in/before step 6
             return j;
         }
 
         // ---- Phase 4 ----
 
-        public async Task<CreatorJourney> SetPhase4PricingAsync(string userId, string pricingModel, List<CreatorPricingTier> tiers)
+        public async Task<CreatorJourney> SetPhase4PricingAsync(string userId, string pricingModel, List<CreatorPricingTier> tiers, string ideaId = null)
         {
             var j = await GetOrCreateAsync(userId);
+            var idea = await ResolveIdeaAsync(j, ideaId);
+            OverlayIdea(j, idea);
             var p4 = j.Phase4Data ??= new CreatorPhase4Data();
             p4.PricingModel = pricingModel;
             p4.Tiers = tiers ?? new List<CreatorPricingTier>();
@@ -710,99 +896,132 @@ namespace WebApp.Services.Implementations
                 new BsonDocument { ["pricingModel"] = pricingModel, ["tierCount"] = p4.Tiers.Count });
 
             // Atomic: $set only this method's own Phase4Data fields + $push its own
-            // version array. Pricing/Resource/Gtm own disjoint fields, so a full-doc
-            // ReplaceAsync (which a Gtm save could clobber) is replaced by a targeted
-            // update that can't interfere with a sibling Phase-4 save.
-            await _context.CreatorJourneys.UpdateOneAsync(
-                f => f.Id == j.Id,
-                Builders<CreatorJourney>.Update
-                    .Set(x => x.Phase4Data.PricingModel, p4.PricingModel)
-                    .Set(x => x.Phase4Data.Tiers, p4.Tiers)
-                    .Push(x => x.OutputSnapshots.PricingVersions, entry)
-                    .Set(x => x.UpdatedAt, DateTime.UtcNow));
+            // version array (disjoint from Resource/Gtm). Idea = source of truth.
+            await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update
+                .Set(x => x.Phase4Data.PricingModel, p4.PricingModel)
+                .Set(x => x.Phase4Data.Tiers, p4.Tiers)
+                .Push(x => x.OutputSnapshots.PricingVersions, entry));
+            if (MirrorToJourney(j, idea)) // MIRROR — remove in/before step 6
+                await _context.CreatorJourneys.UpdateOneAsync(
+                    f => f.Id == j.Id,
+                    Builders<CreatorJourney>.Update
+                        .Set(x => x.Phase4Data.PricingModel, p4.PricingModel)
+                        .Set(x => x.Phase4Data.Tiers, p4.Tiers)
+                        .Push(x => x.OutputSnapshots.PricingVersions, entry)
+                        .Set(x => x.UpdatedAt, DateTime.UtcNow));
             return j;
         }
 
-        public async Task<CreatorJourney> SetPhase4ResourceAsync(string userId, CreatorResourceCalculation calc)
+        public async Task<CreatorJourney> SetPhase4ResourceAsync(string userId, CreatorResourceCalculation calc, string ideaId = null)
         {
             var j = await GetOrCreateAsync(userId);
+            var idea = await ResolveIdeaAsync(j, ideaId);
+            OverlayIdea(j, idea);
             (j.Phase4Data ??= new CreatorPhase4Data()).ResourceCalculation = calc;
             var entry = CreatorJourneyVersioning.Append(
                 (j.OutputSnapshots ??= new CreatorOutputSnapshots()).ResourcePlanVersions, 4, null,
                 calc?.ToBsonDocument());
 
             // Atomic: $set only ResourceCalculation + $push its own version array —
-            // disjoint from Pricing/Gtm, so sibling Phase-4 saves can't clobber it.
-            await _context.CreatorJourneys.UpdateOneAsync(
-                f => f.Id == j.Id,
-                Builders<CreatorJourney>.Update
-                    .Set(x => x.Phase4Data.ResourceCalculation, calc)
-                    .Push(x => x.OutputSnapshots.ResourcePlanVersions, entry)
-                    .Set(x => x.UpdatedAt, DateTime.UtcNow));
+            // disjoint from Pricing/Gtm. Idea = source of truth.
+            await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update
+                .Set(x => x.Phase4Data.ResourceCalculation, calc)
+                .Push(x => x.OutputSnapshots.ResourcePlanVersions, entry));
+            if (MirrorToJourney(j, idea)) // MIRROR — remove in/before step 6
+                await _context.CreatorJourneys.UpdateOneAsync(
+                    f => f.Id == j.Id,
+                    Builders<CreatorJourney>.Update
+                        .Set(x => x.Phase4Data.ResourceCalculation, calc)
+                        .Push(x => x.OutputSnapshots.ResourcePlanVersions, entry)
+                        .Set(x => x.UpdatedAt, DateTime.UtcNow));
             return j;
         }
 
-        public async Task<CreatorJourney> SetPhase4GtmAsync(string userId, CreatorGtmSetup gtm)
+        public async Task<CreatorJourney> SetPhase4GtmAsync(string userId, CreatorGtmSetup gtm, string ideaId = null)
         {
             var j = await GetOrCreateAsync(userId);
+            var idea = await ResolveIdeaAsync(j, ideaId);
+            OverlayIdea(j, idea);
             (j.Phase4Data ??= new CreatorPhase4Data()).GtmSetup = gtm;
             var entry = CreatorJourneyVersioning.Append(
                 (j.OutputSnapshots ??= new CreatorOutputSnapshots()).GtmPlanVersions, 4, null,
                 gtm?.ToBsonDocument());
 
             // Atomic: $set only GtmSetup + $push its own version array — disjoint from
-            // Pricing/Resource, so sibling Phase-4 saves can't clobber it.
-            await _context.CreatorJourneys.UpdateOneAsync(
-                f => f.Id == j.Id,
-                Builders<CreatorJourney>.Update
-                    .Set(x => x.Phase4Data.GtmSetup, gtm)
-                    .Push(x => x.OutputSnapshots.GtmPlanVersions, entry)
-                    .Set(x => x.UpdatedAt, DateTime.UtcNow));
+            // Pricing/Resource. Idea = source of truth.
+            await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update
+                .Set(x => x.Phase4Data.GtmSetup, gtm)
+                .Push(x => x.OutputSnapshots.GtmPlanVersions, entry));
+            if (MirrorToJourney(j, idea)) // MIRROR — remove in/before step 6
+                await _context.CreatorJourneys.UpdateOneAsync(
+                    f => f.Id == j.Id,
+                    Builders<CreatorJourney>.Update
+                        .Set(x => x.Phase4Data.GtmSetup, gtm)
+                        .Push(x => x.OutputSnapshots.GtmPlanVersions, entry)
+                        .Set(x => x.UpdatedAt, DateTime.UtcNow));
             return j;
         }
 
         // ---- Phase 5 ----
 
-        public async Task<CreatorJourney> SetIpValuationAsync(string userId, CreatorIpValuation valuation)
+        public async Task<CreatorJourney> SetIpValuationAsync(string userId, CreatorIpValuation valuation, string ideaId = null)
         {
             var j = await GetOrCreateAsync(userId);
+            var idea = await ResolveIdeaAsync(j, ideaId);
+            OverlayIdea(j, idea);
             var pathA = (j.Phase5Data ??= new CreatorPhase5Data()).PathA ??= new CreatorPathA();
             pathA.IpValuation = valuation;
-            CreatorJourneyVersioning.Append(
+            var entry = CreatorJourneyVersioning.Append(
                 (j.OutputSnapshots ??= new CreatorOutputSnapshots()).IpValuationVersions, 5, null,
                 valuation?.ToBsonDocument());
-            await ReplaceAsync(j);
+
+            await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update
+                .Set(x => x.Phase5Data.PathA, pathA)
+                .Push(x => x.OutputSnapshots.IpValuationVersions, entry));
+            if (MirrorToJourney(j, idea)) await ReplaceAsync(j); // MIRROR — remove in/before step 6
             return j;
         }
 
-        public async Task<CreatorJourney> SetMarketplaceListingAsync(string userId, CreatorMarketplaceListing listing, List<string> matchedBuyerIds)
+        public async Task<CreatorJourney> SetMarketplaceListingAsync(string userId, CreatorMarketplaceListing listing, List<string> matchedBuyerIds, string ideaId = null)
         {
             var j = await GetOrCreateAsync(userId);
+            var idea = await ResolveIdeaAsync(j, ideaId);
+            OverlayIdea(j, idea);
             var pathA = (j.Phase5Data ??= new CreatorPhase5Data()).PathA ??= new CreatorPathA();
             pathA.MarketplaceListing = listing;
             if (matchedBuyerIds != null) pathA.MatchedBuyerIds = matchedBuyerIds;
-            await ReplaceAsync(j);
+
+            await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update.Set(x => x.Phase5Data.PathA, pathA));
+            if (MirrorToJourney(j, idea)) await ReplaceAsync(j); // MIRROR — remove in/before step 6
             return j;
         }
 
-        public async Task<CreatorJourney> SetCompanyFormationAsync(string userId, CreatorCompanyFormation formation)
+        public async Task<CreatorJourney> SetCompanyFormationAsync(string userId, CreatorCompanyFormation formation, string ideaId = null)
         {
             var j = await GetOrCreateAsync(userId);
+            var idea = await ResolveIdeaAsync(j, ideaId);
+            OverlayIdea(j, idea);
             var pathB = (j.Phase5Data ??= new CreatorPhase5Data()).PathB ??= new CreatorPathB();
             pathB.CompanyFormation = formation;
-            await ReplaceAsync(j);
+
+            await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update.Set(x => x.Phase5Data.PathB, pathB));
+            if (MirrorToJourney(j, idea)) await ReplaceAsync(j); // MIRROR — remove in/before step 6
             return j;
         }
 
-        public async Task<CreatorJourney> SetSeedFundingAsync(string userId, CreatorSeedFunding seedFunding, string companyId)
+        public async Task<CreatorJourney> SetSeedFundingAsync(string userId, CreatorSeedFunding seedFunding, string companyId, string ideaId = null)
         {
             var j = await GetOrCreateAsync(userId);
+            var idea = await ResolveIdeaAsync(j, ideaId);
+            OverlayIdea(j, idea);
             var p5 = j.Phase5Data ??= new CreatorPhase5Data();
             var pathB = p5.PathB ??= new CreatorPathB();
             pathB.SeedFunding = seedFunding;
             p5.CompletedAt = DateTime.UtcNow;            // starts the 72h switch-lock clock
-            if (!string.IsNullOrEmpty(companyId)) j.CompanyId = companyId; // R10: link the spun company
-            await ReplaceAsync(j);
+            if (!string.IsNullOrEmpty(companyId)) j.CompanyId = companyId; // R10: journey-level company link (user-level, not per-idea)
+
+            await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update.Set(x => x.Phase5Data, p5));
+            if (MirrorToJourney(j, idea)) await ReplaceAsync(j); // MIRROR — remove in/before step 6 (also persists CompanyId)
             return j;
         }
     }

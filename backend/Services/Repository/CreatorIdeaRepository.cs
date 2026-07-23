@@ -30,6 +30,13 @@ namespace WebApp.Services.Repository
 
         /// <summary>Wholesale-set the idea's version history (owner-scoped $set). STEP 3.5 migration.</summary>
         Task SetOutputSnapshotsAsync(string ideaId, string ownerUserId, CreatorOutputSnapshots snapshots);
+
+        /// <summary>
+        /// Owner-scoped targeted update (STEP 4 cutover). The caller composes the
+        /// $set/$push definition; UpdatedAt/LastActiveAt are stamped here so every
+        /// idea write keeps the my-ideas sort honest.
+        /// </summary>
+        Task UpdateAsync(string ideaId, string ownerUserId, UpdateDefinition<CreatorIdea> update);
     }
 
     /// <summary>
@@ -100,5 +107,13 @@ namespace WebApp.Services.Repository
                 Builders<CreatorIdea>.Update
                     .Set(x => x.OutputSnapshots, snapshots)
                     .Set(x => x.UpdatedAt, DateTime.UtcNow));
+
+        public Task UpdateAsync(string ideaId, string ownerUserId, UpdateDefinition<CreatorIdea> update)
+        {
+            var now = DateTime.UtcNow;
+            return _collection.UpdateOneAsync(
+                x => x.Id == ideaId && x.UserId == ownerUserId,
+                update.Set(x => x.UpdatedAt, now).Set(x => x.LastActiveAt, now));
+        }
     }
 }
