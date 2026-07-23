@@ -271,6 +271,14 @@ builder.Services.AddSingleton<IUserIdProvider, CustomUserIdProvider>();
 builder.Services.AddScoped<IBusinessIdeasService, BusinessIdeasService>();
 builder.Services.AddScoped<BusinessIdeasRepository>();
 
+// Multi-idea Creator foundation (STEP 1, additive). Repo owns its collection + indexes
+// (session-repo pattern); singleton so indexes are created once. Nothing reads it yet.
+builder.Services.AddSingleton<WebApp.Services.Repository.CreatorIdeaRepository>();
+builder.Services.AddSingleton<WebApp.Services.Repository.ICreatorIdeaStore>(
+    sp => sp.GetRequiredService<WebApp.Services.Repository.CreatorIdeaRepository>());
+builder.Services.AddScoped<WebApp.Services.Migrations.ICreatorIdeaBackfill,
+    WebApp.Services.Migrations.CreatorIdeaBackfillMigration>();
+
 // Investments
 builder.Services.AddScoped<IInvestmentsService, InvestmentsService>();
 builder.Services.AddScoped<InvestmentsRepository>();
@@ -707,6 +715,22 @@ using (var scope = app.Services.CreateScope())
     catch (Exception ex)
     {
         Log.Warning(ex, "AI starter-credit grant skipped (non-fatal)");
+    }
+
+    // Multi-idea Creator STEP 1 backfill: mirror each existing journey into one
+    // CreatorIdea + stamp the anchor onto linked sessions. Idempotent (skips journeys
+    // that already have ActiveIdeaId); additive (nothing reads the new data yet).
+    try
+    {
+        var ideaBackfill = scope.ServiceProvider
+            .GetRequiredService<WebApp.Services.Migrations.ICreatorIdeaBackfill>();
+        var migratedIdeas = await ideaBackfill.RunAsync();
+        if (migratedIdeas > 0)
+            Log.Information("CreatorIdea backfill migrated {Count} journey(s)", migratedIdeas);
+    }
+    catch (Exception ex)
+    {
+        Log.Warning(ex, "CreatorIdea backfill skipped (non-fatal)");
     }
 
     // Demo seeding (Investor catalogue + demo data). Double-gated on
