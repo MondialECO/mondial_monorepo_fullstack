@@ -135,16 +135,23 @@ namespace WebApp.Services.Implementations
                 && string.Equals(planSession.Status, "Completed", StringComparison.Ordinal) && planSession.CurrentVersion > 0;
             bool hasForecast = forecastSession != null
                 && string.Equals(forecastSession.Status, "Completed", StringComparison.Ordinal) && forecastSession.CurrentVersion > 0;
-            bool hasLegal = p3.LegalChecklist != null;
+            // Legal gate = every MANDATORY checklist item Done, not mere presence (canon).
+            // `legalPresent` (checklist generated) marks "in progress"; `hasLegal` (mandatory
+            // complete) is the completion gate. Both derive from stored data only — this
+            // engine never mutates the journey, so a re-locked downstream user's Phase 4+
+            // data is untouched and returns intact once the mandatory items are Done.
+            bool legalPresent = p3.LegalChecklist != null;
+            bool hasLegal = CreatorLegalChecklist.MandatoryItemsDone(p3.LegalChecklist);
             bool hasFormation = p3.FormationGenerator != null;
-            bool anyP3 = planStarted || forecastStarted || hasLegal || hasFormation;
+            bool anyP3 = planStarted || forecastStarted || legalPresent || hasFormation;
 
             if (!p2Done) s.Phase3.Status = "locked";
             else if (hasForecast && hasPlan && hasLegal && hasFormation) s.Phase3.Status = "completed";
             else if (anyP3) s.Phase3.Status = "in_progress";
             else s.Phase3.Status = "available";
             // Step order: business plan (2) → forecast (3) → legal (4) → formation (5) → complete (6).
-            // Uses success-gated hasPlan/hasForecast so a failed/pending job routes back to that step.
+            // Success-gated hasPlan/hasForecast + mandatory-complete hasLegal, so an unfinished
+            // checklist routes the user back to compliance (step 4).
             s.Phase3.CurrentStep = !hasPlan ? 2 : !hasForecast ? 3 : !hasLegal ? 4 : !hasFormation ? 5 : 6;
 
             bool p3Done = s.Phase3.Status == "completed";

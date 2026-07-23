@@ -1,5 +1,6 @@
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
+using System.Linq;
 using System.Text.Json.Serialization;
 
 namespace WebApp.Models.DatabaseModels
@@ -143,6 +144,18 @@ namespace WebApp.Models.DatabaseModels
         public List<CreatorLegalChecklistItem> Items { get; set; } = new();
         public int CompletedCount { get; set; }
         public int TotalCount { get; set; }
+
+        /// <summary>
+        /// The Phase-3 legal gate: the checklist exists AND every mandatory item
+        /// (Category == "mandatory") has Status == "done". A generated checklist with
+        /// ZERO mandatory items is vacuously satisfied — deliberate: no mandatory rows
+        /// impose no blocking requirement (optional/conditional items never block).
+        /// Shared by the derivation engine and the masterplan endpoint so the two
+        /// rules can never drift.
+        /// </summary>
+        public static bool MandatoryItemsDone(CreatorLegalChecklist? checklist) =>
+            checklist != null
+            && checklist.Items.Where(i => i.Category == "mandatory").All(i => i.Status == "done");
     }
 
     public class CreatorLegalChecklistItem

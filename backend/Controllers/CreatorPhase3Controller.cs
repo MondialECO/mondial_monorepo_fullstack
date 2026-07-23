@@ -328,7 +328,9 @@ namespace WebApp.Controllers
                 if (plan == null)
                     return UnprocessableEntity(ApiResponse.Error("Missing module: business_plan"));
 
-                if (p3.LegalChecklist == null)
+                // Legal module = every mandatory checklist item Done (canon), not mere
+                // presence. Same predicate as the derivation engine so the two cannot drift.
+                if (!CreatorLegalChecklist.MandatoryItemsDone(p3.LegalChecklist))
                     return UnprocessableEntity(ApiResponse.Error("Missing module: legal_checklist"));
                 if (p3.FormationGenerator == null)
                     return UnprocessableEntity(ApiResponse.Error("Missing module: formation_generator"));
