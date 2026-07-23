@@ -6,6 +6,7 @@ import { Printer, X } from "lucide-react";
 import type { BusinessPlanOutput, ForecastOutput } from "@/types/creator/ai";
 import { formatMoney } from "@/lib/format-money";
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 
 // Combined Plan + Forecast export document. Rendered as an opt-in full-screen overlay
 // (screen preview) and printed via window.print(). All print rules live in globals.css
@@ -83,7 +84,7 @@ function YearGroupedTable<T extends { month: number }>({ title, head, monthly, c
     <>
       <Sub>{title}</Sub>
       {yearChunks(monthly).map((y) => (
-        <div key={y.year} className="print-section mb-3">
+        <div key={y.year} className="print-year mb-3">
           <div className="mb-1 text-[11px] font-bold text-muted-foreground">
             Year {y.year} (months {y.months[0].month}–{y.months[y.months.length - 1].month})
           </div>
@@ -113,7 +114,7 @@ export default function PlanForecastPrintView({ open, onClose, projectName, proj
     return () => document.body.classList.remove("printing-active");
   }, [open]);
 
-  if (!open) return null;
+  if (!open || typeof document === "undefined") return null;
 
   const today = new Date().toLocaleDateString("en-GB", { year: "numeric", month: "long", day: "numeric" });
   const es = plan?.executiveSummary;
@@ -138,8 +139,8 @@ export default function PlanForecastPrintView({ open, onClose, projectName, proj
   const fcCurrency = forecast?.revenueForecast?.currency ?? forecast?.costForecast?.currency ?? forecast?.cashFlowProjection?.currency ?? undefined;
   const money = (n?: number | null) => formatMoney(n, fcCurrency);
 
-  return (
-    <div className="fixed inset-0 z-[100] overflow-auto bg-neutral-200 print:bg-white">
+  return createPortal(
+    <div data-print-overlay className="fixed inset-0 z-[100] overflow-auto bg-neutral-200 print:bg-white">
       {/* Toolbar — never printed */}
       <div className="no-print sticky top-0 z-10 flex items-center justify-between border-b border-neutral-300 bg-neutral-100 px-4 py-3">
         <Button variant="ghost" size="sm" onClick={onClose} className="gap-1.5 text-neutral-700"><X className="h-4 w-4" /> Close</Button>
@@ -353,6 +354,7 @@ export default function PlanForecastPrintView({ open, onClose, projectName, proj
           </Section>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
