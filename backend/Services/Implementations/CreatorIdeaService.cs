@@ -80,6 +80,7 @@ namespace WebApp.Services.Implementations
                 Phase4Data = journey.Phase4Data ?? new CreatorPhase4Data(),
                 Phase5Data = journey.Phase5Data ?? new CreatorPhase5Data(),
                 SmartMatchmaking = journey.Phase6Data?.SmartMatchmaking ?? new CreatorSmartMatchmaking(),
+                OutputSnapshots = journey.OutputSnapshots ?? new CreatorOutputSnapshots(),
             };
             await _ideas.AddAsync(idea);
             await SetActivePointerAsync(journey.Id, idea.Id);

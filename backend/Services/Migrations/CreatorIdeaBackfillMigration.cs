@@ -67,6 +67,10 @@ namespace WebApp.Services.Migrations
                     Phase4Data = j.Phase4Data ?? new CreatorPhase4Data(),
                     Phase5Data = j.Phase5Data ?? new CreatorPhase5Data(),
                     SmartMatchmaking = j.Phase6Data?.SmartMatchmaking ?? new CreatorSmartMatchmaking(),
+                    // STEP 3.5: any journey backfilled from now on carries its version
+                    // history too. (The 9 already-migrated journeys are handled by the
+                    // separate snapshots follow-up — this guard never re-fires for them.)
+                    OutputSnapshots = j.OutputSnapshots ?? new CreatorOutputSnapshots(),
                     CreatedAt = j.CreatedAt,
                     UpdatedAt = j.UpdatedAt,
                     LastActiveAt = j.UpdatedAt,

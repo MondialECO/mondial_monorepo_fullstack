@@ -27,6 +27,9 @@ namespace WebApp.Services.Repository
 
         /// <summary>Bump LastActiveAt/UpdatedAt (owner-scoped) — keeps the my-ideas sort honest.</summary>
         Task TouchAsync(string ideaId, string ownerUserId);
+
+        /// <summary>Wholesale-set the idea's version history (owner-scoped $set). STEP 3.5 migration.</summary>
+        Task SetOutputSnapshotsAsync(string ideaId, string ownerUserId, CreatorOutputSnapshots snapshots);
     }
 
     /// <summary>
@@ -90,5 +93,12 @@ namespace WebApp.Services.Repository
                     .Set(x => x.LastActiveAt, now)
                     .Set(x => x.UpdatedAt, now));
         }
+
+        public Task SetOutputSnapshotsAsync(string ideaId, string ownerUserId, CreatorOutputSnapshots snapshots)
+            => _collection.UpdateOneAsync(
+                x => x.Id == ideaId && x.UserId == ownerUserId,
+                Builders<CreatorIdea>.Update
+                    .Set(x => x.OutputSnapshots, snapshots)
+                    .Set(x => x.UpdatedAt, DateTime.UtcNow));
     }
 }

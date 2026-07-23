@@ -73,6 +73,7 @@ namespace WebApp.Services.Implementations
                     Phase4Data = j.Phase4Data ?? new CreatorPhase4Data(),
                     Phase5Data = j.Phase5Data ?? new CreatorPhase5Data(),
                     SmartMatchmaking = j.Phase6Data?.SmartMatchmaking ?? new CreatorSmartMatchmaking(),
+                    OutputSnapshots = j.OutputSnapshots ?? new CreatorOutputSnapshots(),
                 };
                 await _creatorIdeas.AddAsync(idea); // ObjectId id assigned on insert
                 j.ActiveIdeaId = idea.Id;

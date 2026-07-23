@@ -278,6 +278,8 @@ builder.Services.AddSingleton<WebApp.Services.Repository.ICreatorIdeaStore>(
     sp => sp.GetRequiredService<WebApp.Services.Repository.CreatorIdeaRepository>());
 builder.Services.AddScoped<WebApp.Services.Migrations.ICreatorIdeaBackfill,
     WebApp.Services.Migrations.CreatorIdeaBackfillMigration>();
+builder.Services.AddScoped<WebApp.Services.Migrations.ICreatorIdeaSnapshotsBackfill,
+    WebApp.Services.Migrations.CreatorIdeaSnapshotsBackfillMigration>();
 
 // Investments
 builder.Services.AddScoped<IInvestmentsService, InvestmentsService>();
@@ -731,6 +733,22 @@ using (var scope = app.Services.CreateScope())
     catch (Exception ex)
     {
         Log.Warning(ex, "CreatorIdea backfill skipped (non-fatal)");
+    }
+
+    // Multi-idea STEP 3.5 follow-up: copy each journey's OutputSnapshots wholesale onto
+    // its active idea (the step-1 pass created those ideas before snapshots moved
+    // per-idea). Idempotent — only copies when the idea has none. Journey copy stays.
+    try
+    {
+        var snapshotsBackfill = scope.ServiceProvider
+            .GetRequiredService<WebApp.Services.Migrations.ICreatorIdeaSnapshotsBackfill>();
+        var copiedSnapshots = await snapshotsBackfill.RunAsync();
+        if (copiedSnapshots > 0)
+            Log.Information("CreatorIdea snapshots backfill copied {Count} idea(s)", copiedSnapshots);
+    }
+    catch (Exception ex)
+    {
+        Log.Warning(ex, "CreatorIdea snapshots backfill skipped (non-fatal)");
     }
 
     // Demo seeding (Investor catalogue + demo data). Double-gated on

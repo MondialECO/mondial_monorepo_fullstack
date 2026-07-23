@@ -42,6 +42,14 @@ namespace WebApp.Models.DatabaseModels
         /// <summary>Only the per-idea slice of Phase 6 moves here; the Level-Up marker stays on the journey.</summary>
         public CreatorSmartMatchmaking SmartMatchmaking { get; set; } = new();
 
+        /// <summary>
+        /// Per-idea version history (STEP 3.5). All nine arrays are inherently per-idea —
+        /// seven carry no idea marker, so they can only live here, not be filtered.
+        /// Reuses <see cref="CreatorOutputSnapshots"/>; the journey's copy stays in place
+        /// until post-cutover cleanup. Defaults to an empty block, never null.
+        /// </summary>
+        public CreatorOutputSnapshots OutputSnapshots { get; set; } = new();
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
