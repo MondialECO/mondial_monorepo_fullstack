@@ -27,6 +27,8 @@ const fresh = <T,>(value: T): T =>
     : JSON.parse(JSON.stringify(value));
 
 const INITIAL_STATE: CreatorJourneyData = {
+  activeIdeaId: null,
+  leveledUpIdeaId: null,
   journeyState: {
     phase1: { status: 'locked', currentStep: 1, completedSteps: [] },
     phase2: {
@@ -172,6 +174,11 @@ function trimForCache(state: CreatorJourneyData): { journeyState: CreatorJourney
 function reconcile(prev: CreatorJourneyData, backend: BackendCreatorJourney, computed: ComputedJourneyStatus): CreatorJourneyData {
   const next = fresh(prev);
   const js = next.journeyState;
+
+  // Multi-idea ids: backend-authoritative, unconditional overwrite (never cached,
+  // so the backend's value — including null — always wins over anything local).
+  next.activeIdeaId = backend.activeIdeaId ?? null;
+  next.leveledUpIdeaId = backend.leveledUpIdeaId ?? null;
 
   (['phase1', 'phase2', 'phase3', 'phase4', 'phase5', 'phase6'] as const).forEach((k) => {
     js[k].status = computed[k].status;
