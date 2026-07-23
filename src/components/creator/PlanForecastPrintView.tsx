@@ -4,6 +4,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Legend } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Printer, X } from "lucide-react";
 import type { BusinessPlanOutput, ForecastOutput } from "@/types/creator/ai";
+import { formatMoney } from "@/lib/format-money";
 import { useEffect } from "react";
 
 // Combined Plan + Forecast export document. Rendered as an opt-in full-screen overlay
@@ -23,7 +24,6 @@ interface PrintProps {
 
 const has = (s?: string | null): s is string => !!s && s.trim().length > 0;
 const arr = <T,>(a?: T[] | null): a is T[] => Array.isArray(a) && a.length > 0;
-const eur = (n?: number | null) => (n == null ? "—" : `€${Math.round(n).toLocaleString()}`);
 
 function chartRows(f: ForecastOutput) {
   const rev = f.revenueForecast?.monthly ?? [];
@@ -133,6 +133,10 @@ export default function PlanForecastPrintView({ open, onClose, projectName, proj
   const fcAi = forecast?.aiMonthCount ?? fcTotal; // legacy sessions → all AI, no projection label
   const fcProjected = fcTotal > fcAi;
   const num = (x?: number | null) => (typeof x === "number" ? x : 0);
+  // The forecast's own currency (all three series share it); undefined → bare number,
+  // matching the screen. `money` formats every forecast figure with it (no hardcoded €).
+  const fcCurrency = forecast?.revenueForecast?.currency ?? forecast?.costForecast?.currency ?? forecast?.cashFlowProjection?.currency ?? undefined;
+  const money = (n?: number | null) => formatMoney(n, fcCurrency);
 
   return (
     <div className="fixed inset-0 z-[100] overflow-auto bg-neutral-200 print:bg-white">
@@ -244,7 +248,7 @@ export default function PlanForecastPrintView({ open, onClose, projectName, proj
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
                     <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={10} tickLine={false} axisLine={false} interval={5} />
-                    <YAxis stroke="var(--muted-foreground)" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(v) => (v != null ? `€${Math.round(Number(v) / 1000)}k` : "")} />
+                    <YAxis stroke="var(--muted-foreground)" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(v) => (v != null ? `${money(Math.round(Number(v) / 1000))}k` : "")} />
                     <Legend iconType="circle" />
                     <Area type="monotone" dataKey="Revenue" stroke="var(--primary)" strokeWidth={2.5} fill="url(#pRev)" isAnimationActive={false} />
                     <Area type="monotone" dataKey="Cost" stroke="var(--warning)" strokeWidth={2} fillOpacity={0} isAnimationActive={false} />
@@ -258,8 +262,8 @@ export default function PlanForecastPrintView({ open, onClose, projectName, proj
                   title="Monthly revenue"
                   head={["Month", "Revenue"]}
                   monthly={rev}
-                  cells={(m) => [`M${m.month}`, eur(m.amount)]}
-                  subtotal={(ms) => [eur(ms.reduce((s, m) => s + num(m.amount), 0))]}
+                  cells={(m) => [`M${m.month}`, money(m.amount)]}
+                  subtotal={(ms) => [money(ms.reduce((s, m) => s + num(m.amount), 0))]}
                 />
               )}
 
@@ -268,11 +272,11 @@ export default function PlanForecastPrintView({ open, onClose, projectName, proj
                   title="Monthly costs"
                   head={["Month", "Fixed", "Variable", "Total"]}
                   monthly={cost}
-                  cells={(m) => [`M${m.month}`, eur(m.fixedCosts), eur(m.variableCosts), eur(num(m.fixedCosts) + num(m.variableCosts))]}
+                  cells={(m) => [`M${m.month}`, money(m.fixedCosts), money(m.variableCosts), money(num(m.fixedCosts) + num(m.variableCosts))]}
                   subtotal={(ms) => [
-                    eur(ms.reduce((s, m) => s + num(m.fixedCosts), 0)),
-                    eur(ms.reduce((s, m) => s + num(m.variableCosts), 0)),
-                    eur(ms.reduce((s, m) => s + num(m.fixedCosts) + num(m.variableCosts), 0)),
+                    money(ms.reduce((s, m) => s + num(m.fixedCosts), 0)),
+                    money(ms.reduce((s, m) => s + num(m.variableCosts), 0)),
+                    money(ms.reduce((s, m) => s + num(m.fixedCosts) + num(m.variableCosts), 0)),
                   ]}
                 />
               )}
@@ -282,10 +286,10 @@ export default function PlanForecastPrintView({ open, onClose, projectName, proj
                   title="Cash flow"
                   head={["Month", "Net cash flow", "Ending balance"]}
                   monthly={cash}
-                  cells={(m) => [`M${m.month}`, eur(m.netCashFlow), eur(m.endingBalance)]}
+                  cells={(m) => [`M${m.month}`, money(m.netCashFlow), money(m.endingBalance)]}
                   subtotal={(ms) => [
-                    eur(ms.reduce((s, m) => s + num(m.netCashFlow), 0)),
-                    eur(num(ms[ms.length - 1]?.endingBalance)), // year-end balance, not a sum
+                    money(ms.reduce((s, m) => s + num(m.netCashFlow), 0)),
+                    money(num(ms[ms.length - 1]?.endingBalance)), // year-end balance, not a sum
                   ]}
                 />
               )}
@@ -311,7 +315,7 @@ export default function PlanForecastPrintView({ open, onClose, projectName, proj
         {cross.seedAsk != null && (
           <Section>
             <Heading>9. Funding Requirements</Heading>
-            <Body>Target raise: {eur(cross.seedAsk)}.</Body>
+            <Body>Target raise: {formatMoney(cross.seedAsk, "EUR")}.</Body>
           </Section>
         )}
 
