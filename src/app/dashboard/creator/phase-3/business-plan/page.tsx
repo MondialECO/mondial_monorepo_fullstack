@@ -299,10 +299,14 @@ export default function BusinessPlanPage() {
     }
   };
 
-  // Business plan is step 2; the forecast (step 3) consumes it next.
+  // Business plan is step 2; the forecast (step 3) consumes it next. A forecast that
+  // already exists (any state — in-flight, failed, or completed) routes to the forecast
+  // results page so the user sees it; only a truly-absent forecast goes to inputs.
   const handleNext = () => {
     completeStep(3, 2);
-    router.push('/dashboard/creator/phase-3/forecast-inputs');
+    router.push(cross.hasForecast
+      ? '/dashboard/creator/phase-3/forecast'
+      : '/dashboard/creator/phase-3/forecast-inputs');
   };
 
   return (
