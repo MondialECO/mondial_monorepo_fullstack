@@ -4,6 +4,7 @@ using WebApp.DbContext;
 using WebApp.Models.DatabaseModels;
 using WebApp.Models.Dtos;
 using WebApp.Services.Interface;
+using WebApp.Services.Repository;
 using WebApp.Services.Repository.Ai;
 
 namespace WebApp.Services.Implementations
@@ -26,6 +27,10 @@ namespace WebApp.Services.Implementations
         // ids are linked at generation start, so a failed/pending job must not complete P3.
         private readonly IBusinessPlanSessionStore _businessPlans;
         private readonly IForecastSessionStore _forecasts;
+        // Multi-idea STEP 2: mint the per-idea document at Phase-2 finalize and stamp the
+        // anchoring clarifier. Additive — nothing reads CreatorIdeas / the anchor yet.
+        private readonly ICreatorIdeaStore _creatorIdeas;
+        private readonly IClarifierSessionStore _clarifiers;
         private static readonly TimeSpan PathSwitchWindow = TimeSpan.FromHours(72);
 
         // Legacy Path-A value, retired in P1.10. Centralized here so the one-time
@@ -35,11 +40,48 @@ namespace WebApp.Services.Implementations
         public CreatorJourneyService(
             MongoDbContext context,
             IBusinessPlanSessionStore businessPlans,
-            IForecastSessionStore forecasts)
+            IForecastSessionStore forecasts,
+            ICreatorIdeaStore creatorIdeas,
+            IClarifierSessionStore clarifiers)
         {
             _context = context;
             _businessPlans = businessPlans;
             _forecasts = forecasts;
+            _creatorIdeas = creatorIdeas;
+            _clarifiers = clarifiers;
+        }
+
+        /// <summary>
+        /// Multi-idea STEP 2 convergence point. Ensures the journey has an ActiveIdeaId
+        /// (minting one CreatorIdea if absent) and stamps the anchoring clarifier's
+        /// BusinessIdeaId with it. Called by BOTH Phase-2 finalize paths
+        /// (clarifier-first + discovery) so they land on exactly one idea regardless of
+        /// order; guarded on ActiveIdeaId so re-finalize / the other path never mints a
+        /// second document. ADDITIVE: no live read path consumes the new data yet.
+        /// </summary>
+        private async Task EnsureIdeaAndStampClarifierAsync(CreatorJourney j, string clarifierSessionId)
+        {
+            if (string.IsNullOrEmpty(j.ActiveIdeaId))
+            {
+                var idea = new CreatorIdea
+                {
+                    UserId = j.UserId,
+                    Status = "active",
+                    Project = j.Project ?? new CreatorJourneyProject(),
+                    Phase2Data = j.Phase2Data ?? new CreatorPhase2Data(),
+                    Phase3Data = j.Phase3Data ?? new CreatorPhase3Data(),
+                    Phase4Data = j.Phase4Data ?? new CreatorPhase4Data(),
+                    Phase5Data = j.Phase5Data ?? new CreatorPhase5Data(),
+                    SmartMatchmaking = j.Phase6Data?.SmartMatchmaking ?? new CreatorSmartMatchmaking(),
+                };
+                await _creatorIdeas.AddAsync(idea); // ObjectId id assigned on insert
+                j.ActiveIdeaId = idea.Id;
+            }
+
+            // Point the (possibly new) clarifier at the active idea. Plan/forecast inherit
+            // this anchor down the chain at their own creation.
+            if (!string.IsNullOrEmpty(clarifierSessionId))
+                await _clarifiers.SetBusinessIdeaIdAsync(clarifierSessionId, j.ActiveIdeaId);
         }
 
         public async Task<CreatorJourney> GetOrCreateAsync(string userId)
@@ -400,6 +442,7 @@ namespace WebApp.Services.Implementations
             if (tags != null && tags.Count > 0) p.Tags = tags;
 
             (j.Phase2Data ??= new CreatorPhase2Data()).ClarifierSessionId = clarifierSessionId;
+            await EnsureIdeaAndStampClarifierAsync(j, clarifierSessionId);
             await ReplaceAsync(j);
             return j;
         }
@@ -425,6 +468,7 @@ namespace WebApp.Services.Implementations
             p.ClarityScore = concept.Score;
 
             (j.Phase2Data ??= new CreatorPhase2Data()).ClarifierSessionId = clarifierSessionId;
+            await EnsureIdeaAndStampClarifierAsync(j, clarifierSessionId);
             await ReplaceAsync(j);
             return j;
         }

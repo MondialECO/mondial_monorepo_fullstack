@@ -91,7 +91,12 @@ namespace WebApp.Controllers
             if (!string.Equals(clarifier.Status, "Completed", StringComparison.Ordinal) || clarifier.Output is null)
                 return Conflict(ApiResponse.Error("The clarifier session must be completed before generating a business plan.", HttpContext.TraceIdentifier));
 
-            var businessIdeaId = string.IsNullOrWhiteSpace(request.BusinessIdeaId) ? null : request.BusinessIdeaId;
+            // Multi-idea STEP 2: inherit the idea anchor from the (already-loaded, validated)
+            // clarifier so every plan — including regenerations — joins the SAME idea. Falls
+            // back to the optional request value for non-creator-flow callers.
+            var businessIdeaId = !string.IsNullOrWhiteSpace(clarifier.BusinessIdeaId)
+                ? clarifier.BusinessIdeaId
+                : (string.IsNullOrWhiteSpace(request.BusinessIdeaId) ? null : request.BusinessIdeaId);
 
             // Create the session first so it owns the lifecycle (source of truth).
             var session = new BusinessPlanSession

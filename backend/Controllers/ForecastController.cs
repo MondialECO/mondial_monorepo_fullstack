@@ -105,7 +105,12 @@ namespace WebApp.Controllers
                     new { message = "Monthly churn must be between 0 and 50%." }));
 
             var planSessionId = request.BusinessPlanSessionId;
-            var businessIdeaId = string.IsNullOrWhiteSpace(request.BusinessIdeaId) ? null : request.BusinessIdeaId;
+            // Multi-idea STEP 2: inherit the idea anchor from the (already-loaded, validated)
+            // business plan so every forecast — including regenerations — joins the SAME idea.
+            // Falls back to the optional request value for non-creator-flow callers.
+            var businessIdeaId = !string.IsNullOrWhiteSpace(plan.BusinessIdeaId)
+                ? plan.BusinessIdeaId
+                : (string.IsNullOrWhiteSpace(request.BusinessIdeaId) ? null : request.BusinessIdeaId);
 
             // Create the session first so it owns the lifecycle (source of truth).
             var session = new ForecastSession
