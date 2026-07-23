@@ -1,3 +1,5 @@
+> ⚠️ **HISTORICAL SNAPSHOT (superseded).** This is a point-in-time design/status note, not current. It predates the Phase-2/3 work and describes stale state (e.g. Phase 3 "40% WIP", compliance/formation as STUB, the completion gate as "missing", and a forecast→plan step order). The authoritative, current spec is **`docs/creator-flow-canon.md`** (reconciled with code 2026-07-23). Kept for history — do not build from this file.
+
 # Mondial Creator — System Design
 
 > **Scope:** The Creator role subsystem (`src/app/dashboard/creator/**`, providers, hooks, components).  

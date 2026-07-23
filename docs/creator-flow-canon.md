@@ -2,6 +2,8 @@
 
 Source of truth for development. When code and this doc disagree, this doc wins — unless a change is agreed and written back here first.
 
+**Last reconciled with code: 2026-07-23.** See the Changelog (§11) for what changed. If a claim here contradicts the code, treat it as drift to reconcile — not a spec to build back toward — and confirm before acting.
+
 ## 0. How to use this doc
 
 This is the canonical spec for the Creator journey (P1–P6). It is read by Claude AI in VS Code as ground truth. Two standing instructions for any implementer working from it:
@@ -25,7 +27,7 @@ Every feature carries a STATUS tag reflecting the current build:
 **Backend:** ASP.NET Core 8 (runtime pinned to 8.x — do not run on 10).  
 **Data:** MongoDB Atlas.  
 **Jobs:** Hangfire.  
-**AI providers:** Anthropic Claude for clarifier / business plan / forecast; meta-llama via OpenRouter for IdeaGenerator.
+**AI provider:** Single-provider **OpenRouter**. Every AI task (probe, clarifier, business plan, forecast, IdeaGenerator) routes to `openai/gpt-oss-20b:free` (`backend/appsettings.json` → `ModelRouting`). This is a **deliberate consolidation** — the earlier Anthropic-Claude / meta-llama split was removed; there is **no `AnthropicClient` in the codebase**. Do not "restore" Anthropic or a per-task model split to match older notes. Free-tier limits apply (~50 requests/day, ~20/min), so flows minimize and gate AI calls; a missing `OpenRouter:ApiKey` fails fast at startup (`StartupConfigValidation`).
 
 These rules apply to every phase. Violating them is a canon breach regardless of feature correctness.
 
@@ -49,7 +51,7 @@ Class-level authorization on all creator/journey controllers; admin actions role
 ## 2. Flow overview (P1 → P6)
 
 - **P1** — KYC + role select
-- **P2** — Smart Gate: Path B (already-have-idea → clarifier) is the single alpha entry. Path A Discovery exists but is DISABLED for alpha. Plus project branding + hire-SP-designer.
+- **P2** — Smart Gate: **both entry cards ship (LIVE)**. Path B (already-have-idea → clarifier) and Path A (Discovery → concept cards → confirm) are both reachable. Discovery skips the clarifier by seeding a Completed clarifier session at finalize, so it satisfies the Phase-3 prerequisite. Plus project branding + hire-SP-designer.
 - **P3** — AI Masterplan: Business Plan + Financial Forecast + Legal Checklist + Formation Generator (4 modules) → readiness score → completion gate.
 - **P4** — Pricing + GTM / landing page.
 - **P5** — Cross-Roads: Path A Marketplace (sell/license) OR Path B The Big Leap (→ 30-day decision timer → Level Up). No formation wizard. Company doc verification deferred to Entrepreneur P2.
@@ -82,8 +84,8 @@ The Phase-1 completion gate promotes onboarding to Phase 1 only when all four co
 
 Entry decision: "Do you already have an idea?"
 
-- **YES** → Clarifier (Path B) — the single alpha path.
-- **NO** → Discovery (Path A) — DISABLED for alpha.
+- **YES** → Clarifier (Path B).
+- **NO** → Discovery (Path A). Both paths are LIVE and converge on a `clarifierSessionId` (Path A seeds one — see below).
 
 ### Path B — Clarifier (LIVE)
 
@@ -91,20 +93,18 @@ A 6-question AI-guided chat (problem, target customer, differentiation, unfair a
 
 **Branding (LIVE wiring, STUB AI):** upload logo, skip, AI-generate logo, or hire an M50 designer (match → book → workroom). The AI logo generation and AI name suggestions are deterministic stubs today — functional placeholders, marked to swap to the real AI provider later.
 
-### Path A — Discovery (DISABLED for alpha; do not delete)
+**AI failure handling (LIVE, applies to clarifier + Phase-3 plan/forecast):** a **failed** AI session is **not linked** onto the project (no poisoning the project with a Failed session). `finalize-clarifier` distinguishes an **AI-request failure** (401/402/429/timeout → "service temporarily unavailable, try again") from a **parse failure**. HTTP timeouts are classified **permanent** so Hangfire does not auto-retry and burn free-tier quota (`StopRetryOnPermanentAiFailure`). The Phase-3 business-plan and forecast pages render an **honest failure state with a fresh-regenerate path — never a blank body**.
 
-The chain (sectors + problem + strengths → IdeaGenerator Hangfire job → concept cards → pick → confirm → name → brand) is fully built and reachable in code, but it has two defects that make it a trap:
+### Path A — Discovery (LIVE)
 
-1. It never produces a `clarifierSessionId` (it routes idea-confirm → idea-summary, bypassing the clarifier), so a Discovery-only user cannot start the Phase-3 business plan.
-2. Its mid-flow resume is broken (resolver only maps later steps).
+The chain: sectors + problem + strengths → IdeaGenerator Hangfire job → concept cards → pick → **confirm → summary** → name → brand. Both former defects are fixed:
 
-Therefore the "Explore & Discovery" card is hidden for alpha, making Path B the only entry.
+1. **Session convergence (LIVE):** Discovery deliberately **skips the clarifier**. On confirm, `POST /journey/phase2/finalize-discovery` (`CreatorPhase2Controller.FinalizeDiscovery`) **seeds a Completed clarifier session** directly from the chosen concept, satisfying the Phase-3 session chain — a Discovery user can start the business plan. It does NOT set a server-side `selectedEntryPath` (Path B is the only value stored); the backend discriminates a Discovery user by persisted working-state (2C-2).
+2. **Mid-flow resume (LIVE):** the backend derives Discovery steps (`DerivePhase2Step`, 2C-2) and the frontend resolver maps them (2C-3).
 
-**REMOVE** the false "Discovery removed" code comments — Discovery is live, the comments lie.
+The former "Discovery removed / hidden for alpha" code comments were **corrected** — they described a state that no longer exists.
 
-**IdeaGenerator provider:** transport is correctly OpenRouter, but the model key doesn't resolve in the router and silently falls back to gpt-4o-mini. Canon requires meta-llama. Fix the model route before Discovery is revived post-alpha.
-
-**Post-alpha revival condition:** Discovery must feed the clarifier so both paths converge with a session ID.
+**IdeaGenerator provider:** OpenRouter `openai/gpt-oss-20b:free`, same single provider as every other task (the old gpt-4o-mini fallback / meta-llama requirement is obsolete — see §1).
 
 ---
 
@@ -116,9 +116,11 @@ The strongest, most canon-correct phase. Four modules assembled into the Masterp
 
 ### 5.1 Module — Financial Forecast (C-4, LIVE)
 
-36-month P&L simulation (revenue, COGS, OPEX, margins, breakeven) from user inputs. Bound to live output — no mock arrays in the real phase-3 pages. Non-blocking warning flags for unhealthy inputs (tight unit economics, >30% MoM growth, small TAM).
+A **36-month** P&L (revenue, costs, cash flow, break-even). **Only the first 12 months are AI-generated; months 13–36 are derived deterministically** in the backend (`ForecastHandler.ExtendToThirtySixMonths`) by projecting from the user's own inputs — revenue compounds at `monthlyGrowthPct`, fixed cost holds at `opex`, variable cost tracks the AI's month-12 margin, cash flow accumulates, and break-even is recomputed across all 36. Rationale: the free model can't reliably emit 36 months of consistent JSON inside the timeout, so we keep the AI call small and extend deterministically. **Projection disclosure is REQUIRED** — the results view and the PDF both label months 13–36 as *projected, not model output* (`aiMonthCount` marks the boundary). Bound to live output — no mock arrays. Non-blocking warnings for unhealthy inputs (tight unit economics, >30% MoM growth, small TAM, high churn).
 
-**KNOWN GAP:** the "Financial Modeling Inputs" (3.1) form currently discards its values; the forecast page re-collects inputs. The 3.1 form is decorative and must be wired to actually feed C-4, or removed.
+**Dedicated inputs page (LIVE).** The flow is **business plan → forecast-inputs → forecast (results)**. The old "3.1 Financial Modeling Inputs" screen (which discarded its values) was **REMOVED**; `/phase-3` now redirects to the business plan. `forecast-inputs/page.tsx` collects the 5 inputs (arpu, opex, monthlyGrowthPct, tam, monthlyChurnPct), **pre-fills from the last generation** (exposed via the session API), and its "Generate" persists them on the new `ForecastSession.Inputs` and starts the job. The forecast page is **results-only** and redirects to the inputs page when no session exists. The stored inputs drive both the AI prompt and the 13–36 derivation and survive regenerate.
+
+**Timeout/poll envelope:** the OpenRouter HTTP timeout is **120s** (`OpenRouter:TimeoutSeconds`), and the shared frontend poll ceiling is **96 attempts / 4 min** (§5.5) so it outlasts the backend worst case.
 
 ### 5.2 Module — Business Plan (C-3, LIVE)
 
@@ -144,7 +146,7 @@ Sections 7/8/9 read live cross-module data, not hardcoded values. Each section h
 
 ### 5.3 Module — Legal Checklist (LIVE)
 
-12-item deterministic, sector-specific, mandatory vs optional, "Find Specialist" opens a workroom. All mandatory items must be Done to progress.
+12-item deterministic, sector-specific, mandatory vs optional (item `Category`), "Find Specialist" opens a workroom. **Gate (LIVE, implemented 2026-07):** *every* mandatory item must be `done` to complete Phase 3 — enforced identically in the derivation engine and the masterplan endpoint via the shared `CreatorLegalChecklist.MandatoryItemsDone` predicate (so the two can't drift). Applied uniformly, **no grandfathering** — a downstream user with untouched mandatory items re-locks to Phase 3 (data preserved; the derivation is pure-read). The compliance page **blocks "Continue" until all mandatory items are done** and shows the outstanding count. (Zero mandatory items → vacuously satisfied, deliberate.)
 
 ### 5.4 Module — Formation Generator (LIVE)
 
@@ -152,9 +154,9 @@ Legal structure recommendation (SAS/SAS-U/SARL), team strengths (from clarifier)
 
 ### 5.5 Poll policy (R12)
 
-One shared timed-session policy — 60 attempts OR 3 minutes wall-clock; timeout state distinct from failed; retry re-attaches to the same session. Phase-3 pages honor this.
+One shared timed-session policy (`creator-ai.ts`) — **96 attempts OR 4 minutes** wall-clock, 2500ms interval. Raised from the original 60/3-min so the poll comfortably outlasts the 120s backend HTTP timeout plus Hangfire pickup (a job must never finish *after* the poll gives up). Timeout state is distinct from failed; retry re-attaches to the same session.
 
-**REMOVE** duplicate copies: the clarifier and ai-processing pages hardcode 100-attempt caps. Consolidate to the shared 60/3-min policy (one policy, no copies).
+**Consolidation DONE:** the clarifier and ai-processing pages now import the shared constants — the old hardcoded 100-attempt caps were removed (one policy, no copies).
 
 ### 5.6 Mock cleanup (R15)
 
@@ -162,7 +164,11 @@ The standalone mock ai-masterplan page (hardcoded financials, fake score "84") w
 
 ### 5.7 Completion gate
 
-Verifies all 4 modules present, returns 422 with the missing module name otherwise. Computes the readiness score with weights 20/20/25/15/20 (Concept Clarity / Market Evidence / Financial Model / Legal Readiness / Team Credibility) → labels **Not Ready / Developing / Strong / Investor-Ready**. Stored and surfaced on the dashboard. This is a Creator-stage score — distinct from the Entrepreneur P7 InvestorReadyScore; do not conflate.
+Requires all 4 modules; returns 422 with the missing module name otherwise. Crucially, "present" means **success-gated, not presence-of-an-id**: business plan and forecast count only when their AI session is `Status == "Completed"` AND `CurrentVersion > 0` (a failed/pending job routes the user back to that step, not past it); legal requires all mandatory items `done` (§5.3); formation requires its object. All Phase status is **backend-derived** (`ComputePhaseStatus`, pure-read — never a manual write, never mutates data), so re-locking a module leaves downstream data intact. Computes the readiness score with weights 20/20/25/15/20 (Concept Clarity / Market Evidence / Financial Model / Legal Readiness / Team Credibility) → labels **Not Ready / Developing / Strong / Investor-Ready**. Stored and surfaced on the dashboard. This is a Creator-stage score — distinct from the Entrepreneur P7 InvestorReadyScore; do not conflate.
+
+### 5.8 PDF export (LIVE)
+
+A combined **Business Plan + Forecast** document (`PlanForecastPrintView`), reachable from the business-plan and forecast pages. Implementation is an **in-page print view** (browser print → "Save as PDF") — no library, no backend, no infra. The forecast section renders **year-grouped 36-month tables** (Year 1/2/3 blocks, subtotals) with the projection caption from §5.1. Uses the app's **real** design tokens/fonts — **Inter (body/headings) + the app mono for figures**. Note: this project does **not** use Syne / DM Sans / JetBrains Mono; do not spec fonts that aren't installed.
 
 ---
 
@@ -239,9 +245,24 @@ The rule: matchmaking is unavailable across P1–P5 and unlocks only at P6. The 
 
 **Alpha ship-blockers** (being fixed): KYC bridge, matchmaking leak closed, mock masterplan deleted.
 
-**Alpha fast-follow:** hide stale P5 wizard, disable Discovery, fix output-version ordering.
+**Alpha fast-follow:** hide stale P5 wizard, fix output-version ordering. *(Discovery is now LIVE — no longer disabled; poll-policy consolidation and the IdeaGenerator model route are DONE — see §11.)*
 
-**Post-alpha backlog:** 30-day timer, SUMSUB, confetti, landing-page + GTM roadmap generation, Resource Calculator, Path-A license/pricing, IdeaGenerator model route, poll-policy consolidation, ApiResponse cleanup, advancePhase round-trip.
+**Post-alpha backlog:** 30-day timer, SUMSUB, confetti, landing-page + GTM roadmap generation, Resource Calculator, Path-A license/pricing, ApiResponse cleanup, advancePhase round-trip.
+
+---
+
+## 11. Changelog
+
+**2026-07-23 — reconciled with code (Phase 2/3).**
+- **AI provider:** consolidated to single-provider OpenRouter `openai/gpt-oss-20b:free` for all tasks; removed the Anthropic-Claude / meta-llama split (no `AnthropicClient` exists). §1, §4, §5.
+- **Discovery (P2):** now LIVE — both entry cards ship; Discovery seeds a Completed clarifier session at `finalize-discovery` (skips the clarifier, satisfies the P3 chain); mid-flow resume derived server-side (2C-2) + resolver-mapped (2C-3); stale "Discovery removed" comments corrected. §2, §4.
+- **AI failure handling:** failed sessions not linked; request-failure vs parse-failure distinguished; HTTP timeouts classified permanent (no Hangfire auto-retry); honest failure UI, never blank. §4.
+- **Phase-3 3.1 screen removed:** the "Financial Modeling Inputs" form (discarded values) deleted; `/phase-3` redirects to business plan. §5.1.
+- **Forecast:** new **dedicated inputs page** (plan → forecast-inputs → results, inputs persisted + pre-filled); **36-month horizon = 12 AI + 24 deterministically derived** from the user's growth rate, with a required projection disclosure; 120s HTTP timeout. §5.1.
+- **PDF export (new):** combined plan+forecast print view, year-grouped 36-month tables. §5.8.
+- **Legal checklist gate:** the "all mandatory Done" intent is now **implemented** (shared predicate in derivation + endpoint, uniform, no grandfathering; compliance page gates Continue). §5.3.
+- **Phase-3 completion:** documented as **success-gated** (Status Completed + version), not session-id presence. §5.7.
+- **Poll policy:** 60/3-min → **96 attempts / 4 min**; clarifier + ai-processing consolidated onto the shared constants. §5.5.
 
 ---
 
