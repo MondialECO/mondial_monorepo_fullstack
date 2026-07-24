@@ -242,10 +242,12 @@ namespace WebApp.Services.Implementations
             bool forecastStarted = !string.IsNullOrEmpty(p3.ForecastSessionId);
             var planSession = planStarted ? await _businessPlans.GetOwnedAsync(p3.BusinessPlanSessionId, j.UserId) : null;
             var forecastSession = forecastStarted ? await _forecasts.GetOwnedAsync(p3.ForecastSessionId, j.UserId) : null;
+            // Shared predicate (AiSessionSuccess) — the masterplan endpoint uses the
+            // SAME rule, so the engine and the endpoint cannot drift.
             bool hasPlan = planSession != null
-                && string.Equals(planSession.Status, "Completed", StringComparison.Ordinal) && planSession.CurrentVersion > 0;
+                && WebApp.Services.Ai.AiSessionSuccess.IsComplete(planSession.Status, planSession.CurrentVersion);
             bool hasForecast = forecastSession != null
-                && string.Equals(forecastSession.Status, "Completed", StringComparison.Ordinal) && forecastSession.CurrentVersion > 0;
+                && WebApp.Services.Ai.AiSessionSuccess.IsComplete(forecastSession.Status, forecastSession.CurrentVersion);
             // Legal gate = every MANDATORY checklist item Done, not mere presence (canon).
             // `legalPresent` (checklist generated) marks "in progress"; `hasLegal` (mandatory
             // complete) is the completion gate. Both derive from stored data only — this
