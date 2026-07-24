@@ -63,6 +63,19 @@ already does; or add an in-flight guard + short-TTL cache to `hydrate` and have
 pages consume the context value instead of re-fetching. Prefer the former for
 consistency with the established pattern.
 
+**Progress (2026-07):** first step done — an in-flight guard on context hydration
+(`useCreatorProgressState.hydrate`) collapses concurrent hydration attempts into one
+request (cleared on settle, no caching). This is groundwork, not the traffic fix:
+production is unchanged on a clean entry; the redundant volume is the ~dozen per-page
+direct fetches above, still untouched.
+
+**Constraint introduced by that guard (must survive here):** a caller that performs a
+write and then re-hydrates to observe it can attach to a request that predates the
+write and receive stale data. The existing such caller (`myideas` switch/create) is
+safe only because it verifies `activeIdeaId === target` and fails into an error path.
+Any future write-then-rehydrate caller MUST verify likewise, or bypass the shared
+in-flight request.
+
 ---
 
 ## CI-2 — Optimistic advance feeds the client route guard (P2)
