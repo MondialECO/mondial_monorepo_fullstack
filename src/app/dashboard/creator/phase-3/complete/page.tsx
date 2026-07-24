@@ -135,7 +135,7 @@ export default function Phase3CompletePage() {
                   </div>
                 </>
               ) : (
-                <p className="text-sm text-muted-foreground">Complete all four modules to compute your readiness score.</p>
+                <p className="text-sm text-muted-foreground">Complete the business plan, forecast, and formation modules to compute your readiness score.</p>
               )}
             </CardContent>
           </Card>

@@ -403,10 +403,8 @@ namespace WebApp.Controllers
                 if (plan == null || !WebApp.Services.Ai.AiSessionSuccess.IsComplete(plan.Status, plan.CurrentVersion))
                     return UnprocessableEntity(ApiResponse.Error("Missing module: business_plan"));
 
-                // Legal module = every mandatory checklist item Done (canon), not mere
-                // presence. Same predicate as the derivation engine so the two cannot drift.
-                if (!CreatorLegalChecklist.MandatoryItemsDone(p3.LegalChecklist))
-                    return UnprocessableEntity(ApiResponse.Error("Missing module: legal_checklist"));
+                // Legal checklist is advisory — self-attested checkboxes never block
+                // masterplan completion (ComputeReadiness still scores LegalReadiness from it).
                 if (p3.FormationGenerator == null)
                     return UnprocessableEntity(ApiResponse.Error("Missing module: formation_generator"));
 

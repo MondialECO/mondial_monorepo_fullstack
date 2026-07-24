@@ -248,24 +248,22 @@ namespace WebApp.Services.Implementations
                 && WebApp.Services.Ai.AiSessionSuccess.IsComplete(planSession.Status, planSession.CurrentVersion);
             bool hasForecast = forecastSession != null
                 && WebApp.Services.Ai.AiSessionSuccess.IsComplete(forecastSession.Status, forecastSession.CurrentVersion);
-            // Legal gate = every MANDATORY checklist item Done, not mere presence (canon).
-            // `legalPresent` (checklist generated) marks "in progress"; `hasLegal` (mandatory
-            // complete) is the completion gate. Both derive from stored data only — this
-            // engine never mutates the journey, so a re-locked downstream user's Phase 4+
-            // data is untouched and returns intact once the mandatory items are Done.
+            // Legal checklist is ADVISORY: it never gates Phase-3 completion. The items
+            // are pure self-attestation (checkbox cycling, no verification), so requiring
+            // them added friction, not assurance. `legalPresent` (checklist generated)
+            // still marks "in progress"; completion needs plan + forecast + formation only.
             bool legalPresent = p3.LegalChecklist != null;
-            bool hasLegal = CreatorLegalChecklist.MandatoryItemsDone(p3.LegalChecklist);
             bool hasFormation = p3.FormationGenerator != null;
             bool anyP3 = planStarted || forecastStarted || legalPresent || hasFormation;
 
             if (!p2Done) s.Phase3.Status = "locked";
-            else if (hasForecast && hasPlan && hasLegal && hasFormation) s.Phase3.Status = "completed";
+            else if (hasForecast && hasPlan && hasFormation) s.Phase3.Status = "completed";
             else if (anyP3) s.Phase3.Status = "in_progress";
             else s.Phase3.Status = "available";
             // Step order: business plan (2) → forecast (3) → legal (4) → formation (5) → complete (6).
-            // Success-gated hasPlan/hasForecast + mandatory-complete hasLegal, so an unfinished
-            // checklist routes the user back to compliance (step 4).
-            s.Phase3.CurrentStep = !hasPlan ? 2 : !hasForecast ? 3 : !hasLegal ? 4 : !hasFormation ? 5 : 6;
+            // Success-gated hasPlan/hasForecast; legal is advisory, so the cursor points at
+            // compliance only until the checklist is generated — outstanding items never trap it.
+            s.Phase3.CurrentStep = !hasPlan ? 2 : !hasForecast ? 3 : !legalPresent ? 4 : !hasFormation ? 5 : 6;
 
             bool p3Done = s.Phase3.Status == "completed";
 
