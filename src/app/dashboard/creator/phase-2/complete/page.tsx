@@ -1,11 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ChevronRight, Sparkles, CheckCircle2, ArrowLeft, ArrowRight, ShieldCheck, BarChart3, FileText, Users, Loader2 } from "lucide-react";
+import { ChevronRight, Sparkles, CheckCircle2, ArrowLeft, ArrowRight, ShieldCheck, BarChart3, FileText, Users, Loader2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
 import { creatorJourneyApi } from "@/lib/api-creator-journey";
+import type { ComputedJourneyStatus } from "@/types/creator/journey-api";
 import { useState, useEffect } from "react";
 
 export default function Phase2CompletePage() {
@@ -13,23 +14,62 @@ export default function Phase2CompletePage() {
   const { state, isLoading, error, refetch, advancePhase } = useCreatorProgress();
 
   // All hooks are declared unconditionally at the top so hook order is stable
-  // across every render (rules-of-hooks). The isLoading/error gates below gate
-  // only the RENDER, never the hooks.
+  // across every render (rules-of-hooks). The gates below gate only the RENDER.
   const [logoError, setLogoError] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
   const [isSkipping, setIsSkipping] = useState(false);
 
-  useEffect(() => {
-    if (isNavigating && state.journeyState.phase3.status === 'available') {
-      router.push("/dashboard/creator/phase-3");
-    }
-  }, [isNavigating, state.journeyState.phase3.status, router]);
+  // Backend-derived status fetched fresh — NOT read from context, which a prior
+  // optimistic advance in this session may have polluted. Eligibility gates both
+  // navigation handlers. (attempt drives Retry on a fetch failure.)
+  const [computed, setComputed] = useState<ComputedJourneyStatus | null>(null);
+  const [statusLoading, setStatusLoading] = useState(true);
+  const [statusError, setStatusError] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
-    if (isSkipping && state.journeyState.phase3.status === 'available') {
-      router.push("/dashboard/creator");
-    }
-  }, [isSkipping, state.journeyState.phase3.status, router]);
+    let active = true;
+    (async () => {
+      setStatusLoading(true);
+      setStatusError(false);
+      try {
+        const { computedStatus } = await creatorJourneyApi.get();
+        if (!active) return;
+        setComputed(computedStatus);
+        // Near-unreachable in the normal flow: arriving here with Phase 3 still
+        // locked means a Phase 2 write likely didn't land. Surface it — console is
+        // the codebase's only runtime-event convention (cf. useEntrepreneurProgressState).
+        if (computedStatus.phase3.status === 'locked') {
+          console.warn('[phase-2/complete] not-ready state rendered — a Phase 2 write may not have landed', {
+            phase2Step: computedStatus.phase2.currentStep,
+            phase3Status: computedStatus.phase3.status,
+          });
+        }
+      } catch {
+        if (active) setStatusError(true);
+      } finally {
+        if (active) setStatusLoading(false);
+      }
+    })();
+    return () => { active = false; };
+  }, [attempt]);
+
+  // Eligibility: Phase 3 is anything other than `locked`. It becomes `available` the
+  // instant Phase 2's three fields persist, then moves to `in_progress`/`completed`
+  // once the user enters Phase 3 — so a returning user who already started Phase 3
+  // must still pass. (Status set: locked | available | in_progress | completed.)
+  const canContinue = !!computed && computed.phase3.status !== 'locked';
+
+  // Not-ready guidance keyed to the Phase 2 step cursor. Only naming (8) and branding
+  // (9) can be named specifically; the clarifier/discovery region and the all-complete
+  // value (12, only reachable in a contradictory state since it would otherwise be
+  // eligible) both fall to honest general wording — never a fabricated clarity-score reason.
+  const notReady =
+    computed?.phase2.currentStep === 8
+      ? { message: "You haven't named your concept yet. Finish naming it to unlock Project Intelligence.", cta: 'Name your concept', href: '/dashboard/creator/phase-2/concept-name' }
+      : computed?.phase2.currentStep === 9
+      ? { message: "Your branding decision isn't complete yet. Finish it to unlock Project Intelligence.", cta: 'Finish branding', href: '/dashboard/creator/phase-2/branding' }
+      : { message: "Your idea setup isn't finished yet. Complete the remaining Phase 2 steps to unlock Project Intelligence.", cta: 'Finish idea setup', href: '/dashboard/creator/phase-2' };
 
   // Gate: don't render real content until backend hydration completes.
   if (isLoading) {
@@ -54,34 +94,26 @@ export default function Phase2CompletePage() {
   const project = state.project;
   const branding = project.branding;
 
-  const handleNextPhase = async () => {
+  const handleNextPhase = () => {
+    // Dual protection with the disabled button: never navigate unless the fetched
+    // backend status confirms eligibility.
+    if (!canContinue) return;
     setIsNavigating(true);
-    // Branding is already persisted via uploadAiLogo() in logo-tool page
-    advancePhase(2);
-
-    // Poll backend to confirm phase 3 is unlocked before navigating
-    let unlocked = false;
-    for (let i = 0; i < 10; i++) {
-      await new Promise(r => setTimeout(r, 500));
-      try {
-        const { journey } = await creatorJourneyApi.get();
-        const computedStatus = (journey as any)?.computedStatus || (journey as any)?.journeyState;
-        if (computedStatus?.phase3?.status === 'available') {
-          unlocked = true;
-          break;
-        }
-      } catch (e) {
-        // continue polling on error
-      }
-    }
-
+    // Repair STALE local state ONLY: advance iff local still reports Phase 3 `locked`
+    // (context hydrates once per segment entry, so an eligible returning user's local
+    // status can lag the backend). If local already shows a non-locked Phase 3, the
+    // write would REGRESS it (e.g. in_progress → available) and rewrite completedAt for
+    // nothing — skip it. The guard admits any non-locked status, so navigation is safe.
+    if (state.journeyState.phase3.status === 'locked') advancePhase(2);
     router.push('/dashboard/creator/phase-3');
   };
 
   const handleSkip = () => {
     setIsSkipping(true);
-    // Branding is already persisted via uploadAiLogo() in logo-tool page
-    advancePhase(2);
+    // Same staleness repair as Continue, still gated on eligibility so a not-ready user
+    // never advances: write only when eligible AND local Phase 3 is stale (`locked`).
+    if (canContinue && state.journeyState.phase3.status === 'locked') advancePhase(2);
+    router.push('/dashboard/creator');
   };
 
   return (
@@ -106,7 +138,49 @@ export default function Phase2CompletePage() {
         <div className="h-full bg-primary rounded-r" style={{ width: "100%" }} />
       </div>
 
-      {/* Main Content */}
+      {/* Gating fetch in flight (two-layer: after context hydration) */}
+      {statusLoading && (
+        <div className="flex-1 flex flex-col items-center justify-center gap-2 py-20 text-muted-foreground">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" /> Checking your progress…
+        </div>
+      )}
+
+      {/* Status-fetch failure — Phase 4 treatment. Never co-renders not-ready
+          messaging: we don't know what's complete, so we show no reason. */}
+      {!statusLoading && statusError && (
+        <div className="flex-1 flex flex-col items-center justify-center gap-3 py-20">
+          <p className="text-sm text-destructive">Couldn&apos;t check your progress. This doesn&apos;t mean anything is missing — please retry.</p>
+          <div className="flex items-center gap-3">
+            <Button variant="outline" size="sm" onClick={() => setAttempt((a) => a + 1)}>Retry</Button>
+            <Button variant="ghost" size="sm" onClick={handleSkip} disabled={isSkipping}>Skip to dashboard</Button>
+          </div>
+        </div>
+      )}
+
+      {/* Not eligible — honest, cursor-specific, never celebratory or failed/processing */}
+      {!statusLoading && !statusError && computed && !canContinue && (
+        <div className="flex-1 p-6 sm:p-10 max-w-lg mx-auto w-full">
+          <div className="text-center space-y-4 py-8">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-warning/10 border border-warning/20 text-warning mb-2">
+              <AlertTriangle className="w-8 h-8" />
+            </div>
+            <h1 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">Phase 2 isn&apos;t finished yet</h1>
+            <p className="text-sm text-muted-foreground leading-relaxed">{notReady.message}</p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4">
+              <Button variant="ghost" onClick={handleSkip} disabled={isSkipping} className="text-xs font-semibold">
+                {isSkipping && <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />} Skip to dashboard
+              </Button>
+              <Button onClick={() => router.push(notReady.href)} className="gap-1.5">
+                {notReady.cta} <ArrowRight className="w-4 h-4" />
+              </Button>
+              <Button disabled className="gap-1.5 disabled:opacity-50">Launch Project Intelligence</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Eligible — the existing completion screen, unchanged */}
+      {!statusLoading && !statusError && canContinue && (
       <div className="flex-1 p-6 sm:p-10 max-w-4xl mx-auto w-full space-y-10">
 
         {/* Success Header */}
@@ -302,6 +376,7 @@ export default function Phase2CompletePage() {
         </div>
 
       </div>
+      )}
     </div>
   );
 }
