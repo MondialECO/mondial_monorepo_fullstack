@@ -348,6 +348,14 @@ namespace WebApp.Services.Implementations
         // =================================================================
         public async Task<CreatorJourney> UpdateProjectAsync(string userId, UpdateProjectRequest r, string ideaId = null)
         {
+            // Partial update: an empty payload is a caller bug — reject it loudly
+            // instead of a silent no-op (also guards the null-body NRE).
+            if (r == null || (r.Name == null && r.Tagline == null && r.Concept == null
+                && r.TargetUser == null && r.Problem == null && r.Solution == null
+                && r.MarketGap == null && r.CreatorEdge == null && r.Category == null
+                && r.Sector == null && r.Tags == null && !r.ClarityScore.HasValue))
+                throw new CreatorJourneyException(400, "Provide at least one field to update.");
+
             var j = await GetOrCreateAsync(userId);
             var idea = await ResolveIdeaAsync(j, ideaId);
             OverlayIdea(j, idea); // mutation below operates on the IDEA's blocks

@@ -29,19 +29,26 @@ namespace WebApp.Models.Dtos
 
     // ---------------- Request bodies ----------------
 
+    /// <summary>
+    /// PATCH body for /journey/project — a PARTIAL update: only the provided fields
+    /// change (the service null-guards every set). Every property is explicitly
+    /// nullable; with &lt;Nullable&gt;enable&lt;/Nullable&gt;, plain `string` props would get
+    /// ASP.NET's IMPLICIT [Required] and 400 any partial payload (e.g. naming a
+    /// fresh idea with just name/tagline).
+    /// </summary>
     public class UpdateProjectRequest
     {
-        public string Name { get; set; }
-        public string Tagline { get; set; }
-        public string Concept { get; set; }
-        public string TargetUser { get; set; }
-        public string Problem { get; set; }
-        public string Solution { get; set; }
-        public string MarketGap { get; set; }
-        public string CreatorEdge { get; set; }
-        public string Category { get; set; }
-        public string Sector { get; set; }
-        public List<string> Tags { get; set; }
+        public string? Name { get; set; }
+        public string? Tagline { get; set; }
+        public string? Concept { get; set; }
+        public string? TargetUser { get; set; }
+        public string? Problem { get; set; }
+        public string? Solution { get; set; }
+        public string? MarketGap { get; set; }
+        public string? CreatorEdge { get; set; }
+        public string? Category { get; set; }
+        public string? Sector { get; set; }
+        public List<string>? Tags { get; set; }
         public double? ClarityScore { get; set; }
     }
 
