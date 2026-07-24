@@ -128,8 +128,12 @@ namespace WebApp.Services.Ai.Providers
 
             throw response.StatusCode switch
             {
-                HttpStatusCode.PaymentRequired // 402
-                    => new InsufficientCreditsException(message, status),
+                HttpStatusCode.PaymentRequired // 402 — OUR OpenRouter account/billing,
+                    // never the creator's ledger (users have no provider identity; every
+                    // call rides our key). Tagged so logs/policies can't confuse it with
+                    // a local zero-balance.
+                    => new InsufficientCreditsException(message, status)
+                    { Source = CreditFailureSource.ProviderPaymentRequired },
                 HttpStatusCode.TooManyRequests // 429
                     => new AiRateLimitException(message, ReadRetryAfter(response), status),
                 _ => new AiProviderException(message, status),

@@ -260,7 +260,11 @@ export default function BusinessPlanPage() {
   // exclusive with showGrid (both derive from `completed`).
   const bpError = (session.data as { error?: string | null } | undefined)?.error ?? null;
   const terminalFailed = !!bpSessionId && session.phase === 'terminal' && !completed && !rewriting;
-  const failedIsCredits = /402|credit|insufficient|payment/i.test(bpError ?? '');
+  // A provider-side 402 ("OpenRouter error (402): …") is OUR billing gap — never
+  // the user's credits; presenting it as theirs is wrong and unactionable. Only a
+  // local-ledger failure ("Insufficient credits.") gets the credits copy.
+  const failedIsProviderBilling = /openrouter error \(402\)/i.test(bpError ?? '');
+  const failedIsCredits = !failedIsProviderBilling && /402|credit|insufficient|payment/i.test(bpError ?? '');
 
   const sections = useMemo(
     () => buildSections(bpOutput, project, cross),
@@ -393,8 +397,10 @@ export default function BusinessPlanPage() {
             <h3 className="font-bold text-sm">We couldn&apos;t generate your business plan</h3>
           </div>
           <p className="text-sm text-muted-foreground">
-            {failedIsCredits
-              ? 'The AI service ran out of credits, so your plan couldn’t be generated. This isn’t anything you did.'
+            {failedIsProviderBilling
+              ? 'The AI service is temporarily unavailable on our side, so your plan couldn’t be generated. This isn’t your credits and there’s nothing you need to buy — please try again shortly.'
+              : failedIsCredits
+              ? 'You’ve used all your AI credits, so your plan couldn’t be generated.'
               : 'The AI service was temporarily unavailable (a provider error, rate limit, or timeout), so your plan didn’t finish. This isn’t anything you did — please try again.'}
           </p>
           {failedIsCredits && (
