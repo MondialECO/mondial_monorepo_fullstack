@@ -304,6 +304,8 @@ export interface IdeaCard {
   ideaId: string;
   name: string;
   concept: string;
+  /** Fallback snippet for legacy Path-B ideas whose Concept was never populated. */
+  problem: string;
   status: 'active' | 'archived';
   createdAt: string;
   lastActiveAt: string;

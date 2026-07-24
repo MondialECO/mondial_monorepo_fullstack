@@ -520,6 +520,14 @@ namespace WebApp.Services.Implementations
             if (!string.IsNullOrWhiteSpace(creatorEdge)) p.CreatorEdge = creatorEdge;
             if (tags != null && tags.Count > 0) p.Tags = tags;
 
+            // Path-B parity with Discovery (which sets Concept from the concept text):
+            // the clarifier's closest analog to a one-line venture description is the
+            // proposed-solution summary, falling back to the value proposition
+            // (carried here as marketGap). Without this, every clarifier-path idea
+            // reads "no concept" forever on cards/summary despite being fully built.
+            var conceptLine = !string.IsNullOrWhiteSpace(solution) ? solution : marketGap;
+            if (!string.IsNullOrWhiteSpace(conceptLine)) p.Concept = conceptLine;
+
             (j.Phase2Data ??= new CreatorPhase2Data()).ClarifierSessionId = clarifierSessionId;
             // STEP 2 anchor: the (possibly new) clarifier joins this idea; plan/forecast inherit it.
             if (!string.IsNullOrEmpty(clarifierSessionId))

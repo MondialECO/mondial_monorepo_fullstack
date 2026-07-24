@@ -48,6 +48,9 @@ namespace WebApp.Controllers
                     ideaId = i.Id,
                     name = i.Project?.Name ?? string.Empty,
                     concept = i.Project?.Concept ?? string.Empty,
+                    // Card fallback for legacy Path-B ideas whose Concept was never set —
+                    // the card must not claim "no concept" when the idea has real content.
+                    problem = i.Project?.Problem ?? string.Empty,
                     status = i.Status,
                     createdAt = i.CreatedAt,
                     lastActiveAt = i.LastActiveAt,

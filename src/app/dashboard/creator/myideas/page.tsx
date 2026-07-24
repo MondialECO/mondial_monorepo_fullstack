@@ -249,7 +249,8 @@ export default function MyIdeasPage() {
                 )}
               </div>
               <p className="text-xs text-muted-foreground truncate mt-0.5">
-                {idea.concept || "No concept yet — continue to define it."}
+                {/* Concept → Problem snippet → honest empty (a truly blank idea has neither). */}
+                {idea.concept || idea.problem || "No concept yet — continue to define it."}
               </p>
               <p className="text-[10px] text-muted-foreground font-semibold mt-1">
                 {PHASE_LABEL[idea.phaseReached] ?? "Phase 2 · Identity"} · Last active {new Date(idea.lastActiveAt).toLocaleDateString()}
