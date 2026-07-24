@@ -41,12 +41,19 @@ export default function MyIdeasPage() {
   const [ideas, setIdeas] = useState<IdeaCard[] | null>(null);
   // ideaId being switched/continued, or "new" while minting — guards double-fire.
   const [busy, setBusy] = useState<string | null>(null);
+  // A FAILED list load is distinct from an empty list (an empty [] means "no
+  // ideas"; a failure must show an error + retry, never masquerade as empty —
+  // the swallowed [] previously hid a 500 route collision for hours).
+  const [listError, setListError] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const loadIdeas = useCallback(async () => {
     try {
+      setListError(false);
       setIdeas(await creatorJourneyApi.listIdeas());
     } catch {
-      setIdeas([]); // list failure is non-fatal — the single-idea page still works
+      setIdeas(null);
+      setListError(true);
     }
   }, []);
   useEffect(() => { void loadIdeas(); }, [loadIdeas]);
@@ -85,28 +92,45 @@ export default function MyIdeasPage() {
 
   // Switch the active idea; the whole app then renders it (every page shows "the
   // current idea"). The user stays here, with the switched row now marked active.
+  // Deterministic switch: verify the hydrated state actually reflects the target
+  // (setActiveIdea echoes the id; hydrate reports what it loaded) — never trust
+  // timing. On a failed/mismatched hydration, surface it instead of half-state.
   const handleSwitch = async (ideaId: string) => {
     if (busy) return;
     setBusy(ideaId);
+    setCreateError(null);
     try {
-      await creatorJourneyApi.setActiveIdea(ideaId);
-      await refetch();
+      const { activeIdeaId } = await creatorJourneyApi.setActiveIdea(ideaId);
+      const hydrated = await refetch();
+      if (!hydrated.ok || hydrated.activeIdeaId !== activeIdeaId) {
+        setCreateError("Switched, but reloading state failed — please retry.");
+      }
       await loadIdeas();
+    } catch {
+      setCreateError("Couldn't switch ideas — please try again.");
     } finally {
       setBusy(null);
     }
   };
 
-  // Continue an idea: switch if needed, then resume where it left off.
+  // Continue an idea: switch if needed (verified), then resume where it left off.
+  // Navigation only happens once state provably reflects the target idea.
   const handleContinue = async (idea: IdeaCard) => {
     if (busy) return;
     setBusy(idea.ideaId);
+    setCreateError(null);
     try {
       if (!idea.isActive) {
-        await creatorJourneyApi.setActiveIdea(idea.ideaId);
-        await refetch();
+        const { activeIdeaId } = await creatorJourneyApi.setActiveIdea(idea.ideaId);
+        const hydrated = await refetch();
+        if (!hydrated.ok || hydrated.activeIdeaId !== activeIdeaId) {
+          setCreateError("Couldn't load that idea's state — please retry.");
+          return;
+        }
       }
       router.push(await routeForCurrentIdea());
+    } catch {
+      setCreateError("Couldn't open that idea — please try again.");
     } finally {
       setBusy(null);
     }
@@ -134,12 +158,33 @@ export default function MyIdeasPage() {
   const handleStartOver = async () => {
     if (busy) return;
     setBusy("new");
+    setCreateError(null);
+
+    // Step 1: create. A failure here is retryable — nothing was made.
+    let newIdeaId: string;
     try {
-      await creatorJourneyApi.createIdea();
-      await refetch();
+      ({ ideaId: newIdeaId } = await creatorJourneyApi.createIdea());
+    } catch {
+      setCreateError("Couldn't create a new idea — please try again.");
+      setBusy(null);
+      return;
+    }
+
+    // Step 2: hydrate + VERIFY state reflects the created idea (use the response
+    // id directly — never infer success from a second round-trip). Navigation is
+    // gated on the verified state; a failed hydration surfaces and stays put
+    // (the idea exists — the list below offers it; retrying create would duplicate).
+    try {
+      const hydrated = await refetch();
       await loadIdeas();
+      if (!hydrated.ok || hydrated.activeIdeaId !== newIdeaId) {
+        setCreateError("Idea created, but loading it failed — open it from the list below.");
+        return;
+      }
       setShowConfirmStartOver(false);
       router.push(await routeForCurrentIdea());
+    } catch {
+      setCreateError("Idea created, but loading it failed — open it from the list below.");
     } finally {
       setBusy(null);
     }
@@ -154,8 +199,20 @@ export default function MyIdeasPage() {
   };
 
   // Rendered in ALL page branches (a blank new idea has project.exists=false and
-  // would otherwise hide the list — stranding the previous idea).
-  const ideasSection = ideas !== null && ideas.length > 0 && (
+  // would otherwise hide the list — stranding the previous idea). A failed load
+  // renders an error + retry — visibly distinct from "no ideas yet".
+  const ideasSection = listError ? (
+    <Card className="rounded-2xl border-border bg-card shadow-xs p-6 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <p className="text-sm text-destructive font-semibold">
+          Couldn&apos;t load your ideas — the list may be incomplete.
+        </p>
+        <Button onClick={() => void loadIdeas()} variant="outline" size="sm" className="rounded-xl text-xs font-bold">
+          <Repeat className="w-3.5 h-3.5 mr-1" /> Retry
+        </Button>
+      </div>
+    </Card>
+  ) : ideas !== null && ideas.length > 0 && (
     <Card className="rounded-2xl border-border bg-card shadow-xs p-6 space-y-4 mb-6">
       <div className="flex items-center justify-between">
         <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
@@ -172,6 +229,10 @@ export default function MyIdeasPage() {
           <Plus className="w-3.5 h-3.5 mr-1" /> New idea
         </Button>
       </div>
+      {/* Switch/continue failures surface HERE (the modal isn't open for those). */}
+      {createError && !showConfirmStartOver && (
+        <p className="text-sm text-destructive font-semibold">{createError}</p>
+      )}
       <div className="divide-y divide-border">
         {ideas.map((idea) => (
           <div key={idea.ideaId} className="flex flex-col sm:flex-row sm:items-center gap-3 py-3">
@@ -342,6 +403,7 @@ export default function MyIdeasPage() {
               <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
                 Your current draft stays in My Ideas — you can switch back to it anytime. We&apos;ll start a fresh journey for the new idea.
               </p>
+              {createError && <p className="text-sm text-destructive font-semibold">{createError}</p>}
               <div className="flex gap-3 pt-2">
                 <Button
                   onClick={handleStartOver}
@@ -352,7 +414,7 @@ export default function MyIdeasPage() {
                   Yes, start new idea
                 </Button>
                 <Button
-                  onClick={() => setShowConfirmStartOver(false)}
+                  onClick={() => { setShowConfirmStartOver(false); setCreateError(null); }}
                   disabled={!!busy}
                   variant="outline"
                   className="flex-1 rounded-xl font-bold border-border"

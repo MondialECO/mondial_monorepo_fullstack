@@ -49,8 +49,11 @@ export const creatorJourneyApi = {
     return unwrap<JourneyResponse>(res.data);
   },
 
-  updateProject: async (payload: UpdateProjectPayload): Promise<JourneyResponse> => {
-    const res = await api.patch('/creator/journey/project', payload);
+  // Optional ideaId: a debounced write captures its target idea at QUEUE time so a
+  // pending patch can never land on a different idea after a switch (backend falls
+  // back to the active idea when absent — unchanged for all other callers).
+  updateProject: async (payload: UpdateProjectPayload, ideaId?: string): Promise<JourneyResponse> => {
+    const res = await api.patch('/creator/journey/project', payload, ideaId ? { params: { ideaId } } : undefined);
     return unwrap<JourneyResponse>(res.data);
   },
 
