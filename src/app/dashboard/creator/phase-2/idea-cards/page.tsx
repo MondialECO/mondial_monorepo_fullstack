@@ -15,6 +15,8 @@ export default function IdeaCardsPage() {
   const router = useRouter();
   const params = useSearchParams();
   const sessionId = params.get("session");
+  // The idea this Discovery run belongs to (carried from initiation via the URL).
+  const ideaId = params.get("idea");
   const { state, setState, resetJourney } = useCreatorProgress();
   const [selected, setSelected] = useState<string | null>(null);
   const [showConfirmReset, setShowConfirmReset] = useState(false);
@@ -74,8 +76,9 @@ export default function IdeaCardsPage() {
       },
     }));
 
-    // Persist selected concept ID to backend
-    void creatorJourneyApi.saveSelectedConceptId(id).catch((err) => {
+    // Persist selected concept ID to the ORIGINATING idea (URL-carried) — a
+    // switch in another tab must not redirect this write to a different idea.
+    void creatorJourneyApi.saveSelectedConceptId(id, ideaId ?? undefined).catch((err) => {
       console.error("Failed to persist selected concept:", err);
     });
   };
@@ -92,7 +95,7 @@ export default function IdeaCardsPage() {
         },
       },
     }));
-    router.push("/dashboard/creator/phase-2/idea-confirm");
+    router.push(`/dashboard/creator/phase-2/idea-confirm?${sessionId ? `session=${sessionId}&` : ""}${ideaId ? `idea=${ideaId}` : ""}`);
   };
 
   const handleCreateNew = () => {

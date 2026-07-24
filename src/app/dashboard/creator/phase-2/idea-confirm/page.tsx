@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { Sparkles, ArrowLeft, ArrowRight, Target, Compass, Heart, Rocket, AlertTriangle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,9 @@ import { toAiError } from "@/lib/ai-errors";
 
 export default function IdeaConfirmPage() {
   const router = useRouter();
+  const params = useSearchParams();
+  // The idea this Discovery run was initiated for (URL-carried through the chain).
+  const flowIdeaId = params.get("idea");
   const { state, setState, isLoading, error, refetch } = useCreatorProgress();
   const [finalizing, setFinalizing] = useState(false);
   const [confirmError, setConfirmError] = useState<string | null>(null);
@@ -22,6 +25,16 @@ export default function IdeaConfirmPage() {
   const handleConfirm = async () => {
     if (!concept || finalizing) return;
     setConfirmError(null);
+
+    // GUARD: finalize-discovery converges on the ACTIVE idea server-side (mint/
+    // converge semantics — it ignores explicit ids). If the active idea changed
+    // since this Discovery run started, confirming would map the concept onto the
+    // WRONG idea — block with an honest message instead of silently converging.
+    if (flowIdeaId && state.activeIdeaId && flowIdeaId !== state.activeIdeaId) {
+      setConfirmError("This discovery belongs to a different idea. Switch back to it in My Ideas, then confirm.");
+      return;
+    }
+
     setFinalizing(true);
     try {
       // Discovery skips the clarifier: the backend seeds a completed clarifier session

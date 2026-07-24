@@ -146,19 +146,27 @@ export default function IdeaDiscoveryPage() {
     }));
 
     try {
+      // Capture the target idea at INITIATION (the user is unambiguously on it
+      // here) and carry it through the whole Discovery chain via the URL — so an
+      // in-flight generation can never write onto a different idea after a
+      // switch/tab change. Null (zero-idea user / pre-hydration) → omitted; the
+      // backend's active/mint fallback is correct for that case.
+      const targetIdeaId = state.activeIdeaId ?? undefined;
+
       // Persist discovery inputs to backend before generating concepts
       await creatorJourneyApi.saveDiscoveryInputs({
         sectors,
         observedProblem,
         strengths,
-      });
+      }, targetIdeaId);
 
       const result = await creatorAiApi.startIdeaGeneration({
         sectors: sectors.map(sectorLabel),
         observedProblem,
         strengths: strengths.map(strengthLabel),
       });
-      router.push(`/dashboard/creator/phase-2/ai-processing?session=${result.sessionId}`);
+      const ideaQ = targetIdeaId ? `&idea=${targetIdeaId}` : "";
+      router.push(`/dashboard/creator/phase-2/ai-processing?session=${result.sessionId}${ideaQ}`);
     } catch (err) {
       setError(toAiError(err).message);
       setLoading(false);

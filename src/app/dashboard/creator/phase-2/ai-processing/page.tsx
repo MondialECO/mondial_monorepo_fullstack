@@ -29,6 +29,9 @@ export default function AIProcessingPage() {
   const router = useRouter();
   const params = useSearchParams();
   const sessionId = params.get("session");
+  // The idea this generation was STARTED for (captured at initiation on the
+  // discovery form). Writes below are scoped to it — never to live active state.
+  const ideaId = params.get("idea");
   const { setState } = useCreatorProgress();
   const [activeStage, setActiveStage] = useState(0);
   const [done, setDone] = useState(false);
@@ -65,16 +68,17 @@ export default function AIProcessingPage() {
         },
       }));
 
-      // Persist generated concepts to backend
-      void creatorJourneyApi.saveGeneratedConcepts(concepts).catch((err) => {
+      // Persist generated concepts to the ORIGINATING idea (URL-carried), so a
+      // completion after an idea switch can't write onto the wrong idea.
+      void creatorJourneyApi.saveGeneratedConcepts(concepts, ideaId ?? undefined).catch((err) => {
         console.error("Failed to persist concepts:", err);
       });
 
       setActiveStage(PROCESSING_STAGES.length - 1);
       setDone(true);
-      setTimeout(() => router.push(`/dashboard/creator/phase-2/idea-cards?session=${session.sessionId}`), 900);
+      setTimeout(() => router.push(`/dashboard/creator/phase-2/idea-cards?session=${session.sessionId}${ideaId ? `&idea=${ideaId}` : ""}`), 900);
     },
-    [router, setState],
+    [router, setState, ideaId],
   );
 
   const handleFailed = useCallback((msg: string) => {
