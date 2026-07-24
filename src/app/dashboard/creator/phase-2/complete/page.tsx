@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
 import { creatorJourneyApi } from "@/lib/api-creator-journey";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 export default function Phase2CompletePage() {
   const router = useRouter();
@@ -18,6 +18,11 @@ export default function Phase2CompletePage() {
   const [logoError, setLogoError] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
   const [isSkipping, setIsSkipping] = useState(false);
+
+  // Tracks mount so the poll below stops cleanly — no async work or navigation
+  // may survive unmount. Declared with the other hooks (stable hook order).
+  const mountedRef = useRef(true);
+  useEffect(() => () => { mountedRef.current = false; }, []);
 
   useEffect(() => {
     if (isNavigating && state.journeyState.phase3.status === 'available') {
@@ -56,26 +61,30 @@ export default function Phase2CompletePage() {
 
   const handleNextPhase = async () => {
     setIsNavigating(true);
-    // Branding is already persisted via uploadAiLogo() in logo-tool page
+    // Branding is already persisted via uploadAiLogo() in logo-tool page.
+    // advancePhase(2) optimistically flips local phase3→available; the mount effect
+    // above performs the actual navigation. (Real status-gating arrives separately.)
     advancePhase(2);
 
-    // Poll backend to confirm phase 3 is unlocked before navigating
-    let unlocked = false;
+    // Poll backend to confirm phase 3 is genuinely unlocked. Read computedStatus the
+    // same way the Phase 3/4 completion screens do — it is a top-level SIBLING of
+    // `journey` in the response, not a field nested under it. This repair only stops
+    // the silently-broken read, the post-unmount leak, and the navigate-past-unmount /
+    // navigate-on-exhaustion behavior; navigation itself still rides the optimistic
+    // flip + mount effect and is not wired to this poll's result yet.
     for (let i = 0; i < 10; i++) {
       await new Promise(r => setTimeout(r, 500));
+      if (!mountedRef.current) return; // no async work survives unmount
       try {
-        const { journey } = await creatorJourneyApi.get();
-        const computedStatus = (journey as any)?.computedStatus || (journey as any)?.journeyState;
-        if (computedStatus?.phase3?.status === 'available') {
-          unlocked = true;
-          break;
-        }
-      } catch (e) {
-        // continue polling on error
+        const { computedStatus } = await creatorJourneyApi.get();
+        if (!mountedRef.current) return;
+        if (computedStatus?.phase3?.status === 'available') break;
+      } catch {
+        // continue polling on transient error
       }
     }
-
-    router.push('/dashboard/creator/phase-3');
+    // No unconditional push and no navigate-on-exhaustion — navigation is the mount
+    // effect's responsibility here.
   };
 
   const handleSkip = () => {
