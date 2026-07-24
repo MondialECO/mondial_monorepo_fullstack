@@ -21,6 +21,9 @@ export default function IdeaCardsPage() {
   const [selected, setSelected] = useState<string | null>(null);
   const [showConfirmReset, setShowConfirmReset] = useState(false);
   const [hydrating, setHydrating] = useState(false);
+  // Selection-save failure: NOT a blocker (idea-confirm passes the concept id
+  // explicitly), but it must be visible — a refresh would lose the selection.
+  const [selectSaveError, setSelectSaveError] = useState<string | null>(null);
 
   const concepts: UiConcept[] = state.journeyState?.phase2?.generatedConcepts ?? [];
 
@@ -78,9 +81,12 @@ export default function IdeaCardsPage() {
 
     // Persist selected concept ID to the ORIGINATING idea (URL-carried) — a
     // switch in another tab must not redirect this write to a different idea.
-    void creatorJourneyApi.saveSelectedConceptId(id, ideaId ?? undefined).catch((err) => {
-      console.error("Failed to persist selected concept:", err);
-    });
+    setSelectSaveError(null);
+    void creatorJourneyApi.saveSelectedConceptId(id, ideaId ?? undefined)
+      .then(() => setSelectSaveError(null))
+      .catch(() => {
+        setSelectSaveError("Your selection couldn't be saved — click the card again to retry. You can still continue; a refresh would lose the selection.");
+      });
   };
 
   const handleConfirm = () => {
@@ -285,6 +291,8 @@ export default function IdeaCardsPage() {
             Choose This Idea
             <ArrowRight className="h-4 w-4" />
           </Button>
+          {/* Selection-save failure — visible, non-blocking (confirm carries the id explicitly). */}
+          {selectSaveError && <p className="text-xs text-destructive text-center">{selectSaveError}</p>}
         </div>
 
       </main>
