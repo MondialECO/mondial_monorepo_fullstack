@@ -267,24 +267,50 @@ export function useCreatorProgressState() {
   const projectSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   useEffect(() => { activeIdeaIdRef.current = state.activeIdeaId; }, [state.activeIdeaId]);
 
-  const hydrate = useCallback(async (): Promise<HydrateResult> => {
+  // In-flight guard: concurrent hydration attempts (the StrictMode-double-invoked
+  // mount effect, and on-demand refetch callers) share ONE request instead of each
+  // firing its own. Cleared on settle (success OR failure) below — never cached, so
+  // failures stay retryable and no stale response is ever replayed.
+  //
+  // CONSTRAINT FOR FUTURE CALLERS: a caller that performs a write and then re-hydrates
+  // to observe that write can, if a hydration is already in flight, attach to a request
+  // that PREDATES the write and get stale data. The existing such caller (myideas,
+  // switch/create) is safe because it verifies `activeIdeaId === target` and fails into
+  // an error path rather than trusting the result. Any future write-then-rehydrate
+  // caller MUST verify likewise, or bypass this shared request.
+  const inFlightRef = useRef<Promise<HydrateResult> | null>(null);
+
+  const hydrate = useCallback((): Promise<HydrateResult> => {
+    if (inFlightRef.current) return inFlightRef.current;
     // Backend is the authoritative source of truth. Fetch + reconcile from a clean
     // base, then render THAT — the cache is never read/rendered as truth here.
     // (The debounced write-through effect below persists state to cache for the
     // next-load speedup once loading completes.)
-    try {
-      const { journey, computedStatus } = await creatorJourneyApi.get();
-      setState(reconcile(INITIAL_STATE, journey, computedStatus));
-      setError(null);
-      return { ok: true, activeIdeaId: journey.activeIdeaId ?? null };
-    } catch (err) {
-      // Backend error: surface an honest error state AND report failure to the
-      // awaiter — never resolve identically whether hydration worked or not.
-      setError(err as Error);
-      return { ok: false };
-    } finally {
-      setIsLoading(false);
-    }
+    //
+    // The body is deferred one microtask (Promise.resolve().then) so the synchronous
+    // `inFlightRef.current = request` below ALWAYS lands before the body — and thus
+    // before its finally can clear the ref. Structural, not incidental: were the body
+    // to run synchronously (e.g. a future early-return added before the first await),
+    // its finally could null the ref BEFORE the assignment, leaving a settled promise
+    // stored forever — the sticky-cache failure this guard exists to avoid.
+    const request = Promise.resolve().then(async (): Promise<HydrateResult> => {
+      try {
+        const { journey, computedStatus } = await creatorJourneyApi.get();
+        setState(reconcile(INITIAL_STATE, journey, computedStatus));
+        setError(null);
+        return { ok: true, activeIdeaId: journey.activeIdeaId ?? null };
+      } catch (err) {
+        // Backend error: surface an honest error state AND report failure to the
+        // awaiter — never resolve identically whether hydration worked or not.
+        setError(err as Error);
+        return { ok: false };
+      } finally {
+        setIsLoading(false);
+        inFlightRef.current = null; // clear on settle — never cache a result
+      }
+    });
+    inFlightRef.current = request;
+    return request;
   }, []);
 
   useEffect(() => {

@@ -19,6 +19,8 @@ are localized correctness / data-quality items.
 | CI-4 | Computed status has no `failed` value | P3 | type / derivation |
 | CI-5 | Path A merges `Failed` and `NeedsReview` | P3 | inconsistency to verify |
 | CI-6 | `advancePhase` rewrites `completedAt` on every call | P3 | data quality |
+| CI-7 | `ResourceCalculation` type omits the fields Phase 4 uses | P3 | type drift |
+| CI-8 | Pricing seeds tiers by length, not existence (masked) | P4 — not reachable | latent inconsistency |
 
 ---
 
@@ -61,6 +63,19 @@ Query) with a single shared key + dedup/cache, exactly as the dashboard home
 already does; or add an in-flight guard + short-TTL cache to `hydrate` and have
 pages consume the context value instead of re-fetching. Prefer the former for
 consistency with the established pattern.
+
+**Progress (2026-07):** first step done — an in-flight guard on context hydration
+(`useCreatorProgressState.hydrate`) collapses concurrent hydration attempts into one
+request (cleared on settle, no caching). This is groundwork, not the traffic fix:
+production is unchanged on a clean entry; the redundant volume is the ~dozen per-page
+direct fetches above, still untouched.
+
+**Constraint introduced by that guard (must survive here):** a caller that performs a
+write and then re-hydrates to observe it can attach to a request that predates the
+write and receive stale data. The existing such caller (`myideas` switch/create) is
+safe only because it verifies `activeIdeaId === target` and fails into an error path.
+Any future write-then-rehydrate caller MUST verify likewise, or bypass the shared
+in-flight request.
 
 ---
 
@@ -202,6 +217,95 @@ consumer today — latent data-quality issue).
 
 **Fix sketch.** Only set `completedAt` on the `locked → completed` transition (do
 not overwrite when already set), or remove the field if it has no consumer.
+
+---
+
+## CI-7 — `ResourceCalculation` type omits the fields Phase 4 actually uses (P3)
+
+**Defect.** The shared `ResourceCalculation` type in the creator journey API layer
+models only the calculator's **outputs** (budgets, running cost, time-to-launch,
+breakdown percentages). It omits the two **input** fields the Phase 4 resource step
+reads back on re-entry — `teamRequirements` and `saasStack` — which the backend
+persists and returns as part of the resource block. To keep the Phase 4 hydration
+change scoped, those fields were typed **locally** inside the resource step as
+`SavedResourceCalculation = ResourceCalculation & { teamRequirements?; saasStack? }`
+rather than by extending the shared type. That was the right call at the time, but
+it leaves the component's local type as the *only* description of the real shape.
+
+**Where.**
+- Shared type (incomplete): `src/lib/api-creator-journey.ts:349-353`
+  (`interface ResourceCalculation` — outputs only).
+- Local augmentation (the only description of the full shape):
+  `src/components/creator/phase4/Phase4Resource.tsx` (`type SavedResourceCalculation`),
+  and the host's mirror in `src/app/dashboard/creator/offer-pricing/page.tsx`
+  (`SavedPhase4Data.resourceCalculation` intersection).
+- Backend source of truth: `CreatorResourceCalculation` in
+  `backend/Models/DatabaseModels/CreatorJourney.cs:240-250` (carries
+  `TeamRequirements` + `SaasStack` alongside the outputs).
+
+**Why it matters.** The shared type and the local type describe the same backend
+object but only the local one is complete. If someone later extends the shared
+`ResourceCalculation` working from it — or the backend response shape changes —
+the two definitions can **drift apart with no compile error to catch it**, because
+the intersection silently masks the omission. A consumer trusting the shared type
+would not see `teamRequirements`/`saasStack`; a consumer trusting the local type
+could go stale against the backend.
+
+**Blast radius.** Localized today (Phase 4 resource step + the wizard host), but it
+is a latent correctness trap for anyone extending the shared type or adding a new
+consumer of the resource block.
+
+**Fix sketch.** Extend the shared `ResourceCalculation` type to include
+`teamRequirements` and `saasStack`, and remove the local `SavedResourceCalculation`
+augmentation (and the host's intersection) so there is a single description of the
+shape. **Verify the added fields against the actual backend response** (inspect a
+real `GET /creator/journey` payload or `CreatorResourceCalculation`), **not**
+against the local type — the local type is itself unverified and must not be
+treated as the reference.
+
+---
+
+## CI-8 — Pricing seeds tiers by length, not existence — masked, currently unreachable (P4)
+
+**Defect (masked).** The Phase 4 pricing step seeds its tiers with a **length**
+check — `initial?.tiers?.length ? initial.tiers : [defaults]` — so a saved block
+containing **zero tiers** would fall back to the hardcoded defaults (empty-treated-
+as-absent). This is the same pattern the GTM step deliberately **avoids** for its
+audience list, where an **existence** check (`initial ? initial.targetAudiences ?? []
+: [default]`) preserves a deliberately-empty selection. The two steps are
+inconsistent about the empty-vs-absent distinction.
+
+**Why it is NOT a live defect (the masking invariant).** Backend validation enforces
+a floor: **3–5 tiers, each with ≥3 features** (`CreatorPhase4Controller.SetPricing`
+returns 422 otherwise), and the frontend strips blank features on save. So an empty
+(or sub-floor) tiers array can never be **persisted**, and therefore never comes back
+from a saved block — the empty-as-absent branch is unreachable, and no deliberate
+user choice is overwritten today. The features list has no independent reseed at all
+(features ride inside each tier), so there is no features-level empty-as-absent path
+either.
+
+**The cross-layer dependency (why it still deserves recording).** The frontend's
+safety here rests **entirely on that backend invariant**, and nothing near the
+frontend code says so. If the tier/feature floor is ever relaxed on the backend, the
+empty-as-absent overwrite returns silently — no compile-time signal, no test to
+catch it, and the same class of data-loss the Phase 4 hydration work closed elsewhere.
+
+**Where.**
+- Frontend seed (length check): `src/components/creator/phase4/Phase4Pricing.tsx`
+  (`initial?.tiers?.length ? … : [blankTier(...)]`).
+- Contrast — GTM existence check: `src/components/creator/phase4/Phase4Gtm.tsx`
+  (audiences: `initial ? initial.targetAudiences ?? [] : [default]`).
+- Masking invariant: `backend/Controllers/CreatorPhase4Controller.cs:73-79`
+  (3–5 tiers, ≥3 features each → 422).
+
+**Blast radius.** None today (unreachable). Becomes a silent frontend overwrite of a
+saved pricing block only if the backend tier/feature floor is relaxed.
+
+**Fix sketch.** Switch the tiers seed to an **existence** check for consistency with
+GTM (`initial ? initial.tiers ?? [] : [defaults]`, or seed defaults only when the
+block is genuinely absent) — a change with **no reachable behavioural difference
+today**, so it is safe to make whenever the file is next touched. It removes the
+hidden dependency on backend validation rather than relying on it.
 
 ---
 
