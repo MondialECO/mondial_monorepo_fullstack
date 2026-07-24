@@ -50,12 +50,13 @@ namespace WebApp.Controllers
 
         // GET /api/creator/journey → { journey, computedStatus }
         [HttpGet("journey")]
-        public async Task<IActionResult> GetJourney()
+        public async Task<IActionResult> GetJourney([FromQuery] string ideaId = null)
         {
             try
             {
                 var userId = GetUserId();
-                var journey = await _journeys.GetOrCreateAsync(userId);
+                // STEP 4: idea-sourced composite in the unchanged response shape.
+                var journey = await _journeys.GetOrCreateComposedAsync(userId, ideaId);
                 return await OkJourneyAsync(userId, journey, "Journey loaded");
             }
             catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
@@ -64,12 +65,12 @@ namespace WebApp.Controllers
 
         // PATCH /api/creator/journey/project
         [HttpPatch("journey/project")]
-        public async Task<IActionResult> UpdateProject([FromBody] UpdateProjectRequest request)
+        public async Task<IActionResult> UpdateProject([FromBody] UpdateProjectRequest request, [FromQuery] string ideaId = null)
         {
             try
             {
                 var userId = GetUserId();
-                var journey = await _journeys.UpdateProjectAsync(userId, request);
+                var journey = await _journeys.UpdateProjectAsync(userId, request, ideaId);
                 return await OkJourneyAsync(userId, journey, "Project updated");
             }
             catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
@@ -79,12 +80,12 @@ namespace WebApp.Controllers
 
         // PATCH /api/creator/journey/phase2/entry-path  — only "already_have_idea"
         [HttpPatch("journey/phase2/entry-path")]
-        public async Task<IActionResult> SetEntryPath([FromBody] EntryPathRequest request)
+        public async Task<IActionResult> SetEntryPath([FromBody] EntryPathRequest request, [FromQuery] string ideaId = null)
         {
             try
             {
                 var userId = GetUserId();
-                var journey = await _journeys.SetEntryPathAsync(userId, request?.Path);
+                var journey = await _journeys.SetEntryPathAsync(userId, request?.Path, ideaId);
                 return await OkJourneyAsync(userId, journey, "Entry path set");
             }
             catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
@@ -94,12 +95,12 @@ namespace WebApp.Controllers
 
         // PATCH /api/creator/journey/phase5/path  — "sell_license" | "build"; 72h lock
         [HttpPatch("journey/phase5/path")]
-        public async Task<IActionResult> SetCrossroadsPath([FromBody] CrossroadsPathRequest request)
+        public async Task<IActionResult> SetCrossroadsPath([FromBody] CrossroadsPathRequest request, [FromQuery] string ideaId = null)
         {
             try
             {
                 var userId = GetUserId();
-                var journey = await _journeys.SetCrossroadsPathAsync(userId, request?.Path);
+                var journey = await _journeys.SetCrossroadsPathAsync(userId, request?.Path, ideaId);
                 return await OkJourneyAsync(userId, journey, "Crossroads path set");
             }
             catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
@@ -109,12 +110,12 @@ namespace WebApp.Controllers
 
         // POST /api/creator/journey/output  — append versioned output (newest last, own phase)
         [HttpPost("journey/output")]
-        public async Task<IActionResult> AppendOutput([FromBody] AppendOutputRequest request)
+        public async Task<IActionResult> AppendOutput([FromBody] AppendOutputRequest request, [FromQuery] string ideaId = null)
         {
             try
             {
                 var userId = GetUserId();
-                var journey = await _journeys.AppendOutputAsync(userId, request);
+                var journey = await _journeys.AppendOutputAsync(userId, request, ideaId);
                 return await OkJourneyAsync(userId, journey, "Output appended");
             }
             catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }

@@ -1,4 +1,10 @@
 
+[HISTORICAL PRD — SUPERSEDED] This is the original v2.0 enterprise specification, kept for
+history. It uses "Stage" numbering and predates the built flow; where it disagrees with the
+code (e.g. Stage 5/6 Business Plan + Forecast, the "5 editable / 4 auto-derived" section split,
+AI provider), the authoritative current spec is docs/creator-flow-canon.md (reconciled with
+code 2026-07-23). Do not build from this file.
+
 02_Creator_Journey_v2.0 (Enterprise Specification)
 Executive Summary
 The Creator Journey is the core value engine of Mondial.eco. It helps users transform ideas into validated, structured and investor-ready opportunities through AI-assisted workflows.

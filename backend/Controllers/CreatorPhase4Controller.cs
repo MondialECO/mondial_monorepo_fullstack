@@ -44,12 +44,12 @@ namespace WebApp.Controllers
 
         // GET /api/creator/offer/pricing-insights
         [HttpGet("pricing-insights")]
-        public async Task<IActionResult> PricingInsights()
+        public async Task<IActionResult> PricingInsights([FromQuery] string ideaId = null)
         {
             try
             {
                 var userId = GetUserId();
-                var journey = await _journeys.GetOrCreateAsync(userId);
+                var journey = await _journeys.GetOrCreateComposedAsync(userId, ideaId); // idea-sourced sector
                 var sector = journey.Project?.Sector ?? "";
                 var (competitors, avg) = SectorCompetitors.TryGetValue(sector, out var hit)
                     ? hit : (new[] { "Generic SaaS A (€12)", "Generic SaaS B (€15)" }, 13m);
@@ -61,7 +61,7 @@ namespace WebApp.Controllers
 
         // POST /api/creator/offer/pricing
         [HttpPost("pricing")]
-        public async Task<IActionResult> SetPricing([FromBody] SetPricingRequest request)
+        public async Task<IActionResult> SetPricing([FromBody] SetPricingRequest request, [FromQuery] string ideaId = null)
         {
             try
             {
@@ -81,7 +81,7 @@ namespace WebApp.Controllers
                 if (tiers.Count(t => t.IsHighlighted) > 1)
                     return UnprocessableEntity(ApiResponse.Error("At most one tier can be highlighted (Most Popular)."));
 
-                var journey = await _journeys.SetPhase4PricingAsync(userId, request.PricingModel.ToLowerInvariant(), tiers);
+                var journey = await _journeys.SetPhase4PricingAsync(userId, request.PricingModel.ToLowerInvariant(), tiers, ideaId);
 
                 // Deterministic insight: basic tier above sector average +30% → suggest lowering.
                 var sector = journey.Project?.Sector ?? "";
@@ -102,7 +102,7 @@ namespace WebApp.Controllers
 
         // POST /api/creator/offer/resource-calculator
         [HttpPost("resource-calculator")]
-        public async Task<IActionResult> ResourceCalculator([FromBody] ResourceCalcRequest request)
+        public async Task<IActionResult> ResourceCalculator([FromBody] ResourceCalcRequest request, [FromQuery] string ideaId = null)
         {
             try
             {
@@ -143,7 +143,7 @@ namespace WebApp.Controllers
                     },
                 };
 
-                var journey = await _journeys.SetPhase4ResourceAsync(userId, calc);
+                var journey = await _journeys.SetPhase4ResourceAsync(userId, calc, ideaId);
                 return Ok(ApiResponse.Ok("Resource plan computed", journey.Phase4Data.ResourceCalculation));
             }
             catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
@@ -154,7 +154,7 @@ namespace WebApp.Controllers
 
         // POST /api/creator/offer/gtm-setup
         [HttpPost("gtm-setup")]
-        public async Task<IActionResult> GtmSetup([FromBody] GtmSetupRequest request)
+        public async Task<IActionResult> GtmSetup([FromBody] GtmSetupRequest request, [FromQuery] string ideaId = null)
         {
             try
             {
@@ -190,7 +190,7 @@ namespace WebApp.Controllers
                     AiGtmWeeks = weeks,
                 };
 
-                var journey = await _journeys.SetPhase4GtmAsync(userId, gtm);
+                var journey = await _journeys.SetPhase4GtmAsync(userId, gtm, ideaId);
                 return Ok(ApiResponse.Ok("GTM setup saved", journey.Phase4Data.GtmSetup));
             }
             catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
@@ -201,12 +201,12 @@ namespace WebApp.Controllers
 
         // PATCH /api/creator/offer/complete
         [HttpPatch("complete")]
-        public async Task<IActionResult> Complete()
+        public async Task<IActionResult> Complete([FromQuery] string ideaId = null)
         {
             try
             {
                 var userId = GetUserId();
-                var journey = await _journeys.GetOrCreateAsync(userId);
+                var journey = await _journeys.GetOrCreateComposedAsync(userId, ideaId); // idea-sourced modules
                 var p4 = journey.Phase4Data ?? new CreatorPhase4Data();
 
                 if (string.IsNullOrEmpty(p4.PricingModel) || (p4.Tiers?.Count ?? 0) < 3)

@@ -166,7 +166,7 @@ namespace WebApp.Controllers
             }).ToList();
 
             // 7️ Investor-readiness score (computed at Phase-3 masterplan completion)
-            var journey = await _journeys.GetOrCreateAsync(userId);
+            var journey = await _journeys.GetOrCreateComposedAsync(userId); // STEP 4: idea-sourced
             var investorReadinessScore = journey.Phase3Data?.InvestorReadinessScore;
 
             // 8️ Final Response
@@ -313,8 +313,10 @@ namespace WebApp.Controllers
         }
 
 
+        // NOTE: the legacy [HttpGet("ideas")] alias was removed — it collided with
+        // CreatorIdeasController's GET /api/creator/ideas (multi-idea list), causing
+        // an AmbiguousMatchException 500 on both. "my-ideas" is the canonical route.
         [HttpGet("my-ideas")]
-        [HttpGet("ideas")]
         public async Task<IActionResult> MyIdeas()
         {
             try

@@ -51,6 +51,7 @@ export default function ConceptNamePage() {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [regenerating, setRegenerating] = useState(false);
   const [nameError, setNameError] = useState<string | null>(null);
+  const [savingName, setSavingName] = useState(false);
   const autoFetchedRef = useRef(false);
 
   // The API returns names only; pair each with the project's value prop as the tagline.
@@ -135,15 +136,22 @@ export default function ConceptNamePage() {
     (!useCustom && selectedSuggestion !== null) ||
     (useCustom && customName.trim().length >= 2 && customTagline.trim().length >= 5);
 
-  const handleProceed = () => {
-    if (!canProceed) return;
+  const handleProceed = async () => {
+    if (!canProceed || savingName) return;
 
     // Persist name/tagline/category to the backend project (source of truth).
-    void creatorJourneyApi
-      .updateProject({ name: activeName, tagline: activeTagline, category })
-      .catch(() => {
-        /* optimistic local state below still advances the UI */
-      });
+    // AWAITED — a failed save must surface, not silently advance (the old
+    // swallowed catch hid a 400 that made new ideas unnameable for hours).
+    setSavingName(true);
+    setNameError(null);
+    try {
+      await creatorJourneyApi.updateProject({ name: activeName, tagline: activeTagline, category });
+    } catch {
+      setNameError("Couldn't save your project name — please try again.");
+      return;
+    } finally {
+      setSavingName(false);
+    }
 
     // Save selections in project state
     setState((prev) => ({
@@ -401,12 +409,15 @@ export default function ConceptNamePage() {
             <div className="space-y-3 pt-4">
               <Button
                 onClick={handleProceed}
-                disabled={!canProceed}
+                disabled={!canProceed || savingName}
                 className="w-full flex items-center justify-center gap-2 py-5 rounded-xl font-extrabold text-sm shadow-md bg-primary text-primary-foreground hover:bg-primary/95 disabled:opacity-40"
               >
+                {savingName ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                 Continue to Branding
                 <ArrowRight className="w-4 h-4" />
               </Button>
+              {/* Save failure surfaces HERE, next to the action that failed. */}
+              {nameError && <p className="mt-2 text-xs text-destructive text-center">{nameError}</p>}
             </div>
 
           </div>

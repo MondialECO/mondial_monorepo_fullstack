@@ -19,6 +19,13 @@ import { creatorJourneyApi, type UpdateProjectPayload } from '@/lib/api-creator-
 const STORAGE_KEY = 'mondial_creator_progress_draft';
 const SAVE_DEBOUNCE_MS = 500;
 
+/**
+ * Honest hydration result: callers that navigate after a refetch MUST be able to
+ * tell whether state actually updated (a swallowed failure once left state on the
+ * previous idea while navigation proceeded on a second, successful fetch).
+ */
+export type HydrateResult = { ok: true; activeIdeaId: string | null } | { ok: false };
+
 // Deep clone helper — NEVER hand back a reference to the module constant
 // (audit R1: shallow-copy + nested mutation used to corrupt INITIAL_STATE).
 const fresh = <T,>(value: T): T =>
@@ -27,6 +34,8 @@ const fresh = <T,>(value: T): T =>
     : JSON.parse(JSON.stringify(value));
 
 const INITIAL_STATE: CreatorJourneyData = {
+  activeIdeaId: null,
+  leveledUpIdeaId: null,
   journeyState: {
     phase1: { status: 'locked', currentStep: 1, completedSteps: [] },
     phase2: {
@@ -173,6 +182,11 @@ function reconcile(prev: CreatorJourneyData, backend: BackendCreatorJourney, com
   const next = fresh(prev);
   const js = next.journeyState;
 
+  // Multi-idea ids: backend-authoritative, unconditional overwrite (never cached,
+  // so the backend's value — including null — always wins over anything local).
+  next.activeIdeaId = backend.activeIdeaId ?? null;
+  next.leveledUpIdeaId = backend.leveledUpIdeaId ?? null;
+
   (['phase1', 'phase2', 'phase3', 'phase4', 'phase5', 'phase6'] as const).forEach((k) => {
     js[k].status = computed[k].status;
     js[k].currentStep = computed[k].currentStep;
@@ -244,8 +258,16 @@ export function useCreatorProgressState() {
   const [error, setError] = useState<Error | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const projectPatchRef = useRef<UpdateProjectPayload>({});
+  // Multi-idea correctness: the current idea (for capture-at-queue-time), the
+  // pending patch's TARGET idea, and a DEDICATED debounce timer for the project
+  // PATCH (previously shared with the cache write-through, which could cancel a
+  // pending save). A queued write always fires against the idea it was typed on.
+  const activeIdeaIdRef = useRef<string | null>(null);
+  const projectPatchTargetRef = useRef<string | null>(null);
+  const projectSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  useEffect(() => { activeIdeaIdRef.current = state.activeIdeaId; }, [state.activeIdeaId]);
 
-  const hydrate = useCallback(async () => {
+  const hydrate = useCallback(async (): Promise<HydrateResult> => {
     // Backend is the authoritative source of truth. Fetch + reconcile from a clean
     // base, then render THAT — the cache is never read/rendered as truth here.
     // (The debounced write-through effect below persists state to cache for the
@@ -254,10 +276,12 @@ export function useCreatorProgressState() {
       const { journey, computedStatus } = await creatorJourneyApi.get();
       setState(reconcile(INITIAL_STATE, journey, computedStatus));
       setError(null);
+      return { ok: true, activeIdeaId: journey.activeIdeaId ?? null };
     } catch (err) {
-      // Backend error: surface an honest error state. Do NOT fall back to rendering
-      // stale cache — cache is never a fallback rendering source.
+      // Backend error: surface an honest error state AND report failure to the
+      // awaiter — never resolve identically whether hydration worked or not.
       setError(err as Error);
+      return { ok: false };
     } finally {
       setIsLoading(false);
     }
@@ -287,16 +311,56 @@ export function useCreatorProgressState() {
 
   const applyResponse = useCallback(
     (journey: BackendCreatorJourney, computedStatus: ComputedJourneyStatus) => {
-      setState((prev) => reconcile(prev, journey, computedStatus));
+      setState((prev) => {
+        // CROSS-IDEA GUARD: a response composed for a different idea (a stale
+        // in-flight mutator from before a switch, or a flushed debounced write to
+        // the previous idea) must never MERGE into this idea's state — reconcile's
+        // same-idea race guards would let old values survive the new idea's nulls.
+        // The data is already persisted server-side; the next hydrate shows it.
+        // Idea switches themselves go through refetch() = clean full replace.
+        if (prev.activeIdeaId && journey.activeIdeaId && journey.activeIdeaId !== prev.activeIdeaId) {
+          return prev;
+        }
+        return reconcile(prev, journey, computedStatus);
+      });
     },
     [],
   );
 
   // ---- Mutators (same surface as before; now sync to backend) ----
 
+  // Send the accumulated patch to ITS captured target idea (never the current one).
+  const flushProjectPatch = useCallback(async () => {
+    const payload = projectPatchRef.current;
+    // Target = the idea captured at queue time; a patch queued BEFORE the first
+    // hydration (null capture) re-resolves at flush time. Both null → no param
+    // (backend active fallback — correct for a not-yet-hydrated single state).
+    const target = projectPatchTargetRef.current ?? activeIdeaIdRef.current;
+    projectPatchRef.current = {};
+    projectPatchTargetRef.current = null;
+    if (Object.keys(payload).length === 0) return;
+    try {
+      const { journey, computedStatus } = await creatorJourneyApi.updateProject(payload, target ?? undefined);
+      // If this flushed to a PREVIOUS idea, the cross-idea guard in applyResponse
+      // drops the stale response — the write still persisted to the right idea.
+      applyResponse(journey, computedStatus);
+    } catch (err) {
+      setError(err as Error);
+    }
+  }, [applyResponse]);
+
   const updateProject = useCallback((fields: Partial<CreatorProject>) => {
     // Optimistic local update.
     setState((prev) => ({ ...prev, project: { ...prev.project, ...fields, exists: true } }));
+
+    const currentIdeaId = activeIdeaIdRef.current;
+    // The pending patch belongs to a DIFFERENT idea (user switched mid-debounce):
+    // flush it to its original target NOW so the two ideas' edits never merge.
+    if (projectPatchTargetRef.current && projectPatchTargetRef.current !== currentIdeaId
+        && Object.keys(projectPatchRef.current).length > 0) {
+      if (projectSaveTimerRef.current) clearTimeout(projectSaveTimerRef.current);
+      void flushProjectPatch();
+    }
 
     // Accumulate backend-relevant fields, debounced PATCH.
     const map: UpdateProjectPayload = projectPatchRef.current;
@@ -311,18 +375,11 @@ export function useCreatorProgressState() {
     }
     if (Object.keys(map).length === 0) return;
 
-    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(async () => {
-      const payload = projectPatchRef.current;
-      projectPatchRef.current = {};
-      try {
-        const { journey, computedStatus } = await creatorJourneyApi.updateProject(payload);
-        applyResponse(journey, computedStatus);
-      } catch (err) {
-        setError(err as Error);
-      }
-    }, SAVE_DEBOUNCE_MS);
-  }, [applyResponse]);
+    // Capture the target at QUEUE time — a later idea switch can't redirect it.
+    projectPatchTargetRef.current = currentIdeaId;
+    if (projectSaveTimerRef.current) clearTimeout(projectSaveTimerRef.current);
+    projectSaveTimerRef.current = setTimeout(() => { void flushProjectPatch(); }, SAVE_DEBOUNCE_MS);
+  }, [flushProjectPatch]);
 
   const saveOutputVersion = useCallback((outputKey: CreatorOutputKey, payload: Record<string, unknown>) => {
     // Optimistic local prepend (consumers read [0] as latest).

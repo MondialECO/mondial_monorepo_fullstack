@@ -21,6 +21,9 @@ namespace WebApp.Services.Repository.Ai
         Task SetCompletedAsync(string id, BsonDocument output, int? clarityScore);
         Task SetNeedsReviewAsync(string id, string error);
         Task SetFailedAsync(string id, string error);
+
+        /// <summary>Stamp the idea anchor (CreatorIdea id) onto this clarifier. Multi-idea STEP 2.</summary>
+        Task SetBusinessIdeaIdAsync(string id, string businessIdeaId);
     }
 
     /// <summary>
@@ -124,6 +127,15 @@ namespace WebApp.Services.Repository.Ai
                 Builders<ClarifierSession>.Update
                     .Set(x => x.Status, "Failed")
                     .Set(x => x.Error, error)
+                    .Set(x => x.UpdatedAt, DateTime.UtcNow));
+
+        // Multi-idea STEP 2: BusinessIdeaId carries [BsonRepresentation(ObjectId)], so the
+        // typed Set serializes the 24-hex string as an ObjectId (matches the backfill).
+        public Task SetBusinessIdeaIdAsync(string id, string businessIdeaId)
+            => _collection.UpdateOneAsync(
+                x => x.Id == id,
+                Builders<ClarifierSession>.Update
+                    .Set(x => x.BusinessIdeaId, businessIdeaId)
                     .Set(x => x.UpdatedAt, DateTime.UtcNow));
     }
 }

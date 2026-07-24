@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { CreatorForecastVersion } from "@/types/creator/creator-journey";
+import type { CreatorForecastVersion, CreatorJourneyState } from "@/types/creator/creator-journey";
 import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
 import { getNextCreatorAction } from "@/lib/creator-state-resolver";
+import { creatorJourneyApi, type IdeaCard } from "@/lib/api-creator-journey";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,16 +15,126 @@ import {
   Pencil,
   FileText,
   TrendingUp,
-  AlertTriangle,
   Flame,
-  Layout
+  Layout,
+  Plus,
+  Loader2,
+  Repeat
 } from "lucide-react";
+
+// Coarse phaseReached → card label. Display hint only — never gates anything.
+const PHASE_LABEL: Record<number, string> = {
+  2: "Phase 2 · Identity",
+  3: "Phase 3 · Masterplan",
+  4: "Phase 4 · Offer & Resources",
+  5: "Phase 5 · Crossroads",
+  6: "Phase 6 · Matchmaking",
+};
 
 export default function MyIdeasPage() {
   const router = useRouter();
-  const { state, resetJourney, updateProject, setEntryPath } = useCreatorProgress();
+  const { state, resetJourney, updateProject, setEntryPath, refetch } = useCreatorProgress();
   const { journeyState, project } = state;
   const [showConfirmStartOver, setShowConfirmStartOver] = useState(false);
+
+  // ---- Multi-idea (step 6iv): the ideas list + switching ----
+  const [ideas, setIdeas] = useState<IdeaCard[] | null>(null);
+  // ideaId being switched/continued, or "new" while minting — guards double-fire.
+  const [busy, setBusy] = useState<string | null>(null);
+  // A FAILED list load is distinct from an empty list (an empty [] means "no
+  // ideas"; a failure must show an error + retry, never masquerade as empty —
+  // the swallowed [] previously hid a 500 route collision for hours).
+  const [listError, setListError] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+
+  const loadIdeas = useCallback(async () => {
+    try {
+      setListError(false);
+      setIdeas(await creatorJourneyApi.listIdeas());
+    } catch {
+      setIdeas(null);
+      setListError(true);
+    }
+  }, []);
+  useEffect(() => { void loadIdeas(); }, [loadIdeas]);
+
+  // Route for the CURRENT (post-switch) idea via the existing resolver. Context
+  // state updates async after refetch(), so build the resolver input from a fresh
+  // fetch — same mapping reconcile() uses; no invented routing.
+  const routeForCurrentIdea = useCallback(async (): Promise<string> => {
+    const { journey, computedStatus } = await creatorJourneyApi.get();
+    const p2 = journey.phase2Data;
+    const js = {
+      phase1: { status: computedStatus.phase1.status, currentStep: computedStatus.phase1.currentStep ?? 1, completedSteps: [] },
+      phase2: {
+        status: computedStatus.phase2.status,
+        currentStep: computedStatus.phase2.currentStep ?? 1,
+        completedSteps: [],
+        selectedEntryPath: p2?.selectedEntryPath === "already_have_idea" ? "already_have_idea" : null,
+        clarifierSessionId: p2?.clarifierSessionId ?? null,
+        chatMessages: p2?.chatMessages ?? [],
+        discoveryInputs: p2?.discoveryInputs,
+        generatedConcepts: p2?.generatedConcepts,
+        selectedConceptId: p2?.selectedConceptId ?? null,
+      },
+      phase3: { status: computedStatus.phase3.status, currentStep: computedStatus.phase3.currentStep ?? 1, completedSteps: [] },
+      phase4: { status: computedStatus.phase4.status, currentStep: computedStatus.phase4.currentStep ?? 1, completedSteps: [] },
+      phase5: {
+        status: computedStatus.phase5.status,
+        currentStep: computedStatus.phase5.currentStep ?? 1,
+        completedSteps: [],
+        selectedPath: (journey.phase5Data?.chosenPath as "sell_license" | "build" | null) ?? null,
+      },
+      phase6: { status: computedStatus.phase6.status, currentStep: computedStatus.phase6.currentStep ?? 1, completedSteps: [] },
+    } as CreatorJourneyState;
+    return getNextCreatorAction(js).route;
+  }, []);
+
+  // Switch the active idea; the whole app then renders it (every page shows "the
+  // current idea"). The user stays here, with the switched row now marked active.
+  // Deterministic switch: verify the hydrated state actually reflects the target
+  // (setActiveIdea echoes the id; hydrate reports what it loaded) — never trust
+  // timing. On a failed/mismatched hydration, surface it instead of half-state.
+  const handleSwitch = async (ideaId: string) => {
+    if (busy) return;
+    setBusy(ideaId);
+    setCreateError(null);
+    try {
+      const { activeIdeaId } = await creatorJourneyApi.setActiveIdea(ideaId);
+      const hydrated = await refetch();
+      if (!hydrated.ok || hydrated.activeIdeaId !== activeIdeaId) {
+        setCreateError("Switched, but reloading state failed — please retry.");
+      }
+      await loadIdeas();
+    } catch {
+      setCreateError("Couldn't switch ideas — please try again.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  // Continue an idea: switch if needed (verified), then resume where it left off.
+  // Navigation only happens once state provably reflects the target idea.
+  const handleContinue = async (idea: IdeaCard) => {
+    if (busy) return;
+    setBusy(idea.ideaId);
+    setCreateError(null);
+    try {
+      if (!idea.isActive) {
+        const { activeIdeaId } = await creatorJourneyApi.setActiveIdea(idea.ideaId);
+        const hydrated = await refetch();
+        if (!hydrated.ok || hydrated.activeIdeaId !== activeIdeaId) {
+          setCreateError("Couldn't load that idea's state — please retry.");
+          return;
+        }
+      }
+      router.push(await routeForCurrentIdea());
+    } catch {
+      setCreateError("Couldn't open that idea — please try again.");
+    } finally {
+      setBusy(null);
+    }
+  };
 
   // Determine state
   const hasIdea = project.exists;
@@ -41,9 +152,42 @@ export default function MyIdeasPage() {
     router.push("/dashboard/creator/phase-2/clarifier");
   };
 
-  const handleStartOver = () => {
-    resetJourney();
-    setShowConfirmStartOver(false);
+  // REAL "new idea" (replaces the old client-only resetJourney illusion): mint a
+  // blank idea server-side (becomes active), re-hydrate, land on Phase 2 via the
+  // resolver. The previous idea stays in the list — switch back anytime.
+  const handleStartOver = async () => {
+    if (busy) return;
+    setBusy("new");
+    setCreateError(null);
+
+    // Step 1: create. A failure here is retryable — nothing was made.
+    let newIdeaId: string;
+    try {
+      ({ ideaId: newIdeaId } = await creatorJourneyApi.createIdea());
+    } catch {
+      setCreateError("Couldn't create a new idea — please try again.");
+      setBusy(null);
+      return;
+    }
+
+    // Step 2: hydrate + VERIFY state reflects the created idea (use the response
+    // id directly — never infer success from a second round-trip). Navigation is
+    // gated on the verified state; a failed hydration surfaces and stays put
+    // (the idea exists — the list below offers it; retrying create would duplicate).
+    try {
+      const hydrated = await refetch();
+      await loadIdeas();
+      if (!hydrated.ok || hydrated.activeIdeaId !== newIdeaId) {
+        setCreateError("Idea created, but loading it failed — open it from the list below.");
+        return;
+      }
+      setShowConfirmStartOver(false);
+      router.push(await routeForCurrentIdea());
+    } catch {
+      setCreateError("Idea created, but loading it failed — open it from the list below.");
+    } finally {
+      setBusy(null);
+    }
   };
 
   const handleEditConcept = () => {
@@ -53,6 +197,92 @@ export default function MyIdeasPage() {
   const handleStartNewIdea = () => {
     setShowConfirmStartOver(true);
   };
+
+  // Rendered in ALL page branches (a blank new idea has project.exists=false and
+  // would otherwise hide the list — stranding the previous idea). A failed load
+  // renders an error + retry — visibly distinct from "no ideas yet".
+  const ideasSection = listError ? (
+    <Card className="rounded-2xl border-border bg-card shadow-xs p-6 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <p className="text-sm text-destructive font-semibold">
+          Couldn&apos;t load your ideas — the list may be incomplete.
+        </p>
+        <Button onClick={() => void loadIdeas()} variant="outline" size="sm" className="rounded-xl text-xs font-bold">
+          <Repeat className="w-3.5 h-3.5 mr-1" /> Retry
+        </Button>
+      </div>
+    </Card>
+  ) : ideas !== null && ideas.length > 0 && (
+    <Card className="rounded-2xl border-border bg-card shadow-xs p-6 space-y-4 mb-6">
+      <div className="flex items-center justify-between">
+        <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
+          <Lightbulb className="w-4 h-4 text-primary" />
+          My Ideas ({ideas.length})
+        </h3>
+        <Button
+          onClick={handleStartNewIdea}
+          disabled={!!busy}
+          variant="outline"
+          size="sm"
+          className="rounded-xl text-xs font-bold"
+        >
+          <Plus className="w-3.5 h-3.5 mr-1" /> New idea
+        </Button>
+      </div>
+      {/* Switch/continue failures surface HERE (the modal isn't open for those). */}
+      {createError && !showConfirmStartOver && (
+        <p className="text-sm text-destructive font-semibold">{createError}</p>
+      )}
+      <div className="divide-y divide-border">
+        {ideas.map((idea) => (
+          <div key={idea.ideaId} className="flex flex-col sm:flex-row sm:items-center gap-3 py-3">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className={`text-sm font-bold truncate ${idea.name ? "text-foreground" : "text-muted-foreground italic"}`}>
+                  {idea.name || "Untitled idea"}
+                </span>
+                {idea.isActive && (
+                  <Badge className="bg-primary/10 hover:bg-primary/10 border-0 text-primary text-[10px] font-bold">Active</Badge>
+                )}
+                {idea.isLeveledUp && (
+                  <Badge className="bg-green-500/10 hover:bg-green-500/10 border-0 text-green-600 dark:text-green-400 text-[10px] font-bold">Leveled up</Badge>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground truncate mt-0.5">
+                {idea.concept || "No concept yet — continue to define it."}
+              </p>
+              <p className="text-[10px] text-muted-foreground font-semibold mt-1">
+                {PHASE_LABEL[idea.phaseReached] ?? "Phase 2 · Identity"} · Last active {new Date(idea.lastActiveAt).toLocaleDateString()}
+              </p>
+            </div>
+            <div className="flex gap-2 shrink-0">
+              {!idea.isActive && (
+                <Button
+                  onClick={() => handleSwitch(idea.ideaId)}
+                  disabled={!!busy}
+                  variant="outline"
+                  size="sm"
+                  className="rounded-xl text-xs font-bold"
+                >
+                  {busy === idea.ideaId ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Repeat className="w-3.5 h-3.5 mr-1" />}
+                  Switch
+                </Button>
+              )}
+              <Button
+                onClick={() => handleContinue(idea)}
+                disabled={!!busy}
+                size="sm"
+                className="rounded-xl text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/95"
+              >
+                {busy === idea.ideaId ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                Continue <ArrowRight className="w-3.5 h-3.5 ml-1" />
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
 
   // 1. EMPTY STATE
   if (!hasIdea) {
@@ -65,6 +295,8 @@ export default function MyIdeasPage() {
             Turn an observation or concept into a clear project identity.
           </p>
         </div>
+
+        {ideasSection}
 
         <div className="grid grid-cols-1 gap-6 max-w-md mt-10">
           {/* From My Ideas, resume via the Path-B clarifier; the Smart Gate offers both entry paths. */}
@@ -119,6 +351,8 @@ export default function MyIdeasPage() {
           </p>
         </div>
 
+        {ideasSection}
+
         <Card className="max-w-2xl border-border bg-card rounded-2xl shadow-sm p-6 sm:p-8 space-y-6">
           <div className="space-y-4">
             <div className="flex justify-between items-center text-xs font-semibold">
@@ -158,26 +392,30 @@ export default function MyIdeasPage() {
           </div>
         </Card>
 
-        {/* Start Over Confirmation Modal */}
+        {/* New-idea confirmation — nothing is deleted; the draft stays switchable. */}
         {showConfirmStartOver && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
             <Card className="max-w-md w-full border border-border bg-card p-6 shadow-xl space-y-4 rounded-2xl">
-              <div className="flex items-center gap-3 text-destructive">
-                <AlertTriangle className="w-6 h-6" />
-                <h3 className="font-extrabold text-lg">Are you absolutely sure?</h3>
+              <div className="flex items-center gap-3 text-primary">
+                <Lightbulb className="w-6 h-6" />
+                <h3 className="font-extrabold text-lg">Start a new idea?</h3>
               </div>
               <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                This will delete your current draft project, including your name, logo selections, and AI chat progress. This action cannot be undone.
+                Your current draft stays in My Ideas — you can switch back to it anytime. We&apos;ll start a fresh journey for the new idea.
               </p>
+              {createError && <p className="text-sm text-destructive font-semibold">{createError}</p>}
               <div className="flex gap-3 pt-2">
                 <Button
                   onClick={handleStartOver}
-                  className="flex-1 rounded-xl bg-destructive hover:bg-destructive/95 text-white font-bold"
+                  disabled={!!busy}
+                  className="flex-1 rounded-xl bg-primary hover:bg-primary/95 text-primary-foreground font-bold"
                 >
-                  Yes, start over
+                  {busy === "new" ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : null}
+                  Yes, start new idea
                 </Button>
                 <Button
-                  onClick={() => setShowConfirmStartOver(false)}
+                  onClick={() => { setShowConfirmStartOver(false); setCreateError(null); }}
+                  disabled={!!busy}
                   variant="outline"
                   className="flex-1 rounded-xl font-bold border-border"
                 >
@@ -226,6 +464,8 @@ export default function MyIdeasPage() {
           </Button>
         </div>
       </div>
+
+      {ideasSection}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: First Draft Summary + Clarity Score + Journal */}
@@ -459,26 +699,29 @@ export default function MyIdeasPage() {
         </div>
       </div>
 
-      {/* Start Over Confirmation Modal (reused here for Starting New Idea) */}
+      {/* New-idea confirmation — the current idea stays in My Ideas, switchable. */}
       {showConfirmStartOver && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
           <Card className="max-w-md w-full border border-border bg-card p-6 shadow-xl space-y-4 rounded-2xl">
-            <div className="flex items-center gap-3 text-destructive">
-              <AlertTriangle className="w-6 h-6" />
-              <h3 className="font-extrabold text-lg">Create a New Idea?</h3>
+            <div className="flex items-center gap-3 text-primary">
+              <Lightbulb className="w-6 h-6" />
+              <h3 className="font-extrabold text-lg">Start a new idea?</h3>
             </div>
             <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-              This will archive your current completed project identity and start a fresh onboarding journey. You can access it anytime from project logs.
+              Your current idea stays in My Ideas — you can switch back to it anytime. We&apos;ll start a fresh journey for the new one.
             </p>
             <div className="flex gap-3 pt-2">
               <Button
                 onClick={handleStartOver}
-                className="flex-1 rounded-xl bg-destructive hover:bg-destructive/95 text-white font-bold"
+                disabled={!!busy}
+                className="flex-1 rounded-xl bg-primary hover:bg-primary/95 text-primary-foreground font-bold"
               >
-                Yes, start new
+                {busy === "new" ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : null}
+                Yes, start new idea
               </Button>
               <Button
                 onClick={() => setShowConfirmStartOver(false)}
+                disabled={!!busy}
                 variant="outline"
                 className="flex-1 rounded-xl font-bold border-border"
               >

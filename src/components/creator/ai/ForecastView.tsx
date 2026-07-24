@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { formatMoney } from "@/lib/format-money";
 import {
   TrendingUp,
   TrendingDown,
@@ -12,17 +13,8 @@ import {
 } from "lucide-react";
 import type { ForecastOutput } from "@/types/creator/ai";
 
-const fmt = (n: number, currency?: string) => {
-  try {
-    return new Intl.NumberFormat("en-US", {
-      style: currency ? "currency" : "decimal",
-      currency: currency || undefined,
-      maximumFractionDigits: 0,
-    }).format(n);
-  } catch {
-    return n.toLocaleString();
-  }
-};
+// Shared formatter (screen + PDF) so currency handling can't drift between them.
+const fmt = (n: number, currency?: string) => formatMoney(n, currency);
 
 function ForecastCard({
   icon: Icon,

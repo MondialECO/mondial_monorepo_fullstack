@@ -318,26 +318,36 @@
 @media print {
   .no-print { display: none !important; }
 
-  body.printing-active * { visibility: hidden !important; }
-  body.printing-active .print-document,
-  body.printing-active .print-document * { visibility: visible !important; }
+  /* Multi-page isolation. The overlay is portaled to <body> (data-print-overlay),
+     so hiding every other top-level node removes all app chrome + page content
+     WITHOUT taking the document out of flow — it then paginates naturally.
+     (The old visibility+position:absolute hack clipped everything to page 1.) */
+  body.printing-active > *:not([data-print-overlay]) { display: none !important; }
+
+  /* Neutralise the overlay's fixed / scrollable container: a static child inside
+     a fixed, viewport-height, overflow box is still clipped to one page. */
+  body.printing-active [data-print-overlay] {
+    position: static !important;
+    overflow: visible !important;
+    height: auto !important;
+    background: #ffffff !important;
+  }
   body.printing-active .print-document {
-    position: absolute !important;
-    left: 0;
-    top: 0;
-    width: 100%;
-    margin: 0 !important;
+    margin: 0 auto !important;
+    max-width: 100% !important;
     padding: 0 14mm !important;
     box-shadow: none !important;
   }
 
   @page { margin: 16mm 0; }
 
-  .print-section { break-inside: avoid; }
+  /* Keep break-inside:avoid ONLY on reliably-short blocks (year tables, rows).
+     Tall prose sections must flow across pages — avoid on a >1-page block
+     silently overflows/clips. Headings use break-after:avoid to kill orphans. */
   .print-section h1,
   .print-section h2,
   .print-section h3 { break-after: avoid; }
-  .print-table { break-inside: auto; }
+  .print-year,
   .print-row,
   .print-table tr { break-inside: avoid; }
 }

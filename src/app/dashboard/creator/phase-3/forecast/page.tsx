@@ -88,12 +88,6 @@ export default function ForecastResultsPage() {
     return () => { active = false; };
   }, []);
 
-  // No forecast to show → send the user to the inputs page to generate one (covers a
-  // fresh user, a direct URL, or browser-back with no session). Never an empty results page.
-  useEffect(() => {
-    if (!loadingJourney && !forecastSessionId) router.replace(INPUTS_ROUTE);
-  }, [loadingJourney, forecastSessionId, router]);
-
   const output = (session.data as { output?: ForecastOutput } | undefined)?.output;
   const completed = session.phase === 'terminal' && hasAiOutput((session.data as { status?: import('@/types/creator/ai').AiSessionStatus })?.status) && !!output;
   // Terminal but no usable forecast → the session settled as Failed (AI-service request
@@ -129,9 +123,14 @@ export default function ForecastResultsPage() {
         <div className="flex items-center gap-2 text-muted-foreground py-12 justify-center"><Loader2 className="h-5 w-5 animate-spin" /> Loading…</div>
       )}
 
-      {/* No session → the effect above redirects to the inputs page; show a spinner meanwhile. */}
+      {/* No forecast session at all → recoverable inline card (never a forced redirect, so
+          a transient null fills in when the journey arrives instead of ejecting the user). */}
       {!loadingJourney && !forecastSessionId && (
-        <div className="flex items-center gap-2 text-muted-foreground py-12 justify-center"><Loader2 className="h-5 w-5 animate-spin" /> Opening forecast inputs…</div>
+        <Card className="rounded-2xl border border-border bg-card p-6 space-y-4 max-w-xl">
+          <h3 className="font-bold text-sm">No forecast yet</h3>
+          <p className="text-sm text-muted-foreground">You haven&apos;t generated a financial forecast yet. Set your inputs and we&apos;ll build a 36-month projection — revenue, costs, cash flow, and break-even.</p>
+          <Button onClick={() => router.push(INPUTS_ROUTE)} className="gap-2">Set inputs &amp; generate <ArrowRight className="h-4 w-4" /></Button>
+        </Card>
       )}
 
       {/* Session in flight → skeleton (NOT mock) */}
