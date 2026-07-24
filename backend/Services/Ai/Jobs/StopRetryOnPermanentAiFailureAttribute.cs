@@ -17,10 +17,11 @@ namespace WebApp.Services.Ai.Jobs
     /// terminal Failed state (visible in the Hangfire dashboard) instead of
     /// scheduling a retry.
     ///
-    /// Permanent = local credit exhaustion (a retry still finds 0 balance) or a 4xx
-    /// client error from the provider (bad request / forbidden / not-found).
-    /// Transient (network, timeout, 5xx, 429 rate-limit, upstream provider 402)
-    /// is left alone and retries normally.
+    /// Permanent = credit exhaustion on EITHER side (a retry finds the same empty
+    /// local ledger; a retry can't fix our provider billing), a 4xx client error
+    /// from the provider, an HTTP timeout, or a 429 whose Retry-After points at the
+    /// daily free-tier reset (hours away — retrying compounds against the cap).
+    /// Transient (network, 5xx, burst 429) is left alone and retries normally.
     /// </summary>
     public sealed class StopRetryOnPermanentAiFailureAttribute : JobFilterAttribute, IElectStateFilter
     {
@@ -42,13 +43,17 @@ namespace WebApp.Services.Ai.Jobs
 
         private static bool IsPermanent(Exception? ex) => ex switch
         {
-            // Local zero-balance: the creator's own credits are spent — a retry
-            // finds the same empty ledger. Upstream provider 402 (ProviderPaymentRequired)
-            // is NOT permanent here — it falls through to the base case below.
-            InsufficientCreditsException ice => ice.Source == CreditFailureSource.LocalBalance,
-            // Rate-limit (429) is transient by definition — a delayed retry (once the
-            // 20/min window resets) can succeed.
-            AiRateLimitException => false,
+            // BOTH credit-failure sources are permanent. Local zero-balance: a retry
+            // finds the same empty ledger. Provider 402 (our OpenRouter billing gap):
+            // a 30s/120s retry cannot fix billing — it only burns time and delays the
+            // user's honest error. (Earlier docs called provider-402 transient; that
+            // was wrong and never matched behavior.)
+            InsufficientCreditsException => true,
+            // Rate-limit (429): a BURST (20/min window) is transient — a delayed retry
+            // can succeed. But a Retry-After far beyond the total retry window (~150s)
+            // means the DAILY free-tier cap — retrying compounds against a reset that
+            // is hours away, so treat it as permanent. No Retry-After → assume burst.
+            AiRateLimitException rle => rle.RetryAfter is { } ra && ra > TimeSpan.FromMinutes(10),
             // HTTP timeout (HttpClient.Timeout elapsed): surfaces as an AiProviderException
             // with no StatusCode, wrapping a TaskCanceledException/OperationCanceledException.
             // On an already-slow model a retry almost certainly times out AGAIN, burning

@@ -387,17 +387,20 @@ namespace WebApp.Controllers
                 var journey = await _journeys.GetOrCreateComposedAsync(userId, ideaId); // idea-sourced modules
                 var p3 = journey.Phase3Data ?? new CreatorPhase3Data();
 
-                // Verify forecast module (session set + completed).
+                // Both AI modules gate on the SHARED success predicate (Completed +
+                // version) — the same rule the derived engine uses, so a Failed/
+                // NeedsReview session can never earn a readiness score the engine
+                // won't honor ("score renders, Launch disabled, no reason").
                 ForecastSession forecast = null;
                 if (!string.IsNullOrEmpty(p3.ForecastSessionId))
                     forecast = await _forecasts.GetOwnedAsync(p3.ForecastSessionId, userId);
-                if (forecast == null || forecast.Status != "Completed")
+                if (forecast == null || !WebApp.Services.Ai.AiSessionSuccess.IsComplete(forecast.Status, forecast.CurrentVersion))
                     return UnprocessableEntity(ApiResponse.Error("Missing module: financial_forecast"));
 
                 BusinessPlanSession plan = null;
                 if (!string.IsNullOrEmpty(p3.BusinessPlanSessionId))
                     plan = await _businessPlans.GetOwnedAsync(p3.BusinessPlanSessionId, userId);
-                if (plan == null)
+                if (plan == null || !WebApp.Services.Ai.AiSessionSuccess.IsComplete(plan.Status, plan.CurrentVersion))
                     return UnprocessableEntity(ApiResponse.Error("Missing module: business_plan"));
 
                 // Legal module = every mandatory checklist item Done (canon), not mere

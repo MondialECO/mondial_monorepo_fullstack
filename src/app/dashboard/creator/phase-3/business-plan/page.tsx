@@ -208,6 +208,17 @@ export default function BusinessPlanPage() {
     if (rewriting && currentVersion > rewriting.baseVersion) setRewriting(null);
   }, [currentVersion, rewriting]);
 
+  // FAILED rewrite: the session returns terminal WITHOUT a new version (the backend
+  // guard restores Completed and keeps the plan intact). Clear the skeleton and
+  // surface an honest error — never an endless skeleton with disabled buttons.
+  // Mutually exclusive with the success effect above (version did NOT advance).
+  useEffect(() => {
+    if (rewriting && session.phase === 'terminal' && currentVersion <= rewriting.baseVersion) {
+      setRewriting(null);
+      setStartError({ kind: 'other', message: 'The section rewrite didn’t complete — your plan is unchanged. You can try again.' });
+    }
+  }, [session.phase, currentVersion, rewriting]);
+
   useEffect(() => {
     let active = true;
     (async () => {
@@ -249,7 +260,11 @@ export default function BusinessPlanPage() {
   // exclusive with showGrid (both derive from `completed`).
   const bpError = (session.data as { error?: string | null } | undefined)?.error ?? null;
   const terminalFailed = !!bpSessionId && session.phase === 'terminal' && !completed && !rewriting;
-  const failedIsCredits = /402|credit|insufficient|payment/i.test(bpError ?? '');
+  // A provider-side 402 ("OpenRouter error (402): …") is OUR billing gap — never
+  // the user's credits; presenting it as theirs is wrong and unactionable. Only a
+  // local-ledger failure ("Insufficient credits.") gets the credits copy.
+  const failedIsProviderBilling = /openrouter error \(402\)/i.test(bpError ?? '');
+  const failedIsCredits = !failedIsProviderBilling && /402|credit|insufficient|payment/i.test(bpError ?? '');
 
   const sections = useMemo(
     () => buildSections(bpOutput, project, cross),
@@ -382,8 +397,10 @@ export default function BusinessPlanPage() {
             <h3 className="font-bold text-sm">We couldn&apos;t generate your business plan</h3>
           </div>
           <p className="text-sm text-muted-foreground">
-            {failedIsCredits
-              ? 'The AI service ran out of credits, so your plan couldn’t be generated. This isn’t anything you did.'
+            {failedIsProviderBilling
+              ? 'The AI service is temporarily unavailable on our side, so your plan couldn’t be generated. This isn’t your credits and there’s nothing you need to buy — please try again shortly.'
+              : failedIsCredits
+              ? 'You’ve used all your AI credits, so your plan couldn’t be generated.'
               : 'The AI service was temporarily unavailable (a provider error, rate limit, or timeout), so your plan didn’t finish. This isn’t anything you did — please try again.'}
           </p>
           {failedIsCredits && (
@@ -405,6 +422,8 @@ export default function BusinessPlanPage() {
 
       {showGrid && (
         <div className="space-y-4">
+          {/* Rewrite/start errors surface HERE too — previously invisible in the grid. */}
+          {startError && <p className="text-sm text-destructive">{startError.message}</p>}
           {sections.map((s) => {
             const isRewriting = rewriting?.sectionId === s.id;
             const saving = editState?.id === s.id && editState.state === 'saving';

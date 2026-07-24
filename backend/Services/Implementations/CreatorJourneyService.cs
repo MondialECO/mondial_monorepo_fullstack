@@ -242,10 +242,12 @@ namespace WebApp.Services.Implementations
             bool forecastStarted = !string.IsNullOrEmpty(p3.ForecastSessionId);
             var planSession = planStarted ? await _businessPlans.GetOwnedAsync(p3.BusinessPlanSessionId, j.UserId) : null;
             var forecastSession = forecastStarted ? await _forecasts.GetOwnedAsync(p3.ForecastSessionId, j.UserId) : null;
+            // Shared predicate (AiSessionSuccess) — the masterplan endpoint uses the
+            // SAME rule, so the engine and the endpoint cannot drift.
             bool hasPlan = planSession != null
-                && string.Equals(planSession.Status, "Completed", StringComparison.Ordinal) && planSession.CurrentVersion > 0;
+                && WebApp.Services.Ai.AiSessionSuccess.IsComplete(planSession.Status, planSession.CurrentVersion);
             bool hasForecast = forecastSession != null
-                && string.Equals(forecastSession.Status, "Completed", StringComparison.Ordinal) && forecastSession.CurrentVersion > 0;
+                && WebApp.Services.Ai.AiSessionSuccess.IsComplete(forecastSession.Status, forecastSession.CurrentVersion);
             // Legal gate = every MANDATORY checklist item Done, not mere presence (canon).
             // `legalPresent` (checklist generated) marks "in progress"; `hasLegal` (mandatory
             // complete) is the completion gate. Both derive from stored data only — this
@@ -519,6 +521,14 @@ namespace WebApp.Services.Implementations
             if (!string.IsNullOrWhiteSpace(marketGap)) p.MarketGap = marketGap;
             if (!string.IsNullOrWhiteSpace(creatorEdge)) p.CreatorEdge = creatorEdge;
             if (tags != null && tags.Count > 0) p.Tags = tags;
+
+            // Path-B parity with Discovery (which sets Concept from the concept text):
+            // the clarifier's closest analog to a one-line venture description is the
+            // proposed-solution summary, falling back to the value proposition
+            // (carried here as marketGap). Without this, every clarifier-path idea
+            // reads "no concept" forever on cards/summary despite being fully built.
+            var conceptLine = !string.IsNullOrWhiteSpace(solution) ? solution : marketGap;
+            if (!string.IsNullOrWhiteSpace(conceptLine)) p.Concept = conceptLine;
 
             (j.Phase2Data ??= new CreatorPhase2Data()).ClarifierSessionId = clarifierSessionId;
             // STEP 2 anchor: the (possibly new) clarifier joins this idea; plan/forecast inherit it.

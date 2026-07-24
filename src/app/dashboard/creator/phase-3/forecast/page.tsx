@@ -94,7 +94,9 @@ export default function ForecastResultsPage() {
   // failure; parse issues become NeedsReview, which has output). Never a blank body.
   const fcError = (session.data as { error?: string | null } | undefined)?.error ?? null;
   const terminalFailed = !!forecastSessionId && session.phase === 'terminal' && !completed;
-  const failedIsCredits = /402|credit|insufficient|payment/i.test(fcError ?? '');
+  // Provider-side 402 = OUR billing gap, never the user's credits (see business-plan).
+  const failedIsProviderBilling = /openrouter error \(402\)/i.test(fcError ?? '');
+  const failedIsCredits = !failedIsProviderBilling && /402|credit|insufficient|payment/i.test(fcError ?? '');
   const chartData = toChartData(output);
   const year3Arr = (output?.revenueForecast?.monthly?.[35]?.amount ?? 0) * 12;
   const warnings = sessionInputs
@@ -167,8 +169,10 @@ export default function ForecastResultsPage() {
             <h3 className="font-bold text-sm">We couldn&apos;t generate your forecast</h3>
           </div>
           <p className="text-sm text-muted-foreground">
-            {failedIsCredits
-              ? 'The AI service ran out of credits, so your forecast couldn’t be generated. This isn’t anything you did.'
+            {failedIsProviderBilling
+              ? 'The AI service is temporarily unavailable on our side, so your forecast couldn’t be generated. This isn’t your credits and there’s nothing you need to buy — please try again shortly.'
+              : failedIsCredits
+              ? 'You’ve used all your AI credits, so your forecast couldn’t be generated.'
               : 'The AI service was temporarily unavailable (a provider error, rate limit, or timeout), so your forecast didn’t finish. This isn’t anything you did — please try again.'}
           </p>
           {failedIsCredits && (

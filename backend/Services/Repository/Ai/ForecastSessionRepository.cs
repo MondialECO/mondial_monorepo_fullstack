@@ -169,20 +169,43 @@ namespace WebApp.Services.Repository.Ai
         }
 
         /// <summary>Model replied but the output could not be parsed/validated; raw kept on the response.</summary>
-        public Task SetNeedsReviewAsync(string id, string error)
-            => _collection.UpdateOneAsync(
+        public async Task SetNeedsReviewAsync(string id, string error)
+        {
+            if (await TryRestoreCompletedAsync(id, error)) return;
+            await _collection.UpdateOneAsync(
                 x => x.Id == id,
                 Builders<ForecastSession>.Update
                     .Set(x => x.Status, "NeedsReview")
                     .Set(x => x.Error, error)
                     .Set(x => x.UpdatedAt, DateTime.UtcNow));
+        }
 
-        public Task SetFailedAsync(string id, string error)
-            => _collection.UpdateOneAsync(
+        public async Task SetFailedAsync(string id, string error)
+        {
+            if (await TryRestoreCompletedAsync(id, error)) return;
+            await _collection.UpdateOneAsync(
                 x => x.Id == id,
                 Builders<ForecastSession>.Update
                     .Set(x => x.Status, "Failed")
                     .Set(x => x.Error, error)
                     .Set(x => x.UpdatedAt, DateTime.UtcNow));
+        }
+
+        /// <summary>
+        /// REPOSITORY-LEVEL GUARD — mirrors BusinessPlanSessionRepository: a forecast
+        /// that has ever completed (CurrentVersion &gt; 0) is never downgraded by a
+        /// failed regenerate; restore Completed + record the error. Initial
+        /// generations keep terminal Failed/NeedsReview semantics.
+        /// </summary>
+        private async Task<bool> TryRestoreCompletedAsync(string id, string error)
+        {
+            var res = await _collection.UpdateOneAsync(
+                x => x.Id == id && x.CurrentVersion > 0,
+                Builders<ForecastSession>.Update
+                    .Set(x => x.Status, "Completed")
+                    .Set(x => x.Error, error)
+                    .Set(x => x.UpdatedAt, DateTime.UtcNow));
+            return res.MatchedCount > 0;
+        }
     }
 }

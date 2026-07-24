@@ -29,14 +29,21 @@ export default function AIProcessingPage() {
   const router = useRouter();
   const params = useSearchParams();
   const sessionId = params.get("session");
+  // The idea this generation was STARTED for (captured at initiation on the
+  // discovery form). Writes below are scoped to it — never to live active state.
+  const ideaId = params.get("idea");
   const { setState } = useCreatorProgress();
   const [activeStage, setActiveStage] = useState(0);
   const [done, setDone] = useState(false);
   const [dots, setDots] = useState(".");
   const [error, setError] = useState<string | null>(null);
+  // Generation SUCCEEDED but persisting the concepts failed — distinct from a
+  // generation failure: retrying re-saves from memory, never regenerates.
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [poke, setPoke] = useState(0); // bumped by SignalR to trigger an immediate poll
 
   const settledRef = useRef(false); // complete/fail exactly once
+  const pendingSaveRef = useRef<{ concepts: ReturnType<typeof mapGeneratedIdeas>; navSessionId: string } | null>(null);
   const attemptsRef = useRef(0);
 
   // Animated ellipsis
@@ -52,6 +59,27 @@ export default function AIProcessingPage() {
     return () => clearInterval(id);
   }, [done, error]);
 
+  // Persist + navigate. BLOCKING on the save: finalize-discovery resolves the
+  // chosen concept from the PERSISTED GeneratedConcepts, so proceeding past a
+  // failed save guarantees a dead-end 404 at confirm. On failure the generated
+  // output stays safe in the AI session — Retry re-saves without regenerating.
+  const persistAndProceed = useCallback(
+    async (concepts: ReturnType<typeof mapGeneratedIdeas>, navSessionId: string) => {
+      setSaveError(null);
+      try {
+        await creatorJourneyApi.saveGeneratedConcepts(concepts, ideaId ?? undefined);
+      } catch {
+        pendingSaveRef.current = { concepts, navSessionId };
+        setSaveError("Your concepts were generated, but saving them failed. Retry to continue — nothing needs regenerating.");
+        return;
+      }
+      setActiveStage(PROCESSING_STAGES.length - 1);
+      setDone(true);
+      setTimeout(() => router.push(`/dashboard/creator/phase-2/idea-cards?session=${navSessionId}${ideaId ? `&idea=${ideaId}` : ""}`), 900);
+    },
+    [router, ideaId],
+  );
+
   const handleCompleted = useCallback(
     (session: IdeaGenerationSession) => {
       if (settledRef.current) return;
@@ -65,16 +93,9 @@ export default function AIProcessingPage() {
         },
       }));
 
-      // Persist generated concepts to backend
-      void creatorJourneyApi.saveGeneratedConcepts(concepts).catch((err) => {
-        console.error("Failed to persist concepts:", err);
-      });
-
-      setActiveStage(PROCESSING_STAGES.length - 1);
-      setDone(true);
-      setTimeout(() => router.push(`/dashboard/creator/phase-2/idea-cards?session=${session.sessionId}`), 900);
+      void persistAndProceed(concepts, session.sessionId);
     },
-    [router, setState],
+    [setState, persistAndProceed],
   );
 
   const handleFailed = useCallback((msg: string) => {
@@ -169,7 +190,27 @@ export default function AIProcessingPage() {
       </div>
 
       <main className="flex-1 flex flex-col items-center justify-center p-6 sm:p-12 md:p-16 max-w-2xl mx-auto w-full text-center">
-        {error ? (
+        {saveError ? (
+          /* Generation SUCCEEDED, persistence failed — retry saves from memory. */
+          <div className="flex flex-col items-center gap-6">
+            <div className="w-20 h-20 rounded-full flex items-center justify-center bg-destructive/10 text-destructive">
+              <AlertTriangle className="w-10 h-10" />
+            </div>
+            <div className="space-y-3">
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Concepts generated — saving failed</h1>
+              <p className="text-sm text-muted-foreground max-w-md mx-auto">{saveError}</p>
+            </div>
+            <Button
+              onClick={() => {
+                const pending = pendingSaveRef.current;
+                if (pending) void persistAndProceed(pending.concepts, pending.navSessionId);
+              }}
+              className="rounded-xl px-6 py-5 text-sm font-bold bg-primary text-primary-foreground hover:bg-primary/95"
+            >
+              Retry saving
+            </Button>
+          </div>
+        ) : error ? (
           /* Failure state — generation failed, timed out, or credits exhausted */
           <div className="flex flex-col items-center gap-6">
             <div className="w-20 h-20 rounded-full flex items-center justify-center bg-destructive/10 text-destructive">

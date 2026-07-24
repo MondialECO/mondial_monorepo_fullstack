@@ -145,18 +145,21 @@ export const creatorJourneyApi = {
 
   // ---- Discovery path working state ----
 
-  saveDiscoveryInputs: async (inputs: { sectors: string[]; observedProblem: string; strengths: string[] }): Promise<JourneyResponse> => {
-    const res = await api.post('/creator/journey/phase2/discovery-inputs', { inputs });
+  // Discovery-flow writes carry the idea captured at INITIATION time (never live
+  // state at completion) so an in-flight generation can't write onto a different
+  // idea after a switch. Omitted when unknown (zero-idea user) — never an empty id.
+  saveDiscoveryInputs: async (inputs: { sectors: string[]; observedProblem: string; strengths: string[] }, ideaId?: string): Promise<JourneyResponse> => {
+    const res = await api.post('/creator/journey/phase2/discovery-inputs', { inputs }, ideaId ? { params: { ideaId } } : undefined);
     return unwrap<JourneyResponse>(res.data);
   },
 
-  saveGeneratedConcepts: async (concepts: any[]): Promise<JourneyResponse> => {
-    const res = await api.post('/creator/journey/phase2/generated-concepts', { concepts });
+  saveGeneratedConcepts: async (concepts: any[], ideaId?: string): Promise<JourneyResponse> => {
+    const res = await api.post('/creator/journey/phase2/generated-concepts', { concepts }, ideaId ? { params: { ideaId } } : undefined);
     return unwrap<JourneyResponse>(res.data);
   },
 
-  saveSelectedConceptId: async (conceptId: string): Promise<JourneyResponse> => {
-    const res = await api.post('/creator/journey/phase2/selected-concept', { conceptId });
+  saveSelectedConceptId: async (conceptId: string, ideaId?: string): Promise<JourneyResponse> => {
+    const res = await api.post('/creator/journey/phase2/selected-concept', { conceptId }, ideaId ? { params: { ideaId } } : undefined);
     return unwrap<JourneyResponse>(res.data);
   },
 
@@ -304,6 +307,8 @@ export interface IdeaCard {
   ideaId: string;
   name: string;
   concept: string;
+  /** Fallback snippet for legacy Path-B ideas whose Concept was never populated. */
+  problem: string;
   status: 'active' | 'archived';
   createdAt: string;
   lastActiveAt: string;

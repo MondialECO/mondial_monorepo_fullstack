@@ -79,10 +79,10 @@ namespace WebApp.Controllers
             }
             catch (InsufficientCreditsException ex)
             {
-                // 402 means exactly one thing: the creator's own credits are exhausted.
-                // An upstream OpenRouter 402 (our provider billing) is a service issue → 503.
-                if (ex.Source == CreditFailureSource.ProviderPaymentRequired)
-                    return StatusCode(503, ApiResponse.Error("AI service temporarily unavailable. Please try again later.", HttpContext.TraceIdentifier));
+                // 402 here means exactly one thing: the creator's own credits are
+                // exhausted. DebitForJobAsync is local-ledger-only — it never calls the
+                // provider, so a ProviderPaymentRequired can't reach this catch (that
+                // failure exists only in the async job path, surfaced via the session).
                 return StatusCode(402, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
 
