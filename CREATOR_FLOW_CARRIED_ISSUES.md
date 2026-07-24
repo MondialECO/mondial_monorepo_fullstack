@@ -20,6 +20,7 @@ are localized correctness / data-quality items.
 | CI-5 | Path A merges `Failed` and `NeedsReview` | P3 | inconsistency to verify |
 | CI-6 | `advancePhase` rewrites `completedAt` on every call | P3 | data quality |
 | CI-7 | `ResourceCalculation` type omits the fields Phase 4 uses | P3 | type drift |
+| CI-8 | Pricing seeds tiers by length, not existence (masked) | P4 — not reachable | latent inconsistency |
 
 ---
 
@@ -261,6 +262,50 @@ shape. **Verify the added fields against the actual backend response** (inspect 
 real `GET /creator/journey` payload or `CreatorResourceCalculation`), **not**
 against the local type — the local type is itself unverified and must not be
 treated as the reference.
+
+---
+
+## CI-8 — Pricing seeds tiers by length, not existence — masked, currently unreachable (P4)
+
+**Defect (masked).** The Phase 4 pricing step seeds its tiers with a **length**
+check — `initial?.tiers?.length ? initial.tiers : [defaults]` — so a saved block
+containing **zero tiers** would fall back to the hardcoded defaults (empty-treated-
+as-absent). This is the same pattern the GTM step deliberately **avoids** for its
+audience list, where an **existence** check (`initial ? initial.targetAudiences ?? []
+: [default]`) preserves a deliberately-empty selection. The two steps are
+inconsistent about the empty-vs-absent distinction.
+
+**Why it is NOT a live defect (the masking invariant).** Backend validation enforces
+a floor: **3–5 tiers, each with ≥3 features** (`CreatorPhase4Controller.SetPricing`
+returns 422 otherwise), and the frontend strips blank features on save. So an empty
+(or sub-floor) tiers array can never be **persisted**, and therefore never comes back
+from a saved block — the empty-as-absent branch is unreachable, and no deliberate
+user choice is overwritten today. The features list has no independent reseed at all
+(features ride inside each tier), so there is no features-level empty-as-absent path
+either.
+
+**The cross-layer dependency (why it still deserves recording).** The frontend's
+safety here rests **entirely on that backend invariant**, and nothing near the
+frontend code says so. If the tier/feature floor is ever relaxed on the backend, the
+empty-as-absent overwrite returns silently — no compile-time signal, no test to
+catch it, and the same class of data-loss the Phase 4 hydration work closed elsewhere.
+
+**Where.**
+- Frontend seed (length check): `src/components/creator/phase4/Phase4Pricing.tsx`
+  (`initial?.tiers?.length ? … : [blankTier(...)]`).
+- Contrast — GTM existence check: `src/components/creator/phase4/Phase4Gtm.tsx`
+  (audiences: `initial ? initial.targetAudiences ?? [] : [default]`).
+- Masking invariant: `backend/Controllers/CreatorPhase4Controller.cs:73-79`
+  (3–5 tiers, ≥3 features each → 422).
+
+**Blast radius.** None today (unreachable). Becomes a silent frontend overwrite of a
+saved pricing block only if the backend tier/feature floor is relaxed.
+
+**Fix sketch.** Switch the tiers seed to an **existence** check for consistency with
+GTM (`initial ? initial.tiers ?? [] : [defaults]`, or seed defaults only when the
+block is genuinely absent) — a change with **no reachable behavioural difference
+today**, so it is safe to make whenever the file is next touched. It removes the
+hidden dependency on backend validation rather than relying on it.
 
 ---
 
