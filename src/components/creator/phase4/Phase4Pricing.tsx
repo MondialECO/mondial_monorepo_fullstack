@@ -19,11 +19,20 @@ const blankTier = (name: string, price: number, highlighted = false): PricingTie
   name, price, billingCycle: "monthly", features: ["", "", ""], isHighlighted: highlighted,
 });
 
-export function Phase4Pricing({ onNext }: { onNext: () => void }) {
-  const [model, setModel] = useState("subscription");
-  const [tiers, setTiers] = useState<PricingTier[]>([
-    blankTier("Basic", 9), blankTier("Standard", 19, true), blankTier("Premium", 39),
-  ]);
+export function Phase4Pricing({ initial, onSaved, onNext }: {
+  initial?: { pricingModel?: string | null; tiers?: PricingTier[] | null };
+  onSaved?: (phase4: unknown) => void;
+  onNext: () => void;
+}) {
+  // Seed from saved Phase-4 data; the hardcoded defaults are ONLY for a genuinely
+  // empty block. The host hydrates before mounting this, so the lazy initializers
+  // see final data — saved values can never be clobbered by a late fetch.
+  const [model, setModel] = useState(initial?.pricingModel || "subscription");
+  const [tiers, setTiers] = useState<PricingTier[]>(() =>
+    initial?.tiers?.length
+      ? initial.tiers
+      : [blankTier("Basic", 9), blankTier("Standard", 19, true), blankTier("Premium", 39)],
+  );
   const [insights, setInsights] = useState<{ competitors: string[]; sectorAveragePrice: number } | null>(null);
   const [suggestion, setSuggestion] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -44,6 +53,7 @@ export function Phase4Pricing({ onNext }: { onNext: () => void }) {
       const clean = tiers.map((t) => ({ ...t, features: t.features.filter((f) => f.trim()) }));
       const res = await creatorJourneyApi.setPricing(model, clean);
       setSuggestion(res.suggestion);
+      onSaved?.(res.phase4); // keep the host's saved snapshot current for Back-navigation
       onNext();
     } catch (e) {
       const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;

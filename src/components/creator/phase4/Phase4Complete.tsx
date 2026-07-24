@@ -11,12 +11,17 @@ export function Phase4Complete({ onContinue }: { onContinue: () => void }) {
   const { advancePhase } = useCreatorProgress();
   const [computed, setComputed] = useState<ComputedJourneyStatus | null>(null);
   const [missing, setMissing] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isNavigating, setIsNavigating] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let active = true;
     (async () => {
+      setLoading(true);
+      setError(null);
+      setMissing(null);
       try {
         try {
           await creatorJourneyApi.completeOffer();
@@ -28,33 +33,25 @@ export function Phase4Complete({ onContinue }: { onContinue: () => void }) {
         }
         const { computedStatus } = await creatorJourneyApi.get();
         if (active) setComputed(computedStatus);
+      } catch {
+        // A failed status fetch must read as an ERROR, not as "you haven't finished".
+        if (active) setError("Couldn't check your Phase-4 status. This doesn't mean anything is missing — please retry.");
       } finally {
         if (active) setLoading(false);
       }
     })();
     return () => { active = false; };
-  }, []);
+  }, [attempt]);
 
   // Derived gate — no manual status write.
   const canContinue = computed?.phase4.status === "completed" && computed?.phase5.status === "available";
 
-  const handleContinue = async () => {
+  const handleContinue = () => {
+    // Respect the derived gate: never navigate unless the backend says Phase 4 is
+    // completed and Phase 5 is available (mirrors the Phase-3 complete page).
+    if (!canContinue) return;
     setIsNavigating(true);
     advancePhase(4);
-
-    // Poll backend to confirm phase 5 is unlocked before navigating
-    for (let i = 0; i < 10; i++) {
-      await new Promise(r => setTimeout(r, 500));
-      try {
-        const { computedStatus } = await creatorJourneyApi.get();
-        if (computedStatus?.phase5?.status === "available") {
-          break;
-        }
-      } catch {
-        // continue polling on error
-      }
-    }
-
     onContinue();
   };
 
@@ -70,6 +67,13 @@ export function Phase4Complete({ onContinue }: { onContinue: () => void }) {
 
       {loading && <div className="flex items-center gap-2 text-muted-foreground justify-center"><Loader2 className="h-5 w-5 animate-spin" /> Checking…</div>}
 
+      {!loading && error && (
+        <div className="flex flex-col items-center gap-2">
+          <p className="text-sm text-destructive">{error}</p>
+          <Button variant="outline" size="sm" onClick={() => setAttempt((a) => a + 1)}>Retry</Button>
+        </div>
+      )}
+
       {!loading && missing && (
         <div className="flex items-start gap-3 rounded-xl border border-warning/30 bg-warning/5 p-4 text-sm text-warning text-left">
           <AlertTriangle className="h-5 w-5 shrink-0" />
@@ -77,10 +81,10 @@ export function Phase4Complete({ onContinue }: { onContinue: () => void }) {
         </div>
       )}
 
-      <Button onClick={handleContinue} disabled={isNavigating} className="gap-2 disabled:opacity-60">
+      <Button onClick={handleContinue} disabled={isNavigating || !canContinue} className="gap-2 disabled:opacity-60">
         Continue to The Crossroads {!isNavigating && <ArrowRight className="h-4 w-4" />}
       </Button>
-      {!loading && !canContinue && !missing && (
+      {!loading && !error && !canContinue && !missing && (
         <p className="text-xs text-muted-foreground">Complete all three steps to unlock Phase 5.</p>
       )}
     </div>

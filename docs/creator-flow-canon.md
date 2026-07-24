@@ -80,7 +80,7 @@ During the cutover, every idea write also mirrored to the journey (dual-write) a
 
 - **P1** — KYC + role select
 - **P2** — Smart Gate: **both entry cards ship (LIVE)**. Path B (already-have-idea → clarifier) and Path A (Discovery → concept cards → confirm) are both reachable. Discovery skips the clarifier by seeding a Completed clarifier session at finalize, so it satisfies the Phase-3 prerequisite. Plus project branding + hire-SP-designer.
-- **P3** — AI Masterplan: Business Plan + Financial Forecast + Legal Checklist + Formation Generator (4 modules) → readiness score → completion gate.
+- **P3** — AI Masterplan: Business Plan + Financial Forecast + Legal Checklist + Formation Generator (4 modules) → readiness score → completion gate (gates on plan + forecast + formation; legal is guidance, §5.3).
 - **P4** — Pricing + GTM / landing page.
 - **P5** — Cross-Roads: Path A Marketplace (sell/license) OR Path B The Big Leap (→ 30-day decision timer → Level Up). No formation wizard. Company doc verification deferred to Entrepreneur P2.
 - **P6** — Level Up: badge + confetti + atomic Creator→Entrepreneur switch + Smart Matchmaking unlocks (first point matchmaking is available at all).
@@ -174,7 +174,7 @@ Sections 7/8/9 read live cross-module data, not hardcoded values. Each section h
 
 ### 5.3 Module — Legal Checklist (LIVE)
 
-12-item deterministic, sector-specific, mandatory vs optional (item `Category`), "Find Specialist" opens a workroom. **Gate (LIVE, implemented 2026-07):** *every* mandatory item must be `done` to complete Phase 3 — enforced identically in the derivation engine and the masterplan endpoint via the shared `CreatorLegalChecklist.MandatoryItemsDone` predicate (so the two can't drift). Applied uniformly, **no grandfathering** — a downstream user with untouched mandatory items re-locks to Phase 3 (data preserved; the derivation is pure-read). The compliance page **blocks "Continue" until all mandatory items are done** and shows the outstanding count. (Zero mandatory items → vacuously satisfied, deliberate.)
+12-item deterministic, sector-specific, mandatory vs optional (item `Category`), "Find Specialist" opens a workroom. **Guidance, not a gate (changed 2026-07-24):** legal items never block Phase-3 completion. The checklist is pure self-attestation (checkbox cycling — no upload, no evidence, no verification), so gating on it produced friction, not assurance. Phase 3 completes on **plan + forecast + formation** only; the former shared `MandatoryItemsDone` predicate was deleted along with both of its readers (derivation engine + masterplan endpoint — changed together, no drift). Still true: checklist presence marks Phase 3 "in progress"; `SelectFormationType` auto-completes the company-type item; `CompletedCount` feeds Legal Readiness (0–15, §5.7), the formation skill-gap suggestion, IP valuation, and investor matching. The compliance page's **Continue is always enabled**; outstanding mandatory items are shown as "recommended before launch", never as a blocker.
 
 ### 5.4 Module — Formation Generator (LIVE)
 
@@ -192,7 +192,7 @@ The standalone mock ai-masterplan page (hardcoded financials, fake score "84") w
 
 ### 5.7 Completion gate
 
-Requires all 4 modules; returns 422 with the missing module name otherwise. Crucially, "present" means **success-gated, not presence-of-an-id**: business plan and forecast count only when their AI session is `Status == "Completed"` AND `CurrentVersion > 0` (a failed/pending job routes the user back to that step, not past it); legal requires all mandatory items `done` (§5.3); formation requires its object. All Phase status is **backend-derived** (`ComputePhaseStatus`, pure-read — never a manual write, never mutates data), so re-locking a module leaves downstream data intact. Computes the readiness score with weights 20/20/25/15/20 (Concept Clarity / Market Evidence / Financial Model / Legal Readiness / Team Credibility) → labels **Not Ready / Developing / Strong / Investor-Ready**. Stored and surfaced on the dashboard. This is a Creator-stage score — distinct from the Entrepreneur P7 InvestorReadyScore; do not conflate.
+Requires the three gated modules — business plan, forecast, formation; returns 422 with the missing module name otherwise (the legal checklist is guidance and never 422s, §5.3). Crucially, "present" means **success-gated, not presence-of-an-id**: business plan and forecast count only when their AI session is `Status == "Completed"` AND `CurrentVersion > 0` (a failed/pending job routes the user back to that step, not past it); formation requires its object. Legal Readiness still scores from checklist completion and can be low or 0 if items are left outstanding — deliberate and honest. All Phase status is **backend-derived** (`ComputePhaseStatus`, pure-read — never a manual write, never mutates data), so re-locking a module leaves downstream data intact. Computes the readiness score with weights 20/20/25/15/20 (Concept Clarity / Market Evidence / Financial Model / Legal Readiness / Team Credibility) → labels **Not Ready / Developing / Strong / Investor-Ready**. Stored and surfaced on the dashboard. This is a Creator-stage score — distinct from the Entrepreneur P7 InvestorReadyScore; do not conflate.
 
 ### 5.8 PDF export (LIVE)
 
@@ -280,6 +280,11 @@ The rule: matchmaking is unavailable across P1–P5 and unlocks only at P6. The 
 ---
 
 ## 11. Changelog
+
+**2026-07-24 — legal checklist demoted to guidance (Phase-3 gate removed).**
+- **Rule:** Phase 3 completes on **plan + forecast + formation**; mandatory legal items no longer block the derivation engine or the masterplan endpoint (both readers changed together; the shared `MandatoryItemsDone` predicate deleted as dead code). Rationale: pure self-attestation — the gate produced checkbox-cycling friction, not assurance. §2, §5.3, §5.7.
+- **Unchanged:** checklist presence still marks "in progress"; `CompletedCount` still feeds Legal Readiness ×15, formation skill gaps, IP valuation, and investor matching; `SelectFormationType` still auto-completes company-type. §5.3.
+- **UI:** compliance Continue always enabled; outstanding items framed "recommended before launch" (warning tone, non-blocking). §5.3.
 
 **2026-07-24 — multi-idea architecture documented (§1.6, new).**
 - **Data model:** `CreatorJourney` reduced to a thin user-level pointer (`ActiveIdeaId`, `LeveledUpIdeaId`, `CompanyId`, Level-Up markers); all phase data moved per-idea to the new `CreatorIdeas` collection. Journey's frozen phase blocks must not be read or written. §1.6.1.
