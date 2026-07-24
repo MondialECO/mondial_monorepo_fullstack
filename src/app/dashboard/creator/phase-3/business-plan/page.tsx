@@ -208,6 +208,17 @@ export default function BusinessPlanPage() {
     if (rewriting && currentVersion > rewriting.baseVersion) setRewriting(null);
   }, [currentVersion, rewriting]);
 
+  // FAILED rewrite: the session returns terminal WITHOUT a new version (the backend
+  // guard restores Completed and keeps the plan intact). Clear the skeleton and
+  // surface an honest error — never an endless skeleton with disabled buttons.
+  // Mutually exclusive with the success effect above (version did NOT advance).
+  useEffect(() => {
+    if (rewriting && session.phase === 'terminal' && currentVersion <= rewriting.baseVersion) {
+      setRewriting(null);
+      setStartError({ kind: 'other', message: 'The section rewrite didn’t complete — your plan is unchanged. You can try again.' });
+    }
+  }, [session.phase, currentVersion, rewriting]);
+
   useEffect(() => {
     let active = true;
     (async () => {
@@ -405,6 +416,8 @@ export default function BusinessPlanPage() {
 
       {showGrid && (
         <div className="space-y-4">
+          {/* Rewrite/start errors surface HERE too — previously invisible in the grid. */}
+          {startError && <p className="text-sm text-destructive">{startError.message}</p>}
           {sections.map((s) => {
             const isRewriting = rewriting?.sectionId === s.id;
             const saving = editState?.id === s.id && editState.state === 'saving';

@@ -183,20 +183,49 @@ namespace WebApp.Services.Repository.Ai
         }
 
         /// <summary>Model replied but the output could not be parsed/validated; raw kept on the response.</summary>
-        public Task SetNeedsReviewAsync(string id, string error)
-            => _collection.UpdateOneAsync(
+        public async Task SetNeedsReviewAsync(string id, string error)
+        {
+            if (await TryRestoreCompletedAsync(id, error)) return;
+            await _collection.UpdateOneAsync(
                 x => x.Id == id,
                 Builders<BusinessPlanSession>.Update
                     .Set(x => x.Status, "NeedsReview")
                     .Set(x => x.Error, error)
                     .Set(x => x.UpdatedAt, DateTime.UtcNow));
+        }
 
-        public Task SetFailedAsync(string id, string error)
-            => _collection.UpdateOneAsync(
+        public async Task SetFailedAsync(string id, string error)
+        {
+            if (await TryRestoreCompletedAsync(id, error)) return;
+            await _collection.UpdateOneAsync(
                 x => x.Id == id,
                 Builders<BusinessPlanSession>.Update
                     .Set(x => x.Status, "Failed")
                     .Set(x => x.Error, error)
                     .Set(x => x.UpdatedAt, DateTime.UtcNow));
+        }
+
+        /// <summary>
+        /// REPOSITORY-LEVEL GUARD (deliberately not per-call-site, so no future caller
+        /// can bypass it): a session that has ever completed a generation
+        /// (CurrentVersion &gt; 0) must NEVER be downgraded by a failed OPTIONAL
+        /// operation (section rewrite / regenerate) — the derived-status engine reads
+        /// non-Completed as "no plan" and would re-lock Phase 3+. Instead, RESTORE
+        /// Completed (the status is Processing at failure time), keep the error text
+        /// for surfacing, and leave the existing versions as the truth. Initial
+        /// generations (no versions yet) fall through to terminal Failed/NeedsReview,
+        /// which remains correct. Atomic: the CurrentVersion filter and the $set are
+        /// one UpdateOne.
+        /// </summary>
+        private async Task<bool> TryRestoreCompletedAsync(string id, string error)
+        {
+            var res = await _collection.UpdateOneAsync(
+                x => x.Id == id && x.CurrentVersion > 0,
+                Builders<BusinessPlanSession>.Update
+                    .Set(x => x.Status, "Completed")
+                    .Set(x => x.Error, error)
+                    .Set(x => x.UpdatedAt, DateTime.UtcNow));
+            return res.MatchedCount > 0;
+        }
     }
 }
