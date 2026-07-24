@@ -11,10 +11,30 @@ import {
   type ResourceCalculation,
 } from "@/lib/api-creator-journey";
 
-export function Phase4Resource({ onNext, onBack }: { onNext: () => void; onBack: () => void }) {
-  const [team, setTeam] = useState<TeamRequirement[]>([{ role: "Full-stack Developer", cost: 4000, durationMonths: 3, oneTime: false }]);
-  const [saas, setSaas] = useState<SaasItem[]>([{ name: "Hosting & infra", monthlyCost: 80 }]);
-  const [calc, setCalc] = useState<ResourceCalculation | null>(null);
+// The backend persists the calculator's INPUTS (teamRequirements/saasStack) alongside
+// the computed outputs; the shared ResourceCalculation type only models the outputs.
+type SavedResourceCalculation = ResourceCalculation & {
+  teamRequirements?: TeamRequirement[];
+  saasStack?: SaasItem[];
+};
+
+export function Phase4Resource({ initial, onSaved, onNext, onBack }: {
+  initial?: SavedResourceCalculation | null;
+  onSaved?: (calc: SavedResourceCalculation) => void;
+  onNext: () => void;
+  onBack: () => void;
+}) {
+  // Seed inputs AND the computed result from the saved block; hardcoded defaults only
+  // when it's genuinely empty. Host hydrates before mount — no late-fetch clobber.
+  const [team, setTeam] = useState<TeamRequirement[]>(() =>
+    initial?.teamRequirements?.length
+      ? initial.teamRequirements
+      : [{ role: "Full-stack Developer", cost: 4000, durationMonths: 3, oneTime: false }],
+  );
+  const [saas, setSaas] = useState<SaasItem[]>(() =>
+    initial?.saasStack?.length ? initial.saasStack : [{ name: "Hosting & infra", monthlyCost: 80 }],
+  );
+  const [calc, setCalc] = useState<ResourceCalculation | null>(initial ?? null);
   const [computing, setComputing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [providerNote, setProviderNote] = useState<string | null>(null);
@@ -23,7 +43,9 @@ export function Phase4Resource({ onNext, onBack }: { onNext: () => void; onBack:
   const compute = async () => {
     setComputing(true); setError(null);
     try {
-      setCalc(await creatorJourneyApi.resourceCalculator(team, saas));
+      const result = (await creatorJourneyApi.resourceCalculator(team, saas)) as SavedResourceCalculation;
+      setCalc(result);
+      onSaved?.(result); // keep the host's saved snapshot current for Back-navigation
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't compute.");
     } finally { setComputing(false); }
