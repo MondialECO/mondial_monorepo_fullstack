@@ -19,6 +19,7 @@ are localized correctness / data-quality items.
 | CI-4 | Computed status has no `failed` value | P3 | type / derivation |
 | CI-5 | Path A merges `Failed` and `NeedsReview` | P3 | inconsistency to verify |
 | CI-6 | `advancePhase` rewrites `completedAt` on every call | P3 | data quality |
+| CI-7 | `ResourceCalculation` type omits the fields Phase 4 uses | P3 | type drift |
 
 ---
 
@@ -202,6 +203,51 @@ consumer today — latent data-quality issue).
 
 **Fix sketch.** Only set `completedAt` on the `locked → completed` transition (do
 not overwrite when already set), or remove the field if it has no consumer.
+
+---
+
+## CI-7 — `ResourceCalculation` type omits the fields Phase 4 actually uses (P3)
+
+**Defect.** The shared `ResourceCalculation` type in the creator journey API layer
+models only the calculator's **outputs** (budgets, running cost, time-to-launch,
+breakdown percentages). It omits the two **input** fields the Phase 4 resource step
+reads back on re-entry — `teamRequirements` and `saasStack` — which the backend
+persists and returns as part of the resource block. To keep the Phase 4 hydration
+change scoped, those fields were typed **locally** inside the resource step as
+`SavedResourceCalculation = ResourceCalculation & { teamRequirements?; saasStack? }`
+rather than by extending the shared type. That was the right call at the time, but
+it leaves the component's local type as the *only* description of the real shape.
+
+**Where.**
+- Shared type (incomplete): `src/lib/api-creator-journey.ts:349-353`
+  (`interface ResourceCalculation` — outputs only).
+- Local augmentation (the only description of the full shape):
+  `src/components/creator/phase4/Phase4Resource.tsx` (`type SavedResourceCalculation`),
+  and the host's mirror in `src/app/dashboard/creator/offer-pricing/page.tsx`
+  (`SavedPhase4Data.resourceCalculation` intersection).
+- Backend source of truth: `CreatorResourceCalculation` in
+  `backend/Models/DatabaseModels/CreatorJourney.cs:240-250` (carries
+  `TeamRequirements` + `SaasStack` alongside the outputs).
+
+**Why it matters.** The shared type and the local type describe the same backend
+object but only the local one is complete. If someone later extends the shared
+`ResourceCalculation` working from it — or the backend response shape changes —
+the two definitions can **drift apart with no compile error to catch it**, because
+the intersection silently masks the omission. A consumer trusting the shared type
+would not see `teamRequirements`/`saasStack`; a consumer trusting the local type
+could go stale against the backend.
+
+**Blast radius.** Localized today (Phase 4 resource step + the wizard host), but it
+is a latent correctness trap for anyone extending the shared type or adding a new
+consumer of the resource block.
+
+**Fix sketch.** Extend the shared `ResourceCalculation` type to include
+`teamRequirements` and `saasStack`, and remove the local `SavedResourceCalculation`
+augmentation (and the host's intersection) so there is a single description of the
+shape. **Verify the added fields against the actual backend response** (inspect a
+real `GET /creator/journey` payload or `CreatorResourceCalculation`), **not**
+against the local type — the local type is itself unverified and must not be
+treated as the reference.
 
 ---
 
