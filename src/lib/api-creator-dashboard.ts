@@ -36,7 +36,9 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
 };
 
 export const getDashboardMyIdeas = async (): Promise<Idea[]> => {
-  const res = await api.get('/creator/ideas');
+  // Canonical marketplace route — /creator/ideas now belongs to the multi-idea
+  // list (CreatorIdeasController), which returns a different shape.
+  const res = await api.get('/creator/my-ideas');
   return unwrap<Idea[]>(res.data);
 };
 

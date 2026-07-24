@@ -313,8 +313,10 @@ namespace WebApp.Controllers
         }
 
 
+        // NOTE: the legacy [HttpGet("ideas")] alias was removed — it collided with
+        // CreatorIdeasController's GET /api/creator/ideas (multi-idea list), causing
+        // an AmbiguousMatchException 500 on both. "my-ideas" is the canonical route.
         [HttpGet("my-ideas")]
-        [HttpGet("ideas")]
         public async Task<IActionResult> MyIdeas()
         {
             try
