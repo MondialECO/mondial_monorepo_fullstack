@@ -230,7 +230,7 @@ export default function ConceptNamePage() {
                 </div>
                 <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Step 1 of 2 — Name Your Project</span>
               </div>
-              <h1 className="text-3xl font-extrabold tracking-tight">Name Your Project</h1>
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Name Your Project</h1>
               <p className="text-sm text-muted-foreground">
                 AI has suggested 5 names based on your idea description. Pick one or define your own custom name.
               </p>

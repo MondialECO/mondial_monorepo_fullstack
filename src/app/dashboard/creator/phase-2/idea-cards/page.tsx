@@ -139,7 +139,7 @@ export default function IdeaCardsPage() {
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div className="space-y-2">
             <div className="text-xs font-bold text-primary uppercase tracking-wider">Synthesis Result</div>
-            <h1 className="text-3xl font-extrabold tracking-tight">Analysis Complete</h1>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Analysis Complete</h1>
             <p className="text-sm text-muted-foreground max-w-xl">
               AI synthesis based on your inputs. Concepts are optimized for validation. Select the one that matches your vision.
             </p>

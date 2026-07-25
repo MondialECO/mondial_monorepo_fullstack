@@ -207,7 +207,7 @@ export default function IdeaDiscoveryPage() {
           {/* Main Form (Left Column, spans 2/3) */}
           <div className="lg:col-span-2 space-y-8">
             <div className="space-y-3">
-              <h1 className="text-3xl font-extrabold tracking-tight">Idea Discovery</h1>
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Idea Discovery</h1>
               <p className="text-sm text-muted-foreground">
                 Let&apos;s find your idea together. Provide three inputs to collaborate. We need three data points to synthesize.
               </p>
@@ -227,7 +227,7 @@ export default function IdeaDiscoveryPage() {
                 </h3>
                 <span className="text-xs text-muted-foreground">Select up to 3 sectors for initial analysis</span>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                 {TOPICS.map((topic) => {
                   const isSelected = sectors.includes(topic.id);
                   return (
@@ -279,7 +279,7 @@ export default function IdeaDiscoveryPage() {
                 </h3>
                 <span className="text-xs text-muted-foreground">Select up to 3 capabilities for initial analysis</span>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                 {COMPLEMENTS.map((strength) => {
                   const isSelected = strengths.includes(strength.id);
                   return (

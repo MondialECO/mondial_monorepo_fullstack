@@ -105,7 +105,7 @@ export default function BrandingOptionsPage() {
       {/* Section Header */}
       <div className="px-6 py-8 sm:px-10 max-w-2xl mx-auto w-full text-center">
         <span className="text-xs font-bold text-primary uppercase tracking-wider">Step 2.3</span>
-        <h1 className="text-3xl font-extrabold text-foreground mt-2 leading-tight">
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground mt-2 leading-tight">
           Build your brand identity
         </h1>
         <p className="text-sm text-muted-foreground mt-2 leading-relaxed">

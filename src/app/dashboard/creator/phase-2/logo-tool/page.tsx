@@ -129,7 +129,7 @@ export default function AILogoToolPage() {
         {/* Title Block */}
         <div className="space-y-2">
           <div className="text-xs font-bold text-primary uppercase tracking-wider">Free AI Logo</div>
-          <h1 className="text-3xl font-extrabold tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
             Choose your logo style for "{projectName}"
           </h1>
           <p className="text-sm text-muted-foreground">
