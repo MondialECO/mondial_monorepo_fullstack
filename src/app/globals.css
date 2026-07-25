@@ -11,6 +11,7 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-dm-sans);
+  --font-heading: var(--font-inter);
   /* --font-mono left pointing at an undefined var deliberately — see CI-10.
      Repointing it visibly changes numeric rendering and needs its own decision. */
   --font-mono: var(--font-geist-mono);
