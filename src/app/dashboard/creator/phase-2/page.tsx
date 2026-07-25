@@ -1,14 +1,37 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
 import Image from "next/image";
 
+// Inlined from the committed SVGs in /public/icons/phase2 (path data verbatim; the
+// only change is stroke -> currentColor so the mark inherits its tile's text color
+// for the hover/focus treatment). The .svg files on disk are kept as the exported
+// source of this data — do not delete them.
+// Source: /public/icons/phase2/lamp-charge.svg
+function LampChargeIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M12 7.89L10.93 9.75C10.69 10.16 10.89 10.5 11.36 10.5H12.63C13.11 10.5 13.3 10.84 13.06 11.25L12 13.11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M8.3 18.04V16.88C6 15.49 4.11 12.78 4.11 9.9C4.11 4.95 8.66 1.07 13.8 2.19C16.06 2.69 18.04 4.19 19.07 6.26C21.16 10.46 18.96 14.92 15.73 16.87V18.03C15.73 18.32 15.84 18.99 14.77 18.99H9.26C8.16 19 8.3 18.57 8.3 18.04Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M8.5 22C10.79 21.35 13.21 21.35 15.5 22" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+// Source: /public/icons/phase2/discover.svg
+function DiscoverIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M17.8 2.1L7.87 4.59C6.42 4.95 4.95 6.42 4.59 7.87L2.1 17.8C1.35 20.8 3.19 22.65 6.2 21.9L16.13 19.42C17.57 19.06 19.05 17.58 19.41 16.14L21.9 6.2C22.65 3.2 20.8 1.35 17.8 2.1Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M12 15.5C13.933 15.5 15.5 13.933 15.5 12C15.5 10.067 13.933 8.5 12 8.5C10.067 8.5 8.5 10.067 8.5 12C8.5 13.933 10.067 15.5 12 15.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export default function SmartGatePage() {
   const router = useRouter();
   const { setEntryPath, updateProject } = useCreatorProgress();
-  const [hoveredCard, setHoveredCard] = useState<"left" | "right" | null>(null);
 
   const handleSelectRefinement = () => {
     setEntryPath("already_have_idea");
@@ -45,29 +68,13 @@ export default function SmartGatePage() {
             {/* LEFT CARD — Active Project Refinement */}
             <div
               onClick={handleSelectRefinement}
-              onMouseEnter={() => setHoveredCard("left")}
-              onMouseLeave={() => setHoveredCard(null)}
-              className="flex flex-col justify-between rounded-2xl p-7 sm:p-8 cursor-pointer transition-all duration-300"
-              style={{
-                backgroundColor: "var(--card)",
-                borderWidth: "1px",
-                borderColor: hoveredCard === "left" ? "rgba(60, 97, 221, 0.5)" : "rgba(60, 97, 221, 0.5)",
-                transform: hoveredCard === "left" ? "translateY(-2px)" : "translateY(0)",
-              }}
+              className="group flex flex-col justify-between rounded-2xl p-7 sm:p-8 cursor-pointer transition-all duration-300 border border-[rgba(60,97,221,0.5)] hover:border-[var(--primary)] focus-within:border-[var(--primary)]"
+              style={{ backgroundColor: "var(--card)" }}
             >
               <div className="space-y-5">
-                {/* Icon Tile */}
-                <div
-                  className="h-16 w-16 rounded-lg flex items-center justify-center flex-shrink-0"
-                  style={{ backgroundColor: "var(--primary)" }}
-                >
-                  <Image
-                    src="/icons/phase2/lamp-charge.svg"
-                    alt="Refinement"
-                    width={24}
-                    height={24}
-                    style={{ color: "white" }}
-                  />
+                {/* Icon Tile — inverts (blue→white) on hover/focus so the near-white mark reads as a change */}
+                <div className="h-16 w-16 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors duration-300 bg-[var(--primary)] text-[var(--primary-foreground)] group-hover:bg-[var(--primary-foreground)] group-hover:text-[var(--primary)] group-focus-within:bg-[var(--primary-foreground)] group-focus-within:text-[var(--primary)]">
+                  <LampChargeIcon className="h-6 w-6" />
                 </div>
 
                 {/* Title & Description */}
@@ -123,28 +130,13 @@ export default function SmartGatePage() {
             {/* RIGHT CARD — Explore & Discovery */}
             <div
               onClick={handleSelectDiscovery}
-              onMouseEnter={() => setHoveredCard("right")}
-              onMouseLeave={() => setHoveredCard(null)}
-              className="flex flex-col justify-between rounded-2xl p-7 sm:p-8 cursor-pointer transition-all duration-300"
-              style={{
-                backgroundColor: "var(--card)",
-                borderWidth: "1px",
-                borderColor: "var(--border)",
-                transform: hoveredCard === "right" ? "translateY(-2px)" : "translateY(0)",
-              }}
+              className="group flex flex-col justify-between rounded-2xl p-7 sm:p-8 cursor-pointer transition-all duration-300 border border-[var(--border)] hover:border-[var(--muted-foreground)] focus-within:border-[var(--muted-foreground)]"
+              style={{ backgroundColor: "var(--card)" }}
             >
               <div className="space-y-5">
-                {/* Icon Tile */}
-                <div
-                  className="h-16 w-16 rounded-lg flex items-center justify-center flex-shrink-0"
-                  style={{ backgroundColor: "var(--muted)" }}
-                >
-                  <Image
-                    src="/icons/phase2/discover.svg"
-                    alt="Discovery"
-                    width={24}
-                    height={24}
-                  />
+                {/* Icon Tile — stays neutral; only the mark takes a blue accent on hover/focus (quiet card) */}
+                <div className="h-16 w-16 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors duration-300 bg-[var(--muted)] text-[var(--foreground)] group-hover:text-[var(--primary)] group-focus-within:text-[var(--primary)]">
+                  <DiscoverIcon className="h-6 w-6" />
                 </div>
 
                 {/* Title & Description */}
