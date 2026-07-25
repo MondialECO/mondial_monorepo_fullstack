@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Loader2, ArrowRight, X, Check, Copy, Send, FileText } from "lucide-react";
+import { Loader2, ArrowRight, X, Check, Copy, Send, FileText, Pencil } from "lucide-react";
 import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
 import { creatorAiApi } from "@/lib/api-creator-ai";
 import { creatorJourneyApi } from "@/lib/api-creator-journey";
@@ -73,6 +73,8 @@ export default function AIClarifierPage() {
   const [finalizeError, setFinalizeError] = useState<string | null>(null);
   const [finalizeSlow, setFinalizeSlow] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  // Index into `messages` of the user answer being edited in place (null = not editing).
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
   const [canvasBlocks, setCanvasBlocks] = useState<CanvasBlock[]>([
     { title: "CONCEPT", unlockQ: 2, value: "", key: "concept" },
@@ -172,6 +174,51 @@ export default function AIClarifierPage() {
   }, [finalizing]);
 
   const handleSend = async () => {
+    // ── Edit-in-place branch ──
+    // Update the answer at editingIndex instead of appending a new turn, then re-derive
+    // the journal + project mirror. NO backend call: the backend keeps the original text
+    // (chat-message is append-only). Acceptable because the follow-up questions are a
+    // fixed server script (not content-dependent) and finalize builds rawIdea from these
+    // frontend `messages`; the durable backend-synced edit is filed as CI-13. Runs before
+    // the guard below so an answer can still be revised once summaryReady (issue 1).
+    if (editingIndex !== null) {
+      const editText = inputValue.trim();
+      if (!editText) return; // empty/whitespace while editing → no-op, edit stays active
+      const target = messages[editingIndex];
+      if (!target || target.sender !== "user") {
+        setEditingIndex(null);
+        return;
+      }
+
+      const editedMessages = messages.map((m, i) => (i === editingIndex ? { ...m, text: editText } : m));
+      setMessages(editedMessages);
+
+      // 1-based ordinal of this answer among user turns → its journal/project slot
+      // (answer N maps to canvasBlocks[N-1]; answer 6 "Key Risk" maps to no block).
+      const answerOrdinal = editedMessages.slice(0, editingIndex + 1).filter((m) => m.sender === "user").length;
+      if (answerOrdinal === 1) setJournalText(editText);
+      const blockKey = canvasBlocks[answerOrdinal - 1]?.key;
+      setCanvasBlocks((prev) =>
+        prev.map((block, i) =>
+          i === answerOrdinal - 1
+            ? { ...block, value: editText.length > 30 ? editText.substring(0, 28) + "..." : editText }
+            : block
+        )
+      );
+      setState((prev) => ({
+        ...prev,
+        project: blockKey ? { ...prev.project, [blockKey]: editText, exists: true } : prev.project,
+        journeyState: {
+          ...prev.journeyState,
+          phase2: { ...prev.journeyState.phase2, chatMessages: editedMessages },
+        },
+      }));
+
+      setEditingIndex(null);
+      setInputValue("");
+      return;
+    }
+
     if (!inputValue.trim() || isTyping || summaryReady || finalizing) return;
     const userText = inputValue.trim();
     const userMsgId = Date.now().toString();
@@ -258,6 +305,20 @@ export default function AIClarifierPage() {
     } catch {
       // Clipboard unavailable (insecure context / denied) — silently no-op.
     }
+  };
+
+  // Enter edit-in-place for a user answer: pull its text into the input and mark the
+  // index. handleSend's edit branch (stage 3) updates in place instead of appending.
+  const handleEditStart = (index: number) => {
+    if (isTyping || finalizing) return;
+    setInputValue(messages[index].text);
+    setEditingIndex(index);
+    setCopiedId(null);
+  };
+
+  const handleEditCancel = () => {
+    setEditingIndex(null);
+    setInputValue("");
   };
 
   // Poll the C-2 clarifier session until terminal, using the shared R12 policy
@@ -354,7 +415,7 @@ export default function AIClarifierPage() {
 
   return (
     <div className="w-full" style={{ backgroundColor: "var(--background)" }}>
-      <div className="mx-auto w-full max-w-[1200px] px-4 sm:px-6 py-8 sm:py-10 space-y-6">
+      <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 py-8 sm:py-10 space-y-6">
 
         {/* ── Heading block ── */}
         <div className="space-y-2">
@@ -416,26 +477,34 @@ export default function AIClarifierPage() {
               style={{ backgroundColor: "var(--popover)", borderColor: "var(--border)" }}
             >
               <div
-                className="h-[420px] sm:h-[460px] overflow-y-auto p-4 flex flex-col gap-3 [scrollbar-width:thin] [scrollbar-color:var(--border)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[var(--border)]"
+                className="h-[420px] sm:h-[550px] overflow-y-auto p-4 flex flex-col gap-3 [scrollbar-width:thin] [scrollbar-color:var(--border)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[var(--border)]"
               >
-                {messages.map((msg) => {
+                {messages.map((msg, index) => {
                   const isUser = msg.sender === "user";
                   // Send-failure notes are pushed as ai-sender messages with an "err-" id
                   // (handleSend rollback). Flag them for destructive styling — no logic change.
                   const isError = msg.id.startsWith("err-");
+                  const isEditing = isUser && editingIndex === index;
                   return (
                     <div
                       key={msg.id}
                       className={`flex flex-col ${isUser ? "items-end" : "items-start"}`}
                     >
+                      {/* "Editing" tag on the answer currently pulled into the input */}
+                      {isEditing && (
+                        <span className="mb-1 text-[10px] font-semibold uppercase tracking-wide" style={{ color: "var(--primary)" }}>
+                          Editing…
+                        </span>
+                      )}
                       {/* Assistant and user bubbles share bg/border/radius by design —
                           they differ only by alignment and max width. Off-screen speaker
-                          label distinguishes them for assistive tech. */}
+                          label distinguishes them for assistive tech. The answer being
+                          edited gets a --primary border to tie it to the input below. */}
                       <div
                         className={`rounded-2xl border px-[18px] py-[14px] text-sm leading-relaxed ${isUser ? "max-w-[548px]" : "max-w-[580px]"}`}
                         style={{
                           backgroundColor: isError ? "color-mix(in srgb, var(--destructive) 8%, transparent)" : "var(--card)",
-                          borderColor: isError ? "var(--destructive)" : "var(--border)",
+                          borderColor: isEditing ? "var(--primary)" : isError ? "var(--destructive)" : "var(--border)",
                           color: isError ? "var(--destructive)" : "var(--foreground)",
                         }}
                       >
@@ -443,24 +512,40 @@ export default function AIClarifierPage() {
                         {msg.text}
                       </div>
 
-                      {/* Copy action on user messages (edit icon omitted — CI-13). */}
-                      {isUser && (
-                        <button
-                          onClick={() => handleCopy(msg.id, msg.text)}
-                          aria-label="Copy your answer"
-                          className="mt-1.5 inline-flex items-center gap-1 text-[11px] transition-colors"
-                          style={{ color: copiedId === msg.id ? "var(--p8-green)" : "var(--muted-foreground)" }}
-                          onMouseEnter={(e) => { if (copiedId !== msg.id) e.currentTarget.style.color = "var(--foreground)"; }}
-                          onMouseLeave={(e) => { if (copiedId !== msg.id) e.currentTarget.style.color = "var(--muted-foreground)"; }}
-                        >
-                          {copiedId === msg.id ? (
-                            <>
-                              <Check className="h-4 w-4" /> Copied
-                            </>
-                          ) : (
-                            <Copy className="h-4 w-4" />
-                          )}
-                        </button>
+                      {/* Edit-in-place + copy actions on user messages. Edit populates
+                          the input and marks this index; gated on !isTyping && !finalizing
+                          (no summaryReady gate — editing before finalize is the key case).
+                          Hidden on the message currently being edited (it's in the input). */}
+                      {isUser && !isEditing && (
+                        <div className="mt-1.5 flex items-center gap-2">
+                          <button
+                            onClick={() => handleEditStart(index)}
+                            disabled={isTyping || finalizing}
+                            aria-label="Edit your answer"
+                            className="inline-flex items-center text-[11px] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                            style={{ color: "var(--muted-foreground)" }}
+                            onMouseEnter={(e) => { if (!isTyping && !finalizing) e.currentTarget.style.color = "var(--foreground)"; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.color = "var(--muted-foreground)"; }}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleCopy(msg.id, msg.text)}
+                            aria-label="Copy your answer"
+                            className="inline-flex items-center gap-1 text-[11px] transition-colors"
+                            style={{ color: copiedId === msg.id ? "var(--p8-green)" : "var(--muted-foreground)" }}
+                            onMouseEnter={(e) => { if (copiedId !== msg.id) e.currentTarget.style.color = "var(--foreground)"; }}
+                            onMouseLeave={(e) => { if (copiedId !== msg.id) e.currentTarget.style.color = "var(--muted-foreground)"; }}
+                          >
+                            {copiedId === msg.id ? (
+                              <>
+                                <Check className="h-4 w-4" /> Copied
+                              </>
+                            ) : (
+                              <Copy className="h-4 w-4" />
+                            )}
+                          </button>
+                        </div>
                       )}
                     </div>
                   );
@@ -486,20 +571,36 @@ export default function AIClarifierPage() {
             </div>
 
             {/* ── Input row + keyboard hint ──
-                Rendered only while questions remain. Once summaryReady the whole block
-                is replaced (stage 5) by the finalize CTA, so the input and the CTA are a
-                strict either/or on summaryReady and never both render. */}
-            {!summaryReady ? (
+                Renders while questions remain OR while editing — editing takes precedence
+                so an answer can be revised even after all six are answered (issue 1). Once
+                not editing and summaryReady, the finalize states below render instead. */}
+            {editingIndex !== null || !summaryReady ? (
               <div className="mt-4 shrink-0">
+                {editingIndex !== null && (
+                  <div className="mb-2 flex items-center justify-between px-1">
+                    <span className="text-[11px] font-medium" style={{ color: "var(--primary)" }}>
+                      Editing your answer
+                    </span>
+                    <button
+                      onClick={handleEditCancel}
+                      className="inline-flex items-center gap-1 text-[11px] transition-colors"
+                      style={{ color: "var(--muted-foreground)" }}
+                      onMouseEnter={(e) => (e.currentTarget.style.color = "var(--foreground)")}
+                      onMouseLeave={(e) => (e.currentTarget.style.color = "var(--muted-foreground)")}
+                    >
+                      <X className="h-3.5 w-3.5" /> Cancel
+                    </button>
+                  </div>
+                )}
                 <div
                   className="flex items-end gap-2 rounded-xl border p-1.5 focus-within:ring-1 focus-within:ring-[var(--ring)] transition-shadow"
-                  style={{ backgroundColor: "var(--popover)", borderColor: "var(--border)" }}
+                  style={{ backgroundColor: "var(--popover)", borderColor: editingIndex !== null ? "var(--primary)" : "var(--border)" }}
                 >
                   <textarea
                     value={inputValue}
                     onChange={(e) => setInputValue(e.target.value)}
                     onKeyDown={handleKeyPress}
-                    placeholder="Type your answer..."
+                    placeholder={editingIndex !== null ? "Revise your answer..." : "Type your answer..."}
                     rows={1}
                     disabled={isTyping}
                     className="flex-1 resize-none bg-transparent outline-none border-none px-3 py-2.5 text-sm min-h-[40px] max-h-[120px] placeholder:text-muted-foreground"
@@ -508,15 +609,23 @@ export default function AIClarifierPage() {
                   <button
                     onClick={handleSend}
                     disabled={!inputValue.trim() || isTyping}
-                    aria-label="Send answer"
+                    aria-label={editingIndex !== null ? "Save edit" : "Send answer"}
                     className="flex items-center justify-center rounded-lg shrink-0 transition-opacity disabled:opacity-50"
                     style={{ width: 44, height: 44, backgroundColor: "var(--primary)", color: "var(--primary-foreground)" }}
                   >
-                    {isTyping ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+                    {isTyping ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : editingIndex !== null ? (
+                      <Check className="h-5 w-5" />
+                    ) : (
+                      <Send className="h-5 w-5" />
+                    )}
                   </button>
                 </div>
                 <p className="mt-2 text-center text-[11px]" style={{ color: "var(--muted-foreground)" }}>
-                  Press Enter to send&nbsp;&nbsp;Shift + Enter for new line
+                  {editingIndex !== null
+                    ? "Press Enter to save your edit"
+                    : "Press Enter to send  Shift + Enter for new line"}
                 </p>
               </div>
             ) : finalizeError ? (
