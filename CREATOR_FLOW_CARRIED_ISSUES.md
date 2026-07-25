@@ -24,6 +24,7 @@ are localized correctness / data-quality items.
 | CI-9 | Profile screen pins 37 font overrides, incl. a fourth family | P3 | typography debt |
 | CI-10 | Monospace mapping undefined — numeric sites never rendered mono | P3 | design-intent divergence |
 | CI-11 | Product never loaded any declared font (root cause, fixed 2026-07) | Record | historical root cause |
+| CI-12 | Homepage display accents pin three families that never load | P3 | design-intent divergence |
 
 ---
 
@@ -390,7 +391,34 @@ surface, out of dashboard scope).
 
 ---
 
+## CI-12 — Homepage display accents pin three families that never load (P3)
+
+**Divergence.** The marketing homepage pins three display families by name, and
+none of them is loaded anywhere — so all three have rendered in fallback since
+they were written, and still do:
+
+- **Playfair Display** — `HeroSection.tsx:102` (inline), `FeaturesSection.tsx:40`
+  (`font-playfair` utility), `FeaturesSection2.tsx:226` (inline), `FAQ.tsx:90`
+  (inline). Falls back to Georgia (the fallback stack's serif), so the
+  serif-italic *intent* partially lands, but not the designed family. A ready
+  `next/font` instance (`playfairDisplay`) already exists in `src/lib/fonts.ts`
+  and is simply not imported in the root layout — the fix is a one-line import
+  plus adding its variable to the html className, decided deliberately because
+  it adds a font download to every route.
+- **Instrument Sans** — `HeroSection.tsx:92` (the main hero headline). Nothing
+  loads it (no package, no `next/font` instance); falls back to the system sans.
+- **PP Editorial Old** — `Pricing.tsx:305`. A commercial family, not on Google
+  Fonts; nothing loads it; falls back to a system serif.
+
+**Why record rather than fix.** Same class as CI-9/CI-10/CI-11: loading these
+changes visible marketing typography and (for PP Editorial Old) requires a
+licensing decision. Marketing surface is out of scope for the 2026-07 dashboard
+typography pass. Until fixed, treat homepage accent typography as *fallback
+rendering, not design reference* when comparing against mockups.
+
+---
+
 *CI-1 through CI-8 filed during the Creator Phase 2 completion-page work (2026-07);
-CI-9 through CI-11 filed during the global typography work (2026-07). No GitHub
+CI-9 through CI-12 filed during the global typography work (2026-07). No GitHub
 issue tracker / `gh` CLI is configured in this repo; the established convention is
 standalone markdown docs (`FIX_0N_*.md`, `*_AUDIT.md`), which this file follows.*
