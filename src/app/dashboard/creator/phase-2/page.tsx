@@ -110,7 +110,7 @@ export default function SmartGatePage() {
 
               {/* Button */}
               <button
-                onClick={handleSelectRefinement}
+                onClick={(e) => { e.stopPropagation(); handleSelectRefinement(); }}
                 className="w-full mt-6 px-6 py-3 rounded-lg font-semibold text-sm flex items-center justify-center gap-2 transition-all"
                 style={{
                   backgroundColor: "var(--primary)",
@@ -178,7 +178,7 @@ export default function SmartGatePage() {
 
               {/* Button */}
               <button
-                onClick={handleSelectDiscovery}
+                onClick={(e) => { e.stopPropagation(); handleSelectDiscovery(); }}
                 className="w-full mt-6 px-6 py-3 rounded-lg font-semibold text-sm flex items-center justify-center gap-2 transition-all"
                 style={{
                   backgroundColor: "var(--popover)",
