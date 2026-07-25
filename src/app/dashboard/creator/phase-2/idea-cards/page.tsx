@@ -2,14 +2,89 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Sparkles, ArrowLeft, ArrowRight, Check, RefreshCw, BarChart2, ShieldAlert, Award, AlertTriangle, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, AlertTriangle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
 import { creatorAiApi } from "@/lib/api-creator-ai";
 import { creatorJourneyApi } from "@/lib/api-creator-journey";
 import { mapGeneratedIdeas } from "@/lib/creator/map-generated-ideas";
 import type { UiConcept } from "@/lib/creator/map-generated-ideas";
+
+// One concept card, styled to the Figma "Article - Card". Selected → primary
+// border + soft shadow, and the "Got My Idea" button flips to filled primary.
+function ConceptCard({ concept, isSelected, onSelect, onConfirm }: { concept: UiConcept; isSelected: boolean; onSelect: () => void; onConfirm: () => void }) {
+  return (
+    <div
+      onClick={onSelect}
+      className="w-full flex flex-col gap-6 rounded-2xl border p-[17px] cursor-pointer transition-all"
+      style={{
+        backgroundColor: "var(--card)",
+        borderColor: isSelected ? "var(--primary)" : "var(--card-edge)",
+        boxShadow: isSelected ? "0 0 22px rgba(0,0,0,0.06)" : undefined,
+      }}
+    >
+      <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-4">
+          {/* Title + tags + score */}
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1 min-w-0 flex flex-col gap-3">
+              <span className="text-xl font-semibold" style={{ color: "var(--foreground)" }}>{concept.title}</span>
+              <div className="flex flex-wrap gap-2">
+                <span className="rounded px-2 py-1 text-xs" style={{ backgroundColor: "var(--muted)", borderWidth: "1px", borderStyle: "solid", borderColor: "var(--stroke-10)", color: "var(--muted-foreground)" }}>
+                  {concept.category}
+                </span>
+              </div>
+            </div>
+            <div className="flex flex-col items-center justify-between self-stretch gap-2 shrink-0">
+              <div className="rounded-full flex items-center justify-center" style={{ width: 39, height: 38, backgroundColor: "var(--popover)", borderWidth: "1px", borderStyle: "solid", borderColor: "var(--border)" }}>
+                <span className="text-base font-semibold" style={{ color: "var(--primary)" }}>{concept.score}</span>
+              </div>
+              <span className="text-xs font-medium text-right" style={{ color: "var(--primary)" }}>Clarity Score</span>
+            </div>
+          </div>
+          {/* Description */}
+          <p className="text-sm leading-relaxed" style={{ color: "var(--muted-foreground)" }}>{concept.description}</p>
+        </div>
+
+        {/* Metrics */}
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-4 text-sm">
+            <span className="flex-1" style={{ color: "var(--muted-foreground)" }}>Market Size (TAM)</span>
+            <span className="font-semibold" style={{ color: "var(--foreground)" }}>{concept.tam}</span>
+          </div>
+          <div className="h-1 rounded-xl w-full overflow-hidden" style={{ backgroundColor: "var(--stroke-10)" }}>
+            <div className="h-full rounded-xl" style={{ width: "70%", backgroundColor: "var(--primary)" }} />
+          </div>
+          <div className="flex items-center justify-between text-sm">
+            <span style={{ color: "var(--muted-foreground)" }}>Competitor Saturation</span>
+            <span className="font-semibold" style={{ color: "var(--foreground)" }}>{concept.saturation}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer — select on first click, confirm (proceed) when already selected */}
+      <div className="flex flex-col gap-3">
+        <span className="text-sm" style={{ color: "var(--muted-foreground)" }}>Similar to: {concept.similarTo}</span>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); if (isSelected) onConfirm(); else onSelect(); }}
+          className="w-full flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-[13px] font-semibold transition-colors"
+          style={{
+            backgroundColor: isSelected ? "var(--primary)" : "var(--muted)",
+            borderWidth: isSelected ? "0" : "1px",
+            borderStyle: "solid",
+            borderColor: "var(--border)",
+            color: isSelected ? "var(--primary-foreground)" : "var(--muted-foreground)",
+          }}
+        >
+          Got My Idea
+          <ArrowRight className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function IdeaCardsPage() {
   const router = useRouter();
@@ -111,64 +186,27 @@ export default function IdeaCardsPage() {
   };
 
   return (
-    <div className="w-full flex-1 flex flex-col bg-background text-foreground min-h-screen">
-      {/* Isolated Onboarding Header */}
-      {/* <header className="flex items-center justify-between border-b border-border bg-card/50 backdrop-blur-xs px-6 py-4">
-        <Button
-          variant="ghost"
-          onClick={() => router.push("/dashboard/creator/phase-2/discovery")}
-          className="flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back
-        </Button>
-        <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-          <Sparkles className="h-3 w-3" />
-          Phase 2 of 6 — Idea Candidates
-        </div>
-      </header> */}
+    <div className="w-full" style={{ backgroundColor: "var(--background)" }}>
+      <div className="mx-auto w-full max-w-[1140px] px-4 sm:px-6 py-8 sm:py-10 flex flex-col gap-10">
 
-      {/* Progress Bar (35% filled) */}
-      <div className="h-[3px] w-full bg-muted">
-        <div className="h-full bg-primary" style={{ width: "35%" }} />
-      </div>
-
-      <main className="flex-1 max-w-[1140px] mx-auto w-full px-6 py-10 space-y-8">
-        
-        {/* Title and Top Actions */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-          <div className="space-y-2">
-            <div className="text-xs font-bold text-primary uppercase tracking-wider">Synthesis Result</div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Analysis Complete</h1>
-            <p className="text-sm text-muted-foreground max-w-xl">
-              AI synthesis based on your inputs. Concepts are optimized for validation. Select the one that matches your vision.
-            </p>
+        {/* Header */}
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-4">
+            <h1 className="text-2xl sm:text-3xl font-semibold" style={{ color: "var(--foreground)" }}>Synthesis result</h1>
+            <span className="inline-flex items-center gap-1.5 rounded-full pl-2 pr-3 py-1" style={{ backgroundColor: "var(--secondary)", borderWidth: "1px", borderStyle: "solid", borderColor: "var(--border)" }}>
+              <CheckCircle2 className="w-3 h-3" style={{ color: "var(--primary)" }} />
+              <span className="text-[11px] font-medium" style={{ color: "var(--primary)" }}>Analysis Complete</span>
+            </span>
           </div>
-
-          <div className="flex items-center gap-3">
-            <Button
-              variant="outline"
-              onClick={() => router.push("/dashboard/creator/phase-2/discovery")}
-              className="rounded-xl text-xs font-bold px-4 py-2 flex items-center gap-2"
-            >
-              <RefreshCw className="h-3.5 w-3.5" />
-              Edit Inputs
-            </Button>
-
-            <Button
-              variant="ghost"
-              onClick={() => setShowConfirmReset(true)}
-              className="rounded-xl text-xs font-bold px-4 py-2 hover:bg-destructive/10 hover:text-destructive"
-            >
-              Create New
-            </Button>
-          </div>
+          <p className="text-base" style={{ color: "var(--muted-foreground)" }}>
+            AI synthesis of your inputs. Concepts optimized for validation.
+          </p>
         </div>
 
         {/* Loading state — fetching the AI session */}
         {hydrating && concepts.length === 0 && (
-          <div className="flex flex-col items-center justify-center gap-3 py-20 text-muted-foreground">
-            <Loader2 className="h-7 w-7 animate-spin text-primary" />
+          <div className="flex flex-col items-center justify-center gap-3 py-20" style={{ color: "var(--muted-foreground)" }}>
+            <Loader2 className="h-7 w-7 animate-spin" style={{ color: "var(--primary)" }} />
             <p className="text-sm font-semibold">Loading your generated concepts…</p>
           </div>
         )}
@@ -176,126 +214,66 @@ export default function IdeaCardsPage() {
         {/* Empty state — no concepts and nothing in flight */}
         {!hydrating && concepts.length === 0 && (
           <div className="flex flex-col items-center justify-center gap-4 py-20 text-center">
-            <div className="h-14 w-14 rounded-full bg-destructive/10 text-destructive flex items-center justify-center">
+            <div className="h-14 w-14 rounded-full flex items-center justify-center" style={{ backgroundColor: "color-mix(in srgb, var(--destructive) 10%, transparent)", color: "var(--destructive)" }}>
               <AlertTriangle className="h-7 w-7" />
             </div>
             <div className="space-y-1">
-              <h3 className="text-lg font-bold">No concepts to show</h3>
-              <p className="text-sm text-muted-foreground max-w-md">
+              <h3 className="text-lg font-semibold" style={{ color: "var(--foreground)" }}>No concepts to show</h3>
+              <p className="text-sm max-w-md" style={{ color: "var(--muted-foreground)" }}>
                 We couldn&apos;t load generated concepts for this session. Head back to Discovery to generate a fresh set.
               </p>
             </div>
             <Button
               onClick={() => router.push("/dashboard/creator/phase-2/discovery")}
-              className="rounded-xl px-6 py-5 text-sm font-bold bg-primary text-primary-foreground hover:bg-primary/95 flex items-center gap-2"
+              className="rounded-xl px-6 py-5 text-sm font-semibold flex items-center gap-2"
             >
-              <RefreshCw className="h-4 w-4" />
+              <ArrowLeft className="h-4 w-4" />
               Back to Discovery
             </Button>
           </div>
         )}
 
-        {/* Concept Cards Grid */}
+        {/* Concept Cards */}
         {concepts.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {concepts.map((concept) => {
-            const isSelected = selected === concept.id;
-            return (
-              <Card
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {concepts.map((concept) => (
+              <ConceptCard
                 key={concept.id}
-                onClick={() => handleSelect(concept.id)}
-                className={`flex flex-col justify-between rounded-2xl border p-6 text-left transition-all duration-300 cursor-pointer ${
-                  isSelected
-                    ? "border-primary bg-primary/5 shadow-md shadow-primary/5 -translate-y-0.5"
-                    : "border-border bg-card hover:border-primary/40"
-                }`}
-              >
-                <CardContent className="p-0 flex flex-col justify-between h-full min-h-[300px] space-y-6">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="rounded-full bg-primary/10 border border-primary/20 text-primary px-3 py-0.5 text-[10px] font-bold uppercase tracking-wider">
-                        {concept.category}
-                      </span>
-                      {isSelected && (
-                        <div className="h-6 w-6 rounded-full bg-primary flex items-center justify-center">
-                          <Check className="h-3.5 w-3.5 text-primary-foreground" strokeWidth={3} />
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="space-y-2">
-                      <h3 className="text-lg font-bold text-foreground">
-                        {concept.title}
-                      </h3>
-                      <p className="text-xs sm:text-sm leading-relaxed text-muted-foreground">
-                        {concept.description}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Metrics Panel */}
-                  <div className="space-y-2.5 border-t border-border pt-4">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground flex items-center gap-1.5 font-semibold">
-                        <Award className="h-4 w-4 text-primary" /> Viability Score
-                      </span>
-                      <span className="font-bold text-foreground">{concept.score}%</span>
-                    </div>
-
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground flex items-center gap-1.5 font-semibold">
-                        <BarChart2 className="h-4 w-4 text-primary" /> Market Size (TAM)
-                      </span>
-                      <span className="font-bold text-foreground">{concept.tam}</span>
-                    </div>
-
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground flex items-center gap-1.5 font-semibold">
-                        <ShieldAlert className="h-4 w-4 text-primary" /> Competitor Saturation
-                      </span>
-                      <span className="font-bold text-foreground">{concept.saturation}</span>
-                    </div>
-
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground flex items-center gap-1.5 font-semibold">
-                        Similar to
-                      </span>
-                      <span className="font-medium text-foreground italic"> {concept.similarTo}</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+                concept={concept}
+                isSelected={selected === concept.id}
+                onSelect={() => handleSelect(concept.id)}
+                onConfirm={handleConfirm}
+              />
+            ))}
+          </div>
         )}
 
-        {/* Bottom Panel */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-border pt-6">
-          <div className="text-xs text-muted-foreground">
-            None of these?{" "}
-            <Button
-              variant="link"
-              className="p-0 h-auto text-primary font-bold inline-flex items-center gap-0.5 hover:underline"
+        {/* Bottom bar */}
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <button
+              type="button"
               onClick={() => router.push("/dashboard/creator/phase-2/discovery")}
+              className="inline-flex items-center gap-2 py-3 text-base font-medium transition-colors"
+              style={{ color: "var(--muted-foreground)" }}
             >
-              Describe your own idea
-            </Button>
+              <ArrowLeft className="w-5 h-5" />
+              Edit Inputs
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowConfirmReset(true)}
+              className="inline-flex items-center gap-2 px-6 py-3 text-base font-medium transition-colors"
+              style={{ color: "var(--primary)" }}
+            >
+              None of this — describe your new idea
+              <ArrowRight className="w-5 h-5" />
+            </button>
           </div>
-
-          <Button
-            onClick={handleConfirm}
-            disabled={!selected}
-            className="rounded-xl px-6 py-5 text-sm font-bold bg-primary text-primary-foreground hover:bg-primary/95 flex items-center gap-2 disabled:opacity-40"
-          >
-            Choose This Idea
-            <ArrowRight className="h-4 w-4" />
-          </Button>
           {/* Selection-save failure — visible, non-blocking (confirm carries the id explicitly). */}
-          {selectSaveError && <p className="text-xs text-destructive text-center">{selectSaveError}</p>}
+          {selectSaveError && <p className="text-xs text-center" style={{ color: "var(--destructive)" }}>{selectSaveError}</p>}
         </div>
-
-      </main>
+      </div>
 
       {/* Confirm Reset Modal */}
       {showConfirmReset && (

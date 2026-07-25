@@ -1,13 +1,20 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ChevronRight, Sparkles, CheckCircle2, ArrowLeft, ArrowRight, ShieldCheck, BarChart3, FileText, Users, Loader2, AlertTriangle } from "lucide-react";
+import { Sparkles, CheckCircle2, ArrowRight, ShieldCheck, BarChart3, FileText, Users, Loader2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
 import { creatorJourneyApi } from "@/lib/api-creator-journey";
 import type { ComputedJourneyStatus } from "@/types/creator/journey-api";
 import { useState, useEffect } from "react";
+
+// Phase 3 "Masterplan" unlocks shown on the success screen (labels per Figma).
+const MASTERPLAN_ITEMS = [
+  { icon: FileText, label: "AI Business Plan" },
+  { icon: BarChart3, label: "AI Financial Forecast" },
+  { icon: ShieldCheck, label: "Legal & Structural Checklist" },
+  { icon: Users, label: "Formation Generator" },
+] as const;
 
 export default function Phase2CompletePage() {
   const router = useRouter();
@@ -117,7 +124,7 @@ export default function Phase2CompletePage() {
   };
 
   return (
-    <div className="w-full flex-1 flex flex-col bg-background text-foreground min-h-screen">
+    <div className="w-full" style={{ backgroundColor: "var(--background)" }}>
       {/* Header */}
       {/* <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-6 py-4 border-b border-border bg-card/50 backdrop-blur-xs gap-4">
         <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground font-medium">
@@ -132,11 +139,6 @@ export default function Phase2CompletePage() {
           Phase 2 Complete
         </div>
       </div> */}
-
-      {/* Progress bar (100% for Phase 2) */}
-      <div className="w-full h-[3px] bg-muted">
-        <div className="h-full bg-primary rounded-r" style={{ width: "100%" }} />
-      </div>
 
       {/* Gating fetch in flight (two-layer: after context hydration) */}
       {statusLoading && (
@@ -179,201 +181,121 @@ export default function Phase2CompletePage() {
         </div>
       )}
 
-      {/* Eligible — the existing completion screen, unchanged */}
+      {/* Eligible — completion screen, restyled to the Figma design */}
       {!statusLoading && !statusError && canContinue && (
-      <div className="flex-1 p-6 sm:p-10 max-w-4xl mx-auto w-full space-y-10">
+      <div className="mx-auto w-full max-w-[640px] px-4 sm:px-6 py-8 sm:py-12 flex flex-col gap-8">
 
         {/* Success Header */}
-        <div className="text-center space-y-4 max-w-lg mx-auto py-4">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-500/10 border border-green-500/20 text-green-600 mb-2">
-            <CheckCircle2 className="w-10 h-10" />
+        <div className="flex flex-col items-center gap-2 text-center">
+          <div
+            className="rounded-full flex items-center justify-center"
+            style={{ width: 72, height: 72, backgroundColor: "var(--popover)", borderWidth: "1px", borderStyle: "solid", borderColor: "var(--border)" }}
+          >
+            <CheckCircle2 className="w-8 h-8" style={{ color: "var(--p8-green)" }} />
           </div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
-            Project Identity Ready
+          <div className="inline-flex items-center gap-1.5 pr-3 py-1">
+            <Sparkles className="w-3 h-3" style={{ color: "var(--primary)" }} />
+            <span className="text-[11px] font-medium" style={{ color: "var(--primary)" }}>Branding Complete</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-semibold" style={{ color: "var(--foreground)" }}>
+            Project Identity Ready.
           </h1>
-          <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
-            Your project name and identity are successfully established. Project Intelligence is now ready to begin.
+          <p className="text-base max-w-[548px]" style={{ color: "var(--muted-foreground)" }}>
+            Your project name and brand are set. Phase 3-A AI will create a complete business package.
           </p>
         </div>
 
-        {/* Saved Assets and Unlocks Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+        {/* Card group */}
+        <div className="flex flex-col gap-3">
 
-          {/* Left: Brand Card representation */}
-          <div className="space-y-4">
-            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Identity Ready</h3>
-            <Card className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
-              <CardContent className="p-6 space-y-6">
-
-                {/* Concept / Logo Preview */}
-                <div className="flex items-center gap-4 border-b border-border pb-6">
-                  {branding?.logoAsset && !logoError ? (
-                    <img
-                      src={branding.logoAsset}
-                      alt={project.name || "Project Logo"}
-                      className="w-16 h-16 rounded-2xl object-cover shadow-sm"
-                      onError={() => setLogoError(true)}
-                    />
-                  ) : branding?.logoType === "ai" || branding?.colorPalette ? (
-                    <div
-                      className="w-16 h-16 rounded-2xl text-white flex items-center justify-center font-extrabold text-3xl shadow-sm select-none"
-                      style={{ backgroundColor: branding?.colorPalette?.[0] || "#3C61DD" }}
-                    >
-                      {project.name?.charAt(0) || "A"}
-                    </div>
-                  ) : branding?.logoType === "designer" ? (
-                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-500 to-primary text-white flex items-center justify-center font-extrabold text-3xl shadow-sm select-none">
-                      {project.name?.charAt(0) || "D"}
-                    </div>
-                  ) : (
-                    <div className="w-16 h-16 rounded-2xl bg-muted border border-dashed border-border flex items-center justify-center font-bold text-muted-foreground text-xs select-none">
-                      No Brand
-                    </div>
-                  )}
-                  <div>
-                    <h2 className="text-xl font-black text-foreground tracking-tight">{project.name || "Untitled Project"}</h2>
-                    <p className="text-xs text-muted-foreground font-semibold mt-0.5">{project.category || "Technology"}</p>
+          {/* Identity card */}
+          <div
+            className="rounded-2xl border shadow-sm p-5 flex flex-col gap-6"
+            style={{ backgroundColor: "var(--card)", borderColor: "var(--card-edge)" }}
+          >
+            <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+              <div className="flex-1 min-w-0 flex items-center gap-4">
+                {branding?.logoAsset && !logoError ? (
+                  <img
+                    src={branding.logoAsset}
+                    alt={project.name || "Project Logo"}
+                    className="rounded-xl object-cover shrink-0"
+                    style={{ width: 72, height: 72 }}
+                    onError={() => setLogoError(true)}
+                  />
+                ) : (
+                  <div
+                    className="rounded-xl flex items-center justify-center shrink-0 text-3xl font-semibold select-none"
+                    style={{ width: 72, height: 72, backgroundColor: "var(--muted)", color: "var(--primary)" }}
+                  >
+                    {project.name?.charAt(0) || "A"}
                   </div>
-                </div>
-
-                {/* Identity Details */}
-                <div className="space-y-4 text-xs font-semibold">
-                  
-                  <div className="space-y-1">
-                    <span className="text-[10px] text-muted-foreground uppercase tracking-wider block">Target Audience</span>
-                    <p className="text-foreground">{project.targetUser || "Not specified"}</p>
-                  </div>
-
-                  <div className="space-y-1">
-                    <span className="text-[10px] text-muted-foreground uppercase tracking-wider block">Core Problem</span>
-                    <p className="text-foreground">{project.problem || "Not specified"}</p>
-                  </div>
-
-                  {/* Palette */}
-                  {branding.colorPalette && branding.colorPalette.length > 0 && (
-                    <div className="space-y-1">
-                      <span className="text-[10px] text-muted-foreground uppercase tracking-wider block">Branding Color Palette</span>
-                      <div className="flex items-center gap-3">
-                        <div className="flex gap-1.5">
-                          {branding.colorPalette.map((color) => (
-                            <div
-                              key={color}
-                              className="w-5 h-5 rounded-full border border-border shadow-xs"
-                              style={{ backgroundColor: color }}
-                              title={color}
-                            />
-                          ))}
-                        </div>
-                        <span className="text-muted-foreground text-[11px] font-semibold">{branding.paletteName || "Default"}</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Fonts */}
-                  {branding.typographyPairing && (
-                    <div className="space-y-1">
-                      <span className="text-[10px] text-muted-foreground uppercase tracking-wider block">Typography Pairing</span>
-                      <p className="text-foreground">{branding.typographyPairing}</p>
-                    </div>
-                  )}
-                </div>
-
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Right: Phase 3 Unlocks */}
-          <div className="space-y-4">
-            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Project Intelligence Unlocked</h3>
-
-            <div className="space-y-3">
-              {/* Unlock 1: Forecast */}
-              <div className="flex items-start gap-3 p-4 rounded-xl border border-border bg-card">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                  <BarChart3 className="w-5 h-5" />
-                </div>
-                <div className="space-y-1">
-                  <h4 className="font-bold text-sm text-foreground">AI Financial Forecast</h4>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    AI-powered runway simulator, dynamic revenue calculators, and cash flow visualizations.
-                  </p>
+                )}
+                <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+                  <span className="text-lg font-semibold" style={{ color: "var(--foreground)" }}>
+                    {project.name || "Untitled Project"}
+                  </span>
+                  <span className="text-sm" style={{ color: "var(--muted-foreground)" }}>
+                    {project.tagline || project.solution || "Your project identity is ready."}
+                  </span>
                 </div>
               </div>
-
-              {/* Unlock 2: Business Plan */}
-              <div className="flex items-start gap-3 p-4 rounded-xl border border-border bg-card">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                  <FileText className="w-5 h-5" />
-                </div>
-                <div className="space-y-1">
-                  <h4 className="font-bold text-sm text-foreground">AI Business Plan</h4>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    Interactive questionnaire generates professional, investor-ready business plan documents.
-                  </p>
-                </div>
-              </div>
-
-              {/* Unlock 3: Compliance */}
-              <div className="flex items-start gap-3 p-4 rounded-xl border border-border bg-card">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                  <ShieldCheck className="w-5 h-5" />
-                </div>
-                <div className="space-y-1">
-                  <h4 className="font-bold text-sm text-foreground">Legal & Structural Checklist</h4>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    Custom roadmap for SAS/LLC formation and compliance requirements like GDPR and PSD2.
-                  </p>
-                </div>
-              </div>
-
-              {/* Unlock 4: Skill Gaps */}
-              <div className="flex items-start gap-3 p-4 rounded-xl border border-border bg-card">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                  <Users className="w-5 h-5" />
-                </div>
-                <div className="space-y-1">
-                  <h4 className="font-bold text-sm text-foreground">Formation Generator</h4>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    Identify your team's skills gaps, match with partners, and finalize structural setup.
-                  </p>
-                </div>
+              <div
+                className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 shrink-0 self-start"
+                style={{ backgroundColor: "var(--dr-bg-green)" }}
+              >
+                <CheckCircle2 className="w-3 h-3" style={{ color: "var(--p8-green)" }} />
+                <span className="text-xs font-medium" style={{ color: "var(--p8-green)" }}>Identity ready</span>
               </div>
             </div>
 
+            <div className="flex flex-col gap-3">
+              <div className="rounded-xl border p-4 flex flex-col gap-1" style={{ backgroundColor: "var(--muted)", borderColor: "var(--stroke-10)" }}>
+                <span className="text-base font-semibold" style={{ color: "var(--foreground)" }}>Core Problem</span>
+                <span className="text-[13px]" style={{ color: "var(--muted-foreground)" }}>{project.problem || "Not specified"}</span>
+              </div>
+              <div className="rounded-xl border p-4 flex flex-col gap-1" style={{ backgroundColor: "var(--muted)", borderColor: "var(--stroke-10)" }}>
+                <span className="text-base font-semibold" style={{ color: "var(--foreground)" }}>Solutions</span>
+                <span className="text-[13px]" style={{ color: "var(--muted-foreground)" }}>{project.solution || "Not specified"}</span>
+              </div>
+            </div>
           </div>
 
-        </div>
-
-        {/* Action Bar */}
-        <div className="flex flex-col sm:flex-row items-center justify-between border-t border-border pt-8 gap-4">
-          <Button
-            variant="ghost"
-            onClick={() => router.push("/dashboard/creator/myideas")}
-            disabled={isNavigating || isSkipping}
-            className="text-xs font-semibold self-start sm:self-center"
+          {/* Masterplan card */}
+          <div
+            className="rounded-2xl border shadow-sm p-5 flex flex-col gap-6"
+            style={{ backgroundColor: "var(--card)", borderColor: "var(--card-edge)" }}
           >
-            <ArrowLeft className="w-4 h-4 mr-1.5" /> Back to My Idea
-          </Button>
-          <div className="flex w-full sm:w-auto items-center gap-3">
-            <Button
-              variant="outline"
-              onClick={handleSkip}
-              disabled={isNavigating || isSkipping}
-              className="w-full sm:w-auto border-border rounded-xl text-xs py-5 px-5 font-bold bg-card text-foreground hover:bg-muted/30 disabled:opacity-50"
-            >
-              {isSkipping && <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />}
-              Skip
-            </Button>
-            <Button
-              onClick={handleNextPhase}
-              disabled={isNavigating || isSkipping}
-              className="w-full sm:w-auto bg-primary hover:bg-primary/95 text-primary-foreground font-bold rounded-xl py-5 px-6 text-sm flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50"
-            >
-              {isNavigating && <Loader2 className="w-4 h-4 animate-spin" />}
-              Launch Project Intelligence {!isNavigating && <ArrowRight className="w-4 h-4" />}
-            </Button>
+            <div className="flex flex-col gap-1.5">
+              <span className="text-sm" style={{ color: "var(--primary)" }}>Phase 3 Unlocked!</span>
+              <span className="text-lg font-semibold" style={{ color: "var(--foreground)" }}>The Masterplan</span>
+            </div>
+            <div className="flex flex-col gap-3">
+              {MASTERPLAN_ITEMS.map(({ icon: Icon, label }) => (
+                <div
+                  key={label}
+                  className="flex items-center gap-4 rounded-lg border p-5"
+                  style={{ backgroundColor: "var(--muted)", borderColor: "var(--stroke-10)" }}
+                >
+                  <Icon className="w-4 h-4 shrink-0" style={{ color: "var(--muted-foreground)" }} />
+                  <span className="text-sm font-medium" style={{ color: "var(--foreground)" }}>{label}</span>
+                </div>
+              ))}
+            </div>
           </div>
+
         </div>
+
+        {/* Launch button */}
+        <Button
+          onClick={handleNextPhase}
+          disabled={isNavigating || isSkipping}
+          className="w-full rounded-xl py-4 h-auto text-base font-medium flex items-center justify-center gap-2 disabled:opacity-50"
+        >
+          {isNavigating && <Loader2 className="w-4 h-4 animate-spin" />}
+          Launch Masterplan
+          {!isNavigating && <ArrowRight className="w-5 h-5" />}
+        </Button>
 
       </div>
       )}
