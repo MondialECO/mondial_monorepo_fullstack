@@ -21,13 +21,13 @@ export default function Topbar() {
   if (isPhase2) {
     // Reduced Phase 2 chrome: logo tile, breadcrumb, avatar only
     return (
-      <header className="sticky top-0 z-40 w-full border-b border-border bg-card text-muted-foreground">
+      <header className="sticky top-0 z-40 w-full border-b flex-shrink-0" style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}>
         <div className="flex h-[72px] items-center justify-between px-6 sm:px-6">
 
           {/* LEFT: Logo tile + Breadcrumb */}
           <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
             {/* Logo tile */}
-            <div className="h-9 w-9 rounded-lg bg-white border border-border flex items-center justify-center flex-shrink-0 overflow-hidden">
+            <div className="h-9 w-9 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden" style={{ backgroundColor: "var(--popover)", borderColor: "var(--stroke-10)", borderWidth: "1px" }}>
               <Image
                 src="/icons/phase2/logo.png"
                 alt="Mondial"
@@ -37,24 +37,27 @@ export default function Topbar() {
             </div>
 
             {/* Breadcrumb (always visible in Phase 2) */}
-            <nav className="flex items-center text-sm min-w-0">
+            <nav className="flex items-center text-sm min-w-0" style={{ color: "var(--muted-foreground)" }}>
               {breadcrumbs.map((item, index) => {
                 const isLast = index === breadcrumbs.length - 1;
 
                 return (
                   <div key={item.href} className="flex items-center min-w-0">
                     {index !== 0 && (
-                      <ChevronRight className="mx-2 h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      <ChevronRight className="mx-2 h-4 w-4 flex-shrink-0" style={{ color: "var(--muted-foreground)" }} />
                     )}
 
                     {isLast ? (
-                      <span className="font-semibold text-foreground truncate">
+                      <span className="font-semibold truncate" style={{ color: "var(--foreground)" }}>
                         {item.label}
                       </span>
                     ) : (
                       <Link
                         href={item.href}
-                        className="text-muted-foreground hover:text-foreground transition-colors truncate"
+                        className="hover:transition-colors truncate"
+                        style={{ color: "var(--muted-foreground)" }}
+                        onMouseEnter={(e) => (e.currentTarget.style.color = "var(--foreground)")}
+                        onMouseLeave={(e) => (e.currentTarget.style.color = "var(--muted-foreground)")}
                       >
                         {item.label}
                       </Link>
@@ -66,7 +69,7 @@ export default function Topbar() {
           </div>
 
           {/* RIGHT: Avatar only */}
-          <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center flex-shrink-0 text-xs font-bold">
+          <div className="h-9 w-9 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold" style={{ backgroundColor: "var(--muted)", color: "var(--foreground)" }}>
             {user?.name?.charAt(0).toUpperCase() || "U"}
           </div>
 

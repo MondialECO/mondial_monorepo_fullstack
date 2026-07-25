@@ -25,18 +25,18 @@ export default function SmartGatePage() {
   };
 
   return (
-    <div className="w-full flex-1 flex flex-col min-h-screen" style={{ backgroundColor: "#ededed" }}>
+    <div className="w-full flex-1 flex flex-col min-h-screen" style={{ backgroundColor: "var(--background)" }}>
       {/* Content */}
       <main className="flex-1 flex flex-col items-center justify-center px-6 sm:px-8 py-12 sm:py-16 md:py-20">
         <div className="w-full max-w-[820px] space-y-10 md:space-y-12">
 
           {/* Heading Block */}
           <div className="text-center space-y-3 sm:space-y-4">
-            <h1 className="text-3xl sm:text-4xl font-semibold text-[#070707]" style={{ fontFamily: "Inter" }}>
+            <h1 className="text-3xl sm:text-4xl font-semibold" style={{ color: "var(--foreground)" }}>
               Welcome Back! Founder.
             </h1>
-            <p className="text-sm sm:text-base leading-relaxed text-[#5e5e5e] max-w-[533px] mx-auto" style={{ fontFamily: "Inter" }}>
-              You&apos;re entering Phase 2: Project Identity. Before we proceed, let&apos;s establish your current starting point. <span className="text-[#070707] font-medium">Do you have a clear idea in mind?</span>
+            <p className="text-sm sm:text-base leading-relaxed max-w-[533px] mx-auto" style={{ color: "var(--muted-foreground)" }}>
+              You&apos;re entering Phase 2: Project Identity. Before we proceed, let&apos;s establish your current starting point. <span style={{ color: "var(--foreground)", fontWeight: "500" }}>Do you have a clear idea in mind?</span>
             </p>
           </div>
 
@@ -49,7 +49,7 @@ export default function SmartGatePage() {
               onMouseLeave={() => setHoveredCard(null)}
               className="flex flex-col justify-between rounded-2xl p-7 sm:p-8 cursor-pointer transition-all duration-300"
               style={{
-                backgroundColor: "#f9f9fa",
+                backgroundColor: "var(--card)",
                 borderWidth: "1px",
                 borderColor: hoveredCard === "left" ? "rgba(60, 97, 221, 0.5)" : "rgba(60, 97, 221, 0.5)",
                 transform: hoveredCard === "left" ? "translateY(-2px)" : "translateY(0)",
@@ -59,7 +59,7 @@ export default function SmartGatePage() {
                 {/* Icon Tile */}
                 <div
                   className="h-16 w-16 rounded-lg flex items-center justify-center flex-shrink-0"
-                  style={{ backgroundColor: "#3c61dd" }}
+                  style={{ backgroundColor: "var(--primary)" }}
                 >
                   <Image
                     src="/icons/phase2/lamp-charge.svg"
@@ -72,29 +72,29 @@ export default function SmartGatePage() {
 
                 {/* Title & Description */}
                 <div className="space-y-2">
-                  <h3 className="text-lg sm:text-xl font-semibold text-[#070707]" style={{ fontFamily: "Inter" }}>
+                  <h3 className="text-lg sm:text-xl font-semibold" style={{ color: "var(--foreground)" }}>
                     Active Project Refinement
                   </h3>
-                  <p className="text-xs sm:text-sm leading-relaxed text-[#5e5e5e]" style={{ fontFamily: "Inter" }}>
+                  <p className="text-xs sm:text-sm leading-relaxed" style={{ color: "var(--muted-foreground)" }}>
                     Choose this if you have a defined concept. We&apos;ll use structured logic to sharpen your value proposition.
                   </p>
                 </div>
 
                 {/* Metadata */}
-                <div className="flex items-center gap-8 py-3 border-t" style={{ borderColor: "#d9d9d9" }}>
+                <div className="flex items-center gap-8 py-3 border-t" style={{ borderColor: "#d9d9d9" /* no exact token match; keeping hardcoded */ }}>
                   <div className="flex flex-col gap-1">
-                    <span className="text-[10px] font-semibold text-[#606060] uppercase tracking-wide" style={{ fontFamily: "Inter" }}>
+                    <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: "#606060" }}>
                       TIME TO COMPLETE
                     </span>
-                    <span className="text-xs sm:text-sm font-medium text-[#070707]" style={{ fontFamily: "Inter" }}>
+                    <span className="text-xs sm:text-sm font-medium" style={{ color: "var(--foreground)" }}>
                       ~15 Minutes
                     </span>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <span className="text-[10px] font-semibold text-[#606060] uppercase tracking-wide" style={{ fontFamily: "Inter" }}>
+                    <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: "#606060" }}>
                       FOCUS LEVEL
                     </span>
-                    <span className="text-xs sm:text-sm font-medium text-[#070707]" style={{ fontFamily: "Inter" }}>
+                    <span className="text-xs sm:text-sm font-medium" style={{ color: "var(--foreground)" }}>
                       Strategic High
                     </span>
                   </div>
@@ -106,8 +106,8 @@ export default function SmartGatePage() {
                 onClick={handleSelectRefinement}
                 className="w-full mt-6 px-6 py-3 rounded-lg font-semibold text-sm flex items-center justify-center gap-2 transition-all"
                 style={{
-                  backgroundColor: "#3c61dd",
-                  color: "#f7f7f7",
+                  backgroundColor: "var(--primary)",
+                  color: "var(--primary-foreground)",
                 }}
               >
                 lets Sharper it
@@ -127,9 +127,9 @@ export default function SmartGatePage() {
               onMouseLeave={() => setHoveredCard(null)}
               className="flex flex-col justify-between rounded-2xl p-7 sm:p-8 cursor-pointer transition-all duration-300"
               style={{
-                backgroundColor: "#f9f9fa",
+                backgroundColor: "var(--card)",
                 borderWidth: "1px",
-                borderColor: "rgba(0, 0, 0, 0.08)",
+                borderColor: "var(--border)",
                 transform: hoveredCard === "right" ? "translateY(-2px)" : "translateY(0)",
               }}
             >
@@ -137,7 +137,7 @@ export default function SmartGatePage() {
                 {/* Icon Tile */}
                 <div
                   className="h-16 w-16 rounded-lg flex items-center justify-center flex-shrink-0"
-                  style={{ backgroundColor: "#f1f1f2" }}
+                  style={{ backgroundColor: "var(--muted)" }}
                 >
                   <Image
                     src="/icons/phase2/discover.svg"
@@ -149,10 +149,10 @@ export default function SmartGatePage() {
 
                 {/* Title & Description */}
                 <div className="space-y-2">
-                  <h3 className="text-lg sm:text-xl font-semibold text-[#070707]" style={{ fontFamily: "Inter" }}>
+                  <h3 className="text-lg sm:text-xl font-semibold" style={{ color: "var(--foreground)" }}>
                     Explore & discovery
                   </h3>
-                  <p className="text-xs sm:text-sm leading-relaxed text-[#5e5e5e]" style={{ fontFamily: "Inter" }}>
+                  <p className="text-xs sm:text-sm leading-relaxed" style={{ color: "var(--muted-foreground)" }}>
                     Not quite sure? We&apos;ll help you cross-reference your interests with market observations.
                   </p>
                 </div>
@@ -166,7 +166,7 @@ export default function SmartGatePage() {
                       width={12}
                       height={12}
                     />
-                    <span className="text-xs text-[#070707]" style={{ fontFamily: "Inter" }}>
+                    <span className="text-xs" style={{ color: "var(--foreground)" }}>
                       Interest Mapping
                     </span>
                   </div>
@@ -177,7 +177,7 @@ export default function SmartGatePage() {
                       width={12}
                       height={12}
                     />
-                    <span className="text-xs text-[#070707]" style={{ fontFamily: "Inter" }}>
+                    <span className="text-xs" style={{ color: "var(--foreground)" }}>
                       Problem Space Discovery
                     </span>
                   </div>
@@ -189,10 +189,10 @@ export default function SmartGatePage() {
                 onClick={handleSelectDiscovery}
                 className="w-full mt-6 px-6 py-3 rounded-lg font-semibold text-sm flex items-center justify-center gap-2 transition-all"
                 style={{
-                  backgroundColor: "white",
-                  color: "#5e5e5e",
+                  backgroundColor: "var(--popover)",
+                  color: "var(--muted-foreground)",
                   borderWidth: "1px",
-                  borderColor: "rgba(0, 0, 0, 0.08)",
+                  borderColor: "var(--stroke-10)",
                 }}
               >
                 Help Me find it
@@ -207,8 +207,8 @@ export default function SmartGatePage() {
           </div>
 
           {/* Bottom Note */}
-          <div className="text-center pt-6 border-t" style={{ borderColor: "rgba(0, 0, 0, 0.06)" }}>
-            <p className="text-xs sm:text-sm text-[#5e5e5e] leading-relaxed" style={{ fontFamily: "Inter" }}>
+          <div className="text-center pt-6 border-t" style={{ borderColor: "var(--stroke-10)" }}>
+            <p className="text-xs sm:text-sm leading-relaxed" style={{ color: "var(--muted-foreground)" }}>
               Both paths lead to same destination. There is no wrong choice.
             </p>
           </div>
