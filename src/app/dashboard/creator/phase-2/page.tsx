@@ -2,10 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Lightbulb, Compass, ArrowRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
+import Image from "next/image";
 
 export default function SmartGatePage() {
   const router = useRouter();
@@ -27,102 +25,194 @@ export default function SmartGatePage() {
   };
 
   return (
-    <div className="w-full flex-1 flex flex-col bg-background text-foreground min-h-screen">
+    <div className="w-full flex-1 flex flex-col min-h-screen" style={{ backgroundColor: "#ededed" }}>
       {/* Content */}
-      <main className="flex-1 flex flex-col items-center justify-center p-6 sm:p-12 md:p-16 text-center max-w-4xl mx-auto w-full">
-        {/* Heading Block */}
-        <div className="space-y-4 mb-12 max-w-2xl">
-          <div className="text-xs font-bold text-primary uppercase tracking-wider">Project Identity</div>
-          <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
-            Do you have a clear idea in mind?
-          </h1>
-          <p className="text-sm sm:text-base leading-relaxed text-muted-foreground">
-            Welcome Back! Founder. You&apos;re entering Project Identity. Before we proceed, let&apos;s establish your current starting point.
-          </p>
-        </div>
+      <main className="flex-1 flex flex-col items-center justify-center px-6 sm:px-8 py-12 sm:py-16 md:py-20">
+        <div className="w-full max-w-[820px] space-y-10 md:space-y-12">
 
-        {/* Choice Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-[760px] mb-12">
-          {/* LEFT CARD — Active Project Refinement */}
-          <Card
-            onClick={handleSelectRefinement}
-            onMouseEnter={() => setHoveredCard("left")}
-            onMouseLeave={() => setHoveredCard(null)}
-            className={`flex flex-col justify-between rounded-2xl border p-6 text-left transition-all duration-300 cursor-pointer ${
-              hoveredCard === "left"
-                ? "border-primary bg-primary/5 shadow-lg shadow-primary/5 -translate-y-0.5"
-                : "border-border bg-card hover:border-primary/40"
-            }`}
-          >
-            <CardContent className="p-0 flex flex-col justify-between h-full min-h-[260px]">
-              <div className="space-y-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <Lightbulb className="h-6 w-6" />
+          {/* Heading Block */}
+          <div className="text-center space-y-3 sm:space-y-4">
+            <h1 className="text-3xl sm:text-4xl font-semibold text-[#070707]" style={{ fontFamily: "Inter" }}>
+              Welcome Back! Founder.
+            </h1>
+            <p className="text-sm sm:text-base leading-relaxed text-[#5e5e5e] max-w-[533px] mx-auto" style={{ fontFamily: "Inter" }}>
+              You&apos;re entering Phase 2: Project Identity. Before we proceed, let&apos;s establish your current starting point. <span className="text-[#070707] font-medium">Do you have a clear idea in mind?</span>
+            </p>
+          </div>
+
+          {/* Choice Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+            {/* LEFT CARD — Active Project Refinement */}
+            <div
+              onClick={handleSelectRefinement}
+              onMouseEnter={() => setHoveredCard("left")}
+              onMouseLeave={() => setHoveredCard(null)}
+              className="flex flex-col justify-between rounded-2xl p-7 sm:p-8 cursor-pointer transition-all duration-300"
+              style={{
+                backgroundColor: "#f9f9fa",
+                borderWidth: "1px",
+                borderColor: hoveredCard === "left" ? "rgba(60, 97, 221, 0.5)" : "rgba(60, 97, 221, 0.5)",
+                transform: hoveredCard === "left" ? "translateY(-2px)" : "translateY(0)",
+              }}
+            >
+              <div className="space-y-5">
+                {/* Icon Tile */}
+                <div
+                  className="h-16 w-16 rounded-lg flex items-center justify-center flex-shrink-0"
+                  style={{ backgroundColor: "#3c61dd" }}
+                >
+                  <Image
+                    src="/icons/phase2/lamp-charge.svg"
+                    alt="Refinement"
+                    width={24}
+                    height={24}
+                    style={{ color: "white" }}
+                  />
                 </div>
+
+                {/* Title & Description */}
                 <div className="space-y-2">
-                  <h3 className="text-lg font-bold text-foreground sm:text-xl">
+                  <h3 className="text-lg sm:text-xl font-semibold text-[#070707]" style={{ fontFamily: "Inter" }}>
                     Active Project Refinement
                   </h3>
-                  <p className="text-xs sm:text-sm leading-relaxed text-muted-foreground">
+                  <p className="text-xs sm:text-sm leading-relaxed text-[#5e5e5e]" style={{ fontFamily: "Inter" }}>
                     Choose this if you have a defined concept. We&apos;ll use structured logic to sharpen your value proposition.
                   </p>
                 </div>
-              </div>
-              <div>
-                <span className="text-[10px] text-muted-foreground block font-semibold uppercase tracking-wider mb-4">About 15 minutes · Strategic focus</span>
-                <Button
-                  variant={hoveredCard === "left" ? "default" : "outline"}
-                  className="group w-full rounded-xl py-5 text-xs font-bold sm:text-sm bg-primary text-primary-foreground hover:bg-primary/95"
-                >
-                  Let&apos;s sharpen it
-                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
 
-          {/* RIGHT CARD — Explore & Discovery */}
-          <Card
-            onClick={handleSelectDiscovery}
-            onMouseEnter={() => setHoveredCard("right")}
-            onMouseLeave={() => setHoveredCard(null)}
-            className={`flex flex-col justify-between rounded-2xl border p-6 text-left transition-all duration-300 cursor-pointer ${
-              hoveredCard === "right"
-                ? "border-amber-500 bg-amber-500/5 shadow-lg shadow-amber-500/5 -translate-y-0.5"
-                : "border-border bg-card hover:border-amber-500/40"
-            }`}
-          >
-            <CardContent className="p-0 flex flex-col justify-between h-full min-h-[260px]">
-              <div className="space-y-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/10 text-amber-500">
-                  <Compass className="h-6 w-6" />
+                {/* Metadata */}
+                <div className="flex items-center gap-8 py-3 border-t" style={{ borderColor: "#d9d9d9" }}>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] font-semibold text-[#606060] uppercase tracking-wide" style={{ fontFamily: "Inter" }}>
+                      TIME TO COMPLETE
+                    </span>
+                    <span className="text-xs sm:text-sm font-medium text-[#070707]" style={{ fontFamily: "Inter" }}>
+                      ~15 Minutes
+                    </span>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] font-semibold text-[#606060] uppercase tracking-wide" style={{ fontFamily: "Inter" }}>
+                      FOCUS LEVEL
+                    </span>
+                    <span className="text-xs sm:text-sm font-medium text-[#070707]" style={{ fontFamily: "Inter" }}>
+                      Strategic High
+                    </span>
+                  </div>
                 </div>
+              </div>
+
+              {/* Button */}
+              <button
+                onClick={handleSelectRefinement}
+                className="w-full mt-6 px-6 py-3 rounded-lg font-semibold text-sm flex items-center justify-center gap-2 transition-all"
+                style={{
+                  backgroundColor: "#3c61dd",
+                  color: "#f7f7f7",
+                }}
+              >
+                lets Sharper it
+                <Image
+                  src="/icons/phase2/arrow-right.svg"
+                  alt="→"
+                  width={20}
+                  height={20}
+                />
+              </button>
+            </div>
+
+            {/* RIGHT CARD — Explore & Discovery */}
+            <div
+              onClick={handleSelectDiscovery}
+              onMouseEnter={() => setHoveredCard("right")}
+              onMouseLeave={() => setHoveredCard(null)}
+              className="flex flex-col justify-between rounded-2xl p-7 sm:p-8 cursor-pointer transition-all duration-300"
+              style={{
+                backgroundColor: "#f9f9fa",
+                borderWidth: "1px",
+                borderColor: "rgba(0, 0, 0, 0.08)",
+                transform: hoveredCard === "right" ? "translateY(-2px)" : "translateY(0)",
+              }}
+            >
+              <div className="space-y-5">
+                {/* Icon Tile */}
+                <div
+                  className="h-16 w-16 rounded-lg flex items-center justify-center flex-shrink-0"
+                  style={{ backgroundColor: "#f1f1f2" }}
+                >
+                  <Image
+                    src="/icons/phase2/discover.svg"
+                    alt="Discovery"
+                    width={24}
+                    height={24}
+                  />
+                </div>
+
+                {/* Title & Description */}
                 <div className="space-y-2">
-                  <h3 className="text-lg font-bold text-foreground sm:text-xl">
-                    Explore & Discovery
+                  <h3 className="text-lg sm:text-xl font-semibold text-[#070707]" style={{ fontFamily: "Inter" }}>
+                    Explore & discovery
                   </h3>
-                  <p className="text-xs sm:text-sm leading-relaxed text-muted-foreground">
-                    Not quite sure? We&apos;ll help you connect your interests with real market observations.
+                  <p className="text-xs sm:text-sm leading-relaxed text-[#5e5e5e]" style={{ fontFamily: "Inter" }}>
+                    Not quite sure? We&apos;ll help you cross-reference your interests with market observations.
                   </p>
                 </div>
-              </div>
-              <div>
-                <span className="text-[10px] text-muted-foreground block font-semibold uppercase tracking-wider mb-4">Interest mapping · Problem-space discovery</span>
-                <Button
-                  variant={hoveredCard === "right" ? "default" : "outline"}
-                  className="group w-full rounded-xl py-5 text-xs font-bold sm:text-sm border-amber-500 text-amber-500 hover:bg-amber-500/5"
-                >
-                  Help me find it
-                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
 
-        {/* Bottom Note */}
-        <div className="w-full max-w-[400px] border-t border-border pt-6 text-xs font-medium text-muted-foreground sm:text-sm">
-          Both paths lead to the same destination. There is no wrong choice.
+                {/* Checklist */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Image
+                      src="/icons/phase2/tick-circle.svg"
+                      alt="✓"
+                      width={12}
+                      height={12}
+                    />
+                    <span className="text-xs text-[#070707]" style={{ fontFamily: "Inter" }}>
+                      Interest Mapping
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Image
+                      src="/icons/phase2/tick-circle.svg"
+                      alt="✓"
+                      width={12}
+                      height={12}
+                    />
+                    <span className="text-xs text-[#070707]" style={{ fontFamily: "Inter" }}>
+                      Problem Space Discovery
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Button */}
+              <button
+                onClick={handleSelectDiscovery}
+                className="w-full mt-6 px-6 py-3 rounded-lg font-semibold text-sm flex items-center justify-center gap-2 transition-all"
+                style={{
+                  backgroundColor: "white",
+                  color: "#5e5e5e",
+                  borderWidth: "1px",
+                  borderColor: "rgba(0, 0, 0, 0.08)",
+                }}
+              >
+                Help Me find it
+                <Image
+                  src="/icons/phase2/arrow-right-dark.svg"
+                  alt="→"
+                  width={20}
+                  height={20}
+                />
+              </button>
+            </div>
+          </div>
+
+          {/* Bottom Note */}
+          <div className="text-center pt-6 border-t" style={{ borderColor: "rgba(0, 0, 0, 0.06)" }}>
+            <p className="text-xs sm:text-sm text-[#5e5e5e] leading-relaxed" style={{ fontFamily: "Inter" }}>
+              Both paths lead to same destination. There is no wrong choice.
+            </p>
+          </div>
+
         </div>
       </main>
     </div>
