@@ -25,6 +25,10 @@ are localized correctness / data-quality items.
 | CI-10 | Monospace mapping undefined — numeric sites never rendered mono | P3 | design-intent divergence |
 | CI-11 | Product never loaded any declared font (root cause, fixed 2026-07) | Record | historical root cause |
 | CI-12 | Homepage display accents pin three families that never load | P3 | design-intent divergence |
+| CI-13 | Clarifier has no revise-answer (edit) capability | P3 | missing feature |
+| CI-14 | Clarifier "Idea Journal" duplicates the first transcript bubble | P4 | redundant UI |
+| CI-15 | Two icon patterns in Phase 2: inlined vectors vs lucide library | P4 | consistency |
+| CI-16 | Clarifier finalize mapping is client-triggered — abandonment loses it | P2 | correctness / data-loss |
 
 ---
 
@@ -418,7 +422,132 @@ rendering, not design reference* when comparing against mockups.
 
 ---
 
+## CI-13 — Clarifier has no revise-answer (edit) capability (P3)
+
+**Missing feature.** The Phase 2 clarifier design places an edit icon on every
+user message, but no edit capability exists. The chat transcript is **append-only**:
+`POST /creator/journey/phase2/chat-message` appends the user turn and the next
+scripted question (`CreatorPhase2Controller.ChatMessage`), and question progression
+is derived purely by counting user turns (`AppendChatMessageAsync` → `$push`). There
+is no endpoint to modify or remove a prior message.
+
+**Why it is real work, not styling.** Revising answer *N* is not an in-place text
+swap — the AI's follow-up questions and every later answer were a *chain* off that
+answer, so a correct edit must:
+- **Truncate** `Phase2Data.ChatMessages` at message *N* (discarding answers *N…6* and
+  the questions that followed) — an **array-set write**, not the current `$push`.
+- **Re-ask** scripted question *N* and return the recomputed
+  `questionIndex` / `summaryReady`.
+- **Reset the derived project fields** mirrored from the discarded answers
+  (`concept`, `targetUser`, `problem`, `solution`, `creatorEdge`) so stale values
+  don't linger.
+- **Reset finalize state** — if the chat had reached `summaryReady`, editing drops
+  it back into the conversation; any prior clarity finalize is invalidated.
+
+**Scope.** New backend endpoint + request DTO (a `ChatMessageResult`-shaped
+response is reusable); a set-array write path alongside the append path; frontend
+edit affordance that confirms the "editing this clears later answers" discard before
+calling it and re-renders transcript + steps + ring from the response.
+
+**Where.**
+- Append-only endpoint + question script: `backend/Controllers/CreatorPhase2Controller.cs`
+  (`ChatMessage`, `Questions`).
+- Append-only persistence: `backend/Services/Implementations/CreatorJourneyService.cs`
+  (`AppendChatMessageAsync`, `$push`).
+- Frontend transcript + client-mirrored project fields:
+  `src/app/dashboard/creator/phase-2/clarifier/page.tsx`.
+
+**Status.** Deferred by the requester from the 2026-07 clarifier restyle; the edit
+icon renders in the design's position but is inactive in that pass (copy is wired,
+edit is not). Filed for separate scoping.
+
+---
+
+## CI-16 — Clarifier finalize mapping is client-triggered; abandonment loses it (P2)
+
+**Correctness / data-loss.** The clarify → score → advance write is driven by the
+**client**, so leaving mid-finalize can strand a user who did all the work.
+
+Flow in `handleComplete` (`clarifier/page.tsx`): (1) `startClarifier` → the C-2 AI
+job runs **server-side**; (2) `pollClarifier` waits up to the R12 budget (**3 min**);
+(3) `finalizeClarifier` → the endpoint calls `ApplyClarifierMappingAsync`
+(`CreatorJourneyService`) which is what **persists clarityScore + concept onto the
+project and satisfies the Phase 3 prerequisite**; (4) the client mirrors the result
+into local state and navigates.
+
+The persisting write is **step 3, invoked by the client**. The AI job (step 1) can
+complete server-side on its own, but nothing maps its output onto the project unless
+the client reaches step 3. So if the user **closes the tab, navigates away, or
+reloads** during the up-to-3-minute poll:
+- The clarifier session may succeed server-side (output + clarityScore exist on the
+  session), **but the project is never updated and the phase never advances**.
+- They return to an unfinished Phase 2 despite having answered all six questions —
+  landing in the not-ready state on the completion page (the exact failure the
+  completion-page work this cycle was built to prevent).
+
+**No resume, and a double-charge risk.** The clarifier page's load effect does not
+look for an existing running/completed session (it never calls `listClarifiers`). On
+return it shows the finalize CTA again; clicking it runs `startClarifier` **afresh —
+a second session and another credit** — rather than resuming or reusing the completed
+one.
+
+**Not fixed here (restyle scope).** The durable fix is server-side: either finalize
+the mapping when the job completes (server-driven, so the client leaving can't lose
+it), or make the finalize idempotent + resumable and have the page reattach to an
+in-flight/complete session on load instead of starting a new one. Filed for backend
+scoping.
+
+**Where.** `src/app/dashboard/creator/phase-2/clarifier/page.tsx` (`handleComplete`,
+`pollClarifier`); `backend/Controllers/CreatorPhase2Controller.cs` (`FinalizeClarifier`);
+`backend/Services/Implementations/CreatorJourneyService.cs` (`ApplyClarifierMappingAsync`).
+
+---
+
+## CI-15 — Two icon patterns in Phase 2: inlined vectors vs lucide library (P4)
+
+**Consistency.** Two Phase 2 screens solve "render a small icon" differently:
+- The **entry screen** (`page.tsx`) inlines vector data exported from the design as
+  `currentColor` components (lamp-charge, discover). This exists **specifically so
+  the marks recolour on hover/focus** — the tile-inversion and blue-accent hover
+  treatments need the glyph colour to be inheritable, which a static asset or a
+  fixed-fill `next/image` can't do.
+- The **clarifier** (`clarifier/page.tsx`) uses the project's **lucide-react**
+  library (`Check`, `Copy`, `Send`), per the requester's direction for that screen,
+  because its icons don't recolour on a per-glyph hover the same way.
+
+So the same phase now carries two icon patterns. Accepted for now. The divergence is
+principled (hover-recolour drove the inlining), not accidental — but if a future pass
+wants one rule, the choice is: adopt lucide everywhere and lose per-glyph hover
+recolour on the entry cards, or standardise on inlined `currentColor` vectors and
+drop the library for these marks. The robot **avatar** is a raster illustration and
+is out of this decision (artwork, not an icon).
+
+**Where.** `src/app/dashboard/creator/phase-2/page.tsx` (inlined) vs
+`src/app/dashboard/creator/phase-2/clarifier/page.tsx` (lucide).
+
+---
+
+## CI-14 — Clarifier "Idea Journal" duplicates the first transcript bubble (P4)
+
+**Redundant UI.** The clarifier's "Idea Journal" panel renders `journalText`, which
+is seeded purely from the first user answer (`chatMessages[0].text`) or, for a
+Discovery user, the confirmed concept title — both already visible elsewhere (the
+first transcript bubble; the concept). It has no backend field and no independent
+persistence (`grep journal` finds nothing in `backend/`). So it always mirrors
+content shown a few pixels away.
+
+**Kept, not removed.** Carried into the new two-column layout (right panel, below
+the step list) during the 2026-07 restyle rather than deleted — removing a feature
+is its own decision, not a restyle side effect. Filed so the duplication can be
+reconsidered deliberately: either give the journal a distinct purpose (e.g. the
+AI-refined idea rather than the raw first answer) or retire it.
+
+**Where.** `src/app/dashboard/creator/phase-2/clarifier/page.tsx` (`journalText`).
+
+---
+
 *CI-1 through CI-8 filed during the Creator Phase 2 completion-page work (2026-07);
-CI-9 through CI-12 filed during the global typography work (2026-07). No GitHub
-issue tracker / `gh` CLI is configured in this repo; the established convention is
-standalone markdown docs (`FIX_0N_*.md`, `*_AUDIT.md`), which this file follows.*
+CI-9 through CI-12 filed during the global typography work, CI-13 and CI-14 during
+the clarifier restyle (2026-07). No GitHub issue tracker / `gh` CLI is configured in
+this repo; the established convention is standalone markdown docs
+(`FIX_0N_*.md`, `*_AUDIT.md`), which this file follows.*
