@@ -21,6 +21,9 @@ are localized correctness / data-quality items.
 | CI-6 | `advancePhase` rewrites `completedAt` on every call | P3 | data quality |
 | CI-7 | `ResourceCalculation` type omits the fields Phase 4 uses | P3 | type drift |
 | CI-8 | Pricing seeds tiers by length, not existence (masked) | P4 — not reachable | latent inconsistency |
+| CI-9 | Profile screen pins 37 font overrides, incl. a fourth family | P3 | typography debt |
+| CI-10 | Monospace mapping undefined — numeric sites never rendered mono | P3 | design-intent divergence |
+| CI-11 | Product never loaded any declared font (root cause, fixed 2026-07) | Record | historical root cause |
 
 ---
 
@@ -309,6 +312,85 @@ hidden dependency on backend validation rather than relying on it.
 
 ---
 
-*Filed during the Creator Phase 2 completion-page work (2026-07). No GitHub issue
-tracker / `gh` CLI is configured in this repo; the established convention is
+## CI-9 — Profile screen pins 37 font overrides, including a fourth family used exactly once (P3)
+
+**Debt.** `src/components/founder/profile/profile.tsx` (rendered at
+`/dashboard/creator/profile` — a dashboard surface) pins fonts with arbitrary
+Tailwind classes: **36× `font-['Inter']`** on form inputs/fields and
+**1× `font-['Inter Tight']`** on the "Edit Profile" page title (a styled `div`,
+not a semantic heading). Under the global typography adopted in 2026-07 (Inter for
+headings, DM Sans for body), these overrides silently keep the screen inconsistent
+with everything around it.
+
+**The fourth family.** Inter Tight appears exactly once in the product, and the
+package `@fontsource/inter-tight` is installed in `package.json` solely for it —
+except it was never imported, so the pin has always fallen back anyway. When this
+file is cleaned up, remove the dependency too; do not leave a stray package behind
+a single dead class.
+
+**Why not fixed in the typography pass.** Removing the 36 input overrides changes
+36 form fields visibly (Inter → DM Sans — correct under the new hierarchy, but a
+visible change needing its own review). The title also needs a semantic tag or the
+`font-heading` utility at the same time, or it lands in body font.
+
+**Fix sketch.** Strip all 37 arbitrary font classes; convert the title to a
+semantic heading (or apply `font-heading`); remove `@fontsource/inter-tight` from
+`package.json`. Verify the form visually after.
+
+---
+
+## CI-10 — Monospace mapping undefined: numeric sites have never rendered monospace (P3)
+
+**Divergence.** The Tailwind theme maps `font-mono` → `var(--font-geist-mono)`
+(`src/app/globals.css` `@theme`), but `--font-geist-mono` is defined nowhere. The
+declaration is invalid at computed-value time, so every `font-mono` element
+**inherits** the surrounding font instead. The design intent is that numeric
+values render in a monospace family; the reality is they never have.
+
+**Scope (where `font-mono` is used):**
+- `src/app/dashboard/creator/asset-library/page.tsx:70` (color hex labels)
+- `src/app/dashboard/creator/phase-3/formation/page.tsx:191-193, 292` (capital/time/cost facts, input)
+- `src/app/dashboard/creator/project-studio/page.tsx:196, 307` (hex labels, route paths)
+- `src/app/dashboard/entrepreneur/(phases)/phase-2/step-1/client.tsx:77` (input)
+- `src/app/dashboard/entrepreneur/(phases)/phase-9/client.tsx:704` (textarea)
+- `src/components/creator/PlanForecastPrintView.tsx:91` (print table)
+- `src/components/investor/NDAAcceptModal.tsx:105` (NDA text block)
+
+Related: several stat values use `tabular-nums` (a feature of the inherited font,
+which does work) — e.g. investor dataroom cards — so the numeric-alignment intent
+is partially served by that instead.
+
+**Why it is a decision, not a cleanup.** Restoring a real mono stack (delete the
+dead mapping so Tailwind's default applies, or point it at a loaded mono font)
+makes all the sites above visibly change typeface at once. Decide the family
+first, then fix the mapping in one commit.
+
+---
+
+## CI-11 — The product never loaded any declared font (root cause; fixed 2026-07)
+
+**Finding.** Until the 2026-07 typography work, no mechanism actually loaded a
+font: `src/lib/fonts.ts` defined `next/font` instances but was imported nowhere;
+`@fontsource/inter` (and `inter-tight`) were installed but never imported; there
+were no `@font-face` rules or font `<link>` tags. CSS requested "Inter" by name,
+so every screen rendered in the OS fallback (Segoe UI on Windows, SF on macOS)
+while the code declared otherwise.
+
+**Why record it.** It explains why the global typography change is visible on
+every screen (first time declared fonts actually load), and it is a recurrence
+risk: a font added by declaration alone fails **silently** — the browser falls
+back without warning. Any future font addition must be wired through
+`src/lib/fonts.ts` + the root layout `className`, and verified in the rendered
+page (computed style / network request for the font file), not by reading CSS.
+
+**Status.** Fixed for Inter and DM Sans (loaded via `next/font/google`). Still
+latent for: `font-mono` (CI-10), Inter Tight (CI-9), and "Instrument Sans"
+requested by name in `src/components/homepage/HeroSection.tsx` (marketing
+surface, out of dashboard scope).
+
+---
+
+*CI-1 through CI-8 filed during the Creator Phase 2 completion-page work (2026-07);
+CI-9 through CI-11 filed during the global typography work (2026-07). No GitHub
+issue tracker / `gh` CLI is configured in this repo; the established convention is
 standalone markdown docs (`FIX_0N_*.md`, `*_AUDIT.md`), which this file follows.*
