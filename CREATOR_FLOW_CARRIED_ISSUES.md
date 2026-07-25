@@ -21,6 +21,14 @@ are localized correctness / data-quality items.
 | CI-6 | `advancePhase` rewrites `completedAt` on every call | P3 | data quality |
 | CI-7 | `ResourceCalculation` type omits the fields Phase 4 uses | P3 | type drift |
 | CI-8 | Pricing seeds tiers by length, not existence (masked) | P4 — not reachable | latent inconsistency |
+| CI-9 | Profile screen pins 37 font overrides, incl. a fourth family | P3 | typography debt |
+| CI-10 | Monospace mapping undefined — numeric sites never rendered mono | P3 | design-intent divergence |
+| CI-11 | Product never loaded any declared font (root cause, fixed 2026-07) | Record | historical root cause |
+| CI-12 | Homepage display accents pin three families that never load | P3 | design-intent divergence |
+| CI-13 | Clarifier has no revise-answer (edit) capability | P3 | missing feature |
+| CI-14 | Clarifier "Idea Journal" duplicates the first transcript bubble | P4 | redundant UI |
+| CI-15 | Two icon patterns in Phase 2: inlined vectors vs lucide library | P4 | consistency |
+| CI-16 | Clarifier finalize mapping is client-triggered — abandonment loses it | P2 | correctness / data-loss |
 
 ---
 
@@ -309,6 +317,237 @@ hidden dependency on backend validation rather than relying on it.
 
 ---
 
-*Filed during the Creator Phase 2 completion-page work (2026-07). No GitHub issue
-tracker / `gh` CLI is configured in this repo; the established convention is
-standalone markdown docs (`FIX_0N_*.md`, `*_AUDIT.md`), which this file follows.*
+## CI-9 — Profile screen pins 37 font overrides, including a fourth family used exactly once (P3)
+
+**Debt.** `src/components/founder/profile/profile.tsx` (rendered at
+`/dashboard/creator/profile` — a dashboard surface) pins fonts with arbitrary
+Tailwind classes: **36× `font-['Inter']`** on form inputs/fields and
+**1× `font-['Inter Tight']`** on the "Edit Profile" page title (a styled `div`,
+not a semantic heading). Under the global typography adopted in 2026-07 (Inter for
+headings, DM Sans for body), these overrides silently keep the screen inconsistent
+with everything around it.
+
+**The fourth family.** Inter Tight appears exactly once in the product, and the
+package `@fontsource/inter-tight` is installed in `package.json` solely for it —
+except it was never imported, so the pin has always fallen back anyway. When this
+file is cleaned up, remove the dependency too; do not leave a stray package behind
+a single dead class.
+
+**Why not fixed in the typography pass.** Removing the 36 input overrides changes
+36 form fields visibly (Inter → DM Sans — correct under the new hierarchy, but a
+visible change needing its own review). The title also needs a semantic tag or the
+`font-heading` utility at the same time, or it lands in body font.
+
+**Fix sketch.** Strip all 37 arbitrary font classes; convert the title to a
+semantic heading (or apply `font-heading`); remove `@fontsource/inter-tight` from
+`package.json`. Verify the form visually after.
+
+---
+
+## CI-10 — Monospace mapping undefined: numeric sites have never rendered monospace (P3)
+
+**Divergence.** The Tailwind theme maps `font-mono` → `var(--font-geist-mono)`
+(`src/app/globals.css` `@theme`), but `--font-geist-mono` is defined nowhere. The
+declaration is invalid at computed-value time, so every `font-mono` element
+**inherits** the surrounding font instead. The design intent is that numeric
+values render in a monospace family; the reality is they never have.
+
+**Scope (where `font-mono` is used):**
+- `src/app/dashboard/creator/asset-library/page.tsx:70` (color hex labels)
+- `src/app/dashboard/creator/phase-3/formation/page.tsx:191-193, 292` (capital/time/cost facts, input)
+- `src/app/dashboard/creator/project-studio/page.tsx:196, 307` (hex labels, route paths)
+- `src/app/dashboard/entrepreneur/(phases)/phase-2/step-1/client.tsx:77` (input)
+- `src/app/dashboard/entrepreneur/(phases)/phase-9/client.tsx:704` (textarea)
+- `src/components/creator/PlanForecastPrintView.tsx:91` (print table)
+- `src/components/investor/NDAAcceptModal.tsx:105` (NDA text block)
+
+Related: several stat values use `tabular-nums` (a feature of the inherited font,
+which does work) — e.g. investor dataroom cards — so the numeric-alignment intent
+is partially served by that instead.
+
+**Why it is a decision, not a cleanup.** Restoring a real mono stack (delete the
+dead mapping so Tailwind's default applies, or point it at a loaded mono font)
+makes all the sites above visibly change typeface at once. Decide the family
+first, then fix the mapping in one commit.
+
+---
+
+## CI-11 — The product never loaded any declared font (root cause; fixed 2026-07)
+
+**Finding.** Until the 2026-07 typography work, no mechanism actually loaded a
+font: `src/lib/fonts.ts` defined `next/font` instances but was imported nowhere;
+`@fontsource/inter` (and `inter-tight`) were installed but never imported; there
+were no `@font-face` rules or font `<link>` tags. CSS requested "Inter" by name,
+so every screen rendered in the OS fallback (Segoe UI on Windows, SF on macOS)
+while the code declared otherwise.
+
+**Why record it.** It explains why the global typography change is visible on
+every screen (first time declared fonts actually load), and it is a recurrence
+risk: a font added by declaration alone fails **silently** — the browser falls
+back without warning. Any future font addition must be wired through
+`src/lib/fonts.ts` + the root layout `className`, and verified in the rendered
+page (computed style / network request for the font file), not by reading CSS.
+
+**Status.** Fixed for Inter and DM Sans (loaded via `next/font/google`). Still
+latent for: `font-mono` (CI-10), Inter Tight (CI-9), and "Instrument Sans"
+requested by name in `src/components/homepage/HeroSection.tsx` (marketing
+surface, out of dashboard scope).
+
+---
+
+## CI-12 — Homepage display accents pin three families that never load (P3)
+
+**Divergence.** The marketing homepage pins three display families by name, and
+none of them is loaded anywhere — so all three have rendered in fallback since
+they were written, and still do:
+
+- **Playfair Display** — `HeroSection.tsx:102` (inline), `FeaturesSection.tsx:40`
+  (`font-playfair` utility), `FeaturesSection2.tsx:226` (inline), `FAQ.tsx:90`
+  (inline). Falls back to Georgia (the fallback stack's serif), so the
+  serif-italic *intent* partially lands, but not the designed family. A ready
+  `next/font` instance (`playfairDisplay`) already exists in `src/lib/fonts.ts`
+  and is simply not imported in the root layout — the fix is a one-line import
+  plus adding its variable to the html className, decided deliberately because
+  it adds a font download to every route.
+- **Instrument Sans** — `HeroSection.tsx:92` (the main hero headline). Nothing
+  loads it (no package, no `next/font` instance); falls back to the system sans.
+- **PP Editorial Old** — `Pricing.tsx:305`. A commercial family, not on Google
+  Fonts; nothing loads it; falls back to a system serif.
+
+**Why record rather than fix.** Same class as CI-9/CI-10/CI-11: loading these
+changes visible marketing typography and (for PP Editorial Old) requires a
+licensing decision. Marketing surface is out of scope for the 2026-07 dashboard
+typography pass. Until fixed, treat homepage accent typography as *fallback
+rendering, not design reference* when comparing against mockups.
+
+---
+
+## CI-13 — Clarifier has no revise-answer (edit) capability (P3)
+
+**Missing feature.** The Phase 2 clarifier design places an edit icon on every
+user message, but no edit capability exists. The chat transcript is **append-only**:
+`POST /creator/journey/phase2/chat-message` appends the user turn and the next
+scripted question (`CreatorPhase2Controller.ChatMessage`), and question progression
+is derived purely by counting user turns (`AppendChatMessageAsync` → `$push`). There
+is no endpoint to modify or remove a prior message.
+
+**Why it is real work, not styling.** Revising answer *N* is not an in-place text
+swap — the AI's follow-up questions and every later answer were a *chain* off that
+answer, so a correct edit must:
+- **Truncate** `Phase2Data.ChatMessages` at message *N* (discarding answers *N…6* and
+  the questions that followed) — an **array-set write**, not the current `$push`.
+- **Re-ask** scripted question *N* and return the recomputed
+  `questionIndex` / `summaryReady`.
+- **Reset the derived project fields** mirrored from the discarded answers
+  (`concept`, `targetUser`, `problem`, `solution`, `creatorEdge`) so stale values
+  don't linger.
+- **Reset finalize state** — if the chat had reached `summaryReady`, editing drops
+  it back into the conversation; any prior clarity finalize is invalidated.
+
+**Scope.** New backend endpoint + request DTO (a `ChatMessageResult`-shaped
+response is reusable); a set-array write path alongside the append path; frontend
+edit affordance that confirms the "editing this clears later answers" discard before
+calling it and re-renders transcript + steps + ring from the response.
+
+**Where.**
+- Append-only endpoint + question script: `backend/Controllers/CreatorPhase2Controller.cs`
+  (`ChatMessage`, `Questions`).
+- Append-only persistence: `backend/Services/Implementations/CreatorJourneyService.cs`
+  (`AppendChatMessageAsync`, `$push`).
+- Frontend transcript + client-mirrored project fields:
+  `src/app/dashboard/creator/phase-2/clarifier/page.tsx`.
+
+**Status.** Deferred by the requester from the 2026-07 clarifier restyle; the edit
+icon renders in the design's position but is inactive in that pass (copy is wired,
+edit is not). Filed for separate scoping.
+
+---
+
+## CI-16 — Clarifier finalize mapping is client-triggered; abandonment loses it (P2)
+
+**Correctness / data-loss.** The clarify → score → advance write is driven by the
+**client**, so leaving mid-finalize can strand a user who did all the work.
+
+Flow in `handleComplete` (`clarifier/page.tsx`): (1) `startClarifier` → the C-2 AI
+job runs **server-side**; (2) `pollClarifier` waits up to the R12 budget (**3 min**);
+(3) `finalizeClarifier` → the endpoint calls `ApplyClarifierMappingAsync`
+(`CreatorJourneyService`) which is what **persists clarityScore + concept onto the
+project and satisfies the Phase 3 prerequisite**; (4) the client mirrors the result
+into local state and navigates.
+
+The persisting write is **step 3, invoked by the client**. The AI job (step 1) can
+complete server-side on its own, but nothing maps its output onto the project unless
+the client reaches step 3. So if the user **closes the tab, navigates away, or
+reloads** during the up-to-3-minute poll:
+- The clarifier session may succeed server-side (output + clarityScore exist on the
+  session), **but the project is never updated and the phase never advances**.
+- They return to an unfinished Phase 2 despite having answered all six questions —
+  landing in the not-ready state on the completion page (the exact failure the
+  completion-page work this cycle was built to prevent).
+
+**No resume, and a double-charge risk.** The clarifier page's load effect does not
+look for an existing running/completed session (it never calls `listClarifiers`). On
+return it shows the finalize CTA again; clicking it runs `startClarifier` **afresh —
+a second session and another credit** — rather than resuming or reusing the completed
+one.
+
+**Not fixed here (restyle scope).** The durable fix is server-side: either finalize
+the mapping when the job completes (server-driven, so the client leaving can't lose
+it), or make the finalize idempotent + resumable and have the page reattach to an
+in-flight/complete session on load instead of starting a new one. Filed for backend
+scoping.
+
+**Where.** `src/app/dashboard/creator/phase-2/clarifier/page.tsx` (`handleComplete`,
+`pollClarifier`); `backend/Controllers/CreatorPhase2Controller.cs` (`FinalizeClarifier`);
+`backend/Services/Implementations/CreatorJourneyService.cs` (`ApplyClarifierMappingAsync`).
+
+---
+
+## CI-15 — Two icon patterns in Phase 2: inlined vectors vs lucide library (P4)
+
+**Consistency.** Two Phase 2 screens solve "render a small icon" differently:
+- The **entry screen** (`page.tsx`) inlines vector data exported from the design as
+  `currentColor` components (lamp-charge, discover). This exists **specifically so
+  the marks recolour on hover/focus** — the tile-inversion and blue-accent hover
+  treatments need the glyph colour to be inheritable, which a static asset or a
+  fixed-fill `next/image` can't do.
+- The **clarifier** (`clarifier/page.tsx`) uses the project's **lucide-react**
+  library (`Check`, `Copy`, `Send`), per the requester's direction for that screen,
+  because its icons don't recolour on a per-glyph hover the same way.
+
+So the same phase now carries two icon patterns. Accepted for now. The divergence is
+principled (hover-recolour drove the inlining), not accidental — but if a future pass
+wants one rule, the choice is: adopt lucide everywhere and lose per-glyph hover
+recolour on the entry cards, or standardise on inlined `currentColor` vectors and
+drop the library for these marks. The robot **avatar** is a raster illustration and
+is out of this decision (artwork, not an icon).
+
+**Where.** `src/app/dashboard/creator/phase-2/page.tsx` (inlined) vs
+`src/app/dashboard/creator/phase-2/clarifier/page.tsx` (lucide).
+
+---
+
+## CI-14 — Clarifier "Idea Journal" duplicates the first transcript bubble (P4)
+
+**Redundant UI.** The clarifier's "Idea Journal" panel renders `journalText`, which
+is seeded purely from the first user answer (`chatMessages[0].text`) or, for a
+Discovery user, the confirmed concept title — both already visible elsewhere (the
+first transcript bubble; the concept). It has no backend field and no independent
+persistence (`grep journal` finds nothing in `backend/`). So it always mirrors
+content shown a few pixels away.
+
+**Kept, not removed.** Carried into the new two-column layout (right panel, below
+the step list) during the 2026-07 restyle rather than deleted — removing a feature
+is its own decision, not a restyle side effect. Filed so the duplication can be
+reconsidered deliberately: either give the journal a distinct purpose (e.g. the
+AI-refined idea rather than the raw first answer) or retire it.
+
+**Where.** `src/app/dashboard/creator/phase-2/clarifier/page.tsx` (`journalText`).
+
+---
+
+*CI-1 through CI-8 filed during the Creator Phase 2 completion-page work (2026-07);
+CI-9 through CI-12 filed during the global typography work, CI-13 and CI-14 during
+the clarifier restyle (2026-07). No GitHub issue tracker / `gh` CLI is configured in
+this repo; the established convention is standalone markdown docs
+(`FIX_0N_*.md`, `*_AUDIT.md`), which this file follows.*
