@@ -115,7 +115,7 @@ export default function IdeaConfirmPage() {
         {/* Page title */}
         <div className="space-y-2">
           <div className="text-xs font-bold text-primary uppercase tracking-wider">Venture Concept Canvas</div>
-          <h1 className="text-3xl font-extrabold tracking-tight">Idea Selected</h1>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Idea Selected</h1>
           <p className="text-sm text-muted-foreground max-w-xl">
             Review the synthesized canvas below and verify the strategic parameters before continuing to deep dive chats.
           </p>
@@ -153,14 +153,14 @@ export default function IdeaConfirmPage() {
               <CardContent className="p-6 space-y-6">
                 
                 {/* Header info */}
-                <div className="flex items-start justify-between border-b border-border pb-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between border-b border-border pb-4">
                   <div className="space-y-1">
                     <span className="rounded-full bg-primary/10 border border-primary/20 text-primary px-3 py-0.5 text-[10px] font-bold uppercase tracking-wider">
                       {concept.category}
                     </span>
                     <h2 className="text-2xl font-extrabold">{concept.title}</h2>
                   </div>
-                  <div className="text-right">
+                  <div className="text-left sm:text-right shrink-0">
                     <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Clarity Score</span>
                     <span className="text-3xl font-extrabold text-primary">{concept.score}%</span>
                   </div>

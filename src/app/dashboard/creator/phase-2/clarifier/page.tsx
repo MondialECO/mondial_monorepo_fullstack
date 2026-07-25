@@ -415,11 +415,11 @@ export default function AIClarifierPage() {
 
   return (
     <div className="w-full" style={{ backgroundColor: "var(--background)" }}>
-      <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 py-8 sm:py-10 space-y-6">
+      <div className="mx-auto w-full max-w-[1200px] px-4 sm:px-6 py-8 sm:py-10 space-y-6">
 
         {/* ── Heading block ── */}
         <div className="space-y-2">
-          <h1 className="text-3xl font-semibold" style={{ color: "var(--foreground)" }}>
+          <h1 className="text-2xl sm:text-3xl font-semibold" style={{ color: "var(--foreground)" }}>
             Let&apos;s sharpen your idea
           </h1>
           <p className="text-base max-w-[780px]" style={{ color: "var(--muted-foreground)" }}>

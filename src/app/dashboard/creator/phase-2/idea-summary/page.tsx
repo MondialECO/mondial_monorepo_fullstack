@@ -2,14 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import {
-  Sparkles,
-  ArrowRight,
-  ArrowLeft,
-  CheckCircle2,
-  AlertTriangle,
-  Loader2,
-} from "lucide-react";
+import { ArrowRight, ArrowLeft, CheckCircle2, AlertTriangle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
 
@@ -85,195 +78,201 @@ export default function IdeaSummaryPage() {
     router.push("/dashboard/creator/phase-2/concept-name");
   };
 
+  // Ring geometry (drawn as vector — the design exports it as an image).
+  const ringR = 44;
+  const ringC = 2 * Math.PI * ringR;
+  const ringOffset = ringC * (1 - clarityScore / 100);
+
   return (
-    <div className="flex flex-col min-h-screen w-full bg-background text-foreground">
-      {/* ── HEADER ── */}
-      {/* <header className="flex items-center justify-between border-b border-border bg-card/80 backdrop-blur-sm px-4 sm:px-6 py-3 shrink-0">
-        <div />
-        <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-          <Sparkles className="h-3 w-3" />
-          <span className="hidden sm:inline">Phase 2 of 6 —</span> Idea Summary
-        </div>
-      </header> */}
+    <div className="w-full" style={{ backgroundColor: "var(--background)" }}>
+      <div className="mx-auto w-full max-w-[768px] px-4 sm:px-6 py-8 sm:py-12">
 
-      {/* ── PROGRESS BAR ── */}
-      <div className="h-[3px] w-full bg-muted shrink-0">
-        <div className="h-full bg-primary transition-all duration-500" style={{ width: "60%" }} />
-      </div>
+        {/* ── Loading State ── */}
+        {isLoading && (
+          <div className="flex flex-col items-center justify-center gap-4 py-20">
+            <Loader2 className="h-8 w-8 animate-spin" style={{ color: "var(--primary)" }} />
+            <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>Loading your idea summary…</p>
+          </div>
+        )}
 
-      {/* ── MAIN CONTENT ── */}
-      <main className="flex-1 flex flex-col items-center px-4 sm:px-6 py-8 sm:py-10">
-        <div className="w-full max-w-[860px] space-y-6">
-
-          {/* ── Loading State ── */}
-          {isLoading && (
-            <div className="flex flex-col items-center justify-center gap-4 py-20">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <p className="text-sm text-muted-foreground">Loading your idea summary…</p>
+        {/* ── Empty State ── */}
+        {!isLoading && !hasData && (
+          <div className="flex flex-col items-center justify-center gap-4 py-20 text-center">
+            <div
+              className="h-14 w-14 rounded-full flex items-center justify-center"
+              style={{ backgroundColor: "color-mix(in srgb, var(--destructive) 12%, transparent)", color: "var(--destructive)" }}
+            >
+              <AlertTriangle className="h-7 w-7" />
             </div>
-          )}
+            <div className="space-y-1">
+              <h3 className="text-lg font-semibold" style={{ color: "var(--foreground)" }}>No idea summary available</h3>
+              <p className="text-sm max-w-md" style={{ color: "var(--muted-foreground)" }}>
+                Complete the idea selection and confirmation steps to generate a summary.
+              </p>
+            </div>
+            <Button
+              onClick={() => router.push("/dashboard/creator/phase-2")}
+              className="rounded-xl px-6 py-5 text-sm font-semibold flex items-center gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to Phase 2
+            </Button>
+          </div>
+        )}
 
-          {/* ── Empty State ── */}
-          {!isLoading && !hasData && (
-            <div className="flex flex-col items-center justify-center gap-4 py-20 text-center">
-              <div className="h-14 w-14 rounded-full bg-destructive/10 text-destructive flex items-center justify-center">
-                <AlertTriangle className="h-7 w-7" />
-              </div>
-              <div className="space-y-1">
-                <h3 className="text-lg font-bold">No idea summary available</h3>
-                <p className="text-sm text-muted-foreground max-w-md">
-                  Complete the idea selection and confirmation steps to generate a summary.
-                </p>
-              </div>
-              <Button
-                onClick={() => router.push("/dashboard/creator/phase-2")}
-                className="rounded-xl px-6 py-5 text-sm font-bold bg-primary text-primary-foreground hover:bg-primary/95 flex items-center gap-2"
+        {/* ── Summary ── */}
+        {!isLoading && hasData && (
+          <div className="flex flex-col gap-8">
+
+            {/* ── Header block ── */}
+            <div className="flex flex-col gap-2">
+              <div
+                className="inline-flex self-start items-center gap-1.5 rounded-full pr-3 py-1"
               >
-                <ArrowLeft className="h-4 w-4" />
-                Back to Phase 2
-              </Button>
-            </div>
-          )}
-
-          {/* ── Title Section ── */}
-          {!isLoading && hasData && (
-          <>
-            <div>
-              <div className="inline-flex items-center gap-1.5 text-primary text-xs font-bold mb-2">
-                <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                Synthesis Complete
+                <span
+                  className="rounded-full"
+                  style={{
+                    width: 8,
+                    height: 8,
+                    backgroundColor: "var(--primary)",
+                    border: "2px solid color-mix(in srgb, var(--primary) 50%, transparent)",
+                  }}
+                />
+                <span className="text-[11px] font-medium" style={{ color: "var(--primary)" }}>
+                  Synthesis Complete
+                </span>
               </div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
+              <h1 className="text-2xl sm:text-3xl font-semibold" style={{ color: "var(--foreground)" }}>
                 Your Idea - First draft.
               </h1>
-              <p className="text-sm text-muted-foreground mt-1.5 max-w-lg">
+              <p className="text-base max-w-[548px]" style={{ color: "var(--muted-foreground)" }}>
                 Extracted from your own insights. AI provided the structure — the ownership is yours.
               </p>
             </div>
 
-            {/* ── Canvas Grid (inside a card) ── */}
-          <div className="rounded-2xl border border-border bg-card p-5 sm:p-7">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {canvasItems.map((block) => (
-                <div
-                  key={block.title}
-                  className="border border-border rounded-xl p-4 bg-card hover:shadow-sm transition-shadow duration-200"
-                >
-                  <span className="block text-[11px] font-bold text-foreground tracking-wide uppercase mb-1.5">
-                    {block.title}
-                  </span>
-                  <p className="text-xs text-muted-foreground font-medium leading-relaxed line-clamp-3">
-                    {block.value}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* ── Analytics Panel (Clarity Score + Synthesis Progression) ── */}
-          <div className="rounded-2xl border border-border bg-card p-5 sm:p-7">
-            <div className="flex flex-col md:flex-row gap-6 md:gap-0 md:divide-x divide-border">
-
-              {/* Left: Clarity Score */}
-              <div className="flex flex-col items-center justify-center md:pr-8 shrink-0">
-                <span className="text-xs font-bold text-foreground mb-3">iDeal Clarity Score</span>
-                <div className="relative w-[120px] h-[120px] flex items-center justify-center">
-                  <svg className="w-full h-full -rotate-90" viewBox="0 0 120 120">
-                    <circle
-                      cx="60"
-                      cy="60"
-                      r="50"
-                      fill="transparent"
-                      stroke="currentColor"
-                      strokeWidth="8"
-                      className="text-muted"
-                    />
-                    <circle
-                      cx="60"
-                      cy="60"
-                      r="50"
-                      fill="transparent"
-                      stroke="currentColor"
-                      strokeWidth="8"
-                      strokeLinecap="round"
-                      className="text-primary transition-all duration-700 ease-out"
-                      strokeDasharray={2 * Math.PI * 50}
-                      strokeDashoffset={2 * Math.PI * 50 * (1 - clarityScore / 100)}
-                    />
-                  </svg>
-                  <span className="absolute text-3xl font-extrabold text-foreground tabular-nums">
-                    {clarityScore}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5 mt-3">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
-                  <span className="text-xs font-semibold text-green-600 dark:text-green-400">
-                    Ready For Naming
-                  </span>
-                </div>
-              </div>
-
-              {/* Right: Synthesis Progression + Stats */}
-              <div className="flex-1 md:pl-8 flex flex-col justify-center gap-5">
-                {/* Synthesis Progression Bar */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-bold text-foreground">Synthesis Progression</span>
-                    <span className="text-xs font-bold text-primary">{progressionLabel}</span>
-                  </div>
-                  <div className="relative h-2.5 rounded-full bg-muted overflow-hidden">
-                    <div
-                      className="absolute inset-y-0 left-0 rounded-full bg-primary transition-all duration-700 ease-out"
-                      style={{ width: `${progressionPercent}%` }}
-                    />
-                    {/* Knob indicator */}
-                    <div
-                      className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-primary border-2 border-card shadow-md transition-all duration-700 ease-out"
-                      style={{ left: `calc(${progressionPercent}% - 8px)` }}
-                    />
-                  </div>
-                  <div className="flex justify-between mt-1.5">
-                    <span className={`text-[10px] font-semibold ${progressionLabel === "Vague" ? "text-primary" : "text-muted-foreground"}`}>Vague</span>
-                    <span className={`text-[10px] font-semibold ${progressionLabel === "Developing" ? "text-primary" : "text-muted-foreground"}`}>Developing</span>
-                    <span className={`text-[10px] font-semibold ${progressionLabel === "Sharp" ? "text-primary" : "text-muted-foreground"}`}>Sharp</span>
-                  </div>
-                </div>
-
-                {/* Stat boxes */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="border border-border rounded-xl p-3.5 bg-card">
-                    <span className="block text-[10px] text-muted-foreground font-medium mb-0.5">
-                      AI confidence
-                    </span>
-                    <span className="text-lg font-extrabold text-foreground tabular-nums">89.4%</span>
-                  </div>
-                  <div className="border border-border rounded-xl p-3.5 bg-card">
-                    <span className="block text-[10px] text-muted-foreground font-medium mb-0.5">
-                      Latency
-                    </span>
-                    <span className="text-lg font-extrabold text-foreground tabular-nums">89.4%</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* ── Continue Button ── */}
-          <div className="flex justify-end pt-2 pb-4">
-            <Button
-              onClick={handleContinue}
-              size="lg"
-              className="rounded-full px-8 py-3 text-sm font-bold flex items-center gap-2 shadow-sm"
+            {/* ── Summary card (grid + metrics) ── */}
+            <div
+              className="rounded-2xl border shadow-sm p-4 sm:p-6 flex flex-col gap-6"
+              style={{ backgroundColor: "var(--card)", borderColor: "var(--card-edge)" }}
             >
-              Looks Good - Continue
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </div>
-          </>
-          )}
-        </div>
-      </main>
+              {/* Detail grid — 3 columns, stacks below sm */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                {canvasItems.map((block) => (
+                  <div
+                    key={block.title}
+                    className="rounded-xl border px-4 py-3 flex flex-col gap-1.5"
+                    style={{ backgroundColor: "var(--popover)", borderColor: "var(--stroke-10)" }}
+                  >
+                    <span className="text-[13px] font-medium uppercase tracking-wide" style={{ color: "var(--foreground)" }}>
+                      {block.title}
+                    </span>
+                    <p className="text-[13px] leading-relaxed line-clamp-2" style={{ color: "var(--muted-foreground)" }}>
+                      {block.value}
+                    </p>
+                  </div>
+                ))}
+              </div>
 
+              {/* Metrics card */}
+              <div
+                className="rounded-xl border flex flex-col md:flex-row overflow-hidden"
+                style={{ backgroundColor: "var(--popover)", borderColor: "var(--stroke-10)" }}
+              >
+                {/* Left: clarity score */}
+                <div
+                  className="flex flex-col items-center justify-center gap-4 p-5 sm:p-7 shrink-0 border-b md:border-b-0 md:border-r"
+                  style={{ borderColor: "var(--stroke-10)" }}
+                >
+                  <span className="text-[13px] font-medium" style={{ color: "var(--foreground)" }}>
+                    iDeal Clarity Score
+                  </span>
+                  <div className="relative" style={{ width: 100, height: 100 }}>
+                    <svg width="100" height="100" viewBox="0 0 100 100" aria-hidden="true">
+                      <circle cx="50" cy="50" r={ringR} fill="none" strokeWidth="8" stroke="var(--muted)" />
+                      <circle
+                        cx="50"
+                        cy="50"
+                        r={ringR}
+                        fill="none"
+                        strokeWidth="8"
+                        stroke="var(--primary)"
+                        strokeLinecap="round"
+                        strokeDasharray={ringC}
+                        strokeDashoffset={ringOffset}
+                        transform="rotate(-90 50 50)"
+                        style={{ transition: "stroke-dashoffset 700ms ease" }}
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-3xl font-medium tabular-nums" style={{ color: "var(--foreground)" }}>
+                        {clarityScore}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3 h-3" style={{ color: "var(--p8-green)" }} />
+                    <span className="text-xs font-medium" style={{ color: "var(--p8-green)" }}>
+                      Ready For Naming
+                    </span>
+                  </div>
+                </div>
+
+                {/* Right: synthesis progression + stats */}
+                <div className="flex-1 min-w-0 flex flex-col justify-center gap-5 p-5 sm:p-7">
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-center justify-between gap-4 text-sm">
+                      <span style={{ color: "var(--muted-foreground)" }}>Synthesis Progression</span>
+                      <span className="font-semibold" style={{ color: "var(--primary)" }}>{progressionLabel}</span>
+                    </div>
+                    {/* Progression bar */}
+                    <div className="h-2 rounded-xl overflow-hidden" style={{ backgroundColor: "var(--stroke-10)" }}>
+                      <div
+                        className="h-full rounded-xl transition-all duration-700 ease-out"
+                        style={{ width: `${progressionPercent}%`, backgroundColor: "var(--primary)" }}
+                      />
+                    </div>
+                    {/* Axis labels */}
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="flex-1" style={{ color: "var(--muted-foreground)" }}>Vague</span>
+                      <span className="flex-1 text-center" style={{ color: "var(--primary)" }}>Developing</span>
+                      <span className="flex-1 text-right" style={{ color: "var(--p8-green)" }}>Sharp</span>
+                    </div>
+                  </div>
+
+                  {/* Stat cards */}
+                  <div className="flex gap-3">
+                    <div
+                      className="flex-1 min-w-0 rounded-lg border p-3 flex flex-col gap-2"
+                      style={{ backgroundColor: "var(--card)", borderColor: "var(--stroke-10)" }}
+                    >
+                      <span className="text-[13px]" style={{ color: "var(--muted-foreground)" }}>AI confidence</span>
+                      <span className="text-base font-semibold text-center tabular-nums" style={{ color: "var(--foreground)" }}>89.4%</span>
+                    </div>
+                    <div
+                      className="flex-1 min-w-0 rounded-lg border p-3 flex flex-col gap-2"
+                      style={{ backgroundColor: "var(--card)", borderColor: "var(--stroke-10)" }}
+                    >
+                      <span className="text-[13px]" style={{ color: "var(--muted-foreground)" }}>Latency</span>
+                      <span className="text-base font-semibold text-center tabular-nums" style={{ color: "var(--foreground)" }}>89.4%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ── Continue CTA (pill-in-pill) ── */}
+            <div className="rounded-full p-2" style={{ backgroundColor: "var(--card)" }}>
+              <Button
+                onClick={handleContinue}
+                className="w-full rounded-full px-6 py-6 text-base font-medium flex items-center justify-center gap-2"
+              >
+                Looks Good - Continue
+                <ArrowRight className="h-5 w-5" />
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
