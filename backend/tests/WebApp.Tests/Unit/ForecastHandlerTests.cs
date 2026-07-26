@@ -31,7 +31,7 @@ public class ForecastHandlerTests
         new() { Id = ObjectId.GenerateNewId().ToString(), OwnerUserId = "user-1", JobType = "Forecast", InputPayload = input };
 
     private static AiCompletion Completion(string text) =>
-        new() { Text = text, Model = "openai/gpt-4o", Usage = new AiTokenUsage(60, 500, 560) };
+        new() { Text = text, Model = "openai/gpt-oss-20b:free", Usage = new AiTokenUsage(60, 500, 560) };
 
     private static BusinessPlanSession CompletedPlan(string id, string editedOverview = "Edited plan.") =>
         new()

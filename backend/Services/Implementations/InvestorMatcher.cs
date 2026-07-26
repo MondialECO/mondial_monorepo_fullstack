@@ -28,8 +28,8 @@ namespace WebApp.Services.Implementations;
 /// ====================================================================
 /// FUTURE LLM INTEGRATION (P1 — DO NOT WIRE YET, NO PROVIDER CREDENTIALS).
 /// ====================================================================
-/// When the org has Claude/OpenAI/Anthropic credentials and a budget for
-/// inference, replace <see cref="CalculateMatchScoreAsync"/> with the flow
+/// When the platform is ready to spend on LLM inference (routed through the
+/// OpenRouter provider), replace <see cref="CalculateMatchScoreAsync"/> with the flow
 /// described inline below. Keep the rule-based matcher as the
 /// no-credentials fallback so dev / CI runs do not require a network call.
 /// EngineVersion on the persisted match identifies which engine produced it.

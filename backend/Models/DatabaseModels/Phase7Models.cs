@@ -33,9 +33,9 @@ public class Phase7ReviewSnapshot
     public DateTime ReviewedAt { get; set; } = DateTime.UtcNow;
 
     /// <summary>
-    /// "rule_based_v1" today. When an LLM is wired in, this becomes e.g.
-    /// "claude-opus-4-7" or similar so callers can tell which engine
-    /// produced the snapshot.
+    /// "rule_based_v1" today. When an LLM is wired in, this becomes the
+    /// OpenRouter model id (e.g. "openai/gpt-oss-20b:free") so callers can tell
+    /// which engine produced the snapshot.
     /// </summary>
     public string EngineVersion { get; set; } = "rule_based_v1";
 }

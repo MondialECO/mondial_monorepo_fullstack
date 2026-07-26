@@ -57,7 +57,7 @@ public class AiPersistenceIntegrationTests : IClassFixture<AppFixture>
         {
             RequestId = request.Id,
             OwnerUserId = owner,
-            Model = "openai/gpt-4o-mini",
+            Model = "openai/gpt-oss-20b:free",
             RawText = "hi",
             TokenUsage = new AiResponseTokenUsage { PromptTokens = 1, CompletionTokens = 2, TotalTokens = 3 },
         };
