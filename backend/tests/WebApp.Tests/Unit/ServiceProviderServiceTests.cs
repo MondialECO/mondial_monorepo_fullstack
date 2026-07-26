@@ -452,7 +452,7 @@ public class ServiceProviderServiceTests
     }
 
     [Fact]
-    public async Task Approve_verifies_seeds_trustscore_and_notifies()
+    public async Task Approve_verifies_starts_trust_neutral_and_notifies()
     {
         var user = GivenUser(UnderReviewUser());
 
@@ -462,8 +462,11 @@ public class ServiceProviderServiceTests
         result.Value!.VerificationStatus.Should().Be("Verified");
         result.Value.IsVerified.Should().BeTrue();
         result.Value.VerifiedAt.Should().NotBeNull();
-        result.Value.TrustScore.Should().Be(ServiceProviderService.TrustScoreBaseline);
-        user.ServiceProviderProfile.TrustScore.Should().Be(50.0);
+        // TrustScore is DERIVED: a freshly-verified provider has no signals yet, so the
+        // score is the neutral "not enough data" state (0), never a hand-set baseline.
+        result.Value.TrustScore.Should().Be(0);
+        user.ServiceProviderProfile.TrustScore.Should().Be(0);
+        user.ServiceProviderProfile.HasEnoughTrustData.Should().BeFalse();
 
         _audit.Verify(a => a.Record("ServiceProviderVerification.Approve", "admin-1", true, It.IsAny<object>()), Times.Once);
         _notifications.Verify(n => n.NotifyUser(user.Id, "Provider verification approved", It.IsAny<string>()), Times.Once);
