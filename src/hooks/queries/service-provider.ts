@@ -5,13 +5,23 @@ import {
   addPortfolioItem,
   deletePortfolioItem,
   getProfile,
+  getSkillsTestQuestions,
+  getSkillsTestStatus,
+  getTrust,
+  submitSkillsTest,
   submitVerification,
   updatePortfolioItem,
   upsertProfile,
 } from '@/lib/api-service-provider';
-import type { ServiceProviderProfile } from '@/types/service-provider';
+import type {
+  ServiceProviderProfile,
+  SkillsTestStatus,
+  TrustBreakdown,
+} from '@/types/service-provider';
 
 const PROFILE_KEY = ['serviceProvider', 'profile'] as const;
+const TRUST_KEY = ['serviceProvider', 'trust'] as const;
+const SKILLS_TEST_KEY = ['serviceProvider', 'skillsTest', 'status'] as const;
 
 export const useServiceProviderProfile = () =>
   useQuery<ServiceProviderProfile>({
@@ -60,5 +70,42 @@ export const useSubmitVerification = () => {
   return useMutation({
     mutationFn: submitVerification,
     onSuccess: () => qc.invalidateQueries({ queryKey: PROFILE_KEY }),
+  });
+};
+
+// ---- Module 1: Profile & Trust ----
+
+// Trust + skills-test are only meaningful once verified; callers pass `enabled`
+// so the panels stay dormant (no request) until the badge is granted.
+export const useServiceProviderTrust = (enabled = true) =>
+  useQuery<TrustBreakdown>({
+    queryKey: TRUST_KEY,
+    queryFn: getTrust,
+    enabled,
+  });
+
+export const useSkillsTestStatus = (enabled = true) =>
+  useQuery<SkillsTestStatus>({
+    queryKey: SKILLS_TEST_KEY,
+    queryFn: getSkillsTestStatus,
+    enabled,
+  });
+
+// Questions are fetched imperatively when the provider starts a test (a GET with
+// a param), so this is exposed as a mutation rather than a standing query.
+export const useStartSkillsTest = () =>
+  useMutation({ mutationFn: (category: string) => getSkillsTestQuestions(category) });
+
+// A graded submission changes the trust score and the category's cooldown, so we
+// refresh trust, the skills-test status, and the profile (trustScore lives there too).
+export const useSubmitSkillsTest = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: submitSkillsTest,
+    onSuccess: (result) => {
+      qc.setQueryData(TRUST_KEY, result.trust);
+      qc.invalidateQueries({ queryKey: SKILLS_TEST_KEY });
+      qc.invalidateQueries({ queryKey: PROFILE_KEY });
+    },
   });
 };

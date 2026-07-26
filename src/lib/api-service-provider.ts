@@ -3,7 +3,12 @@ import type {
   AddPortfolioItemRequest,
   ApiEnvelope,
   ServiceProviderProfile,
+  SkillsTestQuestions,
+  SkillsTestResult,
+  SkillsTestStatus,
+  SubmitSkillsTestRequest,
   SubmitVerificationRequest,
+  TrustBreakdown,
   UpdatePortfolioItemRequest,
   UpsertProfileRequest,
   VerificationStatusResponse,
@@ -67,6 +72,42 @@ export async function submitVerification(
 ): Promise<VerificationStatusResponse> {
   const res = await api.post<ApiEnvelope<VerificationStatusResponse>>(
     "/service-provider/submit-verification",
+    payload
+  );
+  return unwrap(res.data);
+}
+
+// ---- Module 1: Profile & Trust ----
+
+export async function getTrust(): Promise<TrustBreakdown> {
+  const res = await api.get<ApiEnvelope<TrustBreakdown>>(
+    "/service-provider/trust"
+  );
+  return unwrap(res.data);
+}
+
+export async function getSkillsTestStatus(): Promise<SkillsTestStatus> {
+  const res = await api.get<ApiEnvelope<SkillsTestStatus>>(
+    "/service-provider/skills-test/status"
+  );
+  return unwrap(res.data);
+}
+
+export async function getSkillsTestQuestions(
+  category: string
+): Promise<SkillsTestQuestions> {
+  const res = await api.get<ApiEnvelope<SkillsTestQuestions>>(
+    "/service-provider/skills-test/questions",
+    { params: { category } }
+  );
+  return unwrap(res.data);
+}
+
+export async function submitSkillsTest(
+  payload: SubmitSkillsTestRequest
+): Promise<SkillsTestResult> {
+  const res = await api.post<ApiEnvelope<SkillsTestResult>>(
+    "/service-provider/skills-test/submit",
     payload
   );
   return unwrap(res.data);

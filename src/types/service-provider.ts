@@ -37,6 +37,8 @@ export interface ServiceProviderProfile {
   rejectionReason?: string | null;
 
   trustScore: number;
+  /** False until at least one trust signal has data — show the neutral state. */
+  hasEnoughTrustData: boolean;
 
   skills: string[];
   serviceCategories: string[];
@@ -64,6 +66,89 @@ export interface VerificationStatusResponse {
   verifiedAt?: string | null;
   rejectionReason?: string | null;
   trustScore: number;
+}
+
+// ---------------- Module 1: Profile & Trust ----------------
+
+/** One trust signal. `value` is meaningful only when `hasData` is true. */
+export interface TrustSignal {
+  key:
+    | "clientSatisfaction"
+    | "onTimeDelivery"
+    | "responseRate"
+    | "repeatClientRate"
+    | "skillTest";
+  label: string;
+  /** Weight as a percentage of the base (e.g. 40). */
+  weight: number;
+  hasData: boolean;
+  /** Normalized 0–100 value (only meaningful when hasData). */
+  value: number;
+}
+
+/** Derived TrustScore + breakdown. When `hasEnoughData` is false, show the neutral state. */
+export interface TrustBreakdown {
+  trustScore: number;
+  hasEnoughData: boolean;
+  signals: TrustSignal[];
+  hasDisputes: boolean;
+  disputePenalty: number;
+  lastRecalculatedAt?: string | null;
+  /** Platform tier (ranking-only badge; affects match ordering, not pricing). */
+  tierLevel: number;
+}
+
+export interface SkillsTestCategoryStatus {
+  category: string;
+  hasAttempt: boolean;
+  lastScore?: number | null;
+  lastPassed?: boolean | null;
+  lastTakenAt?: string | null;
+  nextEligibleRetestAt?: string | null;
+  canTakeNow: boolean;
+}
+
+export interface SkillsTestStatus {
+  isVerified: boolean;
+  passThresholdPercent: number;
+  questionsPerAttempt: number;
+  cooldownDays: number;
+  categories: SkillsTestCategoryStatus[];
+}
+
+/** One question — never carries the correct answer. */
+export interface SkillsTestQuestion {
+  id: string;
+  prompt: string;
+  options: string[];
+}
+
+export interface SkillsTestQuestions {
+  category: string;
+  questionCount: number;
+  passThresholdPercent: number;
+  questions: SkillsTestQuestion[];
+}
+
+export interface SkillsTestAnswer {
+  questionId: string;
+  selectedIndex: number;
+}
+
+export interface SubmitSkillsTestRequest {
+  category: string;
+  answers: SkillsTestAnswer[];
+}
+
+export interface SkillsTestResult {
+  category: string;
+  score: number;
+  correctCount: number;
+  totalCount: number;
+  passed: boolean;
+  takenAt: string;
+  nextEligibleRetestAt: string;
+  trust: TrustBreakdown;
 }
 
 // ---------------- Request payloads ----------------
