@@ -17,6 +17,7 @@ namespace WebApp.DbContext
             EnsurePhase6Indexes();
             EnsurePhase9Indexes();
             EnsureCreatorJourneyIndexes();
+            EnsureServiceCatalogIndexes();
         }
 
         public MongoDbContext(IMongoDatabase database)
@@ -27,6 +28,7 @@ namespace WebApp.DbContext
             EnsurePhase6Indexes();
             EnsurePhase9Indexes();
             EnsureCreatorJourneyIndexes();
+            EnsureServiceCatalogIndexes();
         }
 
         // Smart Matchmaking outbox indexes: Status (consumer polling), CompanyId
@@ -277,6 +279,37 @@ namespace WebApp.DbContext
         // notifications collection
         public virtual IMongoCollection<Notification> Notifications => _database.GetCollection<Notification>("Notifications");
         public virtual IMongoCollection<PushSubscriptionEntity> PushSubscription => _database.GetCollection<PushSubscriptionEntity>("PushSubscriptions");
+
+        // Module 2 — Service Catalog (canon §6). Singular class → plural collection.
+        public virtual IMongoCollection<ServiceListing> ServiceListings => _database.GetCollection<ServiceListing>("ServiceListings");
+        public virtual IMongoCollection<ServicePackage> ServicePackages => _database.GetCollection<ServicePackage>("ServicePackages");
+        public virtual IMongoCollection<ServiceFAQ> ServiceFAQs => _database.GetCollection<ServiceFAQ>("ServiceFAQs");
+
+        // Service-catalog lookup indexes: listings by owner, packages/FAQs by their
+        // parent service. Best-effort + swallowed so context construction never blocks
+        // or fails (unit tests mock the context; the getters are unset there → no-op).
+        private void EnsureServiceCatalogIndexes()
+        {
+            try
+            {
+                ServiceListings.Indexes.CreateMany(new[]
+                {
+                    new CreateIndexModel<ServiceListing>(
+                        Builders<ServiceListing>.IndexKeys.Ascending(x => x.ProviderId),
+                        new CreateIndexOptions { Background = true }),
+                });
+                ServicePackages.Indexes.CreateOne(new CreateIndexModel<ServicePackage>(
+                    Builders<ServicePackage>.IndexKeys.Ascending(x => x.ServiceId),
+                    new CreateIndexOptions { Background = true }));
+                ServiceFAQs.Indexes.CreateOne(new CreateIndexModel<ServiceFAQ>(
+                    Builders<ServiceFAQ>.IndexKeys.Ascending(x => x.ServiceId),
+                    new CreateIndexOptions { Background = true }));
+            }
+            catch
+            {
+                // Best-effort; never block or fail context construction.
+            }
+        }
 
     }
 

@@ -278,6 +278,17 @@ namespace WebApp.Models.DatabaseModels
         // non-blocking; feeds only the SkillTest signal of TrustBreakdown.
         public List<SkillsTestAttempt> SkillsTestAttempts { get; set; } = new();
 
+        // ---- Module 2: Service Catalog — provider capacity (canon §6.7) ----
+        // Additive fields (legacy docs deserialize to defaults, like the Module 1
+        // additions above). Instant order is blocked when CurrentActiveOrders >=
+        // MaximumConcurrentOrders (unless overbooking is allowed). CurrentActiveOrders
+        // has NO writer in Module 2 — only Module 4 (engagements) increments it live;
+        // the field + capacity check exist and are unit-testable now.
+        public int MaximumConcurrentOrders { get; set; }
+        public int CurrentActiveOrders { get; set; }
+        public bool NewOrderAvailability { get; set; } = true;
+        public bool ManualApprovalWhenCapacityLow { get; set; }
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     }
