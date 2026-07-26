@@ -58,7 +58,7 @@
 |---|---|---|---|
 | Creator | 1 (onboarding), 2 Idea Discovery … 8 Crossroads | Not Started | — |
 | Investor | 1 … 10 (Discovery→Tracking) | Not Started | — |
-| Service Provider | 1–2 built; 3–10 (catalog→reviews) | Not Started | — |
+| Service Provider | **Not phase-based** (superseded) — single verification gate + flat 5-section dashboard | Module 1 (Profile & Trust) built (`b29bcde`/`5e2da20`); Catalog/Leads/Workroom+Earnings/Analytics not built | See [`service-provider-flow-canon.md`](../service-provider-flow-canon.md) |
 | Admin | overview, provider-verification | Not Started | — |
 
 ---

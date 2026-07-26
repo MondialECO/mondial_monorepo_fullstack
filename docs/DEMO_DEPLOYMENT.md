@@ -57,7 +57,7 @@ Then deploy with `ASPNETCORE_ENVIRONMENT=Demo` + `SeedDemoData=true`.
 | `MongoDbSettings__DatabaseName` | e.g. `MondialDemo` |
 | `JwtSettings__Key` | **fresh** 256-bit random (≥32 bytes). Do NOT reuse the dev key |
 | `JwtSettings__Issuer` / `JwtSettings__Audience` | e.g. demo domain |
-| `OpenRouter__ApiKey` | **boot-blocking.** Account must have `gpt-4o` credit |
+| `OpenRouter__ApiKey` | **boot-blocking.** Account must have access to `openai/gpt-oss-20b:free` |
 | `EmailSettings__SmtpServer` / `__Email` / `__Password` | SMTP creds |
 | `SeedDemoData` | `true` for the demo |
 
@@ -102,7 +102,7 @@ Then deploy with `ASPNETCORE_ENVIRONMENT=Demo` + `SeedDemoData=true`.
 - [ ] `/health/ready` = Healthy (Mongo + Redis + OpenRouter).
 - [ ] Hangfire dashboard (`/hangfire`, Admin) shows the `ai` queue processing.
 - [ ] Login `demo.creator@mondial.local` / `DemoP@ss1` → creator dashboard (seed + JWT + CORS).
-- [ ] AI Studio → run Clarifier → job completes (OpenRouter + gpt-4o + Hangfire + credit debit).
+- [ ] AI Studio → run Clarifier → job completes (OpenRouter + openai/gpt-oss-20b:free + Hangfire + credit debit).
 - [ ] Messaging: open a seeded conversation, send → recipient sees it live (SignalR + WS + backplane).
 - [ ] Notification bell increments live.
 - [ ] Investor login → seeded matches / deal room / NDA-gated data room render.
