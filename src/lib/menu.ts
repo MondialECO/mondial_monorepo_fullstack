@@ -282,6 +282,11 @@ export const menu: Record<UserRole, MenuSection[]> = {
           href: "/dashboard/serviceprovider/earnings",
           icon: Wallet,
         },
+        {
+          label: "Analytics & Growth",
+          href: "/dashboard/serviceprovider/analytics",
+          icon: BarChart3,
+        },
       ],
     },
   ],
