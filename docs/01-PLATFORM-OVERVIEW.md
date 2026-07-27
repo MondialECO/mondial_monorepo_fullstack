@@ -128,7 +128,9 @@ KYC → Company Verify → Financials → Equity → Funding Ask → Data Room �
 KYC → Finance Verify → Investment Thesis → SOCIAL Profile → Deal Discovery → Founder Profile → NDA → Data Room → Term Sheet → Pipeline → Portfolio
 
 ### Service Provider Workflow
-KYC → Credential Verify → Service Catalog → SOCIAL Profile → Marketplace → Booking → Workroom → Escrow → Review
+KYC → Credential Verify (single verification gate) → **flat dashboard opens** (all sections at once, not sequential): Profile & Trust · Service Catalog · Leads · Workroom & Earnings · Analytics & Growth.
+
+> **Superseded:** the SP flow is **not** phase-based. The arrow above reflects a single approval gate, then a Fiverr/Upwork-style flat dashboard — not a sequential wizard. Canonical spec: [`service-provider-flow-canon.md`](service-provider-flow-canon.md).
 
 ---
 

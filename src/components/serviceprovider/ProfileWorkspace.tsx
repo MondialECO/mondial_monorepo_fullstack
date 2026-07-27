@@ -45,6 +45,7 @@ import {
   type VerificationStatus,
 } from '@/types/service-provider';
 import { PortfolioSection } from './PortfolioSection';
+import { TrustAndSkillsSection } from './TrustAndSkillsSection';
 
 const statusMeta: Record<
   VerificationStatus,
@@ -138,6 +139,7 @@ export function ProfileWorkspace() {
       </div>
       <OverviewCard profile={profile} />
       <VerificationCard profile={profile} />
+      <TrustAndSkillsSection profile={profile} />
       <ProfileForm profile={profile} />
       <PortfolioSection items={profile.portfolioItems} />
     </div>
@@ -199,7 +201,11 @@ function OverviewCard({ profile }: { profile: ServiceProviderProfile }) {
             <span className="text-base">{status.label}</span>
           </StatTile>
           <StatTile Icon={Star} label="Trust score">
-            {profile.trustScore.toFixed(1)}
+            {profile.hasEnoughTrustData ? (
+              profile.trustScore.toFixed(1)
+            ) : (
+              <span className="text-base text-muted-foreground">Building…</span>
+            )}
           </StatTile>
           <StatTile Icon={Gauge} label="Completion">
             {profile.completionPercent}%

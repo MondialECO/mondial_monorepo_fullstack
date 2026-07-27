@@ -44,7 +44,8 @@ public class InvestorMatch
 
     /// <summary>
     /// Identifies the engine that produced this match. "rule_based_v1" today;
-    /// pinned to e.g. "claude-opus-4-7" when an LLM matcher is wired up.
+    /// pinned to the OpenRouter model id (e.g. "openai/gpt-oss-20b:free") when an
+    /// LLM matcher is wired up.
     /// </summary>
     public string EngineVersion { get; set; } = "rule_based_v1";
 

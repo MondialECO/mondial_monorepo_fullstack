@@ -57,6 +57,24 @@ public class ServiceProviderController : ControllerBase
     public async Task<IActionResult> SubmitVerification([FromBody] SubmitVerificationRequest request) =>
         Map(await _service.SubmitVerificationAsync(CurrentUserId, request));
 
+    // ---- Module 1: Profile & Trust (owner-scoped, post-verification, non-blocking) ----
+
+    [HttpGet("trust")]
+    public async Task<IActionResult> GetTrust() =>
+        Map(await _service.GetTrustAsync(CurrentUserId));
+
+    [HttpGet("skills-test/status")]
+    public async Task<IActionResult> GetSkillsTestStatus() =>
+        Map(await _service.GetSkillsTestStatusAsync(CurrentUserId));
+
+    [HttpGet("skills-test/questions")]
+    public async Task<IActionResult> GetSkillsTestQuestions([FromQuery] string category) =>
+        Map(await _service.GetSkillsTestQuestionsAsync(CurrentUserId, category));
+
+    [HttpPost("skills-test/submit")]
+    public async Task<IActionResult> SubmitSkillsTest([FromBody] SubmitSkillsTestRequest request) =>
+        Map(await _service.SubmitSkillsTestAsync(CurrentUserId, request));
+
     /// <summary>Map a service result onto the shared ApiResponse envelope and HTTP status.</summary>
     private IActionResult Map<T>(ServiceProviderResult<T> result) => result.Outcome switch
     {

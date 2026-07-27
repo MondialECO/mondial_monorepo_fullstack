@@ -3,9 +3,9 @@ namespace WebApp.Configuration.AiOptions
     /// <summary>
     /// Maps an AI task type (e.g. "IdeaClarifier", "BusinessPlan", "Forecast",
     /// "Probe", "IdeaGenerator") to an OpenRouter model id (single-provider
-    /// architecture: all AI routes through <c>OpenRouterClient</c> to meta-llama
-    /// models). Populated from the "Ai:ModelRouting" configuration section and
-    /// resolved by <c>ModelRouter</c>.
+    /// architecture: all AI routes through <c>OpenRouterClient</c> to the free-tier
+    /// <c>openai/gpt-oss-20b:free</c> model). Populated from the "Ai:ModelRouting"
+    /// configuration section and resolved by <c>ModelRouter</c>.
     /// </summary>
     public class ModelRoutingSettings
     {
@@ -18,6 +18,6 @@ namespace WebApp.Configuration.AiOptions
         /// model, not a non-existent one. Mirrors the "Ai:ModelRouting:DefaultModel"
         /// value in appsettings.
         /// </summary>
-        public string DefaultModel { get; set; } = "meta-llama/llama-3.1-8b-instruct";
+        public string DefaultModel { get; set; } = "openai/gpt-oss-20b:free";
     }
 }

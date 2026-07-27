@@ -327,6 +327,9 @@ builder.Services.AddScoped<ISubmmitdata, SubmmitdataRepository>();
 // D-1 Service Provider (Stage 1: Verification & Onboarding) — embedded profile.
 builder.Services.AddScoped<IServiceProviderService, ServiceProviderService>();
 
+// Module 2 — Service Catalog (listings/packages/FAQs + capacity + pricing guidance).
+builder.Services.AddScoped<IServiceCatalogService, ServiceCatalogService>();
+
 // Observability: OpenTelemetry traces + metrics (/metrics for Prometheus).
 builder.AddObservability();
 

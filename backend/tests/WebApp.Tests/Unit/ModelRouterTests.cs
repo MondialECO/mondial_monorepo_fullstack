@@ -32,15 +32,15 @@ public class ModelRouterTests
     private static ModelRouter ShippedRouter() => Build(new()
     {
         ["Probe"] = "openai/gpt-oss-20b:free",
-        ["IdeaClarifier"] = "openai/gpt-4o",
-        ["BusinessPlan"] = "openai/gpt-4o",
-        ["Forecast"] = "openai/gpt-4o",
-    }, "openai/gpt-4o-mini");
+        ["IdeaClarifier"] = "openai/gpt-oss-20b:free",
+        ["BusinessPlan"] = "openai/gpt-oss-20b:free",
+        ["Forecast"] = "openai/gpt-oss-20b:free",
+    }, "openai/gpt-oss-20b:free");
 
     [Fact]
-    public void Routes_idea_clarifier_to_openai_model()
+    public void Routes_idea_clarifier_to_free_model()
     {
-        ShippedRouter().Resolve("IdeaClarifier").Should().Be("openai/gpt-4o");
+        ShippedRouter().Resolve("IdeaClarifier").Should().Be("openai/gpt-oss-20b:free");
     }
 
     [Fact]

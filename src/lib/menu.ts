@@ -262,6 +262,11 @@ export const menu: Record<UserRole, MenuSection[]> = {
           href: "/dashboard/serviceprovider/profile",
           icon: BadgeCheck,
         },
+        {
+          label: "Services",
+          href: "/dashboard/serviceprovider/services",
+          icon: LayoutGrid,
+        },
       ],
     },
   ],

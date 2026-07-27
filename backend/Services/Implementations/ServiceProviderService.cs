@@ -21,10 +21,6 @@ public class ServiceProviderService : IServiceProviderService
     private readonly INotificationService _notifications;
     private readonly ILogger<ServiceProviderService> _logger;
 
-    /// <summary>Neutral 0–100 baseline seeded on approval (D-1 locked decision).
-    /// Reputation-driven recomputation is deferred to Stage 9.</summary>
-    public const double TrustScoreBaseline = 50.0;
-
     public ServiceProviderService(
         UserManager<ApplicationUser> userManager,
         IAuditLogger audit,
@@ -217,7 +213,10 @@ public class ServiceProviderService : IServiceProviderService
         profile.VerificationStatus = ServiceProviderVerificationStatus.Verified;
         profile.VerifiedAt = DateTime.UtcNow;
         profile.RejectionReason = null;
-        profile.TrustScore = TrustScoreBaseline;
+        // TrustScore is DERIVED, never hand-set: recompute from the (currently empty)
+        // breakdown so a freshly-verified provider correctly reads as "not enough data"
+        // until a real signal (e.g. a skills test) lands. Module 1: Profile & Trust.
+        RecalculateTrustScore(profile);
         Touch(profile);
 
         await _userManager.UpdateAsync(user);
@@ -226,6 +225,7 @@ public class ServiceProviderService : IServiceProviderService
         {
             providerUserId,
             trustScore = profile.TrustScore,
+            hasEnoughTrustData = profile.HasEnoughTrustData,
         });
 
         await NotifyAsync(user.Id,
@@ -269,12 +269,298 @@ public class ServiceProviderService : IServiceProviderService
             profile.ToVerificationResponse(), "Provider verification rejected.");
     }
 
+    // ---------------- Module 1: Trust & Skills Test ----------------
+
+    public async Task<ServiceProviderResult<TrustBreakdownResponse>> GetTrustAsync(string userId)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user is null)
+            return ServiceProviderResult<TrustBreakdownResponse>.NotFound("Service provider profile not found.");
+
+        var profile = EnsureProfile(user);
+        // Recompute in-memory so the projection always reflects current signals (also
+        // normalizes any legacy hand-set score). Not persisted here — persistence happens
+        // at the mutation points that actually change a signal (approval, skills-test submit).
+        RecalculateTrustScore(profile);
+        var response = profile.ToTrustBreakdownResponse();
+        response.TierLevel = user.Tier_level; // ranking-only badge (see SpMatchingService)
+        return ServiceProviderResult<TrustBreakdownResponse>.Ok(response);
+    }
+
+    public async Task<ServiceProviderResult<SkillsTestStatusResponse>> GetSkillsTestStatusAsync(string userId)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user is null)
+            return ServiceProviderResult<SkillsTestStatusResponse>.NotFound("Service provider profile not found.");
+
+        var profile = EnsureProfile(user);
+        var isVerified = profile.VerificationStatus == ServiceProviderVerificationStatus.Verified;
+
+        var categories = profile.ServiceCategories.Select(cat =>
+        {
+            var latest = profile.SkillsTestAttempts
+                .Where(a => a.Category == cat)
+                .OrderByDescending(a => a.TakenAt)
+                .FirstOrDefault();
+
+            var canTakeNow = isVerified &&
+                (latest is null || DateTime.UtcNow >= latest.NextEligibleRetestAt);
+
+            return new SkillsTestCategoryStatus
+            {
+                Category = cat.ToString(),
+                HasAttempt = latest is not null,
+                LastScore = latest?.Score,
+                LastPassed = latest?.Passed,
+                LastTakenAt = latest?.TakenAt,
+                NextEligibleRetestAt = latest?.NextEligibleRetestAt,
+                CanTakeNow = canTakeNow,
+            };
+        }).ToList();
+
+        return ServiceProviderResult<SkillsTestStatusResponse>.Ok(new SkillsTestStatusResponse
+        {
+            IsVerified = isVerified,
+            PassThresholdPercent = SkillsTestQuestionBank.PassThresholdPercent,
+            QuestionsPerAttempt = SkillsTestQuestionBank.QuestionsPerAttempt,
+            CooldownDays = SkillsTestQuestionBank.RetestCooldownDays,
+            Categories = categories,
+        });
+    }
+
+    public async Task<ServiceProviderResult<SkillsTestQuestionsResponse>> GetSkillsTestQuestionsAsync(
+        string userId, string category)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user is null)
+            return ServiceProviderResult<SkillsTestQuestionsResponse>.NotFound("Service provider profile not found.");
+
+        var profile = EnsureProfile(user);
+
+        if (profile.VerificationStatus != ServiceProviderVerificationStatus.Verified)
+            return ServiceProviderResult<SkillsTestQuestionsResponse>.Conflict(
+                "The skills test is available once your provider profile is verified.");
+
+        if (!Enum.TryParse<ServiceCategory>(category, ignoreCase: true, out var cat))
+            return ServiceProviderResult<SkillsTestQuestionsResponse>.NotFound("Unknown service category.");
+
+        if (!profile.ServiceCategories.Contains(cat))
+            return ServiceProviderResult<SkillsTestQuestionsResponse>.Conflict(
+                "You can only take the skills test for one of your own service categories.");
+
+        // Cooldown gate.
+        var latest = profile.SkillsTestAttempts
+            .Where(a => a.Category == cat)
+            .OrderByDescending(a => a.TakenAt)
+            .FirstOrDefault();
+        if (latest is not null && DateTime.UtcNow < latest.NextEligibleRetestAt)
+            return ServiceProviderResult<SkillsTestQuestionsResponse>.Conflict(
+                $"You can retake this category's skills test after {latest.NextEligibleRetestAt:yyyy-MM-dd}.");
+
+        var bank = SkillsTestQuestionBank.ForCategory(cat);
+        var take = Math.Min(SkillsTestQuestionBank.QuestionsPerAttempt, bank.Count);
+        var selected = bank
+            .OrderBy(_ => Random.Shared.Next())
+            .Take(take)
+            .Select(q => new SkillsTestQuestionResponse
+            {
+                Id = q.Id,
+                Prompt = q.Prompt,
+                Options = new List<string>(q.Options),
+            })
+            .ToList();
+
+        return ServiceProviderResult<SkillsTestQuestionsResponse>.Ok(new SkillsTestQuestionsResponse
+        {
+            Category = cat.ToString(),
+            QuestionCount = selected.Count,
+            PassThresholdPercent = SkillsTestQuestionBank.PassThresholdPercent,
+            Questions = selected,
+        });
+    }
+
+    public async Task<ServiceProviderResult<SkillsTestResultResponse>> SubmitSkillsTestAsync(
+        string userId, SubmitSkillsTestRequest request)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user is null)
+            return ServiceProviderResult<SkillsTestResultResponse>.NotFound("Service provider profile not found.");
+
+        var profile = EnsureProfile(user);
+
+        if (profile.VerificationStatus != ServiceProviderVerificationStatus.Verified)
+            return ServiceProviderResult<SkillsTestResultResponse>.Conflict(
+                "The skills test is available once your provider profile is verified.");
+
+        if (!Enum.TryParse<ServiceCategory>(request.Category, ignoreCase: true, out var cat))
+            return ServiceProviderResult<SkillsTestResultResponse>.NotFound("Unknown service category.");
+
+        if (!profile.ServiceCategories.Contains(cat))
+            return ServiceProviderResult<SkillsTestResultResponse>.Conflict(
+                "You can only take the skills test for one of your own service categories.");
+
+        // Cooldown gate (authoritative — re-checked at submit, not just at fetch).
+        var latest = profile.SkillsTestAttempts
+            .Where(a => a.Category == cat)
+            .OrderByDescending(a => a.TakenAt)
+            .FirstOrDefault();
+        if (latest is not null && DateTime.UtcNow < latest.NextEligibleRetestAt)
+            return ServiceProviderResult<SkillsTestResultResponse>.Conflict(
+                $"You can retake this category's skills test after {latest.NextEligibleRetestAt:yyyy-MM-dd}.");
+
+        var answers = request.Answers ?? new List<SkillsTestAnswer>();
+        var expected = Math.Min(SkillsTestQuestionBank.QuestionsPerAttempt,
+            SkillsTestQuestionBank.ForCategory(cat).Count);
+
+        // Grade only valid, distinct questions belonging to this category (first answer wins
+        // per question id; unknown ids are dropped). Correct answers never leave the server.
+        var graded = answers
+            .GroupBy(a => a.QuestionId)
+            .Select(g => g.First())
+            .Select(a => new { Question = SkillsTestQuestionBank.ById(cat, a.QuestionId), a.SelectedIndex })
+            .Where(x => x.Question is not null)
+            .ToList();
+
+        if (graded.Count != expected)
+            return ServiceProviderResult<SkillsTestResultResponse>.Conflict(
+                $"Answer all {expected} questions from this attempt before submitting.");
+
+        var correct = graded.Count(x => x.SelectedIndex == x.Question!.CorrectIndex);
+        var total = graded.Count;
+        var scorePct = (int)Math.Round(100.0 * correct / total);
+        var passed = scorePct >= SkillsTestQuestionBank.PassThresholdPercent;
+        var now = DateTime.UtcNow;
+        var nextEligible = now.AddDays(SkillsTestQuestionBank.RetestCooldownDays);
+
+        profile.SkillsTestAttempts.Add(new SkillsTestAttempt
+        {
+            Category = cat,
+            Score = scorePct,
+            Passed = passed,
+            TakenAt = now,
+            NextEligibleRetestAt = nextEligible,
+        });
+
+        // Feed the skill-test signal → recompute the derived trust score, then persist.
+        RecalculateTrustScore(profile);
+        Touch(profile);
+        await _userManager.UpdateAsync(user);
+
+        _audit.Record("ServiceProviderSkillsTest.Submit", userId, success: true, new
+        {
+            category = cat.ToString(),
+            score = scorePct,
+            passed,
+        });
+
+        var trust = profile.ToTrustBreakdownResponse();
+        trust.TierLevel = user.Tier_level; // ranking-only badge (see SpMatchingService)
+
+        var result = new SkillsTestResultResponse
+        {
+            Category = cat.ToString(),
+            Score = scorePct,
+            CorrectCount = correct,
+            TotalCount = total,
+            Passed = passed,
+            TakenAt = now,
+            NextEligibleRetestAt = nextEligible,
+            Trust = trust,
+        };
+
+        return ServiceProviderResult<SkillsTestResultResponse>.Ok(result,
+            passed ? "Skills test passed." : "Skills test recorded.");
+    }
+
     // ---------------- pure helpers ----------------
 
     private static ServiceProviderProfile EnsureProfile(ApplicationUser user) =>
         user.ServiceProviderProfile ??= new ServiceProviderProfile();
 
     private static void Touch(ServiceProviderProfile profile) => profile.UpdatedAt = DateTime.UtcNow;
+
+    // ---------------- Module 1: Trust scoring (derived) ----------------
+
+    // Locked weights (sum to 100 across the 5 base components). Dispute penalty is NOT
+    // part of this base — it only subtracts from the final score when disputes exist.
+    private const double WeightClientSatisfaction = 0.40;
+    private const double WeightOnTimeDelivery = 0.25;
+    private const double WeightResponseRate = 0.15;
+    private const double WeightRepeatClientRate = 0.10;
+    private const double WeightSkillTest = 0.10;
+
+    /// <summary>
+    /// Recompute the derived TrustScore from the breakdown (the SOLE writer of TrustScore).
+    /// Renormalizes the weighted average across ONLY the components that have data, so a
+    /// provider with just a skills test scores on the full 0–100 range rather than being
+    /// capped at the skill-test weight. Dispute penalty is subtracted afterward (never
+    /// renormalized) and only when disputes exist. With no data, HasEnoughTrustData is false
+    /// and the score is 0 (the UI shows a neutral "building your trust score" state).
+    /// </summary>
+    private static void RecalculateTrustScore(ServiceProviderProfile profile)
+    {
+        // Skill-test signal is derived from the recorded attempts before weighting.
+        RecomputeSkillTestSignal(profile);
+
+        var b = profile.TrustBreakdown;
+        var components = new (TrustSignal Signal, double Weight)[]
+        {
+            (b.ClientSatisfaction, WeightClientSatisfaction),
+            (b.OnTimeDelivery, WeightOnTimeDelivery),
+            (b.ResponseRate, WeightResponseRate),
+            (b.RepeatClientRate, WeightRepeatClientRate),
+            (b.SkillTest, WeightSkillTest),
+        };
+
+        double weightedSum = 0, dataWeight = 0;
+        foreach (var (signal, weight) in components)
+        {
+            if (!signal.HasData) continue;
+            weightedSum += weight * signal.Value;
+            dataWeight += weight;
+        }
+
+        b.LastRecalculatedAt = DateTime.UtcNow;
+
+        if (dataWeight <= 0)
+        {
+            // No signal has data yet — neutral state, no derived score.
+            profile.HasEnoughTrustData = false;
+            profile.TrustScore = 0;
+            return;
+        }
+
+        var score = weightedSum / dataWeight; // renormalized across data-bearing components
+        if (b.HasDisputes) score -= b.DisputePenalty;
+
+        profile.TrustScore = Math.Clamp(Math.Round(score, 1), 0, 100);
+        profile.HasEnoughTrustData = true;
+    }
+
+    /// <summary>
+    /// Derive the SkillTest trust signal (0–100) from recorded attempts: the mean of the
+    /// most-recent attempt score per distinct category. HasData is false until the first
+    /// attempt. Feeds <see cref="RecalculateTrustScore"/>.
+    /// </summary>
+    private static void RecomputeSkillTestSignal(ServiceProviderProfile profile)
+    {
+        var signal = profile.TrustBreakdown.SkillTest;
+        var attempts = profile.SkillsTestAttempts;
+        if (attempts.Count == 0)
+        {
+            signal.HasData = false;
+            signal.Value = 0;
+            return;
+        }
+
+        var latestPerCategory = attempts
+            .GroupBy(a => a.Category)
+            .Select(g => g.OrderByDescending(a => a.TakenAt).First().Score)
+            .ToList();
+
+        signal.HasData = true;
+        signal.Value = latestPerCategory.Average();
+    }
 
     /// <summary>Best-effort in-app + realtime/web-push notification; never fails the operation.</summary>
     private async Task NotifyAsync(Guid userId, string title, string body)

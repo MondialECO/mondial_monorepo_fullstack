@@ -267,8 +267,79 @@ namespace WebApp.Models.DatabaseModels
         public List<string> Languages { get; set; } = new();
         public List<PricingModel> PricingModels { get; set; } = new();
 
+        // ---- Module 1: Profile & Trust (reputation layer) ----
+        // TrustScore (above) is DERIVED from TrustBreakdown by the service recompute and
+        // is never hand-set by an endpoint. HasEnoughTrustData is false until at least one
+        // signal has data (skill test alone qualifies).
+        public TrustScoreBreakdown TrustBreakdown { get; set; } = new();
+        public bool HasEnoughTrustData { get; set; } = false;
+
+        // Skills-test attempts, bounded by the 30-day retest cooldown. Optional and
+        // non-blocking; feeds only the SkillTest signal of TrustBreakdown.
+        public List<SkillsTestAttempt> SkillsTestAttempts { get; set; } = new();
+
+        // ---- Module 2: Service Catalog — provider capacity (canon §6.7) ----
+        // Additive fields (legacy docs deserialize to defaults, like the Module 1
+        // additions above). Instant order is blocked when CurrentActiveOrders >=
+        // MaximumConcurrentOrders (unless overbooking is allowed). CurrentActiveOrders
+        // has NO writer in Module 2 — only Module 4 (engagements) increments it live;
+        // the field + capacity check exist and are unit-testable now.
+        public int MaximumConcurrentOrders { get; set; }
+        public int CurrentActiveOrders { get; set; }
+        public bool NewOrderAvailability { get; set; } = true;
+        public bool ManualApprovalWhenCapacityLow { get; set; }
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    }
+
+    // One reputation signal feeding TrustScore: a normalized 0–100 value and whether it
+    // has any real data yet. Signals where HasData is false are ignored by the recompute.
+    public class TrustSignal
+    {
+        public bool HasData { get; set; } = false;
+
+        // Normalized 0–100 contribution value (raw, pre-weight).
+        public double Value { get; set; } = 0;
+    }
+
+    // Component breakdown for the derived TrustScore. Weights (locked): Client
+    // Satisfaction 40, On-time Delivery 25, Response Rate 15, Repeat-Client Rate 10,
+    // Skill Test 10 (sum 100). Dispute penalty is NOT part of the 100 base — it only
+    // subtracts from the final score when disputes exist. Only signals with data are
+    // renormalized into the score; the rest are ignored until their source module fills
+    // them (Leads → response rate; Workroom → satisfaction/on-time/repeat/dispute).
+    public class TrustScoreBreakdown
+    {
+        public TrustSignal ClientSatisfaction { get; set; } = new();
+        public TrustSignal OnTimeDelivery { get; set; } = new();
+        public TrustSignal ResponseRate { get; set; } = new();
+        public TrustSignal RepeatClientRate { get; set; } = new();
+        public TrustSignal SkillTest { get; set; } = new();
+
+        // True once at least one dispute has been recorded against the provider.
+        public bool HasDisputes { get; set; } = false;
+
+        // Points subtracted from the final score (0–100). Applied only when HasDisputes.
+        public double DisputePenalty { get; set; } = 0;
+
+        public DateTime? LastRecalculatedAt { get; set; }
+    }
+
+    // One skills-test attempt. Bounded by the 30-day retest cooldown, so the per-provider
+    // list stays small. Feeds only the SkillTest trust signal; never gates verification or
+    // any dashboard section.
+    public class SkillsTestAttempt
+    {
+        public ServiceCategory Category { get; set; }
+
+        // Percentage score 0–100.
+        public int Score { get; set; }
+        public bool Passed { get; set; }
+        public DateTime TakenAt { get; set; } = DateTime.UtcNow;
+
+        // Earliest UTC time the provider may retest this category (TakenAt + 30 days).
+        public DateTime NextEligibleRetestAt { get; set; }
     }
 
     // One showcase item in a service provider's portfolio.

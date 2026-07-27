@@ -33,7 +33,7 @@ public class BusinessPlanHandlerTests
         new() { Id = ObjectId.GenerateNewId().ToString(), OwnerUserId = "user-1", JobType = "BusinessPlan", InputPayload = input };
 
     private static AiCompletion Completion(string text) =>
-        new() { Text = text, Model = "openai/gpt-4o", Usage = new AiTokenUsage(50, 400, 450) };
+        new() { Text = text, Model = "openai/gpt-oss-20b:free", Usage = new AiTokenUsage(50, 400, 450) };
 
     private static BsonDocument ClarifierOutput() => BsonDocument.Parse("""
         { "schemaVersion": 1, "problemDefinition": { "statement": "Crop monitoring is manual." }, "clarityScore": 80 }

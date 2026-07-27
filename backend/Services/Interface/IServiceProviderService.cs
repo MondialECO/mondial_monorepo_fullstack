@@ -68,4 +68,20 @@ public interface IServiceProviderService
 
     Task<ServiceProviderResult<ServiceProviderVerificationResponse>> RejectVerificationAsync(
         string providerUserId, string adminUserId, string reason);
+
+    // ---- Module 1: Profile & Trust (reputation layer) ----
+
+    /// <summary>The provider's derived TrustScore + per-signal breakdown (owner-scoped).</summary>
+    Task<ServiceProviderResult<TrustBreakdownResponse>> GetTrustAsync(string userId);
+
+    /// <summary>Per-category skills-test status (last attempt, cooldown, eligibility).</summary>
+    Task<ServiceProviderResult<SkillsTestStatusResponse>> GetSkillsTestStatusAsync(string userId);
+
+    /// <summary>A fresh attempt's questions (correct answers stripped) for one owned category.</summary>
+    Task<ServiceProviderResult<SkillsTestQuestionsResponse>> GetSkillsTestQuestionsAsync(
+        string userId, string category);
+
+    /// <summary>Grade a submitted attempt, record it (with cooldown), and recompute TrustScore.</summary>
+    Task<ServiceProviderResult<SkillsTestResultResponse>> SubmitSkillsTestAsync(
+        string userId, SubmitSkillsTestRequest request);
 }
