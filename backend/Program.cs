@@ -335,6 +335,15 @@ builder.Services.AddScoped<ILeadsService, LeadsService>();
 builder.Services.AddScoped<IResponseRateService, ResponseRateService>();
 builder.Services.AddScoped<ClientBriefExpirationJob>();
 
+// Module 4 — Workroom & Earnings. Both external boundaries are explicit STUBs:
+// replace these registrations with real gateway/scanner adapters without changing
+// the state machine. Provider financial settings remain embedded on the profile.
+builder.Services.AddScoped<IWorkroomService, WorkroomService>();
+builder.Services.AddScoped<IPaymentGatewayService, StubPaymentGatewayService>();
+builder.Services.AddScoped<IFileSecurityScanner, StubFileSecurityScanner>();
+builder.Services.AddScoped<WorkroomConversionJob>();
+builder.Services.AddScoped<WorkroomTimedRulesJob>();
+
 // Observability: OpenTelemetry traces + metrics (/metrics for Prometheus).
 builder.AddObservability();
 
@@ -607,6 +616,16 @@ app.UseHangfireDashboard("/hangfire", new Hangfire.DashboardOptions
 
 RecurringJob.AddOrUpdate<ClientBriefExpirationJob>(
     "module3-expire-client-briefs",
+    job => job.RunAsync(),
+    Cron.Minutely);
+
+RecurringJob.AddOrUpdate<WorkroomConversionJob>(
+    "module4-convert-accepted-proposals",
+    job => job.SweepAsync(),
+    Cron.Minutely);
+
+RecurringJob.AddOrUpdate<WorkroomTimedRulesJob>(
+    "module4-workroom-timed-rules",
     job => job.RunAsync(),
     Cron.Minutely);
 

@@ -106,6 +106,7 @@ public class ProposalVersionSnapshot
     [BsonRepresentation(BsonType.Decimal128)] public decimal ProposedPrice { get; set; }
     public string Currency { get; set; } = "EUR";
     public PricingModel PricingType { get; set; }
+    [BsonRepresentation(BsonType.Decimal128)] public decimal? WeeklyHourLimit { get; set; }
     public int DeliveryTimeValue { get; set; }
     public DeliveryTimeUnit DeliveryTimeUnit { get; set; }
     public DeliveryDayType DeliveryDayType { get; set; }
@@ -160,6 +161,7 @@ public class Proposal
     [BsonRepresentation(BsonType.Decimal128)] public decimal ProposedPrice { get; set; }
     public string Currency { get; set; } = "EUR";
     public PricingModel PricingType { get; set; } = PricingModel.FixedPrice;
+    [BsonRepresentation(BsonType.Decimal128)] public decimal? WeeklyHourLimit { get; set; }
     public int DeliveryTimeValue { get; set; }
     public DeliveryTimeUnit DeliveryTimeUnit { get; set; } = DeliveryTimeUnit.Days;
     public DeliveryDayType DeliveryDayType { get; set; } = DeliveryDayType.BusinessDays;

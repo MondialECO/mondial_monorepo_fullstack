@@ -77,6 +77,7 @@ public class UpsertProposalRequest
     public decimal ProposedPrice { get; set; }
     public string Currency { get; set; } = "EUR";
     public string PricingType { get; set; } = "FixedPrice";
+    public decimal? WeeklyHourLimit { get; set; }
     public int DeliveryTimeValue { get; set; }
     public string DeliveryTimeUnit { get; set; } = "Days";
     public string DeliveryDayType { get; set; } = "BusinessDays";
@@ -166,6 +167,7 @@ public class ProposalResponse
     public decimal ProposedPrice { get; set; }
     public string Currency { get; set; } = "";
     public string PricingType { get; set; } = "";
+    public decimal? WeeklyHourLimit { get; set; }
     public int DeliveryTimeValue { get; set; }
     public string DeliveryTimeUnit { get; set; } = "";
     public string DeliveryDayType { get; set; } = "";
@@ -220,7 +222,7 @@ public static class LeadsMapping
         Id = p.Id, ClientBriefId = p.ClientBriefId, ServiceId = p.ServiceId, PackageId = p.PackageId,
         ProviderId = p.ProviderId, ClientId = p.ClientId, ProposalSource = p.ProposalSource.ToString(),
         AcceptanceMode = p.AcceptanceMode.ToString(), Title = p.Title, CoverMessage = p.CoverMessage,
-        ProposedPrice = p.ProposedPrice, Currency = p.Currency, PricingType = p.PricingType.ToString(),
+        ProposedPrice = p.ProposedPrice, Currency = p.Currency, PricingType = p.PricingType.ToString(), WeeklyHourLimit = p.WeeklyHourLimit,
         DeliveryTimeValue = p.DeliveryTimeValue, DeliveryTimeUnit = p.DeliveryTimeUnit.ToString(),
         DeliveryDayType = p.DeliveryDayType.ToString(), DeliveryStartRule = p.DeliveryStartRule.ToString(),
         IncludedRevisionCount = p.IncludedRevisionCount, UnlimitedRevisions = p.UnlimitedRevisions,

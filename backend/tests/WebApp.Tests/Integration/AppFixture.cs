@@ -44,6 +44,7 @@ public sealed class AppFixture : IAsyncLifetime
                         {
                             ["MongoDbSettings:ConnectionString"] = _mongo.GetConnectionString(),
                             ["MongoDbSettings:DatabaseName"] = "IntegrationTest",
+                            ["Mongo:TransactionsEnabled"] = "true",
                             ["JwtSettings:Issuer"] = "test",
                             ["JwtSettings:Audience"] = "test",
                             ["JwtSettings:Key"] = new string('k', 48),

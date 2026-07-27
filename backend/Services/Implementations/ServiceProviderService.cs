@@ -484,10 +484,32 @@ public class ServiceProviderService : IServiceProviderService
         await _userManager.UpdateAsync(user);
     }
 
+    public async Task UpdateWorkroomTrustSignalsAsync(string userId, double? clientSatisfaction,
+        double? onTimeDeliveryRate, double? repeatClientRate, int adverseDisputeCount)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user is null) return;
+        var profile = EnsureProfile(user);
+        SetSignal(profile.TrustBreakdown.ClientSatisfaction, clientSatisfaction);
+        SetSignal(profile.TrustBreakdown.OnTimeDelivery, onTimeDeliveryRate);
+        SetSignal(profile.TrustBreakdown.RepeatClientRate, repeatClientRate);
+        profile.TrustBreakdown.HasDisputes = adverseDisputeCount > 0;
+        profile.TrustBreakdown.DisputePenalty = Math.Min(20, Math.Max(0, adverseDisputeCount) * 5);
+        RecalculateTrustScore(profile);
+        Touch(profile);
+        await _userManager.UpdateAsync(user);
+    }
+
     // ---------------- pure helpers ----------------
 
     private static ServiceProviderProfile EnsureProfile(ApplicationUser user) =>
         user.ServiceProviderProfile ??= new ServiceProviderProfile();
+
+    private static void SetSignal(TrustSignal signal, double? value)
+    {
+        signal.HasData = value.HasValue;
+        signal.Value = Math.Clamp(value ?? 0, 0, 100);
+    }
 
     private static void Touch(ServiceProviderProfile profile) => profile.UpdatedAt = DateTime.UtcNow;
 

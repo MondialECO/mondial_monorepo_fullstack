@@ -87,4 +87,8 @@ public interface IServiceProviderService
 
     /// <summary>Module 3's narrow hook into the existing sole trust recalculation path.</summary>
     Task UpdateResponseRateSignalAsync(string userId, double? responseRate);
+
+    /// <summary>Module 4's narrow hook into the same sole trust recalculation path.</summary>
+    Task UpdateWorkroomTrustSignalsAsync(string userId, double? clientSatisfaction,
+        double? onTimeDeliveryRate, double? repeatClientRate, int adverseDisputeCount);
 }

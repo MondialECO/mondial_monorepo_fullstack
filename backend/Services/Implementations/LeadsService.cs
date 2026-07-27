@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using Hangfire;
 using MongoDB.Driver;
 using WebApp.DbContext;
 using WebApp.Models.DatabaseModels;
@@ -18,12 +19,14 @@ public class LeadsService : ILeadsService
     private readonly IResponseRateService _responseRates;
     private readonly INotificationService _notifications;
     private readonly ILogger<LeadsService> _logger;
+    private readonly IBackgroundJobClient _jobs;
 
     public LeadsService(MongoDbContext db, UserManager<ApplicationUser> users, ISpMatchingService matching,
-        IResponseRateService responseRates, INotificationService notifications, ILogger<LeadsService> logger)
+        IResponseRateService responseRates, INotificationService notifications, ILogger<LeadsService> logger,
+        IBackgroundJobClient jobs)
     {
         _db = db; _users = users; _matching = matching; _responseRates = responseRates;
-        _notifications = notifications; _logger = logger;
+        _notifications = notifications; _logger = logger; _jobs = jobs;
     }
 
     public async Task<ServiceProviderResult<ClientBriefResponse>> CreateBriefAsync(string clientId, CreateClientBriefRequest r)
@@ -252,6 +255,7 @@ public class LeadsService : ILeadsService
         p.AcceptanceTrigger = "ClientConfirmed"; p.EscrowStatus = ProposalEscrowStatus.Authorized;
         p.ConversionStatus = ProposalConversionStatus.AwaitingModule4; // Module 4 consumes this boundary.
         await _db.Proposals.ReplaceOneAsync(x => x.Id == p.Id && x.ClientId == clientId, p);
+        _jobs.Enqueue<WorkroomConversionJob>(job => job.ConvertAsync(p.Id));
         await NotifyAsync(p.ProviderId, "Proposal accepted", "Your proposal was accepted by the client.");
         return ServiceProviderResult<ProposalResponse>.Ok(p.ToResponse(), "Proposal accepted; awaiting Module 4 conversion.");
     }
@@ -315,7 +319,11 @@ public class LeadsService : ILeadsService
             CancellationTerms = pkg.CancellationPolicy, AcceptedAt = auto ? now : default,
         };
         await _db.Proposals.InsertOneAsync(p);
-        if (auto) await NotifyAsync(p.ProviderId, "Package purchased", "A client purchased your published package.");
+        if (auto)
+        {
+            _jobs.Enqueue<WorkroomConversionJob>(job => job.ConvertAsync(p.Id));
+            await NotifyAsync(p.ProviderId, "Package purchased", "A client purchased your published package.");
+        }
         else await NotifyAsync(p.ProviderId, "Provider approval required", "A client sent a package order request.");
         return ServiceProviderResult<PackagePurchaseResponse>.Ok(new PackagePurchaseResponse
         {
@@ -374,11 +382,11 @@ public class LeadsService : ILeadsService
         if (!TryEnum<ProposalSource>(r.ProposalSource, out var source) || !TryEnum<PricingModel>(r.PricingType, out var pricing) ||
             !TryEnum<DeliveryTimeUnit>(r.DeliveryTimeUnit, out var unit) || !TryEnum<DeliveryDayType>(r.DeliveryDayType, out var dayType) ||
             !TryEnum<DeliveryStartRule>(r.DeliveryStartRule, out var startRule)) return "One or more proposal options are invalid.";
-        if (r.ProposedPrice < 0 || r.IncludedRevisionCount < 0 || r.RevisionRequestWindowDays < 0) return "Price and revision values cannot be negative.";
+        if (r.ProposedPrice < 0 || r.IncludedRevisionCount < 0 || r.RevisionRequestWindowDays < 0 || r.WeeklyHourLimit < 0) return "Price, hour limits, and revision values cannot be negative.";
         if (r.UnlimitedRevisions && !r.ConfirmUnlimitedRevisions) return "Unlimited revisions require explicit confirmation.";
         p.ServiceId = r.ServiceId ?? p.ServiceId; p.PackageId = r.PackageId ?? p.PackageId; p.ProposalSource = source;
         p.Title = r.Title?.Trim() ?? ""; p.CoverMessage = r.CoverMessage?.Trim() ?? ""; p.ProposedPrice = r.ProposedPrice;
-        p.Currency = Currency(r.Currency); p.PricingType = pricing; p.DeliveryTimeValue = r.DeliveryTimeValue; p.DeliveryTimeUnit = unit;
+        p.Currency = Currency(r.Currency); p.PricingType = pricing; p.WeeklyHourLimit = pricing == PricingModel.Hourly ? r.WeeklyHourLimit : null; p.DeliveryTimeValue = r.DeliveryTimeValue; p.DeliveryTimeUnit = unit;
         p.DeliveryDayType = dayType; p.DeliveryStartRule = startRule; p.IncludedRevisionCount = r.IncludedRevisionCount;
         p.UnlimitedRevisions = r.UnlimitedRevisions; p.RevisionRequestWindowDays = r.RevisionRequestWindowDays;
         p.Deliverables = Normalize(r.Deliverables); p.Attachments = Normalize(r.Attachments); p.ExpiresAt = r.ExpiresAt;
@@ -428,8 +436,8 @@ public class LeadsService : ILeadsService
     private static ServiceProviderResult<T> TransitionConflict<T>(ProposalStatus from, ProposalStatus to) => ServiceProviderResult<T>.Conflict($"Proposal transition {from} -> {to} is not allowed.");
     private static List<string> PriceWarnings(Proposal p, ClientBrief? b) => b is not null && (p.ProposedPrice < b.BudgetMinimum || p.ProposedPrice > b.BudgetMaximum) ? new() { "The proposed price is outside the client's budget range." } : new();
     private static List<ProposalRequirementAnswer> ToAnswers(IEnumerable<RequirementAnswerRequest> rows) => rows.Select(x => new ProposalRequirementAnswer { TemplateFieldId = x.TemplateFieldId, FieldType = TryEnum<RequirementsFieldType>(x.FieldType, out var ft) ? ft : RequirementsFieldType.Text, Value = x.Value ?? "", Attachment = x.Attachment }).ToList();
-    private static ProposalVersionSnapshot Snapshot(Proposal p) => new() { Version = p.Version, Title = p.Title, CoverMessage = p.CoverMessage, ProposedPrice = p.ProposedPrice, Currency = p.Currency, PricingType = p.PricingType, DeliveryTimeValue = p.DeliveryTimeValue, DeliveryTimeUnit = p.DeliveryTimeUnit, DeliveryDayType = p.DeliveryDayType, DeliveryStartRule = p.DeliveryStartRule, IncludedRevisionCount = p.IncludedRevisionCount, UnlimitedRevisions = p.UnlimitedRevisions, RevisionRequestWindowDays = p.RevisionRequestWindowDays, Deliverables = new(p.Deliverables), MilestonePlan = p.MilestonePlan.Select(x => new ProposalMilestonePlanItem { Title = x.Title, Description = x.Description, Amount = x.Amount, DeliveryTimeValue = x.DeliveryTimeValue, DeliveryTimeUnit = x.DeliveryTimeUnit, DisplayOrder = x.DisplayOrder }).ToList(), Attachments = new(p.Attachments), ExpiresAt = p.ExpiresAt };
-    private static Proposal CloneAsDraft(Proposal old) => new() { ClientBriefId = old.ClientBriefId, ServiceId = old.ServiceId, PackageId = old.PackageId, ProviderId = old.ProviderId, ClientId = old.ClientId, ProposalSource = old.ProposalSource, AcceptanceMode = old.AcceptanceMode, Title = old.Title, CoverMessage = old.CoverMessage, ProposedPrice = old.ProposedPrice, Currency = old.Currency, PricingType = old.PricingType, DeliveryTimeValue = old.DeliveryTimeValue, DeliveryTimeUnit = old.DeliveryTimeUnit, DeliveryDayType = old.DeliveryDayType, DeliveryStartRule = old.DeliveryStartRule, IncludedRevisionCount = old.IncludedRevisionCount, UnlimitedRevisions = old.UnlimitedRevisions, RevisionRequestWindowDays = old.RevisionRequestWindowDays, Deliverables = new(old.Deliverables), MilestonePlan = old.MilestonePlan.Select(x => new ProposalMilestonePlanItem { Title = x.Title, Description = x.Description, Amount = x.Amount, DeliveryTimeValue = x.DeliveryTimeValue, DeliveryTimeUnit = x.DeliveryTimeUnit, DisplayOrder = x.DisplayOrder }).ToList(), Attachments = new(old.Attachments), ExpiresAt = DateTime.UtcNow.AddDays(7) };
+    private static ProposalVersionSnapshot Snapshot(Proposal p) => new() { Version = p.Version, Title = p.Title, CoverMessage = p.CoverMessage, ProposedPrice = p.ProposedPrice, Currency = p.Currency, PricingType = p.PricingType, WeeklyHourLimit = p.WeeklyHourLimit, DeliveryTimeValue = p.DeliveryTimeValue, DeliveryTimeUnit = p.DeliveryTimeUnit, DeliveryDayType = p.DeliveryDayType, DeliveryStartRule = p.DeliveryStartRule, IncludedRevisionCount = p.IncludedRevisionCount, UnlimitedRevisions = p.UnlimitedRevisions, RevisionRequestWindowDays = p.RevisionRequestWindowDays, Deliverables = new(p.Deliverables), MilestonePlan = p.MilestonePlan.Select(x => new ProposalMilestonePlanItem { Title = x.Title, Description = x.Description, Amount = x.Amount, DeliveryTimeValue = x.DeliveryTimeValue, DeliveryTimeUnit = x.DeliveryTimeUnit, DisplayOrder = x.DisplayOrder }).ToList(), Attachments = new(p.Attachments), ExpiresAt = p.ExpiresAt };
+    private static Proposal CloneAsDraft(Proposal old) => new() { ClientBriefId = old.ClientBriefId, ServiceId = old.ServiceId, PackageId = old.PackageId, ProviderId = old.ProviderId, ClientId = old.ClientId, ProposalSource = old.ProposalSource, AcceptanceMode = old.AcceptanceMode, Title = old.Title, CoverMessage = old.CoverMessage, ProposedPrice = old.ProposedPrice, Currency = old.Currency, PricingType = old.PricingType, WeeklyHourLimit = old.WeeklyHourLimit, DeliveryTimeValue = old.DeliveryTimeValue, DeliveryTimeUnit = old.DeliveryTimeUnit, DeliveryDayType = old.DeliveryDayType, DeliveryStartRule = old.DeliveryStartRule, IncludedRevisionCount = old.IncludedRevisionCount, UnlimitedRevisions = old.UnlimitedRevisions, RevisionRequestWindowDays = old.RevisionRequestWindowDays, Deliverables = new(old.Deliverables), MilestonePlan = old.MilestonePlan.Select(x => new ProposalMilestonePlanItem { Title = x.Title, Description = x.Description, Amount = x.Amount, DeliveryTimeValue = x.DeliveryTimeValue, DeliveryTimeUnit = x.DeliveryTimeUnit, DisplayOrder = x.DisplayOrder }).ToList(), Attachments = new(old.Attachments), ExpiresAt = DateTime.UtcNow.AddDays(7) };
 
     private async Task NotifyInvitedAsync(ClientBrief b)
     {
