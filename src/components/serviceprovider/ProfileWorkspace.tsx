@@ -275,7 +275,7 @@ const statusMessage: Record<
 > = {
   Pending: {
     title: 'Not yet submitted',
-    body: 'Complete your profile, then submit it for verification to earn the verified provider badge.',
+    body: 'Complete every required profile field, then submit to receive the verified provider badge immediately.',
     box: 'border-border bg-muted/50 text-muted-foreground',
   },
   UnderReview: {
@@ -290,7 +290,7 @@ const statusMessage: Record<
   },
   Rejected: {
     title: 'Verification rejected',
-    body: 'Please address the feedback below and resubmit your profile.',
+    body: 'Please address the feedback below and resubmit for admin re-review.',
     box: 'border-destructive/30 bg-destructive/10 text-destructive',
   },
 };

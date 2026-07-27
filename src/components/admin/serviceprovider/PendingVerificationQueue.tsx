@@ -85,8 +85,8 @@ export function PendingVerificationQueue() {
     return (
       <EmptyState
         icon={UserCheck}
-        title="No providers awaiting review"
-        description="Submitted service-provider verifications will appear here for approval."
+        title="No moderation reviews pending"
+        description="Providers who remediate an admin rejection and resubmit will appear here."
       />
     );
   }

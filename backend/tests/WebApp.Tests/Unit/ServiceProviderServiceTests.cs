@@ -15,7 +15,8 @@ namespace WebApp.Tests.Unit;
 /// <summary>
 /// D-1 Phase 4 — Service-layer behaviour for the embedded ServiceProviderProfile:
 /// normalization, portfolio index handling, completeness gate, duplicate-submission
-/// guard, and the Pending→UnderReview transition. UserManager is mocked; no DB.
+/// guard, immediate first-submission verification, and moderation transitions.
+/// UserManager is mocked; no DB.
 /// </summary>
 public class ServiceProviderServiceTests
 {
@@ -360,14 +361,19 @@ public class ServiceProviderServiceTests
     {
         ServiceProviderProfile = new ServiceProviderProfile
         {
+            Headline = "Commercial contracts specialist",
+            Bio = "I help early-stage teams prepare and negotiate commercial agreements.",
             Skills = new() { "contracts" },
             ServiceCategories = new() { ServiceCategory.Legal },
+            Industries = new() { "SaaS" },
+            Languages = new() { "English" },
+            PricingModels = new() { PricingModel.FixedPrice },
             PortfolioItems = new() { new PortfolioItem { Title = "a", Description = "b" } },
         },
     };
 
     [Fact]
-    public async Task Submit_transitions_pending_to_under_review_and_stamps_time()
+    public async Task Submit_auto_verifies_complete_pending_profile_and_stamps_one_time()
     {
         var user = GivenUser(CompleteProviderUser());
 
@@ -375,10 +381,13 @@ public class ServiceProviderServiceTests
             new SubmitVerificationRequest { ConfirmAccuracy = true });
 
         result.Outcome.Should().Be(ServiceProviderOutcome.Ok);
-        result.Value!.VerificationStatus.Should().Be("UnderReview");
+        result.Value!.VerificationStatus.Should().Be("Verified");
         result.Value.VerificationSubmittedAt.Should().NotBeNull();
-        result.Value.IsVerified.Should().BeFalse();
-        user.ServiceProviderProfile.VerificationStatus.Should().Be(ServiceProviderVerificationStatus.UnderReview);
+        result.Value.VerifiedAt.Should().Be(result.Value.VerificationSubmittedAt);
+        result.Value.IsVerified.Should().BeTrue();
+        result.Value.TrustScore.Should().Be(0);
+        user.ServiceProviderProfile.VerificationStatus.Should().Be(ServiceProviderVerificationStatus.Verified);
+        user.ServiceProviderProfile.HasEnoughTrustData.Should().BeFalse();
     }
 
     [Fact]
@@ -388,9 +397,15 @@ public class ServiceProviderServiceTests
         {
             ServiceProviderProfile = new ServiceProviderProfile
             {
+                Headline = "Commercial contracts specialist",
+                Bio = "I help early-stage teams prepare and negotiate commercial agreements.",
                 Skills = new() { "contracts" },
                 ServiceCategories = new() { ServiceCategory.Legal },
-                // no portfolio items
+                Industries = new() { "SaaS" },
+                // Languages is deliberately missing: the old three-field minimum
+                // would have accepted this otherwise-complete profile.
+                PricingModels = new() { PricingModel.FixedPrice },
+                PortfolioItems = new() { new PortfolioItem { Title = "a", Description = "b" } },
             },
         });
 
@@ -400,11 +415,13 @@ public class ServiceProviderServiceTests
         result.Outcome.Should().Be(ServiceProviderOutcome.Conflict);
     }
 
-    [Fact]
-    public async Task Submit_prevents_duplicate_submission()
+    [Theory]
+    [InlineData(ServiceProviderVerificationStatus.UnderReview)]
+    [InlineData(ServiceProviderVerificationStatus.Verified)]
+    public async Task Submit_prevents_duplicate_submission(ServiceProviderVerificationStatus status)
     {
         var user = CompleteProviderUser();
-        user.ServiceProviderProfile.VerificationStatus = ServiceProviderVerificationStatus.UnderReview;
+        user.ServiceProviderProfile.VerificationStatus = status;
         GivenUser(user);
 
         var result = await _service.SubmitVerificationAsync(user.Id.ToString(),
@@ -427,7 +444,7 @@ public class ServiceProviderServiceTests
     }
 
     [Fact]
-    public async Task Submit_allows_resubmission_from_rejected_and_clears_reason()
+    public async Task Submit_routes_rejected_resubmission_to_moderation_and_clears_reason()
     {
         var user = CompleteProviderUser();
         user.ServiceProviderProfile.VerificationStatus = ServiceProviderVerificationStatus.Rejected;
@@ -439,6 +456,8 @@ public class ServiceProviderServiceTests
 
         result.Outcome.Should().Be(ServiceProviderOutcome.Ok);
         result.Value!.VerificationStatus.Should().Be("UnderReview");
+        result.Value.VerificationSubmittedAt.Should().NotBeNull();
+        result.Value.VerifiedAt.Should().BeNull();
         user.ServiceProviderProfile.RejectionReason.Should().BeNull();
     }
 
@@ -525,7 +544,24 @@ public class ServiceProviderServiceTests
     }
 
     [Fact]
-    public async Task Reject_conflicts_when_not_under_review()
+    public async Task Reject_suspends_an_already_verified_provider()
+    {
+        var user = CompleteProviderUser();
+        user.ServiceProviderProfile.VerificationStatus = ServiceProviderVerificationStatus.Verified;
+        user.ServiceProviderProfile.VerifiedAt = DateTime.UtcNow.AddDays(-10);
+        GivenUser(user);
+
+        var result = await _service.RejectVerificationAsync(
+            user.Id.ToString(), "admin-1", "moderation concern");
+
+        result.Outcome.Should().Be(ServiceProviderOutcome.Ok);
+        result.Value!.VerificationStatus.Should().Be("Rejected");
+        result.Value.VerifiedAt.Should().BeNull();
+        result.Value.RejectionReason.Should().Be("moderation concern");
+    }
+
+    [Fact]
+    public async Task Reject_conflicts_when_pending()
     {
         var user = GivenUser(CompleteProviderUser()); // Pending
         var result = await _service.RejectVerificationAsync(user.Id.ToString(), "admin-1", "reason");

@@ -26,17 +26,19 @@ Section map: **§1** architecture · **§2** AI (none) · **§3** design system 
 
 ## 1. Architecture principles (locked)
 
-### 1.1 No phases — a single verification gate, then a flat dashboard
+### 1.1 No phases — automatic profile verification, then a flat dashboard
 
-The SP experience is **one verification gate, then a flat dashboard**. There is no phase-numbered wizard of any kind. Once approved, the entire dashboard opens at once — a **Fiverr/Upwork model** of independent sections, worked in any order. No sequential unlock.
+The SP experience is **profile completion and immediate verification, then a flat dashboard**. There is no phase-numbered wizard of any kind. Once a complete profile is submitted and verified, the entire dashboard opens at once — a **Fiverr/Upwork model** of independent sections, worked in any order. No sequential unlock.
 
-**The gate in code (LIVE, unchanged):**
+**The gates in code (LIVE):**
 - **Universal Gate** — the shared KYC/onboarding gate every role passes (`OnboardingGate`; sets `Tier_level` to at least 1). Not SP-specific.
-- **Verification/Onboarding** — the provider fills their profile and submits; an admin approves. Carried by two fields on `ServiceProviderProfile`:
+- **SP profile verification/onboarding** — the provider fills their profile and submits; a complete first submission is verified immediately, with no admin manual-review step. Carried by two fields on `ServiceProviderProfile`:
   - `CurrentPhase` — an int that **only ever holds 1 or 2** (a profile-completeness marker, advanced one-way 1→2 by `MaybeAdvancePhase` when `IsProfileComplete`). It is **not** a journey counter and must never be grown into one.
-  - `VerificationStatus` (`ServiceProviderVerificationStatus`) — `Pending → UnderReview → Verified | Rejected` (a `Rejected` profile may resubmit → `UnderReview`). Owner submits via `submit-verification`; admin drives the decision (`ApproveVerificationAsync` / `RejectVerificationAsync`, with `GetPendingVerificationsAsync` for the queue).
+  - `VerificationStatus` (`ServiceProviderVerificationStatus`) — normal onboarding is `Pending → submit-verification → Verified`. Submission calls the full `IsProfileComplete` predicate and requires a non-blank headline and bio plus at least one skill, service category, industry, language, pricing model, and portfolio item; the former skill/category/portfolio-only submission minimum is superseded. `VerificationSubmittedAt` and `VerifiedAt` are stamped from the same UTC value, the prior rejection reason is cleared, and Trust is recalculated.
 
-Crossing to `Verified` is what opens the flat dashboard.
+**Admin manual review is not part of normal SP onboarding.** Admin is suspension/moderation only: `Verified → Rejected` through `RejectVerificationAsync`. A rejected provider may remediate and resubmit, producing the controlled loop `Rejected → submit-verification → UnderReview → admin approves to Verified or rejects to Rejected`; `GetPendingVerificationsAsync` contains only that moderation/remediation queue. This is also how an admin initiates re-review of an already-Verified provider: reject first, then review the provider's resubmission. There is no separate direct `Verified → UnderReview` endpoint in the current code.
+
+Crossing to `Verified` is what opens the flat dashboard; every SP who completes and submits the full required profile crosses it immediately during normal onboarding.
 
 **Superseded planning models (never implemented — do not cite as history):** a **9-phase / archetype** model (Builder/Structural/Deal SP) and a later **7-phase / Tier-1–4** model. Neither exists in code. The enterprise planning file `docs/mondial-eco-mvp-final-docs/05_Service_Provider_Journey_v2.0_Enterprise.docx` describes one of these unbuilt journeys — treat it as superseded input; this canon supersedes it.
 
@@ -607,16 +609,15 @@ The four canon rules remain exact and are evaluated when the dashboard is read; 
 
 This is the **experience** order — what a real SP lives through, in the order they live it — **distinct from §1.2's data-dependency build order** (that's for developers). Because there are **no phases** (§1.1), the journey is not enforced by gating; it is shaped by **purposeful, context-aware empty-states and dashboard nudges**. Each step is tagged **LIVE**, **PARTIAL**, or **PLANNED** so the narrative never implies unbuilt behavior exists. **Modules 1–5 are now mechanically live.** Module 4's payment, scanning, and contract-consent boundaries remain STUB-backed (§8.0), and Module 5 visibly identifies upstream tracking gaps as `notTracked` (§9.0).
 
-### 11.1 First-time flow (signup → verified) — **LIVE (existing, unchanged by the redesign)**
+### 11.1 First-time flow (signup → verified) — **LIVE (automatic SP profile verification)**
 
 1. **Universal Gate** — the shared KYC/onboarding every role passes (`OnboardingGate`).
 2. **SP role selection** — the user picks the Service Provider role (shared onboarding).
-3. **Profile submission (Stage 1 → Stage 2)** — skills/categories/portfolio (Stage 1), then headline/bio/industries/languages/pricing (Stage 2); `CurrentPhase` advances 1→2 when complete (§1.1).
-4. **Submit for verification** → `VerificationStatus: Pending → UnderReview`.
-5. **Admin verification queue** — an admin reviews (`GetPendingVerificationsAsync`) and approves or rejects.
-6. **Approval** → `Verified`. This is the **single gate**; crossing it opens the flat dashboard.
+3. **Complete the SP profile** — headline, bio, at least one skill, category, industry, language, pricing model, and portfolio item; `CurrentPhase` advances 1→2 when complete (§1.1).
+4. **Submit for verification** → `VerificationStatus: Pending → Verified` immediately after the server's full `IsProfileComplete` check. No admin queue or approval intervenes; crossing to Verified opens the flat dashboard.
+5. **Moderation exception only** — an admin may suspend `Verified → Rejected`. After remediation, provider resubmission produces `Rejected → UnderReview`; the admin queue then approves back to `Verified` or rejects again.
 
-All of the above predates and is unchanged by the redesign.
+The Universal Gate remains unchanged and separate. Automatic SP profile verification and the moderation-only admin queue were reconciled with code in commit `dc29810`.
 
 ### 11.2 First login after verification — what a freshly-verified SP sees
 
@@ -755,6 +756,8 @@ The repo's **root `.gitignore` is a binary / non-UTF8 file**, which can make the
 ---
 
 ## Changelog
+
+**2026-07-27 — SP profile submission now auto-verifies; admin review is moderation-only.** Commit `dc29810` on `dev-hafiz`. Normal onboarding is now `Pending → submit-verification → Verified`, with `VerificationSubmittedAt` and `VerifiedAt` stamped from one UTC value, rejection state cleared, and the derived Trust score recalculated. Submission now enforces the full `IsProfileComplete` predicate—headline, bio, skill, category, industry, language, pricing model, and portfolio item—instead of the former three-field skill/category/portfolio minimum. Admin manual review is no longer an onboarding gate: admin may suspend `Verified → Rejected`, and remediation follows `Rejected → resubmit → UnderReview → admin approve/reject`; there is no separate direct `Verified → UnderReview` endpoint. Verification: SP-focused suite **102 passed / 0 failed / 0 skipped**; full backend suite **577 passed / 0 failed / 57 skipped**; `tsc --noEmit` clean.
 
 **2026-07-27 — Module 5 (Analytics & Growth) shipped → all five SP modules marked LIVE.** Commits `c64aab5` (backend, including the Module-4 shared-calculator amendment) / `18c54e1` (frontend) on `dev-hafiz`. §4.3 adds only `GrowthTasks` to EXISTS and records that metrics/observations remain read-time with no snapshot, event, cache, or export collection. §9 records currency-scoped non-refunded revenue, proposal/completed-work/delivery/client/service-order metrics, historical and `Custom/Unattributed` service attribution, date/comparison filters, computed-at, provider UI/empty states, and manual provider-only GrowthTasks. The private Module-4 repeat-client/on-time formulas moved into `IClientRelationshipCalculator` / `ClientRelationshipCalculator`, now shared by `WorkroomService.RefreshTrust` and Analytics; Module-4 targeted tests remained **25 passed / 0 failed / 0 skipped before and after** extraction.
 

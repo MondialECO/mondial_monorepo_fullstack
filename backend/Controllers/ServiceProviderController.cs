@@ -14,8 +14,8 @@ namespace WebApp.Controllers;
 /// Request shapes are validated by the global ValidationFilter (Phase 3 validators);
 /// all decision logic lives in <see cref="IServiceProviderService"/>, so this
 /// controller only maps outcomes onto the shared <see cref="ApiResponse"/> envelope.
-/// Marketplace, matching, proposals, workrooms, escrow, reviews, reputation, and
-/// admin approval are out of scope.
+/// Marketplace, matching, proposals, workrooms, and escrow are out of scope;
+/// post-verification admin moderation remains on the separate admin controller.
 /// </summary>
 [ApiController]
 [Route("api/service-provider")]

@@ -2,7 +2,7 @@ import { PendingVerificationQueue } from '@/components/admin/serviceprovider/Pen
 
 export const metadata = {
   title: 'Provider Verifications | Mondial',
-  description: 'Review and moderate service-provider verification submissions.',
+  description: 'Moderate service-provider verification remediation.',
 };
 
 export default function AdminServiceProvidersPage() {
@@ -13,7 +13,8 @@ export default function AdminServiceProvidersPage() {
           Provider Verifications
         </h1>
         <p className="text-sm text-muted-foreground">
-          Review submitted service-provider profiles and approve or reject them.
+          Review remediated profiles after an admin rejection. Complete first
+          submissions are verified automatically.
         </p>
       </div>
       <PendingVerificationQueue />

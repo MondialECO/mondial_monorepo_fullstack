@@ -72,16 +72,16 @@ public class UpdatePortfolioItemRequest
 }
 
 /// <summary>
-/// Submit the provider for verification, moving VerificationStatus
-/// Pending → UnderReview. Carries the provider's accuracy attestation; the
-/// review decision and TrustScore are produced server-side in a later phase.
+/// Submit a complete provider profile. A Pending profile becomes Verified
+/// immediately; a previously-Rejected profile enters UnderReview for controlled
+/// moderation. Carries the provider's accuracy attestation.
 /// </summary>
 public class SubmitVerificationRequest
 {
     /// <summary>Provider attests the submitted profile/portfolio is accurate.</summary>
     public bool ConfirmAccuracy { get; set; }
 
-    /// <summary>Optional note to reviewers.</summary>
+    /// <summary>Optional submission note.</summary>
     public string? Note { get; set; }
 }
 
@@ -175,8 +175,8 @@ public class ServiceProviderVerificationResponse
 }
 
 /// <summary>
-/// One entry in the admin "pending verification" queue: a provider whose profile
-/// is awaiting review (UnderReview). Carries the user's identity plus the full
+/// One entry in the admin moderation queue: a provider whose remediated profile
+/// is awaiting re-review (UnderReview). Carries the user's identity plus the full
 /// profile projection so the admin queue and detail drawer render from a single
 /// fetch (headline, categories, skills, portfolio, industries, languages,
 /// pricing models, trust score, and submittedAt all live on <see cref="Profile"/>).
