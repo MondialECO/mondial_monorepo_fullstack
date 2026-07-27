@@ -18,7 +18,7 @@ Every feature carries a STATUS tag:
 - **PLANNED** — specced here, not built yet
 - **FORBIDDEN** — must never be built (violates a core rule)
 
-Section map: **§1** architecture · **§2** AI (none) · **§3** design system · **§4** database · **§5** Module 1 Profile & Trust (LIVE) · **§6** Module 2 Service Catalog (LIVE) · **§7** Module 3 Leads (LIVE) · **§8** Module 4 Workroom & Earnings · **§9** Module 5 Analytics & Growth · **§10** cross-cutting rules · **§11** SP journey (product experience) · **§12** notifications · **§13** audit log · **§14** validation/error · **§15** security/trust · **§16** roles & permissions · **§17** acceptance criteria · Appendix + Changelog.
+Section map: **§1** architecture · **§2** AI (none) · **§3** design system · **§4** database · **§5** Module 1 Profile & Trust (LIVE) · **§6** Module 2 Service Catalog (LIVE) · **§7** Module 3 Leads (LIVE) · **§8** Module 4 Workroom & Earnings (LIVE) · **§9** Module 5 Analytics & Growth · **§10** cross-cutting rules · **§11** SP journey (product experience) · **§12** notifications · **§13** audit log · **§14** validation/error · **§15** security/trust · **§16** roles & permissions · **§17** acceptance criteria · Appendix + Changelog.
 
 ---
 
@@ -46,13 +46,13 @@ A verified SP sees all five at once. The order is **build order** (each produces
 
 ### 1.3 Storage rule — embed the bounded profile, collection-per-module after that
 
-`ServiceProviderProfile` (with its embedded trust record and skills-test attempts) **stays embedded on `ApplicationUser`** — bounded (one profile, one `TrustScoreBreakdown`, a cooldown-capped `SkillsTestAttempts` list). **Every module from Service Catalog onward gets its own top-level MongoDB collection** (`ServiceListings`, `ClientBriefs`, `WorkroomEngagements`, …), keyed by `ProviderId`/`UserId`.
+`ServiceProviderProfile` (with its embedded trust record, skills-test attempts, capacity, and financial preferences) **stays embedded on `ApplicationUser`** — bounded (one profile, one `TrustScoreBreakdown`, a cooldown-capped `SkillsTestAttempts` list, one `ProviderFinancialSettings` record with a small masked-method list). **Unbounded records from Service Catalog onward get top-level MongoDB collections** (`ServiceListings`, `ClientBriefs`, `WorkroomEngagements`, `PayoutRequests`, …), keyed by `ProviderId`/`UserId` or their owning domain FK.
 
 > **FORBIDDEN:** embedding unbounded data (listings, engagements, leads, transactions, time entries) as arrays on `ApplicationUser` or `ServiceProviderProfile`.
 
 ### 1.4 Commission — flat 12%, Workroom layer, tier-independent
 
-Commission is a **flat 12% platform rate, Fiverr-style**, applied **once, at the Workroom & Earnings escrow-release layer** (§8) on **every completed transaction**. It is **completely independent of `Tier_level` and `TrustScore`** — no sliding scale, discount, or surcharge by tier or reputation. The source of truth is now **LIVE** as `PlatformCommerceConstants.CommissionRate = 0.12m`; Module 3 uses it for proposal earnings previews. Module 4 is still unbuilt and must consume this same constant when it computes commission at release — never redefine it.
+Commission is a **flat 12% platform rate, Fiverr-style**, applied **once, at the Workroom & Earnings escrow-release layer** (§8) on **every completed transaction**. It is **completely independent of `Tier_level` and `TrustScore`** — no sliding scale, discount, or surcharge by tier or reputation. The single source of truth is **LIVE** as `PlatformCommerceConstants.CommissionRate = 0.12m`: Module 3 uses it for proposal earnings previews and Module 4 consumes the same constant when it computes commission at release. There is no second rate and no stored per-provider commission rate.
 
 > **FORBIDDEN:** deriving commission from `Tier_level`, `TrustScore`, or any reputation/ranking input.
 
@@ -129,7 +129,7 @@ SP UI uses the existing design system only — light theme, single blue accent, 
 
 ## 4. Database — what's real vs. what's planned
 
-**Verified reality (2026-07-27):** the bounded provider profile/trust record remains embedded in `ApplicationUsers`; Modules 2 and 3 now also own the top-level collections listed below. Module 4's `WorkroomEngagement` and related execution/financial collections do not exist yet.
+**Verified reality (2026-07-27):** the bounded provider profile/trust/financial-settings record remains embedded in `ApplicationUsers`; Modules 2–4 own the top-level collections listed below. Module 4 added 16 unbounded execution, financial, and audit collections.
 
 ### 4.1 `ApplicationUsers` (existing top-level collection) — SP-relevant contents
 
@@ -144,6 +144,8 @@ Registered as `GetCollection<ApplicationUser>("ApplicationUsers")` in `DbContext
   - `Skills` (`List<string>`), `ServiceCategories` (`List<ServiceCategory>`), `PortfolioItems` (`List<PortfolioItem>`)
   - `Headline` (`string`), `Bio` (`string`), `Industries` (`List<string>`), `Languages` (`List<string>`), `PricingModels` (`List<PricingModel>`)
   - **Module 1 additions:** `TrustBreakdown` (`TrustScoreBreakdown`), `HasEnoughTrustData` (`bool`), `SkillsTestAttempts` (`List<SkillsTestAttempt>`)
+  - **Module 2 additions:** `MaximumConcurrentOrders`, `CurrentActiveOrders`, `NewOrderAvailability`, `ManualApprovalWhenCapacityLow`
+  - **Module 4 addition:** `FinancialSettings` (`ProviderFinancialSettings`, embedded — never a collection)
   - `CreatedAt` (`DateTime`), `UpdatedAt` (`DateTime`)
 
 Embedded types (all nested in `ServiceProviderProfile`; none has its own collection):
@@ -151,6 +153,7 @@ Embedded types (all nested in `ServiceProviderProfile`; none has its own collect
 - **`TrustSignal`** — `HasData` (`bool`), `Value` (`double`).
 - **`SkillsTestAttempt`** — `Category` (`ServiceCategory`), `Score` (`int`), `Passed` (`bool`), `TakenAt` (`DateTime`), `NextEligibleRetestAt` (`DateTime`).
 - **`PortfolioItem`** — `Title`, `Description`, `Url`, `ImagePath` (`string`), `AddedAt` (`DateTime`).
+- **`ProviderFinancialSettings`** — `PayoutMethods[]`, `DefaultPayoutMethodId`, `Tax`, `AccountOnHold`, `MinimumPayoutAmount`; nested `MaskedPayoutMethod` and `ProviderTaxSettings` fields are listed in §8.0.1.
 
 **Storage-rule check:** ✅ compliant (§1.3) — the profile is bounded, so embedding is correct.
 
@@ -176,17 +179,23 @@ Authoritative vocabulary for the whole SP domain; every module reuses these, non
 - **`ClientBriefInteractions`** (`ClientBriefInteraction`) — Module 3, §7 (LIVE). Provider-relative viewed/saved/dismissed state plus the response-window anchor; unique by (`ProviderId`, `ClientBriefId`).
 - **`Proposals`** (`Proposal`) — Module 3, §7 (LIVE). Negotiated proposals and published-package purchase snapshots; revision history is embedded.
 - Indexes for the three Module-3 collections are established best-effort via **`EnsureLeadsIndexes()`**. There is deliberately **no TTL index**; `ClientBriefExpirationJob` performs soft lifecycle transitions.
+- **`WorkroomEngagements`** (`WorkroomEngagement`) — Module 4, §8 (LIVE, `7e31162`); unique by `ProposalId`.
+- **`Contracts`** (`Contract`) — Module 4 (LIVE); one contract per engagement, with bounded `ContractTerms` embedded.
+- **`WorkroomMilestones`** (`WorkroomMilestone`) — Module 4 (LIVE); funded delivery/review/release units under an engagement.
+- **`Deliverables`** (`Deliverable`) — Module 4 (LIVE); separate version documents whose submitted content is never overwritten (the prior row's status becomes `Superseded`).
+- **`RevisionRequests`** (`RevisionRequest`) — Module 4 (LIVE); consolidated feedback and manual scope classification.
+- **`FinancialTransactions`** (`FinancialTransaction`) — Module 4 (LIVE); provider ledger rows with unique idempotency keys and no stored commission rate.
+- **`Reviews`** (`Review`) — Module 4 (LIVE); one verified review per engagement.
+- **`WorkroomTasks`** (`WorkroomTask`), **`ClientInputRequests`** (`ClientInputRequest`), and **`WorkroomFiles`** (`WorkroomFile`) — Module 4 (LIVE) coordination/file records.
+- **`PaymentOperations`** (`PaymentOperation`) — Module 4 (LIVE); idempotent external-operation/reconciliation records. The active adapter is a STUB (§8.0).
+- **`PayoutRequests`** (`PayoutRequest`), **`Invoices`** (`Invoice`), and **`HourlyTimeEntries`** (`HourlyTimeEntry`) — Module 4 (LIVE) financial-support records.
+- **`WorkroomAuditEvents`** (`WorkroomAuditEvent`) — Module 4 (LIVE). This is the real name; the original generic `AuditEvents` label drifted.
+- **`RepeatClientCoupons`** (`RepeatClientCoupon`) — Module 4 (LIVE); tier-independent repeat-client rewards.
+- Module-4 indexes are established best-effort via **`EnsureWorkroomIndexes()`**, including unique `WorkroomEngagement.ProposalId`, `Contract.EngagementId`, `Review.EngagementId`, payment/financial idempotency keys, and invoice numbers. Full fields: §8.0.1.
 
 **Naming convention (verified against `MongoDbContext.cs`):** the **entity class is singular** PascalCase; the **collection string is its plural** (`ApplicationUser` → `"ApplicationUsers"`, `DealExecution` → `"DealExecutions"`, `Conversation` → `"Conversations"`). Where a class carries a `Record`/`Model`/`Entity` suffix, the collection drops it and pluralizes the core noun (`EntrepreneurProfileRecord` → `"EntrepreneurProfiles"`, `ContactModel` → `"Contacts"`). A few **legacy** classes are themselves plural (`BusinessIdeas`, `Investments`, `Transactions`, `Companies`) — **do not copy that**; new SP models follow singular-class → plural-collection.
 
-**PLANNED (not built — do not describe as existing).** Model class → collection string; all top-level, all following the §4.2 convention. *(Modules 2–3 moved their collections to EXISTS above.)*
-- **`WorkroomEngagement` → `"WorkroomEngagements"`** (Module 4, §8) — the delivery-workspace / engagement record (the source doc's *Project*, renamed). References a `Contract`.
-- **`Contract` → `"Contracts"`** (Module 4, §8) — the signed agreement the engagement references (the source's `contractId`, which it implies but never defines). Kept **separate** from the engagement (mapping note below).
-- **`WorkroomMilestone` → `"WorkroomMilestones"`** (Module 4, §8) — funded units of work under an engagement; carries `includedRevisionCount` / `usedRevisionCount` + escrow status. **Renamed from `Milestone`** to avoid a class-name collision with the existing `Milestone` in `BusinessIdeas.cs:119` (same `WebApp.Models.DatabaseModels` namespace). FK fields `milestoneId` / `currentMilestoneId` reference this entity.
-- **`Deliverable` → `"Deliverables"`** (Module 4, §8) — versioned submissions against a milestone (1.0 / 1.1 / 2.0; never overwritten).
-- **`RevisionRequest` → `"RevisionRequests"`** (Module 4, §8) — client-requested changes against a deliverable; manual scope classification.
-- **`FinancialTransaction` → `"FinancialTransactions"`** (Module 4, §8) — escrow / commission / payout / refund / adjustment / hold ledger rows. **No stored `commissionRate` field** (below).
-- **`Review` → `"Reviews"`** (Module 4, §8; feeds §5 reputation) — client review at project completion.
+**PLANNED:** no Module-4 collection remains in this list. Module 5 storage is intentionally left to §9 implementation discovery rather than invented here.
 
 **Entity-map decisions (from the source design doc):**
 - **`ServiceProvider` (source's top-level entity) is NOT a new collection.** It duplicates the already-built embedded `ServiceProviderProfile` (§4.1). Map its fields onto the existing structure: `displayName`/`professionalTitle`/`companyName`/`primaryCategory`/`skills` → profile fields; `verificationTier` → `Tier_level` (§1.5); `verificationStatus` → `VerificationStatus`; `rating`/`reviewCount`/`responseRate`/`onTimeDeliveryRate`/`projectCompletionRate` → **derived** reputation (Trust signals, §5.1), never hand-set. `commissionRate` is **dropped** (below).
@@ -211,13 +220,14 @@ Extends the embedded `ServiceProviderProfile` into a trust/reputation layer. Ren
 
 | Signal | Weight | Data source | Status |
 |---|---|---|---|
-| Client Satisfaction | 40 | Workroom & Earnings (§8) | **PLANNED** (no producer yet) |
-| On-time Delivery | 25 | Workroom & Earnings (§8) | **PLANNED** |
+| Client Satisfaction | 40 | Workroom & Earnings (§8) | **LIVE** (`WorkroomService.RefreshTrust`) |
+| On-time Delivery | 25 | Workroom & Earnings (§8) | **LIVE** (`WorkroomService.RefreshTrust`) |
 | Response Rate | 15 | Leads (§7) | **LIVE** (`ResponseRateService`) |
-| Repeat-Client Rate | 10 | Workroom & Earnings (§8) | **PLANNED** |
+| Repeat-Client Rate | 10 | Workroom & Earnings (§8) | **LIVE** (`WorkroomService.RefreshTrust`) |
 | Skill Test | 10 | §5.3 | **LIVE** |
 
-- **Dispute Penalty** is **not** part of the 100 base — it is **subtracted afterward, unnormalized, only when disputes exist** (`HasDisputes`). Always 0 today (no producer).
+- **Dispute Penalty — LIVE:** not part of the 100 base; it is subtracted afterward, unnormalized, only when disputes exist (`HasDisputes`). Module 4 counts adverse `ClientFavored` or `Split` dispute outcomes at **5 points each, capped at 20**.
+- All four Module-4 signals enter through `ServiceProviderService.UpdateWorkroomTrustSignalsAsync`, which calls the existing private `RecalculateTrustScore`. **No parallel TrustScore writer was introduced.**
 - **Renormalization example:** with only the skills-test signal present, `score = skillTestValue` (a 90% test → TrustScore 90), not 9.
 
 ### 5.2 Neutral "not enough data" state — LIVE
@@ -255,8 +265,8 @@ Absorbs the "Service Package / Delivery Time / FAQ / Revision" source doc in ful
 
 ### 6.0 What's live vs. deferred (verified against code)
 - **Collections `ServiceListings` / `ServicePackages` / `ServiceFAQs`** are registered in `MongoDbContext.cs` (indexes via `EnsureServiceCatalogIndexes()`) — see §4.3.
-- **Reusable calculators** `RevisionCalculator`, `DeliveryScheduleCalculator`, `PricingGuidance` are **built and unit-tested but NOT wired into any live flow** — Module 4 (Workroom & Earnings) consumes them when built; it must not reimplement them.
-- **`CurrentActiveOrders`** has a field + the capacity check (`ToCapacityResponse`), but **no live writer** — only Module 4 increments it (today it stays 0; the gate is unit-testable with a seeded value).
+- **Reusable calculators:** `RevisionCalculator` and `DeliveryScheduleCalculator` are now consumed by Module 4 for live revision entitlement, due-date, and clock-state logic; `PricingGuidance` remains Catalog-only guidance.
+- **`CurrentActiveOrders`** now has a live Module-4 writer: first milestone activation increments it and engagement completion decrements it (clamped at zero).
 - **`Impressions` / `Clicks`** fields + internal `RecordImpressionAsync` / `RecordClickAsync` exist, but there is **still no live call-site** — Module 3 shipped the provider Leads workspace and package-purchase API, not a client catalog-browsing surface. The counters remain unwritten until that client surface is wired.
 - **Sidebar:** a "Services" nav item (`menu.ts`) → **`/dashboard/serviceprovider/services`**.
 - **Confirmed-decision fixes in this build:** `PricingModel` added as a **nullable** field on `ServicePackage`; `CancellationPolicy` is a **fixed `CancellationPolicyType` enum** (3 platform options: `FlexibleFullRefundBeforeStart` / `PartialRefundAfterDeliveryStart` / `NoRefundAfterDeliveryStart`) — **not** a custom rule engine.
@@ -337,11 +347,11 @@ Entity `ServiceFAQ` (above). **Visibility:** All Packages / Basic Only / Standar
 ### 7.0 What's live vs. deferred (verified against code)
 
 - **LIVE:** three top-level MongoDB collections (`ClientBriefs`, `ClientBriefInteractions`, `Proposals`), best-effort indexes, actor-scoped `/api/leads` endpoints, the provider `/dashboard/serviceprovider/leads` workspace, proposal state validation/version history, notifications, package purchase/manual fallback, soft expiry, matching, and response-rate persistence.
-- **LIVE scope boundary:** Module 3 ends at `Proposal.Status = Accepted` with `ConversionStatus = AwaitingModule4`. It creates **no** `WorkroomEngagement`, `Contract`, or `WorkroomMilestone`; it starts no delivery clock. Module 4 owns conversion and must perform the future `Accepted → ConvertedToProject` transition.
+- **LIVE scope boundary:** Module 3 still ends at `Proposal.Status = Accepted` with `ConversionStatus = AwaitingModule4`; Module 3 itself creates no delivery records and starts no clock. Module 4 now consumes that boundary asynchronously and performs `Accepted/AwaitingModule4 → ConvertedToProject/Converted` while atomically creating the contract, engagement, and milestones (§8.0).
 - **LIVE but backend-only/client-side boundary:** client brief create/publish/close, client proposal review/change/accept/decline, and package purchase endpoints exist. This provider module does not add a client dashboard/checkout UI.
 - **PARTIAL:** proposal revision and client changes-request are live in the backend, including `PreviousVersions`, but the provider workspace has no revise-editor action. Milestone-plan and attachment fields are accepted by the API but not exposed by the current proposal form.
 - **DEFERRED/unwired vocabulary:** `PlatformAdminResolution`, `CustomOffer`, `PackageAddOn`, and `ChangeRequest` exist in enums/models, but there is no admin-resolution endpoint and no complete custom-offer/package-add-on/change-request producer flow. A standalone custom offer cannot currently pass submission validation without an open `ClientBrief`.
-- **DEFERRED integration:** payment-method verification, escrow authorisation, compliance hold, and final-summary confirmation are authoritative request flags validated by Module 3; no payment gateway, escrow ledger, contract, audit-log writer, or Module-4 conversion runs here.
+- **Module boundary:** payment-method verification, escrow authorisation, compliance hold, and final-summary confirmation remain authoritative request flags in Module 3. The downstream gateway-shaped payment operations, ledger, contract, audit writer, and conversion now live in Module 4, but the payment adapter is explicitly a STUB (§8.0).
 - **Known filter drift:** API filters are category, skill, budget bounds, duration, location, remote flag, source, posted-after, deadline-before, and saved-only. The planned client-verification/payment-verification filters are not implemented. UI exposes text search, saved tab, and all five sorts; advanced API filters do not yet have controls.
 
 ### 7.0.1 As-built entities (real fields; spec drift called out)
@@ -368,7 +378,7 @@ All three PKs are **`Id`** (`[BsonId]` ObjectId), not the spec's `clientBriefId`
 
 - Only an **Open** brief accepts proposals. Closing freezes linked proposals read-only. Expiry defaults to 72 hours from publish and is capped at 30 days.
 - There is **no MongoDB TTL index and no deletion**. The minutely scheduled Hangfire `ClientBriefExpirationJob` changes due `Open` briefs to `Expired`, expires due submitted proposals, and sends deduplicated saved-brief-expiry notifications.
-- Proposal statuses: `Draft, Submitted, Viewed, ChangesRequested, Revised, ClientReviewing, Accepted, Declined, Withdrawn, Expired`; `ConvertedToProject` remains a reserved Module-4 enum value with no Module-3 transition/writer.
+- Proposal statuses: `Draft, Submitted, Viewed, ChangesRequested, Revised, ClientReviewing, Accepted, Declined, Withdrawn, Expired`; `ConvertedToProject` is now written only by Module 4's transaction-safe conversion job.
 - Live negotiated transitions: Draft→Submitted; Submitted→Viewed/Withdrawn/Expired; Viewed→ChangesRequested/ClientReviewing; ChangesRequested→Revised; Revised→ClientReviewing; ClientReviewing→Accepted/Declined. Accepted cannot be withdrawn or converted by Module 3; Viewed→Accepted, Saved→Accepted, and MessageSent→Accepted are disallowed.
 - Submission requires an open linked brief, future expiration, title, cover message, positive price, delivery duration, at least one deliverable, non-negative revision count, matching currency, and a verified/available provider below capacity. Out-of-budget price is a warning. Unlimited revisions require explicit confirmation. Expired proposals can be duplicated into a new draft.
 - Commission preview: `Commission = ProposedPrice × 12%`; `Net = ProposedPrice − Commission`. Example: $2,150 → $258 commission → $1,892 net.
@@ -377,7 +387,7 @@ All three PKs are **`Id`** (`[BsonId]` ObjectId), not the spec's `clientBriefId`
 
 - **Standard/direct-invitation proposal — LIVE through Accepted:** provider draft→submit; client view/review/request changes; provider may revise; client explicitly confirms and supplies escrow-authorised state; proposal becomes `Accepted/AwaitingModule4`. A direct invitation alone never accepts anything.
 - **Published-package purchase — LIVE through Accepted:** validates published service/package, instant-order/manual-approval settings, provider eligibility and global/package capacity, requirements, client activity, explicit confirmation, payment/escrow flags, compliance hold, and final-summary confirmation. Passing all conditions creates an immutable accepted snapshot; any failure produces a submitted request with UI status **“Provider Approval Required”**, which the provider can approve/decline before the client confirms.
-- **No downstream creation:** all former §7 arrows from Accepted to contract/order/project/workroom are removed. Module 4 will create those records and decide when delivery is ready to start.
+- **No synchronous Module-3 creation:** acceptance enqueues Module 4; the conversion worker creates those records transactionally and independently decides when delivery is ready to start (§8.0).
 
 ### 7.3 Matching, response rate, notifications, and UI
 
@@ -387,106 +397,128 @@ All three PKs are **`Id`** (`[BsonId]` ObjectId), not the spec's `clientBriefId`
 - **Notifications — LIVE:** direct invitation received; saved brief expiring; proposal viewed; changes requested; proposal accepted; proposal declined; proposal expired; client sent a brief-linked message.
 - **Empty states — LIVE:** “No New Client Opportunities” / “New opportunities matching your professional profile will appear here.” / “Review Service Preferences”; “No Active Proposals” / “Submit a proposal or send a custom offer to begin a client discussion.” / “Browse Opportunities”; “No Saved Opportunities” / “Save relevant client briefs to review them later.” *(The custom-offer text is aspirational until the deferred producer path above is wired.)*
 
-**Dependencies.** Reads: Catalog (§6), verified provider profile/capacity (§1), and `SpMatchingService` (§1.7). Produces: `Proposal` accepted boundary (consumed later by §8), response-rate trust signal (§5.1), and future analytics inputs (§9).
+**Dependencies.** Reads: Catalog (§6), verified provider profile/capacity (§1), and `SpMatchingService` (§1.7). Produces: the accepted-proposal boundary consumed live by §8, the response-rate trust signal (§5.1), and future analytics inputs (§9).
 
 ---
 
-## 8. Module 4 — Workroom & Earnings — **PLANNED**
+## 8. Module 4 — Workroom & Earnings — **LIVE**
 
-Merges the source doc's §7 (Project Workroom & Delivery) and §8 (Earnings & Financial Activity) into one module, per the 5-module structure. **Produces the four still-PLANNED trust signals** (Client Satisfaction 40, On-time Delivery 25, Repeat-Client Rate 10, Dispute Penalty) that §5.1 consumes.
+**Commits:** `7e31162` (backend) / `7b6acf7` (frontend), on `dev-hafiz` (both verified present).
+**Verification:** `dotnet build` **0 errors / 0 warnings**; full backend suite **546 passed / 0 failed / 57 skipped**; Module 1 **100**, Module 2 **22**, Module 3 **19**, and Module 4 **25** targeted tests pass; `npx tsc --noEmit` clean.
 
-### 8A — Workroom & Delivery (source §7)
+Merges delivery workroom and earnings into one module. It consumes accepted Module-3 proposals, owns the execution/financial lifecycle, and produces Client Satisfaction, On-time Delivery, Repeat-Client Rate, and Dispute Penalty for the existing Module-1 TrustScore path.
 
-**Storage (new top-level collections, §4.3):**
-- **`WorkroomEngagement` → `"WorkroomEngagements"`** (source's *Project*): `proposalId, providerId, clientId, contractId, title, description, contractValue, startDate, expectedEndDate, actualEndDate, currentMilestoneId, completionPercentage, engagementStatus, escrowStatus`. *(Status field renamed from the source's `projectStatus` to match the `Project → WorkroomEngagement` rename.)*
-- **`Contract` → `"Contracts"`** — the signed agreement `contractId` references (kept **separate**, §4.3 mapping note).
-- **`WorkroomMilestone` → `"WorkroomMilestones"`** (renamed from `Milestone` — collision with `BusinessIdeas.cs:119`, §4.3): `engagementId, title, description, amount, startDate, dueDate, completionCriteria, includedRevisionCount, usedRevisionCount, status, escrowStatus, approvedAt`.
-- **`Deliverable` → `"Deliverables"`**: `milestoneId, providerId, title, description, version, fileIds, externalLinks, submissionMessage, submittedAt, status`.
-- **`RevisionRequest` → `"RevisionRequests"`**: `milestoneId, deliverableId, requestedBy, description, requestedChanges, createdAt, dueDate, scopeClassification, status`.
+### 8.0 What's live vs. deferred (verified against code)
 
-**Sections (source §7):** Active Projects; Project Workroom (conversation/summary/milestones/tasks/files/decisions/meetings/deliverable history/contract shortcut); Milestone Delivery; Revision Management; Project Completion.
+- **LIVE storage/backend:** 16 top-level MongoDB collections (§4.3), `EnsureWorkroomIndexes()`, actor-scoped `/api/workroom` and `/api/earnings` APIs, state-machine checks, audit rows, notifications, timed rules, statements, and provider financial settings embedded on `ServiceProviderProfile`.
+- **LIVE Proposal→Engagement handoff:** every accepted proposal path immediately enqueues `WorkroomConversionJob.ConvertAsync`; a minutely sweeper catches missed `Accepted/AwaitingModule4` rows. Conversion is idempotent through a unique `WorkroomEngagement.ProposalId`, an existence check, and the proposal's atomic ownership transition. An empty `MilestonePlan` becomes exactly one full-scope milestone for the accepted price. Contract + engagement + milestone creation and `Proposal → ConvertedToProject/Converted` commit in one Mongo transaction.
+- **LIVE provider frontend:** `/dashboard/serviceprovider/workroom` lists workrooms and exposes **STUB in-app contract consent**, milestone activation, file upload, versioned delivery, revision-start/resubmission, and completion. `/dashboard/serviceprovider/earnings` exposes balances, transactions, payouts, invoices, masked payout-method setup, and tax settings, with purposeful empty states.
+- **API-first/client-UI boundary:** client STUB-backed funding, revision request, approval/release, disputes, extensions, reviews, and the second **STUB contract-consent** action exist as owner-scoped backend endpoints, but **no client Workroom/checkout frontend was added**. The build was provider-frontend-prioritized. Statement generation also exists as an API, not a provider UI control/download.
+- **`[STUB — PAYMENT]`** `IPaymentGatewayService` is the swappable boundary; `StubPaymentGatewayService` is the registered implementation. **No Stripe/Stripe Connect or other real payment integration exists.** “Escrow funded” currently means the deterministic stub returned success and Mongo recorded funded state/ledger rows; “payment released” means the stub returned success and Mongo recorded the release, 12% commission, invoice, and available balance. Payouts are likewise mocked responses — **no real money is held, released, refunded, or disbursed**.
+- **`[STUB — FILE SECURITY]`** `IFileSecurityScanner` is the swappable boundary; `StubFileSecurityScanner` is registered. It rejects empty files, files over 20 MB, and extensions outside the existing document/image allow-list, then deterministically passes. **No virus/malware/content scanning exists.**
+- **`[STUB — CONTRACT CONSENT]`** “Signing” is authenticated in-app explicit consent: the API stores `ProviderSignedAt` / `ClientSignedAt`, and both timestamps set `Contract.Status = Signed`. `ContractResponse.SimpleConsentStub = true` and the provider UI labels it as a STUB. **This is not an e-signature provider, identity-signing ceremony, or independently validated legally binding signature mechanism.**
+- **Operational requirement:** `Mongo:TransactionsEnabled=true` is a hard startup gate in `StartupConfigValidation`; missing, malformed, or false configuration prevents startup. Transactional code has **no silent non-atomic fallback**. The flag expresses deployment intent; Mongo still must actually support transactions. Production Atlas / `srv1172497` transaction capability was **not independently verified in this session** because DNS/egress from the dev sandbox was blocked — manually verify replica-set topology and transaction support before production deploy.
+- **PARTIAL/deferred:** real gateway/scanner/e-signature integrations; client UI; additional-revision purchase/change-order flow; client-input fulfilment endpoint; task update/reopen flow; meetings/decisions/case-study/archive UI; invoice/statement document download; and broader analytics remain unbuilt.
+
+### 8.0.1 As-built entities (real fields; spec drift called out)
+
+Every top-level PK is **`Id`** (`[BsonId]` ObjectId), not the source's entity-specific `projectId`/`milestoneId`/etc. Property names below are the exact C# model names.
+
+- **`WorkroomEngagement` → `"WorkroomEngagements"`:** `Id, ProposalId, ProviderId, ClientId, ContractId, Title, Description, ContractValue, Currency, StartDate, ExpectedEndDate, ActualEndDate, CurrentMilestoneId, CompletionPercentage, EngagementStatus, EscrowStatus, PausedAt, AccumulatedPausedMinutes, CreatedAt, UpdatedAt`.
+- **`Contract` → `"Contracts"`:** `Id, EngagementId, ProviderId, ClientId, Terms, ProviderSignedAt, ClientSignedAt, Status, CreatedAt`. `ProviderSignedAt` / `ClientSignedAt` and `Signed` mean **STUB authenticated in-app consent only**, not e-signature. Embedded **`ContractTerms`**: `Price, Currency, PricingType, DeliveryTimeValue, DeliveryTimeUnit, DeliveryDayType, DeliveryStartRule, IncludedRevisionCount, UnlimitedRevisions, RevisionRequestWindowDays, Deliverables[], AllowsParallelMilestones, HourlyRate, WeeklyHourLimit`.
+- **`WorkroomMilestone` → `"WorkroomMilestones"`:** `Id, EngagementId, Title, Description, Amount, Currency, DisplayOrder, StartDate, DueDate, OriginalDueDate, ExtensionRequestedAt, ApprovedExtensionDays, CompletionCriteria, IncludedRevisionCount, UnlimitedRevisions, PurchasedAdditionalRevisions, UsedRevisionCount, MilestoneStatus, EscrowStatus, SubmittedAt, ReviewWindowEndsAt, AutoReleaseAt, DisputeOpenedAt, DisputeReviewEndsAt, DisputeOutcome, ApprovedAt, CreatedAt, UpdatedAt`.
+- **`Deliverable` → `"Deliverables"`:** `Id, MilestoneId, ProviderId, Title, Description, Version, FileIds[], ExternalLinks[], SubmissionMessage, ClientInstructions, CompletionConfirmed, SubmittedAt, DeliverableStatus`.
+- **`RevisionRequest` → `"RevisionRequests"`:** `Id, MilestoneId, DeliverableId, RequestedBy, Description, RequestedChanges[], CreatedAt, DueDate, ScopeClassification, FeedbackCollectionStatus, RevisionRequestStatus`.
+- **`FinancialTransaction` → `"FinancialTransactions"`:** `Id, EngagementId, MilestoneId, ProviderId, ClientId, GrossAmount, Currency, CommissionAmount, NetAmount, TransactionType, PaymentStatus, IdempotencyKey, CreatedAt, ReleasedAt`.
+- **`Review` → `"Reviews"`:** `Id, EngagementId, ClientId, ProviderId, OverallRating, QualityRating, CommunicationRating, DeliveryRating, ProfessionalismRating, ValueRating, WrittenReview, ProviderResponse, Visibility, SubmittedAt, VerificationStatus`.
+- **`WorkroomTask` → `"WorkroomTasks"`:** `Id, EngagementId, MilestoneId, Title, Description, AssigneeId, DueDate, Visibility, Status, CreatedAt, UpdatedAt`.
+- **`ClientInputRequest` → `"ClientInputRequests"`:** `Id, EngagementId, MilestoneId, Type, Description, DueDate, DeliveryImpact, Status, CreatedAt, SuppliedAt`.
+- **`WorkroomFile` → `"WorkroomFiles"`:** `Id, EngagementId, MilestoneId, UploadedBy, OriginalName, StoragePath, ContentType, SizeBytes, Status, ProviderPrivate, Immutable, CreatedAt`.
+- **`PaymentOperation` → `"PaymentOperations"`:** `Id, IdempotencyKey, Type, EngagementId, MilestoneId, PayoutRequestId, Amount, Currency, Status, GatewayReference, Error, AttemptCount, CreatedAt, UpdatedAt`.
+- **`PayoutRequest` → `"PayoutRequests"`:** `Id, ProviderId, PayoutMethodId, Amount, Currency, Status, GatewayReference, CreatedAt, UpdatedAt, CompletedAt`.
+- **`Invoice` → `"Invoices"`:** `Id, InvoiceNumber, ProviderId, ClientId, EngagementId, MilestoneId, GrossAmount, CommissionAmount, NetAmount, Currency, ApprovalDate, ReleaseDate, TaxSnapshot, Status, CorrectsInvoiceId, CreatedAt`.
+- **`HourlyTimeEntry` → `"HourlyTimeEntries"`:** `Id, EngagementId, ProviderId, StartedAt, EndedAt, Description, ClientApproved, CreatedAt`.
+- **`WorkroomAuditEvent` → `"WorkroomAuditEvents"`:** `Id, ActorId, ActorRole, Action, EntityType, EntityId, PreviousState, NewState, Timestamp, Reason`. **Drift:** the discovery/spec shorthand said `AuditEvents`; the built class/collection is deliberately workroom-scoped.
+- **`RepeatClientCoupon` → `"RepeatClientCoupons"`:** `Id, ProviderId, ClientId, Code, DiscountPercent, Status, ExpiresAt, CreatedAt`.
+- Embedded **`ProviderFinancialSettings`** at `ApplicationUser.ServiceProviderProfile.FinancialSettings` — **not a top-level collection:** `PayoutMethods[], DefaultPayoutMethodId, Tax, AccountOnHold, MinimumPayoutAmount`. Embedded **`MaskedPayoutMethod`**: `Id, Rail, DisplayName, MaskedDescriptor, Verified, CreatedAt`. Embedded **`ProviderTaxSettings`**: `LegalName, CountryCode, TaxIdentifierMasked, VatRegistered, VatNumberMasked`.
+
+**As-built drift summary:** the implementation added currency, ordering, pause accounting, extension, review/auto-release/dispute clocks, idempotency/reconciliation, tax snapshots, hourly support, and audit fields beyond the original seven-entity sketch. Status properties are strongly named (`EngagementStatus`, `MilestoneStatus`, `DeliverableStatus`, `RevisionRequestStatus`) rather than a generic `Status` where ambiguity mattered. `ProviderFinancialSettings` is embedded per §1.3; `ContractTerms` and invoice tax snapshots are also bounded embedded objects. No entity stores `CommissionRate`; release always reads `PlatformCommerceConstants.CommissionRate`.
+
+### 8A — Workroom & Delivery (live mechanics)
+
+**Storage:** exact top-level and embedded shapes are in §8.0.1. The original five-item workroom sketch expanded to support transaction reconciliation, audit, files, tasks, client input, hourly work, payouts, invoices, and repeat-client behavior.
+
+**Provider surface — LIVE:** Active Projects, contract summary/**STUB consent**, milestones, delivery history, task/input summaries, file upload, revision work, completion, and earnings. Decisions, meetings, case-study permission, and archive controls are deferred; client-side decision UI is API-only (§8.0).
 
 **WorkroomEngagement status model:** `Contract Pending, Escrow Pending, Ready to Start, Active, Paused, Client Input Required, Milestone Review, Revision in Progress, Final Delivery, Completed, Cancelled, Disputed, Archived`.
-Core rules: no **Active** without a signed contract **and** required escrow; **Paused** follows the deadline-freeze policy; **Disputed** can block payment release; **Completed** deliverable history is read-only; **Archived** is never deleted.
+Core rules: no **Active** without `Contract.Status = Signed` (**STUB in-app consent only**) and the required **STUB-backed escrow state**; **Paused** follows the deadline-freeze policy; **Disputed** can block payment release; **Completed** deliverable history is read-only; **Archived** is never deleted.
 
 **WorkroomMilestone status model:** `Draft, Funding Required, Funded, Active, Submission Draft, Submitted, Client Reviewing, Revision Requested, Revision in Progress, Resubmitted, Approved, Payment Processing, Paid, Cancelled, Disputed`.
-Happy path: Draft→Funding Required→Funded→Active→Submission Draft→Submitted→Client Reviewing→Approved→Payment Processing→Paid. Revision loop: Client Reviewing→Revision Requested→Revision in Progress→Resubmitted→Client Reviewing. Dispute: (Submitted / Client Reviewing / Revision Requested)→Disputed.
+The live service converts proposals directly into `FundingRequired`; funding moves to `Funded`; activation moves to `Active`; submission moves directly to `ClientReviewing`; approval/auto-release atomically moves reviewable work to `Paid`. Revision loop: Client Reviewing/Resubmitted→Revision Requested→Revision in Progress→Resubmitted. Dispute: Submitted/Client Reviewing/Resubmitted/Revision Requested→Disputed.
 **Activation logic:** a milestone is Active only when — contract active; previous required milestone approved; required escrow funded; start condition satisfied; project not paused; no blocking dispute. Parallel milestones only if the contract explicitly allows it.
 
-**Review / release windows (CANON-LOCKED — from prior turns, not in the source; layered on the milestone flow):** the **48-hour client review window** on a submitted milestone (the post-submission review clock — **distinct from** the *Due Soon* deadline threshold, which is `<48h remaining` before a due date, §6.3); **7-day auto-release** if the client neither accepts nor disputes (a **Hangfire** job, §10); **5-day dispute review** once opened; **atomic release** — milestone status **+** escrow release **+** invoice update commit as one operation (all-or-nothing).
+**Review / release windows — LIVE:** submission stores a **48-hour client review marker** and a distinct **7-day auto-release** time. Minutely `WorkroomTimedRulesJob` releases an undisputed due milestone. Opening a dispute stores a **5-day support-review** deadline; expiry records an admin-attention audit event rather than auto-resolving it. Release atomically commits milestone/engagement state + ledger + invoice + payment operation + audit after the STUB gateway response.
 
 **Deliverable submission (source §7):** required — delivery title, description, ≥1 file or external link, version number, client instructions, completion confirmation. Provider confirms: all agreed deliverables included; files reviewed; no unrelated private info; ready for review.
 **Version rules:** first submission **1.0**; revisions **1.1, 1.2**; a major approved scope update **2.0**; previous versions can't be overwritten; submitted files can't be silently replaced — a replacement **creates a new version**.
 
-**File states:** `Selected, Uploading, Scanning, Ready, Failed, Archived, Restricted`. Rules: contract/approval files can't be deleted; submitted deliverables keep permanent history; failed uploads don't count toward submission; restricted files aren't client-visible; private provider files must be explicitly marked; size/type follow platform settings.
+**File states:** `Selected, Uploading, Scanning, Ready, Failed, Archived, Restricted`. Uploads create a `Scanning` record, pass through the **STUB extension/size checker**, then become `Ready` or `Restricted`; submitted files become immutable. No real malware scanning or suspicious-download warning exists (§8.0).
 
-**Task logic:** fields — title, description, assignee, due date, visibility, related milestone, status. Statuses: `Not Started, In Progress, Blocked, Completed, Cancelled`. Visibility: `Client Visible, Provider Private, Shared Team`. Rules: private tasks aren't client-visible; reopening a completed task creates audit history; **task completion ≠ milestone approval**.
+**Task logic:** create + list are live; fields and statuses match §8.0.1, and provider-private tasks are filtered from client reads. Task update/reopen/audit behavior is not implemented; **task completion ≠ milestone approval** remains the domain rule.
 
-**Revision logic:** `Remaining Revisions = Included Revisions + Purchased Additional Revisions − Used Revisions` — **matches §6.4 exactly** — where **Included** is sourced from the specific package/proposal tied to the engagement at purchase (§6/§7) and **Purchased Additional Revisions** counts any additional-revision purchases recorded against this engagement (the `Additional Revision Purchased` event, §8C). Never a platform constant (the old fixed "max 3 revisions" is removed).
-**Scope classification (manual):** `Within Scope / Needs Clarification / Potential Scope Change / Confirmed Scope Change`. The system may show predefined comparison info, but the final scope decision is the user's; **the system never auto-adds a price**. When the revision limit is reached the client can still send a request (system warns), the provider can propose a paid change request, and existing approved scope is preserved.
+**Revision logic — LIVE/PARTIAL:** `Remaining = Included + Purchased Additional − Used`, using Module 2's `RevisionCalculator`. One consolidated feedback submission is required; manual scope values are `WithinScope / NeedsClarification / PotentialScopeChange / ConfirmedScopeChange`; only `WithinScope` consumes allowance. When exhausted, the API blocks normal within-scope revision creation and points to an explicit paid change request. `PurchasedAdditionalRevisions` is modeled, but the actual paid-purchase/change-order producer is deferred.
 
-**Deadline states:** `On Track, Due Soon (<48h remaining before the due date), Due Today (same date), Overdue (passed, no approved submission), Extension Requested, Extension Approved, Extension Declined`. *(The "Due Soon" threshold is remaining-time-before-due — not the same as the 48-hour post-submission client review window above.)* An approved extension replaces the due date; a declined one preserves the original. The system reminds (Hangfire, §10) but **never auto-extends**.
+**Deadline states — LIVE:** `ClockState` exposes `WaitingForRequirements`, `WaitingForEscrow`, `ReadyToStart`, `Paused`, `ExtensionRequested`, `ExtensionApproved`, or Module 2's computed `OnTrack / DueSoon / DueToday / Overdue / Delivered`. *(Due Soon means `<48h` before the due date, distinct from post-submission review.)* Approval changes the due date; decline clears the request and preserves the existing due date rather than persisting a separate `ExtensionDeclined` state. The system reminds but never auto-extends.
 
-**Client input requests:** provider can request file / decision / feedback / approval / clarification / meeting (fields: type, description, due date, related milestone, delivery impact). Delayed client input can set the engagement to **Client Input Required**; a deadline change is never automatic unless a contract rule exists.
+**Client input requests — PARTIAL:** provider request creation is live for file / decision / feedback / approval / clarification / meeting and moves the engagement to `ClientInputRequired` without changing a deadline. The client fulfilment endpoint that would set `SuppliedAt` is deferred.
 
-**Project completion — allowed only when:** all required milestones approved; all payment releases resolved; final delivery approved; no active revision; no active dispute; required files available; contract obligations complete. Requires explicit confirmation. After completion: deliverables read-only; messaging may stay open; review request enabled; case-study permission request enabled; archive enabled; financial records retained.
+**Project completion — LIVE:** requires at least one milestone, every milestone `Paid`, no open dispute, and no unresolved revision. Explicit completion sets 100%, records `ActualEndDate`, decrements provider capacity, refreshes trust, and may create a repeat coupon. The broader source checks for case-study permission/archive UI and separately modeled contract-obligation/file-availability completion are not built.
 
-**Workroom notifications (source §7):** ready to start; milestone funded; deadline approaching; client uploaded file; client answered question; deliverable submitted; client started review; revision requested; revision accepted; milestone approved; payment released; project completed; support ticket updated.
+**Workroom notifications — LIVE subset:** workroom/contract ready, milestone funded, deadline approaching, deliverable submitted, revision requested, extension requested/decided, payment released, project completed, and review submitted. Client-upload/client-answer/review-start/revision-accepted/support-ticket notifications from the broader source list are not wired.
 
-### 8B — Earnings & Financial Activity (source §8)
+### 8B — Earnings & Financial Activity (live records; STUB-backed movement)
 
-**Storage:** **`FinancialTransaction` → `"FinancialTransactions"`**: `engagementId, milestoneId, providerId, clientId, grossAmount, commissionAmount, netAmount, transactionType, paymentStatus, createdAt, releasedAt`. **No stored `commissionRate`** — commission is always the flat 12% constant (§1.4).
+**Storage:** exact financial/payment/payout/invoice/settings fields are in §8.0.1. No record stores `CommissionRate`; release always reads the shared flat 12% constant (§1.4).
 
-**Escrow vs. payout — two distinct stages (single-rail escrow):**
-- **Escrow (hold) is single-rail.** While a milestone is in progress, funds are held via **Stripe (Stripe Connect)**. Only one provider holds escrow — there are never multiple simultaneous escrow implementations.
-- **Payout (disbursement) is a separate, later step** — how the SP withdraws already-**released net** earnings from the Available balance. Payout methods (**Stripe Connect / Wise / Bank Transfer / PayPal**) are disbursement rails, **not** escrow holders.
-- These are two different lifecycle stages (**hold → release → disburse**), not competing escrow providers.
+**Escrow vs. payout:** the lifecycle still separates **hold → release → disburse**, but every external operation currently runs through `StubPaymentGatewayService`. Stripe Connect / Wise / Bank Transfer / PayPal are enum/configuration labels for future adapters, not live rails. No real escrow holder or disbursement provider is connected (§8.0).
 
-**Sections (source §8):** Financial Overview ("Earnings Overview"); Escrow Activity ("Escrow" — a **view** over escrow-type transactions + milestone escrow status); Transactions ("Financial Activity"); Payouts; Statements; Invoices.
+**Sections:** provider Earnings Overview, financial activity, payouts, invoices, and settings are live. Statements are live via API only; there is no statement/invoice file-download flow.
 
 **Amount categories:** **Work in Progress** (escrow funded, work not yet submitted/approved — never shown as earned); **In Review** (submitted, client reviewing); **Pending** (approved, release/processing in progress); **Available** (in balance, payout-eligible); **Withdrawn** (payout completed); **On Hold** (dispute/verification/payment issue).
 
-**Transaction types:** `Escrow Funded, Milestone Approved, Payment Released, Commission Charged, Payout Requested, Payout Processing, Payout Completed, Payout Failed, Refund, Adjustment, Dispute Hold, Hold Released`.
+**Transaction-type vocabulary:** `Escrow Funded, Milestone Approved, Payment Released, Commission Charged, Payout Requested, Payout Processing, Payout Completed, Payout Failed, Refund, Adjustment, Dispute Hold, Hold Released`. Live writers currently emit `EscrowFunded`, `PaymentReleased`, `PayoutCompleted`, `Refund`, and `DisputeHold`; the remaining enum values are reserved/unwired.
 
-**Commission (flat 12%, computed at milestone payment release, §1.4):** `Commission = Gross × 12%`; `Net = Gross − Commission`. Example: Gross Milestone **$950.00** → Commission **$114.00** → Net **$836.00**. *(Source example used 8%; transcribed to 12%.)* The source's variable "rate comes from provider tier / rate preserved at signed time" rules are **dropped** in favour of the single platform constant. A manual adjustment still requires an authorised, audit-logged record (§12).
+**Commission (flat 12%, computed at milestone release, §1.4):** `Commission = Gross × PlatformCommerceConstants.CommissionRate`; `Net = Gross − Commission`, rounded to two decimals away from zero. Example: Gross **$950.00** → Commission **$114.00** → Net **$836.00**. Release atomically records milestone/engagement state, the ledger row, issued invoice, completed payment operation, and audit event after the STUB response.
 
 **Balance calculations:**
-- `Available Balance = Released Earnings − Completed Payouts − Active Payout Requests − Applicable Adjustments`
+- `Available Balance = Released Earnings − Completed Payouts − Active Payout Requests + Completed Adjustments`
 - `Pending Balance = Approved Payments − Released Payments`
 - `Protected Escrow = Funded Milestones − Approved or Refunded Amounts`
 
-**Payout eligibility — allowed when:** account active; identity verification valid; payment account verified; available balance > minimum payout; no account-level hold; amount ≤ available balance. When blocked, show a specific reason ("Payment account not verified" / "Balance below minimum" / "Account review in progress" / "Existing payout processing" / "Financial hold active").
-**Payout status model:** `Draft, Requested, Under Review, Processing, Completed, Failed, Cancelled, On Hold`. Rules: Processing can't be cancelled; Failed returns the amount to Available; Completed is immutable; payout method details shown **masked**.
+**Payout eligibility — LIVE/PARTIAL:** validates provider existence/settings, embedded account hold, a `Verified` masked payout method, minimum amount, available balance, and no existing active payout. A separate identity-verification recheck is not performed in `RequestPayoutAsync`. The STUB marks successful payouts completed immediately; failure leaves funds available. Payout details are masked.
 
-**Invoices:** per milestone / project / client / date range. Fields: invoice number, provider + client identity, project, milestone, gross, commission, net, currency, approval date, release date, tax info, status (`Draft, Generated, Issued, Paid, Cancelled, Corrected`). Issued invoices can't be edited directly — corrections require a credit note / corrected invoice.
-**Statements:** monthly / quarterly / annual / custom — opening balance, gross, commission, adjustments, payouts, closing balance, transaction list.
+**Invoices — LIVE/PARTIAL:** milestone release creates an `Issued` invoice with a snapshot of embedded tax settings. Correction/credit-note fields and statuses exist, but no correction endpoint or document generator/download exists.
+**Statements — LIVE API:** a custom date range returns opening balance, gross, commission, adjustments, payouts, closing balance, and transaction rows. Monthly/quarterly/annual presets and downloadable documents are not built.
 
-**Financial notifications:** escrow funded; milestone payment approved; payment released; balance available; payout requested; payout completed; payout failed; hold applied; hold removed; invoice generated; statement available.
+**Financial notifications — LIVE subset:** milestone funded and payment released are sent. Payout/invoice/statement/hold notification variants from the source list are not wired.
 
-**Financial empty states (source §8, verbatim):**
-- **No Earnings** — "No Earnings Yet" / "Approved project payments will appear here." / Action: "View Client Opportunities".
+**Financial empty states — LIVE:**
+- **No Earnings** — "No Earnings Yet" / "Approved project payments will appear here."
 - **No Available Balance** — "No Funds Available" / "Released earnings that are ready for payout will appear here."
-- **No Payout Method** — "Add a Payout Method" / "Verify a payout method before requesting a withdrawal." / Action: "Set Up Payout Method".
+- **No Payout Method** — "Add a Payout Method" / "Verify a payout method before requesting a withdrawal." The setup form is on the same Earnings page.
+- **No Invoices** — "No Invoices Yet" / "Issued milestone invoices will appear here."
 
-### 8C — Cross-module event chain (source §10, renamed)
+### 8C — Cross-module handoff and event chain (live boundary)
 
-`Proposal Accepted` (proposal read-only; Contract setup enabled; **`WorkroomEngagement` draft created**; pipeline + accepted-proposal analytics updated — engagement does **not** auto-activate) → `Contract Signed + Escrow Funded` (engagement → Ready to Start; workroom enabled; first milestone can go Active; escrow visible) → `Milestone Submitted` (→ Submitted; earnings move Work in Progress → In Review; deliverable version locked) → `Milestone Approved` (→ Approved; revision disabled unless reopened by support policy; payment-release begins; completion metrics update) → `Payment Released` (`FinancialTransaction` created; 12% commission deducted; net → Available Balance; revenue analytics update) → `Project Completed` (deliverables read-only; review + case-study requests enabled; archive enabled) → `Review Submitted` (attached to project; provider rating recalculated — feeds §5 reputation; provider response enabled).
+`Proposal Accepted/AwaitingModule4` → immediate Hangfire enqueue (plus minutely recovery sweeper) → atomic `Contract + WorkroomEngagement + WorkroomMilestone(s)` creation and proposal `ConvertedToProject/Converted` → both parties record **STUB authenticated in-app consent** → client calls STUB escrow funding → provider activates milestone → provider submits immutable deliverable version → client requests a revision, disputes, or approves via API / seven-day job auto-releases if undisputed → STUB release records flat 12% commission, invoice, and available balance atomically → engagement completes → review/repeat/on-time/dispute signals feed Module 1.
 
-**Catalog/checkout events (source §18, added):**
-- `Package Published` — service becomes purchasable; package analytics enabled; FAQ visible; instant-order eligibility calculated (§6).
-- `Package Purchased` — accepted-proposal **snapshot** created; contract/order record created; escrow record created; project draft created; Client Acquisition updated; messenger event created; analytics order count updated (§6/§7).
-- `Requirements Completed` — requirements status updated; delivery-start eligibility recalculated; provider notified (§6.6/§7).
-- `Delivery Clock Started` — project status → Active; due date calculated (§6.3 formula); deadline notifications scheduled; workroom enabled.
-- `Revision Requested` — package revision entitlement checked; remaining count updated **only** after valid request confirmation; scope classification required; workroom notified (§6.4).
-- `Additional Revision Purchased` — accepted add-on record created; payment secured; purchased revision count increased; additional delivery time applied where configured (§6.4).
+**Cross-path facts:** package and negotiated proposals converge on the same conversion worker. Proposal milestone plans are copied; an empty plan gets one full-price fallback milestone. `DeliveryScheduleCalculator` starts the due date on provider activation; `RevisionCalculator` enforces live entitlement. The analytics/message side effects from the older planned chain are not implemented here, and `Additional Revision Purchased` remains deferred.
 
-**Sub-features:** Hourly Time Tracker (`Hourly` listings → invoice); Repeat-Client Coupon System; Payout Method Setup (**Stripe Connect / Wise / Bank / PayPal**); Tax / VAT Invoice Settings.
+**Supporting features:** hourly contracts can record completed time entries; `WeeklyHourLimit` is captured in contract terms but is **not enforced** by `AddTimeEntryAsync`, and automatic hourly billing/client approval is not wired. Repeat-client coupons are fixed 5%, expire after 90 days, and are tier-independent; payout methods store masked future-rail descriptors; Tax/VAT settings are embedded and snapshotted into invoices.
 
-**Open decisions / flags.**
-- **Escrow provider (resolved):** escrow is **single-rail via Stripe / Stripe Connect** (hold); the payout rails (Stripe Connect / Wise / Bank / PayPal) are the separate disbursement step (§8B) — not competing escrow providers.
-- Repeat-client **coupon tier-linkage** (a reward, not a commission mechanic, §1.4) — not yet decided. Dispute-resolution authority (admin-mediated vs. automated) + its effect on the Dispute Penalty.
+**Resolved decisions / remaining flags:** coupon behavior is tier-independent. Admin dispute resolution is live for `ProviderFavored` and `ClientFavored`; split settlement is deliberately rejected until an explicit contract-amendment/pricing flow exists. Real payment/scanning/signing adapters and production transaction-topology verification remain deployment blockers (§8.0).
 
-**Dependencies.** Reads: proposals (§7), catalog packages (§6), commission constant (§1.4). Produces: the four trust signals + `Review` → §5.1; earnings/dispute/delivery data → Analytics (§9); audit events → §12.
+**Dependencies.** Reads: proposals (§7), catalog delivery/revision calculators (§6), embedded provider capacity/financial settings (§4.1), and the shared commission constant (§1.4). Produces: four Trust signals + `Review` → §5.1; earnings/dispute/delivery data → Analytics (§9); workroom audit events → §13.
 
 ---
 
@@ -540,13 +572,13 @@ A **pure read/aggregation layer** over Modules 2–4's data — no new source-of
 1. **Auth + ownership on every endpoint.** JWT `[Authorize]` at the controller; every action is **owner-scoped** — the `ProviderId`/`UserId` comes from the authenticated principal, never a request field. An SP can only read/write its own data.
 2. **`ApiResponse` envelope on every response.** No bare `Ok(obj)` or ad-hoc shapes; the service layer returns `ServiceProviderResult<T>` and the controller maps it via `Map<T>()`.
 3. **No browser storage as source of truth.** No `localStorage` / `sessionStorage` for SP state — the backend is authoritative; a read-through paint cache is the only permitted client cache and must never diverge.
-4. **Every time-based rule is backed by a real Hangfire job**, not just a UI countdown — Module 3's per-brief `expiresAt` (default 72h, max 30 days) is enforced by `ClientBriefExpirationJob`, which changes `Open → Expired` in place and never deletes (§7); 7-day auto-release + dispute windows remain planned for §8. A UI timer alone is never the enforcement mechanism. (Exception, by design: the skills-test 30-day cooldown is a **read-time** check, §5.3 — no job needed.)
+4. **Every time-based rule is backed by a real Hangfire job**, not just a UI countdown — Module 3's per-brief `expiresAt` is enforced by `ClientBriefExpirationJob`; Module 4's minutely `WorkroomTimedRulesJob` enforces 7-day undisputed auto-release, deadline reminders, elapsed 5-day dispute-window audit escalation, and payment-operation reconciliation (§8). A UI timer alone is never the enforcement mechanism. (Exception, by design: the skills-test 30-day cooldown is a **read-time** check, §5.3 — no job needed.)
 
 ---
 
 ## 11. The Service Provider journey (product experience)
 
-This is the **experience** order — what a real SP lives through, in the order they live it — **distinct from §1.2's data-dependency build order** (that's for developers). Because there are **no phases** (§1.1), the journey is not enforced by gating; it is shaped by **purposeful, context-aware empty-states and dashboard nudges**. Each step is tagged **LIVE**, **PARTIAL**, or **PLANNED** so the narrative never implies unbuilt behavior exists. Modules 1–3 are live; Modules 4–5 remain planned.
+This is the **experience** order — what a real SP lives through, in the order they live it — **distinct from §1.2's data-dependency build order** (that's for developers). Because there are **no phases** (§1.1), the journey is not enforced by gating; it is shaped by **purposeful, context-aware empty-states and dashboard nudges**. Each step is tagged **LIVE**, **PARTIAL**, or **PLANNED** so the narrative never implies unbuilt behavior exists. Modules 1–4 are mechanically live; Module 5 remains planned. Module 4's payment, scanning, and contract-consent boundaries are STUB-backed (§8.0).
 
 ### 11.1 First-time flow (signup → verified) — **LIVE (existing, unchanged by the redesign)**
 
@@ -561,26 +593,26 @@ All of the above predates and is unchanged by the redesign.
 
 ### 11.2 First login after verification — what a freshly-verified SP sees
 
-No gating: **all five sections are conceptually open at once.** But a brand-new SP has zero data, so the realistic first visit is mostly empty. **Reality today: Profile & Trust, Service Catalog, and Leads are built and render; Workroom and Analytics do not exist in the UI yet.** The first-visit experience:
+No gating: **all five sections are conceptually open at once.** But a brand-new SP has zero data, so the realistic first visit is mostly empty. **Reality today: Profile & Trust, Service Catalog, Leads, Workroom, and Earnings render for the provider; Analytics does not exist in the UI yet.** The first-visit experience:
 
 - **Profile & Trust — LIVE.** Renders today. Shows the neutral **"building your trust score"** state (§5.2; `HasEnoughTrustData = false`, no number). The Tier badge shows the current tier (ranking-only, §5.4). The Skills Test is available (§5.3).
 - **Service Catalog — LIVE.** Renders today. A freshly-verified SP sees a working, empty **Services** section with the **"No Published Services" / "Create your first service listing to start receiving briefs"** empty state (§6.9), and can immediately build listings + packages + FAQs.
 - **Leads — LIVE.** A freshly verified/available provider sees the working Opportunities / Proposals / Saved workspace and the purposeful “No New Client Opportunities” state (§7.3). Eligibility is driven by verified profile categories plus availability/capacity; the current code does **not** require a published listing. The “Review Service Preferences” action links to Services as useful setup guidance, not as a hard gate.
-- **Workroom & Earnings — PLANNED.** *When built:* empty until a brief is accepted.
+- **Workroom & Earnings — LIVE provider UI.** Workroom shows “No Active Projects” until an accepted proposal is converted; Earnings shows “No Earnings Yet”, “No Funds Available”, “Add a Payout Method”, and “No Invoices Yet” as applicable. Client actions are API-only and financial movement is STUB-backed (§8).
 - **Analytics & Growth — PLANNED.** *When built:* empty until upstream modules produce data (§9).
 
 **Getting-started nudge.** With no wizard forcing a path, onboarding guidance comes from **purposeful, context-aware empty-states**, not gating. Catalog encourages publishing services; Leads points back to service preferences when no opportunity is available. Today those are guidance paths, while the actual Leads eligibility gate is verified profile + matching category + availability/capacity (§7.3).
 
-### 11.3 Steady-state / returning-user loop — **PARTIAL** (Leads live; delivery/payment planned)
+### 11.3 Steady-state / returning-user loop — **LIVE mechanically, with explicit production/integration gaps**
 
-Once briefs arrive, a working SP repeats this loop. The acquisition portion is live; everything after acceptance remains planned:
+Once briefs arrive, a working SP can traverse the Leads→Workroom→paid-record→Trust feedback loop end-to-end in application state. The financial leg is a simulation until a real gateway is installed, and client-side controls are deferred:
 
 1. **Check Leads — LIVE** — new briefs, ranked by the Brief Match Score (§7).
 2. **Respond to a brief — LIVE** — proposal/message timestamps feed the real response-rate metric (§7 → Trust §5.1).
-3. **Acceptance boundary — LIVE through `Accepted/AwaitingModule4`; conversion PLANNED** — Module 3 stops without creating an engagement, contract, or workroom milestone. Module 4 will consume the accepted proposal (§8).
-4. **Deliver via milestones** — submit → 48h client review → revisions up to the package's revision limit → accept or 7-day auto-release (§8).
-5. **Get paid** — escrow releases, **flat 12% commission** deducted (§1.4/§8).
-6. **Signals feed back** — satisfaction / on-time / repeat / dispute → Trust (§5.1); earnings/response data → Analytics (§9).
+3. **Convert acceptance — LIVE** — Module 3 stops at `Accepted/AwaitingModule4`; immediate Hangfire enqueue plus a recovery sweeper transactionally creates Module-4 records and moves the proposal to `ConvertedToProject/Converted` (§8.0).
+4. **Deliver via milestones — LIVE provider UI + client APIs** — **STUB authenticated in-app consent** → STUB funding → activate → versioned submit → revision/dispute/approve or 7-day auto-release. The provider UI is live; client decisions currently require API callers.
+5. **Get paid in platform state — LIVE mechanics / STUB money movement** — a mocked gateway success records release, deducts the **flat 12% commission**, issues the invoice, and exposes net Available balance. It does not move real funds.
+6. **Signals feed back — LIVE** — satisfaction / on-time / repeat / dispute route through the existing TrustScore recalculation (§5.1); earnings/response inputs are available for the still-planned Analytics module (§9).
 7. **Repeat.**
 
 **Returning-user landing view (PLANNED — Stitch-mockup concept).** With no "next phase" to resume, a returning SP is oriented by the **dashboard overview**, not wizard logic. The Stitch screens propose a **"Requires Attention"** panel (briefs awaiting response, milestones due, disputes) and a **"Recent Activity"** feed — the natural landing view that replaces phase-progress. Design concepts only, not built; when built they must render from real §7/§8 data — deterministic, no AI (§2).
@@ -589,7 +621,7 @@ Once briefs arrive, a working SP repeats this loop. The acquisition portion is l
 
 Both are **asynchronous to the main loop** — an SP can engage them any time, and neither gates anything:
 
-- **Skills Test — LIVE (§5.3).** Optional, non-blocking. Take a per-category test whenever; passing feeds the Skill Test trust signal. Together with Module 3's live Response Rate, it is one of the trust inputs available before Workroom exists (§5.1). 30-day cooldown per category.
+- **Skills Test — LIVE (§5.3).** Optional, non-blocking. Take a per-category test whenever; passing feeds the Skill Test trust signal. It coexists with the live Response Rate and Module-4 reputation signals (§5.1). 30-day cooldown per category.
 - **Tier — badge LIVE, progression NOT built.** The Tier badge (§5.4) shows the current `Tier_level` (ranking-only). **How tier advances is not implemented or decided** — `Tier_level` is set at onboarding (≥1) and used only for match ranking (§1.5/§1.7). Do **not** describe a "tier progression journey"; there is none today.
 
 ### 11.5 Why a zero-data SP doesn't look broken on first login
@@ -599,9 +631,9 @@ With no phases to sequence the new SP, the "this isn't broken — here's what to
 - **Profile & Trust (LIVE):** the neutral "building your trust score" state (§5.2) is already an honest, non-broken empty state — it explains the score is accruing and points to the Skills Test as the one thing that moves it now.
 - **Service Catalog (LIVE):** the "No Published Services" / "Create your first service listing to start receiving briefs" empty state (§6.9) — the primary getting-started call to action, live today.
 - **Leads (LIVE):** “No New Client Opportunities” explains that profile-matched opportunities will appear here and offers “Review Service Preferences”; Proposals and Saved have their own purposeful empty states (§7.3).
-- **Workroom / Analytics (PLANNED):** honest empties ("your active work appears here" / "insights appear once you have activity").
+- **Workroom & Earnings (LIVE):** “No Active Projects”, “No Earnings Yet”, “No Funds Available”, “Add a Payout Method”, and “No Invoices Yet” explain which upstream event supplies data. **Analytics (PLANNED):** insights wait for Module 5.
 
-**Coherence rule:** every SP section must ship a purposeful empty-state that tells the provider what to do next — that is the flat model's replacement for a wizard. **Today Profile & Trust, Service Catalog, and Leads satisfy this**; Workroom / Analytics remain planned for Modules 4–5.
+**Coherence rule:** every SP section must ship a purposeful empty-state that tells the provider what to do next — that is the flat model's replacement for a wizard. **Today Profile & Trust, Service Catalog, Leads, Workroom, and Earnings satisfy this**; Analytics remains planned for Module 5.
 
 ---
 
@@ -613,8 +645,7 @@ Fields: `notificationId, recipientId, category, title, message, relatedEntityTyp
 
 ## 13. Audit log (source §12)
 
-**Audited actions:** proposal submitted / revised / withdrawn / accepted; contract signed; escrow funded; deliverable submitted; revision requested; milestone approved; payment released; payout requested / completed; project completed; review submitted; administrator override.
-Record fields: `auditId, actorId, actorRole, action, entityType, entityId, previousState, newState, timestamp, reason`. **Not user-editable or deletable.**
+**Module-4 audit — LIVE:** `WorkroomAuditEvent` → `"WorkroomAuditEvents"` records conversion, **STUB contract-consent**, STUB-backed funding, activation, delivery, revision, pause/resume, extensions, disputes/admin resolution, STUB-backed release/payout, completion, and review actions. Real fields: `Id, ActorId, ActorRole, Action, EntityType, EntityId, PreviousState, NewState, Timestamp, Reason`. It has no edit/delete endpoint. Broader cross-module audit coverage remains partial.
 
 ## 14. Validation & error rules (source §13)
 
@@ -624,7 +655,7 @@ Record fields: `auditId, actorId, actorRole, action, entityType, entityId, previ
 
 ## 15. Security & trust rules (source §14)
 
-Only authorised project participants get workroom access; provider private notes are never client-visible; financial details are never exposed in client-facing modules; payment account numbers are masked; submitted files are security-scanned; suspicious file downloads show a warning; contract / approval / transaction records preserve immutable history; critical actions require confirmation; repeated failed payments or suspicious communication can trigger a support review; all paid work stays under Mondial payment protection. (The SP-domain expression of §10 rule 1 — owner-scoped access.)
+Only authorised project participants get workroom access; provider-private tasks/files are not returned to clients; financial details are provider-scoped; payout descriptors and tax identifiers are masked; contract / approval / transaction history is preserved; critical actions require confirmation. **STUB caveats:** current file “scanning” is only deterministic extension/20 MB validation, suspicious-download warnings are not implemented, payment protection is not real until a production gateway/escrow adapter exists, and contract consent is not an e-signature (§8.0).
 
 ---
 
@@ -643,10 +674,10 @@ Only authorised project participants get workroom access; provider private notes
 ## 17. Acceptance criteria — per-module "definition of done" (source §15)
 
 - **Module 2 — Service Catalog (§6, full-scope; source §20) — ✅ MET (built `533d2e2`/`36b6f71`), with the config-vs-enforcement caveats flagged below:**
-  - **Delivery time — ✅ MET (config + calculator):** independent per-package config; Business/Calendar Days; start rule; due-date formula (`DeliveryScheduleCalculator`, unit-tested); add-on adjustment; extension. *Caveat: the calculator is built + tested but not yet driven by a live delivery clock — that starts in Module 4.*
+  - **Delivery time — ✅ MET:** independent per-package config; Business/Calendar Days; start rule; due-date formula (`DeliveryScheduleCalculator`, unit-tested); and extension. Module 4 now consumes the calculator on milestone activation and approved extension. Generic purchased add-on delivery-time application remains part of the unwired add-on/change-order path.
   - **FAQ Builder — ✅ MET:** creatable; package-specific; reorderable; draft/published; package-conflict warning (`DetectFaqConflict`); can't override package terms.
-  - **Per-package revisions — ⚠️ PARTIAL:** independent count per tier **✅**; remaining-revision calc **✅** (`RevisionCalculator`, unit-tested); the config fields for the request window / additional paid revision exist **✅**. **NOT yet satisfied in this build (deferred to Module 4, Workroom):** live *enforcement* of the request window, the "one-consolidated-feedback-round" consumption rule, "scope change never auto-consumes", and the actual *purchase* of an additional revision — these require a live engagement, which Module 2 does not have.
-  - **Auto-accepted proposal (§6↔§7 boundary) — ✅ NOW LIVE IN MODULE 3:** Module 2 still owns no Proposal/purchase path; Module 3's backend validates published package terms and creates the immutable accepted or provider-approval-required Proposal snapshot (§7.2). Client checkout UI and real payment/escrow integration remain deferred.
+  - **Per-package revisions — ⚠️ PARTIAL:** independent count/config and remaining-revision calc **✅**; Module 4 now enforces one consolidated feedback round, manual scope classification, and “only WithinScope consumes” **✅**. The actual paid purchase/change-order producer and source-configured request-window enforcement are **NOT MET**.
+  - **Auto-accepted proposal (§6↔§7↔§8 boundary) — ✅ LIVE mechanically:** Module 3 validates and snapshots the package order; Module 4 converts accepted proposals into execution records. Client checkout UI and real payment/escrow integration remain deferred/STUB-backed.
   - **Other — ✅ MET for Module-2-owned pieces:** impression/click counters are seeded as fields + internal record methods, but still have no live caller after Module 3; deterministic pricing guidance is shown (`PricingGuidance`, unit-tested, no AI); capacity fields exist on the profile (§6.7).
 - **Module 3 — Leads / Client Acquisition (§7) — ⚠️ PARTIAL overall; approved Module-3 boundary shipped (`d419ed1`/`4df8122`):**
   - **Opportunity inbox/state — ✅ MET:** eligible opportunities visible; deterministic match score; availability hard pre-filter; save/dismiss/view state is provider-specific; working Opportunities/Saved UI and purposeful empty states.
@@ -654,12 +685,25 @@ Only authorised project participants get workroom access; provider private notes
   - **Acceptance modes — ⚠️ PARTIAL:** manual standard/direct-invitation acceptance and rule-based published-package purchase/manual fallback are live through `Accepted/AwaitingModule4`. Platform-admin resolution and complete custom-offer/package-add-on/change-request flows are not wired; client checkout UI and payment/escrow-provider integration are not built.
   - **Response rate — ✅ MET:** first submitted proposal or first provider-authored brief-linked message within 48 hours; view does not count; availability timestamp uses publish/invitation-delivery receipt rather than lazy persistence time; TrustScore signal and matching consumer are live; old `0.85` stub is gone.
   - **Expiry/notifications — ✅ MET:** Hangfire soft-expiry (no TTL deletion), saved-expiry dedupe, and the §7 notification set are live.
-  - **Accepted→project conversion — ⛔ NOT MODULE 3:** the prior criterion is superseded. Module 3 stops at `Status=Accepted`, `ConversionStatus=AwaitingModule4`; no `WorkroomEngagement`, `Contract`, or `WorkroomMilestone` exists. Module 4 owns conversion.
+  - **Accepted→project conversion — ✅ LIVE IN MODULE 4 / still not a Module-3 write:** Module 3 stops at `Status=Accepted`, `ConversionStatus=AwaitingModule4`; Module 4's immediate job + recovery sweeper atomically creates the records and advances conversion (§8.0).
   - **Cross-cutting gaps — ⚠️ PARTIAL:** planned client-verification/payment-verification lead filters and Module-3 audit-log writes are not implemented; catalog impression/click counters still have no live caller.
-- **Module 4 — Workroom & Earnings (§8):** active projects visible; milestones activate; files uploadable; deliverables submittable with **preserved versions**; client can request a revision and the provider can respond; milestone approval recorded; project completable. Financial: escrow states visible; **gross / commission / net correct** (flat 12%); financial stages separated; available balance correct; payout eligibility validated + tracked; invoice + statement records available.
+- **Module 4 — Workroom & Earnings (§8) — ⚠️ PARTIAL overall; core mechanics shipped (`7e31162`/`7b6acf7`), production external integrations deliberately not shipped:**
+  - **Proposal→Engagement conversion — ✅ MET:** immediate Hangfire enqueue + minutely sweeper; unique `ProposalId`; transaction-safe contract/engagement/milestone creation; atomic proposal transition; empty-plan single-milestone fallback.
+  - **Active projects / contracts / milestones — ✅ MET backend and provider UI / ⚠️ PARTIAL client UI:** provider workrooms are visible; **STUB authenticated in-app consent**, STUB-backed funding state, activation, pause/resume, extension, review, dispute, completion, and owner checks exist. Client decision endpoints are live, but a client Workroom/checkout frontend is deferred.
+  - **Delivery/versioning — ✅ MET mechanics:** files can be uploaded through the **STUB scanner boundary**; deliverables require confirmations and ready file/link data; versions are separate documents and earlier versions are superseded, never overwritten. Real file-security scanning is separately **NOT MET** below.
+  - **Revision flow — ⚠️ PARTIAL:** consolidated feedback, manual scope, allowance consumption, provider start, and resubmission are live. Client UI, configured request-window enforcement, and paid additional-revision/change-order purchase are not built.
+  - **Milestone release/completion — ✅ MET application-state mechanics:** client approval or 7-day Hangfire auto-release is dispute-blocked and transactionally records milestone/engagement state, ledger, invoice, payment operation, and audit; project completion and capacity decrement are live. Money movement remains STUB-backed.
+  - **Financial calculations/stages — ✅ MET in persisted application state:** Work in Progress / In Review / Pending / Available / Withdrawn / On Hold are derived; gross / 12% commission / net and available-balance formulas use the shared constant and are tested.
+  - **Payouts / invoices / statements — ⚠️ PARTIAL:** masked settings, hold/minimum/method/balance/active-request validation, payout tracking, invoice tax snapshots, and statement API are live. The stub completes payouts immediately; identity is not separately rechecked in `RequestPayoutAsync`; correction/document-generation/download and statement UI are absent.
+  - **Trust feedback — ✅ MET:** Client Satisfaction, On-time Delivery, Repeat-Client Rate, and 5-point/capped-20 Dispute Penalty feed the existing Module-1 `RecalculateTrustScore`; no parallel score writer exists.
+  - **Timed/audit rules — ✅ MET for the implemented lifecycle:** minutely conversion/timed sweepers, reconciliation state, and `WorkroomAuditEvents` are live. The 5-day dispute deadline escalates to an audit event; it does not auto-resolve.
+  - **Real payment gateway / escrow / payout rail — ⛔ NOT MET (by confirmed design):** `StubPaymentGatewayService` only returns deterministic mock references. No real money moves.
+  - **Real file-security scanning — ⛔ NOT MET (by confirmed design):** `StubFileSecurityScanner` only checks empty/size/extension. No virus/malware scanner exists.
+  - **Real e-signature/legal signing — ⛔ NOT MET (by confirmed design):** contract “signing” is **STUB authenticated in-app consent** timestamps only.
+  - **Production transaction-capability verification — ⛔ NOT MET:** `Mongo:TransactionsEnabled=true` is a hard startup gate with no fallback, but production Atlas / `srv1172497` topology could not be checked from the DNS/egress-blocked sandbox. Manual pre-deploy verification is required.
 - **Module 5 — Analytics & Growth (§9):** service / proposal / profile / revenue metrics calculated; repeat-client performance visible; rule-based observations displayed; **no AI action executed** (§2).
 
-**System-wide (source "Final System Rule"):** operates as **independent modules** — not phases, no sequential phase completion, **no AI-generated decisions or AI-executed actions**, no API routing. All business logic, validations, status transitions, permissions, financial calculations, audit history, and cross-module events preserved.
+**System-wide (source "Final System Rule"):** operates as **independent modules** — not phases, no sequential phase completion, and no AI-generated decisions or AI-executed actions. The acceptance flags above are authoritative: a modeled field or enum is not evidence that its producer, UI, or external integration is live.
 
 ---
 
@@ -670,6 +714,10 @@ The repo's **root `.gitignore` is a binary / non-UTF8 file**, which can make the
 ---
 
 ## Changelog
+
+**2026-07-27 — Module 4 (Workroom & Earnings) shipped → marked LIVE.** Commits `7e31162` (backend) / `7b6acf7` (frontend) on `dev-hafiz`. §4.3 moves 16 real collections to EXISTS: `WorkroomEngagements`, `Contracts`, `WorkroomMilestones`, `Deliverables`, `RevisionRequests`, `FinancialTransactions`, `Reviews`, `WorkroomTasks`, `ClientInputRequests`, `WorkroomFiles`, `PaymentOperations`, `PayoutRequests`, `Invoices`, `HourlyTimeEntries`, `WorkroomAuditEvents` (the built name, not the earlier `AuditEvents` shorthand), and `RepeatClientCoupons`; `ProviderFinancialSettings` is correctly embedded on `ServiceProviderProfile`, with masked payout methods and tax settings. §8.0/§8.0.1 records exact fields and as-built drift, the immediate Hangfire conversion enqueue + minutely recovery sweeper, unique-`ProposalId` idempotency, atomic proposal/contract/engagement/milestone conversion, and the empty-plan single-milestone fallback. Workroom delivery, versioning, consolidated revisions, pause/extension/dispute/auto-release rules, earnings stages, flat-12% release, invoices/statements/payout records, hourly entries, repeat coupons, audits, provider Workroom/Earnings UI, and four Trust signals are mechanically live. Client Satisfaction, On-time Delivery, Repeat-Client Rate, and 5-points-per-adverse-dispute capped at 20 all route through Module 1's existing `RecalculateTrustScore`; no parallel score writer was introduced.
+
+**Production/integration truth recorded with the Module-4 ship:** `[STUB — PAYMENT]` `StubPaymentGatewayService` moves no money; “funded/released/paid” currently means a mocked success plus Mongo state/ledger changes. `[STUB — FILE SECURITY]` `StubFileSecurityScanner` performs only deterministic empty/20 MB/extension checks, not malware scanning. `[STUB — CONTRACT CONSENT]` contract confirmation is authenticated in-app consent timestamps, not a real e-signature/legal signing provider. `Mongo:TransactionsEnabled=true` is now a hard startup gate with no non-atomic fallback; production Atlas / `srv1172497` transaction capability was not independently verified because sandbox DNS/egress was blocked and requires a manual pre-deploy check. §11 now marks the Leads→Workroom→paid-record→Trust loop mechanically LIVE across Modules 1–4 while flagging STUB money movement and provider-frontend/API-first client scope. §17 marks core mechanics MET/PARTIAL without blanket completion and explicitly marks real payment gateway, real file scanning, real e-signature, and production transaction verification NOT MET. Verification: build **0 errors / 0 warnings**; suite **546 passed / 0 failed / 57 skipped** (Module 1 **100**, Module 2 **22**, Module 3 **19**, Module 4 **25**); `tsc --noEmit` clean.
 
 **2026-07-27 — Module 3 (Leads / Client Acquisition) shipped → marked LIVE.** Commits `d419ed1` (backend) / `4df8122` (frontend) on `dev-hafiz`. §7 now records the three live collections (`ClientBriefs`, `ClientBriefInteractions`, `Proposals`), real field lists, lifecycle-only brief status, provider-relative interaction state, `Currency`/`Industries`, embedded proposal history/purchase snapshots, shared `PlatformCommerceConstants.CommissionRate = 0.12m`, Hangfire soft expiry (no TTL/delete), lazy interaction creation with publish/invitation-receipt response anchors, real 48-hour response rate, unchanged match formula with availability as a hard pre-filter, provider Leads UI/empty states, and the package/manual acceptance paths. Scope stops at `Accepted/AwaitingModule4`; no engagement/contract/workroom milestone is created. §11 updated to a live acquisition/ planned delivery journey; §17 is honestly PARTIAL for missing frontend revise controls, client checkout/payment integrations, special-source/admin flows, planned filters, audit writes, and catalog metric call-sites. Verification: build 0 errors / 0 warnings; suite 519 passed / 0 failed / 57 skipped (Module 3: 19 pass); `tsc --noEmit` clean.
 
