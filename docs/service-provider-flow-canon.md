@@ -18,7 +18,7 @@ Every feature carries a STATUS tag:
 - **PLANNED** — specced here, not built yet
 - **FORBIDDEN** — must never be built (violates a core rule)
 
-Section map: **§1** architecture · **§2** AI (none) · **§3** design system · **§4** database · **§5** Module 1 Profile & Trust (LIVE) · **§6** Module 2 Service Catalog · **§7** Module 3 Leads · **§8** Module 4 Workroom & Earnings · **§9** Module 5 Analytics & Growth · **§10** cross-cutting rules · **§11** SP journey (product experience) · **§12** notifications · **§13** audit log · **§14** validation/error · **§15** security/trust · **§16** roles & permissions · **§17** acceptance criteria · Appendix + Changelog.
+Section map: **§1** architecture · **§2** AI (none) · **§3** design system · **§4** database · **§5** Module 1 Profile & Trust (LIVE) · **§6** Module 2 Service Catalog (LIVE) · **§7** Module 3 Leads · **§8** Module 4 Workroom & Earnings · **§9** Module 5 Analytics & Growth · **§10** cross-cutting rules · **§11** SP journey (product experience) · **§12** notifications · **§13** audit log · **§14** validation/error · **§15** security/trust · **§16** roles & permissions · **§17** acceptance criteria · Appendix + Changelog.
 
 ---
 
@@ -167,13 +167,14 @@ Authoritative vocabulary for the whole SP domain; every module reuses these, non
 **EXISTS today:**
 - **`ApplicationUsers`** — holds everything above (embedded).
 - The skills-test question bank is **static in-code** (`SkillsTestQuestionBank.cs`), **not** a collection.
+- **`ServiceListings`** (`ServiceListing`) — Module 2, §6 (LIVE, `533d2e2`). Service-level record + `Impressions`/`Clicks` counters; owns its packages via a `ServiceId` FK.
+- **`ServicePackages`** (`ServicePackage`) — Module 2, §6 (LIVE). Per-service Basic/Standard/Premium/Custom packages, keyed by `ServiceId`; **add-ons + requirements template embedded** as bounded arrays. Real field list: §6.0.1.
+- **`ServiceFAQs`** (`ServiceFAQ`) — Module 2, §6 (LIVE). Per-service/package FAQ entries (nullable `PackageId`).
+- Indexes for the three are established best-effort via **`EnsureServiceCatalogIndexes()`** (ServiceListings by `ProviderId`; ServicePackages/ServiceFAQs by `ServiceId`), called from both `MongoDbContext` constructors.
 
 **Naming convention (verified against `MongoDbContext.cs`):** the **entity class is singular** PascalCase; the **collection string is its plural** (`ApplicationUser` → `"ApplicationUsers"`, `DealExecution` → `"DealExecutions"`, `Conversation` → `"Conversations"`). Where a class carries a `Record`/`Model`/`Entity` suffix, the collection drops it and pluralizes the core noun (`EntrepreneurProfileRecord` → `"EntrepreneurProfiles"`, `ContactModel` → `"Contacts"`). A few **legacy** classes are themselves plural (`BusinessIdeas`, `Investments`, `Transactions`, `Companies`) — **do not copy that**; new SP models follow singular-class → plural-collection.
 
-**PLANNED (not built — do not describe as existing).** Model class → collection string; all top-level, all following the §4.2 convention:
-- **`ServiceListing` → `"ServiceListings"`** (Module 2, §6) — the service-level record + `Impressions`/`Clicks` counters. Owns its packages via `serviceId`.
-- **`ServicePackage` → `"ServicePackages"`** (Module 2, §6) — per-service Basic/Standard/Premium/Custom packages (keyed by `serviceId`); **add-ons embedded** as a bounded array (not a collection — §6 flag).
-- **`ServiceFAQ` → `"ServiceFAQs"`** (Module 2, §6) — per-service/package FAQ entries.
+**PLANNED (not built — do not describe as existing).** Model class → collection string; all top-level, all following the §4.2 convention. *(Module 2's `ServiceListings`/`ServicePackages`/`ServiceFAQs` moved to EXISTS above.)*
 - **`ClientBrief` → `"ClientBriefs"`** (Module 3, §7) — client-authored requests/briefs (the source's *Opportunity*, renamed), status-modelled.
 - **`Proposal` → `"Proposals"`** (Module 3, §7) — an SP's offer against a ClientBrief, or the auto-accepted snapshot for a package purchase (§6/§7). Versioned. **Field set superseded** by the fuller entity in §7 (adds source/acceptance/delivery/requirements/add-on fields; `opportunityId` → `clientBriefId`).
 - **`WorkroomEngagement` → `"WorkroomEngagements"`** (Module 4, §8) — the delivery-workspace / engagement record (the source doc's *Project*, renamed). References a `Contract`.
@@ -242,9 +243,28 @@ Optional, non-blocking, post-verification.
 
 ---
 
-## 6. Module 2 — Service Catalog — **PLANNED** (full-scope build; supersedes the earlier Module 2 spec)
+## 6. Module 2 — Service Catalog — **LIVE** (full-scope build; supersedes the earlier Module 2 spec)
 
 Absorbs the "Service Package / Delivery Time / FAQ / Revision" source doc in full. **Full-scope for the first build:** Add-ons, Instant/Manual approval modes, Capacity limits, and Cancellation logic are all **in scope now**, not deferred.
+
+**Commits:** `533d2e2` (backend) / `36b6f71` (frontend), on `dev-hafiz` (both verified present).
+**Verification:** `dotnet build` 0 errors / **0 Module-2 warnings** (repo total unchanged at the 1048 pre-existing baseline); full backend suite **500 passed / 0 failed / 57 skipped**; Module 1's **100** tests still pass; Module 2's **22** new calculator tests pass; `npx tsc --noEmit` clean.
+
+### 6.0 What's live vs. deferred (verified against code)
+- **Collections `ServiceListings` / `ServicePackages` / `ServiceFAQs`** are registered in `MongoDbContext.cs` (indexes via `EnsureServiceCatalogIndexes()`) — see §4.3.
+- **Reusable calculators** `RevisionCalculator`, `DeliveryScheduleCalculator`, `PricingGuidance` are **built and unit-tested but NOT wired into any live flow** — Module 4 (Workroom & Earnings) consumes them when built; it must not reimplement them.
+- **`CurrentActiveOrders`** has a field + the capacity check (`ToCapacityResponse`), but **no live writer** — only Module 4 increments it (today it stays 0; the gate is unit-testable with a seeded value).
+- **`Impressions` / `Clicks`** fields + internal `RecordImpressionAsync` / `RecordClickAsync` exist, but there is **no live call-site** — the increment triggers (a client browsing a listing) are Module 3.
+- **Sidebar:** a "Services" nav item (`menu.ts`) → **`/dashboard/serviceprovider/services`**.
+- **Confirmed-decision fixes in this build:** `PricingModel` added as a **nullable** field on `ServicePackage`; `CancellationPolicy` is a **fixed `CancellationPolicyType` enum** (3 platform options: `FlexibleFullRefundBeforeStart` / `PartialRefundAfterDeliveryStart` / `NoRefundAfterDeliveryStart`) — **not** a custom rule engine.
+
+### 6.0.1 As-built entities (real fields — note the drift from the spec's field names)
+Each entity's PK is **`Id`** (`[BsonId]` ObjectId), **not** the spec's `ServiceId`/`PackageId`/`FaqId`; packages/FAQs reference the listing via a `ServiceId` FK (FAQs also an optional nullable `PackageId`). The listing's category property is **`Category`** (type `ServiceCategory`).
+- **`ServiceListing`**: `Id, ProviderId, ServiceType, Title, Description, Category, IndustryFocus, GeographicCoverage, Impressions, Clicks, Status, CreatedAt, UpdatedAt`.
+- **`ServicePackage`**: `Id, ServiceId, PackageName, PackageType, PackageTitle, PackageDescription, Price, Currency, PricingModel (nullable), DeliveryTimeValue, DeliveryTimeUnit, DeliveryDayType, DeliveryStartRule, DeliveryTimezone, DailyCutoffTime, IncludedRevisionCount, UnlimitedRevisions, RevisionRequestWindowDays, AdditionalRevisionAvailable, AdditionalRevisionPrice, AdditionalRevisionDeliveryTime, RevisionScopeDescription, Deliverables, IncludedFeatures, ExcludedFeatures, AddOns[], RequirementsTemplate[], CancellationPolicy, InstantOrderEnabled, ManualApprovalRequired, MaximumActiveOrders, Status, CreatedAt, UpdatedAt`.
+- **`ServiceFAQ`**: `Id, ServiceId, PackageId (nullable), Question, Answer, Visibility, DisplayOrder, Status, CreatedAt, UpdatedAt`.
+- Embedded **`ServiceAddOn`**: `Name, Price, DeliveryTimeAdjustmentDays, Enabled`. Embedded **`RequirementsField`**: `FieldId, Label, FieldType, Required`.
+- Files — **backend:** `Models/DatabaseModels/ServiceCatalog.cs`, `Services/Implementations/{ServiceCatalogService,RevisionCalculator,DeliveryScheduleCalculator,PricingGuidance}.cs`, `Services/Interface/IServiceCatalogService.cs`, `Models/Dtos/ServiceCatalogDtos.cs`, `Controllers/ServiceCatalogController.cs`, `DbContext/MongoDbContext.cs`, `Program.cs`, `Models/DatabaseModels/ApplicationUser.cs` (capacity fields). **Frontend:** `components/serviceprovider/ServicesWorkspace.tsx` + `catalog/*`, `app/dashboard/serviceprovider/services/page.tsx`, `lib/api-service-catalog.ts`, `hooks/queries/service-catalog.ts`, `types/service-catalog.ts`, `lib/menu.ts`.
 
 **Storage (top-level collections, §4.2 convention):**
 - **`ServiceListing` → `"ServiceListings"`** — the service-level record: `ServiceType, Title, Description, ServiceCategory (enum §4.2), IndustryFocus, GeographicCoverage`, plus `Impressions`/`Clicks` counters (seeded at build time so §9 has history). Owns its packages via `serviceId`.
@@ -291,7 +311,7 @@ Entity `ServiceFAQ` (above). **Visibility:** All Packages / Basic Only / Standar
 
 ### 6.7 Provider capacity rule — **touches shipped code**
 `maximumConcurrentOrders, currentActiveOrders, newOrderAvailability, manualApprovalWhenCapacityLow` live on the **existing embedded `ServiceProviderProfile`** (Module 1, shipped `b29bcde`/`5e2da20`) — **not** a new Module-2 entity. Capacity status: `Available, Limited, Fully Booked, Unavailable`. Instant order must be **blocked when `currentActiveOrders >= maximumConcurrentOrders`** unless the provider explicitly allows overbooking (recommended: instant order disabled, client may still send an order request).
-> **SHIPPED-CODE IMPACT (flag):** building this adds four fields to the already-committed `ServiceProviderProfile` — a real change to Module-1 code, not routine new Module-2 work. Treat it as a Module-1 entity amendment when Module 2 is built.
+> **SHIPPED-CODE IMPACT (done):** these four fields were added to the already-committed `ServiceProviderProfile` in the Module-2 build (`533d2e2`) — a real Module-1 entity amendment. Additive (Mongo defaults for legacy docs); Module 1's 100 tests re-ran green.
 
 ### 6.8 Package order cancellation
 **Before delivery starts:** client may request cancellation; provider may approve; platform cancellation policy applies; escrow refund may process; the proposal snapshot stays in history.
@@ -541,15 +561,15 @@ All of the above predates and is unchanged by the redesign.
 
 ### 11.2 First login after verification — what a freshly-verified SP sees
 
-No gating: **all five sections are conceptually open at once.** But a brand-new SP has zero data, so the realistic first visit is mostly empty. **Reality today: only Profile & Trust is built and renders — the other four sections do not exist in the UI yet.** The intended full first-visit experience (once Modules 2–5 ship):
+No gating: **all five sections are conceptually open at once.** But a brand-new SP has zero data, so the realistic first visit is mostly empty. **Reality today: Profile & Trust and Service Catalog are built and render; Leads / Workroom / Analytics do not exist in the UI yet.** The first-visit experience:
 
 - **Profile & Trust — LIVE.** Renders today. Shows the neutral **"building your trust score"** state (§5.2; `HasEnoughTrustData = false`, no number). The Tier badge shows the current tier (ranking-only, §5.4). The Skills Test is available (§5.3).
-- **Service Catalog — PLANNED.** *When built:* empty with a **"create your first service listing"** prompt (§6).
+- **Service Catalog — LIVE.** Renders today. A freshly-verified SP sees a working, empty **Services** section with the **"No Published Services" / "Create your first service listing to start receiving briefs"** empty state (§6.9), and can immediately build listings + packages + FAQs.
 - **Leads — PLANNED.** *When built:* empty — correctly, because **no listings = no matching eligibility** (§1.7/§7). Its empty state must explain *why* ("add a service to start receiving briefs"), not just "no leads."
 - **Workroom & Earnings — PLANNED.** *When built:* empty until a brief is accepted.
 - **Analytics & Growth — PLANNED.** *When built:* empty until upstream modules produce data (§9).
 
-**Getting-started nudge (PLANNED pattern).** With no wizard forcing a path, onboarding guidance must come from **purposeful, context-aware empty-states**, not gating. The first-visit dashboard should surface one clear next step — *"Create your first service listing to start receiving briefs"* — pointing at Catalog (§6), since a listing is the prerequisite that unlocks matching/Leads. This nudge is part of the Module-2 build, **not live today**.
+**Getting-started nudge.** With no wizard forcing a path, onboarding guidance comes from **purposeful, context-aware empty-states**, not gating. The Catalog's empty state (§6.9) is that first clear next step — *"Create your first service listing to start receiving briefs"* — now **live** (a listing is the prerequisite that will unlock matching/Leads).
 
 ### 11.3 Steady-state / returning-user loop — **PLANNED** (depends on Modules 3–4)
 
@@ -577,11 +597,11 @@ Both are **asynchronous to the main loop** — an SP can engage them any time, a
 With no phases to sequence the new SP, the "this isn't broken — here's what to do" burden falls entirely on **empty-state design**, section by section. This ties the per-module empty states into one narrative:
 
 - **Profile & Trust (LIVE):** the neutral "building your trust score" state (§5.2) is already an honest, non-broken empty state — it explains the score is accruing and points to the Skills Test as the one thing that moves it now.
-- **Service Catalog (PLANNED):** the "create your first service listing" prompt (§6) — the primary getting-started call to action.
+- **Service Catalog (LIVE):** the "No Published Services" / "Create your first service listing to start receiving briefs" empty state (§6.9) — the primary getting-started call to action, live today.
 - **Leads (PLANNED):** an empty state that explains the dependency ("add a service to become eligible for briefs"), never a bare "nothing here."
 - **Workroom / Analytics (PLANNED):** honest empties ("your active work appears here" / "insights appear once you have activity").
 
-**Coherence rule:** every SP section must ship a purposeful empty-state that tells the provider what to do next — that is the flat model's replacement for a wizard. **Today only Profile & Trust satisfies this, because it is the only built section**; a freshly-verified SP currently sees a working Profile & Trust and no other rendered sections. The rest of this narrative is the **plan** for when Modules 2–5 land.
+**Coherence rule:** every SP section must ship a purposeful empty-state that tells the provider what to do next — that is the flat model's replacement for a wizard. **Today Profile & Trust and Service Catalog satisfy this** (the two built sections); Leads / Workroom / Analytics are the **plan** for when Modules 3–5 land.
 
 ---
 
@@ -622,12 +642,12 @@ Only authorised project participants get workroom access; provider private notes
 
 ## 17. Acceptance criteria — per-module "definition of done" (source §15)
 
-- **Module 2 — Service Catalog (§6, full-scope; source §20):**
-  - **Delivery time:** independent per-package config; Business/Calendar Days supported; start rule visible; due date calculated correctly (§6.3 formula); add-on adjustment supported; client delay + approved extension supported.
-  - **FAQ Builder:** creatable; package-specific; reorderable; draft/published states; package-conflict validation; can't override package terms.
-  - **Per-package revisions:** Basic/Standard/Premium each with an independent revision count; correct remaining-revision calculation; request window enforced; one-consolidated-feedback-round rule; scope change never auto-consumes; additional paid revision supported.
-  - **Auto-accepted proposal (§6↔§7 boundary):** only from published fixed packages; explicit client confirmation required; payment/escrow authorisation required; provider capacity validated; immutable accepted snapshot; manual-approval fallback exists; acceptance and delivery-start are separate; no AI or silent commercial decision.
-  - Impression/click counters seeded; deterministic pricing guidance shown; capacity fields on the profile (§6.7).
+- **Module 2 — Service Catalog (§6, full-scope; source §20) — ✅ MET (built `533d2e2`/`36b6f71`), with the config-vs-enforcement caveats flagged below:**
+  - **Delivery time — ✅ MET (config + calculator):** independent per-package config; Business/Calendar Days; start rule; due-date formula (`DeliveryScheduleCalculator`, unit-tested); add-on adjustment; extension. *Caveat: the calculator is built + tested but not yet driven by a live delivery clock — that starts in Module 4.*
+  - **FAQ Builder — ✅ MET:** creatable; package-specific; reorderable; draft/published; package-conflict warning (`DetectFaqConflict`); can't override package terms.
+  - **Per-package revisions — ⚠️ PARTIAL:** independent count per tier **✅**; remaining-revision calc **✅** (`RevisionCalculator`, unit-tested); the config fields for the request window / additional paid revision exist **✅**. **NOT yet satisfied in this build (deferred to Module 4, Workroom):** live *enforcement* of the request window, the "one-consolidated-feedback-round" consumption rule, "scope change never auto-consumes", and the actual *purchase* of an additional revision — these require a live engagement, which Module 2 does not have.
+  - **Auto-accepted proposal (§6↔§7 boundary) — ⛔ NOT in Module 2 scope:** deferred to **Module 3** (Proposal creation / checkout / acceptance). Module 2 deliberately builds no Proposal or purchase path.
+  - **Other — ✅ MET:** impression/click counters seeded (fields + internal record methods; call-sites Module 3); deterministic pricing guidance shown (`PricingGuidance`, unit-tested, no AI); capacity fields on the profile (§6.7).
 - **Module 3 — Leads / Client Acquisition (§7):** opportunities visible; save/dismiss works; proposals draftable / submittable / trackable; changes-request and revision supported; an **accepted proposal converts to a project** (→ `WorkroomEngagement`, §8).
 - **Module 4 — Workroom & Earnings (§8):** active projects visible; milestones activate; files uploadable; deliverables submittable with **preserved versions**; client can request a revision and the provider can respond; milestone approval recorded; project completable. Financial: escrow states visible; **gross / commission / net correct** (flat 12%); financial stages separated; available balance correct; payout eligibility validated + tracked; invoice + statement records available.
 - **Module 5 — Analytics & Growth (§9):** service / proposal / profile / revenue metrics calculated; repeat-client performance visible; rule-based observations displayed; **no AI action executed** (§2).
@@ -643,6 +663,8 @@ The repo's **root `.gitignore` is a binary / non-UTF8 file**, which can make the
 ---
 
 ## Changelog
+
+**2026-07-27 — Module 2 (Service Catalog) shipped → marked LIVE.** Commits `533d2e2` (backend) / `36b6f71` (frontend) on `dev-hafiz`. §6 status PLANNED → LIVE with a §6.0 live-vs-deferred block + §6.0.1 as-built field lists (PK is `Id`, not the spec's `ServiceId`/`PackageId`/`FaqId`; category property is `Category`). §4.3: `ServiceListings`/`ServicePackages`/`ServiceFAQs` moved PLANNED → EXISTS (indexes via `EnsureServiceCatalogIndexes()`). §11.2/§11.5: Catalog is now a LIVE, working empty state, not a planned description. §17: Module 2 criteria marked ✅ MET, with **⚠️ PARTIAL** on per-package revisions (config + calc live; window-enforcement / consumption-rule / additional-revision *purchase* deferred to Module 4) and **⛔ auto-accepted proposal deferred to Module 3**. Confirmed-decision fixes recorded: `PricingModel` nullable on `ServicePackage`; `CancellationPolicy` a fixed 3-option enum (not a rule engine). Reusable `RevisionCalculator`/`DeliveryScheduleCalculator`/`PricingGuidance` built + unit-tested but unwired (Module 4 consumes). `CurrentActiveOrders` field + capacity check present, no live writer (Module 4). `Impressions`/`Clicks` fields + record methods present, no call-site (Module 3). Sidebar "Services" → `/dashboard/serviceprovider/services`. Verification: build 0 errors / 0 Module-2 warnings; suite 500 passed / 0 failed / 57 skipped (Module 1 100 pass; Module 2 22 new pass); `tsc --noEmit` clean.
 
 **2026-07-27 — consistency audit: all 9 findings fixed.**
 - **D1 (HIGH):** renamed the planned SP `Milestone` → **`WorkroomMilestone`** (collection `"WorkroomMilestones"`) to avoid a class-name collision with `BusinessIdeas.cs:119` (§4.3, §8A); FK fields `milestoneId`/`currentMilestoneId` note added.
