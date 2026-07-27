@@ -339,10 +339,16 @@ builder.Services.AddScoped<ClientBriefExpirationJob>();
 // replace these registrations with real gateway/scanner adapters without changing
 // the state machine. Provider financial settings remain embedded on the profile.
 builder.Services.AddScoped<IWorkroomService, WorkroomService>();
+builder.Services.AddSingleton<IClientRelationshipCalculator, ClientRelationshipCalculator>();
 builder.Services.AddScoped<IPaymentGatewayService, StubPaymentGatewayService>();
 builder.Services.AddScoped<IFileSecurityScanner, StubFileSecurityScanner>();
 builder.Services.AddScoped<WorkroomConversionJob>();
 builder.Services.AddScoped<WorkroomTimedRulesJob>();
+
+// Module 5 — live, read-time analytics plus provider-owned manual growth tasks.
+// No metric snapshots, tracking-event collections, cache, exports, or periodic
+// observation-to-task job are registered.
+builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 
 // Observability: OpenTelemetry traces + metrics (/metrics for Prometheus).
 builder.AddObservability();

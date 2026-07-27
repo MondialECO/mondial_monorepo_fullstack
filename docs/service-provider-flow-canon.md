@@ -4,6 +4,8 @@ Source of truth for development. When code and this doc disagree, this doc wins 
 
 **Last reconciled with code: 2026-07-27.** See the Changelog (bottom) for what changed. If a claim here contradicts the code, treat it as drift to reconcile — not a spec to build back toward — and confirm before acting.
 
+**All five Service Provider modules are now LIVE.** Remaining platform-wide truth in one line: the payment gateway, file scanner, and e-signature/contract-consent mechanism are **STUB** integrations; public profile/search tracking, durable proposal-event history, and test-record provenance are **deferred/not tracked**.
+
 ## 0. How to use this doc
 
 The complete system-design reference for the Service Provider (SP) system: architecture, every module (built and planned), the database picture, the AI decision, and the design system. Two standing instructions for any implementer:
@@ -18,7 +20,7 @@ Every feature carries a STATUS tag:
 - **PLANNED** — specced here, not built yet
 - **FORBIDDEN** — must never be built (violates a core rule)
 
-Section map: **§1** architecture · **§2** AI (none) · **§3** design system · **§4** database · **§5** Module 1 Profile & Trust (LIVE) · **§6** Module 2 Service Catalog (LIVE) · **§7** Module 3 Leads (LIVE) · **§8** Module 4 Workroom & Earnings (LIVE) · **§9** Module 5 Analytics & Growth · **§10** cross-cutting rules · **§11** SP journey (product experience) · **§12** notifications · **§13** audit log · **§14** validation/error · **§15** security/trust · **§16** roles & permissions · **§17** acceptance criteria · Appendix + Changelog.
+Section map: **§1** architecture · **§2** AI (none) · **§3** design system · **§4** database · **§5** Module 1 Profile & Trust (LIVE) · **§6** Module 2 Service Catalog (LIVE) · **§7** Module 3 Leads (LIVE) · **§8** Module 4 Workroom & Earnings (LIVE) · **§9** Module 5 Analytics & Growth (LIVE) · **§10** cross-cutting rules · **§11** SP journey (product experience) · **§12** notifications · **§13** audit log · **§14** validation/error · **§15** security/trust · **§16** roles & permissions · **§17** acceptance criteria · Appendix + Changelog.
 
 ---
 
@@ -91,7 +93,7 @@ It owns **no collection** — it queries `ApplicationUsers` directly. Leads (§7
 
 ### 2.2 No AI-implying names — rename on sight (from the Stitch mockups)
 
-The Stitch mockups label features with AI/generative-sounding names. **None exist in code or in this doc's active spec** (Modules 3–4 unbuilt); this table locks the deterministic naming so an implementer renames on sight.
+The Stitch mockups label features with AI/generative-sounding names. The table below remains the locked deterministic vocabulary now that all five modules are live; none of these labels authorizes an AI feature.
 
 | Mockup name (do NOT use) | Canon name | What it deterministically is |
 |---|---|---|
@@ -129,7 +131,7 @@ SP UI uses the existing design system only — light theme, single blue accent, 
 
 ## 4. Database — what's real vs. what's planned
 
-**Verified reality (2026-07-27):** the bounded provider profile/trust/financial-settings record remains embedded in `ApplicationUsers`; Modules 2–4 own the top-level collections listed below. Module 4 added 16 unbounded execution, financial, and audit collections.
+**Verified reality (2026-07-27):** the bounded provider profile/trust/financial-settings record remains embedded in `ApplicationUsers`; Modules 2–5 own the top-level collections listed below. Module 4 added 16 unbounded execution, financial, and audit collections; Module 5 added only the stateful manual-task collection and stores no metric snapshots.
 
 ### 4.1 `ApplicationUsers` (existing top-level collection) — SP-relevant contents
 
@@ -192,10 +194,12 @@ Authoritative vocabulary for the whole SP domain; every module reuses these, non
 - **`WorkroomAuditEvents`** (`WorkroomAuditEvent`) — Module 4 (LIVE). This is the real name; the original generic `AuditEvents` label drifted.
 - **`RepeatClientCoupons`** (`RepeatClientCoupon`) — Module 4 (LIVE); tier-independent repeat-client rewards.
 - Module-4 indexes are established best-effort via **`EnsureWorkroomIndexes()`**, including unique `WorkroomEngagement.ProposalId`, `Contract.EngagementId`, `Review.EngagementId`, payment/financial idempotency keys, and invoice numbers. Full fields: §8.0.1.
+- **`GrowthTasks`** (`GrowthTask`) — Module 5 (LIVE, `c64aab5`); provider-owned manual tasks with lifecycle state. `EnsureAnalyticsIndexes()` indexes `ProviderId + Status + UpdatedAt`.
+- **No analytics-metric collection exists by design.** Module 5 computes metrics and observations at read time over Modules 2–4; there are no metric snapshots, tracking-event collections, cache documents, or export records (§9).
 
 **Naming convention (verified against `MongoDbContext.cs`):** the **entity class is singular** PascalCase; the **collection string is its plural** (`ApplicationUser` → `"ApplicationUsers"`, `DealExecution` → `"DealExecutions"`, `Conversation` → `"Conversations"`). Where a class carries a `Record`/`Model`/`Entity` suffix, the collection drops it and pluralizes the core noun (`EntrepreneurProfileRecord` → `"EntrepreneurProfiles"`, `ContactModel` → `"Contacts"`). A few **legacy** classes are themselves plural (`BusinessIdeas`, `Investments`, `Transactions`, `Companies`) — **do not copy that**; new SP models follow singular-class → plural-collection.
 
-**PLANNED:** no Module-4 collection remains in this list. Module 5 storage is intentionally left to §9 implementation discovery rather than invented here.
+**Deferred storage truth:** no Module-4 or Module-5 collection remains to build from the approved specs. Future upstream tracking may require deliberately designed event/history storage, but none is implied or silently created by the current `notTracked` metrics (§9.0).
 
 **Entity-map decisions (from the source design doc):**
 - **`ServiceProvider` (source's top-level entity) is NOT a new collection.** It duplicates the already-built embedded `ServiceProviderProfile` (§4.1). Map its fields onto the existing structure: `displayName`/`professionalTitle`/`companyName`/`primaryCategory`/`skills` → profile fields; `verificationTier` → `Tier_level` (§1.5); `verificationStatus` → `VerificationStatus`; `rating`/`reviewCount`/`responseRate`/`onTimeDeliveryRate`/`projectCompletionRate` → **derived** reputation (Trust signals, §5.1), never hand-set. `commissionRate` is **dropped** (below).
@@ -408,6 +412,8 @@ All three PKs are **`Id`** (`[BsonId]` ObjectId), not the spec's `clientBriefId`
 
 Merges delivery workroom and earnings into one module. It consumes accepted Module-3 proposals, owns the execution/financial lifecycle, and produces Client Satisfaction, On-time Delivery, Repeat-Client Rate, and Dispute Penalty for the existing Module-1 TrustScore path.
 
+**Module-5 amendment — LIVE (`c64aab5`):** the private repeat-client and on-time formulas were extracted from `WorkroomService.RefreshTrust` into shared `IClientRelationshipCalculator` / `ClientRelationshipCalculator`. Module 4 Trust and Module 5 client/delivery analytics now consume the identical implementation, eliminating formula drift. Module-4 targeted tests were **25 passed / 0 failed / 0 skipped before** and **25 / 0 / 0 after** the extraction (also **25 / 0 / 0** in final regression).
+
 ### 8.0 What's live vs. deferred (verified against code)
 
 - **LIVE storage/backend:** 16 top-level MongoDB collections (§4.3), `EnsureWorkroomIndexes()`, actor-scoped `/api/workroom` and `/api/earnings` APIs, state-machine checks, audit rows, notifications, timed rules, statements, and provider financial settings embedded on `ServiceProviderProfile`.
@@ -512,7 +518,7 @@ The live service converts proposals directly into `FundingRequired`; funding mov
 
 `Proposal Accepted/AwaitingModule4` → immediate Hangfire enqueue (plus minutely recovery sweeper) → atomic `Contract + WorkroomEngagement + WorkroomMilestone(s)` creation and proposal `ConvertedToProject/Converted` → both parties record **STUB authenticated in-app consent** → client calls STUB escrow funding → provider activates milestone → provider submits immutable deliverable version → client requests a revision, disputes, or approves via API / seven-day job auto-releases if undisputed → STUB release records flat 12% commission, invoice, and available balance atomically → engagement completes → review/repeat/on-time/dispute signals feed Module 1.
 
-**Cross-path facts:** package and negotiated proposals converge on the same conversion worker. Proposal milestone plans are copied; an empty plan gets one full-price fallback milestone. `DeliveryScheduleCalculator` starts the due date on provider activation; `RevisionCalculator` enforces live entitlement. The analytics/message side effects from the older planned chain are not implemented here, and `Additional Revision Purchased` remains deferred.
+**Cross-path facts:** package and negotiated proposals converge on the same conversion worker. Proposal milestone plans are copied; an empty plan gets one full-price fallback milestone. `DeliveryScheduleCalculator` starts the due date on provider activation; `RevisionCalculator` enforces live entitlement. Module 5 now reads the resulting records directly—Module 4 emits no analytics side-effect/snapshot—and `Additional Revision Purchased` remains deferred.
 
 **Supporting features:** hourly contracts can record completed time entries; `WeeklyHourLimit` is captured in contract terms but is **not enforced** by `AddTimeEntryAsync`, and automatic hourly billing/client approval is not wired. Repeat-client coupons are fixed 5%, expire after 90 days, and are tier-independent; payout methods store masked future-rail descriptors; Tax/VAT settings are embedded and snapshotted into invoices.
 
@@ -522,48 +528,69 @@ The live service converts proposals directly into `FundingRequired`; funding mov
 
 ---
 
-## 9. Module 5 — Analytics & Growth — **PLANNED (built last)**
+## 9. Module 5 — Analytics & Growth — **LIVE**
 
-A **pure read/aggregation layer** over Modules 2–4's data — no new source-of-truth, no user input. Absorbs the source doc's §9 verbatim; all observations are **deterministic rule-based, never AI** (§2). Built last (nothing to aggregate until upstream modules accrue history — why §6 starts its counters early).
+**Commits:** `c64aab5` (backend, including the Module-4 calculator extraction) / `18c54e1` (frontend), on `dev-hafiz`.
+**Verification:** `dotnet build` **0 errors / 0 new warnings in Module-5/shared-calculator files** (the final incremental build reported 16 pre-existing NuGet audit warnings); full backend suite **575 passed / 0 failed / 57 skipped**; Module 1 **100**, Module 2 **22**, Module 3 **19**, Module 4 **25**, and Module 5 **29** targeted tests pass; `npx tsc --noEmit` clean. Module-4 extraction check: **25 / 0 / 0 before** and **25 / 0 / 0 after**.
 
-**Sections (source §9):** Business Overview ("Business Performance"); Service Analytics ("Service Performance"); Profile Analytics ("Profile Performance"); Proposal Analytics ("Proposal Performance"); Client Analytics ("Client Relationships"); Growth Tasks.
+Module 5 is a provider-owned, read-time aggregation surface over Modules 2–4. It adds no metric source-of-truth: no metric snapshots, tracking-event collection, cache, export mechanism, or observation job. The only persisted state is a manual `GrowthTask` that the provider creates and updates. All observations are deterministic rule evaluations—never AI (§2).
 
-**Service metrics:** Impressions, Service Views, Enquiries, Orders, Conversion Rate, Average Selling Price, Average Delivery Time, Order Completion Rate, On-Time Delivery Rate, Cancellation Rate, Repeat Orders.
-- `Conversion Rate = Orders ÷ Service Views × 100` (e.g. 8 ÷ 42 = 19.05%)
-- `Enquiry Conversion = Orders ÷ Enquiries × 100`
+### 9.0 What's live vs. honestly unavailable (verified against code)
 
-**Proposal metrics:**
-- `Proposal View Rate = Viewed ÷ Submitted × 100`
-- `Response Rate = Client Responses ÷ Submitted × 100`
-- `Acceptance Rate = Accepted ÷ Submitted × 100`
-- `Average Proposal Value = Total Submitted Value ÷ Submitted Count`
-- Declined / withdrawn / expired proposals tracked separately.
+- **LIVE backend/UI:** `[Authorize]`, owner-scoped `/api/service-provider/analytics` plus growth-task endpoints; `/dashboard/serviceprovider/analytics`; Last 7/30/90 Days, This Year, Previous Year, and Custom Range filters; equal-period/calendar comparisons; per-response `ComputedAt`; currency selection; overview, service, proposal, profile, revenue, client, observation, task, and purposeful empty-state views.
+- **LIVE read-time metrics:** gross/net revenue and commission; available/pending/protected balances; average/highest project value; revenue by service/client/month/category; submitted/accepted/declined/withdrawn/expired proposals, acceptance rate, and average proposal value; completed work; average delivery time; on-time rate; total/new/returning clients; repeat-client rate/revenue; average projects/client; average client lifetime value; verified-review average; most-active clients; service orders, average selling price, completion rate, on-time delivery, and repeat orders.
+- **LIVE financial integrity:** financial results are scoped to the selected three-letter currency; only completed `PaymentReleased` rows count as earned; a release whose milestone also has a completed/refunded `Refund` row is excluded; funded/protected escrow is shown separately and never presented as earned revenue. Service/category breakdown joins historical proposal snapshots/listings; work with no effective `ServiceId` is explicitly grouped as **`Custom/Unattributed`**.
+- **LIVE shared formula amendment:** `IClientRelationshipCalculator` / `ClientRelationshipCalculator` is the one implementation for unique-client-weighted repeat rate (`clients with ≥2 completed/archived engagements ÷ unique completed clients`) and milestone on-time rate (`SubmittedAt <= DueDate`). `WorkroomService.RefreshTrust` and Module 5 both use it (§8 amendment); no duplicate formula remains.
+- **LIVE manual state:** `GrowthTask` is provider-created only. Statuses are `Open, InProgress, Completed, Dismissed, Expired`; terminal tasks cannot reopen. Expiry is applied lazily when tasks are read/updated. `TriggerRuleId` remains null for provider-created work. There is deliberately **no periodic observation→task job**, no eager task fan-out, and no automatic commercial action.
+- **`notTracked` is an honest data-source state, not a bug or fabricated zero:** unavailable metrics carry `State = "notTracked"`, null numeric/comparison/change values, and a reason in the API; the UI labels them “Not tracked yet.”
+  - **Profile metrics:** profile views, search appearances, portfolio views, profile saves, contact rate, and portfolio engagement. These require a real public profile/search/portfolio browsing surface with privacy-safe, date-stamped tracking first.
+  - **Date-filtered Service counters:** impressions, service views/clicks, conversion rate, and enquiry conversion. Module 2 has lifetime `Impressions`/`Clicks` counters and record methods, but no live caller or timestamped events; a lifetime number cannot honestly answer a selected-period query.
+  - **Enquiries:** no enquiry entity/source-of-truth writer exists. The `ServiceInquiry` source enum alone is not activity history; enquiry tracking must exist before enquiry counts/rates can be computed.
+  - **Proposal view/client-response rates:** current proposal status can say `Viewed`, but there is no durable `ViewedAt`/client-response timestamp or event history after later transitions. Durable proposal-event history is required before period rates are real. Module 3's provider response-rate signal is a different metric and is not reused as a client-response substitute.
+  - **Cancellation rate:** engagement/milestone cancellation is not a complete historical lifecycle and cannot support a trustworthy period denominator. A durable cancellation lifecycle/history must be built upstream first.
+- **Known test-provenance limitation:** no `IsTest`/environment-provenance field exists on `ServiceListing`, `Proposal`, `WorkroomEngagement`, `FinancialTransaction`, or elsewhere in this SP chain. Module 5 therefore includes all upstream records and cannot exclude “test projects.” This is disclosed through `IncludesRecordsWithoutTestProvenance` / `DataLimitation` in the API and in the UI. No Module-5-only provenance field was retrofitted.
 
-**Profile metrics:**
-- `Contact Rate = Client Enquiries ÷ Profile Views × 100`
-- `Portfolio Engagement = Portfolio Views ÷ Profile Views × 100`
-- Also: profile views, search appearances, client enquiries, profile saves, portfolio views, service clicks, returning-visitor rate.
+### 9.0.1 As-built state and response shapes
 
-**Revenue metrics:** gross earnings, net earnings, commission, available balance, pending earnings, average project value, highest project value, revenue by service / client / month / category. **Escrow-protected amounts must never be mixed with earned revenue.**
+- **`GrowthTask` → `"GrowthTasks"`:** `Id, ProviderId, TaskType, Title, Description, Status, TriggerRuleId, RelatedEntityType, RelatedEntityId, CreatedAt, UpdatedAt, ExpiresAt`. This is the single new top-level collection; fields match the approved stateful exception.
+- **Dashboard envelope:** `Period, Currency, IncludesRecordsWithoutTestProvenance, DataLimitation, Overview, Services, Proposals, Profile, Revenue, Clients, Observations, UnavailableObservationRuleIds, EmptyStates`.
+- **Metric shape:** `State, Value, PreviousValue, ChangePercentage, Unit, Reason`; tracked values use `available`, missing source data uses `notTracked`, and a real metric with no qualifying rows may use `notEnoughActivity`.
+- **As-built Profile DTO drift:** the response exposes `ProfileViews, SearchAppearances, PortfolioViews, ProfileSaves, ContactRate, PortfolioEngagement`, all as `notTracked`. The earlier planned raw `ClientEnquiries`, `ServiceClicks`, and `ReturningVisitorRate` fields are not separate response properties and remain **NOT MET**; none has an upstream event source.
+- **Period shape:** `Range, From, To, ComparisonFrom, ComparisonTo, ComputedAt`.
+- **Growth-task endpoints:** list, create, and owner-scoped status update. Analytics observations are not stored in `GrowthTasks`.
 
-**Client-relationship metrics:** total / new / returning clients, repeat-client rate, repeat-client revenue, average projects per client, average client lifetime value, client-rating average, most-active clients.
+### 9.1 Metrics and date behavior
 
-**Deterministic growth observations (rule-based, no AI; none auto-executes an action, §2):**
-- **Rule 1** — Service Views > 500 AND Conversion < 10% → "This service receives strong visibility but has a low order conversion rate." (review description / pricing / add stronger portfolio examples).
-- **Rule 2** — Profile Views > 1000 AND Contact Rate < 5% → "Your profile receives traffic, but few clients start a conversation." (review intro / add portfolio evidence / clarify availability).
-- **Rule 3** — Proposal View Rate < 40% → "Many submitted proposals are not being opened by clients." (review titles / apply to more relevant opportunities / confirm brief alignment).
-- **Rule 4** — Repeat Client Rate > 30% → "Returning clients are an important source of your project revenue." (review previous clients / share new services manually / update availability).
+**Business overview:** gross/net revenue, completed work, submitted/accepted proposals, clients, average delivery days, and on-time rate. Current and comparison values are returned where the source exists; percentage change is null rather than invented when a zero comparison makes growth undefined.
 
-**Date filters:** Last 7 / 30 / 90 Days, This Year, Previous Year, Custom Range. Comparison: previous period / month / year.
-**Data rules:** only verified marketplace activity counts; cancelled test projects excluded; refunded payments don't count as earned revenue; deleted services retain historical metrics; private profile views shown aggregated; client identity may be masked in exports per permission; metrics show an update timestamp.
-**Growth Tasks:** e.g. update availability, improve a low-converting service, add a portfolio project, reply to a verified review, complete a profile field, review pricing, follow up on an expiring proposal, update an outdated service, add a recent work sample. Statuses: `Open, In Progress, Completed, Dismissed, Expired`. Tasks never auto-execute a commercial action.
+**Service analytics:** real order/completion/delivery/revenue/repeat measures are grouped by live or historical service identity. `Custom/Unattributed` preserves brief-based work without a service. Date-filtered view/impression/enquiry/conversion and cancellation fields remain explicit `notTracked` per §9.0.
 
-**Empty states (source §9, verbatim):**
-- **No Analytics Data** — "Not Enough Activity Yet" / "Performance analytics will appear after clients begin viewing your profile and services."
-- **No Service Data** — "No Published Services" / "Publish a service to begin tracking impressions, views and conversions." / Action: "Create Service".
-- **No Revenue Data** — "No Revenue Activity" / "Approved and released project payments will appear in your financial analytics."
+**Proposal analytics:** submitted-proposal cohorts drive submitted, accepted, acceptance rate, average value, and terminal status counts. Proposal view rate and client response rate remain `notTracked`; current status is not treated as timestamp history.
 
-**Dependencies.** Reads everything from §6–§8; produces nothing consumed elsewhere.
+**Revenue analytics:** gross, commission, and net derive only from non-refunded completed release rows; current balances reuse Module 4's amount categories; breakdowns cover service, category, masked client ID, and month. All values are currency-scoped.
+
+**Client analytics:** period clients/new/returning and period repeat revenue sit alongside lifetime-as-of-period repeat rate, average projects/client, and lifetime value. Verified reviews supply rating averages. Client identifiers are masked in the most-active list. Repeat/on-time formulas use the shared calculator, not an analytics copy.
+
+### 9.2 Deterministic growth observations and manual tasks
+
+The four canon rules remain exact and are evaluated when the dashboard is read; they are not persisted or scheduled:
+
+- **Rule 1:** Service Views > 500 AND Conversion < 10%.
+- **Rule 2:** Profile Views > 1000 AND Contact Rate < 5%.
+- **Rule 3:** Proposal View Rate < 40%.
+- **Rule 4:** Repeat Client Rate > 30%.
+
+**Current computability:** only **Rule 4** can execute because repeat-client rate has a real source. Rules 1–3 are listed in `UnavailableObservationRuleIds` and cannot fire while their inputs are `notTracked`. Rule 4 yields fixed positive-reinforcement copy plus fixed suggested actions; no rule generates dynamic prose, creates a task, messages a client, changes pricing, or performs any commercial action.
+
+`GrowthTask` remains a separate manual/provider-only checklist. The provider supplies title/description/type and may move an open task to in-progress/completed/dismissed. Observation banners never create or synchronize task documents.
+
+### 9.3 Empty states — LIVE
+
+- **“Not Enough Activity Yet”** — performance analytics appear after real marketplace work begins; unavailable tracking signals remain visibly `notTracked` even in this state.
+- **“No Published Services”** — action: **“Create Service.”**
+- **“No Revenue Activity”** — approved and released project payments will appear here.
+
+**Dependencies.** Reads `ServiceListings`, `ClientBriefs`, `Proposals`, `WorkroomEngagements`, `WorkroomMilestones`, `FinancialTransactions`, `Reviews`, and Module-4 financial summary state. Persists only provider-owned `GrowthTasks`; no metric is consumed elsewhere and no Trust signal is written by Analytics.
 
 ---
 
@@ -578,7 +605,7 @@ A **pure read/aggregation layer** over Modules 2–4's data — no new source-of
 
 ## 11. The Service Provider journey (product experience)
 
-This is the **experience** order — what a real SP lives through, in the order they live it — **distinct from §1.2's data-dependency build order** (that's for developers). Because there are **no phases** (§1.1), the journey is not enforced by gating; it is shaped by **purposeful, context-aware empty-states and dashboard nudges**. Each step is tagged **LIVE**, **PARTIAL**, or **PLANNED** so the narrative never implies unbuilt behavior exists. Modules 1–4 are mechanically live; Module 5 remains planned. Module 4's payment, scanning, and contract-consent boundaries are STUB-backed (§8.0).
+This is the **experience** order — what a real SP lives through, in the order they live it — **distinct from §1.2's data-dependency build order** (that's for developers). Because there are **no phases** (§1.1), the journey is not enforced by gating; it is shaped by **purposeful, context-aware empty-states and dashboard nudges**. Each step is tagged **LIVE**, **PARTIAL**, or **PLANNED** so the narrative never implies unbuilt behavior exists. **Modules 1–5 are now mechanically live.** Module 4's payment, scanning, and contract-consent boundaries remain STUB-backed (§8.0), and Module 5 visibly identifies upstream tracking gaps as `notTracked` (§9.0).
 
 ### 11.1 First-time flow (signup → verified) — **LIVE (existing, unchanged by the redesign)**
 
@@ -593,13 +620,13 @@ All of the above predates and is unchanged by the redesign.
 
 ### 11.2 First login after verification — what a freshly-verified SP sees
 
-No gating: **all five sections are conceptually open at once.** But a brand-new SP has zero data, so the realistic first visit is mostly empty. **Reality today: Profile & Trust, Service Catalog, Leads, Workroom, and Earnings render for the provider; Analytics does not exist in the UI yet.** The first-visit experience:
+No gating: **all five sections are open at once.** But a brand-new SP has zero data, so the realistic first visit is mostly empty. **Reality today: Profile & Trust, Service Catalog, Leads, Workroom, Earnings, and Analytics & Growth all render for the provider.** The first-visit experience:
 
 - **Profile & Trust — LIVE.** Renders today. Shows the neutral **"building your trust score"** state (§5.2; `HasEnoughTrustData = false`, no number). The Tier badge shows the current tier (ranking-only, §5.4). The Skills Test is available (§5.3).
 - **Service Catalog — LIVE.** Renders today. A freshly-verified SP sees a working, empty **Services** section with the **"No Published Services" / "Create your first service listing to start receiving briefs"** empty state (§6.9), and can immediately build listings + packages + FAQs.
 - **Leads — LIVE.** A freshly verified/available provider sees the working Opportunities / Proposals / Saved workspace and the purposeful “No New Client Opportunities” state (§7.3). Eligibility is driven by verified profile categories plus availability/capacity; the current code does **not** require a published listing. The “Review Service Preferences” action links to Services as useful setup guidance, not as a hard gate.
 - **Workroom & Earnings — LIVE provider UI.** Workroom shows “No Active Projects” until an accepted proposal is converted; Earnings shows “No Earnings Yet”, “No Funds Available”, “Add a Payout Method”, and “No Invoices Yet” as applicable. Client actions are API-only and financial movement is STUB-backed (§8).
-- **Analytics & Growth — PLANNED.** *When built:* empty until upstream modules produce data (§9).
+- **Analytics & Growth — LIVE.** The provider sees “Not Enough Activity Yet,” “No Published Services,” and “No Revenue Activity” when appropriate; tracked metrics populate from real Modules 2–4 records, while unavailable profile/view/enquiry/proposal-event/cancellation signals are plainly “Not tracked yet” (§9).
 
 **Getting-started nudge.** With no wizard forcing a path, onboarding guidance comes from **purposeful, context-aware empty-states**, not gating. Catalog encourages publishing services; Leads points back to service preferences when no opportunity is available. Today those are guidance paths, while the actual Leads eligibility gate is verified profile + matching category + availability/capacity (§7.3).
 
@@ -612,8 +639,9 @@ Once briefs arrive, a working SP can traverse the Leads→Workroom→paid-record
 3. **Convert acceptance — LIVE** — Module 3 stops at `Accepted/AwaitingModule4`; immediate Hangfire enqueue plus a recovery sweeper transactionally creates Module-4 records and moves the proposal to `ConvertedToProject/Converted` (§8.0).
 4. **Deliver via milestones — LIVE provider UI + client APIs** — **STUB authenticated in-app consent** → STUB funding → activate → versioned submit → revision/dispute/approve or 7-day auto-release. The provider UI is live; client decisions currently require API callers.
 5. **Get paid in platform state — LIVE mechanics / STUB money movement** — a mocked gateway success records release, deducts the **flat 12% commission**, issues the invoice, and exposes net Available balance. It does not move real funds.
-6. **Signals feed back — LIVE** — satisfaction / on-time / repeat / dispute route through the existing TrustScore recalculation (§5.1); earnings/response inputs are available for the still-planned Analytics module (§9).
-7. **Repeat.**
+6. **Signals feed back — LIVE** — satisfaction / on-time / repeat / dispute route through the existing TrustScore recalculation (§5.1). Module 4 Trust and Module 5 analytics share the same repeat/on-time calculator (§8/§9).
+7. **Review performance — LIVE** — the provider opens Analytics & Growth for real revenue, proposal, delivery, service-order, and client measures; Rule 4 may display deterministic repeat-client reinforcement. `notTracked` gaps are not presented as zeros and observations never auto-create tasks or take actions (§9).
+8. **Repeat.**
 
 **Returning-user landing view (PLANNED — Stitch-mockup concept).** With no "next phase" to resume, a returning SP is oriented by the **dashboard overview**, not wizard logic. The Stitch screens propose a **"Requires Attention"** panel (briefs awaiting response, milestones due, disputes) and a **"Recent Activity"** feed — the natural landing view that replaces phase-progress. Design concepts only, not built; when built they must render from real §7/§8 data — deterministic, no AI (§2).
 
@@ -631,9 +659,10 @@ With no phases to sequence the new SP, the "this isn't broken — here's what to
 - **Profile & Trust (LIVE):** the neutral "building your trust score" state (§5.2) is already an honest, non-broken empty state — it explains the score is accruing and points to the Skills Test as the one thing that moves it now.
 - **Service Catalog (LIVE):** the "No Published Services" / "Create your first service listing to start receiving briefs" empty state (§6.9) — the primary getting-started call to action, live today.
 - **Leads (LIVE):** “No New Client Opportunities” explains that profile-matched opportunities will appear here and offers “Review Service Preferences”; Proposals and Saved have their own purposeful empty states (§7.3).
-- **Workroom & Earnings (LIVE):** “No Active Projects”, “No Earnings Yet”, “No Funds Available”, “Add a Payout Method”, and “No Invoices Yet” explain which upstream event supplies data. **Analytics (PLANNED):** insights wait for Module 5.
+- **Workroom & Earnings (LIVE):** “No Active Projects”, “No Earnings Yet”, “No Funds Available”, “Add a Payout Method”, and “No Invoices Yet” explain which upstream event supplies data.
+- **Analytics & Growth (LIVE):** “Not Enough Activity Yet”, “No Published Services”, and “No Revenue Activity” explain which upstream work supplies tracked data; “Not tracked yet” distinguishes missing event infrastructure from a measured zero (§9.0/§9.3).
 
-**Coherence rule:** every SP section must ship a purposeful empty-state that tells the provider what to do next — that is the flat model's replacement for a wizard. **Today Profile & Trust, Service Catalog, Leads, Workroom, and Earnings satisfy this**; Analytics remains planned for Module 5.
+**Coherence rule:** every SP section must ship a purposeful empty-state that tells the provider what to do next — that is the flat model's replacement for a wizard. **All five live SP modules now satisfy this rule.**
 
 ---
 
@@ -701,7 +730,19 @@ Only authorised project participants get workroom access; provider-private tasks
   - **Real file-security scanning — ⛔ NOT MET (by confirmed design):** `StubFileSecurityScanner` only checks empty/size/extension. No virus/malware scanner exists.
   - **Real e-signature/legal signing — ⛔ NOT MET (by confirmed design):** contract “signing” is **STUB authenticated in-app consent** timestamps only.
   - **Production transaction-capability verification — ⛔ NOT MET:** `Mongo:TransactionsEnabled=true` is a hard startup gate with no fallback, but production Atlas / `srv1172497` topology could not be checked from the DNS/egress-blocked sandbox. Manual pre-deploy verification is required.
-- **Module 5 — Analytics & Growth (§9):** service / proposal / profile / revenue metrics calculated; repeat-client performance visible; rule-based observations displayed; **no AI action executed** (§2).
+- **Module 5 — Analytics & Growth (§9) — ⚠️ PARTIAL overall; approved real-data boundary shipped (`c64aab5`/`18c54e1`) with unavailable sources explicitly `notTracked`:**
+  - **Read-time architecture / ownership / UI — ✅ MET:** authenticated owner-scoped API and provider dashboard are live; metrics are computed from Modules 2–4 with a per-response timestamp; no snapshot/event/cache/export collection was introduced; `GrowthTasks` is the sole stateful collection.
+  - **Revenue analytics — ✅ MET for application-state money:** currency-scoped gross/net/commission, current amount categories, average/highest project, and service/client/month/category breakdowns are live. Protected escrow is separate; refunded releases do not count as earned. Real money movement remains the Module-4 payment STUB caveat, not an Analytics claim.
+  - **Proposal/work/client analytics — ✅ MET for source-backed fields:** submitted/accepted/terminal proposal counts, acceptance rate/value, completed work, average delivery, on-time rate, total/new/returning clients, repeat rate/revenue, projects/client, lifetime value, verified rating average, and most-active clients are live. `Custom/Unattributed` preserves work without a ServiceId.
+  - **Shared repeat/on-time formula — ✅ MET:** Module 4 Trust and Module 5 Analytics consume `ClientRelationshipCalculator`; targeted Module-4 tests stayed **25 / 0 / 0 before and after** extraction.
+  - **Date/comparison/integrity behavior — ✅ MET:** Last 7/30/90, This Year, Previous Year, Custom, comparison windows, computed-at, historical service attribution, selected currency, and refund exclusion are live.
+  - **Service metrics — ⚠️ PARTIAL:** orders, average selling price/delivery, order completion, on-time delivery, and repeat orders are live. Date-filtered impressions/views, conversion, and enquiry conversion are **⛔ NOT MET / `notTracked`** because timestamped service browsing and enquiry history do not exist.
+  - **Profile analytics — ⛔ NOT MET / `notTracked`:** no public profile/search/portfolio/save event source exists; profile views, search appearances, portfolio views/saves, contact rate, and portfolio engagement are intentionally null with reasons, not fabricated zeros. The earlier planned raw Client Enquiries, Service Clicks, and Returning Visitor Rate are not separate response fields and remain NOT MET.
+  - **Proposal view/client-response analytics — ⛔ NOT MET / `notTracked`:** current proposal status is not durable timestamped history. `ViewedAt`/client-response event history must exist before period rates can be computed. Module 3's provider response rate is not substituted.
+  - **Enquiries and cancellation rate — ⛔ NOT MET / `notTracked`:** no enquiry writer/source-of-truth and no complete cancellation lifecycle/history exist upstream.
+  - **Growth observations/tasks — ⚠️ PARTIAL:** the deterministic display-time evaluator, Rule 4, and manual GrowthTask create/list/status/expiry are **✅ MET**. Rules 1–3 are **⛔ NOT MET / `notTracked`-blocked** because their source inputs do not exist. There is no periodic observation-to-task job and no auto-executed action.
+  - **Test-record exclusion — ⛔ NOT MET (known platform limitation):** no upstream `IsTest`/environment provenance exists, so analytics includes all records and discloses the limitation in API/UI. No inconsistent Module-5-only field was added.
+  - **No AI — ✅ MET:** rule text/actions are fixed deterministic output; no generative call, AI-branded behavior, or AI-executed action was introduced (§2).
 
 **System-wide (source "Final System Rule"):** operates as **independent modules** — not phases, no sequential phase completion, and no AI-generated decisions or AI-executed actions. The acceptance flags above are authoritative: a modeled field or enum is not evidence that its producer, UI, or external integration is live.
 
@@ -714,6 +755,12 @@ The repo's **root `.gitignore` is a binary / non-UTF8 file**, which can make the
 ---
 
 ## Changelog
+
+**2026-07-27 — Module 5 (Analytics & Growth) shipped → all five SP modules marked LIVE.** Commits `c64aab5` (backend, including the Module-4 shared-calculator amendment) / `18c54e1` (frontend) on `dev-hafiz`. §4.3 adds only `GrowthTasks` to EXISTS and records that metrics/observations remain read-time with no snapshot, event, cache, or export collection. §9 records currency-scoped non-refunded revenue, proposal/completed-work/delivery/client/service-order metrics, historical and `Custom/Unattributed` service attribution, date/comparison filters, computed-at, provider UI/empty states, and manual provider-only GrowthTasks. The private Module-4 repeat-client/on-time formulas moved into `IClientRelationshipCalculator` / `ClientRelationshipCalculator`, now shared by `WorkroomService.RefreshTrust` and Analytics; Module-4 targeted tests remained **25 passed / 0 failed / 0 skipped before and after** extraction.
+
+**Module-5 data-source truth:** profile/search/portfolio/save metrics, date-filtered service counters, enquiries, proposal-view/client-response rates, and cancellation rate are explicit `notTracked` null states—not zeros or bugs—until upstream public browsing/search tracking, timestamped service/enquiry events, durable proposal-event history, and a cancellation lifecycle exist. Only deterministic growth Rule 4 is currently computable; Rules 1–3 report unavailable inputs. Observations are display-time only and never persist tasks; GrowthTask is manual/provider-only. No `IsTest`/environment provenance exists upstream, so all records are included and the limitation is disclosed in API/UI. Verification: build **0 errors / 0 new Module-5/shared-calculator warnings** (16 pre-existing NuGet audit warnings in the final incremental build); suite **575 passed / 0 failed / 57 skipped** (Module 1 **100**, Module 2 **22**, Module 3 **19**, Module 4 **25**, Module 5 **29**); `tsc --noEmit` clean.
+
+**All-five-module rollup:** Profile & Trust, Service Catalog, Leads, Workroom & Earnings, and Analytics & Growth are LIVE. Platform-wide remaining truth: the payment gateway `[STUB — PAYMENT]`, file scanner `[STUB — FILE SECURITY]`, and e-signature/contract-consent mechanism `[STUB — CONTRACT CONSENT]` are not production integrations; public profile/search tracking, durable proposal-event history, and test provenance are deferred. Production Atlas transaction capability still requires the manual pre-deploy check already recorded in §8.0.
 
 **2026-07-27 — Module 4 (Workroom & Earnings) shipped → marked LIVE.** Commits `7e31162` (backend) / `7b6acf7` (frontend) on `dev-hafiz`. §4.3 moves 16 real collections to EXISTS: `WorkroomEngagements`, `Contracts`, `WorkroomMilestones`, `Deliverables`, `RevisionRequests`, `FinancialTransactions`, `Reviews`, `WorkroomTasks`, `ClientInputRequests`, `WorkroomFiles`, `PaymentOperations`, `PayoutRequests`, `Invoices`, `HourlyTimeEntries`, `WorkroomAuditEvents` (the built name, not the earlier `AuditEvents` shorthand), and `RepeatClientCoupons`; `ProviderFinancialSettings` is correctly embedded on `ServiceProviderProfile`, with masked payout methods and tax settings. §8.0/§8.0.1 records exact fields and as-built drift, the immediate Hangfire conversion enqueue + minutely recovery sweeper, unique-`ProposalId` idempotency, atomic proposal/contract/engagement/milestone conversion, and the empty-plan single-milestone fallback. Workroom delivery, versioning, consolidated revisions, pause/extension/dispute/auto-release rules, earnings stages, flat-12% release, invoices/statements/payout records, hourly entries, repeat coupons, audits, provider Workroom/Earnings UI, and four Trust signals are mechanically live. Client Satisfaction, On-time Delivery, Repeat-Client Rate, and 5-points-per-adverse-dispute capped at 20 all route through Module 1's existing `RecalculateTrustScore`; no parallel score writer was introduced.
 
