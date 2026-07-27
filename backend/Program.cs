@@ -330,6 +330,11 @@ builder.Services.AddScoped<IServiceProviderService, ServiceProviderService>();
 // Module 2 — Service Catalog (listings/packages/FAQs + capacity + pricing guidance).
 builder.Services.AddScoped<IServiceCatalogService, ServiceCatalogService>();
 
+// Module 3 — Leads, proposals, real response rate, and soft-expiry job.
+builder.Services.AddScoped<ILeadsService, LeadsService>();
+builder.Services.AddScoped<IResponseRateService, ResponseRateService>();
+builder.Services.AddScoped<ClientBriefExpirationJob>();
+
 // Observability: OpenTelemetry traces + metrics (/metrics for Prometheus).
 builder.AddObservability();
 
@@ -599,6 +604,11 @@ app.UseHangfireDashboard("/hangfire", new Hangfire.DashboardOptions
     Authorization = new[] { new WebApp.Filters.HangfireDashboardAuthorizationFilter() },
     DisplayStorageConnectionString = false,
 });
+
+RecurringJob.AddOrUpdate<ClientBriefExpirationJob>(
+    "module3-expire-client-briefs",
+    job => job.RunAsync(),
+    Cron.Minutely);
 
 // SignalR Hubs: long-lived connections must opt out of the request
 // timeout or they would be killed after 30s.

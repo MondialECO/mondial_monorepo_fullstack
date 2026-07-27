@@ -472,6 +472,18 @@ public class ServiceProviderService : IServiceProviderService
             passed ? "Skills test passed." : "Skills test recorded.");
     }
 
+    public async Task UpdateResponseRateSignalAsync(string userId, double? responseRate)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user is null) return;
+        var profile = EnsureProfile(user);
+        profile.TrustBreakdown.ResponseRate.HasData = responseRate.HasValue;
+        profile.TrustBreakdown.ResponseRate.Value = Math.Clamp(responseRate ?? 0, 0, 100);
+        RecalculateTrustScore(profile);
+        Touch(profile);
+        await _userManager.UpdateAsync(user);
+    }
+
     // ---------------- pure helpers ----------------
 
     private static ServiceProviderProfile EnsureProfile(ApplicationUser user) =>

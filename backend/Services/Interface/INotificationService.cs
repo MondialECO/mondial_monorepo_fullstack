@@ -7,6 +7,7 @@ namespace WebApp.Services.Interface
     {
         Task<Notification> CreateNotification(Guid userId, string title, string body);
         Task NotifyUser(Guid userId, string title, string body); // offline push
+        Task<Notification> NotifyUserWithReceipt(Guid userId, string title, string body);
         Task<List<Notification>> GetUserNotifications(Guid userId, int skip = 0, int limit = 30);
 
         // SEC-10 Phase 2: marks the notification read only when it belongs

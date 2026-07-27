@@ -23,17 +23,23 @@ namespace WebApp.Controllers
         private readonly IHubContext<ChatHub> _hub;
         private readonly MongoDbContext _context;
         private readonly ICompanyService _companyService;
+        private readonly IResponseRateService _responseRates;
+        private readonly INotificationService _notifications;
 
         public ChatController(
             IChatService chatRepo,
             IHubContext<ChatHub> hub,
             MongoDbContext context,
-            ICompanyService companyService)
+            ICompanyService companyService,
+            IResponseRateService responseRates,
+            INotificationService notifications)
         {
             _chatService = chatRepo;
             _hub = hub;
             _context = context;
             _companyService = companyService;
+            _responseRates = responseRates;
+            _notifications = notifications;
         }
 
         // Get current user ID from JWT token. ASP.NET Core 8 JwtBearer
@@ -176,7 +182,8 @@ namespace WebApp.Controllers
             {
                 ConversationId = conversationObjectId,
                 SenderId = CurrentUserId,
-                Message = request.Message
+                Message = request.Message,
+                ClientBriefId = request.ClientBriefId,
             };
 
            var data = await _chatService.AddMessage(message);
@@ -188,6 +195,20 @@ namespace WebApp.Controllers
             {
                 await _hub.Clients.Group(participantId.ToString())
                     .SendAsync("ReceiveMessage", data);
+            }
+
+            if (!string.IsNullOrWhiteSpace(message.ClientBriefId))
+            {
+                var brief = await _context.ClientBriefs.Find(x => x.Id == message.ClientBriefId).FirstOrDefaultAsync();
+                if (brief?.ClientId == CurrentUserId.ToString())
+                {
+                    foreach (var participantId in participants.Where(x => x != CurrentUserId))
+                        await _notifications.NotifyUser(participantId, "Client sent a new message", message.Message);
+                }
+                else
+                {
+                    await _responseRates.RefreshTrustSignalAsync(CurrentUserId.ToString());
+                }
             }
 
             return Ok(data);

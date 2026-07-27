@@ -18,6 +18,7 @@ namespace WebApp.DbContext
             EnsurePhase9Indexes();
             EnsureCreatorJourneyIndexes();
             EnsureServiceCatalogIndexes();
+            EnsureLeadsIndexes();
         }
 
         public MongoDbContext(IMongoDatabase database)
@@ -29,6 +30,7 @@ namespace WebApp.DbContext
             EnsurePhase9Indexes();
             EnsureCreatorJourneyIndexes();
             EnsureServiceCatalogIndexes();
+            EnsureLeadsIndexes();
         }
 
         // Smart Matchmaking outbox indexes: Status (consumer polling), CompanyId
@@ -285,6 +287,11 @@ namespace WebApp.DbContext
         public virtual IMongoCollection<ServicePackage> ServicePackages => _database.GetCollection<ServicePackage>("ServicePackages");
         public virtual IMongoCollection<ServiceFAQ> ServiceFAQs => _database.GetCollection<ServiceFAQ>("ServiceFAQs");
 
+        // Module 3 — Leads / client acquisition.
+        public virtual IMongoCollection<ClientBrief> ClientBriefs => _database.GetCollection<ClientBrief>("ClientBriefs");
+        public virtual IMongoCollection<ClientBriefInteraction> ClientBriefInteractions => _database.GetCollection<ClientBriefInteraction>("ClientBriefInteractions");
+        public virtual IMongoCollection<Proposal> Proposals => _database.GetCollection<Proposal>("Proposals");
+
         // Service-catalog lookup indexes: listings by owner, packages/FAQs by their
         // parent service. Best-effort + swallowed so context construction never blocks
         // or fails (unit tests mock the context; the getters are unset there → no-op).
@@ -308,6 +315,51 @@ namespace WebApp.DbContext
             catch
             {
                 // Best-effort; never block or fail context construction.
+            }
+        }
+
+        // No TTL index: expiry is a soft state transition performed by Hangfire.
+        private void EnsureLeadsIndexes()
+        {
+            try
+            {
+                ClientBriefs.Indexes.CreateMany(new[]
+                {
+                    new CreateIndexModel<ClientBrief>(
+                        Builders<ClientBrief>.IndexKeys.Ascending(x => x.Status).Ascending(x => x.ExpiresAt),
+                        new CreateIndexOptions { Background = true }),
+                    new CreateIndexModel<ClientBrief>(
+                        Builders<ClientBrief>.IndexKeys.Ascending(x => x.ServiceCategory).Descending(x => x.PublishedAt),
+                        new CreateIndexOptions { Background = true }),
+                    new CreateIndexModel<ClientBrief>(
+                        Builders<ClientBrief>.IndexKeys.Ascending(x => x.ClientId).Descending(x => x.CreatedAt),
+                        new CreateIndexOptions { Background = true }),
+                });
+                ClientBriefInteractions.Indexes.CreateMany(new[]
+                {
+                    new CreateIndexModel<ClientBriefInteraction>(
+                        Builders<ClientBriefInteraction>.IndexKeys.Ascending(x => x.ProviderId).Ascending(x => x.ClientBriefId),
+                        new CreateIndexOptions { Background = true, Unique = true }),
+                    new CreateIndexModel<ClientBriefInteraction>(
+                        Builders<ClientBriefInteraction>.IndexKeys.Ascending(x => x.ProviderId).Ascending(x => x.Saved).Descending(x => x.UpdatedAt),
+                        new CreateIndexOptions { Background = true }),
+                });
+                Proposals.Indexes.CreateMany(new[]
+                {
+                    new CreateIndexModel<Proposal>(
+                        Builders<Proposal>.IndexKeys.Ascending(x => x.ProviderId).Ascending(x => x.Status).Descending(x => x.UpdatedAt),
+                        new CreateIndexOptions { Background = true }),
+                    new CreateIndexModel<Proposal>(
+                        Builders<Proposal>.IndexKeys.Ascending(x => x.ClientId).Ascending(x => x.Status).Descending(x => x.UpdatedAt),
+                        new CreateIndexOptions { Background = true }),
+                    new CreateIndexModel<Proposal>(
+                        Builders<Proposal>.IndexKeys.Ascending(x => x.ClientBriefId).Ascending(x => x.ProviderId),
+                        new CreateIndexOptions { Background = true }),
+                });
+            }
+            catch
+            {
+                // Best-effort; never prevent context construction.
             }
         }
 
