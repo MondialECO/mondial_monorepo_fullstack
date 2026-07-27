@@ -267,6 +267,21 @@ export const menu: Record<UserRole, MenuSection[]> = {
           href: "/dashboard/serviceprovider/services",
           icon: LayoutGrid,
         },
+        {
+          label: "Leads & Proposals",
+          href: "/dashboard/serviceprovider/leads",
+          icon: Briefcase,
+        },
+        {
+          label: "Workroom",
+          href: "/dashboard/serviceprovider/workroom",
+          icon: FolderOpen,
+        },
+        {
+          label: "Earnings",
+          href: "/dashboard/serviceprovider/earnings",
+          icon: Wallet,
+        },
       ],
     },
   ],

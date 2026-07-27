@@ -84,4 +84,11 @@ public interface IServiceProviderService
     /// <summary>Grade a submitted attempt, record it (with cooldown), and recompute TrustScore.</summary>
     Task<ServiceProviderResult<SkillsTestResultResponse>> SubmitSkillsTestAsync(
         string userId, SubmitSkillsTestRequest request);
+
+    /// <summary>Module 3's narrow hook into the existing sole trust recalculation path.</summary>
+    Task UpdateResponseRateSignalAsync(string userId, double? responseRate);
+
+    /// <summary>Module 4's narrow hook into the same sole trust recalculation path.</summary>
+    Task UpdateWorkroomTrustSignalsAsync(string userId, double? clientSatisfaction,
+        double? onTimeDeliveryRate, double? repeatClientRate, int adverseDisputeCount);
 }

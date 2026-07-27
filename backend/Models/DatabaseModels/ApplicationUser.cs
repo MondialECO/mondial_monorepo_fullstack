@@ -289,8 +289,40 @@ namespace WebApp.Models.DatabaseModels
         public bool NewOrderAvailability { get; set; } = true;
         public bool ManualApprovalWhenCapacityLow { get; set; }
 
+        // ---- Module 4: bounded financial preferences (embedded by canon §1.3) ----
+        public ProviderFinancialSettings FinancialSettings { get; set; } = new();
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    }
+
+    public class ProviderFinancialSettings
+    {
+        public List<MaskedPayoutMethod> PayoutMethods { get; set; } = new();
+        public string? DefaultPayoutMethodId { get; set; }
+        public ProviderTaxSettings Tax { get; set; } = new();
+        public bool AccountOnHold { get; set; }
+        [BsonRepresentation(BsonType.Decimal128)]
+        public decimal MinimumPayoutAmount { get; set; } = 25m;
+    }
+
+    public class MaskedPayoutMethod
+    {
+        public string Id { get; set; } = Guid.NewGuid().ToString("N");
+        public PayoutRail Rail { get; set; }
+        public string DisplayName { get; set; } = "";
+        public string MaskedDescriptor { get; set; } = "";
+        public bool Verified { get; set; }
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    }
+
+    public class ProviderTaxSettings
+    {
+        public string LegalName { get; set; } = "";
+        public string CountryCode { get; set; } = "";
+        public string? TaxIdentifierMasked { get; set; }
+        public bool VatRegistered { get; set; }
+        public string? VatNumberMasked { get; set; }
     }
 
     // One reputation signal feeding TrustScore: a normalized 0–100 value and whether it

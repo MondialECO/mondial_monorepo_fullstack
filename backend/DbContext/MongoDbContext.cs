@@ -18,6 +18,8 @@ namespace WebApp.DbContext
             EnsurePhase9Indexes();
             EnsureCreatorJourneyIndexes();
             EnsureServiceCatalogIndexes();
+            EnsureLeadsIndexes();
+            EnsureWorkroomIndexes();
         }
 
         public MongoDbContext(IMongoDatabase database)
@@ -29,6 +31,8 @@ namespace WebApp.DbContext
             EnsurePhase9Indexes();
             EnsureCreatorJourneyIndexes();
             EnsureServiceCatalogIndexes();
+            EnsureLeadsIndexes();
+            EnsureWorkroomIndexes();
         }
 
         // Smart Matchmaking outbox indexes: Status (consumer polling), CompanyId
@@ -285,6 +289,30 @@ namespace WebApp.DbContext
         public virtual IMongoCollection<ServicePackage> ServicePackages => _database.GetCollection<ServicePackage>("ServicePackages");
         public virtual IMongoCollection<ServiceFAQ> ServiceFAQs => _database.GetCollection<ServiceFAQ>("ServiceFAQs");
 
+        // Module 3 — Leads / client acquisition.
+        public virtual IMongoCollection<ClientBrief> ClientBriefs => _database.GetCollection<ClientBrief>("ClientBriefs");
+        public virtual IMongoCollection<ClientBriefInteraction> ClientBriefInteractions => _database.GetCollection<ClientBriefInteraction>("ClientBriefInteractions");
+        public virtual IMongoCollection<Proposal> Proposals => _database.GetCollection<Proposal>("Proposals");
+
+        // Module 4 — Workroom & Earnings. Provider financial settings stay embedded
+        // on ServiceProviderProfile; all records below are genuinely unbounded.
+        public virtual IMongoCollection<WorkroomEngagement> WorkroomEngagements => _database.GetCollection<WorkroomEngagement>("WorkroomEngagements");
+        public virtual IMongoCollection<Contract> Contracts => _database.GetCollection<Contract>("Contracts");
+        public virtual IMongoCollection<WorkroomMilestone> WorkroomMilestones => _database.GetCollection<WorkroomMilestone>("WorkroomMilestones");
+        public virtual IMongoCollection<Deliverable> Deliverables => _database.GetCollection<Deliverable>("Deliverables");
+        public virtual IMongoCollection<RevisionRequest> RevisionRequests => _database.GetCollection<RevisionRequest>("RevisionRequests");
+        public virtual IMongoCollection<FinancialTransaction> FinancialTransactions => _database.GetCollection<FinancialTransaction>("FinancialTransactions");
+        public virtual IMongoCollection<Review> Reviews => _database.GetCollection<Review>("Reviews");
+        public virtual IMongoCollection<WorkroomTask> WorkroomTasks => _database.GetCollection<WorkroomTask>("WorkroomTasks");
+        public virtual IMongoCollection<ClientInputRequest> ClientInputRequests => _database.GetCollection<ClientInputRequest>("ClientInputRequests");
+        public virtual IMongoCollection<WorkroomFile> WorkroomFiles => _database.GetCollection<WorkroomFile>("WorkroomFiles");
+        public virtual IMongoCollection<PaymentOperation> PaymentOperations => _database.GetCollection<PaymentOperation>("PaymentOperations");
+        public virtual IMongoCollection<PayoutRequest> PayoutRequests => _database.GetCollection<PayoutRequest>("PayoutRequests");
+        public virtual IMongoCollection<Invoice> Invoices => _database.GetCollection<Invoice>("Invoices");
+        public virtual IMongoCollection<HourlyTimeEntry> HourlyTimeEntries => _database.GetCollection<HourlyTimeEntry>("HourlyTimeEntries");
+        public virtual IMongoCollection<WorkroomAuditEvent> WorkroomAuditEvents => _database.GetCollection<WorkroomAuditEvent>("WorkroomAuditEvents");
+        public virtual IMongoCollection<RepeatClientCoupon> RepeatClientCoupons => _database.GetCollection<RepeatClientCoupon>("RepeatClientCoupons");
+
         // Service-catalog lookup indexes: listings by owner, packages/FAQs by their
         // parent service. Best-effort + swallowed so context construction never blocks
         // or fails (unit tests mock the context; the getters are unset there → no-op).
@@ -308,6 +336,88 @@ namespace WebApp.DbContext
             catch
             {
                 // Best-effort; never block or fail context construction.
+            }
+        }
+
+        // No TTL index: expiry is a soft state transition performed by Hangfire.
+        private void EnsureLeadsIndexes()
+        {
+            try
+            {
+                ClientBriefs.Indexes.CreateMany(new[]
+                {
+                    new CreateIndexModel<ClientBrief>(
+                        Builders<ClientBrief>.IndexKeys.Ascending(x => x.Status).Ascending(x => x.ExpiresAt),
+                        new CreateIndexOptions { Background = true }),
+                    new CreateIndexModel<ClientBrief>(
+                        Builders<ClientBrief>.IndexKeys.Ascending(x => x.ServiceCategory).Descending(x => x.PublishedAt),
+                        new CreateIndexOptions { Background = true }),
+                    new CreateIndexModel<ClientBrief>(
+                        Builders<ClientBrief>.IndexKeys.Ascending(x => x.ClientId).Descending(x => x.CreatedAt),
+                        new CreateIndexOptions { Background = true }),
+                });
+                ClientBriefInteractions.Indexes.CreateMany(new[]
+                {
+                    new CreateIndexModel<ClientBriefInteraction>(
+                        Builders<ClientBriefInteraction>.IndexKeys.Ascending(x => x.ProviderId).Ascending(x => x.ClientBriefId),
+                        new CreateIndexOptions { Background = true, Unique = true }),
+                    new CreateIndexModel<ClientBriefInteraction>(
+                        Builders<ClientBriefInteraction>.IndexKeys.Ascending(x => x.ProviderId).Ascending(x => x.Saved).Descending(x => x.UpdatedAt),
+                        new CreateIndexOptions { Background = true }),
+                });
+                Proposals.Indexes.CreateMany(new[]
+                {
+                    new CreateIndexModel<Proposal>(
+                        Builders<Proposal>.IndexKeys.Ascending(x => x.ProviderId).Ascending(x => x.Status).Descending(x => x.UpdatedAt),
+                        new CreateIndexOptions { Background = true }),
+                    new CreateIndexModel<Proposal>(
+                        Builders<Proposal>.IndexKeys.Ascending(x => x.ClientId).Ascending(x => x.Status).Descending(x => x.UpdatedAt),
+                        new CreateIndexOptions { Background = true }),
+                    new CreateIndexModel<Proposal>(
+                        Builders<Proposal>.IndexKeys.Ascending(x => x.ClientBriefId).Ascending(x => x.ProviderId),
+                        new CreateIndexOptions { Background = true }),
+                });
+            }
+            catch
+            {
+                // Best-effort; never prevent context construction.
+            }
+        }
+
+        private void EnsureWorkroomIndexes()
+        {
+            try
+            {
+                WorkroomEngagements.Indexes.CreateMany(new[]
+                {
+                    new CreateIndexModel<WorkroomEngagement>(Builders<WorkroomEngagement>.IndexKeys.Ascending(x => x.ProposalId), new CreateIndexOptions { Background = true, Unique = true }),
+                    new CreateIndexModel<WorkroomEngagement>(Builders<WorkroomEngagement>.IndexKeys.Ascending(x => x.ProviderId).Ascending(x => x.EngagementStatus).Descending(x => x.UpdatedAt), new CreateIndexOptions { Background = true }),
+                    new CreateIndexModel<WorkroomEngagement>(Builders<WorkroomEngagement>.IndexKeys.Ascending(x => x.ClientId).Ascending(x => x.EngagementStatus).Descending(x => x.UpdatedAt), new CreateIndexOptions { Background = true }),
+                });
+                Contracts.Indexes.CreateOne(new CreateIndexModel<Contract>(Builders<Contract>.IndexKeys.Ascending(x => x.EngagementId), new CreateIndexOptions { Background = true, Unique = true }));
+                WorkroomMilestones.Indexes.CreateOne(new CreateIndexModel<WorkroomMilestone>(Builders<WorkroomMilestone>.IndexKeys.Ascending(x => x.EngagementId).Ascending(x => x.DisplayOrder), new CreateIndexOptions { Background = true }));
+                Deliverables.Indexes.CreateOne(new CreateIndexModel<Deliverable>(Builders<Deliverable>.IndexKeys.Ascending(x => x.MilestoneId).Ascending(x => x.SubmittedAt), new CreateIndexOptions { Background = true }));
+                RevisionRequests.Indexes.CreateOne(new CreateIndexModel<RevisionRequest>(Builders<RevisionRequest>.IndexKeys.Ascending(x => x.MilestoneId).Ascending(x => x.RevisionRequestStatus), new CreateIndexOptions { Background = true }));
+                FinancialTransactions.Indexes.CreateMany(new[]
+                {
+                    new CreateIndexModel<FinancialTransaction>(Builders<FinancialTransaction>.IndexKeys.Ascending(x => x.ProviderId).Descending(x => x.CreatedAt), new CreateIndexOptions { Background = true }),
+                    new CreateIndexModel<FinancialTransaction>(Builders<FinancialTransaction>.IndexKeys.Ascending(x => x.IdempotencyKey), new CreateIndexOptions { Background = true, Unique = true }),
+                });
+                Reviews.Indexes.CreateOne(new CreateIndexModel<Review>(Builders<Review>.IndexKeys.Ascending(x => x.EngagementId), new CreateIndexOptions { Background = true, Unique = true }));
+                PaymentOperations.Indexes.CreateOne(new CreateIndexModel<PaymentOperation>(Builders<PaymentOperation>.IndexKeys.Ascending(x => x.IdempotencyKey), new CreateIndexOptions { Background = true, Unique = true }));
+                PayoutRequests.Indexes.CreateOne(new CreateIndexModel<PayoutRequest>(Builders<PayoutRequest>.IndexKeys.Ascending(x => x.ProviderId).Descending(x => x.CreatedAt), new CreateIndexOptions { Background = true }));
+                Invoices.Indexes.CreateMany(new[]
+                {
+                    new CreateIndexModel<Invoice>(Builders<Invoice>.IndexKeys.Ascending(x => x.InvoiceNumber), new CreateIndexOptions { Background = true, Unique = true }),
+                    new CreateIndexModel<Invoice>(Builders<Invoice>.IndexKeys.Ascending(x => x.ProviderId).Descending(x => x.CreatedAt), new CreateIndexOptions { Background = true }),
+                });
+                HourlyTimeEntries.Indexes.CreateOne(new CreateIndexModel<HourlyTimeEntry>(Builders<HourlyTimeEntry>.IndexKeys.Ascending(x => x.EngagementId).Descending(x => x.StartedAt), new CreateIndexOptions { Background = true }));
+                WorkroomAuditEvents.Indexes.CreateOne(new CreateIndexModel<WorkroomAuditEvent>(Builders<WorkroomAuditEvent>.IndexKeys.Ascending(x => x.EntityId).Descending(x => x.Timestamp), new CreateIndexOptions { Background = true }));
+                RepeatClientCoupons.Indexes.CreateOne(new CreateIndexModel<RepeatClientCoupon>(Builders<RepeatClientCoupon>.IndexKeys.Ascending(x => x.ProviderId).Ascending(x => x.ClientId).Ascending(x => x.Status), new CreateIndexOptions { Background = true }));
+            }
+            catch
+            {
+                // Best-effort startup index creation, matching Modules 2 and 3.
             }
         }
 

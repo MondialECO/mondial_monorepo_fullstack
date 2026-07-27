@@ -26,6 +26,14 @@ namespace WebApp.Configuration
 
             Require("MongoDbSettings:ConnectionString");
             Require("MongoDbSettings:DatabaseName");
+
+            var transactionsSetting = cfg["Mongo:TransactionsEnabled"];
+            if (!bool.TryParse(transactionsSetting, out var transactionsEnabled) || !transactionsEnabled)
+            {
+                errors.Add("  - 'Mongo:TransactionsEnabled' must be explicitly set to 'true' " +
+                           "because Module 4 requires replica-set transactions.");
+            }
+
             Require("JwtSettings:Issuer");
             Require("JwtSettings:Audience");
             Require("EmailSettings:SmtpServer");

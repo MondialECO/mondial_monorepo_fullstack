@@ -20,6 +20,11 @@ namespace WebApp.Models.DatabaseModels
         [BsonElement("MessageType")]
         public string MessageType { get; set; } = "Text"; // Text | Image | File
 
+        // Optional Module-3 attribution. Only messages explicitly linked to a brief
+        // can count as a lead response; unrelated conversation traffic never does.
+        [BsonElement("ClientBriefId")]
+        public string? ClientBriefId { get; set; }
+
         [BsonElement("IsRead")]
         public bool IsRead { get; set; } = false;
 

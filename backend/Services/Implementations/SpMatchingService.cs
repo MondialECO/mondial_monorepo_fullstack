@@ -24,28 +24,29 @@ namespace WebApp.Services.Implementations
 
             return candidates
                 .Where(u =>
-                    u.ServiceProviderProfile.VerificationStatus == ServiceProviderVerificationStatus.Verified &&
-                    u.ServiceProviderProfile.ServiceCategories.Contains(specialty))
+                    IsEligibleCandidate(u, specialty))
                 .Select(u => new SpMatch { User = u, ScoreValue = Score(u, projectSector) })
                 .OrderByDescending(m => m.ScoreValue)
                 .Take(take)
                 .ToList();
         }
 
-        // score = sectorOverlap×0.35 + rating×0.25 + responseRate×0.20 + tierNorm×0.20
+        // score = sectorOverlap * 0.35 + rating * 0.25 + responseRate * 0.20 + tierNorm * 0.20
         public double Score(ApplicationUser u, string projectSector)
         {
             var sp = u.ServiceProviderProfile;
 
             double tierNorm = u.Tier_level >= 3 ? 1.0 : u.Tier_level == 2 ? 0.7 : 0.4;
 
-            // rating: TrustScore reputation seed, normalized defensively (0–5 → /5, else /100).
+            // rating: TrustScore reputation seed, normalized defensively (0-5 -> /5, else /100).
             double rawTrust = sp.TrustScore > 0 ? sp.TrustScore : u.Trust_score;
             double ratingNorm = rawTrust <= 0 ? 0.6 : rawTrust <= 5 ? rawTrust / 5.0 : Math.Min(rawTrust / 100.0, 1.0);
 
-            // responseRate: no SP-analytics field yet — placeholder constant.
-            // TODO: swap to a real SP response-rate metric when tracked.
-            double responseRate = 0.85;
+            // ResponseRateService persists the provider's derived 48-hour response signal here.
+            var responseSignal = sp.TrustBreakdown.ResponseRate;
+            double responseRate = responseSignal.HasData
+                ? Math.Clamp(responseSignal.Value / 100.0, 0, 1)
+                : 0;
 
             double sectorOverlap;
             if (string.IsNullOrWhiteSpace(projectSector)) sectorOverlap = 0.7;
@@ -56,6 +57,14 @@ namespace WebApp.Services.Implementations
             else sectorOverlap = 0.4;
 
             return sectorOverlap * 0.35 + ratingNorm * 0.25 + responseRate * 0.20 + tierNorm * 0.20;
+        }
+
+        public static bool IsEligibleCandidate(ApplicationUser u, ServiceCategory specialty)
+        {
+            var p = u.ServiceProviderProfile;
+            return p is not null && p.VerificationStatus == ServiceProviderVerificationStatus.Verified &&
+                p.ServiceCategories.Contains(specialty) && p.NewOrderAvailability &&
+                (p.MaximumConcurrentOrders <= 0 || p.CurrentActiveOrders < p.MaximumConcurrentOrders);
         }
     }
 }
