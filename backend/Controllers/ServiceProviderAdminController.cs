@@ -8,13 +8,14 @@ using WebApp.Services.Interface;
 namespace WebApp.Controllers;
 
 /// <summary>
-/// D-1 Phase 5 — admin moderation of Service Provider Stage-1 verification.
-/// Admin-only; approves or rejects a provider whose profile is awaiting review
-/// (UnderReview). The admin identity comes from the principal, never the body.
+/// Admin moderation of Service Provider verification. Normal first submissions
+/// auto-verify; this surface approves remediation resubmissions in UnderReview
+/// or rejects an UnderReview/already-Verified provider. The admin identity comes
+/// from the principal, never the body.
 /// All decision logic lives in <see cref="IServiceProviderService"/>; this
 /// controller maps outcomes onto the shared <see cref="ApiResponse"/> envelope.
-/// Mirrors the KYC approve/reject pattern in VarificationController. No
-/// marketplace, discovery, matching, or reputation coupling.
+/// This is separate from the Universal KYC gate. No marketplace, discovery,
+/// matching, or reputation coupling is introduced here.
 /// </summary>
 [ApiController]
 [Route("api/admin/service-provider")]

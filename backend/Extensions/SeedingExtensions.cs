@@ -878,9 +878,10 @@ public static class SeedingExtensions
             name: "Demo Service Provider",
             role: "ServiceProvider");
 
-        // P1-3: seed provider verification state so the admin verification
-        // queue (GetPendingVerificationsAsync filters on UnderReview), the
-        // public provider profile, and the trust score are all demonstrable.
+        // P1-3: seed an explicit moderation/re-review example so the admin
+        // queue (GetPendingVerificationsAsync filters on UnderReview), public
+        // provider profile, and trust score are all demonstrable. Normal first
+        // submissions now auto-verify and do not populate this queue.
         // Idempotent: only (re)seed while the profile is absent or still
         // Pending; an already-UnderReview/Verified/Rejected profile is left as
         // the admin (or a prior run) set it.

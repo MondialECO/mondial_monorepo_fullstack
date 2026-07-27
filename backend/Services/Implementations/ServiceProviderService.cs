@@ -11,8 +11,9 @@ namespace WebApp.Services.Implementations;
 /// ServiceProviderProfile via UserManager (no separate collection, no repository).
 /// Owner-scoped: the userId is the authenticated principal, never a request field.
 /// Holds all Stage-1 decision logic (normalization, portfolio indexing,
-/// completeness gate, Pending→UnderReview transition); TrustScore scoring and
-/// admin approve/reject are intentionally out of scope (Phase 5).
+/// completeness gate and verification state transitions. A complete first
+/// submission is verified immediately; UnderReview is reserved for moderation
+/// after an admin rejection.
 /// </summary>
 public class ServiceProviderService : IServiceProviderService
 {
@@ -141,23 +142,39 @@ public class ServiceProviderService : IServiceProviderService
 
         var profile = EnsureProfile(user);
 
-        // Duplicate-submission guard: only a Pending or previously-Rejected
-        // profile can be (re)submitted (Rejected→UnderReview resubmission is
-        // allowed per the D-1 locked decision). UnderReview/Verified cannot.
+        // A first submission auto-verifies. A previously-Rejected provider may
+        // resubmit only into the moderation queue so an admin suspension cannot
+        // be silently undone. UnderReview/Verified cannot submit again.
         if (profile.VerificationStatus is not (ServiceProviderVerificationStatus.Pending
             or ServiceProviderVerificationStatus.Rejected))
             return ServiceProviderResult<ServiceProviderVerificationResponse>.Conflict(
                 "Verification has already been submitted.");
 
-        // Profile-completeness gate (enforced against the persisted profile, which
-        // a stateless request validator cannot see).
-        if (!HasAtLeastOneSkill(profile) || profile.ServiceCategories.Count == 0 || profile.PortfolioItems.Count == 0)
+        // Enforce the full Stage-2 completeness predicate against the persisted
+        // profile; a stateless request validator cannot inspect these fields.
+        if (!IsProfileComplete(profile))
             return ServiceProviderResult<ServiceProviderVerificationResponse>.Conflict(
-                "Add at least one skill, one category, and one portfolio item before submitting for verification.");
+                "Complete every required profile field before submitting for verification.");
 
-        profile.VerificationStatus = ServiceProviderVerificationStatus.UnderReview;
-        profile.VerificationSubmittedAt = DateTime.UtcNow;
-        profile.RejectionReason = null; // clear any prior rejection on resubmission
+        var now = DateTime.UtcNow;
+        var isInitialSubmission = profile.VerificationStatus == ServiceProviderVerificationStatus.Pending;
+
+        profile.VerificationSubmittedAt = now;
+        profile.RejectionReason = null;
+
+        if (isInitialSubmission)
+        {
+            profile.VerificationStatus = ServiceProviderVerificationStatus.Verified;
+            profile.VerifiedAt = now;
+            RecalculateTrustScore(profile);
+        }
+        else
+        {
+            // Rejected→UnderReview is intentionally the sole moderation path.
+            profile.VerificationStatus = ServiceProviderVerificationStatus.UnderReview;
+            profile.VerifiedAt = null;
+        }
+
         Touch(profile);
 
         await _userManager.UpdateAsync(user);
@@ -167,10 +184,12 @@ public class ServiceProviderService : IServiceProviderService
             skills = profile.Skills.Count,
             categories = profile.ServiceCategories.Count,
             portfolioCount = profile.PortfolioItems.Count,
+            resultingStatus = profile.VerificationStatus.ToString(),
         });
 
         return ServiceProviderResult<ServiceProviderVerificationResponse>.Ok(
-            profile.ToVerificationResponse(), "Submitted for verification.");
+            profile.ToVerificationResponse(),
+            isInitialSubmission ? "Provider profile verified." : "Resubmitted for admin review.");
     }
 
     public Task<ServiceProviderResult<List<PendingProviderResponse>>> GetPendingVerificationsAsync()
@@ -244,9 +263,10 @@ public class ServiceProviderService : IServiceProviderService
             return ServiceProviderResult<ServiceProviderVerificationResponse>.NotFound("Service provider profile not found.");
 
         var profile = EnsureProfile(user);
-        if (profile.VerificationStatus != ServiceProviderVerificationStatus.UnderReview)
+        if (profile.VerificationStatus is not (ServiceProviderVerificationStatus.UnderReview
+            or ServiceProviderVerificationStatus.Verified))
             return ServiceProviderResult<ServiceProviderVerificationResponse>.Conflict(
-                "Verification is not awaiting review.");
+                "Provider verification is not eligible for rejection.");
 
         profile.VerificationStatus = ServiceProviderVerificationStatus.Rejected;
         profile.RejectionReason = reason;
