@@ -18,7 +18,7 @@ Every feature carries a STATUS tag:
 - **PLANNED** — specced here, not built yet
 - **FORBIDDEN** — must never be built (violates a core rule)
 
-Section map: **§1** architecture · **§2** AI (none) · **§3** design system · **§4** database · **§5** Module 1 Profile & Trust (LIVE) · **§6** Module 2 Service Catalog (LIVE) · **§7** Module 3 Leads · **§8** Module 4 Workroom & Earnings · **§9** Module 5 Analytics & Growth · **§10** cross-cutting rules · **§11** SP journey (product experience) · **§12** notifications · **§13** audit log · **§14** validation/error · **§15** security/trust · **§16** roles & permissions · **§17** acceptance criteria · Appendix + Changelog.
+Section map: **§1** architecture · **§2** AI (none) · **§3** design system · **§4** database · **§5** Module 1 Profile & Trust (LIVE) · **§6** Module 2 Service Catalog (LIVE) · **§7** Module 3 Leads (LIVE) · **§8** Module 4 Workroom & Earnings · **§9** Module 5 Analytics & Growth · **§10** cross-cutting rules · **§11** SP journey (product experience) · **§12** notifications · **§13** audit log · **§14** validation/error · **§15** security/trust · **§16** roles & permissions · **§17** acceptance criteria · Appendix + Changelog.
 
 ---
 
@@ -52,7 +52,7 @@ A verified SP sees all five at once. The order is **build order** (each produces
 
 ### 1.4 Commission — flat 12%, Workroom layer, tier-independent
 
-Commission is a **flat 12% platform rate, Fiverr-style**, applied **once, at the Workroom & Earnings escrow-release layer** (§8) on **every completed transaction**. It is **completely independent of `Tier_level` and `TrustScore`** — no sliding scale, discount, or surcharge by tier or reputation. The **12%** is a single §8 config value (one source of truth), never hardcoded per call site. **Not implemented yet** (Module 4 is unbuilt) — the number is locked here for when it is.
+Commission is a **flat 12% platform rate, Fiverr-style**, applied **once, at the Workroom & Earnings escrow-release layer** (§8) on **every completed transaction**. It is **completely independent of `Tier_level` and `TrustScore`** — no sliding scale, discount, or surcharge by tier or reputation. The source of truth is now **LIVE** as `PlatformCommerceConstants.CommissionRate = 0.12m`; Module 3 uses it for proposal earnings previews. Module 4 is still unbuilt and must consume this same constant when it computes commission at release — never redefine it.
 
 > **FORBIDDEN:** deriving commission from `Tier_level`, `TrustScore`, or any reputation/ranking input.
 
@@ -72,7 +72,8 @@ Ranks `Tier_level >= 2` verified providers in the requested `ServiceCategory`:
 
 - **`rating`** = `sp.TrustScore > 0 ? sp.TrustScore : u.Trust_score`, normalized (§1.6).
 - **`tierNorm`** (`SpMatchingService.cs:40`) = `Tier_level >= 3 ? 1.0 : == 2 ? 0.7 : 0.4`.
-- **`responseRate`** — **STUB:** hardcoded `0.85` (`SpMatchingService.cs:48`, `TODO`). Retired by Leads (§7), not before.
+- **`responseRate`** — **LIVE:** `ResponseRateService` derives the percentage of surfaced briefs answered within 48 hours and persists it to `ServiceProviderProfile.TrustBreakdown.ResponseRate`; `SpMatchingService.Score` reads that signal. The former hardcoded `0.85`/`TODO` is absent from `SpMatchingService.cs` (re-verified at Module-3 ship).
+- **Availability/capacity** is a **hard candidate pre-filter** (`IsEligibleCandidate`), not another formula term: unavailable or at-capacity providers are excluded before scoring.
 
 It owns **no collection** — it queries `ApplicationUsers` directly. Leads (§7) reuses this exact formula as the "Brief Match Score"; it must not spawn a parallel scoring engine.
 
@@ -128,7 +129,7 @@ SP UI uses the existing design system only — light theme, single blue accent, 
 
 ## 4. Database — what's real vs. what's planned
 
-**Verified reality (2026-07-27):** *all* SP data today lives **embedded in the single `ApplicationUsers` collection**. **No SP-specific top-level collection exists yet** — confirmed by grep: no `ServiceListing` / `ClientBrief` / `WorkroomEngagement` model, no `MongoDbContext` registration.
+**Verified reality (2026-07-27):** the bounded provider profile/trust record remains embedded in `ApplicationUsers`; Modules 2 and 3 now also own the top-level collections listed below. Module 4's `WorkroomEngagement` and related execution/financial collections do not exist yet.
 
 ### 4.1 `ApplicationUsers` (existing top-level collection) — SP-relevant contents
 
@@ -171,12 +172,14 @@ Authoritative vocabulary for the whole SP domain; every module reuses these, non
 - **`ServicePackages`** (`ServicePackage`) — Module 2, §6 (LIVE). Per-service Basic/Standard/Premium/Custom packages, keyed by `ServiceId`; **add-ons + requirements template embedded** as bounded arrays. Real field list: §6.0.1.
 - **`ServiceFAQs`** (`ServiceFAQ`) — Module 2, §6 (LIVE). Per-service/package FAQ entries (nullable `PackageId`).
 - Indexes for the three are established best-effort via **`EnsureServiceCatalogIndexes()`** (ServiceListings by `ProviderId`; ServicePackages/ServiceFAQs by `ServiceId`), called from both `MongoDbContext` constructors.
+- **`ClientBriefs`** (`ClientBrief`) — Module 3, §7 (LIVE, `d419ed1`). Client-authored acquisition briefs; real field list: §7.0.1.
+- **`ClientBriefInteractions`** (`ClientBriefInteraction`) — Module 3, §7 (LIVE). Provider-relative viewed/saved/dismissed state plus the response-window anchor; unique by (`ProviderId`, `ClientBriefId`).
+- **`Proposals`** (`Proposal`) — Module 3, §7 (LIVE). Negotiated proposals and published-package purchase snapshots; revision history is embedded.
+- Indexes for the three Module-3 collections are established best-effort via **`EnsureLeadsIndexes()`**. There is deliberately **no TTL index**; `ClientBriefExpirationJob` performs soft lifecycle transitions.
 
 **Naming convention (verified against `MongoDbContext.cs`):** the **entity class is singular** PascalCase; the **collection string is its plural** (`ApplicationUser` → `"ApplicationUsers"`, `DealExecution` → `"DealExecutions"`, `Conversation` → `"Conversations"`). Where a class carries a `Record`/`Model`/`Entity` suffix, the collection drops it and pluralizes the core noun (`EntrepreneurProfileRecord` → `"EntrepreneurProfiles"`, `ContactModel` → `"Contacts"`). A few **legacy** classes are themselves plural (`BusinessIdeas`, `Investments`, `Transactions`, `Companies`) — **do not copy that**; new SP models follow singular-class → plural-collection.
 
-**PLANNED (not built — do not describe as existing).** Model class → collection string; all top-level, all following the §4.2 convention. *(Module 2's `ServiceListings`/`ServicePackages`/`ServiceFAQs` moved to EXISTS above.)*
-- **`ClientBrief` → `"ClientBriefs"`** (Module 3, §7) — client-authored requests/briefs (the source's *Opportunity*, renamed), status-modelled.
-- **`Proposal` → `"Proposals"`** (Module 3, §7) — an SP's offer against a ClientBrief, or the auto-accepted snapshot for a package purchase (§6/§7). Versioned. **Field set superseded** by the fuller entity in §7 (adds source/acceptance/delivery/requirements/add-on fields; `opportunityId` → `clientBriefId`).
+**PLANNED (not built — do not describe as existing).** Model class → collection string; all top-level, all following the §4.2 convention. *(Modules 2–3 moved their collections to EXISTS above.)*
 - **`WorkroomEngagement` → `"WorkroomEngagements"`** (Module 4, §8) — the delivery-workspace / engagement record (the source doc's *Project*, renamed). References a `Contract`.
 - **`Contract` → `"Contracts"`** (Module 4, §8) — the signed agreement the engagement references (the source's `contractId`, which it implies but never defines). Kept **separate** from the engagement (mapping note below).
 - **`WorkroomMilestone` → `"WorkroomMilestones"`** (Module 4, §8) — funded units of work under an engagement; carries `includedRevisionCount` / `usedRevisionCount` + escrow status. **Renamed from `Milestone`** to avoid a class-name collision with the existing `Milestone` in `BusinessIdeas.cs:119` (same `WebApp.Models.DatabaseModels` namespace). FK fields `milestoneId` / `currentMilestoneId` reference this entity.
@@ -210,7 +213,7 @@ Extends the embedded `ServiceProviderProfile` into a trust/reputation layer. Ren
 |---|---|---|---|
 | Client Satisfaction | 40 | Workroom & Earnings (§8) | **PLANNED** (no producer yet) |
 | On-time Delivery | 25 | Workroom & Earnings (§8) | **PLANNED** |
-| Response Rate | 15 | Leads (§7) | **PLANNED** |
+| Response Rate | 15 | Leads (§7) | **LIVE** (`ResponseRateService`) |
 | Repeat-Client Rate | 10 | Workroom & Earnings (§8) | **PLANNED** |
 | Skill Test | 10 | §5.3 | **LIVE** |
 
@@ -254,7 +257,7 @@ Absorbs the "Service Package / Delivery Time / FAQ / Revision" source doc in ful
 - **Collections `ServiceListings` / `ServicePackages` / `ServiceFAQs`** are registered in `MongoDbContext.cs` (indexes via `EnsureServiceCatalogIndexes()`) — see §4.3.
 - **Reusable calculators** `RevisionCalculator`, `DeliveryScheduleCalculator`, `PricingGuidance` are **built and unit-tested but NOT wired into any live flow** — Module 4 (Workroom & Earnings) consumes them when built; it must not reimplement them.
 - **`CurrentActiveOrders`** has a field + the capacity check (`ToCapacityResponse`), but **no live writer** — only Module 4 increments it (today it stays 0; the gate is unit-testable with a seeded value).
-- **`Impressions` / `Clicks`** fields + internal `RecordImpressionAsync` / `RecordClickAsync` exist, but there is **no live call-site** — the increment triggers (a client browsing a listing) are Module 3.
+- **`Impressions` / `Clicks`** fields + internal `RecordImpressionAsync` / `RecordClickAsync` exist, but there is **still no live call-site** — Module 3 shipped the provider Leads workspace and package-purchase API, not a client catalog-browsing surface. The counters remain unwritten until that client surface is wired.
 - **Sidebar:** a "Services" nav item (`menu.ts`) → **`/dashboard/serviceprovider/services`**.
 - **Confirmed-decision fixes in this build:** `PricingModel` added as a **nullable** field on `ServicePackage`; `CancellationPolicy` is a **fixed `CancellationPolicyType` enum** (3 platform options: `FlexibleFullRefundBeforeStart` / `PartialRefundAfterDeliveryStart` / `NoRefundAfterDeliveryStart`) — **not** a custom rule engine.
 
@@ -324,70 +327,67 @@ Entity `ServiceFAQ` (above). **Visibility:** All Packages / Basic Only / Standar
 
 ---
 
-## 7. Module 3 — Leads (Client Acquisition) — **PLANNED**
+## 7. Module 3 — Leads (Client Acquisition) — **LIVE**
 
-**Purpose.** The provider-facing side of client acquisition: a lead inbox of briefs, brief detail, a proposal workspace, and a proposal pipeline. This is where the **Upwork-style negotiated path** lives; the Fiverr-style Catalog direct-buy path (§6) converges here via an auto-accepted `Proposal`. It is also where the **real response-rate metric** is built (retiring the §1.7 `0.85` stub). Absorbs the source doc's §6 "Client Acquisition" verbatim, renamed per §4.3.
+**Commits:** `d419ed1` (backend) / `4df8122` (frontend), on `dev-hafiz` (both verified present).
+**Verification:** `dotnet build` **0 errors / 0 warnings**; full backend suite **519 passed / 0 failed / 57 skipped**; Module 3's **19** targeted tests pass; `npx tsc --noEmit` clean.
 
-**Storage (new top-level collections, §4.3):**
-- **`ClientBrief` → `"ClientBriefs"`** (source's *Opportunity*): `clientId, title, description, category, requiredSkills, budgetMinimum, budgetMaximum, pricingType, expectedDuration, location, visibility, source, publishedAt, expiresAt, status`.
-- **`Proposal` → `"Proposals"`** (superseded/merged entity, source §19; `opportunityId` → `clientBriefId`): `proposalId, clientBriefId, serviceId, packageId, providerId, clientId, proposalSource, acceptanceMode, title, coverMessage, proposedPrice, currency, pricingType, deliveryTimeValue, deliveryTimeUnit, deliveryDayType, deliveryStartRule, includedRevisionCount, unlimitedRevisions, revisionRequestWindowDays, deliverables, milestonePlan, selectedAddOns, requirementsStatus, attachments, submittedAt, expiresAt, acceptedAt, acceptedBy, acceptanceTrigger, escrowStatus, conversionStatus, status, version`. **No `commissionRate` field** — commission is the flat 12% snapshot (§7 acceptance block, §1.4). **No `requirementsTemplateId`** — the template is embedded on `ServicePackage` (§6); the Proposal reaches it via `packageId`, and the client's answers are the Module-3 `requirementsSubmission` tracked by `requirementsStatus`.
+**Purpose.** The provider-facing acquisition surface: matched opportunity inbox, opportunity detail, saved/dismissed state, proposal composer/pipeline, published-package purchase convergence, and the real response-rate signal. Backend entity/collection naming remains `ClientBrief` / `"ClientBriefs"`; provider-facing copy deliberately says **Opportunity/Opportunities**.
 
-> **Naming note (deliberate dual-naming — do not "fix"):** the backend entity/collection is `ClientBrief` / `"ClientBriefs"`, but **user-facing UI copy intentionally keeps the friendlier term "Opportunity/Opportunities"** (from the Stitch/source design — e.g. "Opportunity Details", "No New Client Opportunities"). This is a deliberate UX-naming choice, **not** drift — never "correct" user-visible text to say `ClientBrief`, and never rename the entity to `Opportunity`.
+### 7.0 What's live vs. deferred (verified against code)
 
-**Sections (source §6):** Lead Inbox ("Leads & Briefs" — new / direct-invite / saved / previously-viewed / dismissed / expiring); Brief Detail ("Opportunity Details" — client identity + verification, brief, skills, budget, timeline, attachments, client activity, deadline, saved status); Proposal Workspace ("Create Proposal" — title, cover message, price, delivery duration, deliverables, revisions, milestones, attachments, expiration, **earnings preview**); Proposal Pipeline (Draft / Submitted / Viewed / Changes Requested / Client Reviewing / Accepted / Declined / Withdrawn / Expired).
+- **LIVE:** three top-level MongoDB collections (`ClientBriefs`, `ClientBriefInteractions`, `Proposals`), best-effort indexes, actor-scoped `/api/leads` endpoints, the provider `/dashboard/serviceprovider/leads` workspace, proposal state validation/version history, notifications, package purchase/manual fallback, soft expiry, matching, and response-rate persistence.
+- **LIVE scope boundary:** Module 3 ends at `Proposal.Status = Accepted` with `ConversionStatus = AwaitingModule4`. It creates **no** `WorkroomEngagement`, `Contract`, or `WorkroomMilestone`; it starts no delivery clock. Module 4 owns conversion and must perform the future `Accepted → ConvertedToProject` transition.
+- **LIVE but backend-only/client-side boundary:** client brief create/publish/close, client proposal review/change/accept/decline, and package purchase endpoints exist. This provider module does not add a client dashboard/checkout UI.
+- **PARTIAL:** proposal revision and client changes-request are live in the backend, including `PreviousVersions`, but the provider workspace has no revise-editor action. Milestone-plan and attachment fields are accepted by the API but not exposed by the current proposal form.
+- **DEFERRED/unwired vocabulary:** `PlatformAdminResolution`, `CustomOffer`, `PackageAddOn`, and `ChangeRequest` exist in enums/models, but there is no admin-resolution endpoint and no complete custom-offer/package-add-on/change-request producer flow. A standalone custom offer cannot currently pass submission validation without an open `ClientBrief`.
+- **DEFERRED integration:** payment-method verification, escrow authorisation, compliance hold, and final-summary confirmation are authoritative request flags validated by Module 3; no payment gateway, escrow ledger, contract, audit-log writer, or Module-4 conversion runs here.
+- **Known filter drift:** API filters are category, skill, budget bounds, duration, location, remote flag, source, posted-after, deadline-before, and saved-only. The planned client-verification/payment-verification filters are not implemented. UI exposes text search, saved tab, and all five sorts; advanced API filters do not yet have controls.
 
-**ClientBrief status model:** `Draft, Published, Open, Saved, Proposal Submitted, Closed, Expired, Cancelled`.
-Rules: only **Open** accepts proposals; **Expired** blocks new proposals; **Saved** briefs persist without submission; a client **Closing** a brief freezes existing proposals **read-only**; direct invitations may go to multiple SPs unless marked **exclusive**.
-**Expiry bounds:** `expiresAt` is **client-set** (source design). If the client specifies none, **default to 72 hours from publish**; regardless of client input, **cap the maximum at 30 days**. A TTL index on `expiresAt` auto-expires briefs to `Expired`.
+### 7.0.1 As-built entities (real fields; spec drift called out)
 
-**Proposal status model:** `Draft, Submitted, Viewed, Changes Requested, Revised, Client Reviewing, Accepted, Declined, Withdrawn, Expired, Converted to Project` (Converted = `WorkroomEngagement` created, §8).
-Allowed transitions: Draft→Submitted; Submitted→Viewed; Submitted→Withdrawn; Viewed→Changes Requested; Viewed→Client Reviewing; Changes Requested→Revised; Revised→Client Reviewing; Client Reviewing→Accepted; Client Reviewing→Declined; Accepted→Converted to Project; Submitted→Expired.
-Restricted: an **Accepted** proposal can't be withdrawn; a **Converted** proposal can't be edited; a **Declined** proposal requires a **new version** to resubmit; a **Submitted** proposal's price can't silently change; a **Revised** proposal must preserve the previous version.
+All three PKs are **`Id`** (`[BsonId]` ObjectId), not the spec's `clientBriefId`/`proposalId`. `ClientBrief.ServiceCategory` is the real category property.
 
-**Proposal business logic (source §6):**
-- **Required before submission:** title, cover message, price, delivery duration, ≥1 deliverable, revision policy, expiration, active provider account, provider eligible for paid work.
-- **Price validation:** price > 0; currency must match the brief's currency; a price outside the budget range shows a **warning, not a blocking error**; **commission preview shown before submit**.
-- **Commission preview (flat 12%, §1.4):** `Commission = Proposed Price × 12%`; `Net = Proposed Price − Commission`. Example: Proposed Price **$2,150.00** → Commission **$258.00** → Net **$1,892.00**. *(Source example used 8%; transcribed to 12%.)*
-- **Revision logic:** revision count ≥ 0; "Unlimited" optional but requires explicit confirmation; "Changes Requested" does **not** auto-edit the proposal — the provider manually reviews and submits a revised version.
-- **Expiration:** must be a future date; expired proposals can't be accepted; the provider can duplicate an expired proposal into a new one.
+- **`ClientBrief` → `"ClientBriefs"`:** `Id, ClientId, Title, Description, ServiceCategory, RequiredSkills[], Industries[], BudgetMinimum, BudgetMaximum, Currency, PricingType, ExpectedDuration, Location, RemoteAllowed, Visibility, Source, InvitedProviderIds[], InvitationDeliveries[], ExclusiveInvitation, PublishedAt, ExpiresAt, Status, CreatedAt, UpdatedAt`.
+- Embedded **`ClientBriefInvitationDelivery`**: `ProviderId, DeliveredAt`. It records the persisted notification receipt time for that provider.
+- **`ClientBriefInteraction` → `"ClientBriefInteractions"`:** `Id, ProviderId, ClientBriefId, Viewed, ViewedAt, Saved, Dismissed, ExpiryNotificationSentAt, CreatedAt, UpdatedAt`. This is a separate unbounded provider×brief collection, not a shared brief status. (`ProviderId`, `ClientBriefId`) is unique.
+- **`Proposal` → `"Proposals"`:** `Id, ClientBriefId, ServiceId, PackageId, ProviderId, ClientId, ProposalSource, AcceptanceMode, Title, CoverMessage, ProposedPrice, Currency, PricingType, DeliveryTimeValue, DeliveryTimeUnit, DeliveryDayType, DeliveryStartRule, IncludedRevisionCount, UnlimitedRevisions, RevisionRequestWindowDays, Deliverables[], MilestonePlan[], SelectedAddOns[], RequirementsStatus, RequirementsSubmission[], Attachments[], SubmittedAt, ExpiresAt, AcceptedAt, AcceptedBy, AcceptanceTrigger, EscrowStatus, ConversionStatus, Status, Version, PreviousVersions[], PurchaseSnapshot, CreatedAt, UpdatedAt`.
+- Embedded **`ProposalRequirementAnswer`**: `TemplateFieldId, FieldType, Value, Attachment, AnsweredAt`. Embedded **`ProposalMilestonePlanItem`**: `Title, Description, Amount, DeliveryTimeValue, DeliveryTimeUnit, DisplayOrder` — a commercial proposal plan only, **not** a Module-4 milestone entity. Embedded **`SelectedAddOnSnapshot`**: `Name, Price, DeliveryTimeAdjustmentDays`.
+- Embedded **`ProposalVersionSnapshot`**: `Version, Title, CoverMessage, ProposedPrice, Currency, PricingType, DeliveryTimeValue, DeliveryTimeUnit, DeliveryDayType, DeliveryStartRule, IncludedRevisionCount, UnlimitedRevisions, RevisionRequestWindowDays, Deliverables[], MilestonePlan[], Attachments[], ExpiresAt, SupersededAt`.
+- Embedded immutable **`PurchaseSnapshot`**: `ServiceId, ServiceTitle, ServiceCategory, PackageId, PackageTitle, PackagePrice, SelectedAddOns[], FinalPrice, Currency, DeliveryTimeValue, DeliveryTimeUnit, DeliveryDayType, IncludedRevisionCount, UnlimitedRevisions, RevisionRequestWindowDays, Deliverables[], Requirements[], FaqSnapshot[], CancellationTerms, AcceptedAt`.
 
-**Acceptance modes (source §8):** `Manual Client Acceptance`, `Rule-Based Instant Order` (explicitly **NOT** AI acceptance, §2), `Platform Admin Resolution`. Proposal sources: `Standard Proposal, Direct Invitation Proposal, Custom Offer, Published Package Purchase, Package Add-on, Change Request`.
+**Schema corrections made during implementation:**
 
-**Auto-Accepted Proposal — definition (source §9).** "Auto-accepted" means the provider **already published fixed commercial terms** via a package and the client **explicitly** (1) selects the package, (2) selects add-ons, (3) reviews full terms, (4) submits required info, (5) confirms the order, (6) authorises/funds payment — then the system **rule-based-ly** creates an accepted-proposal snapshot. The system makes **no commercial decision**; the client accepts pre-published terms. It must **never** mean: the system accepted without consent, AI accepted, a *viewed* proposal became accepted, a *saved* package became an order, a message created a contract, payment was bypassed, or capacity was ignored (source Final Rule).
+- `ClientBrief.Status` is lifecycle-only: `Draft, Published, Open, Closed, Expired, Cancelled`. Saved/viewed/dismissed are provider-relative `ClientBriefInteraction` fields; “proposal submitted” is derived from proposal existence.
+- `Currency` and `Industries[]` were added to `ClientBrief`; the former enables currency validation and the latter supplies the match formula's sector-overlap input.
+- `Proposal.PreviousVersions[]` preserves the superseded commercial state on revision.
+- Commission uses the single shared `PlatformCommerceConstants.CommissionRate = 0.12m`. `CommissionPreviewResponse` computes gross/commission/net from it; Module 4 must consume this same constant. Contrary to the earlier planned prose, **neither `Proposal` nor `PurchaseSnapshot` stores a commission rate or amount**.
+- Interaction creation remains **lazy** on first eligible inbox-query surfacing, but `ClientBriefInteraction.CreatedAt` is the opportunity-availability timestamp: normally `ClientBrief.PublishedAt`; for a direct invitation, the provider's `ClientBriefInvitationDelivery.DeliveredAt`; legacy missing receipts fall back to `PublishedAt`. `UpdatedAt` represents persistence/mutation time.
 
-**Cross-paths (source §10–§13):**
-- **Package purchase (auto-accept):** Published Service → select package → select add-ons → review final price / delivery / revision allowance → submit requirements → **capacity/availability validation** → confirm purchase → escrow/payment authorised → **proposal snapshot created → status = Accepted** → contract/order record → project draft → delivery-waiting conditions checked → workroom enabled when ready.
-- **Standard proposal (always manual):** client brief → provider creates + submits → client reviews → (requests changes or continues) → provider may revise → **client manually accepts** → escrow funded → contract/project draft.
-- **Direct invitation:** client sends invitation → provider declines OR creates proposal → client reviews → **client manually accepts** → escrow funded → project. *A direct invitation itself is never an accepted order.*
-- **Custom offer:** messenger conversation → provider creates custom offer (price/delivery/revisions/deliverables) → sends → **client accepts** → payment/escrow authorised → status = Accepted → project draft.
+### 7.1 Lifecycle, proposal rules, and expiry
 
-**Purchase snapshot — immutable (source §10.1).** Preserves: Selected Service, Selected Package, Package Price, Selected Add-ons, Final Price, Delivery Duration, Delivery Day Type, Revision Allowance, Deliverables, Requirements, FAQ Version, **Provider Commission Rate = the flat 12% platform constant snapshotted at purchase time (never a stored per-provider variable rate, §1.4)**, Cancellation Terms, Acceptance Timestamp. Later package edits never change an already-accepted order.
+- Only an **Open** brief accepts proposals. Closing freezes linked proposals read-only. Expiry defaults to 72 hours from publish and is capped at 30 days.
+- There is **no MongoDB TTL index and no deletion**. The minutely scheduled Hangfire `ClientBriefExpirationJob` changes due `Open` briefs to `Expired`, expires due submitted proposals, and sends deduplicated saved-brief-expiry notifications.
+- Proposal statuses: `Draft, Submitted, Viewed, ChangesRequested, Revised, ClientReviewing, Accepted, Declined, Withdrawn, Expired`; `ConvertedToProject` remains a reserved Module-4 enum value with no Module-3 transition/writer.
+- Live negotiated transitions: Draft→Submitted; Submitted→Viewed/Withdrawn/Expired; Viewed→ChangesRequested/ClientReviewing; ChangesRequested→Revised; Revised→ClientReviewing; ClientReviewing→Accepted/Declined. Accepted cannot be withdrawn or converted by Module 3; Viewed→Accepted, Saved→Accepted, and MessageSent→Accepted are disallowed.
+- Submission requires an open linked brief, future expiration, title, cover message, positive price, delivery duration, at least one deliverable, non-negative revision count, matching currency, and a verified/available provider below capacity. Out-of-budget price is a warning. Unlimited revisions require explicit confirmation. Expired proposals can be duplicated into a new draft.
+- Commission preview: `Commission = ProposedPrice × 12%`; `Net = ProposedPrice − Commission`. Example: $2,150 → $258 commission → $1,892 net.
 
-**Auto-accept conditions — ALL required (source §10.2):** service Published; package Active; Instant Order enabled; provider active + eligible for paid work; package capacity available; max-active-order limit not exceeded; client account active; client payment method verified where required; client explicitly confirms; escrow/payment authorised; no compliance/platform hold; final order summary shown before confirmation. **Any failed condition → no auto-accept.**
+### 7.2 Acceptance paths and Module-4 boundary
 
-**Manual-approval fallback (source §10.3):** when instant-order conditions fail — package selected → client sends order request → **provider reviews → accepts/declines** → client confirms final terms → escrow funded → accepted. UI status: "Provider Approval Required". Causes: capacity full, incomplete requirements, package paused, unusual add-ons, delivery-date conflict, manual approval enabled, compliance review needed.
+- **Standard/direct-invitation proposal — LIVE through Accepted:** provider draft→submit; client view/review/request changes; provider may revise; client explicitly confirms and supplies escrow-authorised state; proposal becomes `Accepted/AwaitingModule4`. A direct invitation alone never accepts anything.
+- **Published-package purchase — LIVE through Accepted:** validates published service/package, instant-order/manual-approval settings, provider eligibility and global/package capacity, requirements, client activity, explicit confirmation, payment/escrow flags, compliance hold, and final-summary confirmation. Passing all conditions creates an immutable accepted snapshot; any failure produces a submitted request with UI status **“Provider Approval Required”**, which the provider can approve/decline before the client confirms.
+- **No downstream creation:** all former §7 arrows from Accepted to contract/order/project/workroom are removed. Module 4 will create those records and decide when delivery is ready to start.
 
-**Auto-accepted status flow (source §14):** Package Selected → Checkout Draft → Client Confirmation Required → Payment Authorisation Required → **Accepted** → Converted to Project. Failure paths: Checkout Draft→Abandoned; Payment Authorisation Required→Payment Failed; Client Confirmation Required→Cancelled; Accepted→Compliance Hold. **Explicitly disallowed transitions:** Viewed→Accepted; Saved→Accepted; Message Sent→Accepted.
+### 7.3 Matching, response rate, notifications, and UI
 
-**Acceptance ≠ delivery start (source §15).** Accepting a proposal does **not** start the delivery clock. Accepted + Escrow Funded + Requirements Incomplete → engagement "Waiting for Requirements", clock = Not Started. Delivery begins only when Accepted AND Escrow Funded AND Mandatory Requirements Complete AND No Blocking Hold → "Ready to Start", clock started (see §6.3, §8).
+- **Brief Match Score — LIVE reuse:** `SpMatchingService.Score` remains `sectorOverlap×0.35 + rating×0.25 + responseRate×0.20 + tierNorm×0.20`; Module 3 supplies `ClientBrief.Industries` to sector overlap. Availability is a **hard pre-filter**, not a weight/formula change: unverified providers, providers with `NewOrderAvailability = false`, and providers at `MaximumConcurrentOrders` never enter the candidate pool.
+- **Real Response Rate — LIVE:** `ResponseRateService` counts an interaction as responded only when the first submitted proposal or first provider-authored, brief-linked `ChatMessage` occurs from `Interaction.CreatedAt` through `CreatedAt + 48h` inclusive. Viewing alone never counts. It writes `TrustBreakdown.ResponseRate` through `ServiceProviderService.UpdateResponseRateSignalAsync`, which reuses the sole TrustScore recalculation path. Re-grep at ship confirms the former `0.85`/TODO stub is absent from `SpMatchingService.cs`.
+- **Sorting — LIVE:** newest, highest budget, closest deadline, best match, previously viewed. **Provider UI — LIVE:** Opportunities / Proposals / Saved tabs, search, sorts, opportunity detail, save/dismiss, draft composer, 12% earnings preview, budget warning, submit/withdraw/duplicate, and provider approval fallback.
+- **Notifications — LIVE:** direct invitation received; saved brief expiring; proposal viewed; changes requested; proposal accepted; proposal declined; proposal expired; client sent a brief-linked message.
+- **Empty states — LIVE:** “No New Client Opportunities” / “New opportunities matching your professional profile will appear here.” / “Review Service Preferences”; “No Active Proposals” / “Submit a proposal or send a custom offer to begin a client discussion.” / “Browse Opportunities”; “No Saved Opportunities” / “Save relevant client briefs to review them later.” *(The custom-offer text is aspirational until the deferred producer path above is wired.)*
 
-**Brief Match Score = the existing `SpMatchingService` formula** (§1.7), reused as-is — deterministic, **not** AI. The source's "best skill match" sort is the same deterministic rule set (exact skill overlap, category overlap, availability, budget compatibility, service category, location) — **explicitly not an AI decision** (§2).
-**Filtering:** category, required skills, budget range, project duration, client location, remote availability, client verification, payment verification, source, posted date, proposal deadline, saved-only.
-**Sorting:** newest, highest budget, closest deadline, best skill match (deterministic), previously viewed.
-
-**Real Response Rate (retires the `0.85` STUB, §1.7/§5.1):** built from lead/message response timestamps; once live it replaces the placeholder in `SpMatchingService.cs:48` and feeds the Response Rate trust signal (15%). Retired by this module, not before. The **Availability Signal** (source `availabilityStatus`) affects match priority; it must not silently become a commission or trust input.
-
-**Notifications (source §6, never self-executing, §2):** direct invitation received; saved brief expiring; proposal viewed; changes requested; proposal accepted; proposal declined; proposal expired; client sent a new message.
-
-**Empty states (source §6, verbatim):**
-- **No Leads** — "No New Client Opportunities" / "New opportunities matching your professional profile will appear here." / Action: "Review Service Preferences".
-- **No Proposals** — "No Active Proposals" / "Submit a proposal or send a custom offer to begin a client discussion." / Action: "Browse Opportunities".
-- **No Saved** — "No Saved Opportunities" / "Save relevant client briefs to review them later."
-
-**Open decisions / flags.**
-- Response-window definition (hours to "responded") for the response-rate metric; whether the availability signal is a ranking weight or a hard pre-filter.
-
-**Dependencies.** Reads: catalog listings (§6), `SpMatchingService` (§1.7), verified profile (§1.1). Produces: `Proposal` (→ §8 on acceptance), response-rate (→ §1.7 + Trust §5.1), proposal analytics counts (→ §9).
+**Dependencies.** Reads: Catalog (§6), verified provider profile/capacity (§1), and `SpMatchingService` (§1.7). Produces: `Proposal` accepted boundary (consumed later by §8), response-rate trust signal (§5.1), and future analytics inputs (§9).
 
 ---
 
@@ -540,13 +540,13 @@ A **pure read/aggregation layer** over Modules 2–4's data — no new source-of
 1. **Auth + ownership on every endpoint.** JWT `[Authorize]` at the controller; every action is **owner-scoped** — the `ProviderId`/`UserId` comes from the authenticated principal, never a request field. An SP can only read/write its own data.
 2. **`ApiResponse` envelope on every response.** No bare `Ok(obj)` or ad-hoc shapes; the service layer returns `ServiceProviderResult<T>` and the controller maps it via `Map<T>()`.
 3. **No browser storage as source of truth.** No `localStorage` / `sessionStorage` for SP state — the backend is authoritative; a read-through paint cache is the only permitted client cache and must never diverge.
-4. **Every time-based rule is backed by a real Hangfire job**, not just a UI countdown — per-brief `expiresAt` (default 72h, max 30 days) TTL index (§7), 7-day auto-release + dispute windows (§8). A UI timer alone is never the enforcement mechanism. (Exception, by design: the skills-test 30-day cooldown is a **read-time** check, §5.3 — no job needed.)
+4. **Every time-based rule is backed by a real Hangfire job**, not just a UI countdown — Module 3's per-brief `expiresAt` (default 72h, max 30 days) is enforced by `ClientBriefExpirationJob`, which changes `Open → Expired` in place and never deletes (§7); 7-day auto-release + dispute windows remain planned for §8. A UI timer alone is never the enforcement mechanism. (Exception, by design: the skills-test 30-day cooldown is a **read-time** check, §5.3 — no job needed.)
 
 ---
 
 ## 11. The Service Provider journey (product experience)
 
-This is the **experience** order — what a real SP lives through, in the order they live it — **distinct from §1.2's data-dependency build order** (that's for developers). Because there are **no phases** (§1.1), the journey is not enforced by gating; it is shaped by **purposeful, context-aware empty-states and dashboard nudges**. Each step is tagged **LIVE** (built today) or **PLANNED** (Modules 2–5, not built) so the narrative never implies unbuilt behavior exists.
+This is the **experience** order — what a real SP lives through, in the order they live it — **distinct from §1.2's data-dependency build order** (that's for developers). Because there are **no phases** (§1.1), the journey is not enforced by gating; it is shaped by **purposeful, context-aware empty-states and dashboard nudges**. Each step is tagged **LIVE**, **PARTIAL**, or **PLANNED** so the narrative never implies unbuilt behavior exists. Modules 1–3 are live; Modules 4–5 remain planned.
 
 ### 11.1 First-time flow (signup → verified) — **LIVE (existing, unchanged by the redesign)**
 
@@ -561,23 +561,23 @@ All of the above predates and is unchanged by the redesign.
 
 ### 11.2 First login after verification — what a freshly-verified SP sees
 
-No gating: **all five sections are conceptually open at once.** But a brand-new SP has zero data, so the realistic first visit is mostly empty. **Reality today: Profile & Trust and Service Catalog are built and render; Leads / Workroom / Analytics do not exist in the UI yet.** The first-visit experience:
+No gating: **all five sections are conceptually open at once.** But a brand-new SP has zero data, so the realistic first visit is mostly empty. **Reality today: Profile & Trust, Service Catalog, and Leads are built and render; Workroom and Analytics do not exist in the UI yet.** The first-visit experience:
 
 - **Profile & Trust — LIVE.** Renders today. Shows the neutral **"building your trust score"** state (§5.2; `HasEnoughTrustData = false`, no number). The Tier badge shows the current tier (ranking-only, §5.4). The Skills Test is available (§5.3).
 - **Service Catalog — LIVE.** Renders today. A freshly-verified SP sees a working, empty **Services** section with the **"No Published Services" / "Create your first service listing to start receiving briefs"** empty state (§6.9), and can immediately build listings + packages + FAQs.
-- **Leads — PLANNED.** *When built:* empty — correctly, because **no listings = no matching eligibility** (§1.7/§7). Its empty state must explain *why* ("add a service to start receiving briefs"), not just "no leads."
+- **Leads — LIVE.** A freshly verified/available provider sees the working Opportunities / Proposals / Saved workspace and the purposeful “No New Client Opportunities” state (§7.3). Eligibility is driven by verified profile categories plus availability/capacity; the current code does **not** require a published listing. The “Review Service Preferences” action links to Services as useful setup guidance, not as a hard gate.
 - **Workroom & Earnings — PLANNED.** *When built:* empty until a brief is accepted.
 - **Analytics & Growth — PLANNED.** *When built:* empty until upstream modules produce data (§9).
 
-**Getting-started nudge.** With no wizard forcing a path, onboarding guidance comes from **purposeful, context-aware empty-states**, not gating. The Catalog's empty state (§6.9) is that first clear next step — *"Create your first service listing to start receiving briefs"* — now **live** (a listing is the prerequisite that will unlock matching/Leads).
+**Getting-started nudge.** With no wizard forcing a path, onboarding guidance comes from **purposeful, context-aware empty-states**, not gating. Catalog encourages publishing services; Leads points back to service preferences when no opportunity is available. Today those are guidance paths, while the actual Leads eligibility gate is verified profile + matching category + availability/capacity (§7.3).
 
-### 11.3 Steady-state / returning-user loop — **PLANNED** (depends on Modules 3–4)
+### 11.3 Steady-state / returning-user loop — **PARTIAL** (Leads live; delivery/payment planned)
 
-Once listings exist and briefs arrive, a working SP repeats this loop. **All PLANNED — none of these modules are built:**
+Once briefs arrive, a working SP repeats this loop. The acquisition portion is live; everything after acceptance remains planned:
 
-1. **Check Leads** — new briefs, ranked by the Brief Match Score (§7).
-2. **Respond to a brief** — response timestamps feed the real response-rate metric (§7 → Trust §5.1).
-3. **On acceptance → Workroom** — the engagement moves to §8.
+1. **Check Leads — LIVE** — new briefs, ranked by the Brief Match Score (§7).
+2. **Respond to a brief — LIVE** — proposal/message timestamps feed the real response-rate metric (§7 → Trust §5.1).
+3. **Acceptance boundary — LIVE through `Accepted/AwaitingModule4`; conversion PLANNED** — Module 3 stops without creating an engagement, contract, or workroom milestone. Module 4 will consume the accepted proposal (§8).
 4. **Deliver via milestones** — submit → 48h client review → revisions up to the package's revision limit → accept or 7-day auto-release (§8).
 5. **Get paid** — escrow releases, **flat 12% commission** deducted (§1.4/§8).
 6. **Signals feed back** — satisfaction / on-time / repeat / dispute → Trust (§5.1); earnings/response data → Analytics (§9).
@@ -589,7 +589,7 @@ Once listings exist and briefs arrive, a working SP repeats this loop. **All PLA
 
 Both are **asynchronous to the main loop** — an SP can engage them any time, and neither gates anything:
 
-- **Skills Test — LIVE (§5.3).** Optional, non-blocking. Take a per-category test whenever; passing feeds the Skill Test trust signal — the **only** trust signal available before Workroom exists (§5.1). 30-day cooldown per category.
+- **Skills Test — LIVE (§5.3).** Optional, non-blocking. Take a per-category test whenever; passing feeds the Skill Test trust signal. Together with Module 3's live Response Rate, it is one of the trust inputs available before Workroom exists (§5.1). 30-day cooldown per category.
 - **Tier — badge LIVE, progression NOT built.** The Tier badge (§5.4) shows the current `Tier_level` (ranking-only). **How tier advances is not implemented or decided** — `Tier_level` is set at onboarding (≥1) and used only for match ranking (§1.5/§1.7). Do **not** describe a "tier progression journey"; there is none today.
 
 ### 11.5 Why a zero-data SP doesn't look broken on first login
@@ -598,10 +598,10 @@ With no phases to sequence the new SP, the "this isn't broken — here's what to
 
 - **Profile & Trust (LIVE):** the neutral "building your trust score" state (§5.2) is already an honest, non-broken empty state — it explains the score is accruing and points to the Skills Test as the one thing that moves it now.
 - **Service Catalog (LIVE):** the "No Published Services" / "Create your first service listing to start receiving briefs" empty state (§6.9) — the primary getting-started call to action, live today.
-- **Leads (PLANNED):** an empty state that explains the dependency ("add a service to become eligible for briefs"), never a bare "nothing here."
+- **Leads (LIVE):** “No New Client Opportunities” explains that profile-matched opportunities will appear here and offers “Review Service Preferences”; Proposals and Saved have their own purposeful empty states (§7.3).
 - **Workroom / Analytics (PLANNED):** honest empties ("your active work appears here" / "insights appear once you have activity").
 
-**Coherence rule:** every SP section must ship a purposeful empty-state that tells the provider what to do next — that is the flat model's replacement for a wizard. **Today Profile & Trust and Service Catalog satisfy this** (the two built sections); Leads / Workroom / Analytics are the **plan** for when Modules 3–5 land.
+**Coherence rule:** every SP section must ship a purposeful empty-state that tells the provider what to do next — that is the flat model's replacement for a wizard. **Today Profile & Trust, Service Catalog, and Leads satisfy this**; Workroom / Analytics remain planned for Modules 4–5.
 
 ---
 
@@ -646,9 +646,16 @@ Only authorised project participants get workroom access; provider private notes
   - **Delivery time — ✅ MET (config + calculator):** independent per-package config; Business/Calendar Days; start rule; due-date formula (`DeliveryScheduleCalculator`, unit-tested); add-on adjustment; extension. *Caveat: the calculator is built + tested but not yet driven by a live delivery clock — that starts in Module 4.*
   - **FAQ Builder — ✅ MET:** creatable; package-specific; reorderable; draft/published; package-conflict warning (`DetectFaqConflict`); can't override package terms.
   - **Per-package revisions — ⚠️ PARTIAL:** independent count per tier **✅**; remaining-revision calc **✅** (`RevisionCalculator`, unit-tested); the config fields for the request window / additional paid revision exist **✅**. **NOT yet satisfied in this build (deferred to Module 4, Workroom):** live *enforcement* of the request window, the "one-consolidated-feedback-round" consumption rule, "scope change never auto-consumes", and the actual *purchase* of an additional revision — these require a live engagement, which Module 2 does not have.
-  - **Auto-accepted proposal (§6↔§7 boundary) — ⛔ NOT in Module 2 scope:** deferred to **Module 3** (Proposal creation / checkout / acceptance). Module 2 deliberately builds no Proposal or purchase path.
-  - **Other — ✅ MET:** impression/click counters seeded (fields + internal record methods; call-sites Module 3); deterministic pricing guidance shown (`PricingGuidance`, unit-tested, no AI); capacity fields on the profile (§6.7).
-- **Module 3 — Leads / Client Acquisition (§7):** opportunities visible; save/dismiss works; proposals draftable / submittable / trackable; changes-request and revision supported; an **accepted proposal converts to a project** (→ `WorkroomEngagement`, §8).
+  - **Auto-accepted proposal (§6↔§7 boundary) — ✅ NOW LIVE IN MODULE 3:** Module 2 still owns no Proposal/purchase path; Module 3's backend validates published package terms and creates the immutable accepted or provider-approval-required Proposal snapshot (§7.2). Client checkout UI and real payment/escrow integration remain deferred.
+  - **Other — ✅ MET for Module-2-owned pieces:** impression/click counters are seeded as fields + internal record methods, but still have no live caller after Module 3; deterministic pricing guidance is shown (`PricingGuidance`, unit-tested, no AI); capacity fields exist on the profile (§6.7).
+- **Module 3 — Leads / Client Acquisition (§7) — ⚠️ PARTIAL overall; approved Module-3 boundary shipped (`d419ed1`/`4df8122`):**
+  - **Opportunity inbox/state — ✅ MET:** eligible opportunities visible; deterministic match score; availability hard pre-filter; save/dismiss/view state is provider-specific; working Opportunities/Saved UI and purposeful empty states.
+  - **Proposal core — ✅ MET backend / ⚠️ PARTIAL frontend:** draft, edit, submit, view, withdraw, expire, duplicate, changes-request, revise with preserved `PreviousVersions`, review, decline, and accept are implemented server-side. Provider UI supports create-draft, submit, withdraw, duplicate, and provider order-request approval; it does not yet expose revise/milestone-plan/attachment controls.
+  - **Acceptance modes — ⚠️ PARTIAL:** manual standard/direct-invitation acceptance and rule-based published-package purchase/manual fallback are live through `Accepted/AwaitingModule4`. Platform-admin resolution and complete custom-offer/package-add-on/change-request flows are not wired; client checkout UI and payment/escrow-provider integration are not built.
+  - **Response rate — ✅ MET:** first submitted proposal or first provider-authored brief-linked message within 48 hours; view does not count; availability timestamp uses publish/invitation-delivery receipt rather than lazy persistence time; TrustScore signal and matching consumer are live; old `0.85` stub is gone.
+  - **Expiry/notifications — ✅ MET:** Hangfire soft-expiry (no TTL deletion), saved-expiry dedupe, and the §7 notification set are live.
+  - **Accepted→project conversion — ⛔ NOT MODULE 3:** the prior criterion is superseded. Module 3 stops at `Status=Accepted`, `ConversionStatus=AwaitingModule4`; no `WorkroomEngagement`, `Contract`, or `WorkroomMilestone` exists. Module 4 owns conversion.
+  - **Cross-cutting gaps — ⚠️ PARTIAL:** planned client-verification/payment-verification lead filters and Module-3 audit-log writes are not implemented; catalog impression/click counters still have no live caller.
 - **Module 4 — Workroom & Earnings (§8):** active projects visible; milestones activate; files uploadable; deliverables submittable with **preserved versions**; client can request a revision and the provider can respond; milestone approval recorded; project completable. Financial: escrow states visible; **gross / commission / net correct** (flat 12%); financial stages separated; available balance correct; payout eligibility validated + tracked; invoice + statement records available.
 - **Module 5 — Analytics & Growth (§9):** service / proposal / profile / revenue metrics calculated; repeat-client performance visible; rule-based observations displayed; **no AI action executed** (§2).
 
@@ -663,6 +670,8 @@ The repo's **root `.gitignore` is a binary / non-UTF8 file**, which can make the
 ---
 
 ## Changelog
+
+**2026-07-27 — Module 3 (Leads / Client Acquisition) shipped → marked LIVE.** Commits `d419ed1` (backend) / `4df8122` (frontend) on `dev-hafiz`. §7 now records the three live collections (`ClientBriefs`, `ClientBriefInteractions`, `Proposals`), real field lists, lifecycle-only brief status, provider-relative interaction state, `Currency`/`Industries`, embedded proposal history/purchase snapshots, shared `PlatformCommerceConstants.CommissionRate = 0.12m`, Hangfire soft expiry (no TTL/delete), lazy interaction creation with publish/invitation-receipt response anchors, real 48-hour response rate, unchanged match formula with availability as a hard pre-filter, provider Leads UI/empty states, and the package/manual acceptance paths. Scope stops at `Accepted/AwaitingModule4`; no engagement/contract/workroom milestone is created. §11 updated to a live acquisition/ planned delivery journey; §17 is honestly PARTIAL for missing frontend revise controls, client checkout/payment integrations, special-source/admin flows, planned filters, audit writes, and catalog metric call-sites. Verification: build 0 errors / 0 warnings; suite 519 passed / 0 failed / 57 skipped (Module 3: 19 pass); `tsc --noEmit` clean.
 
 **2026-07-27 — Module 2 (Service Catalog) shipped → marked LIVE.** Commits `533d2e2` (backend) / `36b6f71` (frontend) on `dev-hafiz`. §6 status PLANNED → LIVE with a §6.0 live-vs-deferred block + §6.0.1 as-built field lists (PK is `Id`, not the spec's `ServiceId`/`PackageId`/`FaqId`; category property is `Category`). §4.3: `ServiceListings`/`ServicePackages`/`ServiceFAQs` moved PLANNED → EXISTS (indexes via `EnsureServiceCatalogIndexes()`). §11.2/§11.5: Catalog is now a LIVE, working empty state, not a planned description. §17: Module 2 criteria marked ✅ MET, with **⚠️ PARTIAL** on per-package revisions (config + calc live; window-enforcement / consumption-rule / additional-revision *purchase* deferred to Module 4) and **⛔ auto-accepted proposal deferred to Module 3**. Confirmed-decision fixes recorded: `PricingModel` nullable on `ServicePackage`; `CancellationPolicy` a fixed 3-option enum (not a rule engine). Reusable `RevisionCalculator`/`DeliveryScheduleCalculator`/`PricingGuidance` built + unit-tested but unwired (Module 4 consumes). `CurrentActiveOrders` field + capacity check present, no live writer (Module 4). `Impressions`/`Clicks` fields + record methods present, no call-site (Module 3). Sidebar "Services" → `/dashboard/serviceprovider/services`. Verification: build 0 errors / 0 Module-2 warnings; suite 500 passed / 0 failed / 57 skipped (Module 1 100 pass; Module 2 22 new pass); `tsc --noEmit` clean.
 
