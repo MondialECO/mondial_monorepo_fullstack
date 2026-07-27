@@ -15,7 +15,7 @@ export interface ProposalMilestone { title: string; description: string; amount:
 export interface Proposal {
   id: string; clientBriefId?: string | null; serviceId?: string | null; packageId?: string | null;
   providerId: string; clientId: string; proposalSource: string; acceptanceMode: string; title: string;
-  coverMessage: string; proposedPrice: number; currency: string; pricingType: string; deliveryTimeValue: number;
+  coverMessage: string; proposedPrice: number; currency: string; pricingType: string; weeklyHourLimit?: number | null; deliveryTimeValue: number;
   deliveryTimeUnit: string; deliveryDayType: string; deliveryStartRule: string; includedRevisionCount: number;
   unlimitedRevisions: boolean; revisionRequestWindowDays: number; deliverables: string[];
   milestonePlan: ProposalMilestone[]; attachments: string[]; requirementsStatus: string;
@@ -34,7 +34,7 @@ export interface LeadQuery {
 export interface UpsertProposalRequest {
   clientBriefId?: string | null; clientId?: string | null; serviceId?: string | null; packageId?: string | null;
   proposalSource: string; title: string; coverMessage: string; proposedPrice: number; currency: string;
-  pricingType: string; deliveryTimeValue: number; deliveryTimeUnit: string; deliveryDayType: string;
+  pricingType: string; weeklyHourLimit?: number | null; deliveryTimeValue: number; deliveryTimeUnit: string; deliveryDayType: string;
   deliveryStartRule: string; includedRevisionCount: number; unlimitedRevisions: boolean;
   confirmUnlimitedRevisions: boolean; revisionRequestWindowDays: number; deliverables: string[];
   milestonePlan: ProposalMilestone[]; attachments: string[]; expiresAt?: string | null;
