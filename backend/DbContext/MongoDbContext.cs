@@ -20,6 +20,7 @@ namespace WebApp.DbContext
             EnsureServiceCatalogIndexes();
             EnsureLeadsIndexes();
             EnsureWorkroomIndexes();
+            EnsureAnalyticsIndexes();
         }
 
         public MongoDbContext(IMongoDatabase database)
@@ -33,6 +34,7 @@ namespace WebApp.DbContext
             EnsureServiceCatalogIndexes();
             EnsureLeadsIndexes();
             EnsureWorkroomIndexes();
+            EnsureAnalyticsIndexes();
         }
 
         // Smart Matchmaking outbox indexes: Status (consumer polling), CompanyId
@@ -313,6 +315,10 @@ namespace WebApp.DbContext
         public virtual IMongoCollection<WorkroomAuditEvent> WorkroomAuditEvents => _database.GetCollection<WorkroomAuditEvent>("WorkroomAuditEvents");
         public virtual IMongoCollection<RepeatClientCoupon> RepeatClientCoupons => _database.GetCollection<RepeatClientCoupon>("RepeatClientCoupons");
 
+        // Module 5 — metrics are read-time only; manual provider tasks are the
+        // module's single stateful collection.
+        public virtual IMongoCollection<GrowthTask> GrowthTasks => _database.GetCollection<GrowthTask>("GrowthTasks");
+
         // Service-catalog lookup indexes: listings by owner, packages/FAQs by their
         // parent service. Best-effort + swallowed so context construction never blocks
         // or fails (unit tests mock the context; the getters are unset there → no-op).
@@ -418,6 +424,21 @@ namespace WebApp.DbContext
             catch
             {
                 // Best-effort startup index creation, matching Modules 2 and 3.
+            }
+        }
+
+        private void EnsureAnalyticsIndexes()
+        {
+            try
+            {
+                GrowthTasks.Indexes.CreateOne(new CreateIndexModel<GrowthTask>(
+                    Builders<GrowthTask>.IndexKeys.Ascending(x => x.ProviderId)
+                        .Ascending(x => x.Status).Descending(x => x.UpdatedAt),
+                    new CreateIndexOptions { Background = true }));
+            }
+            catch
+            {
+                // Best-effort startup index creation, matching Modules 2–4.
             }
         }
 

@@ -23,15 +23,18 @@ public sealed class WorkroomService : IWorkroomService
     private readonly SaveFile _files;
     private readonly UserManager<ApplicationUser> _users;
     private readonly IServiceProviderService _providers;
+    private readonly IClientRelationshipCalculator _relationships;
     private readonly INotificationService _notifications;
     private readonly ILogger<WorkroomService> _logger;
 
     public WorkroomService(MongoDbContext db, IMongoClient mongo, IPaymentGatewayService gateway,
         IFileSecurityScanner scanner, SaveFile files, UserManager<ApplicationUser> users,
-        IServiceProviderService providers, INotificationService notifications, ILogger<WorkroomService> logger)
+        IServiceProviderService providers, IClientRelationshipCalculator relationships,
+        INotificationService notifications, ILogger<WorkroomService> logger)
     {
         _db = db; _mongo = mongo; _gateway = gateway; _scanner = scanner; _files = files;
-        _users = users; _providers = providers; _notifications = notifications; _logger = logger;
+        _users = users; _providers = providers; _relationships = relationships;
+        _notifications = notifications; _logger = logger;
     }
 
     [AutomaticRetry(Attempts = 5)]
@@ -669,8 +672,8 @@ public sealed class WorkroomService : IWorkroomService
         var reviews=await _db.Reviews.Find(x=>x.ProviderId==providerId&&x.VerificationStatus==ReviewVerificationStatus.Verified).ToListAsync();
         var satisfaction=reviews.Count==0?(double?)null:reviews.Average(x=>x.OverallRating)*20d;
         var ids=completed.Select(x=>x.Id).ToList(); var milestones=ids.Count==0?new List<WorkroomMilestone>():await _db.WorkroomMilestones.Find(x=>ids.Contains(x.EngagementId)&&x.SubmittedAt!=null&&x.DueDate!=null).ToListAsync();
-        var onTime=milestones.Count==0?(double?)null:100d*milestones.Count(x=>x.SubmittedAt<=x.DueDate)/milestones.Count;
-        var byClient=completed.GroupBy(x=>x.ClientId).ToList(); var repeat=byClient.Count==0?(double?)null:100d*byClient.Count(x=>x.Count()>=2)/byClient.Count;
+        var onTime=_relationships.CalculateOnTimeRate(milestones);
+        var repeat=_relationships.Calculate(completed).RepeatClientRate;
         var allProviderIds=(await _db.WorkroomEngagements.Find(x=>x.ProviderId==providerId).Project(x=>x.Id).ToListAsync());
         var adverse=allProviderIds.Count==0?0:(int)await _db.WorkroomMilestones.CountDocumentsAsync(x=>allProviderIds.Contains(x.EngagementId)&&
             (x.DisputeOutcome==DisputeOutcome.ClientFavored||x.DisputeOutcome==DisputeOutcome.Split));
