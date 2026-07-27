@@ -267,6 +267,11 @@ export const menu: Record<UserRole, MenuSection[]> = {
           href: "/dashboard/serviceprovider/services",
           icon: LayoutGrid,
         },
+        {
+          label: "Leads & Proposals",
+          href: "/dashboard/serviceprovider/leads",
+          icon: Briefcase,
+        },
       ],
     },
   ],
