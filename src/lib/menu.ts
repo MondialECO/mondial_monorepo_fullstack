@@ -1,14 +1,11 @@
 import { UserRole } from "./roles";
 import {
   LayoutDashboard,
+  BadgeCheck,
   Lightbulb,
   Users,
-  User,
-  CreditCard,
   Settings,
   Wallet,
-  Briefcase,
-  BadgeCheck,
   Compass,
   LayoutGrid,
   MessageSquare,
@@ -27,12 +24,17 @@ import {
   Bell,
   Lock,
   Layers,
+  CheckCircle2,
 } from "lucide-react";
 
 export type MenuItem = {
   label: string;
   href: string;
   icon?: React.ComponentType<{ className?: string }>;
+  children?: Array<{
+    label: string;
+    href: string;
+  }>;
 };
 
 export type MenuSection = {
@@ -258,34 +260,54 @@ export const menu: Record<UserRole, MenuSection[]> = {
       title: "Dashboard",
       items: [
         {
-          label: "Provider Profile",
+          label: "Dashboard",
+          href: "/dashboard/serviceprovider",
+          icon: LayoutDashboard,
+        },
+        {
+          label: "Profile & Trust",
           href: "/dashboard/serviceprovider/profile",
           icon: BadgeCheck,
         },
         {
-          label: "Services",
-          href: "/dashboard/serviceprovider/services",
-          icon: LayoutGrid,
+          label: "Client Briefs",
+          href: "/dashboard/serviceprovider/leads?view=leads",
+          icon: FileText,
         },
         {
-          label: "Leads & Proposals",
-          href: "/dashboard/serviceprovider/leads",
-          icon: Briefcase,
+          label: "Pipeline",
+          href: "/dashboard/serviceprovider/leads?view=proposals",
+          icon: GitFork,
         },
         {
-          label: "Workroom",
-          href: "/dashboard/serviceprovider/workroom",
+          label: "Active Projects",
+          href: "/dashboard/serviceprovider/workroom?view=active",
           icon: FolderOpen,
         },
         {
-          label: "Earnings",
-          href: "/dashboard/serviceprovider/earnings",
-          icon: Wallet,
+          label: "Completed Projects",
+          href: "/dashboard/serviceprovider/workroom?view=completed",
+          icon: CheckCircle2,
+        },
+        {
+          label: "Service Catalog",
+          href: "/dashboard/serviceprovider/services",
+          icon: LayoutGrid,
         },
         {
           label: "Analytics & Growth",
           href: "/dashboard/serviceprovider/analytics",
           icon: BarChart3,
+        },
+        {
+          label: "Earnings & Payouts",
+          href: "/dashboard/serviceprovider/earnings?tab=activity",
+          icon: Wallet,
+          children: [
+            { label: "Earnings Overview", href: "/dashboard/serviceprovider/earnings?tab=activity" },
+            { label: "Payouts", href: "/dashboard/serviceprovider/earnings?tab=payouts" },
+            { label: "Financial Settings", href: "/dashboard/serviceprovider/earnings?tab=settings" },
+          ],
         },
       ],
     },

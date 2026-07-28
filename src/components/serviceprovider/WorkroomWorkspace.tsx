@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { ArrowLeft, BriefcaseBusiness, CheckCircle2, Clock3, FileUp, Play, ShieldCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -15,16 +16,24 @@ import { useActivateMilestone, useCompleteEngagement, useConfirmContract, useEng
 import type { Milestone, RevisionRequest, SubmitDeliverablePayload } from '@/types/workroom';
 
 export function WorkroomWorkspace() {
-  const [selected, setSelected] = useState<string | null>(null);
-  return selected ? <WorkroomDetail id={selected} onBack={() => setSelected(null)} /> : <WorkroomList onOpen={setSelected} />;
+  const searchParams = useSearchParams();
+  const listView = searchParams.get('view') === 'completed' ? 'completed' : 'active';
+  return <WorkroomWorkspaceView key={listView} listView={listView} />;
 }
 
-function WorkroomList({ onOpen }: { onOpen: (id: string) => void }) {
+function WorkroomWorkspaceView({ listView }: { listView: 'active' | 'completed' }) {
+  const [selected, setSelected] = useState<string | null>(null);
+  return selected ? <WorkroomDetail id={selected} onBack={() => setSelected(null)} /> : <WorkroomList view={listView} onOpen={setSelected} />;
+}
+
+function WorkroomList({ view, onOpen }: { view: 'active' | 'completed'; onOpen: (id: string) => void }) {
   const { data, isLoading, isError } = useEngagements();
   if (isLoading) return <Skeleton className="h-72 w-full rounded-xl" />;
   if (isError) return <p className="text-sm text-destructive">Couldn&apos;t load workrooms. Try again.</p>;
-  return <div className="mx-auto w-full max-w-6xl space-y-6 pb-8"><div><h1 className="text-3xl font-semibold">Workroom</h1><p className="text-sm text-muted-foreground">Contracts, funded milestones, delivery history, revisions, and completion.</p></div>
-    {!data?.length ? <EmptyState icon={BriefcaseBusiness} title="No Active Projects" description="Accepted proposals will appear here after the transaction-safe conversion job creates their workroom." /> : <div className="grid gap-4 md:grid-cols-2">{data.map((e) => <Card key={e.id} className="cursor-pointer transition-colors hover:border-primary/40" onClick={() => onOpen(e.id)}><CardHeader><div className="flex items-start justify-between gap-3"><div><CardTitle>{e.title}</CardTitle><CardDescription>Updated {date(e.updatedAt)}</CardDescription></div><Badge variant="outline">{words(e.engagementStatus)}</Badge></div></CardHeader><CardContent><div className="mb-3 h-2 overflow-hidden rounded-full bg-muted"><div className="h-full bg-primary" style={{ width: `${e.completionPercentage}%` }} /></div><div className="flex justify-between text-sm"><span>{money(e.contractValue, e.currency)}</span><span className="text-muted-foreground">{Math.round(e.completionPercentage)}% complete</span></div></CardContent></Card>)}</div>}
+  const terminal = new Set(['Completed', 'Archived', 'Cancelled']);
+  const rows = (data ?? []).filter((engagement) => view === 'completed' ? terminal.has(engagement.engagementStatus) : !terminal.has(engagement.engagementStatus));
+  return <div className="mx-auto w-full max-w-6xl space-y-6 pb-8"><div><h1 className="text-3xl font-semibold">{view === 'completed' ? 'Completed Projects' : 'Active Projects'}</h1><p className="text-sm text-muted-foreground">Contracts, funded milestones, delivery history, revisions, and completion.</p></div>
+    {!rows.length ? <EmptyState icon={BriefcaseBusiness} title={view === 'completed' ? 'No Completed Projects' : 'No Active Projects'} description={view === 'completed' ? 'Completed, archived, and cancelled project history will appear here.' : 'Accepted proposals will appear here after the transaction-safe conversion job creates their workroom.'} /> : <div className="grid gap-4 md:grid-cols-2">{rows.map((e) => <Card key={e.id} className="cursor-pointer transition-colors hover:border-primary/40" onClick={() => onOpen(e.id)}><CardHeader><div className="flex items-start justify-between gap-3"><div><CardTitle>{e.title}</CardTitle><CardDescription>Updated {date(e.updatedAt)}</CardDescription></div><Badge variant="outline">{words(e.engagementStatus)}</Badge></div></CardHeader><CardContent><div className="mb-3 h-2 overflow-hidden rounded-full bg-muted"><div className="h-full bg-primary" style={{ width: `${e.completionPercentage}%` }} /></div><div className="flex justify-between text-sm"><span>{money(e.contractValue, e.currency)}</span><span className="text-muted-foreground">{Math.round(e.completionPercentage)}% complete</span></div></CardContent></Card>)}</div>}
   </div>;
 }
 

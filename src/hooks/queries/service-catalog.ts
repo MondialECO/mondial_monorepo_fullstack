@@ -69,7 +69,10 @@ export const useUpdateCapacity = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: api.updateCapacity,
-    onSuccess: (data) => qc.setQueryData(CAPACITY_KEY, data),
+    onSuccess: (data) => {
+      qc.setQueryData(CAPACITY_KEY, data);
+      qc.invalidateQueries({ queryKey: ['provider-dashboard-overview'] });
+    },
   });
 };
 

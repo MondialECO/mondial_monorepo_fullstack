@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Bookmark, BriefcaseBusiness, Clock, FileText, MapPin, Search, Send, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,28 +20,45 @@ import {
 import type { ClientBrief, Proposal, UpsertProposalRequest } from '@/types/leads';
 
 type View = { mode: 'home' } | { mode: 'brief'; id: string } | { mode: 'proposal'; brief: ClientBrief };
+type LeadTab = 'leads' | 'proposals' | 'saved';
 
 export function LeadsWorkspace() {
-  const [view, setView] = useState<View>({ mode: 'home' });
-  if (view.mode === 'brief') return <BriefDetail id={view.id} onBack={() => setView({ mode: 'home' })} onPropose={(brief) => setView({ mode: 'proposal', brief })} />;
-  if (view.mode === 'proposal') return <ProposalEditor brief={view.brief} onBack={() => setView({ mode: 'brief', id: view.brief.id })} onDone={() => setView({ mode: 'home' })} />;
-  return <LeadHome onOpen={(id) => setView({ mode: 'brief', id })} />;
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const tab = leadTab(searchParams.get('view'));
+  const briefId = searchParams.get('brief');
+
+  function setTab(next: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('view', leadTab(next));
+    params.delete('brief');
+    router.replace(`${pathname}?${params.toString()}`);
+  }
+
+  return <LeadsWorkspaceView key={`${tab}-${briefId ?? ''}`} tab={tab} initialBriefId={briefId} onTabChange={setTab} />;
 }
 
-function LeadHome({ onOpen }: { onOpen: (id: string) => void }) {
-  const [tab, setTab] = useState('leads');
+function LeadsWorkspaceView({ tab, initialBriefId, onTabChange }: { tab: LeadTab; initialBriefId: string | null; onTabChange: (tab: string) => void }) {
+  const [view, setView] = useState<View>(initialBriefId ? { mode: 'brief', id: initialBriefId } : { mode: 'home' });
+  if (view.mode === 'brief') return <BriefDetail id={view.id} onBack={() => setView({ mode: 'home' })} onPropose={(brief) => setView({ mode: 'proposal', brief })} />;
+  if (view.mode === 'proposal') return <ProposalEditor brief={view.brief} onBack={() => setView({ mode: 'brief', id: view.brief.id })} onDone={() => setView({ mode: 'home' })} />;
+  return <LeadHome tab={tab} onTabChange={onTabChange} onOpen={(id) => setView({ mode: 'brief', id })} />;
+}
+
+function LeadHome({ tab, onTabChange, onOpen }: { tab: LeadTab; onTabChange: (tab: string) => void; onOpen: (id: string) => void }) {
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState('newest');
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6 pb-8">
       <div className="space-y-1">
-        <h1 className="text-3xl font-semibold text-foreground">Leads &amp; Proposals</h1>
-        <p className="text-sm text-muted-foreground">Review matched opportunities, prepare proposals, and track client decisions.</p>
+        <h1 className="text-3xl font-semibold text-foreground">Leads</h1>
+        <p className="text-sm text-muted-foreground">Review client briefs, prepare proposals, and track client decisions.</p>
       </div>
-      <Tabs defaultValue="leads" value={tab} onValueChange={setTab}>
+      <Tabs defaultValue="leads" value={tab} onValueChange={onTabChange}>
         <TabsList>
-          <TabsTrigger value="leads">Opportunities</TabsTrigger>
-          <TabsTrigger value="proposals">Proposals</TabsTrigger>
+          <TabsTrigger value="leads">Client Briefs</TabsTrigger>
+          <TabsTrigger value="proposals">Pipeline</TabsTrigger>
           <TabsTrigger value="saved">Saved</TabsTrigger>
         </TabsList>
         <TabsContent value="leads">
@@ -52,6 +70,10 @@ function LeadHome({ onOpen }: { onOpen: (id: string) => void }) {
       </Tabs>
     </div>
   );
+}
+
+function leadTab(value: string | null): LeadTab {
+  return value === 'proposals' || value === 'saved' ? value : 'leads';
 }
 
 function InboxToolbar({ search, setSearch, sort, setSort }: { search: string; setSearch: (v: string) => void; sort: string; setSort: (v: string) => void }) {
@@ -71,7 +93,7 @@ function LeadList({ search, sort, savedOnly, onOpen }: { search: string; sort: s
   const rows = useMemo(() => (data ?? []).filter((b) => [b.title, b.description, ...b.requiredSkills, ...b.industries].join(' ').toLowerCase().includes(search.toLowerCase())), [data, search]);
   if (isLoading) return <Skeleton className="h-64 w-full rounded-xl" />;
   if (isError) return <p className="text-sm text-destructive">Couldn&apos;t load opportunities. Try again.</p>;
-  if (rows.length === 0) return savedOnly ? <EmptyState icon={Bookmark} title="No Saved Opportunities" description="Save relevant client briefs to review them later." /> : <EmptyState icon={BriefcaseBusiness} title="No New Client Opportunities" description="New opportunities matching your professional profile will appear here." action={<Button asChild variant="outline"><Link href="/dashboard/serviceprovider/services">Review Service Preferences</Link></Button>} />;
+  if (rows.length === 0) return savedOnly ? <EmptyState icon={Bookmark} title="No Saved Client Briefs" description="Save relevant client briefs to review them later." /> : <EmptyState icon={BriefcaseBusiness} title="No New Client Briefs" description="New client briefs matching your professional profile will appear here." action={<Button asChild variant="outline"><Link href="/dashboard/serviceprovider/services">Review Service Preferences</Link></Button>} />;
   return <div className="grid gap-3">{rows.map((brief) => <LeadCard key={brief.id} brief={brief} onOpen={() => onOpen(brief.id)} onSave={() => interaction.mutate({ id: brief.id, saved: !brief.saved })} onDismiss={() => interaction.mutate({ id: brief.id, dismissed: true })} />)}</div>;
 }
 
@@ -80,7 +102,7 @@ function LeadCard({ brief, onOpen, onSave, onDismiss }: { brief: ClientBrief; on
     <Card><CardHeader className="pb-3"><div className="flex items-start justify-between gap-3"><div><CardTitle className="text-lg">{brief.title}</CardTitle><CardDescription>{brief.serviceCategory} · {brief.source}</CardDescription></div><Badge variant="secondary">{Math.round(brief.matchScore * 100)}% match</Badge></div></CardHeader>
       <CardContent className="space-y-3"><p className="line-clamp-2 text-sm text-muted-foreground">{brief.description}</p><div className="flex flex-wrap gap-2">{brief.requiredSkills.map((s) => <Badge key={s} variant="outline">{s}</Badge>)}</div>
         <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground"><span>{money(brief.budgetMinimum, brief.currency)}–{money(brief.budgetMaximum, brief.currency)}</span><span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{brief.expectedDuration || 'Flexible'}</span><span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{brief.remoteAllowed ? 'Remote available' : brief.location}</span></div>
-        <div className="flex flex-wrap justify-end gap-2"><Button size="sm" variant="ghost" onClick={onDismiss}><Trash2 className="h-4 w-4" />Dismiss</Button><Button size="sm" variant="outline" onClick={onSave}><Bookmark className="h-4 w-4" />{brief.saved ? 'Saved' : 'Save'}</Button><Button size="sm" onClick={onOpen}>View opportunity</Button></div>
+        <div className="flex flex-wrap justify-end gap-2"><Button size="sm" variant="ghost" onClick={onDismiss}><Trash2 className="h-4 w-4" />Dismiss</Button><Button size="sm" variant="outline" onClick={onSave}><Bookmark className="h-4 w-4" />{brief.saved ? 'Saved' : 'Save'}</Button><Button size="sm" onClick={onOpen}>View client brief</Button></div>
       </CardContent></Card>
   );
 }

@@ -1,3 +1,5 @@
+using System.Globalization;
+using Microsoft.AspNetCore.Identity;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using WebApp.DbContext;
@@ -10,7 +12,9 @@ namespace WebApp.Services.Implementations;
 public class AnalyticsService(
     MongoDbContext db,
     IClientRelationshipCalculator relationships,
-    IWorkroomService workroom) : IAnalyticsService
+    IWorkroomService workroom,
+    ILeadsService leads,
+    UserManager<ApplicationUser> users) : IAnalyticsService
 {
     public const string CustomServiceLabel = "Custom/Unattributed";
     private const string ServiceTrackingReason = "Date-stamped service view events are not tracked yet; lifetime counters cannot be filtered by this period.";
@@ -19,11 +23,130 @@ public class AnalyticsService(
     private const string EnquiryTrackingReason = "No enquiry source-of-truth or writer exists yet.";
     private const string CancellationTrackingReason = "Engagement cancellation history is not tracked consistently enough for a period rate.";
 
+    public async Task<ServiceProviderResult<ProviderDashboardResponse>> GetProviderOverviewAsync(string providerId, string? requestedCurrency)
+    {
+        var currency = NormalizeCurrency(requestedCurrency);
+        if (currency is null)
+            return ServiceProviderResult<ProviderDashboardResponse>.Conflict("Currency must be a three-letter code.");
+
+        var user = await users.FindByIdAsync(providerId);
+        if (user is null)
+            return ServiceProviderResult<ProviderDashboardResponse>.NotFound("Provider not found.");
+
+        var profile = user.ServiceProviderProfile ?? new ServiceProviderProfile { ProviderId = providerId };
+        var now = DateTime.UtcNow;
+        var thirtyDaysAgo = now.AddDays(-30);
+        var today = now.Date;
+        var tomorrow = today.AddDays(1);
+        var weekEnd = now.AddDays(7);
+
+        var engagements = await db.WorkroomEngagements.Find(x => x.ProviderId == providerId).ToListAsync();
+        var activeEngagements = engagements.Where(IsActive).ToList();
+        var activeEngagementIds = activeEngagements.Select(x => x.Id).ToHashSet(StringComparer.Ordinal);
+        var allEngagementIds = engagements.Select(x => x.Id).ToHashSet(StringComparer.Ordinal);
+        var milestones = allEngagementIds.Count == 0
+            ? new List<WorkroomMilestone>()
+            : await db.WorkroomMilestones.Find(x => allEngagementIds.Contains(x.EngagementId)).ToListAsync();
+        var activeMilestones = milestones.Where(x => activeEngagementIds.Contains(x.EngagementId) && RequiresProviderDelivery(x)).ToList();
+        var deliverables = await db.Deliverables.Find(x => x.ProviderId == providerId).ToListAsync();
+        var proposals = await db.Proposals.Find(x => x.ProviderId == providerId).ToListAsync();
+        var interactions = await db.ClientBriefInteractions.Find(x => x.ProviderId == providerId).ToListAsync();
+        var transactions = await db.FinancialTransactions.Find(x => x.ProviderId == providerId && x.Currency == currency).ToListAsync();
+
+        var financialResult = await workroom.GetFinancialSummaryAsync(providerId, currency);
+        var financial = financialResult.Outcome == ServiceProviderOutcome.Ok ? financialResult.Value : null;
+        var inboxResult = await leads.GetInboxAsync(providerId, new LeadQueryRequest { Sort = "bestmatch" });
+        var inbox = inboxResult.Outcome == ServiceProviderOutcome.Ok
+            ? inboxResult.Value ?? new List<ClientBriefResponse>()
+            : new List<ClientBriefResponse>();
+        var newLeads = inbox.Where(x => !x.Viewed && !x.ProposalSubmitted).ToList();
+
+        List<ChatMessage> providerMessages = new();
+        if (Guid.TryParse(providerId, out var providerGuid))
+            providerMessages = await db.ChatMessages.Find(x => x.SenderId == providerGuid && x.ClientBriefId != null).ToListAsync();
+
+        var responseMinutes = CalculateResponseMinutes(interactions, proposals, providerMessages, thirtyDaysAgo, now);
+        var milestoneById = milestones.ToDictionary(x => x.Id, StringComparer.Ordinal);
+        var engagementById = engagements.ToDictionary(x => x.Id, StringComparer.Ordinal);
+        var activities = BuildOverviewActivity(
+            proposals, deliverables,
+            await LoadProviderRevisions(db, milestoneById, engagementById, providerId),
+            transactions, profile.PortfolioItems, milestoneById);
+
+        var completion = ServiceProviderMapping.CompletionPercent(profile);
+        var response = new ProviderDashboardResponse
+        {
+            ComputedAt = now,
+            Currency = currency,
+            Provider = new ProviderDashboardIdentityResponse
+            {
+                Name = string.IsNullOrWhiteSpace(user.Name) ? "Service Provider" : user.Name.Trim(),
+                Initials = Initials(user.Name),
+                ImagePath = string.IsNullOrWhiteSpace(user.ImagePath) ? null : user.ImagePath,
+                VerificationStatus = profile.VerificationStatus.ToString(),
+                TierLevel = Math.Max(1, user.Tier_level),
+                TierLabel = $"Tier {Math.Max(1, user.Tier_level)}",
+                AvailableNow = profile.NewOrderAvailability,
+            },
+            Metrics = new ProviderDashboardMetricsResponse
+            {
+                AvailableBalance = financial?.Available ?? 0,
+                PendingEscrow = financial?.ProtectedEscrow ?? 0,
+                ActiveEngagements = activeEngagements.Count,
+                DeliverablesDueThisWeek = activeMilestones.Count(x => x.DueDate >= now && x.DueDate <= weekEnd),
+                DeliverablesDueToday = activeMilestones.Count(x => x.DueDate >= today && x.DueDate < tomorrow),
+                NewLeads = newLeads.Count,
+                NearestLeadExpiryAt = newLeads.Where(x => x.ExpiresAt != null).MinBy(x => x.ExpiresAt)?.ExpiresAt,
+            },
+            Trust = new ProviderDashboardTrustResponse
+            {
+                HasEnoughData = profile.HasEnoughTrustData,
+                Score = profile.HasEnoughTrustData ? Math.Round(profile.TrustScore, 1) : null,
+                Status = profile.HasEnoughTrustData ? TrustStatus(profile.TrustScore) : "Building your trust score",
+            },
+            Last30Days = new ProviderDashboardLast30DaysResponse
+            {
+                BriefsReviewed = interactions.Count(x => x.ViewedAt >= thirtyDaysAgo && x.ViewedAt <= now),
+                ProposalsSent = proposals.Count(x => x.SubmittedAt >= thirtyDaysAgo && x.SubmittedAt <= now),
+                DeliverablesSubmitted = deliverables.Count(x => x.SubmittedAt >= thirtyDaysAgo && x.SubmittedAt <= now),
+                AverageResponseState = responseMinutes.Count == 0 ? "notEnoughActivity" : "available",
+                AverageResponseMinutes = responseMinutes.Count == 0 ? null : Math.Round(responseMinutes.Average(), 1),
+                AverageResponseReason = responseMinutes.Count == 0 ? "No qualifying brief response exists in the last 30 days." : null,
+            },
+            ServiceViews = new ProviderDashboardServiceViewsResponse
+            {
+                State = "notTracked",
+                Reason = ServiceTrackingReason,
+            },
+            RecentActivity = activities.OrderByDescending(x => x.OccurredAt).Take(6).ToList(),
+            ProfileStrength = new ProviderDashboardProgressResponse
+            {
+                State = "available",
+                Value = completion,
+                Detail = completion == 100 ? "Your public profile is complete." : "Complete the remaining profile fields to reach 100%.",
+            },
+            TierProgress = new ProviderDashboardProgressResponse
+            {
+                State = "notTracked",
+                Value = null,
+                Detail = "Tier progression rules are not implemented; your current tier only affects match priority.",
+            },
+        };
+
+        response.Attention = BuildAttention(activeMilestones, newLeads, completion);
+        return ServiceProviderResult<ProviderDashboardResponse>.Ok(response);
+    }
+
     public async Task<ServiceProviderResult<AnalyticsDashboardResponse>> GetDashboardAsync(string providerId, AnalyticsQuery query)
     {
         AnalyticsPeriod period;
         try { period = AnalyticsPeriodResolver.Resolve(query, DateTime.UtcNow); }
         catch (ArgumentException ex) { return ServiceProviderResult<AnalyticsDashboardResponse>.Conflict(ex.Message); }
+
+        var user = await users.FindByIdAsync(providerId);
+        if (user is null)
+            return ServiceProviderResult<AnalyticsDashboardResponse>.NotFound("Provider not found.");
+        var historyStartedAt = user.ServiceProviderProfile?.VerifiedAt;
 
         var currency = NormalizeCurrency(query.Currency);
         if (currency is null)
@@ -94,6 +217,8 @@ public class AnalyticsService(
         {
             Period = new AnalyticsPeriodResponse(period.Range, period.From, period.To, period.ComparisonFrom, period.ComparisonTo, period.ComputedAt),
             Currency = currency,
+            HistoryStartedAt = historyStartedAt,
+            HasMinimumHistory = historyStartedAt is { } liveAt && liveAt <= period.ComputedAt.AddDays(-7),
             Overview = new AnalyticsOverviewResponse
             {
                 GrossRevenue = Metric(currentGross, previousGross, currency),
@@ -451,6 +576,164 @@ public class AnalyticsService(
         var projects = source.Where(x => x.EngagementId != null).GroupBy(x => x.EngagementId)
             .Select(x => x.Sum(y => y.GrossAmount)).ToList();
         return Average(projects);
+    }
+
+    private static bool IsActive(WorkroomEngagement engagement) => engagement.EngagementStatus is not
+        (EngagementStatus.Completed or EngagementStatus.Cancelled or EngagementStatus.Archived);
+
+    private static bool RequiresProviderDelivery(WorkroomMilestone milestone) => milestone.MilestoneStatus is
+        WorkroomMilestoneStatus.Active or WorkroomMilestoneStatus.SubmissionDraft or
+        WorkroomMilestoneStatus.RevisionRequested or WorkroomMilestoneStatus.RevisionInProgress;
+
+    private static string TrustStatus(double score) => score switch
+    {
+        >= 75 => "Trusted",
+        >= 50 => "Established",
+        _ => "Building Trust",
+    };
+
+    private static string Initials(string? name)
+    {
+        var words = (name ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (words.Length == 0) return "SP";
+        return string.Concat(words.Take(2).Select(x => char.ToUpperInvariant(x[0])));
+    }
+
+    private static List<double> CalculateResponseMinutes(
+        IEnumerable<ClientBriefInteraction> interactions,
+        IEnumerable<Proposal> proposals,
+        IEnumerable<ChatMessage> messages,
+        DateTime from,
+        DateTime to)
+    {
+        var proposalRows = proposals.Where(x => x.ClientBriefId != null && x.SubmittedAt != null).ToList();
+        var messageRows = messages.Where(x => x.ClientBriefId != null).ToList();
+        var values = new List<double>();
+
+        foreach (var interaction in interactions.Where(x => x.CreatedAt >= from && x.CreatedAt <= to))
+        {
+            var proposalAt = proposalRows.Where(x => x.ClientBriefId == interaction.ClientBriefId)
+                .Select(x => x.SubmittedAt).Where(x => x.HasValue).Min();
+            var messageAt = messageRows.Where(x => x.ClientBriefId == interaction.ClientBriefId)
+                .Select(x => (DateTime?)x.CreatedAt).Min();
+            var first = new[] { proposalAt, messageAt }.Where(x => x.HasValue).Min();
+            if (first is { } at && at >= interaction.CreatedAt && at <= to)
+                values.Add((at - interaction.CreatedAt).TotalMinutes);
+        }
+
+        return values;
+    }
+
+    private static List<ProviderDashboardAttentionResponse> BuildAttention(
+        IEnumerable<WorkroomMilestone> activeMilestones,
+        IEnumerable<ClientBriefResponse> newLeads,
+        int completion)
+    {
+        var rows = new List<ProviderDashboardAttentionResponse>();
+        var due = activeMilestones.Where(x => x.DueDate != null).OrderBy(x => x.DueDate).FirstOrDefault();
+        if (due is not null)
+        {
+            rows.Add(new ProviderDashboardAttentionResponse
+            {
+                Type = "deliverableDue",
+                Title = $"Deliverable Due: {due.Title}",
+                Detail = due.DueDate < DateTime.UtcNow ? "Overdue" : "Upcoming delivery",
+                Action = "Go to Workroom",
+                Href = "/dashboard/serviceprovider/workroom",
+                Tone = "amber",
+                DueAt = due.DueDate,
+            });
+        }
+
+        var lead = newLeads.OrderByDescending(x => x.MatchScore).ThenBy(x => x.ExpiresAt).FirstOrDefault();
+        if (lead is not null)
+        {
+            rows.Add(new ProviderDashboardAttentionResponse
+            {
+                Type = "newLead",
+                Title = $"Brief Match: {lead.Title}",
+                Detail = $"{Math.Round(lead.MatchScore * 100)}% skill match",
+                Action = "Review Brief",
+                Href = $"/dashboard/serviceprovider/leads?brief={lead.Id}",
+                Tone = "blue",
+                DueAt = lead.ExpiresAt,
+                MatchPercentage = Math.Round(lead.MatchScore * 100, 1),
+            });
+        }
+
+        if (completion < 100)
+        {
+            rows.Add(new ProviderDashboardAttentionResponse
+            {
+                Type = "profile",
+                Title = "Complete your public profile",
+                Detail = $"Profile strength: {completion}%",
+                Action = "Edit Profile",
+                Href = "/dashboard/serviceprovider/profile",
+                Tone = "slate",
+            });
+        }
+
+        return rows.Take(3).ToList();
+    }
+
+    private static async Task<List<RevisionRequest>> LoadProviderRevisions(
+        MongoDbContext db,
+        IReadOnlyDictionary<string, WorkroomMilestone> milestones,
+        IReadOnlyDictionary<string, WorkroomEngagement> engagements,
+        string providerId)
+    {
+        if (milestones.Count == 0) return new List<RevisionRequest>();
+        var milestoneIds = milestones.Where(x => engagements.GetValueOrDefault(x.Value.EngagementId)?.ProviderId == providerId)
+            .Select(x => x.Key).ToHashSet(StringComparer.Ordinal);
+        return milestoneIds.Count == 0
+            ? new List<RevisionRequest>()
+            : await db.RevisionRequests.Find(x => milestoneIds.Contains(x.MilestoneId)).ToListAsync();
+    }
+
+    private static List<ProviderDashboardActivityResponse> BuildOverviewActivity(
+        IEnumerable<Proposal> proposals,
+        IEnumerable<Deliverable> deliverables,
+        IEnumerable<RevisionRequest> revisions,
+        IEnumerable<FinancialTransaction> transactions,
+        IEnumerable<PortfolioItem>? portfolioItems,
+        IReadOnlyDictionary<string, WorkroomMilestone> milestones)
+    {
+        var rows = new List<ProviderDashboardActivityResponse>();
+        rows.AddRange(proposals.Where(x => x.SubmittedAt != null).Select(x => new ProviderDashboardActivityResponse
+        {
+            Type = "proposalSubmitted", Text = $"Proposal sent for {x.Title}", OccurredAt = x.SubmittedAt!.Value,
+            Href = "/dashboard/serviceprovider/leads", Tone = "blue",
+        }));
+        rows.AddRange(deliverables.Select(x => new ProviderDashboardActivityResponse
+        {
+            Type = "deliverableSubmitted", Text = $"Deliverable submitted: {x.Title}", OccurredAt = x.SubmittedAt,
+            Href = "/dashboard/serviceprovider/workroom", Tone = "blue",
+        }));
+        rows.AddRange(revisions.Select(x => new ProviderDashboardActivityResponse
+        {
+            Type = "revisionRequested",
+            Text = $"Revision requested on {milestones.GetValueOrDefault(x.MilestoneId)?.Title ?? "a milestone"}",
+            OccurredAt = x.CreatedAt, Href = "/dashboard/serviceprovider/workroom", Tone = "red",
+        }));
+        rows.AddRange(milestones.Values.Where(x => x.ApprovedAt != null).Select(x => new ProviderDashboardActivityResponse
+        {
+            Type = "milestoneApproved", Text = $"Milestone approved: {x.Title}", OccurredAt = x.ApprovedAt!.Value,
+            Href = "/dashboard/serviceprovider/workroom", Tone = "green",
+        }));
+        rows.AddRange(transactions.Where(x => x.TransactionType == FinancialTransactionType.PaymentReleased && x.PaymentStatus == PaymentStatus.Completed)
+            .Select(x => new ProviderDashboardActivityResponse
+            {
+                Type = "paymentReleased",
+                Text = $"Payment released: {x.NetAmount.ToString("0.##", CultureInfo.InvariantCulture)} {x.Currency}",
+                OccurredAt = x.ReleasedAt ?? x.CreatedAt, Href = "/dashboard/serviceprovider/earnings", Tone = "green",
+            }));
+        rows.AddRange((portfolioItems ?? Array.Empty<PortfolioItem>()).Select(x => new ProviderDashboardActivityResponse
+        {
+            Type = "portfolioAdded", Text = $"Uploaded portfolio item: {x.Title}", OccurredAt = x.AddedAt,
+            Href = "/dashboard/serviceprovider/profile", Tone = "blue",
+        }));
+        return rows;
     }
 
     private static int CountRepeatOrders(IEnumerable<WorkroomEngagement> source, DateTime from, DateTime to)

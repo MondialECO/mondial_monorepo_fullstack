@@ -33,7 +33,7 @@ export function ServicesWorkspace() {
     <div className="mx-auto w-full max-w-5xl space-y-6 pb-8">
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1">
-          <h1 className="text-3xl font-semibold text-foreground">Services</h1>
+          <h1 className="text-3xl font-semibold text-foreground">Service Catalog</h1>
           <p className="text-sm text-muted-foreground">
             Build service listings with Basic / Standard / Premium packages. Clients
             discover and buy these once you publish.

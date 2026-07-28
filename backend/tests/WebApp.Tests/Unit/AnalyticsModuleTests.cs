@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
 using WebApp.Controllers;
 using WebApp.Models.DatabaseModels;
@@ -69,6 +70,16 @@ public class AnalyticsModuleTests
         (result.To - result.From).TotalDays.Should().Be(days);
         (result.ComparisonTo - result.ComparisonFrom).Should().Be(result.To - result.From);
         result.ComparisonTo.Should().Be(result.From);
+    }
+
+    [Fact]
+    public void This_month_compares_the_same_elapsed_window_in_the_previous_month()
+    {
+        var now = new DateTime(2026, 7, 28, 12, 0, 0, DateTimeKind.Utc);
+        var result = AnalyticsPeriodResolver.Resolve(new AnalyticsQuery { Range = "ThisMonth" }, now);
+        result.From.Should().Be(new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc));
+        result.ComparisonFrom.Should().Be(new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc));
+        (result.ComparisonTo - result.ComparisonFrom).Should().Be(result.To - result.From);
     }
 
     [Fact]
@@ -207,6 +218,14 @@ public class AnalyticsModuleTests
     }
 
     [Fact]
+    public void Analytics_history_gate_defaults_to_not_ready_without_a_verified_at_timestamp()
+    {
+        var response = new AnalyticsDashboardResponse();
+        response.HistoryStartedAt.Should().BeNull();
+        response.HasMinimumHistory.Should().BeFalse();
+    }
+
+    [Fact]
     public void Module_five_does_not_retrofit_test_provenance_onto_upstream_entities()
     {
         var upstream = new[] { typeof(Proposal), typeof(WorkroomEngagement), typeof(FinancialTransaction), typeof(ServiceListing) };
@@ -222,6 +241,40 @@ public class AnalyticsModuleTests
     public void Analytics_controller_requires_authorization()
         => typeof(AnalyticsController).GetCustomAttributes(typeof(AuthorizeAttribute), true)
             .Should().ContainSingle();
+
+    [Fact]
+    public void Provider_overview_has_a_dedicated_authenticated_api_route()
+    {
+        var action = typeof(AnalyticsController).GetMethod(nameof(AnalyticsController.Overview));
+        action.Should().NotBeNull();
+        action!.GetCustomAttributes(typeof(HttpGetAttribute), true)
+            .Cast<HttpGetAttribute>().Should().ContainSingle(x => x.Template == "overview");
+    }
+
+    [Fact]
+    public void Provider_overview_contract_keeps_untracked_states_numeric_free()
+    {
+        var response = new ProviderDashboardResponse
+        {
+            ServiceViews = new ProviderDashboardServiceViewsResponse
+            {
+                State = "notTracked",
+                Impressions = null,
+                Clicks = null,
+                Reason = "No dated events exist.",
+            },
+            TierProgress = new ProviderDashboardProgressResponse
+            {
+                State = "notTracked",
+                Value = null,
+                Detail = "No tier progression rule exists.",
+            },
+        };
+
+        response.ServiceViews.Impressions.Should().BeNull();
+        response.ServiceViews.Clicks.Should().BeNull();
+        response.TierProgress.Value.Should().BeNull();
+    }
 
     private static ClientRelationshipCalculator Calculator() => new();
 

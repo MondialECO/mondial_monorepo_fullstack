@@ -1,6 +1,12 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
+import {
+  getServiceProviderPageTitle,
+  isServiceProviderRoute,
+  SERVICE_PROVIDER_ROOT,
+  SERVICE_PROVIDER_TERMINOLOGY,
+} from "@/lib/service-provider-navigation";
 
 export type BreadcrumbItem = {
   label: string;
@@ -9,8 +15,25 @@ export type BreadcrumbItem = {
 
 export function useBreadcrumb(): BreadcrumbItem[] {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   if (!pathname) return [];
+
+  if (isServiceProviderRoute(pathname)) {
+    const dashboard = {
+      label: SERVICE_PROVIDER_TERMINOLOGY.dashboard,
+      href: SERVICE_PROVIDER_ROOT,
+    };
+    if (pathname === SERVICE_PROVIDER_ROOT) return [dashboard];
+    const query = searchParams.toString();
+    return [
+      dashboard,
+      {
+        label: getServiceProviderPageTitle(pathname, searchParams),
+        href: query ? `${pathname}?${query}` : pathname,
+      },
+    ];
+  }
 
   const segments = pathname.split("/").filter(Boolean);
 
