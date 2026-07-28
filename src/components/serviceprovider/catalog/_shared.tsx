@@ -16,32 +16,41 @@ export function EnumSelect({
   onChange,
   options,
   labelFor,
+  ariaLabel,
   className,
 }: {
   value: string;
   onChange: (v: string) => void;
   options: readonly string[];
   labelFor?: string;
+  ariaLabel?: string;
   className?: string;
 }) {
   return (
     <select
       id={labelFor}
+      aria-label={ariaLabel}
       value={value}
       onChange={(e) => onChange(e.target.value)}
       className={cn(
-        'h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        'h-10 w-full rounded-lg border border-[#D1D5DB] bg-white px-3 text-sm text-[#171717]',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3C61DD]',
         className
       )}
     >
       {options.map((o) => (
         <option key={o} value={o}>
-          {o}
+          {formatOption(o)}
         </option>
       ))}
     </select>
   );
+}
+
+function formatOption(value: string) {
+  if (value === 'AfterEscrowFunding') return 'After escrow funding (STUB-backed)';
+  if (value === 'File') return 'File (security scanner STUB-backed)';
+  return value.replace(/([a-z])([A-Z])/g, '$1 $2');
 }
 
 export function Field({
@@ -54,8 +63,8 @@ export function Field({
   children: React.ReactNode;
 }) {
   return (
-    <div className="space-y-1.5">
-      <Label htmlFor={htmlFor}>{label}</Label>
+    <div className="space-y-2">
+      <Label htmlFor={htmlFor} className="text-sm font-semibold text-[#374151]">{label}</Label>
       {children}
     </div>
   );

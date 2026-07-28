@@ -3,11 +3,16 @@
 import { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
+import {
+  SpCard,
+  SpMutationFeedback,
+  SpSectionHeader,
+  SpStatusBadge,
+} from '@/components/serviceprovider/ui';
 import { PRICING_MODELS } from '@/types/service-provider';
 import {
   CANCELLATION_POLICIES,
@@ -108,11 +113,13 @@ export function PackageEditor({
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg">{existing ? `Edit ${tier} package` : `Add ${tier} package`}</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-5">
+    <SpCard className="mx-auto max-w-5xl">
+      <SpSectionHeader
+        title={existing ? `Edit ${tier} package` : `Add ${tier} package`}
+        description="Set the gross price, scope, delivery terms, revisions, add-ons, requirements, and order handling for this package."
+        action={<SpStatusBadge>{tier}</SpStatusBadge>}
+      />
+      <div className="mt-6 space-y-6">
         {/* Basics */}
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Package title" htmlFor="pk-title">
@@ -144,9 +151,14 @@ export function PackageEditor({
           </Field>
         </div>
         {guidance.data && (
-          <p className="text-xs text-muted-foreground">
-            Suggested range (guidance, not a quote): {guidance.data.currency} {guidance.data.min}–{guidance.data.max}
-          </p>
+          <SpMutationFeedback status="info">
+            Deterministic category guidance: {guidance.data.currency} {guidance.data.min}–{guidance.data.max}. This is guidance, not a quote or net-earnings preview.
+          </SpMutationFeedback>
+        )}
+        {guidance.isError && (
+          <SpMutationFeedback status="error">
+            Pricing guidance is unavailable. You can still save the package using your own gross price.
+          </SpMutationFeedback>
         )}
 
         <Separator />
@@ -230,13 +242,13 @@ export function PackageEditor({
           </label>
         </div>
 
-        {error && <p className="text-sm text-destructive">{error}</p>}
-        <div className="flex items-center gap-3">
-          <Button onClick={submit} disabled={pending}>{pending ? 'Saving…' : 'Save package'}</Button>
-          <Button variant="ghost" onClick={onCancel}>Cancel</Button>
+        {error && <SpMutationFeedback status="error">{error}</SpMutationFeedback>}
+        <div className="flex flex-wrap items-center gap-3 border-t border-[#E5E7EB] pt-5">
+          <Button type="button" onClick={submit} disabled={pending}>{pending ? 'Saving…' : 'Save package'}</Button>
+          <Button type="button" variant="outline" onClick={onCancel} disabled={pending}>Cancel</Button>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </SpCard>
   );
 }
 
@@ -246,17 +258,17 @@ function AddOnsEditor({ value, onChange }: { value: ServiceAddOn[]; onChange: (v
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <p className="text-sm font-medium text-foreground">Add-ons <span className="font-normal text-muted-foreground">(non-revision extras)</span></p>
-        <Button size="sm" variant="outline" onClick={() => onChange([...value, { name: '', price: 0, deliveryTimeAdjustmentDays: 0, enabled: true }])}>
+        <Button type="button" size="sm" variant="outline" onClick={() => onChange([...value, { name: '', price: 0, deliveryTimeAdjustmentDays: 0, enabled: true }])}>
           <Plus className="h-3.5 w-3.5" /> Add-on
         </Button>
       </div>
       {value.map((a, i) => (
         <div key={i} className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto_auto_auto_auto] sm:items-center">
-          <Input placeholder="Name" value={a.name} onChange={(e) => setAt(i, { name: e.target.value })} />
-          <Input className="sm:w-24" type="number" placeholder="Price" value={a.price} onChange={(e) => setAt(i, { price: Number(e.target.value) || 0 })} />
-          <Input className="sm:w-24" type="number" placeholder="+days" value={a.deliveryTimeAdjustmentDays} onChange={(e) => setAt(i, { deliveryTimeAdjustmentDays: Number(e.target.value) || 0 })} />
+          <Input aria-label={`Add-on ${i + 1} name`} placeholder="Name" value={a.name} onChange={(e) => setAt(i, { name: e.target.value })} />
+          <Input aria-label={`Add-on ${i + 1} price`} className="sm:w-24" type="number" placeholder="Price" value={a.price} onChange={(e) => setAt(i, { price: Number(e.target.value) || 0 })} />
+          <Input aria-label={`Add-on ${i + 1} delivery adjustment in days`} className="sm:w-24" type="number" placeholder="+days" value={a.deliveryTimeAdjustmentDays} onChange={(e) => setAt(i, { deliveryTimeAdjustmentDays: Number(e.target.value) || 0 })} />
           <label className="flex items-center gap-1 text-xs"><Checkbox checked={a.enabled} onChange={(e) => setAt(i, { enabled: e.target.checked })} /> On</label>
-          <Button size="sm" variant="ghost" onClick={() => onChange(value.filter((_, idx) => idx !== i))}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+          <Button type="button" aria-label={`Remove add-on ${i + 1}`} size="sm" variant="ghost" onClick={() => onChange(value.filter((_, idx) => idx !== i))}><Trash2 className="h-4 w-4 text-destructive" aria-hidden="true" /></Button>
         </div>
       ))}
     </div>
@@ -269,16 +281,16 @@ function RequirementsEditor({ value, onChange }: { value: RequirementsField[]; o
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <p className="text-sm font-medium text-foreground">Client requirements <span className="font-normal text-muted-foreground">(what you&apos;ll ask the buyer)</span></p>
-        <Button size="sm" variant="outline" onClick={() => onChange([...value, { fieldId: '', label: '', fieldType: 'Text', required: false }])}>
+        <Button type="button" size="sm" variant="outline" onClick={() => onChange([...value, { fieldId: '', label: '', fieldType: 'Text', required: false }])}>
           <Plus className="h-3.5 w-3.5" /> Field
         </Button>
       </div>
       {value.map((r, i) => (
         <div key={i} className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto_auto_auto] sm:items-center">
-          <Input placeholder="Question / label" value={r.label} onChange={(e) => setAt(i, { label: e.target.value })} />
-          <EnumSelect className="sm:w-32" value={r.fieldType} onChange={(v) => setAt(i, { fieldType: v as RequirementsField['fieldType'] })} options={REQUIREMENTS_FIELD_TYPES} />
+          <Input aria-label={`Client requirement ${i + 1}`} placeholder="Question / label" value={r.label} onChange={(e) => setAt(i, { label: e.target.value })} />
+          <EnumSelect ariaLabel={`Client requirement ${i + 1} field type`} className="sm:w-32" value={r.fieldType} onChange={(v) => setAt(i, { fieldType: v as RequirementsField['fieldType'] })} options={REQUIREMENTS_FIELD_TYPES} />
           <label className="flex items-center gap-1 text-xs"><Checkbox checked={r.required} onChange={(e) => setAt(i, { required: e.target.checked })} /> Required</label>
-          <Button size="sm" variant="ghost" onClick={() => onChange(value.filter((_, idx) => idx !== i))}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+          <Button type="button" aria-label={`Remove client requirement ${i + 1}`} size="sm" variant="ghost" onClick={() => onChange(value.filter((_, idx) => idx !== i))}><Trash2 className="h-4 w-4 text-destructive" aria-hidden="true" /></Button>
         </div>
       ))}
     </div>

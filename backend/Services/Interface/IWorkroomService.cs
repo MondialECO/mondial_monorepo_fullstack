@@ -33,6 +33,8 @@ public interface IWorkroomService
     Task<ServiceProviderResult<ProviderFinancialSummaryResponse>> GetFinancialSummaryAsync(string providerId, string? currency);
     Task<ServiceProviderResult<StatementResponse>> GetStatementAsync(string providerId, DateTime from, DateTime to, string? currency);
     Task<ServiceProviderResult<ProviderFinancialSettings>> AddPayoutMethodAsync(string providerId, AddPayoutMethodRequest request);
+    Task<ServiceProviderResult<ProviderFinancialSettings>> SetDefaultPayoutMethodAsync(string providerId, string payoutMethodId);
+    Task<ServiceProviderResult<ProviderFinancialSettings>> RemovePayoutMethodAsync(string providerId, string payoutMethodId);
     Task<ServiceProviderResult<ProviderFinancialSettings>> UpdateTaxSettingsAsync(string providerId, UpdateTaxSettingsRequest request);
     Task<ServiceProviderResult<PayoutRequest>> RequestPayoutAsync(string providerId, CreatePayoutRequest request);
 }

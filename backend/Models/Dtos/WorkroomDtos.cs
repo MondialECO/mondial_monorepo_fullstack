@@ -92,6 +92,7 @@ public class WorkroomEngagementResponse
     public string ProposalId { get; set; } = "";
     public string ProviderId { get; set; } = "";
     public string ClientId { get; set; } = "";
+    public string ClientDisplayName { get; set; } = "";
     public string ContractId { get; set; } = "";
     public string Title { get; set; } = "";
     public string Description { get; set; } = "";
@@ -100,9 +101,13 @@ public class WorkroomEngagementResponse
     public DateTime? StartDate { get; set; }
     public DateTime? ExpectedEndDate { get; set; }
     public DateTime? ActualEndDate { get; set; }
+    public string? CurrentMilestoneId { get; set; }
     public double CompletionPercentage { get; set; }
     public string EngagementStatus { get; set; } = "";
     public string EscrowStatus { get; set; } = "";
+    public DateTime? PausedAt { get; set; }
+    public int AccumulatedPausedMinutes { get; set; }
+    public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }
 public class ContractResponse
@@ -134,6 +139,9 @@ public class WorkroomMilestoneResponse
     public int ApprovedExtensionDays { get; set; }
     public DateTime? ReviewWindowEndsAt { get; set; }
     public DateTime? AutoReleaseAt { get; set; }
+    public DateTime? DisputeOpenedAt { get; set; }
+    public DateTime? DisputeReviewEndsAt { get; set; }
+    public string? DisputeOutcome { get; set; }
 }
 public class WorkroomDetailResponse
 {
@@ -144,6 +152,9 @@ public class WorkroomDetailResponse
     public List<RevisionRequest> RevisionRequests { get; set; } = new();
     public List<WorkroomTask> Tasks { get; set; } = new();
     public List<ClientInputRequest> ClientInputRequests { get; set; } = new();
+    public List<WorkroomFile> Files { get; set; } = new();
+    public List<HourlyTimeEntry> HourlyTimeEntries { get; set; } = new();
+    public Review? Review { get; set; }
 }
 public class ProviderFinancialSummaryResponse
 {
@@ -154,7 +165,11 @@ public class ProviderFinancialSummaryResponse
     public decimal Withdrawn { get; set; }
     public decimal OnHold { get; set; }
     public decimal ProtectedEscrow { get; set; }
+    public decimal GrossEarnings { get; set; }
+    public decimal CommissionPaid { get; set; }
+    public decimal NetEarnings { get; set; }
     public string Currency { get; set; } = "EUR";
+    public List<string> AvailableCurrencies { get; set; } = new();
     public List<FinancialTransaction> Transactions { get; set; } = new();
     public List<PayoutRequest> Payouts { get; set; } = new();
     public List<Invoice> Invoices { get; set; } = new();
@@ -175,11 +190,14 @@ public class StatementResponse
 
 public static class WorkroomMapping
 {
-    public static WorkroomEngagementResponse ToResponse(this WorkroomEngagement e) => new()
+    public static WorkroomEngagementResponse ToResponse(this WorkroomEngagement e, string? clientDisplayName = null) => new()
     {
         Id=e.Id, ProposalId=e.ProposalId, ProviderId=e.ProviderId, ClientId=e.ClientId, ContractId=e.ContractId,
+        ClientDisplayName=clientDisplayName ?? "",
         Title=e.Title, Description=e.Description, ContractValue=e.ContractValue, Currency=e.Currency, StartDate=e.StartDate,
-        ExpectedEndDate=e.ExpectedEndDate, ActualEndDate=e.ActualEndDate, CompletionPercentage=e.CompletionPercentage,
-        EngagementStatus=e.EngagementStatus.ToString(), EscrowStatus=e.EscrowStatus.ToString(), UpdatedAt=e.UpdatedAt,
+        ExpectedEndDate=e.ExpectedEndDate, ActualEndDate=e.ActualEndDate, CurrentMilestoneId=e.CurrentMilestoneId,
+        CompletionPercentage=e.CompletionPercentage, EngagementStatus=e.EngagementStatus.ToString(),
+        EscrowStatus=e.EscrowStatus.ToString(), PausedAt=e.PausedAt,
+        AccumulatedPausedMinutes=e.AccumulatedPausedMinutes, CreatedAt=e.CreatedAt, UpdatedAt=e.UpdatedAt,
     };
 }

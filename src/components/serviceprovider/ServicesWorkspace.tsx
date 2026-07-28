@@ -1,127 +1,320 @@
 'use client';
 
-import { useState } from 'react';
-import { ArrowLeft, LayoutGrid, Plus, Eye, MousePointerClick } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import {
+  ArrowLeft,
+  Eye,
+  LayoutGrid,
+  MousePointerClick,
+  Plus,
+  Search,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import EmptyState from '@/components/ui/empty-state';
 import {
-  useServiceListings,
+  SpCard,
+  SpEmptyState,
+  SpFilterBar,
+  SpMetricCard,
+  SpMutationFeedback,
+  SpPage,
+  SpPageHeader,
+  SpStatusBadge,
+} from '@/components/serviceprovider/ui';
+import {
   useServiceListing,
+  useServiceListings,
 } from '@/hooks/queries/service-catalog';
-import type { ServiceListing } from '@/types/service-catalog';
+import type { CatalogStatus, ServiceListing } from '@/types/service-catalog';
 import { ListingEditor } from './catalog/ListingEditor';
 import { ListingDetail } from './catalog/ListingDetail';
 
-type View =
-  | { mode: 'list' }
-  | { mode: 'new' }
-  | { mode: 'detail'; id: string };
+const BASE_ROUTE = '/dashboard/serviceprovider/services';
+const statusOptions: Array<'All' | CatalogStatus> = [
+  'All',
+  'Published',
+  'Draft',
+  'Unpublished',
+  'Archived',
+];
 
 export function ServicesWorkspace() {
-  const [view, setView] = useState<View>({ mode: 'list' });
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const serviceId = searchParams.get('service');
+  const isCreating = searchParams.get('view') === 'new';
+
+  const showList = () => router.push(BASE_ROUTE);
+  const showNew = () => router.push(`${BASE_ROUTE}?view=new`);
+  const showService = (id: string) =>
+    router.push(`${BASE_ROUTE}?service=${encodeURIComponent(id)}&tab=overview`);
 
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-6 pb-8">
-      <div className="flex items-start justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="text-3xl font-semibold text-foreground">Service Catalog</h1>
-          <p className="text-sm text-muted-foreground">
-            Build service listings with Basic / Standard / Premium packages. Clients
-            discover and buy these once you publish.
-          </p>
-        </div>
-        {view.mode === 'list' && (
-          <Button onClick={() => setView({ mode: 'new' })}>
-            <Plus className="h-4 w-4" /> New service
-          </Button>
-        )}
-        {view.mode !== 'list' && (
-          <Button variant="ghost" onClick={() => setView({ mode: 'list' })}>
-            <ArrowLeft className="h-4 w-4" /> All services
-          </Button>
-        )}
-      </div>
+    <SpPage>
+      <SpPageHeader
+        title={isCreating ? 'Create service' : serviceId ? 'Manage service' : 'Service Catalog'}
+        description={
+          isCreating
+            ? 'Describe the service clients can discover, then add its packages and terms.'
+            : serviceId
+              ? 'Review the listing, packages, FAQs, and capacity using live catalog data.'
+              : 'Create and manage the services clients can discover in the marketplace.'
+        }
+        actions={
+          isCreating || serviceId ? (
+            <Button type="button" variant="outline" onClick={showList}>
+              <ArrowLeft className="size-4" aria-hidden="true" />
+              All services
+            </Button>
+          ) : (
+            <Button type="button" onClick={showNew}>
+              <Plus className="size-4" aria-hidden="true" />
+              New service
+            </Button>
+          )
+        }
+      />
 
-      {view.mode === 'list' && <ListingsList onOpen={(id) => setView({ mode: 'detail', id })} />}
-      {view.mode === 'new' && (
-        <ListingEditor onDone={(id) => setView({ mode: 'detail', id })} onCancel={() => setView({ mode: 'list' })} />
-      )}
-      {view.mode === 'detail' && <ListingDetailLoader id={view.id} />}
-    </div>
+      {!isCreating && !serviceId && <ListingsList onOpen={showService} onCreate={showNew} />}
+      {isCreating && <ListingEditor onDone={showService} onCancel={showList} />}
+      {serviceId && <ListingDetailLoader id={serviceId} />}
+    </SpPage>
   );
 }
 
-function ListingsList({ onOpen }: { onOpen: (id: string) => void }) {
-  const { data: listings, isLoading, isError } = useServiceListings();
+function ListingsList({
+  onOpen,
+  onCreate,
+}: {
+  onOpen: (id: string) => void;
+  onCreate: () => void;
+}) {
+  const listingsQuery = useServiceListings();
+  const [query, setQuery] = useState('');
+  const [status, setStatus] = useState<(typeof statusOptions)[number]>('All');
 
-  if (isLoading) return <Skeleton className="h-48 w-full rounded-xl" />;
-  if (isError)
+  const listings = useMemo(() => listingsQuery.data ?? [], [listingsQuery.data]);
+  const filtered = useMemo(() => {
+    const needle = query.trim().toLocaleLowerCase();
+    return listings.filter((listing) => {
+      const matchesStatus = status === 'All' || listing.status === status;
+      const matchesQuery =
+        !needle ||
+        listing.title.toLocaleLowerCase().includes(needle) ||
+        listing.description.toLocaleLowerCase().includes(needle) ||
+        listing.category.toLocaleLowerCase().includes(needle);
+      return matchesStatus && matchesQuery;
+    });
+  }, [listings, query, status]);
+
+  if (listingsQuery.isLoading) {
     return (
-      <p className="text-sm text-destructive">Couldn&apos;t load your services. Try again.</p>
+      <div className="space-y-5" aria-label="Loading service catalog">
+        <div className="grid gap-4 sm:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <Skeleton key={index} className="h-40 rounded-2xl" />
+          ))}
+        </div>
+        <Skeleton className="h-16 rounded-2xl" />
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Skeleton className="h-64 rounded-2xl" />
+          <Skeleton className="h-64 rounded-2xl" />
+        </div>
+      </div>
     );
+  }
 
-  if (!listings || listings.length === 0) {
+  if (listingsQuery.isError) {
     return (
-      <EmptyState
+      <SpMutationFeedback status="error">
+        <div className="flex flex-wrap items-center gap-3">
+          <span>Your service catalog could not be loaded.</span>
+          <button
+            type="button"
+            onClick={() => listingsQuery.refetch()}
+            className="font-semibold underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3C61DD]"
+          >
+            Try again
+          </button>
+        </div>
+      </SpMutationFeedback>
+    );
+  }
+
+  if (listings.length === 0) {
+    return (
+      <SpEmptyState
         icon={LayoutGrid}
-        title="No Published Services"
-        description="Create your first service listing to start receiving briefs."
+        title="Create your first service"
+        description="Start with the service overview. Packages, client requirements, and FAQs can be added after the listing is saved."
+        action={
+          <Button type="button" onClick={onCreate}>
+            <Plus className="size-4" aria-hidden="true" />
+            Create service
+          </Button>
+        }
       />
     );
   }
 
+  const published = listings.filter((listing) => listing.status === 'Published').length;
+  const impressions = listings.reduce((total, listing) => total + listing.impressions, 0);
+  const clicks = listings.reduce((total, listing) => total + listing.clicks, 0);
+
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
-      {listings.map((l) => (
-        <ListingCard key={l.id} listing={l} onOpen={() => onOpen(l.id)} />
-      ))}
+    <div className="space-y-5">
+      <div className="grid gap-4 sm:grid-cols-3">
+        <SpMetricCard label="Published services" value={published} icon={LayoutGrid} />
+        <SpMetricCard label="Lifetime impressions" value={impressions.toLocaleString()} icon={Eye} />
+        <SpMetricCard label="Lifetime clicks" value={clicks.toLocaleString()} icon={MousePointerClick} />
+      </div>
+
+      <SpFilterBar>
+        <div className="relative min-w-0 flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#9CA3AF]" aria-hidden="true" />
+          <Input
+            aria-label="Search services"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search by title, description, or category"
+            className="pl-9"
+          />
+        </div>
+        <label className="flex items-center gap-2 text-sm font-semibold text-[#374151]">
+          <span>Status</span>
+          <select
+            value={status}
+            onChange={(event) => setStatus(event.target.value as (typeof statusOptions)[number])}
+            className="h-10 rounded-lg border border-[#D1D5DB] bg-white px-3 text-sm text-[#171717] outline-none focus-visible:ring-2 focus-visible:ring-[#3C61DD]"
+          >
+            {statusOptions.map((option) => (
+              <option key={option} value={option}>{option}</option>
+            ))}
+          </select>
+        </label>
+      </SpFilterBar>
+
+      {filtered.length === 0 ? (
+        <SpEmptyState
+          icon={Search}
+          title="No services match these filters"
+          description="Clear the search or choose another status to see your other listings."
+          action={
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setQuery('');
+                setStatus('All');
+              }}
+            >
+              Clear filters
+            </Button>
+          }
+        />
+      ) : (
+        <div className="grid gap-4 lg:grid-cols-2">
+          {filtered.map((listing) => (
+            <ListingCard key={listing.id} listing={listing} onOpen={() => onOpen(listing.id)} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
 function ListingCard({ listing, onOpen }: { listing: ServiceListing; onOpen: () => void }) {
   return (
-    <Card className="flex flex-col">
-      <CardHeader className="gap-2">
-        <div className="flex items-start justify-between gap-2">
-          <CardTitle className="text-lg">{listing.title || 'Untitled service'}</CardTitle>
-          <StatusBadge status={listing.status} />
+    <SpCard className="flex min-h-64 flex-col">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#6B7280]">
+            {formatEnum(listing.category)}
+          </p>
+          <h2 className="mt-2 font-heading text-lg font-semibold leading-6 text-[#171717]">
+            {listing.title || 'Untitled service'}
+          </h2>
         </div>
-        <CardDescription className="line-clamp-2">
-          {listing.description || 'No description yet.'}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="mt-auto flex items-center justify-between">
-        <div className="flex items-center gap-4 text-xs text-muted-foreground">
-          <span className="inline-flex items-center gap-1"><Eye className="h-3.5 w-3.5" />{listing.impressions}</span>
-          <span className="inline-flex items-center gap-1"><MousePointerClick className="h-3.5 w-3.5" />{listing.clicks}</span>
-          <span>{listing.category}</span>
+        <StatusBadge status={listing.status} />
+      </div>
+
+      <p className="mt-3 line-clamp-3 text-sm leading-6 text-[#6B7280]">
+        {listing.description || 'Add a description so clients understand the scope of this service.'}
+      </p>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        {listing.industryFocus.slice(0, 3).map((industry) => (
+          <SpStatusBadge key={industry}>{industry}</SpStatusBadge>
+        ))}
+      </div>
+
+      <div className="mt-auto flex flex-wrap items-end justify-between gap-4 border-t border-[#E5E7EB] pt-5">
+        <div className="flex items-center gap-5 text-xs text-[#6B7280]">
+          <span className="inline-flex items-center gap-1.5" aria-label={`${listing.impressions} impressions`}>
+            <Eye className="size-4" aria-hidden="true" />
+            {listing.impressions.toLocaleString()}
+          </span>
+          <span className="inline-flex items-center gap-1.5" aria-label={`${listing.clicks} clicks`}>
+            <MousePointerClick className="size-4" aria-hidden="true" />
+            {listing.clicks.toLocaleString()}
+          </span>
+          <span>Updated {new Date(listing.updatedAt).toLocaleDateString()}</span>
         </div>
-        <Button size="sm" variant="outline" onClick={onOpen}>Manage</Button>
-      </CardContent>
-    </Card>
+        <Button type="button" size="sm" variant="outline" onClick={onOpen}>
+          Manage
+        </Button>
+      </div>
+    </SpCard>
   );
 }
 
 function ListingDetailLoader({ id }: { id: string }) {
-  const { data, isLoading, isError } = useServiceListing(id);
-  if (isLoading) return <Skeleton className="h-96 w-full rounded-xl" />;
-  if (isError || !data)
-    return <p className="text-sm text-destructive">Couldn&apos;t load this service. Try again.</p>;
-  return <ListingDetail detail={data} />;
+  const listingQuery = useServiceListing(id);
+
+  if (listingQuery.isLoading) {
+    return (
+      <div className="space-y-5" aria-label="Loading service details">
+        <Skeleton className="h-56 rounded-2xl" />
+        <Skeleton className="h-12 rounded-xl" />
+        <Skeleton className="h-80 rounded-2xl" />
+      </div>
+    );
+  }
+
+  if (listingQuery.isError || !listingQuery.data) {
+    return (
+      <SpMutationFeedback status="error">
+        <div className="flex flex-wrap items-center gap-3">
+          <span>This service could not be loaded.</span>
+          <button
+            type="button"
+            onClick={() => listingQuery.refetch()}
+            className="font-semibold underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3C61DD]"
+          >
+            Try again
+          </button>
+        </div>
+      </SpMutationFeedback>
+    );
+  }
+
+  return <ListingDetail detail={listingQuery.data} />;
 }
 
 export function StatusBadge({ status }: { status: string }) {
-  const variant =
-    status === 'Published' ? 'success' : status === 'Unpublished' ? 'warning' : 'secondary';
-  return <Badge variant={variant as 'success' | 'warning' | 'secondary'}>{status}</Badge>;
+  const tone =
+    status === 'Published'
+      ? 'positive'
+      : status === 'Unpublished'
+        ? 'warning'
+        : status === 'Archived'
+          ? 'negative'
+          : 'neutral';
+  return <SpStatusBadge tone={tone}>{status}</SpStatusBadge>;
+}
+
+export function formatEnum(value: string) {
+  return value.replace(/([a-z])([A-Z])/g, '$1 $2');
 }

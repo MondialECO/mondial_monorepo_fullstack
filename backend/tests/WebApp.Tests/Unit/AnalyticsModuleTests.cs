@@ -218,6 +218,44 @@ public class AnalyticsModuleTests
     }
 
     [Fact]
+    public void Analytics_contract_surfaces_real_detail_views_without_new_event_claims()
+    {
+        var response = new AnalyticsDashboardResponse();
+
+        response.Profile.TierMeaning.Should().Contain("ranking").And.NotContain("commission");
+        response.Proposals.ProposalViewRate.Value.Should().BeNull();
+        response.Services.Should().BeEmpty();
+        response.AvailableCurrencies.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Analytics_detail_contract_includes_all_current_proposal_statuses()
+    {
+        var names = typeof(ProposalAnalyticsResponse).GetProperties().Select(x => x.Name);
+
+        names.Should().Contain(new[]
+        {
+            "Drafts", "Submitted", "Viewed", "ChangesRequested", "Revised",
+            "ClientReviewing", "Accepted", "Declined", "Withdrawn", "Expired",
+            "ConvertedToProject",
+        });
+    }
+
+    [Fact]
+    public void Analytics_detail_contract_has_no_commission_rate_field()
+    {
+        var contracts = new[]
+        {
+            typeof(AnalyticsDashboardResponse), typeof(ServiceAnalyticsItemResponse),
+            typeof(ProfileAnalyticsResponse), typeof(ProposalAnalyticsResponse),
+            typeof(RevenueAnalyticsResponse), typeof(ClientAnalyticsResponse),
+        };
+
+        contracts.SelectMany(x => x.GetProperties()).Select(x => x.Name)
+            .Should().NotContain(x => x.Contains("CommissionRate", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
     public void Analytics_history_gate_defaults_to_not_ready_without_a_verified_at_timestamp()
     {
         var response = new AnalyticsDashboardResponse();

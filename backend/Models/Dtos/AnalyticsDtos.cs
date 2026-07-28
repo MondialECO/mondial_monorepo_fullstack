@@ -55,8 +55,10 @@ public class ServiceAnalyticsItemResponse
     public string Title { get; set; } = "";
     public string Category { get; set; } = "";
     public bool CustomUnattributed { get; set; }
+    public string Status { get; set; } = "Historical";
     public AnalyticsMetricResponse Impressions { get; set; } = new();
     public AnalyticsMetricResponse ServiceViews { get; set; } = new();
+    public AnalyticsMetricResponse ClickThroughRate { get; set; } = new();
     public AnalyticsMetricResponse Enquiries { get; set; } = new();
     public AnalyticsMetricResponse Orders { get; set; } = new();
     public AnalyticsMetricResponse ConversionRate { get; set; } = new();
@@ -67,23 +69,52 @@ public class ServiceAnalyticsItemResponse
     public AnalyticsMetricResponse OnTimeDeliveryRate { get; set; } = new();
     public AnalyticsMetricResponse CancellationRate { get; set; } = new();
     public AnalyticsMetricResponse RepeatOrders { get; set; } = new();
+    public AnalyticsMetricResponse GrossRevenue { get; set; } = new();
+    public AnalyticsMetricResponse NetRevenue { get; set; } = new();
 }
 
 public class ProposalAnalyticsResponse
 {
+    public AnalyticsMetricResponse Drafts { get; set; } = new();
     public AnalyticsMetricResponse Submitted { get; set; } = new();
+    public AnalyticsMetricResponse Viewed { get; set; } = new();
+    public AnalyticsMetricResponse ChangesRequested { get; set; } = new();
+    public AnalyticsMetricResponse Revised { get; set; } = new();
+    public AnalyticsMetricResponse ClientReviewing { get; set; } = new();
     public AnalyticsMetricResponse Accepted { get; set; } = new();
     public AnalyticsMetricResponse AcceptanceRate { get; set; } = new();
     public AnalyticsMetricResponse AverageProposalValue { get; set; } = new();
     public AnalyticsMetricResponse Declined { get; set; } = new();
     public AnalyticsMetricResponse Withdrawn { get; set; } = new();
     public AnalyticsMetricResponse Expired { get; set; } = new();
+    public AnalyticsMetricResponse ConvertedToProject { get; set; } = new();
     public AnalyticsMetricResponse ProposalViewRate { get; set; } = new();
     public AnalyticsMetricResponse ClientResponseRate { get; set; } = new();
 }
 
+public class TrustSignalAnalyticsResponse
+{
+    public string Key { get; set; } = "";
+    public string Label { get; set; } = "";
+    public decimal Weight { get; set; }
+    public bool HasData { get; set; }
+    public decimal? Value { get; set; }
+}
+
 public class ProfileAnalyticsResponse
 {
+    public AnalyticsMetricResponse TrustScore { get; set; } = new();
+    public List<TrustSignalAnalyticsResponse> TrustSignals { get; set; } = new();
+    public AnalyticsMetricResponse DisputePenalty { get; set; } = new();
+    public AnalyticsMetricResponse ProfileCompleteness { get; set; } = new();
+    public string VerificationStatus { get; set; } = "Pending";
+    public int TierLevel { get; set; } = 1;
+    public string TierMeaning { get; set; } = "Tier affects ranking and matching only.";
+    public AnalyticsMetricResponse SkillsTestsTaken { get; set; } = new();
+    public AnalyticsMetricResponse SkillsTestsPassed { get; set; } = new();
+    public AnalyticsMetricResponse LatestSkillsTestScore { get; set; } = new();
+    public AnalyticsMetricResponse PortfolioItems { get; set; } = new();
+    public AnalyticsMetricResponse PublishedServices { get; set; } = new();
     public AnalyticsMetricResponse ProfileViews { get; set; } = new();
     public AnalyticsMetricResponse SearchAppearances { get; set; } = new();
     public AnalyticsMetricResponse PortfolioViews { get; set; } = new();
@@ -110,6 +141,7 @@ public class RevenueAnalyticsResponse
     public AnalyticsMetricResponse AvailableBalance { get; set; } = new();
     public AnalyticsMetricResponse PendingBalance { get; set; } = new();
     public AnalyticsMetricResponse ProtectedEscrow { get; set; } = new();
+    public AnalyticsMetricResponse Withdrawn { get; set; } = new();
     public AnalyticsMetricResponse AverageProjectValue { get; set; } = new();
     public AnalyticsMetricResponse HighestProjectValue { get; set; } = new();
     public List<AnalyticsBreakdownResponse> ByService { get; set; } = new();
@@ -131,10 +163,20 @@ public class ClientAnalyticsResponse
     public AnalyticsMetricResponse NewClients { get; set; } = new();
     public AnalyticsMetricResponse ReturningClients { get; set; } = new();
     public AnalyticsMetricResponse RepeatClientRate { get; set; } = new();
+    public AnalyticsMetricResponse RepeatClients { get; set; } = new();
+    public AnalyticsMetricResponse CompletedEngagements { get; set; } = new();
+    public AnalyticsMetricResponse OnTimeDeliveryRate { get; set; } = new();
     public AnalyticsMetricResponse RepeatClientRevenue { get; set; } = new();
     public AnalyticsMetricResponse AverageProjectsPerClient { get; set; } = new();
     public AnalyticsMetricResponse AverageClientLifetimeValue { get; set; } = new();
     public AnalyticsMetricResponse AverageClientRating { get; set; } = new();
+    public AnalyticsMetricResponse ReviewCount { get; set; } = new();
+    public AnalyticsMetricResponse AverageQualityRating { get; set; } = new();
+    public AnalyticsMetricResponse AverageCommunicationRating { get; set; } = new();
+    public AnalyticsMetricResponse AverageDeliveryRating { get; set; } = new();
+    public AnalyticsMetricResponse DisputesOpened { get; set; } = new();
+    public AnalyticsMetricResponse DisputesResolved { get; set; } = new();
+    public AnalyticsMetricResponse AdverseDisputes { get; set; } = new();
     public List<ActiveClientAnalyticsResponse> MostActiveClients { get; set; } = new();
 }
 
@@ -158,6 +200,7 @@ public class AnalyticsDashboardResponse
 {
     public AnalyticsPeriodResponse Period { get; set; } = default!;
     public string Currency { get; set; } = "EUR";
+    public List<string> AvailableCurrencies { get; set; } = new();
     public DateTime? HistoryStartedAt { get; set; }
     public bool HasMinimumHistory { get; set; }
     public bool IncludesRecordsWithoutTestProvenance { get; set; } = true;

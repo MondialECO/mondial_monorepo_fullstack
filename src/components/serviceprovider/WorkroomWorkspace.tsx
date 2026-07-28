@@ -1,68 +1,74 @@
 'use client';
 
-import { useState } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { ArrowLeft, BriefcaseBusiness, CheckCircle2, Clock3, FileUp, Play, ShieldCheck } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import EmptyState from '@/components/ui/empty-state';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Textarea } from '@/components/ui/textarea';
-import { useActivateMilestone, useCompleteEngagement, useConfirmContract, useEngagement, useEngagements, useStartRevision, useSubmitDeliverable, useUploadWorkroomFile } from '@/hooks/queries/workroom';
-import type { Milestone, RevisionRequest, SubmitDeliverablePayload } from '@/types/workroom';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { SpPage, SpPageHeader, SpTabBar } from '@/components/serviceprovider/ui';
+import { ProjectList } from './workroom/ProjectList';
+import { ProjectDetail, type WorkroomTab } from './workroom/ProjectDetail';
+import type { NavigationChange } from './workroom/_shared';
+
+const BASE_ROUTE = '/dashboard/serviceprovider/workroom';
 
 export function WorkroomWorkspace() {
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const listView = searchParams.get('view') === 'completed' ? 'completed' : 'active';
-  return <WorkroomWorkspaceView key={listView} listView={listView} />;
+  const view = searchParams.get('view') === 'completed' ? 'completed' : 'active';
+  const projectId = searchParams.get('project');
+  const tab = normalizeTab(searchParams.get('tab'));
+  const milestoneId = searchParams.get('milestone');
+
+  const navigate: NavigationChange = (change, replace = false) => {
+    const params = new URLSearchParams(searchParams.toString());
+    Object.entries(change).forEach(([key, value]) => {
+      if (value === null) params.delete(key);
+      else params.set(key, value);
+    });
+    const href = `${BASE_ROUTE}?${params.toString()}`;
+    if (replace) router.replace(href);
+    else router.push(href);
+  };
+
+  if (projectId) {
+    return (
+      <ProjectDetail
+        id={projectId}
+        view={view}
+        tab={tab}
+        milestoneId={milestoneId}
+        onBack={() => navigate({ project: null, tab: null, milestone: null })}
+        onTab={(next) => navigate({ tab: next === 'overview' ? null : next, milestone: next === 'milestones' ? milestoneId : null }, true)}
+        onMilestone={(id) => navigate({ tab: 'milestones', milestone: id }, true)}
+      />
+    );
+  }
+
+  const title = view === 'completed' ? 'Completed Projects' : 'Active Projects';
+  const description = view === 'completed'
+    ? 'Review completed engagements, delivery history, and verified client feedback.'
+    : 'Manage live contracts, milestones, delivery, coordination, and project status.';
+
+  return (
+    <SpPage>
+      <SpPageHeader title={title} description={description} />
+      <SpTabBar
+        label="Project workroom sections"
+        items={[
+          { label: 'Active Projects', href: `${BASE_ROUTE}?view=active`, active: view === 'active' },
+          { label: 'Completed Projects', href: `${BASE_ROUTE}?view=completed`, active: view === 'completed' },
+        ]}
+      />
+      <ProjectList
+        key={searchParams.toString()}
+        view={view}
+        searchParams={searchParams}
+        onNavigate={navigate}
+        onOpen={(id) => navigate({ project: id, tab: null, milestone: null })}
+      />
+    </SpPage>
+  );
 }
 
-function WorkroomWorkspaceView({ listView }: { listView: 'active' | 'completed' }) {
-  const [selected, setSelected] = useState<string | null>(null);
-  return selected ? <WorkroomDetail id={selected} onBack={() => setSelected(null)} /> : <WorkroomList view={listView} onOpen={setSelected} />;
+function normalizeTab(value: string | null): WorkroomTab {
+  return value === 'milestones' || value === 'deliveries' || value === 'coordination' || value === 'contract' || value === 'time'
+    ? value
+    : 'overview';
 }
-
-function WorkroomList({ view, onOpen }: { view: 'active' | 'completed'; onOpen: (id: string) => void }) {
-  const { data, isLoading, isError } = useEngagements();
-  if (isLoading) return <Skeleton className="h-72 w-full rounded-xl" />;
-  if (isError) return <p className="text-sm text-destructive">Couldn&apos;t load workrooms. Try again.</p>;
-  const terminal = new Set(['Completed', 'Archived', 'Cancelled']);
-  const rows = (data ?? []).filter((engagement) => view === 'completed' ? terminal.has(engagement.engagementStatus) : !terminal.has(engagement.engagementStatus));
-  return <div className="mx-auto w-full max-w-6xl space-y-6 pb-8"><div><h1 className="text-3xl font-semibold">{view === 'completed' ? 'Completed Projects' : 'Active Projects'}</h1><p className="text-sm text-muted-foreground">Contracts, funded milestones, delivery history, revisions, and completion.</p></div>
-    {!rows.length ? <EmptyState icon={BriefcaseBusiness} title={view === 'completed' ? 'No Completed Projects' : 'No Active Projects'} description={view === 'completed' ? 'Completed, archived, and cancelled project history will appear here.' : 'Accepted proposals will appear here after the transaction-safe conversion job creates their workroom.'} /> : <div className="grid gap-4 md:grid-cols-2">{rows.map((e) => <Card key={e.id} className="cursor-pointer transition-colors hover:border-primary/40" onClick={() => onOpen(e.id)}><CardHeader><div className="flex items-start justify-between gap-3"><div><CardTitle>{e.title}</CardTitle><CardDescription>Updated {date(e.updatedAt)}</CardDescription></div><Badge variant="outline">{words(e.engagementStatus)}</Badge></div></CardHeader><CardContent><div className="mb-3 h-2 overflow-hidden rounded-full bg-muted"><div className="h-full bg-primary" style={{ width: `${e.completionPercentage}%` }} /></div><div className="flex justify-between text-sm"><span>{money(e.contractValue, e.currency)}</span><span className="text-muted-foreground">{Math.round(e.completionPercentage)}% complete</span></div></CardContent></Card>)}</div>}
-  </div>;
-}
-
-function WorkroomDetail({ id, onBack }: { id: string; onBack: () => void }) {
-  const { data, isLoading, isError } = useEngagement(id); const sign = useConfirmContract(); const complete = useCompleteEngagement();
-  if (isLoading) return <Skeleton className="h-[30rem] w-full rounded-xl" />;
-  if (isError || !data) return <p className="text-sm text-destructive">Couldn&apos;t load this workroom.</p>;
-  const canComplete = data.milestones.length > 0 && data.milestones.every((m) => m.status === 'Paid');
-  return <div className="mx-auto w-full max-w-6xl space-y-5 pb-8"><Button variant="ghost" onClick={onBack}><ArrowLeft className="h-4 w-4" />All workrooms</Button><div className="flex flex-wrap items-start justify-between gap-3"><div><h1 className="text-3xl font-semibold">{data.engagement.title}</h1><p className="text-sm text-muted-foreground">{words(data.engagement.engagementStatus)} · {money(data.engagement.contractValue, data.engagement.currency)}</p></div>{canComplete && data.engagement.engagementStatus !== 'Completed' && <Button onClick={() => complete.mutate(id)}><CheckCircle2 className="h-4 w-4" />Confirm completion</Button>}</div>
-    <Tabs defaultValue="milestones"><TabsList className="flex-wrap"><TabsTrigger value="milestones">Milestones</TabsTrigger><TabsTrigger value="contract">Contract</TabsTrigger><TabsTrigger value="delivery">Delivery history</TabsTrigger><TabsTrigger value="coordination">Tasks &amp; inputs</TabsTrigger></TabsList>
-      <TabsContent value="milestones"><div className="grid gap-4">{data.milestones.map((m) => <MilestoneCard key={m.id} engagementId={id} milestone={m} revision={data.revisionRequests.find((r) => r.milestoneId === m.id && ['Submitted', 'InProgress'].includes(r.revisionRequestStatus))} />)}</div></TabsContent>
-      <TabsContent value="contract"><Card><CardHeader><div className="flex items-center justify-between"><div><CardTitle>Accepted commercial terms</CardTitle><CardDescription>Immutable snapshot · in-app consent (STUB, not an e-signature provider)</CardDescription></div><Badge variant={data.contract.status === 'Signed' ? 'success' : 'warning'}>{data.contract.status}</Badge></div></CardHeader><CardContent className="space-y-4"><div className="grid gap-4 sm:grid-cols-3"><Metric label="Price" value={money(data.contract.terms.price, data.contract.terms.currency)} /><Metric label="Delivery" value={`${data.contract.terms.deliveryTimeValue} ${data.contract.terms.deliveryTimeUnit}`} /><Metric label="Revisions" value={data.contract.terms.unlimitedRevisions ? 'Unlimited' : String(data.contract.terms.includedRevisionCount)} /></div><div><p className="mb-2 text-sm font-medium">Deliverables</p><ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">{data.contract.terms.deliverables.map((x) => <li key={x}>{x}</li>)}</ul></div>{!data.contract.providerSignedAt && <Button onClick={() => sign.mutate(id)} disabled={sign.isPending}><ShieldCheck className="h-4 w-4" />I confirm these contract terms</Button>}</CardContent></Card></TabsContent>
-      <TabsContent value="delivery"><div className="grid gap-3">{!data.deliverables.length ? <EmptyState icon={FileUp} title="No Deliveries Yet" description="Versioned deliverables will remain here permanently after submission." /> : data.deliverables.map((d) => <Card key={d.id}><CardHeader><div className="flex justify-between"><div><CardTitle className="text-base">{d.title}</CardTitle><CardDescription>Version {d.version} · {date(d.submittedAt)}</CardDescription></div><Badge variant="outline">{d.deliverableStatus}</Badge></div></CardHeader><CardContent className="text-sm text-muted-foreground">{d.description}</CardContent></Card>)}</div></TabsContent>
-      <TabsContent value="coordination"><div className="grid gap-4 md:grid-cols-2"><Card><CardHeader><CardTitle>Tasks</CardTitle></CardHeader><CardContent>{data.tasks.length ? data.tasks.map((t) => <div key={t.id} className="border-b py-2 text-sm last:border-0"><p className="font-medium">{t.title}</p><p className="text-muted-foreground">{words(t.status)} · {t.visibility}</p></div>) : <p className="text-sm text-muted-foreground">No workroom tasks yet.</p>}</CardContent></Card><Card><CardHeader><CardTitle>Client input</CardTitle></CardHeader><CardContent>{data.clientInputRequests.length ? data.clientInputRequests.map((x) => <div key={x.id} className="border-b py-2 text-sm last:border-0"><p className="font-medium">{x.type}: {x.description}</p><p className="text-muted-foreground">{x.status}; deadlines do not change automatically.</p></div>) : <p className="text-sm text-muted-foreground">No client input is currently requested.</p>}</CardContent></Card></div></TabsContent>
-    </Tabs></div>;
-}
-
-function MilestoneCard({ engagementId, milestone: m, revision }: { engagementId: string; milestone: Milestone; revision?: RevisionRequest }) {
-  const activate = useActivateMilestone(); const startRevision = useStartRevision(); const submit = useSubmitDeliverable(); const upload = useUploadWorkroomFile(); const [showDelivery, setShowDelivery] = useState(false); const [fileIds, setFileIds] = useState<string[]>([]); const [error, setError] = useState('');
-  const [form, setForm] = useState({ title: m.title, description: '', link: '', message: '', instructions: '' });
-  async function pick(file?: File) { if (!file) return; setError(''); try { const result = await upload.mutateAsync({ engagementId, milestoneId: m.id, file }); setFileIds((ids) => [...ids, result.id]); } catch { setError('File scanning or upload failed.'); } }
-  async function deliver() { const payload: SubmitDeliverablePayload = { title: form.title, description: form.description, fileIds, externalLinks: form.link ? [form.link] : [], submissionMessage: form.message, clientInstructions: form.instructions, allDeliverablesIncluded: true, filesReviewed: true, noUnrelatedPrivateInfo: true, readyForReview: true, majorScopeVersion: false }; try { await submit.mutateAsync({ id: m.id, payload }); setShowDelivery(false); } catch { setError('Submission failed. Add the required details and a ready file or link.'); } }
-  const canActivate = m.status === 'Funded'; const canDeliver = ['Active', 'SubmissionDraft', 'RevisionInProgress'].includes(m.status);
-  return <Card><CardHeader><div className="flex flex-wrap items-start justify-between gap-3"><div><CardTitle>{m.title}</CardTitle><CardDescription>{money(m.amount, m.currency)} · {m.completionCriteria}</CardDescription></div><div className="flex gap-2"><Badge variant="outline">{words(m.deliveryClockState)}</Badge><Badge variant="secondary">{words(m.status)}</Badge></div></div></CardHeader><CardContent className="space-y-4"><div className="grid gap-3 sm:grid-cols-3"><Metric label="Due" value={date(m.dueDate)} /><Metric label="Escrow" value={words(m.escrowStatus)} /><Metric label="Revisions left" value={m.unlimitedRevisions ? 'Unlimited' : String(m.remainingRevisions)} /></div>{revision && <div className="rounded-lg border border-warning/40 bg-warning/5 p-3 text-sm"><p className="font-medium">{words(revision.scopeClassification)} revision</p><p className="text-muted-foreground">{revision.description}</p></div>}<div className="flex gap-2">{canActivate && <Button size="sm" onClick={() => activate.mutate(m.id)}><Play className="h-4 w-4" />Start milestone</Button>}{m.status === 'RevisionRequested' && revision && <Button size="sm" onClick={() => startRevision.mutate(revision.id)}>Accept revision work</Button>}{canDeliver && <Button size="sm" variant="outline" onClick={() => setShowDelivery((v) => !v)}><FileUp className="h-4 w-4" />Prepare delivery</Button>}</div>{m.reviewWindowEndsAt && <p className="flex items-center gap-2 text-xs text-muted-foreground"><Clock3 className="h-3.5 w-3.5" />Client review window ends {dateTime(m.reviewWindowEndsAt)}; auto-release is {dateTime(m.autoReleaseAt)} if undisputed.</p>}{showDelivery && <div className="space-y-3 rounded-xl border p-4"><Field label="Delivery title"><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></Field><Field label="Description"><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></Field><Field label="Client instructions"><Textarea value={form.instructions} onChange={(e) => setForm({ ...form, instructions: e.target.value })} /></Field><Field label="External link (optional)"><Input value={form.link} onChange={(e) => setForm({ ...form, link: e.target.value })} /></Field><Field label="Submission message"><Textarea value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} /></Field><Field label="Scanned file (optional)"><Input type="file" onChange={(e) => pick(e.target.files?.[0])} />{fileIds.length > 0 && <p className="text-xs text-success">{fileIds.length} file ready</p>}</Field>{error && <p className="text-sm text-destructive">{error}</p>}<Button onClick={deliver} disabled={submit.isPending || upload.isPending}>Submit versioned delivery</Button></div>}</CardContent></Card>;
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) { return <div className="space-y-2"><Label>{label}</Label>{children}</div>; }
-function Metric({ label, value }: { label: string; value: string }) { return <div><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-sm font-medium">{value}</p></div>; }
-function words(value: string) { return value.replace(/([A-Z])/g, ' $1').trim(); }
-function date(value?: string | null) { return value ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date(value)) : 'Not set'; }
-function dateTime(value?: string | null) { return value ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : 'Not set'; }
-function money(value: number, currency: string) { try { return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(value); } catch { return `${currency} ${value.toFixed(2)}`; } }

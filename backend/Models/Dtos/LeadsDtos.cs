@@ -113,14 +113,38 @@ public class PackagePurchaseRequest
 public class CommissionPreviewResponse
 {
     public decimal Price { get; set; }
+    public decimal Rate { get; set; }
     public decimal Commission { get; set; }
     public decimal Net { get; set; }
     public string Currency { get; set; } = "EUR";
     public static CommissionPreviewResponse From(decimal price, string currency)
     {
         var commission = decimal.Round(price * PlatformCommerceConstants.CommissionRate, 2, MidpointRounding.AwayFromZero);
-        return new() { Price = price, Commission = commission, Net = price - commission, Currency = currency };
+        return new() { Price = price, Rate = PlatformCommerceConstants.CommissionRate, Commission = commission, Net = price - commission, Currency = currency };
     }
+}
+
+public class ProposalVersionResponse
+{
+    public int Version { get; set; }
+    public string Title { get; set; } = "";
+    public string CoverMessage { get; set; } = "";
+    public decimal ProposedPrice { get; set; }
+    public string Currency { get; set; } = "";
+    public string PricingType { get; set; } = "";
+    public decimal? WeeklyHourLimit { get; set; }
+    public int DeliveryTimeValue { get; set; }
+    public string DeliveryTimeUnit { get; set; } = "";
+    public string DeliveryDayType { get; set; } = "";
+    public string DeliveryStartRule { get; set; } = "";
+    public int IncludedRevisionCount { get; set; }
+    public bool UnlimitedRevisions { get; set; }
+    public int RevisionRequestWindowDays { get; set; }
+    public List<string> Deliverables { get; set; } = new();
+    public List<ProposalMilestoneRequest> MilestonePlan { get; set; } = new();
+    public List<string> Attachments { get; set; } = new();
+    public DateTime? ExpiresAt { get; set; }
+    public DateTime SupersededAt { get; set; }
 }
 
 public class ClientBriefResponse
@@ -188,6 +212,7 @@ public class ProposalResponse
     public string Status { get; set; } = "";
     public int Version { get; set; }
     public int PreviousVersionCount { get; set; }
+    public List<ProposalVersionResponse> PreviousVersions { get; set; } = new();
     public bool HasPurchaseSnapshot { get; set; }
     public CommissionPreviewResponse EarningsPreview { get; set; } = new();
     public List<string> Warnings { get; set; } = new();
@@ -235,7 +260,24 @@ public static class LeadsMapping
         SubmittedAt = p.SubmittedAt, ExpiresAt = p.ExpiresAt, AcceptedAt = p.AcceptedAt,
         AcceptanceTrigger = p.AcceptanceTrigger, EscrowStatus = p.EscrowStatus.ToString(),
         ConversionStatus = p.ConversionStatus.ToString(), Status = p.Status.ToString(), Version = p.Version,
-        PreviousVersionCount = p.PreviousVersions.Count, HasPurchaseSnapshot = p.PurchaseSnapshot is not null,
+        PreviousVersionCount = p.PreviousVersions.Count,
+        PreviousVersions = p.PreviousVersions.OrderByDescending(x => x.Version).Select(x => new ProposalVersionResponse
+        {
+            Version = x.Version, Title = x.Title, CoverMessage = x.CoverMessage,
+            ProposedPrice = x.ProposedPrice, Currency = x.Currency, PricingType = x.PricingType.ToString(),
+            WeeklyHourLimit = x.WeeklyHourLimit, DeliveryTimeValue = x.DeliveryTimeValue,
+            DeliveryTimeUnit = x.DeliveryTimeUnit.ToString(), DeliveryDayType = x.DeliveryDayType.ToString(),
+            DeliveryStartRule = x.DeliveryStartRule.ToString(), IncludedRevisionCount = x.IncludedRevisionCount,
+            UnlimitedRevisions = x.UnlimitedRevisions, RevisionRequestWindowDays = x.RevisionRequestWindowDays,
+            Deliverables = new(x.Deliverables),
+            MilestonePlan = x.MilestonePlan.Select(m => new ProposalMilestoneRequest
+            {
+                Title = m.Title, Description = m.Description, Amount = m.Amount,
+                DeliveryTimeValue = m.DeliveryTimeValue, DeliveryTimeUnit = m.DeliveryTimeUnit.ToString(), DisplayOrder = m.DisplayOrder,
+            }).ToList(),
+            Attachments = new(x.Attachments), ExpiresAt = x.ExpiresAt, SupersededAt = x.SupersededAt,
+        }).ToList(),
+        HasPurchaseSnapshot = p.PurchaseSnapshot is not null,
         EarningsPreview = CommissionPreviewResponse.From(p.ProposedPrice, p.Currency), Warnings = warnings ?? new(), UpdatedAt = p.UpdatedAt,
     };
 }

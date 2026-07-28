@@ -1,7 +1,9 @@
+"use client";
+
 import * as React from "react";
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
-import { AlertCircle, CheckCircle2, Info } from "lucide-react";
+import { AlertCircle, CheckCircle2, Info, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function SpPage({ className, ...props }: React.ComponentProps<"div">) {
@@ -27,6 +29,28 @@ export function SpPageHeader({
       </div>
       {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
     </header>
+  );
+}
+
+export function SpSectionHeader({
+  title,
+  description,
+  action,
+  className,
+}: {
+  title: string;
+  description?: string;
+  action?: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn("flex flex-col justify-between gap-3 sm:flex-row sm:items-start", className)}>
+      <div className="min-w-0">
+        <h2 className="font-heading text-lg font-semibold text-[#171717]">{title}</h2>
+        {description && <p className="mt-1 text-sm leading-6 text-[#6B7280]">{description}</p>}
+      </div>
+      {action && <div className="shrink-0">{action}</div>}
+    </div>
   );
 }
 
@@ -92,6 +116,133 @@ export function SpTabBar({ items, label = "Page sections", className }: { items:
 
 export function SpFilterBar({ className, ...props }: React.ComponentProps<"div">) {
   return <div className={cn("flex flex-col gap-3 rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-none sm:flex-row sm:items-center", className)} {...props} />;
+}
+
+export function SpFormField({
+  id,
+  label,
+  description,
+  error,
+  required,
+  children,
+  className,
+}: {
+  id: string;
+  label: string;
+  description?: string;
+  error?: string | null;
+  required?: boolean;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  const descriptionId = description ? `${id}-description` : undefined;
+  const errorId = error ? `${id}-error` : undefined;
+  return (
+    <div className={cn("space-y-2", className)}>
+      <label htmlFor={id} className="text-sm font-semibold text-[#374151]">
+        {label}{required && <span className="ml-1 text-[#B42318]" aria-hidden="true">*</span>}
+      </label>
+      {React.isValidElement(children)
+        ? React.cloneElement(children as React.ReactElement<Record<string, unknown>>, {
+            id,
+            "aria-describedby": [descriptionId, errorId].filter(Boolean).join(" ") || undefined,
+            "aria-invalid": !!error || undefined,
+          })
+        : children}
+      {description && <p id={descriptionId} className="text-xs leading-5 text-[#6B7280]">{description}</p>}
+      {error && <p id={errorId} className="text-xs font-medium text-[#B42318]">{error}</p>}
+    </div>
+  );
+}
+
+export function SpTagInput({
+  id,
+  label,
+  value,
+  onChange,
+  placeholder,
+  description,
+  maxItems = 15,
+  required,
+}: {
+  id: string;
+  label: string;
+  value: string[];
+  onChange: (value: string[]) => void;
+  placeholder?: string;
+  description?: string;
+  maxItems?: number;
+  required?: boolean;
+}) {
+  const [draft, setDraft] = React.useState("");
+
+  const addDraft = () => {
+    const item = draft.trim().replace(/,$/, "").trim();
+    if (!item || value.length >= maxItems || value.some((entry) => entry.toLocaleLowerCase() === item.toLocaleLowerCase())) {
+      setDraft("");
+      return;
+    }
+    onChange([...value, item]);
+    setDraft("");
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-3">
+        <label htmlFor={id} className="text-sm font-semibold text-[#374151]">
+          {label}{required && <span className="ml-1 text-[#B42318]" aria-hidden="true">*</span>}
+        </label>
+        <span className="text-xs text-[#6B7280]">{value.length}/{maxItems}</span>
+      </div>
+      <div className="rounded-xl border border-[#D1D5DB] bg-[#F9FAFB] p-2 focus-within:border-[#3C61DD] focus-within:ring-2 focus-within:ring-[#3C61DD]/10">
+        {value.length > 0 && (
+          <ul aria-label={`Selected ${label.toLocaleLowerCase()}`} className="mb-2 flex flex-wrap gap-2">
+            {value.map((item) => (
+              <li key={item} className="inline-flex items-center gap-1 rounded-full bg-[#EEF2FF] py-1 pl-2.5 pr-1 text-sm font-medium text-[#3C61DD]">
+                <span>{item}</span>
+                <button
+                  type="button"
+                  aria-label={`Remove ${item}`}
+                  onClick={() => onChange(value.filter((entry) => entry !== item))}
+                  className="flex size-6 items-center justify-center rounded-full hover:bg-[#DCE4FF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3C61DD]"
+                >
+                  <X className="size-3.5" aria-hidden="true" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="flex gap-2">
+          <input
+            id={id}
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === ",") {
+                event.preventDefault();
+                addDraft();
+              }
+              if (event.key === "Backspace" && !draft && value.length > 0) onChange(value.slice(0, -1));
+            }}
+            onBlur={addDraft}
+            placeholder={placeholder}
+            disabled={value.length >= maxItems}
+            className="h-9 min-w-0 flex-1 bg-transparent px-2 text-sm text-[#171717] outline-none placeholder:text-[#9CA3AF] disabled:cursor-not-allowed"
+          />
+          <button
+            type="button"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={addDraft}
+            disabled={!draft.trim() || value.length >= maxItems}
+            className="rounded-lg border border-[#D1D5DB] bg-white px-3 text-xs font-semibold text-[#374151] hover:bg-[#F4F5F7] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Add
+          </button>
+        </div>
+      </div>
+      {description && <p className="text-xs leading-5 text-[#6B7280]">{description}</p>}
+    </div>
+  );
 }
 
 const statusTones = {

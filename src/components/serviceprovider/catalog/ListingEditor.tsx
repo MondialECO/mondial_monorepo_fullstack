@@ -2,13 +2,18 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  SpCard,
+  SpFormField,
+  SpMutationFeedback,
+  SpSectionHeader,
+  SpTagInput,
+} from '@/components/serviceprovider/ui';
 import { SERVICE_CATEGORIES } from '@/types/service-provider';
 import type { ServiceListing } from '@/types/service-catalog';
 import { useCreateListing, useUpdateListing } from '@/hooks/queries/service-catalog';
-import { csv, parseCsv, EnumSelect, Field } from './_shared';
 
 export function ListingEditor({
   existing,
@@ -25,8 +30,8 @@ export function ListingEditor({
   const [serviceType, setServiceType] = useState(existing?.serviceType ?? '');
   const [description, setDescription] = useState(existing?.description ?? '');
   const [category, setCategory] = useState(existing?.category ?? SERVICE_CATEGORIES[0]);
-  const [industryFocus, setIndustryFocus] = useState(csv(existing?.industryFocus ?? []));
-  const [geo, setGeo] = useState(csv(existing?.geographicCoverage ?? []));
+  const [industryFocus, setIndustryFocus] = useState(existing?.industryFocus ?? []);
+  const [geographicCoverage, setGeographicCoverage] = useState(existing?.geographicCoverage ?? []);
   const [error, setError] = useState<string | null>(null);
 
   const pending = create.isPending || update.isPending;
@@ -36,60 +41,112 @@ export function ListingEditor({
       setError('A service title is required.');
       return;
     }
+
     setError(null);
     const payload = {
       serviceType: serviceType.trim(),
       title: title.trim(),
       description: description.trim(),
       category,
-      industryFocus: parseCsv(industryFocus),
-      geographicCoverage: parseCsv(geo),
+      industryFocus,
+      geographicCoverage,
     };
+
     try {
       const result = existing
         ? await update.mutateAsync([existing.id, payload])
         : await create.mutateAsync([payload]);
-      onDone((result as ServiceListing).id);
+      onDone(result.id);
     } catch {
-      setError('Could not save the service. Try again.');
+      setError('The service could not be saved. Review the fields and try again.');
     }
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-xl">{existing ? 'Edit service' : 'New service'}</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <Field label="Title" htmlFor="svc-title">
-          <Input id="svc-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Product UX Audit" />
-        </Field>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Category" htmlFor="svc-cat">
-            <EnumSelect labelFor="svc-cat" value={category} onChange={setCategory} options={SERVICE_CATEGORIES} />
-          </Field>
-          <Field label="Service type" htmlFor="svc-type">
-            <Input id="svc-type" value={serviceType} onChange={(e) => setServiceType(e.target.value)} placeholder="e.g. Consulting" />
-          </Field>
-        </div>
-        <Field label="Description" htmlFor="svc-desc">
-          <Textarea id="svc-desc" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
-        </Field>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Industry focus (comma separated)" htmlFor="svc-ind">
-            <Input id="svc-ind" value={industryFocus} onChange={(e) => setIndustryFocus(e.target.value)} placeholder="Fintech, SaaS" />
-          </Field>
-          <Field label="Geographic coverage (comma separated)" htmlFor="svc-geo">
-            <Input id="svc-geo" value={geo} onChange={(e) => setGeo(e.target.value)} placeholder="Remote, EU" />
-          </Field>
+    <SpCard className="mx-auto max-w-4xl">
+      <SpSectionHeader
+        title={existing ? 'Service overview' : 'Describe your service'}
+        description="Use client-facing language. Packages, requirements, and FAQs are managed after this overview is saved."
+      />
+
+      <div className="mt-6 space-y-6">
+        <SpFormField id="service-title" label="Service title" required description={`${title.length} characters`}>
+          <Input
+            value={title}
+            maxLength={180}
+            onChange={(event) => setTitle(event.target.value)}
+            placeholder="For example: Product UX audit for B2B SaaS teams"
+          />
+        </SpFormField>
+
+        <div className="grid gap-5 sm:grid-cols-2">
+          <SpFormField id="service-category" label="Category" required description="The category is used for marketplace discovery and matching.">
+            <select
+              value={category}
+              onChange={(event) => setCategory(event.target.value)}
+              className="h-10 w-full rounded-lg border border-[#D1D5DB] bg-white px-3 text-sm text-[#171717] outline-none focus-visible:ring-2 focus-visible:ring-[#3C61DD]"
+            >
+              {SERVICE_CATEGORIES.map((option) => (
+                <option key={option} value={option}>{formatEnum(option)}</option>
+              ))}
+            </select>
+          </SpFormField>
+          <SpFormField id="service-type" label="Service type" description="A concise delivery format, such as Consulting, Design, or Development.">
+            <Input
+              value={serviceType}
+              maxLength={100}
+              onChange={(event) => setServiceType(event.target.value)}
+              placeholder="Consulting"
+            />
+          </SpFormField>
         </div>
 
-        {error && <p className="text-sm text-destructive">{error}</p>}
-        <div className="flex items-center gap-3">
-          <Button onClick={save} disabled={pending}>{pending ? 'Saving…' : 'Save service'}</Button>
-          <Button variant="ghost" onClick={onCancel}>Cancel</Button>
+        <SpFormField id="service-description" label="Service description" description={`${description.length} characters`}>
+          <Textarea
+            rows={8}
+            value={description}
+            maxLength={3000}
+            onChange={(event) => setDescription(event.target.value)}
+            placeholder="Explain the outcome, working approach, and what a client can expect."
+          />
+        </SpFormField>
+
+        <div className="grid gap-5 lg:grid-cols-2">
+          <SpTagInput
+            id="service-industries"
+            label="Industry focus"
+            value={industryFocus}
+            onChange={setIndustryFocus}
+            placeholder="Add an industry"
+            maxItems={20}
+            description="Used by the existing matching and discovery logic."
+          />
+          <SpTagInput
+            id="service-geographies"
+            label="Geographic coverage"
+            value={geographicCoverage}
+            onChange={setGeographicCoverage}
+            placeholder="Add a market or region"
+            maxItems={20}
+            description="Describe the markets or regions this service can support."
+          />
         </div>
-      </CardContent>
-    </Card>
+
+        {error && <SpMutationFeedback status="error">{error}</SpMutationFeedback>}
+
+        <div className="flex flex-wrap gap-2 border-t border-[#E5E7EB] pt-5">
+          <Button type="button" onClick={save} disabled={pending}>
+            {pending ? 'Saving…' : existing ? 'Save changes' : 'Save service overview'}
+          </Button>
+          <Button type="button" variant="outline" onClick={onCancel} disabled={pending}>
+            Cancel
+          </Button>
+        </div>
+      </div>
+    </SpCard>
   );
+}
+
+function formatEnum(value: string) {
+  return value.replace(/([a-z])([A-Z])/g, '$1 $2');
 }

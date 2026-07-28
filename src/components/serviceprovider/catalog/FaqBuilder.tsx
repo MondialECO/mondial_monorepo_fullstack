@@ -1,12 +1,34 @@
 'use client';
 
 import { useState } from 'react';
-import { AlertTriangle, ChevronDown, ChevronUp, Copy, Pencil, Trash2 } from 'lucide-react';
+import {
+  AlertTriangle,
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  HelpCircle,
+  Pencil,
+  Plus,
+  Trash2,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
+import {
+  SpCard,
+  SpEmptyState,
+  SpMutationFeedback,
+  SpSectionHeader,
+  SpStatusBadge,
+} from '@/components/serviceprovider/ui';
 import {
   useAddFaq,
   useDeleteFaq,
@@ -19,6 +41,8 @@ import {
 import { FAQ_VISIBILITIES, type ServiceFaq, type ServicePackage } from '@/types/service-catalog';
 import { EnumSelect, Field } from './_shared';
 
+type Feedback = { status: 'success' | 'error'; message: string };
+
 export function FaqBuilder({
   listingId,
   faqs,
@@ -30,59 +54,73 @@ export function FaqBuilder({
 }) {
   const add = useAddFaq();
   const update = useUpdateFaq();
-  const del = useDeleteFaq();
-  const dup = useDuplicateFaq();
-  const pub = usePublishFaq();
-  const unpub = useUnpublishFaq();
+  const remove = useDeleteFaq();
+  const duplicate = useDuplicateFaq();
+  const publish = usePublishFaq();
+  const unpublish = useUnpublishFaq();
   const reorder = useReorderFaqs();
-
   const [editing, setEditing] = useState<ServiceFaq | null>(null);
   const [adding, setAdding] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<ServiceFaq | null>(null);
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
 
-  const sorted = [...faqs].sort((a, b) => a.displayOrder - b.displayOrder);
+  const sorted = [...faqs].sort((left, right) => left.displayOrder - right.displayOrder);
 
-  const move = async (index: number, dir: -1 | 1) => {
-    const target = index + dir;
+  const move = async (index: number, direction: -1 | 1) => {
+    const target = index + direction;
     if (target < 0 || target >= sorted.length) return;
     const reordered = [...sorted];
     [reordered[index], reordered[target]] = [reordered[target], reordered[index]];
-    await reorder.mutateAsync([listingId, { items: reordered.map((f, i) => ({ faqId: f.id, displayOrder: i })) }]);
+    setFeedback(null);
+    try {
+      await reorder.mutateAsync([
+        listingId,
+        { items: reordered.map((faq, itemIndex) => ({ faqId: faq.id, displayOrder: itemIndex })) },
+      ]);
+    } catch {
+      setFeedback({ status: 'error', message: 'The FAQ order could not be updated.' });
+    }
+  };
+
+  const runAction = async (action: () => Promise<unknown>, successMessage: string) => {
+    setFeedback(null);
+    try {
+      await action();
+      setFeedback({ status: 'success', message: successMessage });
+    } catch {
+      setFeedback({ status: 'error', message: 'The FAQ could not be updated. Try again.' });
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    try {
+      await remove.mutateAsync([deleteTarget.id]);
+      setDeleteTarget(null);
+      setFeedback({ status: 'success', message: 'FAQ deleted successfully.' });
+    } catch {
+      setFeedback({ status: 'error', message: 'The FAQ could not be deleted. Try again.' });
+    }
   };
 
   return (
-    <div className="space-y-4">
-      {sorted.length === 0 && !adding && (
-        <p className="text-sm text-muted-foreground">No FAQs yet. Add one to answer common client questions.</p>
-      )}
+    <div className="space-y-5">
+      <SpCard>
+        <SpSectionHeader
+          title="Frequently asked questions"
+          description="Answer common client questions. Package terms remain authoritative when an FAQ conflicts with package configuration."
+          action={
+            !adding && !editing ? (
+              <Button type="button" variant="outline" onClick={() => setAdding(true)}>
+                <Plus className="size-4" aria-hidden="true" />
+                Add FAQ
+              </Button>
+            ) : undefined
+          }
+        />
+      </SpCard>
 
-      {sorted.map((faq, i) => (
-        <Card key={faq.id}>
-          <CardContent className="space-y-2 py-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-foreground">{faq.question}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{faq.answer}</p>
-              </div>
-              <Badge variant={faq.status === 'Published' ? 'success' : 'secondary'}>{faq.status}</Badge>
-            </div>
-            {faq.conflictWarning && (
-              <p className="inline-flex items-center gap-1 text-xs text-destructive">
-                <AlertTriangle className="h-3.5 w-3.5" /> {faq.conflictWarning}
-              </p>
-            )}
-            <div className="flex flex-wrap items-center gap-1.5 pt-1">
-              <Button size="sm" variant="ghost" onClick={() => move(i, -1)} disabled={i === 0}><ChevronUp className="h-4 w-4" /></Button>
-              <Button size="sm" variant="ghost" onClick={() => move(i, 1)} disabled={i === sorted.length - 1}><ChevronDown className="h-4 w-4" /></Button>
-              <Button size="sm" variant="outline" onClick={() => { setEditing(faq); setAdding(false); }}><Pencil className="h-3.5 w-3.5" /> Edit</Button>
-              <Button size="sm" variant="outline" onClick={() => dup.mutate([faq.id])}><Copy className="h-3.5 w-3.5" /> Duplicate</Button>
-              {faq.status === 'Published'
-                ? <Button size="sm" variant="outline" onClick={() => unpub.mutate([faq.id])}>Unpublish</Button>
-                : <Button size="sm" variant="outline" onClick={() => pub.mutate([faq.id])}>Publish</Button>}
-              <Button size="sm" variant="ghost" onClick={() => del.mutate([faq.id])}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+      {feedback && <SpMutationFeedback status={feedback.status}>{feedback.message}</SpMutationFeedback>}
 
       {editing && (
         <FaqForm
@@ -90,21 +128,105 @@ export function FaqBuilder({
           packages={packages}
           initial={editing}
           onCancel={() => setEditing(null)}
-          onSubmit={async (payload) => { await update.mutateAsync([editing.id, payload]); setEditing(null); }}
+          onSubmit={async (payload) => {
+            await update.mutateAsync([editing.id, payload]);
+            setEditing(null);
+            setFeedback({ status: 'success', message: 'FAQ saved successfully.' });
+          }}
           pending={update.isPending}
         />
       )}
 
-      {adding ? (
+      {adding && (
         <FaqForm
           packages={packages}
           onCancel={() => setAdding(false)}
-          onSubmit={async (payload) => { await add.mutateAsync([listingId, payload]); setAdding(false); }}
+          onSubmit={async (payload) => {
+            await add.mutateAsync([listingId, payload]);
+            setAdding(false);
+            setFeedback({ status: 'success', message: 'FAQ added successfully.' });
+          }}
           pending={add.isPending}
         />
-      ) : (
-        !editing && <Button variant="outline" onClick={() => setAdding(true)}>Add FAQ</Button>
       )}
+
+      {sorted.length === 0 && !adding ? (
+        <SpEmptyState
+          icon={HelpCircle}
+          title="No FAQs yet"
+          description="Add an FAQ when clients repeatedly need the same clarification. FAQs are optional."
+          action={
+            <Button type="button" variant="outline" onClick={() => setAdding(true)}>
+              Add first FAQ
+            </Button>
+          }
+        />
+      ) : (
+        <div className="space-y-3">
+          {sorted.map((faq, index) => (
+            <SpCard key={faq.id} className="p-4 sm:p-5">
+              <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <SpStatusBadge tone={faq.status === 'Published' ? 'positive' : 'neutral'}>{faq.status}</SpStatusBadge>
+                    <SpStatusBadge>{formatEnum(faq.visibility)}</SpStatusBadge>
+                  </div>
+                  <h3 className="mt-3 text-sm font-semibold leading-6 text-[#171717]">{faq.question}</h3>
+                  <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-[#6B7280]">{faq.answer}</p>
+                  {faq.conflictWarning && (
+                    <SpMutationFeedback status="error" className="mt-3">
+                      <span className="inline-flex items-center gap-2">
+                        <AlertTriangle className="size-4" aria-hidden="true" />
+                        {faq.conflictWarning}
+                      </span>
+                    </SpMutationFeedback>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-1.5 sm:max-w-64 sm:justify-end">
+                  <Button type="button" size="icon" variant="outline" aria-label={`Move ${faq.question} up`} onClick={() => move(index, -1)} disabled={index === 0 || reorder.isPending}>
+                    <ChevronUp className="size-4" aria-hidden="true" />
+                  </Button>
+                  <Button type="button" size="icon" variant="outline" aria-label={`Move ${faq.question} down`} onClick={() => move(index, 1)} disabled={index === sorted.length - 1 || reorder.isPending}>
+                    <ChevronDown className="size-4" aria-hidden="true" />
+                  </Button>
+                  <Button type="button" size="sm" variant="outline" onClick={() => { setEditing(faq); setAdding(false); }}>
+                    <Pencil className="size-3.5" aria-hidden="true" /> Edit
+                  </Button>
+                  <Button type="button" size="icon" variant="outline" aria-label={`Duplicate ${faq.question}`} onClick={() => runAction(() => duplicate.mutateAsync([faq.id]), 'FAQ duplicated as a draft.')} disabled={duplicate.isPending}>
+                    <Copy className="size-4" aria-hidden="true" />
+                  </Button>
+                  {faq.status === 'Published' ? (
+                    <Button type="button" size="sm" variant="outline" onClick={() => runAction(() => unpublish.mutateAsync([faq.id]), 'FAQ unpublished successfully.')} disabled={unpublish.isPending}>Unpublish</Button>
+                  ) : (
+                    <Button type="button" size="sm" variant="outline" onClick={() => runAction(() => publish.mutateAsync([faq.id]), 'FAQ published successfully.')} disabled={publish.isPending}>Publish</Button>
+                  )}
+                  <Button type="button" size="icon" variant="ghost" aria-label={`Delete ${faq.question}`} onClick={() => setDeleteTarget(faq)}>
+                    <Trash2 className="size-4 text-[#B42318]" aria-hidden="true" />
+                  </Button>
+                </div>
+              </div>
+            </SpCard>
+          ))}
+        </div>
+      )}
+
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete this FAQ?</DialogTitle>
+            <DialogDescription>
+              This permanently removes the FAQ from the service. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setDeleteTarget(null)} disabled={remove.isPending}>Cancel</Button>
+            <Button type="button" variant="destructive" onClick={confirmDelete} disabled={remove.isPending}>
+              {remove.isPending ? 'Deleting…' : 'Delete FAQ'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -143,43 +265,50 @@ function FaqForm({
         displayOrder: initial?.displayOrder ?? 0,
       });
     } catch {
-      setError('Could not save the FAQ (a duplicate question, perhaps). Try again.');
+      setError('The FAQ could not be saved. Check for a duplicate question and try again.');
     }
   };
 
   return (
-    <Card>
-      <CardContent className="space-y-3 py-4">
-        <Field label="Question" htmlFor="faq-q">
-          <Input id="faq-q" value={question} onChange={(e) => setQuestion(e.target.value)} />
+    <SpCard>
+      <SpSectionHeader title={initial ? 'Edit FAQ' : 'Add FAQ'} description="Use a direct question and a client-facing answer." />
+      <div className="mt-5 space-y-4">
+        <Field label="Question" htmlFor="faq-question">
+          <Input id="faq-question" value={question} onChange={(event) => setQuestion(event.target.value)} />
         </Field>
-        <Field label="Answer" htmlFor="faq-a">
-          <Textarea id="faq-a" rows={3} value={answer} onChange={(e) => setAnswer(e.target.value)} />
+        <Field label="Answer" htmlFor="faq-answer">
+          <Textarea id="faq-answer" rows={5} value={answer} onChange={(event) => setAnswer(event.target.value)} />
         </Field>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Visibility" htmlFor="faq-vis">
-            <EnumSelect labelFor="faq-vis" value={visibility} onChange={setVisibility} options={FAQ_VISIBILITIES} />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Visibility" htmlFor="faq-visibility">
+            <EnumSelect labelFor="faq-visibility" value={visibility} onChange={setVisibility} options={FAQ_VISIBILITIES} />
           </Field>
-          <Field label="Applies to package" htmlFor="faq-pkg">
+          <Field label="Applies to package" htmlFor="faq-package">
             <select
-              id="faq-pkg"
+              id="faq-package"
               value={packageId}
-              onChange={(e) => setPackageId(e.target.value)}
-              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              onChange={(event) => setPackageId(event.target.value)}
+              className="h-10 w-full rounded-lg border border-[#D1D5DB] bg-white px-3 text-sm text-[#171717] outline-none focus-visible:ring-2 focus-visible:ring-[#3C61DD]"
             >
               <option value="">All packages</option>
-              {packages.map((p) => (
-                <option key={p.id} value={p.id}>{p.packageType} — {p.packageTitle || p.packageName}</option>
+              {packages.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.packageType} — {item.packageTitle || item.packageName || 'Untitled'}
+                </option>
               ))}
             </select>
           </Field>
         </div>
-        {error && <p className="text-sm text-destructive">{error}</p>}
-        <div className="flex items-center gap-3">
-          <Button onClick={submit} disabled={pending}>{pending ? 'Saving…' : 'Save FAQ'}</Button>
-          <Button variant="ghost" onClick={onCancel}>Cancel</Button>
+        {error && <SpMutationFeedback status="error">{error}</SpMutationFeedback>}
+        <div className="flex flex-wrap gap-2 border-t border-[#E5E7EB] pt-4">
+          <Button type="button" onClick={submit} disabled={pending}>{pending ? 'Saving…' : 'Save FAQ'}</Button>
+          <Button type="button" variant="outline" onClick={onCancel} disabled={pending}>Cancel</Button>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </SpCard>
   );
+}
+
+function formatEnum(value: string) {
+  return value.replace(/([a-z])([A-Z])/g, '$1 $2');
 }

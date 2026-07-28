@@ -5,13 +5,16 @@ import { useBreadcrumb } from '@/hooks/useBreadcrumb';
 // Mock next/navigation
 vi.mock('next/navigation', () => ({
   usePathname: () => mockPathname,
+  useSearchParams: () => mockSearchParams,
 }));
 
 let mockPathname = '';
+let mockSearchParams = new URLSearchParams();
 
 describe('useBreadcrumb Hook', () => {
   beforeEach(() => {
     mockPathname = '';
+    mockSearchParams = new URLSearchParams();
   });
 
   it('should return empty array for root path', () => {
