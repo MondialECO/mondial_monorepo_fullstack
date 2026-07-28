@@ -11,9 +11,10 @@ export const SERVICE_PROVIDER_TERMINOLOGY = {
   completedProjects: "Completed Projects",
   analytics: "Analytics & Growth",
   earnings: "Earnings & Payouts",
+  earningsOverview: "Earnings Overview",
   payouts: "Payouts",
   financialSettings: "Financial Settings",
-  identityVerification: "Identity Verification",
+  identityVerification: "Identity & Account Verification",
 } as const;
 
 type SearchParamReader = { get(name: string): string | null };
@@ -47,7 +48,7 @@ export function getServiceProviderPageTitle(pathname: string, searchParams?: Sea
     if (tab === "payouts") return SERVICE_PROVIDER_TERMINOLOGY.payouts;
     if (tab === "settings") return SERVICE_PROVIDER_TERMINOLOGY.financialSettings;
     if (tab === "invoices") return "Invoices";
-    return SERVICE_PROVIDER_TERMINOLOGY.earnings;
+    return SERVICE_PROVIDER_TERMINOLOGY.earningsOverview;
   }
 
   return "Service Provider";
