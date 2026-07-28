@@ -10,8 +10,16 @@ export interface ClientBrief {
   proposalSubmitted: boolean; matchScore: number;
 }
 
-export interface CommissionPreview { price: number; commission: number; net: number; currency: string }
+export interface CommissionPreview { price: number; rate: number; commission: number; net: number; currency: string }
 export interface ProposalMilestone { title: string; description: string; amount: number; deliveryTimeValue: number; deliveryTimeUnit: string; displayOrder: number }
+export interface ProposalVersion {
+  version: number; title: string; coverMessage: string; proposedPrice: number; currency: string;
+  pricingType: string; weeklyHourLimit?: number | null; deliveryTimeValue: number;
+  deliveryTimeUnit: string; deliveryDayType: string; deliveryStartRule: string;
+  includedRevisionCount: number; unlimitedRevisions: boolean; revisionRequestWindowDays: number;
+  deliverables: string[]; milestonePlan: ProposalMilestone[]; attachments: string[];
+  expiresAt?: string | null; supersededAt: string;
+}
 export interface Proposal {
   id: string; clientBriefId?: string | null; serviceId?: string | null; packageId?: string | null;
   providerId: string; clientId: string; proposalSource: string; acceptanceMode: string; title: string;
@@ -21,7 +29,7 @@ export interface Proposal {
   milestonePlan: ProposalMilestone[]; attachments: string[]; requirementsStatus: string;
   submittedAt?: string | null; expiresAt?: string | null; acceptedAt?: string | null;
   acceptanceTrigger?: string | null; escrowStatus: string; conversionStatus: string; status: ProposalStatus;
-  version: number; previousVersionCount: number; hasPurchaseSnapshot: boolean;
+  version: number; previousVersionCount: number; previousVersions: ProposalVersion[]; hasPurchaseSnapshot: boolean;
   earningsPreview: CommissionPreview; warnings: string[]; updatedAt: string;
 }
 

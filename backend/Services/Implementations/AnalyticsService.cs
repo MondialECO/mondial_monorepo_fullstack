@@ -146,7 +146,8 @@ public class AnalyticsService(
         var user = await users.FindByIdAsync(providerId);
         if (user is null)
             return ServiceProviderResult<AnalyticsDashboardResponse>.NotFound("Provider not found.");
-        var historyStartedAt = user.ServiceProviderProfile?.VerifiedAt;
+        var profile = user.ServiceProviderProfile ?? new ServiceProviderProfile { ProviderId = providerId };
+        var historyStartedAt = profile.VerifiedAt;
 
         var currency = NormalizeCurrency(query.Currency);
         if (currency is null)
@@ -217,6 +218,9 @@ public class AnalyticsService(
         {
             Period = new AnalyticsPeriodResponse(period.Range, period.From, period.To, period.ComparisonFrom, period.ComparisonTo, period.ComputedAt),
             Currency = currency,
+            AvailableCurrencies = financialValue?.AvailableCurrencies?.Count > 0
+                ? financialValue.AvailableCurrencies
+                : new List<string> { currency },
             HistoryStartedAt = historyStartedAt,
             HasMinimumHistory = historyStartedAt is { } liveAt && liveAt <= period.ComputedAt.AddDays(-7),
             Overview = new AnalyticsOverviewResponse
@@ -230,14 +234,14 @@ public class AnalyticsService(
                 AverageDeliveryDays = NullableMetric(currentDelivery, previousDelivery, "days"),
                 OnTimeRate = NullableMetric(ToDecimal(currentOnTime), ToDecimal(previousOnTime), "percent"),
             },
-            Proposals = BuildProposalAnalytics(currentProposals, previousProposals, currency),
-            Profile = BuildProfileAnalytics(),
+            Proposals = BuildProposalAnalytics(proposals, currentProposals, previousProposals, period, currency),
+            Profile = BuildProfileAnalytics(profile, user.Tier_level, listings.Count(x => x.Status == CatalogStatus.Published)),
             Revenue = BuildRevenueAnalytics(
                 currentRevenue, previousRevenue, financialValue, engagementById,
                 proposalById, listingById, briefById, currency),
             Clients = BuildClientAnalytics(
                 engagements, currentCompleted, previousCompleted, currentRevenue,
-                previousRevenue, earned, reviews, period, relationships, currency),
+                previousRevenue, earned, reviews, milestones, period, relationships, currency),
         };
 
         response.Services = BuildServiceAnalytics(
@@ -320,35 +324,72 @@ public class AnalyticsService(
             Builders<GrowthTask>.Update.Set(x => x.Status, GrowthTaskStatus.Expired).Set(x => x.UpdatedAt, now));
     }
 
-    private static ProposalAnalyticsResponse BuildProposalAnalytics(List<Proposal> current, List<Proposal> previous, string currency)
+    private static ProposalAnalyticsResponse BuildProposalAnalytics(
+        List<Proposal> all, List<Proposal> current, List<Proposal> previous,
+        AnalyticsPeriod period, string currency)
     {
+        var currentDrafts = all.Count(x => x.Status == ProposalStatus.Draft && x.CreatedAt >= period.From && x.CreatedAt < period.To);
+        var previousDrafts = all.Count(x => x.Status == ProposalStatus.Draft && x.CreatedAt >= period.ComparisonFrom && x.CreatedAt < period.ComparisonTo);
         var currentAccepted = current.Count(x => x.AcceptedAt != null);
         var previousAccepted = previous.Count(x => x.AcceptedAt != null);
         var currentValues = current.Where(x => x.Currency.Equals(currency, StringComparison.OrdinalIgnoreCase)).Select(x => x.ProposedPrice).ToList();
         var previousValues = previous.Where(x => x.Currency.Equals(currency, StringComparison.OrdinalIgnoreCase)).Select(x => x.ProposedPrice).ToList();
         return new ProposalAnalyticsResponse
         {
+            Drafts = Metric(currentDrafts, previousDrafts),
             Submitted = Metric(current.Count, previous.Count),
+            Viewed = Metric(current.Count(x => x.Status == ProposalStatus.Viewed), previous.Count(x => x.Status == ProposalStatus.Viewed)),
+            ChangesRequested = Metric(current.Count(x => x.Status == ProposalStatus.ChangesRequested), previous.Count(x => x.Status == ProposalStatus.ChangesRequested)),
+            Revised = Metric(current.Count(x => x.Status == ProposalStatus.Revised), previous.Count(x => x.Status == ProposalStatus.Revised)),
+            ClientReviewing = Metric(current.Count(x => x.Status == ProposalStatus.ClientReviewing), previous.Count(x => x.Status == ProposalStatus.ClientReviewing)),
             Accepted = Metric(currentAccepted, previousAccepted),
             AcceptanceRate = Metric(AnalyticsMath.Rate(currentAccepted, current.Count), AnalyticsMath.Rate(previousAccepted, previous.Count), "percent"),
             AverageProposalValue = Metric(Average(currentValues), Average(previousValues), currency),
             Declined = Metric(current.Count(x => x.Status == ProposalStatus.Declined), previous.Count(x => x.Status == ProposalStatus.Declined)),
             Withdrawn = Metric(current.Count(x => x.Status == ProposalStatus.Withdrawn), previous.Count(x => x.Status == ProposalStatus.Withdrawn)),
             Expired = Metric(current.Count(x => x.Status == ProposalStatus.Expired), previous.Count(x => x.Status == ProposalStatus.Expired)),
+            ConvertedToProject = Metric(current.Count(x => x.Status == ProposalStatus.ConvertedToProject), previous.Count(x => x.Status == ProposalStatus.ConvertedToProject)),
             ProposalViewRate = AnalyticsMetricResponse.NotTracked(ProposalTrackingReason, "percent"),
             ClientResponseRate = AnalyticsMetricResponse.NotTracked(ProposalTrackingReason, "percent"),
         };
     }
 
-    private static ProfileAnalyticsResponse BuildProfileAnalytics() => new()
+    private static ProfileAnalyticsResponse BuildProfileAnalytics(ServiceProviderProfile profile, int tierLevel, int publishedServices)
     {
-        ProfileViews = AnalyticsMetricResponse.NotTracked(ProfileTrackingReason),
-        SearchAppearances = AnalyticsMetricResponse.NotTracked(ProfileTrackingReason),
-        PortfolioViews = AnalyticsMetricResponse.NotTracked(ProfileTrackingReason),
-        ProfileSaves = AnalyticsMetricResponse.NotTracked(ProfileTrackingReason),
-        ContactRate = AnalyticsMetricResponse.NotTracked(ProfileTrackingReason, "percent"),
-        PortfolioEngagement = AnalyticsMetricResponse.NotTracked(ProfileTrackingReason, "percent"),
-    };
+        var attempts = profile.SkillsTestAttempts.OrderByDescending(x => x.TakenAt).ToList();
+        var trust = profile.ToTrustBreakdownResponse();
+        return new ProfileAnalyticsResponse
+        {
+            TrustScore = profile.HasEnoughTrustData
+                ? Metric((decimal)profile.TrustScore, null, "score")
+                : new AnalyticsMetricResponse { State = "notEnoughActivity", Unit = "score", Reason = "Trust score appears after the first qualifying trust signal." },
+            TrustSignals = trust.Signals.Select(x => new TrustSignalAnalyticsResponse
+            {
+                Key = x.Key,
+                Label = x.Label,
+                Weight = (decimal)x.Weight,
+                HasData = x.HasData,
+                Value = x.HasData ? (decimal)x.Value : null,
+            }).ToList(),
+            DisputePenalty = Metric((decimal)trust.DisputePenalty, null, "points"),
+            ProfileCompleteness = Metric(ServiceProviderMapping.CompletionPercent(profile), null, "percent"),
+            VerificationStatus = profile.VerificationStatus.ToString(),
+            TierLevel = Math.Max(1, tierLevel),
+            SkillsTestsTaken = Metric(attempts.Count, null),
+            SkillsTestsPassed = Metric(attempts.Count(x => x.Passed), null),
+            LatestSkillsTestScore = attempts.Count == 0
+                ? new AnalyticsMetricResponse { State = "notEnoughActivity", Unit = "percent", Reason = "No skills test has been completed yet." }
+                : Metric(attempts[0].Score, null, "percent"),
+            PortfolioItems = Metric(profile.PortfolioItems.Count, null),
+            PublishedServices = Metric(publishedServices, null),
+            ProfileViews = AnalyticsMetricResponse.NotTracked(ProfileTrackingReason),
+            SearchAppearances = AnalyticsMetricResponse.NotTracked(ProfileTrackingReason),
+            PortfolioViews = AnalyticsMetricResponse.NotTracked(ProfileTrackingReason),
+            ProfileSaves = AnalyticsMetricResponse.NotTracked(ProfileTrackingReason),
+            ContactRate = AnalyticsMetricResponse.NotTracked(ProfileTrackingReason, "percent"),
+            PortfolioEngagement = AnalyticsMetricResponse.NotTracked(ProfileTrackingReason, "percent"),
+        };
+    }
 
     private static RevenueAnalyticsResponse BuildRevenueAnalytics(
         List<FinancialTransaction> current, List<FinancialTransaction> previous,
@@ -369,6 +410,7 @@ public class AnalyticsService(
             AvailableBalance = Metric(summary?.Available ?? 0, null, currency),
             PendingBalance = Metric(summary?.Pending ?? 0, null, currency),
             ProtectedEscrow = Metric(summary?.ProtectedEscrow ?? 0, null, currency),
+            Withdrawn = Metric(summary?.Withdrawn ?? 0, null, currency),
             AverageProjectValue = Metric(Average(currentProjects), Average(previousProjects), currency),
             HighestProjectValue = Metric(currentProjects.DefaultIfEmpty(0).Max(), previousProjects.DefaultIfEmpty(0).Max(), currency),
             ByService = Breakdown(current, x => ServiceIdentity(x, engagements, proposals, listings, briefs).Key, x => ServiceIdentity(x, engagements, proposals, listings, briefs).Label),
@@ -390,6 +432,7 @@ public class AnalyticsService(
         List<FinancialTransaction> previousRevenue,
         List<FinancialTransaction> allRevenue,
         List<Review> reviews,
+        List<WorkroomMilestone> milestones,
         AnalyticsPeriod period,
         IClientRelationshipCalculator relationships,
         string currency)
@@ -414,6 +457,10 @@ public class AnalyticsService(
         var previousLifetimeRevenue = allRevenue.Where(x => (x.ReleasedAt ?? x.CreatedAt) < period.ComparisonTo).Sum(x => x.NetAmount);
         var currentReviews = reviews.Where(x => x.VerificationStatus == ReviewVerificationStatus.Verified && x.SubmittedAt >= period.From && x.SubmittedAt < period.To).ToList();
         var previousReviews = reviews.Where(x => x.VerificationStatus == ReviewVerificationStatus.Verified && x.SubmittedAt >= period.ComparisonFrom && x.SubmittedAt < period.ComparisonTo).ToList();
+        var currentMilestones = MilestonesFor(currentCompleted, milestones);
+        var previousMilestones = MilestonesFor(previousCompleted, milestones);
+        var currentDisputes = milestones.Where(x => x.DisputeOpenedAt is { } at && at >= period.From && at < period.To).ToList();
+        var previousDisputes = milestones.Where(x => x.DisputeOpenedAt is { } at && at >= period.ComparisonFrom && at < period.ComparisonTo).ToList();
 
         return new ClientAnalyticsResponse
         {
@@ -421,10 +468,20 @@ public class AnalyticsService(
             NewClients = Metric(newClients, previousNew),
             ReturningClients = Metric(returning, previousReturning),
             RepeatClientRate = NullableMetric(ToDecimal(relation.RepeatClientRate), ToDecimal(previousRelation.RepeatClientRate), "percent"),
+            RepeatClients = Metric(relation.RepeatClientCount, previousRelation.RepeatClientCount),
+            CompletedEngagements = Metric(currentCompleted.Count, previousCompleted.Count),
+            OnTimeDeliveryRate = NullableMetric(ToDecimal(relationships.CalculateOnTimeRate(currentMilestones)), ToDecimal(relationships.CalculateOnTimeRate(previousMilestones)), "percent"),
             RepeatClientRevenue = Metric(currentRepeatRevenue, previousRepeatRevenue, currency),
             AverageProjectsPerClient = Metric(relation.TotalClientCount == 0 ? 0 : Math.Round((decimal)relation.CompletedProjectCount / relation.TotalClientCount, 2), previousRelation.TotalClientCount == 0 ? 0 : Math.Round((decimal)previousRelation.CompletedProjectCount / previousRelation.TotalClientCount, 2), "projects"),
             AverageClientLifetimeValue = Metric(relation.TotalClientCount == 0 ? 0 : lifetimeRevenue / relation.TotalClientCount, previousRelation.TotalClientCount == 0 ? 0 : previousLifetimeRevenue / previousRelation.TotalClientCount, currency),
             AverageClientRating = Metric(Average(currentReviews.Select(x => (decimal)x.OverallRating)), Average(previousReviews.Select(x => (decimal)x.OverallRating)), "rating"),
+            ReviewCount = Metric(currentReviews.Count, previousReviews.Count),
+            AverageQualityRating = NullableMetric(AverageOrNull(currentReviews.Select(x => (decimal)x.QualityRating)), AverageOrNull(previousReviews.Select(x => (decimal)x.QualityRating)), "rating"),
+            AverageCommunicationRating = NullableMetric(AverageOrNull(currentReviews.Select(x => (decimal)x.CommunicationRating)), AverageOrNull(previousReviews.Select(x => (decimal)x.CommunicationRating)), "rating"),
+            AverageDeliveryRating = NullableMetric(AverageOrNull(currentReviews.Select(x => (decimal)x.DeliveryRating)), AverageOrNull(previousReviews.Select(x => (decimal)x.DeliveryRating)), "rating"),
+            DisputesOpened = Metric(currentDisputes.Count, previousDisputes.Count),
+            DisputesResolved = Metric(currentDisputes.Count(x => x.DisputeOutcome is not null and not DisputeOutcome.Open), previousDisputes.Count(x => x.DisputeOutcome is not null and not DisputeOutcome.Open)),
+            AdverseDisputes = Metric(currentDisputes.Count(x => x.DisputeOutcome == DisputeOutcome.ClientFavored), previousDisputes.Count(x => x.DisputeOutcome == DisputeOutcome.ClientFavored)),
             MostActiveClients = currentCompleted.GroupBy(x => x.ClientId)
                 .Select(g => new ActiveClientAnalyticsResponse
                 {
@@ -488,8 +545,10 @@ public class AnalyticsService(
                 Title = title,
                 Category = category,
                 CustomUnattributed = custom,
+                Status = custom ? "Custom" : listing?.Status.ToString() ?? "Historical",
                 Impressions = AnalyticsMetricResponse.NotTracked(ServiceTrackingReason),
                 ServiceViews = AnalyticsMetricResponse.NotTracked(ServiceTrackingReason),
+                ClickThroughRate = AnalyticsMetricResponse.NotTracked(ServiceTrackingReason, "percent"),
                 Enquiries = AnalyticsMetricResponse.NotTracked(EnquiryTrackingReason),
                 Orders = Metric(currentOrders, previousOrders),
                 ConversionRate = AnalyticsMetricResponse.NotTracked(ServiceTrackingReason, "percent"),
@@ -500,6 +559,8 @@ public class AnalyticsService(
                 OnTimeDeliveryRate = NullableMetric(ToDecimal(relationships.CalculateOnTimeRate(currentServiceMilestones)), ToDecimal(relationships.CalculateOnTimeRate(previousServiceMilestones)), "percent"),
                 CancellationRate = AnalyticsMetricResponse.NotTracked(CancellationTrackingReason, "percent"),
                 RepeatOrders = Metric(repeatOrders, previousRepeatOrders),
+                GrossRevenue = Metric(currentRevenue.Sum(x => x.GrossAmount), previousRevenue.Sum(x => x.GrossAmount), currency),
+                NetRevenue = Metric(currentRevenue.Sum(x => x.NetAmount), previousRevenue.Sum(x => x.NetAmount), currency),
             });
         }
 
@@ -569,6 +630,12 @@ public class AnalyticsService(
     {
         var values = source.ToList();
         return values.Count == 0 ? 0 : Math.Round(values.Average(), 2);
+    }
+
+    private static decimal? AverageOrNull(IEnumerable<decimal> source)
+    {
+        var values = source.ToList();
+        return values.Count == 0 ? null : Math.Round(values.Average(), 2);
     }
 
     private static decimal AverageProjectRevenue(IEnumerable<FinancialTransaction> source)

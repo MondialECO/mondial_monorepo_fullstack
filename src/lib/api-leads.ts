@@ -18,6 +18,9 @@ export async function updateInteraction(id: string, payload: { saved?: boolean; 
 export async function getProposals(): Promise<Proposal[]> {
   const res = await api.get<ApiEnvelope<Proposal[]>>(`${BASE}/proposals`); return unwrap(res.data);
 }
+export async function getProposal(id: string): Promise<Proposal> {
+  const res = await api.get<ApiEnvelope<Proposal>>(`${BASE}/proposals/${id}`); return unwrap(res.data);
+}
 export async function createProposal(payload: UpsertProposalRequest): Promise<Proposal> {
   const res = await api.post<ApiEnvelope<Proposal>>(`${BASE}/proposals`, payload); return unwrap(res.data);
 }
@@ -32,6 +35,9 @@ export async function withdrawProposal(id: string): Promise<Proposal> {
 }
 export async function duplicateProposal(id: string): Promise<Proposal> {
   const res = await api.post<ApiEnvelope<Proposal>>(`${BASE}/proposals/${id}/duplicate`, {}); return unwrap(res.data);
+}
+export async function reviseProposal(id: string, payload: UpsertProposalRequest): Promise<Proposal> {
+  const res = await api.post<ApiEnvelope<Proposal>>(`${BASE}/proposals/${id}/revise`, payload); return unwrap(res.data);
 }
 export async function reviewOrderRequest(id: string, accept: boolean): Promise<Proposal> {
   const res = await api.post<ApiEnvelope<Proposal>>(`${BASE}/proposals/${id}/${accept ? "provider-approve" : "provider-decline"}`, {}); return unwrap(res.data);

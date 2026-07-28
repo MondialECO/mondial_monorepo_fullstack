@@ -39,6 +39,7 @@ public class LeadsModuleTests
     {
         PlatformCommerceConstants.CommissionRate.Should().Be(0.12m);
         var preview = CommissionPreviewResponse.From(2150m, "USD");
+        preview.Rate.Should().Be(PlatformCommerceConstants.CommissionRate);
         preview.Commission.Should().Be(258m);
         preview.Net.Should().Be(1892m);
     }
@@ -50,6 +51,37 @@ public class LeadsModuleTests
         p.PreviousVersions.Should().ContainSingle(x => x.Version == 1);
         typeof(PurchaseSnapshot).GetProperties().Select(x => x.Name)
             .Should().NotContain(new[] { "CommissionRate", "CommissionAmount" });
+    }
+
+    [Fact]
+    public void Proposal_response_exposes_real_embedded_version_history()
+    {
+        var supersededAt = DateTime.UtcNow.AddMinutes(-5);
+        var proposal = new Proposal
+        {
+            ProposedPrice = 250m,
+            Currency = "USD",
+            PreviousVersions = new()
+            {
+                new()
+                {
+                    Version = 1,
+                    Title = "Original scope",
+                    ProposedPrice = 200m,
+                    Currency = "USD",
+                    Deliverables = new() { "Audit" },
+                    SupersededAt = supersededAt,
+                },
+            },
+        };
+
+        var response = proposal.ToResponse();
+
+        response.PreviousVersionCount.Should().Be(1);
+        response.PreviousVersions.Should().ContainSingle();
+        response.PreviousVersions[0].Title.Should().Be("Original scope");
+        response.PreviousVersions[0].Deliverables.Should().ContainSingle().Which.Should().Be("Audit");
+        response.PreviousVersions[0].SupersededAt.Should().Be(supersededAt);
     }
 
     [Fact]

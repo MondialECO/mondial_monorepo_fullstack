@@ -117,6 +117,36 @@ public class WorkroomModuleTests
         => new ContractResponse().SimpleConsentStub.Should().BeTrue();
 
     [Fact]
+    public void Workroom_detail_response_exposes_existing_provider_records()
+    {
+        var properties = typeof(WorkroomDetailResponse).GetProperties().Select(x => x.Name).ToHashSet();
+        properties.Should().Contain(new[] { "Files", "HourlyTimeEntries", "Review" });
+    }
+
+    [Fact]
+    public void Engagement_response_includes_existing_client_identity_and_live_schedule_fields()
+    {
+        var currentMilestoneId = ObjectId.GenerateNewId().ToString();
+        var response = new WorkroomEngagement { CurrentMilestoneId = currentMilestoneId }.ToResponse("NovaPay Technologies");
+        response.ClientDisplayName.Should().Be("NovaPay Technologies");
+        response.CurrentMilestoneId.Should().Be(currentMilestoneId);
+    }
+
+    [Fact]
+    public void Financial_summary_exposes_server_owned_earnings_totals_and_currencies()
+    {
+        var properties = typeof(ProviderFinancialSummaryResponse).GetProperties().Select(x => x.Name).ToHashSet();
+        properties.Should().Contain(new[] { "GrossEarnings", "CommissionPaid", "NetEarnings", "AvailableCurrencies" });
+    }
+
+    [Fact]
+    public void Earnings_service_exposes_owned_payout_method_management()
+    {
+        var methods = typeof(WebApp.Services.Interface.IWorkroomService).GetMethods().Select(x => x.Name).ToHashSet();
+        methods.Should().Contain(new[] { "SetDefaultPayoutMethodAsync", "RemovePayoutMethodAsync" });
+    }
+
+    [Fact]
     public void Repeat_coupon_is_tier_independent_by_schema()
         => typeof(RepeatClientCoupon).GetProperties().Select(x => x.Name)
             .Should().NotContain(x => x.Contains("Tier", StringComparison.OrdinalIgnoreCase));

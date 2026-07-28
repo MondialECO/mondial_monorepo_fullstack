@@ -169,7 +169,14 @@ public sealed class WorkroomService : IWorkroomService
     public async Task<ServiceProviderResult<List<WorkroomEngagementResponse>>> GetEngagementsAsync(string actorId)
     {
         var rows = await _db.WorkroomEngagements.Find(x => x.ProviderId == actorId || x.ClientId == actorId).SortByDescending(x => x.UpdatedAt).ToListAsync();
-        return ServiceProviderResult<List<WorkroomEngagementResponse>>.Ok(rows.Select(x => x.ToResponse()).ToList());
+        var clientNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var clientId in rows.Select(x => x.ClientId).Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            var client = await _users.FindByIdAsync(clientId);
+            clientNames[clientId] = string.IsNullOrWhiteSpace(client?.Name) ? "Client" : client.Name;
+        }
+        return ServiceProviderResult<List<WorkroomEngagementResponse>>.Ok(rows
+            .Select(x => x.ToResponse(clientNames.GetValueOrDefault(x.ClientId, "Client"))).ToList());
     }
 
     public async Task<ServiceProviderResult<WorkroomDetailResponse>> GetEngagementAsync(string actorId, string engagementId)
@@ -539,14 +546,23 @@ public sealed class WorkroomService : IWorkroomService
         var tx = await _db.FinancialTransactions.Find(x => x.ProviderId == providerId && x.Currency == selected).SortByDescending(x => x.CreatedAt).ToListAsync();
         var payouts = await _db.PayoutRequests.Find(x => x.ProviderId == providerId && x.Currency == selected).SortByDescending(x => x.CreatedAt).ToListAsync();
         var invoices = await _db.Invoices.Find(x => x.ProviderId == providerId && x.Currency == selected).SortByDescending(x => x.CreatedAt).ToListAsync();
+        var transactionCurrencies = await _db.FinancialTransactions.Find(x => x.ProviderId == providerId).Project(x => x.Currency).ToListAsync();
+        var payoutCurrencies = await _db.PayoutRequests.Find(x => x.ProviderId == providerId).Project(x => x.Currency).ToListAsync();
+        var invoiceCurrencies = await _db.Invoices.Find(x => x.ProviderId == providerId).Project(x => x.Currency).ToListAsync();
         var milestones = await _db.WorkroomMilestones.Find(x => x.Currency == selected).ToListAsync();
-        var engagementIds = (await _db.WorkroomEngagements.Find(x => x.ProviderId == providerId).Project(x => x.Id).ToListAsync()).ToHashSet();
+        var providerEngagements = await _db.WorkroomEngagements.Find(x => x.ProviderId == providerId).ToListAsync();
+        var engagementIds = providerEngagements.Select(x => x.Id).ToHashSet();
         milestones = milestones.Where(x => engagementIds.Contains(x.EngagementId)).ToList();
         var released = tx.Where(x => x.TransactionType == FinancialTransactionType.PaymentReleased && x.PaymentStatus == PaymentStatus.Completed).Sum(x => x.NetAmount);
+        var releasedTransactions = tx.Where(x => x.TransactionType == FinancialTransactionType.PaymentReleased && x.PaymentStatus == PaymentStatus.Completed).ToList();
         var completedPayout = payouts.Where(x => x.Status == PayoutStatus.Completed).Sum(x => x.Amount);
         var activePayout = payouts.Where(x => x.Status is PayoutStatus.Requested or PayoutStatus.UnderReview or PayoutStatus.Processing or PayoutStatus.OnHold).Sum(x => x.Amount);
         var adjustments = tx.Where(x => x.TransactionType == FinancialTransactionType.Adjustment && x.PaymentStatus == PaymentStatus.Completed).Sum(x => x.NetAmount);
         var user = await _users.FindByIdAsync(providerId);
+        var availableCurrencies = providerEngagements.Select(x => x.Currency)
+            .Concat(transactionCurrencies).Concat(payoutCurrencies).Concat(invoiceCurrencies)
+            .Append(selected).Where(x => !string.IsNullOrWhiteSpace(x)).Select(NormalizeCurrency)
+            .Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(x => x).ToList();
         return ServiceProviderResult<ProviderFinancialSummaryResponse>.Ok(new ProviderFinancialSummaryResponse
         {
             Currency=selected,
@@ -556,6 +572,8 @@ public sealed class WorkroomService : IWorkroomService
             Available=Math.Max(0, released-completedPayout-activePayout+adjustments), Withdrawn=completedPayout,
             OnHold=milestones.Where(x => x.EscrowStatus == WorkroomEscrowStatus.OnHold).Sum(x => x.Amount),
             ProtectedEscrow=milestones.Where(x => x.EscrowStatus == WorkroomEscrowStatus.Funded && x.MilestoneStatus != WorkroomMilestoneStatus.Approved && x.MilestoneStatus != WorkroomMilestoneStatus.Paid).Sum(x => x.Amount),
+            GrossEarnings=releasedTransactions.Sum(x => x.GrossAmount), CommissionPaid=releasedTransactions.Sum(x => x.CommissionAmount),
+            NetEarnings=releasedTransactions.Sum(x => x.NetAmount), AvailableCurrencies=availableCurrencies,
             Transactions=tx, Payouts=payouts, Invoices=invoices, Settings=user?.ServiceProviderProfile?.FinancialSettings ?? new(),
         });
     }
@@ -584,6 +602,30 @@ public sealed class WorkroomService : IWorkroomService
         var method=new MaskedPayoutMethod { Rail=rail, DisplayName=r.DisplayName.Trim(), MaskedDescriptor=Mask(r.MaskedDescriptor), Verified=true };
         settings.PayoutMethods.Add(method); settings.DefaultPayoutMethodId ??= method.Id; await _users.UpdateAsync(user);
         return ServiceProviderResult<ProviderFinancialSettings>.Ok(settings, "STUB payout method verified and saved.");
+    }
+
+    public async Task<ServiceProviderResult<ProviderFinancialSettings>> SetDefaultPayoutMethodAsync(string providerId, string payoutMethodId)
+    {
+        var user=await _users.FindByIdAsync(providerId); if (user is null) return ServiceProviderResult<ProviderFinancialSettings>.NotFound("Provider not found.");
+        var settings=user.ServiceProviderProfile.FinancialSettings ??= new();
+        if (!settings.PayoutMethods.Any(x => x.Id == payoutMethodId && x.Verified)) return ServiceProviderResult<ProviderFinancialSettings>.NotFound("Verified payout method not found.");
+        settings.DefaultPayoutMethodId=payoutMethodId; await _users.UpdateAsync(user);
+        return ServiceProviderResult<ProviderFinancialSettings>.Ok(settings, "Default payout method updated for the payment sandbox.");
+    }
+
+    public async Task<ServiceProviderResult<ProviderFinancialSettings>> RemovePayoutMethodAsync(string providerId, string payoutMethodId)
+    {
+        var user=await _users.FindByIdAsync(providerId); if (user is null) return ServiceProviderResult<ProviderFinancialSettings>.NotFound("Provider not found.");
+        var settings=user.ServiceProviderProfile.FinancialSettings ??= new();
+        var method=settings.PayoutMethods.FirstOrDefault(x => x.Id == payoutMethodId);
+        if (method is null) return ServiceProviderResult<ProviderFinancialSettings>.NotFound("Payout method not found.");
+        var activePayout=await _db.PayoutRequests.Find(x => x.ProviderId == providerId && x.PayoutMethodId == payoutMethodId &&
+            (x.Status == PayoutStatus.Requested || x.Status == PayoutStatus.UnderReview || x.Status == PayoutStatus.Processing || x.Status == PayoutStatus.OnHold)).AnyAsync();
+        if (activePayout) return ServiceProviderResult<ProviderFinancialSettings>.Conflict("This payout method is attached to an active payout and cannot be removed.");
+        settings.PayoutMethods.Remove(method);
+        if (settings.DefaultPayoutMethodId == payoutMethodId) settings.DefaultPayoutMethodId=settings.PayoutMethods.FirstOrDefault(x => x.Verified)?.Id;
+        await _users.UpdateAsync(user);
+        return ServiceProviderResult<ProviderFinancialSettings>.Ok(settings, "Payout method removed.");
     }
 
     public async Task<ServiceProviderResult<ProviderFinancialSettings>> UpdateTaxSettingsAsync(string providerId, UpdateTaxSettingsRequest r)
@@ -704,12 +746,16 @@ public sealed class WorkroomService : IWorkroomService
         var rs=await _db.RevisionRequests.Find(x=>ids.Contains(x.MilestoneId)).SortBy(x=>x.CreatedAt).ToListAsync();
         var tasks=await _db.WorkroomTasks.Find(x=>x.EngagementId==e.Id).ToListAsync(); if(actorId==e.ClientId)tasks=tasks.Where(x=>x.Visibility!=WorkroomTaskVisibility.ProviderPrivate).ToList();
         var inputs=await _db.ClientInputRequests.Find(x=>x.EngagementId==e.Id).ToListAsync();
-        return new WorkroomDetailResponse{Engagement=e.ToResponse(),Contract=c is null?new():ToContract(c),Milestones=ms.Select(x=>ToMilestone(x,e)).ToList(),Deliverables=ds,RevisionRequests=rs,Tasks=tasks,ClientInputRequests=inputs};
+        var files=await _db.WorkroomFiles.Find(x=>x.EngagementId==e.Id).SortByDescending(x=>x.CreatedAt).ToListAsync();if(actorId==e.ClientId)files=files.Where(x=>!x.ProviderPrivate).ToList();
+        var timeEntries=await _db.HourlyTimeEntries.Find(x=>x.EngagementId==e.Id).SortByDescending(x=>x.StartedAt).ToListAsync();
+        var review=await _db.Reviews.Find(x=>x.EngagementId==e.Id).FirstOrDefaultAsync();
+        var client=await _users.FindByIdAsync(e.ClientId);var clientName=string.IsNullOrWhiteSpace(client?.Name)?"Client":client.Name;
+        return new WorkroomDetailResponse{Engagement=e.ToResponse(clientName),Contract=c is null?new():ToContract(c),Milestones=ms.Select(x=>ToMilestone(x,e)).ToList(),Deliverables=ds,RevisionRequests=rs,Tasks=tasks,ClientInputRequests=inputs,Files=files,HourlyTimeEntries=timeEntries,Review=review};
     }
     private async Task<WorkroomEngagement?> Participant(string actorId,string id)=>await _db.WorkroomEngagements.Find(x=>x.Id==id&&(x.ProviderId==actorId||x.ClientId==actorId)).FirstOrDefaultAsync();
     private async Task<(WorkroomMilestone? m,WorkroomEngagement? e,Contract? c)> MilestoneContext(string id){var m=await _db.WorkroomMilestones.Find(x=>x.Id==id).FirstOrDefaultAsync();if(m is null)return(null,null,null);var e=await _db.WorkroomEngagements.Find(x=>x.Id==m.EngagementId).FirstOrDefaultAsync();var c=e is null?null:await _db.Contracts.Find(x=>x.Id==e.ContractId).FirstOrDefaultAsync();return(m,e,c);}
     private static ContractResponse ToContract(Contract c)=>new(){Id=c.Id,Terms=c.Terms,ProviderSignedAt=c.ProviderSignedAt,ClientSignedAt=c.ClientSignedAt,Status=c.Status.ToString(),SimpleConsentStub=true};
-    private static WorkroomMilestoneResponse ToMilestone(WorkroomMilestone m,WorkroomEngagement e)=>new(){Id=m.Id,Title=m.Title,Description=m.Description,Amount=m.Amount,Currency=m.Currency,DisplayOrder=m.DisplayOrder,StartDate=m.StartDate,DueDate=m.DueDate,CompletionCriteria=m.CompletionCriteria,RemainingRevisions=m.UnlimitedRevisions?int.MaxValue:RevisionCalculator.Remaining(m.IncludedRevisionCount,m.PurchasedAdditionalRevisions,m.UsedRevisionCount),UnlimitedRevisions=m.UnlimitedRevisions,Status=m.MilestoneStatus.ToString(),EscrowStatus=m.EscrowStatus.ToString(),DeliveryClockState=ClockState(m,e),ExtensionRequested=m.ExtensionRequestedAt.HasValue,ApprovedExtensionDays=m.ApprovedExtensionDays,ReviewWindowEndsAt=m.ReviewWindowEndsAt,AutoReleaseAt=m.AutoReleaseAt};
+    private static WorkroomMilestoneResponse ToMilestone(WorkroomMilestone m,WorkroomEngagement e)=>new(){Id=m.Id,Title=m.Title,Description=m.Description,Amount=m.Amount,Currency=m.Currency,DisplayOrder=m.DisplayOrder,StartDate=m.StartDate,DueDate=m.DueDate,CompletionCriteria=m.CompletionCriteria,RemainingRevisions=m.UnlimitedRevisions?int.MaxValue:RevisionCalculator.Remaining(m.IncludedRevisionCount,m.PurchasedAdditionalRevisions,m.UsedRevisionCount),UnlimitedRevisions=m.UnlimitedRevisions,Status=m.MilestoneStatus.ToString(),EscrowStatus=m.EscrowStatus.ToString(),DeliveryClockState=ClockState(m,e),ExtensionRequested=m.ExtensionRequestedAt.HasValue,ApprovedExtensionDays=m.ApprovedExtensionDays,ReviewWindowEndsAt=m.ReviewWindowEndsAt,AutoReleaseAt=m.AutoReleaseAt,DisputeOpenedAt=m.DisputeOpenedAt,DisputeReviewEndsAt=m.DisputeReviewEndsAt,DisputeOutcome=m.DisputeOutcome?.ToString()};
     private static string ClockState(WorkroomMilestone m,WorkroomEngagement e){if(e.EngagementStatus==EngagementStatus.Paused)return"Paused";if(e.EngagementStatus==EngagementStatus.ClientInputRequired)return"WaitingForRequirements";if(m.EscrowStatus!=WorkroomEscrowStatus.Funded&&m.EscrowStatus!=WorkroomEscrowStatus.Released)return"WaitingForEscrow";if(m.ExtensionRequestedAt.HasValue&&m.ApprovedExtensionDays==0)return"ExtensionRequested";if(m.ApprovedExtensionDays>0)return"ExtensionApproved";if(m.DueDate is null)return"ReadyToStart";return DeliveryScheduleCalculator.ComputeState(DateTime.UtcNow,m.DueDate.Value,m.StartDate.HasValue,m.SubmittedAt.HasValue).ToString();}
     private static string NextVersion(string? previous,bool major){if(previous is null)return"1.0";var parts=previous.Split('.');var majorN=int.TryParse(parts[0],out var a)?a:1;var minor=int.TryParse(parts.ElementAtOrDefault(1),out var b)?b:0;return major?$"{majorN+1}.0":$"{majorN}.{minor+1}";}
     private async Task<PaymentOperation> BeginOperation(string key,PaymentOperationType type,string? engagementId,string? milestoneId,string? payoutId,decimal amount,string currency){var existing=await _db.PaymentOperations.Find(x=>x.IdempotencyKey==key).FirstOrDefaultAsync();if(existing is not null)return existing;var op=new PaymentOperation{IdempotencyKey=key,Type=type,EngagementId=engagementId,MilestoneId=milestoneId,PayoutRequestId=payoutId,Amount=amount,Currency=currency,AttemptCount=1};await _db.PaymentOperations.InsertOneAsync(op);return op;}
