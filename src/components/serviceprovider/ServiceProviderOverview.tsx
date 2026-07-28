@@ -20,15 +20,14 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useProviderOverview } from '@/hooks/queries/analytics';
-import { useCapacity, useUpdateCapacity } from '@/hooks/queries/service-catalog';
+import { useProviderAvailabilityControl } from '@/hooks/useProviderAvailabilityControl';
 import type { ProviderDashboardActivity, ProviderDashboardAttention } from '@/types/analytics';
 
 type Tone = 'blue' | 'green' | 'amber' | 'red' | 'slate';
 
 export function ServiceProviderOverview() {
   const overview = useProviderOverview('EUR');
-  const capacity = useCapacity();
-  const updateCapacity = useUpdateCapacity();
+  const availability = useProviderAvailabilityControl(overview.data?.provider.availableNow ?? true);
 
   if (overview.isLoading) return <OverviewSkeleton />;
   if (overview.isError || !overview.data) {
@@ -44,17 +43,8 @@ export function ServiceProviderOverview() {
   }
 
   const data = overview.data;
-  const available = capacity.data?.newOrderAvailability ?? data.provider.availableNow;
+  const available = availability.available;
   const firstName = data.provider.name.split(/\s+/)[0] || 'there';
-
-  function toggleAvailability() {
-    if (!capacity.data || updateCapacity.isPending) return;
-    updateCapacity.mutate({
-      maximumConcurrentOrders: capacity.data.maximumConcurrentOrders,
-      newOrderAvailability: !capacity.data.newOrderAvailability,
-      manualApprovalWhenCapacityLow: capacity.data.manualApprovalWhenCapacityLow,
-    });
-  }
 
   return (
     <div className="min-h-full text-[#171717]">
@@ -80,12 +70,12 @@ export function ServiceProviderOverview() {
                     type="button"
                     role="switch"
                     aria-checked={available}
-                    disabled={!capacity.data || updateCapacity.isPending}
-                    onClick={toggleAvailability}
+                    disabled={!availability.canUpdate || availability.pending}
+                    onClick={availability.toggle}
                     className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-3 py-1 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-70"
                   >
                     <span className={`size-2 rounded-full ${available ? 'bg-[#6EE7B7]' : 'bg-white/45'}`} />
-                    {available ? 'Available Now' : 'Unavailable'}
+                    {availability.pending ? 'Updating…' : available ? 'Available Now' : 'Unavailable'}
                   </button>
                 </div>
               </div>
@@ -94,6 +84,11 @@ export function ServiceProviderOverview() {
               <Link href="/dashboard/serviceprovider/profile">Edit Public Profile</Link>
             </Button>
           </div>
+          {availability.feedback && (
+            <p role={availability.feedback.status === 'error' ? 'alert' : 'status'} className="mt-4 rounded-lg border border-white/30 bg-white/10 px-3 py-2 text-sm text-white">
+              {availability.feedback.message}
+            </p>
+          )}
         </section>
 
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -207,6 +202,6 @@ function welcomeSummary(leads: number, dueToday: number) {
 function money(value: number, currency: string) { try { return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(value); } catch { return `${currency} ${value.toFixed(2)}`; } }
 function number(value: number) { return new Intl.NumberFormat().format(value); }
 function responseTime(value?: number | null) { if (value == null) return '—'; return value < 60 ? `${Math.round(value)} mins` : `${(value / 60).toFixed(value < 600 ? 1 : 0)} hrs`; }
-function leadExpiry(value: string | null | undefined, computedAt: string) { if (!value) return 'No unread opportunities'; const hours = Math.max(0, Math.ceil((new Date(value).getTime() - new Date(computedAt).getTime()) / 3_600_000)); return `Nearest lead expires in ${hours} ${hours === 1 ? 'hour' : 'hours'}`; }
+function leadExpiry(value: string | null | undefined, computedAt: string) { if (!value) return 'No unread client briefs'; const hours = Math.max(0, Math.ceil((new Date(value).getTime() - new Date(computedAt).getTime()) / 3_600_000)); return `Nearest lead expires in ${hours} ${hours === 1 ? 'hour' : 'hours'}`; }
 function formatDue(value: string, computedAt: string) { const hours = Math.ceil((new Date(value).getTime() - new Date(computedAt).getTime()) / 3_600_000); if (hours < 0) return `Overdue by ${Math.abs(hours)} ${Math.abs(hours) === 1 ? 'hour' : 'hours'}`; if (hours < 48) return `Due in ${hours} ${hours === 1 ? 'hour' : 'hours'}`; return `Due in ${Math.ceil(hours / 24)} days`; }
 function relativeTime(value: string, computedAt: string) { const minutes = Math.max(0, Math.floor((new Date(computedAt).getTime() - new Date(value).getTime()) / 60_000)); if (minutes < 60) return minutes <= 1 ? 'Just now' : `${minutes} mins ago`; const hours = Math.floor(minutes / 60); if (hours < 24) return `${hours} ${hours === 1 ? 'hour' : 'hours'} ago`; const days = Math.floor(hours / 24); return days === 1 ? 'Yesterday' : `${days} days ago`; }

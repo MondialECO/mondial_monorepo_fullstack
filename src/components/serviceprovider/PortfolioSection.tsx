@@ -26,6 +26,8 @@ import {
   useUpdatePortfolioItem,
 } from "@/hooks/queries/service-provider";
 import type { PortfolioItem } from "@/types/service-provider";
+import { useSpDirtyFormGuard } from "@/hooks/useSpDirtyFormGuard";
+import { safeHttpUrl, validateOptionalHttpUrl } from "@/lib/service-provider/url-security";
 
 type Draft = { title: string; description: string; url: string; imagePath: string };
 
@@ -40,20 +42,25 @@ export function PortfolioSection({ items }: { items: PortfolioItem[] }) {
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [error, setError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const dirtyGuard = useSpDirtyFormGuard(draft, { enabled: editIndex !== null });
+  const urlError = validateOptionalHttpUrl(draft.url);
 
   function openAdd() {
     setDraft(emptyDraft);
+    dirtyGuard.markClean(emptyDraft);
     setEditIndex(-1);
     setError(null);
   }
 
   function openEdit(item: PortfolioItem) {
-    setDraft({
+    const next = {
       title: item.title,
       description: item.description ?? "",
       url: item.url ?? "",
       imagePath: item.imagePath ?? "",
-    });
+    };
+    setDraft(next);
+    dirtyGuard.markClean(next);
     setEditIndex(item.index);
     setError(null);
   }
@@ -66,6 +73,10 @@ export function PortfolioSection({ items }: { items: PortfolioItem[] }) {
   async function save() {
     if (!draft.title.trim() || !draft.description.trim()) {
       setError("Title and description are required.");
+      return;
+    }
+    if (urlError) {
+      setError(urlError);
       return;
     }
     setError(null);
@@ -84,6 +95,7 @@ export function PortfolioSection({ items }: { items: PortfolioItem[] }) {
         await update.mutateAsync({ index: editIndex, ...payload });
         setFeedback("Portfolio item updated.");
       }
+      dirtyGuard.markClean(draft);
       closeEditor();
     } catch {
       setError("Could not save this portfolio item. Check the fields and try again.");
@@ -136,8 +148,8 @@ export function PortfolioSection({ items }: { items: PortfolioItem[] }) {
               <div className="flex flex-1 flex-col p-4">
                 <h3 className="font-heading text-base font-semibold text-[#171717]">{item.title}</h3>
                 {item.description && <p className="mt-1 line-clamp-3 text-sm leading-6 text-[#6B7280]">{item.description}</p>}
-                {item.url && (
-                  <a href={item.url} target="_blank" rel="noreferrer" className="mt-3 inline-flex w-fit items-center gap-1 text-sm font-semibold text-[#3C61DD] hover:underline">
+                {safeHttpUrl(item.url) && (
+                  <a href={safeHttpUrl(item.url)!} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex w-fit items-center gap-1 text-sm font-semibold text-[#3C61DD] hover:underline">
                     View project<span className="sr-only">: {item.title}</span><ExternalLink className="size-3.5" aria-hidden="true" />
                   </a>
                 )}
@@ -151,7 +163,7 @@ export function PortfolioSection({ items }: { items: PortfolioItem[] }) {
         </div>
       )}
 
-      <Dialog open={editIndex !== null} onOpenChange={(open) => !open && closeEditor()}>
+      <Dialog open={editIndex !== null} onOpenChange={(open) => !open && dirtyGuard.confirmDiscard(closeEditor)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{editIndex === -1 ? "Add portfolio item" : "Edit portfolio item"}</DialogTitle>
@@ -164,7 +176,7 @@ export function PortfolioSection({ items }: { items: PortfolioItem[] }) {
             <SpFormField id="portfolio-description" label="Description" required>
               <Textarea maxLength={2000} rows={5} value={draft.description} onChange={(event) => setDraft({ ...draft, description: event.target.value })} />
             </SpFormField>
-            <SpFormField id="portfolio-url" label="Project URL" description="Optional. Must be a complete http(s) URL.">
+            <SpFormField id="portfolio-url" label="Project URL" description="Optional. Must be a complete http(s) URL." error={urlError}>
               <Input type="url" maxLength={500} placeholder="https://example.com/project" value={draft.url} onChange={(event) => setDraft({ ...draft, url: event.target.value })} />
             </SpFormField>
             <SpFormField id="portfolio-image" label="Existing image path or URL" description="Optional. This field stores a reference; it does not upload a file.">
@@ -173,8 +185,8 @@ export function PortfolioSection({ items }: { items: PortfolioItem[] }) {
             {error && <SpMutationFeedback status="error">{error}</SpMutationFeedback>}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={closeEditor} disabled={saving}>Cancel</Button>
-            <Button onClick={save} disabled={saving}>{saving ? "Saving…" : "Save item"}</Button>
+            <Button variant="outline" onClick={() => dirtyGuard.confirmDiscard(closeEditor)} disabled={saving}>Cancel</Button>
+            <Button onClick={save} disabled={saving || !!urlError}>{saving ? "Saving…" : "Save item"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

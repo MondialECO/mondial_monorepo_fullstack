@@ -128,7 +128,7 @@ export function BriefDetail({
 
         <aside className="space-y-6" aria-label="Client brief summary">
           <SpCard>
-            <h2 className="font-heading text-lg font-semibold text-[#171717]">Opportunity summary</h2>
+            <h2 className="font-heading text-lg font-semibold text-[#171717]">Client brief summary</h2>
             <dl className="mt-5 space-y-5">
               <IconDetail icon={WalletCards} label="Client budget" value={`${money(item.budgetMinimum, item.currency)} – ${money(item.budgetMaximum, item.currency)}`} />
               <IconDetail icon={BriefcaseBusiness} label="Pricing model" value={formatEnum(item.pricingType)} />

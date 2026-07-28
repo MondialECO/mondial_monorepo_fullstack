@@ -36,6 +36,8 @@ import {
   SpTagInput,
 } from "@/components/serviceprovider/ui";
 import { useProviderOverview } from "@/hooks/queries/analytics";
+import { useSpDirtyFormGuard } from "@/hooks/useSpDirtyFormGuard";
+import { safeHttpUrl } from "@/lib/service-provider/url-security";
 import { useCapacity, useServiceListings } from "@/hooks/queries/service-catalog";
 import {
   useServiceProviderProfile,
@@ -238,7 +240,7 @@ function PortfolioPreview({ profile }: { profile: ServiceProviderProfile }) {
               <div className="p-4">
                 <h3 className="font-heading text-sm font-semibold text-[#171717]">{item.title}</h3>
                 {item.description && <p className="mt-1 line-clamp-2 text-xs leading-5 text-[#6B7280]">{item.description}</p>}
-                {item.url && <a href={item.url} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-[#3C61DD] hover:underline">View project<span className="sr-only">: {item.title}</span><ArrowRight className="size-3" aria-hidden="true" /></a>}
+                {safeHttpUrl(item.url) && <a href={safeHttpUrl(item.url)!} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-[#3C61DD] hover:underline">View project<span className="sr-only">: {item.title}</span><ArrowRight className="size-3" aria-hidden="true" /></a>}
               </div>
             </article>
           ))}
@@ -345,16 +347,29 @@ function ProfileEditor({ profile }: { profile: ServiceProviderProfile }) {
   const [categories, setCategories] = useState(profile.serviceCategories);
   const [pricing, setPricing] = useState(profile.pricingModels);
   const [feedback, setFeedback] = useState<{ status: "success" | "error"; message: string } | null>(null);
+  const formState = { headline, bio, skills, industries, languages, categories, pricing };
+  const dirtyGuard = useSpDirtyFormGuard(formState);
+  const { markClean } = dirtyGuard;
 
   useEffect(() => {
-    setHeadline(profile.headline ?? "");
-    setBio(profile.bio ?? "");
-    setSkills(profile.skills);
-    setIndustries(profile.industries);
-    setLanguages(profile.languages);
-    setCategories(profile.serviceCategories);
-    setPricing(profile.pricingModels);
-  }, [profile.updatedAt, profile.headline, profile.bio, profile.skills, profile.industries, profile.languages, profile.serviceCategories, profile.pricingModels]);
+    const next = {
+      headline: profile.headline ?? "",
+      bio: profile.bio ?? "",
+      skills: profile.skills,
+      industries: profile.industries,
+      languages: profile.languages,
+      categories: profile.serviceCategories,
+      pricing: profile.pricingModels,
+    };
+    setHeadline(next.headline);
+    setBio(next.bio);
+    setSkills(next.skills);
+    setIndustries(next.industries);
+    setLanguages(next.languages);
+    setCategories(next.categories);
+    setPricing(next.pricing);
+    markClean(next);
+  }, [markClean, profile.updatedAt, profile.headline, profile.bio, profile.skills, profile.industries, profile.languages, profile.serviceCategories, profile.pricingModels]);
 
   const toggleValue = (values: string[], value: string) => values.includes(value) ? values.filter((entry) => entry !== value) : [...values, value];
 
@@ -378,6 +393,7 @@ function ProfileEditor({ profile }: { profile: ServiceProviderProfile }) {
         languages,
         pricingModels: pricing,
       });
+      markClean(formState);
       setFeedback({ status: "success", message: "Profile changes saved." });
     } catch {
       setFeedback({ status: "error", message: "Could not save your profile. Review the fields and try again." });

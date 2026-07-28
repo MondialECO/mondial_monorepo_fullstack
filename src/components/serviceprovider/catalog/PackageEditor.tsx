@@ -27,6 +27,7 @@ import {
   type UpsertServicePackageRequest,
 } from '@/types/service-catalog';
 import { usePricingGuidance } from '@/hooks/queries/service-catalog';
+import { useSpDirtyFormGuard } from '@/hooks/useSpDirtyFormGuard';
 import { csv, parseCsv, EnumSelect, Field } from './_shared';
 
 const NONE = 'None';
@@ -91,6 +92,8 @@ export function PackageEditor({
   const [included, setIncluded] = useState(csv(existing?.includedFeatures ?? []));
   const [excluded, setExcluded] = useState(csv(existing?.excludedFeatures ?? []));
   const [error, setError] = useState<string | null>(null);
+  const formState = { package: f, deliverables, included, excluded };
+  const dirtyGuard = useSpDirtyFormGuard(formState);
 
   const set = <K extends keyof UpsertServicePackageRequest>(k: K, v: UpsertServicePackageRequest[K]) =>
     setF((prev) => ({ ...prev, [k]: v }));
@@ -245,7 +248,7 @@ export function PackageEditor({
         {error && <SpMutationFeedback status="error">{error}</SpMutationFeedback>}
         <div className="flex flex-wrap items-center gap-3 border-t border-[#E5E7EB] pt-5">
           <Button type="button" onClick={submit} disabled={pending}>{pending ? 'Saving…' : 'Save package'}</Button>
-          <Button type="button" variant="outline" onClick={onCancel} disabled={pending}>Cancel</Button>
+          <Button type="button" variant="outline" onClick={() => dirtyGuard.confirmDiscard(onCancel)} disabled={pending}>Cancel</Button>
         </div>
       </div>
     </SpCard>

@@ -33,6 +33,8 @@ import {
   useSubmitProposal,
   useUpdateProposal,
 } from '@/hooks/queries/leads';
+import { useSpDirtyFormGuard } from '@/hooks/useSpDirtyFormGuard';
+import { looksLikeUrlReference, safeHttpUrl } from '@/lib/service-provider/url-security';
 import type { ClientBrief, Proposal, ProposalMilestone, UpsertProposalRequest } from '@/types/leads';
 import {
   apiError,
@@ -106,6 +108,8 @@ export function ProposalEditor({
   const [loadedKey, setLoadedKey] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [feedback, setFeedback] = useState<{ status: 'success' | 'error' | 'info'; message: string } | null>(null);
+  const dirtyGuard = useSpDirtyFormGuard(form, { enabled: loadedKey !== null });
+  const { markClean } = dirtyGuard;
 
   const proposal = proposalQuery.data;
   const brief = briefQuery.data;
@@ -114,22 +118,26 @@ export function ProposalEditor({
 
   useEffect(() => {
     if (proposal && loadedKey !== `proposal:${proposal.id}:${proposal.version}`) {
-      setForm(formFromProposal(proposal));
+      const next = formFromProposal(proposal);
+      setForm(next);
+      markClean(next);
       setSavedProposal(proposal);
       setLoadedKey(`proposal:${proposal.id}:${proposal.version}`);
       return;
     }
     if (!proposalId && brief && loadedKey !== `brief:${brief.id}`) {
-      setForm(formFromBrief(brief));
+      const next = formFromBrief(brief);
+      setForm(next);
+      markClean(next);
       setLoadedKey(`brief:${brief.id}`);
     }
-  }, [brief, loadedKey, proposal, proposalId]);
+  }, [brief, loadedKey, markClean, proposal, proposalId]);
 
   const errors = useMemo(() => validate(form), [form]);
   const isLoading = !!proposalId && proposalQuery.isLoading || !!linkedBriefId && briefQuery.isLoading;
   const isError = !!proposalId && proposalQuery.isError || !!linkedBriefId && briefQuery.isError;
   const isPending = createProposal.isPending || updateProposal.isPending || reviseProposal.isPending || submitProposal.isPending;
-  const opportunityClosed = !!brief && (brief.status !== 'Open' || briefIsExpired(brief));
+  const briefClosed = !!brief && (brief.status !== 'Open' || briefIsExpired(brief));
   const proposalExpired = !!proposal && proposalIsExpired(proposal);
   const price = Number(form.proposedPrice || 0);
   const budgetWarning = !!brief && price > 0 && (price < brief.budgetMinimum || price > brief.budgetMaximum);
@@ -168,6 +176,7 @@ export function ProposalEditor({
         ? await updateProposal.mutateAsync({ id: proposal.id, payload: payload() })
         : await createProposal.mutateAsync(payload());
       setSavedProposal(result);
+      markClean(form);
       setFeedback({ status: 'success', message: 'Proposal draft saved. The earnings preview was refreshed by the server.' });
       onPersisted(result.id);
       return result;
@@ -190,6 +199,7 @@ export function ProposalEditor({
         result = await submitProposal.mutateAsync(draft.id);
       }
       setConfirmOpen(false);
+      markClean(form);
       onSubmitted(result.id);
     } catch (error) {
       setConfirmOpen(false);
@@ -221,11 +231,11 @@ export function ProposalEditor({
     );
   }
 
-  const submitDisabled = isPending || Object.keys(errors).length > 0 || opportunityClosed || proposalExpired;
+  const submitDisabled = isPending || Object.keys(errors).length > 0 || briefClosed || proposalExpired;
 
   return (
     <SpPage>
-      <BackButton onClick={onBack} />
+      <BackButton onClick={() => dirtyGuard.confirmDiscard(onBack)} />
       <SpPageHeader
         title={revisionMode ? 'Revise proposal' : proposal ? 'Edit proposal draft' : 'Create proposal'}
         description={brief ? `For ${brief.title}` : 'Prepare clear commercial terms for the client.'}
@@ -233,7 +243,7 @@ export function ProposalEditor({
       />
 
       {feedback && <SpMutationFeedback status={feedback.status}>{feedback.message}</SpMutationFeedback>}
-      {(opportunityClosed || proposalExpired) && <SpMutationFeedback status="error">This opportunity is no longer accepting proposal changes.</SpMutationFeedback>}
+      {(briefClosed || proposalExpired) && <SpMutationFeedback status="error">This client brief is no longer accepting proposal changes.</SpMutationFeedback>}
       {revisionMode && <SpMutationFeedback status="info">Submitting this revision preserves the current proposal as a previous version.</SpMutationFeedback>}
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.65fr)_minmax(320px,0.75fr)]">
@@ -320,7 +330,7 @@ export function ProposalEditor({
           <MilestoneEditor form={form} setForm={setForm} />
 
           <SpCard>
-            <SpTagInput id="proposal-attachments" label="Attachment references" value={form.attachments} onChange={(attachments) => setForm((current) => ({ ...current, attachments }))} placeholder="Add a secure file reference or URL" description="The current contract stores string references only. File upload and real malware scanning are unavailable; IFileSecurityScanner is a deterministic STUB." />
+            <SpTagInput id="proposal-attachments" label="Attachment references" value={form.attachments} onChange={(attachments) => setForm((current) => ({ ...current, attachments }))} placeholder="Add a secure file reference or URL" description="HTTP(S) references open as links. The current contract stores string references only; file upload and real malware scanning are unavailable, and IFileSecurityScanner is a deterministic STUB." error={errors.attachments} validateItem={(value) => looksLikeUrlReference(value) && !safeHttpUrl(value) ? 'URL references must begin with http:// or https://.' : null} />
           </SpCard>
         </div>
 
@@ -331,11 +341,7 @@ export function ProposalEditor({
               <div><h2 className="font-heading text-lg font-semibold text-[#171717]">Earnings preview</h2><p className="text-xs text-[#6B7280]">Calculated by the backend</p></div>
             </div>
             {savedProposal && previewCurrent ? (
-              <dl className="mt-6 space-y-4">
-                <SummaryRow label="Gross price" value={money(savedProposal.earningsPreview.price, savedProposal.earningsPreview.currency)} />
-                <SummaryRow label={`Fixed platform commission (${percent(savedProposal.earningsPreview.rate)})`} value={`−${money(savedProposal.earningsPreview.commission, savedProposal.earningsPreview.currency)}`} />
-                <SummaryRow label="Net provider earnings" value={money(savedProposal.earningsPreview.net, savedProposal.earningsPreview.currency)} strong />
-              </dl>
+              <ProposalEarningsPreview preview={savedProposal.earningsPreview} />
             ) : (
               <p className="mt-5 rounded-xl bg-[#F9FAFB] p-4 text-sm leading-6 text-[#6B7280]">Save the draft to receive a current, server-authoritative commission and net-earnings preview.</p>
             )}
@@ -346,8 +352,8 @@ export function ProposalEditor({
       </div>
 
       <div className="sticky bottom-0 z-10 flex flex-col-reverse justify-end gap-3 border-t border-[#E5E7EB] bg-[#F4F5F7]/95 py-4 backdrop-blur sm:flex-row">
-        <Button type="button" variant="outline" onClick={onBack} disabled={isPending}>Cancel</Button>
-        {!revisionMode && <Button type="button" variant="outline" onClick={saveDraft} disabled={isPending || opportunityClosed || proposalExpired}>{isPending ? 'Saving…' : 'Save draft'}</Button>}
+        <Button type="button" variant="outline" onClick={() => dirtyGuard.confirmDiscard(onBack)} disabled={isPending}>Cancel</Button>
+        {!revisionMode && <Button type="button" variant="outline" onClick={saveDraft} disabled={isPending || briefClosed || proposalExpired}>{isPending ? 'Saving…' : 'Save draft'}</Button>}
         <Button type="button" onClick={() => setConfirmOpen(true)} disabled={submitDisabled}>{isPending ? 'Submitting…' : revisionMode ? 'Submit revision' : 'Submit proposal'}</Button>
       </div>
 
@@ -433,6 +439,8 @@ function validate(form: ProposalForm) {
   if (!form.coverMessage.trim()) errors.coverMessage = 'Enter a cover message.';
   if (numberValue(form.proposedPrice) <= 0) errors.proposedPrice = 'Enter a price greater than zero.';
   if (form.pricingType === 'Hourly' && numberValue(form.weeklyHourLimit) <= 0) errors.weeklyHourLimit = 'Enter a weekly hour limit.';
+  const unsafeAttachment = form.attachments.find((value) => looksLikeUrlReference(value) && !safeHttpUrl(value));
+  if (unsafeAttachment) errors.attachments = `“${unsafeAttachment}” is not a safe HTTP(S) URL.`;
   if (numberValue(form.deliveryTimeValue) <= 0) errors.deliveryTimeValue = 'Enter a delivery duration.';
   if (numberValue(form.includedRevisionCount) < 0) errors.includedRevisionCount = 'Revision count cannot be negative.';
   if (numberValue(form.revisionRequestWindowDays) < 0) errors.revisionRequestWindowDays = 'Revision window cannot be negative.';
@@ -447,6 +455,14 @@ function Select({ value, onChange, children }: { value: string; onChange: (value
 
 function SummaryRow({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
   return <div className={`flex items-start justify-between gap-4 ${strong ? 'border-t border-[#E5E7EB] pt-4' : ''}`}><dt className="text-sm text-[#6B7280]">{label}</dt><dd className={`text-right text-sm ${strong ? 'font-semibold text-[#157A55]' : 'font-medium text-[#171717]'}`}>{value}</dd></div>;
+}
+
+export function ProposalEarningsPreview({ preview }: { preview: Proposal['earningsPreview'] }) {
+  return <dl className="mt-6 space-y-4">
+    <SummaryRow label="Gross price" value={money(preview.price, preview.currency)} />
+    <SummaryRow label={`Fixed platform commission (${percent(preview.rate)})`} value={`−${money(preview.commission, preview.currency)}`} />
+    <SummaryRow label="Net provider earnings" value={money(preview.net, preview.currency)} strong />
+  </dl>;
 }
 
 function BackButton({ onClick }: { onClick: () => void }) {

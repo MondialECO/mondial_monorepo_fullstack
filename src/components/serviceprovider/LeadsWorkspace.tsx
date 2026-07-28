@@ -94,8 +94,8 @@ export function LeadsWorkspace() {
     view === 'proposals'
       ? 'Track drafts, submitted proposals, client decisions, and completed acquisition outcomes.'
       : view === 'saved'
-        ? 'Return to opportunities you saved for later review.'
-        : 'Review opportunities surfaced by the existing matching and invitation rules.';
+        ? 'Return to client briefs you saved for later review.'
+        : 'Review client briefs surfaced by the existing matching and invitation rules.';
 
   return (
     <SpPage>
