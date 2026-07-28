@@ -30,6 +30,7 @@ import {
   useWithdrawProposal,
 } from '@/hooks/queries/leads';
 import type { Proposal, ProposalVersion } from '@/types/leads';
+import { safeHttpUrl } from '@/lib/service-provider/url-security';
 import {
   apiError,
   expirationLabel,
@@ -142,7 +143,7 @@ export function ProposalDetail({
 
           <ListCard title="Deliverables" values={proposal.deliverables} empty="No deliverables saved." />
           <MilestoneList proposal={proposal} />
-          <ListCard title="Attachment references" values={proposal.attachments} empty="No attachment references saved." description="Stored references only. IFileSecurityScanner is a deterministic STUB; no real file scanning is available." />
+          <ListCard title="Attachment references" values={proposal.attachments} empty="No attachment references saved." description="Stored references only. IFileSecurityScanner is a deterministic STUB; no real file scanning is available." linkHttpReferences />
           <VersionHistory versions={proposal.previousVersions} />
         </div>
 
@@ -199,8 +200,8 @@ function MilestoneList({ proposal }: { proposal: Proposal }) {
   );
 }
 
-function ListCard({ title, values, empty, description }: { title: string; values: string[]; empty: string; description?: string }) {
-  return <SpCard><SpSectionHeader title={title} description={description} />{values.length ? <ul className="mt-5 space-y-2 text-sm text-[#374151]">{values.map((value) => <li key={value} className="rounded-lg bg-[#F9FAFB] px-4 py-3">{value}</li>)}</ul> : <p className="mt-5 text-sm text-[#6B7280]">{empty}</p>}</SpCard>;
+function ListCard({ title, values, empty, description, linkHttpReferences = false }: { title: string; values: string[]; empty: string; description?: string; linkHttpReferences?: boolean }) {
+  return <SpCard><SpSectionHeader title={title} description={description} />{values.length ? <ul className="mt-5 space-y-2 text-sm text-[#374151]">{values.map((value) => { const href = linkHttpReferences ? safeHttpUrl(value) : null; return <li key={value} className="rounded-lg bg-[#F9FAFB] px-4 py-3">{href ? <a href={href} target="_blank" rel="noopener noreferrer" className="break-all underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3C61DD]">{value}</a> : value}</li>; })}</ul> : <p className="mt-5 text-sm text-[#6B7280]">{empty}</p>}</SpCard>;
 }
 
 function VersionHistory({ versions }: { versions: ProposalVersion[] }) {

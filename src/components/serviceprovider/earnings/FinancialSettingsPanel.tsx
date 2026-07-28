@@ -10,9 +10,20 @@ import { SpCard, SpEmptyState, SpFormField, SpMutationFeedback, SpSectionHeader,
 import { apiError, formatDate, money, words } from '@/components/serviceprovider/workroom/_shared';
 import type { FinancialSummary, PayoutMethod, TaxSettingsPayload } from '@/types/workroom';
 import { shortReference, transactionTone } from './_shared';
+import { useSpDirtyFormGuard } from '@/hooks/useSpDirtyFormGuard';
 
 type MethodAction = { kind: 'default' | 'remove'; method: PayoutMethod } | null;
 const emptyMethod = { rail: 'BankTransfer', displayName: '', maskedDescriptor: '' };
+
+export function financialTaxForm(settings: FinancialSummary['settings']['tax']): TaxSettingsPayload {
+  return {
+    legalName: settings.legalName ?? '',
+    countryCode: settings.countryCode ?? '',
+    taxIdentifierMasked: settings.taxIdentifierMasked ?? '',
+    vatRegistered: settings.vatRegistered,
+    vatNumberMasked: settings.vatNumberMasked ?? '',
+  };
+}
 
 export function FinancialSettingsPanel({ data, currency }: { data: FinancialSummary; currency: string }) {
   const addMethod = useAddPayoutMethod();
@@ -24,17 +35,15 @@ export function FinancialSettingsPanel({ data, currency }: { data: FinancialSumm
   const [methodAction, setMethodAction] = useState<MethodAction>(null);
   const [taxConfirm, setTaxConfirm] = useState(false);
   const [feedback, setFeedback] = useState<{ status: 'success' | 'error'; message: string } | null>(null);
-  const [tax, setTax] = useState<TaxSettingsPayload>({ legalName: '', countryCode: '', taxIdentifierMasked: '', vatRegistered: false, vatNumberMasked: '' });
+  const [tax, setTax] = useState<TaxSettingsPayload>(() => financialTaxForm(data.settings.tax));
+  const dirtyGuard = useSpDirtyFormGuard(tax);
+  const { markClean } = dirtyGuard;
 
   useEffect(() => {
-    setTax({
-      legalName: data.settings.tax.legalName ?? '',
-      countryCode: data.settings.tax.countryCode ?? '',
-      taxIdentifierMasked: data.settings.tax.taxIdentifierMasked ?? '',
-      vatRegistered: data.settings.tax.vatRegistered,
-      vatNumberMasked: data.settings.tax.vatNumberMasked ?? '',
-    });
-  }, [data.settings.tax]);
+    const next = financialTaxForm(data.settings.tax);
+    setTax(next);
+    markClean(next);
+  }, [data.settings.tax, markClean]);
 
   const validMethod = methodForm.displayName.trim().length >= 2 && methodForm.maskedDescriptor.trim().length >= 3;
   const validTax = tax.legalName.trim().length >= 2 && /^[A-Za-z]{2}$/.test(tax.countryCode.trim()) && (!tax.vatRegistered || !!tax.vatNumberMasked?.trim());
@@ -68,7 +77,10 @@ export function FinancialSettingsPanel({ data, currency }: { data: FinancialSumm
     if (!validTax) return;
     setFeedback(null);
     try {
-      await updateTax.mutateAsync({ ...tax, countryCode: tax.countryCode.trim().toUpperCase() });
+      const savedTax = { ...tax, countryCode: tax.countryCode.trim().toUpperCase() };
+      await updateTax.mutateAsync(savedTax);
+      setTax(savedTax);
+      markClean(savedTax);
       setFeedback({ status: 'success', message: 'Tax and VAT invoice settings were saved. Existing invoice snapshots were not changed.' });
       setTaxConfirm(false);
     } catch (error) { setFeedback({ status: 'error', message: apiError(error, 'Tax settings could not be saved. Existing values were preserved.') }); setTaxConfirm(false); }
@@ -93,7 +105,7 @@ export function FinancialSettingsPanel({ data, currency }: { data: FinancialSumm
           <SpFormField id="tax-identifier" label="Masked tax identifier" description="Existing masked values can be preserved; new values are masked by the backend before storage."><Input value={tax.taxIdentifierMasked ?? ''} onChange={(event) => setTax((current) => ({ ...current, taxIdentifierMasked: event.target.value }))} /></SpFormField>
           <label className="flex items-start gap-3 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-4 text-sm text-[#374151]"><input type="checkbox" checked={tax.vatRegistered} onChange={(event) => setTax((current) => ({ ...current, vatRegistered: event.target.checked }))} className="mt-0.5 size-4 accent-[#3C61DD]" /><span><strong className="block text-[#171717]">VAT registered</strong><span className="mt-1 block text-xs leading-5 text-[#6B7280]">This records registration status only. VAT rates and invoice tax are not automatically calculated by the current API.</span></span></label>
           {tax.vatRegistered && <SpFormField id="vat-number" label="Masked VAT number" required><Input value={tax.vatNumberMasked ?? ''} onChange={(event) => setTax((current) => ({ ...current, vatNumberMasked: event.target.value }))} /></SpFormField>}
-          <Button type="button" disabled={!validTax || updateTax.isPending} onClick={() => setTaxConfirm(true)}>Review tax-setting changes</Button>
+          <Button type="button" disabled={!validTax || !dirtyGuard.dirty || updateTax.isPending} onClick={() => setTaxConfirm(true)}>Review tax-setting changes</Button>
           <p className="text-xs leading-5 text-[#6B7280]">Saving sends the complete API-backed settings form, so changing one field does not erase the other values shown here. Existing invoice snapshots are immutable.</p>
         </div>
       </SpCard>

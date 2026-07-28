@@ -14,6 +14,7 @@ import {
 import { SERVICE_CATEGORIES } from '@/types/service-provider';
 import type { ServiceListing } from '@/types/service-catalog';
 import { useCreateListing, useUpdateListing } from '@/hooks/queries/service-catalog';
+import { useSpDirtyFormGuard } from '@/hooks/useSpDirtyFormGuard';
 
 export function ListingEditor({
   existing,
@@ -33,6 +34,8 @@ export function ListingEditor({
   const [industryFocus, setIndustryFocus] = useState(existing?.industryFocus ?? []);
   const [geographicCoverage, setGeographicCoverage] = useState(existing?.geographicCoverage ?? []);
   const [error, setError] = useState<string | null>(null);
+  const formState = { title, serviceType, description, category, industryFocus, geographicCoverage };
+  const dirtyGuard = useSpDirtyFormGuard(formState);
 
   const pending = create.isPending || update.isPending;
 
@@ -56,6 +59,7 @@ export function ListingEditor({
       const result = existing
         ? await update.mutateAsync([existing.id, payload])
         : await create.mutateAsync([payload]);
+      dirtyGuard.markClean(formState);
       onDone(result.id);
     } catch {
       setError('The service could not be saved. Review the fields and try again.');
@@ -138,7 +142,7 @@ export function ListingEditor({
           <Button type="button" onClick={save} disabled={pending}>
             {pending ? 'Saving…' : existing ? 'Save changes' : 'Save service overview'}
           </Button>
-          <Button type="button" variant="outline" onClick={onCancel} disabled={pending}>
+          <Button type="button" variant="outline" onClick={() => dirtyGuard.confirmDiscard(onCancel)} disabled={pending}>
             Cancel
           </Button>
         </div>

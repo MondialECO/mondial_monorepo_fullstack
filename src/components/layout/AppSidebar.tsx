@@ -7,8 +7,8 @@ import { ChevronDown } from "lucide-react";
 import { useAuth } from "@/app/_providers/AuthProvider";
 import { menu, type MenuSection } from "@/lib/menu";
 import { UserRole } from "@/lib/roles";
-import { useCapacity, useUpdateCapacity } from "@/hooks/queries/service-catalog";
 import { useProviderOverview } from "@/hooks/queries/analytics";
+import { useProviderAvailabilityControl } from "@/hooks/useProviderAvailabilityControl";
 
 import {
   Sidebar,
@@ -129,14 +129,13 @@ function ServiceProviderSidebar({
   sections: MenuSection[];
   pathname: string;
 }) {
-  const capacity = useCapacity();
-  const updateCapacity = useUpdateCapacity();
   const overview = useProviderOverview();
+  const availability = useProviderAvailabilityControl(overview.data?.provider.availableNow ?? true);
   const searchParams = useSearchParams();
   const [expanded, setExpanded] = useState<Record<string, boolean>>({
     "Earnings & Payouts": pathname === "/dashboard/serviceprovider/earnings",
   });
-  const available = capacity.data?.newOrderAvailability ?? true;
+  const available = availability.available;
   const provider = overview.data?.provider;
   const unreadLeads = overview.data?.metrics.newLeads ?? 0;
   const activeProjects = overview.data?.metrics.activeEngagements ?? 0;
@@ -157,15 +156,6 @@ function ServiceProviderSidebar({
       return next;
     });
   }, [pathname, searchKey, sections]);
-
-  function toggleAvailability() {
-    if (!capacity.data || updateCapacity.isPending) return;
-    updateCapacity.mutate({
-      maximumConcurrentOrders: capacity.data.maximumConcurrentOrders,
-      newOrderAvailability: !capacity.data.newOrderAvailability,
-      manualApprovalWhenCapacityLow: capacity.data.manualApprovalWhenCapacityLow,
-    });
-  }
 
   return (
     <Sidebar collapsible="icon" className="border-r border-[#E5E7EB] bg-white">
@@ -188,18 +178,23 @@ function ServiceProviderSidebar({
           type="button"
           role="switch"
           aria-checked={available}
-          disabled={!capacity.data || updateCapacity.isPending}
-          onClick={toggleAvailability}
+          disabled={!availability.canUpdate || availability.pending}
+          onClick={availability.toggle}
           className="w-full rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-3 text-left disabled:cursor-not-allowed disabled:opacity-75"
         >
           <span className="flex items-center justify-between gap-3">
-            <span className="text-sm font-semibold text-[#171717]">Available Now</span>
+            <span className="text-sm font-semibold text-[#171717]">{availability.pending ? "Updating…" : "Available Now"}</span>
             <span className={`relative h-5 w-9 rounded-full transition-colors ${available ? "bg-[#0D9488]" : "bg-[#D1D5DB]"}`}>
               <span className={`absolute top-0.5 size-4 rounded-full bg-white shadow-sm transition-transform ${available ? "translate-x-[18px]" : "translate-x-0.5"}`} />
             </span>
           </span>
           <span className="mt-1 block text-xs text-[#6B7280]">Improves your match priority.</span>
         </button>
+        {availability.feedback && (
+          <p role={availability.feedback.status === "error" ? "alert" : "status"} className={`mt-2 px-1 text-xs leading-4 ${availability.feedback.status === "error" ? "text-[#B42318]" : "text-[#157A55]"}`}>
+            {availability.feedback.message}
+          </p>
+        )}
       </div>
 
       <SidebarContent className="px-2 py-4">
@@ -221,9 +216,9 @@ function ServiceProviderSidebar({
                       <div className="relative">
                         <SidebarMenuButton
                           asChild
-                          isActive={active}
+                          isActive={active && !hasChildren}
                           tooltip={item.label}
-                          className={`h-11 rounded-lg px-3 text-[#4B5563] data-[active=true]:bg-[#EEF2FF] data-[active=true]:text-[#3C61DD] ${hasChildren ? "pr-9" : ""}`}
+                          className={`h-11 rounded-lg px-3 text-[#4B5563] data-[active=true]:bg-[#EEF2FF] data-[active=true]:text-[#3C61DD] ${hasChildren ? `pr-9 ${active ? "font-semibold text-[#1F3FAF]" : ""}` : ""}`}
                         >
                           <Link href={item.href} className="flex items-center gap-3" onClick={() => hasChildren && setExpanded((current) => ({ ...current, [item.label]: true }))}>
                             {Icon && <Icon className="size-4.5" />}
@@ -293,7 +288,7 @@ function ServiceProviderSidebar({
   );
 }
 
-function isMenuHrefActive(href: string, pathname: string, searchParams: URLSearchParams) {
+export function isMenuHrefActive(href: string, pathname: string, searchParams: URLSearchParams) {
   const [path, query = ""] = href.split("?");
   if (pathname !== path) return false;
   const expected = new URLSearchParams(query);

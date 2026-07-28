@@ -164,6 +164,8 @@ export function SpTagInput({
   description,
   maxItems = 15,
   required,
+  error,
+  validateItem,
 }: {
   id: string;
   label: string;
@@ -173,8 +175,12 @@ export function SpTagInput({
   description?: string;
   maxItems?: number;
   required?: boolean;
+  error?: string | null;
+  validateItem?: (item: string) => string | null;
 }) {
   const [draft, setDraft] = React.useState("");
+  const [draftError, setDraftError] = React.useState<string | null>(null);
+  const visibleError = draftError ?? error;
 
   const addDraft = () => {
     const item = draft.trim().replace(/,$/, "").trim();
@@ -182,8 +188,14 @@ export function SpTagInput({
       setDraft("");
       return;
     }
+    const validationError = validateItem?.(item) ?? null;
+    if (validationError) {
+      setDraftError(validationError);
+      return;
+    }
     onChange([...value, item]);
     setDraft("");
+    setDraftError(null);
   };
 
   return (
@@ -216,7 +228,9 @@ export function SpTagInput({
           <input
             id={id}
             value={draft}
-            onChange={(event) => setDraft(event.target.value)}
+            onChange={(event) => { setDraft(event.target.value); setDraftError(null); }}
+            aria-invalid={!!visibleError || undefined}
+            aria-describedby={[description ? `${id}-description` : null, visibleError ? `${id}-error` : null].filter(Boolean).join(" ") || undefined}
             onKeyDown={(event) => {
               if (event.key === "Enter" || event.key === ",") {
                 event.preventDefault();
@@ -240,7 +254,8 @@ export function SpTagInput({
           </button>
         </div>
       </div>
-      {description && <p className="text-xs leading-5 text-[#6B7280]">{description}</p>}
+      {description && <p id={`${id}-description`} className="text-xs leading-5 text-[#6B7280]">{description}</p>}
+      {visibleError && <p id={`${id}-error`} role="alert" className="text-xs font-medium text-[#B42318]">{visibleError}</p>}
     </div>
   );
 }
