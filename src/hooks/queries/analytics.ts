@@ -5,11 +5,17 @@ import * as api from '@/lib/api-analytics';
 import type { AnalyticsFilters, CreateGrowthTaskPayload } from '@/types/analytics';
 
 const ANALYTICS = ['provider-analytics'] as const;
+const OVERVIEW = ['provider-dashboard-overview'] as const;
 const TASKS = ['provider-growth-tasks'] as const;
 
 export const useProviderAnalytics = (filters: AnalyticsFilters) => useQuery({
   queryKey: [...ANALYTICS, filters],
   queryFn: () => api.getAnalytics(filters),
+});
+
+export const useProviderOverview = (currency = 'EUR') => useQuery({
+  queryKey: [...OVERVIEW, currency],
+  queryFn: () => api.getProviderOverview(currency),
 });
 
 export const useGrowthTasks = () => useQuery({ queryKey: TASKS, queryFn: api.getGrowthTasks });

@@ -11,7 +11,88 @@ export interface ActiveClientAnalytics { clientId: string; completedProjects: nu
 export interface ClientAnalytics { totalClients: AnalyticsMetric; newClients: AnalyticsMetric; returningClients: AnalyticsMetric; repeatClientRate: AnalyticsMetric; repeatClientRevenue: AnalyticsMetric; averageProjectsPerClient: AnalyticsMetric; averageClientLifetimeValue: AnalyticsMetric; averageClientRating: AnalyticsMetric; mostActiveClients: ActiveClientAnalytics[] }
 export interface GrowthObservation { ruleId: string; title: string; message: string; tone: string; suggestedActions: string[] }
 export interface AnalyticsEmptyStates { notEnoughActivityYet: boolean; noPublishedServices: boolean; noRevenueActivity: boolean }
-export interface AnalyticsDashboard { period: AnalyticsPeriod; currency: string; includesRecordsWithoutTestProvenance: boolean; dataLimitation: string; overview: AnalyticsOverview; services: ServiceAnalytics[]; proposals: ProposalAnalytics; profile: ProfileAnalytics; revenue: RevenueAnalytics; clients: ClientAnalytics; observations: GrowthObservation[]; unavailableObservationRuleIds: string[]; emptyStates: AnalyticsEmptyStates }
+export interface AnalyticsDashboard { period: AnalyticsPeriod; currency: string; historyStartedAt?: string | null; hasMinimumHistory: boolean; includesRecordsWithoutTestProvenance: boolean; dataLimitation: string; overview: AnalyticsOverview; services: ServiceAnalytics[]; proposals: ProposalAnalytics; profile: ProfileAnalytics; revenue: RevenueAnalytics; clients: ClientAnalytics; observations: GrowthObservation[]; unavailableObservationRuleIds: string[]; emptyStates: AnalyticsEmptyStates }
 export interface AnalyticsFilters { range: string; currency: string; from?: string; to?: string }
 export interface GrowthTask { id: string; taskType: string; title: string; description: string; status: string; triggerRuleId?: string | null; relatedEntityType?: string | null; relatedEntityId?: string | null; createdAt: string; updatedAt: string; expiresAt?: string | null }
 export interface CreateGrowthTaskPayload { taskType: string; title: string; description: string; relatedEntityType?: string; relatedEntityId?: string; expiresAt?: string }
+
+export interface ProviderDashboardIdentity {
+  name: string;
+  initials: string;
+  imagePath?: string | null;
+  verificationStatus: string;
+  tierLevel: number;
+  tierLabel: string;
+  availableNow: boolean;
+}
+
+export interface ProviderDashboardMetrics {
+  availableBalance: number;
+  pendingEscrow: number;
+  activeEngagements: number;
+  deliverablesDueThisWeek: number;
+  deliverablesDueToday: number;
+  newLeads: number;
+  nearestLeadExpiryAt?: string | null;
+}
+
+export interface ProviderDashboardTrust {
+  hasEnoughData: boolean;
+  score?: number | null;
+  status: string;
+}
+
+export interface ProviderDashboardAttention {
+  type: string;
+  title: string;
+  detail: string;
+  action: string;
+  href: string;
+  tone: 'blue' | 'green' | 'amber' | 'red' | 'slate';
+  dueAt?: string | null;
+  matchPercentage?: number | null;
+}
+
+export interface ProviderDashboardLast30Days {
+  briefsReviewed: number;
+  proposalsSent: number;
+  deliverablesSubmitted: number;
+  averageResponseState: 'available' | 'notEnoughActivity';
+  averageResponseMinutes?: number | null;
+  averageResponseReason?: string | null;
+}
+
+export interface ProviderDashboardServiceViews {
+  state: 'available' | 'notTracked';
+  impressions?: number | null;
+  clicks?: number | null;
+  reason: string;
+}
+
+export interface ProviderDashboardActivity {
+  type: string;
+  text: string;
+  occurredAt: string;
+  href: string;
+  tone: 'blue' | 'green' | 'amber' | 'red' | 'slate';
+}
+
+export interface ProviderDashboardProgress {
+  state: 'available' | 'notTracked';
+  value?: number | null;
+  detail: string;
+}
+
+export interface ProviderDashboard {
+  computedAt: string;
+  currency: string;
+  provider: ProviderDashboardIdentity;
+  metrics: ProviderDashboardMetrics;
+  trust: ProviderDashboardTrust;
+  attention: ProviderDashboardAttention[];
+  last30Days: ProviderDashboardLast30Days;
+  serviceViews: ProviderDashboardServiceViews;
+  recentActivity: ProviderDashboardActivity[];
+  profileStrength: ProviderDashboardProgress;
+  tierProgress: ProviderDashboardProgress;
+}

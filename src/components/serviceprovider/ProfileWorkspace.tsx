@@ -131,7 +131,7 @@ export function ProfileWorkspace() {
     <div className="mx-auto w-full max-w-4xl space-y-6 pb-8">
       <div className="space-y-1">
         <h1 className="text-3xl font-semibold text-foreground">
-          Service Provider Profile
+          Profile &amp; Trust
         </h1>
         <p className="text-sm text-muted-foreground">
           Keep your profile complete and verified to win founder engagements.

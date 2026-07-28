@@ -4,6 +4,7 @@ namespace WebApp.Services.Interface;
 
 public interface IAnalyticsService
 {
+    Task<ServiceProviderResult<ProviderDashboardResponse>> GetProviderOverviewAsync(string providerId, string? currency);
     Task<ServiceProviderResult<AnalyticsDashboardResponse>> GetDashboardAsync(string providerId, AnalyticsQuery query);
     Task<ServiceProviderResult<List<GrowthTaskResponse>>> GetGrowthTasksAsync(string providerId);
     Task<ServiceProviderResult<GrowthTaskResponse>> CreateGrowthTaskAsync(string providerId, CreateGrowthTaskRequest request);

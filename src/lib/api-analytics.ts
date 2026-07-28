@@ -1,11 +1,15 @@
 import api from '@/lib/axios';
 import type { ApiEnvelope } from '@/types/service-provider';
-import type { AnalyticsDashboard, AnalyticsFilters, CreateGrowthTaskPayload, GrowthTask } from '@/types/analytics';
+import type { AnalyticsDashboard, AnalyticsFilters, CreateGrowthTaskPayload, GrowthTask, ProviderDashboard } from '@/types/analytics';
 
 const unwrap = <T>(value: ApiEnvelope<T>) => value.data;
 
 export async function getAnalytics(filters: AnalyticsFilters): Promise<AnalyticsDashboard> {
   return unwrap((await api.get<ApiEnvelope<AnalyticsDashboard>>('/service-provider/analytics', { params: filters })).data);
+}
+
+export async function getProviderOverview(currency = 'EUR'): Promise<ProviderDashboard> {
+  return unwrap((await api.get<ApiEnvelope<ProviderDashboard>>('/service-provider/analytics/overview', { params: { currency } })).data);
 }
 
 export async function getGrowthTasks(): Promise<GrowthTask[]> {

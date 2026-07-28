@@ -19,6 +19,13 @@ public static class AnalyticsPeriodResolver
 
         switch (key.ToLowerInvariant())
         {
+            case "thismonth":
+                key = "ThisMonth";
+                from = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+                comparisonFrom = from.AddMonths(-1);
+                comparisonTo = comparisonFrom + (to - from);
+                if (comparisonTo > from) comparisonTo = from;
+                break;
             case "last7days":
                 key = "Last7Days";
                 from = now.AddDays(-7);
@@ -61,7 +68,7 @@ public static class AnalyticsPeriodResolver
                 comparisonFrom = from - (to - from);
                 break;
             default:
-                throw new ArgumentException("Range must be Last7Days, Last30Days, Last90Days, ThisYear, PreviousYear, or Custom.");
+                throw new ArgumentException("Range must be ThisMonth, Last7Days, Last30Days, Last90Days, ThisYear, PreviousYear, or Custom.");
         }
 
         return new AnalyticsPeriod(key, from, to, comparisonFrom, comparisonTo, now);

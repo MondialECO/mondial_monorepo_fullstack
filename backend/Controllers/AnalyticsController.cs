@@ -14,6 +14,10 @@ public class AnalyticsController(IAnalyticsService service) : ControllerBase
     private string CurrentUserId => User.FindFirst(ClaimTypes.NameIdentifier)?.Value
         ?? throw new UnauthorizedAccessException();
 
+    [HttpGet("overview")]
+    public async Task<IActionResult> Overview([FromQuery] string? currency = "EUR") =>
+        Map(await service.GetProviderOverviewAsync(CurrentUserId, currency));
+
     [HttpGet]
     public async Task<IActionResult> Dashboard([FromQuery] AnalyticsQuery query) =>
         Map(await service.GetDashboardAsync(CurrentUserId, query));

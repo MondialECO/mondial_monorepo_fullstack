@@ -256,6 +256,51 @@
   --p8-blue-dark: #60a5fa;
 }
 
+/* Service Provider workspace is intentionally light-only. These route-scoped
+   tokens prevent a persisted global dark preference from leaking into the SP
+   shell while leaving every other role's theme behavior unchanged. */
+.sp-workspace,
+.dark .sp-workspace {
+  color-scheme: light;
+  --background: #F4F5F7;
+  --foreground: #171717;
+  --card: #FFFFFF;
+  --card-foreground: #171717;
+  --popover: #FFFFFF;
+  --popover-foreground: #171717;
+  --primary: #3C61DD;
+  --primary-foreground: #FFFFFF;
+  --secondary: #F4F5F7;
+  --secondary-foreground: #171717;
+  --muted: #F4F5F7;
+  --muted-foreground: #6B7280;
+  --accent: #EEF2FF;
+  --accent-foreground: #171717;
+  --destructive: #C24141;
+  --border: #E5E7EB;
+  --input: #D1D5DB;
+  --ring: #3C61DD;
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #171717;
+  --sidebar-primary: #3C61DD;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #EEF2FF;
+  --sidebar-accent-foreground: #3C61DD;
+  --sidebar-border: #E5E7EB;
+  --sidebar-ring: #3C61DD;
+  background: #F4F5F7;
+  color: #171717;
+}
+
+/* Existing SP screens still using the generic Card primitive inherit the
+   canonical surface until later redesign steps migrate them to SpCard. */
+.sp-workspace [data-slot="card"] {
+  border-color: #E5E7EB;
+  border-radius: 16px;
+  background: #FFFFFF;
+  box-shadow: none;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

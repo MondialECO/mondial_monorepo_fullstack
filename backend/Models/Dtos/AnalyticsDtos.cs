@@ -158,6 +158,8 @@ public class AnalyticsDashboardResponse
 {
     public AnalyticsPeriodResponse Period { get; set; } = default!;
     public string Currency { get; set; } = "EUR";
+    public DateTime? HistoryStartedAt { get; set; }
+    public bool HasMinimumHistory { get; set; }
     public bool IncludesRecordsWithoutTestProvenance { get; set; } = true;
     public string DataLimitation { get; set; } = "No upstream test-record provenance exists; analytics therefore cannot exclude test records.";
     public AnalyticsOverviewResponse Overview { get; set; } = new();
@@ -209,4 +211,100 @@ public static class AnalyticsMath
 
     public static decimal Rate(int numerator, int denominator) =>
         denominator == 0 ? 0 : Math.Round(100m * numerator / denominator, 2);
+}
+
+// Dashboard overview is a read-time projection over Modules 1-5. It owns no
+// collection and never persists copied counters or financial values.
+public class ProviderDashboardResponse
+{
+    public DateTime ComputedAt { get; set; }
+    public string Currency { get; set; } = "EUR";
+    public ProviderDashboardIdentityResponse Provider { get; set; } = new();
+    public ProviderDashboardMetricsResponse Metrics { get; set; } = new();
+    public ProviderDashboardTrustResponse Trust { get; set; } = new();
+    public List<ProviderDashboardAttentionResponse> Attention { get; set; } = new();
+    public ProviderDashboardLast30DaysResponse Last30Days { get; set; } = new();
+    public ProviderDashboardServiceViewsResponse ServiceViews { get; set; } = new();
+    public List<ProviderDashboardActivityResponse> RecentActivity { get; set; } = new();
+    public ProviderDashboardProgressResponse ProfileStrength { get; set; } = new();
+    public ProviderDashboardProgressResponse TierProgress { get; set; } = new()
+    {
+        State = "notTracked",
+        Detail = "Tier progression rules are not implemented.",
+    };
+}
+
+public class ProviderDashboardIdentityResponse
+{
+    public string Name { get; set; } = "Service Provider";
+    public string Initials { get; set; } = "SP";
+    public string? ImagePath { get; set; }
+    public string VerificationStatus { get; set; } = "Pending";
+    public int TierLevel { get; set; }
+    public string TierLabel { get; set; } = "Tier 1";
+    public bool AvailableNow { get; set; }
+}
+
+public class ProviderDashboardMetricsResponse
+{
+    public decimal AvailableBalance { get; set; }
+    public decimal PendingEscrow { get; set; }
+    public int ActiveEngagements { get; set; }
+    public int DeliverablesDueThisWeek { get; set; }
+    public int DeliverablesDueToday { get; set; }
+    public int NewLeads { get; set; }
+    public DateTime? NearestLeadExpiryAt { get; set; }
+}
+
+public class ProviderDashboardTrustResponse
+{
+    public bool HasEnoughData { get; set; }
+    public double? Score { get; set; }
+    public string Status { get; set; } = "Building your trust score";
+}
+
+public class ProviderDashboardAttentionResponse
+{
+    public string Type { get; set; } = "general";
+    public string Title { get; set; } = "";
+    public string Detail { get; set; } = "";
+    public string Action { get; set; } = "Open";
+    public string Href { get; set; } = "/dashboard/serviceprovider";
+    public string Tone { get; set; } = "slate";
+    public DateTime? DueAt { get; set; }
+    public double? MatchPercentage { get; set; }
+}
+
+public class ProviderDashboardLast30DaysResponse
+{
+    public int BriefsReviewed { get; set; }
+    public int ProposalsSent { get; set; }
+    public int DeliverablesSubmitted { get; set; }
+    public string AverageResponseState { get; set; } = "notEnoughActivity";
+    public double? AverageResponseMinutes { get; set; }
+    public string? AverageResponseReason { get; set; }
+}
+
+public class ProviderDashboardServiceViewsResponse
+{
+    public string State { get; set; } = "notTracked";
+    public long? Impressions { get; set; }
+    public long? Clicks { get; set; }
+    public string Reason { get; set; } = "Date-stamped service-view events are not tracked yet.";
+}
+
+public class ProviderDashboardActivityResponse
+{
+    public string Type { get; set; } = "general";
+    public string Text { get; set; } = "";
+    public DateTime OccurredAt { get; set; }
+    public string Href { get; set; } = "/dashboard/serviceprovider";
+    public string Tone { get; set; } = "blue";
+}
+
+public class ProviderDashboardProgressResponse
+{
+    public string State { get; set; } = "available";
+    public int? Value { get; set; }
+    public string Detail { get; set; } = "";
 }
