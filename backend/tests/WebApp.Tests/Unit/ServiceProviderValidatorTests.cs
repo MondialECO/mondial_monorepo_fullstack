@@ -326,11 +326,11 @@ public class ServiceProviderValidatorTests
     // ---------------- Update portfolio ----------------
 
     [Fact]
-    public void UpdatePortfolio_passes_with_valid_index_and_fields()
+    public void UpdatePortfolio_passes_with_valid_id_and_fields()
     {
         var result = _update.TestValidate(new UpdatePortfolioItemRequest
         {
-            Index = 0,
+            Id = "item-123",
             Title = "t",
             Description = "d",
         });
@@ -338,15 +338,15 @@ public class ServiceProviderValidatorTests
     }
 
     [Fact]
-    public void UpdatePortfolio_rejects_negative_index()
+    public void UpdatePortfolio_rejects_empty_id()
     {
         var result = _update.TestValidate(new UpdatePortfolioItemRequest
         {
-            Index = -1,
+            Id = "",
             Title = "t",
             Description = "d",
         });
-        result.ShouldHaveValidationErrorFor(x => x.Index);
+        result.ShouldHaveValidationErrorFor(x => x.Id);
     }
 
     // ---------------- Submit verification ----------------

@@ -56,8 +56,8 @@ public class ServiceProviderDtoTests
         add.Url.Should().Be("https://x");
         add.Description.Should().BeNull();
 
-        var upd = RoundTrip(new UpdatePortfolioItemRequest { Index = 2, Title = "Updated" });
-        upd.Index.Should().Be(2);
+        var upd = RoundTrip(new UpdatePortfolioItemRequest { Id = "item-123", Title = "Updated" });
+        upd.Id.Should().Be("item-123");
         upd.Title.Should().Be("Updated");
     }
 

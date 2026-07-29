@@ -129,7 +129,10 @@ export function ProviderImageUploader({
   const rule = PROVIDER_IMAGE_RULES[kind];
   const isProfile = kind === "profile";
   const isCover = kind === "cover";
-  const previewClass = isProfile ? "aspect-square rounded-full" : isCover ? "aspect-[3/1] rounded-xl" : "aspect-[16/10] rounded-xl";
+  const previewClass = isProfile ? "rounded-full" : "rounded-xl";
+  // The preview ratio is derived from the same rule cropProviderImage crops to,
+  // so what the provider frames is exactly what gets written to the file.
+  const previewAspect = { aspectRatio: `${rule.width} / ${rule.height}` };
 
   return (
     <div className={cn("space-y-3", className)}>
@@ -146,7 +149,10 @@ export function ProviderImageUploader({
       )}
       <div className={cn("flex items-center gap-4", isCover && !compact && "items-end")}>
         {!compact && (
-          <div className={cn("relative overflow-hidden border border-[#E5E7EB] bg-[#F4F5F7]", previewClass, isProfile ? "size-24 shrink-0" : "w-40 max-w-[44vw]")}>
+          <div
+            className={cn("relative overflow-hidden border border-[#E5E7EB] bg-[#F4F5F7]", previewClass, isProfile ? "size-24 shrink-0" : "w-40 max-w-[44vw]")}
+            style={previewAspect}
+          >
             {currentUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={currentUrl} alt={currentAlt} className="size-full object-cover" />
@@ -203,7 +209,10 @@ export function ProviderImageUploader({
           </DialogHeader>
           {previewUrl && (
             <div className="space-y-5">
-              <div className={cn("relative mx-auto w-full max-w-2xl overflow-hidden border border-[#D1D5DB] bg-[#F4F5F7]", previewClass)}>
+              <div
+                className={cn("relative mx-auto w-full max-w-2xl overflow-hidden border border-[#D1D5DB] bg-[#F4F5F7]", previewClass)}
+                style={previewAspect}
+              >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={previewUrl}

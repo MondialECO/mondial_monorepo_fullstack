@@ -20,6 +20,12 @@ internal static class ServiceProviderLimits
     public const int MaxUrlLength = 500;
     public const int MaxImagePathLength = 500;
     public const int MaxImageCaptionLength = 300;
+
+    /// <summary>
+    /// Portfolio items are embedded in the provider document, so an unbounded
+    /// list would grow the document towards the 16 MB BSON ceiling.
+    /// </summary>
+    public const int MaxPortfolioItems = 20;
     public const int MaxNoteLength = 1000;
 
     // ---- Stage 2: Provider Profile (D-2 Phase 3) ----
@@ -232,10 +238,6 @@ public class AddPortfolioItemRequestValidator : AbstractValidator<AddPortfolioIt
                 .When(x => !string.IsNullOrWhiteSpace(x.Url))
                 .WithMessage("Please provide a valid http(s) URL.");
 
-        RuleFor(x => x.ImagePath)
-            .MaximumLength(ServiceProviderLimits.MaxImagePathLength)
-                .WithMessage($"Image path must be {ServiceProviderLimits.MaxImagePathLength} characters or fewer.");
-
         RuleFor(x => x.ImageCaption)
             .MaximumLength(ServiceProviderLimits.MaxImageCaptionLength)
                 .WithMessage($"Image description must be {ServiceProviderLimits.MaxImageCaptionLength} characters or fewer.");
@@ -246,8 +248,8 @@ public class UpdatePortfolioItemRequestValidator : AbstractValidator<UpdatePortf
 {
     public UpdatePortfolioItemRequestValidator()
     {
-        RuleFor(x => x.Index)
-            .GreaterThanOrEqualTo(0).WithMessage("Portfolio item index must be zero or greater.");
+        RuleFor(x => x.Id)
+            .NotEmpty().WithMessage("Portfolio item id is required.");
 
         RuleFor(x => x.Title)
             .NotEmpty().WithMessage("Portfolio item title is required.")
@@ -265,10 +267,6 @@ public class UpdatePortfolioItemRequestValidator : AbstractValidator<UpdatePortf
             .Must(ServiceProviderLimits.BeValidHttpUrl)
                 .When(x => !string.IsNullOrWhiteSpace(x.Url))
                 .WithMessage("Please provide a valid http(s) URL.");
-
-        RuleFor(x => x.ImagePath)
-            .MaximumLength(ServiceProviderLimits.MaxImagePathLength)
-                .WithMessage($"Image path must be {ServiceProviderLimits.MaxImagePathLength} characters or fewer.");
 
         RuleFor(x => x.ImageCaption)
             .MaximumLength(ServiceProviderLimits.MaxImageCaptionLength)

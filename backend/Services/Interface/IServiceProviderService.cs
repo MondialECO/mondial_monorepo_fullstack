@@ -55,8 +55,9 @@ public interface IServiceProviderService
     Task<ServiceProviderResult<ServiceProviderProfileResponse>> UpdatePortfolioItemAsync(
         string userId, UpdatePortfolioItemRequest request);
 
+    /// <summary>Delete one portfolio item by its stable id, and its image with it.</summary>
     Task<ServiceProviderResult<ServiceProviderProfileResponse>> DeletePortfolioItemAsync(
-        string userId, int index);
+        string userId, string portfolioItemId);
 
     Task<ServiceProviderResult<ServiceProviderVerificationResponse>> SubmitVerificationAsync(
         string userId, SubmitVerificationRequest request);

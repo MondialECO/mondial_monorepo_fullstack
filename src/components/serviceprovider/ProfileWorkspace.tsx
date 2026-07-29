@@ -390,7 +390,8 @@ function ProfileEditView({ profile }: { profile: ServiceProviderProfile }) {
     <div className="space-y-6">
       <ProfileMediaManager profile={profile} />
       <ProfileEditor profile={profile} />
-      <div id="portfolio" className="scroll-mt-24"><PortfolioSection items={profile.portfolioItems} /></div>
+      {/* Owner-only workspace: this tree is already behind the provider's own dashboard. */}
+      <div id="portfolio" className="scroll-mt-24"><PortfolioSection items={profile.portfolioItems} isOwner /></div>
       <VerificationPanel profile={profile} />
     </div>
   );

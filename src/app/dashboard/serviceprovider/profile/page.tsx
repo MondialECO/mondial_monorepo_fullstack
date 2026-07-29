@@ -1,10 +1,17 @@
-import { ProfileWorkspace } from '@/components/serviceprovider/ProfileWorkspace';
+import { Suspense } from 'react';
+import { ProfileView } from '@/components/serviceprovider/profile/ProfileView';
 
 export const metadata = {
   title: 'Provider Profile | Mondial',
-  description: 'Manage your service provider profile, portfolio, and verification.',
+  description: 'Your published service provider profile, portfolio, and verification.',
 };
 
 export default function ServiceProviderProfilePage() {
-  return <ProfileWorkspace />;
+  // Read-only published profile. Editing lives on the separate editor route;
+  // legacy `?view=edit` links are normalized to it inside ProfileView.
+  return (
+    <Suspense fallback={null}>
+      <ProfileView mode="owner" />
+    </Suspense>
+  );
 }

@@ -3,23 +3,31 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   addPortfolioItem,
+  deleteCredential,
   deletePortfolioItem,
+  discardProfileDraft,
   getProfile,
+  getProfileDraft,
   getSkillsTestQuestions,
   getSkillsTestStatus,
   getTrust,
   removeCoverImage,
   removePortfolioImage,
   removeProfileImage,
+  saveProfileDraft,
+  submitProfileEditor,
   submitSkillsTest,
   submitVerification,
   updatePortfolioItem,
   uploadCoverImage,
+  uploadCredentialDocument,
   uploadPortfolioImage,
   uploadProfileImage,
+  upsertCredential,
   upsertProfile,
 } from '@/lib/api-service-provider';
 import type {
+  ProfileDraftResponse,
   ServiceProviderProfile,
   SkillsTestStatus,
   TrustBreakdown,
@@ -28,6 +36,14 @@ import type {
 const PROFILE_KEY = ['serviceProvider', 'profile'] as const;
 const TRUST_KEY = ['serviceProvider', 'trust'] as const;
 const SKILLS_TEST_KEY = ['serviceProvider', 'skillsTest', 'status'] as const;
+const EDITOR_DRAFT_KEY = ['serviceProvider', 'profileEditor', 'draft'] as const;
+
+export const serviceProviderKeys = {
+  profile: PROFILE_KEY,
+  trust: TRUST_KEY,
+  skillsTest: SKILLS_TEST_KEY,
+  editorDraft: EDITOR_DRAFT_KEY,
+} as const;
 
 export const useServiceProviderProfile = () =>
   useQuery<ServiceProviderProfile>({
@@ -112,6 +128,87 @@ export const useSubmitVerification = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: submitVerification,
+    onSuccess: () => qc.invalidateQueries({ queryKey: PROFILE_KEY }),
+  });
+};
+
+// ---- Profile editor (four-step wizard) ----
+
+// Opening the editor is a pure server read — no write happens because the page
+// mounted. `staleTime: Infinity` also stops a background refetch from clobbering
+// the provider's in-progress local edits.
+export const useProfileEditorDraft = (enabled = true) =>
+  useQuery<ProfileDraftResponse>({
+    queryKey: EDITOR_DRAFT_KEY,
+    queryFn: getProfileDraft,
+    enabled,
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+  });
+
+// A draft save touches only the stored draft, so the published profile cache is
+// deliberately left alone.
+export const useSaveProfileDraft = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: saveProfileDraft,
+    onSuccess: (draft) => qc.setQueryData(EDITOR_DRAFT_KEY, draft),
+  });
+};
+
+export const useDiscardProfileDraft = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: discardProfileDraft,
+    onSuccess: (draft) => qc.setQueryData(EDITOR_DRAFT_KEY, draft),
+  });
+};
+
+// Final submit is the only path that publishes. It returns the freshly published
+// profile, so we seed it and refresh just the profile-scoped queries — never a
+// blanket Service Provider invalidation.
+export const useSubmitProfileEditor = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: submitProfileEditor,
+    onSuccess: (result) => {
+      qc.setQueryData(PROFILE_KEY, result.profile);
+      qc.removeQueries({ queryKey: EDITOR_DRAFT_KEY });
+      qc.invalidateQueries({ queryKey: TRUST_KEY });
+    },
+  });
+};
+
+// Credentials are independent records: they persist immediately and must survive
+// a failed profile submit, so they never touch the draft cache.
+export const useUpsertCredential = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: upsertCredential,
+    onSuccess: () => qc.invalidateQueries({ queryKey: PROFILE_KEY }),
+  });
+};
+
+export const useUploadCredentialDocument = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      credentialId,
+      file,
+      onProgress,
+    }: {
+      credentialId: string;
+      file: File;
+      onProgress?: (percent: number) => void;
+    }) => uploadCredentialDocument(credentialId, file, onProgress),
+    onSuccess: () => qc.invalidateQueries({ queryKey: PROFILE_KEY }),
+  });
+};
+
+export const useDeleteCredential = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: deleteCredential,
     onSuccess: () => qc.invalidateQueries({ queryKey: PROFILE_KEY }),
   });
 };

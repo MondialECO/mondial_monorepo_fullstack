@@ -242,8 +242,8 @@ describe("Profile editor cache coordination", () => {
     await user.click(within(dialog).getByRole("button", { name: "Save item" }));
     await screen.findByText("Portfolio item updated.");
 
-    // Verify the update was called correctly (preserving imagePath semantics)
-    expect(api.updatePortfolioItem.mock.calls[0][0]).toEqual(expect.objectContaining({ index: 0 }));
+    // Verify the update was called correctly with stable id (preserving imagePath removal)
+    expect(api.updatePortfolioItem.mock.calls[0][0]).toEqual(expect.objectContaining({ id: "portfolio-existing" }));
     expect(api.updatePortfolioItem.mock.calls[0][0]).not.toHaveProperty("imagePath");
     // Verify the draft remains dirty after mutation
     await expectDraftRemainsDirty(draft.headline, draft.bio, confirm);
