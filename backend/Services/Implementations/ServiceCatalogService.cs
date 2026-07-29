@@ -21,6 +21,7 @@ public class ServiceCatalogService : IServiceCatalogService
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ILogger<ServiceCatalogService> _logger;
     private readonly SaveFile _saveFile;
+    private readonly Hangfire.IBackgroundJobClient _jobClient;
 
     private readonly IServiceProviderProfileStore _spStore;
     private readonly WebApp.Services.Migrations.IServiceProviderProfileSplitMigration _migrator;
@@ -31,6 +32,7 @@ public class ServiceCatalogService : IServiceCatalogService
         IServiceProviderProfileStore spStore,
         WebApp.Services.Migrations.IServiceProviderProfileSplitMigration migrator,
         SaveFile saveFile,
+        Hangfire.IBackgroundJobClient jobClient,
         ILogger<ServiceCatalogService> logger)
     {
         _db = db;
@@ -38,6 +40,7 @@ public class ServiceCatalogService : IServiceCatalogService
         _spStore = spStore;
         _migrator = migrator;
         _saveFile = saveFile;
+        _jobClient = jobClient;
         _logger = logger;
     }
 
@@ -714,8 +717,8 @@ public class ServiceCatalogService : IServiceCatalogService
         if (result is null)
             return ServiceProviderResult<ServiceListingResponse>.Conflict("Could not remove image.");
 
-        // Best-effort file deletion (async enqueue on failure, not blocking)
-        _ = Task.Run(() => DeleteFileAsync(image.PublicUrl));
+        // Best-effort file deletion using shared cleanup helper
+        ProviderMediaFiles.DeleteBestEffort(image.PublicUrl, _logger, _jobClient);
 
         return ServiceProviderResult<ServiceListingResponse>.Ok(result.ToResponse(), "Image removed from gallery.");
     }
@@ -804,23 +807,9 @@ public class ServiceCatalogService : IServiceCatalogService
         if (result is null)
             return ServiceProviderResult<ServiceListingResponse>.Conflict("Could not remove preview video.");
 
-        // Best-effort file deletion
-        _ = Task.Run(() => DeleteFileAsync(previousVideo.PublicUrl));
+        // Best-effort file deletion using shared cleanup helper
+        ProviderMediaFiles.DeleteBestEffort(previousVideo.PublicUrl, _logger, _jobClient);
 
         return ServiceProviderResult<ServiceListingResponse>.Ok(result.ToResponse(), "Preview video removed.");
-    }
-
-    private async Task DeleteFileAsync(string publicUrl)
-    {
-        try
-        {
-            // Reuse existing file deletion mechanism (e.g., from Portfolio cleanup)
-            // This is a placeholder; actual implementation delegates to a shared file-cleanup service
-            _logger.LogInformation("File deletion enqueued for: {PublicUrl}", publicUrl);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to delete file: {PublicUrl}", publicUrl);
-        }
     }
 }
