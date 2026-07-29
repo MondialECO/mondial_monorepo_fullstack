@@ -2,9 +2,11 @@
 
 Source of truth for development. When code and this doc disagree, this doc wins — unless a change is agreed and written back here first.
 
-**Last reconciled with code: 2026-07-28.** See the Changelog (bottom) for what changed. If a claim here contradicts the code, treat it as drift to reconcile — not a spec to build back toward — and confirm before acting.
+**Last reconciled with code: 2026-07-29.** See the Changelog (bottom) for what changed. If a claim here contradicts the code, treat it as drift to reconcile — not a spec to build back toward — and confirm before acting.
 
 **All five Service Provider modules are now LIVE.** Remaining platform-wide truth in one line: the payment gateway, file scanner, and e-signature/contract-consent mechanism are **STUB** integrations; public profile/search tracking, durable proposal-event history, and test-record provenance are **deferred/not tracked**.
+
+**2026-07-29 — SP data-model split (uncommitted, in review).** Service Provider data now lives in three root collections — `ProfessionalProfiles`, `UserCredentials`, `ServiceProviderProfiles` — with the embedded `ApplicationUser.ServiceProviderProfile` retained as a **temporary read-only migration fallback**. See **Service Provider Data Ownership Architecture** and **Migration Compatibility Reader** below. Creator, Entrepreneur, and Investor models are unchanged; the new collections are currently consumed only by Service Provider workflows.
 
 **Release status: ⛔ NOT RELEASE-READY.** “All five modules LIVE” describes implemented product surfaces, not production-security approval. Provider/client actor separation, self-dealing and self-review prevention, Trust Score manipulation prevention, provider-only controller enforcement, server-side amount/referential/masking/URL validation, internal-path exposure, and vulnerable NuGet dependencies remain backend release blockers (§15.2, §17). Frontend containment in `3a19c1e` is defence-in-depth and must never be represented as server-side authorization or validation.
 
@@ -22,7 +24,7 @@ Every feature carries a STATUS tag:
 - **PLANNED** — specced here, not built yet
 - **FORBIDDEN** — must never be built (violates a core rule)
 
-Section map: **§1** architecture · **§2** AI (none) · **§3** design system · **§4** database · **§5** Module 1 Profile & Trust (LIVE) · **§6** Module 2 Service Catalog (LIVE) · **§7** Module 3 Leads (LIVE) · **§8** Module 4 Workroom & Earnings (LIVE) · **§9** Module 5 Analytics & Growth (LIVE) · **§10** cross-cutting rules · **§11** SP journey (product experience) · **§12** notifications · **§13** audit log · **§14** validation/error · **§15** security/trust · **§16** roles & permissions · **§17** acceptance criteria · Appendix + Changelog.
+Section map: **§1** architecture · **§1A** SP data ownership architecture (split collections, editor, tier, trust, migration, status) · **§2** AI (none) · **§3** design system · **§4** database · **§5** Module 1 Profile & Trust (LIVE) · **§6** Module 2 Service Catalog (LIVE) · **§7** Module 3 Leads (LIVE) · **§8** Module 4 Workroom & Earnings (LIVE) · **§9** Module 5 Analytics & Growth (LIVE) · **§10** cross-cutting rules · **§11** SP journey (product experience) · **§12** notifications · **§13** audit log · **§14** validation/error · **§15** security/trust · **§16** roles & permissions · **§17** acceptance criteria · Appendix + Changelog.
 
 ---
 
@@ -50,11 +52,13 @@ A verified SP sees all five at once. The order is **build order** (each produces
 
 **Profile & Trust (§5) → Service Catalog (§6) → Leads (§7) → Workroom & Earnings (§8) → Analytics & Growth (§9).**
 
-### 1.3 Storage rule — embed the bounded profile, collection-per-module after that
+### 1.3 Storage rule — split SP root collections; embedded profile is legacy fallback *(superseded 2026-07-29)*
 
-`ServiceProviderProfile` (with its embedded trust record, skills-test attempts, capacity, and financial preferences) **stays embedded on `ApplicationUser`** — bounded (one profile, one `TrustScoreBreakdown`, a cooldown-capped `SkillsTestAttempts` list, one `ProviderFinancialSettings` record with a small masked-method list). **Unbounded records from Service Catalog onward get top-level MongoDB collections** (`ServiceListings`, `ClientBriefs`, `WorkroomEngagements`, `PayoutRequests`, …), keyed by `ProviderId`/`UserId` or their owning domain FK.
+**LEGACY (pre-split):** `ServiceProviderProfile` stayed embedded on `ApplicationUser` while it was bounded. That rule is **superseded**: once the profile grew to include professional data, credentials, portfolio, trust, capacity, financial settings, and editor-draft state, every SP write replaced the complete `ApplicationUser` document, and the embedded shape could no longer support independent credential review querying or editor concurrency.
 
-> **FORBIDDEN:** embedding unbounded data (listings, engagements, leads, transactions, time entries) as arrays on `ApplicationUser` or `ServiceProviderProfile`.
+**CURRENT:** SP data lives in three root collections — `ProfessionalProfiles`, `UserCredentials`, `ServiceProviderProfiles` — joined by unique `UserId` (§1A). The embedded `ApplicationUser.ServiceProviderProfile` remains only as a **temporary read-only migration fallback** (frozen after single-write cutover; removed in Phase 6, §1A). **Unbounded records from Service Catalog onward keep their top-level MongoDB collections** (`ServiceListings`, `ClientBriefs`, `WorkroomEngagements`, `PayoutRequests`, …), keyed by `ProviderId`/`UserId` or their owning domain FK — unchanged.
+
+> **FORBIDDEN:** embedding unbounded data (listings, engagements, leads, transactions, time entries) as arrays on `ApplicationUser`, the legacy embedded profile, or any of the three split records.
 
 ### 1.4 Commission — flat 12%, Workroom layer, tier-independent
 
@@ -62,26 +66,272 @@ Commission is a **flat 12% platform rate, Fiverr-style**, applied **once, at the
 
 > **FORBIDDEN:** deriving commission from `Tier_level`, `TrustScore`, or any reputation/ranking input.
 
-### 1.5 `Tier_level` — ranking/matching only (existing field)
+### 1.5 `Tier_level` — global/legacy only; SP tier moved to `ProviderTier` *(updated 2026-07-29)*
 
-`ApplicationUser.Tier_level` (`int`, `ApplicationUser.cs:47`). Generic platform ranking weight, used **only** by matching (§1.7) and exposed as a **ranking-only badge** by Module 1 (§5.4). **No pricing, commission, or payout relationship of any kind** (§1.4).
+`ApplicationUser.Tier_level` (`int`) remains the **global/legacy** platform ranking field (Universal Gate still sets it to at least 1). After the SP cutover it is **no longer the SP matching or badge authority** — the SP tier source of truth is `ServiceProviderProfiles.ProviderTier` (§1A Tier canon). **No pricing, commission, or payout relationship of any kind** (§1.4) — true for both fields.
 
-### 1.6 `Trust_score` — legacy fallback (existing field, untouched)
+### 1.6 `Trust_score` — legacy field; SP matching dependence removed *(updated 2026-07-29)*
 
-`ApplicationUser.Trust_score` (`int`, `ApplicationUser.cs:48`) is **separate** from `ServiceProviderProfile.TrustScore` (the double Module 1 derives). It exists **only** as `SpMatchingService`'s fallback for `rating` when the derived score has no data yet (`sp.TrustScore > 0 ? sp.TrustScore : u.Trust_score`). Module 1 did **not** modify, migrate, or reconcile it. Leave as-is; reconciliation is deferred (§4.3).
+`ApplicationUser.Trust_score` (`int`) is **separate** from the derived SP `TrustScore` (double). **LEGACY:** it previously served as `SpMatchingService`'s rating fallback. That fallback read has been **removed** — matching now reads the split record's `TrustScore` only (§1A Trust canon). The field itself is untouched and survives only inside the temporary embedded-profile fallback until Phase-6 deprecation.
 
-### 1.7 Existing matching engine — `SpMatchingService` (LIVE)
+### 1.7 Existing matching engine — `SpMatchingService` (LIVE, split-backed) *(updated 2026-07-29)*
 
-Ranks `Tier_level >= 2` verified providers in the requested `ServiceCategory`:
+Ranks **Verified, `ProviderTier >= Tier2`** providers offering the requested `ServiceCategory`, from an **indexed `ServiceProviderProfiles` query** (no longer an `ApplicationUsers` scan). The formula is unchanged:
 
 `score = sectorOverlap×0.35 + rating×0.25 + responseRate×0.20 + tierNorm×0.20`
 
-- **`rating`** = `sp.TrustScore > 0 ? sp.TrustScore : u.Trust_score`, normalized (§1.6).
-- **`tierNorm`** (`SpMatchingService.cs:40`) = `Tier_level >= 3 ? 1.0 : == 2 ? 0.7 : 0.4`.
-- **`responseRate`** — **LIVE:** `ResponseRateService` derives the percentage of surfaced briefs answered within 48 hours and persists it to `ServiceProviderProfile.TrustBreakdown.ResponseRate`; `SpMatchingService.Score` reads that signal. The former hardcoded `0.85`/`TODO` is absent from `SpMatchingService.cs` (re-verified at Module-3 ship).
+- **`rating`** = the split record's derived `TrustScore`, normalized. The legacy `u.Trust_score` fallback is gone (§1.6).
+- **`tierNorm`** = `ProviderTier >= Tier3 ? 1.0 : == Tier2 ? 0.7 : 0.4`.
+- **`sectorOverlap`** reads `Industries` from the provider's `ProfessionalProfiles` record.
+- **`responseRate`** — **LIVE:** `ResponseRateService` derives the percentage of surfaced briefs answered within 48 hours and persists it to the split record's `TrustBreakdown.ResponseRate`; matching reads that signal.
 - **Availability/capacity** is a **hard candidate pre-filter** (`IsEligibleCandidate`), not another formula term: unavailable or at-capacity providers are excluded before scoring.
 
-It owns **no collection** — it queries `ApplicationUsers` directly. Leads (§7) reuses this exact formula as the "Brief Match Score"; it must not spawn a parallel scoring engine.
+**Fixed with the split:** the legacy `Tier_level >= 2` query filter was unsatisfiable — no code path ever wrote a tier above 1, so the candidate pool was empty in normal operation. `ProviderTier` has a real server-controlled writer (verification → Tier2, §1A), so verified providers now actually enter the pool. Leads (§7) reuses this exact formula as the "Brief Match Score"; it must not spawn a parallel scoring engine.
+
+---
+
+## Service Provider Data Ownership Architecture
+
+*(§1A — implemented 2026-07-29, currently uncommitted/in review. SP-only: **`CreatorProfile` remains unchanged, `EntrepreneurProfile` remains unchanged, `InvestorProfile` remains unchanged.** The three collections below are consumed only by Service Provider workflows; adoption by another role requires a separate approved migration.)*
+
+**Why the split was introduced.** The embedded SP profile had grown to include professional data, credentials, portfolio, trust, capacity, financial settings, and editor-draft state. Every SP write replaced the complete `ApplicationUser` document, creating race risks between profile editing, trust recomputation, capacity updates, and financial updates. Credentials required independent review querying and indexing; admin review queues were scanning **all** `ApplicationUser` documents; and the four-step Profile Editor requires multi-document concurrency and atomic submission controls. Shared professional data may be reusable by other roles in the future — but **no other role is migrated in this version**.
+
+**Final ownership decision:**
+
+```text
+ApplicationUser
+→ Account, identity, KYC, onboarding and other role models
+
+ProfessionalProfiles
+→ Shared professional presentation data, currently SP-only
+
+UserCredentials
+→ Independent credential records and review lifecycle
+
+ServiceProviderProfiles
+→ Service Provider-specific business and reputation data
+```
+
+### 1A.1 Canonical collection map
+
+```text
+ApplicationUsers
+├── Authentication and account identity
+├── Contact and address
+├── KYC
+├── Universal onboarding
+├── Global/legacy Tier_level
+├── CreatorProfile — unchanged
+├── EntrepreneurProfile — unchanged
+├── InvestorProfile — unchanged
+└── Embedded ServiceProviderProfile
+    └── Temporary read-only migration fallback
+
+ProfessionalProfiles
+├── UserId · Headline · Bio · Professional Overview
+├── Profile Image · Cover Image
+├── Experience · Education · Skills
+├── Languages and proficiency (+ temporary legacy Languages mirror)
+├── Industries · Social Links · Public availability display
+├── Profile Version · Editor Draft
+└── CreatedAt / UpdatedAt
+
+UserCredentials
+├── Credential Id (stable GUID, preserved by migration) · UserId
+├── Credential kind · Title · Issuing organisation
+├── Issue date · Expiry date · Credential number
+├── Document reference · Display filename
+├── Status · Provider-visible review note · Applicable roles
+└── Submission/review timestamps · CreatedAt / UpdatedAt
+
+ServiceProviderProfiles
+├── UserId · ProviderId · Current phase
+├── Provider verification lifecycle · Provider Tier
+├── Service categories · Pricing models · Portfolio
+├── Trust Score and breakdown · Skills-test attempts
+├── Capacity · Order availability · Financial settings
+└── CreatedAt / UpdatedAt
+```
+
+### 1A.2 Data ownership (one canonical owner per field)
+
+- **ApplicationUser owns:** authentication; email/phone; name; address; refresh-token/account state; KYC; universal onboarding; global legacy `Tier_level` (**not** the SP tier source after the split, §1A.8); the unchanged `CreatorProfile`/`EntrepreneurProfile`/`InvestorProfile`; and the temporary embedded SP fallback during migration.
+- **ProfessionalProfiles owns:** Headline; Bio; Professional Overview (sanitised Tiptap JSON + plain text); profile image; cover image; Experience; Education; Skills; Industries; Languages **with proficiency** (plus the temporary plain-`Languages` compatibility mirror, kept in step on every write, removed in Phase 6); Social Links; public availability display; `ProfileVersion`; `EditorDraft`.
+- **UserCredentials owns:** one document per credential; owner identity via `UserId` (always the authenticated principal, never a body field); credential details; the credential document reference; review status and lifecycle; `ApplicableRoles` — initially `[ServiceProvider]`, extensible without schema change.
+- **ServiceProviderProfiles owns:** provider verification lifecycle; `ProviderTier`; service categories; pricing models; portfolio; `TrustScore`; `TrustBreakdown`; `HasEnoughTrustData`; `SkillsTestAttempts`; capacity (`MaximumConcurrentOrders`); active-order count (`CurrentActiveOrders` — targeted-increment writer only); new-order availability; `FinancialSettings`.
+
+No back-reference IDs are stored on `ApplicationUser` — all three collections join by unique `UserId`.
+
+### 1A.3 Four-step Profile Editor — backend behaviour
+
+The steps remain: **1. Identity & Overview · 2. Experience & Education · 3. Skills & Languages · 4. Credentials.**
+
+- **Opening the editor** loads published data from the split collections, loads owner credentials separately, and seeds an **in-memory** draft when no saved draft exists. Opening performs **no database write** and never changes the public profile.
+- **Step saves** write only `ProfessionalProfiles.EditorDraft` (a targeted draft-field update — published fields are untouched). The draft contains: `BasedOnVersion`, `LastStep`, Headline, Bio, Professional Overview, profile/cover media references where the current flow supports them, Experience, Education, Skills, Languages, Industries, and **draft values** for Service Categories and Pricing Models. Categories and pricing remain **SP-specific published data owned by `ServiceProviderProfiles`** — their draft values are only coordinated through the professional draft so the final submit stays atomic. **Step saves must not publish profile or business fields.**
+- **Credentials are not embedded in `EditorDraft`.** Credential upload creates or updates an independent `UserCredentials` record. Credential files survive profile validation failure, final-submit failure, and transaction rollback. Uploading never auto-verifies the credential or the provider.
+
+```text
+Profile View
+    ↓ Edit Profile
+ProfessionalProfiles.EditorDraft
+    ↓ Step 1–4 saves
+Draft only — no public publish
+    ↓ Final Submit
+MongoDB transaction
+    ├── ProfessionalProfiles publish
+    ├── ServiceProviderProfiles publish
+    └── UserCredentials → PendingReview
+    ↓
+ProfileVersion + 1
+EditorDraft cleared
+    ↓
+Updated Profile View
+```
+
+Credential verification remains a later authorised review action — never part of submit.
+
+### Atomic Profile Submission
+
+Final submission touches **ProfessionalProfiles + ServiceProviderProfiles + UserCredentials**. The preferred path is **one MongoDB multi-document transaction** (`Mongo:TransactionsEnabled=true`, the same replica-set requirement Module 4 already enforces, §8.0):
+
+```text
+1. Load ProfessionalProfile inside the session
+2. Compare EditorDraft.BasedOnVersion with ProfileVersion
+3. Reject stale submissions
+4. Validate all four steps
+5. Publish professional profile fields
+6. Publish Service Provider categories and pricing
+7. Promote eligible credential records to PendingReview
+   (Draft or ResubmissionRequired, WITH an attached document; Verified untouched)
+8. Increment ProfileVersion exactly once
+9. Clear EditorDraft
+10. Commit transaction
+```
+
+*(In the implementation, steps 1–3 are realised as a version-conditional replace — the write predicate `ProfileVersion == BasedOnVersion` **is** the concurrency check; zero matches aborts the transaction.)*
+
+**Failure behaviour:** no partial profile publication; no partial category/pricing publication; no partial credential promotion; `ProfileVersion` does not increment; `EditorDraft` remains available; the existing public profile is unchanged.
+
+**Gated fallback** (only when `Mongo:TransactionsEnabled=false`): ordered writes — `Credentials → ServiceProviderProfile → ProfessionalProfile publish → ProfileVersion increment and draft clear last`. The `ProfileVersion` update is the fallback **commit point**. Fallback writes are **not fully atomic**; retries must be (and are) idempotent and convergent — credential promotions and the SP upsert re-apply harmlessly, and nothing reads the new state until the version-conditional publish lands.
+
+### Profile Concurrency
+
+- `ProfessionalProfiles.ProfileVersion` is the **single** editor concurrency token.
+- `EditorDraft.BasedOnVersion` records the published version editing began from.
+- A stale submit returns a **conflict** rather than overwriting another tab's changes.
+- The version increments **once per successful final submission**; draft saves never increment it. (The legacy non-wizard profile upsert also bumps it once per publish, so an open editor correctly conflicts with it.)
+- Capacity, trust, and financial updates **no longer replace the full `ApplicationUser` document** — they are targeted split-record writes (the engagement counter is a guarded increment), which removes the previous unrelated last-write-wins races.
+
+### 1A.4 Credential canon
+
+Status lifecycle (server-controlled):
+
+```text
+Draft → PendingReview → Verified
+PendingReview → Rejected
+Rejected → ResubmissionRequired → PendingReview
+```
+
+- Provider-created actions may produce **only** `Draft` or `PendingReview`. `Verified`, `Rejected`, and `ResubmissionRequired` require authorised review. `Expired` is **derived** from `ExpiresAt` at projection time — never provider-set, never persisted.
+- Uploading a document grants **neither** provider verification **nor** `ProviderTier`.
+- Credential number is **owner-only**; the document URL is **owner/reviewer-only**.
+- Public profiles expose **verified credential summaries only** — never document URLs, `StorageKey`, credential numbers, `ReviewNote`, or pending/rejected credentials.
+- Replacement order: `Validate new file → Save new file → Persist new reference → Delete superseded owned file`. A failed replacement preserves the previous document.
+
+### 1A.5 Media ownership
+
+```text
+ProfessionalProfiles
+├── ProfileImage
+└── CoverImage
+
+ServiceProviderProfiles
+└── PortfolioItem.PrimaryImage
+
+UserCredentials
+└── Credential.Document
+```
+
+Physical files were **not moved** by the split; the existing `SaveFile.cs` remains the permanent file-saving mechanism; MongoDB stores **references and metadata only — no binary or Base64 media**. `StorageKey` is server-internal; public projections expose only approved `PublicUrl` values; physical server paths must never appear in browser responses. `StorageKey` and `PublicUrl` currently may hold the same relative value for compatibility, but they remain separate semantic fields. Legacy `PortfolioItem.ImagePath` remains temporarily for compatibility and is deprecated (Phase 6).
+
+### 1A.6 Migration Compatibility Reader
+
+*(Also referenced as “Migration Compatibility Reader” from the header block.)* SP responses are built by an aggregate reader:
+
+```text
+ProfessionalProfile + ServiceProviderProfileRecord + UserCredentials
+→ Existing ServiceProvider DTO (names unchanged)
+```
+
+Dual-read rules — **per user**, never assumed globally complete:
+
+```text
+Split records exist       → read the new collections
+Split records do not exist → read embedded ApplicationUser.ServiceProviderProfile
+```
+
+Migrated and unmigrated providers may coexist. Existing frontend DTO names remain stable. Completion percentage is computed over the aggregate data through the one existing formula — the reader **must not duplicate it**. **No indefinite dual-write:** after single-write cutover, all SP writes go to the split collections (migrate-on-write seeds a user's records from the frozen embedded copy on first touch) and the embedded SP data is frozen read-only.
+
+### 1A.7 Migration phases (SP-only)
+
+1. **Additive foundation** — create the three collections + indexes; no behaviour change. *(done)*
+2. **Dual read** — prefer new records, fall back to embedded per user. *(done)*
+3. **Single write** — all new SP writes go to split collections; embedded profile frozen (unit tests assert `UserManager.UpdateAsync` is never called by SP services). *(done)*
+4. **Migration** — idempotent upsert by `UserId`; preserves stable IDs, `ProfileVersion`, `EditorDraft`, Trust data, media references, and credential review state; physical files not moved. *(implemented: migrate-on-write + sweep; production sweep not yet run)*
+5. **Verification** — record counts, missing-reference checks, stable-ID checks, credential counts, canonical JSON checksums (both read paths projected through the same DTO mapping, then hashed), Trust equality, `ProfileVersion` equality, draft equality, idempotency. *(implemented; not yet run against production)*
+6. **Legacy deprecation** — only after all readers have moved: remove the embedded SP fallback, legacy duplicate fields, and the old `Trust_score` fallback; repoint remaining legacy consumers; repoint the Creator-side designer-card readers through an approved separate change. **Phase 6 is NOT completed by the current implementation.**
+
+### 1A.8 Provider Tier canon (SP source of truth)
+
+`ServiceProviderProfiles.ProviderTier` — enum `Tier1 | Tier2 | Tier3 | Tier4`.
+
+- **Tier 1** — default provider state; basic identity/profile access; cannot accept paid marketplace work where Tier-2 eligibility is required (matching and paid-eligibility gates require Tier 2+).
+- **Tier 2** — server-controlled verified-provider eligibility; enters SP marketplace/matching per current gates. **Exact server-controlled assignment (code-proven):** the verification paths grant Tier 2 when the current tier is lower — both the normal-onboarding automatic verification of a complete first submission (§1.1/§11.1) and admin approval of a remediated `UnderReview` provider. Assignment never downgrades a higher, separately-earned tier.
+- **Tier 3** — reserved for authorised evaluation based on verified track record and reputation criteria. **No writer exists yet.**
+- **Tier 4** — reserved for Mondial-vetted elite providers. **No writer exists yet.**
+
+Critical rules: the provider cannot directly update Tier; profile submit cannot update Tier; credential upload cannot update Tier; Tier 3/4 currently have **no provider-controlled writer** (nor any writer). Tier affects **matching priority, not pricing** — it never changes gross service prices and never changes the fixed **12% platform commission** (§1.4). `ApplicationUser.Tier_level` remains global/legacy and is **not** the SP matching authority after cutover (§1.5).
+
+### 1A.9 Trust Score canon (SP source of truth)
+
+`ServiceProviderProfiles.TrustScore` is the **only** SP Trust Score source of truth, derived exclusively from `TrustBreakdown` by the single recompute path. Rules: never client-set; recomputed only from the approved signals (locked weights and dispute penalty unchanged, §5.1); `ApplicationUser.Trust_score` is **legacy only** — new SP matching and analytics do not depend on it; the public profile displays TrustScore only when `HasEnoughTrustData` is true; raw trust-signal internals remain server-only.
+
+### 1A.10 Implemented indexes
+
+- **ProfessionalProfiles:** unique `UserId`; `UpdatedAt` descending.
+- **UserCredentials:** `UserId`; compound `Status + SubmittedAt` (review queue); sparse `ExpiresAt`.
+- **ServiceProviderProfiles:** unique `UserId`; `ProviderId`; compound `VerificationStatus + VerificationSubmittedAt` (admin verification queue — replaces the legacy all-users scan); `ServiceCategories` (multikey); `NewOrderAvailability`; `ProviderTier`; `UpdatedAt` descending.
+- **Deferred (do NOT assume they exist):** public slug; `Skills`; `Industries`; `ApplicableRoles` — each waits for a real consumer.
+
+### 1A.11 Security & projection visibility
+
+| Visibility | Fields |
+|---|---|
+| **Public** | Published headline; Bio; sanitised Professional Overview; Skills; Industries; Languages + proficiency; Experience; Education; public profile/cover URLs; Portfolio; Categories; Pricing Models; **verified credential summaries only**; Trust Score only when enough data exists; verification badge; public availability |
+| **Owner-only** | `EditorDraft`; `BasedOnVersion`/`ProfileVersion` conflict information; credential number; credential document URL; credential filename; pending/rejected credentials; provider-facing `ReviewNote`; profile-completion guidance |
+| **Admin/reviewer-only** | Review actions; pending queues; submitter identity; internal review data where stored elsewhere |
+| **Server-only** | `StorageKey`; physical paths; raw `TrustBreakdown` signals; `FinancialSettings` internals; audit records |
+
+Raw collection documents must never be returned directly — every response goes through a projection.
+
+### 1A.12 Module data-source map (post-cutover)
+
+- **Aggregate reader / ProfessionalProfiles:** Profile View; Profile Editor; profile completeness; Professional Overview; profile/cover media; SP dashboard professional details; matching professional fields (Industries); analytics profile-completion fields.
+- **ServiceProviderProfiles:** verification gates; Service Catalog capacity; Leads eligibility; SP matching eligibility; Workroom active-order counter; trust recomputation; analytics Tier and Trust; portfolio; financial settings.
+- **UserCredentials:** credential editor; credential file replacement; admin review queue; public verified credentials; expiry projection.
+- **Unchanged transactional collections:** service listings, client briefs, proposals, engagements, workrooms, milestones, deliverables, reviews, transactions, payouts — none moved or reshaped; only how they load provider profile state changed.
+
+## Implementation Status
+
+*(2026-07-29 — the SP data-model split, working tree, **uncommitted**, pending review.)*
+
+- Backend data-model split is **implemented**; the existing Profile Editor backend work was **refactored onto the split model** (preserved, not restarted).
+- Embedded SP data remains a **read-only fallback**; the split migration is implemented and **idempotent** (migrate-on-write + sweep + checksum verification).
+- **Focused split tests: 18 passed.** **Full backend suite: 622 passed, 0 failed, 60 skipped.** **Release build: passed with 0 errors.** **Replica-set transaction tests: 3 added, locally skipped** (Docker unavailable) — compile-verified only; they still require execution against a working replica-set environment. Replica-set transaction behaviour is **not runtime-verified locally**.
+- **Not yet done:** production migration sweep + verification run; Phase-6 legacy removal; frontend Profile View/Edit route split and the four-step wizard UI (the next implementation stage).
+- **The entire Service Provider portal is NOT release-ready** (§15.2) — the split does not resolve the standing backend security blockers.
+
+**Known technical debt (unchanged by the split, plus split follow-ups):** provider/client actor separation; self-dealing prevention; self-review prevention; provider-only role enforcement; financial validation; sensitive-value masking; referential validation; Workroom internal storage-path exposure; backend URL validation; stub-only file scanning; existing vulnerable dependencies; production migration execution; replica-set transaction test execution; Phase-6 embedded-field deprecation; remaining Creator-side designer-card repointing. These do not invalidate the data-model split implementation, but they prevent declaring the entire SP portal production-ready.
 
 ---
 
@@ -137,15 +387,15 @@ The Service Provider workspace is a **scoped light-only surface**. `dashboard/la
 
 ## 4. Database — what's real vs. what's planned
 
-**Verified reality (2026-07-27):** the bounded provider profile/trust/financial-settings record remains embedded in `ApplicationUsers`; Modules 2–5 own the top-level collections listed below. Module 4 added 16 unbounded execution, financial, and audit collections; Module 5 added only the stateful manual-task collection and stores no metric snapshots.
+**Verified reality (2026-07-29):** SP profile data now lives in the three split root collections (`ProfessionalProfiles`, `UserCredentials`, `ServiceProviderProfiles` — §1A); the embedded copy on `ApplicationUsers` is a **temporary read-only migration fallback**. Modules 2–5 own the top-level collections listed below. Module 4 added 16 unbounded execution, financial, and audit collections; Module 5 added only the stateful manual-task collection and stores no metric snapshots.
 
-### 4.1 `ApplicationUsers` (existing top-level collection) — SP-relevant contents
+### 4.1 `ApplicationUsers` (existing top-level collection) — SP-relevant contents *(embedded profile = LEGACY FALLBACK, frozen after cutover)*
 
 Registered as `GetCollection<ApplicationUser>("ApplicationUsers")` in `DbContext/MongoDbContext.cs`. SP fields on `ApplicationUser` (exact names):
 
-- `Tier_level` (`int`) — ranking/matching only (§1.5).
-- `Trust_score` (`int`) — legacy matching fallback (§1.6).
-- `ServiceProviderProfile` (embedded object):
+- `Tier_level` (`int`) — global/legacy only after the split (§1.5); SP tier is `ServiceProviderProfiles.ProviderTier` (§1A.8).
+- `Trust_score` (`int`) — legacy; the matching fallback read was removed (§1.6).
+- `ServiceProviderProfile` (embedded object — **read-only fallback for unmigrated users; no SP service writes it after cutover**):
   - `ProviderId` (`string`), `CurrentPhase` (`int`, default 1)
   - `VerificationStatus` (`ServiceProviderVerificationStatus`), `VerificationSubmittedAt` (`DateTime?`), `VerifiedAt` (`DateTime?`), `RejectionReason` (`string`)
   - `TrustScore` (`double`) — derived (§5.1)
@@ -154,16 +404,17 @@ Registered as `GetCollection<ApplicationUser>("ApplicationUsers")` in `DbContext
   - **Module 1 additions:** `TrustBreakdown` (`TrustScoreBreakdown`), `HasEnoughTrustData` (`bool`), `SkillsTestAttempts` (`List<SkillsTestAttempt>`)
   - **Module 2 additions:** `MaximumConcurrentOrders`, `CurrentActiveOrders`, `NewOrderAvailability`, `ManualApprovalWhenCapacityLow`
   - **Module 4 addition:** `FinancialSettings` (`ProviderFinancialSettings`, embedded — never a collection)
+  - **Profile-editor additions (frozen with the rest of the embedded copy):** `Experiences`, `Education`, `LanguageProficiencies`, `Credentials`, `ProfileVersion`, `EditorDraft`
   - `CreatedAt` (`DateTime`), `UpdatedAt` (`DateTime`)
 
 Embedded types (all nested in `ServiceProviderProfile`; none has its own collection):
 - **`TrustScoreBreakdown`** — `ClientSatisfaction`, `OnTimeDelivery`, `ResponseRate`, `RepeatClientRate`, `SkillTest` (each a `TrustSignal`); `HasDisputes` (`bool`); `DisputePenalty` (`double`); `LastRecalculatedAt` (`DateTime?`).
 - **`TrustSignal`** — `HasData` (`bool`), `Value` (`double`).
 - **`SkillsTestAttempt`** — `Category` (`ServiceCategory`), `Score` (`int`), `Passed` (`bool`), `TakenAt` (`DateTime`), `NextEligibleRetestAt` (`DateTime`).
-- **`PortfolioItem`** — `Title`, `Description`, `Url`, `ImagePath` (`string`), `AddedAt` (`DateTime`).
+- **`PortfolioItem`** — `Id` (stable server-owned GUID), `Title`, `Description`, `Url`, `ImagePath` (`string`, legacy/deprecated), `PrimaryImage` (`ProviderMediaAsset?`), `ImageCaption`, `AddedAt` (`DateTime`).
 - **`ProviderFinancialSettings`** — `PayoutMethods[]`, `DefaultPayoutMethodId`, `Tax`, `AccountOnHold`, `MinimumPayoutAmount`; nested `MaskedPayoutMethod` and `ProviderTaxSettings` fields are listed in §8.0.1.
 
-**Storage-rule check:** ✅ compliant (§1.3) — the profile is bounded, so embedding is correct.
+**Storage-rule check:** ✅ compliant with the **updated** §1.3 — the split records own SP data; the embedded copy is a temporary read-only fallback, not the canonical store.
 
 ### 4.2 Shared enums — reuse, never fork
 
@@ -177,7 +428,11 @@ Authoritative vocabulary for the whole SP domain; every module reuses these, non
 ### 4.3 Collections — real vs. planned
 
 **EXISTS today:**
-- **`ApplicationUsers`** — holds everything above (embedded).
+- **`ApplicationUsers`** — holds the legacy embedded fallback above.
+- **`ProfessionalProfiles`** (`ProfessionalProfileRecord`) — SP data split (§1A, 2026-07-29, uncommitted). Role-neutral professional presentation data, **SP-only for now**; unique `UserId`.
+- **`UserCredentials`** (`UserCredentialRecord`) — SP data split. One document per credential, stable-GUID `_id`, server-controlled review lifecycle, `ApplicableRoles = [ServiceProvider]`.
+- **`ServiceProviderProfiles`** (`ServiceProviderProfileRecord`) — SP data split. SP business/reputation data incl. `ProviderTier`; unique `UserId`.
+- Indexes for the three split collections are established best-effort via **`EnsureProfileSplitIndexes()`** in both `MongoDbContext` constructors (§1A.10).
 - The skills-test question bank is **static in-code** (`SkillsTestQuestionBank.cs`), **not** a collection.
 - **`ServiceListings`** (`ServiceListing`) — Module 2, §6 (LIVE, `533d2e2`). Service-level record + `Impressions`/`Clicks` counters; owns its packages via a `ServiceId` FK.
 - **`ServicePackages`** (`ServicePackage`) — Module 2, §6 (LIVE). Per-service Basic/Standard/Premium/Custom packages, keyed by `ServiceId`; **add-ons + requirements template embedded** as bounded arrays. Real field list: §6.0.1.
@@ -251,9 +506,9 @@ Optional, non-blocking, post-verification.
 - **Question bank** — `SkillsTestQuestionBank.cs`, static in-code, per `ServiceCategory`. **STUB content:** a small manually-authored generic-professional placeholder set re-tagged per category — not production per-category content (authoring that is deferred). Correct answers are server-side only, never sent to the client.
 - **Mechanism (real):** random 5-question selection; server-side auto-grade; **70% pass**; **30-day cooldown** via `NextEligibleRetestAt` (read-time check, no Hangfire). A recorded attempt feeds the Skill Test signal and triggers `RecalculateTrustScore`. Signal value = mean of the most-recent attempt score per distinct category.
 
-### 5.4 Tier badge — ranking-only — LIVE
+### 5.4 Tier badge — ranking-only — LIVE *(source updated 2026-07-29)*
 
-`tierLevel` (from `Tier_level`, §1.5) is on the trust response and rendered as a **ranking-only** badge, visually distinct from the score. **No commission/pricing/payout language near it** — tooltip says it affects match ordering only.
+`tierLevel` on the trust/dashboard responses is rendered as a **ranking-only** badge, visually distinct from the score. **Source after the split:** `ServiceProviderProfiles.ProviderTier` for migrated providers; the legacy `Tier_level` clamp only inside the embedded fallback (§1A.8, §1.5). **No commission/pricing/payout language near it** — tooltip says it affects match ordering only.
 
 ### 5.5 Endpoints (all `/api/service-provider`, `[Authorize]`, owner-scoped, `ApiResponse`)
 
@@ -264,7 +519,7 @@ Optional, non-blocking, post-verification.
 **Backend:** `Models/DatabaseModels/ApplicationUser.cs` (embedded `TrustScoreBreakdown`, `TrustSignal`, `SkillsTestAttempt`), `Services/Implementations/SkillsTestQuestionBank.cs` (new), `Services/Implementations/ServiceProviderService.cs` (recompute + 4 methods; approval recomputes), `Services/Interface/IServiceProviderService.cs`, `Models/Dtos/ServiceProviderDtos.cs`, `Controllers/ServiceProviderController.cs`, `tests/WebApp.Tests/Unit/ServiceProviderServiceTests.cs`.
 **Frontend:** `components/serviceprovider/TrustAndSkillsSection.tsx` (new), `components/serviceprovider/ProfileWorkspace.tsx`, `lib/api-service-provider.ts`, `types/service-provider.ts`, `hooks/queries/service-provider.ts`.
 
-**2026-07-28 workspace reconciliation — LIVE in `fd38914`:** the responsive Profile & Trust redesign reuses the existing profile, overview, capacity, catalog, trust, skills-test, and portfolio APIs. URL states are `/profile` (Overview), `/profile?view=edit`, and `/profile?view=trust`; loading/error/retry, neutral trust, form feedback, accessible category/tag controls, confirmation dialogs, and portfolio image-path preservation are live. Verified and Tier remain separate badges; Tier copy is ranking/matching-only. Unsupported profile-photo/video upload, employment, education, credential upload, language proficiency, provider location, and public-rating breakdown controls remain omitted rather than being stored as frontend-only data.
+**2026-07-28 workspace reconciliation — LIVE in `fd38914`:** the responsive Profile & Trust redesign reuses the existing profile, overview, capacity, catalog, trust, skills-test, and portfolio APIs. URL states are `/profile` (Overview), `/profile?view=edit`, and `/profile?view=trust`; loading/error/retry, neutral trust, form feedback, accessible category/tag controls, confirmation dialogs, and portfolio image-path preservation are live. Verified and Tier remain separate badges; Tier copy is ranking/matching-only. *(Partially superseded 2026-07-29, §1A:)* profile/cover/portfolio image upload, employment (Experience), Education, language proficiency, and credential upload now have real backend ownership on the split collections; the four-step editor frontend that surfaces them is the next implementation stage. Video upload, provider location, and public-rating breakdown controls remain omitted rather than being stored as frontend-only data.
 
 ---
 
@@ -336,8 +591,8 @@ Entity `ServiceFAQ` (above). **Visibility:** All Packages / Basic Only / Standar
 **Schema (Module 2):** the SP defines what information they need as an **embedded `RequirementsTemplate`** on `ServicePackage` — a bounded list of `{ fieldId, label, fieldType (text/file/choice/etc.), required }` entries (the source's `requirementsTemplateId`; embedded, not a collection — see §6 storage).
 **Answers (Module 3 / checkout):** the client fills the template in at purchase / proposal-submission time. Those answers are a **separate small structure** (e.g. a `requirementsSubmission` referencing the template's fields with the client's values), tracked via `requirementsStatus` on the Proposal (§7). Schema-definition (Module 2) and answer-submission (Module 3) stay clearly distinct. *(This does not reopen the earlier "buyer-requirements questionnaire deferred to Module 3" decision — the template schema is configured here; its submission happens in Leads/checkout.)*
 
-### 6.7 Provider capacity rule — **touches shipped code**
-`maximumConcurrentOrders, currentActiveOrders, newOrderAvailability, manualApprovalWhenCapacityLow` live on the **existing embedded `ServiceProviderProfile`** (Module 1, shipped `b29bcde`/`5e2da20`) — **not** a new Module-2 entity. Capacity status: `Available, Limited, Fully Booked, Unavailable`. Instant order must be **blocked when `currentActiveOrders >= maximumConcurrentOrders`** unless the provider explicitly allows overbooking (recommended: instant order disabled, client may still send an order request).
+### 6.7 Provider capacity rule — **touches shipped code** *(home updated 2026-07-29)*
+`maximumConcurrentOrders, currentActiveOrders, newOrderAvailability, manualApprovalWhenCapacityLow` now live on the **`ServiceProviderProfiles` split record** (§1A; dual-read falls back to the frozen embedded copy for unmigrated users) — still **not** a Module-2 entity. `CurrentActiveOrders` is written only by the engagement lifecycle via a guarded targeted increment, no longer a whole-user replace. Capacity status: `Available, Limited, Fully Booked, Unavailable`. Instant order must be **blocked when `currentActiveOrders >= maximumConcurrentOrders`** unless the provider explicitly allows overbooking (recommended: instant order disabled, client may still send an order request).
 > **SHIPPED-CODE IMPACT (done):** these four fields were added to the already-committed `ServiceProviderProfile` in the Module-2 build (`533d2e2`) — a real Module-1 entity amendment. Additive (Mongo defaults for legacy docs); Module 1's 100 tests re-ran green.
 
 ### 6.8 Package order cancellation
@@ -426,7 +681,7 @@ Merges delivery workroom and earnings into one module. It consumes accepted Modu
 
 ### 8.0 What's live vs. deferred (verified against code)
 
-- **LIVE storage/backend:** 16 top-level MongoDB collections (§4.3), `EnsureWorkroomIndexes()`, actor-scoped `/api/workroom` and `/api/earnings` APIs, state-machine checks, audit rows, notifications, timed rules, statements, and provider financial settings embedded on `ServiceProviderProfile`.
+- **LIVE storage/backend:** 16 top-level MongoDB collections (§4.3), `EnsureWorkroomIndexes()`, actor-scoped `/api/workroom` and `/api/earnings` APIs, state-machine checks, audit rows, notifications, timed rules, statements, and provider financial settings on the `ServiceProviderProfiles` split record (§1A; formerly embedded on the profile).
 - **LIVE Proposal→Engagement handoff:** every accepted proposal path immediately enqueues `WorkroomConversionJob.ConvertAsync`; a minutely sweeper catches missed `Accepted/AwaitingModule4` rows. Conversion is idempotent through a unique `WorkroomEngagement.ProposalId`, an existence check, and the proposal's atomic ownership transition. An empty `MilestonePlan` becomes exactly one full-scope milestone for the accepted price. Contract + engagement + milestone creation and `Proposal → ConvertedToProject/Converted` commit in one Mongo transaction.
 - **LIVE provider frontend:** `/dashboard/serviceprovider/workroom?view=active|completed` lists projects; `project`, `tab`, and `milestone` preserve drill-down state. Project tabs are Overview, Milestones, Deliveries, Tasks & Inputs, Contract, and Time Entries for hourly work. The workspace exposes **STUB in-app contract consent**, milestone activation, file upload, versioned delivery, revision-start/resubmission, review response, and completion. `/dashboard/serviceprovider/earnings?tab=activity|payouts|settings` exposes balances, transactions, payouts, invoices, masked payout-method setup, and tax settings, with purposeful loading/error/empty/success/confirmation states.
 - **API-first/client-UI boundary:** client STUB-backed funding, revision request, approval/release, disputes, extensions, reviews, and the second **STUB contract-consent** action exist as owner-scoped backend endpoints, but **no client Workroom/checkout frontend was added**. The build was provider-frontend-prioritized. The provider can request and view the structured statement response by date range; PDF/document download remains unsupported.
@@ -458,7 +713,7 @@ Every top-level PK is **`Id`** (`[BsonId]` ObjectId), not the source's entity-sp
 - **`HourlyTimeEntry` → `"HourlyTimeEntries"`:** `Id, EngagementId, ProviderId, StartedAt, EndedAt, Description, ClientApproved, CreatedAt`.
 - **`WorkroomAuditEvent` → `"WorkroomAuditEvents"`:** `Id, ActorId, ActorRole, Action, EntityType, EntityId, PreviousState, NewState, Timestamp, Reason`. **Drift:** the discovery/spec shorthand said `AuditEvents`; the built class/collection is deliberately workroom-scoped.
 - **`RepeatClientCoupon` → `"RepeatClientCoupons"`:** `Id, ProviderId, ClientId, Code, DiscountPercent, Status, ExpiresAt, CreatedAt`.
-- Embedded **`ProviderFinancialSettings`** at `ApplicationUser.ServiceProviderProfile.FinancialSettings` — **not a top-level collection:** `PayoutMethods[], DefaultPayoutMethodId, Tax, AccountOnHold, MinimumPayoutAmount`. Embedded **`MaskedPayoutMethod`**: `Id, Rail, DisplayName, MaskedDescriptor, Verified, CreatedAt`. Embedded **`ProviderTaxSettings`**: `LegalName, CountryCode, TaxIdentifierMasked, VatRegistered, VatNumberMasked`.
+- **`ProviderFinancialSettings`** at `ServiceProviderProfiles.FinancialSettings` (§1A; the frozen embedded copy remains only as migration fallback) — **not its own collection:** `PayoutMethods[], DefaultPayoutMethodId, Tax, AccountOnHold, MinimumPayoutAmount`. Embedded **`MaskedPayoutMethod`**: `Id, Rail, DisplayName, MaskedDescriptor, Verified, CreatedAt`. Embedded **`ProviderTaxSettings`**: `LegalName, CountryCode, TaxIdentifierMasked, VatRegistered, VatNumberMasked`.
 
 **As-built drift summary:** the implementation added currency, ordering, pause accounting, extension, review/auto-release/dispute clocks, idempotency/reconciliation, tax snapshots, hourly support, and audit fields beyond the original seven-entity sketch. Status properties are strongly named (`EngagementStatus`, `MilestoneStatus`, `DeliverableStatus`, `RevisionRequestStatus`) rather than a generic `Status` where ambiguity mattered. `ProviderFinancialSettings` is embedded per §1.3; `ContractTerms` and invoice tax snapshots are also bounded embedded objects. No entity stores `CommissionRate`; release always reads `PlatformCommerceConstants.CommissionRate`.
 
@@ -536,7 +791,7 @@ The live service converts proposals directly into `FundingRequired`; funding mov
 
 **Resolved decisions / remaining flags:** coupon behavior is tier-independent. Admin dispute resolution is live for `ProviderFavored` and `ClientFavored`; split settlement is deliberately rejected until an explicit contract-amendment/pricing flow exists. Real payment/scanning/signing adapters and production transaction-topology verification remain deployment blockers (§8.0).
 
-**Dependencies.** Reads: proposals (§7), catalog delivery/revision calculators (§6), embedded provider capacity/financial settings (§4.1), and the shared commission constant (§1.4). Produces: four Trust signals + `Review` → §5.1; earnings/dispute/delivery data → Analytics (§9); workroom audit events → §13.
+**Dependencies.** Reads: proposals (§7), catalog delivery/revision calculators (§6), provider capacity/financial settings on the `ServiceProviderProfiles` record (§1A; embedded copy is fallback only, §4.1), and the shared commission constant (§1.4). Produces: four Trust signals + `Review` → §5.1; earnings/dispute/delivery data → Analytics (§9); workroom audit events → §13.
 
 ---
 
@@ -662,7 +917,7 @@ Once briefs arrive, a working SP can traverse the Leads→Workroom→paid-record
 Both are **asynchronous to the main loop** — an SP can engage them any time, and neither gates anything:
 
 - **Skills Test — LIVE (§5.3).** Optional, non-blocking. Take a per-category test whenever; passing feeds the Skill Test trust signal. It coexists with the live Response Rate and Module-4 reputation signals (§5.1). 30-day cooldown per category.
-- **Tier — badge LIVE, progression NOT built.** The Tier badge (§5.4) shows the current `Tier_level` (ranking-only). **How tier advances is not implemented or decided** — `Tier_level` is set at onboarding (≥1) and used only for match ranking (§1.5/§1.7). Do **not** describe a "tier progression journey"; there is none today.
+- **Tier — badge LIVE; Tier1→Tier2 progression LIVE via verification; Tier3/4 NOT built.** The Tier badge (§5.4) shows the SP `ProviderTier` (ranking-only; legacy `Tier_level` only for unmigrated fallback). **Progression as implemented (§1A.8):** `Tier1` is the default; server-controlled verification (automatic first-submission verification or admin approval) grants `Tier2` and never downgrades; `Tier3`/`Tier4` have **no writer** and remain reserved for authorised evaluation. Do **not** describe any provider-controlled tier journey; there is none.
 
 ### 11.5 Why a zero-data SP doesn't look broken on first login
 
@@ -714,6 +969,7 @@ This is **frontend defence-in-depth only**. Equivalent backend URL validation is
 - **Critical:** provider/client actor separation; self-dealing prevention; self-review prevention; Trust Score manipulation prevention.
 - **High:** provider-only controller role enforcement; negative add-on validation; milestone amount positivity and milestone-total validation; sensitive-value masking bypass; vulnerable NuGet dependencies.
 - **Medium:** milestone-to-engagement referential validation; task-assignee validation; internal `StoragePath` exposure; backend URL-scheme validation.
+- **Split follow-ups (2026-07-29, §1A — operational, not security regressions):** production migration sweep + verification execution; replica-set transaction test execution (added, locally Docker-skipped); Phase-6 embedded-field deprecation; Creator-side designer-card repointing. The data split resolves none of the Critical/High/Medium items above and none of them invalidates the split.
 
 Until an authorized backend remediation implements and verifies these controls, do not deploy SP Leads, Workroom, reviews, Trust Score, or financial workflows to production. Client-side hiding, disabled buttons, redirects, ownership comparisons, filtering, or warnings do not resolve these server-side vulnerabilities.
 
@@ -788,6 +1044,8 @@ The repo's **root `.gitignore` is a binary / non-UTF8 file**, which can make the
 ---
 
 ## Changelog
+
+**2026-07-29 — Service Provider data-model split implemented (working tree, UNCOMMITTED, pending review; doc reconciled).** Added §1A (Service Provider Data Ownership Architecture): three SP-only root collections — `ProfessionalProfiles` (professional presentation data + `ProfileVersion` + `EditorDraft`), `UserCredentials` (one root document per credential, stable-GUID ids, server-controlled `Draft → PendingReview → Verified / Rejected → ResubmissionRequired` lifecycle, derived `Expired`, `ApplicableRoles=[ServiceProvider]`), and `ServiceProviderProfiles` (verification, `ProviderTier`, categories/pricing, portfolio, trust, capacity, financial settings) — joined by unique `UserId`, no back-references. The embedded `ApplicationUser.ServiceProviderProfile` is now a **temporary read-only migration fallback** (embedded-write freeze test-asserted). Four-step editor: opening writes nothing; step saves write only `EditorDraft`; final submit is one MongoDB transaction across the three collections (version-conditional publish; gated ordered-write fallback with the `ProfileVersion` increment as commit point). `SpMatchingService` now queries indexed `ServiceProviderProfiles` with `ProviderTier >= Tier2` — fixing the previously unsatisfiable `Tier_level >= 2` filter — and no longer reads `Trust_score`. Dual-read aggregate reader preserves the existing DTO contract per user; idempotent checksum-verified migration (migrate-on-write + sweep) preserves stable ids, review status, draft, and `ProfileVersion`; physical files not moved; MongoDB stores no binary/Base64 media. **CreatorProfile, EntrepreneurProfile, and InvestorProfile are unchanged; other-role adoption requires a separate approved migration.** Sections updated: header, §0, §1.3/§1.5/§1.6/§1.7 (legacy-marked), §1A (new), §4/§4.1/§4.3, §5.4, §6.7, §8.0/§8.0.1/§8 dependencies, §11.4, §15.2. Verification (local): focused split tests **18 passed**; full backend **622 passed / 0 failed / 60 skipped**; Release build **0 errors**; replica-set transaction tests **3 added, locally skipped** (Docker unavailable — not runtime-verified locally). Production migration sweep, Phase-6 deprecation, and the frontend Profile View/Edit route split + wizard remain outstanding; the SP portal remains **⛔ NOT RELEASE-READY** (§15.2).
 
 **2026-07-28 — frontend safety containment and SP regression coverage shipped.** Commit `3a19c1e` on `dev-hafiz` (pushed after `fd38914`); frontend-only, with **0 backend, API-contract, dependency, lockfile, commission-rule, Trust, payment-lifecycle, or review-behavior changes**. Added the shared unsaved-change guard across Profile/portfolio, Catalog listing/package, Proposal, and Financial Settings; HTTP(S)-only validation and safe external-link attributes; availability pending/success/failure/restoration/retry feedback; non-competing Earnings parent/child selection; and Client Brief terminology cleanup. Proposal earnings continue to display the API-provided fixed 12% preview without frontend recomputation. Payment, file-security, and contract-consent mechanisms remain explicitly STUB.
 

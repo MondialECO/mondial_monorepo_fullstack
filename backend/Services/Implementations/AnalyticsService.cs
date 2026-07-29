@@ -14,6 +14,7 @@ public class AnalyticsService(
     IClientRelationshipCalculator relationships,
     IWorkroomService workroom,
     ILeadsService leads,
+    IServiceProviderProfileReader profileReader,
     UserManager<ApplicationUser> users) : IAnalyticsService
 {
     public const string CustomServiceLabel = "Custom/Unattributed";
@@ -33,7 +34,10 @@ public class AnalyticsService(
         if (user is null)
             return ServiceProviderResult<ProviderDashboardResponse>.NotFound("Provider not found.");
 
-        var profile = user.ServiceProviderProfile ?? new ServiceProviderProfile { ProviderId = providerId };
+        // Dual-read: split-collection composite when migrated, embedded otherwise.
+        var composite = await profileReader.GetCompositeForUserAsync(user);
+        var profile = composite.View;
+        var tierLevel = composite.TierLevel;
         var now = DateTime.UtcNow;
         var thirtyDaysAgo = now.AddDays(-30);
         var today = now.Date;
@@ -84,8 +88,8 @@ public class AnalyticsService(
                 Initials = Initials(user.Name),
                 ImagePath = string.IsNullOrWhiteSpace(user.ImagePath) ? null : user.ImagePath,
                 VerificationStatus = profile.VerificationStatus.ToString(),
-                TierLevel = Math.Max(1, user.Tier_level),
-                TierLabel = $"Tier {Math.Max(1, user.Tier_level)}",
+                TierLevel = Math.Max(1, tierLevel),
+                TierLabel = $"Tier {Math.Max(1, tierLevel)}",
                 AvailableNow = profile.NewOrderAvailability,
             },
             Metrics = new ProviderDashboardMetricsResponse
@@ -146,7 +150,8 @@ public class AnalyticsService(
         var user = await users.FindByIdAsync(providerId);
         if (user is null)
             return ServiceProviderResult<AnalyticsDashboardResponse>.NotFound("Provider not found.");
-        var profile = user.ServiceProviderProfile ?? new ServiceProviderProfile { ProviderId = providerId };
+        var analyticsComposite = await profileReader.GetCompositeForUserAsync(user);
+        var profile = analyticsComposite.View;
         var historyStartedAt = profile.VerifiedAt;
 
         var currency = NormalizeCurrency(query.Currency);
@@ -235,7 +240,7 @@ public class AnalyticsService(
                 OnTimeRate = NullableMetric(ToDecimal(currentOnTime), ToDecimal(previousOnTime), "percent"),
             },
             Proposals = BuildProposalAnalytics(proposals, currentProposals, previousProposals, period, currency),
-            Profile = BuildProfileAnalytics(profile, user.Tier_level, listings.Count(x => x.Status == CatalogStatus.Published)),
+            Profile = BuildProfileAnalytics(profile, analyticsComposite.TierLevel, listings.Count(x => x.Status == CatalogStatus.Published)),
             Revenue = BuildRevenueAnalytics(
                 currentRevenue, previousRevenue, financialValue, engagementById,
                 proposalById, listingById, briefById, currency),

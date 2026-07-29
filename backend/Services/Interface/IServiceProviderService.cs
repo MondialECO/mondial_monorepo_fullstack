@@ -8,6 +8,7 @@ public enum ServiceProviderOutcome
     Ok,
     NotFound,
     Conflict,
+    Invalid,
 }
 
 /// <summary>
@@ -30,6 +31,9 @@ public sealed class ServiceProviderResult<T>
 
     public static ServiceProviderResult<T> Conflict(string message) =>
         new() { Outcome = ServiceProviderOutcome.Conflict, Message = message };
+
+    public static ServiceProviderResult<T> Invalid(string message) =>
+        new() { Outcome = ServiceProviderOutcome.Invalid, Message = message };
 }
 
 /// <summary>

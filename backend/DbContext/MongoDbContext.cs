@@ -21,6 +21,7 @@ namespace WebApp.DbContext
             EnsureLeadsIndexes();
             EnsureWorkroomIndexes();
             EnsureAnalyticsIndexes();
+            EnsureProfileSplitIndexes();
         }
 
         public MongoDbContext(IMongoDatabase database)
@@ -35,6 +36,7 @@ namespace WebApp.DbContext
             EnsureLeadsIndexes();
             EnsureWorkroomIndexes();
             EnsureAnalyticsIndexes();
+            EnsureProfileSplitIndexes();
         }
 
         // Smart Matchmaking outbox indexes: Status (consumer polling), CompanyId
@@ -223,6 +225,14 @@ namespace WebApp.DbContext
         }
 
         public virtual IMongoCollection<ApplicationUser> ApplicationUsers => _database.GetCollection<ApplicationUser>("ApplicationUsers");
+
+        // ---- Service Provider data split (approved SP-only migration) ----
+        // Three root collections joined by unique UserId. Initially populated and
+        // consumed by Service Providers only; Creator/Entrepreneur/Investor keep
+        // their embedded models until a separately approved migration.
+        public virtual IMongoCollection<ProfessionalProfileRecord> ProfessionalProfiles => _database.GetCollection<ProfessionalProfileRecord>("ProfessionalProfiles");
+        public virtual IMongoCollection<UserCredentialRecord> UserCredentials => _database.GetCollection<UserCredentialRecord>("UserCredentials");
+        public virtual IMongoCollection<ServiceProviderProfileRecord> ServiceProviderProfiles => _database.GetCollection<ServiceProviderProfileRecord>("ServiceProviderProfiles");
 
         // Creator journey collection (Phases 2–6 source of truth)
         public virtual IMongoCollection<CreatorJourney> CreatorJourneys => _database.GetCollection<CreatorJourney>("CreatorJourneys");
@@ -439,6 +449,69 @@ namespace WebApp.DbContext
             catch
             {
                 // Best-effort startup index creation, matching Modules 2–4.
+            }
+        }
+
+        // Service Provider data-split indexes. Slug / Skills / Industries indexes
+        // are deliberately deferred until a real consumer queries those fields.
+        private void EnsureProfileSplitIndexes()
+        {
+            try
+            {
+                ProfessionalProfiles.Indexes.CreateMany(new[]
+                {
+                    new CreateIndexModel<ProfessionalProfileRecord>(
+                        Builders<ProfessionalProfileRecord>.IndexKeys.Ascending(x => x.UserId),
+                        new CreateIndexOptions { Unique = true, Background = true }),
+                    new CreateIndexModel<ProfessionalProfileRecord>(
+                        Builders<ProfessionalProfileRecord>.IndexKeys.Descending(x => x.UpdatedAt),
+                        new CreateIndexOptions { Background = true }),
+                });
+
+                UserCredentials.Indexes.CreateMany(new[]
+                {
+                    new CreateIndexModel<UserCredentialRecord>(
+                        Builders<UserCredentialRecord>.IndexKeys.Ascending(x => x.UserId),
+                        new CreateIndexOptions { Background = true }),
+                    // Review queue: pending credentials ordered by submission time.
+                    new CreateIndexModel<UserCredentialRecord>(
+                        Builders<UserCredentialRecord>.IndexKeys.Ascending(x => x.Status).Ascending(x => x.SubmittedAt),
+                        new CreateIndexOptions { Background = true }),
+                    new CreateIndexModel<UserCredentialRecord>(
+                        Builders<UserCredentialRecord>.IndexKeys.Ascending(x => x.ExpiresAt),
+                        new CreateIndexOptions { Background = true, Sparse = true }),
+                });
+
+                ServiceProviderProfiles.Indexes.CreateMany(new[]
+                {
+                    new CreateIndexModel<ServiceProviderProfileRecord>(
+                        Builders<ServiceProviderProfileRecord>.IndexKeys.Ascending(x => x.UserId),
+                        new CreateIndexOptions { Unique = true, Background = true }),
+                    new CreateIndexModel<ServiceProviderProfileRecord>(
+                        Builders<ServiceProviderProfileRecord>.IndexKeys.Ascending(x => x.ProviderId),
+                        new CreateIndexOptions { Background = true }),
+                    // Admin verification queue: replaces the legacy all-users scan.
+                    new CreateIndexModel<ServiceProviderProfileRecord>(
+                        Builders<ServiceProviderProfileRecord>.IndexKeys.Ascending(x => x.VerificationStatus).Ascending(x => x.VerificationSubmittedAt),
+                        new CreateIndexOptions { Background = true }),
+                    new CreateIndexModel<ServiceProviderProfileRecord>(
+                        Builders<ServiceProviderProfileRecord>.IndexKeys.Ascending(x => x.ServiceCategories),
+                        new CreateIndexOptions { Background = true }),
+                    new CreateIndexModel<ServiceProviderProfileRecord>(
+                        Builders<ServiceProviderProfileRecord>.IndexKeys.Ascending(x => x.NewOrderAvailability),
+                        new CreateIndexOptions { Background = true }),
+                    // SP matching filters on tier (>= Tier2) after cutover.
+                    new CreateIndexModel<ServiceProviderProfileRecord>(
+                        Builders<ServiceProviderProfileRecord>.IndexKeys.Ascending(x => x.ProviderTier),
+                        new CreateIndexOptions { Background = true }),
+                    new CreateIndexModel<ServiceProviderProfileRecord>(
+                        Builders<ServiceProviderProfileRecord>.IndexKeys.Descending(x => x.UpdatedAt),
+                        new CreateIndexOptions { Background = true }),
+                });
+            }
+            catch
+            {
+                // Best-effort; never block or fail context construction.
             }
         }
 

@@ -27,13 +27,19 @@ public sealed class WorkroomService : IWorkroomService
     private readonly INotificationService _notifications;
     private readonly ILogger<WorkroomService> _logger;
 
+    private readonly IServiceProviderProfileStore _spStore;
+    private readonly WebApp.Services.Migrations.IServiceProviderProfileSplitMigration _migrator;
+
     public WorkroomService(MongoDbContext db, IMongoClient mongo, IPaymentGatewayService gateway,
         IFileSecurityScanner scanner, SaveFile files, UserManager<ApplicationUser> users,
         IServiceProviderService providers, IClientRelationshipCalculator relationships,
+        IServiceProviderProfileStore spStore,
+        WebApp.Services.Migrations.IServiceProviderProfileSplitMigration migrator,
         INotificationService notifications, ILogger<WorkroomService> logger)
     {
         _db = db; _mongo = mongo; _gateway = gateway; _scanner = scanner; _files = files;
         _users = users; _providers = providers; _relationships = relationships;
+        _spStore = spStore; _migrator = migrator;
         _notifications = notifications; _logger = logger;
     }
 
@@ -574,7 +580,7 @@ public sealed class WorkroomService : IWorkroomService
             ProtectedEscrow=milestones.Where(x => x.EscrowStatus == WorkroomEscrowStatus.Funded && x.MilestoneStatus != WorkroomMilestoneStatus.Approved && x.MilestoneStatus != WorkroomMilestoneStatus.Paid).Sum(x => x.Amount),
             GrossEarnings=releasedTransactions.Sum(x => x.GrossAmount), CommissionPaid=releasedTransactions.Sum(x => x.CommissionAmount),
             NetEarnings=releasedTransactions.Sum(x => x.NetAmount), AvailableCurrencies=availableCurrencies,
-            Transactions=tx, Payouts=payouts, Invoices=invoices, Settings=user?.ServiceProviderProfile?.FinancialSettings ?? new(),
+            Transactions=tx, Payouts=payouts, Invoices=invoices, Settings=await GetFinancialSettingsAsync(providerId, user),
         });
     }
 
@@ -598,25 +604,32 @@ public sealed class WorkroomService : IWorkroomService
     {
         var user=await _users.FindByIdAsync(providerId); if (user is null) return ServiceProviderResult<ProviderFinancialSettings>.NotFound("Provider not found.");
         if (!Enum.TryParse<PayoutRail>(r.Rail, true, out var rail)) return ServiceProviderResult<ProviderFinancialSettings>.Conflict("Invalid payout rail.");
-        var settings=user.ServiceProviderProfile.FinancialSettings ??= new();
+        var (_, record)=await _migrator.EnsureMigratedAsync(user);
+        var settings=record.FinancialSettings ??= new();
         var method=new MaskedPayoutMethod { Rail=rail, DisplayName=r.DisplayName.Trim(), MaskedDescriptor=Mask(r.MaskedDescriptor), Verified=true };
-        settings.PayoutMethods.Add(method); settings.DefaultPayoutMethodId ??= method.Id; await _users.UpdateAsync(user);
+        settings.PayoutMethods.Add(method); settings.DefaultPayoutMethodId ??= method.Id;
+        record.UpdatedAt=DateTime.UtcNow;
+        if (!await _spStore.UpsertAsync(record)) return ServiceProviderResult<ProviderFinancialSettings>.Conflict("The payout method could not be saved.");
         return ServiceProviderResult<ProviderFinancialSettings>.Ok(settings, "STUB payout method verified and saved.");
     }
 
     public async Task<ServiceProviderResult<ProviderFinancialSettings>> SetDefaultPayoutMethodAsync(string providerId, string payoutMethodId)
     {
         var user=await _users.FindByIdAsync(providerId); if (user is null) return ServiceProviderResult<ProviderFinancialSettings>.NotFound("Provider not found.");
-        var settings=user.ServiceProviderProfile.FinancialSettings ??= new();
+        var (_, record)=await _migrator.EnsureMigratedAsync(user);
+        var settings=record.FinancialSettings ??= new();
         if (!settings.PayoutMethods.Any(x => x.Id == payoutMethodId && x.Verified)) return ServiceProviderResult<ProviderFinancialSettings>.NotFound("Verified payout method not found.");
-        settings.DefaultPayoutMethodId=payoutMethodId; await _users.UpdateAsync(user);
+        settings.DefaultPayoutMethodId=payoutMethodId;
+        record.UpdatedAt=DateTime.UtcNow;
+        if (!await _spStore.UpsertAsync(record)) return ServiceProviderResult<ProviderFinancialSettings>.Conflict("The default payout method could not be saved.");
         return ServiceProviderResult<ProviderFinancialSettings>.Ok(settings, "Default payout method updated for the payment sandbox.");
     }
 
     public async Task<ServiceProviderResult<ProviderFinancialSettings>> RemovePayoutMethodAsync(string providerId, string payoutMethodId)
     {
         var user=await _users.FindByIdAsync(providerId); if (user is null) return ServiceProviderResult<ProviderFinancialSettings>.NotFound("Provider not found.");
-        var settings=user.ServiceProviderProfile.FinancialSettings ??= new();
+        var (_, record)=await _migrator.EnsureMigratedAsync(user);
+        var settings=record.FinancialSettings ??= new();
         var method=settings.PayoutMethods.FirstOrDefault(x => x.Id == payoutMethodId);
         if (method is null) return ServiceProviderResult<ProviderFinancialSettings>.NotFound("Payout method not found.");
         var activePayout=await _db.PayoutRequests.Find(x => x.ProviderId == providerId && x.PayoutMethodId == payoutMethodId &&
@@ -624,22 +637,35 @@ public sealed class WorkroomService : IWorkroomService
         if (activePayout) return ServiceProviderResult<ProviderFinancialSettings>.Conflict("This payout method is attached to an active payout and cannot be removed.");
         settings.PayoutMethods.Remove(method);
         if (settings.DefaultPayoutMethodId == payoutMethodId) settings.DefaultPayoutMethodId=settings.PayoutMethods.FirstOrDefault(x => x.Verified)?.Id;
-        await _users.UpdateAsync(user);
+        record.UpdatedAt=DateTime.UtcNow;
+        if (!await _spStore.UpsertAsync(record)) return ServiceProviderResult<ProviderFinancialSettings>.Conflict("The payout method could not be removed.");
         return ServiceProviderResult<ProviderFinancialSettings>.Ok(settings, "Payout method removed.");
     }
 
     public async Task<ServiceProviderResult<ProviderFinancialSettings>> UpdateTaxSettingsAsync(string providerId, UpdateTaxSettingsRequest r)
     {
         var user=await _users.FindByIdAsync(providerId); if (user is null) return ServiceProviderResult<ProviderFinancialSettings>.NotFound("Provider not found.");
-        var settings=user.ServiceProviderProfile.FinancialSettings ??= new(); settings.Tax=new ProviderTaxSettings
+        var (_, record)=await _migrator.EnsureMigratedAsync(user);
+        var settings=record.FinancialSettings ??= new(); settings.Tax=new ProviderTaxSettings
         { LegalName=r.LegalName.Trim(), CountryCode=r.CountryCode.Trim().ToUpperInvariant(), TaxIdentifierMasked=MaskNullable(r.TaxIdentifierMasked), VatRegistered=r.VatRegistered, VatNumberMasked=MaskNullable(r.VatNumberMasked) };
-        await _users.UpdateAsync(user); return ServiceProviderResult<ProviderFinancialSettings>.Ok(settings, "Tax and VAT invoice settings updated.");
+        record.UpdatedAt=DateTime.UtcNow;
+        if (!await _spStore.UpsertAsync(record)) return ServiceProviderResult<ProviderFinancialSettings>.Conflict("Tax settings could not be saved.");
+        return ServiceProviderResult<ProviderFinancialSettings>.Ok(settings, "Tax and VAT invoice settings updated.");
+    }
+
+    /// <summary>Dual-read financial settings: split record first, embedded fallback.</summary>
+    private async Task<ProviderFinancialSettings> GetFinancialSettingsAsync(string providerId, ApplicationUser? user)
+    {
+        var record=await _spStore.GetByUserIdAsync(providerId);
+        if (record is not null) return record.FinancialSettings ?? new();
+        return user?.ServiceProviderProfile?.FinancialSettings ?? new();
     }
 
     public async Task<ServiceProviderResult<PayoutRequest>> RequestPayoutAsync(string providerId, CreatePayoutRequest r)
     {
         var summary=await GetFinancialSummaryAsync(providerId, r.Currency); if (summary.Value is null) return ServiceProviderResult<PayoutRequest>.Conflict(summary.Message);
-        var user=await _users.FindByIdAsync(providerId); var settings=user?.ServiceProviderProfile?.FinancialSettings;
+        var user=await _users.FindByIdAsync(providerId);
+        var settings=user is null ? null : await GetFinancialSettingsAsync(providerId, user);
         if (settings is null || settings.AccountOnHold) return ServiceProviderResult<PayoutRequest>.Conflict("Account review in progress.");
         var methodId=r.PayoutMethodId ?? settings.DefaultPayoutMethodId; var method=settings.PayoutMethods.FirstOrDefault(x => x.Id == methodId && x.Verified);
         if (method is null) return ServiceProviderResult<PayoutRequest>.Conflict("Payment account not verified.");
@@ -765,7 +791,15 @@ public sealed class WorkroomService : IWorkroomService
     private static WorkroomAuditEvent Audit(string actor,string role,string action,string type,string id,string? before,string? after)=>new(){ActorId=actor,ActorRole=role,Action=action,EntityType=type,EntityId=id,PreviousState=before,NewState=after};
     private Task AuditAsync(string actor,string role,string action,string type,string id,string? before,string? after)=>_db.WorkroomAuditEvents.InsertOneAsync(Audit(actor,role,action,type,id,before,after));
     private async Task Notify(string userId,string title,string body){if(!Guid.TryParse(userId,out var id))return;try{await _notifications.NotifyUser(id,title,body);}catch(Exception ex){_logger.LogWarning(ex,"Module 4 notification failed for {UserId}.",userId);}}
-    private async Task ChangeActiveOrderCount(string providerId,int delta){var user=await _users.FindByIdAsync(providerId);if(user?.ServiceProviderProfile is null)return;user.ServiceProviderProfile.CurrentActiveOrders=Math.Max(0,user.ServiceProviderProfile.CurrentActiveOrders+delta);user.ServiceProviderProfile.UpdatedAt=DateTime.UtcNow;await _users.UpdateAsync(user);}
+    // Targeted $inc on the split record (never a whole-user replace), so the
+    // engagement counter can no longer race profile edits or trust recomputes.
+    private async Task ChangeActiveOrderCount(string providerId,int delta)
+    {
+        var user=await _users.FindByIdAsync(providerId); if(user is null) return;
+        await _migrator.EnsureMigratedAsync(user);
+        if(!await _spStore.IncrementActiveOrdersAsync(providerId,delta))
+            _logger.LogWarning("Active-order counter update was not applied for a provider (delta {Delta}).",delta);
+    }
     private static string NormalizeCurrency(string? currency)=>string.IsNullOrWhiteSpace(currency)?"EUR":currency.Trim().ToUpperInvariant();
     private static string Mask(string value){var clean=value.Trim();if(clean.Contains('*'))return clean;return clean.Length<=4?new string('*',clean.Length):new string('*',clean.Length-4)+clean[^4..];}
     private static string? MaskNullable(string? value)=>string.IsNullOrWhiteSpace(value)?null:Mask(value);

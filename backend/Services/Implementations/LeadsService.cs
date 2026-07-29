@@ -21,12 +21,28 @@ public class LeadsService : ILeadsService
     private readonly ILogger<LeadsService> _logger;
     private readonly IBackgroundJobClient _jobs;
 
+    private readonly IServiceProviderProfileReader _reader;
+
     public LeadsService(MongoDbContext db, UserManager<ApplicationUser> users, ISpMatchingService matching,
-        IResponseRateService responseRates, INotificationService notifications, ILogger<LeadsService> logger,
+        IResponseRateService responseRates, IServiceProviderProfileReader reader,
+        INotificationService notifications, ILogger<LeadsService> logger,
         IBackgroundJobClient jobs)
     {
         _db = db; _users = users; _matching = matching; _responseRates = responseRates;
+        _reader = reader;
         _notifications = notifications; _logger = logger; _jobs = jobs;
+    }
+
+    /// <summary>
+    /// Dual-read hydration for READ paths only: overlays the split-collection
+    /// composite view onto the in-memory user so every downstream gate
+    /// (IsAvailable/CanSurface/MatchScore) sees current data. The user object is
+    /// never persisted on these paths, so the embedded copy on disk stays frozen.
+    /// </summary>
+    private async Task HydrateProviderViewAsync(ApplicationUser? user)
+    {
+        if (user is null) return;
+        user.ServiceProviderProfile = (await _reader.GetCompositeForUserAsync(user)).View;
     }
 
     public async Task<ServiceProviderResult<ClientBriefResponse>> CreateBriefAsync(string clientId, CreateClientBriefRequest r)
@@ -78,6 +94,7 @@ public class LeadsService : ILeadsService
     public async Task<ServiceProviderResult<List<ClientBriefResponse>>> GetInboxAsync(string providerId, LeadQueryRequest q)
     {
         var user = await _users.FindByIdAsync(providerId);
+        await HydrateProviderViewAsync(user);
         var profile = user?.ServiceProviderProfile;
         if (profile is null || profile.VerificationStatus != ServiceProviderVerificationStatus.Verified)
             return ServiceProviderResult<List<ClientBriefResponse>>.Conflict("A verified provider profile is required.");
@@ -124,6 +141,7 @@ public class LeadsService : ILeadsService
         var b = await _db.ClientBriefs.Find(x => x.Id == briefId).FirstOrDefaultAsync();
         if (b is null) return ServiceProviderResult<ClientBriefResponse>.NotFound("Brief not found.");
         var user = await _users.FindByIdAsync(providerId);
+        await HydrateProviderViewAsync(user);
         if (user?.ServiceProviderProfile is null || !CanSurface(user.ServiceProviderProfile, providerId, b))
             return ServiceProviderResult<ClientBriefResponse>.NotFound("Brief not found.");
         var i = await EnsureInteractionAsync(providerId, b);
@@ -141,6 +159,7 @@ public class LeadsService : ILeadsService
         var b = await _db.ClientBriefs.Find(x => x.Id == briefId).FirstOrDefaultAsync();
         if (b is null) return ServiceProviderResult<ClientBriefResponse>.NotFound("Brief not found.");
         var user = await _users.FindByIdAsync(providerId);
+        await HydrateProviderViewAsync(user);
         if (user?.ServiceProviderProfile is null || !CanSurface(user.ServiceProviderProfile, providerId, b))
             return ServiceProviderResult<ClientBriefResponse>.NotFound("Brief not found.");
         var i = await EnsureInteractionAsync(providerId, b);
@@ -267,6 +286,7 @@ public class LeadsService : ILeadsService
         var listing = await _db.ServiceListings.Find(x => x.Id == pkg.ServiceId).FirstOrDefaultAsync();
         if (listing is null) return ServiceProviderResult<PackagePurchaseResponse>.NotFound("Service not found.");
         var provider = await _users.FindByIdAsync(listing.ProviderId); var client = await _users.FindByIdAsync(clientId);
+        await HydrateProviderViewAsync(provider);
         if (provider?.ServiceProviderProfile is null || client is null) return ServiceProviderResult<PackagePurchaseResponse>.Conflict("Provider or client account is unavailable.");
         var selected = pkg.AddOns.Where(a => a.Enabled && r.SelectedAddOnNames.Contains(a.Name, StringComparer.OrdinalIgnoreCase))
             .Select(a => new SelectedAddOnSnapshot { Name = a.Name, Price = a.Price, DeliveryTimeAdjustmentDays = a.DeliveryTimeAdjustmentDays }).ToList();
@@ -371,7 +391,9 @@ public class LeadsService : ILeadsService
             p.DeliveryTimeValue <= 0 || p.Deliverables.Count == 0 || p.IncludedRevisionCount < 0)
             return "Complete the title, cover message, price, delivery duration, deliverables, and revision policy.";
         if (!p.Currency.Equals(brief.Currency, StringComparison.OrdinalIgnoreCase)) return "Proposal currency must match the brief currency.";
-        var user = await _users.FindByIdAsync(providerId); var profile = user?.ServiceProviderProfile;
+        var user = await _users.FindByIdAsync(providerId);
+        await HydrateProviderViewAsync(user);
+        var profile = user?.ServiceProviderProfile;
         if (profile is null || profile.VerificationStatus != ServiceProviderVerificationStatus.Verified || !IsAvailable(profile))
             return "The provider account is not eligible for paid work or is currently at capacity.";
         return null;

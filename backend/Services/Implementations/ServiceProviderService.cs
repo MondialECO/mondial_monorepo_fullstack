@@ -1,38 +1,56 @@
+using System.Text;
 using Microsoft.AspNetCore.Identity;
 using WebApp.Models.DatabaseModels;
 using WebApp.Models.Dtos;
 using WebApp.Services.Audit;
 using WebApp.Services.Interface;
+using WebApp.Services.Migrations;
 
 namespace WebApp.Services.Implementations;
 
 /// <summary>
-/// D-1 Phase 4 — Service Provider Stage-1 service. Reads/writes the embedded
-/// ServiceProviderProfile via UserManager (no separate collection, no repository).
-/// Owner-scoped: the userId is the authenticated principal, never a request field.
-/// Holds all Stage-1 decision logic (normalization, portfolio indexing,
-/// completeness gate and verification state transitions. A complete first
-/// submission is verified immediately; UnderReview is reserved for moderation
-/// after an admin rejection.
+/// Service Provider Stage-1 / Module-1 service on the split collections.
+/// Owner-scoped: userId is the authenticated principal, never a request field.
+///
+/// After cutover this service never writes the embedded
+/// ApplicationUser.ServiceProviderProfile — every write goes to the split
+/// records through the stores (migrate-on-write seeds them from the frozen
+/// embedded copy on first touch). Owner-facing reads also ensure migration so
+/// stable ids stay stable; cross-module reads use the dual-read aggregate
+/// reader instead.
 /// </summary>
 public class ServiceProviderService : IServiceProviderService
 {
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IProfessionalProfileStore _professionalStore;
+    private readonly IServiceProviderProfileStore _spStore;
+    private readonly IUserCredentialStore _credentialStore;
+    private readonly IServiceProviderProfileSplitMigration _migrator;
     private readonly IAuditLogger _audit;
     private readonly INotificationService _notifications;
     private readonly ILogger<ServiceProviderService> _logger;
 
     public ServiceProviderService(
         UserManager<ApplicationUser> userManager,
+        IProfessionalProfileStore professionalStore,
+        IServiceProviderProfileStore spStore,
+        IUserCredentialStore credentialStore,
+        IServiceProviderProfileSplitMigration migrator,
         IAuditLogger audit,
         INotificationService notifications,
         ILogger<ServiceProviderService> logger)
     {
         _userManager = userManager;
+        _professionalStore = professionalStore;
+        _spStore = spStore;
+        _credentialStore = credentialStore;
+        _migrator = migrator;
         _audit = audit;
         _notifications = notifications;
         _logger = logger;
     }
+
+    // ---------------- Profile ----------------
 
     public async Task<ServiceProviderResult<ServiceProviderProfileResponse>> GetProfileAsync(string userId)
     {
@@ -40,8 +58,17 @@ public class ServiceProviderService : IServiceProviderService
         if (user is null)
             return ServiceProviderResult<ServiceProviderProfileResponse>.NotFound("Service provider profile not found.");
 
-        var profile = EnsureProfile(user);
-        return ServiceProviderResult<ServiceProviderProfileResponse>.Ok(profile.ToResponse());
+        // Owner-scoped read migrates on first touch so portfolio/credential ids
+        // are minted once and stay stable for every later addressed operation.
+        var (professional, sp) = await _migrator.EnsureMigratedAsync(user);
+
+        if (EnsurePortfolioItemIds(sp.PortfolioItems))
+        {
+            sp.UpdatedAt = DateTime.UtcNow;
+            await _spStore.UpsertAsync(sp);
+        }
+
+        return ServiceProviderResult<ServiceProviderProfileResponse>.Ok(await ComposeAsync(professional, sp, userId));
     }
 
     public async Task<ServiceProviderResult<ServiceProviderProfileResponse>> UpsertProfileAsync(
@@ -51,24 +78,61 @@ public class ServiceProviderService : IServiceProviderService
         if (user is null)
             return ServiceProviderResult<ServiceProviderProfileResponse>.NotFound("Service provider profile not found.");
 
-        var profile = EnsureProfile(user);
-        profile.ProviderId ??= user.Id.ToString();
-        profile.Skills = NormalizeStrings(request.Skills);
-        profile.ServiceCategories = NormalizeCategories(request.ServiceCategories);
+        var (professional, sp) = await _migrator.EnsureMigratedAsync(user);
+        var now = DateTime.UtcNow;
 
-        // ---- Stage 2: Provider Profile (D-2 Phase 4) ----
-        profile.Headline = NullIfBlank(request.Headline);
-        profile.Bio = NullIfBlank(request.Bio);
-        profile.Industries = NormalizeStrings(request.Industries);
-        profile.Languages = NormalizeStrings(request.Languages);
-        profile.PricingModels = NormalizePricingModels(request.PricingModels);
+        professional.Headline = NullIfBlank(request.Headline) ?? "";
+        professional.Bio = NullIfBlank(request.Bio) ?? "";
+        professional.Skills = NormalizeStrings(request.Skills);
+        professional.Industries = NormalizeStrings(request.Industries);
 
-        MaybeAdvancePhase(profile);
-        Touch(profile);
+        if (request.ProfessionalOverview is not null)
+        {
+            if (request.ProfessionalOverview.SchemaVersion != ProfessionalOverviewSanitizer.SchemaVersion)
+                return ServiceProviderResult<ServiceProviderProfileResponse>.Invalid("Professional Overview schema version is not supported.");
+            if (!ProfessionalOverviewSanitizer.TrySanitize(
+                    request.ProfessionalOverview.Document, out var sanitizedDoc, out var professionalOverviewError))
+                return ServiceProviderResult<ServiceProviderProfileResponse>.Invalid(professionalOverviewError);
+            professional.ProfessionalOverview = new ProfessionalOverviewContent
+            {
+                SchemaVersion = ProfessionalOverviewSanitizer.SchemaVersion,
+                Document = MongoDB.Bson.BsonDocument.Parse(sanitizedDoc!.Value.GetRawText()),
+                PlainText = ExtractPlainText(sanitizedDoc!.Value),
+            };
+        }
 
-        await _userManager.UpdateAsync(user);
-        return ServiceProviderResult<ServiceProviderProfileResponse>.Ok(profile.ToResponse(), "Profile saved.");
+        // Legacy request carries language NAMES only. Preserve existing
+        // proficiencies for names that survive; new names default Conversational.
+        var names = NormalizeStrings(request.Languages);
+        professional.LanguageProficiencies = names.Select(name =>
+            professional.LanguageProficiencies.FirstOrDefault(
+                l => string.Equals(l.Language, name, StringComparison.OrdinalIgnoreCase))
+            ?? new ProfessionalLanguage { Language = name, Proficiency = LanguageProficiency.Conversational })
+            .ToList();
+        professional.Languages = names;
+
+        sp.ProviderId = string.IsNullOrWhiteSpace(sp.ProviderId) ? userId : sp.ProviderId;
+        sp.ServiceCategories = NormalizeCategories(request.ServiceCategories);
+        sp.PricingModels = NormalizePricingModels(request.PricingModels);
+
+        // Completion spans both records; phase advance stays on the SP record.
+        var view = SpProfileSplitMapper.ToCompositeView(professional, sp, Array.Empty<UserCredentialRecord>());
+        if (IsProfileComplete(view) && sp.CurrentPhase < 2) sp.CurrentPhase = 2;
+
+        // Any published-profile write bumps the version exactly once, so an open
+        // editor draft correctly conflicts instead of silently overwriting this.
+        professional.ProfileVersion += 1;
+        professional.UpdatedAt = now;
+        sp.UpdatedAt = now;
+
+        if (!await _spStore.UpsertAsync(sp) || !await _professionalStore.UpsertAsync(professional))
+            return ServiceProviderResult<ServiceProviderProfileResponse>.Conflict("Your profile could not be saved. Try again.");
+
+        return ServiceProviderResult<ServiceProviderProfileResponse>.Ok(
+            await ComposeAsync(professional, sp, userId), "Profile saved.");
     }
+
+    // ---------------- Portfolio ----------------
 
     public async Task<ServiceProviderResult<ServiceProviderProfileResponse>> AddPortfolioItemAsync(
         string userId, AddPortfolioItemRequest request)
@@ -77,19 +141,24 @@ public class ServiceProviderService : IServiceProviderService
         if (user is null)
             return ServiceProviderResult<ServiceProviderProfileResponse>.NotFound("Service provider profile not found.");
 
-        var profile = EnsureProfile(user);
-        profile.PortfolioItems.Add(new PortfolioItem
+        var (professional, sp) = await _migrator.EnsureMigratedAsync(user);
+        EnsurePortfolioItemIds(sp.PortfolioItems);
+        sp.PortfolioItems.Add(new PortfolioItem
         {
             Title = request.Title?.Trim() ?? "",
             Description = request.Description?.Trim(),
             Url = NullIfBlank(request.Url),
             ImagePath = NullIfBlank(request.ImagePath),
+            ImageCaption = NullIfBlank(request.ImageCaption),
             AddedAt = DateTime.UtcNow,
         });
-        Touch(profile);
+        sp.UpdatedAt = DateTime.UtcNow;
 
-        await _userManager.UpdateAsync(user);
-        return ServiceProviderResult<ServiceProviderProfileResponse>.Ok(profile.ToResponse(), "Portfolio item added.");
+        if (!await _spStore.UpsertAsync(sp))
+            return ServiceProviderResult<ServiceProviderProfileResponse>.Conflict("The portfolio item could not be saved.");
+
+        return ServiceProviderResult<ServiceProviderProfileResponse>.Ok(
+            await ComposeAsync(professional, sp, userId), "Portfolio item added.");
     }
 
     public async Task<ServiceProviderResult<ServiceProviderProfileResponse>> UpdatePortfolioItemAsync(
@@ -99,20 +168,26 @@ public class ServiceProviderService : IServiceProviderService
         if (user is null)
             return ServiceProviderResult<ServiceProviderProfileResponse>.NotFound("Service provider profile not found.");
 
-        var profile = EnsureProfile(user);
-        if (request.Index < 0 || request.Index >= profile.PortfolioItems.Count)
+        var (professional, sp) = await _migrator.EnsureMigratedAsync(user);
+        EnsurePortfolioItemIds(sp.PortfolioItems);
+        if (request.Index < 0 || request.Index >= sp.PortfolioItems.Count)
             return ServiceProviderResult<ServiceProviderProfileResponse>.NotFound("Portfolio item not found.");
 
-        // Mutate in place so AddedAt is preserved across the update.
-        var item = profile.PortfolioItems[request.Index];
+        // Mutate in place so AddedAt and the stable Id are preserved.
+        var item = sp.PortfolioItems[request.Index];
         item.Title = request.Title?.Trim() ?? "";
         item.Description = request.Description?.Trim();
         item.Url = NullIfBlank(request.Url);
-        item.ImagePath = NullIfBlank(request.ImagePath);
-        Touch(profile);
+        // Null means text-only update: preserve the existing image reference.
+        if (request.ImagePath is not null) item.ImagePath = NullIfBlank(request.ImagePath);
+        if (request.ImageCaption is not null) item.ImageCaption = NullIfBlank(request.ImageCaption);
+        sp.UpdatedAt = DateTime.UtcNow;
 
-        await _userManager.UpdateAsync(user);
-        return ServiceProviderResult<ServiceProviderProfileResponse>.Ok(profile.ToResponse(), "Portfolio item updated.");
+        if (!await _spStore.UpsertAsync(sp))
+            return ServiceProviderResult<ServiceProviderProfileResponse>.Conflict("The portfolio item could not be saved.");
+
+        return ServiceProviderResult<ServiceProviderProfileResponse>.Ok(
+            await ComposeAsync(professional, sp, userId), "Portfolio item updated.");
     }
 
     public async Task<ServiceProviderResult<ServiceProviderProfileResponse>> DeletePortfolioItemAsync(
@@ -122,16 +197,23 @@ public class ServiceProviderService : IServiceProviderService
         if (user is null)
             return ServiceProviderResult<ServiceProviderProfileResponse>.NotFound("Service provider profile not found.");
 
-        var profile = EnsureProfile(user);
-        if (index < 0 || index >= profile.PortfolioItems.Count)
+        var (professional, sp) = await _migrator.EnsureMigratedAsync(user);
+        EnsurePortfolioItemIds(sp.PortfolioItems);
+        if (index < 0 || index >= sp.PortfolioItems.Count)
             return ServiceProviderResult<ServiceProviderProfileResponse>.NotFound("Portfolio item not found.");
 
-        profile.PortfolioItems.RemoveAt(index);
-        Touch(profile);
+        sp.PortfolioItems.RemoveAt(index);
+        sp.UpdatedAt = DateTime.UtcNow;
 
-        await _userManager.UpdateAsync(user);
-        return ServiceProviderResult<ServiceProviderProfileResponse>.Ok(profile.ToResponse(), "Portfolio item deleted.");
+        if (!await _spStore.UpsertAsync(sp))
+            return ServiceProviderResult<ServiceProviderProfileResponse>.Conflict("The portfolio item could not be removed.");
+
+        // Media cleanup is handled by IServiceProviderMediaService.RemovePortfolioImageAsync
+        return ServiceProviderResult<ServiceProviderProfileResponse>.Ok(
+            await ComposeAsync(professional, sp, userId), "Portfolio item deleted.");
     }
+
+    // ---------------- Verification ----------------
 
     public async Task<ServiceProviderResult<ServiceProviderVerificationResponse>> SubmitVerificationAsync(
         string userId, SubmitVerificationRequest request)
@@ -140,81 +222,103 @@ public class ServiceProviderService : IServiceProviderService
         if (user is null)
             return ServiceProviderResult<ServiceProviderVerificationResponse>.NotFound("Service provider profile not found.");
 
-        var profile = EnsureProfile(user);
+        var (professional, sp) = await _migrator.EnsureMigratedAsync(user);
 
         // A first submission auto-verifies. A previously-Rejected provider may
         // resubmit only into the moderation queue so an admin suspension cannot
         // be silently undone. UnderReview/Verified cannot submit again.
-        if (profile.VerificationStatus is not (ServiceProviderVerificationStatus.Pending
+        if (sp.VerificationStatus is not (ServiceProviderVerificationStatus.Pending
             or ServiceProviderVerificationStatus.Rejected))
             return ServiceProviderResult<ServiceProviderVerificationResponse>.Conflict(
                 "Verification has already been submitted.");
 
-        // Enforce the full Stage-2 completeness predicate against the persisted
-        // profile; a stateless request validator cannot inspect these fields.
-        if (!IsProfileComplete(profile))
+        var completenessView = SpProfileSplitMapper.ToCompositeView(professional, sp, Array.Empty<UserCredentialRecord>());
+        if (!IsProfileComplete(completenessView))
             return ServiceProviderResult<ServiceProviderVerificationResponse>.Conflict(
                 "Complete every required profile field before submitting for verification.");
 
         var now = DateTime.UtcNow;
-        var isInitialSubmission = profile.VerificationStatus == ServiceProviderVerificationStatus.Pending;
+        var isInitialSubmission = sp.VerificationStatus == ServiceProviderVerificationStatus.Pending;
 
-        profile.VerificationSubmittedAt = now;
-        profile.RejectionReason = null;
+        sp.VerificationSubmittedAt = now;
+        sp.RejectionReason = null;
 
         if (isInitialSubmission)
         {
-            profile.VerificationStatus = ServiceProviderVerificationStatus.Verified;
-            profile.VerifiedAt = now;
-            RecalculateTrustScore(profile);
+            sp.VerificationStatus = ServiceProviderVerificationStatus.Verified;
+            sp.VerifiedAt = now;
+            // Verification approval is the ONLY path that may grant Tier 2; it
+            // never downgrades a higher, separately-earned tier.
+            if (sp.ProviderTier < ProviderTier.Tier2) sp.ProviderTier = ProviderTier.Tier2;
+            RecalculateTrustScore(sp);
         }
         else
         {
             // Rejected→UnderReview is intentionally the sole moderation path.
-            profile.VerificationStatus = ServiceProviderVerificationStatus.UnderReview;
-            profile.VerifiedAt = null;
+            sp.VerificationStatus = ServiceProviderVerificationStatus.UnderReview;
+            sp.VerifiedAt = null;
         }
 
-        Touch(profile);
-
-        await _userManager.UpdateAsync(user);
+        sp.UpdatedAt = now;
+        if (!await _spStore.UpsertAsync(sp))
+            return ServiceProviderResult<ServiceProviderVerificationResponse>.Conflict(
+                "Verification could not be submitted. Try again.");
 
         _audit.Record("ServiceProviderVerification.Submit", userId, success: true, new
         {
-            skills = profile.Skills.Count,
-            categories = profile.ServiceCategories.Count,
-            portfolioCount = profile.PortfolioItems.Count,
-            resultingStatus = profile.VerificationStatus.ToString(),
+            skills = professional.Skills.Count,
+            categories = sp.ServiceCategories.Count,
+            portfolioCount = sp.PortfolioItems.Count,
+            resultingStatus = sp.VerificationStatus.ToString(),
         });
 
         return ServiceProviderResult<ServiceProviderVerificationResponse>.Ok(
-            profile.ToVerificationResponse(),
+            ToVerification(professional, sp),
             isInitialSubmission ? "Provider profile verified." : "Resubmitted for admin review.");
     }
 
-    public Task<ServiceProviderResult<List<PendingProviderResponse>>> GetPendingVerificationsAsync()
+    public async Task<ServiceProviderResult<List<PendingProviderResponse>>> GetPendingVerificationsAsync()
     {
-        // The profile is embedded on ApplicationUser, so we materialize and filter
-        // in memory: robust against LINQ-to-Mongo translation of the nested enum,
-        // and adequate at the current user scale. A server-side filtered index is
-        // a later optimization, not needed for this surface.
-        var pending = _userManager.Users.ToList()
-            .Where(u => u.ServiceProviderProfile is
+        // Indexed queue from the split collection, plus a legacy sweep for users
+        // not yet migrated (dual-read is per user, never assumed global).
+        var records = await _spStore.GetPendingVerificationsAsync();
+        var byUserId = new Dictionary<string, PendingProviderResponse>(StringComparer.Ordinal);
+
+        foreach (var record in records)
+        {
+            var user = await _userManager.FindByIdAsync(record.UserId);
+            if (user is null) continue;
+            var professional = await _professionalStore.GetByUserIdAsync(record.UserId)
+                ?? SpProfileSplitMapper.ToProfessionalRecord(user);
+            byUserId[record.UserId] = new PendingProviderResponse
             {
-                VerificationStatus: ServiceProviderVerificationStatus.UnderReview
-            })
-            .OrderBy(u => u.ServiceProviderProfile!.VerificationSubmittedAt)
-            .Select(u => new PendingProviderResponse
+                UserId = record.UserId,
+                Name = user.Name,
+                Email = user.Email,
+                Profile = await ComposeAsync(professional, record, record.UserId),
+            };
+        }
+
+        foreach (var user in _userManager.Users.ToList()
+            .Where(u => u.ServiceProviderProfile is { VerificationStatus: ServiceProviderVerificationStatus.UnderReview }))
+        {
+            var id = user.Id.ToString();
+            if (byUserId.ContainsKey(id)) continue; // split record wins
+            if (await _spStore.GetByUserIdAsync(id) is not null) continue; // migrated but no longer pending
+            byUserId[id] = new PendingProviderResponse
             {
-                UserId = u.Id.ToString(),
-                Name = u.Name,
-                Email = u.Email,
-                Profile = u.ServiceProviderProfile!.ToResponse(),
-            })
+                UserId = id,
+                Name = user.Name,
+                Email = user.Email,
+                Profile = user.ServiceProviderProfile!.ToResponse(),
+            };
+        }
+
+        var pending = byUserId.Values
+            .OrderBy(p => p.Profile.VerificationSubmittedAt)
             .ToList();
 
-        return Task.FromResult(
-            ServiceProviderResult<List<PendingProviderResponse>>.Ok(pending, "OK"));
+        return ServiceProviderResult<List<PendingProviderResponse>>.Ok(pending, "OK");
     }
 
     public async Task<ServiceProviderResult<ServiceProviderVerificationResponse>> ApproveVerificationAsync(
@@ -224,27 +328,32 @@ public class ServiceProviderService : IServiceProviderService
         if (user is null)
             return ServiceProviderResult<ServiceProviderVerificationResponse>.NotFound("Service provider profile not found.");
 
-        var profile = EnsureProfile(user);
-        if (profile.VerificationStatus != ServiceProviderVerificationStatus.UnderReview)
+        var (professional, sp) = await _migrator.EnsureMigratedAsync(user);
+        if (sp.VerificationStatus != ServiceProviderVerificationStatus.UnderReview)
             return ServiceProviderResult<ServiceProviderVerificationResponse>.Conflict(
                 "Verification is not awaiting review.");
 
-        profile.VerificationStatus = ServiceProviderVerificationStatus.Verified;
-        profile.VerifiedAt = DateTime.UtcNow;
-        profile.RejectionReason = null;
-        // TrustScore is DERIVED, never hand-set: recompute from the (currently empty)
-        // breakdown so a freshly-verified provider correctly reads as "not enough data"
-        // until a real signal (e.g. a skills test) lands. Module 1: Profile & Trust.
-        RecalculateTrustScore(profile);
-        Touch(profile);
+        sp.VerificationStatus = ServiceProviderVerificationStatus.Verified;
+        sp.VerifiedAt = DateTime.UtcNow;
+        sp.RejectionReason = null;
+        // Approval grants Tier 2 per the approved criteria; Tier 3/4 remain
+        // separate, authorised server-side evaluations and are never set here.
+        if (sp.ProviderTier < ProviderTier.Tier2) sp.ProviderTier = ProviderTier.Tier2;
+        // TrustScore is DERIVED, never hand-set: recompute from the breakdown so a
+        // freshly-verified provider reads "not enough data" until a signal lands.
+        RecalculateTrustScore(sp);
+        sp.UpdatedAt = DateTime.UtcNow;
 
-        await _userManager.UpdateAsync(user);
+        if (!await _spStore.UpsertAsync(sp))
+            return ServiceProviderResult<ServiceProviderVerificationResponse>.Conflict(
+                "Approval could not be saved. Try again.");
 
         _audit.Record("ServiceProviderVerification.Approve", adminUserId, success: true, new
         {
             providerUserId,
-            trustScore = profile.TrustScore,
-            hasEnoughTrustData = profile.HasEnoughTrustData,
+            trustScore = sp.TrustScore,
+            hasEnoughTrustData = sp.HasEnoughTrustData,
+            providerTier = sp.ProviderTier.ToString(),
         });
 
         await NotifyAsync(user.Id,
@@ -252,7 +361,7 @@ public class ServiceProviderService : IServiceProviderService
             "Your service provider profile has been verified. Your Verified Provider Badge is now active.");
 
         return ServiceProviderResult<ServiceProviderVerificationResponse>.Ok(
-            profile.ToVerificationResponse(), "Provider verified.");
+            ToVerification(professional, sp), "Provider verified.");
     }
 
     public async Task<ServiceProviderResult<ServiceProviderVerificationResponse>> RejectVerificationAsync(
@@ -262,31 +371,29 @@ public class ServiceProviderService : IServiceProviderService
         if (user is null)
             return ServiceProviderResult<ServiceProviderVerificationResponse>.NotFound("Service provider profile not found.");
 
-        var profile = EnsureProfile(user);
-        if (profile.VerificationStatus is not (ServiceProviderVerificationStatus.UnderReview
+        var (professional, sp) = await _migrator.EnsureMigratedAsync(user);
+        if (sp.VerificationStatus is not (ServiceProviderVerificationStatus.UnderReview
             or ServiceProviderVerificationStatus.Verified))
             return ServiceProviderResult<ServiceProviderVerificationResponse>.Conflict(
                 "Provider verification is not eligible for rejection.");
 
-        profile.VerificationStatus = ServiceProviderVerificationStatus.Rejected;
-        profile.RejectionReason = reason;
-        profile.VerifiedAt = null;
-        Touch(profile);
+        sp.VerificationStatus = ServiceProviderVerificationStatus.Rejected;
+        sp.RejectionReason = reason;
+        sp.VerifiedAt = null;
+        sp.UpdatedAt = DateTime.UtcNow;
 
-        await _userManager.UpdateAsync(user);
+        if (!await _spStore.UpsertAsync(sp))
+            return ServiceProviderResult<ServiceProviderVerificationResponse>.Conflict(
+                "Rejection could not be saved. Try again.");
 
-        _audit.Record("ServiceProviderVerification.Reject", adminUserId, success: true, new
-        {
-            providerUserId,
-            reason,
-        });
+        _audit.Record("ServiceProviderVerification.Reject", adminUserId, success: true, new { providerUserId, reason });
 
         await NotifyAsync(user.Id,
             "Provider verification needs changes",
             $"Your service provider verification was not approved. Reason: {reason}");
 
         return ServiceProviderResult<ServiceProviderVerificationResponse>.Ok(
-            profile.ToVerificationResponse(), "Provider verification rejected.");
+            ToVerification(professional, sp), "Provider verification rejected.");
     }
 
     // ---------------- Module 1: Trust & Skills Test ----------------
@@ -297,13 +404,14 @@ public class ServiceProviderService : IServiceProviderService
         if (user is null)
             return ServiceProviderResult<TrustBreakdownResponse>.NotFound("Service provider profile not found.");
 
-        var profile = EnsureProfile(user);
-        // Recompute in-memory so the projection always reflects current signals (also
-        // normalizes any legacy hand-set score). Not persisted here — persistence happens
-        // at the mutation points that actually change a signal (approval, skills-test submit).
-        RecalculateTrustScore(profile);
-        var response = profile.ToTrustBreakdownResponse();
-        response.TierLevel = user.Tier_level; // ranking-only badge (see SpMatchingService)
+        var (professional, sp) = await _migrator.EnsureMigratedAsync(user);
+        // Recompute in-memory so the projection always reflects current signals.
+        // Not persisted here — persistence happens at the mutation points.
+        RecalculateTrustScore(sp);
+        var response = SpProfileSplitMapper
+            .ToCompositeView(professional, sp, Array.Empty<UserCredentialRecord>())
+            .ToTrustBreakdownResponse();
+        response.TierLevel = (int)sp.ProviderTier; // SP tier source of truth after cutover
         return ServiceProviderResult<TrustBreakdownResponse>.Ok(response);
     }
 
@@ -313,12 +421,12 @@ public class ServiceProviderService : IServiceProviderService
         if (user is null)
             return ServiceProviderResult<SkillsTestStatusResponse>.NotFound("Service provider profile not found.");
 
-        var profile = EnsureProfile(user);
-        var isVerified = profile.VerificationStatus == ServiceProviderVerificationStatus.Verified;
+        var (_, sp) = await _migrator.EnsureMigratedAsync(user);
+        var isVerified = sp.VerificationStatus == ServiceProviderVerificationStatus.Verified;
 
-        var categories = profile.ServiceCategories.Select(cat =>
+        var categories = sp.ServiceCategories.Select(cat =>
         {
-            var latest = profile.SkillsTestAttempts
+            var latest = sp.SkillsTestAttempts
                 .Where(a => a.Category == cat)
                 .OrderByDescending(a => a.TakenAt)
                 .FirstOrDefault();
@@ -355,21 +463,21 @@ public class ServiceProviderService : IServiceProviderService
         if (user is null)
             return ServiceProviderResult<SkillsTestQuestionsResponse>.NotFound("Service provider profile not found.");
 
-        var profile = EnsureProfile(user);
+        var (_, sp) = await _migrator.EnsureMigratedAsync(user);
 
-        if (profile.VerificationStatus != ServiceProviderVerificationStatus.Verified)
+        if (sp.VerificationStatus != ServiceProviderVerificationStatus.Verified)
             return ServiceProviderResult<SkillsTestQuestionsResponse>.Conflict(
                 "The skills test is available once your provider profile is verified.");
 
         if (!Enum.TryParse<ServiceCategory>(category, ignoreCase: true, out var cat))
             return ServiceProviderResult<SkillsTestQuestionsResponse>.NotFound("Unknown service category.");
 
-        if (!profile.ServiceCategories.Contains(cat))
+        if (!sp.ServiceCategories.Contains(cat))
             return ServiceProviderResult<SkillsTestQuestionsResponse>.Conflict(
                 "You can only take the skills test for one of your own service categories.");
 
         // Cooldown gate.
-        var latest = profile.SkillsTestAttempts
+        var latest = sp.SkillsTestAttempts
             .Where(a => a.Category == cat)
             .OrderByDescending(a => a.TakenAt)
             .FirstOrDefault();
@@ -406,21 +514,21 @@ public class ServiceProviderService : IServiceProviderService
         if (user is null)
             return ServiceProviderResult<SkillsTestResultResponse>.NotFound("Service provider profile not found.");
 
-        var profile = EnsureProfile(user);
+        var (professional, sp) = await _migrator.EnsureMigratedAsync(user);
 
-        if (profile.VerificationStatus != ServiceProviderVerificationStatus.Verified)
+        if (sp.VerificationStatus != ServiceProviderVerificationStatus.Verified)
             return ServiceProviderResult<SkillsTestResultResponse>.Conflict(
                 "The skills test is available once your provider profile is verified.");
 
         if (!Enum.TryParse<ServiceCategory>(request.Category, ignoreCase: true, out var cat))
             return ServiceProviderResult<SkillsTestResultResponse>.NotFound("Unknown service category.");
 
-        if (!profile.ServiceCategories.Contains(cat))
+        if (!sp.ServiceCategories.Contains(cat))
             return ServiceProviderResult<SkillsTestResultResponse>.Conflict(
                 "You can only take the skills test for one of your own service categories.");
 
         // Cooldown gate (authoritative — re-checked at submit, not just at fetch).
-        var latest = profile.SkillsTestAttempts
+        var latest = sp.SkillsTestAttempts
             .Where(a => a.Category == cat)
             .OrderByDescending(a => a.TakenAt)
             .FirstOrDefault();
@@ -432,8 +540,9 @@ public class ServiceProviderService : IServiceProviderService
         var expected = Math.Min(SkillsTestQuestionBank.QuestionsPerAttempt,
             SkillsTestQuestionBank.ForCategory(cat).Count);
 
-        // Grade only valid, distinct questions belonging to this category (first answer wins
-        // per question id; unknown ids are dropped). Correct answers never leave the server.
+        // Grade only valid, distinct questions belonging to this category (first
+        // answer wins per question id; unknown ids are dropped). Correct answers
+        // never leave the server.
         var graded = answers
             .GroupBy(a => a.QuestionId)
             .Select(g => g.First())
@@ -452,7 +561,7 @@ public class ServiceProviderService : IServiceProviderService
         var now = DateTime.UtcNow;
         var nextEligible = now.AddDays(SkillsTestQuestionBank.RetestCooldownDays);
 
-        profile.SkillsTestAttempts.Add(new SkillsTestAttempt
+        sp.SkillsTestAttempts.Add(new SkillsTestAttempt
         {
             Category = cat,
             Score = scorePct,
@@ -461,10 +570,12 @@ public class ServiceProviderService : IServiceProviderService
             NextEligibleRetestAt = nextEligible,
         });
 
-        // Feed the skill-test signal → recompute the derived trust score, then persist.
-        RecalculateTrustScore(profile);
-        Touch(profile);
-        await _userManager.UpdateAsync(user);
+        // Feed the skill-test signal → recompute the derived trust score → persist.
+        RecalculateTrustScore(sp);
+        sp.UpdatedAt = now;
+        if (!await _spStore.UpsertAsync(sp))
+            return ServiceProviderResult<SkillsTestResultResponse>.Conflict(
+                "The attempt could not be saved. Try again.");
 
         _audit.Record("ServiceProviderSkillsTest.Submit", userId, success: true, new
         {
@@ -473,8 +584,10 @@ public class ServiceProviderService : IServiceProviderService
             passed,
         });
 
-        var trust = profile.ToTrustBreakdownResponse();
-        trust.TierLevel = user.Tier_level; // ranking-only badge (see SpMatchingService)
+        var trust = SpProfileSplitMapper
+            .ToCompositeView(professional, sp, Array.Empty<UserCredentialRecord>())
+            .ToTrustBreakdownResponse();
+        trust.TierLevel = (int)sp.ProviderTier;
 
         var result = new SkillsTestResultResponse
         {
@@ -496,12 +609,13 @@ public class ServiceProviderService : IServiceProviderService
     {
         var user = await _userManager.FindByIdAsync(userId);
         if (user is null) return;
-        var profile = EnsureProfile(user);
-        profile.TrustBreakdown.ResponseRate.HasData = responseRate.HasValue;
-        profile.TrustBreakdown.ResponseRate.Value = Math.Clamp(responseRate ?? 0, 0, 100);
-        RecalculateTrustScore(profile);
-        Touch(profile);
-        await _userManager.UpdateAsync(user);
+        var (_, sp) = await _migrator.EnsureMigratedAsync(user);
+        sp.TrustBreakdown.ResponseRate.HasData = responseRate.HasValue;
+        sp.TrustBreakdown.ResponseRate.Value = Math.Clamp(responseRate ?? 0, 0, 100);
+        RecalculateTrustScore(sp);
+        sp.UpdatedAt = DateTime.UtcNow;
+        if (!await _spStore.UpsertAsync(sp))
+            _logger.LogWarning("Response-rate trust signal write was not acknowledged for a provider.");
     }
 
     public async Task UpdateWorkroomTrustSignalsAsync(string userId, double? clientSatisfaction,
@@ -509,21 +623,52 @@ public class ServiceProviderService : IServiceProviderService
     {
         var user = await _userManager.FindByIdAsync(userId);
         if (user is null) return;
-        var profile = EnsureProfile(user);
-        SetSignal(profile.TrustBreakdown.ClientSatisfaction, clientSatisfaction);
-        SetSignal(profile.TrustBreakdown.OnTimeDelivery, onTimeDeliveryRate);
-        SetSignal(profile.TrustBreakdown.RepeatClientRate, repeatClientRate);
-        profile.TrustBreakdown.HasDisputes = adverseDisputeCount > 0;
-        profile.TrustBreakdown.DisputePenalty = Math.Min(20, Math.Max(0, adverseDisputeCount) * 5);
-        RecalculateTrustScore(profile);
-        Touch(profile);
-        await _userManager.UpdateAsync(user);
+        var (_, sp) = await _migrator.EnsureMigratedAsync(user);
+        SetSignal(sp.TrustBreakdown.ClientSatisfaction, clientSatisfaction);
+        SetSignal(sp.TrustBreakdown.OnTimeDelivery, onTimeDeliveryRate);
+        SetSignal(sp.TrustBreakdown.RepeatClientRate, repeatClientRate);
+        sp.TrustBreakdown.HasDisputes = adverseDisputeCount > 0;
+        sp.TrustBreakdown.DisputePenalty = Math.Min(20, Math.Max(0, adverseDisputeCount) * 5);
+        RecalculateTrustScore(sp);
+        sp.UpdatedAt = DateTime.UtcNow;
+        if (!await _spStore.UpsertAsync(sp))
+            _logger.LogWarning("Workroom trust signal write was not acknowledged for a provider.");
     }
 
     // ---------------- pure helpers ----------------
 
-    private static ServiceProviderProfile EnsureProfile(ApplicationUser user) =>
-        user.ServiceProviderProfile ??= new ServiceProviderProfile();
+    /// <summary>Owner response: composite of both records plus owned credentials.</summary>
+    private async Task<ServiceProviderProfileResponse> ComposeAsync(
+        ProfessionalProfileRecord professional, ServiceProviderProfileRecord sp, string userId)
+    {
+        var credentials = await _credentialStore.GetByUserIdAsync(userId);
+        return SpProfileSplitMapper.ToCompositeView(professional, sp, credentials).ToResponse();
+    }
+
+    private static ServiceProviderVerificationResponse ToVerification(
+        ProfessionalProfileRecord professional, ServiceProviderProfileRecord sp) =>
+        SpProfileSplitMapper
+            .ToCompositeView(professional, sp, Array.Empty<UserCredentialRecord>())
+            .ToVerificationResponse();
+
+    internal static bool EnsurePortfolioItemIds(ServiceProviderProfile profile) =>
+        EnsurePortfolioItemIds(profile.PortfolioItems);
+
+    internal static bool EnsurePortfolioItemIds(List<PortfolioItem> items)
+    {
+        var changed = false;
+        var used = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var item in items)
+        {
+            if (string.IsNullOrWhiteSpace(item.Id) || !used.Add(item.Id))
+            {
+                item.Id = Guid.NewGuid().ToString("N");
+                used.Add(item.Id);
+                changed = true;
+            }
+        }
+        return changed;
+    }
 
     private static void SetSignal(TrustSignal signal, double? value)
     {
@@ -531,12 +676,8 @@ public class ServiceProviderService : IServiceProviderService
         signal.Value = Math.Clamp(value ?? 0, 0, 100);
     }
 
-    private static void Touch(ServiceProviderProfile profile) => profile.UpdatedAt = DateTime.UtcNow;
-
-    // ---------------- Module 1: Trust scoring (derived) ----------------
-
-    // Locked weights (sum to 100 across the 5 base components). Dispute penalty is NOT
-    // part of this base — it only subtracts from the final score when disputes exist.
+    // Locked Module-1 weights (sum 100): Client Satisfaction 40, On-time 25,
+    // Response 15, Repeat 10, Skill Test 10. Dispute penalty subtracts after.
     private const double WeightClientSatisfaction = 0.40;
     private const double WeightOnTimeDelivery = 0.25;
     private const double WeightResponseRate = 0.15;
@@ -544,20 +685,16 @@ public class ServiceProviderService : IServiceProviderService
     private const double WeightSkillTest = 0.10;
 
     /// <summary>
-    /// Recompute the derived TrustScore from the breakdown (the SOLE writer of TrustScore).
-    /// Renormalizes the weighted average across ONLY the components that have data, so a
-    /// provider with just a skills test scores on the full 0–100 range rather than being
-    /// capped at the skill-test weight. Dispute penalty is subtracted afterward (never
-    /// renormalized) and only when disputes exist. With no data, HasEnoughTrustData is false
-    /// and the score is 0 (the UI shows a neutral "building your trust score" state).
+    /// Derives TrustScore from the breakdown (split record). Signals without data
+    /// are renormalized out; the dispute penalty subtracts from the final score.
+    /// Never client-set.
     /// </summary>
-    private static void RecalculateTrustScore(ServiceProviderProfile profile)
+    internal static void RecalculateTrustScore(ServiceProviderProfileRecord sp)
     {
-        // Skill-test signal is derived from the recorded attempts before weighting.
-        RecomputeSkillTestSignal(profile);
+        RecomputeSkillTestSignal(sp);
+        var b = sp.TrustBreakdown;
 
-        var b = profile.TrustBreakdown;
-        var components = new (TrustSignal Signal, double Weight)[]
+        var parts = new (TrustSignal Signal, double Weight)[]
         {
             (b.ClientSatisfaction, WeightClientSatisfaction),
             (b.OnTimeDelivery, WeightOnTimeDelivery),
@@ -566,57 +703,43 @@ public class ServiceProviderService : IServiceProviderService
             (b.SkillTest, WeightSkillTest),
         };
 
-        double weightedSum = 0, dataWeight = 0;
-        foreach (var (signal, weight) in components)
-        {
-            if (!signal.HasData) continue;
-            weightedSum += weight * signal.Value;
-            dataWeight += weight;
-        }
+        var withData = parts.Where(p => p.Signal.HasData).ToList();
+        sp.HasEnoughTrustData = withData.Count > 0;
 
-        b.LastRecalculatedAt = DateTime.UtcNow;
-
-        if (dataWeight <= 0)
+        if (!sp.HasEnoughTrustData)
         {
-            // No signal has data yet — neutral state, no derived score.
-            profile.HasEnoughTrustData = false;
-            profile.TrustScore = 0;
+            sp.TrustScore = 0;
+            b.LastRecalculatedAt = DateTime.UtcNow;
             return;
         }
 
-        var score = weightedSum / dataWeight; // renormalized across data-bearing components
-        if (b.HasDisputes) score -= b.DisputePenalty;
+        var totalWeight = withData.Sum(p => p.Weight);
+        var weighted = withData.Sum(p => Math.Clamp(p.Signal.Value, 0, 100) * (p.Weight / totalWeight));
+        if (b.HasDisputes) weighted -= Math.Clamp(b.DisputePenalty, 0, 100);
 
-        profile.TrustScore = Math.Clamp(Math.Round(score, 1), 0, 100);
-        profile.HasEnoughTrustData = true;
+        sp.TrustScore = Math.Round(Math.Clamp(weighted, 0, 100), 1);
+        b.LastRecalculatedAt = DateTime.UtcNow;
     }
 
-    /// <summary>
-    /// Derive the SkillTest trust signal (0–100) from recorded attempts: the mean of the
-    /// most-recent attempt score per distinct category. HasData is false until the first
-    /// attempt. Feeds <see cref="RecalculateTrustScore"/>.
-    /// </summary>
-    private static void RecomputeSkillTestSignal(ServiceProviderProfile profile)
+    /// <summary>Latest attempt per category → averaged into the SkillTest signal.</summary>
+    private static void RecomputeSkillTestSignal(ServiceProviderProfileRecord sp)
     {
-        var signal = profile.TrustBreakdown.SkillTest;
-        var attempts = profile.SkillsTestAttempts;
-        if (attempts.Count == 0)
-        {
-            signal.HasData = false;
-            signal.Value = 0;
-            return;
-        }
-
-        var latestPerCategory = attempts
+        var latestPerCategory = sp.SkillsTestAttempts
             .GroupBy(a => a.Category)
-            .Select(g => g.OrderByDescending(a => a.TakenAt).First().Score)
+            .Select(g => g.OrderByDescending(a => a.TakenAt).First())
             .ToList();
 
-        signal.HasData = true;
-        signal.Value = latestPerCategory.Average();
+        if (latestPerCategory.Count == 0)
+        {
+            sp.TrustBreakdown.SkillTest.HasData = false;
+            sp.TrustBreakdown.SkillTest.Value = 0;
+            return;
+        }
+
+        sp.TrustBreakdown.SkillTest.HasData = true;
+        sp.TrustBreakdown.SkillTest.Value = Math.Round(latestPerCategory.Average(a => (double)a.Score), 1);
     }
 
-    /// <summary>Best-effort in-app + realtime/web-push notification; never fails the operation.</summary>
     private async Task NotifyAsync(Guid userId, string title, string body)
     {
         try
@@ -634,78 +757,84 @@ public class ServiceProviderService : IServiceProviderService
     private static bool HasAtLeastOneSkill(ServiceProviderProfile p) =>
         p.Skills.Any(s => !string.IsNullOrWhiteSpace(s));
 
-    /// <summary>
-    /// Stage-2 completeness gate (D-2 Phase 4): the profile is complete only when
-    /// every field below is present. Headline/Bio count when non-blank. Drives the
-    /// one-way CurrentPhase 1→2 advancement; it never downgrades the phase.
-    /// </summary>
+    /// <summary>Stage-2 completeness gate, evaluated over the composite view so it
+    /// spans both split records without duplicating the formula.</summary>
     internal static bool IsProfileComplete(ServiceProviderProfile p) =>
-        !string.IsNullOrWhiteSpace(p.Headline) &&
-        !string.IsNullOrWhiteSpace(p.Bio) &&
         HasAtLeastOneSkill(p) &&
         p.ServiceCategories.Count > 0 &&
+        !string.IsNullOrWhiteSpace(p.Headline) &&
+        !string.IsNullOrWhiteSpace(p.Bio) &&
         p.Industries.Count > 0 &&
         p.Languages.Count > 0 &&
-        p.PricingModels.Count > 0 &&
         p.PortfolioItems.Count > 0;
 
-    /// <summary>Advance to Phase 2 once the Stage-2 profile is complete. One-way only.</summary>
-    private static void MaybeAdvancePhase(ServiceProviderProfile p)
-    {
-        if (p.CurrentPhase < 2 && IsProfileComplete(p))
-            p.CurrentPhase = 2;
-    }
-
-    /// <summary>Trim, drop blanks, and de-duplicate case-insensitively (first wins).</summary>
     internal static List<string> NormalizeStrings(IEnumerable<string>? values)
     {
         var result = new List<string>();
-        if (values is null) return result;
-
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var raw in values)
+        foreach (var value in values ?? Enumerable.Empty<string>())
         {
-            var trimmed = raw?.Trim();
-            if (string.IsNullOrEmpty(trimmed)) continue;
+            var trimmed = value?.Trim();
+            if (string.IsNullOrWhiteSpace(trimmed)) continue;
             if (seen.Add(trimmed)) result.Add(trimmed);
         }
         return result;
     }
 
-    /// <summary>
-    /// Parse pricing-model names to the locked enum (case-insensitive). Unknown
-    /// values are ignored, duplicates collapsed, first-occurrence order preserved.
-    /// </summary>
     internal static List<PricingModel> NormalizePricingModels(IEnumerable<string>? models)
     {
         var result = new List<PricingModel>();
-        if (models is null) return result;
-
         var seen = new HashSet<PricingModel>();
-        foreach (var raw in models)
+        foreach (var value in models ?? Enumerable.Empty<string>())
         {
-            var trimmed = raw?.Trim();
-            if (string.IsNullOrEmpty(trimmed)) continue;
-            if (Enum.TryParse<PricingModel>(trimmed, ignoreCase: true, out var model) && seen.Add(model))
-                result.Add(model);
+            if (!Enum.TryParse<PricingModel>(value?.Trim(), ignoreCase: true, out var parsed)) continue;
+            if (seen.Add(parsed)) result.Add(parsed);
         }
         return result;
     }
 
-    /// <summary>Parse to the authoritative enum (case-insensitive), de-duplicate, preserve order.</summary>
     internal static List<ServiceCategory> NormalizeCategories(IEnumerable<string>? categories)
     {
         var result = new List<ServiceCategory>();
-        if (categories is null) return result;
-
         var seen = new HashSet<ServiceCategory>();
-        foreach (var raw in categories)
+        foreach (var value in categories ?? Enumerable.Empty<string>())
         {
-            var trimmed = raw?.Trim();
-            if (string.IsNullOrEmpty(trimmed)) continue;
-            if (Enum.TryParse<ServiceCategory>(trimmed, ignoreCase: true, out var cat) && seen.Add(cat))
-                result.Add(cat);
+            if (!Enum.TryParse<ServiceCategory>(value?.Trim(), ignoreCase: true, out var parsed)) continue;
+            if (seen.Add(parsed)) result.Add(parsed);
         }
         return result;
+    }
+
+    internal static string ExtractPlainText(System.Text.Json.JsonElement document)
+    {
+        var sb = new StringBuilder();
+        ExtractTextFromNode(document, sb);
+        return sb.ToString().Trim();
+    }
+
+    private static void ExtractTextFromNode(System.Text.Json.JsonElement node, StringBuilder sb)
+    {
+        if (node.ValueKind != System.Text.Json.JsonValueKind.Object) return;
+
+        if (node.TryGetProperty("text", out var text) &&
+            text.ValueKind == System.Text.Json.JsonValueKind.String)
+        {
+            sb.Append(text.GetString());
+        }
+
+        if (node.TryGetProperty("content", out var content) &&
+            content.ValueKind == System.Text.Json.JsonValueKind.Array)
+        {
+            foreach (var child in content.EnumerateArray())
+            {
+                ExtractTextFromNode(child, sb);
+                if (child.TryGetProperty("type", out var type) &&
+                    type.ValueKind == System.Text.Json.JsonValueKind.String &&
+                    type.GetString() is "paragraph" or "heading" or "listItem" or "blockquote")
+                {
+                    sb.Append(' ');
+                }
+            }
+        }
     }
 }

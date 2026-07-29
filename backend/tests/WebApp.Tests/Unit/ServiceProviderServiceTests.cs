@@ -23,6 +23,7 @@ public class ServiceProviderServiceTests
     private readonly Mock<UserManager<ApplicationUser>> _userManager = MockUserManager();
     private readonly Mock<IAuditLogger> _audit = new();
     private readonly Mock<INotificationService> _notifications = new();
+    private readonly SpSplitTestHarness _harness = new();
     private readonly ServiceProviderService _service;
 
     public ServiceProviderServiceTests()
@@ -31,8 +32,16 @@ public class ServiceProviderServiceTests
             .Setup(m => m.UpdateAsync(It.IsAny<ApplicationUser>()))
             .ReturnsAsync(IdentityResult.Success);
         _service = new ServiceProviderService(
-            _userManager.Object, _audit.Object, _notifications.Object, NullLogger<ServiceProviderService>.Instance);
+            _userManager.Object,
+            _harness.Professional,
+            _harness.Sp,
+            _harness.Credentials,
+            _harness.CreateMigrator(_userManager.Object),
+            _audit.Object, _notifications.Object, NullLogger<ServiceProviderService>.Instance);
     }
+
+    /// <summary>Post-cutover state assertions read the split record, not the frozen embedded profile.</summary>
+    private ServiceProviderProfileRecord Rec(ApplicationUser user) => _harness.Sp.Records[user.Id.ToString()];
 
     private static Mock<UserManager<ApplicationUser>> MockUserManager() =>
         new(Mock.Of<IUserStore<ApplicationUser>>(), null!, null!, null!, null!, null!, null!, null!, null!);
@@ -113,7 +122,10 @@ public class ServiceProviderServiceTests
         result.Value!.Skills.Should().Equal("contracts", "fundraising");
         result.Value.ServiceCategories.Should().Equal("Legal", "Finance");
         result.Value.ProviderId.Should().Be(user.Id.ToString());
-        _userManager.Verify(m => m.UpdateAsync(user), Times.Once);
+        // Embedded write freeze: SP writes land on the split records only.
+        _userManager.Verify(m => m.UpdateAsync(user), Times.Never);
+        _harness.Sp.Records.Should().ContainKey(user.Id.ToString());
+        _harness.Professional.Records.Should().ContainKey(user.Id.ToString());
     }
 
     // ---------------- Stage 2 upsert (D-2 Phase 4) ----------------
@@ -216,7 +228,7 @@ public class ServiceProviderServiceTests
 
         result.Value!.CurrentPhase.Should().Be(2);
         result.Value.ProfileComplete.Should().BeTrue();
-        user.ServiceProviderProfile.CurrentPhase.Should().Be(2);
+        Rec(user).CurrentPhase.Should().Be(2);
     }
 
     [Fact]
@@ -386,8 +398,8 @@ public class ServiceProviderServiceTests
         result.Value.VerifiedAt.Should().Be(result.Value.VerificationSubmittedAt);
         result.Value.IsVerified.Should().BeTrue();
         result.Value.TrustScore.Should().Be(0);
-        user.ServiceProviderProfile.VerificationStatus.Should().Be(ServiceProviderVerificationStatus.Verified);
-        user.ServiceProviderProfile.HasEnoughTrustData.Should().BeFalse();
+        Rec(user).VerificationStatus.Should().Be(ServiceProviderVerificationStatus.Verified);
+        Rec(user).HasEnoughTrustData.Should().BeFalse();
     }
 
     [Fact]
@@ -458,7 +470,7 @@ public class ServiceProviderServiceTests
         result.Value!.VerificationStatus.Should().Be("UnderReview");
         result.Value.VerificationSubmittedAt.Should().NotBeNull();
         result.Value.VerifiedAt.Should().BeNull();
-        user.ServiceProviderProfile.RejectionReason.Should().BeNull();
+        Rec(user).RejectionReason.Should().BeNull();
     }
 
     // ---------------- Admin approve ----------------
@@ -484,8 +496,8 @@ public class ServiceProviderServiceTests
         // TrustScore is DERIVED: a freshly-verified provider has no signals yet, so the
         // score is the neutral "not enough data" state (0), never a hand-set baseline.
         result.Value.TrustScore.Should().Be(0);
-        user.ServiceProviderProfile.TrustScore.Should().Be(0);
-        user.ServiceProviderProfile.HasEnoughTrustData.Should().BeFalse();
+        Rec(user).TrustScore.Should().Be(0);
+        Rec(user).HasEnoughTrustData.Should().BeFalse();
 
         _audit.Verify(a => a.Record("ServiceProviderVerification.Approve", "admin-1", true, It.IsAny<object>()), Times.Once);
         _notifications.Verify(n => n.NotifyUser(user.Id, "Provider verification approved", It.IsAny<string>()), Times.Once);
@@ -521,7 +533,7 @@ public class ServiceProviderServiceTests
         var result = await _service.ApproveVerificationAsync(user.Id.ToString(), "admin-1");
 
         result.Outcome.Should().Be(ServiceProviderOutcome.Ok);
-        user.ServiceProviderProfile.VerificationStatus.Should().Be(ServiceProviderVerificationStatus.Verified);
+        Rec(user).VerificationStatus.Should().Be(ServiceProviderVerificationStatus.Verified);
     }
 
     // ---------------- Admin reject ----------------
@@ -537,7 +549,7 @@ public class ServiceProviderServiceTests
         result.Value!.VerificationStatus.Should().Be("Rejected");
         result.Value.RejectionReason.Should().Be("blurry portfolio");
         result.Value.VerifiedAt.Should().BeNull();
-        user.ServiceProviderProfile.TrustScore.Should().Be(0); // not seeded on reject
+        Rec(user).TrustScore.Should().Be(0); // not seeded on reject
 
         _audit.Verify(a => a.Record("ServiceProviderVerification.Reject", "admin-1", true, It.IsAny<object>()), Times.Once);
         _notifications.Verify(n => n.NotifyUser(user.Id, "Provider verification needs changes", It.IsAny<string>()), Times.Once);

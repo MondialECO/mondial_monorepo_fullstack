@@ -10,7 +10,8 @@ namespace WebApp.Services.Implementations;
 /// <summary>
 /// Module 2 — Service Catalog (canon §6). Owner-scoped CRUD over ServiceListings /
 /// ServicePackages / ServiceFAQs (top-level collections via MongoDbContext) + provider
-/// capacity on the embedded ServiceProviderProfile (via UserManager). Publishes packages;
+/// capacity on the ServiceProviderProfiles split record (dual-read fallback to the
+/// embedded profile for unmigrated users). Publishes packages;
 /// never creates a Proposal or runs checkout (Module 3). Deterministic throughout.
 /// </summary>
 public class ServiceCatalogService : IServiceCatalogService
@@ -19,13 +20,20 @@ public class ServiceCatalogService : IServiceCatalogService
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ILogger<ServiceCatalogService> _logger;
 
+    private readonly IServiceProviderProfileStore _spStore;
+    private readonly WebApp.Services.Migrations.IServiceProviderProfileSplitMigration _migrator;
+
     public ServiceCatalogService(
         MongoDbContext db,
         UserManager<ApplicationUser> userManager,
+        IServiceProviderProfileStore spStore,
+        WebApp.Services.Migrations.IServiceProviderProfileSplitMigration migrator,
         ILogger<ServiceCatalogService> logger)
     {
         _db = db;
         _userManager = userManager;
+        _spStore = spStore;
+        _migrator = migrator;
         _logger = logger;
     }
 
@@ -455,8 +463,10 @@ public class ServiceCatalogService : IServiceCatalogService
         var user = await _userManager.FindByIdAsync(userId);
         if (user is null)
             return ServiceProviderResult<ProviderCapacityResponse>.NotFound("Service provider profile not found.");
-        var profile = user.ServiceProviderProfile ??= new ServiceProviderProfile();
-        return ServiceProviderResult<ProviderCapacityResponse>.Ok(ToCapacityResponse(profile));
+        // Dual-read: split record when present, embedded projection otherwise.
+        var record = await _spStore.GetByUserIdAsync(userId)
+            ?? SpProfileSplitMapper.ToServiceProviderRecord(user);
+        return ServiceProviderResult<ProviderCapacityResponse>.Ok(ToCapacityResponse(record));
     }
 
     public async Task<ServiceProviderResult<ProviderCapacityResponse>> UpdateCapacityAsync(string userId, UpdateProviderCapacityRequest request)
@@ -464,16 +474,18 @@ public class ServiceCatalogService : IServiceCatalogService
         var user = await _userManager.FindByIdAsync(userId);
         if (user is null)
             return ServiceProviderResult<ProviderCapacityResponse>.NotFound("Service provider profile not found.");
-        var profile = user.ServiceProviderProfile ??= new ServiceProviderProfile();
+        var (_, record) = await _migrator.EnsureMigratedAsync(user);
 
         // CurrentActiveOrders is NOT client-settable — only Module 4 writes it.
-        profile.MaximumConcurrentOrders = Math.Max(0, request.MaximumConcurrentOrders);
-        profile.NewOrderAvailability = request.NewOrderAvailability;
-        profile.ManualApprovalWhenCapacityLow = request.ManualApprovalWhenCapacityLow;
-        profile.UpdatedAt = DateTime.UtcNow;
+        record.MaximumConcurrentOrders = Math.Max(0, request.MaximumConcurrentOrders);
+        record.NewOrderAvailability = request.NewOrderAvailability;
+        record.ManualApprovalWhenCapacityLow = request.ManualApprovalWhenCapacityLow;
+        record.UpdatedAt = DateTime.UtcNow;
 
-        await _userManager.UpdateAsync(user);
-        return ServiceProviderResult<ProviderCapacityResponse>.Ok(ToCapacityResponse(profile), "Capacity updated.");
+        // The audited legacy path ignored the write result; the store reports it.
+        if (!await _spStore.UpsertAsync(record))
+            return ServiceProviderResult<ProviderCapacityResponse>.Conflict("Capacity could not be saved. Try again.");
+        return ServiceProviderResult<ProviderCapacityResponse>.Ok(ToCapacityResponse(record), "Capacity updated.");
     }
 
     // ---------------- Pricing guidance (deterministic, no AI) ----------------
@@ -526,7 +538,7 @@ public class ServiceCatalogService : IServiceCatalogService
 
     // ---------------- Helpers ----------------
 
-    private static ProviderCapacityResponse ToCapacityResponse(ServiceProviderProfile p)
+    private static ProviderCapacityResponse ToCapacityResponse(ServiceProviderProfileRecord p)
     {
         var max = p.MaximumConcurrentOrders;
         var cur = p.CurrentActiveOrders;
