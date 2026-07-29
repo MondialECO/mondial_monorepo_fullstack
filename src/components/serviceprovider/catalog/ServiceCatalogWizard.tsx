@@ -21,7 +21,7 @@ export function ServiceCatalogWizard({ onExit }: { onExit: () => void }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const currentStepParam = searchParams.get('step') || '1';
-  const currentStep = Math.max(1, Math.min(3, parseInt(currentStepParam, 10)));
+  const currentStep = Math.max(1, Math.min(6, parseInt(currentStepParam, 10)));
   const draftId = searchParams.get('draftId');
 
   const createListing = useCreateListing();
@@ -45,7 +45,7 @@ export function ServiceCatalogWizard({ onExit }: { onExit: () => void }) {
           const result = await createListing.mutateAsync([
             {
               serviceType: '',
-              title: '',
+              title: 'Untitled Service',
               description: '',
               category: 'Development',
               industryFocus: [],
@@ -55,8 +55,8 @@ export function ServiceCatalogWizard({ onExit }: { onExit: () => void }) {
           setSavedDraft(result);
           // Update URL to include draftId for future navigation
           router.replace(`${BASE_ROUTE}?view=new&step=1&draftId=${encodeURIComponent(result.id)}`);
-        } catch {
-          setError('Could not initialize draft. Please try again.');
+        } catch (err) {
+          setError(`Could not initialize draft: ${err instanceof Error ? err.message : 'Unknown error'}`);
         }
       };
       initDraft();
