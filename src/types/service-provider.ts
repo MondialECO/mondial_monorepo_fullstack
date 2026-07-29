@@ -54,6 +54,172 @@ export interface PortfolioItem {
   addedAt: string;
 }
 
+// ---------------- Profile editor (four-step wizard) ----------------
+// Mirrors the split-collection contracts committed in f3a737d. Experience,
+// Education and Languages live on ProfessionalProfiles; credentials are
+// independent UserCredentials records and are never part of the editor draft.
+
+/** Spoken-language proficiency. Wire values are the backend enum names. */
+export const LANGUAGE_PROFICIENCIES = [
+  "Basic",
+  "Conversational",
+  "Intermediate",
+  "Professional",
+  "Fluent",
+  "NativeOrBilingual",
+] as const;
+
+export type LanguageProficiency = (typeof LANGUAGE_PROFICIENCIES)[number];
+
+/** Display labels only — never persisted; the enum name is the source of truth. */
+export const LANGUAGE_PROFICIENCY_LABELS: Record<LanguageProficiency, string> = {
+  Basic: "Basic",
+  Conversational: "Conversational",
+  Intermediate: "Intermediate",
+  Professional: "Professional",
+  Fluent: "Fluent",
+  NativeOrBilingual: "Native or Bilingual",
+};
+
+export const CREDENTIAL_KINDS = [
+  "Certification",
+  "License",
+  "Degree",
+  "Award",
+  "Other",
+] as const;
+
+export type CredentialKind = (typeof CREDENTIAL_KINDS)[number];
+
+/** Server-controlled. A provider action can only ever produce Draft or PendingReview. */
+export type CredentialStatus =
+  | "Draft"
+  | "PendingReview"
+  | "Verified"
+  | "Rejected"
+  | "ResubmissionRequired"
+  | "Expired";
+
+export const CREDENTIAL_STATUS_LABELS: Record<CredentialStatus, string> = {
+  Draft: "Draft",
+  PendingReview: "Pending Review",
+  Verified: "Verified",
+  Rejected: "Rejected",
+  ResubmissionRequired: "Resubmission Required",
+  Expired: "Expired",
+};
+
+/** One employment record. `startDate`/`endDate` are ISO "YYYY-MM" months. */
+export interface ProviderExperience {
+  id: string;
+  jobTitle: string;
+  companyName: string;
+  startDate: string;
+  endDate?: string | null;
+  isCurrent: boolean;
+  description?: string | null;
+}
+
+export interface ProviderEducation {
+  id: string;
+  institution: string;
+  degree: string;
+  fieldOfStudy?: string | null;
+  startYear: number;
+  endYear?: number | null;
+  description?: string | null;
+}
+
+export interface ProviderLanguage {
+  id: string;
+  language: string;
+  proficiency: LanguageProficiency;
+}
+
+/** Owner-scoped credential. Public projections omit the private fields. */
+export interface ProviderCredential {
+  id: string;
+  kind: CredentialKind;
+  title: string;
+  issuingOrganization?: string | null;
+  issuedAt?: string | null;
+  expiresAt?: string | null;
+  /** Owner-only. */
+  credentialNumber?: string | null;
+  /** Owner-only public URL of the uploaded document. */
+  documentUrl?: string | null;
+  documentFileName?: string | null;
+  documentBytes?: number | null;
+  status: CredentialStatus;
+  /** Provider-facing remediation reason only. */
+  reviewNote?: string | null;
+  submittedAt?: string | null;
+  reviewedAt?: string | null;
+}
+
+export interface UpsertCredentialRequest {
+  id?: string | null;
+  kind: CredentialKind;
+  title: string;
+  issuingOrganization?: string | null;
+  issuedAt?: string | null;
+  expiresAt?: string | null;
+  credentialNumber?: string | null;
+}
+
+/** The editor's working copy. Saving it never publishes anything. */
+export interface ProfileDraftRequest {
+  basedOnVersion: number;
+  lastStep: number;
+  headline?: string | null;
+  bio?: string | null;
+  professionalOverview?: { schemaVersion: number; document: TiptapJson } | null;
+  skills: string[];
+  serviceCategories: string[];
+  industries: string[];
+  pricingModels: string[];
+  experiences: Array<Omit<ProviderExperience, "id"> & { id?: string | null }>;
+  education: Array<Omit<ProviderEducation, "id"> & { id?: string | null }>;
+  languageProficiencies: Array<Omit<ProviderLanguage, "id"> & { id?: string | null }>;
+}
+
+export interface ProfileDraftResponse {
+  /** False when no draft is stored — the payload is then seeded from the published profile. */
+  hasDraft: boolean;
+  basedOnVersion: number;
+  lastStep: number;
+  /** True when the published profile moved on since this draft was opened. */
+  isStale: boolean;
+  headline?: string | null;
+  bio?: string | null;
+  professionalOverview: ProfessionalOverviewContent;
+  skills: string[];
+  serviceCategories: string[];
+  industries: string[];
+  pricingModels: string[];
+  experiences: ProviderExperience[];
+  education: ProviderEducation[];
+  languageProficiencies: ProviderLanguage[];
+  updatedAt: string;
+}
+
+export interface SubmitProfileEditorRequest {
+  basedOnVersion: number;
+  draft: ProfileDraftRequest;
+}
+
+/** Server-decided outcome — the client never proposes it. */
+export type ProfileEditorOutcome =
+  | "ProfileUpdated"
+  | "ProfileSubmittedPendingReview"
+  | "VerificationComplete";
+
+export interface ProfileEditorSubmitResponse {
+  outcome: ProfileEditorOutcome;
+  profile: ServiceProviderProfile;
+  credentialsPendingReview: number;
+}
+
 export interface ServiceProviderProfile {
   providerId?: string | null;
   currentPhase: number;
@@ -78,8 +244,18 @@ export interface ServiceProviderProfile {
   coverImage?: ProviderMedia | null;
   professionalOverview?: ProfessionalOverviewContent;
   industries: string[];
+  /** Legacy name-only mirror, kept in step with `languageProficiencies` during migration. */
   languages: string[];
   pricingModels: string[];
+
+  // ---- Profile editor (split collections) ----
+  experiences: ProviderExperience[];
+  education: ProviderEducation[];
+  languageProficiencies: ProviderLanguage[];
+  /** Owner-scoped; empty on public projections. */
+  credentials: ProviderCredential[];
+  /** Optimistic-concurrency token echoed back on the next submit. */
+  profileVersion: number;
 
   completionPercent: number;
   profileComplete: boolean;

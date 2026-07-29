@@ -2,14 +2,20 @@ import api from "@/lib/axios";
 import type {
   AddPortfolioItemRequest,
   ApiEnvelope,
+  ProfileDraftRequest,
+  ProfileDraftResponse,
+  ProfileEditorSubmitResponse,
+  ProviderCredential,
   ServiceProviderProfile,
   SkillsTestQuestions,
   SkillsTestResult,
   SkillsTestStatus,
+  SubmitProfileEditorRequest,
   SubmitSkillsTestRequest,
   SubmitVerificationRequest,
   TrustBreakdown,
   UpdatePortfolioItemRequest,
+  UpsertCredentialRequest,
   UpsertProfileRequest,
   VerificationStatusResponse,
 } from "@/types/service-provider";
@@ -140,6 +146,77 @@ export async function submitVerification(
   const res = await api.post<ApiEnvelope<VerificationStatusResponse>>(
     "/service-provider/submit-verification",
     payload
+  );
+  return unwrap(res.data);
+}
+
+// ---- Profile editor (four-step wizard) ----
+// Opening the editor is a pure read: the server returns the stored draft, or a
+// draft seeded from the published profile without persisting it. Draft saves
+// touch only the editor draft; nothing publishes until submit.
+
+export async function getProfileDraft(): Promise<ProfileDraftResponse> {
+  const res = await api.get<ApiEnvelope<ProfileDraftResponse>>(
+    "/service-provider/profile/editor/draft"
+  );
+  return unwrap(res.data);
+}
+
+export async function saveProfileDraft(
+  payload: ProfileDraftRequest
+): Promise<ProfileDraftResponse> {
+  const res = await api.put<ApiEnvelope<ProfileDraftResponse>>(
+    "/service-provider/profile/editor/draft",
+    payload
+  );
+  return unwrap(res.data);
+}
+
+export async function discardProfileDraft(): Promise<ProfileDraftResponse> {
+  const res = await api.delete<ApiEnvelope<ProfileDraftResponse>>(
+    "/service-provider/profile/editor/draft"
+  );
+  return unwrap(res.data);
+}
+
+export async function submitProfileEditor(
+  payload: SubmitProfileEditorRequest
+): Promise<ProfileEditorSubmitResponse> {
+  const res = await api.post<ApiEnvelope<ProfileEditorSubmitResponse>>(
+    "/service-provider/profile/editor/submit",
+    payload
+  );
+  return unwrap(res.data);
+}
+
+export async function upsertCredential(
+  payload: UpsertCredentialRequest
+): Promise<ProviderCredential> {
+  const res = await api.put<ApiEnvelope<ProviderCredential>>(
+    "/service-provider/profile/editor/credentials",
+    payload
+  );
+  return unwrap(res.data);
+}
+
+export async function uploadCredentialDocument(
+  credentialId: string,
+  file: File,
+  onProgress?: UploadProgressHandler
+): Promise<ProviderCredential> {
+  const body = new FormData();
+  body.append("file", file);
+  const res = await api.post<ApiEnvelope<ProviderCredential>>(
+    `/service-provider/profile/editor/credentials/${encodeURIComponent(credentialId)}/document`,
+    body,
+    { onUploadProgress: progress(onProgress) }
+  );
+  return unwrap(res.data);
+}
+
+export async function deleteCredential(credentialId: string): Promise<boolean> {
+  const res = await api.delete<ApiEnvelope<boolean>>(
+    `/service-provider/profile/editor/credentials/${encodeURIComponent(credentialId)}`
   );
   return unwrap(res.data);
 }
