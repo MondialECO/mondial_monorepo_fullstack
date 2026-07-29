@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using TagLib;
 using WebApp.DbContext;
 using WebApp.Models.DatabaseModels;
 using WebApp.Models.Dtos;
@@ -735,9 +736,43 @@ public class ServiceCatalogService : IServiceCatalogService
         if (file.Length > maxBytes)
             return ServiceProviderResult<ServiceListingResponse>.Invalid($"Video must be smaller than 50 MB. Your file is {(file.Length / 1024 / 1024.0):F1} MB.");
 
-        // Basic video validation: accept video content types (actual duration inspection deferred to enhanced validation)
         if (!file.ContentType.StartsWith("video/"))
             return ServiceProviderResult<ServiceListingResponse>.Invalid("Only video files are accepted.");
+
+        // Server-side video duration validation using TagLib
+        int videoDurationSeconds;
+        try
+        {
+            var tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + Path.GetExtension(file.FileName));
+            try
+            {
+                using (var stream = file.OpenReadStream())
+                using (var tempFile = System.IO.File.Create(tempPath))
+                {
+                    await stream.CopyToAsync(tempFile);
+                }
+
+                var tagFile = TagLib.File.Create(tempPath);
+                videoDurationSeconds = (int)tagFile.Properties.Duration.TotalSeconds;
+            }
+            finally
+            {
+                if (System.IO.File.Exists(tempPath))
+                    try { System.IO.File.Delete(tempPath); } catch { }
+            }
+        }
+        catch (TagLib.UnsupportedFormatException)
+        {
+            return ServiceProviderResult<ServiceListingResponse>.Invalid("Unsupported video format. Please upload an MP4, WebM, or other common video format.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to inspect video duration for {FileName}", file.FileName);
+            return ServiceProviderResult<ServiceListingResponse>.Invalid("Unable to verify video format. Please ensure the file is a valid video.");
+        }
+
+        if (videoDurationSeconds > maxSeconds)
+            return ServiceProviderResult<ServiceListingResponse>.Invalid($"Video must be shorter than 60 seconds. Your video is {videoDurationSeconds} seconds.");
 
         string publicUrl;
         try
@@ -755,7 +790,7 @@ public class ServiceCatalogService : IServiceCatalogService
             PublicUrl = publicUrl,
             ContentType = file.ContentType,
             Bytes = file.Length,
-            DurationSeconds = maxSeconds, // Placeholder; enhanced validation would inspect actual duration
+            DurationSeconds = videoDurationSeconds,
             Sha256 = "", // Would be computed from file
             UploadedAt = DateTime.UtcNow,
         };

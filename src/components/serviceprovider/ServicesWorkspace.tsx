@@ -151,12 +151,12 @@ function ListingsList({
     return (
       <SpEmptyState
         icon={LayoutGrid}
-        title="Create your first service"
-        description="Start with the service overview. Packages, client requirements, and FAQs can be added after the listing is saved."
+        title="No Published Services"
+        description="Create your first service listing to start receiving briefs."
         action={
           <Button type="button" onClick={onCreate}>
             <Plus className="size-4" aria-hidden="true" />
-            Create service
+            Create Service
           </Button>
         }
       />
