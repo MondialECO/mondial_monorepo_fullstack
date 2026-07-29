@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,7 +14,6 @@ import type { ServicePackage, PackageType } from '@/types/service-catalog';
 import {
   useAddPackage,
   useUpdatePackage,
-  useDeletePackage,
   useServiceListingDetail,
 } from '@/hooks/queries/service-catalog';
 
@@ -48,7 +47,6 @@ export function WizardStep2Pricing({
   const listingDetail = useServiceListingDetail(listingId);
   const addPackage = useAddPackage();
   const updatePackage = useUpdatePackage();
-  const deletePackage = useDeletePackage();
 
   const [packages, setPackages] = useState<ServicePackage[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -116,23 +114,6 @@ export function WizardStep2Pricing({
     }
   };
 
-  const handleDeletePackage = async (type: PackageType) => {
-    const pkg = getPackageByType(type);
-    if (!pkg) return;
-
-    setIsSaving(true);
-    setError(null);
-
-    try {
-      await deletePackage.mutateAsync([pkg.id]);
-      setPackages((prev) => prev.filter((p) => p.packageType !== type));
-    } catch {
-      setError(`Could not delete ${type} package. Please try again.`);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
   const handleNext = async () => {
     // Validate at least one package exists
     if (packages.length === 0) {
@@ -169,7 +150,6 @@ export function WizardStep2Pricing({
             type={type}
             pkg={getPackageByType(type)}
             onSave={(updated) => handleSavePackage(type, updated)}
-            onDelete={() => handleDeletePackage(type)}
             isSaving={isSaving}
           />
         ))}
@@ -193,13 +173,11 @@ function PackageTierEditor({
   type,
   pkg,
   onSave,
-  onDelete,
   isSaving,
 }: {
   type: PackageType;
   pkg?: ServicePackage;
   onSave: (pkg: Partial<ServicePackage>) => Promise<void>;
-  onDelete: () => Promise<void>;
   isSaving: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -381,17 +359,6 @@ function PackageTierEditor({
             >
               Save package
             </Button>
-            {pkg && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onDelete}
-                disabled={isSaving}
-              >
-                <Trash2 className="size-4" aria-hidden="true" />
-                Delete
-              </Button>
-            )}
             <Button
               type="button"
               variant="ghost"
