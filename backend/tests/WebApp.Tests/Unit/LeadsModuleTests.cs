@@ -120,7 +120,7 @@ public class LeadsModuleTests
                 TrustBreakdown = new() { ResponseRate = new() { HasData = true, Value = 50 } },
             },
         };
-        var score = new SpMatchingService(null!).Score(u, "Fintech");
+        var score = new SpMatchingService(null!, null!, null!).Score(u, "Fintech");
         score.Should().BeApproximately(0.74, 0.0001); // 0.35 + 0.15 + 0.10 + 0.14
     }
 

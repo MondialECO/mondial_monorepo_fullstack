@@ -326,6 +326,19 @@ builder.Services.AddScoped<ISubmmitdata, SubmmitdataRepository>();
 
 // D-1 Service Provider (Stage 1: Verification & Onboarding) — embedded profile.
 builder.Services.AddScoped<IServiceProviderService, ServiceProviderService>();
+builder.Services.AddScoped<IServiceProviderMediaService, ServiceProviderMediaService>();
+builder.Services.AddScoped<IProfileEditorService, ProfileEditorService>();
+
+// Service Provider data split (approved SP-only migration): three root
+// collections behind thin stores, a dual-read aggregate reader, and the
+// idempotent migrate-on-write migrator.
+builder.Services.AddScoped<IProfessionalProfileStore, ProfessionalProfileStore>();
+builder.Services.AddScoped<IServiceProviderProfileStore, ServiceProviderProfileStore>();
+builder.Services.AddScoped<IUserCredentialStore, UserCredentialStore>();
+builder.Services.AddScoped<IServiceProviderProfileReader, ServiceProviderProfileReader>();
+builder.Services.AddScoped<WebApp.Services.Migrations.IServiceProviderProfileSplitMigration,
+    WebApp.Services.Migrations.ServiceProviderProfileSplitMigration>();
+builder.Services.AddSingleton<IProviderImageProcessor, ProviderImageProcessor>();
 
 // Module 2 — Service Catalog (listings/packages/FAQs + capacity + pricing guidance).
 builder.Services.AddScoped<IServiceCatalogService, ServiceCatalogService>();

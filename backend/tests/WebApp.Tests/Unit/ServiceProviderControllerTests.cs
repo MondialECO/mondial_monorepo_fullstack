@@ -21,11 +21,13 @@ public class ServiceProviderControllerTests
     private const string UserId = "11111111-1111-1111-1111-111111111111";
 
     private readonly Mock<IServiceProviderService> _service = new();
+    private readonly Mock<IServiceProviderMediaService> _media = new();
+    private readonly Mock<IProfileEditorService> _editor = new();
     private readonly ServiceProviderController _controller;
 
     public ServiceProviderControllerTests()
     {
-        _controller = new ServiceProviderController(_service.Object)
+        _controller = new ServiceProviderController(_service.Object, _media.Object, _editor.Object)
         {
             ControllerContext = new ControllerContext
             {

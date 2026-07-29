@@ -920,6 +920,20 @@ public static class SeedingExtensions
                 profile.VerificationStatus);
         }
 
+        // SP data split: run the real idempotent migrator so the demo provider
+        // exists in the split collections (admin queue and matching read them).
+        // Re-runs converge; already-migrated records are never overwritten.
+        try
+        {
+            var splitMigrator = services
+                .GetRequiredService<WebApp.Services.Migrations.IServiceProviderProfileSplitMigration>();
+            await splitMigrator.EnsureMigratedAsync(provider);
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Demo service-provider split migration failed (non-fatal; dual-read covers it).");
+        }
+
         return provider;
     }
 
