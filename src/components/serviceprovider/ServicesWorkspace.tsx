@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
@@ -28,7 +28,6 @@ import {
   useServiceListings,
 } from '@/hooks/queries/service-catalog';
 import type { CatalogStatus, ServiceListing } from '@/types/service-catalog';
-import { ListingEditor } from './catalog/ListingEditor';
 import { ListingDetail } from './catalog/ListingDetail';
 import { ServiceCatalogWizard } from './catalog/ServiceCatalogWizard';
 
@@ -48,6 +47,13 @@ export function ServicesWorkspace() {
   const isCreating = searchParams.get('view') === 'new';
   const wizardStep = searchParams.get('step');
   const isWizard = isCreating && wizardStep;
+
+  // If creating without step param, redirect to step 1 (wizard entry point)
+  useEffect(() => {
+    if (isCreating && !wizardStep) {
+      router.replace(`${BASE_ROUTE}?view=new&step=1`);
+    }
+  }, [isCreating, wizardStep, router]);
 
   const showList = () => router.push(BASE_ROUTE);
   const showNew = () => router.push(`${BASE_ROUTE}?view=new&step=1`);
@@ -82,7 +88,6 @@ export function ServicesWorkspace() {
 
       {!isCreating && !serviceId && <ListingsList onOpen={showService} onCreate={showNew} />}
       {isWizard && <ServiceCatalogWizard onExit={showList} />}
-      {isCreating && !isWizard && <ListingEditor onDone={showService} onCancel={showList} />}
       {serviceId && <ListingDetailLoader id={serviceId} />}
     </SpPage>
   );
