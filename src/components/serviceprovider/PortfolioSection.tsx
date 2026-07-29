@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ExternalLink, FolderOpen, Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,32 +23,52 @@ import {
 import {
   useAddPortfolioItem,
   useDeletePortfolioItem,
+  useRemovePortfolioImage,
   useUpdatePortfolioItem,
+  useUploadPortfolioImage,
 } from "@/hooks/queries/service-provider";
 import type { PortfolioItem } from "@/types/service-provider";
 import { useSpDirtyFormGuard } from "@/hooks/useSpDirtyFormGuard";
 import { safeHttpUrl, validateOptionalHttpUrl } from "@/lib/service-provider/url-security";
+import { resolveProviderMediaUrl } from "@/lib/service-provider/provider-media";
+import { ProviderImageUploader } from "./ProviderImageUploader";
 
-type Draft = { title: string; description: string; url: string; imagePath: string };
+type Draft = { title: string; description: string; url: string; imageCaption: string };
 
-const emptyDraft: Draft = { title: "", description: "", url: "", imagePath: "" };
+const emptyDraft: Draft = { title: "", description: "", url: "", imageCaption: "" };
 
 export function PortfolioSection({ items }: { items: PortfolioItem[] }) {
   const add = useAddPortfolioItem();
   const update = useUpdatePortfolioItem();
   const remove = useDeletePortfolioItem();
+  const uploadImage = useUploadPortfolioImage();
+  const removeImage = useRemovePortfolioImage();
   const [editIndex, setEditIndex] = useState<number | null>(null);
   const [deleteItem, setDeleteItem] = useState<PortfolioItem | null>(null);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [error, setError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
-  const dirtyGuard = useSpDirtyFormGuard(draft, { enabled: editIndex !== null });
+  const [pendingImage, setPendingImage] = useState<File | null>(null);
+  const [pendingImageUrl, setPendingImageUrl] = useState<string | null>(null);
+  const guardState = { ...draft, pendingImageKey: pendingImage ? `${pendingImage.name}:${pendingImage.size}:${pendingImage.lastModified}` : "" };
+  const dirtyGuard = useSpDirtyFormGuard(guardState, { enabled: editIndex !== null });
   const urlError = validateOptionalHttpUrl(draft.url);
+
+  useEffect(() => () => {
+    if (pendingImageUrl) URL.revokeObjectURL(pendingImageUrl);
+  }, [pendingImageUrl]);
+
+  function clearPendingImage() {
+    if (pendingImageUrl) URL.revokeObjectURL(pendingImageUrl);
+    setPendingImageUrl(null);
+    setPendingImage(null);
+  }
 
   function openAdd() {
     setDraft(emptyDraft);
-    dirtyGuard.markClean(emptyDraft);
+    dirtyGuard.markClean({ ...emptyDraft, pendingImageKey: "" });
     setEditIndex(-1);
+    clearPendingImage();
     setError(null);
   }
 
@@ -57,16 +77,18 @@ export function PortfolioSection({ items }: { items: PortfolioItem[] }) {
       title: item.title,
       description: item.description ?? "",
       url: item.url ?? "",
-      imagePath: item.imagePath ?? "",
+      imageCaption: item.imageCaption ?? "",
     };
     setDraft(next);
-    dirtyGuard.markClean(next);
+    dirtyGuard.markClean({ ...next, pendingImageKey: "" });
     setEditIndex(item.index);
+    clearPendingImage();
     setError(null);
   }
 
   function closeEditor() {
     setEditIndex(null);
+    clearPendingImage();
     setError(null);
   }
 
@@ -85,17 +107,28 @@ export function PortfolioSection({ items }: { items: PortfolioItem[] }) {
       title: draft.title.trim(),
       description: draft.description.trim(),
       url: draft.url.trim() || null,
-      imagePath: draft.imagePath.trim() || null,
+      imageCaption: draft.imageCaption,
     };
     try {
       if (editIndex === -1) {
-        await add.mutateAsync(payload);
-        setFeedback("Portfolio item added.");
+        const savedProfile = await add.mutateAsync(payload);
+        const existingIds = new Set(items.map((item) => item.id).filter(Boolean));
+        const addedItem = savedProfile.portfolioItems.find((item) => item.id && !existingIds.has(item.id)) ?? savedProfile.portfolioItems.at(-1);
+        if (pendingImage && addedItem?.id) {
+          try {
+            await uploadImage.mutateAsync({ portfolioItemId: addedItem.id, file: pendingImage, caption: draft.imageCaption.trim() || null });
+            setFeedback("Portfolio item and primary image added.");
+          } catch {
+            setFeedback("Portfolio item was added, but its image could not be uploaded. Open the item to retry.");
+          }
+        } else {
+          setFeedback("Portfolio item added.");
+        }
       } else if (editIndex !== null) {
         await update.mutateAsync({ index: editIndex, ...payload });
         setFeedback("Portfolio item updated.");
       }
-      dirtyGuard.markClean(draft);
+      dirtyGuard.markClean(guardState);
       closeEditor();
     } catch {
       setError("Could not save this portfolio item. Check the fields and try again.");
@@ -115,13 +148,13 @@ export function PortfolioSection({ items }: { items: PortfolioItem[] }) {
     }
   }
 
-  const saving = add.isPending || update.isPending;
+  const saving = add.isPending || update.isPending || uploadImage.isPending;
 
   return (
     <SpCard>
       <SpSectionHeader
         title="Portfolio"
-        description={`${items.length} ${items.length === 1 ? "item" : "items"}. Image paths are displayed when already supplied; direct media upload is not connected.`}
+        description={`${items.length} ${items.length === 1 ? "item" : "items"}. Upload one primary project image per item; external project URLs remain optional.`}
         action={<Button onClick={openAdd} size="sm"><Plus className="size-4" />Add item</Button>}
       />
 
@@ -138,12 +171,11 @@ export function PortfolioSection({ items }: { items: PortfolioItem[] }) {
       ) : (
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
           {items.map((item) => (
-            <article key={item.index} className="flex flex-col overflow-hidden rounded-xl border border-[#E5E7EB] bg-white">
-              <div
-                className="flex aspect-video items-center justify-center bg-[#F4F5F7] bg-cover bg-center"
-                style={item.imagePath ? { backgroundImage: `linear-gradient(0deg,rgba(0,0,0,.28),rgba(0,0,0,.02)),url(${JSON.stringify(item.imagePath)})` } : undefined}
-              >
-                {!item.imagePath && <FolderOpen className="size-7 text-[#9CA3AF]" aria-hidden="true" />}
+            <article key={item.id ?? `legacy-${item.index}`} className="flex flex-col overflow-hidden rounded-xl border border-[#E5E7EB] bg-white">
+              <div className="flex aspect-[16/10] items-center justify-center overflow-hidden bg-[#F4F5F7]">
+                {(item.primaryImage?.url || item.imagePath) ? (
+                  <img src={resolveProviderMediaUrl(item.primaryImage?.url ?? item.imagePath)!} alt={item.imageCaption?.trim() || `${item.title} project image`} className="size-full object-cover" />
+                ) : <FolderOpen className="size-7 text-[#9CA3AF]" aria-hidden="true" />}
               </div>
               <div className="flex flex-1 flex-col p-4">
                 <h3 className="font-heading text-base font-semibold text-[#171717]">{item.title}</h3>
@@ -154,8 +186,8 @@ export function PortfolioSection({ items }: { items: PortfolioItem[] }) {
                   </a>
                 )}
                 <div className="mt-auto flex justify-end gap-1 border-t border-[#E5E7EB] pt-3">
-                  <Button variant="ghost" size="icon-sm" aria-label={`Edit ${item.title}`} onClick={() => openEdit(item)}><Pencil className="size-4" /></Button>
-                  <Button variant="ghost" size="icon-sm" aria-label={`Delete ${item.title}`} disabled={remove.isPending} onClick={() => setDeleteItem(item)}><Trash2 className="size-4 text-[#B42318]" /></Button>
+                  <Button variant="ghost" size="icon" className="size-11" aria-label={`Edit ${item.title}`} title={`Edit ${item.title}`} onClick={() => openEdit(item)}><Pencil className="size-4" /></Button>
+                  <Button variant="ghost" size="icon" className="size-11" aria-label={`Delete ${item.title}`} title={`Delete ${item.title}`} disabled={remove.isPending} onClick={() => setDeleteItem(item)}><Trash2 className="size-4 text-[#B42318]" /></Button>
                 </div>
               </div>
             </article>
@@ -167,7 +199,7 @@ export function PortfolioSection({ items }: { items: PortfolioItem[] }) {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{editIndex === -1 ? "Add portfolio item" : "Edit portfolio item"}</DialogTitle>
-            <DialogDescription>Use an existing project URL or image path. File upload is not available on this profile endpoint.</DialogDescription>
+            <DialogDescription>Add project details and a dedicated primary image. The project URL is optional and remains separate.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <SpFormField id="portfolio-title" label="Title" required>
@@ -179,9 +211,43 @@ export function PortfolioSection({ items }: { items: PortfolioItem[] }) {
             <SpFormField id="portfolio-url" label="Project URL" description="Optional. Must be a complete http(s) URL." error={urlError}>
               <Input type="url" maxLength={500} placeholder="https://example.com/project" value={draft.url} onChange={(event) => setDraft({ ...draft, url: event.target.value })} />
             </SpFormField>
-            <SpFormField id="portfolio-image" label="Existing image path or URL" description="Optional. This field stores a reference; it does not upload a file.">
-              <Input maxLength={500} placeholder="/uploads/portfolio/example.png" value={draft.imagePath} onChange={(event) => setDraft({ ...draft, imagePath: event.target.value })} />
+            <SpFormField id="portfolio-image-caption" label="Image caption or accessible description" description="Describe the project image when it conveys useful information.">
+              <Input maxLength={300} value={draft.imageCaption} onChange={(event) => setDraft({ ...draft, imageCaption: event.target.value })} />
             </SpFormField>
+            {editIndex !== null && (() => {
+              const currentItem = editIndex >= 0 ? items.find((item) => item.index === editIndex) : undefined;
+              const currentUrl = pendingImageUrl ?? resolveProviderMediaUrl(currentItem?.primaryImage?.url ?? currentItem?.imagePath);
+              return (
+                <ProviderImageUploader
+                  compact
+                  kind="portfolio"
+                  label="Primary project image"
+                  currentUrl={currentUrl}
+                  currentAlt={draft.imageCaption || (draft.title ? `${draft.title} project image` : "Project image preview")}
+                  successMessage={editIndex === -1 ? "Primary image prepared. Save the item to upload it." : undefined}
+                  onUpload={async (file, onProgress) => {
+                    if (editIndex === -1) {
+                      clearPendingImage();
+                      setPendingImage(file);
+                      setPendingImageUrl(URL.createObjectURL(file));
+                      onProgress(100);
+                      return;
+                    }
+                    if (!currentItem?.id) throw new Error("This legacy portfolio item needs a stable server identity before its image can be changed. Refresh and retry.");
+                    await uploadImage.mutateAsync({ portfolioItemId: currentItem.id, file, caption: draft.imageCaption.trim() || null, onProgress });
+                  }}
+                  onRemove={async () => {
+                    if (pendingImageUrl) {
+                      clearPendingImage();
+                      return;
+                    }
+                    if (!currentItem?.id) throw new Error("This legacy portfolio item needs a stable server identity before its image can be changed. Refresh and retry.");
+                    await removeImage.mutateAsync(currentItem.id);
+                  }}
+                />
+              );
+            })()}
+            <p className="text-xs leading-5 text-[#6B7280]">Basic file validation is active. Production security scanning is not yet enabled.</p>
             {error && <SpMutationFeedback status="error">{error}</SpMutationFeedback>}
           </div>
           <DialogFooter>

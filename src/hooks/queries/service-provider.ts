@@ -8,9 +8,15 @@ import {
   getSkillsTestQuestions,
   getSkillsTestStatus,
   getTrust,
+  removeCoverImage,
+  removePortfolioImage,
+  removeProfileImage,
   submitSkillsTest,
   submitVerification,
   updatePortfolioItem,
+  uploadCoverImage,
+  uploadPortfolioImage,
+  uploadProfileImage,
   upsertProfile,
 } from '@/lib/api-service-provider';
 import type {
@@ -62,6 +68,43 @@ export const useDeletePortfolioItem = () => {
     onSuccess: (profile) => qc.setQueryData(PROFILE_KEY, profile),
   });
 };
+
+function useProfileResultMutation<T>(mutationFn: (input: T) => Promise<ServiceProviderProfile>) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn,
+    onSuccess: (profile) => qc.setQueryData(PROFILE_KEY, profile),
+  });
+}
+
+export const useUploadProfileImage = () =>
+  useProfileResultMutation<{ file: File; onProgress?: (percent: number) => void }>(
+    ({ file, onProgress }) => uploadProfileImage(file, onProgress)
+  );
+
+export const useRemoveProfileImage = () =>
+  useProfileResultMutation<void>(() => removeProfileImage());
+
+export const useUploadCoverImage = () =>
+  useProfileResultMutation<{ file: File; onProgress?: (percent: number) => void }>(
+    ({ file, onProgress }) => uploadCoverImage(file, onProgress)
+  );
+
+export const useRemoveCoverImage = () =>
+  useProfileResultMutation<void>(() => removeCoverImage());
+
+export const useUploadPortfolioImage = () =>
+  useProfileResultMutation<{
+    portfolioItemId: string;
+    file: File;
+    caption?: string | null;
+    onProgress?: (percent: number) => void;
+  }>(({ portfolioItemId, file, caption, onProgress }) =>
+    uploadPortfolioImage(portfolioItemId, file, caption, onProgress)
+  );
+
+export const useRemovePortfolioImage = () =>
+  useProfileResultMutation<string>((portfolioItemId) => removePortfolioImage(portfolioItemId));
 
 // submit-verification returns the smaller verification projection, so we
 // invalidate to pull the full profile with the updated status.

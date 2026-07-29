@@ -18,12 +18,39 @@ export type VerificationStatus =
   | "Verified"
   | "Rejected";
 
+export type TiptapJson = {
+  type: string;
+  attrs?: Record<string, unknown>;
+  content?: TiptapJson[];
+  marks?: Array<{ type: string; attrs?: Record<string, unknown> }>;
+  text?: string;
+};
+
+export interface ProfessionalOverviewContent {
+  schemaVersion: number;
+  document: TiptapJson;
+  plainText: string;
+}
+
+export interface ProviderMedia {
+  id?: string;
+  url: string;
+  contentType: string;
+  width: number;
+  height: number;
+  bytes: number;
+  uploadedAt: string;
+}
+
 export interface PortfolioItem {
+  id: string;
   index: number;
   title: string;
   description?: string | null;
   url?: string | null;
   imagePath?: string | null;
+  primaryImage?: ProviderMedia | null;
+  imageCaption?: string | null;
   addedAt: string;
 }
 
@@ -47,6 +74,9 @@ export interface ServiceProviderProfile {
   // ---- Stage 2 (D-2) ----
   headline?: string | null;
   bio?: string | null;
+  profileImage?: ProviderMedia | null;
+  coverImage?: ProviderMedia | null;
+  professionalOverview?: ProfessionalOverviewContent;
   industries: string[];
   languages: string[];
   pricingModels: string[];
@@ -158,6 +188,10 @@ export interface UpsertProfileRequest {
   serviceCategories: string[];
   headline?: string | null;
   bio?: string | null;
+  professionalOverview?: {
+    schemaVersion: number;
+    document: TiptapJson;
+  } | null;
   industries: string[];
   languages: string[];
   pricingModels: string[];
@@ -168,6 +202,7 @@ export interface AddPortfolioItemRequest {
   description?: string | null;
   url?: string | null;
   imagePath?: string | null;
+  imageCaption?: string | null;
 }
 
 export interface UpdatePortfolioItemRequest extends AddPortfolioItemRequest {
