@@ -30,6 +30,7 @@ import {
 import type { CatalogStatus, ServiceListing } from '@/types/service-catalog';
 import { ListingEditor } from './catalog/ListingEditor';
 import { ListingDetail } from './catalog/ListingDetail';
+import { ServiceCatalogWizard } from './catalog/ServiceCatalogWizard';
 
 const BASE_ROUTE = '/dashboard/serviceprovider/services';
 const statusOptions: Array<'All' | CatalogStatus> = [
@@ -45,9 +46,11 @@ export function ServicesWorkspace() {
   const searchParams = useSearchParams();
   const serviceId = searchParams.get('service');
   const isCreating = searchParams.get('view') === 'new';
+  const wizardStep = searchParams.get('step');
+  const isWizard = isCreating && wizardStep;
 
   const showList = () => router.push(BASE_ROUTE);
-  const showNew = () => router.push(`${BASE_ROUTE}?view=new`);
+  const showNew = () => router.push(`${BASE_ROUTE}?view=new&step=1`);
   const showService = (id: string) =>
     router.push(`${BASE_ROUTE}?service=${encodeURIComponent(id)}&tab=overview`);
 
@@ -78,7 +81,8 @@ export function ServicesWorkspace() {
       />
 
       {!isCreating && !serviceId && <ListingsList onOpen={showService} onCreate={showNew} />}
-      {isCreating && <ListingEditor onDone={showService} onCancel={showList} />}
+      {isWizard && <ServiceCatalogWizard onExit={showList} />}
+      {isCreating && !isWizard && <ListingEditor onDone={showService} onCancel={showList} />}
       {serviceId && <ListingDetailLoader id={serviceId} />}
     </SpPage>
   );

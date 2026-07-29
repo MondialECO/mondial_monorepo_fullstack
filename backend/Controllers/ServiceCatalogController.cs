@@ -103,6 +103,24 @@ public class ServiceCatalogController : ControllerBase
     public async Task<IActionResult> ReorderFaqs(string listingId, [FromBody] ReorderFaqsRequest request) =>
         Map(await _service.ReorderFaqsAsync(CurrentUserId, listingId, request));
 
+    // ---- Gallery & Video (Service Listing media) ----
+
+    [HttpPost("listings/{listingId}/gallery-images")]
+    public async Task<IActionResult> UploadGalleryImage(string listingId, IFormFile file) =>
+        Map(await _service.UploadGalleryImageAsync(CurrentUserId, listingId, file));
+
+    [HttpDelete("listings/{listingId}/gallery-images/{imageId}")]
+    public async Task<IActionResult> DeleteGalleryImage(string listingId, string imageId) =>
+        Map(await _service.DeleteGalleryImageAsync(CurrentUserId, listingId, imageId));
+
+    [HttpPost("listings/{listingId}/preview-video")]
+    public async Task<IActionResult> UploadPreviewVideo(string listingId, IFormFile file) =>
+        Map(await _service.UploadPreviewVideoAsync(CurrentUserId, listingId, file));
+
+    [HttpDelete("listings/{listingId}/preview-video")]
+    public async Task<IActionResult> DeletePreviewVideo(string listingId) =>
+        Map(await _service.DeletePreviewVideoAsync(CurrentUserId, listingId));
+
     // ---- Provider capacity ----
 
     [HttpGet("capacity")]

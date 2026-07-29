@@ -69,6 +69,29 @@ export interface RequirementsField {
   required: boolean;
 }
 
+export interface GalleryImage {
+  id: string;
+  storageKey: string;
+  publicUrl: string;
+  contentType: string;
+  width: number;
+  height: number;
+  bytes: number;
+  sha256: string;
+  displayOrder: number;
+  uploadedAt: string;
+}
+
+export interface PreviewVideo {
+  storageKey: string;
+  publicUrl: string;
+  contentType: string;
+  bytes: number;
+  durationSeconds: number;
+  sha256: string;
+  uploadedAt: string;
+}
+
 export interface ServiceListing {
   id: string;
   providerId: string;
@@ -80,6 +103,8 @@ export interface ServiceListing {
   geographicCoverage: string[];
   impressions: number;
   clicks: number;
+  previewVideo?: PreviewVideo | null;
+  galleryImages: GalleryImage[];
   status: CatalogStatus;
   createdAt: string;
   updatedAt: string;

@@ -114,6 +114,35 @@ public class RequirementsField
     public bool Required { get; set; }
 }
 
+// Service-level gallery image. Server-determined file reference (SaveFile.cs);
+// client never provides or modifies the path. Stable UUID ID for concurrent-edit safety.
+public class GalleryImage
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString();
+    public string StorageKey { get; set; } = "";
+    public string PublicUrl { get; set; } = "";
+    public string ContentType { get; set; } = "";
+    public int Width { get; set; }
+    public int Height { get; set; }
+    public long Bytes { get; set; }
+    public string Sha256 { get; set; } = "";
+    public int DisplayOrder { get; set; }
+    public DateTime UploadedAt { get; set; } = DateTime.UtcNow;
+}
+
+// Service-level preview video. Server-determined file reference (SaveFile.cs);
+// client never provides or modifies the path. Optional single record (not an array).
+public class PreviewVideo
+{
+    public string StorageKey { get; set; } = "";
+    public string PublicUrl { get; set; } = "";
+    public string ContentType { get; set; } = "";
+    public long Bytes { get; set; }
+    public int DurationSeconds { get; set; }
+    public string Sha256 { get; set; } = "";
+    public DateTime UploadedAt { get; set; } = DateTime.UtcNow;
+}
+
 // ---------------- Collections ----------------
 
 // The service-level record. Owns its packages via its Id (referenced as ServiceId).
@@ -138,6 +167,12 @@ public class ServiceListing
     // sites (a client browsing a listing) are Module 3, so nothing fires them here.
     public long Impressions { get; set; }
     public long Clicks { get; set; }
+
+    // Service-level media (Step 5 in wizard). PreviewVideo is optional single record;
+    // GalleryImages is a bounded array capped at 20 items (§1A.13 Portfolio precedent,
+    // BSON protection). File references are server-determined; client never provides paths.
+    public PreviewVideo? PreviewVideo { get; set; }
+    public List<GalleryImage> GalleryImages { get; set; } = new();
 
     public CatalogStatus Status { get; set; } = CatalogStatus.Draft;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
