@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SpMutationFeedback, SpPage, SpPageHeader } from '@/components/serviceprovider/ui';
-import { useCreateListing, useServiceListingDetail } from '@/hooks/queries/service-catalog';
+import { useCreateListing, useServiceListing } from '@/hooks/queries/service-catalog';
 import type { ServiceListing } from '@/types/service-catalog';
 import { WizardStep1Overview } from './wizard/WizardStep1Overview';
 import { WizardStep2Pricing } from './wizard/WizardStep2Pricing';
@@ -25,7 +25,7 @@ export function ServiceCatalogWizard({ onExit }: { onExit: () => void }) {
   const draftId = searchParams.get('draftId');
 
   const createListing = useCreateListing();
-  const draftQuery = useServiceListingDetail(draftId ?? '');
+  const draftQuery = useServiceListing(draftId ?? '');
 
   const [error, setError] = useState<string | null>(null);
   const [savedDraft, setSavedDraft] = useState<ServiceListing | null>(null);

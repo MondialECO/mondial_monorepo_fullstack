@@ -10,7 +10,7 @@ import {
   SpMutationFeedback,
 } from '@/components/serviceprovider/ui';
 import type { ServiceListing } from '@/types/service-catalog';
-import { useUpdateListing, useServiceListingDetail } from '@/hooks/queries/service-catalog';
+import { useUpdateListing, useServiceListing } from '@/hooks/queries/service-catalog';
 import { FaqBuilder } from '../FaqBuilder';
 
 export function WizardStep3Description({
@@ -27,7 +27,7 @@ export function WizardStep3Description({
   onBack?: () => void;
 }) {
   const updateListing = useUpdateListing();
-  const listingDetail = useServiceListingDetail(listingId);
+  const listingDetail = useServiceListing(listingId);
 
   const [description, setDescription] = useState(draft.description);
   const [error, setError] = useState<string | null>(null);

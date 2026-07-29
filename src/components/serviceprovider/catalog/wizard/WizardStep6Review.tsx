@@ -11,7 +11,7 @@ import {
 } from '@/components/serviceprovider/ui';
 import type { ServiceListing, ServicePackage } from '@/types/service-catalog';
 import {
-  useServiceListingDetail,
+  useServiceListing,
   usePublishPackage,
   usePublishListing,
 } from '@/hooks/queries/service-catalog';
@@ -26,7 +26,7 @@ export function WizardStep6Review({
   onBack: () => void;
 }) {
   const router = useRouter();
-  const listingDetail = useServiceListingDetail(listing.id);
+  const listingDetail = useServiceListing(listing.id);
   const publishPackage = usePublishPackage();
   const publishListing = usePublishListing();
 

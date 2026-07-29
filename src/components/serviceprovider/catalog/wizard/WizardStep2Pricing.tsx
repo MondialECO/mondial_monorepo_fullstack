@@ -14,7 +14,7 @@ import type { ServicePackage, PackageType } from '@/types/service-catalog';
 import {
   useAddPackage,
   useUpdatePackage,
-  useServiceListingDetail,
+  useServiceListing,
 } from '@/hooks/queries/service-catalog';
 
 const PACKAGE_TYPES: PackageType[] = ['Basic', 'Standard', 'Premium'];
@@ -44,7 +44,7 @@ export function WizardStep2Pricing({
   onNext: () => void;
   onBack: () => void;
 }) {
-  const listingDetail = useServiceListingDetail(listingId);
+  const listingDetail = useServiceListing(listingId);
   const addPackage = useAddPackage();
   const updatePackage = useUpdatePackage();
 

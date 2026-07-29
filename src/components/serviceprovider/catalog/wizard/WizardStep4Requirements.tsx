@@ -11,7 +11,7 @@ import {
 } from '@/components/serviceprovider/ui';
 import type { RequirementsField } from '@/types/service-catalog';
 import { REQUIREMENTS_FIELD_TYPES } from '@/types/service-catalog';
-import { useServiceListingDetail, useUpdatePackage } from '@/hooks/queries/service-catalog';
+import { useServiceListing, useUpdatePackage } from '@/hooks/queries/service-catalog';
 
 export function WizardStep4Requirements({
   listingId,
@@ -22,7 +22,7 @@ export function WizardStep4Requirements({
   onNext: () => void;
   onBack: () => void;
 }) {
-  const listingDetail = useServiceListingDetail(listingId);
+  const listingDetail = useServiceListing(listingId);
   const updatePackage = useUpdatePackage();
 
   const [requirements, setRequirements] = useState<RequirementsField[]>([]);
