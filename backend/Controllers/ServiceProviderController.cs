@@ -100,9 +100,9 @@ public class ServiceProviderController : ControllerBase
     public async Task<IActionResult> UpdatePortfolioItem([FromBody] UpdatePortfolioItemRequest request) =>
         Map(await _service.UpdatePortfolioItemAsync(CurrentUserId, request));
 
-    [HttpDelete("portfolio/{index:int}")]
-    public async Task<IActionResult> DeletePortfolioItem(int index) =>
-        Map(await _service.DeletePortfolioItemAsync(CurrentUserId, index));
+    [HttpDelete("portfolio/{portfolioItemId}")]
+    public async Task<IActionResult> DeletePortfolioItem(string portfolioItemId) =>
+        Map(await _service.DeletePortfolioItemAsync(CurrentUserId, portfolioItemId));
 
     [HttpPost("media/profile-image")]
     [RequestSizeLimit(5 * 1024 * 1024 + 64 * 1024)]

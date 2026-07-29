@@ -373,16 +373,21 @@ export interface UpsertProfileRequest {
   pricingModels: string[];
 }
 
+/**
+ * `imagePath` is intentionally absent: the image location is server-owned and is
+ * only ever set by the portfolio media endpoints, which validate and re-encode
+ * the file. Accepting it here let a caller point an item at any external URL.
+ */
 export interface AddPortfolioItemRequest {
   title: string;
   description?: string | null;
   url?: string | null;
-  imagePath?: string | null;
   imageCaption?: string | null;
 }
 
+/** Addressed by stable id — an index goes stale as soon as another item is deleted. */
 export interface UpdatePortfolioItemRequest extends AddPortfolioItemRequest {
-  index: number;
+  id: string;
 }
 
 export interface SubmitVerificationRequest {

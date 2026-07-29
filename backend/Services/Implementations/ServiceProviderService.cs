@@ -1,10 +1,12 @@
 using System.Text;
+using Hangfire;
 using Microsoft.AspNetCore.Identity;
 using WebApp.Models.DatabaseModels;
 using WebApp.Models.Dtos;
 using WebApp.Services.Audit;
 using WebApp.Services.Interface;
 using WebApp.Services.Migrations;
+using WebApp.Validation;
 
 namespace WebApp.Services.Implementations;
 
@@ -28,6 +30,7 @@ public class ServiceProviderService : IServiceProviderService
     private readonly IServiceProviderProfileSplitMigration _migrator;
     private readonly IAuditLogger _audit;
     private readonly INotificationService _notifications;
+    private readonly IBackgroundJobClient _jobClient;
     private readonly ILogger<ServiceProviderService> _logger;
 
     public ServiceProviderService(
@@ -38,6 +41,7 @@ public class ServiceProviderService : IServiceProviderService
         IServiceProviderProfileSplitMigration migrator,
         IAuditLogger audit,
         INotificationService notifications,
+        IBackgroundJobClient jobClient,
         ILogger<ServiceProviderService> logger)
     {
         _userManager = userManager;
@@ -47,6 +51,7 @@ public class ServiceProviderService : IServiceProviderService
         _migrator = migrator;
         _audit = audit;
         _notifications = notifications;
+        _jobClient = jobClient;
         _logger = logger;
     }
 
@@ -143,12 +148,18 @@ public class ServiceProviderService : IServiceProviderService
 
         var (professional, sp) = await _migrator.EnsureMigratedAsync(user);
         EnsurePortfolioItemIds(sp.PortfolioItems);
+
+        if (sp.PortfolioItems.Count >= ServiceProviderLimits.MaxPortfolioItems)
+            return ServiceProviderResult<ServiceProviderProfileResponse>.Invalid(
+                $"You can keep up to {ServiceProviderLimits.MaxPortfolioItems} portfolio items. Remove one before adding another.");
+
+        // ImagePath is not taken from the request: the image location is set only
+        // by the portfolio media endpoints, which validate and re-encode the file.
         sp.PortfolioItems.Add(new PortfolioItem
         {
             Title = request.Title?.Trim() ?? "",
             Description = request.Description?.Trim(),
             Url = NullIfBlank(request.Url),
-            ImagePath = NullIfBlank(request.ImagePath),
             ImageCaption = NullIfBlank(request.ImageCaption),
             AddedAt = DateTime.UtcNow,
         });
@@ -170,16 +181,17 @@ public class ServiceProviderService : IServiceProviderService
 
         var (professional, sp) = await _migrator.EnsureMigratedAsync(user);
         EnsurePortfolioItemIds(sp.PortfolioItems);
-        if (request.Index < 0 || request.Index >= sp.PortfolioItems.Count)
+
+        // Addressed by stable id, never by position: an index captured before a
+        // concurrent delete would otherwise overwrite a different item.
+        var item = sp.PortfolioItems.FirstOrDefault(value => value.Id == request.Id);
+        if (item is null)
             return ServiceProviderResult<ServiceProviderProfileResponse>.NotFound("Portfolio item not found.");
 
-        // Mutate in place so AddedAt and the stable Id are preserved.
-        var item = sp.PortfolioItems[request.Index];
+        // Mutate in place so AddedAt, the stable Id and the image are preserved.
         item.Title = request.Title?.Trim() ?? "";
         item.Description = request.Description?.Trim();
         item.Url = NullIfBlank(request.Url);
-        // Null means text-only update: preserve the existing image reference.
-        if (request.ImagePath is not null) item.ImagePath = NullIfBlank(request.ImagePath);
         if (request.ImageCaption is not null) item.ImageCaption = NullIfBlank(request.ImageCaption);
         sp.UpdatedAt = DateTime.UtcNow;
 
@@ -191,7 +203,7 @@ public class ServiceProviderService : IServiceProviderService
     }
 
     public async Task<ServiceProviderResult<ServiceProviderProfileResponse>> DeletePortfolioItemAsync(
-        string userId, int index)
+        string userId, string portfolioItemId)
     {
         var user = await _userManager.FindByIdAsync(userId);
         if (user is null)
@@ -199,16 +211,26 @@ public class ServiceProviderService : IServiceProviderService
 
         var (professional, sp) = await _migrator.EnsureMigratedAsync(user);
         EnsurePortfolioItemIds(sp.PortfolioItems);
-        if (index < 0 || index >= sp.PortfolioItems.Count)
+
+        // Addressed by stable id, never by position: an index captured before a
+        // concurrent delete would otherwise remove a different item.
+        var item = sp.PortfolioItems.FirstOrDefault(value => value.Id == portfolioItemId);
+        if (item is null)
             return ServiceProviderResult<ServiceProviderProfileResponse>.NotFound("Portfolio item not found.");
 
-        sp.PortfolioItems.RemoveAt(index);
+        sp.PortfolioItems.Remove(item);
         sp.UpdatedAt = DateTime.UtcNow;
 
         if (!await _spStore.UpsertAsync(sp))
             return ServiceProviderResult<ServiceProviderProfileResponse>.Conflict("The portfolio item could not be removed.");
 
-        // Media cleanup is handled by IServiceProviderMediaService.RemovePortfolioImageAsync
+        // Delete the image only after the item is durably gone. Nothing can
+        // reference this file once the item's id no longer exists, so cleanup
+        // has to happen here rather than via the media endpoints. Attempt immediate
+        // deletion; on failure, enqueue a durable Hangfire job for retry.
+        ProviderMediaFiles.DeleteBestEffort(item.PrimaryImage?.PublicUrl, _logger, _jobClient);
+        ProviderMediaFiles.DeleteBestEffort(item.ImagePath, _logger, _jobClient);
+
         return ServiceProviderResult<ServiceProviderProfileResponse>.Ok(
             await ComposeAsync(professional, sp, userId), "Portfolio item deleted.");
     }

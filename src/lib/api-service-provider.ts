@@ -82,10 +82,10 @@ export async function updatePortfolioItem(
 }
 
 export async function deletePortfolioItem(
-  index: number
+  portfolioItemId: string
 ): Promise<ServiceProviderProfile> {
   const res = await api.delete<ApiEnvelope<ServiceProviderProfile>>(
-    `/service-provider/portfolio/${index}`
+    `/service-provider/portfolio/${encodeURIComponent(portfolioItemId)}`
   );
   return unwrap(res.data);
 }

@@ -1,5 +1,6 @@
 using System.Linq;
 using FluentAssertions;
+using Hangfire;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
@@ -37,7 +38,7 @@ public class ServiceProviderServiceTests
             _harness.Sp,
             _harness.Credentials,
             _harness.CreateMigrator(_userManager.Object),
-            _audit.Object, _notifications.Object, NullLogger<ServiceProviderService>.Instance);
+            _audit.Object, _notifications.Object, Mock.Of<IBackgroundJobClient>(), NullLogger<ServiceProviderService>.Instance);
     }
 
     /// <summary>Post-cutover state assertions read the split record, not the frozen embedded profile.</summary>
@@ -315,17 +316,18 @@ public class ServiceProviderServiceTests
     public async Task UpdatePortfolio_preserves_AddedAt_and_replaces_fields()
     {
         var addedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var existingItem = new PortfolioItem { Title = "old", AddedAt = addedAt };
         var user = GivenUser(new ApplicationUser
         {
             ServiceProviderProfile = new ServiceProviderProfile
             {
-                PortfolioItems = new() { new PortfolioItem { Title = "old", AddedAt = addedAt } },
+                PortfolioItems = new() { existingItem },
             },
         });
 
         var result = await _service.UpdatePortfolioItemAsync(user.Id.ToString(), new UpdatePortfolioItemRequest
         {
-            Index = 0,
+            Id = existingItem.Id,
             Title = "new",
             Description = "updated",
         });
@@ -336,12 +338,12 @@ public class ServiceProviderServiceTests
     }
 
     [Fact]
-    public async Task UpdatePortfolio_returns_NotFound_for_bad_index()
+    public async Task UpdatePortfolio_returns_NotFound_for_bad_id()
     {
         var user = GivenUser(new ApplicationUser());
         var result = await _service.UpdatePortfolioItemAsync(user.Id.ToString(), new UpdatePortfolioItemRequest
         {
-            Index = 5,
+            Id = "nonexistent-id",
             Title = "x",
             Description = "y",
         });
@@ -351,19 +353,20 @@ public class ServiceProviderServiceTests
     [Fact]
     public async Task DeletePortfolio_removes_item_then_404_on_reuse()
     {
+        var existingItem = new PortfolioItem { Title = "a" };
         var user = GivenUser(new ApplicationUser
         {
             ServiceProviderProfile = new ServiceProviderProfile
             {
-                PortfolioItems = new() { new PortfolioItem { Title = "a" } },
+                PortfolioItems = new() { existingItem },
             },
         });
 
-        var first = await _service.DeletePortfolioItemAsync(user.Id.ToString(), 0);
+        var first = await _service.DeletePortfolioItemAsync(user.Id.ToString(), existingItem.Id);
         first.Outcome.Should().Be(ServiceProviderOutcome.Ok);
         first.Value!.PortfolioItems.Should().BeEmpty();
 
-        var second = await _service.DeletePortfolioItemAsync(user.Id.ToString(), 0);
+        var second = await _service.DeletePortfolioItemAsync(user.Id.ToString(), existingItem.Id);
         second.Outcome.Should().Be(ServiceProviderOutcome.NotFound);
     }
 

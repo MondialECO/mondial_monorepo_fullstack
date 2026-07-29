@@ -267,6 +267,12 @@ describe("Profile View", () => {
     expect(screen.queryByRole("link", { name: /Edit Profile/i })).toBeNull();
     expect(screen.queryByRole("link", { name: /Edit about/i })).toBeNull();
 
+    // Portfolio edit and delete buttons must not appear: they would mutate the
+    // authenticated provider's profile, not the viewed one.
+    expect(screen.queryByRole("button", { name: /Edit Existing project/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Delete Existing project/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Add item/i })).toBeNull();
+
     // Verified credential is shown; the pending one and its private fields are not.
     expect(screen.getByText("UX Certification")).toBeVisible();
     expect(screen.queryByText("Pending licence")).toBeNull();
@@ -280,6 +286,65 @@ describe("Profile View", () => {
 
     expect(screen.getByText("Pending Review")).toBeVisible();
     expect(screen.getByText("licence.pdf")).toBeVisible();
+  });
+
+  it("renders a legacy cover at the shared 4:1 rule so header height stays consistent", async () => {
+    // Uploaded before the 4:1 rule. The header height must not vary per
+    // provider, so this is rendered at 4:1 rather than at its stored 1600x540.
+    api.getProfile.mockResolvedValue({
+      ...baseProfile,
+      coverImage: {
+        id: "cover-legacy",
+        url: "/uploads/service-provider/cover/legacy.jpg",
+        contentType: "image/jpeg",
+        width: 1600,
+        height: 540,
+        bytes: 1234,
+        uploadedAt: "2026-01-01T00:00:00Z",
+      },
+    });
+    renderWith(<ProfileView mode="owner" />);
+    await screen.findByRole("heading", { name: "Maya Rahman", level: 1 });
+
+    expect(screen.getByTestId("profile-cover").style.aspectRatio).toBe("1600 / 400");
+  });
+
+  it("renders a current-rule cover at 4:1", async () => {
+    api.getProfile.mockResolvedValue({
+      ...baseProfile,
+      coverImage: {
+        id: "cover-new",
+        url: "/uploads/service-provider/cover/new.jpg",
+        contentType: "image/jpeg",
+        width: 1600,
+        height: 400,
+        bytes: 1234,
+        uploadedAt: "2026-07-01T00:00:00Z",
+      },
+    });
+    renderWith(<ProfileView mode="owner" />);
+    await screen.findByRole("heading", { name: "Maya Rahman", level: 1 });
+
+    expect(screen.getByTestId("profile-cover").style.aspectRatio).toBe("1600 / 400");
+  });
+
+  it("falls back to the cover rule when stored dimensions are unusable", async () => {
+    api.getProfile.mockResolvedValue({
+      ...baseProfile,
+      coverImage: {
+        id: "cover-broken",
+        url: "/uploads/service-provider/cover/broken.jpg",
+        contentType: "image/jpeg",
+        width: 0,
+        height: 0,
+        bytes: 1234,
+        uploadedAt: "2026-07-01T00:00:00Z",
+      },
+    });
+    renderWith(<ProfileView mode="owner" />);
+    await screen.findByRole("heading", { name: "Maya Rahman", level: 1 });
+
+    expect(screen.getByTestId("profile-cover").style.aspectRatio).toBe("1600 / 400");
   });
 
   it("normalises the legacy inline-edit link to the separate editor route", async () => {

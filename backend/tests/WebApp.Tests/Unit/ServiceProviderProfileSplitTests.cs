@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Hangfire;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -398,7 +399,7 @@ public class ServiceProviderProfileSplitTests
         var service = new ServiceProviderService(
             _users.Object, _harness.Professional, _harness.Sp, _harness.Credentials,
             _harness.CreateMigrator(_users.Object),
-            Mock.Of<IAuditLogger>(), Mock.Of<INotificationService>(),
+            Mock.Of<IAuditLogger>(), Mock.Of<INotificationService>(), Mock.Of<IBackgroundJobClient>(),
             NullLogger<ServiceProviderService>.Instance);
 
         (await service.ApproveVerificationAsync(user.Id.ToString(), "admin")).Outcome.Should().Be(ServiceProviderOutcome.Ok);

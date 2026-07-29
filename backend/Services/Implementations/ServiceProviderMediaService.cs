@@ -1,3 +1,4 @@
+using Hangfire;
 using Microsoft.AspNetCore.Identity;
 using WebApp.Models.DatabaseModels;
 using WebApp.Models.Dtos;
@@ -57,6 +58,7 @@ public sealed class ServiceProviderMediaService(
     SaveFile saveFile,
     IFileSecurityScanner scanner,
     IAuditLogger audit,
+    IBackgroundJobClient jobClient,
     ILogger<ServiceProviderMediaService> logger) : IServiceProviderMediaService
 {
     private const long ProfileMaximumBytes = 5 * 1024 * 1024;
@@ -285,18 +287,9 @@ public sealed class ServiceProviderMediaService(
         ServiceProviderProfileResponse response, string message) =>
         ServiceProviderResult<ServiceProviderProfileResponse>.Ok(response, message);
 
-    private async Task DeleteBestEffort(string publicUrl, CancellationToken cancellationToken)
+    private Task DeleteBestEffort(string publicUrl, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(publicUrl)) return;
-        try
-        {
-            var relativePath = publicUrl.TrimStart('/');
-            var fullPath = Path.GetFullPath(Path.Combine("wwwroot", relativePath));
-            var uploadRoot = Path.GetFullPath(Path.Combine("wwwroot", "uploads"));
-            if (!fullPath.StartsWith(uploadRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
-                return;
-            if (File.Exists(fullPath)) File.Delete(fullPath);
-        }
-        catch (Exception exception) { logger.LogWarning(exception, "Could not delete superseded provider media asset."); }
+        ProviderMediaFiles.DeleteBestEffort(publicUrl, logger, jobClient);
+        return Task.CompletedTask;
     }
 }

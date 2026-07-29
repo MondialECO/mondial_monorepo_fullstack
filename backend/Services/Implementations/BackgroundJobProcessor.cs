@@ -128,4 +128,47 @@ public class BackgroundJobProcessor
             throw;
         }
     }
+
+    /// <summary>
+    /// Durable cleanup of orphaned provider media files. Invoked when immediate
+    /// deletion fails (e.g. locked file, disk full). Retries with exponential backoff.
+    /// Path validation ensures only upload-root files can be deleted.
+    /// Idempotent: missing files are treated as success.
+    /// </summary>
+    [AutomaticRetry(Attempts = 2)]
+    public Task DeletePortfolioMediaAsync(string publicUrl)
+    {
+        if (string.IsNullOrWhiteSpace(publicUrl))
+            return Task.CompletedTask;
+
+        try
+        {
+            var relativePath = publicUrl.TrimStart('/');
+            var fullPath = Path.GetFullPath(Path.Combine("wwwroot", relativePath));
+            var uploadRoot = Path.GetFullPath(Path.Combine("wwwroot", "uploads"));
+
+            // Path restriction: only files inside the upload root can be deleted.
+            // Stored values from the upload pipeline always pass this check;
+            // any external value is silently rejected.
+            if (!fullPath.StartsWith(uploadRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning("Rejecting media deletion for path outside upload root: {Path}", publicUrl);
+                return Task.CompletedTask;
+            }
+
+            // Idempotent: the file may have already been deleted by a prior job run,
+            // concurrent manual cleanup, or the immediate-deletion attempt in the
+            // service layer. Missing files are not an error.
+            if (File.Exists(fullPath))
+                File.Delete(fullPath);
+
+            _logger.LogInformation("Portfolio media deleted: {Path}", publicUrl);
+            return Task.CompletedTask;
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Portfolio media cleanup failed for {Path}; Hangfire will retry", publicUrl);
+            throw; // Let Hangfire record and retry
+        }
+    }
 }

@@ -31,7 +31,7 @@ import {
   useServiceProviderProfile,
   useServiceProviderTrust,
 } from "@/hooks/queries/service-provider";
-import { resolveProviderMediaUrl } from "@/lib/service-provider/provider-media";
+import { PROVIDER_IMAGE_RULES, resolveProviderMediaUrl } from "@/lib/service-provider/provider-media";
 import {
   legacyProfileRedirect,
   PROFILE_VIEW_ROUTE,
@@ -46,6 +46,9 @@ import {
 
 /** Owner sees edit affordances and private fields; public/client mode sees neither. */
 export type ProfileViewMode = "owner" | "public";
+
+/** Single source for the cover ratio — shared with the uploader's crop target. */
+const COVER_RULE = PROVIDER_IMAGE_RULES.cover;
 
 const readable = (value: string) => value.replace(/([a-z])([A-Z])/g, "$1 $2");
 
@@ -152,7 +155,9 @@ export function ProfileView({ mode = "owner" }: { mode?: ProfileViewMode }) {
     : [];
 
   return (
-    <SpPage className="pb-4">
+    // The whole Profile View lives in one readable container — the cover is
+    // bounded by it too, so nothing bleeds past the page body.
+    <div className="mx-auto w-full max-w-[1440px] space-y-6 pb-4">
       {isOwner && <SpTabBar label="Profile sections" items={tabs} />}
       {showingTrust ? (
         <TrustAndSkillsSection profile={profile} />
@@ -174,7 +179,7 @@ export function ProfileView({ mode = "owner" }: { mode?: ProfileViewMode }) {
           listings={listings.data ?? []}
         />
       )}
-    </SpPage>
+    </div>
   );
 }
 
@@ -205,28 +210,47 @@ function ProfileSections({
   languages: Array<{ id: string; language: string; proficiency: LanguageProficiency | null }>;
   listings: Array<{ id: string; title: string; category: string; status: string }>;
 }) {
+  // Every provider's header is the same height, so the cover box always uses the
+  // shared 4:1 rule regardless of what an older upload was stored at. Covers
+  // saved before this rule are letterboxed by object-cover rather than changing
+  // the header height per provider.
+  const coverAspectRatio = `${COVER_RULE.width} / ${COVER_RULE.height}`;
+
   return (
     <>
-      {/* ---- Header ---- */}
-      <SpCard className="overflow-hidden p-0">
-        {isOwner && (
-          <div className="flex justify-end px-4 pt-4 sm:px-7">
-            <Button asChild className="min-h-11">
-              <Link href={SECTION_EDIT_HREF.profile()}>
-                <Pencil className="size-4" aria-hidden="true" />
-                Edit Profile
-              </Link>
-            </Button>
+      {/* ---- Unified profile header (cover + avatar + identity in one card) ---- */}
+      <div className="mx-auto w-full max-w-[1440px]">
+        <SpCard className="overflow-hidden p-0">
+          {/* Cover image / fallback — the card's top section. The ratio comes
+              from the stored media (or the current rule as a fallback), so
+              object-cover shows the provider's framing with no further cropping.
+              No max/min height here: a height clamp would override the ratio and
+              re-crop the already-cropped upload. */}
+          <div
+            data-testid="profile-cover"
+            className="relative w-full bg-[linear-gradient(120deg,#F9FAFB,#EEF2FF_55%,#F4F5F7)]"
+            style={{ aspectRatio: coverAspectRatio }}
+          >
+            {coverUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={coverUrl} alt="" className="absolute inset-0 size-full object-cover" />
+            )}
+
+            {/* Owner-only Edit Profile action, over the cover's top-right. */}
+            {isOwner && (
+              <div className="absolute right-4 top-4 sm:right-6 sm:top-6">
+                <Button asChild className="min-h-11">
+                  <Link href={SECTION_EDIT_HREF.profile()}>
+                    <Pencil className="size-4" aria-hidden="true" />
+                    Edit Profile
+                  </Link>
+                </Button>
+              </div>
+            )}
           </div>
-        )}
-        <div className="relative aspect-[3/1] max-h-56 min-h-28 bg-[linear-gradient(120deg,#F9FAFB,#EEF2FF_55%,#F4F5F7)]">
-          {coverUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={coverUrl} alt="" className="absolute inset-0 size-full object-cover" />
-          )}
-        </div>
-        <div className="relative -mt-12 flex flex-col gap-4 px-4 pb-6 sm:px-7">
-          <div className="flex items-end gap-4">
+
+          {/* Avatar overlaps the cover while staying inside the same card. */}
+          <div className="relative z-10 -mt-12 flex items-end gap-4 px-4 sm:px-6">
             <div className="size-24 shrink-0 overflow-hidden rounded-full border-4 border-white bg-[#F4F5F7]">
               {profileImageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -240,7 +264,8 @@ function ProfileSections({
             </div>
           </div>
 
-          <div className="min-w-0">
+          {/* Identity information */}
+          <div className="min-w-0 px-4 pb-6 pt-4 sm:px-6">
             <h1 className="font-heading text-2xl font-semibold text-[#171717]">{name}</h1>
             {profile.headline && <p className="mt-1 text-sm text-[#4B5563]">{profile.headline}</p>}
 
@@ -271,16 +296,14 @@ function ProfileSections({
               )}
               <div className="flex gap-1">
                 <dt className="text-[#6B7280]">Avg response time:</dt>
-                <dd>
-                  {responseMinutes ? `${responseMinutes} mins` : "Not tracked"}
-                </dd>
+                <dd>{responseMinutes ? `${responseMinutes} mins` : "Not tracked"}</dd>
               </div>
             </dl>
 
             <p className="mt-3 text-xs text-[#6B7280]">Affects match priority, not pricing.</p>
           </div>
-        </div>
-      </SpCard>
+        </SpCard>
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="space-y-6">
@@ -369,7 +392,7 @@ function ProfileSections({
           </SpCard>
 
           {/* ---- Portfolio (existing manager, unchanged) ---- */}
-          <PortfolioSection items={profile.portfolioItems} />
+          <PortfolioSection items={profile.portfolioItems} isOwner={isOwner} />
 
           {/* ---- Services ---- */}
           <SpCard>

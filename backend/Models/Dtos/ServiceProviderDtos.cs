@@ -237,32 +237,35 @@ public class ProfileEditorSubmitResponse
     public int CredentialsPendingReview { get; set; }
 }
 
-/// <summary>Append one portfolio item (Stage 1 "Portfolio Submission").</summary>
+/// <summary>
+/// Append one portfolio item (Stage 1 "Portfolio Submission"). ImagePath is
+/// deliberately absent: the image location is server-owned and is only ever set
+/// by the portfolio media endpoints, which validate and re-encode the file.
+/// </summary>
 public class AddPortfolioItemRequest
 {
     [Required]
     public string Title { get; set; } = "";
     public string? Description { get; set; }
     public string? Url { get; set; }
-    public string? ImagePath { get; set; }
     public string? ImageCaption { get; set; }
 }
 
 /// <summary>
-/// Replace one existing portfolio item, addressed by its position in the
-/// provider's PortfolioItems list (items carry no stable id in Stage 1).
+/// Replace one existing portfolio item, addressed by its stable server-owned id.
+/// Positional addressing is not accepted: indexes shift when a concurrent delete
+/// lands, which would edit the wrong item.
 /// </summary>
 public class UpdatePortfolioItemRequest
 {
-    /// <summary>Zero-based index of the item to replace.</summary>
-    [Range(0, int.MaxValue)]
-    public int Index { get; set; }
+    /// <summary>Stable id of the item to replace (PortfolioItemResponse.Id).</summary>
+    [Required]
+    public string Id { get; set; } = "";
 
     [Required]
     public string Title { get; set; } = "";
     public string? Description { get; set; }
     public string? Url { get; set; }
-    public string? ImagePath { get; set; }
     public string? ImageCaption { get; set; }
 }
 

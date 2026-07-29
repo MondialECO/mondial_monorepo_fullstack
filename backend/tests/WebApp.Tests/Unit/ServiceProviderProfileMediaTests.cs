@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using FluentAssertions;
+using Hangfire;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -44,10 +45,9 @@ public class ServiceProviderProfileMediaTests
 
         var result = await service.UpdatePortfolioItemAsync(user.Id.ToString(), new UpdatePortfolioItemRequest
         {
-            Index = 0,
+            Id = "item",
             Title = "New",
             Description = "Description",
-            ImagePath = null,
         });
 
         result.Value!.PortfolioItems[0].PrimaryImage!.Id.Should().Be("asset");
@@ -362,6 +362,7 @@ public class ServiceProviderProfileMediaTests
                     saveFile,
                     scanner.Object,
                     Mock.Of<IAuditLogger>(),
+                    Mock.Of<IBackgroundJobClient>(),
                     NullLogger<ServiceProviderMediaService>.Instance);
 
                 var png = CreateMinimalPng();
@@ -410,6 +411,7 @@ public class ServiceProviderProfileMediaTests
             harness.CreateMigrator(users.Object),
             Mock.Of<IAuditLogger>(),
             Mock.Of<INotificationService>(),
+            Mock.Of<IBackgroundJobClient>(),
             NullLogger<ServiceProviderService>.Instance);
     }
 
@@ -433,6 +435,7 @@ public class ServiceProviderProfileMediaTests
             saveFile.Object,
             scanner.Object,
             Mock.Of<IAuditLogger>(),
+            Mock.Of<IBackgroundJobClient>(),
             NullLogger<ServiceProviderMediaService>.Instance);
     }
 

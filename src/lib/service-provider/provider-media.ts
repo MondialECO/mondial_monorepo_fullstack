@@ -6,7 +6,7 @@ export type ProviderImageKind = "profile" | "cover" | "portfolio";
 
 export const PROVIDER_IMAGE_RULES = {
   profile: { maxBytes: 5 * 1024 * 1024, width: 800, height: 800, recommendation: "400 × 400 or larger" },
-  cover: { maxBytes: 8 * 1024 * 1024, width: 1600, height: 540, recommendation: "1600 × 540 recommended" },
+  cover: { maxBytes: 8 * 1024 * 1024, width: 1600, height: 400, recommendation: "1600 × 400 recommended" },
   portfolio: { maxBytes: 8 * 1024 * 1024, width: 1200, height: 750, recommendation: "1200 px wide recommended" },
 } as const;
 
