@@ -21,6 +21,23 @@ import type {
 
 const unwrap = <T>(envelope: ApiEnvelope<T>): T => envelope.data;
 
+export type UploadProgressHandler = (percent: number) => void;
+
+function imageForm(file: File, caption?: string | null) {
+  const body = new FormData();
+  body.append("file", file);
+  if (caption !== undefined && caption !== null) body.append("caption", caption);
+  return body;
+}
+
+function progress(handler?: UploadProgressHandler) {
+  return handler
+    ? (event: { loaded: number; total?: number }) => {
+        if (event.total) handler(Math.min(100, Math.round((event.loaded / event.total) * 100)));
+      }
+    : undefined;
+}
+
 export async function getProfile(): Promise<ServiceProviderProfile> {
   const res = await api.get<ApiEnvelope<ServiceProviderProfile>>(
     "/service-provider/profile"
@@ -65,6 +82,56 @@ export async function deletePortfolioItem(
     `/service-provider/portfolio/${index}`
   );
   return unwrap(res.data);
+}
+
+export async function uploadProfileImage(file: File, onProgress?: UploadProgressHandler) {
+  const res = await api.post<ApiEnvelope<ServiceProviderProfile>>(
+    "/service-provider/media/profile-image",
+    imageForm(file),
+    { onUploadProgress: progress(onProgress) }
+  );
+  return unwrap(res.data);
+}
+
+export async function removeProfileImage() {
+  return unwrap((await api.delete<ApiEnvelope<ServiceProviderProfile>>(
+    "/service-provider/media/profile-image"
+  )).data);
+}
+
+export async function uploadCoverImage(file: File, onProgress?: UploadProgressHandler) {
+  const res = await api.post<ApiEnvelope<ServiceProviderProfile>>(
+    "/service-provider/media/cover-image",
+    imageForm(file),
+    { onUploadProgress: progress(onProgress) }
+  );
+  return unwrap(res.data);
+}
+
+export async function removeCoverImage() {
+  return unwrap((await api.delete<ApiEnvelope<ServiceProviderProfile>>(
+    "/service-provider/media/cover-image"
+  )).data);
+}
+
+export async function uploadPortfolioImage(
+  portfolioItemId: string,
+  file: File,
+  caption?: string | null,
+  onProgress?: UploadProgressHandler
+) {
+  const res = await api.post<ApiEnvelope<ServiceProviderProfile>>(
+    `/service-provider/portfolio/${encodeURIComponent(portfolioItemId)}/image`,
+    imageForm(file, caption),
+    { onUploadProgress: progress(onProgress) }
+  );
+  return unwrap(res.data);
+}
+
+export async function removePortfolioImage(portfolioItemId: string) {
+  return unwrap((await api.delete<ApiEnvelope<ServiceProviderProfile>>(
+    `/service-provider/portfolio/${encodeURIComponent(portfolioItemId)}/image`
+  )).data);
 }
 
 export async function submitVerification(

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Award,
   CheckCircle2,
@@ -68,13 +68,15 @@ export function TrustAndSkillsSection({
   );
 }
 
-function TrustCard() {
+export function TrustCard() {
   const { data: trust, isLoading, isError, refetch } =
     useServiceProviderTrust();
 
   return (
-    <SpCard aria-labelledby="trust-score-heading">
+    <SpCard aria-labelledby="trust-card-heading" aria-describedby="trust-card-description">
       <SpSectionHeader
+        titleId="trust-card-heading"
+        descriptionId="trust-card-description"
         title="Trust & reputation"
         description="Your score is calculated from verified marketplace signals as they become available."
       />
@@ -106,7 +108,8 @@ function TrustCard() {
                 <ShieldCheck className="mr-1.5 size-3.5" aria-hidden="true" />
                 Verified
               </SpStatusBadge>
-              <SpStatusBadge>Tier {trust.tierLevel}</SpStatusBadge>
+              <SpStatusBadge aria-describedby="trust-tier-meaning">Tier {trust.tierLevel}</SpStatusBadge>
+              <p id="trust-tier-meaning" className="w-full text-xs text-[#6B7280]">Affects match priority, not pricing.</p>
             </div>
 
             {trust.hasEnoughData ? (
@@ -188,7 +191,7 @@ function describeCategory(category: SkillsTestCategoryStatus): string {
   return summary;
 }
 
-function SkillsTestCard() {
+export function SkillsTestCard() {
   const { data: status, isLoading, isError, refetch } = useSkillsTestStatus();
   const start = useStartSkillsTest();
   const submit = useSubmitSkillsTest();
@@ -199,8 +202,27 @@ function SkillsTestCard() {
   } | null>(null);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [result, setResult] = useState<SkillsTestResult | null>(null);
+  const activeHeadingRef = useRef<HTMLHeadingElement>(null);
+  const resultHeadingRef = useRef<HTMLHeadingElement>(null);
+  const launcherRef = useRef<HTMLButtonElement | null>(null);
 
-  const beginTest = async (category: string) => {
+  useEffect(() => {
+    if (active) activeHeadingRef.current?.focus();
+  }, [active]);
+
+  useEffect(() => {
+    if (result) resultHeadingRef.current?.focus();
+  }, [result]);
+
+  const restoreLauncherFocus = () => {
+    queueMicrotask(() => {
+      if (launcherRef.current?.isConnected) launcherRef.current.focus();
+      else document.getElementById('skills-tests-heading')?.focus();
+    });
+  };
+
+  const beginTest = async (category: string, launcher: HTMLButtonElement) => {
+    launcherRef.current = launcher;
     setResult(null);
     setAnswers({});
     try {
@@ -236,8 +258,11 @@ function SkillsTestCard() {
   };
 
   return (
-    <SpCard aria-labelledby="skills-test-heading">
+    <SpCard aria-labelledby="skills-tests-heading" aria-describedby="skills-tests-description">
       <SpSectionHeader
+        titleId="skills-tests-heading"
+        descriptionId="skills-tests-description"
+        titleTabIndex={-1}
         title="Skills tests"
         description="Optional category tests add a verified skills signal. They never block your profile or marketplace access."
         action={<SpStatusBadge>Optional</SpStatusBadge>}
@@ -263,12 +288,12 @@ function SkillsTestCard() {
             </div>
           </SpMutationFeedback>
         ) : active ? (
-          <div className="space-y-6">
+          <div className="space-y-6" role="region" aria-labelledby="active-skills-test-heading">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E5E7EB] pb-4">
               <div>
-                <p id="skills-test-heading" className="font-semibold text-[#171717]">
+                <h3 ref={activeHeadingRef} id="active-skills-test-heading" tabIndex={-1} className="font-semibold text-[#171717] outline-none focus-visible:ring-2 focus-visible:ring-[#3C61DD]">
                   {formatCategory(active.category)} test
-                </p>
+                </h3>
                 <p className="mt-1 text-xs text-[#6B7280]">
                   Answer every question before submitting.
                 </p>
@@ -337,6 +362,7 @@ function SkillsTestCard() {
                   setActive(null);
                   setAnswers({});
                   submit.reset();
+                  restoreLauncherFocus();
                 }}
               >
                 Cancel
@@ -348,18 +374,18 @@ function SkillsTestCard() {
             {result && (
               <SpMutationFeedback status={result.passed ? 'success' : 'info'}>
                 <div className="space-y-2">
-                  <p className="flex items-center gap-2 font-semibold">
+                  <h3 ref={resultHeadingRef} tabIndex={-1} className="flex items-center gap-2 font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[#3C61DD]">
                     {result.passed ? (
                       <CheckCircle2 className="size-4" aria-hidden="true" />
                     ) : (
                       <Clock className="size-4" aria-hidden="true" />
                     )}
                     {result.passed ? 'Skills test passed' : 'Not a pass this time'}
-                  </p>
+                  </h3>
                   <p>
                     Score {result.score}% ({result.correctCount}/{result.totalCount}). Retake available after {formatDate(result.nextEligibleRetestAt)}.
                   </p>
-                  <Button type="button" variant="outline" size="sm" onClick={() => setResult(null)}>
+                  <Button type="button" variant="outline" size="sm" onClick={() => { setResult(null); restoreLauncherFocus(); }}>
                     Dismiss
                   </Button>
                 </div>
@@ -402,7 +428,7 @@ function SkillsTestCard() {
                         type="button"
                         size="sm"
                         variant="outline"
-                        onClick={() => beginTest(category.category)}
+                        onClick={(event) => beginTest(category.category, event.currentTarget)}
                         disabled={start.isPending}
                       >
                         {start.isPending ? 'Loading…' : category.hasAttempt ? 'Retake test' : 'Take test'}

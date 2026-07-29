@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom/vitest';
-import { expect, afterEach, vi } from 'vitest';
+import { afterEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
 
 // Cleanup after each test
@@ -65,3 +65,17 @@ globalThis.matchMedia =
       matches: false,
     };
   };
+
+// Polyfill for Document.elementFromPoint (used by Tiptap/ProseMirror)
+// happy-dom doesn't implement elementFromPoint, so we provide a basic one
+if (typeof Document.prototype.elementFromPoint !== 'function') {
+  Document.prototype.elementFromPoint = function () {
+    // Return the root element or body as a fallback
+    return this.body || this.documentElement;
+  };
+}
+
+// Mock global alert for tests that parse HTML with scripts
+if (typeof globalThis.alert !== 'function') {
+  globalThis.alert = vi.fn();
+}

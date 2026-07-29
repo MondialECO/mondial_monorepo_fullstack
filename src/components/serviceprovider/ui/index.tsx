@@ -37,17 +37,23 @@ export function SpSectionHeader({
   description,
   action,
   className,
+  titleId,
+  descriptionId,
+  titleTabIndex,
 }: {
   title: string;
   description?: string;
   action?: React.ReactNode;
   className?: string;
+  titleId?: string;
+  descriptionId?: string;
+  titleTabIndex?: number;
 }) {
   return (
     <div className={cn("flex flex-col justify-between gap-3 sm:flex-row sm:items-start", className)}>
       <div className="min-w-0">
-        <h2 className="font-heading text-lg font-semibold text-[#171717]">{title}</h2>
-        {description && <p className="mt-1 text-sm leading-6 text-[#6B7280]">{description}</p>}
+        <h2 id={titleId} tabIndex={titleTabIndex} className="font-heading text-lg font-semibold text-[#171717]">{title}</h2>
+        {description && <p id={descriptionId} className="mt-1 text-sm leading-6 text-[#6B7280]">{description}</p>}
       </div>
       {action && <div className="shrink-0">{action}</div>}
     </div>
@@ -166,6 +172,8 @@ export function SpTagInput({
   required,
   error,
   validateItem,
+  maxItemLength,
+  itemLengthError,
 }: {
   id: string;
   label: string;
@@ -177,6 +185,8 @@ export function SpTagInput({
   required?: boolean;
   error?: string | null;
   validateItem?: (item: string) => string | null;
+  maxItemLength?: number;
+  itemLengthError?: string;
 }) {
   const [draft, setDraft] = React.useState("");
   const [draftError, setDraftError] = React.useState<string | null>(null);
@@ -186,6 +196,10 @@ export function SpTagInput({
     const item = draft.trim().replace(/,$/, "").trim();
     if (!item || value.length >= maxItems || value.some((entry) => entry.toLocaleLowerCase() === item.toLocaleLowerCase())) {
       setDraft("");
+      return;
+    }
+    if (maxItemLength !== undefined && item.length > maxItemLength) {
+      setDraftError(itemLengthError ?? `${label} must be ${maxItemLength} characters or fewer.`);
       return;
     }
     const validationError = validateItem?.(item) ?? null;

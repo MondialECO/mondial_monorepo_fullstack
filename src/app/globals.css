@@ -404,3 +404,28 @@
   .print-row,
   .print-table tr { break-inside: avoid; }
 }
+
+/* Service Provider Professional Overview. Tiptap persists JSON only; these
+   classes style the schema-generated editor surface and its accessible preview. */
+.tiptap p.is-editor-empty:first-child::before {
+  color: #9ca3af;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+.tiptap h2,
+.professional-overview h2 { margin: 1rem 0 0.4rem; font-size: 1.125rem; font-weight: 700; line-height: 1.5; color: #171717; }
+.tiptap h3,
+.professional-overview h3 { margin: 0.9rem 0 0.35rem; font-size: 1rem; font-weight: 700; line-height: 1.5; color: #171717; }
+.tiptap ul,
+.professional-overview ul { margin: 0.55rem 0; list-style: disc; padding-left: 1.5rem; }
+.tiptap ol,
+.professional-overview ol { margin: 0.55rem 0; list-style: decimal; padding-left: 1.5rem; }
+.tiptap blockquote,
+.professional-overview blockquote { margin: 0.75rem 0; border-left: 3px solid #0d9488; padding-left: 0.9rem; color: #4b5563; }
+.tiptap hr,
+.professional-overview hr { margin: 1rem 0; border: 0; border-top: 1px solid #e5e7eb; }
+.tiptap a,
+.professional-overview a { color: #3c61dd; text-decoration: underline; text-underline-offset: 2px; }
