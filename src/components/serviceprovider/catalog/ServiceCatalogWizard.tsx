@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -29,6 +29,7 @@ export function ServiceCatalogWizard({ onExit }: { onExit: () => void }) {
 
   const [error, setError] = useState<string | null>(null);
   const [savedDraft, setSavedDraft] = useState<ServiceListing | null>(null);
+  const draftInitiationStartedRef = useRef(false);
 
   // On mount or when draftId changes, fetch/initialize draft
   useEffect(() => {
@@ -37,9 +38,13 @@ export function ServiceCatalogWizard({ onExit }: { onExit: () => void }) {
     }
   }, [draftId, draftQuery.data]);
 
-  // Initialize draft if none exists and we're at step 1
+  // Initialize draft if none exists and we're at step 1.
+  // This effect is idempotent: the draftInitiationStartedRef guard ensures
+  // we only start the draft-creation process once per genuine mount, even if
+  // React StrictMode invokes this effect twice or the component remounts.
   useEffect(() => {
-    if (!draftId && currentStep === 1 && !savedDraft) {
+    if (!draftId && currentStep === 1 && !savedDraft && !draftInitiationStartedRef.current) {
+      draftInitiationStartedRef.current = true;
       const initDraft = async () => {
         try {
           const result = await createListing.mutateAsync([
@@ -56,6 +61,7 @@ export function ServiceCatalogWizard({ onExit }: { onExit: () => void }) {
           // Update URL to include draftId for future navigation
           router.replace(`${BASE_ROUTE}?view=new&step=1&draftId=${encodeURIComponent(result.id)}`);
         } catch (err) {
+          draftInitiationStartedRef.current = false;
           setError(`Could not initialize draft: ${err instanceof Error ? err.message : 'Unknown error'}`);
         }
       };
