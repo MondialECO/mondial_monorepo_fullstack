@@ -137,6 +137,21 @@ public class ServiceCatalogController : ControllerBase
     public IActionResult GetPricingGuidance([FromQuery] string category, [FromQuery] string pricingModel) =>
         Map(_service.GetPricingGuidance(category, pricingModel));
 
+    // ---- Service Type / Sub-Category lookup (cascading dropdown) ----
+
+    [HttpGet("service-types")]
+    [AllowAnonymous]
+    public IActionResult GetServiceTypes()
+    {
+        // Return all approved Service Types (Sub-Categories) per Category as a flat structure
+        // for frontend cascading dropdown. "Other" has no fixed list (free text allowed).
+        var all = ServiceCategoryHelper.AllCategories().ToDictionary(
+            cat => cat.ToString(),
+            cat => ServiceTypeLookup.GetSubCategories(cat)
+        );
+        return Ok(ApiResponse.Ok(data: all));
+    }
+
     /// <summary>Map a service result onto the shared ApiResponse envelope and HTTP status.</summary>
     private IActionResult Map<T>(ServiceProviderResult<T> result) => result.Outcome switch
     {

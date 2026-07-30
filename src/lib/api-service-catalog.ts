@@ -180,3 +180,9 @@ export async function getPricingGuidance(category: string, pricingModel?: string
   });
   return unwrap(res.data);
 }
+
+// ---- Service Type / Sub-Category lookup (cascading dropdown) ----
+export async function getServiceTypes(): Promise<Record<string, string[]>> {
+  const res = await api.get<ApiEnvelope<Record<string, string[]>>>(`${BASE}/service-types`);
+  return unwrap(res.data);
+}

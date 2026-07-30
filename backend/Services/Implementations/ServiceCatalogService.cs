@@ -80,6 +80,8 @@ public class ServiceCatalogService : IServiceCatalogService
             return ServiceProviderResult<ServiceListingResponse>.Conflict("Unknown service category.");
         if (string.IsNullOrWhiteSpace(request.Title))
             return ServiceProviderResult<ServiceListingResponse>.Conflict("A service title is required.");
+        if (!ServiceTypeLookup.IsValidServiceType(category, request.ServiceType))
+            return ServiceProviderResult<ServiceListingResponse>.Conflict($"'{request.ServiceType}' is not an approved sub-category for {category}.");
 
         var listing = new ServiceListing
         {
@@ -88,6 +90,8 @@ public class ServiceCatalogService : IServiceCatalogService
             Title = request.Title.Trim(),
             Description = request.Description?.Trim() ?? "",
             Category = category,
+            MetadataTags = Normalize(request.MetadataTags),
+            SearchTags = Normalize(request.SearchTags),
             IndustryFocus = Normalize(request.IndustryFocus),
             GeographicCoverage = Normalize(request.GeographicCoverage),
             Status = CatalogStatus.Draft,
@@ -105,11 +109,15 @@ public class ServiceCatalogService : IServiceCatalogService
             return ServiceProviderResult<ServiceListingResponse>.Conflict("Unknown service category.");
         if (string.IsNullOrWhiteSpace(request.Title))
             return ServiceProviderResult<ServiceListingResponse>.Conflict("A service title is required.");
+        if (!ServiceTypeLookup.IsValidServiceType(category, request.ServiceType))
+            return ServiceProviderResult<ServiceListingResponse>.Conflict($"'{request.ServiceType}' is not an approved sub-category for {category}.");
 
         listing.ServiceType = request.ServiceType?.Trim() ?? "";
         listing.Title = request.Title.Trim();
         listing.Description = request.Description?.Trim() ?? "";
         listing.Category = category;
+        listing.MetadataTags = Normalize(request.MetadataTags);
+        listing.SearchTags = Normalize(request.SearchTags);
         listing.IndustryFocus = Normalize(request.IndustryFocus);
         listing.GeographicCoverage = Normalize(request.GeographicCoverage);
         listing.UpdatedAt = DateTime.UtcNow;

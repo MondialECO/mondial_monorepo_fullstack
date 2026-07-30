@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,6 +15,7 @@ import { SERVICE_CATEGORIES } from '@/types/service-provider';
 import type { ServiceListing } from '@/types/service-catalog';
 import { useUpdateListing } from '@/hooks/queries/service-catalog';
 import { getSuggestedKeywordsForCategory } from '@/lib/service-catalog/suggested-keywords';
+import { getServiceTypes } from '@/lib/api-service-catalog';
 
 export function WizardStep1Overview({
   draft,
@@ -35,8 +36,35 @@ export function WizardStep1Overview({
   const [geographicCoverage, setGeographicCoverage] = useState(draft.geographicCoverage);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [serviceTypesLookup, setServiceTypesLookup] = useState<Record<string, string[]>>({});
 
   const suggestedKeywords = useMemo(() => getSuggestedKeywordsForCategory(category), [category]);
+
+  // Fetch service types lookup on mount
+  useEffect(() => {
+    const fetchServiceTypes = async () => {
+      try {
+        const lookup = await getServiceTypes();
+        setServiceTypesLookup(lookup);
+      } catch (err) {
+        console.error('Failed to fetch service types:', err);
+      }
+    };
+    fetchServiceTypes();
+  }, []);
+
+  // When category changes, clear serviceType if it's no longer valid for the new category
+  const handleCategoryChange = (newCategory: string) => {
+    setCategory(newCategory);
+    const approvedTypes = serviceTypesLookup[newCategory] || [];
+    // If the current serviceType is not in the approved list for the new category, clear it
+    if (newCategory !== 'Other' && approvedTypes.length > 0 && !approvedTypes.includes(serviceType)) {
+      setServiceType('');
+    }
+  };
+
+  const approvedServiceTypes = serviceTypesLookup[category] || [];
+  const isOtherCategory = category === 'Other';
 
   const handleNext = async () => {
     if (!title.trim()) {
@@ -95,7 +123,7 @@ export function WizardStep1Overview({
           <SpFormField id="step1-category" label="Category" required>
             <select
               value={category}
-              onChange={(e) => setCategory(e.target.value)}
+              onChange={(e) => handleCategoryChange(e.target.value)}
               className="h-10 w-full rounded-lg border border-[#D1D5DB] bg-white px-3 text-sm text-[#171717] outline-none focus-visible:ring-2 focus-visible:ring-[#3C61DD]"
             >
               {SERVICE_CATEGORIES.map((option) => (
@@ -109,14 +137,30 @@ export function WizardStep1Overview({
           <SpFormField
             id="step1-type"
             label="Sub-category"
-            description="Delivery format (e.g. Consulting, Design, Development)."
+            description={isOtherCategory ? "Enter a custom sub-category." : "Select from approved options."}
           >
-            <Input
-              value={serviceType}
-              maxLength={100}
-              onChange={(e) => setServiceType(e.target.value)}
-              placeholder="e.g. Consulting"
-            />
+            {isOtherCategory ? (
+              <Input
+                value={serviceType}
+                maxLength={100}
+                onChange={(e) => setServiceType(e.target.value)}
+                placeholder="e.g. Custom service type"
+              />
+            ) : (
+              <select
+                value={serviceType}
+                onChange={(e) => setServiceType(e.target.value)}
+                disabled={approvedServiceTypes.length === 0}
+                className="h-10 w-full rounded-lg border border-[#D1D5DB] bg-white px-3 text-sm text-[#171717] outline-none disabled:bg-[#F3F4F6] disabled:text-[#9CA3AF] focus-visible:ring-2 focus-visible:ring-[#3C61DD]"
+              >
+                <option value="">{approvedServiceTypes.length === 0 ? 'Select a category first' : 'Select sub-category'}</option>
+                {approvedServiceTypes.map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </select>
+            )}
           </SpFormField>
         </div>
 
