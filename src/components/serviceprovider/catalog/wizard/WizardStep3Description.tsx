@@ -43,6 +43,8 @@ export function WizardStep3Description({
         title: draft.title,
         description: description.trim(),
         category: draft.category,
+        metadataTags: draft.metadataTags,
+        searchTags: draft.searchTags,
         industryFocus: draft.industryFocus,
         geographicCoverage: draft.geographicCoverage,
       };

@@ -53,6 +53,8 @@ export function ServiceCatalogWizard({ onExit }: { onExit: () => void }) {
               title: 'Untitled Service',
               description: '',
               category: 'Development',
+              metadataTags: [],
+              searchTags: [],
               industryFocus: [],
               geographicCoverage: [],
             },
