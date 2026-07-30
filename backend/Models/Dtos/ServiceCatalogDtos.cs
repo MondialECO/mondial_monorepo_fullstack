@@ -36,6 +36,8 @@ public class UpsertServiceListingRequest
     public string Description { get; set; } = "";
     /// <summary>ServiceCategory name (see the enum).</summary>
     public string Category { get; set; } = "";
+    public List<string> MetadataTags { get; set; } = new();
+    public List<string> SearchTags { get; set; } = new();
     public List<string> IndustryFocus { get; set; } = new();
     public List<string> GeographicCoverage { get; set; } = new();
 }
@@ -142,6 +144,8 @@ public class ServiceListingResponse
     public string Title { get; set; } = "";
     public string Description { get; set; } = "";
     public string Category { get; set; } = "";
+    public List<string> MetadataTags { get; set; } = new();
+    public List<string> SearchTags { get; set; } = new();
     public List<string> IndustryFocus { get; set; } = new();
     public List<string> GeographicCoverage { get; set; } = new();
     public long Impressions { get; set; }
@@ -261,6 +265,8 @@ public static class ServiceCatalogMapping
         Title = l.Title,
         Description = l.Description,
         Category = l.Category.ToString(),
+        MetadataTags = new List<string>(l.MetadataTags),
+        SearchTags = new List<string>(l.SearchTags),
         IndustryFocus = new List<string>(l.IndustryFocus),
         GeographicCoverage = new List<string>(l.GeographicCoverage),
         Impressions = l.Impressions,

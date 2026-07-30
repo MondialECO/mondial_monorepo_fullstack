@@ -99,6 +99,8 @@ export interface ServiceListing {
   title: string;
   description: string;
   category: string;
+  metadataTags: string[];
+  searchTags: string[];
   industryFocus: string[];
   geographicCoverage: string[];
   impressions: number;
@@ -196,6 +198,8 @@ export interface UpsertServiceListingRequest {
   title: string;
   description: string;
   category: string;
+  metadataTags: string[];
+  searchTags: string[];
   industryFocus: string[];
   geographicCoverage: string[];
 }

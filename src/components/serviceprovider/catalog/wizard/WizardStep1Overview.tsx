@@ -29,6 +29,8 @@ export function WizardStep1Overview({
   const [title, setTitle] = useState(draft.title);
   const [serviceType, setServiceType] = useState(draft.serviceType);
   const [category, setCategory] = useState(draft.category);
+  const [metadataTags, setMetadataTags] = useState(draft.metadataTags);
+  const [searchTags, setSearchTags] = useState(draft.searchTags);
   const [industryFocus, setIndustryFocus] = useState(draft.industryFocus);
   const [geographicCoverage, setGeographicCoverage] = useState(draft.geographicCoverage);
   const [error, setError] = useState<string | null>(null);
@@ -51,6 +53,8 @@ export function WizardStep1Overview({
         title: title.trim(),
         description: draft.description,
         category,
+        metadataTags,
+        searchTags,
         industryFocus,
         geographicCoverage,
       };
@@ -76,6 +80,7 @@ export function WizardStep1Overview({
       </div>
 
       <div className="space-y-5">
+        {/* 1. Service Title */}
         <SpFormField id="step1-title" label="Service title" required description={`${title.length} / 180`}>
           <Input
             value={title}
@@ -85,11 +90,26 @@ export function WizardStep1Overview({
           />
         </SpFormField>
 
+        {/* 2. Category & Sub-Category (side by side) */}
         <div className="grid gap-5 sm:grid-cols-2">
+          <SpFormField id="step1-category" label="Category" required>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="h-10 w-full rounded-lg border border-[#D1D5DB] bg-white px-3 text-sm text-[#171717] outline-none focus-visible:ring-2 focus-visible:ring-[#3C61DD]"
+            >
+              {SERVICE_CATEGORIES.map((option) => (
+                <option key={option} value={option}>
+                  {formatEnum(option)}
+                </option>
+              ))}
+            </select>
+          </SpFormField>
+
           <SpFormField
             id="step1-type"
-            label="Service type"
-            description="A concise delivery format, such as Consulting, Design, or Development."
+            label="Sub-category"
+            description="Delivery format (e.g. Consulting, Design, Development)."
           >
             <Input
               value={serviceType}
@@ -98,35 +118,43 @@ export function WizardStep1Overview({
               placeholder="e.g. Consulting"
             />
           </SpFormField>
-
-          <div>
-            <SpFormField id="step1-category" label="Category" required>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="h-10 w-full rounded-lg border border-[#D1D5DB] bg-white px-3 text-sm text-[#171717] outline-none focus-visible:ring-2 focus-visible:ring-[#3C61DD]"
-              >
-                {SERVICE_CATEGORIES.map((option) => (
-                  <option key={option} value={option}>
-                    {formatEnum(option)}
-                  </option>
-                ))}
-              </select>
-            </SpFormField>
-
-            {suggestedKeywords.length > 0 && (
-              <div className="mt-3 rounded-lg bg-[#F0F9FF] p-3">
-                <p className="text-xs font-medium text-[#3C61DD]">
-                  Common keywords for this category:
-                </p>
-                <p className="mt-1 text-sm text-[#3C61DD]">
-                  {suggestedKeywords.join(' • ')}
-                </p>
-              </div>
-            )}
-          </div>
         </div>
 
+        {/* Suggested keywords (under Category/Sub-Category) */}
+        {suggestedKeywords.length > 0 && (
+          <div className="rounded-lg bg-[#F0F9FF] p-3">
+            <p className="text-xs font-medium text-[#3C61DD]">
+              Common keywords for this category:
+            </p>
+            <p className="mt-1 text-sm text-[#3C61DD]">
+              {suggestedKeywords.join(' • ')}
+            </p>
+          </div>
+        )}
+
+        {/* 3. Metadata Tags (capped at 5) */}
+        <SpTagInput
+          id="step1-metadata"
+          label="Metadata tags"
+          value={metadataTags}
+          onChange={setMetadataTags}
+          placeholder="Add a tag"
+          maxItems={5}
+          description={`Internal/technical tags. ${metadataTags.length}/5 tags used.`}
+        />
+
+        {/* 4. Search Tags (capped at 5) */}
+        <SpTagInput
+          id="step1-search"
+          label="Search tags"
+          value={searchTags}
+          onChange={setSearchTags}
+          placeholder="Add a tag"
+          maxItems={5}
+          description={`Customer-facing search phrases. ${searchTags.length}/5 tags used.`}
+        />
+
+        {/* 5-6. Industry Focus & Geographic Coverage */}
         <div className="grid gap-5 lg:grid-cols-2">
           <SpTagInput
             id="step1-industries"

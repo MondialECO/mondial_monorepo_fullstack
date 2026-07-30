@@ -159,6 +159,15 @@ public class ServiceListing
     public string Title { get; set; } = "";
     public string Description { get; set; } = "";
     public ServiceCategory Category { get; set; }
+
+    // Metadata tags (internal/technical descriptors, capped at 5).
+    // Captured now for future use; not currently consumed by search/matching.
+    public List<string> MetadataTags { get; set; } = new();
+
+    // Search tags (customer-facing search phrases, capped at 5).
+    // Captured now for future use; not currently consumed by search/matching.
+    public List<string> SearchTags { get; set; } = new();
+
     public List<string> IndustryFocus { get; set; } = new();
     public List<string> GeographicCoverage { get; set; } = new();
 
