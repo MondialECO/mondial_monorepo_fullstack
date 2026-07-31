@@ -25,11 +25,6 @@ public interface IServiceCatalogService
     Task<ServiceProviderResult<PublishPackageResponse>> PublishPackageAsync(string userId, string packageId, PublishPackageRequest request);
     Task<ServiceProviderResult<ServicePackageResponse>> UnpublishPackageAsync(string userId, string packageId);
 
-    // ---- Gallery & Video (Service Listing media — atomic writes, atomic cap enforcement) ----
-    Task<ServiceProviderResult<ServiceListingResponse>> UploadGalleryImageAsync(string userId, string listingId, IFormFile file);
-    Task<ServiceProviderResult<ServiceListingResponse>> DeleteGalleryImageAsync(string userId, string listingId, string imageId);
-    Task<ServiceProviderResult<ServiceListingResponse>> UploadPreviewVideoAsync(string userId, string listingId, IFormFile file);
-    Task<ServiceProviderResult<ServiceListingResponse>> DeletePreviewVideoAsync(string userId, string listingId);
 
     // ---- FAQs ----
     Task<ServiceProviderResult<ServiceFaqResponse>> AddFaqAsync(string userId, string listingId, UpsertServiceFaqRequest request);
