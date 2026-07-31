@@ -34,6 +34,24 @@ public class AnalyticsController(IAnalyticsService service) : ControllerBase
     public async Task<IActionResult> UpdateGrowthTaskStatus(string id, UpdateGrowthTaskStatusRequest request) =>
         Map(await service.UpdateGrowthTaskStatusAsync(CurrentUserId, id, request));
 
+    [HttpGet("summary")]
+    public async Task<IActionResult> GetSummary(
+        [FromQuery] string listingId = "all",
+        [FromQuery] string range = "30d",
+        CancellationToken ct = default) =>
+        Map(await service.GetAnalyticsSummaryAsync(CurrentUserId, listingId, range, ct));
+
+    [HttpGet("timeseries")]
+    public async Task<IActionResult> GetTimeseries(
+        [FromQuery] string listingId = "all",
+        [FromQuery] string range = "30d",
+        CancellationToken ct = default) =>
+        Map(await service.GetAnalyticsTimeseriesAsync(CurrentUserId, listingId, range, ct));
+
+    [HttpGet("listings")]
+    public async Task<IActionResult> GetListings(CancellationToken ct) =>
+        Map(await service.GetAnalyticsListingsAsync(CurrentUserId, ct));
+
     private IActionResult Map<T>(ServiceProviderResult<T> result) => result.Outcome switch
     {
         ServiceProviderOutcome.Ok => Ok(ApiResponse.Ok(result.Message, result.Value)),
