@@ -62,7 +62,7 @@ export function ServiceDescriptionEditor({
     content: value || undefined,
     editorProps: {
       attributes: {
-        class: 'tiptap min-h-48 rounded-b-xl bg-white px-4 py-4 text-sm leading-7 text-[#374151] outline-none',
+        class: 'tiptap min-h-48 rounded-b-xl bg-white px-4 py-4 text-sm leading-7 text-muted-foreground outline-none',
         'aria-label': 'Service Description editor',
         'aria-describedby': 'service-description-help service-description-count service-description-error',
       },
@@ -76,7 +76,7 @@ export function ServiceDescriptionEditor({
 
   if (!editor) {
     return (
-      <div className="h-48 animate-pulse rounded-xl border border-[#E5E7EB] bg-[#F4F5F7]" aria-label="Loading Service Description editor" />
+      <div className="h-48 animate-pulse rounded-xl border border-border bg-muted" aria-label="Loading Service Description editor" />
     );
   }
 
@@ -131,17 +131,17 @@ export function ServiceDescriptionEditor({
   return (
     <div>
       <label
-        className="text-sm font-semibold text-[#171717]"
+        className="text-sm font-semibold text-foreground"
         onClick={() => editor.commands.focus()}
       >
         Service description
       </label>
-      <p id="service-description-help" className="mt-1 text-xs leading-5 text-[#6B7280]">
+      <p id="service-description-help" className="mt-1 text-xs leading-5 text-muted-foreground">
         Use formatting to highlight key aspects of your service. Minimum 120 words recommended.
       </p>
       <div
         className={cn(
-          'mt-3 overflow-hidden rounded-xl border bg-white focus-within:ring-2 focus-within:ring-[#3C61DD] focus-within:ring-offset-2',
+          'mt-3 overflow-hidden rounded-xl border bg-white focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2',
           error ? 'border-[#B42318]' : 'border-[#D1D5DB]'
         )}
       >
@@ -150,7 +150,7 @@ export function ServiceDescriptionEditor({
           role="toolbar"
           aria-label="Service Description formatting"
           onKeyDown={roveToolbar}
-          className="flex flex-wrap gap-1 border-b border-[#E5E7EB] bg-[#F9FAFB] p-2"
+          className="flex flex-wrap gap-1 border-b border-border bg-muted p-2"
         >
           <Tool
             label="Bold"
@@ -180,7 +180,7 @@ export function ServiceDescriptionEditor({
           >
             <Strikethrough />
           </Tool>
-          <div className="w-px bg-[#E5E7EB]" />
+          <div className="w-px bg-border" />
           <Tool
             label="Heading 2"
             active={editor.isActive('heading', { level: 2 })}
@@ -195,7 +195,7 @@ export function ServiceDescriptionEditor({
           >
             H3
           </Tool>
-          <div className="w-px bg-[#E5E7EB]" />
+          <div className="w-px bg-border" />
           <Tool
             label="Bullet list"
             active={editor.isActive('bulletList')}
@@ -223,7 +223,7 @@ export function ServiceDescriptionEditor({
         </div>
         <EditorContent editor={editor} />
       </div>
-      <div className="mt-2 flex flex-wrap justify-between gap-2 text-xs text-[#6B7280]">
+      <div className="mt-2 flex flex-wrap justify-between gap-2 text-xs text-muted-foreground">
         <span>
           {wordCount.toLocaleString()} words • {characterCount.toLocaleString()}/{MAX_CHARACTERS.toLocaleString()}{' '}
           characters
@@ -265,7 +265,7 @@ function Tool({
       disabled={disabled}
       className={cn(
         'h-8 w-8 p-0',
-        active ? 'bg-[#E5E7EB] text-[#171717]' : 'text-[#6B7280] hover:bg-[#F3F4F6] hover:text-[#374151]'
+        active ? 'bg-border text-foreground' : 'text-muted-foreground hover:bg-[#F3F4F6] hover:text-muted-foreground'
       )}
     >
       {children}

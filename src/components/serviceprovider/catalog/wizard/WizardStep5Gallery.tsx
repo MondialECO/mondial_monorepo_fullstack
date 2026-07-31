@@ -138,25 +138,25 @@ export function WizardStep5Gallery({
     <div className="space-y-6">
       <SpCard className="space-y-6">
         <div>
-          <h2 className="text-lg font-semibold text-[#171717]">Preview Video</h2>
-          <p className="mt-1 text-sm text-[#6B7280]">
+          <h2 className="text-lg font-semibold text-foreground">Preview Video</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
             Add an optional video showcasing your service.
           </p>
         </div>
 
         {error && <SpMutationFeedback status="error">{error}</SpMutationFeedback>}
 
-        <div className="rounded-lg border-2 border-dashed border-[#D1D5DB] bg-[#F9FAFB] p-8 text-center">
+        <div className="rounded-lg border-2 border-dashed border-input bg-muted p-8 text-center">
           {isUploading ? (
             <>
-              <Loader className="mx-auto size-8 animate-spin text-[#3C61DD]" aria-hidden="true" />
-              <p className="mt-2 font-medium text-[#171717]">Uploading video…</p>
+              <Loader className="mx-auto size-8 animate-spin text-primary" aria-hidden="true" />
+              <p className="mt-2 font-medium text-foreground">Uploading video…</p>
             </>
           ) : (
             <>
               <Upload className="mx-auto size-8 text-[#9CA3AF]" aria-hidden="true" />
-              <p className="mt-2 font-medium text-[#171717]">Drag and drop your video here</p>
-              <p className="mt-1 text-sm text-[#6B7280]">or click to browse</p>
+              <p className="mt-2 font-medium text-foreground">Drag and drop your video here</p>
+              <p className="mt-1 text-sm text-muted-foreground">or click to browse</p>
               <p className="mt-2 text-xs text-[#9CA3AF]">Max 60 seconds, 50 MB</p>
             </>
           )}
@@ -184,8 +184,8 @@ export function WizardStep5Gallery({
         </div>
 
         {previewVideo && (
-          <div className="rounded-lg border border-[#E5E7EB] p-4 space-y-4">
-            <div className="relative bg-[#000000] rounded-lg overflow-hidden">
+          <div className="rounded-lg border border-border p-4 space-y-4">
+            <div className="relative bg-black rounded-lg overflow-hidden">
               <video
                 src={resolveProviderMediaUrl(previewVideo.publicUrl)!}
                 controls
@@ -194,8 +194,8 @@ export function WizardStep5Gallery({
             </div>
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-medium text-[#171717]">Video uploaded</p>
-                <p className="mt-1 text-sm text-[#6B7280]">
+                <p className="font-medium text-foreground">Video uploaded</p>
+                <p className="mt-1 text-sm text-muted-foreground">
                   {Math.floor(previewVideo.durationSeconds)} seconds • {(previewVideo.bytes / 1024 / 1024).toFixed(1)} MB
                 </p>
               </div>
@@ -215,16 +215,16 @@ export function WizardStep5Gallery({
 
       <SpCard className="space-y-6">
         <div>
-          <h2 className="text-lg font-semibold text-[#171717]">Portfolio Images</h2>
-          <p className="mt-1 text-sm text-[#6B7280]">
+          <h2 className="text-lg font-semibold text-foreground">Portfolio Images</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
             Showcase your best work with a gallery of project images. Drag to reorder.
           </p>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {galleryImages.map((image, index) => (
-            <div key={image.id} className="relative overflow-hidden rounded-lg border border-[#E5E7EB]">
-              <div className="relative aspect-square bg-[#F9FAFB]">
+            <div key={image.id} className="relative overflow-hidden rounded-lg border border-border">
+              <div className="relative aspect-square bg-muted">
                 <Image
                   src={resolveProviderMediaUrl(image.publicUrl)!}
                   alt={`Gallery image ${index + 1}`}
@@ -273,14 +273,14 @@ export function WizardStep5Gallery({
               type="button"
               onClick={() => imageInputRef.current?.click()}
               disabled={isUploading}
-              className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-[#D1D5DB] bg-[#F9FAFB] p-4 hover:border-[#3C61DD] disabled:opacity-50"
+              className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-input bg-muted p-4 hover:border-[#3C61DD] disabled:opacity-50"
             >
               {isUploading ? (
-                <Loader className="size-8 animate-spin text-[#3C61DD]" aria-hidden="true" />
+                <Loader className="size-8 animate-spin text-primary" aria-hidden="true" />
               ) : (
                 <>
                   <Plus className="size-8 text-[#9CA3AF]" aria-hidden="true" />
-                  <span className="mt-2 text-sm text-[#6B7280]">Add image</span>
+                  <span className="mt-2 text-sm text-muted-foreground">Add image</span>
                 </>
               )}
             </button>
@@ -299,7 +299,7 @@ export function WizardStep5Gallery({
         />
 
         {galleryImages.length > 0 && (
-          <p className="text-xs text-[#6B7280]">
+          <p className="text-xs text-muted-foreground">
             {galleryImages.length} / {MAX_GALLERY_IMAGES} images
           </p>
         )}

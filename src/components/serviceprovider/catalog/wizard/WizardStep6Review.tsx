@@ -172,12 +172,12 @@ export function WizardStep6Review({
       <div className="grid gap-6 lg:grid-cols-3">
         {/* LEFT COLUMN */}
         <div className="lg:col-span-2">
-          <div className="rounded-lg border border-[#E5E7EB] bg-white p-6">
+          <div className="rounded-lg border border-border bg-white p-6">
             <div className="flex items-start justify-between">
-              <h1 className="text-2xl font-bold text-[#171717]">{listing.title}</h1>
+              <h1 className="text-2xl font-bold text-foreground">{listing.title}</h1>
               <button
                 onClick={() => onEditStep?.(1)}
-                className="flex items-center gap-1 text-[#3C61DD] hover:text-[#2E4CC1]"
+                className="flex items-center gap-1 text-primary hover:text-[#2E4CC1]"
               >
                 <Edit2 className="size-4" />
                 <span className="text-sm font-medium">EDIT</span>
@@ -198,7 +198,7 @@ export function WizardStep6Review({
                   </div>
                 ))}
                 {listing.galleryImages.length >= 4 && (
-                  <div className="flex h-20 w-20 flex-shrink-0 items-center justify-center rounded border-2 border-dashed border-[#D1D5DB] bg-[#F9FAFB] text-xs text-[#6B7280]">
+                  <div className="flex h-20 w-20 flex-shrink-0 items-center justify-center rounded border-2 border-dashed border-input bg-muted text-xs text-muted-foreground">
                     +{listing.galleryImages.length - 4}
                   </div>
                 )}
@@ -214,29 +214,29 @@ export function WizardStep6Review({
               key={pkg.id}
               className={`rounded-lg border bg-white p-4 ${
                 pkg.packageType === 'Standard'
-                  ? 'border-2 border-[#3C61DD]'
-                  : 'border border-[#E5E7EB]'
+                  ? 'border-2 border-primary'
+                  : 'border border-border'
               }`}
             >
               {pkg.packageType === 'Standard' && (
-                <div className="mb-2 inline-block rounded bg-[#3C61DD] px-2 py-1 text-xs font-bold text-white">
+                <div className="mb-2 inline-block rounded bg-primary px-2 py-1 text-xs font-bold text-white">
                   RECOMMENDED
                 </div>
               )}
               <div className="flex items-start justify-between">
                 <div>
-                  <h3 className="font-semibold text-[#171717]">{pkg.packageType}</h3>
-                  <div className="mt-3 text-3xl font-bold text-[#171717]">
+                  <h3 className="font-semibold text-foreground">{pkg.packageType}</h3>
+                  <div className="mt-3 text-3xl font-bold text-foreground">
                     ${pkg.price.toFixed(2)}
                   </div>
-                  <div className="mt-2 text-sm text-[#6B7280]">
+                  <div className="mt-2 text-sm text-muted-foreground">
                     {pkg.screensIncluded ? `${pkg.screensIncluded} Dashboard Pages • ` : ''}
                     {pkg.includedRevisionCount} Revisions • {pkg.deliveryTimeValue} {pkg.deliveryTimeUnit} Delivery
                   </div>
                 </div>
                 <button
                   onClick={() => onEditStep?.(2)}
-                  className="text-[#6B7280] hover:text-[#374151]"
+                  className="text-muted-foreground hover:text-[#374151]"
                 >
                   <Edit2 className="size-4" />
                 </button>
@@ -259,7 +259,7 @@ export function WizardStep6Review({
       )}
 
       {/* STICKY FOOTER */}
-      <div className="fixed bottom-0 left-0 right-0 border-t border-[#E5E7EB] bg-white p-4">
+      <div className="fixed bottom-0 left-0 right-0 border-t border-border bg-white p-4">
         <div className="mx-auto flex max-w-6xl gap-2">
           <Button onClick={onBack} variant="outline" disabled={isPublishing}>
             <ChevronLeft className="size-4" />
@@ -268,7 +268,7 @@ export function WizardStep6Review({
           <Button
             onClick={handlePublish}
             disabled={isPublishing || validationErrors.length > 0}
-            className="ml-auto bg-[#3C61DD] hover:bg-[#2E4CC1]"
+            className="ml-auto bg-primary hover:bg-[#2E4CC1]"
           >
             {(() => {
               if (isPublishing) return listing.status === 'Published' ? 'Saving…' : 'Publishing…';
