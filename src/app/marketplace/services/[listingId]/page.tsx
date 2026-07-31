@@ -14,6 +14,7 @@ import {
   Package,
 } from 'lucide-react';
 import { resolveProviderMediaUrl } from '@/lib/service-provider/provider-media';
+import { recordListingImpression, recordListingClick } from '@/lib/api-analytics';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import AuthGuard from '@/components/layout/AuthGuard';
@@ -39,15 +40,7 @@ function MarketplaceListingDetailContent() {
   // Analytics Phase C: Fire impression on mount
   useEffect(() => {
     if (!listingId) return;
-    const controller = new AbortController();
-    fetch('/api/service-provider/analytics/impression', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ listingId }),
-      keepalive: true,
-      signal: controller.signal,
-    }).catch(() => {});
-    return () => controller.abort();
+    recordListingImpression(listingId).catch(() => {});
   }, [listingId]);
 
   const [selectedPackageTier, setSelectedPackageTier] = useState('Basic');
@@ -60,12 +53,7 @@ function MarketplaceListingDetailContent() {
   const fireAnalyticsClick = useCallback(
     (target: string) => {
       if (!listingId) return;
-      fetch('/api/service-provider/analytics/click', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ listingId, target }),
-        keepalive: true,
-      }).catch(() => {});
+      recordListingClick(listingId, target).catch(() => {});
     },
     [listingId]
   );

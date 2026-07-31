@@ -74,3 +74,12 @@ export async function getAnalyticsTimeseries(listingId: string, range: Analytics
     `/service-provider/analytics/timeseries?listingId=${encodeURIComponent(listingId)}&range=${range}`
   )).data);
 }
+
+// Phase C: Recording endpoints
+export async function recordListingImpression(listingId: string): Promise<void> {
+  await api.post('/service-provider/analytics/impression', { listingId });
+}
+
+export async function recordListingClick(listingId: string, target: string): Promise<void> {
+  await api.post('/service-provider/analytics/click', { listingId, target });
+}
