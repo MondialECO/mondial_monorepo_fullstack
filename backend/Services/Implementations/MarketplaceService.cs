@@ -1,5 +1,6 @@
 using MongoDB.Bson;
 using MongoDB.Driver;
+using Microsoft.AspNetCore.Identity;
 using WebApp.DbContext;
 using WebApp.Models.DatabaseModels;
 using WebApp.Models.Dtos;
@@ -12,11 +13,13 @@ namespace WebApp.Services.Implementations
     {
         private readonly MongoDbContext _db;
         private readonly ILogger<MarketplaceService> _logger;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public MarketplaceService(MongoDbContext db, ILogger<MarketplaceService> logger)
+        public MarketplaceService(MongoDbContext db, ILogger<MarketplaceService> logger, UserManager<ApplicationUser> userManager)
         {
             _db = db;
             _logger = logger;
+            _userManager = userManager;
         }
 
         public async Task<ServiceProviderResult<MarketplaceListingsResponse>> GetPublishedListingsAsync(
@@ -120,14 +123,13 @@ namespace WebApp.Services.Implementations
                     .ToList();
 
                 var providerIds = pagedListings.Select(x => x.ProviderId).Distinct().ToList();
-                var providerIdsAsGuids = providerIds
-                    .Where(id => Guid.TryParse(id, out _))
-                    .Select(id => Guid.Parse(id))
+                var providers = _userManager.Users
+                    .Where(u => providerIds.Contains(u.Id.ToString()))
                     .ToList();
-                var providers = await _db.ApplicationUsers
-                    .Find(u => providerIdsAsGuids.Contains(u.Id))
-                    .ToListAsync(ct);
-                var providerMap = providers.ToDictionary(x => x.Id.ToString());
+                var providerMap = providers.ToDictionary(p => p.Id.ToString());
+                _logger.LogInformation(
+                    "[MarketplaceService] Fetched {Fetched} providers for {Requested} unique provider ids",
+                    providerMap.Count, providerIds.Count);
 
                 var packages = await _db.ServicePackages
                     .Find(p => pagedListings.Select(l => l.Id).Contains(p.ServiceId) &&
@@ -174,15 +176,7 @@ namespace WebApp.Services.Implementations
                     return ServiceProviderResult<MarketplaceListingDetailResponse>.NotFound("Listing not found.");
                 }
 
-                if (!Guid.TryParse(listing.ProviderId, out var providerGuid))
-                {
-                    return ServiceProviderResult<MarketplaceListingDetailResponse>.NotFound("Provider not found.");
-                }
-
-                var provider = await _db.ApplicationUsers
-                    .Find(x => x.Id == providerGuid)
-                    .FirstOrDefaultAsync(ct);
-
+                var provider = await _userManager.FindByIdAsync(listing.ProviderId);
                 if (provider == null)
                 {
                     return ServiceProviderResult<MarketplaceListingDetailResponse>.NotFound("Provider not found.");
