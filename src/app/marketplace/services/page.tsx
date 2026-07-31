@@ -3,14 +3,15 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
 import {
   Search,
   ChevronLeft,
   ChevronRight,
   Star,
   Loader2,
+  Package,
 } from 'lucide-react';
+import { resolveProviderMediaUrl } from '@/lib/service-provider/provider-media';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -298,16 +299,15 @@ function MarketplaceGridContent() {
                 >
                   {/* Cover Image */}
                   <div className="relative aspect-video bg-muted overflow-hidden">
-                    {card.coverImageUrl ? (
-                      <Image
-                        src={card.coverImageUrl}
+                    {card.coverImageUrl && resolveProviderMediaUrl(card.coverImageUrl) ? (
+                      <img
+                        src={resolveProviderMediaUrl(card.coverImageUrl)!}
                         alt={card.title}
-                        fill
-                        className="object-cover group-hover:scale-105 transition-transform duration-300"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
-                        No image
+                      <div className="w-full h-full flex items-center justify-center bg-muted">
+                        <Package className="h-8 w-8 text-muted-foreground" />
                       </div>
                     )}
                   </div>
@@ -316,16 +316,16 @@ function MarketplaceGridContent() {
                   <div className="p-4 space-y-3">
                     {/* Provider */}
                     <div className="flex items-center gap-2">
-                      {card.provider.profileImageUrl ? (
-                        <Image
-                          src={card.provider.profileImageUrl}
+                      {card.provider.profileImageUrl && resolveProviderMediaUrl(card.provider.profileImageUrl) ? (
+                        <img
+                          src={resolveProviderMediaUrl(card.provider.profileImageUrl)!}
                           alt={card.provider.displayName}
-                          width={24}
-                          height={24}
                           className="rounded-full size-6 object-cover"
                         />
                       ) : (
-                        <div className="size-6 rounded-full bg-muted" />
+                        <div className="size-6 rounded-full bg-muted flex items-center justify-center text-xs font-medium text-muted-foreground">
+                          {card.provider.displayName.charAt(0).toUpperCase()}
+                        </div>
                       )}
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-medium text-foreground truncate">

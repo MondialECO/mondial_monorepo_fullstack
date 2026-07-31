@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
 import DOMPurify from 'dompurify';
 import {
   ChevronLeft,
@@ -12,7 +11,9 @@ import {
   Check,
   X,
   AlertCircle,
+  Package,
 } from 'lucide-react';
+import { resolveProviderMediaUrl } from '@/lib/service-provider/provider-media';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import AuthGuard from '@/components/layout/AuthGuard';
@@ -160,13 +161,18 @@ function MarketplaceListingDetailContent() {
             {/* Gallery */}
             {listing.gallery.length > 0 && (
               <div className="rounded-lg overflow-hidden bg-muted border border-border">
-                <div className="relative aspect-video">
-                  <Image
-                    src={listing.gallery[galleryIndex]?.url || ''}
-                    alt={`Gallery ${galleryIndex + 1}`}
-                    fill
-                    className="object-cover"
-                  />
+                <div className="relative aspect-video overflow-hidden">
+                  {listing.gallery[galleryIndex]?.url && resolveProviderMediaUrl(listing.gallery[galleryIndex]?.url) ? (
+                    <img
+                      src={resolveProviderMediaUrl(listing.gallery[galleryIndex]?.url)!}
+                      alt={`Gallery ${galleryIndex + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-muted">
+                      <Package className="h-12 w-12 text-muted-foreground" />
+                    </div>
+                  )}
                 </div>
                 {listing.gallery.length > 1 && (
                   <div className="flex items-center justify-between p-2 bg-black/10">
@@ -306,16 +312,16 @@ function MarketplaceListingDetailContent() {
             {/* Provider Card */}
             <div className="border border-border rounded-lg p-4">
               <div className="flex gap-3 mb-4">
-                {listing.provider.profileImageUrl ? (
-                  <Image
-                    src={listing.provider.profileImageUrl}
+                {listing.provider.profileImageUrl && resolveProviderMediaUrl(listing.provider.profileImageUrl) ? (
+                  <img
+                    src={resolveProviderMediaUrl(listing.provider.profileImageUrl)!}
                     alt={listing.provider.displayName}
-                    width={48}
-                    height={48}
                     className="rounded-full size-12 object-cover"
                   />
                 ) : (
-                  <div className="size-12 rounded-full bg-muted" />
+                  <div className="size-12 rounded-full bg-muted flex items-center justify-center text-sm font-medium text-muted-foreground">
+                    {listing.provider.displayName.charAt(0).toUpperCase()}
+                  </div>
                 )}
                 <div className="flex-1">
                   <h3 className="font-semibold text-foreground">
