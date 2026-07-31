@@ -73,6 +73,18 @@
                     10 * 1024 * 1024
                 )
             },
+            {
+                "service-provider/gallery", new(
+                    new[] { ".jpg", ".jpeg", ".png", ".webp" },
+                    8 * 1024 * 1024
+                )
+            },
+            {
+                "service-provider/preview-video", new(
+                    new[] { ".mp4", ".webm", ".mov" },
+                    50 * 1024 * 1024
+                )
+            },
         };
 
         private sealed record FolderPolicy(string[] AllowedExtensions, long MaxBytes);

@@ -10,12 +10,13 @@ import {
 } from '@/components/serviceprovider/ui';
 import type { ServiceListing, GalleryImage, PreviewVideo } from '@/types/service-catalog';
 import { useUpdateListing } from '@/hooks/queries/service-catalog';
+import { resolveProviderMediaUrl } from '@/lib/service-provider/provider-media';
 import {
-  uploadGalleryImage as apiUploadGalleryImage,
-  deleteGalleryImage as apiDeleteGalleryImage,
-  uploadPreviewVideo as apiUploadPreviewVideo,
-  deletePreviewVideo as apiDeletePreviewVideo,
-} from '@/lib/api-service-catalog';
+  uploadListingGalleryImage as apiUploadGalleryImage,
+  deleteListingGalleryImage as apiDeleteGalleryImage,
+  uploadListingPreviewVideo as apiUploadPreviewVideo,
+  deleteListingPreviewVideo as apiDeletePreviewVideo,
+} from '@/lib/api-service-provider';
 
 const MAX_VIDEO_DURATION_SECONDS = 60;
 const MAX_VIDEO_BYTES = 50 * 1024 * 1024; // 50 MB
@@ -52,8 +53,8 @@ export function WizardStep5Gallery({
     setError(null);
 
     try {
-      const updated = await apiUploadPreviewVideo(listing.id, file);
-      setPreviewVideo(updated.previewVideo ?? null);
+      const video = await apiUploadPreviewVideo(listing.id, file);
+      setPreviewVideo(video as PreviewVideo);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to upload video. Please try again.');
     } finally {
@@ -77,8 +78,8 @@ export function WizardStep5Gallery({
     setError(null);
 
     try {
-      const updated = await apiUploadGalleryImage(listing.id, file);
-      setGalleryImages(updated.galleryImages ?? []);
+      const image = await apiUploadGalleryImage(listing.id, file);
+      setGalleryImages([...galleryImages, image as GalleryImage]);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to upload image. Please try again.');
     } finally {
@@ -186,7 +187,14 @@ export function WizardStep5Gallery({
         </div>
 
         {previewVideo && (
-          <div className="rounded-lg border border-[#E5E7EB] p-4">
+          <div className="rounded-lg border border-[#E5E7EB] p-4 space-y-4">
+            <div className="relative bg-[#000000] rounded-lg overflow-hidden">
+              <video
+                src={resolveProviderMediaUrl(previewVideo.publicUrl)!}
+                controls
+                className="w-full"
+              />
+            </div>
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium text-[#171717]">Video uploaded</p>
@@ -221,7 +229,7 @@ export function WizardStep5Gallery({
             <div key={image.id} className="relative overflow-hidden rounded-lg border border-[#E5E7EB]">
               <div className="relative aspect-square bg-[#F9FAFB]">
                 <Image
-                  src={image.publicUrl}
+                  src={resolveProviderMediaUrl(image.publicUrl)!}
                   alt={`Gallery image ${index + 1}`}
                   fill
                   className="object-cover"
