@@ -363,6 +363,9 @@ builder.Services.AddScoped<WorkroomTimedRulesJob>();
 // observation-to-task job are registered.
 builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 
+// Module 5 Phase A — analytics recording service for impressions/clicks/inquiries.
+builder.Services.AddScoped<IAnalyticsRecordingService, AnalyticsRecordingService>();
+
 // Observability: OpenTelemetry traces + metrics (/metrics for Prometheus).
 builder.AddObservability();
 

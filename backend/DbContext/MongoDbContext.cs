@@ -329,6 +329,11 @@ namespace WebApp.DbContext
         // module's single stateful collection.
         public virtual IMongoCollection<GrowthTask> GrowthTasks => _database.GetCollection<GrowthTask>("GrowthTasks");
 
+        // Module 5 Phase A — analytics tracking: daily impression/click/inquiry buckets
+        // and session dedup records (TTL).
+        public virtual IMongoCollection<AnalyticsDailyBucket> AnalyticsDailyBuckets => _database.GetCollection<AnalyticsDailyBucket>("AnalyticsDailyBuckets");
+        public virtual IMongoCollection<AnalyticsSessionSeen> AnalyticsSessionSeen => _database.GetCollection<AnalyticsSessionSeen>("AnalyticsSessionSeen");
+
         // Service-catalog lookup indexes: listings by owner, packages/FAQs by their
         // parent service. Best-effort + swallowed so context construction never blocks
         // or fails (unit tests mock the context; the getters are unset there → no-op).
@@ -445,10 +450,45 @@ namespace WebApp.DbContext
                     Builders<GrowthTask>.IndexKeys.Ascending(x => x.ProviderId)
                         .Ascending(x => x.Status).Descending(x => x.UpdatedAt),
                     new CreateIndexOptions { Background = true }));
+
+                // Unique (ListingId, Date) — one bucket per listing per day.
+                AnalyticsDailyBuckets.Indexes.CreateOne(new CreateIndexModel<AnalyticsDailyBucket>(
+                    Builders<AnalyticsDailyBucket>.IndexKeys
+                        .Ascending(x => x.ListingId)
+                        .Ascending(x => x.Date),
+                    new CreateIndexOptions { Background = true, Unique = true }
+                ));
+
+                // Compound (ProviderId, Date) — provider-wide date-range aggregation.
+                AnalyticsDailyBuckets.Indexes.CreateOne(new CreateIndexModel<AnalyticsDailyBucket>(
+                    Builders<AnalyticsDailyBucket>.IndexKeys
+                        .Ascending(x => x.ProviderId)
+                        .Descending(x => x.Date),
+                    new CreateIndexOptions { Background = true }
+                ));
+
+                // Compound (ListingId, SessionKey, EventType) — dedup lookup.
+                AnalyticsSessionSeen.Indexes.CreateOne(new CreateIndexModel<AnalyticsSessionSeen>(
+                    Builders<AnalyticsSessionSeen>.IndexKeys
+                        .Ascending(x => x.ListingId)
+                        .Ascending(x => x.SessionKey)
+                        .Ascending(x => x.EventType),
+                    new CreateIndexOptions { Background = true }
+                ));
+
+                // TTL — MongoDB auto-removes documents past ExpiresAt.
+                AnalyticsSessionSeen.Indexes.CreateOne(new CreateIndexModel<AnalyticsSessionSeen>(
+                    Builders<AnalyticsSessionSeen>.IndexKeys.Ascending(x => x.ExpiresAt),
+                    new CreateIndexOptions
+                    {
+                        Background = true,
+                        ExpireAfter = TimeSpan.Zero
+                    }
+                ));
             }
             catch
             {
-                // Best-effort startup index creation, matching Modules 2–4.
+                // Best-effort startup index creation, matching Modules 2–5.
             }
         }
 
