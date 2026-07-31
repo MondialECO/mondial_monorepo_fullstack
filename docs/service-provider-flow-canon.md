@@ -581,6 +581,160 @@ Each entity's PK is **`Id`** (`[BsonId]` ObjectId), **not** the spec's `ServiceI
 
 **2026-07-28 workspace reconciliation — LIVE in `fd38914`:** Catalog remains one route with URL-backed states, not duplicate pages: `/services` lists/searches/filters real listings; `?view=new` creates; `?service={id}&tab=overview|packages|faqs|capacity` manages one listing; `mode=edit` opens its listing editor. The redesigned cards, editors, package builder, FAQ builder, capacity panel, loading/error/empty/success/confirmation states, and accessible controls reuse the shipped Module-2 APIs and business validation. Unsupported public marketplace preview and media-upload capabilities are not fabricated.
 
+### 6.0.3 BSON Null-Tolerance Audit Scope & Findings *(added 2026-07-31)*
+
+**Root cause:** MongoDB's C# serializer cannot deserialize BSON null into non-nullable reference types without explicit null-tolerance attributes. ServiceListing and ServicePackage documents created with explicit BSON null values for array/object fields caused C# deserialization to throw `FormatException: 'Cannot deserialize ... from BsonType 'Null'`, resulting in 500 errors on read paths.
+
+**Audit scope:** 68 total fields analyzed across 4 models: ServiceListing (11 fields), ServicePackage (15 fields), ServiceFAQ (3 fields), embedded types (39 primitives). **12 fields required `[BsonIgnoreIfNull]` fixes:**
+
+**ServiceListing (6 fields):**
+- `PreviewVideo` (PreviewVideo?) — nullable reference type
+- `GalleryImages` (List<GalleryImage>) — array of objects
+- `MetadataTags` (List<string>) — array of strings (capped 5)
+- `SearchTags` (List<string>) — array of strings (capped 5)
+- `IndustryFocus` (List<string>) — array of strings
+- `GeographicCoverage` (List<string>) — array of strings
+
+**ServicePackage (5 fields):**
+- `Deliverables` (List<string>) — array of strings
+- `IncludedFeatures` (List<string>) — array of strings
+- `ExcludedFeatures` (List<string>) — array of strings
+- `AddOns` (List<ServiceAddOn>) — array of objects
+- `RequirementsTemplate` (List<RequirementsField>) — array of objects
+
+**ServiceFAQ & embedded types:** no reference-type arrays requiring fixes (all fields safe).
+
+### 6.0.4 Write-Path Safety & Critical Fix *(added 2026-07-31)*
+
+**All current write patterns are safe — no code explicitly sets these fields to null:**
+
+| Field | Write Pattern | Safety | Notes |
+|-------|---------------|--------|-------|
+| GalleryImages | `.Push()` operator | ✅ Appends to array | UploadGalleryImageAsync |
+| GalleryImages delete | `.PullFilter()` operator | ✅ Removes item, keeps array | DeleteGalleryImageAsync |
+| PreviewVideo delete | ✅ **FIXED** to `.Unset()` | ✅ Removes field entirely (no null storage) | **Critical fix at line 850** |
+| Deliverables, IncludedFeatures, ExcludedFeatures | `Normalize()` helper | ✅ Returns `[]` if null | ApplyPackageRequest |
+| AddOns | `.Where().Select()` on new list | ✅ Creates new list | ApplyPackageRequest |
+| RequirementsTemplate | Built in loop as List<T> | ✅ Always non-null | ApplyPackageRequest |
+
+**One critical fix applied (ServiceCatalogService.cs, line 850):**
+```csharp
+// BEFORE (caused BSON null storage):
+.Set(l => l.PreviewVideo, (PreviewVideo?)null)
+
+// AFTER (uses $unset, prevents null storage):
+.Unset(l => l.PreviewVideo)
+```
+This change ensures that deleting a preview video removes the field from the document instead of storing an explicit BSON null.
+
+### 6.0.5 MongoDB Data Cleanup (Operational Guide) *(added 2026-07-31)*
+
+**One-time cleanup required after deploying the code changes.** This migration removes existing BSON null values from the database; no new nulls will be created going forward.
+
+**Step 1: Count affected documents**
+Run these queries in MongoDB to measure the scope:
+```javascript
+// ServiceListings with any null array/object fields
+db.ServiceListings.countDocuments({
+  $or: [
+    { GalleryImages: null },
+    { MetadataTags: null },
+    { SearchTags: null },
+    { IndustryFocus: null },
+    { GeographicCoverage: null },
+    { PreviewVideo: null }
+  ]
+})
+
+// ServicePackages with any null array fields
+db.ServicePackages.countDocuments({
+  $or: [
+    { Deliverables: null },
+    { IncludedFeatures: null },
+    { ExcludedFeatures: null },
+    { AddOns: null },
+    { RequirementsTemplate: null }
+  ]
+})
+```
+Note the counts — they tell you whether cleanup is needed and how many documents will be touched.
+
+**Step 2: Clean ServiceListings**
+```javascript
+db.ServiceListings.updateMany(
+  {
+    $or: [
+      { GalleryImages: null },
+      { MetadataTags: null },
+      { SearchTags: null },
+      { IndustryFocus: null },
+      { GeographicCoverage: null },
+      { PreviewVideo: null }
+    ]
+  },
+  {
+    $unset: {
+      GalleryImages: "",
+      MetadataTags: "",
+      SearchTags: "",
+      IndustryFocus: "",
+      GeographicCoverage: "",
+      PreviewVideo: ""
+    }
+  }
+)
+```
+
+**Step 3: Clean ServicePackages**
+```javascript
+db.ServicePackages.updateMany(
+  {
+    $or: [
+      { Deliverables: null },
+      { IncludedFeatures: null },
+      { ExcludedFeatures: null },
+      { AddOns: null },
+      { RequirementsTemplate: null }
+    ]
+  },
+  {
+    $unset: {
+      Deliverables: "",
+      IncludedFeatures: "",
+      ExcludedFeatures: "",
+      AddOns: "",
+      RequirementsTemplate: ""
+    }
+  }
+)
+```
+
+**Step 4: Verify cleanup — both counts should return 0**
+Re-run the count queries from Step 1. Both should return **0**. If either returns a non-zero count, the cleanup did not fully apply; investigate and rerun if needed.
+
+### 6.0.6 Post-Cleanup Verification & Testing *(added 2026-07-31)*
+
+After MongoDB cleanup and backend restart, verify the fix is complete:
+
+**Automated:**
+1. Rebuild backend: `dotnet build` — 0 errors (the `[BsonIgnoreIfNull]` attributes are recognized by MongoDB.Driver)
+2. Restart backend service
+3. Run the full test suite: `dotnet test` — all Module 2 tests pass (22 targeted tests)
+
+**Manual endpoint testing (in browser or via API client):**
+1. **Gallery upload:** upload an image, reload the page → image persists and displays correctly
+2. **Gallery delete:** delete an image → reload → listing loads without 500 error
+3. **Video upload:** upload a video, reload → video persists and displays correctly
+4. **Video delete:** delete a video, reload → listing loads without 500 error
+5. **Package creation:** create packages with full array fields (features, add-ons, requirements) → reload → all fields persist
+6. **Legacy listing access:** access a previously-failing listing that had BSON nulls → should now deserialize and display without error
+
+**Log monitoring:**
+- No deserialization errors should appear in the backend logs
+- All 500 errors on gallery/video operations and listing reads should cease
+
+**Risk reduction summary:** Before this fix, any ServiceListing/ServicePackage with BSON null arrays caused automatic 500 errors across the wizard, dashboard, detail views, and all related API endpoints — a cascade failure. After the fix, graceful deserialization via `[BsonIgnoreIfNull]` + field initializers + safe write patterns ensures that legacy nulls no longer corrupt client experience, and forward-facing code prevents new nulls from being stored.
+
 ### 6.1b Listing lifetime cap — server-side enforcement *(added 2026-07-30)*
 **Hard limit:** a Service Provider may have at most **4 ServiceListing records** at any time, regardless of status (Draft, Published, Unpublished, Archived all count toward the cap). Archiving or unpublishing does NOT free a slot — once a listing is created, it occupies the slot until deleted (deletion is not a supported user action; listing cleanup is admin-only).
 **Server-side enforcement (CreateListingAsync):** before creating a new Draft listing, check the total count of non-deleted ServiceListings for the provider. If count >= 4, return a conflict error ("You've reached the limit of 4 service listings").
