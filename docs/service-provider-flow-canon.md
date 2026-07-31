@@ -826,7 +826,7 @@ Entity `ServiceFAQ` (above). **Visibility:** All Packages / Basic Only / Standar
 
 ### 6.10 Service list view — analytics dashboard replacement *(added 2026-07-31)*
 
-**Cross-module integration note:** See §10 for the marketplace + order lifecycle spec — client-facing public listings surface there via a new `GET /api/marketplace/services/[listingId]` endpoint. Service Catalog listings are snapshotted at order time, so subsequent listing edits do not affect already-placed orders.
+**Cross-module integration note:** See §10 for the marketplace + engagement lifecycle spec — client-facing public listings surface there via the `GET /api/marketplace/services/[listingId]` endpoint (LIVE, Phase M1). Service Catalog listings are snapshotted at purchase time into `Proposal.PurchaseSnapshot`, so subsequent listing edits do not affect already-placed purchases or their engagements.
 
 **Legacy listing-cards grid — REMOVED.** The prior `/services` page displayed a grid of listing cards with status badges, a 4-listing capacity banner, and status-filter controls. This grid UI has been replaced by the Analytics & Growth dashboard (§9.4 Phase D) effective 2026-07-31. 
 
@@ -839,7 +839,7 @@ Entity `ServiceFAQ` (above). **Visibility:** All Packages / Basic Only / Standar
 
 Service creation and editing remain via the wizard (`?view=new|edit&step=N`). The 4-listing **hard limit still enforces** (§6.1b) — the provider may not exceed 4 active service records — but the UI no longer displays a "capacity banner" warning. The disabled "New Service" button on the wizard entry point (`?view=new`) communicates the limit to users at capacity.
 
-**Dependencies.** Reads: verified profile (§1.1), shared enums (§4.2), capacity fields on the profile (§6.7). Produces: published packages + FAQs → Leads/checkout (§7); impressions/clicks + order counts → Analytics (§9) — public listing detail pages will record fire-and-forget impression/click events per the planned tracking architecture (§9.4, Phase C when implemented); a purchased package → an auto-accepted Proposal (§7). **New backend dependency (2026-07-30):** `TagLibSharp` (v2.3.0, pure managed .NET library, no native binaries) added to support server-side video duration inspection for `PreviewVideo` uploads — replacing what would otherwise be a client-trusted duration value. Chosen over FFmpeg-based alternatives to avoid adding a native-binary dependency to the Docker-based deployment.
+**Dependencies.** Reads: verified profile (§1.1), shared enums (§4.2), capacity fields on the profile (§6.7). Produces: published packages + FAQs → Leads/checkout (§7); impressions/clicks + order counts → Analytics (§9) — public listing detail pages record fire-and-forget impression/click events per the tracking architecture (§9.4, Phase C IMPLEMENTED in §10 Phase M1); a purchased package → an auto-accepted Proposal (§7). **New backend dependency (2026-07-30):** `TagLibSharp` (v2.3.0, pure managed .NET library, no native binaries) added to support server-side video duration inspection for `PreviewVideo` uploads — replacing what would otherwise be a client-trusted duration value. Chosen over FFmpeg-based alternatives to avoid adding a native-binary dependency to the Docker-based deployment.
 
 ---
 
@@ -918,7 +918,7 @@ Merges delivery workroom and earnings into one module. It consumes accepted Modu
 
 ### 8.0 What's live vs. deferred (verified against code)
 
-**Cross-module integration note:** See §10 for the marketplace + order lifecycle spec — new orders created via marketplace flow feed the existing workroom + escrow logic here without structural change.
+**Cross-module integration note:** See §10 for the marketplace + engagement lifecycle spec — marketplace package purchases become Proposals that convert (via `WorkroomConversionJob`) into the existing Engagement + Milestone + escrow logic here without structural change.
 
 - **LIVE storage/backend:** 16 top-level MongoDB collections (§4.3), `EnsureWorkroomIndexes()`, actor-scoped `/api/workroom` and `/api/earnings` APIs, state-machine checks, audit rows, notifications, timed rules, statements, and provider financial settings on the `ServiceProviderProfiles` split record (§1A; formerly embedded on the profile).
 - **LIVE Proposal→Engagement handoff:** every accepted proposal path immediately enqueues `WorkroomConversionJob.ConvertAsync`; a minutely sweeper catches missed `Accepted/AwaitingModule4` rows. Conversion is idempotent through a unique `WorkroomEngagement.ProposalId`, an existence check, and the proposal's atomic ownership transition. An empty `MilestonePlan` becomes exactly one full-scope milestone for the accepted price. Contract + engagement + milestone creation and `Proposal → ConvertedToProject/Converted` commit in one Mongo transaction.
@@ -1377,374 +1377,482 @@ Deferred. Server-computed best-performing-listing flag. Optional per-CTA click b
 - §9.0 (Module 5 summary): Phase A/B/D now IMPLEMENTED; service-view metrics no longer `notTracked` at read time.
 
 **Outstanding for C and E:**
-- Phase C (frontend recording on public listing detail pages) — not yet wired.
+- Phase C (frontend recording on public listing detail pages) — IMPLEMENTED 2026-08-01 during §10 Phase M1 (commit `802d616`).
 - Phase E (TOP GIC badge, per-CTA click breakdown, advanced ranges) — reserved, not implemented.
 
 ---
 
-## 10. Marketplace + Order Lifecycle Architecture *(Phase M1 IMPLEMENTED, M2-M8 planned)*
+## 10. Marketplace + Engagement Lifecycle Architecture *(audit-reconciled 2026-08-01; Phase M1 IMPLEMENTED, M2-M8 planned)*
 
-Reference specification for the Mondial.eco client-facing marketplace where all authenticated users (Creator, Entrepreneur, Investor, SP) browse Service Provider listings, place orders, complete client-side requirements, engage in order-scoped workrooms, and see their orders tracked. **Phase M1 (marketplace grid + listing detail + Phase C analytics wire + nav entries) is IMPLEMENTED and shipped 2026-08-01. Phases M2-M8 remain PLANNED.** Phased status (M1-M8) appears at §10.13.
+Reference specification for the Mondial.eco client-facing marketplace (§10.1–§10.4) and the Proposal → Engagement → Milestone → Payment pipeline it feeds into. Documents the ACTUAL implemented backend architecture (audited 2026-08-01) — NOT an idealized "Orders" model. Frontend gaps are called out in §10.9 and §10.13.
 
-Cross-module: touches §2 (12% fee rule), §3 (provider trust display), §4 (workroom + escrow), §6 (Service Catalog as source data), §9.4 (Phase C analytics hookup).
+Cross-module: §2 (12% platform fee), §3 (provider trust), §4 (SP Workroom & Earnings — this section documents what §4 uses under the hood), §6 (Service Catalog as source data), §9.4 (Analytics Phase C hookup).
 
 ### 10.1 Goals
 
 - Single unified marketplace UI at `/marketplace/services` — every authenticated user sees the same UI regardless of role.
-- Non-authenticated visitors cannot access marketplace or listing detail pages. Auth gate enforced at the route level.
-- Client actions (Message provider, Order package) available to all authenticated roles.
-- Fiverr-style discovery: search, filter (category, sub-category, price, delivery time), sort (recent, price, rating), pagination.
-- Full order lifecycle: package + add-ons + revisions selection → requirements collection → escrow-based payment (STUB) → InProgress → Delivered → Approved/InRevision loop → Rated.
-- Payment via `IPaymentService` interface (STUB v1, swappable later).
-- **12% platform fee applied on transaction** (permanent §2 rule).
-- Order-scoped workroom for buyer-seller communication + file exchange.
-- Backend-authoritative state — frontend does not compute prices or transition states.
-- Analytics: impressions on public listing view, clicks on Order / Message CTAs, inquiries via existing message-send hook, order-conversion metric (Phase M6).
+- Non-authenticated visitors are auto-redirected to login.
+- Client actions (Message provider, Order package) are available to all authenticated roles.
+- Fiverr-style discovery: search, filter (category, sub-category, price range, delivery time), sort (recent, price, rating), pagination.
+- Full engagement lifecycle: package + add-ons + revisions selection → requirements collection → escrow-authorized purchase (STUB) → Proposal creation → automated conversion → Engagement + Milestones → escrow funding → active work → delivery → review → approval → payment release with 12% commission → rating.
+- Payment via `IPaymentGatewayService` interface (`StubPaymentGatewayService` v1, swappable to Stripe/PayPal later).
+- **12% platform fee** applied at milestone release (permanent §2 rule, centralized in `PlatformCommerceConstants.CommissionRate`).
+- Currency default: `"EUR"`.
+- Backend-authoritative state, backend-authoritative pricing.
+- Analytics: impressions + clicks on marketplace, order-conversion metric derived from Proposal creation events.
 
 ### 10.2 Routes and access model
 
 **Public URL structure:**
 ```
-/marketplace/services                  # grid (auth required)
-/marketplace/services/[listingId]      # detail (auth required)
+/marketplace/services                    # grid (auth required, all roles)
+/marketplace/services/[listingId]        # detail (auth required, all roles)
+/marketplace/services/[listingId]/order  # purchase flow (auth, planned M2)
 ```
 
-**Future-namespace-ready:**
+**Client-side dashboard (planned M3):**
 ```
-/marketplace/pitches                   # Creator pitches (future)
-/marketplace/investors                 # Investor discovery (future)
-```
-
-**Client-side dashboard:**
-```
-/dashboard/[role]/orders               # order list (all roles use same UI)
-/dashboard/[role]/orders/[orderId]     # order-scoped workroom
+/dashboard/[role]/engagements                 # engagement list, all roles use same UI
+/dashboard/[role]/engagements/[engagementId]  # engagement-scoped workroom
 ```
 
-**Auth gate:** both routes use the same auth middleware as authenticated dashboards; non-authenticated visitors redirect to login. All roles see identical UI. Role is not used to switch layout; only CTA post-click behavior may adapt by role in future (v2 constraint).
+**Auth gate:** both marketplace routes wrap in the existing `AuthGuard` component (redirects to `/login` if unauthenticated). Same UI for all four roles; only the CTA post-click behavior may adapt by role in future (v2).
 
 ### 10.3 Marketplace grid page
 
 **Route:** `/marketplace/services`.
+**Backend endpoint:** `GET /api/marketplace/services` (paginated, filtered).
 
 **Header:** full-width search input.
 
-**Filter bar** (horizontal, above grid):
-- Category dropdown (12 canonical categories from `ServiceTypeLookup`).
+**Filter bar** (horizontal, wrapped mobile):
+- Category dropdown (12 canonical `ServiceCategory` values).
 - Sub-Category dropdown (populates based on Category).
-- Price range (Min, Max inputs).
-- Delivery time dropdown (Any / 1 day / 3 days / 7 days / 14+ days).
+- Price range (Min, Max numeric inputs).
+- Delivery time dropdown (Any / 1 / 3 / 7 / 14+ days).
 - Sort dropdown (Recent / Price low-to-high / Price high-to-low / Rating).
 - Reset filters button.
 
-**Grid:** card layout, responsive (1-2-3-4 columns per breakpoint). Each card shows cover image (via `resolveProviderMediaUrl`), title (2-line truncate), provider name + trust indicator, "From $X" starting price, delivery time chip, rating stars if applicable (never fake stars — canon §9.0).
+**Grid:** card layout, responsive (1-2-3-4 columns per breakpoint). Each card shows cover image (via `resolveProviderMediaUrl` — `/uploads/...` static path convention), title (2-line truncate), provider name + trust indicator, "From €X" starting price, delivery time chip, rating stars if applicable (never fake stars, canon §9.0).
 
-**Pagination:** classic page navigation, 12 cards per page (v1). Infinite scroll is v2.
+**Pagination:** classic page navigation, 12 cards per page (v1). Infinite scroll is a v2 enhancement.
 
-**Empty state:** honest "No services match your filters. Try clearing some filters or a different search term." + reset button.
+**Empty state:** honest, with exact copy the implemented grid depends on — "No services match your filters. Try clearing some filters or a different search term." — plus a reset filters button.
+
+Only listings with `Status == Published` surface here (server-side filter). Draft / Unpublished / Archived never appear.
 
 ### 10.4 Public listing detail page
 
 **Route:** `/marketplace/services/[listingId]`.
-
-**New endpoint:** `GET /api/marketplace/services/[listingId]` — public-facing only, distinct from the SP-side listing GET (which returns provider-internal fields the client shouldn't see).
+**Backend endpoint:** `GET /api/marketplace/services/{listingId}` — public-facing endpoint, distinct from SP-side listing GET.
 
 **Response fields (client-safe only):**
-- Service title, category + sub-category labels.
-- Full description HTML (DOMPurify-sanitized).
-- Provider header: profile image, display name, trust indicators (Verified badge, trust score bar per §3), response time (if computed), total orders completed (if computed).
-- Packages (Basic/Standard/Premium) with price, delivery, revisions, screens, feature checkboxes, add-ons, additional revision offer.
-- Gallery images + preview video (via `resolveProviderMediaUrl`).
+- Service title, category + sub-category.
+- Full description HTML (DOMPurify-sanitized on frontend).
+- Provider header: profile image, display name, trust indicators, response time, completed engagements count.
+- Packages (Basic/Standard/Premium): price (EUR), delivery time, revisions, screens, feature checkboxes, add-ons, additional revision offer.
+- Gallery images + preview video (URLs resolved via `resolveProviderMediaUrl`).
 - FAQ list (accordion).
-- Metadata + Search tags (chip display, non-clickable v1).
+- Metadata + Search tags: chip display, non-clickable in v1 (search integration deferred to v2).
 
-**Layout:** left column (2/3) — title, thumbnails, description, gallery, video, FAQ. Right column (1/3, sticky) — package selector card.
+**Layout:** 2/3 left column + 1/3 sticky right. Left has title, `MediaCarousel` (video-first, hover-play, image auto-advance), description, FAQ. Right has provider header + package selector card.
 
-**Package selector card** (right column):
-- Tab strip: Basic / Standard / Premium (RECOMMENDED badge on Standard matching §6 §6.8b).
-- Selected package's price, delivery, features.
-- Add-ons checklist (each with checkbox and price).
-- Additional Revisions selector (numeric stepper, price × N).
-- Dynamic total price (updates as add-ons/revisions toggled).
-- Primary CTA: "Order for $XXX".
-- Secondary CTA: "Message provider" (opens chat with SP — no order yet).
+**Package selector card:**
+- Basic/Standard/Premium tabs (Recommended pill on Standard per §6.8b).
+- Selected package price, delivery, features.
+- Add-ons checklist (checkbox + price).
+- Additional Revisions numeric stepper.
+- Dynamic total price.
+- Primary CTA: "Order for €X" — leads to purchase flow (§10.5).
+- Secondary CTA: "Message provider" — opens chat (M3).
 
-**Analytics wire** (Phase C IMPLEMENTED during Phase M1, commit `802d616`):
-- Page mount → `POST /api/service-provider/analytics/impression { listingId }`.
-- Order button click → `POST /api/service-provider/analytics/click { listingId, target: "order" }`.
-- Message button click → click with target "message".
-- Package tab switch → click with target "tier-basic|tier-standard|tier-premium".
-- All fire-and-forget, non-blocking (axios client, auto-attach Bearer token, catch-and-swallow errors).
+**Analytics wire** (Phase C, IMPLEMENTED in M1):
+- Page mount → `POST /api/service-provider/analytics/impression`.
+- Order/Message/tab clicks → `POST /api/service-provider/analytics/click` with target (`order` | `message` | `tier-basic` | `tier-standard` | `tier-premium`).
+- Via `recordListingImpression()` + `recordListingClick()` axios wrappers in `src/lib/api-analytics.ts` (fire-and-forget, silent errors).
 
-### 10.5 Order creation flow
+### 10.5 Client purchase flow (Package Purchase → Proposal)
 
-**Trigger:** client clicks "Order for $XXX" on the package selector card.
+**Trigger:** client clicks "Order for €X" on the package selector card.
 
-**Steps:**
+**Backend endpoint (LIVE, unused by frontend):** `POST /api/leads/package-purchases` — handled by `LeadsController` → `LeadsService.PurchasePackageAsync`.
 
-**Step A — Summary review:** modal or route (`/marketplace/services/[listingId]/order`); recap of tier + price + add-ons + delivery + total; editable back link.
-
-**Step B — Requirements form:** reads SP's ClientRequirements template for the selected package (§6.4); client fills each required question (Text / File / Choice types); cannot proceed if required fields empty.
-
-**Step C — Payment (STUB):** total including 12% platform fee breakdown (product $ + platform fee $ = total $); click "Pay & Place Order" → `POST /api/marketplace/orders`; backend calls `IPaymentService.ChargeAsync(...)` (StubPaymentService returns success immediately); order created with state = `PendingRequirements` (if requirements incomplete) or `InProgress` (if complete); client redirected to `/dashboard/[role]/orders/[orderId]`.
-
-At any point before payment, client can back out — no order, no charge.
-
-### 10.6 Data models
-
-**Orders collection:**
-
+**Request DTO — `PackagePurchaseRequest`:**
 ```
 {
-  _id: ObjectId,
-  OrderNumber: string,                 // human-readable "M-YYYY-MM-DD-NNNNNN"
-  ConversationId: ObjectId?,           // Reference to the order's chat conversation (created at order placement, §10.6)
-  ListingId: string,
-  ProviderId: string,
-  ClientId: string,
-  ClientRole: string,                  // "creator" | "entrepreneur" | ...
-  
-  Package: {                           // snapshot at order time
-    Tier: string,
-    Title: string,
-    BasePrice: decimal,
-    DeliveryTimeValue: int,
-    DeliveryTimeUnit: string,
-    RevisionsIncluded: int,
-    ScreensIncluded: int?,
-    Features: [{ Name, Included }],
-    SnapshotAt: DateTime,
-  },
-  
-  SelectedAddOns: [{ AddOnId, Name, Price, DeliveryImpactDays? }],
-  AdditionalRevisions: { Count: int, PerRevisionPrice: decimal },
-  
-  Requirements: [
-    { QuestionId, QuestionText, QuestionType, Answer }
-  ],
-  
-  Pricing: {
-    ProductSubtotal: decimal,
-    PlatformFee: decimal,              // 12% of ProductSubtotal
-    Total: decimal,
-    Currency: string,                  // "USD" v1
-  },
-  
-  Payment: {
-    Status: string,                    // "Pending"|"Held"|"Released"|"Refunded"|"Failed"
-    Provider: string,                  // "stub" v1
-    ProviderTxnId: string?,
-    ChargedAt: DateTime?,
-    ReleasedAt: DateTime?,
-  },
-  
-  State: string,                       // see §10.7
-  StateHistory: [{ State, EnteredAt, ActorId, Reason? }],
-  
-  DeliveryDeadline: DateTime,
-  DeliveredAt: DateTime?,
+  PackageId: string,
+  SelectedAddOnNames: string[],
+  Requirements: { TemplateFieldId, FieldType, Value, Attachment? }[],
+  ExplicitlyConfirmed: bool,
+  PaymentMethodVerified: bool,
+  EscrowAuthorized: bool,
+  ComplianceHold: bool,
+  FinalSummaryShown: bool
+}
+```
+
+The confirmation booleans participate in the instant-order gates; failing any gate does not error — it routes to the manual path (below).
+
+**Processing pipeline (`PurchasePackageAsync`):**
+1. Evaluate **11 instant-order gates** (listing/package Published, `InstantOrderEnabled && !ManualApprovalRequired`, provider Verified + available, `MaximumActiveOrders` capacity, client onboarding phase ≥ 1, required requirements complete, plus the request booleans: `PaymentMethodVerified`, `ExplicitlyConfirmed`, `EscrowAuthorized`, `!ComplianceHold`, `FinalSummaryShown`). Gate failures return in `FailedConditions[]` — NOT thrown; the request returns 200 with either the auto or manual outcome.
+2. **Auto path** (all gates pass): create `Proposal` with `Status=Accepted`, `AcceptanceMode=RuleBasedInstantOrder`, `AcceptanceTrigger="PublishedPackageTermsConfirmed"`, `EscrowStatus=Authorized`, `ConversionStatus=AwaitingModule4`, `ExpiresAt=now+7d`. Enqueue `WorkroomConversionJob`. Notify provider.
+3. **Manual path** (any gate fails): create Proposal with `Status=Submitted`, `AcceptanceMode=ManualClientAcceptance`, `AcceptanceTrigger="ProviderApprovalRequired"`, `EscrowStatus=AuthorizationPending`, `ConversionStatus=NotApplicable`. Provider then approves via `POST /api/leads/proposals/{id}/provider-approve` (→ `ClientReviewing`) or declines; client then calls `POST /api/leads/proposals/{id}/accept` (requires `ExplicitlyConfirmed && EscrowAuthorized`) → `Accepted / Authorized / AwaitingModule4` → same conversion job.
+4. Proposal embeds a `PurchaseSnapshot` — frozen service/package/price/add-ons/deliverables/requirements/FAQ snapshot/cancellation terms at purchase time.
+5. `WorkroomConversionJob` calls `WorkroomService.ConvertProposalAsync`:
+   - Transactionally create `Contract` (`ContractStatus.Pending`) + `WorkroomEngagement` (`EngagementStatus.ContractPending`, `EscrowStatus.NotFunded`) + `WorkroomMilestones` (`MilestoneStatus.FundingRequired`, `EscrowStatus.NotFunded`).
+   - Milestone plan validated: milestone amounts sum to `ProposedPrice`, else throw. If no plan present, one full-scope milestone is synthesized.
+   - Atomically flip Proposal → `Status=ConvertedToProject / ConversionStatus=Converted`. Guarded update; throws if not exactly 1 doc modified. `[AutomaticRetry(Attempts = 5)]`; a minutely sweep (`module4-convert-accepted-proposals`) recovers missed conversions.
+6. Escrow funding is a **separate later step** — the client calls `POST /api/workroom/milestones/{id}/fund` per milestone (see §10.8).
+
+**Response — `PackagePurchaseResponse`:** `{ Proposal: ProposalResponse, AutoAccepted: bool, UiStatus: "Accepted" | "Provider Approval Required", FailedConditions: string[] }`.
+
+**Frontend state (audit 2026-08-01):**
+- **No frontend caller** for `/api/leads/package-purchases` — the entire client purchase UI is unimplemented. M2 builds this.
+- No frontend types for `PackagePurchaseRequest` / `PackagePurchaseResponse`.
+
+**Design intent for M2 purchase flow UI:**
+- Separate route: `/marketplace/services/[listingId]/order?step=1|2|3`.
+- Step 1 — Summary review (package + add-ons + revisions + total; displays 12% commission preview).
+- Step 2 — Requirements form (reads listing's ClientRequirements template; v1 supports Text + Choice types; File type deferred to M3).
+- Step 3 — Confirmations + "Pay & Place Order" button.
+- Persistent summary widget at top of all 3 steps.
+- On successful proposal creation → redirect to `/dashboard/[role]/engagements/[engagementId]` (once conversion job completes).
+### 10.6 Data models (actual)
+
+Backend collections + their embedded types. All money fields `Decimal128`. All primary keys `[BsonId, BsonRepresentation(BsonType.ObjectId)] string Id`.
+
+**WorkroomEngagements collection (root: `WorkroomEngagement`):**
+```
+{
+  Id,
+  ProposalId: ObjectId,                // source proposal (unique index)
+  ProviderId, ClientId: string,
+  ContractId: ObjectId,
+  Title, Description: string,
+  ContractValue: decimal (Decimal128),
+  Currency: string = "EUR",
+  StartDate, ExpectedEndDate, ActualEndDate: DateTime?,
+  CurrentMilestoneId: ObjectId?,
+  CompletionPercentage: double,
+  EngagementStatus: EngagementStatus = ContractPending,
+  EscrowStatus: WorkroomEscrowStatus = NotFunded,
+  PausedAt: DateTime?,
+  AccumulatedPausedMinutes: int,
+  CreatedAt, UpdatedAt: DateTime
+}
+```
+Indexes: unique `ProposalId`; `(ProviderId, EngagementStatus, UpdatedAt desc)`; `(ClientId, EngagementStatus, UpdatedAt desc)`.
+
+**Contracts collection (root: `Contract`):**
+```
+{
+  Id, EngagementId: ObjectId (unique index),
+  ProviderId, ClientId: string,
+  Terms: ContractTerms,                // embedded
+  ProviderSignedAt, ClientSignedAt: DateTime?,
+  Status: ContractStatus = Pending,
+  CreatedAt: DateTime
+}
+
+ContractTerms {
+  Price: decimal, Currency = "EUR", PricingType: PricingModel,
+  DeliveryTimeValue: int, DeliveryTimeUnit, DeliveryDayType, DeliveryStartRule,
+  IncludedRevisionCount: int, UnlimitedRevisions: bool, RevisionRequestWindowDays: int,
+  Deliverables: string[], AllowsParallelMilestones: bool,
+  HourlyRate: decimal?, WeeklyHourLimit: decimal?
+}
+```
+
+**WorkroomMilestones collection (root: `WorkroomMilestone`):**
+```
+{
+  Id, EngagementId: ObjectId,
+  Title, Description: string,
+  Amount: decimal (Decimal128), Currency = "EUR",
+  DisplayOrder: int,
+  StartDate, DueDate, OriginalDueDate, ExtensionRequestedAt: DateTime?,
+  ApprovedExtensionDays: int,
+  CompletionCriteria: string,
+  IncludedRevisionCount: int, UnlimitedRevisions: bool,
+  PurchasedAdditionalRevisions, UsedRevisionCount: int,
+  MilestoneStatus: WorkroomMilestoneStatus = Draft,
+  EscrowStatus: WorkroomEscrowStatus = NotFunded,
+  SubmittedAt, ReviewWindowEndsAt, AutoReleaseAt: DateTime?,
+  DisputeOpenedAt, DisputeReviewEndsAt: DateTime?,
+  DisputeOutcome: DisputeOutcome?,
   ApprovedAt: DateTime?,
-  RatedAt: DateTime?,
-  
-  RevisionCount: int,
-  RevisionRequests: [{ RequestedAt, Message, ResolvedAt? }],
-  
-  Rating: { Score: int?, Comment: string?, RatedAt: DateTime? },
-  
-  CreatedAt: DateTime,
-  UpdatedAt: DateTime,
+  CreatedAt, UpdatedAt: DateTime
 }
 ```
+Milestones are the "line items" of an engagement — separate collection, immutable roster after conversion, indexed `(EngagementId, DisplayOrder)`.
 
-**Indexes:** unique `OrderNumber`; compound `(ClientId, State)` for client dashboard; compound `(ProviderId, State)` for SP workroom; compound `(ListingId, State)` for per-listing analytics (future).
-
-**Order messages + attachments:** order-scoped conversations use the existing `ChatMessage` and `Conversation` collections without change to `ChatMessage`. The codebase establishes conversation scoping via `Conversation.RelatedProjectId` (nullable ObjectId); we follow the same pattern for orders by extending `Conversation` with `RelatedOrderId`. When an order is placed (§10.5), the order-creation service creates a `Conversation` with `RelatedOrderId = order._id`, `Participants = [ClientId, ProviderId]`, `Type = "Direct"`, and stores the conversation ID on the order (`Order.ConversationId`) for direct navigation from the workroom UI. Messages inherit order scope through their conversation; all existing `ChatMessage` queries (filter by `ConversationId` only) continue unchanged. No `ChatMessage.OrderId` field is added. Files uploaded within the order workroom go through existing SaveFile mechanism; add allow-list entry `marketplace/order-attachments`.
-
-### 10.7 State machine
-
-**States:**
+**Deliverables collection (root: `Deliverable`):**
 ```
-PendingRequirements  — Order created, requirements not fully submitted
-InProgress           — Client submitted requirements; provider working
-Delivered            — Provider marked work delivered
-InRevision           — Client requested changes (loops back to InProgress)
-Approved             — Client approved delivery (funds release)
-Rated                — Client left rating (final terminal state)
-Cancelled            — Order cancelled (refund path, v2)
-Disputed             — Escrow held pending resolution (v2)
-```
-
-**Transitions summary:**
-
-| From                  | To                    | Trigger                                          |
-|-----------------------|-----------------------|--------------------------------------------------|
-| (new)                 | PendingRequirements   | Client places order + pays; requirements incomplete |
-| (new)                 | InProgress            | Client places order + pays; requirements complete   |
-| PendingRequirements   | InProgress            | Client submits complete requirements             |
-| InProgress            | Delivered             | Provider marks delivered                         |
-| Delivered             | InRevision            | Client requests revision (if revisions available)|
-| InRevision            | InProgress            | Provider acknowledges new work                   |
-| Delivered             | Approved              | Client approves OR auto-approve after N days (§4.6)|
-| Approved              | Rated                 | Client submits rating                            |
-| Any (except Rated)    | Cancelled             | Explicit cancellation with reason (v2)           |
-| Any (except Rated)    | Disputed              | Client or provider raises dispute (v2)           |
-
-**Auto-approval:** N days after Delivered (default 3 days per §4.6), unless InRevision or Dispute raised. Hangfire job runs hourly to check eligible auto-approvals.
-
-**Escrow release on entering Approved:**
-- `Payment.Status: Held → Released`.
-- `Payment.ReleasedAt: now`.
-- Provider's earnings accumulator gets `Pricing.Total - Pricing.PlatformFee`.
-
-State transitions are backend-authoritative. Frontend calls dedicated endpoints: `POST /api/orders/[id]/deliver`, `POST /api/orders/[id]/request-revision`, `POST /api/orders/[id]/approve`, `POST /api/orders/[id]/rate`. Frontend does not directly patch the `State` field.
-
-### 10.8 Payment layer (STUB)
-
-**Interface:**
-```csharp
-public interface IPaymentService
 {
-    Task<PaymentResult> ChargeAsync(ChargeRequest request, CancellationToken ct);
-    Task<PaymentResult> ReleaseAsync(string txnId, decimal amount, CancellationToken ct);
-    Task<PaymentResult> RefundAsync(string txnId, decimal amount, CancellationToken ct);
+  Id, MilestoneId: ObjectId,
+  ProviderId, Title, Description: string,
+  Version: string = "1.0",
+  FileIds: string[], ExternalLinks: string[],
+  SubmissionMessage, ClientInstructions: string,
+  CompletionConfirmed: bool,
+  SubmittedAt: DateTime,
+  DeliverableStatus: DeliverableStatus = Submitted
+}
+```
+Versioned work products under milestones. Prior deliverable → `Superseded` when a new one is submitted.
+
+**RevisionRequests collection (root: `RevisionRequest`):**
+```
+{
+  Id, MilestoneId, DeliverableId: ObjectId,
+  RequestedBy, Description: string,
+  RequestedChanges: string[],
+  CreatedAt: DateTime, DueDate: DateTime?,
+  ScopeClassification: RevisionScopeClassification,
+  FeedbackCollectionStatus = Collecting,
+  RevisionRequestStatus = FeedbackCollecting
 }
 ```
 
-`StubPaymentService` implementation: all methods return immediate success with a fake `txnId` (`stub-{Guid}`). Register as scoped in DI.
-
-**Fee calculation** is separate from `IPaymentService` — always computed in the order-creation service (not in `IPaymentService` itself):
+**FinancialTransactions collection (root: `FinancialTransaction`) — the ledger.** Gross/Commission/Net per row.
 ```
-platformFee = Math.Round(productSubtotal * 0.12m, 2);
-total = productSubtotal + platformFee;
+{
+  Id, EngagementId, MilestoneId: ObjectId?,
+  ProviderId, ClientId: string,
+  GrossAmount, CommissionAmount, NetAmount: decimal (Decimal128),
+  Currency = "EUR",
+  TransactionType: FinancialTransactionType,
+  PaymentStatus: PaymentStatus,
+  IdempotencyKey: string (unique index),
+  CreatedAt: DateTime, ReleasedAt: DateTime?
+}
+```
+Indexes: `IdempotencyKey` unique; `(ProviderId, CreatedAt desc)`. Provider balances are derived at read time from these rows — no stored balance document.
+
+**PaymentOperations collection (root: `PaymentOperation`) — wraps every gateway call with idempotency.**
+```
+{
+  Id, IdempotencyKey: string (unique index),
+  Type: PaymentOperationType,
+  EngagementId, MilestoneId, PayoutRequestId: ObjectId?,
+  Amount: decimal (Decimal128), Currency = "EUR",
+  Status: PaymentOperationStatus = Pending,
+  GatewayReference, Error: string?,
+  AttemptCount: int,
+  CreatedAt, UpdatedAt: DateTime
+}
 ```
 
-The 12% rate is centralized in configuration or a `PricingCalculator` static — do NOT hardcode it in multiple places.
+**Other collections** (audit summary — see WorkroomService for usage): `Reviews` (engagement ratings; unique `EngagementId`), `PayoutRequests` (provider withdrawals), `Invoices` (issued at milestone approval; unique `InvoiceNumber`), `WorkroomAuditEvents` (durable state history: actor, action, prev/new state, reason; indexed `(EntityId, Timestamp desc)`), `HourlyTimeEntries` (hourly-rate contracts), `WorkroomTasks` (sub-task tracking), `ClientInputRequests` (provider-initiated client input asks), `WorkroomFiles` (file exchange metadata), `RepeatClientCoupons` (loyalty discounts).
 
-### 10.9 Order-scoped workroom
+**Models NOT present** (canon-only fictions, do not reference in implementation): `Order`, `EscrowTransaction`, `EscrowLedgerEntry`, `WorkroomLine`, `PackagePurchase` DB model.
 
-**Route:** `/dashboard/[role]/orders/[orderId]` (same UI for all roles; the caller's role is used only for the URL segment and to determine whether they are the client or provider).
+**Message + conversation scoping:** engagement-scoped conversations use the existing `ChatMessage` + `Conversation` collections. `Conversation.RelatedProjectId` is the existing scoping field; a sibling `RelatedEngagementId` (matching the same nullable ObjectId pattern) is added when M3 wires engagement-scoped chat. `ChatMessage` requires no change.
 
-**Layout:**
-- Header: order number, current state chip (color-coded), provider/client name (whoever is not the caller), delivery deadline countdown.
-- Left column: order summary (package, add-ons, revisions, total, payment status), requirements accordion.
-- Right column: message thread + file attachments (chat).
-- Bottom: primary action buttons based on state + caller role (Provider viewing InProgress → "Mark as Delivered"; Client viewing Delivered → "Approve" + "Request Revision"; Client viewing Approved → "Rate this order").
+### 10.7 Engagement + Milestone state machines
 
-**Access control:** only client + provider of the order can view. JWT `userId` check against `Order.ClientId` and `Order.ProviderId`; any other authenticated user → 403.
+Two separate state machines exist (per `WorkroomStateMachine`):
 
-**Message flow:** the workroom UI loads the conversation referenced by `Order.ConversationId`. Messages are retrieved via the existing message-fetch endpoint filtered by that `ConversationId`. The conversation itself carries the order scope via `Conversation.RelatedOrderId`; no per-message scope field is needed. Sending from within the workroom posts to the existing chat endpoint with the same `ConversationId`.
+**Engagement state machine (13 states):** `ContractPending, EscrowPending, ReadyToStart, Active, Paused, ClientInputRequired, MilestoneReview, RevisionInProgress, FinalDelivery, Completed, Cancelled, Disputed, Archived`. Currently no writer for: `Cancelled`, `Archived`.
 
-### 10.10 Client dashboard (orders view)
+**Milestone state machine (15 states):** `Draft, FundingRequired, Funded, Active, SubmissionDraft, Submitted, ClientReviewing, RevisionRequested, RevisionInProgress, Resubmitted, Approved, PaymentProcessing, Paid, Cancelled, Disputed`. Currently no writer for: `Approved`, `PaymentProcessing`, `SubmissionDraft`, `Submitted`. Approval jumps `ClientReviewing → Paid` directly (skipping the documented intermediate states).
 
-**Route:** `/dashboard/[role]/orders` (same UI all roles).
+**Escrow status (used on both engagement and milestone):** `NotFunded, AuthorizationPending, Funded, ReleasePending, Released, Refunded, OnHold, Failed`. Currently no writer for: `AuthorizationPending`, `ReleasePending`.
 
-**Layout:** filter tabs (Active / Completed / Cancelled) + order card list, sortable by recent activity. Each card shows order number, listing title + provider name + thumbnail, current state chip, total price, delivery deadline or terminal timestamp. Click → open order-scoped workroom.
+**Enforcement note:** `WorkroomStateMachine` is defined but currently enforced on only ~6 of ~15 mutating service methods; the rest set status inline. Cleanup planned in M4.
 
-**Auto-refresh:** poll orders list every 30-60 seconds when page is open (v1). Websocket / SSE is v2.
+**Transitions actually written:**
+
+| From | To | Trigger | Actor |
+|---|---|---|---|
+| Milestone NotFunded → Funded | escrow | `FundMilestoneAsync` | Client fund success |
+| Milestone NotFunded → Failed | escrow | `FundMilestoneAsync` | Gateway failure |
+| Milestone Active → ClientReviewing | | `SubmitDeliverableAsync` | Provider |
+| Milestone ClientReviewing → RevisionRequested | | `RequestRevisionAsync` | Client |
+| Milestone ClientReviewing/Resubmitted → Paid | | `ApproveMilestoneAsync` | Client OR auto-release timer |
+| Milestone Funded → OnHold | escrow | `OpenDisputeAsync` | Client OR provider |
+| Milestone OnHold → Funded | escrow | `ResolveDisputeAsync` ProviderFavored | Admin |
+| Milestone OnHold → Refunded | escrow | `ResolveDisputeAsync` ClientFavored | Admin |
+| Engagement ContractPending → ReadyToStart | | contract signed + first fund | System |
+| Engagement Active → Paused | | `PauseEngagementAsync` | Client/Provider |
+| Engagement Paused → Active | | `ResumeEngagementAsync` | Client/Provider |
+| Engagement * → Disputed | | dispute open | Client/Provider |
+| Engagement FinalDelivery → Completed | | all milestones Paid | Client/Provider via `CompleteEngagementAsync` |
+
+**Timers** (hardcoded constants in `WorkroomService.cs:16-18`, swept minutely via `WorkroomTimedRulesJob`):
+- 48h review window (`ReviewWindowEndsAt` — written, never read; currently informational).
+- 7-day auto-release (`AutoReleaseAt` — fires ClientReviewing/Resubmitted → Paid if the client doesn't act and no dispute is open).
+- 5-day dispute window (`DisputeReviewEndsAt` — audit-only "AdminReviewRequired" escalation, no state change).
+
+### 10.8 Payment layer
+
+**Interface: `IPaymentGatewayService` (5 methods):**
+```csharp
+Task<PaymentGatewayResult> AuthorizeEscrowAsync(idempotencyKey, amount, currency, ct);
+Task<PaymentGatewayResult> ReleaseEscrowAsync(idempotencyKey, escrowReference, amount, currency, ct);
+Task<PaymentGatewayResult> RefundEscrowAsync(idempotencyKey, escrowReference, amount, currency, ct);
+Task<PaymentGatewayResult> CreatePayoutAsync(idempotencyKey, maskedPayoutMethodId, amount, currency, ct);
+Task<PayoutGatewayStatus>  GetPayoutStatusAsync(gatewayReference, ct);
+
+record PaymentGatewayResult(bool Success, string? GatewayReference, string? Error);
+record PayoutGatewayStatus(PayoutStatus Status, string? GatewayReference, string? Error);
+```
+
+**Implementation:** `StubPaymentGatewayService` only. Deterministic success returning `stub_{prefix}_{idempotencyKey}` references. Config `PaymentGatewayStub:SimulateFailure=true` flips all calls to failure. Registered in `Program.cs:357` — the ONLY registration. No real Stripe/PayPal code exists (only `PayoutRail` enum members + comments).
+
+**Idempotency:** every gateway call is wrapped in a `PaymentOperation` record (idempotency-key unique). Mongo-txn failure after gateway success → `MarkReconciliation` → op Status=`ReconciliationRequired` → minutely `WorkroomTimedRulesJob` re-drives (limit 100/sweep).
+
+**Call site map:**
+
+| Gateway op | Caller | Idempotency key |
+|---|---|---|
+| AuthorizeEscrowAsync | `FundMilestoneAsync` (client fund) | `escrow:{milestoneId}` |
+| ReleaseEscrowAsync | `ReleaseMilestoneAsync` via `ApproveMilestoneAsync` or auto-release | `release:{milestoneId}` |
+| RefundEscrowAsync | `ResolveDisputeAsync` ClientFavored (Admin) | `refund:{milestoneId}` |
+| CreatePayoutAsync | payout request flow + `ReconcilePayoutAsync` | payout-scoped |
+
+**Fee calculation — fully centralized:** `Configuration/PlatformCommerceConstants.cs`:
+```csharp
+public const decimal CommissionRate = 0.12m;
+```
+Exactly two production consumers:
+1. `LeadsDtos.cs:122-123` — proposal commission preview: `commission = decimal.Round(price * CommissionRate, 2, AwayFromZero)`.
+2. `WorkroomService.cs:709` — milestone release: `commission = decimal.Round(m.Amount * CommissionRate, 2, AwayFromZero); net = m.Amount - commission`.
+
+Tests (`LeadsModuleTests.cs`, `WorkroomModuleTests.cs`, `AnalyticsModuleTests.cs`) assert `CommissionRate == 0.12m` and that frontends never receive a rate field. **No hardcoded 12% anywhere else.**
+### 10.9 Engagement-scoped workroom (SP-side LIVE, client-side missing)
+
+Provider-side workroom endpoints (LIVE) — from `WorkroomController` (22 actions total). Selected list:
+
+| URL | Method | Purpose |
+|---|---|---|
+| `api/workroom/engagements` | GET | List actor's engagements (provider or client) |
+| `api/workroom/engagements/{id}` | GET | Engagement detail (contract, milestones, files, review) |
+| `api/workroom/engagements/{id}/contract/confirm` | POST | Sign contract (both parties) |
+| `api/workroom/milestones/{id}/fund` | POST | Fund milestone escrow (client) |
+| `api/workroom/milestones/{id}/activate` | POST | Activate funded milestone (provider) |
+| `api/workroom/milestones/{id}/deliverables` | POST | Submit deliverable (provider) |
+| `api/workroom/milestones/{id}/revisions` | POST | Request revision (client) |
+| `api/workroom/milestones/{id}/approve` | POST | Approve delivery → escrow release (client) |
+| `api/workroom/milestones/{id}/disputes` | POST | Open dispute (either) |
+| `api/workroom/milestones/{id}/resolve-dispute` | POST | Resolve dispute (Admin role) |
+| `api/workroom/engagements/{id}/pause` / `/resume` | POST | Pause/resume engagement (either) |
+| `api/workroom/engagements/{id}/complete` | POST | Complete engagement (either; all milestones Paid) |
+| `api/workroom/engagements/{id}/reviews` | POST | Submit review (client) |
+| … | | (extension, extension-decision, revision start, review response, files, tasks, client-input, time-entries) |
+
+Access control: JWT userId check against `Engagement.ClientId` / `Engagement.ProviderId`; other users → NotFound/Conflict. Admin role required only for dispute resolution.
+
+**Frontend surface (audit 2026-08-01):**
+- Provider-side FULLY wired: `src/lib/api-workroom.ts` (16 workroom + 7 earnings URLs), `src/lib/api-leads.ts` (12 URLs incl. provider-approve/decline of package order requests), SP workspace UIs under `serviceprovider/`.
+- **Client-side ZERO wired** — no frontend caller exists for fund, approve, request-revision, accept, review, or package-purchases; no engagement UI in any client role dashboard. M2/M3 build this.
+
+### 10.10 Client dashboard (planned M3)
+
+**Route:** `/dashboard/[role]/engagements`.
+
+**Layout:** filter tabs (Active / Delivered / Completed / Disputed) + engagement card list. Each card: engagement title, provider name + thumbnail, current status chip, current milestone + progress %, total value (EUR). Click → engagement detail.
+
+Not yet implemented. M3 scope.
 
 ### 10.11 Provider-side integration
 
-Existing §4 (SP Workroom & Earnings) needs a small hook to recognize orders created via marketplace. Nothing needs to be BUILT NEW in §4 — the existing workroom UI reads from `Orders` collection and works for orders regardless of source.
+Existing §8 (SP Workroom & Earnings) is fully LIVE and this section documents what it uses under the hood:
 
-**Confirm:**
-- SP's existing workroom/orders list shows orders where `ProviderId == currentUserId`.
-- State machine transitions in §10.7 triggered from SP's workroom actions (Deliver, etc.) exactly as from the client workroom.
-- Earnings computation in §4 works with these orders (`Payment.Released → earnings += Pricing.Total - Pricing.PlatformFee`).
+- `WorkroomController` + `WorkroomService` — 22 endpoints for the provider workroom UI (list engagements, submit, respond to revision, view disputes, etc.).
+- `EarningsController` — 7 endpoints for the earnings dashboard (uses `FinancialTransactions` ledger derivations, not stored balances).
+- SP frontend UIs under `serviceprovider/` — fully wired to these endpoints.
+
+Zero new backend work required for M2-M3; their job is building the client-side counterparts. M4 state-machine hardening (dead states, enforce `WorkroomStateMachine` across all mutations) is a separate maintenance task under §10.13.
 
 ### 10.12 Analytics integration (Phase C IMPLEMENTED during Phase M1)
 
-Marketplace + listing detail pages are the trigger points for Phase C tracking (§9.4), now wired and live.
+Marketplace + listing detail pages are Phase C's trigger points (§9.4). Wire status: IMPLEMENTED in Phase M1 (commit `802d616`).
 
-**Implemented in Phase M1 (commit `802d616`):**
-- Listing detail page mount → `recordListingImpression(listingId)` via axios wrapper.
-- Order button click → `recordListingClick(listingId, "order")` via axios wrapper.
-- Message button click → `recordListingClick(listingId, "message")` via axios wrapper.
-- Package tab click → `recordListingClick(listingId, "tier-basic|standard|premium")` via axios wrapper.
+- Listing detail page mount → `recordListingImpression(listingId)` → `POST /api/service-provider/analytics/impression` (204).
+- Order button click → `recordListingClick(listingId, 'order')`.
+- Message button click → `recordListingClick(listingId, 'message')`.
+- Package tab click → `recordListingClick(listingId, 'tier-*')`.
 
-Fire-and-forget: axios `api.post(...)` wrapped in `.catch(() => {})` (never blocks user interaction, automatic Bearer token attachment, correct API base URL routing). No UI feedback.
+Via axios wrappers in `src/lib/api-analytics.ts` (fire-and-forget, silent catch, hits backend base URL not frontend origin).
 
-**Inquiry counter:** existing hook in `ChatController.SendMessage` (Phase A) already increments when message sent with `ListingId` context. Marketplace's "Message provider" button calls existing message-send with `ListingId` populated → counter works automatically.
+**Order-conversion metric** (Phase M6): once the client purchase UI exists (M2), the successful proposal-creation event will increment an `Orders` counter on `AnalyticsDailyBuckets`.
 
-**Order-conversion metric** (Phase M6): once orders exist, new counter `Orders` added to `AnalyticsDailyBuckets`. Dashboard shows Orders/Impressions as conversion metric alongside existing four.
+**Inquiry counter:** existing hook in `ChatController.SendMessage` already increments when a message is sent with `ListingId` context.
 
 ### 10.13 Implementation phases
 
 **Phase M1 — IMPLEMENTED (2026-08-01).**
 
-Backend (`c5d8a0e`, `02e0f2c`, `14eb600`):
-- `MarketplaceController` + `IMarketplaceService` + `MarketplaceService` implementation.
-- New public DTOs (`MarketplaceListingCard`, `MarketplaceListingsResponse`, `MarketplaceListingDetailResponse`, `MarketplacePackage`, `MarketplaceAddOn`, `MarketplaceGalleryImage`, `MarketplacePreviewVideo`, `MarketplaceFaq`, `MarketplaceProviderMini`, `MarketplaceProviderHeader`) — separate from SP-side DTOs to prevent leaking provider-internal fields (capacity, analytics, draft state, verification flow).
-- `GET /api/marketplace/services` (paginated grid with search, category, sub-category, price-range, delivery-time filters + sort by recent/price/rating) with `[Authorize]` gating and Published-only baseline filter.
-- `GET /api/marketplace/services/{listingId}` (public detail endpoint) with `[Authorize]` gating; non-Published listings return 404 (never reveal existence).
-- Compound indexes on `ServiceListings`: `(Status, Category, UpdatedAt DESC)` for grid queries; text index on `Title` for search.
-- Provider name resolution via `UserManager` pattern (matches AnalyticsService, not direct MongoDB Guid parsing).
-- Profile image resolution via `IProfessionalProfileStore.GetByUserIdAsync()` batch fetch (critical: `ProfileImage` lives on `ProfessionalProfileRecord`, not embedded `ServiceProviderProfile`; see notes below).
-- Cover image and gallery/video URLs resolved via `ResolveMediaUrl` helper (returns `/uploads/...` static file paths for backend wwwroot serving).
+Backend: `GET /api/marketplace/services` grid + `GET /api/marketplace/services/{id}` detail. `MarketplaceController` + `MarketplaceService`. Public DTOs separate from SP-side. Compound indexes. Provider name via `UserManager`. Profile image via `IProfessionalProfileStore`. Media via `ResolveMediaUrl` (`/uploads/...` static paths). Only Published listings surface; non-Published detail returns 404.
 
-Frontend (`776fd83`, `05f5e41`, `5607e8b`, `3bc85af`, `8498233`):
-- `/marketplace/services` grid page (client component, `AuthGuard` wrap, search input + filter bar with category/sub-category/price-range/delivery-time dropdowns + sort selector, card grid with responsive breakpoints 1-2-3-4 columns, pagination 12 cards/page, honest "No services match" empty state).
-- `/marketplace/services/[listingId]` detail page (client component, `AuthGuard` wrap, unified `MediaCarousel` component with video-first ordering + hover-to-play video (muted, loop, play on hover, pause on leave, reset to first frame on leave) + 5-second auto-advance for image slides + manual Prev/Next arrows (hidden by default, appear on hover) + slide counter (e.g., "2 / 4") + empty-state placeholder, provider header with profile image + trust badge, package selector card with tabs + add-on checklist + revision stepper + dynamic total price, description (DOMPurify-sanitized HTML), FAQ accordion, metadata/search tags).
-- API wrappers in `src/lib/api-marketplace.ts` (functions `getMarketplaceListings`, `getMarketplaceListingDetail` with proper unwrap pattern; `ApiEnvelope` handled once in wrapper, consumers access unwrapped data directly).
-- React Query hooks in `src/hooks/queries/marketplace.ts` (`useMarketplaceListings`, `useMarketplaceListingDetail` with `staleTime: 60_000` and 5-minute cache respectively).
-- Analytics recording via axios wrappers in `src/lib/api-analytics.ts` (`recordListingImpression`, `recordListingClick`; `802d616`): impression fires on detail page mount; clicks fire on package tab changes, Order button, Message button. Fire-and-forget (catch-and-swallow errors) using axios client (not raw fetch) to ensure correct baseURL routing to backend.
-- Unified `MediaCarousel` component (`src/components/marketplace/MediaCarousel.tsx`, `8498233`): builds slide array [video if present, gallery images sorted by displayOrder], manages index state + auto-advance timer (5s, only for image slides), video hover play/pause via ref, manual nav resets timer, single-slide hides arrows/counter, empty state shows Package icon placeholder. All colors from theme tokens (no hardcoded hex).
-- "Services Marketplace" nav entry added to all four role sidebars (Creator, Entrepreneur, Investor, Service Provider) via `src/lib/menu.ts` pointing to `/marketplace/services`.
+Frontend: `/marketplace/services` grid + `/marketplace/services/[listingId]` detail with unified `MediaCarousel`. AuthGuard wraps. React Query hooks. "Services Marketplace" nav entry in all 4 role sidebars.
 
-Key fixes during M1:
-- `1755f39` — Profile image resolution: `ProfileImage` lives on `ProfessionalProfileRecord` (separate collection), not embedded `ServiceProviderProfile`. Switched to `IProfessionalProfileStore` batch fetch to compose provider info correctly.
-- `4d153f2` — Media URL paths: backend returns `/uploads/...` static file paths (served from wwwroot), not `/api/files/...` API endpoints. Frontend `resolveProviderMediaUrl` converts to absolute backend URLs.
-- `8064219` — Data accessor fix: API wrappers unwrap `ApiEnvelope<T>` once, consumers access unwrapped fields directly (not `.data`). Grid and detail pages fixed to match this pattern.
-- `802d616` — Analytics routing fix: replaced raw `fetch('/api/...')` with axios-wrapper functions using configured `API_BASE_URL` to route correctly to backend (not frontend origin).
+Analytics Phase C wire (impression + click via axios).
 
-Notes (lessons for M2-M8 implementers):
-- `ProfileImage` is NOT stored on `ApplicationUser.ServiceProviderProfile` (embedded); it lives on `ProfessionalProfileRecord` (separate MongoDB collection per §1A). Always batch-fetch via `IProfessionalProfileStore` when composing provider info for client-facing responses. Do not attempt direct embedded field access.
-- Media URLs from backend are `/uploads/...` static file paths, not API endpoints. Frontend wrapper `resolveProviderMediaUrl` is responsible for conversion to absolute backend URLs. Do not hardcode `/api/files/` prefixes.
-- Provider ID matching in MongoDB requires `UserManager` pattern (see `AnalyticsService`). Direct driver Guid parsing against `ApplicationUser._id` fails silently and returns wrong/zero results. Follow the established pattern.
-- Client-side pages MUST have `"use client"` directive as the very first line. Missing directive causes silent RSC render path and no client hooks fire (useState, useEffect, useCallback all silently no-op). This manifests as blank pages or missing interactivity.
-- API response envelope pattern: wrappers unwrap `ApiEnvelope<T>` once in the async function (extracting `envelope.data`), returning the unwrapped `T`. React Query hooks consume the unwrapped result directly. Consumers access `data.fieldName`, not `data.data.fieldName`. Double nesting indicates a bug (either wrapper didn't unwrap or consumer is over-accessing).
-- Media carousel (video-first ordering, hover-to-play video, auto-advance images, manual nav reset timer) is self-contained in one custom component. No external carousel library needed; lightweight custom state + refs + useEffect patterns are sufficient.
-- Analytics axios wrappers must use the configured `api` client (not raw `fetch`) to ensure correct baseURL routing and Bearer token attachment. Raw `fetch` with relative paths routes to frontend origin, not backend.
+Commits: `14eb600`, `02e0f2c`, `c5d8a0e`, `776fd83`, `05f5e41`, `5607e8b`, `3bc85af`, plus fixes `1755f39` (profile image via ProfessionalProfileRecord), `4d153f2` (media URL prefix), `8064219` (data accessor), `802d616` (analytics axios wrapper), `4977e97` (api wrapper unwrap), `8498233` (unified MediaCarousel), `aba5daf` (docs).
 
-**Phase M2 — Order creation + payment stub.** Backend: Orders collection, creation endpoint, IPaymentService + StubPaymentService, fee calculation, escrow held state. Frontend: order creation modal, package + add-ons + revisions selector, requirements form, payment confirmation. Order button now creates real orders.
+Key lessons for M2-M8:
+- Profile images live on `ProfessionalProfileRecord` (separate collection), NOT embedded in `ApplicationUser.ServiceProviderProfile`.
+- Media URLs are `/uploads/...` static paths, not `/api/files/...` API endpoints.
+- Provider ID lookup uses the `UserManager` pattern.
+- Client-side pages MUST have `"use client"` as the first line; missing = silent RSC render.
+- API wrappers unwrap the `ApiResponse` envelope once; consumers access fields directly (not `.data`).
+- Analytics must use the axios wrapper — raw fetch resolves to frontend origin.
 
-**Phase M2 — Order creation + payment stub.** Backend: Orders collection, creation endpoint, IPaymentService + StubPaymentService, fee calculation, escrow held state. Frontend: order creation modal, package + add-ons + revisions selector, requirements form, payment confirmation. Order button now creates real orders.
+**Phase M2 — Client purchase flow UI (PLANNED, next).** Scope: entirely frontend; backend already provides everything.
+- New route: `/marketplace/services/[listingId]/order?step=1|2|3`.
+- Wire existing `POST /api/leads/package-purchases`. Add frontend types for `PackagePurchaseRequest` / `PackagePurchaseResponse`.
+- Step 1: Summary review with dynamic pricing (12% commission preview from the proposal's `EarningsPreview`).
+- Step 2: Requirements form (Text + Choice types only in v1).
+- Step 3: Confirmations + "Pay & Place Order".
+- On `AutoAccepted` (auto path) or `UiStatus="Provider Approval Required"` (manual path) → success screen with next-step guidance; on `FailedConditions[]` → user-friendly condition list.
+- No backend refactor.
 
-**Phase M3 — Order-scoped workroom + client dashboard.** Backend: order-scoped message queries, order transition endpoints (deliver, approve, revise, rate). Frontend: `/dashboard/[role]/orders` list + `[orderId]` workroom. State-based action buttons. Chat uses existing infrastructure.
+**Phase M3 — Client-side workroom + engagement dashboard (PLANNED).**
+- Backend: add `Conversation.RelatedEngagementId` for engagement-scoped chat. Zero other backend changes.
+- Frontend: `/dashboard/[role]/engagements` list + `/dashboard/[role]/engagements/[engagementId]` client workroom. Wire existing `WorkroomController` endpoints (fund, approve, request-revision, submit-review) with client counterpart wrappers.
 
-**Phase M4 — Escrow release + auto-approval.** Backend: Hangfire job for auto-approval after N days, payment release on Approved, provider earnings accumulation. Frontend: countdown UI in workroom.
+**Phase M4 — State machine hardening + timer cleanup (PLANNED).** Enforce `WorkroomStateMachine` across all ~15 mutating methods (currently ~6). Add writers for orphan states (`AuthorizationPending`, `ReleasePending`, engagement `Cancelled`/`Archived`, milestone `SubmissionDraft`/`Submitted`/`Approved`/`PaymentProcessing`, unused `FinancialTransactionType` values) — OR formally deprecate and remove them.
 
-**Phase M5 — Ratings.** Backend: rating submission endpoint, aggregate provider rating updates. Frontend: rating modal on Approved state, rating display on listing detail + provider profile.
+**Phase M5 — Reviews polish (PLANNED).** `Reviews` collection is LIVE with rating fields. Frontend surfaces: review display on public listing detail; review submission UI arrives with the M3 client workroom.
 
-**Phase M6 — Order-conversion metric in analytics.** Backend: `Orders` counter added to AnalyticsDailyBuckets, order-creation service increments it. Frontend: new metric card in Analytics dashboard (Orders/Impressions conversion).
+**Phase M6 — Order-conversion analytics metric (PLANNED).** Backend: `Orders` counter on `AnalyticsDailyBuckets`, incremented on successful proposal creation. Frontend: new dashboard metric card (Orders / Impressions conversion).
 
-**Phase M7 (deferred)** — Cancellation + Dispute. Dispute state machine transitions, refund handling, manual moderation queue, dispute UI in workroom.
+**Phase M7 (deferred) — Cancellation + Dispute UI polish.** Dispute + resolution flow exists in backend (`OpenDisputeAsync`, `ResolveDisputeAsync`, `DisputeOutcome`). Client-side UI for dispute open/track and admin resolution.
 
-**Phase M8 (v2, deferred)** — Real payment integration. Replace StubPaymentService with real gateway (Stripe/PayPal). Abstraction in place; only implementation swaps.
+**Phase M8 (v2, deferred) — Real payment gateway.** Replace the `StubPaymentGatewayService` DI registration with a real Stripe/Connect adapter. The interface is stable; no other code changes.
 
 ### 10.14 Privacy, security, edge cases
 
-- Auth gate on both routes — no guest access.
-- Public listing detail endpoint returns only client-safe fields; NEVER return provider's internal analytics, capacity, or draft content.
-- Order access strictly limited to client + provider of that order.
-- Payment amounts calculated server-side. Frontend-supplied amounts ignored — server recomputes from `listingId` + package choices.
-- Add-on IDs and requirement question IDs validated against listing's published state at order time. Invalid IDs → reject.
-- Package price snapshot: entire package frozen into `Order.Package.SnapshotAt` at order time. If SP later edits the listing, existing orders retain original terms.
-- No PII in analytics recordings for these interactions (§9.4).
-- Order numbers server-side generated, sequential per day (`M-YYYY-MM-DD-NNNNNN`) — never expose ObjectId to client.
-- Monetary values stored as `decimal` (not `double`).
-- Currency USD v1; multi-currency deferred.
+- Auth gate on marketplace routes — no guest access.
+- Public listing detail endpoint returns client-safe fields only; NEVER provider capacity, financial settings, analytics counters, draft state.
+- Non-Published listing detail: 404 (never reveal existence).
+- Engagement access: JWT userId check against ClientId + ProviderId.
+- Payment amounts calculated server-side. Frontend-supplied amounts are ignored during `PurchasePackageAsync` — the server recomputes from `PackageId` + add-on names.
+- Add-on names + requirement answers validated against the listing's published state at purchase time; invalid → `FailedConditions`.
+- Purchase snapshot: the entire purchase is frozen into `Proposal.PurchaseSnapshot` at purchase time. Listing edits after purchase don't affect existing proposals/engagements.
+- Engagements are referenced by ObjectId; no separate human-readable order number exists (the earlier canon "M-YYYY-MM-DD-NNNNNN" scheme was never implemented).
+- Monetary values stored as `Decimal128`.
+- Currency: EUR default (v1). Multi-currency deferred.
+- Idempotency: every gateway call wrapped in a `PaymentOperation` with a unique key. Duplicate calls with the same key are safely no-op'd.
 
 ### 10.15 What NOT to do
 
-- Do NOT allow non-authenticated users to see listing content beyond a "please sign in" gate.
-- Do NOT create parallel listing-detail endpoints. One `GET /api/marketplace/services/[listingId]` for public consumption; the SP-side existing endpoint stays private.
-- Do NOT compute prices or platform fees client-side and send them as-is. Server always recomputes.
-- Do NOT hardcode the 12% platform fee in multiple places. Centralize.
-- Do NOT ship any phase with fake sample data. Empty states honest.
-- Do NOT skip the Payment abstraction "because it's just a stub." The interface is what allows swap-in later without frontend or order-service changes.
-- Do NOT add `ChatMessage.OrderId` field for order scoping. Use `Conversation.RelatedOrderId` instead, following the established `RelatedProjectId` pattern — messages inherit scope through their conversation.
-- Do NOT build cancellation, dispute, refund flows in v1. Phase M7.
-- Do NOT create separate marketplaces per role. One `/marketplace/services` serves all roles. Future `/marketplace/pitches` etc. are separate marketplaces for entirely different content types, not role variants.
+- Do NOT invent an `Orders` collection or `EscrowTransaction` collection. Neither exists; use `WorkroomEngagements` + `WorkroomMilestones` + `FinancialTransactions` + `PaymentOperations`.
+- Do NOT create a separate `PackagePurchase` DB model. Purchases persist as a `Proposal` with `ProposalSource.PublishedPackagePurchase` + embedded `PurchaseSnapshot`.
+- Do NOT hardcode the 12% platform fee. Use `PlatformCommerceConstants.CommissionRate`.
+- Do NOT compute prices client-side and send them for storage. The server recomputes.
+- Do NOT reference `IPaymentService` — the interface is `IPaymentGatewayService`.
+- Do NOT introduce a `Payment.Status` embedded on an order. Payment state lives on `PaymentOperation.Status` (gateway-op level) + `FinancialTransaction.PaymentStatus` (ledger-row level).
+- Do NOT reference `EscrowLedgerEntry`. The ledger is `FinancialTransactions`.
+- Do NOT expose `ProviderTaxSettings` or internal accounting fields in marketplace DTOs.
+- Do NOT change the state machine unilaterally. `WorkroomStateMachine` defines the intended transition map; M4 hardens enforcement.
+- Do NOT use `USD` as the default currency. `EUR` is the platform default.
+- Do NOT reference the legacy `TransactionController` / `Transactions` collection — it is orphaned and unrelated to Module 4.
+- Do NOT add `ChatMessage.OrderId`. Use `Conversation.RelatedEngagementId` (parallel to the existing `RelatedProjectId` pattern).
+- Do NOT ship any phase with fake sample data. Empty states are honest.
+- Do NOT create separate marketplaces per role. One `/marketplace/services` serves all roles. Future `/marketplace/pitches`, `/marketplace/investors`, etc. are separate marketplaces for entirely different content types, not role variants.
 
 ---
 
@@ -1930,6 +2038,8 @@ The repo's **root `.gitignore` is a binary / non-UTF8 file**, which can make the
 ---
 
 ## Changelog
+
+**2026-08-01 — §10 FULL REWRITE to align with actual implementation (audit-driven).** Terminology changed: Orders → Engagements, EscrowTransaction → escrow status fields + FinancialTransactions ledger, Payment.Status → PaymentOperation.Status + FinancialTransaction.PaymentStatus, WorkroomLine → WorkroomMilestone. Interface: IPaymentService → IPaymentGatewayService (5 methods). Default currency: EUR. Fee constant: PlatformCommerceConstants.CommissionRate (0.12m). Purchase flow documented: PackagePurchase → Proposal (with 11 gates, Auto/Manual paths) → WorkroomConversionJob → Engagement + Milestones. State machines documented: 13-state engagement + 15-state milestone + 8-state escrow (with dead-state notes). Phase M1 marked IMPLEMENTED with commit refs. Phases M2-M8 scope updated to reflect that the backend exists — most future phases are frontend-only wire-up. See M2-M8 subsections in §10.13 for revised scope. Cross-references in §6 updated to purchase-snapshot/engagement terminology.
 
 **2026-08-01 — Marketplace Phase M1 IMPLEMENTED and shipped; Analytics Phase C IMPLEMENTED.** Backend: `MarketplaceController` + `IMarketplaceService` + `MarketplaceService` (commits `c5d8a0e`, `02e0f2c`, `14eb600`) — `GET /api/marketplace/services` (grid with paginated search/category/sub-category/price-range/delivery-time filters + sort) and `GET /api/marketplace/services/{listingId}` (public detail) endpoints; new public DTOs separate from SP-internal fields; compound indexes on Status/Category/UpdatedAt + text index on Title; `[Authorize]` gating; Published-only baseline; provider name resolution via UserManager; profile image resolution via `IProfessionalProfileStore` (critical: lives on ProfessionalProfileRecord, not embedded ServiceProviderProfile); cover/gallery/video URLs resolved via `ResolveMediaUrl` static-file pattern. Frontend: `/marketplace/services` grid page (client component, AuthGuard wrap, filters + card grid + pagination, commit `05f5e41`); `/marketplace/services/[listingId]` detail page (client component, AuthGuard wrap, unified `MediaCarousel` with video-first ordering, hover-to-play video, 5s image auto-advance, manual nav, slide counter, commit `5607e8b`); API wrappers + React Query hooks (commit `776fd83`); nav entries in all 4 role sidebars (commit `3bc85af`); unified MediaCarousel component (commit `8498233`). Analytics Phase C IMPLEMENTED (commit `802d616`): axios wrappers `recordListingImpression` + `recordListingClick` fire on detail page mount and CTA interactions (package tabs, Order, Message). Major bug fixes during implementation: profile image resolution via `IProfessionalProfileStore` batch fetch (commit `1755f39`), media URL path fix `/uploads/...` static files (commit `4d153f2`), data accessor double-nesting fix (commit `8064219`), analytics axios wrapper for correct API routing (commit `802d616`). Key lessons for M2-M8: ProfileImage on ProfessionalProfileRecord not embedded ServiceProviderProfile; media URLs are `/uploads/...` not API endpoints; provider ID matching requires UserManager pattern; client pages must have `"use client"` directive as first line; API response unwrapping in wrappers only, consumers access unwrapped fields; analytics wrappers use axios client not raw fetch. §10 header updated to mark Phase M1 IMPLEMENTED, phases M2-M8 remain PLANNED. §9.4 header updated to mark Phase A/B/C/D IMPLEMENTED, Phase E planned. §10.4 and §10.12 updated with Phase C implementation status and commit hashes. Phases M2-M8 remain PLANNED (order creation → payment stub → workroom → auto-approval → ratings → conversion metrics → cancellation/dispute → real payment).
 
