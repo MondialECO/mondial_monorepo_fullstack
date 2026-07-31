@@ -162,13 +162,22 @@ public class ServiceListing
 
     // Metadata tags (internal/technical descriptors, capped at 5).
     // Captured now for future use; not currently consumed by search/matching.
+    // [BsonIgnoreIfNull]: handles legacy docs with BSON null values.
+    [BsonIgnoreIfNull]
     public List<string> MetadataTags { get; set; } = new();
 
     // Search tags (customer-facing search phrases, capped at 5).
     // Captured now for future use; not currently consumed by search/matching.
+    // [BsonIgnoreIfNull]: handles legacy docs with BSON null values.
+    [BsonIgnoreIfNull]
     public List<string> SearchTags { get; set; } = new();
 
+    // [BsonIgnoreIfNull]: handles legacy docs with BSON null values.
+    [BsonIgnoreIfNull]
     public List<string> IndustryFocus { get; set; } = new();
+
+    // [BsonIgnoreIfNull]: handles legacy docs with BSON null values.
+    [BsonIgnoreIfNull]
     public List<string> GeographicCoverage { get; set; } = new();
 
     // Analytics counters seeded at 0 now so §9 has real history from day one.
@@ -180,7 +189,13 @@ public class ServiceListing
     // Service-level media (Step 5 in wizard). PreviewVideo is optional single record;
     // GalleryImages is a bounded array capped at 20 items (§1A.13 Portfolio precedent,
     // BSON protection). File references are server-determined; client never provides paths.
+    // [BsonIgnoreIfNull]: omit field on write when null; on read, return null if absent
+    // or if the stored field is BSON null (handles corrupted legacy docs).
+    [BsonIgnoreIfNull]
     public PreviewVideo? PreviewVideo { get; set; }
+
+    // [BsonIgnoreIfNull]: handles legacy docs with BSON null array values.
+    [BsonIgnoreIfNull]
     public List<GalleryImage> GalleryImages { get; set; } = new();
 
     public CatalogStatus Status { get; set; } = CatalogStatus.Draft;
@@ -231,12 +246,29 @@ public class ServicePackage
     public int AdditionalRevisionDeliveryTime { get; set; }
     public string RevisionScopeDescription { get; set; } = "";
 
+    // [BsonIgnoreIfNull]: handles legacy docs with BSON null array values.
+    [BsonIgnoreIfNull]
     public List<string> Deliverables { get; set; } = new();
+
+    // [BsonIgnoreIfNull]: handles legacy docs with BSON null array values.
+    [BsonIgnoreIfNull]
     public List<string> IncludedFeatures { get; set; } = new();
+
+    // [BsonIgnoreIfNull]: handles legacy docs with BSON null array values.
+    [BsonIgnoreIfNull]
     public List<string> ExcludedFeatures { get; set; } = new();
 
+    // Optional: number of screens/mockups/deliverables included in the package.
+    // Nullable: not applicable to all service types (e.g., consulting, legal).
+    public int? ScreensIncluded { get; set; }
+
     // Embedded (bounded), §6 storage.
+    // [BsonIgnoreIfNull]: handles legacy docs with BSON null array values.
+    [BsonIgnoreIfNull]
     public List<ServiceAddOn> AddOns { get; set; } = new();
+
+    // [BsonIgnoreIfNull]: handles legacy docs with BSON null array values.
+    [BsonIgnoreIfNull]
     public List<RequirementsField> RequirementsTemplate { get; set; } = new();
 
     // Platform-predefined cancellation option (§6.8).

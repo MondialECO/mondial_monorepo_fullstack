@@ -72,6 +72,7 @@ public class UpsertServicePackageRequest
     public List<string> Deliverables { get; set; } = new();
     public List<string> IncludedFeatures { get; set; } = new();
     public List<string> ExcludedFeatures { get; set; } = new();
+    public int? ScreensIncluded { get; set; }
     public List<ServiceAddOnDto> AddOns { get; set; } = new();
     public List<RequirementsFieldDto> RequirementsTemplate { get; set; } = new();
 
@@ -120,6 +121,31 @@ public class PublishPackageRequest
 
 // ---------------- Responses ----------------
 
+public class PreviewVideoResponse
+{
+    public string StorageKey { get; set; } = "";
+    public string PublicUrl { get; set; } = "";
+    public string ContentType { get; set; } = "";
+    public long Bytes { get; set; }
+    public int DurationSeconds { get; set; }
+    public string Sha256 { get; set; } = "";
+    public DateTime UploadedAt { get; set; }
+}
+
+public class GalleryImageResponse
+{
+    public string Id { get; set; } = "";
+    public string StorageKey { get; set; } = "";
+    public string PublicUrl { get; set; } = "";
+    public string ContentType { get; set; } = "";
+    public int Width { get; set; }
+    public int Height { get; set; }
+    public long Bytes { get; set; }
+    public string Sha256 { get; set; } = "";
+    public int DisplayOrder { get; set; }
+    public DateTime UploadedAt { get; set; }
+}
+
 public class ServiceAddOnResponse
 {
     public string Name { get; set; } = "";
@@ -150,6 +176,8 @@ public class ServiceListingResponse
     public List<string> GeographicCoverage { get; set; } = new();
     public long Impressions { get; set; }
     public long Clicks { get; set; }
+    public PreviewVideoResponse? PreviewVideo { get; set; }
+    public List<GalleryImageResponse> GalleryImages { get; set; } = new();
     public string Status { get; set; } = "";
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
@@ -185,6 +213,7 @@ public class ServicePackageResponse
     public List<string> Deliverables { get; set; } = new();
     public List<string> IncludedFeatures { get; set; } = new();
     public List<string> ExcludedFeatures { get; set; } = new();
+    public int? ScreensIncluded { get; set; }
     public List<ServiceAddOnResponse> AddOns { get; set; } = new();
     public List<RequirementsFieldResponse> RequirementsTemplate { get; set; } = new();
 
@@ -265,12 +294,36 @@ public static class ServiceCatalogMapping
         Title = l.Title,
         Description = l.Description,
         Category = l.Category.ToString(),
-        MetadataTags = new List<string>(l.MetadataTags),
-        SearchTags = new List<string>(l.SearchTags),
-        IndustryFocus = new List<string>(l.IndustryFocus),
-        GeographicCoverage = new List<string>(l.GeographicCoverage),
+        // Defensive: old documents may not have these fields (null from MongoDB). Default to empty lists.
+        MetadataTags = new List<string>(l.MetadataTags ?? []),
+        SearchTags = new List<string>(l.SearchTags ?? []),
+        IndustryFocus = new List<string>(l.IndustryFocus ?? []),
+        GeographicCoverage = new List<string>(l.GeographicCoverage ?? []),
         Impressions = l.Impressions,
         Clicks = l.Clicks,
+        PreviewVideo = l.PreviewVideo == null ? null : new PreviewVideoResponse
+        {
+            StorageKey = l.PreviewVideo.StorageKey,
+            PublicUrl = l.PreviewVideo.PublicUrl,
+            ContentType = l.PreviewVideo.ContentType,
+            Bytes = l.PreviewVideo.Bytes,
+            DurationSeconds = l.PreviewVideo.DurationSeconds,
+            Sha256 = l.PreviewVideo.Sha256,
+            UploadedAt = l.PreviewVideo.UploadedAt,
+        },
+        GalleryImages = (l.GalleryImages ?? []).Select(img => new GalleryImageResponse
+        {
+            Id = img.Id,
+            StorageKey = img.StorageKey,
+            PublicUrl = img.PublicUrl,
+            ContentType = img.ContentType,
+            Width = img.Width,
+            Height = img.Height,
+            Bytes = img.Bytes,
+            Sha256 = img.Sha256,
+            DisplayOrder = img.DisplayOrder,
+            UploadedAt = img.UploadedAt,
+        }).ToList(),
         Status = l.Status.ToString(),
         CreatedAt = l.CreatedAt,
         UpdatedAt = l.UpdatedAt,
@@ -300,14 +353,16 @@ public static class ServiceCatalogMapping
         AdditionalRevisionPrice = p.AdditionalRevisionPrice,
         AdditionalRevisionDeliveryTime = p.AdditionalRevisionDeliveryTime,
         RevisionScopeDescription = p.RevisionScopeDescription,
-        Deliverables = new List<string>(p.Deliverables),
-        IncludedFeatures = new List<string>(p.IncludedFeatures),
-        ExcludedFeatures = new List<string>(p.ExcludedFeatures),
-        AddOns = p.AddOns.Select(a => new ServiceAddOnResponse
+        // Defensive: old documents may not have these list fields (null from MongoDB). Default to empty lists.
+        Deliverables = new List<string>(p.Deliverables ?? []),
+        IncludedFeatures = new List<string>(p.IncludedFeatures ?? []),
+        ExcludedFeatures = new List<string>(p.ExcludedFeatures ?? []),
+        ScreensIncluded = p.ScreensIncluded ?? null,
+        AddOns = (p.AddOns ?? []).Select(a => new ServiceAddOnResponse
         {
             Name = a.Name, Price = a.Price, DeliveryTimeAdjustmentDays = a.DeliveryTimeAdjustmentDays, Enabled = a.Enabled,
         }).ToList(),
-        RequirementsTemplate = p.RequirementsTemplate.Select(r => new RequirementsFieldResponse
+        RequirementsTemplate = (p.RequirementsTemplate ?? []).Select(r => new RequirementsFieldResponse
         {
             FieldId = r.FieldId, Label = r.Label, FieldType = r.FieldType.ToString(), Required = r.Required,
         }).ToList(),
@@ -333,5 +388,29 @@ public static class ServiceCatalogMapping
         ConflictWarning = conflictWarning,
         CreatedAt = f.CreatedAt,
         UpdatedAt = f.UpdatedAt,
+    };
+
+    public static GalleryImageResponse ToResponse(this GalleryImage g) => new()
+    {
+        Id = g.Id,
+        StorageKey = g.StorageKey,
+        PublicUrl = g.PublicUrl,
+        ContentType = g.ContentType,
+        Width = g.Width,
+        Height = g.Height,
+        Bytes = g.Bytes,
+        Sha256 = g.Sha256,
+        DisplayOrder = g.DisplayOrder,
+    };
+
+    public static PreviewVideoResponse ToResponse(this PreviewVideo p) => new()
+    {
+        StorageKey = p.StorageKey,
+        PublicUrl = p.PublicUrl,
+        ContentType = p.ContentType,
+        Bytes = p.Bytes,
+        DurationSeconds = p.DurationSeconds,
+        Sha256 = p.Sha256,
+        UploadedAt = p.UploadedAt,
     };
 }
