@@ -326,7 +326,8 @@ namespace WebApp.Services.Implementations
         {
             if (string.IsNullOrWhiteSpace(value)) return null;
             if (value.StartsWith("http://") || value.StartsWith("https://")) return value;
-            return $"/api/files/{value.TrimStart('/')}";
+            // Files are static files in wwwroot/, served at /uploads/...
+            return $"/{value.TrimStart('/')}";
         }
     }
 }
