@@ -11,10 +11,10 @@ import {
   Check,
   X,
   AlertCircle,
-  Package,
 } from 'lucide-react';
 import { resolveProviderMediaUrl } from '@/lib/service-provider/provider-media';
 import { recordListingImpression, recordListingClick } from '@/lib/api-analytics';
+import { MediaCarousel } from '@/components/marketplace/MediaCarousel';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import AuthGuard from '@/components/layout/AuthGuard';
@@ -44,7 +44,6 @@ function MarketplaceListingDetailContent() {
   }, [listingId]);
 
   const [selectedPackageTier, setSelectedPackageTier] = useState('Basic');
-  const [galleryIndex, setGalleryIndex] = useState(0);
   const [expandedFaqId, setExpandedFaqId] = useState<string | null>(null);
   const [additionalRevisions, setAdditionalRevisions] = useState(0);
 
@@ -132,68 +131,14 @@ function MarketplaceListingDetailContent() {
         </Link>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column: Gallery, Description, FAQs */}
+          {/* Left Column: Media Carousel, Description, FAQs */}
           <div className="lg:col-span-2 space-y-8">
-            {/* Gallery */}
-            {listing.gallery.length > 0 && (
-              <div className="rounded-lg overflow-hidden bg-muted border border-border">
-                <div className="relative aspect-video overflow-hidden">
-                  {listing.gallery[galleryIndex]?.url && resolveProviderMediaUrl(listing.gallery[galleryIndex]?.url) ? (
-                    <img
-                      src={resolveProviderMediaUrl(listing.gallery[galleryIndex]?.url)!}
-                      alt={`Gallery ${galleryIndex + 1}`}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-muted">
-                      <Package className="h-12 w-12 text-muted-foreground" />
-                    </div>
-                  )}
-                </div>
-                {listing.gallery.length > 1 && (
-                  <div className="flex items-center justify-between p-2 bg-black/10">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() =>
-                        setGalleryIndex((i) =>
-                          i === 0 ? listing.gallery.length - 1 : i - 1
-                        )
-                      }
-                    >
-                      <ChevronLeft className="size-4" />
-                    </Button>
-                    <span className="text-xs text-white font-medium">
-                      {galleryIndex + 1} / {listing.gallery.length}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() =>
-                        setGalleryIndex((i) =>
-                          i === listing.gallery.length - 1 ? 0 : i + 1
-                        )
-                      }
-                    >
-                      <ChevronRight className="size-4" />
-                    </Button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Preview Video */}
-            {listing.previewVideo && (
-              <div className="rounded-lg overflow-hidden bg-muted border border-border">
-                <div className="relative aspect-video">
-                  <video
-                    src={listing.previewVideo.url}
-                    controls
-                    className="w-full h-full"
-                  />
-                </div>
-              </div>
-            )}
+            {/* Unified Media Carousel (video first, then gallery images) */}
+            <MediaCarousel
+              video={listing.previewVideo}
+              gallery={listing.gallery}
+              altTitle={listing.title}
+            />
 
             {/* Service Info */}
             <div>
