@@ -346,6 +346,17 @@ namespace WebApp.DbContext
                     new CreateIndexModel<ServiceListing>(
                         Builders<ServiceListing>.IndexKeys.Ascending(x => x.ProviderId),
                         new CreateIndexOptions { Background = true }),
+                    // Marketplace: Published listings filtered by category + sort
+                    new CreateIndexModel<ServiceListing>(
+                        Builders<ServiceListing>.IndexKeys
+                            .Ascending(x => x.Status)
+                            .Ascending(x => x.Category)
+                            .Descending(x => x.UpdatedAt),
+                        new CreateIndexOptions { Background = true }),
+                    // Marketplace: Text search on title
+                    new CreateIndexModel<ServiceListing>(
+                        Builders<ServiceListing>.IndexKeys.Text(x => x.Title),
+                        new CreateIndexOptions { Background = true }),
                 });
                 ServicePackages.Indexes.CreateOne(new CreateIndexModel<ServicePackage>(
                     Builders<ServicePackage>.IndexKeys.Ascending(x => x.ServiceId),

@@ -1099,9 +1099,9 @@ The four canon rules remain exact and are evaluated when the dashboard is read; 
 
 **Dependencies.** Reads `ServiceListings`, `ClientBriefs`, `Proposals`, `WorkroomEngagements`, `WorkroomMilestones`, `FinancialTransactions`, `Reviews`, and Module-4 financial summary state. Persists only provider-owned `GrowthTasks`; no metric is consumed elsewhere and no Trust signal is written by Analytics.
 
-### 9.4 Analytics Tracking System Architecture (Phase A–E; **A/B/D IMPLEMENTED, C/E PLANNED**)
+### 9.4 Analytics Tracking System Architecture (Phase A–E; **A/B/C/D IMPLEMENTED, E PLANNED**)
 
-**Status: [PARTIALLY IMPLEMENTED]** — The following architecture specifies a real, event-based tracking system that powers per-service and provider-wide Impressions/Clicks/Inquiries metrics in the Analytics workspace. Phases A (backend recording), B (backend read), and D (analytics dashboard UI) are IMPLEMENTED as of 2026-07-31. Phases C (public page frontend recording) and E (TOP GIG badge) remain PLANNED. See implementation summary at §9.4.10.
+**Status: [MOSTLY IMPLEMENTED]** — The following architecture specifies a real, event-based tracking system that powers per-service and provider-wide Impressions/Clicks/Inquiries metrics in the Analytics workspace. Phases A (backend recording), B (backend read), C (public page frontend recording), and D (analytics dashboard UI) are IMPLEMENTED as of 2026-08-01. Phase E (TOP GIG badge) remains PLANNED. See implementation summary at §9.4.10.
 
 #### 9.4.1 Goals and definitions
 
@@ -1235,29 +1235,41 @@ Missing days filled with zeros for continuous chart axis.
 
 Populating the dropdown selector. Returns "All services" pseudo-entry + each provider listing, with optional `impressions30d` for badging. Read-owned listings excluded from dropdown.
 
-#### 9.4.5 Frontend recording (**Phase C**)
+#### 9.4.5 Frontend recording (**Phase C — IMPLEMENTED 2026-08-01**)
 
 **Impression:** Fire once on public listing detail page mount.
 
-```javascript
+```typescript
+import { recordListingImpression } from '@/lib/api-analytics';
+
 useEffect(() => {
-  const controller = new AbortController();
-  fetch('/api/service-provider/analytics/impression', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ listingId }),
-    keepalive: true,
-    signal: controller.signal,
-  }).catch(() => { /* silent */ });
-  return () => controller.abort();
+  if (!listingId) return;
+  recordListingImpression(listingId).catch(() => { /* silent */ });
 }, [listingId]);
 ```
 
-Rules: Fire once, fire-and-forget, non-blocking, no UI feedback, do not delay primary rendering.
+**Click:** Fire on CTA interaction (package tabs, Order, Message buttons).
 
-**Click:** Similar fire-and-forget on CTA click. Never delay the action to wait for analytics.
+```typescript
+import { recordListingClick } from '@/lib/api-analytics';
 
-**Inquiry:** Entirely backend; existing message-send flow adds the increment.
+const fireAnalyticsClick = useCallback(
+  (target: string) => {
+    if (!listingId) return;
+    recordListingClick(listingId, target).catch(() => { /* silent */ });
+  },
+  [listingId]
+);
+```
+
+**Implementation pattern:**
+- Wrappers (`recordListingImpression`, `recordListingClick`) use the configured axios `api` client (not raw `fetch`).
+- Axios client automatically attaches Bearer token and routes to backend via configured `API_BASE_URL`.
+- Never wait for the promise or delay user interaction; fire-and-forget with catch-and-swallow.
+- Session dedup (§9.4.2) on backend prevents duplicate counts within 30-minute windows.
+- Provider self-view filtering (§9.4.3) via JWT `ProviderId` claim ensures providers never see their own impressions/clicks.
+
+**Inquiry:** Entirely backend; existing message-send flow increments the counter when message is sent with `ListingId` context (§9.4.4).
 
 #### 9.4.6 Analytics workspace UI (**Phase D**)
 
@@ -1303,9 +1315,13 @@ Summary, timeseries, listings-for-dropdown aggregations. Unit tests for date-ran
 - `0e957aa` — expose summary/timeseries/listings read endpoints
 - `75e7eb3` — enforce listing ownership on summary/timeseries read endpoints
 
-**Phase C — Frontend recording. ⏳ PLANNED**
+**Phase C — Frontend recording. ✅ IMPLEMENTED (2026-08-01)**
 
-Fire-and-forget impression/click calls on public listing detail pages. Verify events land in MongoDB. Confirm provider self-view does NOT increment. Frontend wiring is scheduled to happen during §10 Phase M1 (marketplace + public listing detail page implementation).
+Fire-and-forget impression/click calls on public listing detail pages via axios wrappers (`recordListingImpression`, `recordListingClick` in `src/lib/api-analytics.ts`). Wired on `/marketplace/services/[listingId]` detail page (impression on mount, clicks on package tabs + Order + Message CTAs). Verified events land in backend analytics tables. Provider self-view filters via JWT ProviderId validation. Axios client ensures correct API base URL routing and automatic Bearer token attachment.
+
+**Commits:**
+- `802d616` — add axios wrapper functions for analytics recording (impression + click)
+- `5607e8b` — wire analytics recording on detail page (impression on mount, clicks on CTAs)
 
 **Phase D — Analytics workspace UI. ✅ IMPLEMENTED (2026-07-31)**
 
@@ -1366,9 +1382,9 @@ Deferred. Server-computed best-performing-listing flag. Optional per-CTA click b
 
 ---
 
-## 10. Marketplace + Order Lifecycle Architecture *(planned, not yet implemented)*
+## 10. Marketplace + Order Lifecycle Architecture *(Phase M1 IMPLEMENTED, M2-M8 planned)*
 
-Reference specification for the Mondial.eco client-facing marketplace where all authenticated users (Creator, Entrepreneur, Investor, SP) browse Service Provider listings, place orders, complete client-side requirements, engage in order-scoped workrooms, and see their orders tracked. **All content below is PLANNED; nothing described here is yet implemented.** Phased plan (M1-M8) appears at §10.13.
+Reference specification for the Mondial.eco client-facing marketplace where all authenticated users (Creator, Entrepreneur, Investor, SP) browse Service Provider listings, place orders, complete client-side requirements, engage in order-scoped workrooms, and see their orders tracked. **Phase M1 (marketplace grid + listing detail + Phase C analytics wire + nav entries) is IMPLEMENTED and shipped 2026-08-01. Phases M2-M8 remain PLANNED.** Phased status (M1-M8) appears at §10.13.
 
 Cross-module: touches §2 (12% fee rule), §3 (provider trust display), §4 (workroom + escrow), §6 (Service Catalog as source data), §9.4 (Phase C analytics hookup).
 
@@ -1453,12 +1469,12 @@ Cross-module: touches §2 (12% fee rule), §3 (provider trust display), §4 (wor
 - Primary CTA: "Order for $XXX".
 - Secondary CTA: "Message provider" (opens chat with SP — no order yet).
 
-**Analytics wire** (Phase C hookup, wired during Phase M1):
+**Analytics wire** (Phase C IMPLEMENTED during Phase M1, commit `802d616`):
 - Page mount → `POST /api/service-provider/analytics/impression { listingId }`.
 - Order button click → `POST /api/service-provider/analytics/click { listingId, target: "order" }`.
 - Message button click → click with target "message".
 - Package tab switch → click with target "tier-basic|tier-standard|tier-premium".
-- All fire-and-forget, non-blocking (keepalive, catch-and-swallow).
+- All fire-and-forget, non-blocking (axios client, auto-attach Bearer token, catch-and-swallow errors).
 
 ### 10.5 Order creation flow
 
@@ -1635,25 +1651,61 @@ Existing §4 (SP Workroom & Earnings) needs a small hook to recognize orders cre
 - State machine transitions in §10.7 triggered from SP's workroom actions (Deliver, etc.) exactly as from the client workroom.
 - Earnings computation in §4 works with these orders (`Payment.Released → earnings += Pricing.Total - Pricing.PlatformFee`).
 
-### 10.12 Analytics integration (Phase C hookup)
+### 10.12 Analytics integration (Phase C IMPLEMENTED during Phase M1)
 
-Marketplace + listing detail pages are the trigger points for the long-planned Phase C tracking (§9.4).
+Marketplace + listing detail pages are the trigger points for Phase C tracking (§9.4), now wired and live.
 
-**Wired during Phase M1:**
-- Listing detail page mount → impression endpoint.
-- Order button click → click endpoint with target "order".
-- Message button click → click endpoint with target "message".
-- Package tab click → click endpoint with target "tier-*".
+**Implemented in Phase M1 (commit `802d616`):**
+- Listing detail page mount → `recordListingImpression(listingId)` via axios wrapper.
+- Order button click → `recordListingClick(listingId, "order")` via axios wrapper.
+- Message button click → `recordListingClick(listingId, "message")` via axios wrapper.
+- Package tab click → `recordListingClick(listingId, "tier-basic|standard|premium")` via axios wrapper.
 
-Fire-and-forget: `fetch(..., { keepalive: true }).catch(() => {})`. Never blocks user interaction. No UI feedback.
+Fire-and-forget: axios `api.post(...)` wrapped in `.catch(() => {})` (never blocks user interaction, automatic Bearer token attachment, correct API base URL routing). No UI feedback.
 
 **Inquiry counter:** existing hook in `ChatController.SendMessage` (Phase A) already increments when message sent with `ListingId` context. Marketplace's "Message provider" button calls existing message-send with `ListingId` populated → counter works automatically.
 
 **Order-conversion metric** (Phase M6): once orders exist, new counter `Orders` added to `AnalyticsDailyBuckets`. Dashboard shows Orders/Impressions as conversion metric alongside existing four.
 
-### 10.13 Implementation phases (planned, not yet implemented)
+### 10.13 Implementation phases
 
-**Phase M1 — Marketplace grid + listing detail + Phase C analytics wire.** Backend: `GET /api/marketplace/services` (paginated list with filters), `GET /api/marketplace/services/[listingId]` (public detail). Frontend: `/marketplace/services` grid + detail pages. Analytics fires (impression on mount, click on package tab). Order button leads to "coming soon" v1 stub.
+**Phase M1 — IMPLEMENTED (2026-08-01).**
+
+Backend (`c5d8a0e`, `02e0f2c`, `14eb600`):
+- `MarketplaceController` + `IMarketplaceService` + `MarketplaceService` implementation.
+- New public DTOs (`MarketplaceListingCard`, `MarketplaceListingsResponse`, `MarketplaceListingDetailResponse`, `MarketplacePackage`, `MarketplaceAddOn`, `MarketplaceGalleryImage`, `MarketplacePreviewVideo`, `MarketplaceFaq`, `MarketplaceProviderMini`, `MarketplaceProviderHeader`) — separate from SP-side DTOs to prevent leaking provider-internal fields (capacity, analytics, draft state, verification flow).
+- `GET /api/marketplace/services` (paginated grid with search, category, sub-category, price-range, delivery-time filters + sort by recent/price/rating) with `[Authorize]` gating and Published-only baseline filter.
+- `GET /api/marketplace/services/{listingId}` (public detail endpoint) with `[Authorize]` gating; non-Published listings return 404 (never reveal existence).
+- Compound indexes on `ServiceListings`: `(Status, Category, UpdatedAt DESC)` for grid queries; text index on `Title` for search.
+- Provider name resolution via `UserManager` pattern (matches AnalyticsService, not direct MongoDB Guid parsing).
+- Profile image resolution via `IProfessionalProfileStore.GetByUserIdAsync()` batch fetch (critical: `ProfileImage` lives on `ProfessionalProfileRecord`, not embedded `ServiceProviderProfile`; see notes below).
+- Cover image and gallery/video URLs resolved via `ResolveMediaUrl` helper (returns `/uploads/...` static file paths for backend wwwroot serving).
+
+Frontend (`776fd83`, `05f5e41`, `5607e8b`, `3bc85af`, `8498233`):
+- `/marketplace/services` grid page (client component, `AuthGuard` wrap, search input + filter bar with category/sub-category/price-range/delivery-time dropdowns + sort selector, card grid with responsive breakpoints 1-2-3-4 columns, pagination 12 cards/page, honest "No services match" empty state).
+- `/marketplace/services/[listingId]` detail page (client component, `AuthGuard` wrap, unified `MediaCarousel` component with video-first ordering + hover-to-play video (muted, loop, play on hover, pause on leave, reset to first frame on leave) + 5-second auto-advance for image slides + manual Prev/Next arrows (hidden by default, appear on hover) + slide counter (e.g., "2 / 4") + empty-state placeholder, provider header with profile image + trust badge, package selector card with tabs + add-on checklist + revision stepper + dynamic total price, description (DOMPurify-sanitized HTML), FAQ accordion, metadata/search tags).
+- API wrappers in `src/lib/api-marketplace.ts` (functions `getMarketplaceListings`, `getMarketplaceListingDetail` with proper unwrap pattern; `ApiEnvelope` handled once in wrapper, consumers access unwrapped data directly).
+- React Query hooks in `src/hooks/queries/marketplace.ts` (`useMarketplaceListings`, `useMarketplaceListingDetail` with `staleTime: 60_000` and 5-minute cache respectively).
+- Analytics recording via axios wrappers in `src/lib/api-analytics.ts` (`recordListingImpression`, `recordListingClick`; `802d616`): impression fires on detail page mount; clicks fire on package tab changes, Order button, Message button. Fire-and-forget (catch-and-swallow errors) using axios client (not raw fetch) to ensure correct baseURL routing to backend.
+- Unified `MediaCarousel` component (`src/components/marketplace/MediaCarousel.tsx`, `8498233`): builds slide array [video if present, gallery images sorted by displayOrder], manages index state + auto-advance timer (5s, only for image slides), video hover play/pause via ref, manual nav resets timer, single-slide hides arrows/counter, empty state shows Package icon placeholder. All colors from theme tokens (no hardcoded hex).
+- "Services Marketplace" nav entry added to all four role sidebars (Creator, Entrepreneur, Investor, Service Provider) via `src/lib/menu.ts` pointing to `/marketplace/services`.
+
+Key fixes during M1:
+- `1755f39` — Profile image resolution: `ProfileImage` lives on `ProfessionalProfileRecord` (separate collection), not embedded `ServiceProviderProfile`. Switched to `IProfessionalProfileStore` batch fetch to compose provider info correctly.
+- `4d153f2` — Media URL paths: backend returns `/uploads/...` static file paths (served from wwwroot), not `/api/files/...` API endpoints. Frontend `resolveProviderMediaUrl` converts to absolute backend URLs.
+- `8064219` — Data accessor fix: API wrappers unwrap `ApiEnvelope<T>` once, consumers access unwrapped fields directly (not `.data`). Grid and detail pages fixed to match this pattern.
+- `802d616` — Analytics routing fix: replaced raw `fetch('/api/...')` with axios-wrapper functions using configured `API_BASE_URL` to route correctly to backend (not frontend origin).
+
+Notes (lessons for M2-M8 implementers):
+- `ProfileImage` is NOT stored on `ApplicationUser.ServiceProviderProfile` (embedded); it lives on `ProfessionalProfileRecord` (separate MongoDB collection per §1A). Always batch-fetch via `IProfessionalProfileStore` when composing provider info for client-facing responses. Do not attempt direct embedded field access.
+- Media URLs from backend are `/uploads/...` static file paths, not API endpoints. Frontend wrapper `resolveProviderMediaUrl` is responsible for conversion to absolute backend URLs. Do not hardcode `/api/files/` prefixes.
+- Provider ID matching in MongoDB requires `UserManager` pattern (see `AnalyticsService`). Direct driver Guid parsing against `ApplicationUser._id` fails silently and returns wrong/zero results. Follow the established pattern.
+- Client-side pages MUST have `"use client"` directive as the very first line. Missing directive causes silent RSC render path and no client hooks fire (useState, useEffect, useCallback all silently no-op). This manifests as blank pages or missing interactivity.
+- API response envelope pattern: wrappers unwrap `ApiEnvelope<T>` once in the async function (extracting `envelope.data`), returning the unwrapped `T`. React Query hooks consume the unwrapped result directly. Consumers access `data.fieldName`, not `data.data.fieldName`. Double nesting indicates a bug (either wrapper didn't unwrap or consumer is over-accessing).
+- Media carousel (video-first ordering, hover-to-play video, auto-advance images, manual nav reset timer) is self-contained in one custom component. No external carousel library needed; lightweight custom state + refs + useEffect patterns are sufficient.
+- Analytics axios wrappers must use the configured `api` client (not raw `fetch`) to ensure correct baseURL routing and Bearer token attachment. Raw `fetch` with relative paths routes to frontend origin, not backend.
+
+**Phase M2 — Order creation + payment stub.** Backend: Orders collection, creation endpoint, IPaymentService + StubPaymentService, fee calculation, escrow held state. Frontend: order creation modal, package + add-ons + revisions selector, requirements form, payment confirmation. Order button now creates real orders.
 
 **Phase M2 — Order creation + payment stub.** Backend: Orders collection, creation endpoint, IPaymentService + StubPaymentService, fee calculation, escrow held state. Frontend: order creation modal, package + add-ons + revisions selector, requirements form, payment confirmation. Order button now creates real orders.
 
@@ -1878,6 +1930,8 @@ The repo's **root `.gitignore` is a binary / non-UTF8 file**, which can make the
 ---
 
 ## Changelog
+
+**2026-08-01 — Marketplace Phase M1 IMPLEMENTED and shipped; Analytics Phase C IMPLEMENTED.** Backend: `MarketplaceController` + `IMarketplaceService` + `MarketplaceService` (commits `c5d8a0e`, `02e0f2c`, `14eb600`) — `GET /api/marketplace/services` (grid with paginated search/category/sub-category/price-range/delivery-time filters + sort) and `GET /api/marketplace/services/{listingId}` (public detail) endpoints; new public DTOs separate from SP-internal fields; compound indexes on Status/Category/UpdatedAt + text index on Title; `[Authorize]` gating; Published-only baseline; provider name resolution via UserManager; profile image resolution via `IProfessionalProfileStore` (critical: lives on ProfessionalProfileRecord, not embedded ServiceProviderProfile); cover/gallery/video URLs resolved via `ResolveMediaUrl` static-file pattern. Frontend: `/marketplace/services` grid page (client component, AuthGuard wrap, filters + card grid + pagination, commit `05f5e41`); `/marketplace/services/[listingId]` detail page (client component, AuthGuard wrap, unified `MediaCarousel` with video-first ordering, hover-to-play video, 5s image auto-advance, manual nav, slide counter, commit `5607e8b`); API wrappers + React Query hooks (commit `776fd83`); nav entries in all 4 role sidebars (commit `3bc85af`); unified MediaCarousel component (commit `8498233`). Analytics Phase C IMPLEMENTED (commit `802d616`): axios wrappers `recordListingImpression` + `recordListingClick` fire on detail page mount and CTA interactions (package tabs, Order, Message). Major bug fixes during implementation: profile image resolution via `IProfessionalProfileStore` batch fetch (commit `1755f39`), media URL path fix `/uploads/...` static files (commit `4d153f2`), data accessor double-nesting fix (commit `8064219`), analytics axios wrapper for correct API routing (commit `802d616`). Key lessons for M2-M8: ProfileImage on ProfessionalProfileRecord not embedded ServiceProviderProfile; media URLs are `/uploads/...` not API endpoints; provider ID matching requires UserManager pattern; client pages must have `"use client"` directive as first line; API response unwrapping in wrappers only, consumers access unwrapped fields; analytics wrappers use axios client not raw fetch. §10 header updated to mark Phase M1 IMPLEMENTED, phases M2-M8 remain PLANNED. §9.4 header updated to mark Phase A/B/C/D IMPLEMENTED, Phase E planned. §10.4 and §10.12 updated with Phase C implementation status and commit hashes. Phases M2-M8 remain PLANNED (order creation → payment stub → workroom → auto-approval → ratings → conversion metrics → cancellation/dispute → real payment).
 
 **2026-07-31 — Archived marketplace + order lifecycle architecture as new §10.** Documented client-facing marketplace grid + public listing detail pages (`/marketplace/services`), order creation flow (package selection → requirements → payment STUB), full state machine (PendingRequirements → InProgress → Delivered → InRevision/Approved → Rated), `Orders` collection + snapshot pattern, order-scoped workroom + client dashboard, provider integration with existing workroom, analytics Phase C hookup on listing detail page, and phased implementation plan (M1-M8). **All phases planned but not yet implemented** — reference only. Cross-references added to §4 (workroom integration), §6 (public endpoint + listing snapshots), §9.4 (Phase C wiring scheduled for M1). Section numbering: renamed former §10–17 (Cross-cutting rules, SP journey, etc.) to §11–18.
 

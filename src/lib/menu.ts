@@ -71,6 +71,11 @@ export const menu: Record<UserRole, MenuSection[]> = {
           icon: LayoutDashboard,
         },
         {
+          label: "Services Marketplace",
+          href: "/marketplace/services",
+          icon: Store,
+        },
+        {
           label: "My Idea",
           href: "/dashboard/creator/myideas",
           icon: Lightbulb,
@@ -162,6 +167,11 @@ export const menu: Record<UserRole, MenuSection[]> = {
           icon: Wallet,
         },
         {
+          label: "Services Marketplace",
+          href: "/marketplace/services",
+          icon: Store,
+        },
+        {
           label: "Discovery",
           href: "/dashboard/investor/discovery",
           icon: Compass,
@@ -195,6 +205,11 @@ export const menu: Record<UserRole, MenuSection[]> = {
           label: "Dashboard",
           href: "/dashboard/entrepreneur",
           icon: LayoutDashboard,
+        },
+        {
+          label: "Services Marketplace",
+          href: "/marketplace/services",
+          icon: Store,
         },
         {
           label: "Financials & KPIs",
@@ -263,6 +278,11 @@ export const menu: Record<UserRole, MenuSection[]> = {
           label: "Dashboard",
           href: "/dashboard/serviceprovider",
           icon: LayoutDashboard,
+        },
+        {
+          label: "Services Marketplace",
+          href: "/marketplace/services",
+          icon: Store,
         },
         {
           label: "Profile & Trust",

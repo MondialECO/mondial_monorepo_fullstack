@@ -303,7 +303,8 @@ builder.Services.AddScoped<NotificationRepository>();
 // Web Push service
 builder.Services.AddScoped<WebPushService>();
 
-
+// Marketplace service
+builder.Services.AddScoped<IMarketplaceService, MarketplaceService>();
 
 if (useRedis)
 {
