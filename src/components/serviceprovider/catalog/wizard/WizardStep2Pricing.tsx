@@ -1,13 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import {
   SpCard,
-  SpFormField,
   SpMutationFeedback,
 } from '@/components/serviceprovider/ui';
 import type { ServicePackage, PackageType } from '@/types/service-catalog';
@@ -197,8 +195,8 @@ export function WizardStep2Pricing({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold text-[#171717]">Scope & Pricing</h2>
-        <p className="mt-1 text-sm text-[#6B7280]">
+        <h2 className="text-lg font-semibold text-foreground">Scope & Pricing</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
           Create pricing tiers for your service. Each tier includes delivery time, revisions, and features.
         </p>
       </div>
@@ -206,9 +204,9 @@ export function WizardStep2Pricing({
       {error && <SpMutationFeedback status="error">{error}</SpMutationFeedback>}
 
       {/* Pricing Guidance - Correction #2: "Pricing Guidance" not "AI Pricing Assistant" */}
-      <div className="rounded-lg border border-[#CAD4FA] bg-[#EEF2FF] p-4">
-        <p className="text-sm font-medium text-[#3C61DD]">Pricing Guidance</p>
-        <p className="mt-1 text-sm text-[#3C61DD]">
+      <div className="rounded-lg border border-[#CAD4FA] bg-accent p-4">
+        <p className="text-sm font-medium text-primary">Pricing Guidance</p>
+        <p className="mt-1 text-sm text-primary">
           12% platform fee applies to every order, regardless of your tier.
         </p>
       </div>
@@ -218,13 +216,13 @@ export function WizardStep2Pricing({
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[#E5E7EB]">
-                <th className="text-left font-semibold text-[#171717] py-3 px-4">Features</th>
+              <tr className="border-b border-border">
+                <th className="text-left font-semibold text-foreground py-3 px-4">Features</th>
                 {PACKAGE_TYPES.map((type) => (
-                  <th key={type} className="text-center font-semibold text-[#171717] py-3 px-4 relative">
+                  <th key={type} className="text-center font-semibold text-foreground py-3 px-4 relative">
                     {type}
                     {type === 'Standard' && (
-                      <span className="absolute -top-2 left-1/2 -translate-x-1/2 inline-block bg-[#3C61DD] text-white text-xs font-bold px-2 py-1 rounded whitespace-nowrap">
+                      <span className="absolute -top-2 left-1/2 -translate-x-1/2 inline-block bg-primary text-white text-xs font-bold px-2 py-1 rounded whitespace-nowrap">
                         POPULAR
                       </span>
                     )}
@@ -234,8 +232,8 @@ export function WizardStep2Pricing({
             </thead>
             <tbody>
               {/* Price Row - INLINE INPUT */}
-              <tr className="border-b border-[#E5E7EB]">
-                <td className="font-medium text-[#171717] py-4 px-4">Price</td>
+              <tr className="border-b border-border">
+                <td className="font-medium text-foreground py-4 px-4">Price</td>
                 {PACKAGE_TYPES.map((type) => {
                   const pkg = getPackageByType(type);
                   return (
@@ -258,27 +256,27 @@ export function WizardStep2Pricing({
               </tr>
 
               {/* Net Payout Row - CALCULATED DISPLAY */}
-              <tr className="border-b border-[#E5E7EB]">
-                <td className="font-medium text-[#171717] py-4 px-4">Net Payout (Flat 12% Platform Fee)</td>
+              <tr className="border-b border-border">
+                <td className="font-medium text-foreground py-4 px-4">Net Payout (Flat 12% Platform Fee)</td>
                 {PACKAGE_TYPES.map((type) => {
                   const pkg = getPackageByType(type);
                   if (!pkg) {
-                    return <td key={type} className="text-center py-4 px-4 text-[#6B7280]">—</td>;
+                    return <td key={type} className="text-center py-4 px-4 text-muted-foreground">—</td>;
                   }
                   const netPayout = pkg.price * (1 - PLATFORM_FEE_PERCENT);
                   const fee = pkg.price * PLATFORM_FEE_PERCENT;
                   return (
                     <td key={type} className="text-center py-4 px-4">
                       <div className="font-semibold text-[#10B981]">${netPayout.toFixed(2)}</div>
-                      <div className="text-xs text-[#6B7280]">Fee ${fee.toFixed(2)}</div>
+                      <div className="text-xs text-muted-foreground">Fee ${fee.toFixed(2)}</div>
                     </td>
                   );
                 })}
               </tr>
 
               {/* Delivery Time Row - INLINE DROPDOWN */}
-              <tr className="border-b border-[#E5E7EB]">
-                <td className="font-medium text-[#171717] py-4 px-4">Delivery Time</td>
+              <tr className="border-b border-border">
+                <td className="font-medium text-foreground py-4 px-4">Delivery Time</td>
                 {PACKAGE_TYPES.map((type) => {
                   const pkg = getPackageByType(type);
                   return (
@@ -294,7 +292,7 @@ export function WizardStep2Pricing({
                             });
                           }}
                           disabled={isSaving}
-                          className="border border-[#D1D5DB] rounded px-2 py-1 text-sm w-full"
+                          className="border border-input rounded px-2 py-1 text-sm w-full"
                         >
                           {[1, 2, 3, 4, 5, 7, 10].map((d) => (
                             <option key={d} value={`${d}|Days`}>{d} Days</option>
@@ -309,8 +307,8 @@ export function WizardStep2Pricing({
               </tr>
 
               {/* Revisions Included Row - INLINE DROPDOWN */}
-              <tr className="border-b border-[#E5E7EB]">
-                <td className="font-medium text-[#171717] py-4 px-4">Revisions Included</td>
+              <tr className="border-b border-border">
+                <td className="font-medium text-foreground py-4 px-4">Revisions Included</td>
                 {PACKAGE_TYPES.map((type) => {
                   const pkg = getPackageByType(type);
                   return (
@@ -324,7 +322,7 @@ export function WizardStep2Pricing({
                             });
                           }}
                           disabled={isSaving}
-                          className="border border-[#D1D5DB] rounded px-2 py-1 text-sm w-full"
+                          className="border border-input rounded px-2 py-1 text-sm w-full"
                         >
                           <option value="1">1</option>
                           <option value="2">2</option>
@@ -340,8 +338,8 @@ export function WizardStep2Pricing({
               </tr>
 
               {/* Screens Included Row - INLINE INPUT */}
-              <tr className="border-b border-[#E5E7EB]">
-                <td className="font-medium text-[#171717] py-4 px-4">Screens Included</td>
+              <tr className="border-b border-border">
+                <td className="font-medium text-foreground py-4 px-4">Screens Included</td>
                 {PACKAGE_TYPES.map((type) => {
                   const pkg = getPackageByType(type);
                   return (
@@ -370,8 +368,8 @@ export function WizardStep2Pricing({
 
               {/* Feature Rows - INLINE CHECKBOXES */}
               {allFeatures.map((feature) => (
-                <tr key={feature} className="border-b border-[#E5E7EB]">
-                  <td className="text-[#171717] py-4 px-4">{feature}</td>
+                <tr key={feature} className="border-b border-border">
+                  <td className="text-foreground py-4 px-4">{feature}</td>
                   {PACKAGE_TYPES.map((type) => {
                     const pkg = getPackageByType(type);
                     const included = pkg?.includedFeatures.includes(feature) ?? false;
@@ -400,7 +398,7 @@ export function WizardStep2Pricing({
               ))}
 
               {/* Add Custom Feature Row */}
-              <tr className="border-b border-[#E5E7EB]">
+              <tr className="border-b border-border">
                 <td colSpan={4} className="py-4 px-4">
                   <div className="flex gap-2 items-center max-w-md">
                     <Input
@@ -426,7 +424,7 @@ export function WizardStep2Pricing({
                           input.value = '';
                         }
                       }}
-                      className="text-[#3C61DD] text-sm font-medium flex items-center gap-1 whitespace-nowrap"
+                      className="text-primary text-sm font-medium flex items-center gap-1 whitespace-nowrap"
                     >
                       <Plus className="size-4" />
                       Add Custom Feature Row
@@ -447,13 +445,13 @@ export function WizardStep2Pricing({
           </div>
         )}
 
-        <p className="mt-4 text-xs text-[#6B7280]">12% platform fee applies to every order, regardless of your tier.</p>
+        <p className="mt-4 text-xs text-muted-foreground">12% platform fee applies to every order, regardless of your tier.</p>
       </SpCard>
 
       {/* Additional Revision Section (Separate from Add-ons per Correction #5) */}
       <SpCard className="space-y-4">
-        <h3 className="font-semibold text-[#171717]">Additional Revision</h3>
-        <p className="text-sm text-[#6B7280]">
+        <h3 className="font-semibold text-foreground">Additional Revision</h3>
+        <p className="text-sm text-muted-foreground">
           Set pricing for clients who request extra revisions beyond what's included.
         </p>
 
@@ -463,9 +461,9 @@ export function WizardStep2Pricing({
             if (!pkg) return null;
             return (
               <div key={type}>
-                <label className="block text-sm font-medium text-[#171717] mb-2">{type}</label>
+                <label className="block text-sm font-medium text-foreground mb-2">{type}</label>
                 <div className="flex gap-2 items-center">
-                  <span className="text-[#6B7280]">+</span>
+                  <span className="text-muted-foreground">+</span>
                   <Input
                     type="number"
                     step="0.01"
@@ -488,7 +486,7 @@ export function WizardStep2Pricing({
 
       {/* Service Add-ons Section (Separate from Additional Revision) */}
       <SpCard className="space-y-4">
-        <h3 className="font-semibold text-[#171717]">Service Add-ons</h3>
+        <h3 className="font-semibold text-foreground">Service Add-ons</h3>
 
         <div className="grid gap-4 sm:grid-cols-3">
           {PACKAGE_TYPES.map((type) => {
@@ -497,7 +495,7 @@ export function WizardStep2Pricing({
             return (
               <div key={type} className="border border-[#E5E7EB] rounded-lg p-4">
                 <div className="flex items-start justify-between mb-3">
-                  <h4 className="font-medium text-[#171717] text-sm">{type} Package</h4>
+                  <h4 className="font-medium text-foreground text-sm">{type} Package</h4>
                   <Button
                     type="button"
                     variant="ghost"
@@ -523,18 +521,18 @@ export function WizardStep2Pricing({
                   <div className="space-y-2 text-xs">
                     {pkg.addOns.slice(0, 2).map((addon, idx) => (
                       <div key={idx} className="flex justify-between items-center">
-                        <span className="text-[#171717]">{addon.name}</span>
-                        <span className="text-[#3C61DD] font-medium">+${addon.price.toFixed(2)}</span>
+                        <span className="text-foreground">{addon.name}</span>
+                        <span className="text-primary font-medium">+${addon.price.toFixed(2)}</span>
                       </div>
                     ))}
                     {pkg.addOns.length > 2 && (
-                      <a href="#" className="text-[#3C61DD] font-medium text-xs mt-2 block">
+                      <a href="#" className="text-primary font-medium text-xs mt-2 block">
                         Configure Pricing
                       </a>
                     )}
                   </div>
                 ) : (
-                  <p className="text-xs text-[#6B7280]">No add-ons configured.</p>
+                  <p className="text-xs text-muted-foreground">No add-ons configured.</p>
                 )}
               </div>
             );

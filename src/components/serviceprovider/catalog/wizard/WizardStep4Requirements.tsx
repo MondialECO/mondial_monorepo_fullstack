@@ -8,7 +8,6 @@ import { SpCard } from '@/components/serviceprovider/ui';
 import type { RequirementsField } from '@/types/service-catalog';
 import { REQUIREMENTS_FIELD_TYPES } from '@/types/service-catalog';
 import { useServiceListing, useUpdatePackage } from '@/hooks/queries/service-catalog';
-import { cn } from '@/lib/utils';
 
 export function WizardStep4Requirements({
   listingId,
@@ -130,8 +129,8 @@ export function WizardStep4Requirements({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold text-[#171717]">What do you need from the client to start this order?</h2>
-        <p className="mt-1 text-sm text-[#6B7280]">Add questions to gather requirements before you begin working.</p>
+        <h2 className="text-lg font-semibold text-foreground">What do you need from the client to start this order?</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Add questions to gather requirements before you begin working.</p>
       </div>
 
       {error && (
@@ -143,7 +142,7 @@ export function WizardStep4Requirements({
       <div className="space-y-3">
         {requirements.length === 0 ? (
           <SpCard className="border-dashed p-8 text-center">
-            <p className="text-sm text-[#6B7280]">No questions yet. Add one to get started.</p>
+            <p className="text-sm text-muted-foreground">No questions yet. Add one to get started.</p>
           </SpCard>
         ) : (
           requirements.map((question, index) => (
@@ -209,10 +208,10 @@ function RequirementQuestionCard({
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-base font-semibold text-[#171717]">
+              <h3 className="text-base font-semibold text-foreground">
                 {index + 1}. {question.label || '(Untitled question)'}
               </h3>
-              <span className="inline-block rounded-full bg-[#F3F4F6] px-2.5 py-1 text-xs font-medium text-[#374151]">
+              <span className="inline-block rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
                 {fieldTypeLabel}
               </span>
             </div>
@@ -231,7 +230,7 @@ function RequirementQuestionCard({
 
         {/* Question label input */}
         <div>
-          <label className="block text-xs font-medium text-[#6B7280] mb-2">Question</label>
+          <label className="block text-xs font-medium text-muted-foreground mb-2">Question</label>
           <Input
             value={question.label}
             onChange={(e) => onUpdate({ label: e.target.value })}
@@ -243,13 +242,13 @@ function RequirementQuestionCard({
         {/* Field type selector and Required toggle */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-medium text-[#6B7280] mb-2">Field type</label>
+            <label className="block text-xs font-medium text-muted-foreground mb-2">Field type</label>
             <select
               value={question.fieldType}
               onChange={(e) =>
                 onUpdate({ fieldType: e.target.value as RequirementsField['fieldType'] })
               }
-              className="h-9 w-full rounded-lg border border-[#D1D5DB] bg-white px-3 text-xs outline-none focus-visible:ring-2 focus-visible:ring-[#3C61DD]"
+              className="h-9 w-full rounded-lg border border-input bg-white px-3 text-xs outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               {REQUIREMENTS_FIELD_TYPES.map((type) => (
                 <option key={type} value={type}>
@@ -264,38 +263,38 @@ function RequirementQuestionCard({
                 type="checkbox"
                 checked={question.required}
                 onChange={(e) => onUpdate({ required: e.target.checked })}
-                className="size-4 rounded border-[#D1D5DB] cursor-pointer"
+                className="size-4 rounded border-input cursor-pointer"
               />
-              <span className="text-xs font-medium text-[#171717]">Required</span>
+              <span className="text-xs font-medium text-foreground">Required</span>
             </label>
           </div>
         </div>
 
         {/* Field preview based on type */}
-        <div className="border-t border-[#E5E7EB] pt-4">
-          <p className="text-xs font-medium text-[#6B7280] mb-3">Client will see:</p>
+        <div className="border-t border-border pt-4">
+          <p className="text-xs font-medium text-muted-foreground mb-3">Client will see:</p>
           {question.fieldType === 'File' && (
-            <div className="rounded-lg border-2 border-dashed border-[#D1D5DB] bg-[#F9FAFB] p-6 text-center">
-              <Upload className="mx-auto size-6 text-[#9CA3AF] mb-2" />
-              <p className="text-xs font-medium text-[#171717]">Click to upload or drag and drop</p>
-              <p className="text-xs text-[#6B7280] mt-1">SVG, PNG, JPG or PDF (max. 10MB)</p>
+            <div className="rounded-lg border-2 border-dashed border-input bg-muted p-6 text-center">
+              <Upload className="mx-auto size-6 text-muted-foreground mb-2" />
+              <p className="text-xs font-medium text-foreground">Click to upload or drag and drop</p>
+              <p className="text-xs text-muted-foreground mt-1">SVG, PNG, JPG or PDF (max. 10MB)</p>
             </div>
           )}
           {question.fieldType === 'Text' && (
-            <div className="rounded-lg border border-[#E5E7EB] bg-white p-3">
+            <div className="rounded-lg border border-border bg-white p-3">
               <input
                 type="text"
                 disabled
                 placeholder="Client will enter text here..."
-                className="w-full text-xs text-[#9CA3AF] placeholder-[#9CA3AF] bg-transparent outline-none"
+                className="w-full text-xs text-muted-foreground placeholder-[#9CA3AF] bg-transparent outline-none"
               />
             </div>
           )}
           {question.fieldType === 'Choice' && (
             <div className="space-y-2">
-              <p className="text-xs text-[#6B7280] italic">Client chooses from:</p>
-              <div className="rounded-lg border border-[#E5E7EB] bg-white overflow-hidden">
-                <div className="text-xs text-[#9CA3AF] p-3 text-center">
+              <p className="text-xs text-muted-foreground italic">Client chooses from:</p>
+              <div className="rounded-lg border border-border bg-white overflow-hidden">
+                <div className="text-xs text-muted-foreground p-3 text-center">
                   (Define options in edit mode)
                 </div>
               </div>

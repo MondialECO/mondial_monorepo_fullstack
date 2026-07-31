@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SpMutationFeedback, SpPage, SpPageHeader } from '@/components/serviceprovider/ui';
 import { useCreateListing, useServiceListing } from '@/hooks/queries/service-catalog';
@@ -179,10 +179,10 @@ export function ServiceCatalogWizard({ onExit }: { onExit: () => void }) {
                 <div
                   className={`flex size-8 items-center justify-center rounded-full text-sm font-medium ${
                     isActive
-                      ? 'bg-[#3C61DD] text-white'
+                      ? 'bg-primary text-white'
                       : isCompleted
                         ? 'bg-[#10B981] text-white'
-                        : 'bg-[#E5E7EB] text-[#6B7280]'
+                        : 'bg-border text-muted-foreground'
                   }`}
                 >
                   {isCompleted ? '✓' : stepNum}
@@ -190,7 +190,7 @@ export function ServiceCatalogWizard({ onExit }: { onExit: () => void }) {
                 {stepNum < STEPS.length && (
                   <div
                     className={`h-1 w-12 ${
-                      isCompleted ? 'bg-[#10B981]' : 'bg-[#E5E7EB]'
+                      isCompleted ? 'bg-[#10B981]' : 'bg-border'
                     }`}
                   />
                 )}

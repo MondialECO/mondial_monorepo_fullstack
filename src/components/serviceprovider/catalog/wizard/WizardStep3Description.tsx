@@ -124,8 +124,8 @@ export function WizardStep3Description({
     <div className="space-y-6">
       <SpCard className="space-y-6">
         <div>
-          <h2 className="text-lg font-semibold text-[#171717]">Service Description</h2>
-          <p className="mt-1 text-sm text-[#6B7280]">
+          <h2 className="text-lg font-semibold text-foreground">Service Description</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
             Provide a detailed description of your service. This text will be shown to clients
             discovering your service.
           </p>
@@ -138,8 +138,8 @@ export function WizardStep3Description({
 
       <SpCard className="space-y-6">
         <div>
-          <h2 className="text-lg font-semibold text-[#171717]">Frequently Asked Questions</h2>
-          <p className="mt-1 text-sm text-[#6B7280]">
+          <h2 className="text-lg font-semibold text-foreground">Frequently Asked Questions</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
             Add FAQs to help clients understand your service better. You can organize them by
             package and visibility.
           </p>

@@ -4,7 +4,6 @@ import { useState, useMemo, useEffect } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import {
   SpCard,
   SpFormField,
@@ -100,8 +99,8 @@ export function WizardStep1Overview({
   return (
     <SpCard className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold text-[#171717]">Service Overview</h2>
-        <p className="mt-1 text-sm text-[#6B7280]">
+        <h2 className="text-lg font-semibold text-foreground">Service Overview</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
           Describe your service in client-facing language. Packages, requirements, and FAQs
           are managed in the following steps.
         </p>
@@ -124,7 +123,7 @@ export function WizardStep1Overview({
             <select
               value={category}
               onChange={(e) => handleCategoryChange(e.target.value)}
-              className="h-10 w-full rounded-lg border border-[#D1D5DB] bg-white px-3 text-sm text-[#171717] outline-none focus-visible:ring-2 focus-visible:ring-[#3C61DD]"
+              className="h-10 w-full rounded-lg border border-input bg-white px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               {SERVICE_CATEGORIES.map((option) => (
                 <option key={option} value={option}>
@@ -151,7 +150,7 @@ export function WizardStep1Overview({
                 value={serviceType}
                 onChange={(e) => setServiceType(e.target.value)}
                 disabled={approvedServiceTypes.length === 0}
-                className="h-10 w-full rounded-lg border border-[#D1D5DB] bg-white px-3 text-sm text-[#171717] outline-none disabled:bg-[#F3F4F6] disabled:text-[#9CA3AF] focus-visible:ring-2 focus-visible:ring-[#3C61DD]"
+                className="h-10 w-full rounded-lg border border-input bg-white px-3 text-sm text-foreground outline-none disabled:bg-muted disabled:text-muted-foreground focus-visible:ring-2 focus-visible:ring-primary"
               >
                 <option value="">{approvedServiceTypes.length === 0 ? 'Select a category first' : 'Select sub-category'}</option>
                 {approvedServiceTypes.map((type) => (
@@ -166,11 +165,11 @@ export function WizardStep1Overview({
 
         {/* Suggested keywords (under Category/Sub-Category) */}
         {suggestedKeywords.length > 0 && (
-          <div className="rounded-lg bg-[#F0F9FF] p-3">
-            <p className="text-xs font-medium text-[#3C61DD]">
+          <div className="rounded-lg bg-accent p-3">
+            <p className="text-xs font-medium text-primary">
               Common keywords for this category:
             </p>
-            <p className="mt-1 text-sm text-[#3C61DD]">
+            <p className="mt-1 text-sm text-primary">
               {suggestedKeywords.join(' • ')}
             </p>
           </div>
@@ -223,7 +222,7 @@ export function WizardStep1Overview({
         {error && <SpMutationFeedback status="error">{error}</SpMutationFeedback>}
       </div>
 
-      <div className="flex flex-wrap gap-2 border-t border-[#E5E7EB] pt-5">
+      <div className="flex flex-wrap gap-2 border-t border-border pt-5">
         <Button onClick={handleNext} disabled={isSaving}>
           {isSaving ? 'Saving…' : 'Next: Scope & Pricing'}
           <ChevronRight className="size-4" aria-hidden="true" />

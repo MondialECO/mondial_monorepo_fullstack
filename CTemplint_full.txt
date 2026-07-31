@@ -1,0 +1,419 @@
+
+> client@0.1.0 lint
+> eslint
+
+
+E:\17-07-2026\mondial_monorepo_fullstack\EXPERT_REVIEW_EXTRACTED_JSX.tsx
+  456:20  warning  'icon' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\backend\loadtest\smoke.js
+  23:1  warning  Unexpected default export of anonymous function  import/no-anonymous-default-export
+
+E:\17-07-2026\mondial_monorepo_fullstack\e2e\entrepreneur-complete-flow.spec.ts
+  18:16  warning  'trackPageMetrics' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\e2e\frontend-stability.spec.ts
+  20:11  warning  'violations' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\e2e\phase-2-progression.spec.ts
+   29:11  warning  'step3' is assigned a value but never used  @typescript-eslint/no-unused-vars
+   30:11  warning  'step4' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  254:85  warning  'page' is defined but never used            @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\frontend\e2e\entrepreneur-complete-flow.spec.ts
+  18:16  warning  'trackPageMetrics' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\frontend\e2e\frontend-stability.spec.ts
+  20:11  warning  'violations' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\frontend\e2e\phase-2-progression.spec.ts
+   29:11  warning  'step3' is assigned a value but never used  @typescript-eslint/no-unused-vars
+   30:11  warning  'step4' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  254:85  warning  'page' is defined but never used            @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\frontend\src\app\(auth)\signup\onboarding\page.tsx
+  25:5  warning  'formData' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\frontend\src\app\_providers\AuthProvider.tsx
+  101:16  warning  'err' is defined but never used                                                                                                       @typescript-eslint/no-unused-vars
+  116:6   warning  React Hook useEffect has missing dependencies: 'pathname', 'router', and 'token'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+E:\17-07-2026\mondial_monorepo_fullstack\frontend\src\app\_providers\ReactQueryProvider.tsx
+  4:10  warning  'ReactQueryDevtools' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\frontend\src\app\create-project\page.tsx
+    4:37  warning  'Upload' is defined but never used                                                                                                                                                                                                                                                       @typescript-eslint/no-unused-vars
+   46:6   warning  'FormSection' is defined but never used                                                                                                                                                                                                                                                  @typescript-eslint/no-unused-vars
+  344:11  warning  'theme' is assigned a value but never used                                                                                                                                                                                                                                               @typescript-eslint/no-unused-vars
+  613:27  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  613:27  warning  img elements must have an alt prop, either with meaningful text, or an empty string for decorative images                                                                                                                                                                                jsx-a11y/alt-text
+
+E:\17-07-2026\mondial_monorepo_fullstack\frontend\src\app\dashboard\creator\billinghistory\page.tsx
+  6:10  warning  'Loader2' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\frontend\src\app\dashboard\creator\investors\page.tsx
+  115:17  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  215:17  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+E:\17-07-2026\mondial_monorepo_fullstack\frontend\src\app\dashboard\creator\myideas\page.tsx
+  37:16  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\frontend\src\app\dashboard\creator\page.tsx
+  3:10  warning  'Card' is defined but never used         @typescript-eslint/no-unused-vars
+  3:16  warning  'CardContent' is defined but never used  @typescript-eslint/no-unused-vars
+  3:29  warning  'CardHeader' is defined but never used   @typescript-eslint/no-unused-vars
+  3:41  warning  'CardTitle' is defined but never used    @typescript-eslint/no-unused-vars
+  4:10  warning  'Badge' is defined but never used        @typescript-eslint/no-unused-vars
+  5:10  warning  'Progress' is defined but never used     @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\frontend\src\app\dashboard\creator\profile\[id]\page.tsx
+  26:33  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  37:45  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+E:\17-07-2026\mondial_monorepo_fullstack\frontend\src\app\dashboard\creator\settings\page.tsx
+  6:16  warning  'Phone' is defined but never used         @typescript-eslint/no-unused-vars
+  6:23  warning  'Lock' is defined but never used          @typescript-eslint/no-unused-vars
+  6:29  warning  'User' is defined but never used          @typescript-eslint/no-unused-vars
+  6:35  warning  'ChevronRight' is defined but never used  @typescript-eslint/no-unused-vars
+  6:49  warning  'Globe' is defined but never used         @typescript-eslint/no-unused-vars
+  6:56  warning  'Search' is defined but never used        @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\frontend\src\app\dashboard\entrepreneur\overview.tsx
+  18:3  warning  'Brain' is defined but never used         @typescript-eslint/no-unused-vars
+  19:3  warning  'AlertCircle' is defined but never used   @typescript-eslint/no-unused-vars
+  20:3  warning  'MoreVertical' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\frontend\src\app\dashboard\entrepreneur\phase-3\page.tsx
+  3:33  warning  'Zap' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\frontend\src\app\dashboard\entrepreneur\phase-3\step-1\revenue-input-client.tsx
+  10:10  warning  'ArrowRight' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\frontend\src\app\dashboard\entrepreneur\phase-3\step-2\page.tsx
+  18:20  warning  'setFounders' is assigned a value but never used   @typescript-eslint/no-unused-vars
+  22:21  warning  'setInvestors' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  25:20  warning  'setEsopPool' is assigned a value but never used   @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\frontend\src\app\dashboard\entrepreneur\phase-7\page.tsx
+  5:3  warning  'Zap' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\frontend\src\app\dashboard\entrepreneur\phase-8\client.tsx
+  7:19  warning  'MessageCircle' is defined but never used  @typescript-eslint/no-unused-vars
+  7:34  warning  'Handshake' is defined but never used      @typescript-eslint/no-unused-vars
+  7:45  warning  'CheckCircle2' is defined but never used   @typescript-eslint/no-unused-vars
+  7:73  warning  'Filter' is defined but never used         @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\frontend\src\app\dashboard\entrepreneur\phase-9\client.tsx
+  11:3  warning  'DollarSign' is defined but never used   @typescript-eslint/no-unused-vars
+  12:3  warning  'Users' is defined but never used        @typescript-eslint/no-unused-vars
+  16:3  warning  'ChevronDown' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\frontend\src\app\dashboard\error.tsx
+  6:5  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\frontend\src\app\not-found.tsx
+  2:10  warning  'AlertCircle' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\frontend\src\app\onboarding\page.tsx
+  124:3  warning  'required' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\frontend\src\components\billing\BillingRow.tsx
+  2:32  warning  'ChevronRight' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\frontend\src\components\entrepreneur\FormTemplates.tsx
+  41:3  warning  'nextPath' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\frontend\src\components\entrepreneur\JobProgressIndicator.tsx
+  20:41  warning  'isFailed' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\frontend\src\components\entrepreneur\PhaseFormWrapper.tsx
+  4:46  warning  'XCircle' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\frontend\src\components\entrepreneur\ProgressSidebar.tsx
+   3:10  warning  'PhaseNumber' is defined but never used  @typescript-eslint/no-unused-vars
+  51:31  warning  'idx' is defined but never used          @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\frontend\src\components\entrepreneur\RouteGuard.tsx
+  16:3  warning  'requiredPhase' is defined but never used  @typescript-eslint/no-unused-vars
+  17:3  warning  'requiredStep' is defined but never used   @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\frontend\src\components\founder\profile\ProfileView.tsx
+  2:10  warning  'Profile' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\frontend\src\components\founder\profile\profile.tsx
+   7:10  warning  'Label' is defined but never used     @typescript-eslint/no-unused-vars
+   8:10  warning  'Progress' is defined but never used  @typescript-eslint/no-unused-vars
+  15:5   warning  'MapPin' is defined but never used    @typescript-eslint/no-unused-vars
+  16:5   warning  'Phone' is defined but never used     @typescript-eslint/no-unused-vars
+  17:5   warning  'User' is defined but never used      @typescript-eslint/no-unused-vars
+  18:5   warning  'Globe' is defined but never used     @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\frontend\src\components\homepage\TrustedPartners.tsx
+  15:18  warning  'useEffect' is defined but never used                                                                                                                                                                                                                                                    @typescript-eslint/no-unused-vars
+  54:21  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+E:\17-07-2026\mondial_monorepo_fullstack\frontend\src\components\phase-3\RevenueInputForm.tsx
+  28:9  warning  'formatCurrency' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\frontend\src\components\shared\PWAInstall.tsx
+  18:13  warning  'deferredPrompt' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\frontend\src\components\shared\ProjectCard.tsx
+  15:13  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  39:25  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+E:\17-07-2026\mondial_monorepo_fullstack\frontend\src\hooks\useBackgroundJob.ts
+  51:17  warning  'data' is defined but never used  @typescript-eslint/no-unused-vars
+  63:17  warning  'data' is defined but never used  @typescript-eslint/no-unused-vars
+  75:17  warning  'data' is defined but never used  @typescript-eslint/no-unused-vars
+  87:17  warning  'data' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\__tests__\app\not-found.test.tsx
+   6:1  warning  Unused eslint-disable directive (no problems were reported from '@next/next/no-html-link-for-pages')
+  61:5  warning  Unused eslint-disable directive (no problems were reported from '@next/next/no-html-link-for-pages')
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\__tests__\context\AuthContext.test.tsx
+  191:15  warning  'result' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\__tests__\lib\axios.test.ts
+  2:8  warning  'axios' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\__tests__\setup.ts
+  2:15  warning  'ReactElement' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\app\(auth)\login\page.tsx
+  25:48  warning  'logout' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\app\_providers\AuthProvider.tsx
+   46:9   warning  'pathname' is assigned a value but never used             @typescript-eslint/no-unused-vars
+  113:15  warning  'shouldExpireSession' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\app\_providers\ReactQueryProvider.tsx
+  4:10  warning  'ReactQueryDevtools' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\app\create-project\page.tsx
+    4:37  warning  'Upload' is defined but never used                                                                                                                                                                                                                                                       @typescript-eslint/no-unused-vars
+    8:10  warning  'CreateIdeaModel' is defined but never used                                                                                                                                                                                                                                              @typescript-eslint/no-unused-vars
+    8:27  warning  'IdeaFormState' is defined but never used                                                                                                                                                                                                                                                @typescript-eslint/no-unused-vars
+   39:6   warning  'FormSection' is defined but never used                                                                                                                                                                                                                                                  @typescript-eslint/no-unused-vars
+  337:11  warning  'theme' is assigned a value but never used                                                                                                                                                                                                                                               @typescript-eslint/no-unused-vars
+  604:27  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  604:27  warning  img elements must have an alt prop, either with meaningful text, or an empty string for decorative images                                                                                                                                                                                jsx-a11y/alt-text
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\app\dashboard\creator\asset-library\page.tsx
+  7:30  warning  'ShieldCheck' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\app\dashboard\creator\crossroads\page.tsx
+   5:10  warning  'Sparkles' is defined but never used                         @typescript-eslint/no-unused-vars
+  26:32  warning  Unused eslint-disable directive (no problems were reported)
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\app\dashboard\creator\phase-1\client.tsx
+   9:3  warning  'ChevronRight' is defined but never used             @typescript-eslint/no-unused-vars
+  14:3  warning  'Zap' is defined but never used                      @typescript-eslint/no-unused-vars
+  42:9  warning  'isRoleSelected' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\app\dashboard\creator\phase-2\clarifier\page.tsx
+  62:28  warning  'refetch' is assigned a value but never used    @typescript-eslint/no-unused-vars
+  69:10  warning  'ideaScore' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\app\dashboard\creator\phase-2\complete\page.tsx
+  219:19  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\app\dashboard\creator\phase-2\discovery\page.tsx
+  185:9  warning  'handleBack' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\app\dashboard\creator\phase-2\idea-summary\page.tsx
+  59:9  warning  'handleRevisit' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\app\dashboard\creator\phase-3\complete\page.tsx
+  73:11  warning  'unlocked' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  76:16  warning  'e' is defined but never used                  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\app\dashboard\creator\project-studio\page.tsx
+   7:3  warning  'FolderOpen' is defined but never used    @typescript-eslint/no-unused-vars
+  13:3  warning  'FileText' is defined but never used      @typescript-eslint/no-unused-vars
+  15:3  warning  'ExternalLink' is defined but never used  @typescript-eslint/no-unused-vars
+  16:3  warning  'PlusCircle' is defined but never used    @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\app\dashboard\creator\settings\page.tsx
+  6:16  warning  'Phone' is defined but never used         @typescript-eslint/no-unused-vars
+  6:23  warning  'Lock' is defined but never used          @typescript-eslint/no-unused-vars
+  6:29  warning  'User' is defined but never used          @typescript-eslint/no-unused-vars
+  6:35  warning  'ChevronRight' is defined but never used  @typescript-eslint/no-unused-vars
+  6:49  warning  'Globe' is defined but never used         @typescript-eslint/no-unused-vars
+  6:56  warning  'Search' is defined but never used        @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\app\dashboard\entrepreneur\(phases)\layout.tsx
+  2:8  warning  'Topbar' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\app\dashboard\entrepreneur\(phases)\phase-3\step-2\page.tsx
+  5:46  warning  'ChevronRight' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\app\dashboard\entrepreneur\(phases)\phase-5\client.tsx
+  64:25  warning  'setUploadingDeck' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\app\dashboard\entrepreneur\(phases)\phase-5\complete\page.tsx
+  6:10  warning  'EntrepreneurLayout' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\app\dashboard\entrepreneur\(phases)\phase-5\page.tsx
+  1:10  warning  'EntrepreneurLayout' is defined but never used  @typescript-eslint/no-unused-vars
+  2:10  warning  'PhaseHeader' is defined but never used         @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\app\dashboard\entrepreneur\(phases)\phase-7\complete\page.tsx
+  6:10  warning  'EntrepreneurLayout' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\app\dashboard\entrepreneur\(phases)\phase-7\page.tsx
+  5:48  warning  'TrendingUp' is defined but never used          @typescript-eslint/no-unused-vars
+  5:60  warning  'FileText' is defined but never used            @typescript-eslint/no-unused-vars
+  5:70  warning  'Zap' is defined but never used                 @typescript-eslint/no-unused-vars
+  5:75  warning  'Trophy' is defined but never used              @typescript-eslint/no-unused-vars
+  9:10  warning  'EntrepreneurLayout' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\app\dashboard\entrepreneur\(phases)\phase-8\client.tsx
+   10:3   warning  'RefreshCcw' is defined but never used                  @typescript-eslint/no-unused-vars
+   12:10  warning  'Button' is defined but never used                      @typescript-eslint/no-unused-vars
+   34:26  warning  'setFilterLocation' is assigned a value but never used  @typescript-eslint/no-unused-vars
+   36:10  warning  'isRegenerating' is assigned a value but never used     @typescript-eslint/no-unused-vars
+  105:9   warning  'handleInteraction' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  160:9   warning  'locations' is assigned a value but never used          @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\app\dashboard\entrepreneur\(phases)\phase-8\page.tsx
+  1:10  warning  'EntrepreneurLayout' is defined but never used  @typescript-eslint/no-unused-vars
+  2:10  warning  'PhaseHeader' is defined but never used         @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\app\dashboard\entrepreneur\(phases)\phase-9\client.tsx
+    4:16  warning  'RefreshCcw' is defined but never used                    @typescript-eslint/no-unused-vars
+   21:7   warning  'DEAL_STATUS_OPTIONS' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  142:9   warning  'loadActivity' is assigned a value but never used         @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\app\dashboard\entrepreneur\(phases)\phase-9\page.tsx
+  1:10  warning  'EntrepreneurLayout' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\app\dashboard\error.tsx
+  13:5  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\app\dashboard\investor\phase-5\client.tsx
+  25:6  warning  React Hook useEffect has a missing dependency: 'fetchDeals'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\app\not-found.tsx
+  2:10  warning  'AlertCircle' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\app\onboarding\email\page.tsx
+  52:5  warning  Unused eslint-disable directive (no problems were reported from 'react-hooks/exhaustive-deps')
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\app\onboarding\face-verification\page.tsx
+  15:10  warning  'sumsub' is assigned a value but never used                                                                          @typescript-eslint/no-unused-vars
+  51:6   warning  React Hook useEffect has a missing dependency: 'initSumsubWidget'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\app\onboarding\page.tsx
+  185:3  warning  'required' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\components\billing\BillingRow.tsx
+  2:32  warning  'ChevronRight' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\components\entrepreneur\FormTemplates.tsx
+  41:3  warning  'nextPath' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\components\entrepreneur\InfoPanel.tsx
+  3:10  warning  'ReactNode' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\components\entrepreneur\JobProgressIndicator.tsx
+  20:41  warning  'isFailed' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\components\entrepreneur\PhaseFormWrapper.tsx
+  4:46  warning  'XCircle' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\components\entrepreneur\RouteGuard.tsx
+  17:3  warning  'requiredPhase' is defined but never used  @typescript-eslint/no-unused-vars
+  18:3  warning  'requiredStep' is defined but never used   @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\components\entrepreneur\deals\Phase9PipelineVisuals.tsx
+  82:3  warning  'onDataChanged' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\components\entrepreneur\equity\Phase4TabbedView.tsx
+  3:21  warning  'useMemo' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\components\founder\profile\ProfileView.tsx
+  2:10  warning  'Profile' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\components\founder\profile\profile.tsx
+   7:10  warning  'Label' is defined but never used     @typescript-eslint/no-unused-vars
+   8:10  warning  'Progress' is defined but never used  @typescript-eslint/no-unused-vars
+  15:5   warning  'MapPin' is defined but never used    @typescript-eslint/no-unused-vars
+  16:5   warning  'Phone' is defined but never used     @typescript-eslint/no-unused-vars
+  17:5   warning  'User' is defined but never used      @typescript-eslint/no-unused-vars
+  18:5   warning  'Globe' is defined but never used     @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\components\homepage\TrustedPartners.tsx
+  15:18  warning  'useEffect' is defined but never used                                                                                                                                                                                                                                                    @typescript-eslint/no-unused-vars
+  54:21  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\components\onboarding\IdentityVerification.tsx
+  3:20  warning  'useEffect' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\components\onboarding\UniversalPhase1.tsx
+  65:17  warning  'refreshAuthMe' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  71:21  warning  'setVerifying' is assigned a value but never used   @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\components\phase-3\RevenueInputForm.tsx
+  28:9  warning  'formatCurrency' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\components\serviceprovider\ProfileMediaManager.tsx
+  38:27  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\components\serviceprovider\ProfileWorkspace.tsx
+  209:28  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  296:19  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  438:6   warning  React Hook useEffect has a missing dependency: 'applyServerDraft'. Either include it or remove the dependency array                                                                                                                                                                      react-hooks/exhaustive-deps
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\components\serviceprovider\catalog\ServiceCatalogWizard.tsx
+  5:23  warning  'ChevronRight' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\components\serviceprovider\catalog\ServiceDescriptionEditor.tsx
+  3:18  warning  'useMemo' is defined but never used      @typescript-eslint/no-unused-vars
+  4:41  warning  'JSONContent' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\components\serviceprovider\catalog\wizard\WizardStep1Overview.tsx
+  7:10  warning  'Textarea' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\components\serviceprovider\catalog\wizard\WizardStep2Pricing.tsx
+   4:43  warning  'Trash2' is defined but never used       @typescript-eslint/no-unused-vars
+   7:10  warning  'Textarea' is defined but never used     @typescript-eslint/no-unused-vars
+  10:3   warning  'SpFormField' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\components\serviceprovider\catalog\wizard\WizardStep4Requirements.tsx
+  11:10  warning  'cn' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\components\serviceprovider\catalog\wizard\WizardStep5Gallery.tsx
+  21:7  warning  'MAX_VIDEO_DURATION_SECONDS' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  37:9  warning  'updateListing' is assigned a value but never used               @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\hooks\useBackgroundJob.ts
+  51:17  warning  'data' is defined but never used  @typescript-eslint/no-unused-vars
+  63:17  warning  'data' is defined but never used  @typescript-eslint/no-unused-vars
+  75:17  warning  'data' is defined but never used  @typescript-eslint/no-unused-vars
+  87:17  warning  'data' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\src\hooks\useEntrepreneurDashboard.ts
+  5:27  warning  'CompanyProgressResponse' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\tests\creator-e2e.spec.ts
+  31:5  warning  'userId' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\verify-kpi-tracker.mjs
+  12:7   warning  'execAsync' is assigned a value but never used      @typescript-eslint/no-unused-vars
+  28:14  warning  'e' is defined but never used                       @typescript-eslint/no-unused-vars
+  71:11  warning  'serverProcess' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+E:\17-07-2026\mondial_monorepo_fullstack\vitest.setup.ts
+  37:11  warning  '_fill' is defined but never used         @typescript-eslint/no-unused-vars
+  38:18  warning  '_unoptimized' is defined but never used  @typescript-eslint/no-unused-vars
+  39:15  warning  '_priority' is defined but never used     @typescript-eslint/no-unused-vars
+  40:14  warning  '_quality' is defined but never used      @typescript-eslint/no-unused-vars
+  41:13  warning  '_loader' is defined but never used       @typescript-eslint/no-unused-vars
+  42:18  warning  '_placeholder' is defined but never used  @typescript-eslint/no-unused-vars
+  43:18  warning  '_blurDataURL' is defined but never used  @typescript-eslint/no-unused-vars
+
+✖ 205 problems (0 errors, 205 warnings)
+  0 errors and 4 warnings potentially fixable with the `--fix` option.
+
