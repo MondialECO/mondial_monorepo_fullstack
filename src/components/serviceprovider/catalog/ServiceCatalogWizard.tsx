@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SpMutationFeedback, SpPage, SpPageHeader } from '@/components/serviceprovider/ui';
 import { useCreateListing, useServiceListing } from '@/hooks/queries/service-catalog';

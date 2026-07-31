@@ -9,7 +9,6 @@ import {
   SpMutationFeedback,
 } from '@/components/serviceprovider/ui';
 import type { ServiceListing, GalleryImage, PreviewVideo } from '@/types/service-catalog';
-import { useUpdateListing } from '@/hooks/queries/service-catalog';
 import { resolveProviderMediaUrl } from '@/lib/service-provider/provider-media';
 import {
   uploadListingGalleryImage as apiUploadGalleryImage,
@@ -18,7 +17,6 @@ import {
   deleteListingPreviewVideo as apiDeletePreviewVideo,
 } from '@/lib/api-service-provider';
 
-const MAX_VIDEO_DURATION_SECONDS = 60;
 const MAX_VIDEO_BYTES = 50 * 1024 * 1024; // 50 MB
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // 8 MB
 const MAX_GALLERY_IMAGES = 20;
@@ -34,7 +32,6 @@ export function WizardStep5Gallery({
   onNext: () => void;
   onBack: () => void;
 }) {
-  const updateListing = useUpdateListing();
   const [previewVideo, setPreviewVideo] = useState<PreviewVideo | null>(listing.previewVideo ?? null);
   const [galleryImages, setGalleryImages] = useState<GalleryImage[]>(listing.galleryImages ?? []);
   const [error, setError] = useState<string | null>(null);

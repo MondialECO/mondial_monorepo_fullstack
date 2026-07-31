@@ -8,7 +8,6 @@ import { SpCard } from '@/components/serviceprovider/ui';
 import type { RequirementsField } from '@/types/service-catalog';
 import { REQUIREMENTS_FIELD_TYPES } from '@/types/service-catalog';
 import { useServiceListing, useUpdatePackage } from '@/hooks/queries/service-catalog';
-import { cn } from '@/lib/utils';
 
 export function WizardStep4Requirements({
   listingId,

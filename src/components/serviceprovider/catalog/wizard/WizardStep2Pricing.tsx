@@ -1,13 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import {
   SpCard,
-  SpFormField,
   SpMutationFeedback,
 } from '@/components/serviceprovider/ui';
 import type { ServicePackage, PackageType } from '@/types/service-catalog';
