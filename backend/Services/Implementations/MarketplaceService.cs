@@ -123,10 +123,16 @@ namespace WebApp.Services.Implementations
                     .ToList();
 
                 var providerIds = pagedListings.Select(x => x.ProviderId).Distinct().ToList();
-                var providers = _userManager.Users
-                    .Where(u => providerIds.Contains(u.Id.ToString()))
-                    .ToList();
-                var providerMap = providers.ToDictionary(p => p.Id.ToString());
+
+                // Use parallel FindByIdAsync to properly populate embedded ServiceProviderProfile
+                var providerLookups = providerIds.Select(async id => new {
+                    Id = id,
+                    User = await _userManager.FindByIdAsync(id)
+                });
+                var providerResults = await Task.WhenAll(providerLookups);
+                var providerMap = providerResults
+                    .Where(x => x.User != null)
+                    .ToDictionary(x => x.Id, x => x.User);
 
                 var packages = await _db.ServicePackages
                     .Find(p => pagedListings.Select(l => l.Id).Contains(p.ServiceId) &&
