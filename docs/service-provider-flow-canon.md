@@ -1482,6 +1482,7 @@ At any point before payment, client can back out — no order, no charge.
 {
   _id: ObjectId,
   OrderNumber: string,                 // human-readable "M-YYYY-MM-DD-NNNNNN"
+  ConversationId: ObjectId?,           // Reference to the order's chat conversation (created at order placement, §10.6)
   ListingId: string,
   ProviderId: string,
   ClientId: string,
@@ -1541,7 +1542,7 @@ At any point before payment, client can back out — no order, no charge.
 
 **Indexes:** unique `OrderNumber`; compound `(ClientId, State)` for client dashboard; compound `(ProviderId, State)` for SP workroom; compound `(ListingId, State)` for per-listing analytics (future).
 
-**Order messages + attachments:** reuse existing `ChatMessage` model with an added optional `OrderId: string?` field so messages can be scoped to a specific order. Do NOT create a parallel message collection. Files uploaded within order workroom go through existing SaveFile mechanism. Add allow-list entry `marketplace/order-attachments`.
+**Order messages + attachments:** order-scoped conversations use the existing `ChatMessage` and `Conversation` collections without change to `ChatMessage`. The codebase establishes conversation scoping via `Conversation.RelatedProjectId` (nullable ObjectId); we follow the same pattern for orders by extending `Conversation` with `RelatedOrderId`. When an order is placed (§10.5), the order-creation service creates a `Conversation` with `RelatedOrderId = order._id`, `Participants = [ClientId, ProviderId]`, `Type = "Direct"`, and stores the conversation ID on the order (`Order.ConversationId`) for direct navigation from the workroom UI. Messages inherit order scope through their conversation; all existing `ChatMessage` queries (filter by `ConversationId` only) continue unchanged. No `ChatMessage.OrderId` field is added. Files uploaded within the order workroom go through existing SaveFile mechanism; add allow-list entry `marketplace/order-attachments`.
 
 ### 10.7 State machine
 
@@ -1615,7 +1616,7 @@ The 12% rate is centralized in configuration or a `PricingCalculator` static —
 
 **Access control:** only client + provider of the order can view. JWT `userId` check against `Order.ClientId` and `Order.ProviderId`; any other authenticated user → 403.
 
-**Message flow:** extended `ChatMessage` with optional `OrderId` field. Order workroom shows only messages where `OrderId == currentOrderId`. Sending from within the workroom auto-scopes to that order.
+**Message flow:** the workroom UI loads the conversation referenced by `Order.ConversationId`. Messages are retrieved via the existing message-fetch endpoint filtered by that `ConversationId`. The conversation itself carries the order scope via `Conversation.RelatedOrderId`; no per-message scope field is needed. Sending from within the workroom posts to the existing chat endpoint with the same `ConversationId`.
 
 ### 10.10 Client dashboard (orders view)
 
@@ -1689,7 +1690,7 @@ Fire-and-forget: `fetch(..., { keepalive: true }).catch(() => {})`. Never blocks
 - Do NOT hardcode the 12% platform fee in multiple places. Centralize.
 - Do NOT ship any phase with fake sample data. Empty states honest.
 - Do NOT skip the Payment abstraction "because it's just a stub." The interface is what allows swap-in later without frontend or order-service changes.
-- Do NOT create a new chat/message model. Extend the existing `ChatMessage` with `OrderId`.
+- Do NOT add `ChatMessage.OrderId` field for order scoping. Use `Conversation.RelatedOrderId` instead, following the established `RelatedProjectId` pattern — messages inherit scope through their conversation.
 - Do NOT build cancellation, dispute, refund flows in v1. Phase M7.
 - Do NOT create separate marketplaces per role. One `/marketplace/services` serves all roles. Future `/marketplace/pitches` etc. are separate marketplaces for entirely different content types, not role variants.
 
