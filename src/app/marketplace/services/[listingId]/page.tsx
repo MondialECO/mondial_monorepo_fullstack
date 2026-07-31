@@ -35,7 +35,7 @@ function MarketplaceListingDetailContent() {
     : params.listingId;
 
   const { data, isLoading, isError } = useMarketplaceListingDetail(listingId);
-  const listing = data?.data;
+  const listing = data;
 
   // Analytics Phase C: Fire impression on mount
   useEffect(() => {
