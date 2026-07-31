@@ -5,10 +5,15 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Eye,
   LayoutGrid,
+  MessageSquare,
   MousePointerClick,
+  Percent,
   Plus,
   Search,
+  TrendingDown,
+  TrendingUp,
 } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -25,7 +30,13 @@ import {
 import {
   useServiceListings,
 } from '@/hooks/queries/service-catalog';
+import {
+  useAnalyticsListings,
+  useAnalyticsSummary,
+  useAnalyticsTimeseries,
+} from '@/hooks/queries/analytics';
 import type { CatalogStatus, ServiceListing } from '@/types/service-catalog';
+import type { AnalyticsRange } from '@/lib/api-analytics';
 import { ServiceCatalogWizard } from './catalog/ServiceCatalogWizard';
 
 const BASE_ROUTE = '/dashboard/serviceprovider/services';
@@ -120,37 +131,54 @@ function ListingsList({
   onOpen: (id: string) => void;
   onCreate: () => void;
 }) {
-  const listingsQuery = useServiceListings();
-  const [query, setQuery] = useState('');
-  const [status, setStatus] = useState<(typeof statusOptions)[number]>('All');
+  const listingsQuery = useAnalyticsListings();
+  const [selectedListingId, setSelectedListingId] = useState<string | null>(null);
+  const [range, setRange] = useState<AnalyticsRange>('30d');
 
-  const listings = useMemo(() => listingsQuery.data ?? [], [listingsQuery.data]);
-  const filtered = useMemo(() => {
-    const needle = query.trim().toLocaleLowerCase();
-    return listings.filter((listing) => {
-      const matchesStatus = status === 'All' || listing.status === status;
-      const matchesQuery =
-        !needle ||
-        listing.title.toLocaleLowerCase().includes(needle) ||
-        listing.description.toLocaleLowerCase().includes(needle) ||
-        listing.category.toLocaleLowerCase().includes(needle);
-      return matchesStatus && matchesQuery;
-    });
-  }, [listings, query, status]);
+  const listings = useMemo(() => listingsQuery.data?.listings ?? [], [listingsQuery.data]);
+
+  // Auto-select "all" when listings load
+  useEffect(() => {
+    if (listings.length > 0 && selectedListingId === null) {
+      setSelectedListingId('all');
+    }
+  }, [listings, selectedListingId]);
+
+  const { data: summary, isLoading: summaryLoading } = useAnalyticsSummary(selectedListingId, range);
+  const { data: timeseries, isLoading: timeseriesLoading } = useAnalyticsTimeseries(selectedListingId, range);
+
+  const rangeLabels: Record<AnalyticsRange, string> = {
+    today: 'Today',
+    '7d': 'Last 7 days',
+    '30d': 'Last 30 days',
+    '90d': 'Last 90 days',
+  };
+
+  const chartData = useMemo(() => {
+    if (!timeseries?.buckets) return [];
+    return timeseries.buckets.map((point) => ({
+      date: new Date(point.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      Impressions: point.impressions,
+      Clicks: point.clicks,
+    }));
+  }, [timeseries]);
+
+  const allZero = !chartData || chartData.every((p) => p.Impressions === 0 && p.Clicks === 0);
+
+  const selectedListingTitle = selectedListingId === 'all'
+    ? 'All services'
+    : listings.find((l) => l.id === selectedListingId)?.title || 'Select a service';
 
   if (listingsQuery.isLoading) {
     return (
-      <div className="space-y-5" aria-label="Loading service catalog">
-        <div className="grid gap-4 sm:grid-cols-3">
-          {Array.from({ length: 3 }).map((_, index) => (
-            <Skeleton key={index} className="h-40 rounded-2xl" />
+      <div className="space-y-8" aria-label="Loading analytics">
+        <Skeleton className="h-10 rounded-lg w-64" />
+        <div className="grid gap-4 grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-32 rounded-lg" />
           ))}
         </div>
-        <Skeleton className="h-16 rounded-2xl" />
-        <div className="grid gap-4 lg:grid-cols-2">
-          <Skeleton className="h-64 rounded-2xl" />
-          <Skeleton className="h-64 rounded-2xl" />
-        </div>
+        <Skeleton className="h-64 rounded-lg" />
       </div>
     );
   }
@@ -159,7 +187,7 @@ function ListingsList({
     return (
       <SpMutationFeedback status="error">
         <div className="flex flex-wrap items-center gap-3">
-          <span>Your service catalog could not be loaded.</span>
+          <span>Analytics could not be loaded.</span>
           <button
             type="button"
             onClick={() => listingsQuery.refetch()}
@@ -172,8 +200,6 @@ function ListingsList({
     );
   }
 
-  const atCapacity = listings.length >= 4;
-
   if (listings.length === 0) {
     return (
       <SpEmptyState
@@ -181,7 +207,7 @@ function ListingsList({
         title="No Published Services"
         description="Create your first service listing to start receiving briefs."
         action={
-          <Button type="button" onClick={onCreate} disabled={atCapacity}>
+          <Button type="button" onClick={onCreate}>
             <Plus className="size-4" aria-hidden="true" />
             Create Service
           </Button>
@@ -190,134 +216,169 @@ function ListingsList({
     );
   }
 
-  const published = listings.filter((listing) => listing.status === 'Published').length;
-  const impressions = listings.reduce((total, listing) => total + listing.impressions, 0);
-  const clicks = listings.reduce((total, listing) => total + listing.clicks, 0);
-
   return (
-    <div className="space-y-5">
-      {atCapacity && (
-        <SpMutationFeedback status="warning">
-          You have reached the maximum of 4 services. You cannot create additional listings at this time.
-        </SpMutationFeedback>
-      )}
-      <div className="grid gap-4 sm:grid-cols-3">
-        <SpMetricCard label="Published services" value={published} icon={LayoutGrid} />
-        <SpMetricCard label="Lifetime impressions" value={impressions.toLocaleString()} icon={Eye} />
-        <SpMetricCard label="Lifetime clicks" value={clicks.toLocaleString()} icon={MousePointerClick} />
+    <div className="space-y-8">
+      {/* Service selector and Edit button */}
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <label htmlFor="listing-select" className="text-sm font-semibold text-muted-foreground">
+            Service
+          </label>
+          <select
+            id="listing-select"
+            value={selectedListingId || 'all'}
+            onChange={(e) => setSelectedListingId(e.target.value)}
+            className="h-10 rounded-lg border border-input bg-white px-3 text-sm font-medium text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            {listings.map((listing) => (
+              <option key={listing.id} value={listing.id}>
+                {listing.title}
+              </option>
+            ))}
+            <option value="all">All services</option>
+          </select>
+        </div>
+        {selectedListingId && selectedListingId !== 'all' && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const id = selectedListingId;
+              onOpen(id);
+            }}
+          >
+            Edit this service
+          </Button>
+        )}
       </div>
 
-      <SpFilterBar>
-        <div className="relative min-w-0 flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-          <Input
-            aria-label="Search services"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search by title, description, or category"
-            className="pl-9"
-          />
-        </div>
-        <label className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-          <span>Status</span>
-          <select
-            value={status}
-            onChange={(event) => setStatus(event.target.value as (typeof statusOptions)[number])}
-            className="h-10 rounded-lg border border-input bg-white px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      {/* Time range tabs */}
+      <div className="flex gap-2">
+        {(Object.keys(rangeLabels) as AnalyticsRange[]).map((r) => (
+          <button
+            key={r}
+            onClick={() => setRange(r)}
+            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+              range === r
+                ? 'bg-primary text-white'
+                : 'bg-muted text-muted-foreground hover:bg-muted/80'
+            }`}
           >
-            {statusOptions.map((option) => (
-              <option key={option} value={option}>{option}</option>
-            ))}
-          </select>
-        </label>
-      </SpFilterBar>
+            {rangeLabels[r]}
+          </button>
+        ))}
+      </div>
 
-      {filtered.length === 0 ? (
-        <SpEmptyState
-          icon={Search}
-          title="No services match these filters"
-          description="Clear the search or choose another status to see your other listings."
-          action={
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                setQuery('');
-                setStatus('All');
-              }}
-            >
-              Clear filters
-            </Button>
-          }
+      {/* Metric cards */}
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+        <MetricCardWithDelta
+          label="Impressions"
+          value={summary?.impressions ?? 0}
+          delta={summary?.impressionsDelta}
+          icon={Eye}
+          isLoading={summaryLoading}
         />
-      ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
-          {filtered.map((listing) => (
-            <ListingCard key={listing.id} listing={listing} onOpen={() => onOpen(listing.id)} />
-          ))}
-        </div>
-      )}
+        <MetricCardWithDelta
+          label="Clicks"
+          value={summary?.clicks ?? 0}
+          delta={summary?.clicksDelta}
+          icon={MousePointerClick}
+          isLoading={summaryLoading}
+        />
+        <MetricCardWithDelta
+          label="Inquiries"
+          value={summary?.inquiries ?? 0}
+          delta={summary?.inquiriesDelta}
+          icon={MessageSquare}
+          isLoading={summaryLoading}
+        />
+        <MetricCardWithDelta
+          label="Conversion Rate"
+          value={summary?.conversionRate}
+          delta={summary?.conversionRateDelta}
+          icon={Percent}
+          isLoading={summaryLoading}
+          isPercentage
+        />
+      </div>
+
+      {/* Chart */}
+      <SpCard className="p-6">
+        <h3 className="text-sm font-semibold text-foreground mb-4">
+          Impressions vs Clicks ({rangeLabels[range]})
+        </h3>
+        {timeseriesLoading ? (
+          <Skeleton className="h-64 rounded-lg" />
+        ) : allZero ? (
+          <div className="flex items-center justify-center h-64 text-muted-foreground">
+            <p className="text-center">No activity yet for this range. Data will appear as visitors interact with your listings.</p>
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="date" />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <Line type="monotone" dataKey="Impressions" stroke="#3C61DD" dot={false} />
+              <Line type="monotone" dataKey="Clicks" stroke="#93C5FD" dot={false} strokeDasharray="5 5" />
+            </LineChart>
+          </ResponsiveContainer>
+        )}
+      </SpCard>
     </div>
   );
 }
 
-function ListingCard({ listing, onOpen }: { listing: ServiceListing; onOpen: () => void }) {
+function MetricCardWithDelta({
+  label,
+  value,
+  delta,
+  icon: Icon,
+  isLoading,
+  isPercentage,
+}: {
+  label: string;
+  value: number | null | undefined;
+  delta: number | null | undefined;
+  icon: React.ComponentType<{ className?: string }>;
+  isLoading?: boolean;
+  isPercentage?: boolean;
+}) {
+  if (isLoading) {
+    return <Skeleton className="h-32 rounded-lg" />;
+  }
+
+  const displayValue = value === 0 && !delta ? '—' : (
+    isPercentage ? `${Number((value ?? 0).toFixed(2))}%` : String(value ?? 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  );
+
+  const showDelta = delta !== null && delta !== undefined && value !== 0;
+
   return (
-    <SpCard className="flex min-h-64 flex-col">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-            {formatEnum(listing.category)}
-          </p>
-          <h2 className="mt-2 font-heading text-lg font-semibold leading-6 text-foreground">
-            {listing.title || 'Untitled service'}
-          </h2>
+    <SpCard className="p-4">
+      <div className="flex items-start justify-between mb-3">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+        <Icon className="size-4 text-muted-foreground" />
+      </div>
+      <p className="text-3xl font-bold text-foreground mb-2">{displayValue}</p>
+      {showDelta && delta !== null && delta !== undefined && (
+        <div className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${
+          delta >= 0
+            ? 'bg-emerald-50 text-emerald-700'
+            : 'bg-red-50 text-red-700'
+        }`}>
+          {delta >= 0 ? (
+            <TrendingUp className="size-3" />
+          ) : (
+            <TrendingDown className="size-3" />
+          )}
+          {Math.abs(delta).toFixed(0)}%
         </div>
-        <StatusBadge status={listing.status} />
-      </div>
-
-      <p className="mt-3 line-clamp-3 text-sm leading-6 text-muted-foreground">
-        {listing.description || 'Add a description so clients understand the scope of this service.'}
-      </p>
-
-      <div className="mt-4 flex flex-wrap gap-2">
-        {listing.industryFocus.slice(0, 3).map((industry) => (
-          <SpStatusBadge key={industry}>{industry}</SpStatusBadge>
-        ))}
-      </div>
-
-      <div className="mt-auto flex flex-wrap items-end justify-between gap-4 border-t border-border pt-5">
-        <div className="flex items-center gap-5 text-xs text-muted-foreground">
-          <span className="inline-flex items-center gap-1.5" aria-label={`${listing.impressions} impressions`}>
-            <Eye className="size-4" aria-hidden="true" />
-            {listing.impressions.toLocaleString()}
-          </span>
-          <span className="inline-flex items-center gap-1.5" aria-label={`${listing.clicks} clicks`}>
-            <MousePointerClick className="size-4" aria-hidden="true" />
-            {listing.clicks.toLocaleString()}
-          </span>
-          <span>Updated {new Date(listing.updatedAt).toLocaleDateString()}</span>
-        </div>
-        <Button type="button" size="sm" variant="outline" onClick={onOpen}>
-          Edit
-        </Button>
-      </div>
+      )}
     </SpCard>
   );
 }
 
-export function StatusBadge({ status }: { status: string }) {
-  const tone =
-    status === 'Published'
-      ? 'positive'
-      : status === 'Unpublished'
-        ? 'warning'
-        : status === 'Archived'
-          ? 'negative'
-          : 'neutral';
-  return <SpStatusBadge tone={tone}>{status}</SpStatusBadge>;
-}
-
-export function formatEnum(value: string) {
-  return value.replace(/([a-z])([A-Z])/g, '$1 $2');
-}

@@ -351,3 +351,40 @@ public class ProviderDashboardProgressResponse
     public int? Value { get; set; }
     public string Detail { get; set; } = "";
 }
+
+public class AnalyticsSummaryResponse
+{
+    public int Impressions { get; set; }
+    public decimal? ImpressionsDelta { get; set; }
+    public int Clicks { get; set; }
+    public decimal? ClicksDelta { get; set; }
+    public int Inquiries { get; set; }
+    public decimal? InquiriesDelta { get; set; }
+    public decimal? ConversionRate { get; set; }
+    public decimal? ConversionRateDelta { get; set; }
+}
+
+public class AnalyticsTimeseriesResponse
+{
+    public List<AnalyticsBucketPoint> Buckets { get; set; } = new();
+}
+
+public class AnalyticsBucketPoint
+{
+    public DateTime Date { get; set; }
+    public int Impressions { get; set; }
+    public int Clicks { get; set; }
+}
+
+public class AnalyticsListingsResponse
+{
+    public List<AnalyticsListingOption> Listings { get; set; } = new();
+}
+
+public class AnalyticsListingOption
+{
+    public string Id { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
+    public string? ThumbnailUrl { get; set; }
+    public int Impressions30d { get; set; }
+}

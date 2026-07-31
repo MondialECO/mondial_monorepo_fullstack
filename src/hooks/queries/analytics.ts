@@ -35,3 +35,43 @@ export const useUpdateGrowthTaskStatus = () => {
     onSuccess: () => client.invalidateQueries({ queryKey: TASKS }),
   });
 };
+
+// Phase B read endpoints
+const LISTINGS = ['service-provider-analytics-listings'] as const;
+const SUMMARY = ['service-provider-analytics-summary'] as const;
+const TIMESERIES = ['service-provider-analytics-timeseries'] as const;
+
+export const analyticsKeys = {
+  listings: () => LISTINGS,
+  summary: (id: string, range: api.AnalyticsRange) => [...SUMMARY, id, range] as const,
+  timeseries: (id: string, range: api.AnalyticsRange) => [...TIMESERIES, id, range] as const,
+};
+
+export const useAnalyticsListings = () =>
+  useQuery({
+    queryKey: analyticsKeys.listings(),
+    queryFn: api.getAnalyticsListings,
+    staleTime: 5 * 60_000,
+  });
+
+export const useAnalyticsSummary = (
+  listingId: string | null,
+  range: api.AnalyticsRange
+) =>
+  useQuery({
+    queryKey: analyticsKeys.summary(listingId ?? '', range),
+    queryFn: () => api.getAnalyticsSummary(listingId!, range),
+    enabled: !!listingId,
+    staleTime: 60_000,
+  });
+
+export const useAnalyticsTimeseries = (
+  listingId: string | null,
+  range: api.AnalyticsRange
+) =>
+  useQuery({
+    queryKey: analyticsKeys.timeseries(listingId ?? '', range),
+    queryFn: () => api.getAnalyticsTimeseries(listingId!, range),
+    enabled: !!listingId,
+    staleTime: 60_000,
+  });

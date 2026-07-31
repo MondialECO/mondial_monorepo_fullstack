@@ -852,4 +852,230 @@ public class AnalyticsService(
         UpdatedAt = task.UpdatedAt,
         ExpiresAt = task.ExpiresAt,
     };
+
+    public async Task<ServiceProviderResult<AnalyticsSummaryResponse>> GetAnalyticsSummaryAsync(
+        string providerId, string listingIdOrAll, string range, CancellationToken ct)
+    {
+        // Ownership check
+        if (listingIdOrAll != "all")
+        {
+            var listing = await db.ServiceListings.Find(x => x.Id == listingIdOrAll).FirstOrDefaultAsync(ct);
+            if (listing is null || listing.ProviderId != providerId)
+                return ServiceProviderResult<AnalyticsSummaryResponse>.NotFound("Listing not found.");
+        }
+
+        var (currentStart, currentEnd) = ResolveRange(range);
+        var (prevStart, prevEnd) = PreviousRange(currentStart, currentEnd);
+
+        // Query current period
+        IAsyncCursor<AnalyticsDailyBucket> currentCursor;
+        if (listingIdOrAll == "all")
+        {
+            currentCursor = await db.AnalyticsDailyBuckets.Find(x =>
+                x.ProviderId == providerId &&
+                x.Date >= currentStart && x.Date <= currentEnd
+            ).ToCursorAsync(ct);
+        }
+        else
+        {
+            currentCursor = await db.AnalyticsDailyBuckets.Find(x =>
+                x.ListingId == listingIdOrAll &&
+                x.Date >= currentStart && x.Date <= currentEnd
+            ).ToCursorAsync(ct);
+        }
+        var currentBuckets = await currentCursor.ToListAsync(ct);
+        var currentImpressions = currentBuckets.Sum(x => x.Impressions);
+        var currentClicks = currentBuckets.Sum(x => x.Clicks);
+        var currentInquiries = currentBuckets.Sum(x => x.Inquiries);
+
+        // Query previous period
+        IAsyncCursor<AnalyticsDailyBucket> prevCursor;
+        if (listingIdOrAll == "all")
+        {
+            prevCursor = await db.AnalyticsDailyBuckets.Find(x =>
+                x.ProviderId == providerId &&
+                x.Date >= prevStart && x.Date <= prevEnd
+            ).ToCursorAsync(ct);
+        }
+        else
+        {
+            prevCursor = await db.AnalyticsDailyBuckets.Find(x =>
+                x.ListingId == listingIdOrAll &&
+                x.Date >= prevStart && x.Date <= prevEnd
+            ).ToCursorAsync(ct);
+        }
+        var prevBuckets = await prevCursor.ToListAsync(ct);
+        var prevImpressions = prevBuckets.Sum(x => x.Impressions);
+        var prevClicks = prevBuckets.Sum(x => x.Clicks);
+        var prevInquiries = prevBuckets.Sum(x => x.Inquiries);
+
+        // Compute conversion rates
+        var conversionRate = currentImpressions > 0
+            ? (decimal)currentInquiries / currentImpressions * 100m
+            : (decimal?)null;
+        var prevConversionRate = prevImpressions > 0
+            ? (decimal)prevInquiries / prevImpressions * 100m
+            : (decimal?)null;
+
+        var response = new AnalyticsSummaryResponse
+        {
+            Impressions = currentImpressions,
+            ImpressionsDelta = ComputeDelta(currentImpressions, prevImpressions),
+            Clicks = currentClicks,
+            ClicksDelta = ComputeDelta(currentClicks, prevClicks),
+            Inquiries = currentInquiries,
+            InquiriesDelta = ComputeDelta(currentInquiries, prevInquiries),
+            ConversionRate = conversionRate,
+            ConversionRateDelta = ConversionRateDelta(conversionRate, prevConversionRate),
+        };
+
+        return ServiceProviderResult<AnalyticsSummaryResponse>.Ok(response);
+    }
+
+    public async Task<ServiceProviderResult<AnalyticsTimeseriesResponse>> GetAnalyticsTimeseriesAsync(
+        string providerId, string listingIdOrAll, string range, CancellationToken ct)
+    {
+        // Ownership check
+        if (listingIdOrAll != "all")
+        {
+            var listing = await db.ServiceListings.Find(x => x.Id == listingIdOrAll).FirstOrDefaultAsync(ct);
+            if (listing is null || listing.ProviderId != providerId)
+                return ServiceProviderResult<AnalyticsTimeseriesResponse>.NotFound("Listing not found.");
+        }
+
+        var (rangeStart, rangeEnd) = ResolveRange(range);
+
+        // Query buckets for range
+        IAsyncCursor<AnalyticsDailyBucket> cursor;
+        if (listingIdOrAll == "all")
+        {
+            cursor = await db.AnalyticsDailyBuckets.Find(x =>
+                x.ProviderId == providerId &&
+                x.Date >= rangeStart && x.Date <= rangeEnd
+            ).ToCursorAsync(ct);
+        }
+        else
+        {
+            cursor = await db.AnalyticsDailyBuckets.Find(x =>
+                x.ListingId == listingIdOrAll &&
+                x.Date >= rangeStart && x.Date <= rangeEnd
+            ).ToCursorAsync(ct);
+        }
+        var buckets = await cursor.ToListAsync(ct);
+        var bucketsByDate = buckets.ToDictionary(x => x.Date);
+
+        // Fill missing days with zeros
+        var response = new AnalyticsTimeseriesResponse();
+        for (var date = rangeStart; date <= rangeEnd; date = date.AddDays(1))
+        {
+            if (bucketsByDate.TryGetValue(date, out var bucket))
+            {
+                response.Buckets.Add(new AnalyticsBucketPoint
+                {
+                    Date = date,
+                    Impressions = bucket.Impressions,
+                    Clicks = bucket.Clicks,
+                });
+            }
+            else
+            {
+                response.Buckets.Add(new AnalyticsBucketPoint
+                {
+                    Date = date,
+                    Impressions = 0,
+                    Clicks = 0,
+                });
+            }
+        }
+
+        return ServiceProviderResult<AnalyticsTimeseriesResponse>.Ok(response);
+    }
+
+    public async Task<ServiceProviderResult<AnalyticsListingsResponse>> GetAnalyticsListingsAsync(
+        string providerId, CancellationToken ct)
+    {
+        // Fetch all listings for this provider (all statuses)
+        var listings = await db.ServiceListings
+            .Find(x => x.ProviderId == providerId)
+            .SortByDescending(x => x.UpdatedAt)
+            .ToListAsync(ct);
+
+        var response = new AnalyticsListingsResponse();
+
+        // Add "All services" pseudo-entry
+        var allImpressions30d = 0;
+        var allListingIds = listings.Select(x => x.Id).ToHashSet(StringComparer.Ordinal);
+        if (allListingIds.Count > 0)
+        {
+            var thirtyDaysAgo = DateTime.UtcNow.Date.AddDays(-29);
+            var allBucketsFor30d = await db.AnalyticsDailyBuckets.Find(x =>
+                allListingIds.Contains(x.ListingId) &&
+                x.Date >= thirtyDaysAgo
+            ).ToListAsync(ct);
+            allImpressions30d = allBucketsFor30d.Sum(x => x.Impressions);
+        }
+
+        response.Listings.Add(new AnalyticsListingOption
+        {
+            Id = "all",
+            Title = "All services",
+            ThumbnailUrl = null,
+            Impressions30d = allImpressions30d,
+        });
+
+        // Add each listing
+        var thirtyDaysAgoDate = DateTime.UtcNow.Date.AddDays(-29);
+        foreach (var listing in listings)
+        {
+            var impressions30d = 0;
+            var bucketsFor30d = await db.AnalyticsDailyBuckets.Find(x =>
+                x.ListingId == listing.Id &&
+                x.Date >= thirtyDaysAgoDate
+            ).ToListAsync(ct);
+            impressions30d = bucketsFor30d.Sum(x => x.Impressions);
+
+            response.Listings.Add(new AnalyticsListingOption
+            {
+                Id = listing.Id,
+                Title = listing.Title,
+                ThumbnailUrl = null, // TODO: resolve cover image URL if available
+                Impressions30d = impressions30d,
+            });
+        }
+
+        return ServiceProviderResult<AnalyticsListingsResponse>.Ok(response);
+    }
+
+    private static (DateTime start, DateTime end) ResolveRange(string range)
+    {
+        var today = DateTime.UtcNow.Date;
+        return range switch
+        {
+            "today" => (today, today),
+            "7d" => (today.AddDays(-6), today),
+            "30d" => (today.AddDays(-29), today),
+            "90d" => (today.AddDays(-89), today),
+            _ => (today.AddDays(-29), today),
+        };
+    }
+
+    private static (DateTime start, DateTime end) PreviousRange(DateTime start, DateTime end)
+    {
+        var lengthDays = (end - start).Days + 1;
+        var prevEnd = start.AddDays(-1);
+        var prevStart = prevEnd.AddDays(-(lengthDays - 1));
+        return (prevStart, prevEnd);
+    }
+
+    private static decimal? ComputeDelta(int current, int previous)
+    {
+        if (previous == 0) return null;
+        return ((decimal)(current - previous) / previous) * 100m;
+    }
+
+    private static decimal? ConversionRateDelta(decimal? current, decimal? previous)
+    {
+        if (current is null || previous is null || previous == 0) return null;
+        return ((current - previous) / previous) * 100m;
+    }
 }
