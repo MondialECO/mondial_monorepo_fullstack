@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
-  ArrowLeft,
   Eye,
   LayoutGrid,
   MousePointerClick,
@@ -79,22 +78,17 @@ export function ServicesWorkspace() {
 
   return (
     <SpPage>
-      <SpPageHeader
-        title={isCreating ? 'Create service' : isEditing ? 'Edit service' : 'Service Catalog'}
-        description={
-          isCreating
-            ? 'Describe the service clients can discover, then add its packages and terms.'
-            : isEditing
-              ? 'Edit your service listing.'
-              : 'Create and manage the services clients can discover in the marketplace.'
-        }
-        actions={
-          isWizard ? (
-            <Button type="button" variant="outline" onClick={showList}>
-              <ArrowLeft className="size-4" aria-hidden="true" />
-              All services
-            </Button>
-          ) : (
+      {!isWizard && (
+        <SpPageHeader
+          title={isCreating ? 'Create service' : isEditing ? 'Edit service' : 'Service Catalog'}
+          description={
+            isCreating
+              ? 'Describe the service clients can discover, then add its packages and terms.'
+              : isEditing
+                ? 'Edit your service listing.'
+                : 'Create and manage the services clients can discover in the marketplace.'
+          }
+          actions={
             <div className="flex flex-col items-end gap-2">
               <Button
                 type="button"
@@ -109,9 +103,9 @@ export function ServicesWorkspace() {
                 <p className="text-xs text-muted-foreground">Maximum of 4 services reached</p>
               )}
             </div>
-          )
-        }
-      />
+          }
+        />
+      )}
 
       {!isCreating && !serviceId && <ListingsList onOpen={showService} onCreate={showNew} />}
       {isWizard && <ServiceCatalogWizard onExit={showList} />}
