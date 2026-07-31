@@ -18,7 +18,6 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import AuthGuard from '@/components/layout/AuthGuard';
 import { useMarketplaceListingDetail } from '@/hooks/queries/marketplace';
-import { useToast } from '@/hooks/use-toast';
 
 export default function MarketplaceListingDetailPage() {
   return (
@@ -36,7 +35,6 @@ function MarketplaceListingDetailContent() {
 
   const { data, isLoading, isError } = useMarketplaceListingDetail(listingId);
   const listing = data?.data;
-  const { toast } = useToast();
 
   // Analytics Phase C: Fire impression on mount
   useEffect(() => {
@@ -74,21 +72,11 @@ function MarketplaceListingDetailContent() {
 
   const handleOrderClick = useCallback(() => {
     fireAnalyticsClick('order');
-    toast({
-      title: 'Coming Soon',
-      description: 'Order flow launching in Phase M2',
-      variant: 'default',
-    });
-  }, [fireAnalyticsClick, toast]);
+  }, [fireAnalyticsClick]);
 
   const handleMessageClick = useCallback(() => {
     fireAnalyticsClick('message');
-    toast({
-      title: 'Coming Soon',
-      description: 'Direct messaging launching in Phase M3',
-      variant: 'default',
-    });
-  }, [fireAnalyticsClick, toast]);
+  }, [fireAnalyticsClick]);
 
   const handlePackageChange = useCallback(
     (tier: string) => {
