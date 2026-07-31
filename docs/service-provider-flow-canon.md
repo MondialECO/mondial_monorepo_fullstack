@@ -1435,7 +1435,9 @@ Cross-module: §2 (12% platform fee), §3 (provider trust), §4 (SP Workroom & E
 
 **Grid:** card layout, responsive (1-2-3-4 columns per breakpoint). Each card shows cover image (via `resolveProviderMediaUrl` — `/uploads/...` static path convention), title (2-line truncate), provider name + trust indicator, "From €X" starting price, delivery time chip, rating stars if applicable (never fake stars, canon §9.0).
 
-**Pagination:** classic page navigation, 12 cards per page (v1). Empty state honest.
+**Pagination:** classic page navigation, 12 cards per page (v1). Infinite scroll is a v2 enhancement.
+
+**Empty state:** honest, with exact copy the implemented grid depends on — "No services match your filters. Try clearing some filters or a different search term." — plus a reset filters button.
 
 Only listings with `Status == Published` surface here (server-side filter). Draft / Unpublished / Archived never appear.
 
@@ -1450,7 +1452,8 @@ Only listings with `Status == Published` surface here (server-side filter). Draf
 - Provider header: profile image, display name, trust indicators, response time, completed engagements count.
 - Packages (Basic/Standard/Premium): price (EUR), delivery time, revisions, screens, feature checkboxes, add-ons, additional revision offer.
 - Gallery images + preview video (URLs resolved via `resolveProviderMediaUrl`).
-- FAQ list, metadata tags, search tags.
+- FAQ list (accordion).
+- Metadata + Search tags: chip display, non-clickable in v1 (search integration deferred to v2).
 
 **Layout:** 2/3 left column + 1/3 sticky right. Left has title, `MediaCarousel` (video-first, hover-play, image auto-advance), description, FAQ. Right has provider header + package selector card.
 
@@ -1848,6 +1851,8 @@ Key lessons for M2-M8:
 - Do NOT use `USD` as the default currency. `EUR` is the platform default.
 - Do NOT reference the legacy `TransactionController` / `Transactions` collection — it is orphaned and unrelated to Module 4.
 - Do NOT add `ChatMessage.OrderId`. Use `Conversation.RelatedEngagementId` (parallel to the existing `RelatedProjectId` pattern).
+- Do NOT ship any phase with fake sample data. Empty states are honest.
+- Do NOT create separate marketplaces per role. One `/marketplace/services` serves all roles. Future `/marketplace/pitches`, `/marketplace/investors`, etc. are separate marketplaces for entirely different content types, not role variants.
 
 ---
 
