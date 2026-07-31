@@ -826,6 +826,8 @@ Entity `ServiceFAQ` (above). **Visibility:** All Packages / Basic Only / Standar
 
 ### 6.10 Service list view — analytics dashboard replacement *(added 2026-07-31)*
 
+**Cross-module integration note:** See §10 for the marketplace + order lifecycle spec — client-facing public listings surface there via a new `GET /api/marketplace/services/[listingId]` endpoint. Service Catalog listings are snapshotted at order time, so subsequent listing edits do not affect already-placed orders.
+
 **Legacy listing-cards grid — REMOVED.** The prior `/services` page displayed a grid of listing cards with status badges, a 4-listing capacity banner, and status-filter controls. This grid UI has been replaced by the Analytics & Growth dashboard (§9.4 Phase D) effective 2026-07-31. 
 
 **Current state:** `/dashboard/serviceprovider/services` now renders a unified Analytics dashboard, not a service-management grid. The dashboard contains:
@@ -915,6 +917,8 @@ Merges delivery workroom and earnings into one module. It consumes accepted Modu
 **Module-5 amendment — LIVE (`c64aab5`):** the private repeat-client and on-time formulas were extracted from `WorkroomService.RefreshTrust` into shared `IClientRelationshipCalculator` / `ClientRelationshipCalculator`. Module 4 Trust and Module 5 client/delivery analytics now consume the identical implementation, eliminating formula drift. Module-4 targeted tests were **25 passed / 0 failed / 0 skipped before** and **25 / 0 / 0 after** the extraction (also **25 / 0 / 0** in final regression).
 
 ### 8.0 What's live vs. deferred (verified against code)
+
+**Cross-module integration note:** See §10 for the marketplace + order lifecycle spec — new orders created via marketplace flow feed the existing workroom + escrow logic here without structural change.
 
 - **LIVE storage/backend:** 16 top-level MongoDB collections (§4.3), `EnsureWorkroomIndexes()`, actor-scoped `/api/workroom` and `/api/earnings` APIs, state-machine checks, audit rows, notifications, timed rules, statements, and provider financial settings on the `ServiceProviderProfiles` split record (§1A; formerly embedded on the profile).
 - **LIVE Proposal→Engagement handoff:** every accepted proposal path immediately enqueues `WorkroomConversionJob.ConvertAsync`; a minutely sweeper catches missed `Accepted/AwaitingModule4` rows. Conversion is idempotent through a unique `WorkroomEngagement.ProposalId`, an existence check, and the proposal's atomic ownership transition. An empty `MilestonePlan` becomes exactly one full-scope milestone for the accepted price. Contract + engagement + milestone creation and `Proposal → ConvertedToProject/Converted` commit in one Mongo transaction.
@@ -1301,7 +1305,7 @@ Summary, timeseries, listings-for-dropdown aggregations. Unit tests for date-ran
 
 **Phase C — Frontend recording. ⏳ PLANNED**
 
-Fire-and-forget impression/click calls on public listing detail pages. Verify events land in MongoDB. Confirm provider self-view does NOT increment.
+Fire-and-forget impression/click calls on public listing detail pages. Verify events land in MongoDB. Confirm provider self-view does NOT increment. Frontend wiring is scheduled to happen during §10 Phase M1 (marketplace + public listing detail page implementation).
 
 **Phase D — Analytics workspace UI. ✅ IMPLEMENTED (2026-07-31)**
 
@@ -1362,7 +1366,336 @@ Deferred. Server-computed best-performing-listing flag. Optional per-CTA click b
 
 ---
 
-## 10. Cross-cutting technical rules (every module)
+## 10. Marketplace + Order Lifecycle Architecture *(planned, not yet implemented)*
+
+Reference specification for the Mondial.eco client-facing marketplace where all authenticated users (Creator, Entrepreneur, Investor, SP) browse Service Provider listings, place orders, complete client-side requirements, engage in order-scoped workrooms, and see their orders tracked. **All content below is PLANNED; nothing described here is yet implemented.** Phased plan (M1-M8) appears at §10.13.
+
+Cross-module: touches §2 (12% fee rule), §3 (provider trust display), §4 (workroom + escrow), §6 (Service Catalog as source data), §9.4 (Phase C analytics hookup).
+
+### 10.1 Goals
+
+- Single unified marketplace UI at `/marketplace/services` — every authenticated user sees the same UI regardless of role.
+- Non-authenticated visitors cannot access marketplace or listing detail pages. Auth gate enforced at the route level.
+- Client actions (Message provider, Order package) available to all authenticated roles.
+- Fiverr-style discovery: search, filter (category, sub-category, price, delivery time), sort (recent, price, rating), pagination.
+- Full order lifecycle: package + add-ons + revisions selection → requirements collection → escrow-based payment (STUB) → InProgress → Delivered → Approved/InRevision loop → Rated.
+- Payment via `IPaymentService` interface (STUB v1, swappable later).
+- **12% platform fee applied on transaction** (permanent §2 rule).
+- Order-scoped workroom for buyer-seller communication + file exchange.
+- Backend-authoritative state — frontend does not compute prices or transition states.
+- Analytics: impressions on public listing view, clicks on Order / Message CTAs, inquiries via existing message-send hook, order-conversion metric (Phase M6).
+
+### 10.2 Routes and access model
+
+**Public URL structure:**
+```
+/marketplace/services                  # grid (auth required)
+/marketplace/services/[listingId]      # detail (auth required)
+```
+
+**Future-namespace-ready:**
+```
+/marketplace/pitches                   # Creator pitches (future)
+/marketplace/investors                 # Investor discovery (future)
+```
+
+**Client-side dashboard:**
+```
+/dashboard/[role]/orders               # order list (all roles use same UI)
+/dashboard/[role]/orders/[orderId]     # order-scoped workroom
+```
+
+**Auth gate:** both routes use the same auth middleware as authenticated dashboards; non-authenticated visitors redirect to login. All roles see identical UI. Role is not used to switch layout; only CTA post-click behavior may adapt by role in future (v2 constraint).
+
+### 10.3 Marketplace grid page
+
+**Route:** `/marketplace/services`.
+
+**Header:** full-width search input.
+
+**Filter bar** (horizontal, above grid):
+- Category dropdown (12 canonical categories from `ServiceTypeLookup`).
+- Sub-Category dropdown (populates based on Category).
+- Price range (Min, Max inputs).
+- Delivery time dropdown (Any / 1 day / 3 days / 7 days / 14+ days).
+- Sort dropdown (Recent / Price low-to-high / Price high-to-low / Rating).
+- Reset filters button.
+
+**Grid:** card layout, responsive (1-2-3-4 columns per breakpoint). Each card shows cover image (via `resolveProviderMediaUrl`), title (2-line truncate), provider name + trust indicator, "From $X" starting price, delivery time chip, rating stars if applicable (never fake stars — canon §9.0).
+
+**Pagination:** classic page navigation, 12 cards per page (v1). Infinite scroll is v2.
+
+**Empty state:** honest "No services match your filters. Try clearing some filters or a different search term." + reset button.
+
+### 10.4 Public listing detail page
+
+**Route:** `/marketplace/services/[listingId]`.
+
+**New endpoint:** `GET /api/marketplace/services/[listingId]` — public-facing only, distinct from the SP-side listing GET (which returns provider-internal fields the client shouldn't see).
+
+**Response fields (client-safe only):**
+- Service title, category + sub-category labels.
+- Full description HTML (DOMPurify-sanitized).
+- Provider header: profile image, display name, trust indicators (Verified badge, trust score bar per §3), response time (if computed), total orders completed (if computed).
+- Packages (Basic/Standard/Premium) with price, delivery, revisions, screens, feature checkboxes, add-ons, additional revision offer.
+- Gallery images + preview video (via `resolveProviderMediaUrl`).
+- FAQ list (accordion).
+- Metadata + Search tags (chip display, non-clickable v1).
+
+**Layout:** left column (2/3) — title, thumbnails, description, gallery, video, FAQ. Right column (1/3, sticky) — package selector card.
+
+**Package selector card** (right column):
+- Tab strip: Basic / Standard / Premium (RECOMMENDED badge on Standard matching §6 §6.8b).
+- Selected package's price, delivery, features.
+- Add-ons checklist (each with checkbox and price).
+- Additional Revisions selector (numeric stepper, price × N).
+- Dynamic total price (updates as add-ons/revisions toggled).
+- Primary CTA: "Order for $XXX".
+- Secondary CTA: "Message provider" (opens chat with SP — no order yet).
+
+**Analytics wire** (Phase C hookup, wired during Phase M1):
+- Page mount → `POST /api/service-provider/analytics/impression { listingId }`.
+- Order button click → `POST /api/service-provider/analytics/click { listingId, target: "order" }`.
+- Message button click → click with target "message".
+- Package tab switch → click with target "tier-basic|tier-standard|tier-premium".
+- All fire-and-forget, non-blocking (keepalive, catch-and-swallow).
+
+### 10.5 Order creation flow
+
+**Trigger:** client clicks "Order for $XXX" on the package selector card.
+
+**Steps:**
+
+**Step A — Summary review:** modal or route (`/marketplace/services/[listingId]/order`); recap of tier + price + add-ons + delivery + total; editable back link.
+
+**Step B — Requirements form:** reads SP's ClientRequirements template for the selected package (§6.4); client fills each required question (Text / File / Choice types); cannot proceed if required fields empty.
+
+**Step C — Payment (STUB):** total including 12% platform fee breakdown (product $ + platform fee $ = total $); click "Pay & Place Order" → `POST /api/marketplace/orders`; backend calls `IPaymentService.ChargeAsync(...)` (StubPaymentService returns success immediately); order created with state = `PendingRequirements` (if requirements incomplete) or `InProgress` (if complete); client redirected to `/dashboard/[role]/orders/[orderId]`.
+
+At any point before payment, client can back out — no order, no charge.
+
+### 10.6 Data models
+
+**Orders collection:**
+
+```
+{
+  _id: ObjectId,
+  OrderNumber: string,                 // human-readable "M-YYYY-MM-DD-NNNNNN"
+  ListingId: string,
+  ProviderId: string,
+  ClientId: string,
+  ClientRole: string,                  // "creator" | "entrepreneur" | ...
+  
+  Package: {                           // snapshot at order time
+    Tier: string,
+    Title: string,
+    BasePrice: decimal,
+    DeliveryTimeValue: int,
+    DeliveryTimeUnit: string,
+    RevisionsIncluded: int,
+    ScreensIncluded: int?,
+    Features: [{ Name, Included }],
+    SnapshotAt: DateTime,
+  },
+  
+  SelectedAddOns: [{ AddOnId, Name, Price, DeliveryImpactDays? }],
+  AdditionalRevisions: { Count: int, PerRevisionPrice: decimal },
+  
+  Requirements: [
+    { QuestionId, QuestionText, QuestionType, Answer }
+  ],
+  
+  Pricing: {
+    ProductSubtotal: decimal,
+    PlatformFee: decimal,              // 12% of ProductSubtotal
+    Total: decimal,
+    Currency: string,                  // "USD" v1
+  },
+  
+  Payment: {
+    Status: string,                    // "Pending"|"Held"|"Released"|"Refunded"|"Failed"
+    Provider: string,                  // "stub" v1
+    ProviderTxnId: string?,
+    ChargedAt: DateTime?,
+    ReleasedAt: DateTime?,
+  },
+  
+  State: string,                       // see §10.7
+  StateHistory: [{ State, EnteredAt, ActorId, Reason? }],
+  
+  DeliveryDeadline: DateTime,
+  DeliveredAt: DateTime?,
+  ApprovedAt: DateTime?,
+  RatedAt: DateTime?,
+  
+  RevisionCount: int,
+  RevisionRequests: [{ RequestedAt, Message, ResolvedAt? }],
+  
+  Rating: { Score: int?, Comment: string?, RatedAt: DateTime? },
+  
+  CreatedAt: DateTime,
+  UpdatedAt: DateTime,
+}
+```
+
+**Indexes:** unique `OrderNumber`; compound `(ClientId, State)` for client dashboard; compound `(ProviderId, State)` for SP workroom; compound `(ListingId, State)` for per-listing analytics (future).
+
+**Order messages + attachments:** reuse existing `ChatMessage` model with an added optional `OrderId: string?` field so messages can be scoped to a specific order. Do NOT create a parallel message collection. Files uploaded within order workroom go through existing SaveFile mechanism. Add allow-list entry `marketplace/order-attachments`.
+
+### 10.7 State machine
+
+**States:**
+```
+PendingRequirements  — Order created, requirements not fully submitted
+InProgress           — Client submitted requirements; provider working
+Delivered            — Provider marked work delivered
+InRevision           — Client requested changes (loops back to InProgress)
+Approved             — Client approved delivery (funds release)
+Rated                — Client left rating (final terminal state)
+Cancelled            — Order cancelled (refund path, v2)
+Disputed             — Escrow held pending resolution (v2)
+```
+
+**Transitions summary:**
+
+| From                  | To                    | Trigger                                          |
+|-----------------------|-----------------------|--------------------------------------------------|
+| (new)                 | PendingRequirements   | Client places order + pays; requirements incomplete |
+| (new)                 | InProgress            | Client places order + pays; requirements complete   |
+| PendingRequirements   | InProgress            | Client submits complete requirements             |
+| InProgress            | Delivered             | Provider marks delivered                         |
+| Delivered             | InRevision            | Client requests revision (if revisions available)|
+| InRevision            | InProgress            | Provider acknowledges new work                   |
+| Delivered             | Approved              | Client approves OR auto-approve after N days (§4.6)|
+| Approved              | Rated                 | Client submits rating                            |
+| Any (except Rated)    | Cancelled             | Explicit cancellation with reason (v2)           |
+| Any (except Rated)    | Disputed              | Client or provider raises dispute (v2)           |
+
+**Auto-approval:** N days after Delivered (default 3 days per §4.6), unless InRevision or Dispute raised. Hangfire job runs hourly to check eligible auto-approvals.
+
+**Escrow release on entering Approved:**
+- `Payment.Status: Held → Released`.
+- `Payment.ReleasedAt: now`.
+- Provider's earnings accumulator gets `Pricing.Total - Pricing.PlatformFee`.
+
+State transitions are backend-authoritative. Frontend calls dedicated endpoints: `POST /api/orders/[id]/deliver`, `POST /api/orders/[id]/request-revision`, `POST /api/orders/[id]/approve`, `POST /api/orders/[id]/rate`. Frontend does not directly patch the `State` field.
+
+### 10.8 Payment layer (STUB)
+
+**Interface:**
+```csharp
+public interface IPaymentService
+{
+    Task<PaymentResult> ChargeAsync(ChargeRequest request, CancellationToken ct);
+    Task<PaymentResult> ReleaseAsync(string txnId, decimal amount, CancellationToken ct);
+    Task<PaymentResult> RefundAsync(string txnId, decimal amount, CancellationToken ct);
+}
+```
+
+`StubPaymentService` implementation: all methods return immediate success with a fake `txnId` (`stub-{Guid}`). Register as scoped in DI.
+
+**Fee calculation** is separate from `IPaymentService` — always computed in the order-creation service (not in `IPaymentService` itself):
+```
+platformFee = Math.Round(productSubtotal * 0.12m, 2);
+total = productSubtotal + platformFee;
+```
+
+The 12% rate is centralized in configuration or a `PricingCalculator` static — do NOT hardcode it in multiple places.
+
+### 10.9 Order-scoped workroom
+
+**Route:** `/dashboard/[role]/orders/[orderId]` (same UI for all roles; the caller's role is used only for the URL segment and to determine whether they are the client or provider).
+
+**Layout:**
+- Header: order number, current state chip (color-coded), provider/client name (whoever is not the caller), delivery deadline countdown.
+- Left column: order summary (package, add-ons, revisions, total, payment status), requirements accordion.
+- Right column: message thread + file attachments (chat).
+- Bottom: primary action buttons based on state + caller role (Provider viewing InProgress → "Mark as Delivered"; Client viewing Delivered → "Approve" + "Request Revision"; Client viewing Approved → "Rate this order").
+
+**Access control:** only client + provider of the order can view. JWT `userId` check against `Order.ClientId` and `Order.ProviderId`; any other authenticated user → 403.
+
+**Message flow:** extended `ChatMessage` with optional `OrderId` field. Order workroom shows only messages where `OrderId == currentOrderId`. Sending from within the workroom auto-scopes to that order.
+
+### 10.10 Client dashboard (orders view)
+
+**Route:** `/dashboard/[role]/orders` (same UI all roles).
+
+**Layout:** filter tabs (Active / Completed / Cancelled) + order card list, sortable by recent activity. Each card shows order number, listing title + provider name + thumbnail, current state chip, total price, delivery deadline or terminal timestamp. Click → open order-scoped workroom.
+
+**Auto-refresh:** poll orders list every 30-60 seconds when page is open (v1). Websocket / SSE is v2.
+
+### 10.11 Provider-side integration
+
+Existing §4 (SP Workroom & Earnings) needs a small hook to recognize orders created via marketplace. Nothing needs to be BUILT NEW in §4 — the existing workroom UI reads from `Orders` collection and works for orders regardless of source.
+
+**Confirm:**
+- SP's existing workroom/orders list shows orders where `ProviderId == currentUserId`.
+- State machine transitions in §10.7 triggered from SP's workroom actions (Deliver, etc.) exactly as from the client workroom.
+- Earnings computation in §4 works with these orders (`Payment.Released → earnings += Pricing.Total - Pricing.PlatformFee`).
+
+### 10.12 Analytics integration (Phase C hookup)
+
+Marketplace + listing detail pages are the trigger points for the long-planned Phase C tracking (§9.4).
+
+**Wired during Phase M1:**
+- Listing detail page mount → impression endpoint.
+- Order button click → click endpoint with target "order".
+- Message button click → click endpoint with target "message".
+- Package tab click → click endpoint with target "tier-*".
+
+Fire-and-forget: `fetch(..., { keepalive: true }).catch(() => {})`. Never blocks user interaction. No UI feedback.
+
+**Inquiry counter:** existing hook in `ChatController.SendMessage` (Phase A) already increments when message sent with `ListingId` context. Marketplace's "Message provider" button calls existing message-send with `ListingId` populated → counter works automatically.
+
+**Order-conversion metric** (Phase M6): once orders exist, new counter `Orders` added to `AnalyticsDailyBuckets`. Dashboard shows Orders/Impressions as conversion metric alongside existing four.
+
+### 10.13 Implementation phases (planned, not yet implemented)
+
+**Phase M1 — Marketplace grid + listing detail + Phase C analytics wire.** Backend: `GET /api/marketplace/services` (paginated list with filters), `GET /api/marketplace/services/[listingId]` (public detail). Frontend: `/marketplace/services` grid + detail pages. Analytics fires (impression on mount, click on package tab). Order button leads to "coming soon" v1 stub.
+
+**Phase M2 — Order creation + payment stub.** Backend: Orders collection, creation endpoint, IPaymentService + StubPaymentService, fee calculation, escrow held state. Frontend: order creation modal, package + add-ons + revisions selector, requirements form, payment confirmation. Order button now creates real orders.
+
+**Phase M3 — Order-scoped workroom + client dashboard.** Backend: order-scoped message queries, order transition endpoints (deliver, approve, revise, rate). Frontend: `/dashboard/[role]/orders` list + `[orderId]` workroom. State-based action buttons. Chat uses existing infrastructure.
+
+**Phase M4 — Escrow release + auto-approval.** Backend: Hangfire job for auto-approval after N days, payment release on Approved, provider earnings accumulation. Frontend: countdown UI in workroom.
+
+**Phase M5 — Ratings.** Backend: rating submission endpoint, aggregate provider rating updates. Frontend: rating modal on Approved state, rating display on listing detail + provider profile.
+
+**Phase M6 — Order-conversion metric in analytics.** Backend: `Orders` counter added to AnalyticsDailyBuckets, order-creation service increments it. Frontend: new metric card in Analytics dashboard (Orders/Impressions conversion).
+
+**Phase M7 (deferred)** — Cancellation + Dispute. Dispute state machine transitions, refund handling, manual moderation queue, dispute UI in workroom.
+
+**Phase M8 (v2, deferred)** — Real payment integration. Replace StubPaymentService with real gateway (Stripe/PayPal). Abstraction in place; only implementation swaps.
+
+### 10.14 Privacy, security, edge cases
+
+- Auth gate on both routes — no guest access.
+- Public listing detail endpoint returns only client-safe fields; NEVER return provider's internal analytics, capacity, or draft content.
+- Order access strictly limited to client + provider of that order.
+- Payment amounts calculated server-side. Frontend-supplied amounts ignored — server recomputes from `listingId` + package choices.
+- Add-on IDs and requirement question IDs validated against listing's published state at order time. Invalid IDs → reject.
+- Package price snapshot: entire package frozen into `Order.Package.SnapshotAt` at order time. If SP later edits the listing, existing orders retain original terms.
+- No PII in analytics recordings for these interactions (§9.4).
+- Order numbers server-side generated, sequential per day (`M-YYYY-MM-DD-NNNNNN`) — never expose ObjectId to client.
+- Monetary values stored as `decimal` (not `double`).
+- Currency USD v1; multi-currency deferred.
+
+### 10.15 What NOT to do
+
+- Do NOT allow non-authenticated users to see listing content beyond a "please sign in" gate.
+- Do NOT create parallel listing-detail endpoints. One `GET /api/marketplace/services/[listingId]` for public consumption; the SP-side existing endpoint stays private.
+- Do NOT compute prices or platform fees client-side and send them as-is. Server always recomputes.
+- Do NOT hardcode the 12% platform fee in multiple places. Centralize.
+- Do NOT ship any phase with fake sample data. Empty states honest.
+- Do NOT skip the Payment abstraction "because it's just a stub." The interface is what allows swap-in later without frontend or order-service changes.
+- Do NOT create a new chat/message model. Extend the existing `ChatMessage` with `OrderId`.
+- Do NOT build cancellation, dispute, refund flows in v1. Phase M7.
+- Do NOT create separate marketplaces per role. One `/marketplace/services` serves all roles. Future `/marketplace/pitches` etc. are separate marketplaces for entirely different content types, not role variants.
+
+---
+
+## 11. Cross-cutting technical rules (every module)
 
 1. **Auth + ownership on every endpoint.** JWT `[Authorize]` at the controller; every action is **owner-scoped** — the `ProviderId`/`UserId` comes from the authenticated principal, never a request field. An SP can only read/write its own data.
 2. **`ApiResponse` envelope on every response.** No bare `Ok(obj)` or ad-hoc shapes; the service layer returns `ServiceProviderResult<T>` and the controller maps it via `Map<T>()`.
@@ -1544,6 +1877,8 @@ The repo's **root `.gitignore` is a binary / non-UTF8 file**, which can make the
 ---
 
 ## Changelog
+
+**2026-07-31 — Archived marketplace + order lifecycle architecture as new §10.** Documented client-facing marketplace grid + public listing detail pages (`/marketplace/services`), order creation flow (package selection → requirements → payment STUB), full state machine (PendingRequirements → InProgress → Delivered → InRevision/Approved → Rated), `Orders` collection + snapshot pattern, order-scoped workroom + client dashboard, provider integration with existing workroom, analytics Phase C hookup on listing detail page, and phased implementation plan (M1-M8). **All phases planned but not yet implemented** — reference only. Cross-references added to §4 (workroom integration), §6 (public endpoint + listing snapshots), §9.4 (Phase C wiring scheduled for M1). Section numbering: renamed former §10–17 (Cross-cutting rules, SP journey, etc.) to §11–18.
 
 **2026-07-31 — Analytics tracking system Phase A, B, D IMPLEMENTED; C, E remain PLANNED (§9.4 status update).** Phases A (backend recording with session dedup and provider self-view filtering), B (backend read endpoints with ownership validation), and D (analytics dashboard UI replacement for /services grid) shipped on `dev-hafiz`. Phase A: 6 commits (63ad3b8...266cdcb) — added `AnalyticsDailyBucket`/`AnalyticsSessionSeen` models, fire-and-forget recording service, public impression/click endpoints, inquiry hook into message-send, indexes, config. Phase B: 4 commits (4281595...75e7eb3) — added response DTOs, summary/timeseries/listings aggregation endpoints, period-over-period delta calculation, ownership enforcement (combined null + auth check returning NotFound). Phase D: 2 commits (e7dbe50...b1939e4) — rebuilt /services from grid into dashboard with service selector, time-range tabs (Today/7d/30d/90d), 4 metric cards (Impressions/Clicks/Inquiries/Conversion Rate with deltas and em-dash honest empty states), Recharts line chart (Impressions vs Clicks), edit button (specific listings only). All frontend colors from globals.css tokens. §9.4 header and §9.4.8 updated to reflect implemented status; new §9.4.10 records implementation summary and commit hashes. Cross-references: §6 notes removal of listing-cards grid and 4-listing banner; §9.0 notes Phase A/B/D implemented. Phase C (public page frontend recording) and Phase E (TOP GIG badge, per-CTA breakdown, advanced ranges) remain deferred.
 
