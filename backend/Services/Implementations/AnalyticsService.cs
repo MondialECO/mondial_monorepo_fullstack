@@ -860,10 +860,8 @@ public class AnalyticsService(
         if (listingIdOrAll != "all")
         {
             var listing = await db.ServiceListings.Find(x => x.Id == listingIdOrAll).FirstOrDefaultAsync(ct);
-            if (listing is null)
+            if (listing is null || listing.ProviderId != providerId)
                 return ServiceProviderResult<AnalyticsSummaryResponse>.NotFound("Listing not found.");
-            if (listing.ProviderId != providerId)
-                return ServiceProviderResult<AnalyticsSummaryResponse>.Conflict("You do not own this listing.");
         }
 
         var (currentStart, currentEnd) = ResolveRange(range);
@@ -941,10 +939,8 @@ public class AnalyticsService(
         if (listingIdOrAll != "all")
         {
             var listing = await db.ServiceListings.Find(x => x.Id == listingIdOrAll).FirstOrDefaultAsync(ct);
-            if (listing is null)
+            if (listing is null || listing.ProviderId != providerId)
                 return ServiceProviderResult<AnalyticsTimeseriesResponse>.NotFound("Listing not found.");
-            if (listing.ProviderId != providerId)
-                return ServiceProviderResult<AnalyticsTimeseriesResponse>.Conflict("You do not own this listing.");
         }
 
         var (rangeStart, rangeEnd) = ResolveRange(range);
