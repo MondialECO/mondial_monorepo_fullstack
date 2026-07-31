@@ -14,12 +14,18 @@ namespace WebApp.Services.Implementations
         private readonly MongoDbContext _db;
         private readonly ILogger<MarketplaceService> _logger;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IProfessionalProfileStore _professionalStore;
 
-        public MarketplaceService(MongoDbContext db, ILogger<MarketplaceService> logger, UserManager<ApplicationUser> userManager)
+        public MarketplaceService(
+            MongoDbContext db,
+            ILogger<MarketplaceService> logger,
+            UserManager<ApplicationUser> userManager,
+            IProfessionalProfileStore professionalStore)
         {
             _db = db;
             _logger = logger;
             _userManager = userManager;
+            _professionalStore = professionalStore;
         }
 
         public async Task<ServiceProviderResult<MarketplaceListingsResponse>> GetPublishedListingsAsync(
@@ -124,23 +130,19 @@ namespace WebApp.Services.Implementations
 
                 var providerIds = pagedListings.Select(x => x.ProviderId).Distinct().ToList();
 
-                // Use parallel FindByIdAsync to properly populate embedded ServiceProviderProfile
+                // Fetch users and their professional profiles in parallel
                 var providerLookups = providerIds.Select(async id => new {
                     Id = id,
-                    User = await _userManager.FindByIdAsync(id)
+                    User = await _userManager.FindByIdAsync(id),
+                    Professional = await _professionalStore.GetByUserIdAsync(id)
                 });
                 var providerResults = await Task.WhenAll(providerLookups);
                 var providerMap = providerResults
                     .Where(x => x.User != null)
-                    .ToDictionary(x => x.Id, x => x.User);
-
-                foreach (var result in providerResults)
-                {
-                    _logger.LogInformation(
-                        "[MarketplaceService] Provider {Id} found={Found} HasProfile={HasProfile} ProfileImage={ProfileImage}",
-                        result.Id, result.User != null, result.User?.ServiceProviderProfile != null,
-                        result.User?.ServiceProviderProfile?.ProfileImage?.PublicUrl ?? "null");
-                }
+                    .ToDictionary(x => x.Id, x => (x.User, x.Professional));
+                var professionalMap = providerResults
+                    .Where(x => x.Professional != null)
+                    .ToDictionary(x => x.Id, x => x.Professional);
 
                 var packages = await _db.ServicePackages
                     .Find(p => pagedListings.Select(l => l.Id).Contains(p.ServiceId) &&
@@ -151,9 +153,10 @@ namespace WebApp.Services.Implementations
                 var cards = new List<MarketplaceListingCard>();
                 foreach (var listing in pagedListings)
                 {
-                    var provider = providerMap.TryGetValue(listing.ProviderId, out var p) ? p : null;
-                    var basicPkg = packageMap.TryGetValue(listing.Id, out var pkg) ? pkg : null;
-                    cards.Add(ToMarketplaceListingCard(listing, provider, basicPkg));
+                    providerMap.TryGetValue(listing.ProviderId, out var providerTuple);
+                    packageMap.TryGetValue(listing.Id, out var basicPkg);
+                    professionalMap.TryGetValue(listing.ProviderId, out var professional);
+                    cards.Add(ToMarketplaceListingCard(listing, providerTuple.Item1, basicPkg, professional));
                 }
 
                 return ServiceProviderResult<MarketplaceListingsResponse>.Ok(
@@ -193,6 +196,8 @@ namespace WebApp.Services.Implementations
                     return ServiceProviderResult<MarketplaceListingDetailResponse>.NotFound("Provider not found.");
                 }
 
+                var professional = await _professionalStore.GetByUserIdAsync(listing.ProviderId);
+
                 var packages = await _db.ServicePackages
                     .Find(x => x.ServiceId == listingId)
                     .ToListAsync(ct);
@@ -212,7 +217,7 @@ namespace WebApp.Services.Implementations
                         IndustryFocus = listing.IndustryFocus ?? new(),
                         GeographicCoverage = listing.GeographicCoverage ?? new(),
                         DescriptionHtml = listing.Description,
-                        Provider = ToMarketplaceProviderHeader(provider),
+                        Provider = ToMarketplaceProviderHeader(provider, professional),
                         Packages = packages.Select(p => ToMarketplacePackage(p)).ToList(),
                         Gallery = (listing.GalleryImages ?? new())
                             .OrderBy(x => x.DisplayOrder)
@@ -260,7 +265,8 @@ namespace WebApp.Services.Implementations
         private MarketplaceListingCard ToMarketplaceListingCard(
             ServiceListing listing,
             ApplicationUser? provider,
-            ServicePackage? basicPackage)
+            ServicePackage? basicPackage,
+            ProfessionalProfileRecord? professional)
         {
             var coverUrl = (listing.GalleryImages?.FirstOrDefault()?.PublicUrl)
                 ?? provider?.ServiceProviderProfile?.CoverImage?.PublicUrl;
@@ -275,7 +281,7 @@ namespace WebApp.Services.Implementations
                 {
                     ProviderId = listing.ProviderId,
                     DisplayName = provider?.Name ?? "Unknown",
-                    ProfileImageUrl = ResolveMediaUrl(provider?.ServiceProviderProfile?.ProfileImage?.PublicUrl),
+                    ProfileImageUrl = ResolveMediaUrl(professional?.ProfileImage?.PublicUrl),
                     Verified = provider?.ServiceProviderProfile?.VerificationStatus == ServiceProviderVerificationStatus.Verified
                 },
                 StartingPrice = basicPackage?.Price ?? 0,
@@ -287,7 +293,7 @@ namespace WebApp.Services.Implementations
             };
         }
 
-        private MarketplaceProviderHeader ToMarketplaceProviderHeader(ApplicationUser provider)
+        private MarketplaceProviderHeader ToMarketplaceProviderHeader(ApplicationUser provider, ProfessionalProfileRecord? professional)
         {
             var profile = provider.ServiceProviderProfile;
 
@@ -296,7 +302,7 @@ namespace WebApp.Services.Implementations
                 ProviderId = provider.Id.ToString(),
                 DisplayName = provider.Name ?? "Unknown",
                 Headline = profile?.Headline,
-                ProfileImageUrl = ResolveMediaUrl(profile?.ProfileImage?.PublicUrl),
+                ProfileImageUrl = ResolveMediaUrl(professional?.ProfileImage?.PublicUrl),
                 Verified = profile?.VerificationStatus == ServiceProviderVerificationStatus.Verified,
                 TrustScore = profile?.TrustScore > 0 ? (decimal)profile.TrustScore : null,
                 CompletedOrders = null,
