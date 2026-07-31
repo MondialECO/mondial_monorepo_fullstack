@@ -1,5 +1,7 @@
 import api from '@/lib/axios';
-import type { ApiResponse } from '@/types/service-provider';
+import type { ApiEnvelope, ApiResponse } from '@/types/service-provider';
+
+const unwrap = <T>(envelope: ApiEnvelope<T>): T => envelope.data;
 
 // ---------- Types ----------
 
@@ -92,7 +94,7 @@ export interface MarketplaceListingsQuery {
 
 // ---------- Wrappers ----------
 
-export const getMarketplaceListings = (query: MarketplaceListingsQuery = {}) => {
+export const getMarketplaceListings = async (query: MarketplaceListingsQuery = {}) => {
   const params = new URLSearchParams();
   Object.entries(query).forEach(([k, v]) => {
     if (v !== undefined && v !== null && v !== '') {
@@ -103,8 +105,8 @@ export const getMarketplaceListings = (query: MarketplaceListingsQuery = {}) => 
   const url = queryString
     ? `/marketplace/services?${queryString}`
     : '/marketplace/services';
-  return api.get<MarketplaceListingsResponse>(url);
+  return unwrap((await api.get<ApiEnvelope<MarketplaceListingsResponse>>(url)).data);
 };
 
-export const getMarketplaceListingDetail = (listingId: string) =>
-  api.get<MarketplaceListingDetail>(`/marketplace/services/${listingId}`);
+export const getMarketplaceListingDetail = async (listingId: string) =>
+  unwrap((await api.get<ApiEnvelope<MarketplaceListingDetail>>(`/marketplace/services/${listingId}`)).data);
