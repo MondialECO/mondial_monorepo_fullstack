@@ -1,14 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ChevronLeft, AlertCircle, Check } from 'lucide-react';
+import { ChevronLeft, AlertCircle, Check, Edit2 } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import {
-  SpCard,
-  SpMutationFeedback,
-} from '@/components/serviceprovider/ui';
+import { SpMutationFeedback } from '@/components/serviceprovider/ui';
+import { resolveProviderMediaUrl } from '@/lib/service-provider/provider-media';
 import type { ServiceListing, ServicePackage } from '@/types/service-catalog';
 import {
   useServiceListing,
@@ -21,9 +19,11 @@ const BASE_ROUTE = '/dashboard/serviceprovider/services';
 export function WizardStep6Review({
   listing,
   onBack,
+  onEditStep,
 }: {
   listing: ServiceListing;
   onBack: () => void;
+  onEditStep?: (step: number) => void;
 }) {
   const router = useRouter();
   const listingDetail = useServiceListing(listing.id);
@@ -35,7 +35,6 @@ export function WizardStep6Review({
   const [isPublishing, setIsPublishing] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
 
-  // Validate packages on load
   useEffect(() => {
     if (listingDetail.data?.packages) {
       validatePackages(listingDetail.data.packages);
@@ -53,66 +52,39 @@ export function WizardStep6Review({
       return;
     }
 
-    // Validate each package has required fields (§6.2)
     packages.forEach((pkg) => {
       if (!pkg.packageTitle?.trim()) errors.push(`${pkg.packageType} package: title is required.`);
-      if (!pkg.packageDescription?.trim()) errors.push(`${pkg.packageType} package: description is required.`);
       if (pkg.price <= 0) errors.push(`${pkg.packageType} package: price must be > 0.`);
       if (!pkg.currency?.trim()) errors.push(`${pkg.packageType} package: currency is required.`);
       if (pkg.deliveryTimeValue <= 0) errors.push(`${pkg.packageType} package: delivery time is required.`);
-      if (pkg.deliverables.length === 0) errors.push(`${pkg.packageType} package: at least one deliverable is required.`);
       if (!pkg.unlimitedRevisions && pkg.revisionRequestWindowDays <= 0)
         errors.push(`${pkg.packageType} package: revision policy is required.`);
     });
 
-    // Cross-package validation (§6.2)
     const basicPkg = packages.find((p) => p.packageType === 'Basic');
     const standardPkg = packages.find((p) => p.packageType === 'Standard');
     const premiumPkg = packages.find((p) => p.packageType === 'Premium');
 
-    // All must share currency
     const currencies = [...new Set(packages.map((p) => p.currency))];
-    if (currencies.length > 1) {
-      errors.push('All packages must use the same currency.');
-    }
+    if (currencies.length > 1) errors.push('All packages must use the same currency.');
 
-    // Unique titles
     const titles = packages.map((p) => p.packageTitle);
-    if (new Set(titles).size !== titles.length) {
-      errors.push('Package titles must be unique.');
-    }
+    if (new Set(titles).size !== titles.length) errors.push('Package titles must be unique.');
 
-    // Feature hierarchy (Standard >= Basic, Premium >= Standard)
-    if (basicPkg && standardPkg && standardPkg.includedFeatures.length < basicPkg.includedFeatures.length) {
+    if (basicPkg && standardPkg && standardPkg.includedFeatures.length < basicPkg.includedFeatures.length)
       warnings.push('Standard package has fewer features than Basic.');
-    }
-    if (standardPkg && premiumPkg && premiumPkg.includedFeatures.length < standardPkg.includedFeatures.length) {
+    if (standardPkg && premiumPkg && premiumPkg.includedFeatures.length < standardPkg.includedFeatures.length)
       warnings.push('Premium package has fewer features than Standard.');
-    }
 
-    // Price hierarchy
-    if (basicPkg && standardPkg && standardPkg.price < basicPkg.price) {
+    if (basicPkg && standardPkg && standardPkg.price < basicPkg.price)
       warnings.push('Standard package is priced lower than Basic.');
-    }
-    if (standardPkg && premiumPkg && premiumPkg.price < standardPkg.price) {
+    if (standardPkg && premiumPkg && premiumPkg.price < standardPkg.price)
       warnings.push('Premium package is priced lower than Standard.');
-    }
 
-    // Delivery time hierarchy (require confirmation if violated)
-    if (basicPkg && standardPkg) {
-      const basicDays = basicPkg.deliveryTimeValue;
-      const standardDays = standardPkg.deliveryTimeValue;
-      if (standardDays < basicDays) {
-        warnings.push('Standard package has a shorter delivery time than Basic.');
-      }
-    }
-    if (standardPkg && premiumPkg) {
-      const standardDays = standardPkg.deliveryTimeValue;
-      const premiumDays = premiumPkg.deliveryTimeValue;
-      if (premiumDays < standardDays) {
-        warnings.push('Premium package has a shorter delivery time than Standard.');
-      }
-    }
+    if (basicPkg && standardPkg && standardPkg.deliveryTimeValue < basicPkg.deliveryTimeValue)
+      warnings.push('Standard package has a shorter delivery time than Basic.');
+    if (standardPkg && premiumPkg && premiumPkg.deliveryTimeValue < standardPkg.deliveryTimeValue)
+      warnings.push('Premium package has a shorter delivery time than Standard.');
 
     setValidationErrors(errors);
     setValidationWarnings(warnings);
@@ -128,176 +100,185 @@ export function WizardStep6Review({
     setPublishError(null);
 
     try {
-      // Publish all packages first
-      if (listingDetail.data?.packages) {
-        await Promise.all(
-          listingDetail.data.packages.map((pkg) =>
-            publishPackage.mutateAsync([pkg.id, { confirmShorterDelivery: true }])
-          )
-        );
+      const isPublished = listing.status === 'Published';
+
+      if (isPublished) {
+        router.push(BASE_ROUTE);
+      } else {
+        if (listingDetail.data?.packages) {
+          await Promise.all(
+            listingDetail.data.packages.map((pkg) =>
+              publishPackage.mutateAsync([pkg.id, { confirmShorterDelivery: true }])
+            )
+          );
+        }
+        await publishListing.mutateAsync([listing.id]);
+        router.push(BASE_ROUTE);
       }
-
-      // Then publish the listing
-      await publishListing.mutateAsync([listing.id]);
-
-      // Redirect to services listing on success
-      router.push(BASE_ROUTE);
     } catch {
-      setPublishError('Could not publish service. Please try again.');
+      setPublishError('Could not save/publish service. Please try again.');
     } finally {
       setIsPublishing(false);
     }
   };
 
-  if (!listingDetail.data) {
-    return <div className="py-8 text-center">Loading...</div>;
-  }
+  if (!listingDetail.data) return <div className="py-8 text-center">Loading...</div>;
 
   const { packages } = listingDetail.data;
 
   return (
-    <div className="space-y-6">
-      <SpCard className="space-y-6">
-        <div>
-          <h2 className="text-lg font-semibold text-[#171717]">Review & Publish</h2>
-          <p className="mt-1 text-sm text-[#6B7280]">
-            Review your service listing before publishing it to the marketplace.
-          </p>
-        </div>
+    <div className="space-y-6 pb-24">
+      {publishError && <SpMutationFeedback status="error">{publishError}</SpMutationFeedback>}
 
-        {publishError && <SpMutationFeedback status="error">{publishError}</SpMutationFeedback>}
-
-        {/* Service Summary */}
-        <div className="rounded-lg bg-[#F9FAFB] p-5">
-          <h3 className="font-semibold text-[#171717]">{listing.title}</h3>
-          <p className="mt-2 text-sm text-[#6B7280]">{listing.description}</p>
-          {listing.galleryImages && listing.galleryImages.length > 0 && (
-            <div className="mt-4 grid gap-3 sm:grid-cols-3">
-              {listing.galleryImages.slice(0, 3).map((img) => (
-                <div key={img.id} className="relative aspect-square overflow-hidden rounded-lg">
-                  <Image
-                    src={img.publicUrl}
-                    alt={`Gallery preview ${img.displayOrder + 1}`}
-                    fill
-                    className="object-cover"
-                    unoptimized
-                  />
+      {(validationErrors.length > 0 || validationWarnings.length > 0) && (
+        <div className="space-y-3">
+          {validationErrors.length > 0 && (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+              <div className="flex gap-2">
+                <AlertCircle className="size-5 flex-shrink-0 text-red-600" />
+                <div>
+                  <h4 className="font-medium text-red-900">Issues to fix before publishing:</h4>
+                  <ul className="mt-2 space-y-1">
+                    {validationErrors.map((error, i) => (
+                      <li key={i} className="text-sm text-red-700">
+                        • {error}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-              ))}
+              </div>
+            </div>
+          )}
+          {validationWarnings.length > 0 && (
+            <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4">
+              <div className="flex gap-2">
+                <AlertCircle className="size-5 flex-shrink-0 text-yellow-600" />
+                <div>
+                  <h4 className="font-medium text-yellow-900">Review these before publishing:</h4>
+                  <ul className="mt-2 space-y-1">
+                    {validationWarnings.map((warning, i) => (
+                      <li key={i} className="text-sm text-yellow-700">
+                        • {warning}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
             </div>
           )}
         </div>
+      )}
 
-        {/* Validation Results */}
-        {(validationErrors.length > 0 || validationWarnings.length > 0) && (
-          <div className="space-y-3">
-            {validationErrors.length > 0 && (
-              <div className="rounded-lg border border-red-200 bg-red-50 p-4">
-                <div className="flex gap-2">
-                  <AlertCircle className="size-5 flex-shrink-0 text-red-600" aria-hidden="true" />
-                  <div>
-                    <h4 className="font-medium text-red-900">Issues to fix before publishing:</h4>
-                    <ul className="mt-2 space-y-1">
-                      {validationErrors.map((error, i) => (
-                        <li key={i} className="text-sm text-red-700">
-                          • {error}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {validationWarnings.length > 0 && (
-              <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4">
-                <div className="flex gap-2">
-                  <AlertCircle className="size-5 flex-shrink-0 text-yellow-600" aria-hidden="true" />
-                  <div>
-                    <h4 className="font-medium text-yellow-900">Review these before publishing:</h4>
-                    <ul className="mt-2 space-y-1">
-                      {validationWarnings.map((warning, i) => (
-                        <li key={i} className="text-sm text-yellow-700">
-                          • {warning}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {validationErrors.length === 0 && validationWarnings.length === 0 && (
-          <div className="rounded-lg border border-green-200 bg-green-50 p-4">
-            <div className="flex gap-2">
-              <Check className="size-5 flex-shrink-0 text-green-600" aria-hidden="true" />
-              <div>
-                <h4 className="font-medium text-green-900">Ready to publish</h4>
-                <p className="mt-1 text-sm text-green-700">All validation checks passed.</p>
-              </div>
-            </div>
-          </div>
-        )}
-      </SpCard>
-
-      {/* Package Summary Cards */}
-      <div className="space-y-4">
-        {packages.map((pkg) => (
-          <SpCard key={pkg.id} className="p-4">
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* LEFT COLUMN */}
+        <div className="lg:col-span-2">
+          <div className="rounded-lg border border-[#E5E7EB] bg-white p-6">
             <div className="flex items-start justify-between">
-              <div>
-                <h3 className="font-semibold text-[#171717]">{pkg.packageType} Package</h3>
-                <p className="mt-1 text-sm text-[#6B7280]">{pkg.packageTitle}</p>
-                <p className="mt-2">
-                  <span className="font-medium text-[#171717]">
-                    ${pkg.price.toFixed(2)} {pkg.currency}
-                  </span>
-                  <span className="ml-3 text-sm text-[#6B7280]">
-                    • {pkg.deliveryTimeValue} {pkg.deliveryTimeUnit}
-                  </span>
-                  <span className="ml-3 text-sm text-[#6B7280]">
-                    • {pkg.includedRevisionCount} revisions
-                  </span>
-                </p>
-                {pkg.includedFeatures.length > 0 && (
-                  <ul className="mt-2 space-y-1">
-                    {pkg.includedFeatures.slice(0, 3).map((feature, i) => (
-                      <li key={i} className="text-xs text-[#6B7280]">
-                        ✓ {feature}
-                      </li>
-                    ))}
-                    {pkg.includedFeatures.length > 3 && (
-                      <li className="text-xs text-[#6B7280]">... and {pkg.includedFeatures.length - 3} more</li>
-                    )}
-                  </ul>
+              <h1 className="text-2xl font-bold text-[#171717]">{listing.title}</h1>
+              <button
+                onClick={() => onEditStep?.(1)}
+                className="flex items-center gap-1 text-[#3C61DD] hover:text-[#2E4CC1]"
+              >
+                <Edit2 className="size-4" />
+                <span className="text-sm font-medium">EDIT</span>
+              </button>
+            </div>
+
+            {listing.galleryImages && listing.galleryImages.length > 0 && (
+              <div className="mt-6 flex gap-3 overflow-x-auto">
+                {listing.galleryImages.slice(0, 4).map((img) => (
+                  <div key={img.id} className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded">
+                    <Image
+                      src={resolveProviderMediaUrl(img.publicUrl)!}
+                      alt="Gallery"
+                      fill
+                      className="object-cover"
+                      unoptimized
+                    />
+                  </div>
+                ))}
+                {listing.galleryImages.length >= 4 && (
+                  <div className="flex h-20 w-20 flex-shrink-0 items-center justify-center rounded border-2 border-dashed border-[#D1D5DB] bg-[#F9FAFB] text-xs text-[#6B7280]">
+                    +{listing.galleryImages.length - 4}
+                  </div>
                 )}
               </div>
-              <Button type="button" variant="ghost" size="sm">
-                ✏️ Edit
-              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* RIGHT COLUMN */}
+        <div className="space-y-4">
+          {packages.map((pkg) => (
+            <div
+              key={pkg.id}
+              className={`rounded-lg border bg-white p-4 ${
+                pkg.packageType === 'Standard'
+                  ? 'border-2 border-[#3C61DD]'
+                  : 'border border-[#E5E7EB]'
+              }`}
+            >
+              {pkg.packageType === 'Standard' && (
+                <div className="mb-2 inline-block rounded bg-[#3C61DD] px-2 py-1 text-xs font-bold text-white">
+                  RECOMMENDED
+                </div>
+              )}
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="font-semibold text-[#171717]">{pkg.packageType}</h3>
+                  <div className="mt-3 text-3xl font-bold text-[#171717]">
+                    ${pkg.price.toFixed(2)}
+                  </div>
+                  <div className="mt-2 text-sm text-[#6B7280]">
+                    {pkg.screensIncluded ? `${pkg.screensIncluded} Dashboard Pages • ` : ''}
+                    {pkg.includedRevisionCount} Revisions • {pkg.deliveryTimeValue} {pkg.deliveryTimeUnit} Delivery
+                  </div>
+                </div>
+                <button
+                  onClick={() => onEditStep?.(2)}
+                  className="text-[#6B7280] hover:text-[#374151]"
+                >
+                  <Edit2 className="size-4" />
+                </button>
+              </div>
             </div>
-          </SpCard>
-        ))}
+          ))}
+        </div>
       </div>
 
-      {/* Publish Button */}
-      <SpCard>
-        <div className="flex flex-wrap gap-2">
+      {validationErrors.length === 0 && validationWarnings.length === 0 && (
+        <div className="rounded-lg border border-green-200 bg-green-50 p-4">
+          <div className="flex gap-2">
+            <Check className="size-5 flex-shrink-0 text-green-600" />
+            <div>
+              <h4 className="font-medium text-green-900">Ready to publish</h4>
+              <p className="mt-1 text-sm text-green-700">All validation checks passed.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* STICKY FOOTER */}
+      <div className="fixed bottom-0 left-0 right-0 border-t border-[#E5E7EB] bg-white p-4">
+        <div className="mx-auto flex max-w-6xl gap-2">
           <Button onClick={onBack} variant="outline" disabled={isPublishing}>
-            <ChevronLeft className="size-4" aria-hidden="true" />
+            <ChevronLeft className="size-4" />
             Back
           </Button>
           <Button
             onClick={handlePublish}
             disabled={isPublishing || validationErrors.length > 0}
-            className="bg-[#10B981] hover:bg-[#059669]"
+            className="ml-auto bg-[#3C61DD] hover:bg-[#2E4CC1]"
           >
-            {isPublishing ? 'Publishing…' : 'Publish Service Listing'}
+            {(() => {
+              if (isPublishing) return listing.status === 'Published' ? 'Saving…' : 'Publishing…';
+              if (listing.status === 'Published') return 'Save Changes';
+              if (listing.status === 'Archived') return 'Republish Service Listing';
+              return 'Publish Service Listing';
+            })()}
           </Button>
         </div>
-      </SpCard>
+      </div>
     </div>
   );
 }

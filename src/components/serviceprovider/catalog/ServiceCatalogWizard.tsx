@@ -23,27 +23,31 @@ export function ServiceCatalogWizard({ onExit }: { onExit: () => void }) {
   const currentStepParam = searchParams.get('step') || '1';
   const currentStep = Math.max(1, Math.min(6, parseInt(currentStepParam, 10)));
   const draftId = searchParams.get('draftId');
+  const view = searchParams.get('view') || 'new';
+  const serviceId = searchParams.get('serviceId');
+  const isEditMode = view === 'edit' && serviceId;
 
   const createListing = useCreateListing();
-  const draftQuery = useServiceListing(draftId ?? '');
+  // In edit mode, load the existing listing; in create mode, load the draft
+  const dataQuery = useServiceListing(isEditMode ? serviceId : draftId ?? '');
 
   const [error, setError] = useState<string | null>(null);
   const [savedDraft, setSavedDraft] = useState<ServiceListing | null>(null);
   const draftInitiationStartedRef = useRef(false);
 
-  // On mount or when draftId changes, fetch/initialize draft
+  // On mount or when data loads, update saved draft
   useEffect(() => {
-    if (draftId && draftQuery.data?.listing) {
-      setSavedDraft(draftQuery.data.listing);
+    if (dataQuery.data?.listing) {
+      setSavedDraft(dataQuery.data.listing);
     }
-  }, [draftId, draftQuery.data]);
+  }, [dataQuery.data]);
 
-  // Initialize draft if none exists and we're at step 1.
+  // Initialize draft if none exists and we're at step 1 in CREATE mode (not edit mode).
   // This effect is idempotent: the draftInitiationStartedRef guard ensures
   // we only start the draft-creation process once per genuine mount, even if
   // React StrictMode invokes this effect twice or the component remounts.
   useEffect(() => {
-    if (!draftId && currentStep === 1 && !savedDraft && !draftInitiationStartedRef.current) {
+    if (!isEditMode && !draftId && currentStep === 1 && !savedDraft && !draftInitiationStartedRef.current) {
       draftInitiationStartedRef.current = true;
       const initDraft = async () => {
         try {
@@ -69,10 +73,14 @@ export function ServiceCatalogWizard({ onExit }: { onExit: () => void }) {
       };
       initDraft();
     }
-  }, [draftId, currentStep, savedDraft, createListing, router]);
+  }, [isEditMode, draftId, currentStep, savedDraft, createListing, router]);
 
   const goToStep = (step: number) => {
-    if (draftId) {
+    if (isEditMode && serviceId) {
+      router.push(
+        `${BASE_ROUTE}?view=edit&step=${step}&serviceId=${encodeURIComponent(serviceId)}`
+      );
+    } else if (draftId) {
       router.push(
         `${BASE_ROUTE}?view=new&step=${step}&draftId=${encodeURIComponent(draftId)}`
       );
@@ -136,6 +144,7 @@ export function ServiceCatalogWizard({ onExit }: { onExit: () => void }) {
           <WizardStep6Review
             listing={savedDraft}
             onBack={() => goToStep(5)}
+            onEditStep={goToStep}
           />
         );
       default:
@@ -146,8 +155,8 @@ export function ServiceCatalogWizard({ onExit }: { onExit: () => void }) {
   return (
     <SpPage>
       <SpPageHeader
-        title={`Create Service - Step ${currentStep}: ${STEPS[currentStep - 1]}`}
-        description="Create your service listing step by step."
+        title={`${isEditMode ? 'Edit' : 'Create'} Service - Step ${currentStep}: ${STEPS[currentStep - 1]}`}
+        description={isEditMode ? 'Edit your service listing.' : 'Create your service listing step by step.'}
         actions={
           <Button type="button" variant="outline" onClick={handleExit}>
             <ChevronLeft className="size-4" aria-hidden="true" />
