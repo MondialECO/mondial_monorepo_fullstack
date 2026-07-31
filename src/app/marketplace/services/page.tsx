@@ -105,10 +105,10 @@ function MarketplaceGridContent() {
     setPage(1);
   }, []);
 
-  const listings = data?.data.items ?? [];
-  const total = data?.data.total ?? 0;
-  const currentPage = data?.data.page ?? page;
-  const pageSize = data?.data.pageSize ?? 12;
+  const listings = data?.items ?? [];
+  const total = data?.total ?? 0;
+  const currentPage = data?.page ?? page;
+  const pageSize = data?.pageSize ?? 12;
   const totalPages = Math.ceil(total / pageSize);
 
   return (
