@@ -80,8 +80,14 @@ public class ServiceCatalogService : IServiceCatalogService
             return ServiceProviderResult<ServiceListingResponse>.Conflict("Unknown service category.");
         if (string.IsNullOrWhiteSpace(request.Title))
             return ServiceProviderResult<ServiceListingResponse>.Conflict("A service title is required.");
-        if (!ServiceTypeLookup.IsValidServiceType(category, request.ServiceType))
+        // Allow empty ServiceType during draft creation (user hasn't selected yet); only validate if non-empty
+        if (!string.IsNullOrWhiteSpace(request.ServiceType) && !ServiceTypeLookup.IsValidServiceType(category, request.ServiceType))
             return ServiceProviderResult<ServiceListingResponse>.Conflict($"'{request.ServiceType}' is not an approved sub-category for {category}.");
+
+        // Enforce lifetime cap: each provider may create a maximum of 4 ServiceListings total (across all statuses)
+        var existingCount = await _db.ServiceListings.CountDocumentsAsync(l => l.ProviderId == userId);
+        if (existingCount >= 4)
+            return ServiceProviderResult<ServiceListingResponse>.Conflict("You have reached the maximum of 4 services and cannot create additional listings.");
 
         var listing = new ServiceListing
         {
@@ -109,7 +115,8 @@ public class ServiceCatalogService : IServiceCatalogService
             return ServiceProviderResult<ServiceListingResponse>.Conflict("Unknown service category.");
         if (string.IsNullOrWhiteSpace(request.Title))
             return ServiceProviderResult<ServiceListingResponse>.Conflict("A service title is required.");
-        if (!ServiceTypeLookup.IsValidServiceType(category, request.ServiceType))
+        // Allow empty ServiceType during draft updates (user hasn't selected yet); only validate if non-empty
+        if (!string.IsNullOrWhiteSpace(request.ServiceType) && !ServiceTypeLookup.IsValidServiceType(category, request.ServiceType))
             return ServiceProviderResult<ServiceListingResponse>.Conflict($"'{request.ServiceType}' is not an approved sub-category for {category}.");
 
         listing.ServiceType = request.ServiceType?.Trim() ?? "";
@@ -137,6 +144,11 @@ public class ServiceCatalogService : IServiceCatalogService
         var listing = await FindOwnedListingAsync(userId, listingId);
         if (listing is null)
             return ServiceProviderResult<ServiceListingResponse>.NotFound("Service listing not found.");
+
+        // When publishing, require that ServiceType is set (not empty)
+        if (status == CatalogStatus.Published && string.IsNullOrWhiteSpace(listing.ServiceType))
+            return ServiceProviderResult<ServiceListingResponse>.Conflict("A sub-category is required before publishing.");
+
         listing.Status = status;
         listing.UpdatedAt = DateTime.UtcNow;
         await _db.ServiceListings.ReplaceOneAsync(l => l.Id == listing.Id, listing);
@@ -205,11 +217,9 @@ public class ServiceCatalogService : IServiceCatalogService
         // Required-before-publish (hard blocks, §6.2).
         var missing = new List<string>();
         if (string.IsNullOrWhiteSpace(pkg.PackageTitle)) missing.Add("title");
-        if (string.IsNullOrWhiteSpace(pkg.PackageDescription)) missing.Add("description");
         if (pkg.Price <= 0) missing.Add("price > 0");
         if (string.IsNullOrWhiteSpace(pkg.Currency)) missing.Add("currency");
         if (pkg.DeliveryTimeValue <= 0) missing.Add("delivery time");
-        if (pkg.Deliverables.Count == 0) missing.Add("at least one deliverable");
         if (!pkg.UnlimitedRevisions && pkg.RevisionRequestWindowDays <= 0) missing.Add("a revision policy (request window)");
         if (missing.Count > 0)
             return ServiceProviderResult<PublishPackageResponse>.Conflict($"Complete these before publishing: {string.Join(", ", missing)}.");
@@ -644,215 +654,4 @@ public class ServiceCatalogService : IServiceCatalogService
         return null;
     }
 
-    // -------- Gallery & Video (Service Listing media, atomic writes) --------
-
-    public async Task<ServiceProviderResult<ServiceListingResponse>> UploadGalleryImageAsync(string userId, string listingId, IFormFile file)
-    {
-        const long maxBytes = 8 * 1024 * 1024; // 8 MB
-
-        var listing = await FindOwnedListingAsync(userId, listingId);
-        if (listing is null)
-            return ServiceProviderResult<ServiceListingResponse>.NotFound("Service listing not found.");
-
-        if (file.Length > maxBytes)
-            return ServiceProviderResult<ServiceListingResponse>.Invalid($"Image must be smaller than 8 MB. Your file is {(file.Length / 1024 / 1024.0):F1} MB.");
-
-        string publicUrl;
-        try
-        {
-            publicUrl = await _saveFile.SaveFileAsync(file, "service-catalog/gallery");
-        }
-        catch (ArgumentException ex)
-        {
-            return ServiceProviderResult<ServiceListingResponse>.Invalid(ex.Message);
-        }
-
-        var galleryImage = new GalleryImage
-        {
-            Id = Guid.NewGuid().ToString(),
-            StorageKey = publicUrl,
-            PublicUrl = publicUrl,
-            ContentType = file.ContentType,
-            Bytes = file.Length,
-            DisplayOrder = listing.GalleryImages.Count,
-            UploadedAt = DateTime.UtcNow,
-        };
-
-        // Atomic append with cap check: only succeed if array size < 20 before push
-        var update = Builders<ServiceListing>.Update
-            .Push(l => l.GalleryImages, galleryImage)
-            .Set(l => l.UpdatedAt, DateTime.UtcNow);
-
-        var result = await _db.ServiceListings.FindOneAndUpdateAsync(
-            Builders<ServiceListing>.Filter.And(
-                Builders<ServiceListing>.Filter.Eq(l => l.Id, listingId),
-                Builders<ServiceListing>.Filter.Eq(l => l.ProviderId, userId),
-                Builders<ServiceListing>.Filter.Size(l => l.GalleryImages, listing.GalleryImages.Count) // Verify array size hasn't changed since read
-            ),
-            update,
-            new FindOneAndUpdateOptions<ServiceListing> { ReturnDocument = ReturnDocument.After }
-        );
-
-        if (result is null)
-            return ServiceProviderResult<ServiceListingResponse>.Conflict("Gallery is limited to 20 images. The limit may have been reached while uploading.");
-
-        _logger.LogInformation("Gallery image uploaded for listing {ListingId} by user {UserId}", listingId, userId);
-        return ServiceProviderResult<ServiceListingResponse>.Ok(result.ToResponse(), "Image added to gallery.");
-    }
-
-    public async Task<ServiceProviderResult<ServiceListingResponse>> DeleteGalleryImageAsync(string userId, string listingId, string imageId)
-    {
-        var listing = await FindOwnedListingAsync(userId, listingId);
-        if (listing is null)
-            return ServiceProviderResult<ServiceListingResponse>.NotFound("Service listing not found.");
-
-        var image = listing.GalleryImages.FirstOrDefault(i => i.Id == imageId);
-        if (image is null)
-            return ServiceProviderResult<ServiceListingResponse>.NotFound("Gallery image not found.");
-
-        var update = Builders<ServiceListing>.Update
-            .PullFilter(l => l.GalleryImages, Builders<GalleryImage>.Filter.Eq(i => i.Id, imageId))
-            .Set(l => l.UpdatedAt, DateTime.UtcNow);
-
-        var result = await _db.ServiceListings.FindOneAndUpdateAsync(
-            Builders<ServiceListing>.Filter.And(
-                Builders<ServiceListing>.Filter.Eq(l => l.Id, listingId),
-                Builders<ServiceListing>.Filter.Eq(l => l.ProviderId, userId)
-            ),
-            update,
-            new FindOneAndUpdateOptions<ServiceListing> { ReturnDocument = ReturnDocument.After }
-        );
-
-        if (result is null)
-            return ServiceProviderResult<ServiceListingResponse>.Conflict("Could not remove image.");
-
-        // Best-effort file deletion using shared cleanup helper
-        ProviderMediaFiles.DeleteBestEffort(image.PublicUrl, _logger, _jobClient);
-
-        return ServiceProviderResult<ServiceListingResponse>.Ok(result.ToResponse(), "Image removed from gallery.");
-    }
-
-    public async Task<ServiceProviderResult<ServiceListingResponse>> UploadPreviewVideoAsync(string userId, string listingId, IFormFile file)
-    {
-        const long maxBytes = 50 * 1024 * 1024; // 50 MB
-        const int maxSeconds = 60;
-
-        var listing = await FindOwnedListingAsync(userId, listingId);
-        if (listing is null)
-            return ServiceProviderResult<ServiceListingResponse>.NotFound("Service listing not found.");
-
-        if (file.Length > maxBytes)
-            return ServiceProviderResult<ServiceListingResponse>.Invalid($"Video must be smaller than 50 MB. Your file is {(file.Length / 1024 / 1024.0):F1} MB.");
-
-        if (!file.ContentType.StartsWith("video/"))
-            return ServiceProviderResult<ServiceListingResponse>.Invalid("Only video files are accepted.");
-
-        // Server-side video duration validation using TagLib
-        int videoDurationSeconds;
-        try
-        {
-            var tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + Path.GetExtension(file.FileName));
-            try
-            {
-                using (var stream = file.OpenReadStream())
-                using (var tempFile = System.IO.File.Create(tempPath))
-                {
-                    await stream.CopyToAsync(tempFile);
-                }
-
-                var tagFile = TagLib.File.Create(tempPath);
-                videoDurationSeconds = (int)tagFile.Properties.Duration.TotalSeconds;
-            }
-            finally
-            {
-                if (System.IO.File.Exists(tempPath))
-                    try { System.IO.File.Delete(tempPath); } catch { }
-            }
-        }
-        catch (TagLib.UnsupportedFormatException)
-        {
-            return ServiceProviderResult<ServiceListingResponse>.Invalid("Unsupported video format. Please upload an MP4, WebM, or other common video format.");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to inspect video duration for {FileName}", file.FileName);
-            return ServiceProviderResult<ServiceListingResponse>.Invalid("Unable to verify video format. Please ensure the file is a valid video.");
-        }
-
-        if (videoDurationSeconds > maxSeconds)
-            return ServiceProviderResult<ServiceListingResponse>.Invalid($"Video must be shorter than 60 seconds. Your video is {videoDurationSeconds} seconds.");
-
-        string publicUrl;
-        try
-        {
-            publicUrl = await _saveFile.SaveFileAsync(file, "service-catalog/preview-video");
-        }
-        catch (ArgumentException ex)
-        {
-            return ServiceProviderResult<ServiceListingResponse>.Invalid(ex.Message);
-        }
-
-        var previewVideo = new PreviewVideo
-        {
-            StorageKey = publicUrl,
-            PublicUrl = publicUrl,
-            ContentType = file.ContentType,
-            Bytes = file.Length,
-            DurationSeconds = videoDurationSeconds,
-            Sha256 = "", // Would be computed from file
-            UploadedAt = DateTime.UtcNow,
-        };
-
-        var update = Builders<ServiceListing>.Update
-            .Set(l => l.PreviewVideo, previewVideo)
-            .Set(l => l.UpdatedAt, DateTime.UtcNow);
-
-        var result = await _db.ServiceListings.FindOneAndUpdateAsync(
-            Builders<ServiceListing>.Filter.And(
-                Builders<ServiceListing>.Filter.Eq(l => l.Id, listingId),
-                Builders<ServiceListing>.Filter.Eq(l => l.ProviderId, userId)
-            ),
-            update,
-            new FindOneAndUpdateOptions<ServiceListing> { ReturnDocument = ReturnDocument.After }
-        );
-
-        if (result is null)
-            return ServiceProviderResult<ServiceListingResponse>.Conflict("Could not save preview video.");
-
-        _logger.LogInformation("Preview video uploaded for listing {ListingId} by user {UserId}", listingId, userId);
-        return ServiceProviderResult<ServiceListingResponse>.Ok(result.ToResponse(), "Preview video saved.");
-    }
-
-    public async Task<ServiceProviderResult<ServiceListingResponse>> DeletePreviewVideoAsync(string userId, string listingId)
-    {
-        var listing = await FindOwnedListingAsync(userId, listingId);
-        if (listing is null)
-            return ServiceProviderResult<ServiceListingResponse>.NotFound("Service listing not found.");
-
-        if (listing.PreviewVideo is null)
-            return ServiceProviderResult<ServiceListingResponse>.Ok(listing.ToResponse(), "No preview video was set.");
-
-        var previousVideo = listing.PreviewVideo;
-
-        var update = Builders<ServiceListing>.Update
-            .Set(l => l.PreviewVideo, (PreviewVideo?)null)
-            .Set(l => l.UpdatedAt, DateTime.UtcNow);
-
-        var result = await _db.ServiceListings.FindOneAndUpdateAsync(
-            Builders<ServiceListing>.Filter.And(
-                Builders<ServiceListing>.Filter.Eq(l => l.Id, listingId),
-                Builders<ServiceListing>.Filter.Eq(l => l.ProviderId, userId)
-            ),
-            update,
-            new FindOneAndUpdateOptions<ServiceListing> { ReturnDocument = ReturnDocument.After }
-        );
-
-        if (result is null)
-            return ServiceProviderResult<ServiceListingResponse>.Conflict("Could not remove preview video.");
-
-        // Best-effort file deletion using shared cleanup helper
-        ProviderMediaFiles.DeleteBestEffort(previousVideo.PublicUrl, _logger, _jobClient);
-
-        return ServiceProviderResult<ServiceListingResponse>.Ok(result.ToResponse(), "Preview video removed.");
-    }
 }

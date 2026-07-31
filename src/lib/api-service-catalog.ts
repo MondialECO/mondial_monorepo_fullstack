@@ -111,57 +111,6 @@ export async function reorderFaqs(listingId: string, payload: ReorderFaqsRequest
   return unwrap(res.data);
 }
 
-// ---- Gallery & Video (Service Listing media) ----
-export async function uploadGalleryImage(
-  listingId: string,
-  file: File,
-  onProgress?: (progress: ProgressEvent) => void
-): Promise<ServiceListing> {
-  const formData = new FormData();
-  formData.append('file', file);
-  const res = await api.post<ApiEnvelope<ServiceListing>>(
-    `${BASE}/listings/${encodeURIComponent(listingId)}/gallery-images`,
-    formData,
-    {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      onUploadProgress: onProgress,
-    }
-  );
-  return unwrap(res.data);
-}
-
-export async function deleteGalleryImage(listingId: string, imageId: string): Promise<ServiceListing> {
-  const res = await api.delete<ApiEnvelope<ServiceListing>>(
-    `${BASE}/listings/${encodeURIComponent(listingId)}/gallery-images/${encodeURIComponent(imageId)}`
-  );
-  return unwrap(res.data);
-}
-
-export async function uploadPreviewVideo(
-  listingId: string,
-  file: File,
-  onProgress?: (progress: ProgressEvent) => void
-): Promise<ServiceListing> {
-  const formData = new FormData();
-  formData.append('file', file);
-  const res = await api.post<ApiEnvelope<ServiceListing>>(
-    `${BASE}/listings/${encodeURIComponent(listingId)}/preview-video`,
-    formData,
-    {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      onUploadProgress: onProgress,
-    }
-  );
-  return unwrap(res.data);
-}
-
-export async function deletePreviewVideo(listingId: string): Promise<ServiceListing> {
-  const res = await api.delete<ApiEnvelope<ServiceListing>>(
-    `${BASE}/listings/${encodeURIComponent(listingId)}/preview-video`
-  );
-  return unwrap(res.data);
-}
-
 // ---- Capacity ----
 export async function getCapacity(): Promise<ProviderCapacity> {
   const res = await api.get<ApiEnvelope<ProviderCapacity>>(`${BASE}/capacity`);

@@ -2,8 +2,10 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using WebApp.Models;
+using WebApp.Models.DatabaseModels;
 using WebApp.Models.Dtos;
 using WebApp.Services.Interface;
+using WebApp.Services.Implementations;
 
 namespace WebApp.Controllers;
 
@@ -19,10 +21,12 @@ namespace WebApp.Controllers;
 public class ServiceCatalogController : ControllerBase
 {
     private readonly IServiceCatalogService _service;
+    private readonly ILogger<ServiceCatalogController> _logger;
 
-    public ServiceCatalogController(IServiceCatalogService service)
+    public ServiceCatalogController(IServiceCatalogService service, ILogger<ServiceCatalogController> logger)
     {
         _service = service;
+        _logger = logger;
     }
 
     private string CurrentUserId =>
@@ -105,22 +109,6 @@ public class ServiceCatalogController : ControllerBase
 
     // ---- Gallery & Video (Service Listing media) ----
 
-    [HttpPost("listings/{listingId}/gallery-images")]
-    public async Task<IActionResult> UploadGalleryImage(string listingId, IFormFile file) =>
-        Map(await _service.UploadGalleryImageAsync(CurrentUserId, listingId, file));
-
-    [HttpDelete("listings/{listingId}/gallery-images/{imageId}")]
-    public async Task<IActionResult> DeleteGalleryImage(string listingId, string imageId) =>
-        Map(await _service.DeleteGalleryImageAsync(CurrentUserId, listingId, imageId));
-
-    [HttpPost("listings/{listingId}/preview-video")]
-    public async Task<IActionResult> UploadPreviewVideo(string listingId, IFormFile file) =>
-        Map(await _service.UploadPreviewVideoAsync(CurrentUserId, listingId, file));
-
-    [HttpDelete("listings/{listingId}/preview-video")]
-    public async Task<IActionResult> DeletePreviewVideo(string listingId) =>
-        Map(await _service.DeletePreviewVideoAsync(CurrentUserId, listingId));
-
     // ---- Provider capacity ----
 
     [HttpGet("capacity")]
@@ -145,11 +133,13 @@ public class ServiceCatalogController : ControllerBase
     {
         // Return all approved Service Types (Sub-Categories) per Category as a flat structure
         // for frontend cascading dropdown. "Other" has no fixed list (free text allowed).
-        var all = ServiceCategoryHelper.AllCategories().ToDictionary(
-            cat => cat.ToString(),
-            cat => ServiceTypeLookup.GetSubCategories(cat)
-        );
-        return Ok(ApiResponse.Ok(data: all));
+        var all = Enum.GetValues(typeof(ServiceCategory))
+            .Cast<ServiceCategory>()
+            .ToDictionary(
+                cat => cat.ToString(),
+                cat => ServiceTypeLookup.GetSubCategories(cat)
+            );
+        return Ok(ApiResponse.Ok("Service types lookup", all));
     }
 
     /// <summary>Map a service result onto the shared ApiResponse envelope and HTTP status.</summary>
