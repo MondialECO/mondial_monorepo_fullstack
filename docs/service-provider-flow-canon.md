@@ -824,6 +824,19 @@ Entity `ServiceFAQ` (above). **Visibility:** All Packages / Basic Only / Standar
 ### 6.9 Empty state (Catalog)
 - **No Services** — "No Published Services" / "Create your first service listing to start receiving briefs." / Action: "Create Service". *(This is the getting-started nudge the §11 journey references — the flat model's replacement for a wizard.)* **Regression note (2026-07-30):** the empty-state title had regressed to "Create your first service" during the 2026-07-28 UI reconciliation (`fd38914`); it was corrected back to canonical text during this reconciliation.
 
+### 6.10 Service list view — analytics dashboard replacement *(added 2026-07-31)*
+
+**Legacy listing-cards grid — REMOVED.** The prior `/services` page displayed a grid of listing cards with status badges, a 4-listing capacity banner, and status-filter controls. This grid UI has been replaced by the Analytics & Growth dashboard (§9.4 Phase D) effective 2026-07-31. 
+
+**Current state:** `/dashboard/serviceprovider/services` now renders a unified Analytics dashboard, not a service-management grid. The dashboard contains:
+- Service selector dropdown ("All services" + provider's listings)
+- Time-range filter (Today / 7d / 30d / 90d)
+- Four metric cards (Impressions, Clicks, Inquiries, Conversion Rate) with deltas
+- Line chart (Impressions vs Clicks over selected range)
+- Edit button (visible only for specific listings, navigates to wizard edit mode)
+
+Service creation and editing remain via the wizard (`?view=new|edit&step=N`). The 4-listing **hard limit still enforces** (§6.1b) — the provider may not exceed 4 active service records — but the UI no longer displays a "capacity banner" warning. The disabled "New Service" button on the wizard entry point (`?view=new`) communicates the limit to users at capacity.
+
 **Dependencies.** Reads: verified profile (§1.1), shared enums (§4.2), capacity fields on the profile (§6.7). Produces: published packages + FAQs → Leads/checkout (§7); impressions/clicks + order counts → Analytics (§9) — public listing detail pages will record fire-and-forget impression/click events per the planned tracking architecture (§9.4, Phase C when implemented); a purchased package → an auto-accepted Proposal (§7). **New backend dependency (2026-07-30):** `TagLibSharp` (v2.3.0, pure managed .NET library, no native binaries) added to support server-side video duration inspection for `PreviewVideo` uploads — replacing what would otherwise be a client-trusted duration value. Chosen over FFmpeg-based alternatives to avoid adding a native-binary dependency to the Docker-based deployment.
 
 ---
@@ -1082,9 +1095,9 @@ The four canon rules remain exact and are evaluated when the dashboard is read; 
 
 **Dependencies.** Reads `ServiceListings`, `ClientBriefs`, `Proposals`, `WorkroomEngagements`, `WorkroomMilestones`, `FinancialTransactions`, `Reviews`, and Module-4 financial summary state. Persists only provider-owned `GrowthTasks`; no metric is consumed elsewhere and no Trust signal is written by Analytics.
 
-### 9.4 Planned — Analytics Tracking System Architecture (Phase A–E, **not yet implemented**)
+### 9.4 Analytics Tracking System Architecture (Phase A–E; **A/B/D IMPLEMENTED, C/E PLANNED**)
 
-**Status: [PLANNED]** — The following architecture specifies a real, event-based tracking system that will power per-service and provider-wide Impressions/Clicks/Inquiries metrics in the Analytics workspace. All phases are reference only; nothing below is currently implemented. Providers see `notTracked` for service-view metrics until Phase D ships (§9.0).
+**Status: [PARTIALLY IMPLEMENTED]** — The following architecture specifies a real, event-based tracking system that powers per-service and provider-wide Impressions/Clicks/Inquiries metrics in the Analytics workspace. Phases A (backend recording), B (backend read), and D (analytics dashboard UI) are IMPLEMENTED as of 2026-07-31. Phases C (public page frontend recording) and E (TOP GIG badge) remain PLANNED. See implementation summary at §9.4.10.
 
 #### 9.4.1 Goals and definitions
 
@@ -1262,17 +1275,45 @@ Layout: Listing selector dropdown ("All services" + provider's listings, default
 - **Provider detection:** JWT ProviderId claim vs listing's ProviderId, both strings, request-scoped, no session state.
 - **No cross-provider leakage** — every read endpoint enforces ownership (§2, §10.1).
 
-#### 9.4.8 Implementation phases (planned, not implemented)
+#### 9.4.8 Implementation phases
 
-**Phase A — Backend data model + write endpoints.** Collections, indexes, impression + click recording endpoints with provider-drop and session dedup. Inquiry hook into existing message-send flow. Unit tests for provider-drop and dedup. No frontend changes; no read endpoints yet.
+**Phase A — Backend data model + write endpoints. ✅ IMPLEMENTED (2026-07-31)**
 
-**Phase B — Backend read endpoints.** Summary, timeseries, listings-for-dropdown aggregations. Unit tests for date-range aggregation and edge cases (zero-comparison deltas, missing days, owned+read-only listings).
+Collections, indexes, impression + click recording endpoints with provider-drop and session dedup. Inquiry hook into existing message-send flow. Unit tests for provider-drop and dedup. No frontend changes; no read endpoints yet.
 
-**Phase C — Frontend recording.** Fire-and-forget impression/click calls on public listing detail pages. Verify events land in MongoDB. Confirm provider self-view does NOT increment.
+**Commits:**
+- `63ad3b8` — create daily bucket and session dedup models for impression/click/inquiry tracking
+- `9e899b0` — add collections and indexes for daily buckets and session deduplication
+- `04f4052` — create recording service interface with fire-and-forget contract
+- `5457eea` — implement recording service with dedup windows and atomic upserts
+- `3329b56` — integrate inquiry counter into message-send flow and add configuration
+- `266cdcb` — create public recording endpoints for impressions and clicks
 
-**Phase D — Analytics workspace UI.** Dropdown + 4 metric cards + chart, all matching mockup. `globals.css` tokens only. Honest empty states. React Query hooks wired to Phase B endpoints. Conversion-rate handling. No fabricated zero-state data.
+**Phase B — Backend read endpoints. ✅ IMPLEMENTED (2026-07-31)**
 
-**Phase E — TOP GIG badge and optional additional breakdowns.** Deferred. Server-computed best-performing-listing flag. Optional per-CTA click breakdown. Advanced comparison ranges.
+Summary, timeseries, listings-for-dropdown aggregations. Unit tests for date-range aggregation and edge cases (zero-comparison deltas, missing days, owned+read-only listings).
+
+**Commits:**
+- `4281595` — add read-endpoint response DTOs
+- `44e4f59` — implement summary/timeseries/listings service methods
+- `0e957aa` — expose summary/timeseries/listings read endpoints
+- `75e7eb3` — enforce listing ownership on summary/timeseries read endpoints
+
+**Phase C — Frontend recording. ⏳ PLANNED**
+
+Fire-and-forget impression/click calls on public listing detail pages. Verify events land in MongoDB. Confirm provider self-view does NOT increment.
+
+**Phase D — Analytics workspace UI. ✅ IMPLEMENTED (2026-07-31)**
+
+Dropdown + 4 metric cards + chart, all matching mockup. `globals.css` tokens only. Honest empty states. React Query hooks wired to Phase B endpoints. Conversion-rate handling. No fabricated zero-state data.
+
+**Commits:**
+- `e7dbe50` — frontend wrappers + React Query hooks for read endpoints
+- `b1939e4` — replace /services grid with analytics dashboard
+
+**Phase E — TOP GIG badge and optional additional breakdowns. ⏳ PLANNED**
+
+Deferred. Server-computed best-performing-listing flag. Optional per-CTA click breakdown. Advanced comparison ranges.
 
 #### 9.4.9 What NOT to do
 
@@ -1281,6 +1322,43 @@ Layout: Listing selector dropdown ("All services" + provider's listings, default
 - **Do NOT rate-limit at the daily-bucket level.** Would drop legitimate events. Rate-limit at session-dedup layer + coarse per-IP middleware only.
 - **Do NOT ship Phase D before Phase A, B, C complete.** No fake data is preferable to real UI with no real data.
 - **Do NOT store PII** (user emails, names, IDs) in session dedup records. Hash only.
+
+#### 9.4.10 Implementation summary — Phase A, B, D shipped (2026-07-31)
+
+**Phase A (backend recording) — 6 commits (63ad3b8 → 266cdcb):**
+- Added `AnalyticsDailyBucket` and `AnalyticsSessionSeen` MongoDB models with atomic $inc upserts and TTL-based deduplication.
+- Implemented `IAnalyticsRecordingService` / `AnalyticsRecordingService` with fire-and-forget semantics, provider self-view filtering, and exception swallowing.
+- Created public endpoints: `POST /api/service-provider/analytics/impression` and `POST /api/service-provider/analytics/click` ([AllowAnonymous], SHA-256 session keying, optional viewer ProviderId detection).
+- Wired inquiry counter hook into `ChatController.SendMessage` — increments daily Inquiries bucket on successful message persistence.
+- Added `appsettings.json` Analytics section with configurable `SessionHashSalt`.
+- Indexes: unique (ListingId, Date) on daily buckets; compound (ProviderId DESC, Date) for provider-wide queries; compound (ListingId, SessionKey, EventType) for dedup lookups; TTL on `AnalyticsSessionSeen.ExpiresAt`.
+
+**Phase B (backend read endpoints) — 4 commits (4281595 → 75e7eb3):**
+- Added response DTOs: `AnalyticsSummaryResponse`, `AnalyticsTimeseriesResponse`, `AnalyticsListingsResponse`, `AnalyticsBucketPoint`.
+- Implemented `GetAnalyticsSummaryAsync` with period-over-period delta calculation, null-safe division (delta=null when previous=0).
+- Implemented `GetAnalyticsTimeseriesAsync` with zero-fill for missing days and conversion-rate handling.
+- Implemented `GetAnalyticsListingsAsync` returning "all" pseudo-entry + provider listings with 30-day impression counts.
+- All three endpoints enforce ownership via combined check: `if (listing is null || listing.ProviderId != providerId) return NotFound()` (security best practice: no resource-existence disclosure to unauthorized users).
+- Created controller actions: `GET /api/service-provider/analytics/summary`, `GET /api/service-provider/analytics/timeseries`, `GET /api/service-provider/analytics/listings`.
+
+**Phase D (analytics dashboard UI) — 2 commits (e7dbe50 → b1939e4):**
+- Added frontend API wrappers in `api-analytics.ts`: `getAnalyticsListings()`, `getAnalyticsSummary()`, `getAnalyticsTimeseries()` with shared `unwrap()` envelope handling.
+- Added React Query hooks in `analytics.ts`: `useAnalyticsListings()` (5min staleTime), `useAnalyticsSummary()` (1min staleTime, enabled check), `useAnalyticsTimeseries()` (1min staleTime, enabled check).
+- Rebuilt `/dashboard/serviceprovider/services` from listing-cards grid into AnalyticsDashboard component:
+  - Service selector: "All services" pseudo-entry + provider listings with thumbnails, auto-selects "all" on load.
+  - Time range tabs: Today / 7d / 30d / 90d with pill-style toggle (primary background for selected, muted for unselected).
+  - Four metric cards: Impressions, Clicks, Inquiries, Conversion Rate — each with value, delta chip (TrendingUp/Down icons, emerald for positive, red for negative), and honest em-dash (—) for zero/null metrics.
+  - Recharts line chart: Impressions (#3C61DD solid) vs Clicks (#93C5FD dashed) over selected range; empty state: "No activity yet for this range. Data will appear as visitors interact with your listings."
+  - Edit button: visible only for specific listings (not "all"), navigates to wizard edit mode (`?view=edit&step=1&serviceId={id}`).
+  - All colors from `globals.css` design tokens, no hardcoded hex.
+
+**Cross-references updated:**
+- §6 (Module 2 Service Catalog): noted removal of legacy listing-cards grid UI and 4-listing capacity banner (replaced by analytics dashboard).
+- §9.0 (Module 5 summary): Phase A/B/D now IMPLEMENTED; service-view metrics no longer `notTracked` at read time.
+
+**Outstanding for C and E:**
+- Phase C (frontend recording on public listing detail pages) — not yet wired.
+- Phase E (TOP GIC badge, per-CTA click breakdown, advanced ranges) — reserved, not implemented.
 
 ---
 
@@ -1466,6 +1544,8 @@ The repo's **root `.gitignore` is a binary / non-UTF8 file**, which can make the
 ---
 
 ## Changelog
+
+**2026-07-31 — Analytics tracking system Phase A, B, D IMPLEMENTED; C, E remain PLANNED (§9.4 status update).** Phases A (backend recording with session dedup and provider self-view filtering), B (backend read endpoints with ownership validation), and D (analytics dashboard UI replacement for /services grid) shipped on `dev-hafiz`. Phase A: 6 commits (63ad3b8...266cdcb) — added `AnalyticsDailyBucket`/`AnalyticsSessionSeen` models, fire-and-forget recording service, public impression/click endpoints, inquiry hook into message-send, indexes, config. Phase B: 4 commits (4281595...75e7eb3) — added response DTOs, summary/timeseries/listings aggregation endpoints, period-over-period delta calculation, ownership enforcement (combined null + auth check returning NotFound). Phase D: 2 commits (e7dbe50...b1939e4) — rebuilt /services from grid into dashboard with service selector, time-range tabs (Today/7d/30d/90d), 4 metric cards (Impressions/Clicks/Inquiries/Conversion Rate with deltas and em-dash honest empty states), Recharts line chart (Impressions vs Clicks), edit button (specific listings only). All frontend colors from globals.css tokens. §9.4 header and §9.4.8 updated to reflect implemented status; new §9.4.10 records implementation summary and commit hashes. Cross-references: §6 notes removal of listing-cards grid and 4-listing banner; §9.0 notes Phase A/B/D implemented. Phase C (public page frontend recording) and Phase E (TOP GIG badge, per-CTA breakdown, advanced ranges) remain deferred.
 
 **2026-07-31 — Archived analytics tracking system architecture as canonical reference (§9.4, Phase A–E planned, not yet implemented).** Added full specification for real, event-based tracking system powering per-service and provider-wide Impressions/Clicks/Inquiries metrics: data model (`AnalyticsDailyBuckets`, `AnalyticsSessionSeen` with TTL dedup), write/read/aggregation endpoints, frontend fire-and-forget recording pattern, Analytics workspace UI layout requirements (4 metric cards + chart, canonical empty states), privacy/security design (SHA-256 session hashing, no PII, provider self-view drops, bot/spam rate-limiting), and 5-phase implementation plan. All content marked **[PLANNED]** — nothing is currently implemented. Cross-referenced in §6 (listing detail pages will record events per Phase C) and §9.0 (noting Phase A–E will resolve missing service-view/click/inquiry metrics). Replaces any prior stub content in Module 5 Analytics section.
 
