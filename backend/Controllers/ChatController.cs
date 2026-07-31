@@ -25,6 +25,7 @@ namespace WebApp.Controllers
         private readonly ICompanyService _companyService;
         private readonly IResponseRateService _responseRates;
         private readonly INotificationService _notifications;
+        private readonly IAnalyticsRecordingService _analyticsRecording;
 
         public ChatController(
             IChatService chatRepo,
@@ -32,7 +33,8 @@ namespace WebApp.Controllers
             MongoDbContext context,
             ICompanyService companyService,
             IResponseRateService responseRates,
-            INotificationService notifications)
+            INotificationService notifications,
+            IAnalyticsRecordingService analyticsRecording)
         {
             _chatService = chatRepo;
             _hub = hub;
@@ -40,6 +42,7 @@ namespace WebApp.Controllers
             _companyService = companyService;
             _responseRates = responseRates;
             _notifications = notifications;
+            _analyticsRecording = analyticsRecording;
         }
 
         // Get current user ID from JWT token. ASP.NET Core 8 JwtBearer
@@ -187,6 +190,10 @@ namespace WebApp.Controllers
             };
 
            var data = await _chatService.AddMessage(message);
+
+            // Record inquiry if this message was sent in the context of a listing.
+            if (!string.IsNullOrWhiteSpace(request.ListingId))
+                await _analyticsRecording.IncrementInquiryAsync(request.ListingId, CancellationToken.None);
 
             // Fan out to every participant's per-user group so recipients
             // receive it regardless of which thread (if any) they have open.
