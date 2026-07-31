@@ -1,17 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Trash2, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import {
-  SpCard,
-  SpFormField,
-  SpMutationFeedback,
-} from '@/components/serviceprovider/ui';
+import { SpCard } from '@/components/serviceprovider/ui';
 import type { RequirementsField } from '@/types/service-catalog';
 import { REQUIREMENTS_FIELD_TYPES } from '@/types/service-catalog';
 import { useServiceListing, useUpdatePackage } from '@/hooks/queries/service-catalog';
+import { cn } from '@/lib/utils';
 
 export function WizardStep4Requirements({
   listingId,
@@ -61,16 +58,6 @@ export function WizardStep4Requirements({
     setRequirements((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const moveQuestion = (index: number, direction: -1 | 1) => {
-    const newIndex = index + direction;
-    if (newIndex < 0 || newIndex >= requirements.length) return;
-    setRequirements((prev) => {
-      const updated = [...prev];
-      [updated[index], updated[newIndex]] = [updated[newIndex], updated[index]];
-      return updated;
-    });
-  };
-
   const handleSaveAndNext = async () => {
     if (!listingDetail.data?.packages || listingDetail.data.packages.length === 0) {
       setError('No packages found. Please create packages in Step 2 first.');
@@ -117,6 +104,7 @@ export function WizardStep4Requirements({
               deliverables: pkg.deliverables,
               includedFeatures: pkg.includedFeatures,
               excludedFeatures: pkg.excludedFeatures,
+              screensIncluded: pkg.screensIncluded,
               addOns: pkg.addOns,
               requirementsTemplate: requirements,
               cancellationPolicy: pkg.cancellationPolicy,
@@ -129,40 +117,42 @@ export function WizardStep4Requirements({
       );
 
       onNext();
-    } catch {
-      setError('Could not save requirements. Please try again.');
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      const anyErr = err as any;
+      const backendMessage = anyErr?.response?.data?.message || anyErr?.response?.data?.error || errorMsg;
+      setError(`Could not save requirements: ${backendMessage}`);
     } finally {
       setIsSaving(false);
     }
   };
 
   return (
-    <SpCard className="space-y-6">
+    <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold text-[#171717]">Client Requirements</h2>
-        <p className="mt-1 text-sm text-[#6B7280]">
-          Define what information you need from clients before starting work. This questionnaire
-          will be applied to all your packages.
-        </p>
+        <h2 className="text-lg font-semibold text-[#171717]">What do you need from the client to start this order?</h2>
+        <p className="mt-1 text-sm text-[#6B7280]">Add questions to gather requirements before you begin working.</p>
       </div>
 
-      {error && <SpMutationFeedback status="error">{error}</SpMutationFeedback>}
+      {error && (
+        <SpCard className="rounded-lg border border-red-200 bg-red-50 p-4">
+          <p className="text-sm text-red-700">{error}</p>
+        </SpCard>
+      )}
 
-      <div className="space-y-4">
+      <div className="space-y-3">
         {requirements.length === 0 ? (
-          <div className="rounded-lg border border-[#E5E7EB] p-8 text-center">
+          <SpCard className="border-dashed p-8 text-center">
             <p className="text-sm text-[#6B7280]">No questions yet. Add one to get started.</p>
-          </div>
+          </SpCard>
         ) : (
           requirements.map((question, index) => (
             <RequirementQuestionCard
               key={question.fieldId}
               question={question}
               index={index}
-              total={requirements.length}
               onUpdate={(updates) => updateQuestion(index, updates)}
               onDelete={() => deleteQuestion(index)}
-              onMove={(direction) => moveQuestion(index, direction)}
             />
           ))
         )}
@@ -171,132 +161,148 @@ export function WizardStep4Requirements({
           type="button"
           variant="outline"
           onClick={addQuestion}
-          className="w-full"
           disabled={isSaving}
+          className="w-full"
         >
           <Plus className="size-4" aria-hidden="true" />
           Add Requirement Question
         </Button>
       </div>
 
-      <div className="flex flex-wrap gap-2 border-t border-[#E5E7EB] pt-5">
-        <Button onClick={onBack} variant="outline" disabled={isSaving}>
-          <ChevronLeft className="size-4" aria-hidden="true" />
-          Back
-        </Button>
-        <Button onClick={handleSaveAndNext} disabled={isSaving}>
-          {isSaving ? 'Saving…' : 'Next: Gallery & Video'}
-          <ChevronRight className="size-4" aria-hidden="true" />
-        </Button>
-      </div>
-    </SpCard>
+      <SpCard>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={onBack} variant="outline" disabled={isSaving}>
+            <ChevronLeft className="size-4" aria-hidden="true" />
+            Back
+          </Button>
+          <Button onClick={handleSaveAndNext} disabled={isSaving}>
+            {isSaving ? 'Saving…' : 'Next: Gallery & Video'}
+            <ChevronRight className="size-4" aria-hidden="true" />
+          </Button>
+        </div>
+      </SpCard>
+    </div>
   );
 }
 
 function RequirementQuestionCard({
   question,
   index,
-  total,
   onUpdate,
   onDelete,
-  onMove,
 }: {
   question: RequirementsField;
   index: number;
-  total: number;
   onUpdate: (updates: Partial<RequirementsField>) => void;
   onDelete: () => void;
-  onMove: (direction: -1 | 1) => void;
 }) {
-  const [isOpen, setIsOpen] = useState(index === 0);
+  const fieldTypeLabel = {
+    Text: 'Free Text',
+    File: 'File Upload',
+    Choice: 'Choice',
+  }[question.fieldType] || question.fieldType;
 
   return (
-    <div className="rounded-lg border border-[#E5E7EB] bg-white p-4">
-      <div className="flex items-center justify-between">
-        <div className="flex-1">
-          <h4 className="font-medium text-[#171717]">
-            Question {index + 1}: {question.label || '(Untitled)'}
-          </h4>
-          <p className="mt-1 text-xs text-[#6B7280]">
-            Type: {question.fieldType} {question.required ? '• Required' : '• Optional'}
-          </p>
-        </div>
-        <div className="flex gap-1">
+    <SpCard className="p-5">
+      <div className="space-y-4">
+        {/* Header with number and field type chip */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="text-base font-semibold text-[#171717]">
+                {index + 1}. {question.label || '(Untitled question)'}
+              </h3>
+              <span className="inline-block rounded-full bg-[#F3F4F6] px-2.5 py-1 text-xs font-medium text-[#374151]">
+                {fieldTypeLabel}
+              </span>
+            </div>
+          </div>
           <Button
             type="button"
             variant="ghost"
-            size="sm"
-            onClick={() => onMove(-1)}
-            disabled={index === 0}
-            title="Move up"
+            size="icon"
+            onClick={onDelete}
+            className="text-[#B42318]"
+            aria-label="Delete question"
           >
-            <ChevronUp className="size-4" aria-hidden="true" />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => onMove(1)}
-            disabled={index === total - 1}
-            title="Move down"
-          >
-            <ChevronDown className="size-4" aria-hidden="true" />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsOpen(!isOpen)}
-          >
-            {isOpen ? '−' : '+'}
+            <Trash2 className="size-4" />
           </Button>
         </div>
-      </div>
 
-      {isOpen && (
-        <div className="mt-4 space-y-3 border-t border-[#E5E7EB] pt-4">
-          <SpFormField id={`q-label-${question.fieldId}`} label="Question" required>
-            <Input
-              value={question.label}
-              onChange={(e) => onUpdate({ label: e.target.value })}
-              placeholder="e.g. What are your brand colors?"
-            />
-          </SpFormField>
+        {/* Question label input */}
+        <div>
+          <label className="block text-xs font-medium text-[#6B7280] mb-2">Question</label>
+          <Input
+            value={question.label}
+            onChange={(e) => onUpdate({ label: e.target.value })}
+            placeholder="e.g. What are your brand colors?"
+            className="text-sm"
+          />
+        </div>
 
-          <SpFormField id={`q-type-${question.fieldId}`} label="Answer type">
+        {/* Field type selector and Required toggle */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-medium text-[#6B7280] mb-2">Field type</label>
             <select
               value={question.fieldType}
               onChange={(e) =>
                 onUpdate({ fieldType: e.target.value as RequirementsField['fieldType'] })
               }
-              className="h-10 w-full rounded-lg border border-[#D1D5DB] bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[#3C61DD]"
+              className="h-9 w-full rounded-lg border border-[#D1D5DB] bg-white px-3 text-xs outline-none focus-visible:ring-2 focus-visible:ring-[#3C61DD]"
             >
               {REQUIREMENTS_FIELD_TYPES.map((type) => (
                 <option key={type} value={type}>
-                  {type}
+                  {type === 'Text' ? 'Free Text' : type === 'File' ? 'File Upload' : type}
                 </option>
               ))}
             </select>
-          </SpFormField>
-
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={question.required}
-              onChange={(e) => onUpdate({ required: e.target.checked })}
-              className="size-4 rounded border-[#D1D5DB]"
-            />
-            <span className="text-sm text-[#171717]">Client must answer this question</span>
-          </label>
-
-          <div className="flex gap-2 border-t border-[#E5E7EB] pt-3">
-            <Button type="button" variant="outline" size="sm" onClick={onDelete}>
-              <Trash2 className="size-4" aria-hidden="true" />
-              Delete
-            </Button>
+          </div>
+          <div className="flex items-end">
+            <label className="flex items-center gap-2 pb-0.5">
+              <input
+                type="checkbox"
+                checked={question.required}
+                onChange={(e) => onUpdate({ required: e.target.checked })}
+                className="size-4 rounded border-[#D1D5DB] cursor-pointer"
+              />
+              <span className="text-xs font-medium text-[#171717]">Required</span>
+            </label>
           </div>
         </div>
-      )}
-    </div>
+
+        {/* Field preview based on type */}
+        <div className="border-t border-[#E5E7EB] pt-4">
+          <p className="text-xs font-medium text-[#6B7280] mb-3">Client will see:</p>
+          {question.fieldType === 'File' && (
+            <div className="rounded-lg border-2 border-dashed border-[#D1D5DB] bg-[#F9FAFB] p-6 text-center">
+              <Upload className="mx-auto size-6 text-[#9CA3AF] mb-2" />
+              <p className="text-xs font-medium text-[#171717]">Click to upload or drag and drop</p>
+              <p className="text-xs text-[#6B7280] mt-1">SVG, PNG, JPG or PDF (max. 10MB)</p>
+            </div>
+          )}
+          {question.fieldType === 'Text' && (
+            <div className="rounded-lg border border-[#E5E7EB] bg-white p-3">
+              <input
+                type="text"
+                disabled
+                placeholder="Client will enter text here..."
+                className="w-full text-xs text-[#9CA3AF] placeholder-[#9CA3AF] bg-transparent outline-none"
+              />
+            </div>
+          )}
+          {question.fieldType === 'Choice' && (
+            <div className="space-y-2">
+              <p className="text-xs text-[#6B7280] italic">Client chooses from:</p>
+              <div className="rounded-lg border border-[#E5E7EB] bg-white overflow-hidden">
+                <div className="text-xs text-[#9CA3AF] p-3 text-center">
+                  (Define options in edit mode)
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </SpCard>
   );
 }
