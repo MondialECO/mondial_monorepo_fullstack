@@ -824,7 +824,7 @@ Entity `ServiceFAQ` (above). **Visibility:** All Packages / Basic Only / Standar
 ### 6.9 Empty state (Catalog)
 - **No Services** — "No Published Services" / "Create your first service listing to start receiving briefs." / Action: "Create Service". *(This is the getting-started nudge the §11 journey references — the flat model's replacement for a wizard.)* **Regression note (2026-07-30):** the empty-state title had regressed to "Create your first service" during the 2026-07-28 UI reconciliation (`fd38914`); it was corrected back to canonical text during this reconciliation.
 
-**Dependencies.** Reads: verified profile (§1.1), shared enums (§4.2), capacity fields on the profile (§6.7). Produces: published packages + FAQs → Leads/checkout (§7); impressions/clicks + order counts → Analytics (§9); a purchased package → an auto-accepted Proposal (§7). **New backend dependency (2026-07-30):** `TagLibSharp` (v2.3.0, pure managed .NET library, no native binaries) added to support server-side video duration inspection for `PreviewVideo` uploads — replacing what would otherwise be a client-trusted duration value. Chosen over FFmpeg-based alternatives to avoid adding a native-binary dependency to the Docker-based deployment.
+**Dependencies.** Reads: verified profile (§1.1), shared enums (§4.2), capacity fields on the profile (§6.7). Produces: published packages + FAQs → Leads/checkout (§7); impressions/clicks + order counts → Analytics (§9) — public listing detail pages will record fire-and-forget impression/click events per the planned tracking architecture (§9.4, Phase C when implemented); a purchased package → an auto-accepted Proposal (§7). **New backend dependency (2026-07-30):** `TagLibSharp` (v2.3.0, pure managed .NET library, no native binaries) added to support server-side video duration inspection for `PreviewVideo` uploads — replacing what would otherwise be a client-trusted duration value. Chosen over FFmpeg-based alternatives to avoid adding a native-binary dependency to the Docker-based deployment.
 
 ---
 
@@ -1033,7 +1033,7 @@ Module 5 is a provider-owned, read-time aggregation surface over Modules 2–4. 
 - **LIVE manual state:** `GrowthTask` is provider-created only. Statuses are `Open, InProgress, Completed, Dismissed, Expired`; terminal tasks cannot reopen. Expiry is applied lazily when tasks are read/updated. `TriggerRuleId` remains null for provider-created work. There is deliberately **no periodic observation→task job**, no eager task fan-out, and no automatic commercial action.
 - **`notTracked` is an honest data-source state, not a bug or fabricated zero:** unavailable metrics carry `State = "notTracked"`, null numeric/comparison/change values, and a reason in the API; the UI labels them “Not tracked yet.”
   - **Profile metrics:** profile views, search appearances, portfolio views, profile saves, contact rate, and portfolio engagement. These require a real public profile/search/portfolio browsing surface with privacy-safe, date-stamped tracking first.
-  - **Date-filtered Service counters:** impressions, service views/clicks, conversion rate, and enquiry conversion. Module 2 has lifetime `Impressions`/`Clicks` counters and record methods, but no live caller or timestamped events; a lifetime number cannot honestly answer a selected-period query.
+  - **Date-filtered Service counters:** impressions, service views/clicks, conversion rate, and enquiry conversion. Module 2 has lifetime `Impressions`/`Clicks` counters and record methods, but no live caller or timestamped events; a lifetime number cannot honestly answer a selected-period query. **A planned event-tracking architecture (§9.4, Phase A–E) will wire real timestamped impressions/clicks/inquiries when implemented.**
   - **Enquiries:** no enquiry entity/source-of-truth writer exists. The `ServiceInquiry` source enum alone is not activity history; enquiry tracking must exist before enquiry counts/rates can be computed.
   - **Proposal view/client-response rates:** current proposal status can say `Viewed`, but there is no durable `ViewedAt`/client-response timestamp or event history after later transitions. Durable proposal-event history is required before period rates are real. Module 3's provider response-rate signal is a different metric and is not reused as a client-response substitute.
   - **Cancellation rate:** engagement/milestone cancellation is not a complete historical lifecycle and cannot support a trustworthy period denominator. A durable cancellation lifecycle/history must be built upstream first.
@@ -1081,6 +1081,204 @@ The four canon rules remain exact and are evaluated when the dashboard is read; 
 - **“No Revenue Activity”** — approved and released project payments will appear here.
 
 **Dependencies.** Reads `ServiceListings`, `ClientBriefs`, `Proposals`, `WorkroomEngagements`, `WorkroomMilestones`, `FinancialTransactions`, `Reviews`, and Module-4 financial summary state. Persists only provider-owned `GrowthTasks`; no metric is consumed elsewhere and no Trust signal is written by Analytics.
+
+### 9.4 Planned — Analytics Tracking System Architecture (Phase A–E, **not yet implemented**)
+
+**Status: [PLANNED]** — The following architecture specifies a real, event-based tracking system that will power per-service and provider-wide Impressions/Clicks/Inquiries metrics in the Analytics workspace. All phases are reference only; nothing below is currently implemented. Providers see `notTracked` for service-view metrics until Phase D ships (§9.0).
+
+#### 9.4.1 Goals and definitions
+
+**Goals:**
+- Providers see real, honest Impressions, Clicks, Inquiries, and Conversion Rate for each service listing and an aggregate "All services" view.
+- Time-range filtering: Today / Last 7 days / Last 30 days / Last 90 days.
+- Time-series chart: Impressions vs Clicks over the selected range.
+- Provider self-views/clicks never inflate their own metrics.
+- Bot/spam protection at the recording layer.
+- Backend-authoritative — frontend records fire-and-forget, no client-side synthesis.
+
+**Definitions:**
+- **Impression** — a public visitor loads a listing detail page. One impression per (listing, session, 30-minute deduplication window).
+- **Click** — a public visitor clicks any primary CTA on the listing detail page (Contact / Order / View Packages / package tier card). One click per (listing, session, 5-second deduplication window).
+- **Inquiry** — a public visitor successfully sends a message to the provider about a specific listing. One inquiry per completed message send (piggybacked on existing message-send persistence).
+- **Conversion Rate** — inquiries ÷ impressions, expressed as percentage; displayed only when impressions > 0.
+
+#### 9.4.2 Data model
+
+**`AnalyticsDailyBuckets` collection:**
+
+One document per listing per day. Atomic `$inc` operations record impressions/clicks/inquiries daily. No periodic rollup job needed.
+
+```
+{
+  _id: ObjectId,
+  ListingId: string,          // ServiceListing.Id
+  ProviderId: string,         // Denormalized for fast provider-wide 
+                              // aggregations
+  Date: DateTime,             // UTC midnight, day granularity
+  Impressions: int,
+  Clicks: int,
+  Inquiries: int,
+  UpdatedAt: DateTime
+}
+```
+
+Indexes:
+- Unique compound on `(ListingId, Date)` — one bucket per listing per day.
+- Compound on `(ProviderId, Date)` — provider-wide date-range scans.
+
+**`AnalyticsSessionSeen` collection (deduplication):**
+
+Tracks session-level visibility for dedup within 30-minute (impressions) and 5-second (clicks) windows.
+
+```
+{
+  _id: ObjectId,
+  ListingId: string,
+  SessionKey: string,         // SHA-256(salt + IP + User-Agent)
+  EventType: string,          // "impression" | "click"
+  LastSeenAt: DateTime,
+  ExpiresAt: DateTime         // TTL: 30min (impression), 5sec (click)
+}
+```
+
+Indexes:
+- Compound on `(ListingId, SessionKey, EventType)` — dedup lookup.
+- TTL index on `ExpiresAt` — MongoDB auto-cleanup, no manual job.
+
+**Why daily buckets, not raw events:**
+Daily granularity satisfies all four time-range filters. Direct `$inc` on daily buckets is atomic and cheap. No periodic aggregation job needed. Storage is bounded—one document per listing per day, TTL-cleaned session records.
+
+#### 9.4.3 Recording endpoints (**Phase A**)
+
+**`POST /api/analytics/impression`** — Fire on public listing detail page mount.
+
+Request body:
+```json
+{ "listingId": "string" }
+```
+
+Server logic (in order):
+1. If request carries valid provider auth AND token ProviderId == listing ProviderId → return 204, drop the event. Provider self-views never count.
+2. Compute `SessionKey = SHA-256(salt + clientIP + userAgent)`.
+3. Query `AnalyticsSessionSeen` for `(listingId, SessionKey, "impression")`. If hit and not expired → return 204.
+4. Insert `AnalyticsSessionSeen` with `ExpiresAt = now + 30 minutes`.
+5. Atomic upsert on `AnalyticsDailyBuckets`: `{ listingId, providerId, date: today00 } → $inc Impressions: 1, $set UpdatedAt: now`.
+6. Return 204 No Content.
+
+Additional: Coarse per-IP rate limit at middleware (e.g., 60 impressions/IP/min) as fallback.
+
+**`POST /api/analytics/click`** — Fire on listing-detail CTA click (Contact, Order, View Packages, tier card).
+
+Same logic as impression, with:
+- 5-second dedup window (not 30 minutes).
+- `$inc Clicks: 1`.
+- Optional `target` field (`"contact"` / `"order"` / `"packages"` / tier SKU) stored on session doc, not the daily bucket (v1).
+
+**Inquiry counting — no new endpoint.** Existing message-send flow gets a small wiring addition: on successful message persistence from a listing context, `$inc Inquiries: 1` on that day's bucket. No dedup—existing message system handles spam.
+
+#### 9.4.4 Aggregation endpoints (**Phase B**)
+
+**`GET /api/analytics/summary?listingId={id|all}&range={today|7d|30d|90d}`**
+
+Auth: Provider must own the listing (or all their listings for `listingId=all`).
+
+Response:
+```json
+{
+  "impressions": integer,
+  "impressionsDelta": decimal | null,
+  "clicks": integer,
+  "clicksDelta": decimal | null,
+  "inquiries": integer,
+  "inquiriesDelta": decimal | null,
+  "conversionRate": decimal | null,
+  "conversionRateDelta": decimal | null
+}
+```
+
+Delta = `((current − previous) ÷ previous) × 100`. If `previous == 0`, delta is `null` (UI shows em-dash). Conversion rate is `null` when impressions == 0.
+
+**`GET /api/analytics/timeseries?listingId={id|all}&range={today|7d|30d|90d}`**
+
+Response:
+```json
+{
+  "buckets": [
+    { "date": "2026-06-15", "impressions": 12, "clicks": 3 },
+    ...
+  ]
+}
+```
+
+Missing days filled with zeros for continuous chart axis.
+
+**`GET /api/analytics/listings`**
+
+Populating the dropdown selector. Returns "All services" pseudo-entry + each provider listing, with optional `impressions30d` for badging. Read-owned listings excluded from dropdown.
+
+#### 9.4.5 Frontend recording (**Phase C**)
+
+**Impression:** Fire once on public listing detail page mount.
+
+```javascript
+useEffect(() => {
+  const controller = new AbortController();
+  fetch('/api/analytics/impression', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ listingId }),
+    keepalive: true,
+    signal: controller.signal,
+  }).catch(() => { /* silent */ });
+  return () => controller.abort();
+}, [listingId]);
+```
+
+Rules: Fire once, fire-and-forget, non-blocking, no UI feedback, do not delay primary rendering.
+
+**Click:** Similar fire-and-forget on CTA click. Never delay the action to wait for analytics.
+
+**Inquiry:** Entirely backend; existing message-send flow adds the increment.
+
+#### 9.4.6 Analytics workspace UI (**Phase D**)
+
+Layout: Listing selector dropdown ("All services" + provider's listings, default "All services") → time-range filter (Today / 7d / 30d / 90d, default 30d) → four metric cards (Impressions, Clicks, Inquiries, Conversion Rate with value + delta chip + icon) → line chart (Impressions vs Clicks, selected range).
+
+**Canon compliance:**
+- All colors from `globals.css` design tokens—no hardcoded hex.
+- No fabricated numbers. When a metric is 0, UI shows em-dash `—` instead of `0` to distinguish "no activity" from a real zero. No delta chip in that state.
+- Empty chart state: "No activity yet for this range. Data appears as visitors interact with your listing."—not an empty grid.
+- "TOP GIG" badge deferred (Phase E). Not rendered at Phase D.
+
+#### 9.4.7 Privacy, security, edge cases
+
+- **No PII in `AnalyticsSessionSeen`** — only the hashed session key.
+- **SHA-256 with per-instance salt** (config value). Salt does not rotate (would break in-flight dedup).
+- **TTL auto-cleanup** — MongoDB handles `AnalyticsSessionSeen` TTL; no manual job.
+- **Daily buckets have no TTL** — providers may want long-term history; storage cost is negligible.
+- **Deleted listings:** buckets preserved; frontend excludes from dropdown. "All services" aggregate still counts them historically.
+- **Provider detection:** JWT ProviderId claim vs listing's ProviderId, both strings, request-scoped, no session state.
+- **No cross-provider leakage** — every read endpoint enforces ownership (§2, §10.1).
+
+#### 9.4.8 Implementation phases (planned, not implemented)
+
+**Phase A — Backend data model + write endpoints.** Collections, indexes, impression + click recording endpoints with provider-drop and session dedup. Inquiry hook into existing message-send flow. Unit tests for provider-drop and dedup. No frontend changes; no read endpoints yet.
+
+**Phase B — Backend read endpoints.** Summary, timeseries, listings-for-dropdown aggregations. Unit tests for date-range aggregation and edge cases (zero-comparison deltas, missing days, owned+read-only listings).
+
+**Phase C — Frontend recording.** Fire-and-forget impression/click calls on public listing detail pages. Verify events land in MongoDB. Confirm provider self-view does NOT increment.
+
+**Phase D — Analytics workspace UI.** Dropdown + 4 metric cards + chart, all matching mockup. `globals.css` tokens only. Honest empty states. React Query hooks wired to Phase B endpoints. Conversion-rate handling. No fabricated zero-state data.
+
+**Phase E — TOP GIG badge and optional additional breakdowns.** Deferred. Server-computed best-performing-listing flag. Optional per-CTA click breakdown. Advanced comparison ranges.
+
+#### 9.4.9 What NOT to do
+
+- **Do NOT ship analytics UI with fabricated numbers "for now."** Canon rule §2 (no AI-generated/fake content). Empty states + `notTracked` are the honest alternative.
+- **Do NOT create a raw events collection.** Daily buckets are sufficient and simpler. No "we'll aggregate later" deferral.
+- **Do NOT rate-limit at the daily-bucket level.** Would drop legitimate events. Rate-limit at session-dedup layer + coarse per-IP middleware only.
+- **Do NOT ship Phase D before Phase A, B, C complete.** No fake data is preferable to real UI with no real data.
+- **Do NOT store PII** (user emails, names, IDs) in session dedup records. Hash only.
 
 ---
 
@@ -1266,6 +1464,8 @@ The repo's **root `.gitignore` is a binary / non-UTF8 file**, which can make the
 ---
 
 ## Changelog
+
+**2026-07-31 — Archived analytics tracking system architecture as canonical reference (§9.4, Phase A–E planned, not yet implemented).** Added full specification for real, event-based tracking system powering per-service and provider-wide Impressions/Clicks/Inquiries metrics: data model (`AnalyticsDailyBuckets`, `AnalyticsSessionSeen` with TTL dedup), write/read/aggregation endpoints, frontend fire-and-forget recording pattern, Analytics workspace UI layout requirements (4 metric cards + chart, canonical empty states), privacy/security design (SHA-256 session hashing, no PII, provider self-view drops, bot/spam rate-limiting), and 5-phase implementation plan. All content marked **[PLANNED]** — nothing is currently implemented. Cross-referenced in §6 (listing detail pages will record events per Phase C) and §9.0 (noting Phase A–E will resolve missing service-view/click/inquiry metrics). Replaces any prior stub content in Module 5 Analytics section.
 
 **2026-07-31 — Checkpoint 2 Part 2: removed tabbed manage-flow entirely (ListingDetail, ListingEditor, CapacityPanel).** Wizard is now the sole edit mode. Old `?service={id}&tab=overview|packages|faqs|capacity` URLs now redirect to `?view=edit&step=1&serviceId={id}`. Backend Capacity endpoints remain active for Profile area and availability control, but Capacity UI is removed pending future re-attachment to Profile & Trust. Design-token migration complete in wizard steps and related editors (all hardcoded hex colors converted to `.sp-workspace` theme tokens). Verification: frontend TypeScript clean; ServicesWorkspace.tsx deletion flow tested syntax-clean; redirect logic verified; no external dependencies on deleted components found.
 
