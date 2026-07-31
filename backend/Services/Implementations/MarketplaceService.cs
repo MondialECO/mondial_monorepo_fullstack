@@ -134,6 +134,14 @@ namespace WebApp.Services.Implementations
                     .Where(x => x.User != null)
                     .ToDictionary(x => x.Id, x => x.User);
 
+                foreach (var result in providerResults)
+                {
+                    _logger.LogInformation(
+                        "[MarketplaceService] Provider {Id} found={Found} HasProfile={HasProfile} ProfileImage={ProfileImage}",
+                        result.Id, result.User != null, result.User?.ServiceProviderProfile != null,
+                        result.User?.ServiceProviderProfile?.ProfileImage?.PublicUrl ?? "null");
+                }
+
                 var packages = await _db.ServicePackages
                     .Find(p => pagedListings.Select(l => l.Id).Contains(p.ServiceId) &&
                                p.PackageType == PackageType.Basic)
