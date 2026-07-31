@@ -21,6 +21,7 @@ import {
 } from '@/components/serviceprovider/ui';
 import { usePublishListing, useUnpublishListing } from '@/hooks/queries/service-catalog';
 import type { CatalogStatus, ServiceListingDetail, ServicePackage } from '@/types/service-catalog';
+import { sanitizeDescriptionHtml } from '@/lib/sanitize-html';
 import { ListingEditor } from './ListingEditor';
 import { PackageBuilder } from './PackageBuilder';
 import { FaqBuilder } from './FaqBuilder';
@@ -91,9 +92,16 @@ export function ListingDetail({ detail }: { detail: ServiceListingDetail }) {
             <h2 className="mt-4 font-heading text-2xl font-semibold leading-8 text-[#171717]">
               {listing.title || 'Untitled service'}
             </h2>
-            <p className="mt-2 text-sm leading-6 text-[#6B7280]">
-              {listing.description || 'Add a description so clients understand this service.'}
-            </p>
+            {listing.description ? (
+              <div
+                className="mt-2 text-sm leading-6 text-[#6B7280] prose prose-sm"
+                dangerouslySetInnerHTML={{ __html: sanitizeDescriptionHtml(listing.description) }}
+              />
+            ) : (
+              <p className="mt-2 text-sm leading-6 text-[#6B7280]">
+                Add a description so clients understand this service.
+              </p>
+            )}
             <div className="mt-5 flex flex-wrap items-center gap-5 text-xs text-[#6B7280]">
               <span className="inline-flex items-center gap-1.5">
                 <Eye className="size-4" aria-hidden="true" />
@@ -192,9 +200,14 @@ function ServiceOverview({ detail }: { detail: ServiceListingDetail }) {
         <div className="mt-6 space-y-6">
           <div>
             <h3 className="text-sm font-semibold text-[#171717]">About this service</h3>
-            <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-[#4B5563]">
-              {listing.description || 'No description has been added.'}
-            </p>
+            {listing.description ? (
+              <div
+                className="mt-2 text-sm leading-7 text-[#4B5563] prose prose-sm"
+                dangerouslySetInnerHTML={{ __html: sanitizeDescriptionHtml(listing.description) }}
+              />
+            ) : (
+              <p className="mt-2 text-sm leading-7 text-[#4B5563]">No description has been added.</p>
+            )}
           </div>
 
           <TokenList title="Industry focus" values={listing.industryFocus} empty="No industries specified." />

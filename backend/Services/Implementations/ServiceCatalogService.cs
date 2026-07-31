@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Identity;
+using MongoDB.Bson;
 using MongoDB.Driver;
+using TagLib;
 using WebApp.DbContext;
 using WebApp.Models.DatabaseModels;
 using WebApp.Models.Dtos;
@@ -19,6 +21,8 @@ public class ServiceCatalogService : IServiceCatalogService
     private readonly MongoDbContext _db;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ILogger<ServiceCatalogService> _logger;
+    private readonly SaveFile _saveFile;
+    private readonly Hangfire.IBackgroundJobClient _jobClient;
 
     private readonly IServiceProviderProfileStore _spStore;
     private readonly WebApp.Services.Migrations.IServiceProviderProfileSplitMigration _migrator;
@@ -28,12 +32,16 @@ public class ServiceCatalogService : IServiceCatalogService
         UserManager<ApplicationUser> userManager,
         IServiceProviderProfileStore spStore,
         WebApp.Services.Migrations.IServiceProviderProfileSplitMigration migrator,
+        SaveFile saveFile,
+        Hangfire.IBackgroundJobClient jobClient,
         ILogger<ServiceCatalogService> logger)
     {
         _db = db;
         _userManager = userManager;
         _spStore = spStore;
         _migrator = migrator;
+        _saveFile = saveFile;
+        _jobClient = jobClient;
         _logger = logger;
     }
 
@@ -72,6 +80,14 @@ public class ServiceCatalogService : IServiceCatalogService
             return ServiceProviderResult<ServiceListingResponse>.Conflict("Unknown service category.");
         if (string.IsNullOrWhiteSpace(request.Title))
             return ServiceProviderResult<ServiceListingResponse>.Conflict("A service title is required.");
+        // Allow empty ServiceType during draft creation (user hasn't selected yet); only validate if non-empty
+        if (!string.IsNullOrWhiteSpace(request.ServiceType) && !ServiceTypeLookup.IsValidServiceType(category, request.ServiceType))
+            return ServiceProviderResult<ServiceListingResponse>.Conflict($"'{request.ServiceType}' is not an approved sub-category for {category}.");
+
+        // Enforce lifetime cap: each provider may create a maximum of 4 ServiceListings total (across all statuses)
+        var existingCount = await _db.ServiceListings.CountDocumentsAsync(l => l.ProviderId == userId);
+        if (existingCount >= 4)
+            return ServiceProviderResult<ServiceListingResponse>.Conflict("You have reached the maximum of 4 services and cannot create additional listings.");
 
         var listing = new ServiceListing
         {
@@ -80,6 +96,8 @@ public class ServiceCatalogService : IServiceCatalogService
             Title = request.Title.Trim(),
             Description = request.Description?.Trim() ?? "",
             Category = category,
+            MetadataTags = Normalize(request.MetadataTags),
+            SearchTags = Normalize(request.SearchTags),
             IndustryFocus = Normalize(request.IndustryFocus),
             GeographicCoverage = Normalize(request.GeographicCoverage),
             Status = CatalogStatus.Draft,
@@ -97,11 +115,16 @@ public class ServiceCatalogService : IServiceCatalogService
             return ServiceProviderResult<ServiceListingResponse>.Conflict("Unknown service category.");
         if (string.IsNullOrWhiteSpace(request.Title))
             return ServiceProviderResult<ServiceListingResponse>.Conflict("A service title is required.");
+        // Allow empty ServiceType during draft updates (user hasn't selected yet); only validate if non-empty
+        if (!string.IsNullOrWhiteSpace(request.ServiceType) && !ServiceTypeLookup.IsValidServiceType(category, request.ServiceType))
+            return ServiceProviderResult<ServiceListingResponse>.Conflict($"'{request.ServiceType}' is not an approved sub-category for {category}.");
 
         listing.ServiceType = request.ServiceType?.Trim() ?? "";
         listing.Title = request.Title.Trim();
         listing.Description = request.Description?.Trim() ?? "";
         listing.Category = category;
+        listing.MetadataTags = Normalize(request.MetadataTags);
+        listing.SearchTags = Normalize(request.SearchTags);
         listing.IndustryFocus = Normalize(request.IndustryFocus);
         listing.GeographicCoverage = Normalize(request.GeographicCoverage);
         listing.UpdatedAt = DateTime.UtcNow;
@@ -121,6 +144,11 @@ public class ServiceCatalogService : IServiceCatalogService
         var listing = await FindOwnedListingAsync(userId, listingId);
         if (listing is null)
             return ServiceProviderResult<ServiceListingResponse>.NotFound("Service listing not found.");
+
+        // When publishing, require that ServiceType is set (not empty)
+        if (status == CatalogStatus.Published && string.IsNullOrWhiteSpace(listing.ServiceType))
+            return ServiceProviderResult<ServiceListingResponse>.Conflict("A sub-category is required before publishing.");
+
         listing.Status = status;
         listing.UpdatedAt = DateTime.UtcNow;
         await _db.ServiceListings.ReplaceOneAsync(l => l.Id == listing.Id, listing);
@@ -189,11 +217,9 @@ public class ServiceCatalogService : IServiceCatalogService
         // Required-before-publish (hard blocks, §6.2).
         var missing = new List<string>();
         if (string.IsNullOrWhiteSpace(pkg.PackageTitle)) missing.Add("title");
-        if (string.IsNullOrWhiteSpace(pkg.PackageDescription)) missing.Add("description");
         if (pkg.Price <= 0) missing.Add("price > 0");
         if (string.IsNullOrWhiteSpace(pkg.Currency)) missing.Add("currency");
         if (pkg.DeliveryTimeValue <= 0) missing.Add("delivery time");
-        if (pkg.Deliverables.Count == 0) missing.Add("at least one deliverable");
         if (!pkg.UnlimitedRevisions && pkg.RevisionRequestWindowDays <= 0) missing.Add("a revision policy (request window)");
         if (missing.Count > 0)
             return ServiceProviderResult<PublishPackageResponse>.Conflict($"Complete these before publishing: {string.Join(", ", missing)}.");
@@ -627,4 +653,5 @@ public class ServiceCatalogService : IServiceCatalogService
             return "This FAQ does not match the selected package settings.";
         return null;
     }
+
 }

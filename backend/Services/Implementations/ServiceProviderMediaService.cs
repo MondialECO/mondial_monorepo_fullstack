@@ -1,5 +1,6 @@
 using Hangfire;
 using Microsoft.AspNetCore.Identity;
+using MongoDB.Driver;
 using WebApp.Models.DatabaseModels;
 using WebApp.Models.Dtos;
 using WebApp.Services.Audit;
@@ -59,6 +60,7 @@ public sealed class ServiceProviderMediaService(
     IFileSecurityScanner scanner,
     IAuditLogger audit,
     IBackgroundJobClient jobClient,
+    IMongoDatabase mongoDb,
     ILogger<ServiceProviderMediaService> logger) : IServiceProviderMediaService
 {
     private const long ProfileMaximumBytes = 5 * 1024 * 1024;
@@ -291,5 +293,230 @@ public sealed class ServiceProviderMediaService(
     {
         ProviderMediaFiles.DeleteBestEffort(publicUrl, logger, jobClient);
         return Task.CompletedTask;
+    }
+
+    // ---- Service Listing Gallery Images & Preview Video (mirrors profile-media pattern) ----
+    private const long GalleryImageMaximumBytes = 8 * 1024 * 1024; // 8 MB
+    private const long PreviewVideoMaximumBytes = 50 * 1024 * 1024; // 50 MB
+    private const int PreviewVideoMaximumSeconds = 60;
+    private const int GalleryImageCapLimit = 20;
+
+    public async Task<ServiceProviderResult<GalleryImageResponse>> UploadListingGalleryImageAsync(
+        string userId,
+        string listingId,
+        IFormFile file,
+        CancellationToken cancellationToken)
+    {
+        var listing = await mongoDb.GetCollection<ServiceListing>("ServiceListings")
+            .Find(l => l.Id == listingId && l.ProviderId == userId)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (listing is null)
+            return ServiceProviderResult<GalleryImageResponse>.NotFound("Service listing not found.");
+
+        if (file.Length > GalleryImageMaximumBytes)
+            return ServiceProviderResult<GalleryImageResponse>.Invalid($"Image must be smaller than 8 MB. Your file is {(file.Length / 1024 / 1024.0):F1} MB.");
+
+        if (listing.GalleryImages.Count >= GalleryImageCapLimit)
+            return ServiceProviderResult<GalleryImageResponse>.Conflict("Gallery is limited to 20 images.");
+
+        string publicUrl;
+        try
+        {
+            publicUrl = await saveFile.SaveFileAsync(file, "service-provider/gallery");
+        }
+        catch (ArgumentException ex)
+        {
+            return ServiceProviderResult<GalleryImageResponse>.Invalid(ex.Message);
+        }
+
+        var galleryImage = new GalleryImage
+        {
+            Id = Guid.NewGuid().ToString(),
+            StorageKey = publicUrl,
+            PublicUrl = publicUrl,
+            ContentType = file.ContentType,
+            Bytes = file.Length,
+            DisplayOrder = listing.GalleryImages.Count,
+            UploadedAt = DateTime.UtcNow,
+        };
+
+        var result = await mongoDb.GetCollection<ServiceListing>("ServiceListings").FindOneAndUpdateAsync(
+            Builders<ServiceListing>.Filter.And(
+                Builders<ServiceListing>.Filter.Eq(l => l.Id, listingId),
+                Builders<ServiceListing>.Filter.Eq(l => l.ProviderId, userId),
+                Builders<ServiceListing>.Filter.Or(
+                    Builders<ServiceListing>.Filter.Exists(l => l.GalleryImages, false),
+                    Builders<ServiceListing>.Filter.SizeLt(l => l.GalleryImages, GalleryImageCapLimit)
+                )
+            ),
+            Builders<ServiceListing>.Update
+                .Push(l => l.GalleryImages, galleryImage)
+                .Set(l => l.UpdatedAt, DateTime.UtcNow),
+            new FindOneAndUpdateOptions<ServiceListing> { ReturnDocument = ReturnDocument.After },
+            cancellationToken);
+
+        if (result is null)
+            return ServiceProviderResult<GalleryImageResponse>.Conflict("Gallery is limited to 20 images. The limit may have been reached while uploading.");
+
+        logger.LogInformation("Gallery image uploaded for listing {ListingId} by user {UserId}", listingId, userId);
+        return ServiceProviderResult<GalleryImageResponse>.Ok(galleryImage.ToResponse(), "Image added to gallery.");
+    }
+
+    public async Task<ServiceProviderResult<ServiceListingResponse>> DeleteListingGalleryImageAsync(
+        string userId,
+        string listingId,
+        string imageId,
+        CancellationToken cancellationToken)
+    {
+        var listing = await mongoDb.GetCollection<ServiceListing>("ServiceListings")
+            .Find(l => l.Id == listingId && l.ProviderId == userId)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (listing is null)
+            return ServiceProviderResult<ServiceListingResponse>.NotFound("Service listing not found.");
+
+        var image = listing.GalleryImages.FirstOrDefault(i => i.Id == imageId);
+        if (image is null)
+            return ServiceProviderResult<ServiceListingResponse>.NotFound("Gallery image not found.");
+
+        var result = await mongoDb.GetCollection<ServiceListing>("ServiceListings").FindOneAndUpdateAsync(
+            Builders<ServiceListing>.Filter.And(
+                Builders<ServiceListing>.Filter.Eq(l => l.Id, listingId),
+                Builders<ServiceListing>.Filter.Eq(l => l.ProviderId, userId)
+            ),
+            Builders<ServiceListing>.Update
+                .PullFilter(l => l.GalleryImages, Builders<GalleryImage>.Filter.Eq(i => i.Id, imageId))
+                .Set(l => l.UpdatedAt, DateTime.UtcNow),
+            new FindOneAndUpdateOptions<ServiceListing> { ReturnDocument = ReturnDocument.After },
+            cancellationToken);
+
+        if (result is null)
+            return ServiceProviderResult<ServiceListingResponse>.Conflict("Could not remove image.");
+
+        ProviderMediaFiles.DeleteBestEffort(image.PublicUrl, logger, jobClient);
+        return ServiceProviderResult<ServiceListingResponse>.Ok(result.ToResponse(), "Image removed from gallery.");
+    }
+
+    public async Task<ServiceProviderResult<PreviewVideoResponse>> UploadListingPreviewVideoAsync(
+        string userId,
+        string listingId,
+        IFormFile file,
+        CancellationToken cancellationToken)
+    {
+        var listing = await mongoDb.GetCollection<ServiceListing>("ServiceListings")
+            .Find(l => l.Id == listingId && l.ProviderId == userId)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (listing is null)
+            return ServiceProviderResult<PreviewVideoResponse>.NotFound("Service listing not found.");
+
+        if (file.Length > PreviewVideoMaximumBytes)
+            return ServiceProviderResult<PreviewVideoResponse>.Invalid($"Video must be smaller than 50 MB. Your file is {(file.Length / 1024 / 1024.0):F1} MB.");
+
+        if (!file.ContentType.StartsWith("video/"))
+            return ServiceProviderResult<PreviewVideoResponse>.Invalid("Only video files are accepted.");
+
+        int videoDurationSeconds;
+        try
+        {
+            var tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + Path.GetExtension(file.FileName));
+            try
+            {
+                using (var stream = file.OpenReadStream())
+                using (var tempFile = System.IO.File.Create(tempPath))
+                {
+                    await stream.CopyToAsync(tempFile, cancellationToken);
+                }
+
+                var tagFile = TagLib.File.Create(tempPath);
+                videoDurationSeconds = (int)tagFile.Properties.Duration.TotalSeconds;
+            }
+            finally
+            {
+                if (System.IO.File.Exists(tempPath))
+                    try { System.IO.File.Delete(tempPath); } catch { }
+            }
+        }
+        catch (TagLib.UnsupportedFormatException)
+        {
+            return ServiceProviderResult<PreviewVideoResponse>.Invalid("Unsupported video format. Please upload an MP4, WebM, or other common video format.");
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to inspect video duration for {FileName}", file.FileName);
+            return ServiceProviderResult<PreviewVideoResponse>.Invalid("Unable to verify video format. Please ensure the file is a valid video.");
+        }
+
+        if (videoDurationSeconds > PreviewVideoMaximumSeconds)
+            return ServiceProviderResult<PreviewVideoResponse>.Invalid($"Video must be shorter than 60 seconds. Your video is {videoDurationSeconds} seconds.");
+
+        string publicUrl;
+        try
+        {
+            publicUrl = await saveFile.SaveFileAsync(file, "service-provider/preview-video");
+        }
+        catch (ArgumentException ex)
+        {
+            return ServiceProviderResult<PreviewVideoResponse>.Invalid(ex.Message);
+        }
+
+        var previewVideo = new PreviewVideo
+        {
+            StorageKey = publicUrl,
+            PublicUrl = publicUrl,
+            ContentType = file.ContentType,
+            Bytes = file.Length,
+            DurationSeconds = videoDurationSeconds,
+            Sha256 = "",
+            UploadedAt = DateTime.UtcNow,
+        };
+
+        var result = await mongoDb.GetCollection<ServiceListing>("ServiceListings").FindOneAndUpdateAsync(
+            Builders<ServiceListing>.Filter.And(
+                Builders<ServiceListing>.Filter.Eq(l => l.Id, listingId),
+                Builders<ServiceListing>.Filter.Eq(l => l.ProviderId, userId)
+            ),
+            Builders<ServiceListing>.Update
+                .Set(l => l.PreviewVideo, previewVideo)
+                .Set(l => l.UpdatedAt, DateTime.UtcNow),
+            new FindOneAndUpdateOptions<ServiceListing> { ReturnDocument = ReturnDocument.After },
+            cancellationToken);
+
+        if (result is null)
+            return ServiceProviderResult<PreviewVideoResponse>.Conflict("Could not save preview video.");
+
+        logger.LogInformation("Preview video uploaded for listing {ListingId} by user {UserId}", listingId, userId);
+        return ServiceProviderResult<PreviewVideoResponse>.Ok(previewVideo.ToResponse(), "Preview video saved.");
+    }
+
+    public async Task<ServiceProviderResult<ServiceListingResponse>> DeleteListingPreviewVideoAsync(
+        string userId,
+        string listingId,
+        CancellationToken cancellationToken)
+    {
+        var listing = await mongoDb.GetCollection<ServiceListing>("ServiceListings")
+            .Find(l => l.Id == listingId && l.ProviderId == userId)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (listing is null)
+            return ServiceProviderResult<ServiceListingResponse>.NotFound("Service listing not found.");
+
+        if (listing.PreviewVideo is null)
+            return ServiceProviderResult<ServiceListingResponse>.Ok(listing.ToResponse(), "No preview video was set.");
+
+        var result = await mongoDb.GetCollection<ServiceListing>("ServiceListings").FindOneAndUpdateAsync(
+            Builders<ServiceListing>.Filter.And(
+                Builders<ServiceListing>.Filter.Eq(l => l.Id, listingId),
+                Builders<ServiceListing>.Filter.Eq(l => l.ProviderId, userId)
+            ),
+            Builders<ServiceListing>.Update
+                .Unset(l => l.PreviewVideo)
+                .Set(l => l.UpdatedAt, DateTime.UtcNow),
+            new FindOneAndUpdateOptions<ServiceListing> { ReturnDocument = ReturnDocument.After },
+            cancellationToken);
+
+        if (result is null)
+            return ServiceProviderResult<ServiceListingResponse>.Conflict("Could not remove preview video.");
+
+        if (listing.PreviewVideo?.PublicUrl is not null)
+            ProviderMediaFiles.DeleteBestEffort(listing.PreviewVideo.PublicUrl, logger, jobClient);
+        return ServiceProviderResult<ServiceListingResponse>.Ok(result.ToResponse(), "Preview video removed.");
     }
 }

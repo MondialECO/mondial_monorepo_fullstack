@@ -25,6 +25,7 @@ public interface IServiceCatalogService
     Task<ServiceProviderResult<PublishPackageResponse>> PublishPackageAsync(string userId, string packageId, PublishPackageRequest request);
     Task<ServiceProviderResult<ServicePackageResponse>> UnpublishPackageAsync(string userId, string packageId);
 
+
     // ---- FAQs ----
     Task<ServiceProviderResult<ServiceFaqResponse>> AddFaqAsync(string userId, string listingId, UpsertServiceFaqRequest request);
     Task<ServiceProviderResult<ServiceFaqResponse>> UpdateFaqAsync(string userId, string faqId, UpsertServiceFaqRequest request);

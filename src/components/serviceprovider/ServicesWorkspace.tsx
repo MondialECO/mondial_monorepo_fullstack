@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
@@ -28,8 +28,8 @@ import {
   useServiceListings,
 } from '@/hooks/queries/service-catalog';
 import type { CatalogStatus, ServiceListing } from '@/types/service-catalog';
-import { ListingEditor } from './catalog/ListingEditor';
 import { ListingDetail } from './catalog/ListingDetail';
+import { ServiceCatalogWizard } from './catalog/ServiceCatalogWizard';
 
 const BASE_ROUTE = '/dashboard/serviceprovider/services';
 const statusOptions: Array<'All' | CatalogStatus> = [
@@ -43,43 +43,73 @@ const statusOptions: Array<'All' | CatalogStatus> = [
 export function ServicesWorkspace() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const serviceId = searchParams.get('service');
-  const isCreating = searchParams.get('view') === 'new';
+  const view = searchParams.get('view') || '';
+  const serviceId = searchParams.get('serviceId') || searchParams.get('service');
+  const isCreating = view === 'new';
+  const isEditing = view === 'edit' && serviceId;
+  const wizardStep = searchParams.get('step');
+  const isWizard = (isCreating || isEditing) && wizardStep;
+  const listingsQuery = useServiceListings();
+  const listings = useMemo(() => listingsQuery.data ?? [], [listingsQuery.data]);
+  const atCapacity = listings.length >= 4;
+
+  // If creating without step param, redirect to step 1 (wizard entry point)
+  useEffect(() => {
+    if (isCreating && !wizardStep) {
+      router.replace(`${BASE_ROUTE}?view=new&step=1`);
+    }
+  }, [isCreating, wizardStep, router]);
 
   const showList = () => router.push(BASE_ROUTE);
-  const showNew = () => router.push(`${BASE_ROUTE}?view=new`);
-  const showService = (id: string) =>
-    router.push(`${BASE_ROUTE}?service=${encodeURIComponent(id)}&tab=overview`);
+  const showNew = () => {
+    if (!atCapacity) {
+      router.push(`${BASE_ROUTE}?view=new&step=1`);
+    }
+  };
+  const showService = (id: string) => {
+    const url = `${BASE_ROUTE}?view=edit&step=1&serviceId=${encodeURIComponent(id)}`;
+    router.push(url);
+  };
 
   return (
     <SpPage>
       <SpPageHeader
-        title={isCreating ? 'Create service' : serviceId ? 'Manage service' : 'Service Catalog'}
+        title={isCreating ? 'Create service' : isEditing ? 'Edit service' : 'Service Catalog'}
         description={
           isCreating
             ? 'Describe the service clients can discover, then add its packages and terms.'
-            : serviceId
-              ? 'Review the listing, packages, FAQs, and capacity using live catalog data.'
+            : isEditing
+              ? 'Edit your service listing.'
               : 'Create and manage the services clients can discover in the marketplace.'
         }
         actions={
-          isCreating || serviceId ? (
+          isWizard || (serviceId && view !== 'edit') ? (
             <Button type="button" variant="outline" onClick={showList}>
               <ArrowLeft className="size-4" aria-hidden="true" />
               All services
             </Button>
           ) : (
-            <Button type="button" onClick={showNew}>
-              <Plus className="size-4" aria-hidden="true" />
-              New service
-            </Button>
+            <div className="flex flex-col items-end gap-2">
+              <Button
+                type="button"
+                onClick={showNew}
+                disabled={atCapacity}
+                title={atCapacity ? "Maximum of 4 services reached" : "Create a new service"}
+              >
+                <Plus className="size-4" aria-hidden="true" />
+                New service
+              </Button>
+              {atCapacity && (
+                <p className="text-xs text-[#6B7280]">Maximum of 4 services reached</p>
+              )}
+            </div>
           )
         }
       />
 
       {!isCreating && !serviceId && <ListingsList onOpen={showService} onCreate={showNew} />}
-      {isCreating && <ListingEditor onDone={showService} onCancel={showList} />}
-      {serviceId && <ListingDetailLoader id={serviceId} />}
+      {isWizard && <ServiceCatalogWizard onExit={showList} />}
+      {serviceId && view !== 'edit' && <ListingDetailLoader id={serviceId} />}
     </SpPage>
   );
 }
@@ -143,16 +173,18 @@ function ListingsList({
     );
   }
 
+  const atCapacity = listings.length >= 4;
+
   if (listings.length === 0) {
     return (
       <SpEmptyState
         icon={LayoutGrid}
-        title="Create your first service"
-        description="Start with the service overview. Packages, client requirements, and FAQs can be added after the listing is saved."
+        title="No Published Services"
+        description="Create your first service listing to start receiving briefs."
         action={
-          <Button type="button" onClick={onCreate}>
+          <Button type="button" onClick={onCreate} disabled={atCapacity}>
             <Plus className="size-4" aria-hidden="true" />
-            Create service
+            Create Service
           </Button>
         }
       />
@@ -165,6 +197,11 @@ function ListingsList({
 
   return (
     <div className="space-y-5">
+      {atCapacity && (
+        <SpMutationFeedback status="warning">
+          You have reached the maximum of 4 services. You cannot create additional listings at this time.
+        </SpMutationFeedback>
+      )}
       <div className="grid gap-4 sm:grid-cols-3">
         <SpMetricCard label="Published services" value={published} icon={LayoutGrid} />
         <SpMetricCard label="Lifetime impressions" value={impressions.toLocaleString()} icon={Eye} />
@@ -263,7 +300,7 @@ function ListingCard({ listing, onOpen }: { listing: ServiceListing; onOpen: () 
           <span>Updated {new Date(listing.updatedAt).toLocaleDateString()}</span>
         </div>
         <Button type="button" size="sm" variant="outline" onClick={onOpen}>
-          Manage
+          Edit
         </Button>
       </div>
     </SpCard>

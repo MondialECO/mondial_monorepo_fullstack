@@ -48,4 +48,28 @@ public interface IServiceProviderMediaService
         string userId,
         string portfolioItemId,
         CancellationToken cancellationToken = default);
+
+    // ---- Service Listing Gallery & Preview Video ----
+    Task<ServiceProviderResult<GalleryImageResponse>> UploadListingGalleryImageAsync(
+        string userId,
+        string listingId,
+        IFormFile file,
+        CancellationToken cancellationToken = default);
+
+    Task<ServiceProviderResult<ServiceListingResponse>> DeleteListingGalleryImageAsync(
+        string userId,
+        string listingId,
+        string imageId,
+        CancellationToken cancellationToken = default);
+
+    Task<ServiceProviderResult<PreviewVideoResponse>> UploadListingPreviewVideoAsync(
+        string userId,
+        string listingId,
+        IFormFile file,
+        CancellationToken cancellationToken = default);
+
+    Task<ServiceProviderResult<ServiceListingResponse>> DeleteListingPreviewVideoAsync(
+        string userId,
+        string listingId,
+        CancellationToken cancellationToken = default);
 }

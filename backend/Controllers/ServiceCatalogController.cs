@@ -2,8 +2,10 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using WebApp.Models;
+using WebApp.Models.DatabaseModels;
 using WebApp.Models.Dtos;
 using WebApp.Services.Interface;
+using WebApp.Services.Implementations;
 
 namespace WebApp.Controllers;
 
@@ -19,10 +21,12 @@ namespace WebApp.Controllers;
 public class ServiceCatalogController : ControllerBase
 {
     private readonly IServiceCatalogService _service;
+    private readonly ILogger<ServiceCatalogController> _logger;
 
-    public ServiceCatalogController(IServiceCatalogService service)
+    public ServiceCatalogController(IServiceCatalogService service, ILogger<ServiceCatalogController> logger)
     {
         _service = service;
+        _logger = logger;
     }
 
     private string CurrentUserId =>
@@ -103,6 +107,8 @@ public class ServiceCatalogController : ControllerBase
     public async Task<IActionResult> ReorderFaqs(string listingId, [FromBody] ReorderFaqsRequest request) =>
         Map(await _service.ReorderFaqsAsync(CurrentUserId, listingId, request));
 
+    // ---- Gallery & Video (Service Listing media) ----
+
     // ---- Provider capacity ----
 
     [HttpGet("capacity")]
@@ -118,6 +124,23 @@ public class ServiceCatalogController : ControllerBase
     [HttpGet("pricing-guidance")]
     public IActionResult GetPricingGuidance([FromQuery] string category, [FromQuery] string pricingModel) =>
         Map(_service.GetPricingGuidance(category, pricingModel));
+
+    // ---- Service Type / Sub-Category lookup (cascading dropdown) ----
+
+    [HttpGet("service-types")]
+    [AllowAnonymous]
+    public IActionResult GetServiceTypes()
+    {
+        // Return all approved Service Types (Sub-Categories) per Category as a flat structure
+        // for frontend cascading dropdown. "Other" has no fixed list (free text allowed).
+        var all = Enum.GetValues(typeof(ServiceCategory))
+            .Cast<ServiceCategory>()
+            .ToDictionary(
+                cat => cat.ToString(),
+                cat => ServiceTypeLookup.GetSubCategories(cat)
+            );
+        return Ok(ApiResponse.Ok("Service types lookup", all));
+    }
 
     /// <summary>Map a service result onto the shared ApiResponse envelope and HTTP status.</summary>
     private IActionResult Map<T>(ServiceProviderResult<T> result) => result.Outcome switch

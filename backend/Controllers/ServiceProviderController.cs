@@ -135,6 +135,26 @@ public class ServiceProviderController : ControllerBase
     public async Task<IActionResult> RemovePortfolioImage(string portfolioItemId, CancellationToken cancellationToken) =>
         Map(await _media.RemovePortfolioImageAsync(CurrentUserId, portfolioItemId, cancellationToken));
 
+    // ---- Service Catalog Gallery & Preview Video (mirrors profile-media pattern) ----
+
+    [HttpPost("listings/{listingId}/gallery-images")]
+    [RequestSizeLimit(8 * 1024 * 1024 + 64 * 1024)]
+    public async Task<IActionResult> UploadListingGalleryImage(string listingId, IFormFile file, CancellationToken cancellationToken) =>
+        Map(await _media.UploadListingGalleryImageAsync(CurrentUserId, listingId, file, cancellationToken));
+
+    [HttpDelete("listings/{listingId}/gallery-images/{imageId}")]
+    public async Task<IActionResult> DeleteListingGalleryImage(string listingId, string imageId, CancellationToken cancellationToken) =>
+        Map(await _media.DeleteListingGalleryImageAsync(CurrentUserId, listingId, imageId, cancellationToken));
+
+    [HttpPost("listings/{listingId}/preview-video")]
+    [RequestSizeLimit(50 * 1024 * 1024 + 64 * 1024)]
+    public async Task<IActionResult> UploadListingPreviewVideo(string listingId, IFormFile file, CancellationToken cancellationToken) =>
+        Map(await _media.UploadListingPreviewVideoAsync(CurrentUserId, listingId, file, cancellationToken));
+
+    [HttpDelete("listings/{listingId}/preview-video")]
+    public async Task<IActionResult> DeleteListingPreviewVideo(string listingId, CancellationToken cancellationToken) =>
+        Map(await _media.DeleteListingPreviewVideoAsync(CurrentUserId, listingId, cancellationToken));
+
     [HttpPost("submit-verification")]
     public async Task<IActionResult> SubmitVerification([FromBody] SubmitVerificationRequest request) =>
         Map(await _service.SubmitVerificationAsync(CurrentUserId, request));

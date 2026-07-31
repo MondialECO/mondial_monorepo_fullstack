@@ -2,7 +2,7 @@
 
 Source of truth for development. When code and this doc disagree, this doc wins — unless a change is agreed and written back here first.
 
-**Last reconciled with code: 2026-07-30.** See the Changelog (bottom) for what changed. If a claim here contradicts the code, treat it as drift to reconcile — not a spec to build back toward — and confirm before acting.
+**Last reconciled with code: 2026-07-31.** See the Changelog (bottom) for what changed. If a claim here contradicts the code, treat it as drift to reconcile — not a spec to build back toward — and confirm before acting.
 
 **All five Service Provider modules are now LIVE.** Remaining platform-wide truth in one line: the payment gateway, file scanner, and e-signature/contract-consent mechanism are **STUB** integrations; public profile/search tracking, durable proposal-event history, and test-record provenance are **deferred/not tracked**.
 
@@ -538,30 +538,231 @@ Absorbs the "Service Package / Delivery Time / FAQ / Revision" source doc in ful
 - **Sidebar:** the flat **Service Catalog** nav item (`menu.ts`) → **`/dashboard/serviceprovider/services`**.
 - **Confirmed-decision fixes in this build:** `PricingModel` added as a **nullable** field on `ServicePackage`; `CancellationPolicy` is a **fixed `CancellationPolicyType` enum** (3 platform options: `FlexibleFullRefundBeforeStart` / `PartialRefundAfterDeliveryStart` / `NoRefundAfterDeliveryStart`) — **not** a custom rule engine.
 
-### 6.0.1 As-built entities (real fields — note the drift from the spec's field names)
+### 6.0.1 Six-step creation + edit wizard (as of 2026-07-30 session)
+
+A dual-purpose **creation and edit flow**, replacing the earlier tabbed manage-flow for edits. **Route patterns:**
+- **Create:** `/services?view=new&step=1` through `step=6`, carrying `draftId={id}` across steps.
+- **Edit:** `/services?view=edit&step=1` through `step=6`, carrying `serviceId={id}` across steps.
+
+Each step auto-saves to a real backend Draft-status `ServiceListing` record (created after Step 1 if new), not browser storage. **Publish-to-live transition (Step 6):** For Draft/Unpublished listings, publishing changes `Status` to `Published`. For already-Published listings, clicking Publish saves changes **without changing status** (edit-mode preserves Published state).
+
+**Step structure:**
+- **Step 1: Overview** — title, `ServiceType` (free-form string, server-side validated against `ServiceTypeLookup.cs`), `Category` (enum), `IndustryFocus` and `GeographicCoverage` (tag arrays), `MetadataTags` (capped at 5), `SearchTags` (capped at 5). Deterministic "Suggested Keywords" lookup by category (static rule table, never AI/trending). All fields wired to real `ServiceListing` schema.
+- **Step 2: Scope & Pricing** — Basic/Standard/Premium package inline-editable grid; **fields wired to send on Next Step click:** `packageTitle, price, currency, pricingModel (nullable), deliveryTimeValue, deliveryTimeUnit, includedRevisionCount, includedFeatures, screensIncluded`. Deterministic Pricing Guidance by category only — never tier-conditioned. Save batches all package writes (POST for new temp IDs, PUT for real ObjectIds).
+- **Step 3: Description & FAQ** — reuses `FaqBuilder` with optional `hideItemActions` and `onFaqsChange` props for wizard mode; all FAQ edits stay local and are batch-saved on Next Step.
+- **Step 4: Client Requirements** — `RequirementsTemplate` editor with Text/File/Choice field types and per-question Required toggle. Same template applied to **all packages on the listing**.
+- **Step 5: Gallery & Video** — `PreviewVideo` (single record, server-side duration validation via TagLibSharp, max 60s/50MB) and `GalleryImages[]` (bounded array, 20-image cap, 8MB per image). All URLs rendered via `resolveProviderMediaUrl()` for backend-to-frontend URL resolution.
+- **Step 6: Review & Publish** — summary + publish-validation gate. **Context-aware button label:** "Publish Service Listing" (Draft), "Save Changes" (Published, preserves status), "Republish Service Listing" (Archived).
+
+**New API endpoints (route prefix `/api/service-provider/listings/{listingId}`, all owner-scoped, existing `ApiResponse` envelope):**
+- `POST /gallery-images` — atomic `$push` with `Exists=false OR SizeLt(20)` filter (race-safe cap enforcement). Request limit: 8MB/image. Response: `GalleryImageResponse` (small DTO, not full listing).
+- `DELETE /gallery-images/{imageId}` — atomic `$pull`; uses `$unset` for deletions.
+- `POST /preview-video` — server-side TagLibSharp duration validation before SaveFile persistence. Request limit: 50MB, max 60 seconds. Response: `PreviewVideoResponse` (small DTO).
+- `DELETE /preview-video` — uses `$unset` for deletion.
+
+**SaveFile folder allow-list updates (§4.3):**
+- `"service-provider/gallery"` — `.jpg, .jpeg, .png, .webp` — 8 MB max
+- `"service-provider/preview-video"` — `.mp4, .webm, .mov` — 50 MB max
+
+### 6.0.2 As-built entities (real fields — note the drift from the spec's field names)
 Each entity's PK is **`Id`** (`[BsonId]` ObjectId), **not** the spec's `ServiceId`/`PackageId`/`FaqId`; packages/FAQs reference the listing via a `ServiceId` FK (FAQs also an optional nullable `PackageId`). The listing's category property is **`Category`** (type `ServiceCategory`).
-- **`ServiceListing`**: `Id, ProviderId, ServiceType, Title, Description, Category, IndustryFocus, GeographicCoverage, Impressions, Clicks, Status, CreatedAt, UpdatedAt`.
-- **`ServicePackage`**: `Id, ServiceId, PackageName, PackageType, PackageTitle, PackageDescription, Price, Currency, PricingModel (nullable), DeliveryTimeValue, DeliveryTimeUnit, DeliveryDayType, DeliveryStartRule, DeliveryTimezone, DailyCutoffTime, IncludedRevisionCount, UnlimitedRevisions, RevisionRequestWindowDays, AdditionalRevisionAvailable, AdditionalRevisionPrice, AdditionalRevisionDeliveryTime, RevisionScopeDescription, Deliverables, IncludedFeatures, ExcludedFeatures, AddOns[], RequirementsTemplate[], CancellationPolicy, InstantOrderEnabled, ManualApprovalRequired, MaximumActiveOrders, Status, CreatedAt, UpdatedAt`.
+
+**Null-handling rules (as of 2026-07-30 session):** `PreviewVideo`, `GalleryImages`, `MetadataTags`, `SearchTags`, `IndustryFocus`, `GeographicCoverage` on `ServiceListing`, and `Deliverables`, `IncludedFeatures`, `ExcludedFeatures`, `AddOns`, `RequirementsTemplate` on `ServicePackage` all carry `[BsonIgnoreIfNull]` and are defensively null-coalesced in `ToResponse()`. Delete paths (e.g. `DeleteListingGalleryImageAsync`) use atomic `$unset` instead of writing `null`.
+
+**BSON null-tolerance (critical for legacy data, 2026-07-31):** Some ServiceListing and ServicePackage documents may have been created with explicit BSON null values for these array/object fields. The `[BsonIgnoreIfNull]` attribute enables graceful deserialization: on READ, treats BSON null as "absent" and uses field initializers to create empty collections; on WRITE, skips the field if null, preventing new nulls. 
+
+**One-time MongoDB data cleanup required (post-deploy):** Connect to MongoDB and run cleanup queries to remove existing null fields from ServiceListings and ServicePackages. See the cleanup guide in `BSON_NULL_CLEANUP.md` for exact queries (count affected docs, run updateMany with $unset, verify). This is a backwards-compatible, non-breaking migration for pre-existing data only; no new nulls will be created going forward.
+
+- **`ServiceListing`**: `Id, ProviderId, ServiceType, Title, Description, Category, IndustryFocus (nullable), GeographicCoverage (nullable), MetadataTags (capped list, nullable), SearchTags (capped list, nullable), PreviewVideo (nullable embedded; server-determined `PublicUrl` from SaveFile, server-validated duration via TagLibSharp, not client-reported; 60s max, 50MB max enforced before persistence), GalleryImages[] (nullable bounded array, capped at 20; each has stable server-generated `Id`, server-determined `PublicUrl`, `DisplayOrder`; 8MB max per image), Impressions, Clicks, Status, CreatedAt, UpdatedAt`.
+- **`ServicePackage`**: `Id, ServiceId, PackageName, PackageType, PackageTitle, PackageDescription, Price, Currency, PricingModel (nullable), DeliveryTimeValue, DeliveryTimeUnit, DeliveryDayType, DeliveryStartRule, DeliveryTimezone, DailyCutoffTime, IncludedRevisionCount, UnlimitedRevisions, RevisionRequestWindowDays, AdditionalRevisionAvailable, AdditionalRevisionPrice, AdditionalRevisionDeliveryTime, RevisionScopeDescription, Deliverables (nullable list), IncludedFeatures (nullable list), ExcludedFeatures (nullable list), ScreensIncluded (nullable int), AddOns[] (nullable), RequirementsTemplate[] (nullable), CancellationPolicy, InstantOrderEnabled, ManualApprovalRequired, MaximumActiveOrders, Status, CreatedAt, UpdatedAt`.
 - **`ServiceFAQ`**: `Id, ServiceId, PackageId (nullable), Question, Answer, Visibility, DisplayOrder, Status, CreatedAt, UpdatedAt`.
-- Embedded **`ServiceAddOn`**: `Name, Price, DeliveryTimeAdjustmentDays, Enabled`. Embedded **`RequirementsField`**: `FieldId, Label, FieldType, Required`.
-- Files — **backend:** `Models/DatabaseModels/ServiceCatalog.cs`, `Services/Implementations/{ServiceCatalogService,RevisionCalculator,DeliveryScheduleCalculator,PricingGuidance}.cs`, `Services/Interface/IServiceCatalogService.cs`, `Models/Dtos/ServiceCatalogDtos.cs`, `Controllers/ServiceCatalogController.cs`, `DbContext/MongoDbContext.cs`, `Program.cs`, `Models/DatabaseModels/ApplicationUser.cs` (capacity fields). **Frontend:** `components/serviceprovider/ServicesWorkspace.tsx` + `catalog/*`, `app/dashboard/serviceprovider/services/page.tsx`, `lib/api-service-catalog.ts`, `hooks/queries/service-catalog.ts`, `types/service-catalog.ts`, `lib/menu.ts`.
+- Embedded **`ServiceAddOn`**: `Name, Price, DeliveryTimeAdjustmentDays, Enabled`. Embedded **`RequirementsField`**: `FieldId, Label, FieldType, Required`. Embedded **`GalleryImage`**: `Id, StorageKey, PublicUrl, ContentType, Width, Height, Bytes, Sha256, DisplayOrder`. Embedded **`PreviewVideo`**: `StorageKey, PublicUrl, ContentType, Bytes, DurationSeconds, Sha256, UploadedAt`.
+- Files — **backend:** `Models/DatabaseModels/ServiceCatalog.cs` (includes embedded types), `Services/Implementations/{ServiceCatalogService,RevisionCalculator,DeliveryScheduleCalculator,PricingGuidance,ServiceProviderMediaService}.cs`, `Services/Interface/{IServiceCatalogService,IServiceProviderMediaService}.cs`, `Controllers/{ServiceCatalogController,ServiceProviderController}.cs` (media endpoints under `/api/service-provider/listings/{id}/gallery-images|preview-video`), `Models/Dtos/ServiceCatalogDtos.cs` (with GalleryImageResponse, PreviewVideoResponse DTOs), `DbContext/MongoDbContext.cs`. **Frontend:** `components/serviceprovider/catalog/wizard/{WizardStep*.tsx}`, `lib/api-service-provider.ts` (media upload wrappers), `lib/service-provider/provider-media.ts` (`resolveProviderMediaUrl()` helper), `hooks/queries/service-catalog.ts`, `types/service-catalog.ts`.
 
 **2026-07-28 workspace reconciliation — LIVE in `fd38914`:** Catalog remains one route with URL-backed states, not duplicate pages: `/services` lists/searches/filters real listings; `?view=new` creates; `?service={id}&tab=overview|packages|faqs|capacity` manages one listing; `mode=edit` opens its listing editor. The redesigned cards, editors, package builder, FAQ builder, capacity panel, loading/error/empty/success/confirmation states, and accessible controls reuse the shipped Module-2 APIs and business validation. Unsupported public marketplace preview and media-upload capabilities are not fabricated.
 
+### 6.0.3 BSON Null-Tolerance Audit Scope & Findings *(added 2026-07-31)*
+
+**Root cause:** MongoDB's C# serializer cannot deserialize BSON null into non-nullable reference types without explicit null-tolerance attributes. ServiceListing and ServicePackage documents created with explicit BSON null values for array/object fields caused C# deserialization to throw `FormatException: 'Cannot deserialize ... from BsonType 'Null'`, resulting in 500 errors on read paths.
+
+**Audit scope:** 68 total fields analyzed across 4 models: ServiceListing (11 fields), ServicePackage (15 fields), ServiceFAQ (3 fields), embedded types (39 primitives). **12 fields required `[BsonIgnoreIfNull]` fixes:**
+
+**ServiceListing (6 fields):**
+- `PreviewVideo` (PreviewVideo?) — nullable reference type
+- `GalleryImages` (List<GalleryImage>) — array of objects
+- `MetadataTags` (List<string>) — array of strings (capped 5)
+- `SearchTags` (List<string>) — array of strings (capped 5)
+- `IndustryFocus` (List<string>) — array of strings
+- `GeographicCoverage` (List<string>) — array of strings
+
+**ServicePackage (5 fields):**
+- `Deliverables` (List<string>) — array of strings
+- `IncludedFeatures` (List<string>) — array of strings
+- `ExcludedFeatures` (List<string>) — array of strings
+- `AddOns` (List<ServiceAddOn>) — array of objects
+- `RequirementsTemplate` (List<RequirementsField>) — array of objects
+
+**ServiceFAQ & embedded types:** no reference-type arrays requiring fixes (all fields safe).
+
+### 6.0.4 Write-Path Safety & Critical Fix *(added 2026-07-31)*
+
+**All current write patterns are safe — no code explicitly sets these fields to null:**
+
+| Field | Write Pattern | Safety | Notes |
+|-------|---------------|--------|-------|
+| GalleryImages | `.Push()` operator | ✅ Appends to array | UploadGalleryImageAsync |
+| GalleryImages delete | `.PullFilter()` operator | ✅ Removes item, keeps array | DeleteGalleryImageAsync |
+| PreviewVideo delete | ✅ **FIXED** to `.Unset()` | ✅ Removes field entirely (no null storage) | **Critical fix at line 850** |
+| Deliverables, IncludedFeatures, ExcludedFeatures | `Normalize()` helper | ✅ Returns `[]` if null | ApplyPackageRequest |
+| AddOns | `.Where().Select()` on new list | ✅ Creates new list | ApplyPackageRequest |
+| RequirementsTemplate | Built in loop as List<T> | ✅ Always non-null | ApplyPackageRequest |
+
+**One critical fix applied (ServiceCatalogService.cs, line 850):**
+```csharp
+// BEFORE (caused BSON null storage):
+.Set(l => l.PreviewVideo, (PreviewVideo?)null)
+
+// AFTER (uses $unset, prevents null storage):
+.Unset(l => l.PreviewVideo)
+```
+This change ensures that deleting a preview video removes the field from the document instead of storing an explicit BSON null.
+
+### 6.0.5 MongoDB Data Cleanup (Operational Guide) *(added 2026-07-31)*
+
+**One-time cleanup required after deploying the code changes.** This migration removes existing BSON null values from the database; no new nulls will be created going forward.
+
+**Step 1: Count affected documents**
+Run these queries in MongoDB to measure the scope:
+```javascript
+// ServiceListings with any null array/object fields
+db.ServiceListings.countDocuments({
+  $or: [
+    { GalleryImages: null },
+    { MetadataTags: null },
+    { SearchTags: null },
+    { IndustryFocus: null },
+    { GeographicCoverage: null },
+    { PreviewVideo: null }
+  ]
+})
+
+// ServicePackages with any null array fields
+db.ServicePackages.countDocuments({
+  $or: [
+    { Deliverables: null },
+    { IncludedFeatures: null },
+    { ExcludedFeatures: null },
+    { AddOns: null },
+    { RequirementsTemplate: null }
+  ]
+})
+```
+Note the counts — they tell you whether cleanup is needed and how many documents will be touched.
+
+**Step 2: Clean ServiceListings**
+```javascript
+db.ServiceListings.updateMany(
+  {
+    $or: [
+      { GalleryImages: null },
+      { MetadataTags: null },
+      { SearchTags: null },
+      { IndustryFocus: null },
+      { GeographicCoverage: null },
+      { PreviewVideo: null }
+    ]
+  },
+  {
+    $unset: {
+      GalleryImages: "",
+      MetadataTags: "",
+      SearchTags: "",
+      IndustryFocus: "",
+      GeographicCoverage: "",
+      PreviewVideo: ""
+    }
+  }
+)
+```
+
+**Step 3: Clean ServicePackages**
+```javascript
+db.ServicePackages.updateMany(
+  {
+    $or: [
+      { Deliverables: null },
+      { IncludedFeatures: null },
+      { ExcludedFeatures: null },
+      { AddOns: null },
+      { RequirementsTemplate: null }
+    ]
+  },
+  {
+    $unset: {
+      Deliverables: "",
+      IncludedFeatures: "",
+      ExcludedFeatures: "",
+      AddOns: "",
+      RequirementsTemplate: ""
+    }
+  }
+)
+```
+
+**Step 4: Verify cleanup — both counts should return 0**
+Re-run the count queries from Step 1. Both should return **0**. If either returns a non-zero count, the cleanup did not fully apply; investigate and rerun if needed.
+
+### 6.0.6 Post-Cleanup Verification & Testing *(added 2026-07-31)*
+
+After MongoDB cleanup and backend restart, verify the fix is complete:
+
+**Automated:**
+1. Rebuild backend: `dotnet build` — 0 errors (the `[BsonIgnoreIfNull]` attributes are recognized by MongoDB.Driver)
+2. Restart backend service
+3. Run the full test suite: `dotnet test` — all Module 2 tests pass (22 targeted tests)
+
+**Manual endpoint testing (in browser or via API client):**
+1. **Gallery upload:** upload an image, reload the page → image persists and displays correctly
+2. **Gallery delete:** delete an image → reload → listing loads without 500 error
+3. **Video upload:** upload a video, reload → video persists and displays correctly
+4. **Video delete:** delete a video, reload → listing loads without 500 error
+5. **Package creation:** create packages with full array fields (features, add-ons, requirements) → reload → all fields persist
+6. **Legacy listing access:** access a previously-failing listing that had BSON nulls → should now deserialize and display without error
+
+**Log monitoring:**
+- No deserialization errors should appear in the backend logs
+- All 500 errors on gallery/video operations and listing reads should cease
+
+**Risk reduction summary:** Before this fix, any ServiceListing/ServicePackage with BSON null arrays caused automatic 500 errors across the wizard, dashboard, detail views, and all related API endpoints — a cascade failure. After the fix, graceful deserialization via `[BsonIgnoreIfNull]` + field initializers + safe write patterns ensures that legacy nulls no longer corrupt client experience, and forward-facing code prevents new nulls from being stored.
+
+### 6.1b Listing lifetime cap — server-side enforcement *(added 2026-07-30)*
+**Hard limit:** a Service Provider may have at most **4 ServiceListing records** at any time, regardless of status (Draft, Published, Unpublished, Archived all count toward the cap). Archiving or unpublishing does NOT free a slot — once a listing is created, it occupies the slot until deleted (deletion is not a supported user action; listing cleanup is admin-only).
+**Server-side enforcement (CreateListingAsync):** before creating a new Draft listing, check the total count of non-deleted ServiceListings for the provider. If count >= 4, return a conflict error ("You've reached the limit of 4 service listings").
+**Frontend UX:** the "New service" button is disabled when the provider is at capacity, with a banner explaining the limit and directing them to archive or remove an existing listing to proceed.
+
 **Storage (top-level collections, §4.2 convention):**
-- **`ServiceListing` → `"ServiceListings"`** — the service-level record: `ServiceType, Title, Description, ServiceCategory (enum §4.2), IndustryFocus, GeographicCoverage`, plus lifetime `Impressions`/`Clicks` counters. No live caller or timestamped history exists, so these counters do not support period analytics (§9). Owns its packages via `serviceId`.
+- **`ServiceListing` → `"ServiceListings"`** — the service-level record: `ProviderId, ServiceType, Title, Description (TipTap-produced HTML string), Category (enum §4.2), IndustryFocus, GeographicCoverage, MetadataTags, SearchTags, PreviewVideo (embedded), GalleryImages[] (embedded)`, plus lifetime `Impressions`/`Clicks` counters. No live caller or timestamped history exists, so these counters do not support period analytics (§9). Owns its packages via `serviceId`. **Deferred to admin:** deletion.
 - **`ServicePackage` → `"ServicePackages"`** (new) — per-service packages, keyed by `serviceId`: `packageId, serviceId, packageName, packageType, packageTitle, packageDescription, price, currency, deliveryTimeValue, deliveryTimeUnit, deliveryDayType, includedRevisionCount, unlimitedRevisions, revisionRequestWindowDays, deliverables, includedFeatures, excludedFeatures, addOns (embedded — below), requirementsTemplate (embedded — below), instantOrderEnabled, manualApprovalRequired, maximumActiveOrders, status, createdAt, updatedAt`. Package types: `Basic, Standard, Premium, Custom` (Custom not shown in the public table — used for custom offers, §7).
 - **`ServiceFAQ` → `"ServiceFAQs"`** (new) — `faqId, serviceId, packageId, question, answer, visibility, displayOrder, status, createdAt, updatedAt`.
 - **Add-ons are EMBEDDED** on `ServicePackage` as a bounded `addOns` array (a handful per package), each: name, price, delivery-time delta (business days), enabled — **non-revision extras only** (extra revisions use the dedicated fields, §6.4). *(Flag: the source names the field `addOnIds` — id references to a collection — but per the modeling decision we embed the add-on objects directly instead.)*
 - **`RequirementsTemplate` is EMBEDDED** on `ServicePackage` (bounded — a handful of questions per package), not a top-level collection: a `requirementsTemplate` list of `{ fieldId, label, fieldType (text/file/choice/etc.), required }` entries. *(This is what the source's `requirementsTemplateId` field points at; like add-ons, we embed the structure directly rather than reference a collection. The client's filled-in answers are a separate Module-3 structure — §6.6.)*
 
-### 6.1 Package Builder
-Each service may have Basic / Standard / Premium, each **independently configured**: title, short description, price, delivery time, included revisions, deliverables, features, add-ons, client-requirements template, instant-order availability. Example — Basic "UX Audit Essentials" $450 / 5 Business Days / 1 revision; Standard "UX Audit & User Flow Redesign" $950 / 10 Business Days / 2 revisions; Premium "Complete Product UX Improvement" $1,650 / 18 Business Days / 3 revisions.
-**Pricing guidance (deterministic, no AI, §2):** a suggested-price-range lookup by `ServiceCategory` (optionally `PricingModel`), shown as guidance not a quote; no competitor benchmark.
+### 6.1 Package Builder — inline-editable table, batch save *(updated 2026-07-30)*
+Each service may have Basic / Standard / Premium, each **independently configured**. Example — Basic "UX Audit Essentials" $450 / 5 Business Days / 1 revision; Standard "UX Audit & User Flow Redesign" $950 / 10 Business Days / 2 revisions; Premium "Complete Product UX Improvement" $1,650 / 18 Business Days / 3 revisions.
 
-### 6.2 Package validation (deterministic — system never auto-changes price/delivery/revision policy)
-Required before publish: title, description, price > 0, currency, delivery time, ≥1 deliverable, revision policy, client requirements, availability status.
-Cross-package: Standard must not have fewer features than Basic; Premium not fewer than Standard; a higher package priced **lower** than a lower one shows a **warning**; a higher package with **shorter** delivery time needs **explicit confirmation**; same-service packages must share currency; no duplicate package titles; unpublished packages aren't purchasable.
+**Step 2 UX (inline comparison table):** every field is **inline-editable** within the grid — no modal or popup. The user edits:
+- **Per-package:** `PackageTitle`, `Price` (numeric input), `DeliveryTimeValue` + `DeliveryTimeUnit` (dropdown: 1–10 days), `IncludedRevisionCount` (dropdown), `ScreensIncluded` (numeric input), `IncludedFeatures` (checkboxes: Source Files, Responsive Design, Interactive Prototype, plus custom rows).
+- **Batch save:** changes are persisted only when the user clicks "Next Step". No keystroke-triggered writes; no blur-triggered auto-save. All packages' changes are sent in one batch (POST for new temp IDs, PUT for existing real ObjectIds based on `/^[0-9a-fA-F]{24}$/` detection).
+
+**Hidden fields (server-seeded defaults):** `PackageDescription` (empty string), `CancellationPolicy`, `PricingModel`, `RevisionRequestWindowDays`, `AdditionalRevisionPrice`, etc. are pre-populated with defaults at draft creation; the user does not edit them in Step 2. They remain in the payload sent on save, preserving any backend-server defaults.
+
+**Pricing guidance (deterministic, no AI, §2):** a suggested-price-range lookup by `ServiceCategory` (optionally `PricingModel`), shown as guidance-only panel ("Pricing Guidance"), never tier-conditioned. The label is **never** "AI Pricing Assistant" or branded with sparkle icons.
+
+### 6.2 Package validation (deterministic — system never auto-changes price/delivery/revision policy) *(updated 2026-07-30)*
+**Required before publish (per-package):** title, price > 0, currency, delivery time, revision policy, availability status.
+**Service-level description requirement:** the service's **top-level Description** (`ServiceListing.Description`, configured in Step 3 via TipTap rich text) is the **single source of truth** for describing the service to clients. Per-package `PackageDescription` is no longer required; it may remain empty on the schema (for future use) but is not validated at publish time.
+**Deliverables:** the per-package `Deliverables` array is no longer required at publish. Its content (what the client receives) is now captured by `ScreensIncluded` (numeric input in Step 2), `IncludedFeatures` (checkboxes in Step 2), and the service-level description. The field remains on the schema but is not validated.
+**Cross-package validation:** Standard must not have fewer features than Basic; Premium not fewer than Standard; a higher package priced **lower** than a lower one shows a **warning**; a higher package with **shorter** delivery time needs **explicit confirmation**; same-service packages must share currency; no duplicate package titles; unpublished packages aren't purchasable.
 
 ### 6.3 Delivery-time configuration
 Fields: `deliveryTimeValue, deliveryTimeUnit (Hours/Days/Weeks), deliveryDayType (Business/Calendar Days), deliveryStartRule (After Order Confirmation / After Escrow Funding / After Client Requirements Complete / After Provider Starts — recommended default: escrow funded AND requirements complete), deliveryTimezone, dailyCutoffTime`.
@@ -581,8 +782,21 @@ Fields: `includedRevisionCount, unlimitedRevisions, revisionRequestWindowDays, a
 **Scope rules:** Within Scope (consumes allowance) / Needs Clarification / **Potential Scope Change (does NOT auto-consume** — provider may ask clarification, create a paid change request, send a custom add-on, continue free, or request support) / Confirmed Scope Change (requires a paid add-on, revised custom offer, contract amendment, or separate proposal — **system never auto-charges or auto-accepts**, §2).
 **Unlimited revisions:** provider-enabled, with a mandatory warning that it applies only to the **original agreed scope**, not new deliverables/scope changes; the review window and scope restriction still apply; abuse-reporting exists; no automatic delivery extension; no new features included.
 
+### 6.3b Service Description — TipTap rich-text editor *(added 2026-07-30)*
+**Step 3 — Description & FAQ.** The service-level description uses a **TipTap-based WYSIWYG rich-text editor** (`ServiceDescriptionEditor.tsx`), producing an **HTML string** output. Backend field type remains `string` (stored as HTML).
+**Rendering & sanitization:** all render sites apply `DOMPurify` via the `sanitize-html.ts` helper to prevent XSS. Render sites include Step 6 review, old ListingDetail view (still active until Checkpoint 2), and any client-side preview surface.
+**Word count:** HTML tags are stripped before counting; the UI displays the cleaned plain-text length.
+**Batch save:** like Step 2, description edits and FAQ changes are persisted only on "Next Step" click.
+
+### 6.4 Client Requirements (formerly Step 4) — flat numbered cards *(updated 2026-07-30)*
+**Field types supported:** Free Text (textarea), File Upload (drag-drop), Choice (dropdown with user-defined options).
+**Per-question:** a Required toggle (boolean). All questions apply to **all packages** on the listing; there is one template, not per-package variants.
+**UX:** cards are flat/numbered (no accordion), each showing field type, label, and required indicator. Provider can add, reorder, or remove questions.
+**Batch save:** all requirement changes are saved on "Next Step" click.
+
 ### 6.5 FAQ Builder
 Entity `ServiceFAQ` (above). **Visibility:** All Packages / Basic Only / Standard Only / Premium Only / Selected Packages / Private Draft. **Actions:** add / edit / delete draft / reorder / duplicate / assign-to-package / publish / unpublish.
+**Wizard-mode props (as of 2026-07-30):** `FaqBuilder` accepts optional `hideItemActions` (for wizard mode, hides per-row action buttons) and `onFaqsChange` (callback fired when FAQs are modified locally). In wizard mode, all edits stay in component state and are batch-persisted on Next Step.
 **Validation:** question + answer required; question unique within a service; no empty answers; character limits; no prohibited external-payment instructions; can't override contract/package/platform terms; can't promise a feature not in the selected package; unpublished FAQs aren't shown publicly.
 **Groups (optional):** Service Requirements, Delivery, Revisions, Files and Formats, Meetings, Communication, Licensing, Ownership, Support.
 **Package-conflict handling:** FAQ content should reflect the selected package; if it conflicts with actual package config, **package terms are the source of truth** — the system shows a conflict warning ("This FAQ does not match the selected package settings") and the provider corrects it manually.
@@ -599,10 +813,18 @@ Entity `ServiceFAQ` (above). **Visibility:** All Packages / Basic Only / Standar
 **Before delivery starts:** client may request cancellation; provider may approve; platform cancellation policy applies; escrow refund may process; the proposal snapshot stays in history.
 **After delivery starts:** cancellation follows contract policy; completed work may require partial payment; an active dispute blocks automatic refund; an administrator may review exceptional cases. **The system never makes an automatic cancellation decision unless a predefined policy explicitly applies** (§2).
 
-### 6.9 Empty state (Catalog)
-- **No Services** — "No Published Services" / "Create your first service listing to start receiving briefs." / Action: "Create Service". *(This is the getting-started nudge the §11 journey references — the flat model's replacement for a wizard.)*
+### 6.8b Step 6 Review & Publish — two-column layout redesign *(added 2026-07-30)*
+**Layout:** replaces the single-column stacked card layout with a responsive two-column grid:
+- **LEFT COLUMN:** service title with edit pencil icon (navigates to Step 1), gallery thumbnails (up to 4 visible, with overflow count "+N"), no metadata/rich description shown.
+- **RIGHT COLUMN:** three stacked package cards (Basic, Standard, Premium). Standard card has a hardcoded blue "RECOMMENDED" badge in top-right corner and a stronger blue border (visually emphasized). Each card shows: tier name, price in large text, summary line "X Screens • Y Revisions • Z Days Delivery" (pulls actual field values; omits screens if count is 0 or null), edit pencil icon (navigates to Step 2).
+- **VALIDATION & PUBLISH:** errors/warnings above the two-column area (if any). Sticky footer with "Back" button and context-aware publish button (blue primary style).
 
-**Dependencies.** Reads: verified profile (§1.1), shared enums (§4.2), capacity fields on the profile (§6.7). Produces: published packages + FAQs → Leads/checkout (§7); impressions/clicks + order counts → Analytics (§9); a purchased package → an auto-accepted Proposal (§7).
+**Excluded:** the "SEO Scan Complete" / "AI Provider verified" panel shown in some mockups is **NOT present**. This is a permanent canon rule (§2) — no AI-branded UI surfaces anywhere.
+
+### 6.9 Empty state (Catalog)
+- **No Services** — "No Published Services" / "Create your first service listing to start receiving briefs." / Action: "Create Service". *(This is the getting-started nudge the §11 journey references — the flat model's replacement for a wizard.)* **Regression note (2026-07-30):** the empty-state title had regressed to "Create your first service" during the 2026-07-28 UI reconciliation (`fd38914`); it was corrected back to canonical text during this reconciliation.
+
+**Dependencies.** Reads: verified profile (§1.1), shared enums (§4.2), capacity fields on the profile (§6.7). Produces: published packages + FAQs → Leads/checkout (§7); impressions/clicks + order counts → Analytics (§9); a purchased package → an auto-accepted Proposal (§7). **New backend dependency (2026-07-30):** `TagLibSharp` (v2.3.0, pure managed .NET library, no native binaries) added to support server-side video duration inspection for `PreviewVideo` uploads — replacing what would otherwise be a client-trusted duration value. Chosen over FFmpeg-based alternatives to avoid adding a native-binary dependency to the Docker-based deployment.
 
 ---
 
@@ -1044,6 +1266,8 @@ The repo's **root `.gitignore` is a binary / non-UTF8 file**, which can make the
 ---
 
 ## Changelog
+
+**2026-07-30 — Service Catalog 6-step creation wizard + gallery/video upload shipped; TagLibSharp integration for server-side duration validation; empty-state copy regression fixed.** Commits `3435450` (gallery/video backend wiring + atomic MongoDB cap enforcement) / `2d0767d` (refactor delete methods to use ProviderMediaFiles.DeleteBestEffort) / `7de669b` (TagLibSharp + video duration validation + empty state text fix) / `6d3d489` (validation test fixtures) on `dev-hafiz`. **New features:** 6-step wizard (§6.0.1) routes `/services?view=new&step=1-6`, coexists with existing tabbed manage-flow (unchanged). Step 1 Overview, Step 2 Scope & Pricing, Step 3 Description & FAQ (reuses `FaqBuilder`), Step 4 Client Requirements (applies template to all packages), Step 5 Gallery & Video (new `PreviewVideo` + `GalleryImages[]` fields), Step 6 Review & Publish. Each step auto-saves to a real Draft-status `ServiceListing` (not browser storage). **New fields on `ServiceListing`:** `PreviewVideo` (nullable single embedded record; 60s max, 50MB max; server-determined file reference and duration via TagLibSharp server-side inspection, not client-reported) and `GalleryImages[]` (bounded embedded array, capped at 20 items, 8MB per image, stable UUID id per item, display-order field; matches existing Portfolio max-image convention for consistency). **New gallery/video endpoints:** `POST /listings/{id}/gallery-images` with atomic `$push` + `$size`-filter cap enforcement (21st image rejected via single atomic operation), `DELETE /listings/{id}/gallery-images/{imageId}`, `POST /listings/{id}/preview-video` with server-side duration validation before SaveFile, `DELETE /listings/{id}/preview-video`. All endpoints owner-scoped, using shared `ApiResponse` envelope. Gallery/video deletion reuses existing shared `ProviderMediaFiles.DeleteBestEffort()` helper (immediate delete + Hangfire retry on failure) — no new delete-cleanup implementation introduced. **TagLibSharp (2.3.0):** added to backend dependencies for real server-side video duration inspection (§6.0.1 Dependencies); chosen over FFmpeg-based alternatives to avoid native-binary dependency in Docker deployment. **Regression fixed:** empty-state title "Create your first service" (regressed 2026-07-28 `fd38914`) corrected back to canonical "No Published Services" (§6.9). **"Screens Included" deliberately not built** (unapproved, not-yet-generalized field). **Verification:** backend `dotnet build` 0 errors, 604 backend tests passing (57 skipped, consistent with existing pattern), 222 frontend tests passing; TypeScript clean; no regressions introduced. **Outstanding verification gap (flagged honestly per doc convention):** live authenticated HTTP upload-and-reload verification through actual Step 5 UI not yet performed in a real browser (blocked during this session only by local JWT-key environment setup during automated testing, not a code-quality issue) — this manual browser check should be done before the feature is treated as fully verified end-to-end.**
 
 **2026-07-30 — Service Provider Profile Cover redesign and Portfolio safety remediation shipped (UNCOMMITTED, in working tree).** Profile Cover rule enforced to fixed 1600×400 (4:1 aspect ratio), independent of stored image dimensions — no focal-point metadata, no dimension derivation; unified LinkedIn-style header with SpCard, cover div, avatar overlap, and identity below (§1A.13). Portfolio items now: (1) render with `isOwner` gate — edit/delete/add controls visible **only to provider**, public mode shows read-only list; (2) addressed by stable UUID-based `id` field instead of array index, preventing post-add concurrent races; (3) capped at 20 items (MongoDB BSON protection, §1A.13); (4) client-writable `imagePath` field removed from add/update requests — file URLs are server-determined from SaveFile only. Removal of all hardcoded hex colors from PortfolioSection (converted to theme tokens: foreground, muted-foreground, destructive, border). Converted raw `<img>` to `next/image` with proper alt text and aspect-ratio aspect-ratio (unoptimized flag due to concurrent portfolio workflow). Backend file cleanup is **retry-enabled best-effort** (immediate `File.Delete()` → Hangfire `DeletePortfolioMediaAsync` enqueue on failure, decorated `[AutomaticRetry(Attempts = 2)]`, path-validated, idempotent on missing files) — **explicitly NOT durable/transactional** (MongoDB replica-set transaction support deferred until replica-set Docker test environment available; current system is production-safe for async retry but makes no atomicity guarantees across deletion and record update). New file: `ProviderMediaFiles.cs` (shared `DeleteBestEffort` static helper with path validation and logger). All portfolio endpoints changed from `{index:int}` parameter to `{portfolioItemId}` string (Controller, Service, IService interface, DTO, validator). TanStack Query invalidation on portfolio mutations corrected for stable IDs. Frontend portfolio tests: public-mode button-role regression assertions added (Edit/Delete/Add controls must not render as buttons or links). Cover aspect-ratio tests: all assert 1600 / 400. React 19 `next/image` happy-dom mock fixed (createElement call pattern, drops Next-only props before DOM render). Backend tests: all constructors now inject `Mock.Of<IBackgroundJobClient>()`, `using Hangfire;` added to affected test files. Verification: backend **622 passed / 0 failed / 60 skipped**; frontend **222 passed / 0 failed**; TypeScript clean; ESLint clean.
 

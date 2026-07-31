@@ -597,10 +597,26 @@ foreach (var proxy in builder.Configuration.GetSection("ForwardedHeaders:KnownPr
 
 app.UseForwardedHeaders(fwdOptions);
 
+// Developer exception page must run BEFORE custom exception middleware
+// so it can display detailed errors in Development environment
+if (app.Environment.IsDevelopment())
+{
+    app.UseDeveloperExceptionPage();
+}
+
 // Correlation id must be established before the exception handler and
 // request logging so both are tagged with it.
 app.UseMiddleware<CorrelationIdMiddleware>();
-app.UseMiddleware<ExceptionHandlingMiddleware>();
+
+// TEMPORARY (DEBUG): Disable custom exception middleware in Development
+// so native ASP.NET Core exception handling + Developer Exception Page
+// can display the real exception details. This bypasses the generic
+// "Unexpected error" JSON response. To be removed once exception is captured.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseMiddleware<ExceptionHandlingMiddleware>();
+}
+
 app.UseMiddleware<SecurityHeadersMiddleware>();
 app.UseSerilogRequestLogging();
 app.UseResponseCompression();

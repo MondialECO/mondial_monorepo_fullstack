@@ -256,3 +256,45 @@ export async function submitSkillsTest(
   );
   return unwrap(res.data);
 }
+
+// ---- Service Listing Gallery & Preview Video (mirrors profile-media pattern) ----
+
+export async function uploadListingGalleryImage(
+  listingId: string,
+  file: File,
+  onProgress?: UploadProgressHandler
+) {
+  const res = await api.post<ApiEnvelope<GalleryImageResponse>>(
+    `/service-provider/listings/${encodeURIComponent(listingId)}/gallery-images`,
+    imageForm(file),
+    { onUploadProgress: progress(onProgress) }
+  );
+  return unwrap(res.data);
+}
+
+export async function deleteListingGalleryImage(listingId: string, imageId: string) {
+  const res = await api.delete<ApiEnvelope<ServiceListingResponse>>(
+    `/service-provider/listings/${encodeURIComponent(listingId)}/gallery-images/${encodeURIComponent(imageId)}`
+  );
+  return unwrap(res.data);
+}
+
+export async function uploadListingPreviewVideo(
+  listingId: string,
+  file: File,
+  onProgress?: UploadProgressHandler
+) {
+  const res = await api.post<ApiEnvelope<PreviewVideoResponse>>(
+    `/service-provider/listings/${encodeURIComponent(listingId)}/preview-video`,
+    imageForm(file),
+    { onUploadProgress: progress(onProgress) }
+  );
+  return unwrap(res.data);
+}
+
+export async function deleteListingPreviewVideo(listingId: string) {
+  const res = await api.delete<ApiEnvelope<ServiceListingResponse>>(
+    `/service-provider/listings/${encodeURIComponent(listingId)}/preview-video`
+  );
+  return unwrap(res.data);
+}

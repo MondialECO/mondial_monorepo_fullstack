@@ -69,6 +69,29 @@ export interface RequirementsField {
   required: boolean;
 }
 
+export interface GalleryImage {
+  id: string;
+  storageKey: string;
+  publicUrl: string;
+  contentType: string;
+  width: number;
+  height: number;
+  bytes: number;
+  sha256: string;
+  displayOrder: number;
+  uploadedAt: string;
+}
+
+export interface PreviewVideo {
+  storageKey: string;
+  publicUrl: string;
+  contentType: string;
+  bytes: number;
+  durationSeconds: number;
+  sha256: string;
+  uploadedAt: string;
+}
+
 export interface ServiceListing {
   id: string;
   providerId: string;
@@ -76,10 +99,14 @@ export interface ServiceListing {
   title: string;
   description: string;
   category: string;
+  metadataTags: string[];
+  searchTags: string[];
   industryFocus: string[];
   geographicCoverage: string[];
   impressions: number;
   clicks: number;
+  previewVideo?: PreviewVideo | null;
+  galleryImages: GalleryImage[];
   status: CatalogStatus;
   createdAt: string;
   updatedAt: string;
@@ -108,6 +135,7 @@ export interface ServicePackage {
   additionalRevisionPrice: number;
   additionalRevisionDeliveryTime: number;
   revisionScopeDescription: string;
+  screensIncluded?: number | null;
   deliverables: string[];
   includedFeatures: string[];
   excludedFeatures: string[];
@@ -171,6 +199,8 @@ export interface UpsertServiceListingRequest {
   title: string;
   description: string;
   category: string;
+  metadataTags: string[];
+  searchTags: string[];
   industryFocus: string[];
   geographicCoverage: string[];
 }
@@ -199,6 +229,7 @@ export interface UpsertServicePackageRequest {
   deliverables: string[];
   includedFeatures: string[];
   excludedFeatures: string[];
+  screensIncluded?: number | null;
   addOns: ServiceAddOn[];
   requirementsTemplate: RequirementsField[];
   cancellationPolicy: string;
