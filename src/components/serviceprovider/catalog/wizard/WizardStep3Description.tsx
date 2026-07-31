@@ -3,15 +3,20 @@
 import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
+import { SpCard } from '@/components/serviceprovider/ui';
+import type { ServiceListing, ServiceFaq, UpsertServiceFaqRequest } from '@/types/service-catalog';
 import {
-  SpCard,
-  SpFormField,
-  SpMutationFeedback,
-} from '@/components/serviceprovider/ui';
-import type { ServiceListing } from '@/types/service-catalog';
-import { useUpdateListing, useServiceListing } from '@/hooks/queries/service-catalog';
+  useUpdateListing,
+  useServiceListing,
+  useAddFaq,
+  useUpdateFaq,
+  useDeleteFaq,
+} from '@/hooks/queries/service-catalog';
 import { FaqBuilder } from '../FaqBuilder';
+import { ServiceDescriptionEditor } from '../ServiceDescriptionEditor';
+
+// Check if an ID is a real MongoDB ObjectId (24-char hex string)
+const isRealObjectId = (id: string): boolean => /^[0-9a-fA-F]{24}$/.test(id);
 
 export function WizardStep3Description({
   listingId,
@@ -28,16 +33,28 @@ export function WizardStep3Description({
 }) {
   const updateListing = useUpdateListing();
   const listingDetail = useServiceListing(listingId);
+  const addFaq = useAddFaq();
+  const updateFaq = useUpdateFaq();
+  const deleteFaq = useDeleteFaq();
 
   const [description, setDescription] = useState(draft.description);
+  const [faqs, setFaqs] = useState<ServiceFaq[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Initialize FAQs from query data
+  useEffect(() => {
+    if (listingDetail.data?.faqs) {
+      setFaqs(listingDetail.data.faqs);
+    }
+  }, [listingDetail.data?.faqs]);
 
   const handleSaveAndContinue = async () => {
     setIsSaving(true);
     setError(null);
 
     try {
+      // Save description
       const payload = {
         serviceType: draft.serviceType,
         title: draft.title,
@@ -50,10 +67,54 @@ export function WizardStep3Description({
       };
 
       const updated = await updateListing.mutateAsync([draft.id, payload]);
+
+      // Batch save all FAQs (create/update/delete based on ID shape)
+      if (faqs.length > 0 || listingDetail.data?.faqs?.length) {
+        await Promise.all([
+          // Create new FAQs (temp IDs)
+          ...faqs
+            .filter((faq) => !isRealObjectId(faq.id))
+            .map((faq) =>
+              addFaq.mutateAsync([
+                listingId,
+                {
+                  packageId: faq.packageId,
+                  question: faq.question,
+                  answer: faq.answer,
+                  visibility: faq.visibility,
+                  displayOrder: faq.displayOrder,
+                } as UpsertServiceFaqRequest,
+              ])
+            ),
+          // Update existing FAQs (real ObjectIds)
+          ...faqs
+            .filter((faq) => isRealObjectId(faq.id))
+            .map((faq) =>
+              updateFaq.mutateAsync([
+                faq.id,
+                {
+                  packageId: faq.packageId,
+                  question: faq.question,
+                  answer: faq.answer,
+                  visibility: faq.visibility,
+                  displayOrder: faq.displayOrder,
+                } as UpsertServiceFaqRequest,
+              ])
+            ),
+          // Delete removed FAQs (that had real ObjectIds)
+          ...(listingDetail.data?.faqs ?? [])
+            .filter((originalFaq) => !faqs.find((f) => f.id === originalFaq.id) && isRealObjectId(originalFaq.id))
+            .map((faq) => deleteFaq.mutateAsync([faq.id])),
+        ]);
+      }
+
       onDraftUpdate(updated);
       onNext?.();
-    } catch {
-      setError('Could not save description. Please try again.');
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      const anyErr = err as any;
+      const backendMessage = anyErr?.response?.data?.message || anyErr?.response?.data?.error || errorMsg;
+      setError(`Could not save step 3: ${backendMessage}`);
     } finally {
       setIsSaving(false);
     }
@@ -71,22 +132,7 @@ export function WizardStep3Description({
         </div>
 
         <div className="space-y-5">
-          <SpFormField
-            id="step3-description"
-            label="Service description"
-            description={`${description.length} / 3000 characters`}
-          >
-            <Textarea
-              value={description}
-              maxLength={3000}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Explain the outcome, working approach, and what a client can expect."
-              rows={8}
-            />
-            <p className="mt-2 text-xs text-[#6B7280]">Minimum 120 words recommended</p>
-          </SpFormField>
-
-          {error && <SpMutationFeedback status="error">{error}</SpMutationFeedback>}
+          <ServiceDescriptionEditor value={description} onChange={setDescription} error={error} />
         </div>
       </SpCard>
 
@@ -102,11 +148,19 @@ export function WizardStep3Description({
         {listingDetail.data && (
           <FaqBuilder
             listingId={listingId}
-            faqs={listingDetail.data.faqs}
+            faqs={faqs}
             packages={listingDetail.data.packages}
+            hideItemActions
+            onFaqsChange={setFaqs}
           />
         )}
       </SpCard>
+
+      {error && (
+        <SpCard className="rounded-lg border border-red-200 bg-red-50 p-4">
+          <p className="text-sm text-red-700">{error}</p>
+        </SpCard>
+      )}
 
       <SpCard>
         <div className="flex flex-wrap gap-2">

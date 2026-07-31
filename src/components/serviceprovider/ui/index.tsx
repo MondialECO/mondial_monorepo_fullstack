@@ -303,10 +303,12 @@ const feedbackStyles = {
   success: { icon: CheckCircle2, className: "border-[#BBE8D3] bg-[#E8F7F0] text-[#157A55]" },
   error: { icon: AlertCircle, className: "border-[#F5C2C2] bg-[#FDECEC] text-[#B42318]" },
   info: { icon: Info, className: "border-[#CAD4FA] bg-[#EEF2FF] text-[#3C61DD]" },
+  warning: { icon: AlertCircle, className: "border-[#FCE3BE] bg-[#FEF8F1] text-[#D97706]" },
 } as const;
 
 export function SpMutationFeedback({ status, children, className }: { status: keyof typeof feedbackStyles; children: React.ReactNode; className?: string }) {
-  const config = feedbackStyles[status];
+  // Defensive fallback: if an unsupported status is passed, default to info
+  const config = feedbackStyles[status] ?? feedbackStyles.info;
   const Icon = config.icon;
   return (
     <div role={status === "error" ? "alert" : "status"} className={cn("flex items-start gap-2 rounded-xl border px-4 py-3 text-sm", config.className, className)}>

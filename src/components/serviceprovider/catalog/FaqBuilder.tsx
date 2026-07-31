@@ -47,10 +47,14 @@ export function FaqBuilder({
   listingId,
   faqs,
   packages,
+  hideItemActions,
+  onFaqsChange,
 }: {
   listingId: string;
   faqs: ServiceFaq[];
   packages: ServicePackage[];
+  hideItemActions?: boolean;
+  onFaqsChange?: (faqs: ServiceFaq[]) => void;
 }) {
   const add = useAddFaq();
   const update = useUpdateFaq();
@@ -129,9 +133,19 @@ export function FaqBuilder({
           initial={editing}
           onCancel={() => setEditing(null)}
           onSubmit={async (payload) => {
-            await update.mutateAsync([editing.id, payload]);
-            setEditing(null);
-            setFeedback({ status: 'success', message: 'FAQ saved successfully.' });
+            if (onFaqsChange) {
+              // Wizard mode: update local state
+              const updated = { ...editing, ...payload };
+              const newFaqs = faqs.map((f) => (f.id === editing.id ? updated : f));
+              onFaqsChange(newFaqs);
+              setEditing(null);
+              setFeedback({ status: 'success', message: 'FAQ updated in draft.' });
+            } else {
+              // Manage mode: call API
+              await update.mutateAsync([editing.id, payload]);
+              setEditing(null);
+              setFeedback({ status: 'success', message: 'FAQ saved successfully.' });
+            }
           }}
           pending={update.isPending}
         />
@@ -142,9 +156,29 @@ export function FaqBuilder({
           packages={packages}
           onCancel={() => setAdding(false)}
           onSubmit={async (payload) => {
-            await add.mutateAsync([listingId, payload]);
-            setAdding(false);
-            setFeedback({ status: 'success', message: 'FAQ added successfully.' });
+            if (onFaqsChange) {
+              // Wizard mode: create with temp ID and update local state
+              const newFaq: ServiceFaq = {
+                id: `temp-faq-${Date.now()}`,
+                serviceId: listingId,
+                question: payload.question,
+                answer: payload.answer,
+                visibility: payload.visibility,
+                packageId: payload.packageId,
+                displayOrder: faqs.length,
+                status: 'Draft',
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              };
+              onFaqsChange([...faqs, newFaq]);
+              setAdding(false);
+              setFeedback({ status: 'success', message: 'FAQ added to draft.' });
+            } else {
+              // Manage mode: call API
+              await add.mutateAsync([listingId, payload]);
+              setAdding(false);
+              setFeedback({ status: 'success', message: 'FAQ added successfully.' });
+            }
           }}
           pending={add.isPending}
         />
@@ -184,24 +218,87 @@ export function FaqBuilder({
                 </div>
 
                 <div className="flex flex-wrap items-center gap-1.5 sm:max-w-64 sm:justify-end">
-                  <Button type="button" size="icon" variant="outline" aria-label={`Move ${faq.question} up`} onClick={() => move(index, -1)} disabled={index === 0 || reorder.isPending}>
-                    <ChevronUp className="size-4" aria-hidden="true" />
-                  </Button>
-                  <Button type="button" size="icon" variant="outline" aria-label={`Move ${faq.question} down`} onClick={() => move(index, 1)} disabled={index === sorted.length - 1 || reorder.isPending}>
-                    <ChevronDown className="size-4" aria-hidden="true" />
-                  </Button>
-                  <Button type="button" size="sm" variant="outline" onClick={() => { setEditing(faq); setAdding(false); }}>
+                  {!hideItemActions && (
+                    <>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="outline"
+                        aria-label={`Move ${faq.question} up`}
+                        onClick={() => move(index, -1)}
+                        disabled={index === 0 || reorder.isPending}
+                      >
+                        <ChevronUp className="size-4" aria-hidden="true" />
+                      </Button>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="outline"
+                        aria-label={`Move ${faq.question} down`}
+                        onClick={() => move(index, 1)}
+                        disabled={index === sorted.length - 1 || reorder.isPending}
+                      >
+                        <ChevronDown className="size-4" aria-hidden="true" />
+                      </Button>
+                    </>
+                  )}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setEditing(faq);
+                      setAdding(false);
+                    }}
+                  >
                     <Pencil className="size-3.5" aria-hidden="true" /> Edit
                   </Button>
-                  <Button type="button" size="icon" variant="outline" aria-label={`Duplicate ${faq.question}`} onClick={() => runAction(() => duplicate.mutateAsync([faq.id]), 'FAQ duplicated as a draft.')} disabled={duplicate.isPending}>
-                    <Copy className="size-4" aria-hidden="true" />
-                  </Button>
-                  {faq.status === 'Published' ? (
-                    <Button type="button" size="sm" variant="outline" onClick={() => runAction(() => unpublish.mutateAsync([faq.id]), 'FAQ unpublished successfully.')} disabled={unpublish.isPending}>Unpublish</Button>
-                  ) : (
-                    <Button type="button" size="sm" variant="outline" onClick={() => runAction(() => publish.mutateAsync([faq.id]), 'FAQ published successfully.')} disabled={publish.isPending}>Publish</Button>
+                  {!hideItemActions && (
+                    <>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="outline"
+                        aria-label={`Duplicate ${faq.question}`}
+                        onClick={() => runAction(() => duplicate.mutateAsync([faq.id]), 'FAQ duplicated as a draft.')}
+                        disabled={duplicate.isPending}
+                      >
+                        <Copy className="size-4" aria-hidden="true" />
+                      </Button>
+                      {faq.status === 'Published' ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => runAction(() => unpublish.mutateAsync([faq.id]), 'FAQ unpublished successfully.')}
+                          disabled={unpublish.isPending}
+                        >
+                          Unpublish
+                        </Button>
+                      ) : (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => runAction(() => publish.mutateAsync([faq.id]), 'FAQ published successfully.')}
+                          disabled={publish.isPending}
+                        >
+                          Publish
+                        </Button>
+                      )}
+                    </>
                   )}
-                  <Button type="button" size="icon" variant="ghost" aria-label={`Delete ${faq.question}`} onClick={() => setDeleteTarget(faq)}>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    aria-label={`Delete ${faq.question}`}
+                    onClick={() =>
+                      onFaqsChange
+                        ? onFaqsChange(faqs.filter((f) => f.id !== faq.id))
+                        : setDeleteTarget(faq)
+                    }
+                  >
                     <Trash2 className="size-4 text-[#B42318]" aria-hidden="true" />
                   </Button>
                 </div>

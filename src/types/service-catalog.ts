@@ -135,6 +135,7 @@ export interface ServicePackage {
   additionalRevisionPrice: number;
   additionalRevisionDeliveryTime: number;
   revisionScopeDescription: string;
+  screensIncluded?: number | null;
   deliverables: string[];
   includedFeatures: string[];
   excludedFeatures: string[];
@@ -228,6 +229,7 @@ export interface UpsertServicePackageRequest {
   deliverables: string[];
   includedFeatures: string[];
   excludedFeatures: string[];
+  screensIncluded?: number | null;
   addOns: ServiceAddOn[];
   requirementsTemplate: RequirementsField[];
   cancellationPolicy: string;
