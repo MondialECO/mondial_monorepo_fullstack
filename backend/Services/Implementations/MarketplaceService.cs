@@ -126,6 +126,15 @@ namespace WebApp.Services.Implementations
                 var providers = _userManager.Users
                     .Where(u => providerIds.Contains(u.Id.ToString()))
                     .ToList();
+
+                foreach (var p in providers)
+                {
+                    _logger.LogInformation(
+                        "[MarketplaceService] Provider {Id} Name={Name} HasProfile={HasProfile} ProfileImageUrl={ProfileImg}",
+                        p.Id, p.Name, p.ServiceProviderProfile != null,
+                        p.ServiceProviderProfile?.ProfileImage?.PublicUrl ?? "null");
+                }
+
                 var providerMap = providers.ToDictionary(p => p.Id.ToString());
                 _logger.LogInformation(
                     "[MarketplaceService] Fetched {Fetched} providers for {Requested} unique provider ids",
@@ -181,6 +190,11 @@ namespace WebApp.Services.Implementations
                 {
                     return ServiceProviderResult<MarketplaceListingDetailResponse>.NotFound("Provider not found.");
                 }
+
+                _logger.LogInformation(
+                    "[MarketplaceService] Detail page - Provider {Id} Name={Name} HasProfile={HasProfile} ProfileImageUrl={ProfileImg}",
+                    provider.Id, provider.Name, provider.ServiceProviderProfile != null,
+                    provider.ServiceProviderProfile?.ProfileImage?.PublicUrl ?? "null");
 
                 var packages = await _db.ServicePackages
                     .Find(x => x.ServiceId == listingId)
