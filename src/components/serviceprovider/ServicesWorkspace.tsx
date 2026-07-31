@@ -169,7 +169,7 @@ function ListingsList({
           <button
             type="button"
             onClick={() => listingsQuery.refetch()}
-            className="font-semibold underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3C61DD]"
+            className="font-semibold underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             Try again
           </button>
@@ -215,7 +215,7 @@ function ListingsList({
 
       <SpFilterBar>
         <div className="relative min-w-0 flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#9CA3AF]" aria-hidden="true" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
           <Input
             aria-label="Search services"
             value={query}
@@ -224,12 +224,12 @@ function ListingsList({
             className="pl-9"
           />
         </div>
-        <label className="flex items-center gap-2 text-sm font-semibold text-[#374151]">
+        <label className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
           <span>Status</span>
           <select
             value={status}
             onChange={(event) => setStatus(event.target.value as (typeof statusOptions)[number])}
-            className="h-10 rounded-lg border border-[#D1D5DB] bg-white px-3 text-sm text-[#171717] outline-none focus-visible:ring-2 focus-visible:ring-[#3C61DD]"
+            className="h-10 rounded-lg border border-input bg-white px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             {statusOptions.map((option) => (
               <option key={option} value={option}>{option}</option>
@@ -275,7 +275,7 @@ function ListingCard({ listing, onOpen }: { listing: ServiceListing; onOpen: () 
           <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
             {formatEnum(listing.category)}
           </p>
-          <h2 className="mt-2 font-heading text-lg font-semibold leading-6 text-[#171717]">
+          <h2 className="mt-2 font-heading text-lg font-semibold leading-6 text-foreground">
             {listing.title || 'Untitled service'}
           </h2>
         </div>
@@ -292,7 +292,7 @@ function ListingCard({ listing, onOpen }: { listing: ServiceListing; onOpen: () 
         ))}
       </div>
 
-      <div className="mt-auto flex flex-wrap items-end justify-between gap-4 border-t border-[#E5E7EB] pt-5">
+      <div className="mt-auto flex flex-wrap items-end justify-between gap-4 border-t border-border pt-5">
         <div className="flex items-center gap-5 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1.5" aria-label={`${listing.impressions} impressions`}>
             <Eye className="size-4" aria-hidden="true" />
