@@ -1150,7 +1150,9 @@ Daily granularity satisfies all four time-range filters. Direct `$inc` on daily 
 
 #### 9.4.3 Recording endpoints (**Phase A**)
 
-**`POST /api/analytics/impression`** — Fire on public listing detail page mount.
+All analytics endpoints follow the established SP convention `/api/service-provider/analytics/...`, matching existing SP endpoints (media, listings, capacity) rather than introducing a new namespace pattern.
+
+**`POST /api/service-provider/analytics/impression`** — Fire on public listing detail page mount.
 
 Request body:
 ```json
@@ -1167,7 +1169,7 @@ Server logic (in order):
 
 Additional: Coarse per-IP rate limit at middleware (e.g., 60 impressions/IP/min) as fallback.
 
-**`POST /api/analytics/click`** — Fire on listing-detail CTA click (Contact, Order, View Packages, tier card).
+**`POST /api/service-provider/analytics/click`** — Fire on listing-detail CTA click (Contact, Order, View Packages, tier card).
 
 Same logic as impression, with:
 - 5-second dedup window (not 30 minutes).
@@ -1178,7 +1180,7 @@ Same logic as impression, with:
 
 #### 9.4.4 Aggregation endpoints (**Phase B**)
 
-**`GET /api/analytics/summary?listingId={id|all}&range={today|7d|30d|90d}`**
+**`GET /api/service-provider/analytics/summary?listingId={id|all}&range={today|7d|30d|90d}`**
 
 Auth: Provider must own the listing (or all their listings for `listingId=all`).
 
@@ -1198,7 +1200,7 @@ Response:
 
 Delta = `((current − previous) ÷ previous) × 100`. If `previous == 0`, delta is `null` (UI shows em-dash). Conversion rate is `null` when impressions == 0.
 
-**`GET /api/analytics/timeseries?listingId={id|all}&range={today|7d|30d|90d}`**
+**`GET /api/service-provider/analytics/timeseries?listingId={id|all}&range={today|7d|30d|90d}`**
 
 Response:
 ```json
@@ -1212,7 +1214,7 @@ Response:
 
 Missing days filled with zeros for continuous chart axis.
 
-**`GET /api/analytics/listings`**
+**`GET /api/service-provider/analytics/listings`**
 
 Populating the dropdown selector. Returns "All services" pseudo-entry + each provider listing, with optional `impressions30d` for badging. Read-owned listings excluded from dropdown.
 
@@ -1223,7 +1225,7 @@ Populating the dropdown selector. Returns "All services" pseudo-entry + each pro
 ```javascript
 useEffect(() => {
   const controller = new AbortController();
-  fetch('/api/analytics/impression', {
+  fetch('/api/service-provider/analytics/impression', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ listingId }),
