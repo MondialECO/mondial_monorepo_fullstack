@@ -2,7 +2,7 @@
 
 Source of truth for development. When code and this doc disagree, this doc wins — unless a change is agreed and written back here first.
 
-**Last reconciled with code: 2026-07-30.** See the Changelog (bottom) for what changed. If a claim here contradicts the code, treat it as drift to reconcile — not a spec to build back toward — and confirm before acting.
+**Last reconciled with code: 2026-07-31.** See the Changelog (bottom) for what changed. If a claim here contradicts the code, treat it as drift to reconcile — not a spec to build back toward — and confirm before acting.
 
 **All five Service Provider modules are now LIVE.** Remaining platform-wide truth in one line: the payment gateway, file scanner, and e-signature/contract-consent mechanism are **STUB** integrations; public profile/search tracking, durable proposal-event history, and test-record provenance are **deferred/not tracked**.
 
@@ -538,49 +538,73 @@ Absorbs the "Service Package / Delivery Time / FAQ / Revision" source doc in ful
 - **Sidebar:** the flat **Service Catalog** nav item (`menu.ts`) → **`/dashboard/serviceprovider/services`**.
 - **Confirmed-decision fixes in this build:** `PricingModel` added as a **nullable** field on `ServicePackage`; `CancellationPolicy` is a **fixed `CancellationPolicyType` enum** (3 platform options: `FlexibleFullRefundBeforeStart` / `PartialRefundAfterDeliveryStart` / `NoRefundAfterDeliveryStart`) — **not** a custom rule engine.
 
-### 6.0.1 Six-step creation wizard (new as of 2026-07-30 session)
+### 6.0.1 Six-step creation + edit wizard (as of 2026-07-30 session)
 
-A guided **creation flow distinct from the existing tabbed manage-flow** (which is unchanged). Route pattern: `/services?view=new&step=1` through `step=6`, carrying a `draftId={id}` parameter across steps. Each step auto-saves to a real backend Draft-status `ServiceListing` record (created after Step 1), not browser storage.
+A dual-purpose **creation and edit flow**, replacing the earlier tabbed manage-flow for edits. **Route patterns:**
+- **Create:** `/services?view=new&step=1` through `step=6`, carrying `draftId={id}` across steps.
+- **Edit:** `/services?view=edit&step=1` through `step=6`, carrying `serviceId={id}` across steps.
 
-- **Step 1: Overview** — title, `ServiceType` (free-form), `Category` (enum), `IndustryFocus` and `GeographicCoverage` (tag arrays). Deterministic "Suggested Keywords" lookup by category (static rule table, never AI/trending). All fields wired to real `ServiceListing` schema; `SubCategory`, `Metadata Tags`, `Search Tags` deliberately omitted (not in schema).
-- **Step 2: Scope & Pricing** — Basic/Standard/Premium package grid; per-package optional `PricingModel` dropdown; delivery-time control; Revisions Included + a dedicated **Additional Revision row kept separate** from the generic Service Add-ons grid. Deterministic Pricing Guidance by category only — never tier-conditioned.
-- **Step 3: Description & FAQ** — reuses the existing `FaqBuilder` component (no parallel implementation).
-- **Step 4: Client Requirements** — `RequirementsTemplate` editor with Text/File/Choice field types and per-question Required toggle. Same template applied to **all packages on the listing** (template is per-package embedded field in schema, but UI authors once).
-- **Step 5: Gallery & Video** — new `PreviewVideo` (drag-drop upload, max 60s/50MB, server-side duration validation via TagLibSharp) and `GalleryImages[]` (reordered drag-to-reorder gallery, 20-image cap, 8MB per image). Same `isOwner` edit gate and stable-ID/server-reference pattern as Portfolio items.
-- **Step 6: Review & Publish** — summary + publish-validation gate; transitions `ServiceListing` from Draft to Published.
+Each step auto-saves to a real backend Draft-status `ServiceListing` record (created after Step 1 if new), not browser storage. **Publish-to-live transition (Step 6):** For Draft/Unpublished listings, publishing changes `Status` to `Published`. For already-Published listings, clicking Publish saves changes **without changing status** (edit-mode preserves Published state).
 
-**New API endpoints (all owner-scoped, using existing `ApiResponse` envelope):**
-- `POST /listings/{id}/gallery-images` — atomic `$push` with `$size`-filter cap enforcement (20-item limit in single operation, race-safe).
-- `DELETE /listings/{id}/gallery-images/{imageId}` — atomic `$pull`, uses shared `ProviderMediaFiles.DeleteBestEffort()` cleanup helper.
-- `POST /listings/{id}/preview-video` — server-side duration validation before SaveFile persistence.
-- `DELETE /listings/{id}/preview-video` — uses shared cleanup helper.
+**Step structure:**
+- **Step 1: Overview** — title, `ServiceType` (free-form string, server-side validated against `ServiceTypeLookup.cs`), `Category` (enum), `IndustryFocus` and `GeographicCoverage` (tag arrays), `MetadataTags` (capped at 5), `SearchTags` (capped at 5). Deterministic "Suggested Keywords" lookup by category (static rule table, never AI/trending). All fields wired to real `ServiceListing` schema.
+- **Step 2: Scope & Pricing** — Basic/Standard/Premium package inline-editable grid; **fields wired to send on Next Step click:** `packageTitle, price, currency, pricingModel (nullable), deliveryTimeValue, deliveryTimeUnit, includedRevisionCount, includedFeatures, screensIncluded`. Deterministic Pricing Guidance by category only — never tier-conditioned. Save batches all package writes (POST for new temp IDs, PUT for real ObjectIds).
+- **Step 3: Description & FAQ** — reuses `FaqBuilder` with optional `hideItemActions` and `onFaqsChange` props for wizard mode; all FAQ edits stay local and are batch-saved on Next Step.
+- **Step 4: Client Requirements** — `RequirementsTemplate` editor with Text/File/Choice field types and per-question Required toggle. Same template applied to **all packages on the listing**.
+- **Step 5: Gallery & Video** — `PreviewVideo` (single record, server-side duration validation via TagLibSharp, max 60s/50MB) and `GalleryImages[]` (bounded array, 20-image cap, 8MB per image). All URLs rendered via `resolveProviderMediaUrl()` for backend-to-frontend URL resolution.
+- **Step 6: Review & Publish** — summary + publish-validation gate. **Context-aware button label:** "Publish Service Listing" (Draft), "Save Changes" (Published, preserves status), "Republish Service Listing" (Archived).
 
-**Intentional omissions:** "Screens Included" field was deliberately not built (unapproved, not-yet-generalized field from early mockups).
+**New API endpoints (route prefix `/api/service-provider/listings/{listingId}`, all owner-scoped, existing `ApiResponse` envelope):**
+- `POST /gallery-images` — atomic `$push` with `Exists=false OR SizeLt(20)` filter (race-safe cap enforcement). Request limit: 8MB/image. Response: `GalleryImageResponse` (small DTO, not full listing).
+- `DELETE /gallery-images/{imageId}` — atomic `$pull`; uses `$unset` for deletions.
+- `POST /preview-video` — server-side TagLibSharp duration validation before SaveFile persistence. Request limit: 50MB, max 60 seconds. Response: `PreviewVideoResponse` (small DTO).
+- `DELETE /preview-video` — uses `$unset` for deletion.
+
+**SaveFile folder allow-list updates (§4.3):**
+- `"service-provider/gallery"` — `.jpg, .jpeg, .png, .webp` — 8 MB max
+- `"service-provider/preview-video"` — `.mp4, .webm, .mov` — 50 MB max
 
 ### 6.0.2 As-built entities (real fields — note the drift from the spec's field names)
 Each entity's PK is **`Id`** (`[BsonId]` ObjectId), **not** the spec's `ServiceId`/`PackageId`/`FaqId`; packages/FAQs reference the listing via a `ServiceId` FK (FAQs also an optional nullable `PackageId`). The listing's category property is **`Category`** (type `ServiceCategory`).
-- **`ServiceListing`**: `Id, ProviderId, ServiceType, Title, Description, Category, IndustryFocus, GeographicCoverage, Impressions, Clicks, Status, CreatedAt, UpdatedAt`. **New as of 2026-07-30 reconciliation:** `PreviewVideo` (nullable, embedded; server-determined file reference, duration verified server-side via TagLibSharp, not client-reported; 60s max, 50MB max, enforced before persistence), `GalleryImages[]` (bounded embedded array, capped at 20 items; each has stable server-generated ID, server-determined file reference from SaveFile, display-order field; 8MB max per image, matching the existing `PortfolioMaximumBytes` convention for Portfolio images).
-- **`ServicePackage`**: `Id, ServiceId, PackageName, PackageType, PackageTitle, PackageDescription, Price, Currency, PricingModel (nullable), DeliveryTimeValue, DeliveryTimeUnit, DeliveryDayType, DeliveryStartRule, DeliveryTimezone, DailyCutoffTime, IncludedRevisionCount, UnlimitedRevisions, RevisionRequestWindowDays, AdditionalRevisionAvailable, AdditionalRevisionPrice, AdditionalRevisionDeliveryTime, RevisionScopeDescription, Deliverables, IncludedFeatures, ExcludedFeatures, AddOns[], RequirementsTemplate[], CancellationPolicy, InstantOrderEnabled, ManualApprovalRequired, MaximumActiveOrders, Status, CreatedAt, UpdatedAt`.
+
+**Null-handling rules (as of 2026-07-30 session):** `PreviewVideo`, `GalleryImages`, `MetadataTags`, `SearchTags`, `IndustryFocus`, `GeographicCoverage` on `ServiceListing`, and `Deliverables`, `IncludedFeatures`, `ExcludedFeatures`, `AddOns`, `RequirementsTemplate` on `ServicePackage` all carry `[BsonIgnoreIfNull]` and are defensively null-coalesced in `ToResponse()`. Delete paths (e.g. `DeleteListingGalleryImageAsync`) use atomic `$unset` instead of writing `null`.
+
+- **`ServiceListing`**: `Id, ProviderId, ServiceType, Title, Description, Category, IndustryFocus (nullable), GeographicCoverage (nullable), MetadataTags (capped list, nullable), SearchTags (capped list, nullable), PreviewVideo (nullable embedded; server-determined `PublicUrl` from SaveFile, server-validated duration via TagLibSharp, not client-reported; 60s max, 50MB max enforced before persistence), GalleryImages[] (nullable bounded array, capped at 20; each has stable server-generated `Id`, server-determined `PublicUrl`, `DisplayOrder`; 8MB max per image), Impressions, Clicks, Status, CreatedAt, UpdatedAt`.
+- **`ServicePackage`**: `Id, ServiceId, PackageName, PackageType, PackageTitle, PackageDescription, Price, Currency, PricingModel (nullable), DeliveryTimeValue, DeliveryTimeUnit, DeliveryDayType, DeliveryStartRule, DeliveryTimezone, DailyCutoffTime, IncludedRevisionCount, UnlimitedRevisions, RevisionRequestWindowDays, AdditionalRevisionAvailable, AdditionalRevisionPrice, AdditionalRevisionDeliveryTime, RevisionScopeDescription, Deliverables (nullable list), IncludedFeatures (nullable list), ExcludedFeatures (nullable list), ScreensIncluded (nullable int), AddOns[] (nullable), RequirementsTemplate[] (nullable), CancellationPolicy, InstantOrderEnabled, ManualApprovalRequired, MaximumActiveOrders, Status, CreatedAt, UpdatedAt`.
 - **`ServiceFAQ`**: `Id, ServiceId, PackageId (nullable), Question, Answer, Visibility, DisplayOrder, Status, CreatedAt, UpdatedAt`.
-- Embedded **`ServiceAddOn`**: `Name, Price, DeliveryTimeAdjustmentDays, Enabled`. Embedded **`RequirementsField`**: `FieldId, Label, FieldType, Required`.
-- Files — **backend:** `Models/DatabaseModels/ServiceCatalog.cs`, `Services/Implementations/{ServiceCatalogService,RevisionCalculator,DeliveryScheduleCalculator,PricingGuidance}.cs`, `Services/Interface/IServiceCatalogService.cs`, `Models/Dtos/ServiceCatalogDtos.cs`, `Controllers/ServiceCatalogController.cs`, `DbContext/MongoDbContext.cs`, `Program.cs`, `Models/DatabaseModels/ApplicationUser.cs` (capacity fields). **Frontend:** `components/serviceprovider/ServicesWorkspace.tsx` + `catalog/*`, `app/dashboard/serviceprovider/services/page.tsx`, `lib/api-service-catalog.ts`, `hooks/queries/service-catalog.ts`, `types/service-catalog.ts`, `lib/menu.ts`.
+- Embedded **`ServiceAddOn`**: `Name, Price, DeliveryTimeAdjustmentDays, Enabled`. Embedded **`RequirementsField`**: `FieldId, Label, FieldType, Required`. Embedded **`GalleryImage`**: `Id, StorageKey, PublicUrl, ContentType, Width, Height, Bytes, Sha256, DisplayOrder`. Embedded **`PreviewVideo`**: `StorageKey, PublicUrl, ContentType, Bytes, DurationSeconds, Sha256, UploadedAt`.
+- Files — **backend:** `Models/DatabaseModels/ServiceCatalog.cs` (includes embedded types), `Services/Implementations/{ServiceCatalogService,RevisionCalculator,DeliveryScheduleCalculator,PricingGuidance,ServiceProviderMediaService}.cs`, `Services/Interface/{IServiceCatalogService,IServiceProviderMediaService}.cs`, `Controllers/{ServiceCatalogController,ServiceProviderController}.cs` (media endpoints under `/api/service-provider/listings/{id}/gallery-images|preview-video`), `Models/Dtos/ServiceCatalogDtos.cs` (with GalleryImageResponse, PreviewVideoResponse DTOs), `DbContext/MongoDbContext.cs`. **Frontend:** `components/serviceprovider/catalog/wizard/{WizardStep*.tsx}`, `lib/api-service-provider.ts` (media upload wrappers), `lib/service-provider/provider-media.ts` (`resolveProviderMediaUrl()` helper), `hooks/queries/service-catalog.ts`, `types/service-catalog.ts`.
 
 **2026-07-28 workspace reconciliation — LIVE in `fd38914`:** Catalog remains one route with URL-backed states, not duplicate pages: `/services` lists/searches/filters real listings; `?view=new` creates; `?service={id}&tab=overview|packages|faqs|capacity` manages one listing; `mode=edit` opens its listing editor. The redesigned cards, editors, package builder, FAQ builder, capacity panel, loading/error/empty/success/confirmation states, and accessible controls reuse the shipped Module-2 APIs and business validation. Unsupported public marketplace preview and media-upload capabilities are not fabricated.
 
+### 6.1b Listing lifetime cap — server-side enforcement *(added 2026-07-30)*
+**Hard limit:** a Service Provider may have at most **4 ServiceListing records** at any time, regardless of status (Draft, Published, Unpublished, Archived all count toward the cap). Archiving or unpublishing does NOT free a slot — once a listing is created, it occupies the slot until deleted (deletion is not a supported user action; listing cleanup is admin-only).
+**Server-side enforcement (CreateListingAsync):** before creating a new Draft listing, check the total count of non-deleted ServiceListings for the provider. If count >= 4, return a conflict error ("You've reached the limit of 4 service listings").
+**Frontend UX:** the "New service" button is disabled when the provider is at capacity, with a banner explaining the limit and directing them to archive or remove an existing listing to proceed.
+
 **Storage (top-level collections, §4.2 convention):**
-- **`ServiceListing` → `"ServiceListings"`** — the service-level record: `ServiceType, Title, Description, ServiceCategory (enum §4.2), IndustryFocus, GeographicCoverage`, plus lifetime `Impressions`/`Clicks` counters, plus **new (2026-07-30)** `PreviewVideo` and `GalleryImages[]` (§6.0.1). No live caller or timestamped history exists, so these counters do not support period analytics (§9). Owns its packages via `serviceId`.
+- **`ServiceListing` → `"ServiceListings"`** — the service-level record: `ProviderId, ServiceType, Title, Description (TipTap-produced HTML string), Category (enum §4.2), IndustryFocus, GeographicCoverage, MetadataTags, SearchTags, PreviewVideo (embedded), GalleryImages[] (embedded)`, plus lifetime `Impressions`/`Clicks` counters. No live caller or timestamped history exists, so these counters do not support period analytics (§9). Owns its packages via `serviceId`. **Deferred to admin:** deletion.
 - **`ServicePackage` → `"ServicePackages"`** (new) — per-service packages, keyed by `serviceId`: `packageId, serviceId, packageName, packageType, packageTitle, packageDescription, price, currency, deliveryTimeValue, deliveryTimeUnit, deliveryDayType, includedRevisionCount, unlimitedRevisions, revisionRequestWindowDays, deliverables, includedFeatures, excludedFeatures, addOns (embedded — below), requirementsTemplate (embedded — below), instantOrderEnabled, manualApprovalRequired, maximumActiveOrders, status, createdAt, updatedAt`. Package types: `Basic, Standard, Premium, Custom` (Custom not shown in the public table — used for custom offers, §7).
 - **`ServiceFAQ` → `"ServiceFAQs"`** (new) — `faqId, serviceId, packageId, question, answer, visibility, displayOrder, status, createdAt, updatedAt`.
 - **Add-ons are EMBEDDED** on `ServicePackage` as a bounded `addOns` array (a handful per package), each: name, price, delivery-time delta (business days), enabled — **non-revision extras only** (extra revisions use the dedicated fields, §6.4). *(Flag: the source names the field `addOnIds` — id references to a collection — but per the modeling decision we embed the add-on objects directly instead.)*
 - **`RequirementsTemplate` is EMBEDDED** on `ServicePackage` (bounded — a handful of questions per package), not a top-level collection: a `requirementsTemplate` list of `{ fieldId, label, fieldType (text/file/choice/etc.), required }` entries. *(This is what the source's `requirementsTemplateId` field points at; like add-ons, we embed the structure directly rather than reference a collection. The client's filled-in answers are a separate Module-3 structure — §6.6.)*
 
-### 6.1 Package Builder
-Each service may have Basic / Standard / Premium, each **independently configured**: title, short description, price, delivery time, included revisions, deliverables, features, add-ons, client-requirements template, instant-order availability. Example — Basic "UX Audit Essentials" $450 / 5 Business Days / 1 revision; Standard "UX Audit & User Flow Redesign" $950 / 10 Business Days / 2 revisions; Premium "Complete Product UX Improvement" $1,650 / 18 Business Days / 3 revisions.
-**Pricing guidance (deterministic, no AI, §2):** a suggested-price-range lookup by `ServiceCategory` (optionally `PricingModel`), shown as guidance not a quote; no competitor benchmark.
+### 6.1 Package Builder — inline-editable table, batch save *(updated 2026-07-30)*
+Each service may have Basic / Standard / Premium, each **independently configured**. Example — Basic "UX Audit Essentials" $450 / 5 Business Days / 1 revision; Standard "UX Audit & User Flow Redesign" $950 / 10 Business Days / 2 revisions; Premium "Complete Product UX Improvement" $1,650 / 18 Business Days / 3 revisions.
 
-### 6.2 Package validation (deterministic — system never auto-changes price/delivery/revision policy)
-Required before publish: title, description, price > 0, currency, delivery time, ≥1 deliverable, revision policy, client requirements, availability status.
-Cross-package: Standard must not have fewer features than Basic; Premium not fewer than Standard; a higher package priced **lower** than a lower one shows a **warning**; a higher package with **shorter** delivery time needs **explicit confirmation**; same-service packages must share currency; no duplicate package titles; unpublished packages aren't purchasable.
+**Step 2 UX (inline comparison table):** every field is **inline-editable** within the grid — no modal or popup. The user edits:
+- **Per-package:** `PackageTitle`, `Price` (numeric input), `DeliveryTimeValue` + `DeliveryTimeUnit` (dropdown: 1–10 days), `IncludedRevisionCount` (dropdown), `ScreensIncluded` (numeric input), `IncludedFeatures` (checkboxes: Source Files, Responsive Design, Interactive Prototype, plus custom rows).
+- **Batch save:** changes are persisted only when the user clicks "Next Step". No keystroke-triggered writes; no blur-triggered auto-save. All packages' changes are sent in one batch (POST for new temp IDs, PUT for existing real ObjectIds based on `/^[0-9a-fA-F]{24}$/` detection).
+
+**Hidden fields (server-seeded defaults):** `PackageDescription` (empty string), `CancellationPolicy`, `PricingModel`, `RevisionRequestWindowDays`, `AdditionalRevisionPrice`, etc. are pre-populated with defaults at draft creation; the user does not edit them in Step 2. They remain in the payload sent on save, preserving any backend-server defaults.
+
+**Pricing guidance (deterministic, no AI, §2):** a suggested-price-range lookup by `ServiceCategory` (optionally `PricingModel`), shown as guidance-only panel ("Pricing Guidance"), never tier-conditioned. The label is **never** "AI Pricing Assistant" or branded with sparkle icons.
+
+### 6.2 Package validation (deterministic — system never auto-changes price/delivery/revision policy) *(updated 2026-07-30)*
+**Required before publish (per-package):** title, price > 0, currency, delivery time, revision policy, availability status.
+**Service-level description requirement:** the service's **top-level Description** (`ServiceListing.Description`, configured in Step 3 via TipTap rich text) is the **single source of truth** for describing the service to clients. Per-package `PackageDescription` is no longer required; it may remain empty on the schema (for future use) but is not validated at publish time.
+**Deliverables:** the per-package `Deliverables` array is no longer required at publish. Its content (what the client receives) is now captured by `ScreensIncluded` (numeric input in Step 2), `IncludedFeatures` (checkboxes in Step 2), and the service-level description. The field remains on the schema but is not validated.
+**Cross-package validation:** Standard must not have fewer features than Basic; Premium not fewer than Standard; a higher package priced **lower** than a lower one shows a **warning**; a higher package with **shorter** delivery time needs **explicit confirmation**; same-service packages must share currency; no duplicate package titles; unpublished packages aren't purchasable.
 
 ### 6.3 Delivery-time configuration
 Fields: `deliveryTimeValue, deliveryTimeUnit (Hours/Days/Weeks), deliveryDayType (Business/Calendar Days), deliveryStartRule (After Order Confirmation / After Escrow Funding / After Client Requirements Complete / After Provider Starts — recommended default: escrow funded AND requirements complete), deliveryTimezone, dailyCutoffTime`.
@@ -600,8 +624,21 @@ Fields: `includedRevisionCount, unlimitedRevisions, revisionRequestWindowDays, a
 **Scope rules:** Within Scope (consumes allowance) / Needs Clarification / **Potential Scope Change (does NOT auto-consume** — provider may ask clarification, create a paid change request, send a custom add-on, continue free, or request support) / Confirmed Scope Change (requires a paid add-on, revised custom offer, contract amendment, or separate proposal — **system never auto-charges or auto-accepts**, §2).
 **Unlimited revisions:** provider-enabled, with a mandatory warning that it applies only to the **original agreed scope**, not new deliverables/scope changes; the review window and scope restriction still apply; abuse-reporting exists; no automatic delivery extension; no new features included.
 
+### 6.3b Service Description — TipTap rich-text editor *(added 2026-07-30)*
+**Step 3 — Description & FAQ.** The service-level description uses a **TipTap-based WYSIWYG rich-text editor** (`ServiceDescriptionEditor.tsx`), producing an **HTML string** output. Backend field type remains `string` (stored as HTML).
+**Rendering & sanitization:** all render sites apply `DOMPurify` via the `sanitize-html.ts` helper to prevent XSS. Render sites include Step 6 review, old ListingDetail view (still active until Checkpoint 2), and any client-side preview surface.
+**Word count:** HTML tags are stripped before counting; the UI displays the cleaned plain-text length.
+**Batch save:** like Step 2, description edits and FAQ changes are persisted only on "Next Step" click.
+
+### 6.4 Client Requirements (formerly Step 4) — flat numbered cards *(updated 2026-07-30)*
+**Field types supported:** Free Text (textarea), File Upload (drag-drop), Choice (dropdown with user-defined options).
+**Per-question:** a Required toggle (boolean). All questions apply to **all packages** on the listing; there is one template, not per-package variants.
+**UX:** cards are flat/numbered (no accordion), each showing field type, label, and required indicator. Provider can add, reorder, or remove questions.
+**Batch save:** all requirement changes are saved on "Next Step" click.
+
 ### 6.5 FAQ Builder
 Entity `ServiceFAQ` (above). **Visibility:** All Packages / Basic Only / Standard Only / Premium Only / Selected Packages / Private Draft. **Actions:** add / edit / delete draft / reorder / duplicate / assign-to-package / publish / unpublish.
+**Wizard-mode props (as of 2026-07-30):** `FaqBuilder` accepts optional `hideItemActions` (for wizard mode, hides per-row action buttons) and `onFaqsChange` (callback fired when FAQs are modified locally). In wizard mode, all edits stay in component state and are batch-persisted on Next Step.
 **Validation:** question + answer required; question unique within a service; no empty answers; character limits; no prohibited external-payment instructions; can't override contract/package/platform terms; can't promise a feature not in the selected package; unpublished FAQs aren't shown publicly.
 **Groups (optional):** Service Requirements, Delivery, Revisions, Files and Formats, Meetings, Communication, Licensing, Ownership, Support.
 **Package-conflict handling:** FAQ content should reflect the selected package; if it conflicts with actual package config, **package terms are the source of truth** — the system shows a conflict warning ("This FAQ does not match the selected package settings") and the provider corrects it manually.
@@ -617,6 +654,14 @@ Entity `ServiceFAQ` (above). **Visibility:** All Packages / Basic Only / Standar
 ### 6.8 Package order cancellation
 **Before delivery starts:** client may request cancellation; provider may approve; platform cancellation policy applies; escrow refund may process; the proposal snapshot stays in history.
 **After delivery starts:** cancellation follows contract policy; completed work may require partial payment; an active dispute blocks automatic refund; an administrator may review exceptional cases. **The system never makes an automatic cancellation decision unless a predefined policy explicitly applies** (§2).
+
+### 6.8b Step 6 Review & Publish — two-column layout redesign *(added 2026-07-30)*
+**Layout:** replaces the single-column stacked card layout with a responsive two-column grid:
+- **LEFT COLUMN:** service title with edit pencil icon (navigates to Step 1), gallery thumbnails (up to 4 visible, with overflow count "+N"), no metadata/rich description shown.
+- **RIGHT COLUMN:** three stacked package cards (Basic, Standard, Premium). Standard card has a hardcoded blue "RECOMMENDED" badge in top-right corner and a stronger blue border (visually emphasized). Each card shows: tier name, price in large text, summary line "X Screens • Y Revisions • Z Days Delivery" (pulls actual field values; omits screens if count is 0 or null), edit pencil icon (navigates to Step 2).
+- **VALIDATION & PUBLISH:** errors/warnings above the two-column area (if any). Sticky footer with "Back" button and context-aware publish button (blue primary style).
+
+**Excluded:** the "SEO Scan Complete" / "AI Provider verified" panel shown in some mockups is **NOT present**. This is a permanent canon rule (§2) — no AI-branded UI surfaces anywhere.
 
 ### 6.9 Empty state (Catalog)
 - **No Services** — "No Published Services" / "Create your first service listing to start receiving briefs." / Action: "Create Service". *(This is the getting-started nudge the §11 journey references — the flat model's replacement for a wizard.)* **Regression note (2026-07-30):** the empty-state title had regressed to "Create your first service" during the 2026-07-28 UI reconciliation (`fd38914`); it was corrected back to canonical text during this reconciliation.
