@@ -24,11 +24,9 @@ import {
   SpStatusBadge,
 } from '@/components/serviceprovider/ui';
 import {
-  useServiceListing,
   useServiceListings,
 } from '@/hooks/queries/service-catalog';
 import type { CatalogStatus, ServiceListing } from '@/types/service-catalog';
-import { ListingDetail } from './catalog/ListingDetail';
 import { ServiceCatalogWizard } from './catalog/ServiceCatalogWizard';
 
 const BASE_ROUTE = '/dashboard/serviceprovider/services';
@@ -44,7 +42,8 @@ export function ServicesWorkspace() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const view = searchParams.get('view') || '';
-  const serviceId = searchParams.get('serviceId') || searchParams.get('service');
+  const serviceId = searchParams.get('serviceId');
+  const legacyService = searchParams.get('service');
   const isCreating = view === 'new';
   const isEditing = view === 'edit' && serviceId;
   const wizardStep = searchParams.get('step');
@@ -52,6 +51,13 @@ export function ServicesWorkspace() {
   const listingsQuery = useServiceListings();
   const listings = useMemo(() => listingsQuery.data ?? [], [listingsQuery.data]);
   const atCapacity = listings.length >= 4;
+
+  // Redirect legacy ?service={id} URLs to wizard edit mode
+  useEffect(() => {
+    if (legacyService && !view) {
+      router.replace(`${BASE_ROUTE}?view=edit&step=1&serviceId=${encodeURIComponent(legacyService)}`);
+    }
+  }, [legacyService, view, router]);
 
   // If creating without step param, redirect to step 1 (wizard entry point)
   useEffect(() => {
@@ -83,7 +89,7 @@ export function ServicesWorkspace() {
               : 'Create and manage the services clients can discover in the marketplace.'
         }
         actions={
-          isWizard || (serviceId && view !== 'edit') ? (
+          isWizard ? (
             <Button type="button" variant="outline" onClick={showList}>
               <ArrowLeft className="size-4" aria-hidden="true" />
               All services
@@ -100,7 +106,7 @@ export function ServicesWorkspace() {
                 New service
               </Button>
               {atCapacity && (
-                <p className="text-xs text-[#6B7280]">Maximum of 4 services reached</p>
+                <p className="text-xs text-muted-foreground">Maximum of 4 services reached</p>
               )}
             </div>
           )
@@ -109,7 +115,6 @@ export function ServicesWorkspace() {
 
       {!isCreating && !serviceId && <ListingsList onOpen={showService} onCreate={showNew} />}
       {isWizard && <ServiceCatalogWizard onExit={showList} />}
-      {serviceId && view !== 'edit' && <ListingDetailLoader id={serviceId} />}
     </SpPage>
   );
 }
@@ -267,7 +272,7 @@ function ListingCard({ listing, onOpen }: { listing: ServiceListing; onOpen: () 
     <SpCard className="flex min-h-64 flex-col">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#6B7280]">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
             {formatEnum(listing.category)}
           </p>
           <h2 className="mt-2 font-heading text-lg font-semibold leading-6 text-[#171717]">
@@ -277,7 +282,7 @@ function ListingCard({ listing, onOpen }: { listing: ServiceListing; onOpen: () 
         <StatusBadge status={listing.status} />
       </div>
 
-      <p className="mt-3 line-clamp-3 text-sm leading-6 text-[#6B7280]">
+      <p className="mt-3 line-clamp-3 text-sm leading-6 text-muted-foreground">
         {listing.description || 'Add a description so clients understand the scope of this service.'}
       </p>
 
@@ -288,7 +293,7 @@ function ListingCard({ listing, onOpen }: { listing: ServiceListing; onOpen: () 
       </div>
 
       <div className="mt-auto flex flex-wrap items-end justify-between gap-4 border-t border-[#E5E7EB] pt-5">
-        <div className="flex items-center gap-5 text-xs text-[#6B7280]">
+        <div className="flex items-center gap-5 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1.5" aria-label={`${listing.impressions} impressions`}>
             <Eye className="size-4" aria-hidden="true" />
             {listing.impressions.toLocaleString()}
@@ -305,39 +310,6 @@ function ListingCard({ listing, onOpen }: { listing: ServiceListing; onOpen: () 
       </div>
     </SpCard>
   );
-}
-
-function ListingDetailLoader({ id }: { id: string }) {
-  const listingQuery = useServiceListing(id);
-
-  if (listingQuery.isLoading) {
-    return (
-      <div className="space-y-5" aria-label="Loading service details">
-        <Skeleton className="h-56 rounded-2xl" />
-        <Skeleton className="h-12 rounded-xl" />
-        <Skeleton className="h-80 rounded-2xl" />
-      </div>
-    );
-  }
-
-  if (listingQuery.isError || !listingQuery.data) {
-    return (
-      <SpMutationFeedback status="error">
-        <div className="flex flex-wrap items-center gap-3">
-          <span>This service could not be loaded.</span>
-          <button
-            type="button"
-            onClick={() => listingQuery.refetch()}
-            className="font-semibold underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3C61DD]"
-          >
-            Try again
-          </button>
-        </div>
-      </SpMutationFeedback>
-    );
-  }
-
-  return <ListingDetail detail={listingQuery.data} />;
 }
 
 export function StatusBadge({ status }: { status: string }) {
