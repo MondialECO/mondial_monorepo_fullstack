@@ -10,6 +10,7 @@ import { MediaCarousel } from '@/components/marketplace/MediaCarousel';
 import { ListingHeader } from '@/components/marketplace/detail/ListingHeader';
 import { PackageSelectorCard } from '@/components/marketplace/detail/PackageSelectorCard';
 import { ComparePackagesTable } from '@/components/marketplace/detail/ComparePackagesTable';
+import { ProviderAboutCard } from '@/components/marketplace/detail/ProviderAboutCard';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import AuthGuard from '@/components/layout/AuthGuard';
@@ -196,28 +197,25 @@ function MarketplaceListingDetailContent() {
                 <h2 className="text-lg font-semibold text-foreground mb-4">
                   Frequently asked questions
                 </h2>
-                <div className="space-y-2 divide-y divide-border border border-border rounded-lg overflow-hidden">
+                <div className="overflow-hidden rounded-xl border border-border">
                   {listing.faqs.map((faq) => (
-                    <div key={faq.id}>
+                    <div key={faq.id} className="border-t border-border first:border-t-0">
                       <button
                         onClick={() =>
-                          setExpandedFaqId(
-                            expandedFaqId === faq.id ? null : faq.id
-                          )
+                          setExpandedFaqId(expandedFaqId === faq.id ? null : faq.id)
                         }
-                        className="w-full px-4 py-3 text-left hover:bg-muted/50 transition-colors flex items-center justify-between"
+                        aria-expanded={expandedFaqId === faq.id}
+                        className="flex w-full items-center justify-between px-5 py-3 text-left transition-colors hover:bg-muted/40"
                       >
-                        <span className="font-medium text-sm text-foreground">
-                          {faq.question}
-                        </span>
+                        <span className="text-sm font-medium text-foreground">{faq.question}</span>
                         <ChevronRight
-                          className={`size-4 text-muted-foreground transition-transform ${
+                          className={`size-4 shrink-0 text-muted-foreground transition-transform ${
                             expandedFaqId === faq.id ? 'rotate-90' : ''
                           }`}
                         />
                       </button>
                       {expandedFaqId === faq.id && (
-                        <div className="px-4 py-3 bg-muted/30 text-sm text-foreground space-y-3">
+                        <div className="bg-muted/30 px-5 py-3 text-sm text-foreground">
                           <div
                             dangerouslySetInnerHTML={{
                               __html: DOMPurify.sanitize(faq.answerHtml),
@@ -230,6 +228,8 @@ function MarketplaceListingDetailContent() {
                 </div>
               </div>
             )}
+
+            <ProviderAboutCard provider={listing.provider} onMessage={handleMessageClick} />
           </div>
 
           {/* Right Column: sticky package selector */}
