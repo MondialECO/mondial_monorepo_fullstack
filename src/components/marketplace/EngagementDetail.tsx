@@ -9,6 +9,7 @@ import { formatPrice } from '@/lib/marketplace-format';
 import { statusChipClass } from '@/lib/workroom-status';
 import { useClientEngagement } from '@/hooks/queries/workroom-client';
 import { ContractPanel } from '@/components/marketplace/workroom/ContractPanel';
+import { MilestonesPanel } from '@/components/marketplace/workroom/MilestonesPanel';
 
 function formatDate(value?: string | null): string {
   if (!value) return '—';
@@ -121,6 +122,7 @@ function EngagementDetailContent({
 
       <div className="space-y-6">
         <ContractPanel contract={contract} engagementId={engagement.id} />
+        <MilestonesPanel detail={data} />
       </div>
     </div>
   );
