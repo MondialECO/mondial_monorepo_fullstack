@@ -48,10 +48,9 @@ export function PackageSelectorCard({
             <TabsTrigger key={p.id} value={p.tier} className="flex-1">
               <span className="inline-flex items-center gap-1.5">
                 {p.tier}
+                {/* Badge's default variant is already bg-primary/text-primary-foreground. */}
                 {p.tier === 'Standard' && (
-                  <Badge className="bg-primary px-1.5 text-[10px] uppercase tracking-wide text-primary-foreground">
-                    Rec
-                  </Badge>
+                  <Badge className="px-1.5 text-[10px] uppercase tracking-wide">Rec</Badge>
                 )}
               </span>
             </TabsTrigger>
