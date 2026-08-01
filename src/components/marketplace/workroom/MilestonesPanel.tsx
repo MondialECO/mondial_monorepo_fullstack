@@ -11,8 +11,8 @@ export function MilestonesPanel({ detail }: { detail: WorkroomDetail }) {
   const ordered = [...milestones].sort((a, b) => a.displayOrder - b.displayOrder);
 
   return (
-    <section>
-      <h2 className="mb-3 flex items-center gap-2 font-semibold text-foreground">
+    <section className="rounded-xl border border-border bg-card p-6">
+      <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-foreground">
         <Layers className="size-4" />
         Milestones
       </h2>

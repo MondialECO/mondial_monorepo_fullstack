@@ -57,8 +57,8 @@ export function ReviewPanel({ detail }: { detail: WorkroomDetail }) {
   if (engagement.engagementStatus !== 'Completed' && !review) return null;
 
   return (
-    <section className="rounded-lg border border-border p-4">
-      <h2 className="mb-3 font-semibold text-foreground">Review</h2>
+    <section className="rounded-xl border border-border bg-card p-6">
+      <h2 className="mb-4 text-lg font-semibold text-foreground">Review</h2>
       {review ? <ExistingReview review={review} /> : <ReviewForm engagementId={engagement.id} />}
     </section>
   );

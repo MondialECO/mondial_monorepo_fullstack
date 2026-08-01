@@ -42,10 +42,10 @@ export function FilesPanel({ detail }: { detail: WorkroomDetail }) {
   };
 
   return (
-    <section className="rounded-lg border border-border p-4">
-      <h2 className="mb-3 flex items-center gap-2 font-semibold text-foreground">
+    <section className="rounded-xl border border-border bg-card p-6">
+      <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-foreground">
         <Paperclip className="size-4" />
-        Files
+        Files &amp; deliverables
       </h2>
 
       {visible.length === 0 ? (
