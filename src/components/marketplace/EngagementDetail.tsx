@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { formatPrice } from '@/lib/marketplace-format';
 import { statusChipClass } from '@/lib/workroom-status';
 import { useClientEngagement } from '@/hooks/queries/workroom-client';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/app/_providers/AuthProvider';
 import { ROLE_DASHBOARD_ROUTES } from '@/lib/roles';
 import { ContractPanel } from '@/components/marketplace/workroom/ContractPanel';
 import { MilestonesPanel } from '@/components/marketplace/workroom/MilestonesPanel';

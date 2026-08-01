@@ -5,7 +5,7 @@ import * as api from '@/lib/api-workroom-client';
 // GET wrappers are actor-scoped and shape-identical for both parties, so they're
 // reused from the SP module rather than duplicated.
 import { getEngagement, getEngagements } from '@/lib/api-workroom';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/app/_providers/AuthProvider';
 
 const CLIENT_WORKROOM = ['client-workroom'] as const;
 

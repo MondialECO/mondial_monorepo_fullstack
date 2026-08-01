@@ -14,7 +14,7 @@ import {
 } from '@/hooks/queries/package-purchase';
 import { getEngagements } from '@/lib/api-workroom';
 import { recordListingClick } from '@/lib/api-analytics';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/app/_providers/AuthProvider';
 import { ROLE_DASHBOARD_ROUTES } from '@/lib/roles';
 import type { PackagePurchaseResponse } from '@/types/package-purchase';
 import { OrderSummaryWidget } from '@/components/marketplace/order/OrderSummaryWidget';
