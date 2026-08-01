@@ -34,15 +34,6 @@ export function MediaCarousel({ video, gallery, altTitle }: Props) {
   const current = slides[index];
   const hasSlides = slides.length > 0;
 
-  // Empty state
-  if (!hasSlides) {
-    return (
-      <div className="w-full aspect-video bg-muted rounded-lg flex items-center justify-center">
-        <Package className="h-12 w-12 text-muted-foreground" />
-      </div>
-    );
-  }
-
   // 2. Auto-advance timer — only for image slides, not for video slides
   useEffect(() => {
     if (slides.length <= 1) return;
@@ -74,6 +65,16 @@ export function MediaCarousel({ video, gallery, altTitle }: Props) {
   useEffect(() => {
     setIsHoveringVideo(false);
   }, [index]);
+
+  // Empty state. Must come after every hook: gallery data arrives async, so an
+  // early return above would change hook count between renders once it populates.
+  if (!hasSlides) {
+    return (
+      <div className="w-full aspect-video bg-muted rounded-lg flex items-center justify-center">
+        <Package className="h-12 w-12 text-muted-foreground" />
+      </div>
+    );
+  }
 
   const prev = () => setIndex((i) => (i - 1 + slides.length) % slides.length);
   const next = () => setIndex((i) => (i + 1) % slides.length);
