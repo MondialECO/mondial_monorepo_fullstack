@@ -9,6 +9,7 @@ import { recordListingImpression, recordListingClick } from '@/lib/api-analytics
 import { MediaCarousel } from '@/components/marketplace/MediaCarousel';
 import { ListingHeader } from '@/components/marketplace/detail/ListingHeader';
 import { PackageSelectorCard } from '@/components/marketplace/detail/PackageSelectorCard';
+import { ComparePackagesTable } from '@/components/marketplace/detail/ComparePackagesTable';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import AuthGuard from '@/components/layout/AuthGuard';
@@ -74,6 +75,16 @@ function MarketplaceListingDetailContent() {
       setSelectedAddOnNames(new Set());
     },
     [fireAnalyticsClick]
+  );
+
+  // Choosing from the compare table selects the tier and returns the user to the
+  // sticky selector, which is scrolled past by the time they reach the table.
+  const handleChooseTier = useCallback(
+    (tier: string) => {
+      handlePackageChange(tier);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    },
+    [handlePackageChange]
   );
 
   const toggleAddOn = useCallback((name: string) => {
@@ -172,6 +183,12 @@ function MarketplaceListingDetailContent() {
                 />
               </div>
             )}
+
+            <ComparePackagesTable
+              packages={listing.packages}
+              selectedTier={selectedPackageTier}
+              onChooseTier={handleChooseTier}
+            />
 
             {/* FAQs */}
             {listing.faqs.length > 0 && (
