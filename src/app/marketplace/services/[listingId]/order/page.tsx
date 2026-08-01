@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { AlertCircle, ChevronLeft } from 'lucide-react';
@@ -8,9 +8,19 @@ import AuthGuard from '@/components/layout/AuthGuard';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useMarketplaceListingDetail } from '@/hooks/queries/marketplace';
+import {
+  usePurchasePackage,
+  useProposalConversionPoll,
+} from '@/hooks/queries/package-purchase';
+import { getEngagements } from '@/lib/api-workroom';
+import { useAuth } from '@/context/AuthContext';
+import { ROLE_DASHBOARD_ROUTES } from '@/lib/roles';
+import type { PackagePurchaseResponse } from '@/types/package-purchase';
 import { OrderSummaryWidget } from '@/components/marketplace/order/OrderSummaryWidget';
 import { OrderStepSummary } from '@/components/marketplace/order/OrderStepSummary';
 import { OrderStepRequirements } from '@/components/marketplace/order/OrderStepRequirements';
+import { OrderStepConfirm } from '@/components/marketplace/order/OrderStepConfirm';
+import { OrderResultPanel } from '@/components/marketplace/order/OrderResultPanel';
 
 const STEP_LABELS = ['Review', 'Requirements', 'Confirm'];
 
@@ -49,6 +59,74 @@ function MarketplaceOrderContent() {
   const setAnswer = useCallback((fieldId: string, value: string) => {
     setAnswers((prev) => ({ ...prev, [fieldId]: value }));
   }, []);
+
+  const [confirmations, setConfirmations] = useState({
+    reviewedSummary: false,
+    explicitlyConfirmed: false,
+    noComplianceHold: false,
+  });
+  const toggleConfirmation = useCallback((key: keyof typeof confirmations) => {
+    setConfirmations((prev) => ({ ...prev, [key]: !prev[key] }));
+  }, []);
+
+  const [result, setResult] = useState<PackagePurchaseResponse | null>(null);
+  const purchase = usePurchasePackage();
+  const { user } = useAuth();
+
+  const engagementsHref = user
+    ? `${ROLE_DASHBOARD_ROUTES[user.role]}/engagements`
+    : '/marketplace/services';
+
+  // Only the auto-accepted path converts to an engagement; the manual path waits
+  // on provider approval, so there is nothing to poll for.
+  const pollTarget = result?.autoAccepted ? result.proposal.id : null;
+  const { converted, isTimedOut } = useProposalConversionPoll(pollTarget);
+
+  useEffect(() => {
+    if (!converted || !result || !user) return;
+    let cancelled = false;
+    const base = `${ROLE_DASHBOARD_ROUTES[user.role]}/engagements`;
+    (async () => {
+      try {
+        const engagements = await getEngagements();
+        const match = engagements.find((e) => e.proposalId === result.proposal.id);
+        if (!cancelled) router.push(match ? `${base}/${match.id}` : base);
+      } catch {
+        // The engagement exists even if this lookup failed — send them to the list.
+        if (!cancelled) router.push(base);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [converted, result, user, router]);
+
+  const handleSubmit = useCallback(() => {
+    if (!pkg) return;
+    const requirements = (pkg.requirementsTemplate ?? [])
+      .filter((f) => f.fieldType !== 'File')
+      .map((f) => ({
+        templateFieldId: f.fieldId,
+        fieldType: f.fieldType,
+        value: answers[f.fieldId] ?? '',
+      }));
+
+    purchase.mutate(
+      {
+        packageId: pkg.id,
+        selectedAddOnNames,
+        requirements,
+        explicitlyConfirmed: true,
+        paymentMethodVerified: true,
+        escrowAuthorized: true,
+        // Inverted: the UI asks "no compliance issues", the backend field means
+        // "a hold exists" and treats true as a gate failure (LeadsService.cs).
+        complianceHold: false,
+        finalSummaryShown: true,
+      },
+      { onSuccess: (res) => setResult(res) }
+    );
+  }, [pkg, answers, selectedAddOnNames, purchase]);
 
   const total = useMemo(() => {
     if (!pkg) return 0;
@@ -161,6 +239,32 @@ function MarketplaceOrderContent() {
             onChange={setAnswer}
             onBack={() => goToStep(1)}
             onContinue={() => goToStep(3)}
+          />
+        )}
+
+        {step === 3 && !result && (
+          <OrderStepConfirm
+            pkg={pkg}
+            total={total}
+            reviewedSummary={confirmations.reviewedSummary}
+            explicitlyConfirmed={confirmations.explicitlyConfirmed}
+            noComplianceHold={confirmations.noComplianceHold}
+            onToggle={toggleConfirmation}
+            onBack={() => goToStep(2)}
+            onSubmit={handleSubmit}
+            isSubmitting={purchase.isPending}
+            errorMessage={
+              purchase.isError ? 'We could not place your order. Please try again.' : null
+            }
+          />
+        )}
+
+        {result && (
+          <OrderResultPanel
+            result={result}
+            engagementsHref={engagementsHref}
+            isPolling={!converted}
+            isTimedOut={isTimedOut}
           />
         )}
       </div>
