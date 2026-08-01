@@ -67,12 +67,16 @@ export function OrderStepRequirements({ pkg, answers, onChange, onBack, onContin
       <div className="space-y-4">
         {fields.map((field) => {
           const value = answers[field.fieldId] ?? '';
-          const label = (
+          const labelText = field.label?.trim();
+          // RequirementsField.Label defaults to "" server-side, so a provider can save a
+          // requirement with no label. Rendering the block anyway leaves a bare red
+          // asterisk floating with no text beside it.
+          const label = labelText ? (
             <label htmlFor={field.fieldId} className="mb-1 block text-sm font-medium text-foreground">
-              {field.label}
+              {labelText}
               {field.required && <span className="ml-1 text-destructive">*</span>}
             </label>
-          );
+          ) : null;
 
           if (field.fieldType === 'File') {
             return (
