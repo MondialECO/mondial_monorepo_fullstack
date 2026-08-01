@@ -16,6 +16,7 @@ import { resolveProviderMediaUrl } from '@/lib/service-provider/provider-media';
 import { formatPrice } from '@/lib/marketplace-format';
 import { recordListingImpression, recordListingClick } from '@/lib/api-analytics';
 import { MediaCarousel } from '@/components/marketplace/MediaCarousel';
+import { ListingHeader } from '@/components/marketplace/detail/ListingHeader';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import AuthGuard from '@/components/layout/AuthGuard';
@@ -142,7 +143,7 @@ function MarketplaceListingDetailContent() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="mx-auto max-w-7xl px-4 py-8 md:px-6">
         {/* Back Link */}
         <Link
           href="/marketplace/services"
@@ -152,46 +153,19 @@ function MarketplaceListingDetailContent() {
           Back to Marketplace
         </Link>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Title, provider and tags sit above the columns so the offer stays
+            adjacent to the media rather than below a wall of metadata. */}
+        <ListingHeader listing={listing} />
+
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_360px]">
           {/* Left Column: Media Carousel, Description, FAQs */}
-          <div className="lg:col-span-2 space-y-8">
+          <div className="min-w-0 space-y-8">
             {/* Unified Media Carousel (video first, then gallery images) */}
             <MediaCarousel
               video={listing.previewVideo}
               gallery={listing.gallery}
               altTitle={listing.title}
             />
-
-            {/* Service Info */}
-            <div>
-              <div className="mb-4">
-                <span className="inline-block px-2 py-1 rounded-full bg-muted text-xs font-medium text-muted-foreground mb-2">
-                  {listing.category}
-                </span>
-                <h1 className="text-3xl font-bold text-foreground mb-2">
-                  {listing.title}
-                </h1>
-                <p className="text-muted-foreground">
-                  {listing.serviceType}
-                </p>
-              </div>
-
-              {/* Tags */}
-              {(listing.metadataTags.length > 0 || listing.searchTags.length > 0) && (
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {[...listing.metadataTags, ...listing.searchTags].map(
-                    (tag, i) => (
-                      <span
-                        key={i}
-                        className="inline-block px-2 py-1 rounded-md bg-muted text-xs text-muted-foreground"
-                      >
-                        {tag}
-                      </span>
-                    )
-                  )}
-                </div>
-              )}
-            </div>
 
             {/* Description */}
             {listing.descriptionHtml && (
@@ -250,8 +224,8 @@ function MarketplaceListingDetailContent() {
             )}
           </div>
 
-          {/* Right Column: Provider & Package Selector */}
-          <div className="lg:col-span-1 space-y-6">
+          {/* Right Column: sticky package selector */}
+          <div className="space-y-6 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:self-start lg:overflow-y-auto">
             {/* Provider Card */}
             <div className="border border-border rounded-lg p-4">
               <div className="flex gap-3 mb-4">
