@@ -11,6 +11,7 @@ public interface ILeadsService
     Task<ServiceProviderResult<ClientBriefResponse>> GetBriefAsync(string providerId, string briefId);
     Task<ServiceProviderResult<ClientBriefResponse>> UpdateInteractionAsync(string providerId, string briefId, UpdateBriefInteractionRequest request);
     Task<ServiceProviderResult<List<ProposalResponse>>> GetProviderProposalsAsync(string providerId);
+    Task<ServiceProviderResult<List<ProposalResponse>>> GetClientProposalsAsync(string clientId);
     Task<ServiceProviderResult<ProposalResponse>> GetProposalAsync(string actorId, string proposalId);
     Task<ServiceProviderResult<ProposalResponse>> CreateDraftAsync(string providerId, UpsertProposalRequest request);
     Task<ServiceProviderResult<ProposalResponse>> UpdateDraftAsync(string providerId, string proposalId, UpsertProposalRequest request);
