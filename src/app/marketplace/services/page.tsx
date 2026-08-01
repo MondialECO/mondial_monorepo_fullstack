@@ -3,13 +3,15 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Search, ChevronLeft, ChevronRight, Star, Package } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, Star, Package, SlidersHorizontal } from 'lucide-react';
 import { resolveProviderMediaUrl } from '@/lib/service-provider/provider-media';
 import { formatPrice } from '@/lib/marketplace-format';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { MarketplaceFilters } from '@/components/marketplace/MarketplaceFilters';
 import AuthGuard from '@/components/layout/AuthGuard';
 import { useMarketplaceListings } from '@/hooks/queries/marketplace';
 import type { MarketplaceListingsQuery } from '@/lib/api-marketplace';
@@ -68,6 +70,7 @@ function MarketplaceGridContent() {
     (searchParams.get('sort') as 'recent' | 'price_asc' | 'price_desc' | 'rating') ?? 'recent'
   );
   const [page, setPage] = useState(parseInt(searchParams.get('page') ?? '1', 10));
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const query: MarketplaceListingsQuery = useMemo(
     () => ({
@@ -110,88 +113,65 @@ function MarketplaceGridContent() {
   const rangeStart = total === 0 ? 0 : (currentPage - 1) * pageSize + 1;
   const rangeEnd = Math.min(currentPage * pageSize, total);
 
-  const filters = (
-    <div className="space-y-6">
-      <div>
-        <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-foreground">
-          Category
-        </h3>
-        <select
-          value={category}
-          onChange={(e) => {
-            setCategory(e.target.value);
-            setPage(1);
-          }}
-          className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary"
-        >
-          <option value="">All Categories</option>
-          {SERVICE_CATEGORIES.map((cat) => (
-            <option key={cat.value} value={cat.value}>
-              {cat.label}
-            </option>
-          ))}
-        </select>
-      </div>
+  const activeFilterCount = [category, priceRange, deliveryTime].filter(Boolean).length;
 
-      <div>
-        <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-foreground">
-          Price
-        </h3>
-        <select
-          value={priceRange}
-          onChange={(e) => {
-            setPriceRange(e.target.value);
-            setPage(1);
-          }}
-          className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary"
-        >
-          <option value="">Any Price</option>
-          {PRICE_RANGES.map((range) => (
-            <option key={range.label} value={range.label}>
-              {range.label}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div>
-        <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-foreground">
-          Delivery time
-        </h3>
-        <select
-          value={deliveryTime}
-          onChange={(e) => {
-            setDeliveryTime(e.target.value);
-            setPage(1);
-          }}
-          className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary"
-        >
-          <option value="">Any Time</option>
-          {DELIVERY_TIMES.map((dt) => (
-            <option key={dt.label} value={dt.label}>
-              {dt.label}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {hasActiveFilters && (
-        <Button variant="outline" size="sm" onClick={handleResetFilters} className="w-full">
-          Reset filters
-        </Button>
-      )}
-    </div>
+  const renderFilters = (onCommit?: () => void) => (
+    <MarketplaceFilters
+      categories={SERVICE_CATEGORIES}
+      priceRanges={PRICE_RANGES}
+      deliveryTimes={DELIVERY_TIMES}
+      category={category}
+      priceRange={priceRange}
+      deliveryTime={deliveryTime}
+      onCategoryChange={(v) => {
+        setCategory(v);
+        setPage(1);
+      }}
+      onPriceRangeChange={(v) => {
+        setPriceRange(v);
+        setPage(1);
+      }}
+      onDeliveryTimeChange={(v) => {
+        setDeliveryTime(v);
+        setPage(1);
+      }}
+      onReset={handleResetFilters}
+      hasActiveFilters={hasActiveFilters}
+      onCommit={onCommit}
+    />
   );
 
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="border-b border-border bg-card">
-        <div className="mx-auto max-w-7xl px-4 py-6 md:px-6">
-          <h1 className="text-3xl font-bold text-foreground">Marketplace</h1>
-          <p className="mt-1 text-muted-foreground">
-            Discover vetted service providers for your business
-          </p>
+        <div className="mx-auto flex max-w-7xl items-start justify-between gap-4 px-4 py-6 md:px-6">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Marketplace</h1>
+            <p className="mt-1 text-muted-foreground">
+              Discover vetted service providers for your business
+            </p>
+          </div>
+
+          <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="sm" className="shrink-0 lg:hidden">
+                <SlidersHorizontal className="mr-2 size-4" />
+                Filters
+                {activeFilterCount > 0 && (
+                  <span className="ml-2 rounded-full bg-primary px-1.5 text-xs text-primary-foreground">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-80 overflow-y-auto">
+              <SheetHeader>
+                <SheetTitle>Filters</SheetTitle>
+              </SheetHeader>
+              <div className="mt-6">{renderFilters(() => setFiltersOpen(false))}</div>
+            </SheetContent>
+          </Sheet>
         </div>
       </div>
 
@@ -222,7 +202,7 @@ function MarketplaceGridContent() {
       <div className="mx-auto max-w-7xl px-4 py-6 md:px-6">
         <div className="flex gap-6">
           <aside className="sticky top-24 hidden max-h-[calc(100vh-7rem)] w-60 shrink-0 self-start lg:block">
-            <ScrollArea className="h-full pr-3">{filters}</ScrollArea>
+            <ScrollArea className="h-full pr-3">{renderFilters()}</ScrollArea>
           </aside>
 
           <div className="min-w-0 flex-1">
