@@ -1837,9 +1837,43 @@ One-file change: `src/lib/menu.ts`. "My Engagements" menu item added directly af
 
 SP inclusion is a deliberate call: canon §10.1 keeps a single marketplace for all roles, and any authenticated user can purchase a package (no role restriction in `LeadsController`), so an SP who buys from another SP has legitimate buyer-role engagements. As shipped, the SP's "My Engagements" page also lists their seller-role engagements — a known UX overlap with the SP Workroom that M3 will resolve via a client-side buyer-role filter.
 
-**Phase M3 — Client-side workroom + engagement dashboard (PLANNED).**
-- Backend: add `Conversation.RelatedEngagementId` for engagement-scoped chat. Zero other backend changes.
-- Frontend: `/dashboard/[role]/engagements` list + `/dashboard/[role]/engagements/[engagementId]` client workroom. Wire existing `WorkroomController` endpoints (fund, approve, request-revision, submit-review) with client counterpart wrappers.
+**Phase M3 — Client-side workroom actions (IMPLEMENTED, 2026-08-01).**
+
+Frontend-only; zero backend changes. Every client-executable endpoint already exposed by `WorkroomController` now has UI.
+
+Structure: client surfaces live in `src/lib/api-workroom-client.ts` + `src/hooks/queries/workroom-client.ts`, deliberately parallel to the SP/earnings modules (`api-workroom.ts`, `hooks/queries/workroom.ts`) which are consumed by 10+ `serviceprovider/*` components and were left untouched. Six wrappers (`confirmContract`, `pauseEngagement`, `resumeEngagement`, `openDispute`, `completeEngagement`, `uploadFile`) intentionally duplicate SP-side equivalents — those endpoints accept either party, so both surfaces legitimately call them; a header comment flags the twinning so a fix to one prompts a check on the other. Five are genuinely client-only (`fundMilestone`, `approveMilestone`, `requestRevision`, `decideExtension`, `submitReview`). GET wrappers (`getEngagements`, `getEngagement`) are reused from the SP module rather than duplicated — actor-scoped and shape-identical for both parties. All mutations share a factory that invalidates the entire `client-workroom` key tree, since state transitions cascade across engagement/milestone/escrow and partial invalidation would leave stale branches rendered.
+
+UI: `EngagementsList` replaces the M2 placeholder — cards show title, raw backend status with tone-only colour-coding (`statusChipClass` falls through to neutral for unknown values so new backend states degrade safely rather than being relabelled), contract value and a completion bar. No party name is shown on the list: `Engagement` carries only `ClientDisplayName` (the viewer's own name for a client), so inventing a provider label would be fabrication. `EngagementDetail` renders header + contract panel + milestones + files + review. The M2b "Pending your action" section is retained above the list.
+
+Milestone cards branch on `milestone.status` (note: the TS field is `status`, not `milestoneStatus`): `FundingRequired` → fund, gated on a signed contract; `Funded`/`Active` → passive notes; `ClientReviewing` + `Resubmitted` → latest deliverable plus approve / request-revision / open-dispute; `RevisionRequested` → shows the request; `RevisionInProgress`, `Paid`, `Disputed`, `Cancelled` → state notes. States with no client action (`Draft`, `SubmissionDraft`, `Submitted`, `Approved`, `PaymentProcessing`) render the status chip only rather than inventing a label. Provider extension requests render above the state content since they're actionable in any state.
+
+`ExtensionDecisionRequest` quirk: decline sends `days: 1`, not `0`. The DTO carries `[Range(1,365)]` and validates before the `approve` flag is read, so `0` fails validation outright. A code comment marks this so it isn't "corrected" later.
+
+Actions use an inline expand-to-confirm primitive rather than modals — several can appear per milestone and modals stack badly when the list re-renders on mutation invalidation. Every mutation disables its trigger while pending and surfaces the backend's `message` field verbatim on error, never reworded. Completion pre-checks the server's preconditions (all milestones `Paid`, no open dispute, no unresolved revision) and renders disabled with the specific blocking reason, while the server still re-checks authoritatively. File upload checks size client-side against the controller's 20 MB `RequestSizeLimit`, filters `providerPrivate` rows as a safety net, and never sets that flag (SP-only semantics). Review panel appears only once the engagement is `Completed` (the endpoint requires it) and gates submit until all six categories are rated, matching the backend's `Range(1,5)` per field.
+
+Bundled fix: `945c333` moves `MediaCarousel`'s empty-state early return below its three `useEffect` calls. The return sat above them, violating rules-of-hooks — gallery data arrives async, so a listing rendering with zero slides and then populating changed hook count between renders and crashed the listing detail page with "Rendered more hooks than during the previous render." Dates from the M1 carousel commit (`8498233`), caught by ESLint during M3.
+
+Deferred by design (all SP- or Admin-scoped in code, not client-executable): request-extension, start-revision, resolve-dispute, respond-to-review, create-task, request-client-input, add-time-entry. Tasks / client-input / time-entries render read-only where relevant. Engagement-scoped chat remains absent — `Conversation.RelatedEngagementId` has not landed.
+
+Commits (10): `f0deae1`, `508607e`, `b6973d6`, `8851024`, `7ca869e`, `945c333`, `49dc751`, `b1c2183`, `a8eec33`, `e226495`.
+
+**Phase M3a — Buyer-role scope filter (IMPLEMENTED, 2026-08-01).**
+
+`GET /workroom/engagements` is actor-scoped to either party (`WorkroomService.cs:177`, `x.ProviderId == actorId || x.ClientId == actorId`), which is correct for a shared endpoint but wrong for a page meaning "things I bought" — an SP browsing My Engagements saw their seller-side work under a buyer heading. Fixed in the client hooks only; the wrapper still returns the raw response and the SP Workroom continues to show both roles.
+
+`useClientEngagements` filters on `clientId === user.id` via `select` (the cache still holds the full response) and includes `user.id` in the queryKey so a session change re-scopes rather than flashing the previous user's rows; the query stays disabled until auth resolves. `EngagementDetail` gained a matching direct-URL ownership guard — a provider opening a seller-role engagement id previously got the buyer UI with Fund/Approve/Request-revision controls that would all fail server-side. The placeholder is deliberately vague about whether the engagement exists, matching the backend's `NotFound` for non-participants. The SP sidebar entry stays visible per §10.1; only contents are scoped.
+
+Commit (1): `9e12281`.
+
+**Auth provider import fix (IMPLEMENTED, 2026-08-01).**
+
+Three files imported `useAuth` from `@/context/AuthContext` — a duplicate context whose provider is **never mounted anywhere** (`RootProviders.tsx` mounts `AuthProvider` from `@/app/_providers/AuthProvider`). Its `useAuth` therefore always fell through to a safe-default branch returning a hardcoded `user: null`, permanently. TypeScript did not catch it because both contexts export a structurally compatible `User` with `id: string`; the real one additionally carries `onboardingPhase` and `isBackendVerified`.
+
+Consequences fixed: M3a's engagements query never fired at all (`enabled: !!user?.id` was permanently false, so no network request was issued); M3a's direct-URL guard was inert (`if (user && …)` never evaluated, so the check had never once executed); and M2's auto-accept redirect silently fell back to `/marketplace/services` (the redirect effect early-returned on `!user`), meaning that path had never worked since it was written.
+
+Corrected to `@/app/_providers/AuthProvider` in `hooks/queries/workroom-client.ts`, `components/marketplace/EngagementDetail.tsx`, and `app/marketplace/services/[listingId]/order/page.tsx`. Four pre-existing importers of the dead context remain and are filed for a separate cleanup pass: `app/dashboard/creator/page.tsx`, `components/deals/MakeOfferButton.tsx`, `components/deals/NegotiationWorkspace.tsx`, `components/messaging/MessageFounderButton.tsx`. `src/context/AuthContext.tsx` itself was deliberately left in place.
+
+Commit (1): `5b07be2`.
 
 **Phase M4 — State machine hardening + timer cleanup (PLANNED).** Enforce `WorkroomStateMachine` across all ~15 mutating methods (currently ~6). Add writers for orphan states (`AuthorizationPending`, `ReleasePending`, engagement `Cancelled`/`Archived`, milestone `SubmissionDraft`/`Submitted`/`Approved`/`PaymentProcessing`, unused `FinancialTransactionType` values) — OR formally deprecate and remove them.
 
