@@ -22,6 +22,8 @@ interface Props {
   canConfirm?: boolean;
   /** Stretches the trigger to fill its container (sidebar / stacked layouts). */
   fullWidth?: boolean;
+  /** Extra classes for the trigger button (e.g. destructive-outline tone). */
+  className?: string;
 }
 
 /**
@@ -43,13 +45,15 @@ export function ConfirmAction({
   children,
   canConfirm = true,
   fullWidth,
+  className,
 }: Props) {
+  const triggerClass = [fullWidth ? 'w-full' : '', className ?? ''].filter(Boolean).join(' ') || undefined;
   const [open, setOpen] = useState(false);
 
   if (disabled) {
     return (
       <div>
-        <Button size="sm" variant={variant} disabled className={fullWidth ? 'w-full' : undefined}>
+        <Button size="sm" variant={variant} disabled className={triggerClass}>
           {label}
         </Button>
         {disabledReason && (
@@ -61,12 +65,7 @@ export function ConfirmAction({
 
   if (!open) {
     return (
-      <Button
-        size="sm"
-        variant={variant}
-        onClick={() => setOpen(true)}
-        className={fullWidth ? 'w-full' : undefined}
-      >
+      <Button size="sm" variant={variant} onClick={() => setOpen(true)} className={triggerClass}>
         {label}
       </Button>
     );

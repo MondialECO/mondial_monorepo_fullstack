@@ -61,28 +61,36 @@ export function MilestoneCard({
   const latestRevision = revisionRequests.at(-1);
 
   return (
-    <div className="rounded-lg border border-border p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="font-medium text-foreground">{milestone.title}</p>
-          {milestone.description && (
-            <p className="mt-1 text-sm text-muted-foreground">{milestone.description}</p>
-          )}
-          <p className="mt-1 text-xs text-muted-foreground">
-            Due {formatDate(milestone.dueDate)}
-            {milestone.approvedExtensionDays > 0 &&
-              ` · +${milestone.approvedExtensionDays}d extension approved`}
-          </p>
-        </div>
-        <div className="shrink-0 text-right">
-          <span
-            className={`inline-block rounded-full px-2 py-1 text-xs font-medium ${statusChipClass(status)}`}
-          >
-            {status}
-          </span>
-          <p className="mt-1 text-sm font-semibold text-foreground">{money}</p>
-        </div>
+    <div className="rounded-xl border border-border bg-card p-5">
+      <div className="mb-4 flex flex-wrap items-baseline justify-between gap-3">
+        <h3 className="min-w-0 text-lg font-semibold text-foreground">{milestone.title}</h3>
+        <span
+          className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium ${statusChipClass(status)}`}
+        >
+          {status}
+        </span>
       </div>
+
+      {milestone.description && (
+        <p className="mb-2 text-sm text-muted-foreground">{milestone.description}</p>
+      )}
+
+      {/* Metadata row: only fields that are actually present. */}
+      <p className="text-xs text-muted-foreground">
+        {[
+          `Amount ${money}`,
+          milestone.dueDate ? `Due ${formatDate(milestone.dueDate)}` : null,
+          milestone.approvedExtensionDays > 0
+            ? `+${milestone.approvedExtensionDays}d extension`
+            : null,
+          milestone.unlimitedRevisions
+            ? 'Unlimited revisions'
+            : `${milestone.remainingRevisions} revisions left`,
+          milestone.escrowStatus ? `Escrow ${milestone.escrowStatus}` : null,
+        ]
+          .filter(Boolean)
+          .join(' · ')}
+      </p>
 
       {/* Provider-requested extension — sits above state content because it's
           actionable regardless of which state the milestone is otherwise in. */}
@@ -255,7 +263,8 @@ export function MilestoneCard({
 
               <ConfirmAction
                 label="Open dispute"
-                variant="destructive"
+                variant="outline"
+                className="text-destructive border-destructive/50 hover:bg-destructive/10"
                 title="Open a dispute?"
                 body="Escrow is put on hold and an admin reviews the milestone. Other actions are locked until it's resolved."
                 confirmLabel="Open dispute"
