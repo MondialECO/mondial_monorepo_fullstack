@@ -2,7 +2,6 @@
 
 import { useRef, useState } from 'react';
 import { Loader2, Paperclip, Upload } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { statusChipClass } from '@/lib/workroom-status';
 import { useClientUploadFile, workroomErrorMessage } from '@/hooks/queries/workroom-client';
 import type { WorkroomDetail } from '@/types/workroom';
@@ -93,27 +92,25 @@ export function FilesPanel({ detail }: { detail: WorkroomDetail }) {
           onChange={(e) => handlePick(e.target.files?.[0])}
         />
 
-        <Button
-          variant="outline"
-          size="sm"
+        <button
+          type="button"
           onClick={() => inputRef.current?.click()}
           disabled={upload.isPending}
-          className="w-full"
+          className="flex w-full items-center gap-3 rounded-lg border border-dashed border-border p-4 text-left transition-colors hover:border-primary/50 disabled:opacity-60"
         >
           {upload.isPending ? (
-            <>
-              <Loader2 className="mr-2 size-4 animate-spin" />
-              Uploading...
-            </>
+            <Loader2 className="size-5 shrink-0 animate-spin text-muted-foreground" />
           ) : (
-            <>
-              <Upload className="mr-2 size-4" />
-              Upload a file
-            </>
+            <Upload className="size-5 shrink-0 text-muted-foreground" />
           )}
-        </Button>
-
-        <p className="text-xs text-muted-foreground">Up to 20 MB per file.</p>
+          <span className="min-w-0">
+            <span className="block text-sm font-medium text-foreground">
+              {upload.isPending ? 'Uploading…' : 'Choose a file to upload'}
+            </span>
+            {/* Matches the controller's [RequestSizeLimit(20 * 1024 * 1024)]. */}
+            <span className="block text-xs text-muted-foreground">Up to 20 MB per file</span>
+          </span>
+        </button>
 
         {sizeError && <p className="text-xs text-destructive">{sizeError}</p>}
         {upload.isError && (
