@@ -18,6 +18,7 @@ import { useAuth } from '@/app/_providers/AuthProvider';
 import { ROLE_DASHBOARD_ROUTES } from '@/lib/roles';
 import type { PackagePurchaseResponse } from '@/types/package-purchase';
 import { OrderSummaryWidget } from '@/components/marketplace/order/OrderSummaryWidget';
+import { OrderStepper } from '@/components/marketplace/order/OrderStepper';
 import { OrderStepSummary } from '@/components/marketplace/order/OrderStepSummary';
 import { OrderStepRequirements } from '@/components/marketplace/order/OrderStepRequirements';
 import { OrderStepConfirm } from '@/components/marketplace/order/OrderStepConfirm';
@@ -216,31 +217,7 @@ function MarketplaceOrderContent() {
           </div>
 
           <div className="order-2 min-w-0 lg:order-1">
-        <ol className="mb-6 flex items-center gap-2">
-          {STEP_LABELS.map((label, i) => {
-            const n = i + 1;
-            return (
-              <li key={label} className="flex flex-1 items-center gap-2">
-                <span
-                  className={`flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-medium ${
-                    n <= step
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted text-muted-foreground'
-                  }`}
-                >
-                  {n}
-                </span>
-                <span
-                  className={`text-xs font-medium ${
-                    n === step ? 'text-foreground' : 'text-muted-foreground'
-                  }`}
-                >
-                  {label}
-                </span>
-              </li>
-            );
-          })}
-        </ol>
+            <OrderStepper labels={STEP_LABELS} current={step} />
 
         {step === 1 && (
           <OrderStepSummary
