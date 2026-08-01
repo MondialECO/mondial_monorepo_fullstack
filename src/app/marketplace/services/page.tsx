@@ -2,8 +2,9 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Search, ChevronLeft, ChevronRight, SlidersHorizontal } from 'lucide-react';
+import { Search, SearchX, ChevronLeft, ChevronRight, SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import EmptyState from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -243,25 +244,41 @@ function MarketplaceGridContent() {
                 {Array.from({ length: 8 }).map((_, i) => (
                   <div key={i} className="overflow-hidden rounded-xl border border-border">
                     <Skeleton className="aspect-video" />
-                    <div className="space-y-3 p-4">
-                      <Skeleton className="h-4 w-3/4" />
-                      <Skeleton className="h-3 w-1/2" />
-                      <Skeleton className="h-3 w-2/3" />
+                    <div className="space-y-2.5 p-4">
+                      {/* provider row */}
+                      <div className="flex items-center gap-2">
+                        <Skeleton className="size-6 rounded-full" />
+                        <Skeleton className="h-3 w-24" />
+                      </div>
+                      {/* title, 2 lines */}
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-2/3" />
+                      {/* rating + category */}
+                      <div className="flex items-center justify-between">
+                        <Skeleton className="h-3 w-12" />
+                        <Skeleton className="h-3 w-20" />
+                      </div>
+                      {/* price row */}
+                      <div className="flex items-center justify-between pt-1">
+                        <Skeleton className="h-3 w-10" />
+                        <Skeleton className="h-4 w-28" />
+                      </div>
                     </div>
                   </div>
                 ))}
               </div>
             ) : listings.length === 0 ? (
-              <div className="flex flex-col items-center justify-center rounded-xl border border-border py-12 text-center">
-                <p className="mb-2 text-lg font-medium text-foreground">
-                  No services match your filters
-                </p>
-                <p className="mb-4 text-sm text-muted-foreground">
-                  Try clearing some filters or searching for something different
-                </p>
-                <Button onClick={handleResetFilters} variant="outline">
-                  Reset Filters
-                </Button>
+              <div className="rounded-xl border border-border">
+                <EmptyState
+                  icon={SearchX}
+                  title="No services match your filters"
+                  description="Try clearing some filters or searching for something different."
+                  action={
+                    <Button onClick={handleResetFilters} variant="outline">
+                      Reset filters
+                    </Button>
+                  }
+                />
               </div>
             ) : (
               <>
@@ -283,7 +300,11 @@ function MarketplaceGridContent() {
                       Previous
                     </Button>
 
-                    <div className="flex items-center gap-1">
+                    {/* Numeric window on desktop; a compact counter on small screens. */}
+                    <span className="text-sm text-muted-foreground md:hidden">
+                      Page {currentPage} of {totalPages}
+                    </span>
+                    <div className="hidden items-center gap-1 md:flex">
                       {Array.from({ length: Math.min(5, totalPages) }).map((_, i) => {
                         const pageNum = i + 1;
                         return (
@@ -292,6 +313,8 @@ function MarketplaceGridContent() {
                             variant={currentPage === pageNum ? 'default' : 'outline'}
                             size="sm"
                             onClick={() => setPage(pageNum)}
+                            aria-current={currentPage === pageNum ? 'page' : undefined}
+                            className="h-9 min-w-9 rounded-md"
                           >
                             {pageNum}
                           </Button>
