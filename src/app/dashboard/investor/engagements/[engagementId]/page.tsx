@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { EngagementDetail } from '@/components/marketplace/EngagementsPlaceholder';
+import { EngagementDetail } from '@/components/marketplace/EngagementDetail';
 
 export default function InvestorEngagementDetailPage() {
   const params = useParams();
