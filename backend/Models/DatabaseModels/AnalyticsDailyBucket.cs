@@ -12,7 +12,7 @@ namespace WebApp.Models.DatabaseModels
         [BsonRepresentation(BsonType.ObjectId)]
         public string ListingId { get; set; } = string.Empty;
 
-        [BsonRepresentation(BsonType.ObjectId)]
+        // Plain string: ProviderId is an ApplicationUser GUID, not an ObjectId.
         public string ProviderId { get; set; } = string.Empty;
 
         // UTC date at 00:00:00, day granularity
