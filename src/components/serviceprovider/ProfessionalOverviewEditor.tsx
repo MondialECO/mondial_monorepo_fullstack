@@ -151,7 +151,7 @@ export function ProfessionalOverviewEditor({
       </div>
       <div className="mt-2 flex flex-wrap justify-between gap-2 text-xs text-[#6B7280]">
         <span>Only supported formatting is retained when content is pasted.</span>
-        <span id="professional-overview-count" className={characters >= PROFESSIONAL_OVERVIEW_MAX_CHARACTERS ? "font-semibold text-[#965F11]" : undefined} aria-live="polite">
+        <span id="professional-overview-count" className={characters >= PROFESSIONAL_OVERVIEW_MAX_CHARACTERS ? "font-semibold text-warning" : undefined} aria-live="polite">
           {characters.toLocaleString()}/{PROFESSIONAL_OVERVIEW_MAX_CHARACTERS.toLocaleString()} characters
         </span>
       </div>

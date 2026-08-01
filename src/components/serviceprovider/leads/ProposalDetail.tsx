@@ -173,7 +173,7 @@ export function ProposalDetail({
             {proposal.status === 'ConvertedToProject' && <Button asChild variant="outline" className="mt-5 w-full"><Link href="/dashboard/serviceprovider/workroom?view=active">Open Workroom</Link></Button>}
           </SpCard>
 
-          {proposal.warnings.length > 0 && <SpCard><h2 className="font-heading text-base font-semibold text-[#171717]">Warnings</h2><ul className="mt-3 space-y-2 text-sm text-[#965F11]">{proposal.warnings.map((warning) => <li key={warning}>• {warning}</li>)}</ul></SpCard>}
+          {proposal.warnings.length > 0 && <SpCard><h2 className="font-heading text-base font-semibold text-[#171717]">Warnings</h2><ul className="mt-3 space-y-2 text-sm text-warning">{proposal.warnings.map((warning) => <li key={warning}>• {warning}</li>)}</ul></SpCard>}
         </aside>
       </div>
 

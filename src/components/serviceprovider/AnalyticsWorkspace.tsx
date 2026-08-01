@@ -109,7 +109,7 @@ export function AnalyticsWorkspace() {
         <SpCard className="flex flex-col gap-4 sm:flex-row sm:items-end">
           <DateControl label="From" value={from} onChange={(value) => setParam('from', value)} />
           <DateControl label="To" value={to} onChange={(value) => setParam('to', value)} />
-          {(!from || !to) && <p role="status" className="pb-2 text-sm text-[#965F11]">Choose both dates to load a custom range.</p>}
+          {(!from || !to) && <p role="status" className="pb-2 text-sm text-warning">Choose both dates to load a custom range.</p>}
         </SpCard>
       )}
 
@@ -458,9 +458,9 @@ function TrackingGaps({ title, metrics, fallback }: { title: string; metrics: [s
   const gaps = metrics.filter((entry): entry is [string, AnalyticsMetric] => !!entry[1] && entry[1].state !== 'available');
   if (!gaps.length && !fallback) return null;
   return (
-    <SpCard className="border-l-4 border-l-[#965F11]">
+    <SpCard className="border-l-4 border-l-warning">
       <SpSectionHeader title={title} description="These are honest upstream data gaps, not zero-valued performance." />
-      <ul className="mt-4 space-y-3">{gaps.map(([label, metric]) => <li key={label} className="flex gap-3 text-sm leading-6"><Eye aria-hidden="true" className="mt-1 size-4 shrink-0 text-[#965F11]" /><span><strong className="font-semibold text-[#374151]">{label}:</strong> <span className="text-[#6B7280]">{metric.reason}</span></span></li>)}</ul>
+      <ul className="mt-4 space-y-3">{gaps.map(([label, metric]) => <li key={label} className="flex gap-3 text-sm leading-6"><Eye aria-hidden="true" className="mt-1 size-4 shrink-0 text-warning" /><span><strong className="font-semibold text-[#374151]">{label}:</strong> <span className="text-[#6B7280]">{metric.reason}</span></span></li>)}</ul>
       {!gaps.length && fallback && <p className="mt-4 text-sm leading-6 text-[#6B7280]">{fallback}</p>}
     </SpCard>
   );
