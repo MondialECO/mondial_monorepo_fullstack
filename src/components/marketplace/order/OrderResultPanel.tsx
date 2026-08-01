@@ -16,7 +16,7 @@ export function OrderResultPanel({ result, engagementsHref, isPolling, isTimedOu
   if (result.autoAccepted) {
     return (
       <div className="space-y-6 text-center">
-        <CheckCircle2 className="mx-auto size-12 text-primary" />
+        <CheckCircle2 className="mx-auto size-12 text-success-text" />
         <div>
           <h2 className="text-lg font-semibold text-foreground">Order accepted</h2>
           <p className="text-sm text-muted-foreground">

@@ -80,7 +80,7 @@ export function MediaCarousel({ video, gallery, altTitle }: Props) {
   const next = () => setIndex((i) => (i + 1) % slides.length);
 
   return (
-    <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden group">
+    <div className="relative w-full aspect-video bg-foreground rounded-lg overflow-hidden group">
       {current.type === 'image' && (
         <img
           src={resolveProviderMediaUrl(current.url)}
