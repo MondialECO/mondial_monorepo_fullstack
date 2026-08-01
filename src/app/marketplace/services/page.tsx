@@ -12,6 +12,7 @@ import {
   Package,
 } from 'lucide-react';
 import { resolveProviderMediaUrl } from '@/lib/service-provider/provider-media';
+import { formatPrice } from '@/lib/marketplace-format';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -365,7 +366,7 @@ function MarketplaceGridContent() {
                       <div>
                         <p className="text-xs text-muted-foreground">From</p>
                         <p className="text-sm font-semibold text-foreground">
-                          ${card.startingPrice.toFixed(0)}
+                          {formatPrice(card.startingPrice, card.currency)}
                         </p>
                       </div>
                       <div className="text-right">
