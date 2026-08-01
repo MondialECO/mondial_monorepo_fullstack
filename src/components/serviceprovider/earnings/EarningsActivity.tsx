@@ -42,7 +42,7 @@ export function EarningsActivity({ data, currency }: { data: FinancialSummary; c
   return <div className="space-y-6">
     <div className="grid gap-4 sm:grid-cols-3">
       <SpMetricCard label="Gross earnings" value={money(data.grossEarnings, currency)} detail="Completed server-recorded releases" icon={ArrowUpRight} className="min-h-0" />
-      <SpMetricCard label="Fixed platform commission" value={money(data.commissionPaid, currency)} detail="Server-calculated at the canonical 12% release rate" icon={ReceiptText} iconClassName="bg-[#FBF2E7] text-[#965F11]" className="min-h-0" />
+      <SpMetricCard label="Fixed platform commission" value={money(data.commissionPaid, currency)} detail="Server-calculated at the canonical 12% release rate" icon={ReceiptText} iconClassName="bg-warning/10 text-warning" className="min-h-0" />
       <SpMetricCard label="Net earnings" value={money(data.netEarnings, currency)} detail="Gross less the server-recorded commission" icon={ArrowDownLeft} iconClassName="bg-[#E8F7F0] text-[#157A55]" className="min-h-0" />
     </div>
 

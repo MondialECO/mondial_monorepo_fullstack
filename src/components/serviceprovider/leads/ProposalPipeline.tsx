@@ -130,7 +130,7 @@ function PipelineCard({ proposal, onOpen }: { proposal: Proposal; onOpen: () => 
           <CardRow label="Net earnings" value={money(proposal.earningsPreview.net, proposal.earningsPreview.currency)} positive />
           <CardRow label="Updated" value={formatDate(proposal.updatedAt)} />
         </dl>
-        <p className={`mt-3 text-xs font-medium ${expiry.urgent ? 'text-[#965F11]' : 'text-[#6B7280]'}`}>{expiry.label}</p>
+        <p className={`mt-3 text-xs font-medium ${expiry.urgent ? 'text-warning' : 'text-[#6B7280]'}`}>{expiry.label}</p>
       </button>
     </SpCard>
   );

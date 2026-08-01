@@ -52,7 +52,7 @@ export function EarningsWorkspace() {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <SpMetricCard label="Available balance" value={money(data.available, currency)} detail="Eligible for a sandbox payout request" icon={WalletCards} iconClassName="bg-[#E8F7F0] text-[#157A55]" />
         <SpMetricCard label="Work in progress" value={money(data.workInProgress, currency)} detail="Funded project work still in delivery" icon={Clock3} />
-        <SpMetricCard label="In review" value={money(data.inReview, currency)} detail="Submitted work awaiting client action" icon={LockKeyhole} iconClassName="bg-[#FBF2E7] text-[#965F11]" />
+        <SpMetricCard label="In review" value={money(data.inReview, currency)} detail="Submitted work awaiting client action" icon={LockKeyhole} iconClassName="bg-warning/10 text-warning" />
         <SpMetricCard label="Pending release" value={money(data.pending, currency)} detail="Approved lifecycle amount not yet available" icon={HandCoins} />
       </div>
 
@@ -70,7 +70,7 @@ export function EarningsWorkspace() {
 }
 
 function CompactMetric({ label, value, currency, icon: Icon, note, warning = false }: { label: string; value: number; currency: string; icon: typeof Landmark; note: string; warning?: boolean }) {
-  return <SpCard className="flex items-center gap-4"><span className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${warning ? 'bg-[#FBF2E7] text-[#965F11]' : 'bg-[#F3F4F6] text-[#4B5563]'}`}><Icon className="size-5" aria-hidden="true" /></span><div><p className="text-xs font-semibold uppercase tracking-[0.1em] text-[#6B7280]">{label}</p><p className="mt-1 text-xl font-semibold text-[#171717]">{money(value, currency)}</p><p className="mt-1 text-xs text-[#6B7280]">{note}</p></div></SpCard>;
+  return <SpCard className="flex items-center gap-4"><span className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${warning ? 'bg-warning/10 text-warning' : 'bg-[#F3F4F6] text-[#4B5563]'}`}><Icon className="size-5" aria-hidden="true" /></span><div><p className="text-xs font-semibold uppercase tracking-[0.1em] text-[#6B7280]">{label}</p><p className="mt-1 text-xl font-semibold text-[#171717]">{money(value, currency)}</p><p className="mt-1 text-xs text-[#6B7280]">{note}</p></div></SpCard>;
 }
 
 function EarningsLoading() {

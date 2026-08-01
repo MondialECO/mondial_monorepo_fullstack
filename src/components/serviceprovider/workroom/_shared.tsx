@@ -41,8 +41,19 @@ export function milestoneTone(status: string) {
   return 'neutral' as const;
 }
 
+/** Lifecycle-terminal. Drives the Active/Completed split in the project list. */
 export function terminalEngagement(engagement: Engagement) {
   return ['Completed', 'Archived', 'Cancelled'].includes(engagement.engagementStatus);
+}
+
+/**
+ * No further provider actions are permitted. Broader than terminalEngagement: a
+ * Disputed engagement is still in flight (so it belongs in the Active list) but
+ * the backend rejects submissions on it, and offering a button that fails is
+ * worst precisely when the provider is already in a dispute.
+ */
+export function providerActionsLocked(engagement: Engagement) {
+  return terminalEngagement(engagement) || engagement.engagementStatus === 'Disputed';
 }
 
 export function canOpenDispute(milestone: Milestone) {

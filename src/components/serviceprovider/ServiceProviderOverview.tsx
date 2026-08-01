@@ -144,7 +144,7 @@ function OverviewSkeleton() {
 }
 
 function MetricCard({ icon: Icon, tone, label, value, detail, urgent = false }: { icon: LucideIcon; tone: Tone; label: string; value: string; detail: string; urgent?: boolean }) {
-  return <div className="min-h-44 rounded-[18px] border border-[#E5E7EB] bg-white p-6"><div className="flex items-start justify-between gap-4"><p className="text-xs font-medium uppercase tracking-[0.13em] text-[#6B7280]">{label}</p><IconBubble icon={Icon} tone={tone} /></div><p className="mt-7 text-[30px] font-semibold tracking-tight">{value}</p><p className={`mt-2 text-sm ${urgent ? 'font-medium text-[#965F11]' : 'text-[#6B7280]'}`}>{detail}</p></div>;
+  return <div className="min-h-44 rounded-[18px] border border-[#E5E7EB] bg-white p-6"><div className="flex items-start justify-between gap-4"><p className="text-xs font-medium uppercase tracking-[0.13em] text-[#6B7280]">{label}</p><IconBubble icon={Icon} tone={tone} /></div><p className="mt-7 text-[30px] font-semibold tracking-tight">{value}</p><p className={`mt-2 text-sm ${urgent ? 'font-medium text-warning' : 'text-[#6B7280]'}`}>{detail}</p></div>;
 }
 
 function TrustMetricCard({ hasEnoughData, score, status }: { hasEnoughData: boolean; score?: number | null; status: string }) {
@@ -155,7 +155,7 @@ function SectionHeading({ children }: { children: React.ReactNode }) { return <h
 
 function AttentionRow({ item, computedAt }: { item: ProviderDashboardAttention; computedAt: string }) {
   const detail = item.dueAt && item.type === 'deliverableDue' ? formatDue(item.dueAt, computedAt) : item.detail;
-  return <div className="flex min-h-28 flex-col justify-between gap-4 rounded-[18px] border border-[#E5E7EB] bg-white px-5 py-5 sm:flex-row sm:items-center sm:px-7"><div><p className="font-medium">{item.title}</p><p className={`mt-1 text-sm ${item.tone === 'amber' ? 'font-medium text-[#965F11]' : item.tone === 'blue' ? 'font-medium text-[#3C61DD]' : 'text-[#6B7280]'}`}>{detail}</p></div><Button asChild variant="outline" className="border-[#D1D5DB] bg-white text-[#374151] shadow-none hover:bg-[#F9FAFB]"><Link href={item.href}>{item.action}</Link></Button></div>;
+  return <div className="flex min-h-28 flex-col justify-between gap-4 rounded-[18px] border border-[#E5E7EB] bg-white px-5 py-5 sm:flex-row sm:items-center sm:px-7"><div><p className="font-medium">{item.title}</p><p className={`mt-1 text-sm ${item.tone === 'amber' ? 'font-medium text-warning' : item.tone === 'blue' ? 'font-medium text-[#3C61DD]' : 'text-[#6B7280]'}`}>{detail}</p></div><Button asChild variant="outline" className="border-[#D1D5DB] bg-white text-[#374151] shadow-none hover:bg-[#F9FAFB]"><Link href={item.href}>{item.action}</Link></Button></div>;
 }
 
 function ServiceViewsCard({ state, impressions, clicks, reason }: { state: string; impressions?: number | null; clicks?: number | null; reason: string }) {

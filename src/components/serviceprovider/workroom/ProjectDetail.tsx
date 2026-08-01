@@ -35,7 +35,7 @@ import {
   formatDate,
   milestoneTone,
   money,
-  terminalEngagement,
+  providerActionsLocked,
   words,
 } from './_shared';
 
@@ -75,7 +75,7 @@ export function ProjectDetail({
 
   const data = query.data;
   const engagement = data.engagement;
-  const closed = terminalEngagement(engagement);
+  const closed = providerActionsLocked(engagement);
   const canComplete = !closed && data.milestones.length > 0 && data.milestones.every((item) => item.status === 'Paid') && !data.revisionRequests.some((item) => !['Resolved', 'Cancelled'].includes(item.revisionRequestStatus));
   const isHourly = data.contract.terms.pricingType === 'Hourly';
   const activeTab = tab === 'time' && !isHourly ? 'overview' : tab;

@@ -277,7 +277,7 @@ export function SpTagInput({
 const statusTones = {
   neutral: "border-[#E5E7EB] bg-[#F3F4F6] text-[#4B5563]",
   positive: "border-[#BBE8D3] bg-[#E8F7F0] text-[#157A55]",
-  warning: "border-[#F0D6AE] bg-[#FBF2E7] text-[#965F11]",
+  warning: "border-warning/30 bg-warning/10 text-warning",
   negative: "border-[#F5C2C2] bg-[#FDECEC] text-[#B42318]",
   info: "border-[#CAD4FA] bg-[#EEF2FF] text-[#3C61DD]",
 } as const;
@@ -303,7 +303,7 @@ const feedbackStyles = {
   success: { icon: CheckCircle2, className: "border-[#BBE8D3] bg-[#E8F7F0] text-[#157A55]" },
   error: { icon: AlertCircle, className: "border-[#F5C2C2] bg-[#FDECEC] text-[#B42318]" },
   info: { icon: Info, className: "border-[#CAD4FA] bg-[#EEF2FF] text-[#3C61DD]" },
-  warning: { icon: AlertCircle, className: "border-[#FCE3BE] bg-[#FEF8F1] text-[#D97706]" },
+  warning: { icon: AlertCircle, className: "border-warning/30 bg-warning/10 text-warning" },
 } as const;
 
 export function SpMutationFeedback({ status, children, className }: { status: keyof typeof feedbackStyles; children: React.ReactNode; className?: string }) {
