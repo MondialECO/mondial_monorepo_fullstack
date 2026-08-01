@@ -192,7 +192,7 @@ function MarketplaceOrderContent() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-3xl px-4 py-8">
+      <div className="mx-auto max-w-6xl px-4 py-8 md:px-6">
         <Link
           href={`/marketplace/services/${listingId}`}
           className="mb-6 inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
@@ -201,6 +201,21 @@ function MarketplaceOrderContent() {
           Back to service
         </Link>
 
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_320px]">
+          {/* Summary is order-first on mobile: it's the anchor of the flow, so it
+              must be visible before the step content rather than buried below it. */}
+          <div className="order-1 lg:order-2">
+            <div className="lg:sticky lg:top-24 lg:self-start">
+              <OrderSummaryWidget
+                listing={listing}
+                pkg={pkg}
+                selectedAddOnNames={selectedAddOnNames}
+                total={total}
+              />
+            </div>
+          </div>
+
+          <div className="order-2 min-w-0 lg:order-1">
         <ol className="mb-6 flex items-center gap-2">
           {STEP_LABELS.map((label, i) => {
             const n = i + 1;
@@ -226,15 +241,6 @@ function MarketplaceOrderContent() {
             );
           })}
         </ol>
-
-        <div className="mb-6">
-          <OrderSummaryWidget
-            listing={listing}
-            pkg={pkg}
-            selectedAddOnNames={selectedAddOnNames}
-            total={total}
-          />
-        </div>
 
         {step === 1 && (
           <OrderStepSummary
@@ -280,6 +286,8 @@ function MarketplaceOrderContent() {
             isTimedOut={isTimedOut}
           />
         )}
+          </div>
+        </div>
       </div>
     </div>
   );
