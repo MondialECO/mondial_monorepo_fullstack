@@ -12,6 +12,7 @@ import { ContractPanel } from '@/components/marketplace/workroom/ContractPanel';
 import { MilestonesPanel } from '@/components/marketplace/workroom/MilestonesPanel';
 import { EngagementActions } from '@/components/marketplace/workroom/EngagementActions';
 import { FilesPanel } from '@/components/marketplace/workroom/FilesPanel';
+import { ReviewPanel } from '@/components/marketplace/workroom/ReviewPanel';
 
 function formatDate(value?: string | null): string {
   if (!value) return '—';
@@ -130,6 +131,7 @@ function EngagementDetailContent({
         <ContractPanel contract={contract} engagementId={engagement.id} />
         <MilestonesPanel detail={data} />
         <FilesPanel detail={data} />
+        <ReviewPanel detail={data} />
       </div>
     </div>
   );
