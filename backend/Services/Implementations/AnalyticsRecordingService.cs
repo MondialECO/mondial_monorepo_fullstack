@@ -46,18 +46,9 @@ namespace WebApp.Services.Implementations
                 if (existing is not null)
                     return;
 
-                // Insert new session record.
-                var sessionDoc = new AnalyticsSessionSeen
-                {
-                    ListingId = listingId,
-                    SessionKey = sessionKey,
-                    EventType = "impression",
-                    LastSeenAt = now,
-                    ExpiresAt = expiresAt
-                };
-                await db.AnalyticsSessionSeen.InsertOneAsync(sessionDoc, cancellationToken: ct);
-
-                // Atomic upsert on daily bucket.
+                // Atomic upsert on daily bucket. Must precede the dedup insert: if this
+                // throws, no dedup record may be left behind, or every retry for this
+                // session is suppressed for the rest of the window.
                 var today = now.Date;
                 var update = Builders<AnalyticsDailyBucket>.Update
                     .Inc(x => x.Impressions, 1)
@@ -71,6 +62,17 @@ namespace WebApp.Services.Implementations
                     update,
                     new UpdateOptions { IsUpsert = true },
                     cancellationToken: ct);
+
+                // Claim the dedup window only once the counter is durably incremented.
+                var sessionDoc = new AnalyticsSessionSeen
+                {
+                    ListingId = listingId,
+                    SessionKey = sessionKey,
+                    EventType = "impression",
+                    LastSeenAt = now,
+                    ExpiresAt = expiresAt
+                };
+                await db.AnalyticsSessionSeen.InsertOneAsync(sessionDoc, cancellationToken: ct);
             }
             catch (Exception ex)
             {
@@ -116,19 +118,9 @@ namespace WebApp.Services.Implementations
                 if (existing is not null)
                     return;
 
-                // Insert new session record with optional target.
-                var sessionDoc = new AnalyticsSessionSeen
-                {
-                    ListingId = listingId,
-                    SessionKey = sessionKey,
-                    EventType = "click",
-                    Target = target,
-                    LastSeenAt = now,
-                    ExpiresAt = expiresAt
-                };
-                await db.AnalyticsSessionSeen.InsertOneAsync(sessionDoc, cancellationToken: ct);
-
-                // Atomic upsert on daily bucket.
+                // Atomic upsert on daily bucket. Must precede the dedup insert: if this
+                // throws, no dedup record may be left behind, or every retry for this
+                // session is suppressed for the rest of the window.
                 var today = now.Date;
                 var update = Builders<AnalyticsDailyBucket>.Update
                     .Inc(x => x.Clicks, 1)
@@ -142,6 +134,18 @@ namespace WebApp.Services.Implementations
                     update,
                     new UpdateOptions { IsUpsert = true },
                     cancellationToken: ct);
+
+                // Claim the dedup window only once the counter is durably incremented.
+                var sessionDoc = new AnalyticsSessionSeen
+                {
+                    ListingId = listingId,
+                    SessionKey = sessionKey,
+                    EventType = "click",
+                    Target = target,
+                    LastSeenAt = now,
+                    ExpiresAt = expiresAt
+                };
+                await db.AnalyticsSessionSeen.InsertOneAsync(sessionDoc, cancellationToken: ct);
             }
             catch (Exception ex)
             {
