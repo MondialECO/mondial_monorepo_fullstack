@@ -25,9 +25,9 @@ export function ContractPanel({
   const voided = contract.status === 'Voided';
 
   return (
-    <section className="rounded-lg border border-border p-4">
+    <section className="rounded-xl border border-border bg-card p-6">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="flex items-center gap-2 font-semibold text-foreground">
+        <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
           <FileText className="size-4" />
           Contract
         </h2>

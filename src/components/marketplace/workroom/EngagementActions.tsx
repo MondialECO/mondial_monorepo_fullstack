@@ -12,7 +12,14 @@ import type { WorkroomDetail } from '@/types/workroom';
 
 const CLOSED = new Set(['Completed', 'Cancelled', 'Archived']);
 
-export function EngagementActions({ detail }: { detail: WorkroomDetail }) {
+export function EngagementActions({
+  detail,
+  stacked,
+}: {
+  detail: WorkroomDetail;
+  /** Vertical full-width buttons for the sidebar; horizontal row otherwise. */
+  stacked?: boolean;
+}) {
   const { engagement, milestones, revisionRequests } = detail;
   const pause = useClientPauseEngagement();
   const resume = useClientResumeEngagement();
@@ -44,7 +51,7 @@ export function EngagementActions({ detail }: { detail: WorkroomDetail }) {
   if (isClosed) return null;
 
   return (
-    <div className="flex flex-wrap items-start gap-2">
+    <div className={stacked ? 'flex flex-col gap-2' : 'flex flex-wrap items-start gap-2'}>
       {isPaused ? (
         <ConfirmAction
           label="Resume"
@@ -55,6 +62,7 @@ export function EngagementActions({ detail }: { detail: WorkroomDetail }) {
           isPending={resume.isPending}
           errorMessage={resume.isError ? workroomErrorMessage(resume.error) : null}
           onConfirm={() => resume.mutate(engagement.id)}
+          fullWidth={stacked}
         />
       ) : (
         <ConfirmAction
@@ -67,6 +75,7 @@ export function EngagementActions({ detail }: { detail: WorkroomDetail }) {
           errorMessage={pause.isError ? workroomErrorMessage(pause.error) : null}
           canConfirm={pauseReason.trim().length > 0}
           onConfirm={() => pause.mutate({ id: engagement.id, reason: pauseReason.trim() })}
+          fullWidth={stacked}
         >
           <textarea
             value={pauseReason}
@@ -88,6 +97,7 @@ export function EngagementActions({ detail }: { detail: WorkroomDetail }) {
         disabled={!canComplete}
         disabledReason={completeBlockedReason}
         onConfirm={() => complete.mutate(engagement.id)}
+        fullWidth={stacked}
       />
     </div>
   );

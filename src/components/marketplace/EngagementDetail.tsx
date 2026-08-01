@@ -15,6 +15,9 @@ import { MilestonesPanel } from '@/components/marketplace/workroom/MilestonesPan
 import { EngagementActions } from '@/components/marketplace/workroom/EngagementActions';
 import { FilesPanel } from '@/components/marketplace/workroom/FilesPanel';
 import { ReviewPanel } from '@/components/marketplace/workroom/ReviewPanel';
+import type { WorkroomDetail } from '@/types/workroom';
+
+const CLOSED = new Set(['Completed', 'Cancelled', 'Archived']);
 
 function formatDate(value?: string | null): string {
   if (!value) return '—';
@@ -51,10 +54,19 @@ function EngagementDetailContent({
 
   if (isLoading) {
     return (
-      <div className="space-y-4 p-6">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-32 w-full" />
-        <Skeleton className="h-64 w-full" />
+      <div className="mx-auto max-w-6xl px-4 py-8 md:px-6">
+        <Skeleton className="mb-6 h-5 w-40" />
+        <div className="mb-8 space-y-3">
+          <Skeleton className="h-10 w-2/3" />
+          <Skeleton className="h-4 w-1/3" />
+        </div>
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_320px]">
+          <div className="min-w-0 space-y-6">
+            <Skeleton className="h-48 rounded-xl" />
+            <Skeleton className="h-72 rounded-xl" />
+          </div>
+          <Skeleton className="h-96 rounded-xl" />
+        </div>
       </div>
     );
   }
@@ -91,23 +103,20 @@ function EngagementDetailContent({
   const { engagement, contract } = data;
 
   return (
-    <div className="p-6">
+    <div className="mx-auto max-w-6xl px-4 py-8 md:px-6">
       <Link
         href={basePath}
-        className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+        className="mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
       >
         <ChevronLeft className="size-4" />
         Back to engagements
       </Link>
 
-      <header className="mb-6">
+      <header className="mb-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0">
-            <h1 className="text-2xl font-bold text-foreground">{engagement.title}</h1>
-            {engagement.description && (
-              <p className="mt-1 text-sm text-muted-foreground">{engagement.description}</p>
-            )}
-          </div>
+          <h1 className="min-w-0 text-3xl font-bold text-foreground md:text-4xl">
+            {engagement.title}
+          </h1>
           <span
             className={`shrink-0 rounded-full px-3 py-1 text-sm font-medium ${statusChipClass(
               engagement.engagementStatus
@@ -116,43 +125,81 @@ function EngagementDetailContent({
             {engagement.engagementStatus}
           </span>
         </div>
-
-        <dl className="mt-4 grid grid-cols-2 gap-4 rounded-lg border border-border p-4 sm:grid-cols-4">
-          <div>
-            <dt className="text-xs text-muted-foreground">Contract value</dt>
-            <dd className="text-sm font-medium text-foreground">
-              {formatPrice(engagement.contractValue, engagement.currency)}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs text-muted-foreground">Escrow</dt>
-            <dd className="text-sm font-medium text-foreground">{engagement.escrowStatus}</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-muted-foreground">Started</dt>
-            <dd className="text-sm font-medium text-foreground">
-              {formatDate(engagement.startDate)}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs text-muted-foreground">Expected end</dt>
-            <dd className="text-sm font-medium text-foreground">
-              {formatDate(engagement.expectedEndDate)}
-            </dd>
-          </div>
-        </dl>
-
-        <div className="mt-4">
-          <EngagementActions detail={data} />
-        </div>
+        {engagement.description && (
+          <p className="mt-2 text-muted-foreground">{engagement.description}</p>
+        )}
       </header>
 
-      <div className="space-y-6">
-        <ContractPanel contract={contract} engagementId={engagement.id} />
-        <MilestonesPanel detail={data} />
-        <FilesPanel detail={data} />
-        <ReviewPanel detail={data} />
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_320px]">
+        {/* Work content stays first on mobile — this is a workroom, so milestones
+            and files matter more than the summary sidebar. */}
+        <div className="min-w-0 space-y-6">
+          <ContractPanel contract={contract} engagementId={engagement.id} />
+          <MilestonesPanel detail={data} />
+          <FilesPanel detail={data} />
+          <ReviewPanel detail={data} />
+        </div>
+
+        <aside className="lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:self-start lg:overflow-y-auto">
+          <EngagementSummaryCard detail={data} />
+        </aside>
       </div>
+    </div>
+  );
+}
+
+function SummaryRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
+      <div className="mt-0.5 text-sm font-medium text-foreground">{children}</div>
+    </div>
+  );
+}
+
+function EngagementSummaryCard({ detail }: { detail: WorkroomDetail }) {
+  const { engagement } = detail;
+  const showActions = !CLOSED.has(engagement.engagementStatus);
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+      <p className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+        Summary
+      </p>
+
+      <div>
+        <p className="text-xs uppercase tracking-wide text-muted-foreground">Contract value</p>
+        <p className="mt-0.5 text-2xl font-bold text-foreground">
+          {formatPrice(engagement.contractValue, engagement.currency)}
+        </p>
+      </div>
+
+      <div className="my-4 border-t border-border" />
+
+      <div className="space-y-3">
+        <SummaryRow label="Escrow">
+          <span
+            className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${statusChipClass(
+              engagement.escrowStatus
+            )}`}
+          >
+            {engagement.escrowStatus}
+          </span>
+        </SummaryRow>
+        <SummaryRow label="Progress">{Math.round(engagement.completionPercentage)}%</SummaryRow>
+        <SummaryRow label="Started">{formatDate(engagement.startDate)}</SummaryRow>
+        <SummaryRow label="Expected end">{formatDate(engagement.expectedEndDate)}</SummaryRow>
+      </div>
+
+      {showActions && (
+        <>
+          <div className="my-4 border-t border-border" />
+          <p className="mb-3 text-xs uppercase tracking-wide text-muted-foreground">
+            Quick actions
+          </p>
+          <EngagementActions detail={detail} stacked />
+        </>
+      )}
     </div>
   );
 }

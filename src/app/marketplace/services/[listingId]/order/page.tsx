@@ -18,6 +18,7 @@ import { useAuth } from '@/app/_providers/AuthProvider';
 import { ROLE_DASHBOARD_ROUTES } from '@/lib/roles';
 import type { PackagePurchaseResponse } from '@/types/package-purchase';
 import { OrderSummaryWidget } from '@/components/marketplace/order/OrderSummaryWidget';
+import { OrderStepper } from '@/components/marketplace/order/OrderStepper';
 import { OrderStepSummary } from '@/components/marketplace/order/OrderStepSummary';
 import { OrderStepRequirements } from '@/components/marketplace/order/OrderStepRequirements';
 import { OrderStepConfirm } from '@/components/marketplace/order/OrderStepConfirm';
@@ -162,10 +163,17 @@ function MarketplaceOrderContent() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
-        <div className="mx-auto max-w-3xl px-4 py-8 space-y-6">
-          <Skeleton className="h-8 w-40" />
-          <Skeleton className="h-24 w-full" />
-          <Skeleton className="h-96 w-full" />
+        <div className="mx-auto max-w-6xl px-4 py-8 md:px-6">
+          <Skeleton className="mb-6 h-5 w-32" />
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_320px]">
+            <div className="order-2 min-w-0 lg:order-1">
+              <Skeleton className="mx-auto mb-8 h-12 w-full max-w-md" />
+              <Skeleton className="h-[480px] rounded-xl" />
+            </div>
+            <div className="order-1 lg:order-2">
+              <Skeleton className="h-[420px] rounded-xl" />
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -173,8 +181,8 @@ function MarketplaceOrderContent() {
 
   if (isError || !listing || !pkg) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="text-center">
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+        <div className="rounded-xl border border-border p-8 text-center">
           <AlertCircle className="mx-auto mb-4 size-12 text-destructive" />
           <h1 className="mb-2 text-xl font-semibold text-foreground">
             This package isn&apos;t available
@@ -192,7 +200,7 @@ function MarketplaceOrderContent() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-3xl px-4 py-8">
+      <div className="mx-auto max-w-6xl px-4 py-8 md:px-6">
         <Link
           href={`/marketplace/services/${listingId}`}
           className="mb-6 inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
@@ -201,40 +209,22 @@ function MarketplaceOrderContent() {
           Back to service
         </Link>
 
-        <ol className="mb-6 flex items-center gap-2">
-          {STEP_LABELS.map((label, i) => {
-            const n = i + 1;
-            return (
-              <li key={label} className="flex flex-1 items-center gap-2">
-                <span
-                  className={`flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-medium ${
-                    n <= step
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted text-muted-foreground'
-                  }`}
-                >
-                  {n}
-                </span>
-                <span
-                  className={`text-xs font-medium ${
-                    n === step ? 'text-foreground' : 'text-muted-foreground'
-                  }`}
-                >
-                  {label}
-                </span>
-              </li>
-            );
-          })}
-        </ol>
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_320px]">
+          {/* Summary is order-first on mobile: it's the anchor of the flow, so it
+              must be visible before the step content rather than buried below it. */}
+          <div className="order-1 lg:order-2">
+            <div className="lg:sticky lg:top-24 lg:self-start">
+              <OrderSummaryWidget
+                listing={listing}
+                pkg={pkg}
+                selectedAddOnNames={selectedAddOnNames}
+                total={total}
+              />
+            </div>
+          </div>
 
-        <div className="mb-6">
-          <OrderSummaryWidget
-            listing={listing}
-            pkg={pkg}
-            selectedAddOnNames={selectedAddOnNames}
-            total={total}
-          />
-        </div>
+          <div className="order-2 min-w-0 lg:order-1">
+            <OrderStepper labels={STEP_LABELS} current={step} />
 
         {step === 1 && (
           <OrderStepSummary
@@ -280,6 +270,8 @@ function MarketplaceOrderContent() {
             isTimedOut={isTimedOut}
           />
         )}
+          </div>
+        </div>
       </div>
     </div>
   );

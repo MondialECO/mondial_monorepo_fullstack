@@ -57,8 +57,8 @@ export function ReviewPanel({ detail }: { detail: WorkroomDetail }) {
   if (engagement.engagementStatus !== 'Completed' && !review) return null;
 
   return (
-    <section className="rounded-lg border border-border p-4">
-      <h2 className="mb-3 font-semibold text-foreground">Review</h2>
+    <section className="rounded-xl border border-border bg-card p-6">
+      <h2 className="mb-4 text-lg font-semibold text-foreground">Review</h2>
       {review ? <ExistingReview review={review} /> : <ReviewForm engagementId={engagement.id} />}
     </section>
   );
@@ -108,13 +108,13 @@ function ReviewForm({ engagementId }: { engagementId: string }) {
   const complete = CATEGORIES.every((c) => ratings[c.key] >= 1);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <p className="text-sm text-muted-foreground">Rate your experience with this provider.</p>
 
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {CATEGORIES.map((c) => (
           <div key={c.key} className="flex items-center justify-between gap-2">
-            <span className="text-sm text-foreground">{c.label}</span>
+            <span className="text-sm font-medium text-foreground">{c.label}</span>
             <StarRow
               value={ratings[c.key]}
               onChange={(n) => setRatings((prev) => ({ ...prev, [c.key]: n }))}
@@ -128,7 +128,7 @@ function ReviewForm({ engagementId }: { engagementId: string }) {
         onChange={(e) => setWrittenReview(e.target.value)}
         rows={4}
         placeholder="Anything you'd want another buyer to know? (optional)"
-        className="w-full rounded-md border border-input bg-background p-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        className="w-full rounded-lg border border-input bg-background p-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary"
       />
 
       {submit.isError && (
