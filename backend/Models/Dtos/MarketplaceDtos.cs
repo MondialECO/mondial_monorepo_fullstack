@@ -9,7 +9,7 @@ namespace WebApp.Models.Dtos
         public string? CoverImageUrl { get; set; }
         public MarketplaceProviderMini Provider { get; set; } = new();
         public decimal StartingPrice { get; set; }
-        public string Currency { get; set; } = "USD";
+        public string Currency { get; set; } = "EUR";
         public int DeliveryTimeValue { get; set; }
         public string DeliveryTimeUnit { get; set; } = string.Empty;
         public decimal? Rating { get; set; }
@@ -70,7 +70,7 @@ namespace WebApp.Models.Dtos
         public string Tier { get; set; } = string.Empty;
         public string Title { get; set; } = string.Empty;
         public decimal Price { get; set; }
-        public string Currency { get; set; } = "USD";
+        public string Currency { get; set; } = "EUR";
         public int DeliveryTimeValue { get; set; }
         public string DeliveryTimeUnit { get; set; } = string.Empty;
         public int IncludedRevisionCount { get; set; }
@@ -80,6 +80,7 @@ namespace WebApp.Models.Dtos
         public List<string> ExcludedFeatures { get; set; } = new();
         public List<MarketplaceAddOn> AddOns { get; set; } = new();
         public MarketplaceAdditionalRevision? AdditionalRevision { get; set; }
+        public List<RequirementsFieldResponse> RequirementsTemplate { get; set; } = new();
     }
 
     public class MarketplaceAddOn

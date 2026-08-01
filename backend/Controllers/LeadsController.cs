@@ -35,6 +35,10 @@ public class LeadsController : ControllerBase
     // Provider proposal workspace / pipeline
     [HttpGet("proposals")]
     public async Task<IActionResult> Proposals() => Map(await _service.GetProviderProposalsAsync(CurrentUserId));
+    // Client-scoped list. Declared before "proposals/{id}" for readability; routing
+    // prefers the literal segment over the parameterized one regardless of order.
+    [HttpGet("proposals/mine")]
+    public async Task<IActionResult> MyProposals() => Map(await _service.GetClientProposalsAsync(CurrentUserId));
     [HttpGet("proposals/{id}")]
     public async Task<IActionResult> Proposal(string id) => Map(await _service.GetProposalAsync(CurrentUserId, id));
     [HttpPost("proposals")]

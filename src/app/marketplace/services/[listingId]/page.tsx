@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import DOMPurify from 'dompurify';
 import {
@@ -13,6 +13,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { resolveProviderMediaUrl } from '@/lib/service-provider/provider-media';
+import { formatPrice } from '@/lib/marketplace-format';
 import { recordListingImpression, recordListingClick } from '@/lib/api-analytics';
 import { MediaCarousel } from '@/components/marketplace/MediaCarousel';
 import { Button } from '@/components/ui/button';
@@ -30,9 +31,10 @@ export default function MarketplaceListingDetailPage() {
 
 function MarketplaceListingDetailContent() {
   const params = useParams();
+  const router = useRouter();
   const listingId = Array.isArray(params.listingId)
     ? params.listingId[0]
-    : params.listingId;
+    : params.listingId ?? null;
 
   const { data, isLoading, isError } = useMarketplaceListingDetail(listingId);
   const listing = data;
@@ -45,7 +47,7 @@ function MarketplaceListingDetailContent() {
 
   const [selectedPackageTier, setSelectedPackageTier] = useState('Basic');
   const [expandedFaqId, setExpandedFaqId] = useState<string | null>(null);
-  const [additionalRevisions, setAdditionalRevisions] = useState(0);
+  const [selectedAddOnNames, setSelectedAddOnNames] = useState<Set<string>>(new Set());
 
   const selectedPackage = listing?.packages.find((p) => p.tier === selectedPackageTier);
 
@@ -58,8 +60,14 @@ function MarketplaceListingDetailContent() {
   );
 
   const handleOrderClick = useCallback(() => {
+    if (!listingId || !selectedPackage) return;
     fireAnalyticsClick('order');
-  }, [fireAnalyticsClick]);
+    const params = new URLSearchParams({ step: '1', packageId: selectedPackage.id });
+    if (selectedAddOnNames.size > 0) {
+      params.set('addons', Array.from(selectedAddOnNames).join(','));
+    }
+    router.push(`/marketplace/services/${listingId}/order?${params.toString()}`);
+  }, [fireAnalyticsClick, listingId, selectedPackage, selectedAddOnNames, router]);
 
   const handleMessageClick = useCallback(() => {
     fireAnalyticsClick('message');
@@ -69,10 +77,20 @@ function MarketplaceListingDetailContent() {
     (tier: string) => {
       setSelectedPackageTier(tier);
       fireAnalyticsClick(`tier-${tier.toLowerCase()}`);
-      setAdditionalRevisions(0);
+      // Add-on names are package-scoped, so a tier switch invalidates the selection.
+      setSelectedAddOnNames(new Set());
     },
     [fireAnalyticsClick]
   );
+
+  const toggleAddOn = useCallback((name: string) => {
+    setSelectedAddOnNames((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  }, []);
 
   if (isError) {
     return (
@@ -114,9 +132,13 @@ function MarketplaceListingDetailContent() {
     return null;
   }
 
-  const totalPrice =
-    (selectedPackage?.price ?? 0) +
-    (additionalRevisions * (selectedPackage?.additionalRevision?.price ?? 0));
+  // Additional revisions are purchased later in the workroom, not at package-purchase
+  // time — PackagePurchaseRequest has no field for them (canon §10.6).
+  const addOnTotal = (selectedPackage?.addOns ?? [])
+    .filter((a) => selectedAddOnNames.has(a.name))
+    .reduce((sum, a) => sum + a.price, 0);
+  const totalPrice = (selectedPackage?.price ?? 0) + addOnTotal;
+  const currency = selectedPackage?.currency ?? 'EUR';
 
   return (
     <div className="min-h-screen bg-background">
@@ -320,7 +342,7 @@ function MarketplaceListingDetailContent() {
                   <div>
                     <p className="text-muted-foreground text-xs mb-1">Price</p>
                     <p className="text-3xl font-bold text-foreground">
-                      ${selectedPackage.price.toFixed(0)}
+                      {formatPrice(selectedPackage.price, currency)}
                     </p>
                   </div>
 
@@ -406,53 +428,18 @@ function MarketplaceListingDetailContent() {
                             <label className="flex items-center gap-2 cursor-pointer">
                               <input
                                 type="checkbox"
-                                disabled
+                                checked={selectedAddOnNames.has(addon.name)}
+                                onChange={() => toggleAddOn(addon.name)}
                                 className="rounded border border-input"
                               />
                               <span className="text-foreground">{addon.name}</span>
                             </label>
                             <span className="font-medium text-foreground">
-                              +${addon.price.toFixed(0)}
+                              +{formatPrice(addon.price, currency)}
                             </span>
                           </div>
                         ))}
                       </div>
-                    </div>
-                  )}
-
-                  {/* Additional Revisions */}
-                  {selectedPackage.additionalRevision && (
-                    <div className="pt-2 border-t border-border">
-                      <p className="text-muted-foreground text-xs mb-2">
-                        Additional Revisions
-                      </p>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() =>
-                            setAdditionalRevisions(Math.max(0, additionalRevisions - 1))
-                          }
-                          className="h-8 w-8 rounded border border-input hover:bg-muted"
-                        >
-                          −
-                        </button>
-                        <span className="flex-1 text-center font-medium text-foreground">
-                          {additionalRevisions}
-                        </span>
-                        <button
-                          onClick={() => setAdditionalRevisions(additionalRevisions + 1)}
-                          className="h-8 w-8 rounded border border-input hover:bg-muted"
-                        >
-                          +
-                        </button>
-                      </div>
-                      {additionalRevisions > 0 && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          +${(
-                            additionalRevisions *
-                            selectedPackage.additionalRevision.price
-                          ).toFixed(0)}
-                        </p>
-                      )}
                     </div>
                   )}
 
@@ -461,7 +448,7 @@ function MarketplaceListingDetailContent() {
                     <div className="flex justify-between items-center mb-4">
                       <span className="font-medium text-foreground">Total</span>
                       <span className="text-2xl font-bold text-foreground">
-                        ${totalPrice.toFixed(0)}
+                        {formatPrice(totalPrice, currency)}
                       </span>
                     </div>
 
@@ -471,7 +458,7 @@ function MarketplaceListingDetailContent() {
                         onClick={handleOrderClick}
                         className="w-full"
                       >
-                        Order for ${totalPrice.toFixed(0)}
+                        Order for {formatPrice(totalPrice, currency)}
                       </Button>
                       <Button
                         variant="outline"

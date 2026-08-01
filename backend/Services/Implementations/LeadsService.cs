@@ -177,6 +177,14 @@ public class LeadsService : ILeadsService
         return ServiceProviderResult<List<ProposalResponse>>.Ok(rows.Select(x => x.ToResponse()).ToList());
     }
 
+    // Client-side mirror of GetProviderProposalsAsync: the buyer needs to see orders
+    // waiting on their confirmation after a provider approves a manual package request.
+    public async Task<ServiceProviderResult<List<ProposalResponse>>> GetClientProposalsAsync(string clientId)
+    {
+        var rows = await _db.Proposals.Find(x => x.ClientId == clientId).SortByDescending(x => x.UpdatedAt).ToListAsync();
+        return ServiceProviderResult<List<ProposalResponse>>.Ok(rows.Select(x => x.ToResponse()).ToList());
+    }
+
     public async Task<ServiceProviderResult<ProposalResponse>> GetProposalAsync(string actorId, string proposalId)
     {
         var p = await _db.Proposals.Find(x => x.Id == proposalId && (x.ProviderId == actorId || x.ClientId == actorId)).FirstOrDefaultAsync();

@@ -285,7 +285,7 @@ namespace WebApp.Services.Implementations
                     Verified = provider?.ServiceProviderProfile?.VerificationStatus == ServiceProviderVerificationStatus.Verified
                 },
                 StartingPrice = basicPackage?.Price ?? 0,
-                Currency = basicPackage?.Currency ?? "USD",
+                Currency = basicPackage?.Currency ?? "EUR",
                 DeliveryTimeValue = basicPackage?.DeliveryTimeValue ?? 0,
                 DeliveryTimeUnit = basicPackage?.DeliveryTimeUnit.ToString() ?? "days",
                 Rating = null,
@@ -318,7 +318,7 @@ namespace WebApp.Services.Implementations
                 Tier = pkg.PackageType.ToString(),
                 Title = pkg.PackageTitle,
                 Price = pkg.Price,
-                Currency = pkg.Currency ?? "USD",
+                Currency = pkg.Currency ?? "EUR",
                 DeliveryTimeValue = pkg.DeliveryTimeValue,
                 DeliveryTimeUnit = pkg.DeliveryTimeUnit.ToString(),
                 IncludedRevisionCount = pkg.IncludedRevisionCount,
@@ -326,7 +326,9 @@ namespace WebApp.Services.Implementations
                 ScreensIncluded = pkg.ScreensIncluded,
                 IncludedFeatures = pkg.IncludedFeatures ?? new(),
                 ExcludedFeatures = pkg.ExcludedFeatures ?? new(),
-                AddOns = pkg.AddOns?.Select(ao => new MarketplaceAddOn
+                // Disabled add-ons are ignored by LeadsService.PurchasePackageAsync, so
+                // surfacing them here would let the client total a price the server won't charge.
+                AddOns = pkg.AddOns?.Where(ao => ao.Enabled).Select(ao => new MarketplaceAddOn
                 {
                     Name = ao.Name,
                     Price = ao.Price,
@@ -338,7 +340,14 @@ namespace WebApp.Services.Implementations
                         Price = pkg.AdditionalRevisionPrice,
                         DeliveryTimeDays = pkg.AdditionalRevisionDeliveryTime
                     }
-                    : null
+                    : null,
+                RequirementsTemplate = (pkg.RequirementsTemplate ?? new()).Select(r => new RequirementsFieldResponse
+                {
+                    FieldId = r.FieldId,
+                    Label = r.Label,
+                    FieldType = r.FieldType.ToString(),
+                    Required = r.Required,
+                }).ToList(),
             };
         }
 
