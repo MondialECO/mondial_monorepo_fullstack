@@ -2,16 +2,14 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import Link from 'next/link';
-import { Search, ChevronLeft, ChevronRight, Star, Package, SlidersHorizontal } from 'lucide-react';
-import { resolveProviderMediaUrl } from '@/lib/service-provider/provider-media';
-import { formatPrice } from '@/lib/marketplace-format';
+import { Search, ChevronLeft, ChevronRight, SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { MarketplaceFilters } from '@/components/marketplace/MarketplaceFilters';
+import { MarketplaceCard } from '@/components/marketplace/MarketplaceCard';
 import AuthGuard from '@/components/layout/AuthGuard';
 import { useMarketplaceListings } from '@/hooks/queries/marketplace';
 import type { MarketplaceListingsQuery } from '@/lib/api-marketplace';
@@ -269,87 +267,7 @@ function MarketplaceGridContent() {
               <>
                 <div className="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
                   {listings.map((card) => (
-                    <Link
-                      key={card.id}
-                      href={`/marketplace/services/${card.id}`}
-                      className="group overflow-hidden rounded-xl border border-border transition-all duration-200 hover:shadow-md focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-                    >
-                      <div className="relative aspect-video overflow-hidden bg-muted">
-                        {card.coverImageUrl && resolveProviderMediaUrl(card.coverImageUrl) ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={resolveProviderMediaUrl(card.coverImageUrl)!}
-                            alt={card.title}
-                            className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
-                          />
-                        ) : (
-                          <div className="flex size-full items-center justify-center bg-muted">
-                            <Package className="size-8 text-muted-foreground" />
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="space-y-3 p-4">
-                        <div className="flex items-center gap-2">
-                          {card.provider.profileImageUrl &&
-                          resolveProviderMediaUrl(card.provider.profileImageUrl) ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={resolveProviderMediaUrl(card.provider.profileImageUrl)!}
-                              alt={card.provider.displayName}
-                              className="size-6 rounded-full object-cover"
-                            />
-                          ) : (
-                            <div className="flex size-6 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground">
-                              {card.provider.displayName.charAt(0).toUpperCase()}
-                            </div>
-                          )}
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-xs font-medium text-foreground">
-                              {card.provider.displayName}
-                            </p>
-                            {card.provider.verified && (
-                              <p className="text-xs text-primary">Verified</p>
-                            )}
-                          </div>
-                        </div>
-
-                        <h3 className="line-clamp-2 text-sm font-medium leading-snug text-foreground transition-colors group-hover:text-primary">
-                          {card.title}
-                        </h3>
-
-                        <p className="text-xs text-muted-foreground">{card.category}</p>
-
-                        {card.rating != null && (
-                          <div className="flex items-center gap-1">
-                            <Star className="size-3 fill-amber-400 text-amber-400" />
-                            <span className="text-xs font-medium text-foreground">
-                              {card.rating.toFixed(1)}
-                            </span>
-                            {card.reviewCount != null && (
-                              <span className="text-xs text-muted-foreground">
-                                ({card.reviewCount})
-                              </span>
-                            )}
-                          </div>
-                        )}
-
-                        <div className="flex items-center justify-between border-t border-border pt-2">
-                          <div>
-                            <p className="text-xs text-muted-foreground">From</p>
-                            <p className="text-sm font-semibold text-foreground">
-                              {formatPrice(card.startingPrice, card.currency)}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-xs text-muted-foreground">Delivery</p>
-                            <p className="text-xs font-medium text-foreground">
-                              {card.deliveryTimeValue} {card.deliveryTimeUnit}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </Link>
+                    <MarketplaceCard key={card.id} card={card} />
                   ))}
                 </div>
 
