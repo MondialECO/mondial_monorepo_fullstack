@@ -13,6 +13,7 @@ import {
   useProposalConversionPoll,
 } from '@/hooks/queries/package-purchase';
 import { getEngagements } from '@/lib/api-workroom';
+import { recordListingClick } from '@/lib/api-analytics';
 import { useAuth } from '@/context/AuthContext';
 import { ROLE_DASHBOARD_ROUTES } from '@/lib/roles';
 import type { PackagePurchaseResponse } from '@/types/package-purchase';
@@ -73,6 +74,13 @@ function MarketplaceOrderContent() {
   const purchase = usePurchasePackage();
   const { user } = useAuth();
 
+  // Fire-and-forget: entering the order flow is a distinct funnel signal from the
+  // 'order' click on the detail page.
+  useEffect(() => {
+    if (!listingId) return;
+    recordListingClick(listingId, 'order-flow-start').catch(() => {});
+  }, [listingId]);
+
   const engagementsHref = user
     ? `${ROLE_DASHBOARD_ROUTES[user.role]}/engagements`
     : '/marketplace/services';
@@ -124,9 +132,14 @@ function MarketplaceOrderContent() {
         complianceHold: false,
         finalSummaryShown: true,
       },
-      { onSuccess: (res) => setResult(res) }
+      {
+        onSuccess: (res) => {
+          setResult(res);
+          if (listingId) recordListingClick(listingId, 'order-placed').catch(() => {});
+        },
+      }
     );
-  }, [pkg, answers, selectedAddOnNames, purchase]);
+  }, [pkg, answers, selectedAddOnNames, purchase, listingId]);
 
   const total = useMemo(() => {
     if (!pkg) return 0;
