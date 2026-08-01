@@ -10,6 +10,7 @@ import { statusChipClass } from '@/lib/workroom-status';
 import { useClientEngagement } from '@/hooks/queries/workroom-client';
 import { ContractPanel } from '@/components/marketplace/workroom/ContractPanel';
 import { MilestonesPanel } from '@/components/marketplace/workroom/MilestonesPanel';
+import { EngagementActions } from '@/components/marketplace/workroom/EngagementActions';
 
 function formatDate(value?: string | null): string {
   if (!value) return '—';
@@ -118,6 +119,10 @@ function EngagementDetailContent({
             </dd>
           </div>
         </dl>
+
+        <div className="mt-4">
+          <EngagementActions detail={data} />
+        </div>
       </header>
 
       <div className="space-y-6">
