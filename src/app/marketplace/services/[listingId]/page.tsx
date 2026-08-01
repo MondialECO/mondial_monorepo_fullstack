@@ -99,15 +99,11 @@ function MarketplaceListingDetailContent() {
 
   if (isError) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <AlertCircle className="size-12 text-destructive mx-auto mb-4" />
-          <h1 className="text-xl font-semibold text-foreground mb-2">
-            Service not found
-          </h1>
-          <p className="text-muted-foreground mb-6">
-            This service is no longer available.
-          </p>
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+        <div className="rounded-xl border border-border p-8 text-center">
+          <AlertCircle className="mx-auto mb-4 size-12 text-destructive" />
+          <h1 className="mb-2 text-xl font-semibold text-foreground">Service not found</h1>
+          <p className="mb-6 text-muted-foreground">This service is no longer available.</p>
           <Link href="/marketplace/services">
             <Button variant="outline">Back to Marketplace</Button>
           </Link>
@@ -119,14 +115,23 @@ function MarketplaceListingDetailContent() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
-        <div className="max-w-7xl mx-auto px-4 py-8">
-          <Skeleton className="h-8 w-32 mb-8" />
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2">
-              <Skeleton className="aspect-video rounded-lg mb-4" />
-              <Skeleton className="h-64" />
+        <div className="mx-auto max-w-7xl px-4 py-8 md:px-6">
+          <Skeleton className="mb-6 h-5 w-40" />
+
+          {/* Header block */}
+          <div className="mb-8 space-y-3">
+            <Skeleton className="h-6 w-24 rounded-full" />
+            <Skeleton className="h-10 w-2/3" />
+            <Skeleton className="h-4 w-1/3" />
+          </div>
+
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_360px]">
+            <div className="min-w-0 space-y-8">
+              <Skeleton className="aspect-video rounded-xl" />
+              <Skeleton className="h-48 rounded-xl" />
+              <Skeleton className="h-64 rounded-xl" />
             </div>
-            <Skeleton className="h-96" />
+            <Skeleton className="h-[560px] rounded-xl" />
           </div>
         </div>
       </div>
