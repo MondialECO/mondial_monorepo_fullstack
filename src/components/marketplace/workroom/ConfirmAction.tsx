@@ -20,6 +20,8 @@ interface Props {
   children?: React.ReactNode;
   /** Blocks confirm until the caller's own inputs are satisfied. */
   canConfirm?: boolean;
+  /** Stretches the trigger to fill its container (sidebar / stacked layouts). */
+  fullWidth?: boolean;
 }
 
 /**
@@ -40,13 +42,14 @@ export function ConfirmAction({
   disabledReason,
   children,
   canConfirm = true,
+  fullWidth,
 }: Props) {
   const [open, setOpen] = useState(false);
 
   if (disabled) {
     return (
       <div>
-        <Button size="sm" variant={variant} disabled>
+        <Button size="sm" variant={variant} disabled className={fullWidth ? 'w-full' : undefined}>
           {label}
         </Button>
         {disabledReason && (
@@ -58,7 +61,12 @@ export function ConfirmAction({
 
   if (!open) {
     return (
-      <Button size="sm" variant={variant} onClick={() => setOpen(true)}>
+      <Button
+        size="sm"
+        variant={variant}
+        onClick={() => setOpen(true)}
+        className={fullWidth ? 'w-full' : undefined}
+      >
         {label}
       </Button>
     );
