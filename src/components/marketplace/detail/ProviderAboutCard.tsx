@@ -1,6 +1,7 @@
 'use client';
 
 import { BadgeCheck } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ProviderAvatar } from './ProviderAvatar';
 import type { MarketplaceListingDetail } from '@/lib/api-marketplace';
@@ -37,10 +38,10 @@ export function ProviderAboutCard({
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="font-semibold text-foreground">{provider.displayName}</h3>
             {provider.verified && (
-              <span className="inline-flex items-center gap-1 text-sm text-primary">
-                <BadgeCheck className="size-4" />
+              <Badge variant="success">
+                <BadgeCheck />
                 Verified
-              </span>
+              </Badge>
             )}
           </div>
 

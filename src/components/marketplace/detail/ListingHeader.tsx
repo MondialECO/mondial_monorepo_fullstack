@@ -45,10 +45,10 @@ export function ListingHeader({ listing }: { listing: MarketplaceListingDetail }
                 />
                 <span className="font-medium text-foreground">{p.displayName}</span>
                 {p.verified && (
-                  <span className="inline-flex items-center gap-1 text-sm text-primary">
-                    <BadgeCheck className="size-4" />
+                  <Badge variant="success">
+                    <BadgeCheck />
                     Verified
-                  </span>
+                  </Badge>
                 )}
                 {meta.map((item) => (
                   <span key={item} className="text-sm text-muted-foreground">

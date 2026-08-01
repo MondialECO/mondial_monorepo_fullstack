@@ -88,7 +88,7 @@ export function PackageSelectorCard({
             <ul className="space-y-2">
               {pkg.includedFeatures.map((f, i) => (
                 <li key={`in-${i}`} className="flex items-start gap-2 text-sm text-foreground">
-                  <Check className="mt-0.5 size-4 shrink-0 text-primary" />
+                  <Check className="mt-0.5 size-4 shrink-0 text-success-text" />
                   {f}
                 </li>
               ))}

@@ -56,6 +56,7 @@
   --color-success-text: var(--success-text);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
+  --color-rating: var(--rating);
   --color-info: var(--info);
   --color-info-foreground: var(--info-foreground);
   --radius-sm: calc(var(--radius) - 4px);
@@ -113,6 +114,10 @@
   --success-light: #E5F7ED;
   --success-text: #00A854;
   --warning: #B45309;
+  /* Star/rating amber. Matches the amber-400 currently hardcoded in
+     MarketplaceCard and ReviewPanel, so migrating them later is a zero-diff
+     change. Defined but intentionally unused for now. */
+  --rating: #F59E0B;
   --warning-foreground: #FFFFFF;
   --info: #0369A1;
   --info-foreground: #FFFFFF;

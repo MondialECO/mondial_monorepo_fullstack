@@ -84,7 +84,7 @@ export function ComparePackagesTable({
                 {packages.map((pkg) => (
                   <td key={pkg.id} className="px-4 py-2.5 text-center">
                     {hasFeature(pkg, feature) ? (
-                      <Check className="mx-auto size-4 text-primary" aria-label="Included" />
+                      <Check className="mx-auto size-4 text-success-text" aria-label="Included" />
                     ) : (
                       <X
                         className="mx-auto size-4 text-muted-foreground"
