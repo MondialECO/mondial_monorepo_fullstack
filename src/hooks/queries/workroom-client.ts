@@ -5,6 +5,7 @@ import * as api from '@/lib/api-workroom-client';
 // GET wrappers are actor-scoped and shape-identical for both parties, so they're
 // reused from the SP module rather than duplicated.
 import { getEngagement, getEngagements } from '@/lib/api-workroom';
+import { useAuth } from '@/context/AuthContext';
 
 const CLIENT_WORKROOM = ['client-workroom'] as const;
 
@@ -14,8 +15,23 @@ export const clientWorkroomKeys = {
   detail: (id: string) => [...CLIENT_WORKROOM, id] as const,
 };
 
-export const useClientEngagements = () =>
-  useQuery({ queryKey: clientWorkroomKeys.list, queryFn: getEngagements });
+/**
+ * Buyer-role engagements only. The endpoint returns both roles (a provider is
+ * also a participant), but "My Engagements" means "things I bought" — an SP
+ * browsing it should not see their seller-side work under a buyer heading.
+ * Filtering here rather than in the wrapper keeps the SP Workroom untouched.
+ */
+export const useClientEngagements = () => {
+  const { user } = useAuth();
+  return useQuery({
+    // user.id is part of the key so a session change re-scopes the cache instead
+    // of briefly showing the previous user's filtered rows.
+    queryKey: [...clientWorkroomKeys.list, user?.id ?? 'anon'],
+    queryFn: getEngagements,
+    select: (rows) => rows.filter((e) => e.clientId === user?.id),
+    enabled: !!user?.id,
+  });
+};
 
 export const useClientEngagement = (id: string | null) =>
   useQuery({

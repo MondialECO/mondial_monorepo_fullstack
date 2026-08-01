@@ -8,6 +8,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { formatPrice } from '@/lib/marketplace-format';
 import { statusChipClass } from '@/lib/workroom-status';
 import { useClientEngagement } from '@/hooks/queries/workroom-client';
+import { useAuth } from '@/context/AuthContext';
+import { ROLE_DASHBOARD_ROUTES } from '@/lib/roles';
 import { ContractPanel } from '@/components/marketplace/workroom/ContractPanel';
 import { MilestonesPanel } from '@/components/marketplace/workroom/MilestonesPanel';
 import { EngagementActions } from '@/components/marketplace/workroom/EngagementActions';
@@ -45,6 +47,7 @@ function EngagementDetailContent({
   engagementId: string;
 }) {
   const { data, isLoading, isError } = useClientEngagement(engagementId || null);
+  const { user } = useAuth();
 
   if (isLoading) {
     return (
@@ -63,6 +66,23 @@ function EngagementDetailContent({
         <p className="font-medium text-foreground">Engagement not found</p>
         <Link href={basePath} className="mt-4 inline-block">
           <Button variant="outline">Back to engagements</Button>
+        </Link>
+      </div>
+    );
+  }
+
+  // Direct-URL guard: a provider landing here would otherwise get the buyer UI
+  // with Fund/Approve/Request-revision controls that all fail server-side.
+  // Wording stays vague about existence, matching the backend's NotFound for
+  // non-participants.
+  if (user && data.engagement.clientId !== user.id) {
+    return (
+      <div className="p-8 text-center">
+        <p className="mb-4 text-muted-foreground">
+          This engagement isn&apos;t part of your buyer activity.
+        </p>
+        <Link href={`${ROLE_DASHBOARD_ROUTES[user.role]}/engagements`} className="underline">
+          Back to My Engagements
         </Link>
       </div>
     );
