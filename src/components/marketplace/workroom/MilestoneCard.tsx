@@ -87,7 +87,7 @@ export function MilestoneCard({
       {/* Provider-requested extension — sits above state content because it's
           actionable regardless of which state the milestone is otherwise in. */}
       {milestone.extensionRequested && (
-        <div className="mt-3 rounded-md border border-amber-500/30 bg-amber-500/10 p-3">
+        <div className="mt-3 rounded-md border border-warning/30 bg-warning/10 p-3">
           <p className="flex items-center gap-2 text-sm font-medium text-foreground">
             <CalendarClock className="size-4" />
             The provider requested a deadline extension
@@ -303,7 +303,7 @@ export function MilestoneCard({
         )}
 
         {status === 'Paid' && (
-          <p className="flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-400">
+          <p className="flex items-center gap-2 text-sm text-success-text">
             <CheckCircle2 className="size-4" />
             Milestone complete. {money} released to the provider.
           </p>

@@ -8,8 +8,10 @@ type Tone = 'neutral' | 'progress' | 'waiting' | 'good' | 'bad';
 const TONES: Record<Tone, string> = {
   neutral: 'bg-muted text-muted-foreground',
   progress: 'bg-primary/10 text-primary',
-  waiting: 'bg-amber-500/10 text-amber-700 dark:text-amber-400',
-  good: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+  // Semantic pairs — both --warning and --success-text carry .dark values, so no
+  // dark: variants are needed here.
+  waiting: 'bg-warning/10 text-warning',
+  good: 'bg-success-light text-success-text',
   bad: 'bg-destructive/10 text-destructive',
 };
 
