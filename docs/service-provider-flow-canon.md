@@ -1800,14 +1800,42 @@ Key lessons for M2-M8:
 - API wrappers unwrap the `ApiResponse` envelope once; consumers access fields directly (not `.data`).
 - Analytics must use the axios wrapper — raw fetch resolves to frontend origin.
 
-**Phase M2 — Client purchase flow UI (PLANNED, next).** Scope: entirely frontend; backend already provides everything.
-- New route: `/marketplace/services/[listingId]/order?step=1|2|3`.
-- Wire existing `POST /api/leads/package-purchases`. Add frontend types for `PackagePurchaseRequest` / `PackagePurchaseResponse`.
-- Step 1: Summary review with dynamic pricing (12% commission preview from the proposal's `EarningsPreview`).
-- Step 2: Requirements form (Text + Choice types only in v1).
-- Step 3: Confirmations + "Pay & Place Order".
-- On `AutoAccepted` (auto path) or `UiStatus="Provider Approval Required"` (manual path) → success screen with next-step guidance; on `FailedConditions[]` → user-friendly condition list.
-- No backend refactor.
+**Phase M2 — Client purchase flow UI (IMPLEMENTED, 2026-08-01).**
+
+Frontend: new route `/marketplace/services/[listingId]/order?step=1|2|3` behind `AuthGuard`. Three-step wizard (Summary → Requirements → Confirmations) with persistent summary widget at top of every step. URL-state pattern mirrors `ServiceCatalogWizard` (`useSearchParams` + explicit query-string transitions). Wires existing `POST /api/leads/package-purchases`. Frontend types (`PackagePurchaseRequest`, `PackagePurchaseResponse`, `RequirementAnswerRequest`) added to `src/types/package-purchase.ts`; existing `Proposal` type reused as-is. API wrapper additions to `src/lib/api-leads.ts` (`purchasePackage`, `acceptProposal`); polling hook (`useProposalConversionPoll`) mirrors `useBackgroundJob` `refetchInterval`-returns-`false` pattern, with a client-side 15-attempt (≈30s) timeout for the UI fallback. Requirements form supports Text / Number / Date / Boolean natively; `Choice` renders as free-text with a "dropdown options coming soon" note (backend `RequirementsField` model has no options list); `File` is a disabled placeholder with M3 pointer. Step 1 commission preview computed client-side via a single `PLATFORM_COMMISSION_RATE = 0.12` constant mirroring `PlatformCommerceConstants.CommissionRate` — display only; server recomputes authoritatively on submit. Step 3 collects the 5 backend confirmation booleans (`explicitlyConfirmed`, `paymentMethodVerified`, `escrowAuthorized`, `complianceHold`, `finalSummaryShown`) — `paymentMethodVerified` and `escrowAuthorized` are auto-set with a "Simulated in development" note per §10.8/M8, and `complianceHold` is inverted at the submit handler (UI checkbox "no outstanding compliance issues" → wire `false`). `FailedConditions` strings are rendered verbatim, never mapped or switched on. On `AutoAccepted === true` → success screen + poll `GET /api/leads/proposals/{id}` for `ConversionStatus === "Converted"` (or `Status === "ConvertedToProject"`), then match `Engagement.proposalId` via existing `getEngagements()` → redirect to `${ROLE_DASHBOARD_ROUTES[user.role]}/engagements/{id}`; on manual path → "Awaiting provider approval" screen with `FailedConditions[]` as informational list.
+
+Detail-page fixes (same phase): removed the Additional Revisions stepper from the M1 package selector (extra revisions live in the workroom per `WorkroomMilestone.PurchasedAdditionalRevisions` — not at initial purchase, since `PackagePurchaseRequest` has no field for it); enabled the previously-disabled add-on checkboxes with local `Set<string>` state keyed to tier; replaced hardcoded `$` symbols with the listing's actual `currency` field across the detail page and marketplace grid card via a shared `formatPrice` helper; wired `handleOrderClick` to actually navigate to the order route (was previously firing analytics only).
+
+Backend (small, scoped): exposed `RequirementsTemplate` on the public `MarketplacePackage` DTO (reusing existing `RequirementsFieldResponse`), added an `Enabled` filter to public add-on mapping (`LeadsService.PurchasePackageAsync` already filters `a.Enabled`, so a disabled add-on selected in the UI would silently be ignored server-side while still being priced client-side — closed the mismatch), and fixed four `?? "USD"` fallbacks to `?? "EUR"` (two in `MarketplaceService`, two DTO-level defaults in `MarketplaceDtos.cs`) — canon-locked EUR default. No changes to `PurchasePackageAsync`, gate logic, state machines, or any DB model.
+
+Engagements placeholder shell added: 4 thin per-role pages under `/dashboard/{creator|entrepreneur|investor|serviceprovider}/engagements` (list) + `[engagementId]` (detail), each importing a shared `EngagementsPlaceholder` component. Reason: static per-role folders match the app's routing convention (`ROLE_DASHBOARD_ROUTES`, `AuthContext.tsx:91`); no `[role]` dynamic segment exists anywhere in this codebase.
+
+Analytics: new click targets `order-flow-start` (Step 1 mount) and `order-placed` (Step 3 submit success) via existing `recordListingClick` axios wrapper — backend accepts any string target, no backend change needed.
+
+Commits (10): `a82bddd`, `ce12d76`, `02cf131`, `028592e`, `55a4610`, `ea63363`, `66280cb`, `3d4f0a1`, `382bf4a`, `6e7689f`.
+
+Key lessons carried forward:
+
+- Canon §10.5 originally described `PackagePurchaseRequest` without noting there is no `AdditionalRevisionsPurchased` field on the wire — extra revisions must be a workroom-time surface, never a purchase-time one.
+- Backend `RequirementsField` model exposes no options list for `Choice`; a real dropdown UI for Choice-typed requirements needs a backend addition first.
+- `complianceHold` inversion at the submit boundary is the single easiest silent-fail spot in the flow. Confirmed live: checkbox checked → wire `false` → gate passes → auto-accept path fires.
+- `WizardStep2Pricing.tsx:43` still hardcodes new-package currency to `'USD'` in local state (no currency selector in UI). Cosmetic drift from canon EUR default; separate follow-up.
+
+**Phase M2b — Client-scoped proposals list + inline accept for manual path (IMPLEMENTED, 2026-08-01).**
+
+Gap closed: after SP approved a manual-path proposal, the client had no way to see or act on it. `proposalId` lived only in M2's order-flow component state, and `GET /api/leads/proposals` is provider-scoped (`GetProviderProposalsAsync`, filter `ProviderId == providerId`), returning an empty list for clients.
+
+Backend: new endpoint `GET /api/leads/proposals/mine` → `GetClientProposalsAsync(clientId)`, filter `x.ClientId == clientId`, read-only, no model or state-machine change. Literal route segment `mine` declared before the parameterized `proposals/{id}` route; ASP.NET Core matches literal segments ahead of parameterized ones regardless of declaration order, but declaration order was preserved defensively.
+
+Frontend: `getMyProposals()` wrapper in `src/lib/api-leads.ts` + `useMyProposals()` hook added to the existing `package-purchase.ts` (shares `packagePurchaseKeys` registry with the conversion poll so accept-time invalidation lands consistently). "Pending your action" section added to the engagements placeholder above the engagements list — `Submitted` rows render as read-only chip ("Awaiting provider approval"), `ClientReviewing` rows expose a "Complete your order" inline confirmation with two checkboxes (`explicitlyConfirmed`, `escrowAuthorized` — same simulated-payment framing as M2 Step 3). Accept action reuses the M2 `useAcceptProposal` mutation + `useProposalConversionPoll` polling + `getEngagements()` `proposalId`-match + role-scoped redirect — no polling / mutation / redirect logic rewritten. Loading and error early-returns in the list component were moved inline so the pending section renders above the list even while the engagements query is still in flight (deliberate deviation from the letter of the spec — with early returns intact, a client landing on the page would have seen a skeleton instead of the order waiting on them, defeating the addendum's purpose).
+
+Commits (3): `e8ac131`, `08a1c5a`, `c3d447c`.
+
+**Phase M2c — My Engagements sidebar nav entry (IMPLEMENTED, 2026-08-01).**
+
+One-file change: `src/lib/menu.ts`. "My Engagements" menu item added directly after "Services Marketplace" in all 4 client-role sidebars (CREATOR, INVESTOR, ENTREPRENEUR, SERVICE_PROVIDER — ADMIN excluded, mirroring how it already excludes "Services Marketplace"), each pointing at that role's own static `/dashboard/{role}/engagements` route. Icon: reused `Handshake` (already imported). No `children` entry for the detail route — the top-level list link suffices; detail is reached by clicking into a card. Sidebar positions: Creator/Entrepreneur under "Main" (before "My Idea" / "Financials & KPIs"); Investor/Service Provider under "Dashboard" (before "Discovery" / "Profile & Trust").
+
+SP inclusion is a deliberate call: canon §10.1 keeps a single marketplace for all roles, and any authenticated user can purchase a package (no role restriction in `LeadsController`), so an SP who buys from another SP has legitimate buyer-role engagements. As shipped, the SP's "My Engagements" page also lists their seller-role engagements — a known UX overlap with the SP Workroom that M3 will resolve via a client-side buyer-role filter.
 
 **Phase M3 — Client-side workroom + engagement dashboard (PLANNED).**
 - Backend: add `Conversation.RelatedEngagementId` for engagement-scoped chat. Zero other backend changes.
