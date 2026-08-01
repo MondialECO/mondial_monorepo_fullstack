@@ -1,8 +1,9 @@
 'use client';
 
-import { Loader2, Lock } from 'lucide-react';
+import { Info, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatPrice } from '@/lib/marketplace-format';
+import { OrderStepCard } from './OrderStepCard';
 import type { MarketplacePackage } from '@/lib/api-marketplace';
 
 interface Props {
@@ -34,16 +35,29 @@ export function OrderStepConfirm({
   const ready = reviewedSummary && explicitlyConfirmed && noComplianceHold;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold text-foreground">Confirm and place order</h2>
-        <p className="text-sm text-muted-foreground">
-          These confirmations are required before the order can be placed.
-        </p>
-      </div>
-
-      <div className="space-y-3 rounded-lg border border-border p-4">
-        <label className="flex cursor-pointer items-start gap-3 text-sm">
+    <OrderStepCard
+      title="Place your order"
+      subtitle="Review the final details and confirm."
+      footer={
+        <>
+          <Button variant="outline" onClick={onBack} disabled={isSubmitting} className="h-11">
+            Back
+          </Button>
+          <Button onClick={onSubmit} disabled={!ready || isSubmitting} className="h-11">
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 size-4 animate-spin" />
+                Placing order...
+              </>
+            ) : (
+              `Place order · ${formatPrice(total, pkg.currency)}`
+            )}
+          </Button>
+        </>
+      }
+    >
+      <div className="divide-y divide-border">
+        <label className="flex cursor-pointer items-start gap-3 py-3 text-sm leading-relaxed">
           <input
             type="checkbox"
             checked={reviewedSummary}
@@ -54,7 +68,7 @@ export function OrderStepConfirm({
           <span className="text-foreground">I have reviewed the final summary</span>
         </label>
 
-        <label className="flex cursor-pointer items-start gap-3 text-sm">
+        <label className="flex cursor-pointer items-start gap-3 py-3 text-sm leading-relaxed">
           <input
             type="checkbox"
             checked={explicitlyConfirmed}
@@ -67,7 +81,7 @@ export function OrderStepConfirm({
           </span>
         </label>
 
-        <label className="flex cursor-pointer items-start gap-3 text-sm">
+        <label className="flex cursor-pointer items-start gap-3 py-3 text-sm leading-relaxed">
           <input
             type="checkbox"
             checked={noComplianceHold}
@@ -80,7 +94,7 @@ export function OrderStepConfirm({
           </span>
         </label>
 
-        <div className="space-y-3 border-t border-border pt-3">
+        <div className="space-y-3 py-3">
           <label className="flex items-start gap-3 text-sm opacity-70">
             <input
               type="checkbox"
@@ -103,10 +117,13 @@ export function OrderStepConfirm({
             <span className="text-foreground">Escrow authorization approved</span>
           </label>
 
-          <p className="flex items-start gap-2 rounded-md bg-muted p-2 text-xs text-muted-foreground">
-            <Lock className="mt-0.5 size-3 shrink-0" />
-            Payment and escrow are simulated in development — no real payment gateway is
-            connected yet (canon §10.8, Phase M8).
+          <p className="flex items-start gap-2 rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+            <Info className="mt-0.5 size-3.5 shrink-0" />
+            <span>
+              <span className="font-medium text-foreground">Payment simulation.</span> This is
+              a development environment. No real payment is processed; escrow authorisation
+              is simulated (canon §10.8, Phase M8).
+            </span>
           </p>
         </div>
       </div>
@@ -117,21 +134,6 @@ export function OrderStepConfirm({
         </p>
       )}
 
-      <div className="flex gap-2">
-        <Button variant="outline" onClick={onBack} disabled={isSubmitting} className="flex-1">
-          Back
-        </Button>
-        <Button onClick={onSubmit} disabled={!ready || isSubmitting} className="flex-1">
-          {isSubmitting ? (
-            <>
-              <Loader2 className="mr-2 size-4 animate-spin" />
-              Placing order...
-            </>
-          ) : (
-            `Place order · ${formatPrice(total, pkg.currency)}`
-          )}
-        </Button>
-      </div>
-    </div>
+    </OrderStepCard>
   );
 }

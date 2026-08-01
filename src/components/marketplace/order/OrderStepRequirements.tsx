@@ -3,6 +3,7 @@
 import { Info, Paperclip } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { OrderStepCard } from './OrderStepCard';
 import type { MarketplacePackage, MarketplaceRequirementsField } from '@/lib/api-marketplace';
 
 interface Props {
@@ -27,35 +28,43 @@ export function OrderStepRequirements({ pkg, answers, onChange, onBack, onContin
 
   if (fields.length === 0) {
     return (
-      <div className="space-y-6">
-        <div>
-          <h2 className="text-lg font-semibold text-foreground">Project requirements</h2>
-          <p className="text-sm text-muted-foreground">
-            No requirements needed for this package — you can go straight to confirmation.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={onBack} className="flex-1">
-            Back
-          </Button>
-          <Button onClick={onContinue} className="flex-1">
-            Continue to Confirmations
-          </Button>
-        </div>
-      </div>
+      <OrderStepCard
+        title="Provider requirements"
+        subtitle="This package needs no extra details from you."
+        footer={
+          <>
+            <Button variant="outline" onClick={onBack} className="h-11">
+              Back
+            </Button>
+            <Button onClick={onContinue} className="h-11">
+              Continue to confirmation
+            </Button>
+          </>
+        }
+      >
+        <p className="rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">
+          No requirements needed for this package — you can go straight to confirmation.
+        </p>
+      </OrderStepCard>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold text-foreground">Project requirements</h2>
-        <p className="text-sm text-muted-foreground">
-          The provider needs these details to start work.
-        </p>
-      </div>
-
-      <div className="space-y-5">
+    <OrderStepCard
+      title="Provider requirements"
+      subtitle="Answer the questions below so the provider can start work on your project."
+      footer={
+        <>
+          <Button variant="outline" onClick={onBack} className="h-11">
+            Back
+          </Button>
+          <Button onClick={onContinue} disabled={missingRequired} className="h-11">
+            Continue to confirmation
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-4">
         {fields.map((field) => {
           const value = answers[field.fieldId] ?? '';
           const label = (
@@ -67,7 +76,7 @@ export function OrderStepRequirements({ pkg, answers, onChange, onBack, onContin
 
           if (field.fieldType === 'File') {
             return (
-              <div key={field.fieldId}>
+              <div key={field.fieldId} className="rounded-lg border border-border p-4">
                 {label}
                 <div className="flex items-center gap-2 rounded-md border border-dashed border-input bg-muted/40 p-3 text-sm text-muted-foreground">
                   <Paperclip className="size-4 shrink-0" />
@@ -80,7 +89,7 @@ export function OrderStepRequirements({ pkg, answers, onChange, onBack, onContin
 
           if (field.fieldType === 'Boolean') {
             return (
-              <div key={field.fieldId}>
+              <div key={field.fieldId} className="rounded-lg border border-border p-4">
                 {label}
                 <label className="flex cursor-pointer items-center gap-2 text-sm text-foreground">
                   <input
@@ -98,7 +107,7 @@ export function OrderStepRequirements({ pkg, answers, onChange, onBack, onContin
 
           if (field.fieldType === 'Date') {
             return (
-              <div key={field.fieldId}>
+              <div key={field.fieldId} className="rounded-lg border border-border p-4">
                 {label}
                 <Input
                   id={field.fieldId}
@@ -111,7 +120,7 @@ export function OrderStepRequirements({ pkg, answers, onChange, onBack, onContin
           }
 
           return (
-            <div key={field.fieldId}>
+            <div key={field.fieldId} className="rounded-lg border border-border p-4">
               {label}
               <Input
                 id={field.fieldId}
@@ -132,14 +141,6 @@ export function OrderStepRequirements({ pkg, answers, onChange, onBack, onContin
         })}
       </div>
 
-      <div className="flex gap-2">
-        <Button variant="outline" onClick={onBack} className="flex-1">
-          Back
-        </Button>
-        <Button onClick={onContinue} disabled={missingRequired} className="flex-1">
-          Continue to Confirmations
-        </Button>
-      </div>
-    </div>
+    </OrderStepCard>
   );
 }
