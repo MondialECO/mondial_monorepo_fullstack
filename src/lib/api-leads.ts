@@ -1,6 +1,7 @@
 import api from "@/lib/axios";
 import type { ApiEnvelope } from "@/types/service-provider";
 import type { ClientBrief, LeadQuery, Proposal, UpsertProposalRequest } from "@/types/leads";
+import type { AcceptProposalRequest, PackagePurchaseRequest, PackagePurchaseResponse } from "@/types/package-purchase";
 
 const BASE = "/leads";
 const unwrap = <T>(env: ApiEnvelope<T>) => env.data;
@@ -41,4 +42,12 @@ export async function reviseProposal(id: string, payload: UpsertProposalRequest)
 }
 export async function reviewOrderRequest(id: string, accept: boolean): Promise<Proposal> {
   const res = await api.post<ApiEnvelope<Proposal>>(`${BASE}/proposals/${id}/${accept ? "provider-approve" : "provider-decline"}`, {}); return unwrap(res.data);
+}
+
+// Client-side purchase flow (M2). Both endpoints are client-actor-scoped.
+export async function purchasePackage(payload: PackagePurchaseRequest): Promise<PackagePurchaseResponse> {
+  const res = await api.post<ApiEnvelope<PackagePurchaseResponse>>(`${BASE}/package-purchases`, payload); return unwrap(res.data);
+}
+export async function acceptProposal(id: string, payload: AcceptProposalRequest): Promise<Proposal> {
+  const res = await api.post<ApiEnvelope<Proposal>>(`${BASE}/proposals/${id}/accept`, payload); return unwrap(res.data);
 }
