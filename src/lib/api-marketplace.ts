@@ -63,6 +63,13 @@ export interface MarketplaceListingDetail {
   searchTags: string[];
 }
 
+export interface MarketplaceRequirementsField {
+  fieldId: string;
+  label: string;
+  fieldType: 'Text' | 'File' | 'Choice' | 'Number' | 'Date' | 'Boolean';
+  required: boolean;
+}
+
 export interface MarketplacePackage {
   id: string;
   tier: 'Basic' | 'Standard' | 'Premium';
@@ -78,6 +85,7 @@ export interface MarketplacePackage {
   excludedFeatures: string[];
   addOns: { name: string; price: number; deliveryTimeAdjustmentDays: number | null }[];
   additionalRevision: { price: number; deliveryTimeDays: number } | null;
+  requirementsTemplate: MarketplaceRequirementsField[];
 }
 
 export interface MarketplaceListingsQuery {
