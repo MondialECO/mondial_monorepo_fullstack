@@ -67,7 +67,7 @@ export function MarketplaceCard({ card }: { card: MarketplaceListingCard }) {
                 {card.provider.displayName}
               </span>
               {card.provider.verified && (
-                <span className="shrink-0 text-xs text-primary">Verified</span>
+                <span className="shrink-0 text-xs text-success-text">Verified</span>
               )}
             </div>
           </TooltipTrigger>
@@ -80,7 +80,9 @@ export function MarketplaceCard({ card }: { card: MarketplaceListingCard }) {
               />
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium">{card.provider.displayName}</p>
-                {card.provider.verified && <p className="text-xs text-primary">Verified provider</p>}
+                {card.provider.verified && (
+                  <p className="text-xs text-success-text">Verified provider</p>
+                )}
               </div>
             </div>
             <p className="mt-2 text-xs text-muted-foreground">View services</p>
