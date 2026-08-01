@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { acceptProposal, getProposal, purchasePackage } from '@/lib/api-leads';
+import { acceptProposal, getMyProposals, getProposal, purchasePackage } from '@/lib/api-leads';
 import type { AcceptProposalRequest, PackagePurchaseRequest } from '@/types/package-purchase';
 
 const POLL_INTERVAL_MS = 2000;
@@ -10,7 +10,17 @@ const MAX_POLL_ATTEMPTS = 15; // ~30s before the caller shows a timeout fallback
 
 export const packagePurchaseKeys = {
   conversion: (proposalId: string) => ['proposal-conversion', proposalId] as const,
+  myProposals: ['my-proposals'] as const,
 };
+
+/** Proposals where the caller is the client — includes ones awaiting their action. */
+export function useMyProposals() {
+  return useQuery({
+    queryKey: packagePurchaseKeys.myProposals,
+    queryFn: getMyProposals,
+    staleTime: 30_000,
+  });
+}
 
 export function usePurchasePackage() {
   return useMutation({

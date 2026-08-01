@@ -44,6 +44,11 @@ export async function reviewOrderRequest(id: string, accept: boolean): Promise<P
   const res = await api.post<ApiEnvelope<Proposal>>(`${BASE}/proposals/${id}/${accept ? "provider-approve" : "provider-decline"}`, {}); return unwrap(res.data);
 }
 
+// Client-scoped proposal list (M2b) — the buyer's counterpart to getProposals().
+export async function getMyProposals(): Promise<Proposal[]> {
+  const res = await api.get<ApiEnvelope<Proposal[]>>(`${BASE}/proposals/mine`); return unwrap(res.data);
+}
+
 // Client-side purchase flow (M2). Both endpoints are client-actor-scoped.
 export async function purchasePackage(payload: PackagePurchaseRequest): Promise<PackagePurchaseResponse> {
   const res = await api.post<ApiEnvelope<PackagePurchaseResponse>>(`${BASE}/package-purchases`, payload); return unwrap(res.data);
