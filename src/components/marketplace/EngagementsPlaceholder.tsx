@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getEngagements } from '@/lib/api-workroom';
 import { formatPrice } from '@/lib/marketplace-format';
+import { PendingProposalsSection } from '@/components/marketplace/PendingProposalsSection';
 
 const engagementKeys = { list: ['client-engagements'] as const };
 
@@ -30,25 +31,6 @@ export function EngagementsList({ basePath }: { basePath: string }) {
 
 function EngagementsListContent({ basePath }: { basePath: string }) {
   const { data, isLoading, isError } = useEngagements();
-
-  if (isLoading) {
-    return (
-      <div className="space-y-3 p-6">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-24 w-full" />
-        <Skeleton className="h-24 w-full" />
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <div className="p-6">
-        <p className="text-sm text-destructive">Could not load your engagements.</p>
-      </div>
-    );
-  }
-
   const engagements = data ?? [];
 
   return (
@@ -58,7 +40,18 @@ function EngagementsListContent({ basePath }: { basePath: string }) {
         Orders you&apos;ve placed and the work in progress on them.
       </p>
 
-      {engagements.length === 0 ? (
+      {/* Rendered above the list and independent of it, so an order awaiting the
+          client's confirmation is visible even while engagements are still loading. */}
+      <PendingProposalsSection basePath={basePath} />
+
+      {isLoading ? (
+        <div className="space-y-3">
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+        </div>
+      ) : isError ? (
+        <p className="text-sm text-destructive">Could not load your engagements.</p>
+      ) : engagements.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-lg border border-border py-12 text-center">
           <FolderOpen className="mb-3 size-10 text-muted-foreground" />
           <p className="font-medium text-foreground">No engagements yet</p>
