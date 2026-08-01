@@ -57,15 +57,28 @@ export interface TermSheetRevisionView {
   terms: TermSheetView;
 }
 
+// Persisted, per-party signature record. Mirrors backend SignatureRecordDto
+// (CompanyDtos.cs: SignedAt / SignedBy), serialized camelCase. Null when that
+// party has not signed.
+export interface SignatureRecord {
+  signedAt: string | null;
+  signedBy: string | null;
+}
+
 export interface DealStatus {
   dealId: string;
   status: string;
+  /** Counterparty company name (snapshot). "" for legacy deals. */
+  companyName: string;
   progressPercent: number;
   termSheet: TermSheetView;
   closingChecklist: ChecklistItem[];
   investors: DealParticipantStatus[];
   currentTurn: DealTurn;
   revisions: TermSheetRevisionView[];
+  // Authoritative signature state from the backend (DealStatusResponse).
+  founderSignature: SignatureRecord | null;
+  investorSignature: SignatureRecord | null;
 }
 
 export interface DealActivityEntry {

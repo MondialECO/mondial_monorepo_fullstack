@@ -8,13 +8,14 @@ interface KanbanBoardProps {
 const COLUMNS: Array<{
   key: keyof InvestorPipelineColumns;
   title: string;
+  status: "new" | "review" | "nda" | "dataroom" | "negotiation";
   empty?: string;
 }> = [
-  { key: "newMatches", title: "New Matches", empty: "Awaiting fresh matches" },
-  { key: "inReview", title: "In Review" },
-  { key: "ndaSigned", title: "NDA Signed" },
-  { key: "dataRoom", title: "Data Room" },
-  { key: "negotiation", title: "Negotiation", empty: "Awaiting founder response" },
+  { key: "newMatches", title: "New Matches", status: "new", empty: "Awaiting fresh matches" },
+  { key: "inReview", title: "In Review", status: "review" },
+  { key: "ndaSigned", title: "NDA Signed", status: "nda" },
+  { key: "dataRoom", title: "Data Room", status: "dataroom" },
+  { key: "negotiation", title: "Negotiation", status: "negotiation", empty: "Awaiting founder response" },
 ];
 
 export default function KanbanBoard({ columns }: KanbanBoardProps) {
@@ -28,6 +29,7 @@ export default function KanbanBoard({ columns }: KanbanBoardProps) {
           <KanbanColumn
             key={c.key}
             title={c.title}
+            status={c.status}
             cards={columns[c.key]}
             emptyLabel={c.empty}
           />

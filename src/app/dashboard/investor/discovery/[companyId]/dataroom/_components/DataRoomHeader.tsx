@@ -67,6 +67,22 @@ export default function DataRoomHeader({ detail }: DataRoomHeaderProps) {
             </div>
           </div>
         </div>
+
+        {/* Trust signals */}
+        <div className="mt-4 flex flex-wrap gap-4 border-t border-border/50 pt-4">
+          {detail.documentsCount ? (
+            <div className="text-xs">
+              <span className="text-muted-foreground">Documents ready:</span>
+              <span className="ml-2 font-semibold text-foreground">{detail.documentsCount}</span>
+            </div>
+          ) : null}
+          <div className="text-xs">
+            <span className="text-muted-foreground">Access:</span>
+            <span className="ml-2 font-semibold text-foreground">
+              {detail.ndaAccepted ? "Unlocked" : "NDA required"}
+            </span>
+          </div>
+        </div>
       </div>
     </div>
   );

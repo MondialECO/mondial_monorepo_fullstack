@@ -1,4 +1,4 @@
-import { Briefcase, Wallet, TrendingUp, Sparkles } from "lucide-react";
+import { Briefcase, Wallet, Sparkles } from "lucide-react";
 import KPITile from "@/components/investor/KPITile";
 import type { InvestorPipelineSummary } from "@/types/investor/opportunities";
 
@@ -14,30 +14,24 @@ function formatCurrency(n: number): string {
 
 export default function KPIStrip({ summary }: KPIStripProps) {
   return (
-    <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+    <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
       <KPITile
         icon={Briefcase}
         label="Active Deals"
         value={summary.activeDeals.toString()}
-        sublabel="across 5 pipeline stages"
+        sublabel="across pipeline stages"
       />
       <KPITile
         icon={Wallet}
         label="Capital Committed"
         value={formatCurrency(summary.capitalCommitted)}
-        sublabel="across closed investments"
+        sublabel="across investments"
       />
       <KPITile
         icon={Sparkles}
         label="Avg Match Score"
         value={`${summary.averageMatchScore.toFixed(1)}%`}
         sublabel="across active matches"
-      />
-      <KPITile
-        icon={TrendingUp}
-        label="Portfolio MOIC"
-        value={`${summary.moic.toFixed(2)}x`}
-        sublabel="demo placeholder"
       />
     </div>
   );

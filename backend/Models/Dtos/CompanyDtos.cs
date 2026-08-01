@@ -415,6 +415,7 @@ public class DealStatusResponse
 {
     public string DealId { get; set; }
     public string Status { get; set; }
+    public string CompanyName { get; set; } = "";
     public double ProgressPercent { get; set; }
     public TermSheetResponse TermSheet { get; set; }
     public List<ChecklistItemDto> ClosingChecklist { get; set; }
@@ -423,6 +424,8 @@ public class DealStatusResponse
     // Offer system (Phase D-4): whose turn it is + the offer/counter history.
     public string CurrentTurn { get; set; } = "";
     public List<TermSheetRevisionResponse> Revisions { get; set; } = new();
+    public SignatureRecordDto FounderSignature { get; set; }
+    public SignatureRecordDto InvestorSignature { get; set; }
 }
 
 public class RoundSummaryResponse
@@ -471,6 +474,12 @@ public class DealParticipantStatusDto
     public string InvestorType { get; set; }
     public double CommittedAmount { get; set; }
     public string Status { get; set; }
+}
+
+public class SignatureRecordDto
+{
+    public DateTime? SignedAt { get; set; }
+    public string SignedBy { get; set; }
 }
 
 public class UpdateDealStatusRequest
@@ -864,8 +873,13 @@ public class OpportunityScoreBreakdownDto
 {
     public int SectorFit { get; set; }
     public int StageFit { get; set; }
+    public int CheckSizeFit { get; set; }
     public int GeographyFit { get; set; }
-    public int TeamScore { get; set; }
+    public int EquityTypeFit { get; set; }
+    public int InvestmentHistoryFit { get; set; }
+    public int RevenueStageScore { get; set; }
+    public int MarketSizeScore { get; set; }
+    public int GrowthPotentialScore { get; set; }
 }
 
 public class OpportunityCapTableSummaryDto
@@ -916,8 +930,8 @@ public class InvestorPipelineSummaryDto
     public int ActiveDeals { get; set; }
     public double CapitalCommitted { get; set; }
     public double AverageMatchScore { get; set; }
-    /// <summary>Multiple-on-invested-capital. Demo placeholder until per-investment current-valuation field exists.</summary>
-    public double Moic { get; set; }
+    /// <summary>Multiple-on-invested-capital. Null until per-investment current/realized valuation exists.</summary>
+    public double? Moic { get; set; }
 }
 
 public class InvestorPipelineColumnsDto

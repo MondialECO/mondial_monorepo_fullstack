@@ -69,6 +69,14 @@ builder.Services.Configure<MongoDbSettings>(builder.Configuration.GetSection("Mo
 // instead of blocking request threads, an explicit connection pool so
 // spiky traffic cannot exhaust connections, and retryable reads/writes
 // so transient primary elections recover transparently.
+MongoDB.Bson.Serialization.Conventions.ConventionRegistry.Register(
+    "IgnoreExtraElements",
+    new MongoDB.Bson.Serialization.Conventions.ConventionPack
+    {
+        new MongoDB.Bson.Serialization.Conventions.IgnoreExtraElementsConvention(true)
+    },
+    _ => true);
+
 builder.Services.AddSingleton<IMongoClient>(sp =>
 {
     var settings = sp.GetRequiredService<IOptions<MongoDbSettings>>().Value;
@@ -162,12 +170,23 @@ else
 var allowedOrigins = builder.Configuration
     .GetSection("Cors:AllowedOrigins").Get<string[]>()
     ?? new[] { "http://localhost:3000", "https://mondialbusiness.eu" };
+var isDevelopment = builder.Environment.IsDevelopment();
+
+bool IsAllowedOrigin(string origin)
+{
+    if (string.IsNullOrWhiteSpace(origin)) return false;
+    if (Array.Exists(allowedOrigins, o => string.Equals(o, origin, StringComparison.OrdinalIgnoreCase)))
+        return true;
+    if (isDevelopment && Uri.TryCreate(origin, UriKind.Absolute, out var uri))
+        return uri.Host is "localhost" or "127.0.0.1";
+    return false;
+}
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.WithOrigins(allowedOrigins)
+        policy.SetIsOriginAllowed(IsAllowedOrigin)
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();

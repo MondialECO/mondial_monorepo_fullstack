@@ -52,10 +52,6 @@ export default function OverviewTabPanel({ detail }: OverviewTabPanelProps) {
               <dt className="text-xs text-muted-foreground">Stage</dt>
               <dd className="font-medium text-foreground">{stage}</dd>
             </div>
-            <div>
-              <dt className="text-xs text-muted-foreground">Trust Score</dt>
-              <dd className="font-medium text-foreground">{detail.trustScore}/100</dd>
-            </div>
           </dl>
         </CardContent>
       </Card>

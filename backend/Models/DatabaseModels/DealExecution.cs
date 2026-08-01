@@ -61,6 +61,13 @@ public class DealExecution
     public string InvestorNameSnapshot { get; set; }
     public string InvestorTypeSnapshot { get; set; }
 
+    /// <summary>
+    /// Snapshotted company (counterparty) name, set at deal creation. Lets the
+    /// investor-facing deal inbox render the real company instead of a raw
+    /// "Founder · {dealId}" fallback. Same rationale as InvestorNameSnapshot.
+    /// </summary>
+    public string CompanyNameSnapshot { get; set; }
+
     public string CreatedByUserId { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

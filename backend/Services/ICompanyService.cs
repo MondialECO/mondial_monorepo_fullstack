@@ -129,8 +129,8 @@ public interface ICompanyService
     DealStatusResponse GetDealForParticipant(DealAccessContext ctx);
     Task<List<DealActivityLogResponse>> GetDealActivityForParticipantAsync(DealAccessContext ctx);
     // All deals the caller participates in, by either role (founder via owned
-    // company id, investor via catalogue investor id).
-    Task<List<DealStatusResponse>> GetDealsForParticipantAsync(string? ownedCompanyId, string? investorId);
+    // companies, investor via catalogue investor id).
+    Task<List<DealStatusResponse>> GetDealsForParticipantAsync(string? founderUserId, string? investorId);
 
     // ---- Offer system (Phase D-4) ----
     Task<DealStatusResponse> CreateInvestorOfferAsync(string companyId, string investorId, OfferTermsRequest req, string actorUserId, string ipHash);
