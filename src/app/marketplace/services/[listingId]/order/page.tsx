@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { AlertCircle, ChevronLeft } from 'lucide-react';
@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useMarketplaceListingDetail } from '@/hooks/queries/marketplace';
 import { OrderSummaryWidget } from '@/components/marketplace/order/OrderSummaryWidget';
 import { OrderStepSummary } from '@/components/marketplace/order/OrderStepSummary';
+import { OrderStepRequirements } from '@/components/marketplace/order/OrderStepRequirements';
 
 const STEP_LABELS = ['Review', 'Requirements', 'Confirm'];
 
@@ -41,6 +42,13 @@ function MarketplaceOrderContent() {
 
   const { data: listing, isLoading, isError } = useMarketplaceListingDetail(listingId);
   const pkg = listing?.packages.find((p) => p.id === packageId);
+
+  // Answers are step-local: they exist only for the duration of the flow and are
+  // submitted whole at step 3. Keyed by RequirementsField.fieldId.
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const setAnswer = useCallback((fieldId: string, value: string) => {
+    setAnswers((prev) => ({ ...prev, [fieldId]: value }));
+  }, []);
 
   const total = useMemo(() => {
     if (!pkg) return 0;
@@ -143,6 +151,16 @@ function MarketplaceOrderContent() {
             selectedAddOnNames={selectedAddOnNames}
             total={total}
             onContinue={() => goToStep(2)}
+          />
+        )}
+
+        {step === 2 && (
+          <OrderStepRequirements
+            pkg={pkg}
+            answers={answers}
+            onChange={setAnswer}
+            onBack={() => goToStep(1)}
+            onContinue={() => goToStep(3)}
           />
         )}
       </div>
