@@ -163,10 +163,17 @@ function MarketplaceOrderContent() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
-        <div className="mx-auto max-w-3xl px-4 py-8 space-y-6">
-          <Skeleton className="h-8 w-40" />
-          <Skeleton className="h-24 w-full" />
-          <Skeleton className="h-96 w-full" />
+        <div className="mx-auto max-w-6xl px-4 py-8 md:px-6">
+          <Skeleton className="mb-6 h-5 w-32" />
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_320px]">
+            <div className="order-2 min-w-0 lg:order-1">
+              <Skeleton className="mx-auto mb-8 h-12 w-full max-w-md" />
+              <Skeleton className="h-[480px] rounded-xl" />
+            </div>
+            <div className="order-1 lg:order-2">
+              <Skeleton className="h-[420px] rounded-xl" />
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -174,8 +181,8 @@ function MarketplaceOrderContent() {
 
   if (isError || !listing || !pkg) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="text-center">
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+        <div className="rounded-xl border border-border p-8 text-center">
           <AlertCircle className="mx-auto mb-4 size-12 text-destructive" />
           <h1 className="mb-2 text-xl font-semibold text-foreground">
             This package isn&apos;t available
