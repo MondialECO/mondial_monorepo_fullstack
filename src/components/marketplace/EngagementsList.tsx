@@ -13,13 +13,30 @@ import { useClientEngagements } from '@/hooks/queries/workroom-client';
 import { PendingProposalsSection } from '@/components/marketplace/PendingProposalsSection';
 import type { Engagement } from '@/types/workroom';
 
+/**
+ * Everything contracted but not yet finished or terminated. Includes the two
+ * pre-work states (ContractPending before signature, EscrowPending before the
+ * first milestone is funded) — every engagement starts in one of them, so
+ * omitting them made brand-new orders visible only under "All". Paused is here
+ * too: halted work is still in flight, and excluding it would make an
+ * engagement vanish from the tab the moment a buyer paused it.
+ *
+ * MilestoneReview intentionally appears here and in the narrower "In review"
+ * tab, which acts as a shortcut to what needs the buyer's attention.
+ *
+ * Cancelled is deliberately in no bucket: it has no server-side writer
+ * (canon §10.7), so it surfaces only under "All" if it ever occurs.
+ */
 const ACTIVE_STATUSES = [
+  'ContractPending',
+  'EscrowPending',
   'ReadyToStart',
   'Active',
   'MilestoneReview',
   'RevisionInProgress',
   'FinalDelivery',
   'ClientInputRequired',
+  'Paused',
 ];
 
 const FILTERS: { key: string; label: string; match: (e: Engagement) => boolean }[] = [
