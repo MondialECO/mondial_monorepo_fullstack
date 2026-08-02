@@ -22,6 +22,21 @@ public class WorkroomModuleTests
         second.GatewayReference.Should().Be(first.GatewayReference).And.Be("stub_escrow_milestone-1");
     }
 
+    /// <summary>
+    /// Documents the trap behind BUG-3. The stub derives its reference from the
+    /// idempotency key, so the reference for a fund keyed "escrow:{id}" is exactly the
+    /// string release/refund used to fabricate inline. The fabrication was therefore
+    /// invisible under the stub and would have failed against every real gateway. Release
+    /// and refund must read PaymentOperation.GatewayReference; if this test ever has to
+    /// change because the stub's format moved, that is not a licence to reconstruct it.
+    /// </summary>
+    [Fact]
+    public async Task Stub_escrow_reference_coincides_with_the_key_that_masked_fabrication()
+    {
+        var authorized = await Gateway().AuthorizeEscrowAsync("escrow:milestone-1", 100m, "EUR");
+        authorized.GatewayReference.Should().Be("stub_escrow_escrow:milestone-1");
+    }
+
     [Fact]
     public async Task Payment_stub_can_exercise_failure_path()
     {
