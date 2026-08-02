@@ -22,6 +22,7 @@ namespace WebApp.Controllers
         private readonly IChatService _chatService;
         private readonly IHubContext<ChatHub> _hub;
         private readonly MongoDbContext _context;
+        private readonly IMongoDatabase _database;
         private readonly ICompanyService _companyService;
         private readonly IResponseRateService _responseRates;
         private readonly INotificationService _notifications;
@@ -31,6 +32,7 @@ namespace WebApp.Controllers
             IChatService chatRepo,
             IHubContext<ChatHub> hub,
             MongoDbContext context,
+            IMongoDatabase database,
             ICompanyService companyService,
             IResponseRateService responseRates,
             INotificationService notifications,
@@ -39,6 +41,7 @@ namespace WebApp.Controllers
             _chatService = chatRepo;
             _hub = hub;
             _context = context;
+            _database = database;
             _companyService = companyService;
             _responseRates = responseRates;
             _notifications = notifications;
@@ -125,8 +128,21 @@ namespace WebApp.Controllers
                 .Distinct()
                 .ToList();
 
+            // Queried directly rather than through MongoDbContext.ApplicationUsers, which
+            // is bound to "ApplicationUsers" while Identity actually writes to
+            // "applicationUsers" (AspNetCore.Identity.MongoDbCore derives the name via
+            // Pluralize -> Camelize). MongoDB is case-sensitive and GetCollection on an
+            // absent name silently yields an empty collection, so every participant
+            // resolved to null and every name/avatar rendered as a fallback.
+            //
+            // The binding itself is deliberately NOT corrected here: nine other consumers
+            // share it, including four write paths that have been silently no-op and need
+            // staged verification before they start persisting. See
+            // docs/tech-debt-mongodbcontext-casing.md. Chat is the only user-visible
+            // symptom, so it gets the scoped query.
             var users = participantIds.Count > 0
-                ? await _context.ApplicationUsers
+                ? await _database
+                    .GetCollection<ApplicationUser>("applicationUsers")
                     .Find(u => participantIds.Contains(u.Id))
                     .ToListAsync()
                 : new List<ApplicationUser>();
