@@ -1,4 +1,7 @@
+import { isRefundedMilestone } from '@/lib/workroom-status';
 import type { Engagement, Milestone } from '@/types/workroom';
+
+export { isRefundedMilestone };
 
 export type NavigationChange = (change: Record<string, string | null>, replace?: boolean) => void;
 
@@ -31,6 +34,17 @@ export function engagementTone(status: string) {
   if (status === 'Paused' || status === 'ClientInputRequired') return 'warning' as const;
   if (status === 'Active' || status === 'MilestoneReview' || status === 'RevisionInProgress' || status === 'FinalDelivery') return 'info' as const;
   return 'neutral' as const;
+}
+
+/**
+ * Badge tone and label together, so they cannot drift apart. `Paid` means "payment
+ * settled" in either direction, so a milestone refunded after a client-favoured dispute
+ * must not render as a positive "Paid" — from the provider's side that money is gone.
+ */
+export function milestoneBadge(milestone: Pick<Milestone, 'status' | 'refundedAt'>) {
+  return isRefundedMilestone(milestone)
+    ? { tone: 'negative' as const, label: 'Refunded' }
+    : { tone: milestoneTone(milestone.status), label: words(milestone.status) };
 }
 
 export function milestoneTone(status: string) {

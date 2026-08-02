@@ -142,6 +142,9 @@ public class WorkroomMilestoneResponse
     public DateTime? DisputeOpenedAt { get; set; }
     public DateTime? DisputeReviewEndsAt { get; set; }
     public string? DisputeOutcome { get; set; }
+    /// <summary>Set when Status is Paid because escrow was refunded to the client rather
+    /// than released to the provider. UI renders "Refunded" as the primary label.</summary>
+    public DateTime? RefundedAt { get; set; }
 }
 public class WorkroomDetailResponse
 {

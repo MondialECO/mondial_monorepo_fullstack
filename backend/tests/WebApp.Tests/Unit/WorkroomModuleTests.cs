@@ -171,8 +171,25 @@ public class WorkroomModuleTests
     [InlineData(WorkroomMilestoneStatus.Funded, WorkroomMilestoneStatus.Active, true)]
     [InlineData(WorkroomMilestoneStatus.ClientReviewing, WorkroomMilestoneStatus.RevisionRequested, true)]
     [InlineData(WorkroomMilestoneStatus.Paid, WorkroomMilestoneStatus.Active, false)]
+    [InlineData(WorkroomMilestoneStatus.Disputed, WorkroomMilestoneStatus.Paid, true)]
     public void Milestone_state_machine_enforces_direction(WorkroomMilestoneStatus from, WorkroomMilestoneStatus to, bool expected)
         => WorkroomStateMachine.CanTransition(from, to).Should().Be(expected);
+
+    /// <summary>
+    /// BUG-2 pin. A client-favoured dispute settles the milestone to Paid with RefundedAt
+    /// set, never to Cancelled — Cancelled satisfies no completion guard, so routing a
+    /// resolved dispute there stranded the engagement permanently. Paid therefore means
+    /// "payment settled" in either direction, and RefundedAt is the only thing separating
+    /// a refund from a provider release; it must survive on both the model and the DTO or
+    /// the two cases become indistinguishable to every consumer.
+    /// </summary>
+    [Fact]
+    public void Client_favoured_dispute_settles_to_paid_and_stays_distinguishable_from_a_release()
+    {
+        WorkroomStateMachine.CanTransition(WorkroomMilestoneStatus.Disputed, WorkroomMilestoneStatus.Paid).Should().BeTrue();
+        typeof(WorkroomMilestone).GetProperties().Select(x => x.Name).Should().Contain("RefundedAt");
+        typeof(WorkroomMilestoneResponse).GetProperties().Select(x => x.Name).Should().Contain("RefundedAt");
+    }
 
     [Theory]
     [InlineData(EngagementStatus.ContractPending, EngagementStatus.EscrowPending, true)]

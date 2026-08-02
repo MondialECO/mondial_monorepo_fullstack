@@ -35,7 +35,8 @@ import {
   apiError,
   canOpenDispute,
   formatDate,
-  milestoneTone,
+  isRefundedMilestone,
+  milestoneBadge,
   money,
   relativeDue,
   words,
@@ -55,8 +56,8 @@ export function MilestonesPanel({ data, selectedId, onSelect, readOnly }: { data
         <h2 className="font-heading text-lg font-semibold text-[#171717]">Milestones</h2>
         {data.milestones.map((item, index) => (
           <button key={item.id} type="button" onClick={() => onSelect(item.id)} aria-current={selected.id === item.id ? 'true' : undefined} className={`w-full rounded-2xl border bg-white p-4 text-left outline-none transition focus-visible:ring-2 focus-visible:ring-[#3C61DD] ${selected.id === item.id ? 'border-[#3C61DD] ring-1 ring-[#3C61DD]' : 'border-[#E5E7EB] hover:border-[#CAD4FA]'}`}>
-            <div className="flex items-start justify-between gap-3"><div><p className="text-xs font-semibold text-[#6B7280]">Milestone {index + 1}</p><p className="mt-1 text-sm font-semibold text-[#171717]">{item.title}</p></div><SpStatusBadge tone={milestoneTone(item.status)}>{words(item.status)}</SpStatusBadge></div>
-            <p className="mt-3 text-xs text-[#6B7280]">{money(item.amount, item.currency)} · {formatDate(item.dueDate)}</p>
+            <div className="flex items-start justify-between gap-3"><div><p className="text-xs font-semibold text-[#6B7280]">Milestone {index + 1}</p><p className="mt-1 text-sm font-semibold text-[#171717]">{item.title}</p></div><SpStatusBadge tone={milestoneBadge(item).tone}>{milestoneBadge(item).label}</SpStatusBadge></div>
+            <p className="mt-3 text-xs text-[#6B7280]"><span className={isRefundedMilestone(item) ? 'line-through' : undefined}>{money(item.amount, item.currency)}</span> · {formatDate(item.dueDate)}</p>
           </button>
         ))}
       </aside>
@@ -125,7 +126,7 @@ function MilestoneDetail({ data, milestone, readOnly }: { data: WorkroomDetail; 
       {feedback && <SpMutationFeedback status={feedback.status}>{feedback.message}</SpMutationFeedback>}
       <SpCard>
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
-          <div><div className="flex flex-wrap items-center gap-2"><SpStatusBadge tone={milestoneTone(milestone.status)}>{words(milestone.status)}</SpStatusBadge><SpStatusBadge tone={due.urgent ? 'warning' : 'neutral'}>{due.label}</SpStatusBadge></div><h2 className="mt-4 font-heading text-2xl font-semibold text-[#171717]">{milestone.title}</h2><p className="mt-2 text-sm leading-7 text-[#6B7280]">{milestone.description || 'No milestone description.'}</p></div><p className="shrink-0 text-xl font-semibold text-[#171717]">{money(milestone.amount, milestone.currency)}</p>
+          <div><div className="flex flex-wrap items-center gap-2"><SpStatusBadge tone={milestoneBadge(milestone).tone}>{milestoneBadge(milestone).label}</SpStatusBadge><SpStatusBadge tone={due.urgent ? 'warning' : 'neutral'}>{due.label}</SpStatusBadge></div><h2 className="mt-4 font-heading text-2xl font-semibold text-[#171717]">{milestone.title}</h2><p className="mt-2 text-sm leading-7 text-[#6B7280]">{milestone.description || 'No milestone description.'}</p></div><p className={`shrink-0 text-xl font-semibold ${isRefundedMilestone(milestone) ? 'text-[#6B7280] line-through' : 'text-[#171717]'}`}>{money(milestone.amount, milestone.currency)}</p>
         </div>
         <dl className="mt-6 grid gap-4 border-y border-[#E5E7EB] py-5 sm:grid-cols-2 xl:grid-cols-4">
           <Metric label="Start date" value={formatDate(milestone.startDate)} />

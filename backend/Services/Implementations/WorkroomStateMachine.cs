@@ -37,7 +37,11 @@ public static class WorkroomStateMachine
             [WorkroomMilestoneStatus.Resubmitted] = [WorkroomMilestoneStatus.ClientReviewing, WorkroomMilestoneStatus.RevisionRequested, WorkroomMilestoneStatus.Approved, WorkroomMilestoneStatus.PaymentProcessing, WorkroomMilestoneStatus.Paid, WorkroomMilestoneStatus.Disputed],
             [WorkroomMilestoneStatus.Approved] = [WorkroomMilestoneStatus.PaymentProcessing],
             [WorkroomMilestoneStatus.PaymentProcessing] = [WorkroomMilestoneStatus.Paid, WorkroomMilestoneStatus.Disputed],
-            [WorkroomMilestoneStatus.Disputed] = [WorkroomMilestoneStatus.ClientReviewing, WorkroomMilestoneStatus.Cancelled],
+            // ProviderFavored resolution returns to ClientReviewing; ClientFavored settles
+            // to Paid with RefundedAt set. Cancelled is retained as a legal edge but has no
+            // writer — it is unreachable from every completion guard, so routing a resolved
+            // dispute there stranded the engagement permanently (BUG-2).
+            [WorkroomMilestoneStatus.Disputed] = [WorkroomMilestoneStatus.ClientReviewing, WorkroomMilestoneStatus.Paid, WorkroomMilestoneStatus.Cancelled],
         };
 
     public static bool CanTransition(EngagementStatus from, EngagementStatus to) => from == to ||

@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { CalendarClock, CheckCircle2, FileCheck2, Info } from 'lucide-react';
+import { CalendarClock, CheckCircle2, FileCheck2, Info, RotateCcw } from 'lucide-react';
 import { formatPrice } from '@/lib/marketplace-format';
-import { statusChipClass } from '@/lib/workroom-status';
+import { isRefundedMilestone, milestoneChipClass, milestoneStatusLabel } from '@/lib/workroom-status';
 import {
   useClientApproveMilestone,
   useClientDecideExtension,
@@ -53,6 +53,8 @@ export function MilestoneCard({
 
   const status = milestone.status;
   const money = formatPrice(milestone.amount, milestone.currency);
+  // Paid covers both settlement directions; refunded must not read as "provider paid".
+  const refunded = isRefundedMilestone(milestone);
 
   // Latest submission for this milestone; earlier ones are Superseded server-side.
   const latestDeliverable = [...deliverables]
@@ -65,9 +67,9 @@ export function MilestoneCard({
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-3">
         <h3 className="min-w-0 text-lg font-semibold text-foreground">{milestone.title}</h3>
         <span
-          className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium ${statusChipClass(status)}`}
+          className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium ${milestoneChipClass(milestone)}`}
         >
-          {status}
+          {milestoneStatusLabel(milestone)}
         </span>
       </div>
 
@@ -77,8 +79,10 @@ export function MilestoneCard({
 
       {/* Metadata row: only fields that are actually present. */}
       <p className="text-xs text-muted-foreground">
+        {/* Amount is split out of the joined list so a refunded milestone can strike it
+            through — the money went back to the buyer, so the figure is no longer owed. */}
+        <span className={refunded ? 'line-through' : undefined}>Amount {money}</span>
         {[
-          `Amount ${money}`,
           milestone.dueDate ? `Due ${formatDate(milestone.dueDate)}` : null,
           milestone.approvedExtensionDays > 0
             ? `+${milestone.approvedExtensionDays}d extension`
@@ -89,7 +93,8 @@ export function MilestoneCard({
           milestone.escrowStatus ? `Escrow ${milestone.escrowStatus}` : null,
         ]
           .filter(Boolean)
-          .join(' · ')}
+          .map((part) => ` · ${part}`)
+          .join('')}
       </p>
 
       {/* Provider-requested extension — sits above state content because it's
@@ -311,10 +316,17 @@ export function MilestoneCard({
           <Note>The provider is working on your revision.</Note>
         )}
 
-        {status === 'Paid' && (
+        {status === 'Paid' && !refunded && (
           <p className="flex items-center gap-2 text-sm text-success-text">
             <CheckCircle2 className="size-4" />
             Milestone complete. {money} released to the provider.
+          </p>
+        )}
+
+        {refunded && (
+          <p className="flex items-center gap-2 text-sm text-destructive">
+            <RotateCcw className="size-4" />
+            Dispute resolved in your favour. {money} was refunded to you.
           </p>
         )}
 

@@ -34,7 +34,8 @@ import {
   apiError,
   engagementTone,
   formatDate,
-  milestoneTone,
+  isRefundedMilestone,
+  milestoneBadge,
   money,
   providerActionsLocked,
   words,
@@ -171,7 +172,7 @@ function ProjectOverview({ data, onOpenMilestones, onSelectMilestone }: { data: 
 
         {current ? (
           <SpCard>
-            <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start"><div><p className="text-xs font-semibold uppercase tracking-[0.1em] text-[#6B7280]">Current milestone</p><h2 className="mt-2 font-heading text-xl font-semibold text-[#171717]">{current.title}</h2><p className="mt-2 text-sm leading-6 text-[#6B7280]">{current.description || current.completionCriteria}</p></div><SpStatusBadge tone={milestoneTone(current.status)}>{words(current.status)}</SpStatusBadge></div>
+            <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start"><div><p className="text-xs font-semibold uppercase tracking-[0.1em] text-[#6B7280]">Current milestone</p><h2 className="mt-2 font-heading text-xl font-semibold text-[#171717]">{current.title}</h2><p className="mt-2 text-sm leading-6 text-[#6B7280]">{current.description || current.completionCriteria}</p></div><SpStatusBadge tone={milestoneBadge(current).tone}>{milestoneBadge(current).label}</SpStatusBadge></div>
             <dl className="mt-5 grid gap-4 border-t border-[#E5E7EB] pt-5 sm:grid-cols-3"><SmallMetric label="Amount" value={money(current.amount, current.currency)} /><SmallMetric label="Due" value={formatDate(current.dueDate)} /><SmallMetric label="Delivery clock" value={words(current.deliveryClockState)} /></dl>
             <Button type="button" variant="outline" className="mt-5" onClick={() => onSelectMilestone(current.id)}>Open milestone</Button>
           </SpCard>
@@ -181,7 +182,7 @@ function ProjectOverview({ data, onOpenMilestones, onSelectMilestone }: { data: 
       <aside className="space-y-6">
         <SpCard>
           <h2 className="font-heading text-lg font-semibold text-[#171717]">Milestone progress</h2>
-          <ol className="mt-5 space-y-4">{data.milestones.map((item, index) => <li key={item.id} className="flex items-start gap-3"><span className={`mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${item.status === 'Paid' ? 'bg-[#E8F7F0] text-[#157A55]' : 'bg-[#F3F4F6] text-[#4B5563]'}`}>{index + 1}</span><button type="button" onClick={() => onSelectMilestone(item.id)} className="min-w-0 text-left outline-none focus-visible:ring-2 focus-visible:ring-[#3C61DD]"><span className="block text-sm font-semibold text-[#171717]">{item.title}</span><span className="mt-0.5 block text-xs text-[#6B7280]">{words(item.status)}</span></button></li>)}</ol>
+          <ol className="mt-5 space-y-4">{data.milestones.map((item, index) => <li key={item.id} className="flex items-start gap-3"><span className={`mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${item.status === 'Paid' && !isRefundedMilestone(item) ? 'bg-[#E8F7F0] text-[#157A55]' : 'bg-[#F3F4F6] text-[#4B5563]'}`}>{index + 1}</span><button type="button" onClick={() => onSelectMilestone(item.id)} className="min-w-0 text-left outline-none focus-visible:ring-2 focus-visible:ring-[#3C61DD]"><span className="block text-sm font-semibold text-[#171717]">{item.title}</span><span className="mt-0.5 block text-xs text-[#6B7280]">{milestoneBadge(item).label}</span></button></li>)}</ol>
           <Button type="button" variant="outline" className="mt-5 w-full" onClick={onOpenMilestones}>View all milestones</Button>
         </SpCard>
         {data.engagement.engagementStatus === 'Completed' && <ReviewSummary data={data} />}
