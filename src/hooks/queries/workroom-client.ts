@@ -33,11 +33,19 @@ export const useClientEngagements = () => {
   });
 };
 
+/**
+ * Polls because several transitions originate outside this session and produce no local
+ * mutation to invalidate on: an admin resolving a dispute, the provider submitting a
+ * delivery, and the 7-day auto-release sweep. Without it the buyer sits on stale state
+ * until they reload. 30s is slow enough to be unnoticeable in cost and fast enough that
+ * a two-window walkthrough does not need manual refreshes.
+ */
 export const useClientEngagement = (id: string | null) =>
   useQuery({
     queryKey: clientWorkroomKeys.detail(id ?? ''),
     queryFn: () => getEngagement(id!),
     enabled: !!id,
+    refetchInterval: 30_000,
   });
 
 /** Every mutation refetches the whole client-workroom tree — state transitions

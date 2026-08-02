@@ -22,7 +22,10 @@ export const useEngagements = () => {
     enabled: !!user?.id,
   });
 };
-export const useEngagement = (id: string | null) => useQuery({ queryKey: [...WORKROOM, id], queryFn: () => api.getEngagement(id!), enabled: !!id });
+/** Polls for the same reason as the buyer twin — admin dispute resolution, client
+ *  approval/revision, and the auto-release sweep all land without a local mutation to
+ *  invalidate on. See the comment on useClientEngagement. */
+export const useEngagement = (id: string | null) => useQuery({ queryKey: [...WORKROOM, id], queryFn: () => api.getEngagement(id!), enabled: !!id, refetchInterval: 30_000 });
 export const useEarnings = (currency = 'EUR') => useQuery({ queryKey: [...EARNINGS, currency], queryFn: () => api.getEarnings(currency) });
 export const useFinancialStatement = (from: string, to: string, currency: string, enabled: boolean) => useQuery({ queryKey: [...EARNINGS, 'statement', currency, from, to], queryFn: () => api.getStatement(from, to, currency), enabled });
 function useWrite<TArg, TResult>(fn: (arg: TArg) => Promise<TResult>, keys: readonly string[] = WORKROOM) { const qc = useQueryClient(); return useMutation({ mutationFn: fn, onSuccess: () => keys.forEach((key) => qc.invalidateQueries({ queryKey: [key] })) }); }
