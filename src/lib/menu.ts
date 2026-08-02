@@ -4,6 +4,7 @@ import {
   BadgeCheck,
   Lightbulb,
   Users,
+  User,
   Settings,
   Wallet,
   Compass,
@@ -191,6 +192,16 @@ export const menu: Record<UserRole, MenuSection[]> = {
           label: "Discovery",
           href: "/dashboard/investor/discovery",
           icon: Compass,
+        },
+        {
+          label: "Investment Thesis",
+          href: "/dashboard/investor/thesis",
+          icon: BadgeCheck,
+        },
+        {
+          label: "Public Profile",
+          href: "/dashboard/investor/profile",
+          icon: User,
         },
         {
           label: "Pipeline",

@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/app/_providers/AuthProvider";
 import { useDeals } from "@/hooks/queries/deals";
 import { useDealRealtime } from "@/hooks/queries/use-deal-realtime";
 import { dealRoleForUser } from "@/lib/deal-utils";
@@ -18,7 +18,7 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export default function NegotiationWorkspace() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const router = useRouter();
   const params = useSearchParams();
 
@@ -26,7 +26,10 @@ export default function NegotiationWorkspace() {
   const activeId = params.get("d");
 
   const { data: deals = [], isLoading, isError } = useDeals();
-  const realtimeStatus = useDealRealtime(!!user);
+  // Deal events ride the per-user notifications hub; gate on token (like
+  // NotificationBell), not on `user`, so the connection isn't held hostage to
+  // auth-context hydration timing.
+  const realtimeStatus = useDealRealtime(!!token);
 
   const select = (id: string) => router.replace(`?d=${id}`);
   const live = realtimeStatus === "connected";

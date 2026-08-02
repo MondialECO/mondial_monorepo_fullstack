@@ -15,6 +15,7 @@ import SignaturePanel from "./SignaturePanel";
 import DealCompletionPanel from "./DealCompletionPanel";
 import RevisionTimeline from "./RevisionTimeline";
 import DealActivityTimeline from "./DealActivityTimeline";
+import OfferDiffCard from "./OfferDiffCard";
 import { DealDetailSkeleton } from "./Skeletons";
 import {
   useAcceptOffer,
@@ -82,6 +83,13 @@ export default function DealDetailPanel({ dealId, myRole, onBack }: DealDetailPa
   const myTurn = isMyTurn(deal, myRole);
   const open = isOfferOpen(deal);
   const cpLabel = myRole ? counterpartyLabel(myRole) : "Counterparty";
+  // Prefer the real counterparty name; fall back to the role + short id only
+  // when the snapshot is absent (legacy deals).
+  const cpName =
+    (myRole === "investor"
+      ? deal.companyName?.trim()
+      : deal.investors[0]?.investorName?.trim()) ||
+    `${cpLabel} · ${shortId(deal.dealId)}`;
   const pending = counter.isPending || accept.isPending || reject.isPending;
 
   const submitCounter = async (terms: OfferTermsInput) => {
@@ -102,9 +110,13 @@ export default function DealDetailPanel({ dealId, myRole, onBack }: DealDetailPa
         </Button>
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-semibold text-foreground">
-            {cpLabel} · {shortId(deal.dealId)}
+            {cpName}
           </div>
-          <div className="text-xs text-muted-foreground capitalize">Deal status: {deal.status.replace(/_/g, " ")}</div>
+          <div className="text-xs text-muted-foreground">
+            {latest ? `Offer ${latest.revisionNumber} • ` : ""}
+            <span className="capitalize">{deal.status.replace(/_/g, " ")}</span>
+            {myTurn && open ? " • Your move" : ""}
+          </div>
         </div>
         {isClosed(deal) ? (
           <Badge variant="success">Completed</Badge>
@@ -117,6 +129,32 @@ export default function DealDetailPanel({ dealId, myRole, onBack }: DealDetailPa
 
       <ScrollArea className="flex-1">
         <div className="space-y-5 p-4 sm:p-6">
+          {myTurn && open ? (
+            <DealCardBase className="border-l-4 border-l-primary bg-primary/5">
+              <p className="text-sm font-medium text-primary">Next action: Your move</p>
+              <p className="text-xs text-muted-foreground mt-1">Review the offer and choose to accept, counter, or reject.</p>
+            </DealCardBase>
+          ) : open && !isClosed(deal) ? (
+            <DealCardBase className="border-l-4 border-l-muted bg-muted/5">
+              <p className="text-sm font-medium text-foreground">Waiting for {cpLabel.toLowerCase()}</p>
+              <p className="text-xs text-muted-foreground mt-1">They will respond to your offer.</p>
+            </DealCardBase>
+          ) : null}
+
+          {/* Activity timeline — visible early for deal momentum */}
+          <DealCardBase>
+            <h3 className="mb-3 text-sm font-semibold text-foreground">Timeline</h3>
+            <DealActivityTimeline entries={activity} isLoading={activityLoading} />
+          </DealCardBase>
+
+          {/* Offer diff — show what changed from previous revision */}
+          {latest && latest.revisionNumber > 1 && deal.revisions.length >= 2 ? (
+            <OfferDiffCard
+              current={latest}
+              previous={deal.revisions[deal.revisions.length - 2]}
+            />
+          ) : null}
+
           <OfferTermsCard terms={deal.termSheet} />
 
           {/* Status / actions */}
@@ -146,12 +184,6 @@ export default function DealDetailPanel({ dealId, myRole, onBack }: DealDetailPa
           <DealCardBase>
             <h3 className="mb-3 text-sm font-semibold text-foreground">Revision history</h3>
             <RevisionTimeline revisions={deal.revisions} />
-          </DealCardBase>
-
-          {/* Activity timeline */}
-          <DealCardBase>
-            <h3 className="mb-3 text-sm font-semibold text-foreground">Activity</h3>
-            <DealActivityTimeline entries={activity} isLoading={activityLoading} />
           </DealCardBase>
         </div>
       </ScrollArea>

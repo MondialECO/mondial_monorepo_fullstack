@@ -53,6 +53,14 @@ public class InvestorMatch
     public DateTime? AcceptedAt { get; set; }
     public DateTime? RejectedAt { get; set; }
 
+    /// <summary>
+    /// Real component scores persisted from InvestorMatcher.ScoreAndExplain().
+    /// These are the actual dimension weights used in the calculation, NOT derived
+    /// or fabricated from the total. Every consumer (API, UI) reads from this
+    /// single source of truth.
+    /// </summary>
+    public ScoreComponents ScoreComponents { get; set; } = new();
+
     // ----- Immutable investor snapshot (P0-3) -----
     // Captured at match creation time so cards never render with null fields
     // even if the live Investor record is later deleted or mutated. Read first
@@ -73,6 +81,36 @@ public class InvestorPreferences
     public List<string> PreferredGeographies { get; set; } = new();
     public bool PreRataRightsRequired { get; set; }
     public bool BoardSeatRequired { get; set; }
+}
+
+public class ScoreComponents
+{
+    /// <summary>Sector match: 0-25. Company.Industry ∩ Investor.PreferredSectors.</summary>
+    public int SectorScore { get; set; }
+
+    /// <summary>Funding stage match: 0-15. Company.FundingRoundType ∩ Investor.PreferredStages.</summary>
+    public int StageScore { get; set; }
+
+    /// <summary>Check-size band fit: 0-20. Company.FundingAskAmount in [Min,Max] CheckSize range.</summary>
+    public int CheckSizeScore { get; set; }
+
+    /// <summary>Geography match: 0-10. Company.Country ∩ Investor.PreferredGeographies.</summary>
+    public int GeographyScore { get; set; }
+
+    /// <summary>Equity type match: 0-5. Company.ShareType ∩ Investor.PreferredEquityTypes.</summary>
+    public int EquityTypeScore { get; set; }
+
+    /// <summary>Investment history fit: 0-10. Investor's track record (exits, deals, activity, check size alignment).</summary>
+    public int InvestmentHistoryScore { get; set; }
+
+    /// <summary>Revenue stage alignment: 0-7. Derived from Q-total revenue against investor stage preference.</summary>
+    public int RevenueStageScore { get; set; }
+
+    /// <summary>Market size band: 0-4. Companies.MarketSizeEstimate.</summary>
+    public int MarketSizeScore { get; set; }
+
+    /// <summary>Growth potential: 0-4. Companies.GrowthPotentialScore mapped to 0-100 scale.</summary>
+    public int GrowthPotentialScore { get; set; }
 }
 
 public class InteractionRecord

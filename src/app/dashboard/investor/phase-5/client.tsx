@@ -2,7 +2,8 @@
 
 import { Button } from '@/components/ui/button';
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import { isAxiosError } from 'axios';
+import api from '@/lib/axios';
 
 interface Deal {
   companyId: string;
@@ -21,23 +22,27 @@ export default function Phase5Client() {
   const [sectorFilter, setSectorFilter] = useState('');
 
   useEffect(() => {
-    fetchDeals();
+    const fetchDeals = async () => {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const res = await api.get('/investor/deals', {
+          params: sectorFilter ? { sector: sectorFilter } : undefined,
+        });
+        setDeals(res.data || []);
+      } catch (err) {
+        const message = isAxiosError(err)
+          ? err.response?.data?.error
+          : undefined;
+        setError(message || 'Failed to load deals');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void fetchDeals();
   }, [sectorFilter]);
-
-  const fetchDeals = async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const params = sectorFilter ? `?sector=${sectorFilter}` : '';
-      const res = await axios.get(`/api/investor/deals${params}`);
-      setDeals(res.data || []);
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to load deals');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const sectors = ['SaaS', 'FinTech', 'HealthTech', 'ClimaTech', 'AI/ML', 'Biotech'];
 

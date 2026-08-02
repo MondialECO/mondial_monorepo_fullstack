@@ -1,9 +1,8 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import api from '@/lib/axios';
-import { isAxiosError } from 'axios';
 import {
   parseStrictUserRole,
   ROLE_DASHBOARD_ROUTES,
@@ -42,8 +41,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
   const [isBackendVerified, setIsBackendVerified] = useState(false);
+  const [isVerifyingBackend, setIsVerifyingBackend] = useState(false);
   const router = useRouter();
-  const pathname = usePathname();
 
   // Hydrate token from localStorage only (never authorize from cached user)
   useEffect(() => {
@@ -75,12 +74,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Verify token with backend after hydration (must succeed before authorizing dashboard)
   useEffect(() => {
-    if (!isHydrated || !token) {
+    if (!isHydrated) return;
+
+    if (!token) {
       setIsBackendVerified(false);
+      setIsVerifyingBackend(false);
       return;
     }
 
+    let isCancelled = false;
+
     const verifyToken = async () => {
+      setIsVerifyingBackend(true);
       try {
         const response = await api.get('/auth/me');
         const authData = response.data?.data ?? response.data;
@@ -105,12 +110,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           role: resolvedRole,
           onboardingPhase: authData.onboarding?.phase ?? 0,
         };
+
+        if (isCancelled) return;
+
         localStorage.setItem('user', JSON.stringify(updatedUser));
         setUser(updatedUser);
         setIsBackendVerified(true);
       } catch (error) {
-        const status = isAxiosError(error) ? error.response?.status : undefined;
-        const shouldExpireSession = status === 401 || status === 403;
+        if (isCancelled) return;
 
         console.log('Token validation failed, clearing auth:', error instanceof Error ? error.message : String(error));
         localStorage.removeItem('token');
@@ -121,10 +128,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (typeof window !== 'undefined' && window.location.pathname.includes('/dashboard')) {
           router.push('/login?reason=invalid_role');
         }
+      } finally {
+        if (!isCancelled) {
+          setIsVerifyingBackend(false);
+        }
       }
     };
 
     verifyToken();
+
+    return () => {
+      isCancelled = true;
+    };
   }, [isHydrated, token, router]);
 
   const login = async (email: string, password: string) => {
@@ -165,6 +180,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     setUser(user);
     setToken(token);
+    setIsBackendVerified(true);
+    setIsVerifyingBackend(false);
 
     router.push(ROLE_DASHBOARD_ROUTES[user.role]);
   };
@@ -175,6 +192,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     setToken(null);
     setIsBackendVerified(false);
+    setIsVerifyingBackend(false);
     router.replace('/login');
   };
 
@@ -219,7 +237,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         token,
         user,
         isAuthenticated: !!user && !!token && isBackendVerified,
-        isLoading: !isHydrated,
+        isLoading: !isHydrated || isVerifyingBackend || (!!token && !isBackendVerified && !user),
         isBackendVerified,
         login,
         logout,

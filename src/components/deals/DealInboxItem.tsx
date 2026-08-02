@@ -22,7 +22,7 @@ export default function DealInboxItem({ deal, myRole, active, onSelect }: DealIn
   const counterparty =
     myRole === "founder"
       ? deal.investors[0]?.investorName?.trim() || "Investor"
-      : `Founder · ${shortId(deal.dealId)}`;
+      : deal.companyName?.trim() || `Founder · ${shortId(deal.dealId)}`;
 
   const latest = latestRevision(deal);
   const myTurn = !!myRole && deal.currentTurn === myRole;
