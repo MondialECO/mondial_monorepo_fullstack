@@ -91,7 +91,7 @@ function MilestoneDetail({ data, milestone, readOnly }: { data: WorkroomDetail; 
     try {
       if (confirmation === 'activate') await activate.mutateAsync(milestone.id);
       if (confirmation === 'revision' && revision) await startRevision.mutateAsync(revision.id);
-      setFeedback({ status: 'success', message: confirmation === 'activate' ? 'Milestone activated. The backend started its delivery clock.' : 'Revision work started.' });
+      setFeedback({ status: 'success', message: confirmation === 'activate' ? 'Milestone started. Your delivery clock is now running.' : 'Revision work started.' });
       setConfirmation(null);
     } catch (error) {
       setFeedback({ status: 'error', message: apiError(error, 'The milestone action could not be completed.') });
@@ -103,7 +103,7 @@ function MilestoneDetail({ data, milestone, readOnly }: { data: WorkroomDetail; 
     setFeedback(null);
     try {
       await extension.mutateAsync({ id: milestone.id, days: Number(extensionForm.days), reason: extensionForm.reason.trim() });
-      setFeedback({ status: 'success', message: 'Extension requested. The due date remains unchanged until the client approves it.' });
+      setFeedback({ status: 'success', message: 'Extension requested. The due date stays as it is until the client approves.' });
       setExtensionOpen(false);
       setExtensionForm({ days: '1', reason: '' });
     } catch (error) {
@@ -148,7 +148,7 @@ function MilestoneDetail({ data, milestone, readOnly }: { data: WorkroomDetail; 
       </SpCard>
 
       {milestone.extensionRequested && <SpMutationFeedback status="info">An extension is awaiting client decision. The existing due date has not changed automatically.</SpMutationFeedback>}
-      {milestone.approvedExtensionDays > 0 && <SpMutationFeedback status="info">The client approved {milestone.approvedExtensionDays} extension day(s); the backend calculated the current due date.</SpMutationFeedback>}
+      {milestone.approvedExtensionDays > 0 && <SpMutationFeedback status="info">The client approved {milestone.approvedExtensionDays} extra day(s). The due date below already includes them.</SpMutationFeedback>}
       {/* Gated on disputeOutcome, never on disputeOpenedAt — that timestamp is immutable
           history the backend never clears (canon §10.7), so keying the banner off it left
           a red "dispute open" alarm on screen forever after resolution. The timestamp is
@@ -156,7 +156,7 @@ function MilestoneDetail({ data, milestone, readOnly }: { data: WorkroomDetail; 
       {disputeState(milestone) === 'open' && <SpMutationFeedback status="error">Dispute opened {formatDate(milestone.disputeOpenedAt, true)} and is awaiting support review. Payment release is blocked until it resolves. Support review target: {formatDate(milestone.disputeReviewEndsAt, true)}.</SpMutationFeedback>}
       {disputeState(milestone) === 'resolved' && <SpMutationFeedback status="info">Dispute opened {formatDate(milestone.disputeOpenedAt, true)} was resolved in support review: {words(milestone.disputeOutcome ?? '')}. {milestone.disputeOutcome === CLIENT_FAVORED ? 'The milestone amount was refunded to the client and this milestone is settled.' : milestone.disputeOutcome === PROVIDER_FAVORED ? 'The milestone returned to client review and payment release is unblocked.' : ''}</SpMutationFeedback>}
       {revision && <RevisionCard revision={revision} />}
-      {(milestone.reviewWindowEndsAt || milestone.autoReleaseAt) && <SpCard><SpSectionHeader title="Client review window" description="These timestamps are backend-owned. No client approval or payment release is performed by this screen." /><dl className="mt-5 grid gap-4 sm:grid-cols-2"><Metric label="Review window ends" value={formatDate(milestone.reviewWindowEndsAt, true)} /><Metric label="Scheduled rule evaluation" value={formatDate(milestone.autoReleaseAt, true)} /></dl></SpCard>}
+      {(milestone.reviewWindowEndsAt || milestone.autoReleaseAt) && <SpCard><SpSectionHeader title="Client review window" description="If the client neither approves nor requests changes, payment releases to you automatically on the date below." /><dl className="mt-5 grid gap-4 sm:grid-cols-2"><Metric label="Review window ends" value={formatDate(milestone.reviewWindowEndsAt, true)} /><Metric label="Automatic payment release" value={formatDate(milestone.autoReleaseAt, true)} /></dl></SpCard>}
 
       <SimpleConfirmation kind={confirmation} pending={pending} onClose={() => setConfirmation(null)} onConfirm={confirm} />
       <ExtensionDialog open={extensionOpen} form={extensionForm} setForm={setExtensionForm} pending={extension.isPending} onClose={() => setExtensionOpen(false)} onConfirm={requestExtension} />

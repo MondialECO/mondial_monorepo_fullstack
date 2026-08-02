@@ -85,7 +85,7 @@ export function ProjectList({
         <SpEmptyState
           icon={BriefcaseBusiness}
           title={(query.data ?? []).length ? `No ${view} projects match these filters` : view === 'completed' ? 'No completed projects' : 'No active projects'}
-          description={(query.data ?? []).length ? 'Clear or adjust the current search and status filters.' : view === 'completed' ? 'Completed, archived, and cancelled engagement history will appear here.' : 'Accepted proposals appear here after the transaction-safe Workroom conversion completes.'}
+          description={(query.data ?? []).length ? 'Clear or adjust the current search and status filters.' : view === 'completed' ? 'Completed, archived, and cancelled engagement history will appear here.' : 'Projects appear here once a client accepts your proposal. Setting one up takes a moment after acceptance.'}
           action={(query.data ?? []).length ? <Button type="button" variant="outline" onClick={clear}>Clear filters</Button> : undefined}
         />
       ) : (

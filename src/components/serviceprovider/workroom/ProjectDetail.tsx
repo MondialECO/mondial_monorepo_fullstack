@@ -95,7 +95,7 @@ export function ProjectDetail({
       if (confirmation === 'pause') await pause.mutateAsync({ id, reason: pauseReason.trim() });
       if (confirmation === 'resume') await resume.mutateAsync(id);
       if (confirmation === 'complete') await complete.mutateAsync(id);
-      setFeedback({ status: 'success', message: confirmation === 'pause' ? 'Project paused. Active delivery clocks are frozen.' : confirmation === 'resume' ? 'Project resumed. The backend shifted active deadlines by the frozen duration.' : 'Project marked complete.' });
+      setFeedback({ status: 'success', message: confirmation === 'pause' ? 'Project paused. Active delivery clocks are frozen.' : confirmation === 'resume' ? 'Project resumed. Your deadlines moved forward by however long it was paused.' : 'Project marked complete.' });
       setConfirmation(null);
       setPauseReason('');
     } catch (error) {
@@ -185,7 +185,7 @@ function SmallMetric({ label, value }: { label: string; value: string }) {
 
 function ActionDialog({ kind, pauseReason, setPauseReason, pending, canComplete, onClose, onConfirm }: { kind: Confirmation; pauseReason: string; setPauseReason: (value: string) => void; pending: boolean; canComplete: boolean; onClose: () => void; onConfirm: () => void }) {
   if (!kind) return null;
-  const copy = kind === 'pause' ? { title: 'Pause this project?', description: 'The backend will freeze active delivery clocks until either participant resumes the Workroom.', action: 'Pause project' } : kind === 'resume' ? { title: 'Resume this project?', description: 'The backend will shift active due dates by the exact paused duration.', action: 'Resume project' } : { title: 'Confirm project completion?', description: 'Completion is allowed only after every milestone and payment-release state is resolved and no revision remains open.', action: 'Complete project' };
+  const copy = kind === 'pause' ? { title: 'Pause this project?', description: 'Delivery clocks stop until you or the client resumes. Use this when work is blocked.', action: 'Pause project' } : kind === 'resume' ? { title: 'Resume this project?', description: 'Due dates move forward by exactly how long the project was paused.', action: 'Resume project' } : { title: 'Confirm project completion?', description: 'Available once every milestone is settled and no revision is still open.', action: 'Complete project' };
   return <Dialog open onOpenChange={(open) => !open && onClose()}><DialogContent><DialogHeader><DialogTitle>{copy.title}</DialogTitle><DialogDescription>{copy.description}</DialogDescription></DialogHeader>{kind === 'pause' && <div><label htmlFor="pause-reason" className="text-sm font-semibold text-[#374151]">Reason</label><Textarea id="pause-reason" value={pauseReason} onChange={(event) => setPauseReason(event.target.value)} className="mt-2" rows={4} /></div>}<DialogFooter><Button type="button" variant="outline" onClick={onClose} disabled={pending}>Cancel</Button><Button type="button" onClick={onConfirm} disabled={pending || kind === 'pause' && !pauseReason.trim() || kind === 'complete' && !canComplete}>{pending ? 'Working…' : copy.action}</Button></DialogFooter></DialogContent></Dialog>;
 }
 
