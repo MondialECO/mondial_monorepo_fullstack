@@ -37,7 +37,7 @@ import {
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/app/_providers/AuthProvider';
 import { useCreatorProgress } from '@/providers/CreatorProgressProvider';
 import { getNextCreatorAction } from '@/lib/creator-state-resolver';
 import { useDashboardStats } from '@/hooks/queries/creator';
