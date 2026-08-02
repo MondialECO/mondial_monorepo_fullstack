@@ -134,13 +134,12 @@ export function ProjectDetail({
       />
 
       {feedback && <SpMutationFeedback status={feedback.status}>{feedback.message}</SpMutationFeedback>}
-      <SpMutationFeedback status="info">Payment and protected-funds states in this Workroom are STUB-backed. They do not represent real money authorisation, custody, release, refund, or payout.</SpMutationFeedback>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <SummaryMetric icon={UserRound} label="Client" value={engagement.clientDisplayName || 'Client'} />
         <SummaryMetric icon={WalletCards} label="Contract value" value={money(engagement.contractValue, engagement.currency)} />
         <SummaryMetric icon={CalendarDays} label="Schedule" value={`${formatDate(engagement.startDate)} – ${formatDate(engagement.actualEndDate ?? engagement.expectedEndDate)}`} />
-        <SummaryMetric icon={ShieldCheck} label="Protected-payment state" value={`${words(engagement.escrowStatus)} · STUB-backed`} />
+        <SummaryMetric icon={ShieldCheck} label="Protected-payment state" value={words(engagement.escrowStatus)} />
       </div>
 
       <SpTabBar label="Project sections" items={tabs.map(({ label, href, active }) => ({ label, href, active }))} />

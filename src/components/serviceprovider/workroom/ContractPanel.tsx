@@ -38,7 +38,6 @@ export function ContractPanel({ data, readOnly }: { data: WorkroomDetail; readOn
   return (
     <div className="space-y-6">
       {feedback && <SpMutationFeedback status={feedback.status}>{feedback.message}</SpMutationFeedback>}
-      <SpMutationFeedback status="info">Contract confirmation is authenticated in-app consent only. It is a STUB mechanism—not a legal e-signature, signed PDF, identity certificate, or external signature provider.</SpMutationFeedback>
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.75fr)]">
         <div className="space-y-6">
           <SpCard>
