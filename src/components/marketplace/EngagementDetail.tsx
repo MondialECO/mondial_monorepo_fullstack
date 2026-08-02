@@ -189,7 +189,7 @@ function EngagementSummaryCard({ detail }: { detail: WorkroomDetail }) {
           <p className="mb-3 text-xs uppercase tracking-wide text-muted-foreground">
             Quick actions
           </p>
-          <EngagementActions detail={detail} stacked />
+          <EngagementActions detail={detail} />
         </>
       )}
     </div>

@@ -12,14 +12,14 @@ import type { WorkroomDetail } from '@/types/workroom';
 
 const CLOSED = new Set(['Completed', 'Cancelled', 'Archived']);
 
-export function EngagementActions({
-  detail,
-  stacked,
-}: {
-  detail: WorkroomDetail;
-  /** Vertical full-width buttons for the sidebar; horizontal row otherwise. */
-  stacked?: boolean;
-}) {
+/**
+ * Renders as a vertical stack of full-width buttons. It previously took a `stacked` flag
+ * selecting between this and a horizontal row, but the horizontal branch never executed:
+ * UI-R4 moved these actions into the sticky sidebar and left exactly one caller, which
+ * always passed the flag. Re-adding a layout branch is a few minutes' work if a second
+ * placement ever appears.
+ */
+export function EngagementActions({ detail }: { detail: WorkroomDetail }) {
   const { engagement, milestones, revisionRequests } = detail;
   const pause = useClientPauseEngagement();
   const resume = useClientResumeEngagement();
@@ -51,7 +51,7 @@ export function EngagementActions({
   if (isClosed) return null;
 
   return (
-    <div className={stacked ? 'flex flex-col gap-2' : 'flex flex-wrap items-start gap-2'}>
+    <div className="flex flex-col gap-2">
       {isPaused ? (
         <ConfirmAction
           label="Resume"
@@ -62,7 +62,7 @@ export function EngagementActions({
           isPending={resume.isPending}
           errorMessage={resume.isError ? workroomErrorMessage(resume.error) : null}
           onConfirm={() => resume.mutate(engagement.id)}
-          fullWidth={stacked}
+          fullWidth
         />
       ) : (
         <ConfirmAction
@@ -75,7 +75,7 @@ export function EngagementActions({
           errorMessage={pause.isError ? workroomErrorMessage(pause.error) : null}
           canConfirm={pauseReason.trim().length > 0}
           onConfirm={() => pause.mutate({ id: engagement.id, reason: pauseReason.trim() })}
-          fullWidth={stacked}
+          fullWidth
         >
           <textarea
             value={pauseReason}
@@ -97,7 +97,7 @@ export function EngagementActions({
         disabled={!canComplete}
         disabledReason={completeBlockedReason}
         onConfirm={() => complete.mutate(engagement.id)}
-        fullWidth={stacked}
+        fullWidth
       />
     </div>
   );
