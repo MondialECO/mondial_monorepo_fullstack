@@ -1418,6 +1418,17 @@ Cross-module: §2 (12% platform fee), §3 (provider trust), §4 (SP Workroom & E
 
 **Auth gate:** both marketplace routes wrap in the existing `AuthGuard` component (redirects to `/login` if unauthenticated). Same UI for all four roles; only the CTA post-click behavior may adapt by role in future (v2).
 
+**Role-scoped engagement visibility (2026-08-02).** `GET /api/workroom/engagements` is actor-scoped, not role-scoped: it returns every engagement the caller participates in, in either role. Because a provider can also buy services, each surface must narrow the result to the role it represents.
+
+| Surface | Hook | Filter | Shipped |
+|---|---|---|---|
+| Buyer — "My Engagements" | `useClientEngagements` | `clientId === user.id` | M3a (`9e12281`) |
+| Seller — SP Workroom projects | `useEngagements` | `providerId === user.id` | `169225d` |
+
+Both hooks put `user.id` in the `queryKey` so a session change re-scopes the cache instead of briefly showing the previous user's rows, and stay `enabled` only once `user?.id` resolves. Both detail pages (`EngagementDetail`, `ProjectDetail`) carry a direct-URL ownership guard rendering a vague "isn't part of your buyer/provider activity" message — deliberately non-committal about existence, matching the backend's `NotFound` for non-participants. Without the seller-side filter a provider saw their own purchases listed as work to deliver, with their own name in the client column.
+
+**Rule:** `useAuth` is imported from `@/app/_providers/AuthProvider`. `@/context/AuthContext` is an unmounted duplicate whose `user` is permanently `null`; importing it silently disables every filter and guard above (the defect fixed in `5b07be2`).
+
 ### 10.3 Marketplace grid page
 
 **Route:** `/marketplace/services`.
@@ -1684,6 +1695,12 @@ Two separate state machines exist (per `WorkroomStateMachine`):
 - 7-day auto-release (`AutoReleaseAt` — fires ClientReviewing/Resubmitted → Paid if the client doesn't act and no dispute is open).
 - 5-day dispute window (`DisputeReviewEndsAt` — audit-only "AdminReviewRequired" escalation, no state change).
 
+**Dispute resolution invariant (2026-08-02, commit `6289f13`).** `DisputeOutcome` is the authoritative "is a dispute active" state: `Open` blocks payment release and auto-release; any other value — including `null`, for a never-disputed milestone — permits both. `DisputeOpenedAt` is **immutable history and is never cleared**: `AnalyticsService` buckets disputes by that timestamp for period dispute-rate metrics, and `MilestonesPanel` renders it beside the outcome.
+
+Before `6289f13`, both the release guard in `ReleaseMilestoneAsync` and the auto-release sweep in `SweepTimedRulesAsync` tested `DisputeOpenedAt`, which no code path ever cleared. A provider-favoured resolution therefore returned the milestone to `ClientReviewing` and escrow to `Funded` — visibly healthy — while the money was frozen permanently: manual approval returned "Payment release is blocked by an active dispute" and the sweep skipped the milestone forever. The fix re-pointed both guards at `DisputeOutcome` rather than clearing the timestamp; clearing it would have unfrozen escrow while silently zeroing the dispute rate for every resolved dispute and erasing the resolution banner from the SP UI.
+
+**Rule:** any new "is a dispute active" check gates on `DisputeOutcome == Open`, never on `DisputeOpenedAt != null`. Still open — a client-favoured resolution leaves the milestone `Cancelled`, a state `CompleteEngagementAsync` can never satisfy, stranding the engagement permanently (audit BUG-2, deferred by decision).
+
 ### 10.8 Payment layer
 
 **Interface: `IPaymentGatewayService` (5 methods):**
@@ -1720,6 +1737,10 @@ Exactly two production consumers:
 2. `WorkroomService.cs:709` — milestone release: `commission = decimal.Round(m.Amount * CommissionRate, 2, AwayFromZero); net = m.Amount - commission`.
 
 Tests (`LeadsModuleTests.cs`, `WorkroomModuleTests.cs`, `AnalyticsModuleTests.cs`) assert `CommissionRate == 0.12m` and that frontends never receive a rate field. **No hardcoded 12% anywhere else.**
+
+**Escrow reference contract (2026-08-02, commit `09d25b8`) — hard prerequisite for M8.** `ReleaseEscrowAsync` and `RefundEscrowAsync` MUST present the exact `PaymentOperation.GatewayReference` persisted at fund time, read via the `EscrowReference(milestoneId, action)` helper, which looks up the `AuthorizeEscrow` operation keyed `escrow:{milestoneId}`. **Never construct the reference inline.**
+
+Before `09d25b8` both call sites passed the literal `$"stub_escrow_escrow:{m.Id}"`. This was undetectable in testing because `StubPaymentGatewayService` derives its reference from the idempotency key, so the fabricated string reproduced the stub's output byte for byte — but against a real gateway every release and every refund would have presented a reference that gateway never issued. A funded milestone with no stored reference now throws `InvalidOperationException` rather than falling back to a constructed value: a missing reference is corrupt state, not a user error. The coincidence that hid this is pinned by `Stub_escrow_reference_coincides_with_the_key_that_masked_fabrication` in `WorkroomModuleTests.cs`.
 ### 10.9 Engagement-scoped workroom (SP-side LIVE, client-side missing)
 
 Provider-side workroom endpoints (LIVE) — from `WorkroomController` (22 actions total). Selected list:
@@ -1883,7 +1904,7 @@ Commit (1): `5b07be2`.
 
 **Phase M7 (deferred) — Cancellation + Dispute UI polish.** Dispute + resolution flow exists in backend (`OpenDisputeAsync`, `ResolveDisputeAsync`, `DisputeOutcome`). Client-side UI for dispute open/track and admin resolution.
 
-**Phase M8 (v2, deferred) — Real payment gateway.** Replace the `StubPaymentGatewayService` DI registration with a real Stripe/Connect adapter. The interface is stable; no other code changes.
+**Phase M8 (v2, deferred) — Real payment gateway.** Replace the `StubPaymentGatewayService` DI registration with a real Stripe/Connect adapter. The interface is stable. **Precondition satisfied 2026-08-02 (`09d25b8`):** until that commit, release and refund fabricated the escrow reference inline instead of reading `PaymentOperation.GatewayReference`, so the "swap the DI registration only" claim was false — every release against a real gateway would have failed. See the escrow reference contract in §10.8 before starting M8.
 
 **UI Redesign Sprint — Marketplace surfaces + SP workroom polish (IMPLEMENTED, 2026-08-02).**
 
@@ -2143,6 +2164,8 @@ The repo's **root `.gitignore` is a binary / non-UTF8 file**, which can make the
 ---
 
 ## Changelog
+
+**2026-08-02 — Workroom audit priority-1 fix batch (3 bugs).** Commits `6289f13`, `09d25b8`, `169225d`. (1) **Dispute reset** — release and auto-release gated on `DisputeOpenedAt`, which nothing ever cleared, so a provider-favoured resolution left escrow permanently frozen behind a healthy-looking UI. Fixed by re-pointing both guards at `DisputeOutcome`; the timestamp stays as immutable history because `AnalyticsService` buckets dispute-rate metrics by it. See §10.7. (2) **Escrow reference fabrication** — release and dispute refund passed an inline `$"stub_escrow_escrow:{m.Id}"` instead of the persisted `PaymentOperation.GatewayReference`; invisible under the stub, fatal against a real gateway. New `EscrowReference()` helper throws on a missing reference. Hard M8 precondition, see §10.8. (3) **SP-side role scope** — `useEngagements` had no seller-side mirror of M3a's buyer filter, so providers saw their own purchases as projects to deliver; added the `providerId` filter plus a `ProjectDetail` direct-URL guard. See §10.2. **Deferred by decision:** audit BUG-2 — a client-favoured dispute resolution leaves a `Cancelled` milestone that blocks `CompleteEngagementAsync` forever, stranding the engagement; needs a design decision on post-refund completion plus writers for `EngagementStatus.Cancelled`/`Archived`, which have none. Behavioural test coverage for release/refund remains absent: `WorkroomService` takes 12 dependencies and runs inside Mongo transactions, and `WebApp.Tests` does not currently compile (pre-existing CS7036 in `ServiceProviderProfileMediaTests` from `76bb8aa`).
 
 **2026-08-01 — §10 FULL REWRITE to align with actual implementation (audit-driven).** Terminology changed: Orders → Engagements, EscrowTransaction → escrow status fields + FinancialTransactions ledger, Payment.Status → PaymentOperation.Status + FinancialTransaction.PaymentStatus, WorkroomLine → WorkroomMilestone. Interface: IPaymentService → IPaymentGatewayService (5 methods). Default currency: EUR. Fee constant: PlatformCommerceConstants.CommissionRate (0.12m). Purchase flow documented: PackagePurchase → Proposal (with 11 gates, Auto/Manual paths) → WorkroomConversionJob → Engagement + Milestones. State machines documented: 13-state engagement + 15-state milestone + 8-state escrow (with dead-state notes). Phase M1 marked IMPLEMENTED with commit refs. Phases M2-M8 scope updated to reflect that the backend exists — most future phases are frontend-only wire-up. See M2-M8 subsections in §10.13 for revised scope. Cross-references in §6 updated to purchase-snapshot/engagement terminology.
 
