@@ -1,3 +1,5 @@
+> ⚠️ **HISTORICAL SNAPSHOT (superseded).** This audit is a point-in-time record, not current. Several claims are now stale (e.g. the mock ai-masterplan page — since deleted; the "2→forecast, 3→business-plan" step order — the live order is business-plan=2, forecast=3; single-provider OpenRouter, not the providers noted here). The authoritative, current spec is **`docs/creator-flow-canon.md`** (reconciled with code 2026-07-23). Kept for history — do not build from this file.
+
 # Mondial Creator — Full System Audit
 
 > **Purpose:** Single-source audit for external review (system-design AI agent).

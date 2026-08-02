@@ -139,7 +139,7 @@ export default function HireDesignerPage() {
         {/* Title Block */}
         <div className="space-y-2">
           <div className="text-xs font-bold text-primary uppercase tracking-wider">M50 Service Provider · Branding</div>
-          <h1 className="text-3xl font-extrabold tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
             Matched Designers for Your Project
           </h1>
           <p className="text-sm text-muted-foreground">

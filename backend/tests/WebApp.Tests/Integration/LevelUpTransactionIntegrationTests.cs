@@ -71,6 +71,7 @@ public class LevelUpTransactionIntegrationTests : IClassFixture<ReplicaSetAppFix
             Sp.GetRequiredService<RoleManager<ApplicationRole>>(),
             Sp.GetRequiredService<IDealEventPublisher>(),
             Sp.GetRequiredService<ICompanyService>(),
+            Sp.GetRequiredService<WebApp.Services.Repository.ICreatorIdeaStore>(),
             Sp.GetRequiredService<IMongoClient>(),
             Sp.GetRequiredService<IConfiguration>(),
             NullLogger<CreatorPhase6Controller>.Instance);

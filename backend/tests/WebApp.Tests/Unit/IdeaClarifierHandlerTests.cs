@@ -29,7 +29,7 @@ public class IdeaClarifierHandlerTests
         new() { Id = ObjectId.GenerateNewId().ToString(), OwnerUserId = "user-1", JobType = "IdeaClarifier", InputPayload = input };
 
     private static AiCompletion Completion(string text) =>
-        new() { Text = text, Model = "openai/gpt-4o", Usage = new AiTokenUsage(10, 20, 30) };
+        new() { Text = text, Model = "openai/gpt-oss-20b:free", Usage = new AiTokenUsage(10, 20, 30) };
 
     private static string ValidJson(int clarityScore = 72) => $$"""
         {

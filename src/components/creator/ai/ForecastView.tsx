@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { formatMoney } from "@/lib/format-money";
 import {
   TrendingUp,
   TrendingDown,
@@ -12,17 +13,8 @@ import {
 } from "lucide-react";
 import type { ForecastOutput } from "@/types/creator/ai";
 
-const fmt = (n: number, currency?: string) => {
-  try {
-    return new Intl.NumberFormat("en-US", {
-      style: currency ? "currency" : "decimal",
-      currency: currency || undefined,
-      maximumFractionDigits: 0,
-    }).format(n);
-  } catch {
-    return n.toLocaleString();
-  }
-};
+// Shared formatter (screen + PDF) so currency handling can't drift between them.
+const fmt = (n: number, currency?: string) => formatMoney(n, currency);
 
 function ForecastCard({
   icon: Icon,
@@ -109,12 +101,28 @@ export function ForecastView({ output }: { output: ForecastOutput }) {
   const cash = output.cashFlowProjection;
   const be = output.breakEvenAnalysis;
 
+  const totalMonths = rev?.monthly?.length ?? 0;
+  // Legacy sessions lack aiMonthCount → default to the array length so nothing is
+  // flagged projected (those forecasts were genuinely 12-month AI output).
+  const aiMonths = output.aiMonthCount ?? totalMonths;
+  const hasProjection = totalMonths > aiMonths;
+
   return (
     <div className="space-y-4">
       {output.advisoryNotice && (
         <Alert>
           <Info className="h-4 w-4" />
           <AlertDescription>{output.advisoryNotice}</AlertDescription>
+        </Alert>
+      )}
+
+      {hasProjection && (
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertDescription>
+            Months 1–{aiMonths} are AI-generated. Months {aiMonths + 1}–{totalMonths} are
+            projected deterministically from your monthly growth rate — not model output.
+          </AlertDescription>
         </Alert>
       )}
 
@@ -185,7 +193,7 @@ export function ForecastView({ output }: { output: ForecastOutput }) {
               </Badge>
             ) : (
               <Badge variant="warning">
-                Not reached within 12-month horizon
+                Not reached within {totalMonths || 36}-month horizon
               </Badge>
             )}
           </div>

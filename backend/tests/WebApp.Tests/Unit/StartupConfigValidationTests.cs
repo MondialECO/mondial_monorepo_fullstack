@@ -19,6 +19,7 @@ public class StartupConfigValidationTests
     {
         ["MongoDbSettings:ConnectionString"] = "mongodb://localhost:27017",
         ["MongoDbSettings:DatabaseName"] = "Test",
+        ["Mongo:TransactionsEnabled"] = "true",
         ["JwtSettings:Issuer"] = "issuer",
         ["JwtSettings:Audience"] = "aud",
         ["JwtSettings:Key"] = new string('k', 32),
@@ -46,6 +47,30 @@ public class StartupConfigValidationTests
         var act = () => builder.ValidateRequiredConfiguration();
         act.Should().Throw<InvalidOperationException>()
            .WithMessage("*MongoDbSettings:ConnectionString*");
+    }
+
+    [Fact]
+    public void Throws_when_transactions_flag_missing()
+    {
+        var cfg = ValidConfig();
+        cfg.Remove("Mongo:TransactionsEnabled");
+        var builder = BuilderWith(cfg);
+
+        var act = () => builder.ValidateRequiredConfiguration();
+        act.Should().Throw<InvalidOperationException>()
+           .WithMessage("*Mongo:TransactionsEnabled*true*");
+    }
+
+    [Fact]
+    public void Throws_when_transactions_flag_false()
+    {
+        var cfg = ValidConfig();
+        cfg["Mongo:TransactionsEnabled"] = "false";
+        var builder = BuilderWith(cfg);
+
+        var act = () => builder.ValidateRequiredConfiguration();
+        act.Should().Throw<InvalidOperationException>()
+           .WithMessage("*Mongo:TransactionsEnabled*true*");
     }
 
     // Replaces the obsolete Anthropic test: the app consolidated to a single OpenRouter

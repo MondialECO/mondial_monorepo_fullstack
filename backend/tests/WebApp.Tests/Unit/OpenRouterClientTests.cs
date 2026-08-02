@@ -15,7 +15,7 @@ public class OpenRouterClientTests
     private const string SuccessBody = """
     {
       "id": "gen-1",
-      "model": "openai/gpt-4o-mini",
+      "model": "openai/gpt-oss-20b:free",
       "choices": [
         { "index": 0, "message": { "role": "assistant", "content": "Hello there" }, "finish_reason": "stop" }
       ],
@@ -25,7 +25,7 @@ public class OpenRouterClientTests
 
     private static AiCompletionRequest SampleRequest() => new()
     {
-        Model = "openai/gpt-4o-mini",
+        Model = "openai/gpt-oss-20b:free",
         Messages = new[] { new AiMessage("system", "You are a probe."), new AiMessage("user", "ping") },
         MaxTokens = 64,
         Temperature = 0.2,
@@ -50,7 +50,7 @@ public class OpenRouterClientTests
         var result = await client.CompleteAsync(SampleRequest());
 
         result.Text.Should().Be("Hello there");
-        result.Model.Should().Be("openai/gpt-4o-mini");
+        result.Model.Should().Be("openai/gpt-oss-20b:free");
         result.FinishReason.Should().Be("stop");
         result.Usage.PromptTokens.Should().Be(10);
         result.Usage.CompletionTokens.Should().Be(5);
@@ -68,7 +68,7 @@ public class OpenRouterClientTests
 
         handler.LastRequest!.Method.Should().Be(HttpMethod.Post);
         handler.LastRequest!.RequestUri!.AbsoluteUri.Should().Be("https://openrouter.ai/api/v1/chat/completions");
-        handler.LastBody.Should().Contain("\"model\":\"openai/gpt-4o-mini\"");
+        handler.LastBody.Should().Contain("\"model\":\"openai/gpt-oss-20b:free\"");
         handler.LastBody.Should().Contain("\"role\":\"system\"");
         handler.LastBody.Should().Contain("\"role\":\"user\"");
         handler.LastBody.Should().Contain("\"max_tokens\":64");

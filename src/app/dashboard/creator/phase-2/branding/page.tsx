@@ -12,6 +12,8 @@ export default function BrandingOptionsPage() {
   const router = useRouter();
   const { setState } = useCreatorProgress();
   const [hoveredCard, setHoveredCard] = useState<"designer" | "ai" | null>(null);
+  const [skipping, setSkipping] = useState(false);
+  const [skipError, setSkipError] = useState<string | null>(null);
 
   const handleSelectDesigner = () => {
     setState((prev) => ({
@@ -43,11 +45,22 @@ export default function BrandingOptionsPage() {
     router.push("/dashboard/creator/phase-2/logo-tool");
   };
 
-  const handleSkip = () => {
+  const handleSkip = async () => {
+    if (skipping) return;
+    setSkipping(true);
+    setSkipError(null);
     // Mark branding "pending" server-side (a valid Phase-2 completion state).
-    void creatorJourneyApi.skipBranding().catch(() => {
-      /* optimistic local state below still advances the UI */
-    });
+    // AWAITED and BLOCKING: this write is the Phase-2 completion prerequisite
+    // (brandingResolved gate) — a silently failed skip used to trap the user in
+    // a resume-to-branding redirect loop with no explanation.
+    try {
+      await creatorJourneyApi.skipBranding();
+    } catch {
+      setSkipError("Couldn't skip branding — please try again.");
+      setSkipping(false);
+      return;
+    }
+    setSkipping(false);
     setState((prev) => ({
       ...prev,
       project: {
@@ -92,7 +105,7 @@ export default function BrandingOptionsPage() {
       {/* Section Header */}
       <div className="px-6 py-8 sm:px-10 max-w-2xl mx-auto w-full text-center">
         <span className="text-xs font-bold text-primary uppercase tracking-wider">Step 2.3</span>
-        <h1 className="text-3xl font-extrabold text-foreground mt-2 leading-tight">
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground mt-2 leading-tight">
           Build your brand identity
         </h1>
         <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
@@ -216,9 +229,10 @@ export default function BrandingOptionsPage() {
         <Button variant="ghost" onClick={() => router.push("/dashboard/creator/phase-2/concept-name")} className="text-xs font-semibold">
           <ArrowLeft className="w-4 h-4 mr-1.5" /> Back
         </Button>
-        <Button variant="ghost" onClick={handleSkip} className="text-xs font-semibold text-muted-foreground hover:text-foreground">
-          Skip Branding for Now <ArrowRight className="w-4 h-4 ml-1.5" />
+        <Button variant="ghost" onClick={handleSkip} disabled={skipping} className="text-xs font-semibold text-muted-foreground hover:text-foreground">
+          {skipping ? "Skipping…" : "Skip Branding for Now"} <ArrowRight className="w-4 h-4 ml-1.5" />
         </Button>
+        {skipError && <p className="text-xs text-destructive text-center mt-2">{skipError}</p>}
       </div>
     </div>
   );

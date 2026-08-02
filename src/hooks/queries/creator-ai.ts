@@ -24,8 +24,12 @@ import {
 // one) inherits this single timeout. Do NOT copy these numbers elsewhere —
 // import them.
 export const POLL_INTERVAL_MS = 2500;
-export const POLL_MAX_ATTEMPTS = 60;          // 60 polls
-export const POLL_MAX_MS = 3 * 60 * 1000;     // …or 3 minutes wall-clock
+// Ceiling must outlast the backend worst case: Hangfire pickup (~15s) + the 120s
+// OpenRouter HTTP timeout + parse/36-month-extension/persist (~1s) ≈ 136s. 96 polls ×
+// 2500ms = 240s gives a ~100s margin so the poll never abandons a job that still
+// succeeds. Fast jobs are unaffected — every poller exits on terminal status, not the cap.
+export const POLL_MAX_ATTEMPTS = 96;          // 96 polls × 2500ms ≈ 240s
+export const POLL_MAX_MS = 4 * 60 * 1000;     // …or 4 minutes wall-clock
 
 /** "polling" while running, "terminal" when the session settled, "timedout" at the cap. */
 export type PollPhase = "idle" | "polling" | "terminal" | "timedout";

@@ -1,5 +1,6 @@
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
+using System.Linq;
 using System.Text.Json.Serialization;
 
 namespace WebApp.Models.DatabaseModels
@@ -31,6 +32,18 @@ namespace WebApp.Models.DatabaseModels
 
         /// <summary>Set when a company is spun out at Phase 5B (Build path). Null otherwise.</summary>
         public string CompanyId { get; set; }
+
+        // ---- Multi-idea foundation (STEP 1, additive) ----
+        // These point into the new CreatorIdeas collection. Written by the backfill
+        // migration; NOT yet read by any controller/resolver/frontend, so the app
+        // behaves identically. The inline Project/Phase2-6 blocks below remain the live
+        // source of truth until a later step switches the read path.
+
+        /// <summary>The user's currently-selected idea (CreatorIdea._id). Null until migrated.</summary>
+        public string ActiveIdeaId { get; set; }
+
+        /// <summary>The idea taken through Level Up, if any (entrepreneur side stays 1:1). Null otherwise.</summary>
+        public string LeveledUpIdeaId { get; set; }
 
         public CreatorJourneyProject Project { get; set; } = new();
 
@@ -164,6 +177,22 @@ namespace WebApp.Models.DatabaseModels
         public List<CreatorSkillGap> YouNeed { get; set; } = new();
         public List<string> MatchedSpIds { get; set; } = new();
         public string SelectedType { get; set; }
+
+        // True once the creator SELF-DECLARES skills on 3.5b — YouHave then holds their
+        // declared chip set, not the ExtractStrengths echo. Guards the generate path from
+        // overwriting declarations (see GenerateFormation).
+        public bool SkillsDeclared { get; set; }
+
+        // Co-founder preferences captured on 3.5b. Stored now; matched at Level Up (P6),
+        // never in Phase 3 (matchmaking is a P6 privilege).
+        public CreatorCofounderDraft CofounderDraft { get; set; }
+    }
+
+    public class CreatorCofounderDraft
+    {
+        public string RoleNeeded { get; set; }
+        public string EquityRange { get; set; }
+        public string LocationPreference { get; set; } // remote | local | either
     }
 
     public class CreatorSkillGap

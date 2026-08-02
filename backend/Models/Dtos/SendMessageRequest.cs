@@ -4,6 +4,8 @@
     {
         public string ConversationId { get; set; } = "";
         public string Message { get; set; } = "";
+        public string? ClientBriefId { get; set; }
+        public string? ListingId { get; set; }
     }
 
 }

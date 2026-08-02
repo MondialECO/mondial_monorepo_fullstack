@@ -192,6 +192,10 @@ export interface ForecastCashFlowMonth {
 
 export interface ForecastOutput {
   schemaVersion?: number;
+  // How many leading months were produced by the AI. Months with month > aiMonthCount
+  // are deterministically projected (13-36). Absent on legacy 12-month sessions →
+  // consumers default it to the array length, so nothing is flagged as projected.
+  aiMonthCount?: number;
   revenueForecast?: {
     currency?: string;
     summary?: string;
@@ -232,6 +236,15 @@ export interface ForecastSession {
   schemaVersion: number;
   output?: ForecastOutput | null;
   error?: string | null;
+  // The five stored generation inputs (camelCase, matching the start payload). Absent on
+  // legacy sessions created before the API exposed them → the form falls back to defaults.
+  inputs?: {
+    arpu?: number | null;
+    opex?: number | null;
+    monthlyGrowthPct?: number | null;
+    tam?: number | null;
+    monthlyChurnPct?: number | null;
+  } | null;
   createdAt: string;
   updatedAt: string;
 }

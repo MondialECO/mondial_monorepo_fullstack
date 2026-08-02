@@ -46,6 +46,10 @@ namespace WebApp.Services
 
 
         public async Task NotifyUser(Guid userId, string title, string body)
+            => _ = await NotifyUserWithReceipt(userId, title, body);
+
+
+        public async Task<Notification> NotifyUserWithReceipt(Guid userId, string title, string body)
         {
             var notification = await CreateNotification(userId, title, body);
 
@@ -61,6 +65,8 @@ namespace WebApp.Services
                     await _webPushService.SendAsync(sub, notification);
                 }
             }
+
+            return notification;
         }
 
 

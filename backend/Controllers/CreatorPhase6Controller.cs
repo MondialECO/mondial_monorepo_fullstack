@@ -10,6 +10,7 @@ using WebApp.Models.DatabaseModels;
 using WebApp.Models.Dtos;
 using WebApp.Services;
 using WebApp.Services.Interface;
+using WebApp.Services.Repository;
 
 namespace WebApp.Controllers
 {
@@ -31,6 +32,7 @@ namespace WebApp.Controllers
         private readonly RoleManager<ApplicationRole> _roleManager;
         private readonly IDealEventPublisher _events;
         private readonly ICompanyService _companies;
+        private readonly ICreatorIdeaStore _ideas;
         private readonly IMongoClient _mongoClient;
         private readonly bool _transactionsEnabled;
         private readonly ILogger<CreatorPhase6Controller> _logger;
@@ -39,7 +41,7 @@ namespace WebApp.Controllers
             ICreatorJourneyService journeys, ISmartMatchingService matching,
             MongoDbContext context, UserManager<ApplicationUser> userManager,
             RoleManager<ApplicationRole> roleManager, IDealEventPublisher events,
-            ICompanyService companies, IMongoClient mongoClient, IConfiguration config,
+            ICompanyService companies, ICreatorIdeaStore ideas, IMongoClient mongoClient, IConfiguration config,
             ILogger<CreatorPhase6Controller> logger)
         {
             _journeys = journeys;
@@ -49,6 +51,7 @@ namespace WebApp.Controllers
             _roleManager = roleManager;
             _events = events;
             _companies = companies;
+            _ideas = ideas;
             _mongoClient = mongoClient;
             // Multi-doc transactions require a replica set / Atlas. Production runs a
             // replica set, so this defaults TRUE. Standalone-local dev sets it false
@@ -133,12 +136,12 @@ namespace WebApp.Controllers
         // but IGNORED — the phase is derived server-side so a client can no longer
         // unlock matches by passing ?phaseContext=6 before Level Up.
         [HttpGet("smart-matches")]
-        public async Task<IActionResult> SmartMatches([FromQuery] int phaseContext = 6)
+        public async Task<IActionResult> SmartMatches([FromQuery] int phaseContext = 6, [FromQuery] string ideaId = null)
         {
             try
             {
                 var userId = GetUserId();
-                var journey = await _journeys.GetOrCreateAsync(userId);
+                var journey = await _journeys.GetOrCreateComposedAsync(userId, ideaId); // idea-sourced match inputs
                 var country = await CountryOfAsync(userId);
 
                 var context = await DerivedMatchContextAsync(userId, journey);
@@ -154,7 +157,7 @@ namespace WebApp.Controllers
                 {
                     OutputKey = "matchingRuns", Phase = 6,
                     Payload = new Dictionary<string, object> { ["phaseContext"] = context, ["matchCount"] = matches.Count },
-                });
+                }, ideaId);
 
                 return Ok(ApiResponse.Ok("OK", new { matches, isEmpty = matches.Count == 0 }));
             }
@@ -164,12 +167,12 @@ namespace WebApp.Controllers
 
         // GET /api/creator/investors  → { featured, qualified[], matchingTip }
         [HttpGet("investors")]
-        public async Task<IActionResult> Investors()
+        public async Task<IActionResult> Investors([FromQuery] string ideaId = null)
         {
             try
             {
                 var userId = GetUserId();
-                var journey = await _journeys.GetOrCreateAsync(userId);
+                var journey = await _journeys.GetOrCreateComposedAsync(userId, ideaId); // idea-sourced match inputs
                 var country = await CountryOfAsync(userId);
 
                 // Derived — below Phase 6 this returns an empty pool (no leak).
@@ -188,24 +191,36 @@ namespace WebApp.Controllers
 
         // POST /api/creator/level-up — permanent, atomic, idempotent.
         [HttpPost("level-up")]
-        public async Task<IActionResult> LevelUp()
+        public async Task<IActionResult> LevelUp([FromQuery] string ideaId = null)
         {
             try
             {
                 var userId = GetUserId();
-                var journey = await _journeys.GetOrCreateAsync(userId);
+                // STEP 4: prerequisites are checked against the resolved idea's data.
+                // No id → the active idea (today's single-idea behavior); explicit id →
+                // owned-or-404 inside the composed resolve. Once-per-user stays guarded below.
+                var journey = await _journeys.GetOrCreateComposedAsync(userId, ideaId);
+                var levelUpIdeaId = ideaId ?? journey.ActiveIdeaId;
                 var p5 = journey.Phase5Data ?? new CreatorPhase5Data();
                 var p6 = journey.Phase6Data ??= new CreatorPhase6Data();
 
-                // Idempotency: already leveled up → return the existing result, no second profile.
-                if (p6.LevelUpTriggered && !string.IsNullOrEmpty(p6.EntrepreneurProfileId))
+                // Idempotency is USER-LEVEL (step 6iii): the composed p6.LevelUpTriggered
+                // is now per-idea, so the once-per-user guard reads the journey's
+                // LeveledUpIdeaId directly. Same idea → idempotent return; a DIFFERENT
+                // idea → 409 (the entrepreneur side stays 1:1 — one company per user).
+                if (!string.IsNullOrEmpty(journey.LeveledUpIdeaId) ||
+                    !string.IsNullOrEmpty(p6.EntrepreneurProfileId)) // defensive legacy marker
                 {
-                    return Ok(ApiResponse.Ok("Already leveled up", new
+                    if (journey.LeveledUpIdeaId == levelUpIdeaId || string.IsNullOrEmpty(journey.LeveledUpIdeaId))
                     {
-                        levelUpComplete = true,
-                        entrepreneurProfileId = p6.EntrepreneurProfileId,
-                        redirectTo = "/dashboard/entrepreneur",
-                    }));
+                        return Ok(ApiResponse.Ok("Already leveled up", new
+                        {
+                            levelUpComplete = true,
+                            entrepreneurProfileId = p6.EntrepreneurProfileId,
+                            redirectTo = "/dashboard/entrepreneur",
+                        }));
+                    }
+                    return StatusCode(409, ApiResponse.Error("Another idea has already been taken through Level Up.", HttpContext.TraceIdentifier));
                 }
 
                 // Hard gate.
@@ -222,7 +237,8 @@ namespace WebApp.Controllers
                 // the company is created here keyed by OwnerId at CurrentPhase=2.)
                 var formation = p5.PathB?.CompanyFormation;
                 var seed = p5.PathB?.SeedFunding;
-                var sourceLink = !string.IsNullOrEmpty(journey.BusinessIdeaId) ? journey.BusinessIdeaId : journey.Id;
+                var sourceLink = !string.IsNullOrEmpty(journey.BusinessIdeaId) ? journey.BusinessIdeaId
+                    : !string.IsNullOrEmpty(levelUpIdeaId) ? levelUpIdeaId : journey.Id; // idea anchor is the provenance
                 double? fundingAsk = seed?.TotalAsk > 0 ? (double?)(double)seed.TotalAsk : null; // Phase-5 totalAsk is authoritative
 
                 // UserManager can't take a Mongo session, so we write the role + companyId
@@ -237,7 +253,7 @@ namespace WebApp.Controllers
                 {
                     Id = ObjectId.GenerateNewId().ToString(),
                     UserId = userId,
-                    BusinessIdeaId = journey.BusinessIdeaId,
+                    BusinessIdeaId = !string.IsNullOrEmpty(journey.BusinessIdeaId) ? journey.BusinessIdeaId : levelUpIdeaId,
                     Project = journey.Project,
                     OfferSetup = journey.Phase4Data,
                     Masterplan = journey.Phase3Data,
@@ -260,12 +276,24 @@ namespace WebApp.Controllers
                     else await _context.EntrepreneurProfiles.InsertOneAsync(session, profile);
 
                     journey.CompanyId = companyId;
+                    journey.LeveledUpIdeaId = levelUpIdeaId; // which idea became the company (user-level, once)
                     p6.LevelUpTriggered = true;
                     p6.LevelUpTriggeredAt = DateTime.UtcNow;
                     p6.EntrepreneurProfileId = profile.Id;
                     (p6.SmartMatchmaking ??= new CreatorSmartMatchmaking()).Status = "live";
-                    if (session is null) await _journeys.ReplaceAsync(journey);
-                    else await _journeys.ReplaceAsync(journey, session);
+                    // Step 6iii: TARGETED user-level $set — never ReplaceAsync(journey),
+                    // which would write the composed (idea) phase blocks onto the frozen
+                    // journey copy. Only pointers + Level-Up markers are journey writes now.
+                    var journeyUpdate = Builders<CreatorJourney>.Update
+                        .Set(x => x.CompanyId, companyId)
+                        .Set(x => x.LeveledUpIdeaId, levelUpIdeaId)
+                        .Set(x => x.Phase6Data.LevelUpTriggered, true)
+                        .Set(x => x.Phase6Data.LevelUpTriggeredAt, p6.LevelUpTriggeredAt)
+                        .Set(x => x.Phase6Data.EntrepreneurProfileId, profile.Id)
+                        .Set(x => x.Phase6Data.SmartMatchmaking, p6.SmartMatchmaking)
+                        .Set(x => x.UpdatedAt, DateTime.UtcNow);
+                    if (session is null) await _context.CreatorJourneys.UpdateOneAsync(x => x.Id == journey.Id, journeyUpdate);
+                    else await _context.CreatorJourneys.UpdateOneAsync(session, x => x.Id == journey.Id, journeyUpdate);
 
                     if (userGuid != Guid.Empty)
                     {
@@ -308,6 +336,17 @@ namespace WebApp.Controllers
                 {
                     try { await SeedCapTableFromPlanAsync(companyId, formation.Ownership); }
                     catch (Exception ex) { _logger.LogWarning(ex, "Cap-table seed failed post-Level-Up for {CompanyId}; re-enterable at Phase 4.", companyId); }
+                }
+                // Per-idea mirror of the matchmaking flip (idea = source of truth for
+                // SmartMatchmaking). Best-effort: the journey carries it in the atomic core.
+                if (!string.IsNullOrEmpty(levelUpIdeaId))
+                {
+                    try
+                    {
+                        await _ideas.UpdateAsync(levelUpIdeaId, userId,
+                            Builders<CreatorIdea>.Update.Set(x => x.SmartMatchmaking, p6.SmartMatchmaking));
+                    }
+                    catch (Exception ex) { _logger.LogWarning(ex, "Idea SmartMatchmaking mirror failed post-Level-Up for {IdeaId}.", levelUpIdeaId); }
                 }
                 // SignalR notification (not data) — a miss is a missed toast, not inconsistency.
                 try

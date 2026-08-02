@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { FileText, ArrowLeft, ArrowRight, Loader2, RotateCw, AlertTriangle, FileWarning, Sparkles, Pencil, Check, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,11 +9,12 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Phase3SetupShell } from '@/components/creator/Phase3SetupShell';
+import PlanForecastPrintView from '@/components/creator/PlanForecastPrintView';
 import { useCreatorProgress } from '@/providers/CreatorProgressProvider';
-import { useBusinessPlanSessionTimed, useStartBusinessPlan } from '@/hooks/queries/creator-ai';
+import { useBusinessPlanSessionTimed, useForecastSessionTimed, useStartBusinessPlan } from '@/hooks/queries/creator-ai';
 import { creatorJourneyApi } from '@/lib/api-creator-journey';
 import { creatorAiApi } from '@/lib/api-creator-ai';
-import { hasAiOutput, type BusinessPlanOutput } from '@/types/creator/ai';
+import { hasAiOutput, type BusinessPlanOutput, type ForecastOutput } from '@/types/creator/ai';
 import { toAiError, type AiError } from '@/lib/ai-errors';
 
 type SectionBadge = 'auto_built_phase2' | 'ai_researched' | 'auto_built_43' | 'auto_filled_31' | 'used_in_phase5' | null;
@@ -75,14 +76,115 @@ function friendlyError(e: unknown, fallback: string): string {
   return e instanceof Error ? e.message : fallback;
 }
 
+// ---- Read-only nested plan content (matches the PDF's field selection; the two read the
+// same BusinessPlanOutput so they don't drift). Shown BELOW a section's editable prose;
+// Edit/Rewrite still operate only on the prose field — arrays are display-only. ----
+const has = (s?: string | null): s is string => !!s && s.trim().length > 0;
+const arr2 = <T,>(a?: T[] | null): a is T[] => Array.isArray(a) && a.length > 0;
+
+function Extras({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="space-y-1">
+      <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{label}</h4>
+      {children}
+    </div>
+  );
+}
+function Bullets({ items }: { items: string[] }) {
+  return <ul className="list-disc pl-5 text-sm text-muted-foreground leading-relaxed space-y-0.5">{items.map((x, i) => <li key={i}>{x}</li>)}</ul>;
+}
+
+// The nested arrays for an editable AI section, keyed by the section id used in buildSections.
+function SectionExtras({ id, bp }: { id: string; bp?: BusinessPlanOutput }) {
+  if (!bp) return null;
+  const blocks: ReactNode[] = [];
+  const es = bp.executiveSummary, ma = bp.marketAnalysis, ca = bp.competitorAnalysis, rm = bp.revenueModel, gtm = bp.goToMarket;
+  if (id === 'executive') {
+    if (has(es?.valueProposition)) blocks.push(<Extras key="vp" label="Value proposition"><p className="text-sm text-muted-foreground leading-relaxed">{es!.valueProposition}</p></Extras>);
+    if (arr2(es?.highlights)) blocks.push(<Extras key="hl" label="Highlights"><Bullets items={es!.highlights!} /></Extras>);
+  } else if (id === 'target-market') {
+    if (arr2(ma?.targetSegments)) blocks.push(<Extras key="seg" label="Segments"><Bullets items={ma!.targetSegments!} /></Extras>);
+    if (has(ma?.marketSizeQualitative)) blocks.push(<Extras key="size" label="Market size"><p className="text-sm text-muted-foreground leading-relaxed">{ma!.marketSizeQualitative}</p></Extras>);
+    if (arr2(ma?.trends)) blocks.push(<Extras key="tr" label="Trends"><Bullets items={ma!.trends!} /></Extras>);
+  } else if (id === 'business-model') {
+    if (arr2(rm?.revenueStreams)) blocks.push(<Extras key="rs" label="Revenue streams"><Bullets items={rm!.revenueStreams!.map((s) => [s.name, s.description].filter(Boolean).join(' — '))} /></Extras>);
+    if (has(rm?.pricingStrategy)) blocks.push(<Extras key="ps" label="Pricing strategy"><p className="text-sm text-muted-foreground leading-relaxed">{rm!.pricingStrategy}</p></Extras>);
+    if (arr2(rm?.keyMetrics)) blocks.push(<Extras key="km" label="Key metrics"><Bullets items={rm!.keyMetrics!} /></Extras>);
+  } else if (id === 'competitive') {
+    if (arr2(ca?.competitors)) blocks.push(
+      <Extras key="cmp" label="Competitors">
+        <div className="space-y-2">
+          {ca!.competitors!.map((c, i) => (
+            <div key={i} className="rounded-lg border border-border p-3 space-y-0.5">
+              <div className="text-sm font-semibold text-foreground">{c.name ?? 'Competitor'}{has(c.positioning) ? ` — ${c.positioning}` : ''}</div>
+              {arr2(c.strengths) && <div className="text-xs text-muted-foreground"><span className="font-semibold">Strengths:</span> {c.strengths!.join(', ')}</div>}
+              {arr2(c.weaknesses) && <div className="text-xs text-muted-foreground"><span className="font-semibold">Weaknesses:</span> {c.weaknesses!.join(', ')}</div>}
+              {has(c.ourAdvantage) && <div className="text-xs text-foreground"><span className="font-semibold">Our advantage:</span> {c.ourAdvantage}</div>}
+            </div>
+          ))}
+        </div>
+      </Extras>,
+    );
+  } else if (id === 'gtm') {
+    if (arr2(gtm?.channels)) blocks.push(<Extras key="ch" label="Channels"><Bullets items={gtm!.channels!} /></Extras>);
+    if (arr2(gtm?.phases)) blocks.push(<Extras key="ph" label="Phases"><Bullets items={gtm!.phases!.map((p) => [p.name, p.description].filter(Boolean).join(' — '))} /></Extras>);
+  }
+  if (blocks.length === 0) return null;
+  return <div className="mt-3 space-y-3 border-t border-border/60 pt-3">{blocks}</div>;
+}
+
+// operationsPlan + risks — not among the 9 numbered sections; rendered as read-only
+// appendices after the grid (matching the PDF), skipping cleanly when absent.
+function PlanAppendices({ bp }: { bp?: BusinessPlanOutput }) {
+  if (!bp) return null;
+  const ops = bp.operationsPlan;
+  const risks = bp.risks;
+  const hasOps = has(ops?.overview) || arr2(ops?.keyActivities) || arr2(ops?.resources) || arr2(ops?.milestones);
+  if (!hasOps && !arr2(risks)) return null;
+  return (
+    <>
+      {hasOps && (
+        <Card className="rounded-2xl border border-border bg-card p-5 space-y-2">
+          <h3 className="font-bold text-sm">Operations &amp; Milestones</h3>
+          {has(ops?.overview) && <p className="text-sm text-muted-foreground leading-relaxed">{ops!.overview}</p>}
+          <div className="space-y-3 pt-1">
+            {arr2(ops?.keyActivities) && <Extras label="Key activities"><Bullets items={ops!.keyActivities!} /></Extras>}
+            {arr2(ops?.resources) && <Extras label="Resources"><Bullets items={ops!.resources!} /></Extras>}
+            {arr2(ops?.milestones) && <Extras label="Milestones"><Bullets items={ops!.milestones!.map((m) => [m.title, m.timeframe, m.description].filter(Boolean).join(' — '))} /></Extras>}
+          </div>
+        </Card>
+      )}
+      {arr2(risks) && (
+        <Card className="rounded-2xl border border-border bg-card p-5 space-y-2">
+          <h3 className="font-bold text-sm">Risk Register</h3>
+          <div className="space-y-2">
+            {risks!.map((r, i) => (
+              <div key={i} className="rounded-lg border border-border p-3 space-y-0.5">
+                <div className="text-sm font-semibold text-foreground">{r.category ?? 'Risk'}</div>
+                {has(r.description) && <p className="text-xs text-muted-foreground">{r.description}</p>}
+                {(has(r.likelihood) || has(r.impact)) && (
+                  <div className="text-xs text-muted-foreground">{[r.likelihood && `Likelihood: ${r.likelihood}`, r.impact && `Impact: ${r.impact}`].filter(Boolean).join(' · ')}</div>
+                )}
+                {has(r.mitigation) && <div className="text-xs text-foreground"><span className="font-semibold">Mitigation:</span> {r.mitigation}</div>}
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+    </>
+  );
+}
+
 export default function BusinessPlanPage() {
   const router = useRouter();
   const { completeStep } = useCreatorProgress();
 
   const [loading, setLoading] = useState(true);
   const [bpSessionId, setBpSessionId] = useState<string | null>(null);
+  const [forecastSessionId, setForecastSessionId] = useState<string | null>(null);
   const [clarifierSessionId, setClarifierSessionId] = useState<string | null>(null);
-  const [project, setProject] = useState({ problem: '', solution: '', targetUser: '' });
+  const [project, setProject] = useState({ name: '', problem: '', solution: '', targetUser: '' });
+  const [showExport, setShowExport] = useState(false);
   const [cross, setCross] = useState({ hasForecast: false, hasGtm: false, youNeed: [] as string[], seedAsk: null as number | null });
   const [startError, setStartError] = useState<AiError | null>(null);
   // The section being AI-rewritten + the plan version at rewrite-start, so we can clear
@@ -95,6 +197,9 @@ export default function BusinessPlanPage() {
 
   const startBp = useStartBusinessPlan();
   const session = useBusinessPlanSessionTimed(bpSessionId);
+  // Reuse the existing forecast hook so the export can render the real §7 forecast.
+  const forecastSession = useForecastSessionTimed(forecastSessionId);
+  const forecastOutput = (forecastSession.data as { output?: ForecastOutput } | undefined)?.output ?? null;
   const currentVersion = (session.data as { currentVersion?: number } | undefined)?.currentVersion ?? 0;
 
   // A single-section rewrite re-enters Processing; clear the skeleton only once the
@@ -102,6 +207,17 @@ export default function BusinessPlanPage() {
   useEffect(() => {
     if (rewriting && currentVersion > rewriting.baseVersion) setRewriting(null);
   }, [currentVersion, rewriting]);
+
+  // FAILED rewrite: the session returns terminal WITHOUT a new version (the backend
+  // guard restores Completed and keeps the plan intact). Clear the skeleton and
+  // surface an honest error — never an endless skeleton with disabled buttons.
+  // Mutually exclusive with the success effect above (version did NOT advance).
+  useEffect(() => {
+    if (rewriting && session.phase === 'terminal' && currentVersion <= rewriting.baseVersion) {
+      setRewriting(null);
+      setStartError({ kind: 'other', message: 'The section rewrite didn’t complete — your plan is unchanged. You can try again.' });
+    }
+  }, [session.phase, currentVersion, rewriting]);
 
   useEffect(() => {
     let active = true;
@@ -116,8 +232,9 @@ export default function BusinessPlanPage() {
         const p2 = journey.phase2Data as { clarifierSessionId?: string };
         const p5 = journey.phase5Data as { pathB?: { seedFunding?: { totalAsk?: number } } };
         setBpSessionId(p3?.businessPlanSessionId ?? null);
+        setForecastSessionId(p3?.forecastSessionId ?? null);
         setClarifierSessionId(p3?.clarifierSessionId ?? p2?.clarifierSessionId ?? null);
-        setProject({ problem: journey.project?.problem ?? '', solution: journey.project?.solution ?? '', targetUser: journey.project?.targetUser ?? '' });
+        setProject({ name: journey.project?.name ?? '', problem: journey.project?.problem ?? '', solution: journey.project?.solution ?? '', targetUser: journey.project?.targetUser ?? '' });
         setCross({
           hasForecast: !!p3?.forecastSessionId,
           hasGtm: !!(journey.phase4Data as { gtmSetup?: unknown })?.gtmSetup,
@@ -136,6 +253,18 @@ export default function BusinessPlanPage() {
   // Keep the section grid visible during a single-section rewrite (the session briefly
   // re-enters Processing) so only the rewritten section shows a skeleton, not the page.
   const showGrid = completed || (!!rewriting && !!bpOutput);
+
+  // Terminal but no usable plan → the linked session settled as Failed (or the rare
+  // null-output). Parse issues become NeedsReview (which HAS output and renders), so
+  // this bucket is an AI-service request failure — never a blank body. Mutually
+  // exclusive with showGrid (both derive from `completed`).
+  const bpError = (session.data as { error?: string | null } | undefined)?.error ?? null;
+  const terminalFailed = !!bpSessionId && session.phase === 'terminal' && !completed && !rewriting;
+  // A provider-side 402 ("OpenRouter error (402): …") is OUR billing gap — never
+  // the user's credits; presenting it as theirs is wrong and unactionable. Only a
+  // local-ledger failure ("Insufficient credits.") gets the credits copy.
+  const failedIsProviderBilling = /openrouter error \(402\)/i.test(bpError ?? '');
+  const failedIsCredits = !failedIsProviderBilling && /402|credit|insufficient|payment/i.test(bpError ?? '');
 
   const sections = useMemo(
     () => buildSections(bpOutput, project, cross),
@@ -185,13 +314,27 @@ export default function BusinessPlanPage() {
     }
   };
 
-  // Business plan is step 2; the forecast (step 3) consumes it next.
+  // Business plan is step 2; the forecast (step 3) consumes it next. A forecast that
+  // already exists (any state — in-flight, failed, or completed) routes to the forecast
+  // results page so the user sees it; only a truly-absent forecast goes to inputs.
   const handleNext = () => {
     completeStep(3, 2);
-    router.push('/dashboard/creator/phase-3/forecast');
+    router.push(cross.hasForecast
+      ? '/dashboard/creator/phase-3/forecast'
+      : '/dashboard/creator/phase-3/forecast-inputs');
   };
 
   return (
+    <>
+    <PlanForecastPrintView
+      open={showExport}
+      onClose={() => setShowExport(false)}
+      projectName={project.name}
+      project={project}
+      plan={bpOutput}
+      forecast={forecastOutput}
+      cross={{ youNeed: cross.youNeed, seedAsk: cross.seedAsk }}
+    />
     <Phase3SetupShell
       stepEyebrow="Step 3.2"
       title="AI Business Plan"
@@ -247,8 +390,40 @@ export default function BusinessPlanPage() {
         </div>
       )}
 
+      {terminalFailed && (
+        <Card className="rounded-2xl border border-border bg-card p-6 space-y-4 max-w-xl">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-destructive" />
+            <h3 className="font-bold text-sm">We couldn&apos;t generate your business plan</h3>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {failedIsProviderBilling
+              ? 'The AI service is temporarily unavailable on our side, so your plan couldn’t be generated. This isn’t your credits and there’s nothing you need to buy — please try again shortly.'
+              : failedIsCredits
+              ? 'You’ve used all your AI credits, so your plan couldn’t be generated.'
+              : 'The AI service was temporarily unavailable (a provider error, rate limit, or timeout), so your plan didn’t finish. This isn’t anything you did — please try again.'}
+          </p>
+          {failedIsCredits && (
+            <p className="text-xs text-muted-foreground">Contact support to add more AI credits, then generate again.</p>
+          )}
+          {startError && (
+            <div className="space-y-1">
+              <p className="text-sm text-destructive">{startError.message}</p>
+              {startError.kind === 'credits' && (
+                <p className="text-xs text-muted-foreground">Contact support to add more AI credits to your account.</p>
+              )}
+            </div>
+          )}
+          <Button onClick={handleStart} disabled={startBp.isPending || startError?.kind === 'credits'} className="gap-2">
+            {startBp.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCw className="h-4 w-4" />} Generate again
+          </Button>
+        </Card>
+      )}
+
       {showGrid && (
         <div className="space-y-4">
+          {/* Rewrite/start errors surface HERE too — previously invisible in the grid. */}
+          {startError && <p className="text-sm text-destructive">{startError.message}</p>}
           {sections.map((s) => {
             const isRewriting = rewriting?.sectionId === s.id;
             const saving = editState?.id === s.id && editState.state === 'saving';
@@ -321,6 +496,7 @@ export default function BusinessPlanPage() {
               ) : (
                 <>
                   <p className="text-sm text-muted-foreground leading-relaxed">{s.body || <span className="italic">Not generated yet.</span>}</p>
+                  <SectionExtras id={s.id} bp={bpOutput} />
                   {saved && <span className="flex items-center gap-1 text-xs text-success-text"><Check className="h-3 w-3" /> Saved</span>}
                   {saveError && <span className="text-xs text-destructive">{editState?.message}</span>}
                 </>
@@ -329,17 +505,19 @@ export default function BusinessPlanPage() {
             );
           })}
 
-          {/* PDF/DOCX export — stub (doc-gen not built this slice). */}
+          {/* operationsPlan + risks — read-only appendices (not among the 9 sections). */}
+          <PlanAppendices bp={bpOutput} />
+
           <div className="flex items-center justify-between border-t border-border pt-6">
             <Button variant="ghost" onClick={() => router.back()}><ArrowLeft className="w-4 h-4 mr-1.5" /> Back</Button>
             <div className="flex gap-2">
-              <Button variant="outline" disabled aria-disabled="true" aria-describedby="export-pdf-hint" title="Document export coming soon">Export PDF</Button>
-              <span id="export-pdf-hint" className="sr-only">Coming soon — document export isn&apos;t available yet.</span>
+              <Button variant="outline" onClick={() => setShowExport(true)}>Export PDF</Button>
               <Button onClick={handleNext} className="gap-1.5">Proceed to Forecast <ArrowRight className="w-4 h-4" /></Button>
             </div>
           </div>
         </div>
       )}
     </Phase3SetupShell>
+    </>
   );
 }

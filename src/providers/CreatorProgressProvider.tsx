@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, ReactNode } from 'react';
-import { useCreatorProgressState } from '@/hooks/useCreatorProgressState';
+import { useCreatorProgressState, type HydrateResult } from '@/hooks/useCreatorProgressState';
 import type { CreatorDocument, CreatorJourneyData, CreatorOutputKey, CreatorProject } from '@/types/creator/creator-journey';
 
 interface CreatorProgressContextType {
@@ -17,7 +17,8 @@ interface CreatorProgressContextType {
   setCrossroadsPath: (path: 'sell_license' | 'build' | null) => void;
   advancePhase: (phaseNum: number) => void;
   resetJourney: () => void;
-  refetch: () => Promise<void>;
+  /** Resolves with the hydration outcome — navigation-after-refetch MUST check it. */
+  refetch: () => Promise<HydrateResult>;
 }
 
 const CreatorProgressContext = createContext<CreatorProgressContextType | undefined>(undefined);

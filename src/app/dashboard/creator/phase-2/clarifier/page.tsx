@@ -2,20 +2,8 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Check,
-  Lock,
-  Send,
-  FileText,
-  Sparkles,
-  MessageSquare,
-  Loader2,
-  ArrowRight,
-  ArrowLeft,
-  BarChart3,
-  X,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
+import Image from "next/image";
+import { Loader2, ArrowRight, X, Check, Copy, Send, FileText, Pencil } from "lucide-react";
 import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
 import { creatorAiApi } from "@/lib/api-creator-ai";
 import { creatorJourneyApi } from "@/lib/api-creator-journey";
@@ -47,6 +35,28 @@ const OPENER =
   "Welcome. Tell me your idea — in your own words, however rough it is. What problem are you solving?";
 const TOTAL_QUESTIONS = 6;
 
+// Right-panel step labels, derived from the backend's six scripted questions
+// (CreatorPhase2Controller.Questions), in order.
+const STEP_LABELS = [
+  "Problem",
+  "Target Users",
+  "Alternatives",
+  "Solution",
+  "Differentiation",
+  "Key Risk",
+];
+
+// Progress bands for the clarity ring. The ring fills from questions ANSWERED, not
+// idea quality — so labels describe progress (grey → amber → blue → green) and the
+// six-answer state says "All Answered", never "Complete": finalize is still required.
+function ringBand(answered: number, total: number): { label: string; color: string } {
+  if (answered <= 0) return { label: "Not Started", color: "var(--muted-foreground)" };
+  if (answered <= 2) return { label: "Getting Started", color: "var(--dr-yellow)" };
+  if (answered <= 4) return { label: "Developing", color: "var(--dr-yellow)" };
+  if (answered < total) return { label: "Almost There", color: "var(--primary)" };
+  return { label: "All Answered", color: "var(--p8-green)" };
+}
+
 export default function AIClarifierPage() {
   const router = useRouter();
   const { state, setState, refetch } = useCreatorProgress();
@@ -57,10 +67,14 @@ export default function AIClarifierPage() {
   const [isTyping, setIsTyping] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [ideaScore, setIdeaScore] = useState(0);
-  const [showRightPanel, setShowRightPanel] = useState(false);
+  const [totalQuestions, setTotalQuestions] = useState(TOTAL_QUESTIONS);
   const [summaryReady, setSummaryReady] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
   const [finalizeError, setFinalizeError] = useState<string | null>(null);
+  const [finalizeSlow, setFinalizeSlow] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  // Index into `messages` of the user answer being edited in place (null = not editing).
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
   const [canvasBlocks, setCanvasBlocks] = useState<CanvasBlock[]>([
     { title: "CONCEPT", unlockQ: 2, value: "", key: "concept" },
@@ -147,7 +161,64 @@ export default function AIClarifierPage() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping]);
 
+  // While finalizing (an up-to-3-minute poll), acknowledge a long wait: after 40s
+  // swap the sub-line so the screen doesn't read as stuck. Clears automatically when
+  // finalizing ends — early completion, error, or navigation unmounting the component.
+  useEffect(() => {
+    if (!finalizing) {
+      setFinalizeSlow(false);
+      return;
+    }
+    const t = setTimeout(() => setFinalizeSlow(true), 40000);
+    return () => clearTimeout(t);
+  }, [finalizing]);
+
   const handleSend = async () => {
+    // ── Edit-in-place branch ──
+    // Update the answer at editingIndex instead of appending a new turn, then re-derive
+    // the journal + project mirror. NO backend call: the backend keeps the original text
+    // (chat-message is append-only). Acceptable because the follow-up questions are a
+    // fixed server script (not content-dependent) and finalize builds rawIdea from these
+    // frontend `messages`; the durable backend-synced edit is filed as CI-13. Runs before
+    // the guard below so an answer can still be revised once summaryReady (issue 1).
+    if (editingIndex !== null) {
+      const editText = inputValue.trim();
+      if (!editText) return; // empty/whitespace while editing → no-op, edit stays active
+      const target = messages[editingIndex];
+      if (!target || target.sender !== "user") {
+        setEditingIndex(null);
+        return;
+      }
+
+      const editedMessages = messages.map((m, i) => (i === editingIndex ? { ...m, text: editText } : m));
+      setMessages(editedMessages);
+
+      // 1-based ordinal of this answer among user turns → its journal/project slot
+      // (answer N maps to canvasBlocks[N-1]; answer 6 "Key Risk" maps to no block).
+      const answerOrdinal = editedMessages.slice(0, editingIndex + 1).filter((m) => m.sender === "user").length;
+      if (answerOrdinal === 1) setJournalText(editText);
+      const blockKey = canvasBlocks[answerOrdinal - 1]?.key;
+      setCanvasBlocks((prev) =>
+        prev.map((block, i) =>
+          i === answerOrdinal - 1
+            ? { ...block, value: editText.length > 30 ? editText.substring(0, 28) + "..." : editText }
+            : block
+        )
+      );
+      setState((prev) => ({
+        ...prev,
+        project: blockKey ? { ...prev.project, [blockKey]: editText, exists: true } : prev.project,
+        journeyState: {
+          ...prev.journeyState,
+          phase2: { ...prev.journeyState.phase2, chatMessages: editedMessages },
+        },
+      }));
+
+      setEditingIndex(null);
+      setInputValue("");
+      return;
+    }
+
     if (!inputValue.trim() || isTyping || summaryReady || finalizing) return;
     const userText = inputValue.trim();
     const userMsgId = Date.now().toString();
@@ -191,7 +262,8 @@ export default function AIClarifierPage() {
       const finalMessages = [...updatedMessages, { id: aiMsgId, sender: "ai" as const, text: aiText }];
       setMessages(finalMessages);
       setCurrentStep(res.questionIndex + 1);
-      setIdeaScore(Math.min(Math.round((res.questionIndex / TOTAL_QUESTIONS) * 100), 100));
+      setTotalQuestions(res.totalQuestions);
+      setIdeaScore(Math.min(Math.round((res.questionIndex / res.totalQuestions) * 100), 100));
       setSummaryReady(res.summaryReady);
 
       setState((prev) => ({
@@ -223,6 +295,30 @@ export default function AIClarifierPage() {
       e.preventDefault();
       handleSend();
     }
+  };
+
+  const handleCopy = async (id: string, text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId((c) => (c === id ? null : c)), 1500);
+    } catch {
+      // Clipboard unavailable (insecure context / denied) — silently no-op.
+    }
+  };
+
+  // Enter edit-in-place for a user answer: pull its text into the input and mark the
+  // index. handleSend's edit branch (stage 3) updates in place instead of appending.
+  const handleEditStart = (index: number) => {
+    if (isTyping || finalizing) return;
+    setInputValue(messages[index].text);
+    setEditingIndex(index);
+    setCopiedId(null);
+  };
+
+  const handleEditCancel = () => {
+    setEditingIndex(null);
+    setInputValue("");
   };
 
   // Poll the C-2 clarifier session until terminal, using the shared R12 policy
@@ -307,364 +403,478 @@ export default function AIClarifierPage() {
     }
   };
 
-  const unlockedCount = canvasBlocks.filter((b) => currentStep >= b.unlockQ).length;
+  // Derived progress — driven by answered count so the panel is independent of the
+  // in-flight optimistic step. Kept for the ring, band and step list (stage 2).
+  const answeredCount = messages.filter((m) => m.sender === "user").length;
+  const ringPct = Math.min(Math.round((answeredCount / totalQuestions) * 100), 100);
+  const band = ringBand(answeredCount, totalQuestions);
+  const currentQuestion = Math.min(answeredCount + 1, totalQuestions);
+  const ringR = 52;
+  const ringC = 2 * Math.PI * ringR;
+  const ringOffset = ringC * (1 - ringPct / 100);
 
   return (
-    <div className="flex flex-col h-full w-full bg-background text-foreground">
-      {/* ── HEADER ── */}
-      <header className="flex items-center justify-between border-b border-border bg-card/80 backdrop-blur-sm px-4 sm:px-6 py-3 shrink-0 z-10">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => router.push("/dashboard/creator/phase-2")}
-          className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          Back
-        </Button>
-        <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-          <Sparkles className="h-3 w-3" />
-          <span className="hidden sm:inline">Phase 2 of 6 —</span> Refinement Chat
+    <div className="w-full" style={{ backgroundColor: "var(--background)" }}>
+      <div className="mx-auto w-full max-w-[1200px] px-4 sm:px-6 py-8 sm:py-10 space-y-6">
+
+        {/* ── Heading block ── */}
+        <div className="space-y-2">
+          <h1 className="text-2xl sm:text-3xl font-semibold" style={{ color: "var(--foreground)" }}>
+            Let&apos;s sharpen your idea
+          </h1>
+          <p className="text-base max-w-[780px]" style={{ color: "var(--muted-foreground)" }}>
+            Answer {totalQuestions} focused questions. Our AI will analyze your responses and build your concept canvas.
+          </p>
         </div>
-      </header>
 
-      {/* ── PROGRESS BAR ── */}
-      <div className="h-[3px] w-full bg-muted shrink-0">
-        <div
-          className="h-full bg-primary transition-all duration-500 ease-out"
-          style={{ width: `${Math.min(28 + (currentStep - 1) * 10, 78)}%` }}
-        />
-      </div>
+        {/* ── Two columns (stack below lg) ──
+            Cards: lit white edge (--card-edge) so they read as raised on the darker
+            page, plus shadow-sm — a Tailwind default that deliberately approximates
+            the design's softer 0 0 22px ambient glow (project uses default shadows). */}
+        <div className="flex flex-col lg:flex-row gap-4 items-stretch">
 
-      {/* ── THREE-COLUMN WORKSPACE ── */}
-      <div className="flex-1 flex min-h-0 overflow-hidden">
-
-        {/* ─── LEFT SIDEBAR (hidden below lg) ─── */}
-        <aside className="hidden lg:flex w-[220px] border-r border-border flex-col justify-between p-5 bg-card shrink-0 overflow-y-auto">
-          {/* Stepper */}
-          <div className="space-y-1">
-            {/* Phase 1 — done */}
-            <div className="flex items-center gap-3 px-2 py-2 rounded-lg text-xs font-medium text-muted-foreground">
-              <div className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                <Check className="w-3 h-3" strokeWidth={3} />
-              </div>
-              <span className="line-through">Phase 1: Identity & KYC</span>
-            </div>
-
-            {/* Phase 2 — active */}
-            <div className="flex items-center gap-3 px-2 py-2 rounded-lg bg-primary/5 border border-primary/10 text-xs font-bold text-foreground">
-              <div className="w-5 h-5 rounded-full border-2 border-primary flex items-center justify-center shrink-0">
-                <div className="w-2.5 h-2.5 rounded-full bg-primary" />
-              </div>
-              <span className="flex-1">Phase 2: Refinement</span>
-              <span className="bg-primary/10 text-primary text-[9px] font-bold px-1.5 py-0.5 rounded-full">
-                active
-              </span>
-            </div>
-
-            {/* Phases 3-6 — locked */}
-            {["Concept & Name", "Logo & Branding", "AI Masterplan", "Offer Setup"].map((phase, idx) => (
+          {/* LEFT: conversation card */}
+          <section
+            className="w-full lg:flex-1 rounded-2xl border shadow-sm p-5 flex flex-col min-w-0"
+            style={{ backgroundColor: "var(--card)", borderColor: "var(--card-edge)" }}
+          >
+            {/* ── Assistant header ── */}
+            <div className="flex items-center gap-3 shrink-0">
               <div
-                key={phase}
-                className="flex items-center gap-3 px-2 py-2 rounded-lg text-xs font-medium text-muted-foreground"
+                className="rounded-full overflow-hidden flex items-center justify-center shrink-0 border"
+                style={{ width: 48, height: 48, backgroundColor: "var(--popover)", borderColor: "var(--border)" }}
               >
-                <Lock className="w-3.5 h-3.5 text-muted shrink-0" />
-                <span>
-                  Phase {idx + 3}: {phase}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          {/* Idea Journal */}
-          <div className="border border-dashed border-border rounded-xl p-4 flex flex-col gap-3 bg-muted/30 mt-5">
-            <span className="text-[10px] font-bold text-muted-foreground tracking-wider uppercase">
-              Idea Journal
-            </span>
-            <div className="flex items-start gap-2.5">
-              <FileText className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
-              <p className="text-xs text-muted-foreground leading-relaxed break-words font-medium line-clamp-4">
-                {journalText}
-              </p>
-            </div>
-          </div>
-        </aside>
-
-        {/* ─── MIDDLE: CHAT PANEL (always visible, takes remaining space) ─── */}
-        <section className="flex-1 flex flex-col min-w-0 min-h-0 bg-card">
-          {/* Chat header */}
-          <div className="px-4 sm:px-6 py-3.5 border-b border-border flex items-center justify-between shrink-0">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
-                <MessageSquare className="w-4 h-4" />
+                {/* Robot avatar — DELIBERATE exception to the lucide-only icon rule: this
+                    is a raster character illustration (artwork), not a symbol. The library
+                    has no equivalent and its Bot glyph would read as empty in this tile.
+                    Native 456x376 → crisp at this ~30px leaf. Source: exported from Figma. */}
+                <Image
+                  src="/icons/phase2/robot.png"
+                  alt="AI assistant"
+                  width={30}
+                  height={25}
+                  className="object-contain"
+                />
               </div>
               <div className="min-w-0">
-                <h2 className="font-bold text-sm text-foreground truncate">AI Idea Clarifier</h2>
-                <p className="text-[10px] text-muted-foreground font-medium mt-0.5 truncate">
-                  5 focused questions to sharpen your idea
+                <p className="text-lg font-medium" style={{ color: "var(--foreground)" }}>
+                  AI Idea Clarifier
+                </p>
+                <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
+                  {totalQuestions} focused questions to sharpen your idea
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-3 shrink-0 ml-3">
-              {/* Step dots */}
-              <div className="flex gap-1">
-                {[1, 2, 3, 4, 5].map((step) => (
-                  <div
-                    key={step}
-                    className={`w-4 h-1.5 rounded-full transition-colors duration-300 ${
-                      step < currentStep
-                        ? "bg-primary"
-                        : step === currentStep && currentStep <= 5
-                          ? "bg-primary animate-pulse"
-                          : "bg-muted"
-                    }`}
-                  />
-                ))}
-              </div>
-
-              {/* Mobile: toggle right panel */}
-              <Button
-                variant="outline"
-                size="sm"
-                className="lg:hidden flex items-center gap-1.5 text-xs h-8 px-2.5 rounded-lg"
-                onClick={() => setShowRightPanel(true)}
-              >
-                <BarChart3 className="h-3.5 w-3.5" />
-                <span className="font-bold">{ideaScore}</span>
-              </Button>
-            </div>
-          </div>
-
-          {/* Chat messages — scrollable */}
-          <div className="flex-1 overflow-y-auto min-h-0 p-4 sm:p-6 space-y-4">
-            {messages.map((msg, idx) => (
+            {/* ── Transcript surface — scrolls within its own bounds ──
+                DELIBERATE deviation: fixed height, not flex-to-fill like the design.
+                Flexing would couple the row height to the viewport (reintroducing the
+                stage-1 pin) and to the chrome's topbar/footer heights; a predictable
+                scroll container is worth more than matching the flex. Dead space in the
+                shorter column is absorbed by the journal card (stage 6, mt-auto). */}
+            <div
+              className="mt-4 flex-1 min-h-0 rounded-2xl border overflow-hidden"
+              style={{ backgroundColor: "var(--popover)", borderColor: "var(--border)" }}
+            >
               <div
-                key={msg.id}
-                className={`flex items-start gap-3 max-w-[88%] sm:max-w-[80%] animate-in fade-in-0 slide-in-from-bottom-2 duration-300 ${
-                  msg.sender === "user" ? "ml-auto flex-row-reverse" : "mr-auto"
-                }`}
-                style={{ animationDelay: `${idx * 50}ms` }}
+                className="h-[420px] sm:h-[550px] overflow-y-auto p-4 flex flex-col gap-3 [scrollbar-width:thin] [scrollbar-color:var(--border)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[var(--border)]"
               >
-                {msg.sender === "ai" && (
-                  <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-xs shrink-0 select-none shadow-sm">
-                    M
+                {messages.map((msg, index) => {
+                  const isUser = msg.sender === "user";
+                  // Send-failure notes are pushed as ai-sender messages with an "err-" id
+                  // (handleSend rollback). Flag them for destructive styling — no logic change.
+                  const isError = msg.id.startsWith("err-");
+                  const isEditing = isUser && editingIndex === index;
+                  return (
+                    <div
+                      key={msg.id}
+                      className={`flex flex-col ${isUser ? "items-end" : "items-start"}`}
+                    >
+                      {/* "Editing" tag on the answer currently pulled into the input */}
+                      {isEditing && (
+                        <span className="mb-1 text-[10px] font-semibold uppercase tracking-wide" style={{ color: "var(--primary)" }}>
+                          Editing…
+                        </span>
+                      )}
+                      {/* Assistant and user bubbles share bg/border/radius by design —
+                          they differ only by alignment and max width. Off-screen speaker
+                          label distinguishes them for assistive tech. The answer being
+                          edited gets a --primary border to tie it to the input below. */}
+                      <div
+                        className={`rounded-2xl border px-[18px] py-[14px] text-sm leading-relaxed ${isUser ? "max-w-[548px]" : "max-w-[580px]"}`}
+                        style={{
+                          backgroundColor: isError ? "color-mix(in srgb, var(--destructive) 8%, transparent)" : "var(--card)",
+                          borderColor: isEditing ? "var(--primary)" : isError ? "var(--destructive)" : "var(--border)",
+                          color: isError ? "var(--destructive)" : "var(--foreground)",
+                        }}
+                      >
+                        <span className="sr-only">{isError ? "Error: " : isUser ? "You: " : "Assistant: "}</span>
+                        {msg.text}
+                      </div>
+
+                      {/* Edit-in-place + copy actions on user messages. Edit populates
+                          the input and marks this index; gated on !isTyping && !finalizing
+                          (no summaryReady gate — editing before finalize is the key case).
+                          Hidden on the message currently being edited (it's in the input). */}
+                      {isUser && !isEditing && (
+                        <div className="mt-1.5 flex items-center gap-2">
+                          <button
+                            onClick={() => handleEditStart(index)}
+                            disabled={isTyping || finalizing}
+                            aria-label="Edit your answer"
+                            className="inline-flex items-center text-[11px] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                            style={{ color: "var(--muted-foreground)" }}
+                            onMouseEnter={(e) => { if (!isTyping && !finalizing) e.currentTarget.style.color = "var(--foreground)"; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.color = "var(--muted-foreground)"; }}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleCopy(msg.id, msg.text)}
+                            aria-label="Copy your answer"
+                            className="inline-flex items-center gap-1 text-[11px] transition-colors"
+                            style={{ color: copiedId === msg.id ? "var(--p8-green)" : "var(--muted-foreground)" }}
+                            onMouseEnter={(e) => { if (copiedId !== msg.id) e.currentTarget.style.color = "var(--foreground)"; }}
+                            onMouseLeave={(e) => { if (copiedId !== msg.id) e.currentTarget.style.color = "var(--muted-foreground)"; }}
+                          >
+                            {copiedId === msg.id ? (
+                              <>
+                                <Check className="h-4 w-4" /> Copied
+                              </>
+                            ) : (
+                              <Copy className="h-4 w-4" />
+                            )}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {/* Thinking indicator — assistant working on the next question */}
+                {isTyping && (
+                  <div className="flex flex-col items-start">
+                    <div
+                      className="rounded-2xl border px-[18px] py-[14px] max-w-[580px] flex items-center gap-2"
+                      style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}
+                    >
+                      <span className="sr-only">Assistant is typing</span>
+                      <Loader2 className="h-4 w-4 animate-spin" style={{ color: "var(--primary)" }} />
+                      <span className="text-sm" style={{ color: "var(--muted-foreground)" }}>
+                        Thinking…
+                      </span>
+                    </div>
+                  </div>
+                )}
+                <div ref={chatEndRef} />
+              </div>
+            </div>
+
+            {/* ── Input row + keyboard hint ──
+                Renders while questions remain OR while editing — editing takes precedence
+                so an answer can be revised even after all six are answered (issue 1). Once
+                not editing and summaryReady, the finalize states below render instead. */}
+            {editingIndex !== null || !summaryReady ? (
+              <div className="mt-4 shrink-0">
+                {editingIndex !== null && (
+                  <div className="mb-2 flex items-center justify-between px-1">
+                    <span className="text-[11px] font-medium" style={{ color: "var(--primary)" }}>
+                      Editing your answer
+                    </span>
+                    <button
+                      onClick={handleEditCancel}
+                      className="inline-flex items-center gap-1 text-[11px] transition-colors"
+                      style={{ color: "var(--muted-foreground)" }}
+                      onMouseEnter={(e) => (e.currentTarget.style.color = "var(--foreground)")}
+                      onMouseLeave={(e) => (e.currentTarget.style.color = "var(--muted-foreground)")}
+                    >
+                      <X className="h-3.5 w-3.5" /> Cancel
+                    </button>
                   </div>
                 )}
                 <div
-                  className={`px-4 py-3 text-[13px] sm:text-sm font-medium leading-relaxed ${
-                    msg.sender === "user"
-                      ? "bg-primary text-primary-foreground rounded-2xl rounded-tr-sm shadow-sm"
-                      : "bg-muted text-foreground rounded-2xl rounded-tl-sm border border-border"
-                  }`}
+                  className="flex items-end gap-2 rounded-xl border p-1.5 focus-within:ring-1 focus-within:ring-[var(--ring)] transition-shadow"
+                  style={{ backgroundColor: "var(--popover)", borderColor: editingIndex !== null ? "var(--primary)" : "var(--border)" }}
                 >
-                  {msg.text}
-                </div>
-              </div>
-            ))}
-
-            {isTyping && (
-              <div className="flex items-start gap-3 max-w-[80%] animate-in fade-in-0 duration-200">
-                <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-xs shrink-0 select-none shadow-sm">
-                  M
-                </div>
-                <div className="px-4 py-3 rounded-2xl rounded-tl-sm bg-muted border border-border flex items-center gap-2">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
-                  <span className="text-xs text-muted-foreground font-medium">Thinking...</span>
-                </div>
-              </div>
-            )}
-            <div ref={chatEndRef} />
-          </div>
-
-          {/* Chat input — pinned bottom */}
-          <div className="p-3 sm:p-4 border-t border-border bg-card shrink-0">
-            {!summaryReady ? (
-              <>
-                <div className="relative flex items-end gap-2 border border-border rounded-xl focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20 transition-all bg-background p-1">
                   <textarea
                     value={inputValue}
                     onChange={(e) => setInputValue(e.target.value)}
                     onKeyDown={handleKeyPress}
-                    placeholder="Type your answer..."
+                    placeholder={editingIndex !== null ? "Revise your answer..." : "Type your answer..."}
                     rows={1}
                     disabled={isTyping}
-                    className="flex-1 resize-none border-none outline-none py-2.5 px-3 text-sm text-foreground placeholder:text-muted-foreground bg-transparent min-h-[40px] max-h-[120px]"
+                    className="flex-1 resize-none bg-transparent outline-none border-none px-3 py-2.5 text-sm min-h-[40px] max-h-[120px] placeholder:text-muted-foreground"
+                    style={{ color: "var(--foreground)" }}
                   />
-                  <Button
+                  <button
                     onClick={handleSend}
                     disabled={!inputValue.trim() || isTyping}
-                    size="icon"
-                    className="w-9 h-9 rounded-lg shrink-0"
+                    aria-label={editingIndex !== null ? "Save edit" : "Send answer"}
+                    className="flex items-center justify-center rounded-lg shrink-0 transition-opacity disabled:opacity-50"
+                    style={{ width: 44, height: 44, backgroundColor: "var(--primary)", color: "var(--primary-foreground)" }}
                   >
-                    <Send className="w-4 h-4" />
-                  </Button>
+                    {isTyping ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : editingIndex !== null ? (
+                      <Check className="h-5 w-5" />
+                    ) : (
+                      <Send className="h-5 w-5" />
+                    )}
+                  </button>
                 </div>
-                <span className="block text-[10px] text-center text-muted-foreground mt-2">
-                  Press Enter to send · Shift+Enter for new line
-                </span>
-              </>
+                <p className="mt-2 text-center text-[11px]" style={{ color: "var(--muted-foreground)" }}>
+                  {editingIndex !== null
+                    ? "Press Enter to save your edit"
+                    : "Press Enter to send  Shift + Enter for new line"}
+                </p>
+              </div>
             ) : finalizeError ? (
-              /* ERROR + RETRY — never shown alongside the success header */
-              <div className="w-full flex flex-col items-center gap-3 py-4 text-center">
-                <div className="w-11 h-11 rounded-full bg-destructive/10 flex items-center justify-center text-destructive">
-                  <X className="w-5 h-5" strokeWidth={3} />
+              /* FINALIZE ERROR — retry is always possible; the six answers stay in
+                 messages/state (finalize failure never clears them), so nothing is lost. */
+              <div
+                className="mt-4 shrink-0 rounded-xl border p-5 flex flex-col items-center text-center gap-3"
+                style={{ backgroundColor: "var(--popover)", borderColor: "var(--card-edge)" }}
+              >
+                <div
+                  className="flex items-center justify-center rounded-full"
+                  style={{ width: 44, height: 44, backgroundColor: "color-mix(in srgb, var(--destructive) 12%, transparent)" }}
+                >
+                  <X className="h-5 w-5" strokeWidth={3} style={{ color: "var(--destructive)" }} />
                 </div>
-                <h3 className="font-bold text-foreground text-sm">We couldn&apos;t finish that</h3>
-                <p className="text-xs text-destructive max-w-xs">{finalizeError}</p>
-                <Button
+                <div className="space-y-1">
+                  <h3 className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>
+                    We couldn&apos;t finish that
+                  </h3>
+                  <p className="text-xs max-w-xs" style={{ color: "var(--destructive)" }}>
+                    {finalizeError}
+                  </p>
+                  <p className="text-[11px] max-w-xs mx-auto" style={{ color: "var(--muted-foreground)" }}>
+                    Your answers are saved — nothing was lost. You can try again.
+                  </p>
+                </div>
+                <button
                   onClick={handleComplete}
                   disabled={finalizing}
-                  className="font-semibold py-2.5 px-6 rounded-xl flex items-center gap-2 text-xs shadow-sm disabled:opacity-60"
+                  className="inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold transition-opacity disabled:opacity-60"
+                  style={{ backgroundColor: "var(--primary)", color: "var(--primary-foreground)" }}
                 >
-                  Try again
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
+                  Try again <ArrowRight className="h-4 w-4" />
+                </button>
               </div>
             ) : finalizing ? (
-              /* PROCESSING — finalize in progress */
-              <div className="w-full flex flex-col items-center gap-3 py-4 text-center">
-                <div className="w-11 h-11 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                </div>
-                <h3 className="font-bold text-foreground text-sm">Clarifying your idea…</h3>
-                <Button
-                  disabled
-                  className="font-semibold py-2.5 px-6 rounded-xl flex items-center gap-2 text-xs shadow-sm disabled:opacity-60"
+              /* FINALIZING — the AI clarifier is running + being polled. */
+              <div
+                className="mt-4 shrink-0 rounded-xl border p-5 flex flex-col items-center text-center gap-3"
+                style={{ backgroundColor: "var(--popover)", borderColor: "var(--card-edge)" }}
+              >
+                <div
+                  className="flex items-center justify-center rounded-full"
+                  style={{ width: 44, height: 44, backgroundColor: "var(--muted)" }}
                 >
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Building your summary…
-                </Button>
+                  <Loader2 className="h-5 w-5 animate-spin" style={{ color: "var(--muted-foreground)" }} />
+                </div>
+                <h3 className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>
+                  Clarifying your idea…
+                </h3>
+                <p className="text-xs max-w-xs" style={{ color: "var(--muted-foreground)" }}>
+                  {finalizeSlow
+                    ? "Still working — this is taking longer than usual. Hang tight."
+                    : "Analyzing your answers and scoring clarity. This can take a moment."}
+                </p>
               </div>
             ) : (
-              /* READY — chat complete, ready to finalize (navigates away on success) */
-              <div className="w-full flex flex-col items-center gap-3 py-4 text-center">
-                <div className="w-11 h-11 rounded-full bg-green-100 dark:bg-green-950/30 flex items-center justify-center text-green-600 dark:text-green-400">
-                  <Check className="w-5 h-5" strokeWidth={3} />
+              /* FINALIZE CTA — replaces the input entirely; the action a user must take
+                 or lose their work. Says what finalizing does, not just the button name. */
+              <div
+                className="mt-4 shrink-0 rounded-xl border p-5 flex flex-col items-center text-center gap-3"
+                style={{ backgroundColor: "var(--popover)", borderColor: "var(--card-edge)" }}
+              >
+                <div
+                  className="flex items-center justify-center rounded-full"
+                  style={{ width: 44, height: 44, backgroundColor: "var(--dr-bg-green)" }}
+                >
+                  <Check className="h-5 w-5" strokeWidth={3} style={{ color: "var(--p8-green)" }} />
                 </div>
-                <h3 className="font-bold text-foreground text-sm">Idea clarified — ready to continue</h3>
-                <Button
+                <div className="space-y-1">
+                  <h3 className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>
+                    All questions answered
+                  </h3>
+                  <p className="text-xs max-w-sm mx-auto" style={{ color: "var(--muted-foreground)" }}>
+                    Finalizing runs the AI analysis to score your idea&apos;s clarity and build your
+                    concept canvas, then takes you to your summary. You&apos;re not done until you do this.
+                  </p>
+                </div>
+                <button
                   onClick={handleComplete}
                   disabled={finalizing}
-                  className="font-semibold py-2.5 px-6 rounded-xl flex items-center gap-2 text-xs shadow-sm disabled:opacity-60"
+                  className="inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold transition-opacity disabled:opacity-60"
+                  style={{ backgroundColor: "var(--primary)", color: "var(--primary-foreground)" }}
                 >
-                  Proceed to Concept &amp; Name
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
+                  Generate my summary <ArrowRight className="h-4 w-4" />
+                </button>
               </div>
             )}
-          </div>
-        </section>
+          </section>
 
-        {/* ─── RIGHT SIDEBAR — desktop: always visible / mobile: slide-over ─── */}
-
-        {/* Mobile overlay backdrop */}
-        {showRightPanel && (
-          <div
-            className="fixed inset-0 bg-black/40 z-40 lg:hidden animate-in fade-in-0 duration-200"
-            onClick={() => setShowRightPanel(false)}
-          />
-        )}
-
-        <aside
-          className={`
-            ${showRightPanel ? "translate-x-0" : "translate-x-full"}
-            lg:translate-x-0
-            fixed right-0 top-0 bottom-0 z-50
-            lg:static lg:z-auto
-            w-[280px] lg:w-[260px]
-            border-l border-border
-            p-5 flex flex-col items-center gap-5
-            bg-card shrink-0 overflow-y-auto
-            transition-transform duration-300 ease-out
-          `}
-        >
-          {/* Close button — mobile only */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="lg:hidden absolute top-3 right-3 h-8 w-8 rounded-lg"
-            onClick={() => setShowRightPanel(false)}
+          {/* RIGHT: progress panel */}
+          <aside
+            className="w-full lg:w-[300px] rounded-2xl border shadow-sm px-6 pt-9 pb-6 flex flex-col gap-6 shrink-0"
+            style={{ backgroundColor: "var(--card)", borderColor: "var(--card-edge)" }}
           >
-            <X className="w-4 h-4" />
-          </Button>
-
-          {/* Idea Score Ring */}
-          <div className="flex flex-col items-center pt-2 lg:pt-0">
-            <div className="relative w-28 h-28 flex items-center justify-center mb-2">
-              <svg className="w-full h-full transform -rotate-90">
-                <circle
-                  cx="56"
-                  cy="56"
-                  r="48"
-                  className="text-muted"
-                  strokeWidth="6"
-                  fill="transparent"
-                  stroke="currentColor"
-                />
-                <circle
-                  cx="56"
-                  cy="56"
-                  r="48"
-                  className="text-primary transition-all duration-700 ease-out"
-                  strokeWidth="6"
-                  fill="transparent"
-                  strokeDasharray={2 * Math.PI * 48}
-                  strokeDashoffset={2 * Math.PI * 48 * (1 - ideaScore / 100)}
-                  strokeLinecap="round"
-                  stroke="currentColor"
-                />
-              </svg>
-              <span className="absolute text-lg font-extrabold text-foreground tabular-nums">
-                {ideaScore}{" "}
-                <span className="text-[10px] font-semibold text-muted-foreground">/ 100</span>
-              </span>
-            </div>
-            <span className="text-[10px] font-bold text-muted-foreground tracking-wider uppercase text-center">
-              Idea Score
-            </span>
-            <span className="text-[10px] text-muted-foreground font-medium mt-0.5">
-              {unlockedCount}/5 blocks unlocked
-            </span>
-          </div>
-
-          {/* Canvas Blocks */}
-          <div className="w-full space-y-2.5">
-            {canvasBlocks.map((block) => {
-              const isLocked = currentStep < block.unlockQ;
-              return (
-                <div
-                  key={block.title}
-                  className={`border rounded-xl p-3.5 flex items-center justify-between transition-all duration-300 ${
-                    isLocked
-                      ? "bg-muted/40 border-border opacity-60"
-                      : "bg-card border-primary/20 shadow-sm ring-1 ring-primary/5"
-                  }`}
-                >
-                  <div className="min-w-0">
-                    <span className="block text-[10px] font-bold text-foreground tracking-wide uppercase">
-                      {block.title}
-                    </span>
-                    <span
-                      className={`block text-xs font-semibold mt-0.5 truncate max-w-[160px] ${
-                        isLocked ? "text-muted-foreground" : "text-primary"
-                      }`}
-                    >
-                      {isLocked ? `Unlocks after Q${block.unlockQ - 1}` : block.value || "Filled ✓"}
-                    </span>
-                  </div>
-                  {isLocked ? (
-                    <Lock className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                  ) : (
-                    <div className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                      <Check className="w-3 h-3" strokeWidth={3} />
-                    </div>
-                  )}
+            {/* ── Clarity ring + band label + finalize cue ── */}
+            <div className="flex flex-col items-center gap-3">
+              <div className="relative" style={{ width: 120, height: 120 }}>
+                <svg width="120" height="120" viewBox="0 0 120 120" aria-hidden="true">
+                  {/* track */}
+                  <circle cx="60" cy="60" r={ringR} fill="none" strokeWidth="8" stroke="var(--muted)" />
+                  {/* progress arc — starts at 12 o'clock (rotate -90), travels clockwise */}
+                  <circle
+                    cx="60"
+                    cy="60"
+                    r={ringR}
+                    fill="none"
+                    strokeWidth="8"
+                    stroke={band.color}
+                    strokeLinecap="round"
+                    strokeDasharray={ringC}
+                    strokeDashoffset={ringOffset}
+                    transform="rotate(-90 60 60)"
+                    style={{ transition: "stroke-dashoffset 700ms ease, stroke 300ms ease" }}
+                  />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-3xl font-semibold tabular-nums" style={{ color: band.color }}>
+                    {ringPct}%
+                  </span>
                 </div>
-              );
-            })}
-          </div>
-        </aside>
+              </div>
+              <span className="text-xs font-medium uppercase tracking-wide" style={{ color: band.color }}>
+                {band.label}
+              </span>
+
+              {/* Finalize prominence: the full ring never stands alone. Once every
+                  question is answered the ring shows 100% green, but summaryReady only
+                  flips when the chat-message response returns — so in that in-flight
+                  window (answeredCount === total, summaryReady false) we show an explicit
+                  in-progress note, and the finalize action the moment it's ready. The
+                  ring reaching full is therefore always paired with one or the other. */}
+              {summaryReady ? (
+                <div className="w-full flex flex-col items-center gap-2 pt-1">
+                  <p className="text-[11px] text-center" style={{ color: "var(--muted-foreground)" }}>
+                    You&apos;re not done yet — finalize to save your clarity score.
+                  </p>
+                  <button
+                    onClick={handleComplete}
+                    disabled={finalizing}
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-xs font-semibold transition-opacity disabled:opacity-60"
+                    style={{ backgroundColor: "var(--primary)", color: "var(--primary-foreground)" }}
+                  >
+                    {finalizing ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" /> Finalizing…
+                      </>
+                    ) : (
+                      <>
+                        Generate my summary <ArrowRight className="h-4 w-4" />
+                      </>
+                    )}
+                  </button>
+                </div>
+              ) : answeredCount >= totalQuestions ? (
+                <div className="w-full flex flex-col items-center gap-1.5 pt-1">
+                  <Loader2 className="h-4 w-4 animate-spin" style={{ color: band.color }} />
+                  <p className="text-[11px] text-center" style={{ color: "var(--muted-foreground)" }}>
+                    Saving your final answer…
+                  </p>
+                </div>
+              ) : null}
+            </div>
+
+            {/* Divider — drawn as a 1px rule (the design exports it as an image) */}
+            <div className="h-px w-full" style={{ backgroundColor: "var(--border)" }} />
+
+            {/* ── Progress line + step list ── */}
+            <div className="flex flex-col gap-3">
+              <p className="text-sm font-medium" style={{ color: "var(--foreground)" }}>
+                {summaryReady
+                  ? `All ${totalQuestions} questions answered`
+                  : `Progress: Question ${currentQuestion} of ${totalQuestions}`}
+              </p>
+              <div className="flex flex-col gap-2">
+                {STEP_LABELS.map((label, idx) => {
+                  const stepNum = idx + 1;
+                  const done = answeredCount >= stepNum;
+                  const current = !done && answeredCount === stepNum - 1;
+                  return (
+                    <div key={label} className="flex items-center gap-2">
+                      {/* status badge: tinted circle drawn separately; lucide supplies
+                          the check glyph (design's filled tick-circle has no library
+                          single-glyph equivalent) or the step number */}
+                      <div
+                        className="flex items-center justify-center rounded-full shrink-0"
+                        style={{
+                          width: 20,
+                          height: 20,
+                          backgroundColor: done
+                            ? "var(--dr-bg-green)"
+                            : current
+                              ? "var(--primary)"
+                              : "var(--muted)",
+                        }}
+                      >
+                        {done ? (
+                          <Check className="h-3.5 w-3.5" strokeWidth={3} style={{ color: "var(--p8-green)" }} />
+                        ) : (
+                          <span
+                            className="text-[11px] leading-none"
+                            style={{ color: current ? "var(--primary-foreground)" : "var(--muted-foreground)" }}
+                          >
+                            {stepNum}
+                          </span>
+                        )}
+                      </div>
+                      {/* label + parenthetical (future steps only; completed & current
+                          drop it — a completed step relies on the tick) */}
+                      <div className="flex items-center gap-1 min-w-0">
+                        <span
+                          className={`text-xs ${current ? "font-medium" : ""}`}
+                          style={{ color: "var(--foreground)" }}
+                        >
+                          {label}
+                        </span>
+                        {!done && !current && (
+                          <span className="text-[11px]" style={{ color: "var(--muted-foreground)" }}>
+                            (Unlocks after Q{stepNum - 1})
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* ── Idea Journal ──
+                mt-auto pins it to the bottom so the right column fills its stretched
+                height (equal to the taller left column, per items-stretch) with no dead
+                space — the agreed fix for the fixed-transcript deviation. The content
+                mirrors the first transcript answer and is redundant (CI-14), kept as-is. */}
+            <div
+              className="mt-auto rounded-xl border p-4 flex flex-col gap-2"
+              style={{ backgroundColor: "var(--muted)", borderColor: "var(--border)" }}
+            >
+              <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--muted-foreground)" }}>
+                Idea Journal
+              </span>
+              <div className="flex items-start gap-2">
+                <FileText className="h-4 w-4 shrink-0 mt-0.5" style={{ color: "var(--muted-foreground)" }} />
+                <p className="text-xs leading-relaxed line-clamp-4" style={{ color: "var(--muted-foreground)" }}>
+                  {journalText}
+                </p>
+              </div>
+            </div>
+          </aside>
+        </div>
       </div>
     </div>
   );

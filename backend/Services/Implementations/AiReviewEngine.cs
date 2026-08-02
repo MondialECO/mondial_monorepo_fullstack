@@ -23,8 +23,8 @@ namespace WebApp.Services.Implementations;
 /// ====================================================================
 /// FUTURE LLM INTEGRATION (P1 — DO NOT WIRE YET, NO PROVIDER CREDENTIALS).
 /// ====================================================================
-/// When the org has Claude/OpenAI/Anthropic credentials and a budget for
-/// inference, replace the body of <see cref="RunReviewAsync"/> with the
+/// When the platform is ready to spend on LLM inference (routed through the
+/// OpenRouter provider), replace the body of <see cref="RunReviewAsync"/> with the
 /// flow described inline below. Keep this rule-based scorer as the
 /// no-credentials fallback so dev / CI runs do not require a network call.
 /// </summary>
@@ -42,8 +42,8 @@ public class AiReviewEngine : IAiReviewEngine
         // --- FUTURE LLM step 2: call the model with a structured prompt ---
         // var llmRaw = await _llmProvider.CompleteAsync(prompt, snapshot, schema);
         //
-        // Use prompt caching. Pin the model id (e.g. "claude-opus-4-7") in
-        // Phase7ReviewSnapshot.EngineVersion for reproducibility.
+        // Use prompt caching. Pin the resolved OpenRouter model id (e.g.
+        // "openai/gpt-oss-20b:free") in Phase7ReviewSnapshot.EngineVersion for reproducibility.
 
         // --- FUTURE LLM step 3: validate the JSON-schema output ---
         // var parsed = AiReviewSchemaValidator.Parse(llmRaw);

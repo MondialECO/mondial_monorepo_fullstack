@@ -1,15 +1,9 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { ExternalLink, FolderOpen, Pencil, Plus, Trash2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { useEffect, useState } from "react";
+import Image from "next/image";
+import { ExternalLink, FolderOpen, Pencil, Plus, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -17,201 +11,342 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import EmptyState from '@/components/ui/empty-state';
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  SpCard,
+  SpEmptyState,
+  SpFormField,
+  SpMutationFeedback,
+  SpSectionHeader,
+} from "@/components/serviceprovider/ui";
 import {
   useAddPortfolioItem,
   useDeletePortfolioItem,
+  useRemovePortfolioImage,
   useUpdatePortfolioItem,
-} from '@/hooks/queries/service-provider';
-import type { PortfolioItem } from '@/types/service-provider';
+  useUploadPortfolioImage,
+} from "@/hooks/queries/service-provider";
+import type { PortfolioItem } from "@/types/service-provider";
+import { useSpDirtyFormGuard } from "@/hooks/useSpDirtyFormGuard";
+import { safeHttpUrl, validateOptionalHttpUrl } from "@/lib/service-provider/url-security";
+import { resolveProviderMediaUrl } from "@/lib/service-provider/provider-media";
+import {
+  findAddedPortfolioItem,
+  isPortfolioFull,
+  MAX_PORTFOLIO_ITEMS,
+} from "@/lib/service-provider/portfolio";
+import { ProviderImageUploader } from "./ProviderImageUploader";
 
-type Draft = { title: string; description: string; url: string };
+type Draft = { title: string; description: string; url: string; imageCaption: string };
 
-const emptyDraft: Draft = { title: '', description: '', url: '' };
+const emptyDraft: Draft = { title: "", description: "", url: "", imageCaption: "" };
 
-export function PortfolioSection({ items }: { items: PortfolioItem[] }) {
+/** Editor sentinel for "adding a new item" — no server id exists yet. */
+const ADD_MODE = "__add__";
+
+type Props = {
+  items: PortfolioItem[];
+  /**
+   * Every mutation here is scoped server-side to the *authenticated* provider,
+   * not to the profile being viewed. Showing these controls to a visitor would
+   * therefore edit or delete the visitor's own portfolio, so ownership is a
+   * required prop rather than an optional one with a permissive default.
+   */
+  isOwner: boolean;
+};
+
+export function PortfolioSection({ items, isOwner }: Props) {
   const add = useAddPortfolioItem();
   const update = useUpdatePortfolioItem();
   const remove = useDeletePortfolioItem();
-
-  // editIndex: null = closed, -1 = adding, >=0 = editing that index
-  const [editIndex, setEditIndex] = useState<number | null>(null);
+  const uploadImage = useUploadPortfolioImage();
+  const removeImage = useRemovePortfolioImage();
+  const [editId, setEditId] = useState<string | null>(null);
+  const [deleteItem, setDeleteItem] = useState<PortfolioItem | null>(null);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [error, setError] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const [pendingImage, setPendingImage] = useState<File | null>(null);
+  const [pendingImageUrl, setPendingImageUrl] = useState<string | null>(null);
+  const guardState = { ...draft, pendingImageKey: pendingImage ? `${pendingImage.name}:${pendingImage.size}:${pendingImage.lastModified}` : "" };
+  const dirtyGuard = useSpDirtyFormGuard(guardState, { enabled: isOwner && editId !== null });
+  const urlError = validateOptionalHttpUrl(draft.url);
+  const isFull = isPortfolioFull(items);
 
-  const openAdd = () => {
+  useEffect(() => () => {
+    if (pendingImageUrl) URL.revokeObjectURL(pendingImageUrl);
+  }, [pendingImageUrl]);
+
+  function clearPendingImage() {
+    if (pendingImageUrl) URL.revokeObjectURL(pendingImageUrl);
+    setPendingImageUrl(null);
+    setPendingImage(null);
+  }
+
+  function openAdd() {
     setDraft(emptyDraft);
-    setEditIndex(-1);
+    dirtyGuard.markClean({ ...emptyDraft, pendingImageKey: "" });
+    setEditId(ADD_MODE);
+    clearPendingImage();
     setError(null);
-  };
+  }
 
-  const openEdit = (item: PortfolioItem) => {
-    setDraft({
+  function openEdit(item: PortfolioItem) {
+    const next = {
       title: item.title,
-      description: item.description ?? '',
-      url: item.url ?? '',
-    });
-    setEditIndex(item.index);
+      description: item.description ?? "",
+      url: item.url ?? "",
+      imageCaption: item.imageCaption ?? "",
+    };
+    setDraft(next);
+    dirtyGuard.markClean({ ...next, pendingImageKey: "" });
+    setEditId(item.id);
+    clearPendingImage();
     setError(null);
-  };
+  }
 
-  const close = () => setEditIndex(null);
+  function closeEditor() {
+    setEditId(null);
+    clearPendingImage();
+    setError(null);
+  }
 
-  const save = async () => {
+  async function save() {
     if (!draft.title.trim() || !draft.description.trim()) {
-      setError('Title and description are required.');
+      setError("Title and description are required.");
       return;
     }
+    if (urlError) {
+      setError(urlError);
+      return;
+    }
+    setError(null);
+    setFeedback(null);
     const payload = {
       title: draft.title.trim(),
       description: draft.description.trim(),
       url: draft.url.trim() || null,
+      imageCaption: draft.imageCaption.trim() || null,
     };
     try {
-      if (editIndex === -1) {
-        await add.mutateAsync(payload);
-      } else if (editIndex !== null) {
-        await update.mutateAsync({ index: editIndex, ...payload });
+      if (editId === ADD_MODE) {
+        const savedProfile = await add.mutateAsync(payload);
+        // Match the new item by id diff. When that is ambiguous we do not guess:
+        // attaching the image to the wrong item is worse than asking for a retry.
+        const addedItem = findAddedPortfolioItem(items, savedProfile.portfolioItems);
+        if (pendingImage && addedItem) {
+          try {
+            await uploadImage.mutateAsync({ portfolioItemId: addedItem.id, file: pendingImage, caption: payload.imageCaption });
+            setFeedback("Portfolio item and primary image added.");
+          } catch {
+            setFeedback("Portfolio item was added, but its image could not be uploaded. Open the item to retry.");
+          }
+        } else if (pendingImage) {
+          setFeedback("Portfolio item was added, but its image could not be matched to it. Open the item to add the image.");
+        } else {
+          setFeedback("Portfolio item added.");
+        }
+      } else if (editId !== null) {
+        await update.mutateAsync({ id: editId, ...payload });
+        setFeedback("Portfolio item updated.");
       }
-      close();
+      dirtyGuard.markClean(guardState);
+      closeEditor();
     } catch {
-      setError('Could not save the item. Check the fields and try again.');
+      setError("Could not save this portfolio item. Check the fields and try again.");
     }
-  };
+  }
 
-  const saving = add.isPending || update.isPending;
+  async function confirmDelete() {
+    if (!deleteItem) return;
+    setFeedback(null);
+    try {
+      await remove.mutateAsync(deleteItem.id);
+      setFeedback(`“${deleteItem.title}” was removed from your portfolio.`);
+      setDeleteItem(null);
+    } catch {
+      setDeleteItem(null);
+      setFeedback("The portfolio item could not be deleted. Try again.");
+    }
+  }
+
+  const saving = add.isPending || update.isPending || uploadImage.isPending;
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between gap-4">
-        <div className="space-y-1">
-          <CardTitle className="text-xl">Portfolio</CardTitle>
-          <CardDescription>
-            {items.length} item{items.length === 1 ? '' : 's'}
-          </CardDescription>
-        </div>
-        <Button onClick={openAdd} size="sm">
-          <Plus className="h-4 w-4" />
-          Add item
-        </Button>
-      </CardHeader>
-      <CardContent>
-        {items.length === 0 ? (
-          <EmptyState
-            icon={FolderOpen}
-            title="No portfolio items yet"
-            description="Add work samples so founders can evaluate your delivery."
-            action={
-              <Button onClick={openAdd} size="sm" variant="outline">
-                <Plus className="h-4 w-4" />
-                Add your first item
-              </Button>
-            }
-          />
-        ) : (
-          <div className="grid gap-3 sm:grid-cols-2">
-            {items.map((item) => (
-              <div
-                key={item.index}
-                className="flex flex-col rounded-lg border bg-background p-4"
-              >
-                <p className="font-medium text-foreground">{item.title}</p>
-                {item.description && (
-                  <p className="mt-1 text-sm text-muted-foreground line-clamp-3">
-                    {item.description}
-                  </p>
-                )}
-                {item.url && (
-                  <a
-                    href={item.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-2 inline-flex items-center gap-1 text-sm text-primary underline underline-offset-2"
-                  >
-                    <ExternalLink className="h-3.5 w-3.5" />
-                    Visit link
-                  </a>
-                )}
-                <div className="mt-3 flex justify-end gap-1 border-t pt-2">
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label="Edit item"
-                    onClick={() => openEdit(item)}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label="Delete item"
-                    disabled={remove.isPending}
-                    onClick={() => remove.mutate(item.index)}
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </CardContent>
+    <SpCard>
+      <SpSectionHeader
+        title="Portfolio"
+        description={
+          isOwner
+            ? `${items.length} of ${MAX_PORTFOLIO_ITEMS} items. Upload one primary project image per item; external project URLs remain optional.`
+            : `${items.length} ${items.length === 1 ? "item" : "items"}.`
+        }
+        action={
+          isOwner ? (
+            <Button onClick={openAdd} size="sm" disabled={isFull}>
+              <Plus className="size-4" />Add item
+            </Button>
+          ) : undefined
+        }
+      />
 
-      <Dialog open={editIndex !== null} onOpenChange={(o) => !o && close()}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {editIndex === -1 ? 'Add portfolio item' : 'Edit portfolio item'}
-            </DialogTitle>
-            <DialogDescription>
-              Title and description are required.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="pf-title">Title</Label>
-              <Input
-                id="pf-title"
-                value={draft.title}
-                onChange={(e) => setDraft({ ...draft, title: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="pf-desc">Description</Label>
-              <Textarea
-                id="pf-desc"
-                rows={4}
-                value={draft.description}
-                onChange={(e) =>
-                  setDraft({ ...draft, description: e.target.value })
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="pf-url">URL (optional)</Label>
-              <Input
-                id="pf-url"
-                placeholder="https://…"
-                value={draft.url}
-                onChange={(e) => setDraft({ ...draft, url: e.target.value })}
-              />
-            </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={close} disabled={saving}>
-              Cancel
-            </Button>
-            <Button onClick={save} disabled={saving}>
-              {saving ? 'Saving…' : 'Save'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </Card>
+      {isOwner && isFull && (
+        <SpMutationFeedback status="error" className="mt-5">
+          You have reached the {MAX_PORTFOLIO_ITEMS}-item limit. Remove an item before adding another.
+        </SpMutationFeedback>
+      )}
+
+      {isOwner && feedback && (
+        <SpMutationFeedback status={feedback.includes("could not") ? "error" : "success"} className="mt-5">
+          {feedback}
+        </SpMutationFeedback>
+      )}
+
+      {items.length === 0 ? (
+        <SpEmptyState
+          className="mt-5 min-h-52"
+          icon={FolderOpen}
+          title={isOwner ? "No portfolio items yet" : "No portfolio items"}
+          description={
+            isOwner
+              ? "Add real work samples so clients can evaluate your delivery."
+              : "This provider has not published any work samples."
+          }
+          action={
+            isOwner ? (
+              <Button onClick={openAdd} size="sm" variant="outline"><Plus className="size-4" />Add your first item</Button>
+            ) : undefined
+          }
+        />
+      ) : (
+        <div className="mt-5 grid gap-4 sm:grid-cols-2">
+          {items.map((item) => {
+            const imageUrl = resolveProviderMediaUrl(item.primaryImage?.url ?? item.imagePath);
+            return (
+              <article key={item.id} className="flex flex-col overflow-hidden rounded-xl border border-border bg-card">
+                <div className="relative flex aspect-[16/10] items-center justify-center overflow-hidden bg-muted">
+                  {imageUrl ? (
+                    // Provider media is served from the API origin, which is
+                    // environment-dependent and absent from next.config
+                    // remotePatterns; unoptimized keeps next/image from failing
+                    // on it at runtime while still giving us lazy loading.
+                    <Image
+                      src={imageUrl}
+                      alt={item.imageCaption?.trim() || `${item.title} project image`}
+                      fill
+                      unoptimized
+                      sizes="(min-width: 640px) 50vw, 100vw"
+                      className="object-cover"
+                    />
+                  ) : (
+                    <FolderOpen className="size-7 text-muted-foreground" aria-hidden="true" />
+                  )}
+                </div>
+                <div className="flex flex-1 flex-col p-4">
+                  <h3 className="font-heading text-base font-semibold text-foreground">{item.title}</h3>
+                  {item.description && <p className="mt-1 line-clamp-3 text-sm leading-6 text-muted-foreground">{item.description}</p>}
+                  {safeHttpUrl(item.url) && (
+                    <a href={safeHttpUrl(item.url)!} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex w-fit items-center gap-1 text-sm font-semibold text-primary hover:underline">
+                      View project<span className="sr-only">: {item.title}</span><ExternalLink className="size-3.5" aria-hidden="true" />
+                    </a>
+                  )}
+                  {isOwner && (
+                    <div className="mt-auto flex justify-end gap-1 border-t border-border pt-3">
+                      <Button variant="ghost" size="icon" className="size-11" aria-label={`Edit ${item.title}`} title={`Edit ${item.title}`} onClick={() => openEdit(item)}><Pencil className="size-4" /></Button>
+                      <Button variant="ghost" size="icon" className="size-11" aria-label={`Delete ${item.title}`} title={`Delete ${item.title}`} disabled={remove.isPending} onClick={() => setDeleteItem(item)}><Trash2 className="size-4 text-destructive" /></Button>
+                    </div>
+                  )}
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
+
+      {isOwner && (
+        <>
+          <Dialog open={editId !== null} onOpenChange={(open) => !open && dirtyGuard.confirmDiscard(closeEditor)}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{editId === ADD_MODE ? "Add portfolio item" : "Edit portfolio item"}</DialogTitle>
+                <DialogDescription>Add project details and a dedicated primary image. The project URL is optional and remains separate.</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <SpFormField id="portfolio-title" label="Title" required>
+                  <Input maxLength={150} value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} />
+                </SpFormField>
+                <SpFormField id="portfolio-description" label="Description" required>
+                  <Textarea maxLength={2000} rows={5} value={draft.description} onChange={(event) => setDraft({ ...draft, description: event.target.value })} />
+                </SpFormField>
+                <SpFormField id="portfolio-url" label="Project URL" description="Optional. Must be a complete http(s) URL." error={urlError}>
+                  <Input type="url" maxLength={500} placeholder="https://example.com/project" value={draft.url} onChange={(event) => setDraft({ ...draft, url: event.target.value })} />
+                </SpFormField>
+                <SpFormField id="portfolio-image-caption" label="Image caption or accessible description" description="Describe the project image when it conveys useful information.">
+                  <Input maxLength={300} value={draft.imageCaption} onChange={(event) => setDraft({ ...draft, imageCaption: event.target.value })} />
+                </SpFormField>
+                {editId !== null && (() => {
+                  const currentItem = editId === ADD_MODE ? undefined : items.find((item) => item.id === editId);
+                  const currentUrl = pendingImageUrl ?? resolveProviderMediaUrl(currentItem?.primaryImage?.url ?? currentItem?.imagePath);
+                  return (
+                    <ProviderImageUploader
+                      compact
+                      kind="portfolio"
+                      label="Primary project image"
+                      currentUrl={currentUrl}
+                      currentAlt={draft.imageCaption || (draft.title ? `${draft.title} project image` : "Project image preview")}
+                      successMessage={editId === ADD_MODE ? "Primary image prepared. Save the item to upload it." : undefined}
+                      onUpload={async (file, onProgress) => {
+                        if (editId === ADD_MODE) {
+                          clearPendingImage();
+                          setPendingImage(file);
+                          setPendingImageUrl(URL.createObjectURL(file));
+                          onProgress(100);
+                          return;
+                        }
+                        if (!currentItem) throw new Error("This portfolio item is no longer available. Refresh and retry.");
+                        await uploadImage.mutateAsync({ portfolioItemId: currentItem.id, file, caption: draft.imageCaption.trim() || null, onProgress });
+                      }}
+                      onRemove={async () => {
+                        if (pendingImageUrl) {
+                          clearPendingImage();
+                          return;
+                        }
+                        if (!currentItem) throw new Error("This portfolio item is no longer available. Refresh and retry.");
+                        await removeImage.mutateAsync(currentItem.id);
+                      }}
+                    />
+                  );
+                })()}
+                <p className="text-xs leading-5 text-muted-foreground">Basic file validation is active. Production security scanning is not yet enabled.</p>
+                {error && <SpMutationFeedback status="error">{error}</SpMutationFeedback>}
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => dirtyGuard.confirmDiscard(closeEditor)} disabled={saving}>Cancel</Button>
+                <Button onClick={save} disabled={saving || !!urlError}>{saving ? "Saving…" : "Save item"}</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={!!deleteItem} onOpenChange={(open) => !open && setDeleteItem(null)}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Delete portfolio item?</DialogTitle>
+                <DialogDescription>
+                  {deleteItem
+                    ? `“${deleteItem.title}” and its image will be permanently removed from your profile. This action cannot be undone.`
+                    : "This action cannot be undone."}
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setDeleteItem(null)} disabled={remove.isPending}>Cancel</Button>
+                <Button variant="destructive" onClick={confirmDelete} disabled={remove.isPending}>{remove.isPending ? "Deleting…" : "Delete item"}</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </>
+      )}
+    </SpCard>
   );
 }

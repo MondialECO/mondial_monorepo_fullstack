@@ -8,6 +8,7 @@ public enum ServiceProviderOutcome
     Ok,
     NotFound,
     Conflict,
+    Invalid,
 }
 
 /// <summary>
@@ -30,6 +31,9 @@ public sealed class ServiceProviderResult<T>
 
     public static ServiceProviderResult<T> Conflict(string message) =>
         new() { Outcome = ServiceProviderOutcome.Conflict, Message = message };
+
+    public static ServiceProviderResult<T> Invalid(string message) =>
+        new() { Outcome = ServiceProviderOutcome.Invalid, Message = message };
 }
 
 /// <summary>
@@ -51,16 +55,17 @@ public interface IServiceProviderService
     Task<ServiceProviderResult<ServiceProviderProfileResponse>> UpdatePortfolioItemAsync(
         string userId, UpdatePortfolioItemRequest request);
 
+    /// <summary>Delete one portfolio item by its stable id, and its image with it.</summary>
     Task<ServiceProviderResult<ServiceProviderProfileResponse>> DeletePortfolioItemAsync(
-        string userId, int index);
+        string userId, string portfolioItemId);
 
     Task<ServiceProviderResult<ServiceProviderVerificationResponse>> SubmitVerificationAsync(
         string userId, SubmitVerificationRequest request);
 
-    // ---- Admin (Phase 5): list / approve / reject submissions awaiting review ----
+    // ---- Admin moderation: review remediated or previously verified providers ----
 
-    /// <summary>All providers whose profile is awaiting review (UnderReview),
-    /// oldest submission first, projected for the admin moderation queue.</summary>
+    /// <summary>All providers in the moderation-only UnderReview state,
+    /// oldest resubmission first, projected for the admin moderation queue.</summary>
     Task<ServiceProviderResult<List<PendingProviderResponse>>> GetPendingVerificationsAsync();
 
     Task<ServiceProviderResult<ServiceProviderVerificationResponse>> ApproveVerificationAsync(
@@ -68,4 +73,27 @@ public interface IServiceProviderService
 
     Task<ServiceProviderResult<ServiceProviderVerificationResponse>> RejectVerificationAsync(
         string providerUserId, string adminUserId, string reason);
+
+    // ---- Module 1: Profile & Trust (reputation layer) ----
+
+    /// <summary>The provider's derived TrustScore + per-signal breakdown (owner-scoped).</summary>
+    Task<ServiceProviderResult<TrustBreakdownResponse>> GetTrustAsync(string userId);
+
+    /// <summary>Per-category skills-test status (last attempt, cooldown, eligibility).</summary>
+    Task<ServiceProviderResult<SkillsTestStatusResponse>> GetSkillsTestStatusAsync(string userId);
+
+    /// <summary>A fresh attempt's questions (correct answers stripped) for one owned category.</summary>
+    Task<ServiceProviderResult<SkillsTestQuestionsResponse>> GetSkillsTestQuestionsAsync(
+        string userId, string category);
+
+    /// <summary>Grade a submitted attempt, record it (with cooldown), and recompute TrustScore.</summary>
+    Task<ServiceProviderResult<SkillsTestResultResponse>> SubmitSkillsTestAsync(
+        string userId, SubmitSkillsTestRequest request);
+
+    /// <summary>Module 3's narrow hook into the existing sole trust recalculation path.</summary>
+    Task UpdateResponseRateSignalAsync(string userId, double? responseRate);
+
+    /// <summary>Module 4's narrow hook into the same sole trust recalculation path.</summary>
+    Task UpdateWorkroomTrustSignalsAsync(string userId, double? clientSatisfaction,
+        double? onTimeDeliveryRate, double? repeatClientRate, int adverseDisputeCount);
 }

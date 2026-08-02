@@ -290,6 +290,16 @@ builder.Services.AddSingleton<IUserIdProvider, CustomUserIdProvider>();
 builder.Services.AddScoped<IBusinessIdeasService, BusinessIdeasService>();
 builder.Services.AddScoped<BusinessIdeasRepository>();
 
+// Multi-idea Creator foundation (STEP 1, additive). Repo owns its collection + indexes
+// (session-repo pattern); singleton so indexes are created once. Nothing reads it yet.
+builder.Services.AddSingleton<WebApp.Services.Repository.CreatorIdeaRepository>();
+builder.Services.AddSingleton<WebApp.Services.Repository.ICreatorIdeaStore>(
+    sp => sp.GetRequiredService<WebApp.Services.Repository.CreatorIdeaRepository>());
+builder.Services.AddScoped<WebApp.Services.Migrations.ICreatorIdeaBackfill,
+    WebApp.Services.Migrations.CreatorIdeaBackfillMigration>();
+builder.Services.AddScoped<WebApp.Services.Migrations.ICreatorIdeaSnapshotsBackfill,
+    WebApp.Services.Migrations.CreatorIdeaSnapshotsBackfillMigration>();
+
 // Investments
 builder.Services.AddScoped<IInvestmentsService, InvestmentsService>();
 builder.Services.AddScoped<InvestmentsRepository>();
@@ -312,7 +322,8 @@ builder.Services.AddScoped<NotificationRepository>();
 // Web Push service
 builder.Services.AddScoped<WebPushService>();
 
-
+// Marketplace service
+builder.Services.AddScoped<IMarketplaceService, MarketplaceService>();
 
 if (useRedis)
 {
@@ -335,6 +346,45 @@ builder.Services.AddScoped<ISubmmitdata, SubmmitdataRepository>();
 
 // D-1 Service Provider (Stage 1: Verification & Onboarding) — embedded profile.
 builder.Services.AddScoped<IServiceProviderService, ServiceProviderService>();
+builder.Services.AddScoped<IServiceProviderMediaService, ServiceProviderMediaService>();
+builder.Services.AddScoped<IProfileEditorService, ProfileEditorService>();
+
+// Service Provider data split (approved SP-only migration): three root
+// collections behind thin stores, a dual-read aggregate reader, and the
+// idempotent migrate-on-write migrator.
+builder.Services.AddScoped<IProfessionalProfileStore, ProfessionalProfileStore>();
+builder.Services.AddScoped<IServiceProviderProfileStore, ServiceProviderProfileStore>();
+builder.Services.AddScoped<IUserCredentialStore, UserCredentialStore>();
+builder.Services.AddScoped<IServiceProviderProfileReader, ServiceProviderProfileReader>();
+builder.Services.AddScoped<WebApp.Services.Migrations.IServiceProviderProfileSplitMigration,
+    WebApp.Services.Migrations.ServiceProviderProfileSplitMigration>();
+builder.Services.AddSingleton<IProviderImageProcessor, ProviderImageProcessor>();
+
+// Module 2 — Service Catalog (listings/packages/FAQs + capacity + pricing guidance).
+builder.Services.AddScoped<IServiceCatalogService, ServiceCatalogService>();
+
+// Module 3 — Leads, proposals, real response rate, and soft-expiry job.
+builder.Services.AddScoped<ILeadsService, LeadsService>();
+builder.Services.AddScoped<IResponseRateService, ResponseRateService>();
+builder.Services.AddScoped<ClientBriefExpirationJob>();
+
+// Module 4 — Workroom & Earnings. Both external boundaries are explicit STUBs:
+// replace these registrations with real gateway/scanner adapters without changing
+// the state machine. Provider financial settings remain embedded on the profile.
+builder.Services.AddScoped<IWorkroomService, WorkroomService>();
+builder.Services.AddSingleton<IClientRelationshipCalculator, ClientRelationshipCalculator>();
+builder.Services.AddScoped<IPaymentGatewayService, StubPaymentGatewayService>();
+builder.Services.AddScoped<IFileSecurityScanner, StubFileSecurityScanner>();
+builder.Services.AddScoped<WorkroomConversionJob>();
+builder.Services.AddScoped<WorkroomTimedRulesJob>();
+
+// Module 5 — live, read-time analytics plus provider-owned manual growth tasks.
+// No metric snapshots, tracking-event collections, cache, exports, or periodic
+// observation-to-task job are registered.
+builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
+
+// Module 5 Phase A — analytics recording service for impressions/clicks/inquiries.
+builder.Services.AddScoped<IAnalyticsRecordingService, AnalyticsRecordingService>();
 
 // Observability: OpenTelemetry traces + metrics (/metrics for Prometheus).
 builder.AddObservability();
@@ -570,10 +620,26 @@ foreach (var proxy in builder.Configuration.GetSection("ForwardedHeaders:KnownPr
 
 app.UseForwardedHeaders(fwdOptions);
 
+// Developer exception page must run BEFORE custom exception middleware
+// so it can display detailed errors in Development environment
+if (app.Environment.IsDevelopment())
+{
+    app.UseDeveloperExceptionPage();
+}
+
 // Correlation id must be established before the exception handler and
 // request logging so both are tagged with it.
 app.UseMiddleware<CorrelationIdMiddleware>();
-app.UseMiddleware<ExceptionHandlingMiddleware>();
+
+// TEMPORARY (DEBUG): Disable custom exception middleware in Development
+// so native ASP.NET Core exception handling + Developer Exception Page
+// can display the real exception details. This bypasses the generic
+// "Unexpected error" JSON response. To be removed once exception is captured.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseMiddleware<ExceptionHandlingMiddleware>();
+}
+
 app.UseMiddleware<SecurityHeadersMiddleware>();
 app.UseSerilogRequestLogging();
 app.UseResponseCompression();
@@ -605,6 +671,21 @@ app.UseHangfireDashboard("/hangfire", new Hangfire.DashboardOptions
     Authorization = new[] { new WebApp.Filters.HangfireDashboardAuthorizationFilter() },
     DisplayStorageConnectionString = false,
 });
+
+RecurringJob.AddOrUpdate<ClientBriefExpirationJob>(
+    "module3-expire-client-briefs",
+    job => job.RunAsync(),
+    Cron.Minutely);
+
+RecurringJob.AddOrUpdate<WorkroomConversionJob>(
+    "module4-convert-accepted-proposals",
+    job => job.SweepAsync(),
+    Cron.Minutely);
+
+RecurringJob.AddOrUpdate<WorkroomTimedRulesJob>(
+    "module4-workroom-timed-rules",
+    job => job.RunAsync(),
+    Cron.Minutely);
 
 // SignalR Hubs: long-lived connections must opt out of the request
 // timeout or they would be killed after 30s.
@@ -726,6 +807,38 @@ using (var scope = app.Services.CreateScope())
     catch (Exception ex)
     {
         Log.Warning(ex, "AI starter-credit grant skipped (non-fatal)");
+    }
+
+    // Multi-idea Creator STEP 1 backfill: mirror each existing journey into one
+    // CreatorIdea + stamp the anchor onto linked sessions. Idempotent (skips journeys
+    // that already have ActiveIdeaId); additive (nothing reads the new data yet).
+    try
+    {
+        var ideaBackfill = scope.ServiceProvider
+            .GetRequiredService<WebApp.Services.Migrations.ICreatorIdeaBackfill>();
+        var migratedIdeas = await ideaBackfill.RunAsync();
+        if (migratedIdeas > 0)
+            Log.Information("CreatorIdea backfill migrated {Count} journey(s)", migratedIdeas);
+    }
+    catch (Exception ex)
+    {
+        Log.Warning(ex, "CreatorIdea backfill skipped (non-fatal)");
+    }
+
+    // Multi-idea STEP 3.5 follow-up: copy each journey's OutputSnapshots wholesale onto
+    // its active idea (the step-1 pass created those ideas before snapshots moved
+    // per-idea). Idempotent — only copies when the idea has none. Journey copy stays.
+    try
+    {
+        var snapshotsBackfill = scope.ServiceProvider
+            .GetRequiredService<WebApp.Services.Migrations.ICreatorIdeaSnapshotsBackfill>();
+        var copiedSnapshots = await snapshotsBackfill.RunAsync();
+        if (copiedSnapshots > 0)
+            Log.Information("CreatorIdea snapshots backfill copied {Count} idea(s)", copiedSnapshots);
+    }
+    catch (Exception ex)
+    {
+        Log.Warning(ex, "CreatorIdea snapshots backfill skipped (non-fatal)");
     }
 
     // Demo seeding (Investor catalogue + demo data). Double-gated on

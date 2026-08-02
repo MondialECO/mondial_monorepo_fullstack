@@ -16,6 +16,11 @@ jobs:
       name: staging
       url: https://api-staging.mondialbusiness.eu
 
+    # Mapped from the secret so the Notify step's `if` can skip when it's unset.
+    # The `secrets` context is NOT available in `if:` expressions; `env` is.
+    env:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
     steps:
       - uses: actions/checkout@v4
 
@@ -25,23 +30,29 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: Restore dependencies
-        run: dotnet restore backend/backend/WebApp.csproj
+        run: dotnet restore backend/WebApp.csproj
 
       - name: Build for staging
-        run: dotnet build backend/backend/WebApp.csproj --no-restore --configuration Release
+        run: dotnet build backend/WebApp.csproj --no-restore --configuration Release
 
       - name: Publish for staging
-        run: dotnet publish backend/backend/WebApp.csproj --no-build --configuration Release --output ./publish
+        run: dotnet publish backend/WebApp.csproj --no-build --configuration Release --output ./publish
 
       - name: Deploy to staging
         run: |
           echo "Deploying to staging API server..."
-          # Replace with your actual deployment command
-          # Example: scp -r ./publish/* user@staging-api.server:/app/
-          echo "Staging API deployment would happen here"
+          # ⚠️ CONFIG SAFETY — READ BEFORE IMPLEMENTING A REAL DEPLOY ⚠️
+          # The server's live appsettings.json / appsettings.Production.json hold the
+          # REAL, rotated secrets and must NEVER be overwritten by deploy. ./publish
+          # contains only the BLANK tracked appsettings.json template — copying it over
+          # the server's config would wipe production secrets. Any future deploy command
+          # MUST exclude config files. Do NOT copy ./publish/* verbatim.
+          # Safe example (rsync, excluding config):
+          #   rsync -a --exclude 'appsettings*.json' ./publish/ user@staging-api.server:/app/
+          echo "Staging API deployment would happen here (no-op stub)"
 
       - name: Notify Slack
-        if: always()
+        if: always() && env.SLACK_WEBHOOK_URL != ''
         uses: slackapi/slack-github-action@v1.24.0
         with:
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
@@ -67,6 +78,11 @@ jobs:
       name: production
       url: https://api.mondialbusiness.eu
 
+    # Mapped from the secret so the Notify step's `if` can skip when it's unset.
+    # The `secrets` context is NOT available in `if:` expressions; `env` is.
+    env:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
     steps:
       - uses: actions/checkout@v4
 
@@ -76,23 +92,29 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: Restore dependencies
-        run: dotnet restore backend/backend/WebApp.csproj
+        run: dotnet restore backend/WebApp.csproj
 
       - name: Build for production
-        run: dotnet build backend/backend/WebApp.csproj --no-restore --configuration Release
+        run: dotnet build backend/WebApp.csproj --no-restore --configuration Release
 
       - name: Publish for production
-        run: dotnet publish backend/backend/WebApp.csproj --no-build --configuration Release --output ./publish
+        run: dotnet publish backend/WebApp.csproj --no-build --configuration Release --output ./publish
 
       - name: Deploy to production
         run: |
           echo "Deploying to production API server..."
-          # Replace with your actual deployment command
-          # Example: scp -r ./publish/* user@api.server:/app/
-          echo "Production API deployment would happen here"
+          # ⚠️ CONFIG SAFETY — READ BEFORE IMPLEMENTING A REAL DEPLOY ⚠️
+          # The server's live appsettings.json / appsettings.Production.json hold the
+          # REAL, rotated secrets and must NEVER be overwritten by deploy. ./publish
+          # contains only the BLANK tracked appsettings.json template — copying it over
+          # the server's config would wipe production secrets. Any future deploy command
+          # MUST exclude config files. Do NOT copy ./publish/* verbatim.
+          # Safe example (rsync, excluding config):
+          #   rsync -a --exclude 'appsettings*.json' ./publish/ user@api.server:/app/
+          echo "Production API deployment would happen here (no-op stub)"
 
       - name: Notify Slack
-        if: always()
+        if: always() && env.SLACK_WEBHOOK_URL != ''
         uses: slackapi/slack-github-action@v1.24.0
         with:
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}

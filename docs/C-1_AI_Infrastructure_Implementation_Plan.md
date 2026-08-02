@@ -43,7 +43,7 @@
 |---|---|
 | `backend/Configuration/AiOptions/OpenRouterSettings.cs` | `ApiKey`, `BaseUrl` (default `https://openrouter.ai/api/v1`), `HttpReferer`, `AppTitle`, `TimeoutSeconds`, `MaxRetries` |
 | `backend/Configuration/AiOptions/AiSettings.cs` | Model routing map (task→model), default credit costs, regeneration limits, cache TTL, feature flags (Clarifier/BusinessPlan/Forecast = enabled) |
-| `backend/Configuration/AiOptions/ModelRoutingSettings.cs` | `Dictionary<string,string>` task-type → OpenRouter model id (OpenAI for structured/plan/finance; Anthropic for reasoning/long-context) |
+| `backend/Configuration/AiOptions/ModelRoutingSettings.cs` | `Dictionary<string,string>` task-type → OpenRouter model id. **Single-provider:** every task routes through `OpenRouterClient` to the free-tier `openai/gpt-oss-20b:free` (`appsettings.json` → `Ai:ModelRouting`); **no second provider** (no Anthropic/OpenAI split). |
 
 ### B.2 OpenRouter provider (typed client + abstraction)
 | File | Purpose |

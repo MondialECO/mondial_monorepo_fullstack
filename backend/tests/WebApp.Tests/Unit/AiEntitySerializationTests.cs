@@ -51,7 +51,7 @@ public class AiEntitySerializationTests
             Id = ObjectId.GenerateNewId().ToString(),
             RequestId = ObjectId.GenerateNewId().ToString(),
             OwnerUserId = "user-1",
-            Model = "openai/gpt-4o-mini",
+            Model = "openai/gpt-oss-20b:free",
             RawText = "hello",
             OutputPayload = new BsonDocument("summary", "ok"),
             TokenUsage = new AiResponseTokenUsage { PromptTokens = 10, CompletionTokens = 5, TotalTokens = 15 },
@@ -62,7 +62,7 @@ public class AiEntitySerializationTests
         Bson(e)["RequestId"].BsonType.Should().Be(BsonType.ObjectId);
 
         var back = RoundTrip(e);
-        back.Model.Should().Be("openai/gpt-4o-mini");
+        back.Model.Should().Be("openai/gpt-oss-20b:free");
         back.TokenUsage.TotalTokens.Should().Be(15);
         back.OutputPayload!["summary"].AsString.Should().Be("ok");
     }
@@ -75,7 +75,7 @@ public class AiEntitySerializationTests
             Id = ObjectId.GenerateNewId().ToString(),
             OwnerUserId = "user-1",
             RequestId = ObjectId.GenerateNewId().ToString(),
-            Model = "openai/gpt-4o",
+            Model = "openai/gpt-oss-20b:free",
             PromptTokens = 100,
             CompletionTokens = 50,
             TotalTokens = 150,

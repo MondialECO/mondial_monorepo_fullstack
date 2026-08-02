@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { RootProviders } from "./_providers/RootProviders";
+import { inter, dmSans } from "@/lib/fonts";
 
 const baseUrl = "https://mondialbusiness.eu";
 const title = "Mondial | Social Credit Creation Platform";
@@ -140,7 +141,7 @@ export default function RootLayout({
   `;
 
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${dmSans.variable}`}>
       <head>
         <script
           suppressHydrationWarning

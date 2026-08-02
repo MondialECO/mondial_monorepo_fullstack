@@ -878,9 +878,10 @@ public static class SeedingExtensions
             name: "Demo Service Provider",
             role: "ServiceProvider");
 
-        // P1-3: seed provider verification state so the admin verification
-        // queue (GetPendingVerificationsAsync filters on UnderReview), the
-        // public provider profile, and the trust score are all demonstrable.
+        // P1-3: seed an explicit moderation/re-review example so the admin
+        // queue (GetPendingVerificationsAsync filters on UnderReview), public
+        // provider profile, and trust score are all demonstrable. Normal first
+        // submissions now auto-verify and do not populate this queue.
         // Idempotent: only (re)seed while the profile is absent or still
         // Pending; an already-UnderReview/Verified/Rejected profile is left as
         // the admin (or a prior run) set it.
@@ -917,6 +918,20 @@ public static class SeedingExtensions
         {
             Log.Information("Demo service-provider already has verification state ({Status}) - seed skipped",
                 profile.VerificationStatus);
+        }
+
+        // SP data split: run the real idempotent migrator so the demo provider
+        // exists in the split collections (admin queue and matching read them).
+        // Re-runs converge; already-migrated records are never overwritten.
+        try
+        {
+            var splitMigrator = services
+                .GetRequiredService<WebApp.Services.Migrations.IServiceProviderProfileSplitMigration>();
+            await splitMigrator.EnsureMigratedAsync(provider);
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Demo service-provider split migration failed (non-fatal; dual-read covers it).");
         }
 
         return provider;

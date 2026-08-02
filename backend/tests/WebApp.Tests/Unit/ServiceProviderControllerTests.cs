@@ -21,11 +21,13 @@ public class ServiceProviderControllerTests
     private const string UserId = "11111111-1111-1111-1111-111111111111";
 
     private readonly Mock<IServiceProviderService> _service = new();
+    private readonly Mock<IServiceProviderMediaService> _media = new();
+    private readonly Mock<IProfileEditorService> _editor = new();
     private readonly ServiceProviderController _controller;
 
     public ServiceProviderControllerTests()
     {
-        _controller = new ServiceProviderController(_service.Object)
+        _controller = new ServiceProviderController(_service.Object, _media.Object, _editor.Object)
         {
             ControllerContext = new ControllerContext
             {
@@ -79,15 +81,15 @@ public class ServiceProviderControllerTests
     }
 
     [Fact]
-    public async Task DeletePortfolio_forwards_index_and_authenticated_id()
+    public async Task DeletePortfolio_forwards_portfolio_id_and_authenticated_id()
     {
-        _service.Setup(s => s.DeletePortfolioItemAsync(UserId, 2))
+        _service.Setup(s => s.DeletePortfolioItemAsync(UserId, "item-abc"))
             .ReturnsAsync(ServiceProviderResult<ServiceProviderProfileResponse>.Ok(new ServiceProviderProfileResponse()));
 
-        var result = await _controller.DeletePortfolioItem(2) as OkObjectResult;
+        var result = await _controller.DeletePortfolioItem("item-abc") as OkObjectResult;
 
         result!.StatusCode.Should().Be(200);
-        _service.Verify(s => s.DeletePortfolioItemAsync(UserId, 2), Times.Once);
+        _service.Verify(s => s.DeletePortfolioItemAsync(UserId, "item-abc"), Times.Once);
     }
 
     [Fact]

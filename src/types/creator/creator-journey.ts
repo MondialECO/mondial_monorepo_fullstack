@@ -88,6 +88,11 @@ export interface CreatorProject {
 }
 
 export interface CreatorJourneyData {
+  // Multi-idea (step 5): backend-authoritative, hydrated on every reconcile and
+  // NEVER cached (trimForCache persists journeyState progress only, so a stale
+  // cached id is structurally impossible). Step 6 threads this into API calls.
+  activeIdeaId: string | null;
+  leveledUpIdeaId: string | null;
   journeyState: CreatorJourneyState;
   project: CreatorProject;
   outputs: {

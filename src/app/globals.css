@@ -10,7 +10,10 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-dm-sans);
+  --font-heading: var(--font-inter);
+  /* --font-mono left pointing at an undefined var deliberately — see CI-10.
+     Repointing it visibly changes numeric rendering and needs its own decision. */
   --font-mono: var(--font-geist-mono);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -53,6 +56,7 @@
   --color-success-text: var(--success-text);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
+  --color-rating: var(--rating);
   --color-info: var(--info);
   --color-info-foreground: var(--info-foreground);
   --radius-sm: calc(var(--radius) - 4px);
@@ -84,6 +88,9 @@
   --border: rgba(0, 0, 0, 0.08);
   --input: rgba(0, 0, 0, 0.08);
   --stroke-10: rgba(0, 0, 0, 0.06);
+  /* Lit card edge — a stroke LIGHTER than the card surface (Figma "stroke 100%"),
+     so a card on a darker page reads as raised. Additive; not a surface token. */
+  --card-edge: #ffffff;
   --ring: #3c61dd;
   --sidebar: #ffffff;
   --sidebar-foreground: #070707;
@@ -95,7 +102,6 @@
   --sidebar-ring: #3C50E0;
   --brand-accent: #037D27;
   --success-bg: 220 252 231;
-  --success-text: 22 163 74;
   --success-border: 34 197 94;
   --bg-light: #ffffff;
   --bg-hero-gradient: linear-gradient(180deg, transparent, #f1f1f2, #ffffff);
@@ -107,6 +113,10 @@
   --success-light: #E5F7ED;
   --success-text: #00A854;
   --warning: #B45309;
+  /* Star/rating amber. Matches the amber-400 currently hardcoded in
+     MarketplaceCard and ReviewPanel, so migrating them later is a zero-diff
+     change. Defined but intentionally unused for now. */
+  --rating: #F59E0B;
   --warning-foreground: #FFFFFF;
   --info: #0369A1;
   --info-foreground: #FFFFFF;
@@ -189,6 +199,8 @@
   --border: rgba(255, 255, 255, 0.12);
   --input: rgba(255, 255, 255, 0.12);
   --stroke-10: rgba(255, 255, 255, 0.06);
+  /* Dark-mode lit edge: a faint light stroke (a white bevel would be too bright). */
+  --card-edge: rgba(255, 255, 255, 0.08);
   --ring: #818CF8;
   --sidebar: #111214;
   --sidebar-foreground: #f5f5f5;
@@ -200,7 +212,6 @@
   --sidebar-ring: #818CF8;
   --brand-accent: #34D399;
   --success-bg: 20 83 45;
-  --success-text: 134 239 172;
   --success-border: 74 222 128;
   --bg-light: #0a0b0d;
   --bg-hero-gradient: linear-gradient(180deg, transparent, #1a1b1e, #0a0b0d);
@@ -248,6 +259,51 @@
   --p8-blue-dark: #60a5fa;
 }
 
+/* Service Provider workspace is intentionally light-only. These route-scoped
+   tokens prevent a persisted global dark preference from leaking into the SP
+   shell while leaving every other role's theme behavior unchanged. */
+.sp-workspace,
+.dark .sp-workspace {
+  color-scheme: light;
+  --background: #F4F5F7;
+  --foreground: #171717;
+  --card: #FFFFFF;
+  --card-foreground: #171717;
+  --popover: #FFFFFF;
+  --popover-foreground: #171717;
+  --primary: #3C61DD;
+  --primary-foreground: #FFFFFF;
+  --secondary: #F4F5F7;
+  --secondary-foreground: #171717;
+  --muted: #F4F5F7;
+  --muted-foreground: #6B7280;
+  --accent: #EEF2FF;
+  --accent-foreground: #171717;
+  --destructive: #C24141;
+  --border: #E5E7EB;
+  --input: #D1D5DB;
+  --ring: #3C61DD;
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #171717;
+  --sidebar-primary: #3C61DD;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #EEF2FF;
+  --sidebar-accent-foreground: #3C61DD;
+  --sidebar-border: #E5E7EB;
+  --sidebar-ring: #3C61DD;
+  background: #F4F5F7;
+  color: #171717;
+}
+
+/* Existing SP screens still using the generic Card primitive inherit the
+   canonical surface until later redesign steps migrate them to SpCard. */
+.sp-workspace [data-slot="card"] {
+  border-color: #E5E7EB;
+  border-radius: 16px;
+  background: #FFFFFF;
+  box-shadow: none;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -289,3 +345,90 @@
     @apply border-t-0;
   }
 }
+
+/* ====================================================================
+   Print export (Phase-3 Plan + Forecast, PlanForecastPrintView).
+   The .print-document token override is SCOPED to that opt-in component
+   only — no on-screen page carries this class, so screen rendering is
+   unchanged. It forces the LIGHT token set (documents print on white)
+   and enables exact color so the chart gradient/fills survive.
+   ==================================================================== */
+.print-document {
+  --background: #ffffff;
+  --foreground: #070707;
+  --card: #ffffff;
+  --primary: #3c61dd;
+  --muted-foreground: #5e5e5e;
+  --border: rgba(0, 0, 0, 0.14);
+  --warning: #b45309;
+  --success-text: #00a854;
+  color: var(--foreground);
+  background: #ffffff;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+/* Print rules only — never affect screen. Isolation is keyed off
+   body.printing-active (set by the overlay while open) so a normal Ctrl+P
+   on any other page is untouched. */
+@media print {
+  .no-print { display: none !important; }
+
+  /* Multi-page isolation. The overlay is portaled to <body> (data-print-overlay),
+     so hiding every other top-level node removes all app chrome + page content
+     WITHOUT taking the document out of flow — it then paginates naturally.
+     (The old visibility+position:absolute hack clipped everything to page 1.) */
+  body.printing-active > *:not([data-print-overlay]) { display: none !important; }
+
+  /* Neutralise the overlay's fixed / scrollable container: a static child inside
+     a fixed, viewport-height, overflow box is still clipped to one page. */
+  body.printing-active [data-print-overlay] {
+    position: static !important;
+    overflow: visible !important;
+    height: auto !important;
+    background: #ffffff !important;
+  }
+  body.printing-active .print-document {
+    margin: 0 auto !important;
+    max-width: 100% !important;
+    padding: 0 14mm !important;
+    box-shadow: none !important;
+  }
+
+  @page { margin: 16mm 0; }
+
+  /* Keep break-inside:avoid ONLY on reliably-short blocks (year tables, rows).
+     Tall prose sections must flow across pages — avoid on a >1-page block
+     silently overflows/clips. Headings use break-after:avoid to kill orphans. */
+  .print-section h1,
+  .print-section h2,
+  .print-section h3 { break-after: avoid; }
+  .print-year,
+  .print-row,
+  .print-table tr { break-inside: avoid; }
+}
+
+/* Service Provider Professional Overview. Tiptap persists JSON only; these
+   classes style the schema-generated editor surface and its accessible preview. */
+.tiptap p.is-editor-empty:first-child::before {
+  color: #9ca3af;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+.tiptap h2,
+.professional-overview h2 { margin: 1rem 0 0.4rem; font-size: 1.125rem; font-weight: 700; line-height: 1.5; color: #171717; }
+.tiptap h3,
+.professional-overview h3 { margin: 0.9rem 0 0.35rem; font-size: 1rem; font-weight: 700; line-height: 1.5; color: #171717; }
+.tiptap ul,
+.professional-overview ul { margin: 0.55rem 0; list-style: disc; padding-left: 1.5rem; }
+.tiptap ol,
+.professional-overview ol { margin: 0.55rem 0; list-style: decimal; padding-left: 1.5rem; }
+.tiptap blockquote,
+.professional-overview blockquote { margin: 0.75rem 0; border-left: 3px solid #0d9488; padding-left: 0.9rem; color: #4b5563; }
+.tiptap hr,
+.professional-overview hr { margin: 1rem 0; border: 0; border-top: 1px solid #e5e7eb; }
+.tiptap a,
+.professional-overview a { color: #3c61dd; text-decoration: underline; text-underline-offset: 2px; }

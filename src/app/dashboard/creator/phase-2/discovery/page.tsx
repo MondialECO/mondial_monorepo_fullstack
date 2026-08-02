@@ -2,38 +2,47 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Sparkles, ArrowLeft, ArrowRight, Lightbulb, Check, Loader2 } from "lucide-react";
+import {
+  Sparkles, ArrowRight, Loader2, Lightbulb, Compass, Building2, Settings,
+  Laptop, HeartPulse, ShoppingBag, BookOpen, Music, Leaf, Landmark, Gamepad2,
+  Briefcase, Video, Globe, Bot, Palette, Code, TrendingUp, Handshake, BarChart3, Brain, Users,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
 import { creatorAiApi } from "@/lib/api-creator-ai";
 import { creatorJourneyApi } from "@/lib/api-creator-journey";
 import { toAiError } from "@/lib/ai-errors";
 
 const TOPICS = [
-  { id: "tech", label: "Technology", emoji: "💻" },
-  { id: "health", label: "Health & Wellness", emoji: "🏥" },
-  { id: "ecom", label: "E-Commerce", emoji: "🛍️" },
-  { id: "edu", label: "Education", emoji: "📚" },
-  { id: "music", label: "Music & Arts", emoji: "🎵" },
-  { id: "env", label: "Environment", emoji: "🌿" },
-  { id: "finance", label: "Finance & Fintech", emoji: "💰" },
-  { id: "gaming", label: "Gaming", emoji: "🎮" },
-  { id: "biz", label: "Business Tools", emoji: "💼" },
-  { id: "content", label: "Content Creation", emoji: "📸" },
-  { id: "social", label: "Social Impact", emoji: "🌍" },
-  { id: "ai", label: "AI & Automation", emoji: "🤖" },
+  { id: "tech", label: "Technology", icon: Laptop },
+  { id: "health", label: "Health & Wellness", icon: HeartPulse },
+  { id: "ecom", label: "E-Commerce", icon: ShoppingBag },
+  { id: "edu", label: "Education", icon: BookOpen },
+  { id: "music", label: "Music & Arts", icon: Music },
+  { id: "env", label: "Environment", icon: Leaf },
+  { id: "finance", label: "Finance & Fintech", icon: Landmark },
+  { id: "gaming", label: "Gaming", icon: Gamepad2 },
+  { id: "biz", label: "Business Tools", icon: Briefcase },
+  { id: "content", label: "Content Creation", icon: Video },
+  { id: "social", label: "Social Impact", icon: Globe },
+  { id: "ai", label: "AI & Automation", icon: Bot },
 ];
 
 const COMPLEMENTS = [
-  { id: "design", label: "UI/UX Design", emoji: "🎨" },
-  { id: "coding", label: "Software Development", emoji: "💻" },
-  { id: "marketing", label: "Growth & Marketing", emoji: "📈" },
-  { id: "sales", label: "B2B Sales", emoji: "🤝" },
-  { id: "operations", label: "Operations & Logistics", emoji: "⚙️" },
-  { id: "finance", label: "Financial Modeling", emoji: "📊" },
-  { id: "domain", label: "Domain Expertise", emoji: "🧠" },
-  { id: "community", label: "Community Building", emoji: "👥" },
+  { id: "design", label: "UI/UX Design", icon: Palette },
+  { id: "coding", label: "Software Development", icon: Code },
+  { id: "marketing", label: "Growth & Marketing", icon: TrendingUp },
+  { id: "sales", label: "B2B Sales", icon: Handshake },
+  { id: "operations", label: "Operations & Logistics", icon: Settings },
+  { id: "finance", label: "Financial Modeling", icon: BarChart3 },
+  { id: "domain", label: "Domain Expertise", icon: Brain },
+  { id: "community", label: "Community Building", icon: Users },
+];
+
+const HOW_STEPS = [
+  { icon: Lightbulb, title: "Your inputs", desc: "We collect signals based on your interests." },
+  { icon: Sparkles, title: "AI Analysis", desc: "Our engine cross-references gaps in the market." },
+  { icon: Compass, title: "Idea cards", desc: "You receive actionable concepts to explore." },
 ];
 
 // AI prompt wants human-readable text, not internal ids.
@@ -146,19 +155,27 @@ export default function IdeaDiscoveryPage() {
     }));
 
     try {
+      // Capture the target idea at INITIATION (the user is unambiguously on it
+      // here) and carry it through the whole Discovery chain via the URL — so an
+      // in-flight generation can never write onto a different idea after a
+      // switch/tab change. Null (zero-idea user / pre-hydration) → omitted; the
+      // backend's active/mint fallback is correct for that case.
+      const targetIdeaId = state.activeIdeaId ?? undefined;
+
       // Persist discovery inputs to backend before generating concepts
       await creatorJourneyApi.saveDiscoveryInputs({
         sectors,
         observedProblem,
         strengths,
-      });
+      }, targetIdeaId);
 
       const result = await creatorAiApi.startIdeaGeneration({
         sectors: sectors.map(sectorLabel),
         observedProblem,
         strengths: strengths.map(strengthLabel),
       });
-      router.push(`/dashboard/creator/phase-2/ai-processing?session=${result.sessionId}`);
+      const ideaQ = targetIdeaId ? `&idea=${targetIdeaId}` : "";
+      router.push(`/dashboard/creator/phase-2/ai-processing?session=${result.sessionId}${ideaQ}`);
     } catch (err) {
       setError(toAiError(err).message);
       setLoading(false);
@@ -171,178 +188,154 @@ export default function IdeaDiscoveryPage() {
   };
 
   return (
-    <div className="w-full flex-1 flex flex-col bg-background text-foreground min-h-screen">
-      {/* Isolated Onboarding Header */}
-      {/* <header className="flex items-center justify-between border-b border-border bg-card/50 backdrop-blur-xs px-6 py-4">
-        <Button
-          variant="ghost"
-          onClick={handleBack}
-          className="flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back
-        </Button>
-        <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-          <Sparkles className="h-3 w-3" />
-          Phase 2 of 6 — Idea Discovery
+    <div className="w-full" style={{ backgroundColor: "var(--background)" }}>
+      <div className="mx-auto w-full max-w-[980px] px-4 sm:px-6 py-8 sm:py-12 flex flex-col gap-8">
+
+        {/* Header */}
+        <div className="flex flex-col items-center gap-3 text-center">
+          <span
+            className="inline-flex items-center rounded-full px-3 py-1 text-[11px] font-medium"
+            style={{ backgroundColor: "var(--secondary)", borderWidth: "1px", borderStyle: "solid", borderColor: "color-mix(in srgb, var(--primary) 50%, transparent)", color: "var(--primary)" }}
+          >
+            Idea Discovery
+          </span>
+          <h1 className="text-2xl sm:text-3xl font-semibold" style={{ color: "var(--foreground)" }}>
+            Let&apos;s find your idea together
+          </h1>
+          <p className="text-base max-w-[434px]" style={{ color: "var(--muted-foreground)" }}>
+            Provide core perimeters to collaborate. We need 3 data points to synthesize.
+          </p>
         </div>
-      </header> */}
 
-      {/* Progress Bar (28% filled for Step 2) */}
-      <div className="h-[3px] w-full bg-muted">
-        <div className="h-full bg-primary transition-all duration-500" style={{ width: "28%" }} />
-      </div>
+        {/* Two columns: form + how-it-works */}
+        <div className="flex flex-col lg:flex-row lg:justify-center gap-6 items-start">
 
-      <main className="flex-1 max-w-[1140px] mx-auto w-full px-6 py-12 md:py-16">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-          {/* Main Form (Left Column, spans 2/3) */}
-          <div className="lg:col-span-2 space-y-8">
-            <div className="space-y-3">
-              <h1 className="text-3xl font-extrabold tracking-tight">Idea Discovery</h1>
-              <p className="text-sm text-muted-foreground">
-                Let&apos;s find your idea together. Provide three inputs to collaborate. We need three data points to synthesize.
-              </p>
-            </div>
+          {/* Form column */}
+          <div className="w-full lg:max-w-[600px] flex flex-col gap-6">
 
             {error && (
-              <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+              <div className="rounded-xl border p-4 text-sm" style={{ backgroundColor: "color-mix(in srgb, var(--destructive) 6%, transparent)", borderColor: "var(--destructive)", color: "var(--destructive)" }}>
                 {error}
               </div>
             )}
 
-            {/* Section 1: Market Verticals */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-foreground">
-                  Market vertical <span className="text-red-500 font-bold">*</span>
-                </h3>
-                <span className="text-xs text-muted-foreground">Select up to 3 sectors for initial analysis</span>
+            {/* Card: Market vertical */}
+            <div className="rounded-2xl border shadow-sm p-5 sm:p-6 flex flex-col gap-6" style={{ backgroundColor: "var(--card)", borderColor: "var(--card-edge)" }}>
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <Building2 className="w-5 h-5 shrink-0" style={{ color: "var(--foreground)" }} />
+                  <span className="flex-1 text-lg font-semibold" style={{ color: "var(--foreground)" }}>Market vertical</span>
+                  <span className="text-sm" style={{ color: "var(--muted-foreground)" }}>
+                    <span className="font-semibold" style={{ color: "var(--primary)" }}>{sectors.length}</span>/3
+                  </span>
+                </div>
+                <span className="text-base" style={{ color: "var(--muted-foreground)" }}>Select up to 3 sectors for initial analysis</span>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                {TOPICS.map((topic) => {
-                  const isSelected = sectors.includes(topic.id);
+              <div className="flex flex-wrap gap-3">
+                {TOPICS.map((t) => {
+                  const sel = sectors.includes(t.id);
                   return (
                     <button
-                      key={topic.id}
+                      key={t.id}
                       type="button"
-                      onClick={() => toggleSector(topic.id)}
-                      className={`flex items-center gap-2 p-3.5 rounded-xl border text-left text-xs font-semibold transition-all duration-200 cursor-pointer select-none ${
-                        isSelected
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "border-border bg-card text-muted-foreground hover:border-primary/30 hover:text-foreground"
-                      }`}
+                      onClick={() => toggleSector(t.id)}
+                      className="inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors"
+                      style={{ backgroundColor: sel ? "var(--primary)" : "var(--popover)", borderWidth: "1px", borderStyle: "solid", borderColor: sel ? "var(--primary)" : "var(--border)", color: sel ? "var(--primary-foreground)" : "var(--muted-foreground)" }}
                     >
-                      <span className="text-lg">{topic.emoji}</span>
-                      <span className="truncate flex-1">{topic.label}</span>
-                      {isSelected && <Check className="w-3.5 h-3.5 text-primary flex-shrink-0" />}
+                      <t.icon className="w-4 h-4 shrink-0" />
+                      {t.label}
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            {/* Section 2: Problem Description */}
-            <div className="space-y-4">
-              <div>
-                <h3 className="text-sm font-bold uppercase tracking-wider text-foreground mb-1">
-                  Problem you have noticed <span className="text-red-500 font-bold">*</span>
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                  What frustrates you, your friends, or people around you? (Min 10 characters)
-                </p>
+            {/* Card: Problem */}
+            <div className="rounded-2xl border shadow-sm p-5 sm:p-6 flex flex-col gap-6" style={{ backgroundColor: "var(--card)", borderColor: "var(--card-edge)" }}>
+              <div className="flex flex-col gap-1">
+                <span className="text-lg font-semibold" style={{ color: "var(--foreground)" }}>Problem you have noticed</span>
+                <span className="text-base" style={{ color: "var(--muted-foreground)" }}>What frustrates you, your friends, or people around you? (min 10 characters)</span>
               </div>
               <textarea
                 value={observedProblem}
                 onChange={(e) => setObservedProblem(e.target.value)}
                 onBlur={() => saveInputsToProvider(sectors, observedProblem, strengths)}
-                placeholder="e.g., Small retail shops struggle to manage inventory and sales, often relying on paper ledgers which leads to errors and lost revenue..."
-                rows={4}
-                className="w-full rounded-xl border border-border bg-card px-4 py-3.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none transition-all"
+                placeholder="Type your text...."
+                rows={6}
+                className="w-full rounded-xl px-4 py-3.5 text-sm outline-none focus:ring-2 focus:ring-[var(--ring)] resize-none placeholder:text-muted-foreground"
+                style={{ backgroundColor: "var(--popover)", borderWidth: "1px", borderStyle: "solid", borderColor: "var(--border)", color: "var(--foreground)", minHeight: 160 }}
               />
-              <p className="text-xs text-muted-foreground text-right">{observedProblem.length} chars</p>
             </div>
 
-            {/* Section 3: Core Complements / Strengths */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-foreground">
-                  Core complements <span className="text-red-500 font-bold">*</span>
-                </h3>
-                <span className="text-xs text-muted-foreground">Select up to 3 capabilities for initial analysis</span>
+            {/* Card: Core Complements */}
+            <div className="rounded-2xl border shadow-sm p-5 sm:p-6 flex flex-col gap-6" style={{ backgroundColor: "var(--card)", borderColor: "var(--card-edge)" }}>
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <Settings className="w-5 h-5 shrink-0" style={{ color: "var(--foreground)" }} />
+                  <span className="flex-1 text-lg font-semibold" style={{ color: "var(--foreground)" }}>Core Complements</span>
+                  <span className="text-sm" style={{ color: "var(--muted-foreground)" }}>
+                    <span className="font-semibold" style={{ color: "var(--primary)" }}>{strengths.length}</span>/3
+                  </span>
+                </div>
+                <span className="text-base" style={{ color: "var(--muted-foreground)" }}>Select up to 3 capabilities for initial analysis</span>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                {COMPLEMENTS.map((strength) => {
-                  const isSelected = strengths.includes(strength.id);
+              <div className="flex flex-wrap gap-3">
+                {COMPLEMENTS.map((c) => {
+                  const sel = strengths.includes(c.id);
                   return (
                     <button
-                      key={strength.id}
+                      key={c.id}
                       type="button"
-                      onClick={() => toggleStrength(strength.id)}
-                      className={`flex items-center gap-2 p-3.5 rounded-xl border text-left text-xs font-semibold transition-all duration-200 cursor-pointer select-none ${
-                        isSelected
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "border-border bg-card text-muted-foreground hover:border-primary/30 hover:text-foreground"
-                      }`}
+                      onClick={() => toggleStrength(c.id)}
+                      className="inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors"
+                      style={{ backgroundColor: sel ? "var(--primary)" : "var(--popover)", borderWidth: "1px", borderStyle: "solid", borderColor: sel ? "var(--primary)" : "var(--border)", color: sel ? "var(--primary-foreground)" : "var(--muted-foreground)" }}
                     >
-                      <span className="text-lg">{strength.emoji}</span>
-                      <span className="truncate flex-1">{strength.label}</span>
-                      {isSelected && <Check className="w-3.5 h-3.5 text-primary flex-shrink-0" />}
+                      <c.icon className="w-4 h-4 shrink-0" />
+                      {c.label}
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            {/* Action Bar */}
-            <div className="flex justify-end pt-4 border-t border-border">
+            {/* Initialize button (pill-in-pill) */}
+            <div className="rounded-full p-2" style={{ backgroundColor: "var(--card)" }}>
               <Button
                 onClick={handleNext}
                 disabled={!isFormValid || loading}
-                className="rounded-xl px-6 py-5 text-sm font-bold bg-primary text-primary-foreground hover:bg-primary/95 flex items-center gap-2 disabled:opacity-40"
+                className="w-full rounded-full py-4 h-auto text-base font-medium flex items-center justify-center gap-2 disabled:opacity-50"
               >
-                {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
                 Initialize Generation
-                <ArrowRight className="h-4 w-4" />
+                <ArrowRight className="w-5 h-5" />
               </Button>
             </div>
           </div>
 
-          {/* Explanation Panel (Right Column, spans 1/3) */}
-          <div className="lg:col-span-1">
-            <Card className="rounded-2xl border-border bg-card sticky top-24">
-              <CardContent className="p-6 space-y-6">
-                <div className="flex items-center gap-2 text-primary font-bold">
-                  <Lightbulb className="h-5 w-5" />
-                  <span className="text-sm uppercase tracking-wider">How this works</span>
-                </div>
-
-                <div className="space-y-4 text-sm leading-relaxed">
-                  <div className="space-y-1">
-                    <h4 className="font-bold text-foreground">Your inputs</h4>
-                    <p className="text-xs text-muted-foreground">We collect signals based on your interests and capabilities.</p>
+          {/* How this works panel */}
+          <aside className="w-full lg:w-[336px] shrink-0 rounded-xl border shadow-sm px-4 pt-5 pb-4 flex flex-col gap-6" style={{ backgroundColor: "var(--card)", borderColor: "var(--card-edge)" }}>
+            <div className="border-b pb-4" style={{ borderColor: "var(--stroke-10)" }}>
+              <span className="text-xs font-semibold" style={{ color: "var(--foreground)" }}>HOW THIS WORKS</span>
+            </div>
+            <div className="flex flex-col gap-5">
+              {HOW_STEPS.map((s) => (
+                <div key={s.title} className="flex gap-4 items-start">
+                  <div className="rounded shrink-0 flex items-center justify-center" style={{ width: 28, height: 28, backgroundColor: "var(--popover)", borderWidth: "1px", borderStyle: "solid", borderColor: "var(--stroke-10)" }}>
+                    <s.icon className="w-4 h-4" style={{ color: "var(--foreground)" }} />
                   </div>
-
-                  <div className="space-y-1">
-                    <h4 className="font-bold text-foreground">AI analysis</h4>
-                    <p className="text-xs text-muted-foreground">Our engine cross-references gaps in the market based on real-world demand patterns.</p>
-                  </div>
-
-                  <div className="space-y-1">
-                    <h4 className="font-bold text-foreground">Idea cards</h4>
-                    <p className="text-xs text-muted-foreground">You receive actionable venture concepts optimized for viability, TAM, and competitor saturation.</p>
+                  <div className="flex-1 min-w-0 flex flex-col gap-1">
+                    <span className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>{s.title}</span>
+                    <span className="text-[13px]" style={{ color: "var(--muted-foreground)" }}>{s.desc}</span>
                   </div>
                 </div>
-
-                <div className="border-t border-border pt-4 text-xs font-semibold text-primary/80 italic">
-                  You choose what resonates. AI gives options, not answers.
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
+              ))}
+            </div>
+            <div className="border-t pt-4" style={{ borderColor: "var(--stroke-10)" }}>
+              <span className="text-[13px] italic" style={{ color: "var(--muted-foreground)" }}>You pick what resonates. AI gives options, not answers.</span>
+            </div>
+          </aside>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

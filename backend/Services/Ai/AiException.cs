@@ -17,10 +17,13 @@ namespace WebApp.Services.Ai
     }
 
     /// <summary>
-    /// Identifies which side ran out of credits, so the API layer can return the
-    /// correct status: a local zero-balance is the user's exhausted allocation
-    /// (402, "upgrade"), while a provider payment-required is an upstream billing
-    /// gap on our OpenRouter account (503, "temporary service issue").
+    /// Identifies which side ran out of credits. A local zero-balance is the
+    /// user's exhausted allocation — raised synchronously by the debit at Start
+    /// (402, "upgrade" copy). A provider payment-required is a billing gap on OUR
+    /// OpenRouter account — it can only occur inside the async job, is never
+    /// retried (see StopRetryOnPermanentAiFailure), and surfaces via the session's
+    /// Failed state with SERVICE-SIDE copy: it is never the user's credits and
+    /// must never be presented as such.
     /// </summary>
     public enum CreditFailureSource
     {

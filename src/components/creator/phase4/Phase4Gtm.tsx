@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ArrowRight, ArrowLeft, Check, Loader2, X, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { creatorJourneyApi, type WebPresenceItem, type ChannelMix, type GtmWeek } from "@/lib/api-creator-journey";
+import { creatorJourneyApi, type WebPresenceItem, type ChannelMix, type GtmWeek, type GtmSetup } from "@/lib/api-creator-journey";
 
 const WEB_ITEMS: { id: string; label: string }[] = [
   { id: "domain", label: "Domain Registration" },
@@ -14,14 +14,28 @@ const WEB_ITEMS: { id: string; label: string }[] = [
   { id: "waitlist", label: "Email pre-launch waitlist" },
 ];
 
-export function Phase4Gtm({ onNext, onBack }: { onNext: () => void; onBack: () => void }) {
-  const [web, setWeb] = useState<WebPresenceItem[]>(WEB_ITEMS.map((w) => ({ ...w, done: false })));
-  const [channels, setChannels] = useState<ChannelMix[]>([
-    { channel: "Content / SEO", percent: 40 }, { channel: "Paid ads", percent: 30 }, { channel: "Community", percent: 30 },
-  ]);
-  const [audiences, setAudiences] = useState<string[]>(["Early-stage founders"]);
+export function Phase4Gtm({ initial, onSaved, onNext, onBack }: {
+  initial?: GtmSetup | null;
+  onSaved?: (gtm: GtmSetup) => void;
+  onNext: () => void;
+  onBack: () => void;
+}) {
+  // Seed from the saved GTM block; hardcoded defaults only when it's genuinely empty.
+  // Audiences seed verbatim when the block exists (a deliberately-empty list stays
+  // empty). Host hydrates before mount — no late-fetch clobber.
+  const [web, setWeb] = useState<WebPresenceItem[]>(() =>
+    initial?.webPresence?.length ? initial.webPresence : WEB_ITEMS.map((w) => ({ ...w, done: false })),
+  );
+  const [channels, setChannels] = useState<ChannelMix[]>(() =>
+    initial?.channelMix?.length
+      ? initial.channelMix
+      : [{ channel: "Content / SEO", percent: 40 }, { channel: "Paid ads", percent: 30 }, { channel: "Community", percent: 30 }],
+  );
+  const [audiences, setAudiences] = useState<string[]>(() =>
+    initial ? initial.targetAudiences ?? [] : ["Early-stage founders"],
+  );
   const [audienceDraft, setAudienceDraft] = useState("");
-  const [weeks, setWeeks] = useState<GtmWeek[] | null>(null);
+  const [weeks, setWeeks] = useState<GtmWeek[] | null>(() => (initial?.aiGtmWeeks?.length ? initial.aiGtmWeeks : null));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,6 +49,7 @@ export function Phase4Gtm({ onNext, onBack }: { onNext: () => void; onBack: () =
     try {
       const res = await creatorJourneyApi.gtmSetup({ webPresence: web, targetAudiences: audiences, channelMix: channels });
       setWeeks(res.aiGtmWeeks);
+      onSaved?.(res); // keep the host's saved snapshot current for Back-navigation
     } catch (e) {
       const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
       setError(msg ?? (e instanceof Error ? e.message : "Couldn't save GTM."));

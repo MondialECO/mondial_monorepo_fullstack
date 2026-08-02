@@ -30,7 +30,7 @@ Seeded companies: **Rousseau Technologies SAS** (full data room + draft term she
 - **Page:** `APP/dashboard/creator/ai`.
 - **Expected:** credit balance shows ~100; run **Idea Clarifier** → job completes and returns content within ~10–30s; balance drops by 1 (Business Plan −5, Forecast −5).
 - **Failure symptoms:** spinner never resolves; "insufficient credits"; 500; job stuck "queued".
-- **Fallback:** stuck "queued" → Hangfire worker issue, check `API/hangfire` (admin). Empty/500 → OpenRouter key invalid or out of gpt-4o credit. **Use the pre-recorded AI run** and narrate; the rest of the demo is unaffected.
+- **Fallback:** stuck "queued" → Hangfire worker issue, check `API/hangfire` (admin). Empty/500 → OpenRouter key invalid or `openai/gpt-oss-20b:free` unavailable. **Use the pre-recorded AI run** and narrate; the rest of the demo is unaffected.
 
 ## 4. Entrepreneur login
 - **Page:** `APP/login` → `demo.entrepreneur@mondial.local`.

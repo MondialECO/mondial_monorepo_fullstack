@@ -23,17 +23,26 @@ namespace WebApp.Controllers
         private readonly IHubContext<ChatHub> _hub;
         private readonly MongoDbContext _context;
         private readonly ICompanyService _companyService;
+        private readonly IResponseRateService _responseRates;
+        private readonly INotificationService _notifications;
+        private readonly IAnalyticsRecordingService _analyticsRecording;
 
         public ChatController(
             IChatService chatRepo,
             IHubContext<ChatHub> hub,
             MongoDbContext context,
-            ICompanyService companyService)
+            ICompanyService companyService,
+            IResponseRateService responseRates,
+            INotificationService notifications,
+            IAnalyticsRecordingService analyticsRecording)
         {
             _chatService = chatRepo;
             _hub = hub;
             _context = context;
             _companyService = companyService;
+            _responseRates = responseRates;
+            _notifications = notifications;
+            _analyticsRecording = analyticsRecording;
         }
 
         // Get current user ID from JWT token. ASP.NET Core 8 JwtBearer
@@ -176,10 +185,15 @@ namespace WebApp.Controllers
             {
                 ConversationId = conversationObjectId,
                 SenderId = CurrentUserId,
-                Message = request.Message
+                Message = request.Message,
+                ClientBriefId = request.ClientBriefId,
             };
 
            var data = await _chatService.AddMessage(message);
+
+            // Record inquiry if this message was sent in the context of a listing.
+            if (!string.IsNullOrWhiteSpace(request.ListingId))
+                await _analyticsRecording.IncrementInquiryAsync(request.ListingId, CancellationToken.None);
 
             // Fan out to every participant's per-user group so recipients
             // receive it regardless of which thread (if any) they have open.
@@ -188,6 +202,20 @@ namespace WebApp.Controllers
             {
                 await _hub.Clients.Group(participantId.ToString())
                     .SendAsync("ReceiveMessage", data);
+            }
+
+            if (!string.IsNullOrWhiteSpace(message.ClientBriefId))
+            {
+                var brief = await _context.ClientBriefs.Find(x => x.Id == message.ClientBriefId).FirstOrDefaultAsync();
+                if (brief?.ClientId == CurrentUserId.ToString())
+                {
+                    foreach (var participantId in participants.Where(x => x != CurrentUserId))
+                        await _notifications.NotifyUser(participantId, "Client sent a new message", message.Message);
+                }
+                else
+                {
+                    await _responseRates.RefreshTrustSignalAsync(CurrentUserId.ToString());
+                }
             }
 
             return Ok(data);

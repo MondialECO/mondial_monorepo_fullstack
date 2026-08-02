@@ -78,7 +78,7 @@ namespace WebApp.Controllers
         // next scripted question to the journey, so resume-after-abandon works.
         [HttpPost("chat-message")]
         [EnableRateLimiting("ai")]
-        public async Task<IActionResult> ChatMessage([FromBody] ChatMessageRequest request)
+        public async Task<IActionResult> ChatMessage([FromBody] ChatMessageRequest request, [FromQuery] string ideaId = null)
         {
             try
             {
@@ -86,7 +86,7 @@ namespace WebApp.Controllers
                 if (string.IsNullOrWhiteSpace(request?.Message))
                     return BadRequest(ApiResponse.Error("Message is required."));
 
-                var journey = await _journeys.AppendChatMessageAsync(userId, "user", request.Message.Trim());
+                var journey = await _journeys.AppendChatMessageAsync(userId, "user", request.Message.Trim(), ideaId);
 
                 // Count user turns to drive the 6-question progression.
                 var userTurns = journey.Phase2Data?.ChatMessages?.Count(m => m.Sender == "user") ?? 0;
@@ -96,7 +96,7 @@ namespace WebApp.Controllers
                     ? "Thanks — that's everything I need. Building your clarified summary now."
                     : Questions[Math.Min(userTurns, Questions.Length - 1)];
 
-                journey = await _journeys.AppendChatMessageAsync(userId, "ai", aiReply);
+                journey = await _journeys.AppendChatMessageAsync(userId, "ai", aiReply, ideaId);
 
                 return Ok(ApiResponse.Ok("Message received", new
                 {
@@ -140,7 +140,7 @@ namespace WebApp.Controllers
                 // (1) AI-request failure — the AI never produced output.
                 if (string.Equals(session.Status, "Failed", StringComparison.Ordinal))
                 {
-                    var journeyNow = await _journeys.GetOrCreateAsync(userId);
+                    var journeyNow = await _journeys.GetOrCreateComposedAsync(userId); // idea-sourced project
                     return Ok(ApiResponse.Ok("Clarifier AI request failed", new
                     {
                         aiRequestFailed = true,
@@ -153,7 +153,7 @@ namespace WebApp.Controllers
                 // (2) Not a completed run with output (NeedsReview, or no Output) — parse failure.
                 if (!string.Equals(session.Status, "Completed", StringComparison.Ordinal) || session.Output == null)
                 {
-                    var journeyNow = await _journeys.GetOrCreateAsync(userId);
+                    var journeyNow = await _journeys.GetOrCreateComposedAsync(userId); // idea-sourced project
                     return Ok(ApiResponse.Ok("Clarifier output could not be interpreted", new
                     {
                         aiRequestFailed = false,
@@ -196,7 +196,7 @@ namespace WebApp.Controllers
 
                 if (aiParseFailed)
                 {
-                    var journeyNow = await _journeys.GetOrCreateAsync(userId);
+                    var journeyNow = await _journeys.GetOrCreateComposedAsync(userId); // idea-sourced project
                     return Ok(ApiResponse.Ok("Clarifier output could not be interpreted", new
                     {
                         aiRequestFailed = false,
@@ -236,7 +236,7 @@ namespace WebApp.Controllers
             {
                 var userId = GetUserId();
 
-                var journey = await _journeys.GetOrCreateAsync(userId);
+                var journey = await _journeys.GetOrCreateComposedAsync(userId); // idea-sourced Phase2Data
                 var p2 = journey.Phase2Data;
                 var conceptId = !string.IsNullOrWhiteSpace(request?.ConceptId)
                     ? request.ConceptId
@@ -382,7 +382,7 @@ namespace WebApp.Controllers
         public async Task<IActionResult> UploadLogo(
             [FromForm] IFormFile logo, [FromForm] string source,
             [FromForm] string paletteName = null, [FromForm] string typographyPairing = null,
-            [FromForm] string colorPalette = null)
+            [FromForm] string colorPalette = null, [FromQuery] string ideaId = null)
         {
             try
             {
@@ -408,7 +408,7 @@ namespace WebApp.Controllers
                     ? null
                     : colorPalette.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
                 var journey = await _journeys.SetBrandingLogoAsync(
-                    userId, assetPath, logoType, source, palette, paletteName, typographyPairing);
+                    userId, assetPath, logoType, source, palette, paletteName, typographyPairing, ideaId);
 
                 return Ok(ApiResponse.Ok("Logo uploaded", new { logoAsset = assetPath, branding = journey.Project?.Branding }));
             }
@@ -419,12 +419,12 @@ namespace WebApp.Controllers
         // POST /api/creator/journey/phase2/branding/skip
         // Branding "pending" is a valid completion state — never blocks Phase 2/3.
         [HttpPost("branding/skip")]
-        public async Task<IActionResult> SkipBranding()
+        public async Task<IActionResult> SkipBranding([FromQuery] string ideaId = null)
         {
             try
             {
                 var userId = GetUserId();
-                var journey = await _journeys.SetBrandingLogoAsync(userId, null, null, "pending");
+                var journey = await _journeys.SetBrandingLogoAsync(userId, null, null, "pending", ideaId: ideaId);
                 return Ok(ApiResponse.Ok("Branding skipped", new { branding = journey.Project?.Branding }));
             }
             catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
@@ -436,7 +436,7 @@ namespace WebApp.Controllers
         // POST /api/creator/journey/phase2/discovery-inputs
         // Persist Discovery input form (sectors, problem, strengths) at step 2.
         [HttpPost("discovery-inputs")]
-        public async Task<IActionResult> SaveDiscoveryInputs([FromBody] SaveDiscoveryInputsRequest request)
+        public async Task<IActionResult> SaveDiscoveryInputs([FromBody] SaveDiscoveryInputsRequest request, [FromQuery] string ideaId = null)
         {
             try
             {
@@ -451,7 +451,7 @@ namespace WebApp.Controllers
                     Strengths = request.Inputs.Strengths ?? new List<string>(),
                 };
 
-                var journey = await _journeys.SetDiscoveryInputsAsync(userId, inputs);
+                var journey = await _journeys.SetDiscoveryInputsAsync(userId, inputs, ideaId);
                 return Ok(ApiResponse.Ok("Discovery inputs saved", new { phase2Data = journey.Phase2Data }));
             }
             catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
@@ -462,7 +462,7 @@ namespace WebApp.Controllers
         // POST /api/creator/journey/phase2/generated-concepts
         // Persist AI-generated concepts after generation completes (step 3).
         [HttpPost("generated-concepts")]
-        public async Task<IActionResult> SaveGeneratedConcepts([FromBody] SaveGeneratedConceptsRequest request)
+        public async Task<IActionResult> SaveGeneratedConcepts([FromBody] SaveGeneratedConceptsRequest request, [FromQuery] string ideaId = null)
         {
             try
             {
@@ -488,7 +488,7 @@ namespace WebApp.Controllers
                     FounderEdge = c.FounderEdge,
                 }).ToList();
 
-                var journey = await _journeys.SetGeneratedConceptsAsync(userId, concepts);
+                var journey = await _journeys.SetGeneratedConceptsAsync(userId, concepts, ideaId);
                 return Ok(ApiResponse.Ok("Concepts saved", new { phase2Data = journey.Phase2Data }));
             }
             catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
@@ -499,7 +499,7 @@ namespace WebApp.Controllers
         // POST /api/creator/journey/phase2/selected-concept
         // Persist the selected concept ID when user picks (step 4).
         [HttpPost("selected-concept")]
-        public async Task<IActionResult> SaveSelectedConceptId([FromBody] SaveSelectedConceptIdRequest request)
+        public async Task<IActionResult> SaveSelectedConceptId([FromBody] SaveSelectedConceptIdRequest request, [FromQuery] string ideaId = null)
         {
             try
             {
@@ -507,7 +507,7 @@ namespace WebApp.Controllers
                 if (string.IsNullOrWhiteSpace(request?.ConceptId))
                     return BadRequest(ApiResponse.Error("conceptId is required."));
 
-                var journey = await _journeys.SetSelectedConceptIdAsync(userId, request.ConceptId);
+                var journey = await _journeys.SetSelectedConceptIdAsync(userId, request.ConceptId, ideaId);
                 return Ok(ApiResponse.Ok("Concept selected", new { phase2Data = journey.Phase2Data }));
             }
             catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
@@ -518,12 +518,12 @@ namespace WebApp.Controllers
         // GET /api/creator/journey/phase2/m50-designers
         // Verified branding/design SPs (tier>=2), ranked by the SP match formula.
         [HttpGet("m50-designers")]
-        public async Task<IActionResult> M50Designers()
+        public async Task<IActionResult> M50Designers([FromQuery] string ideaId = null)
         {
             try
             {
                 var userId = GetUserId();
-                var journey = await _journeys.GetOrCreateAsync(userId);
+                var journey = await _journeys.GetOrCreateComposedAsync(userId, ideaId); // idea-sourced sector
                 var sector = journey.Project?.Sector ?? string.Empty;
 
                 // Reuse the shared SP match formula, filtered to the Design specialty.
@@ -541,7 +541,7 @@ namespace WebApp.Controllers
         // Opens a Messenger workroom, auto-sends the brief, marks branding designer-pending.
         // Designer-pending is a VALID Phase 2 completion state — does NOT block.
         [HttpPost("m50-designers/book")]
-        public async Task<IActionResult> BookDesigner([FromBody] BookDesignerRequest request)
+        public async Task<IActionResult> BookDesigner([FromBody] BookDesignerRequest request, [FromQuery] string ideaId = null)
         {
             try
             {
@@ -551,7 +551,7 @@ namespace WebApp.Controllers
                 if (!Guid.TryParse(userId, out var creatorGuid))
                     return StatusCode(403, ApiResponse.Error("Invalid user."));
 
-                var journey = await _journeys.GetOrCreateAsync(userId);
+                var journey = await _journeys.GetOrCreateComposedAsync(userId, ideaId); // idea-sourced brief
                 var p = journey.Project ?? new CreatorJourneyProject();
 
                 // 1) Workroom (private conversation) between creator and SP.
@@ -573,7 +573,7 @@ namespace WebApp.Controllers
                 });
 
                 // 3) Branding designer-pending (resolved for the derived engine; logo delivered later).
-                await _journeys.SetBrandingLogoAsync(userId, null, "designer", "m50_designer");
+                await _journeys.SetBrandingLogoAsync(userId, null, "designer", "m50_designer", ideaId: ideaId);
 
                 var workroomId = conversation.Id.ToString();
                 return Ok(ApiResponse.Ok("Workroom opened", new { workroomId, conversationId = workroomId }));

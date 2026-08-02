@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Sparkles, Brain, Cpu, BarChart3, Network, CheckCircle2, ArrowLeft, AlertTriangle } from "lucide-react";
+import Image from "next/image";
+import { Brain, Cpu, BarChart3, Network, CheckCircle2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
 import { creatorAiApi } from "@/lib/api-creator-ai";
@@ -19,24 +20,31 @@ import {
 } from "@/hooks/queries/creator-ai";
 
 const PROCESSING_STAGES = [
-  { icon: Brain, label: "Market calibration", delay: 0 },
-  { icon: Network, label: "Pattern recognition", delay: 2500 },
-  { icon: BarChart3, label: "Competitor analysis", delay: 4500 },
-  { icon: Cpu, label: "Concept synthesis", delay: 6000 },
+  { icon: Brain, label: "Market Collaboration", delay: 0 },
+  { icon: Network, label: "Pattern Recognition", delay: 2500 },
+  { icon: BarChart3, label: "Competitor Analysis", delay: 4500 },
+  { icon: Cpu, label: "Concept Synthesis", delay: 6000 },
 ];
 
 export default function AIProcessingPage() {
   const router = useRouter();
   const params = useSearchParams();
   const sessionId = params.get("session");
+  // The idea this generation was STARTED for (captured at initiation on the
+  // discovery form). Writes below are scoped to it — never to live active state.
+  const ideaId = params.get("idea");
   const { setState } = useCreatorProgress();
   const [activeStage, setActiveStage] = useState(0);
   const [done, setDone] = useState(false);
   const [dots, setDots] = useState(".");
   const [error, setError] = useState<string | null>(null);
+  // Generation SUCCEEDED but persisting the concepts failed — distinct from a
+  // generation failure: retrying re-saves from memory, never regenerates.
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [poke, setPoke] = useState(0); // bumped by SignalR to trigger an immediate poll
 
   const settledRef = useRef(false); // complete/fail exactly once
+  const pendingSaveRef = useRef<{ concepts: ReturnType<typeof mapGeneratedIdeas>; navSessionId: string } | null>(null);
   const attemptsRef = useRef(0);
 
   // Animated ellipsis
@@ -52,6 +60,27 @@ export default function AIProcessingPage() {
     return () => clearInterval(id);
   }, [done, error]);
 
+  // Persist + navigate. BLOCKING on the save: finalize-discovery resolves the
+  // chosen concept from the PERSISTED GeneratedConcepts, so proceeding past a
+  // failed save guarantees a dead-end 404 at confirm. On failure the generated
+  // output stays safe in the AI session — Retry re-saves without regenerating.
+  const persistAndProceed = useCallback(
+    async (concepts: ReturnType<typeof mapGeneratedIdeas>, navSessionId: string) => {
+      setSaveError(null);
+      try {
+        await creatorJourneyApi.saveGeneratedConcepts(concepts, ideaId ?? undefined);
+      } catch {
+        pendingSaveRef.current = { concepts, navSessionId };
+        setSaveError("Your concepts were generated, but saving them failed. Retry to continue — nothing needs regenerating.");
+        return;
+      }
+      setActiveStage(PROCESSING_STAGES.length - 1);
+      setDone(true);
+      setTimeout(() => router.push(`/dashboard/creator/phase-2/idea-cards?session=${navSessionId}${ideaId ? `&idea=${ideaId}` : ""}`), 900);
+    },
+    [router, ideaId],
+  );
+
   const handleCompleted = useCallback(
     (session: IdeaGenerationSession) => {
       if (settledRef.current) return;
@@ -65,16 +94,9 @@ export default function AIProcessingPage() {
         },
       }));
 
-      // Persist generated concepts to backend
-      void creatorJourneyApi.saveGeneratedConcepts(concepts).catch((err) => {
-        console.error("Failed to persist concepts:", err);
-      });
-
-      setActiveStage(PROCESSING_STAGES.length - 1);
-      setDone(true);
-      setTimeout(() => router.push(`/dashboard/creator/phase-2/idea-cards?session=${session.sessionId}`), 900);
+      void persistAndProceed(concepts, session.sessionId);
     },
-    [router, setState],
+    [setState, persistAndProceed],
   );
 
   const handleFailed = useCallback((msg: string) => {
@@ -101,7 +123,9 @@ export default function AIProcessingPage() {
   }, [sessionId, handleCompleted, handleFailed]);
 
   // Polling loop — shared R12 policy: 2500ms interval, capped at POLL_MAX_ATTEMPTS
-  // (60) or POLL_MAX_MS (3-minute wall-clock), whichever comes first.
+  // or POLL_MAX_MS (wall-clock), whichever comes first. Values are the shared
+  // constants in creator-ai.ts (kept above the backend worst case so we never
+  // abandon a job that still succeeds).
   useEffect(() => {
     if (!sessionId) {
       setError("Missing session. Please restart discovery.");
@@ -138,115 +162,100 @@ export default function AIProcessingPage() {
     if (poke > 0) void poll();
   }, [poke, poll]);
 
-  const progress = done || error ? 100 : Math.min(Math.round(((activeStage + 1) / PROCESSING_STAGES.length) * 100), 95);
-
   return (
-    <div className="w-full flex-1 flex flex-col bg-background text-foreground min-h-screen">
-      {/* Isolated Onboarding Header */}
-      {/* <header className="flex items-center justify-between border-b border-border bg-card/50 backdrop-blur-xs px-6 py-4">
-        <Button
-          variant="ghost"
-          onClick={() => router.push("/dashboard/creator/phase-2/discovery")}
-          className="flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back
-        </Button>
-        <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-          <Sparkles className="h-3 w-3" />
-          Phase 2 of 6 — Processing
-        </div>
-      </header> */}
-
-      {/* Progress Bar (Simulated Synthesis progression) */}
-      <div className="h-[3px] w-full bg-muted">
-        <div
-          className={`h-full transition-all duration-700 ease-out ${error ? "bg-destructive" : "bg-primary"}`}
-          style={{ width: `${progress}%` }}
-        />
-      </div>
-
-      <main className="flex-1 flex flex-col items-center justify-center p-6 sm:p-12 md:p-16 max-w-2xl mx-auto w-full text-center">
-        {error ? (
-          /* Failure state — generation failed, timed out, or credits exhausted */
-          <div className="flex flex-col items-center gap-6">
-            <div className="w-20 h-20 rounded-full flex items-center justify-center bg-destructive/10 text-destructive">
+    <div className="w-full" style={{ backgroundColor: "var(--background)" }}>
+      <div className="mx-auto w-full max-w-[600px] px-4 sm:px-6 py-10 sm:py-16 flex flex-col items-center gap-12 text-center">
+        {saveError ? (
+          /* Generation SUCCEEDED, persistence failed — retry saves from memory. */
+          <div className="flex flex-col items-center gap-6 py-8">
+            <div className="w-20 h-20 rounded-full flex items-center justify-center" style={{ backgroundColor: "color-mix(in srgb, var(--destructive) 10%, transparent)", color: "var(--destructive)" }}>
               <AlertTriangle className="w-10 h-10" />
             </div>
-            <div className="space-y-3">
-              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Concept synthesis failed</h1>
-              <p className="text-sm text-muted-foreground max-w-md mx-auto">{error}</p>
+            <div className="flex flex-col gap-3">
+              <h1 className="text-2xl sm:text-3xl font-semibold" style={{ color: "var(--foreground)" }}>Concepts generated — saving failed</h1>
+              <p className="text-sm max-w-md mx-auto" style={{ color: "var(--muted-foreground)" }}>{saveError}</p>
+            </div>
+            <Button
+              onClick={() => {
+                const pending = pendingSaveRef.current;
+                if (pending) void persistAndProceed(pending.concepts, pending.navSessionId);
+              }}
+              className="rounded-xl px-6 py-5 text-sm font-semibold"
+            >
+              Retry saving
+            </Button>
+          </div>
+        ) : error ? (
+          /* Failure state — generation failed, timed out, or credits exhausted */
+          <div className="flex flex-col items-center gap-6 py-8">
+            <div className="w-20 h-20 rounded-full flex items-center justify-center" style={{ backgroundColor: "color-mix(in srgb, var(--destructive) 10%, transparent)", color: "var(--destructive)" }}>
+              <AlertTriangle className="w-10 h-10" />
+            </div>
+            <div className="flex flex-col gap-3">
+              <h1 className="text-2xl sm:text-3xl font-semibold" style={{ color: "var(--foreground)" }}>Concept synthesis failed</h1>
+              <p className="text-sm max-w-md mx-auto" style={{ color: "var(--muted-foreground)" }}>{error}</p>
             </div>
             <Button
               onClick={() => router.push("/dashboard/creator/phase-2/discovery")}
-              className="rounded-xl px-6 py-5 text-sm font-bold bg-primary text-primary-foreground hover:bg-primary/95"
+              className="rounded-xl px-6 py-5 text-sm font-semibold"
             >
               Back to Discovery
             </Button>
           </div>
         ) : (
           <>
-            {/* Animated Orbs */}
-            <div className="relative flex items-center justify-center mb-10">
-              {!done && (
-                <>
-                  <span className="absolute w-44 h-44 rounded-full border border-primary/10 animate-ping duration-2000" />
-                  <span className="absolute w-32 h-32 rounded-full border border-primary/20 animate-ping duration-1500" />
-                </>
-              )}
-              <div className={`w-20 h-20 rounded-full flex items-center justify-center shadow-lg transition-all duration-500 ${
-                done ? "bg-green-500 text-white" : "bg-primary text-primary-foreground animate-pulse"
-              }`}>
-                {done ? <CheckCircle2 className="w-10 h-10" /> : <Brain className="w-10 h-10" />}
+            <div className="w-full max-w-[468px] flex flex-col items-center gap-8">
+              {/* Heading */}
+              <div className="flex flex-col gap-1.5">
+                <h1 className="text-2xl sm:text-3xl font-semibold" style={{ color: "var(--foreground)" }}>
+                  {done ? "Synthesis Complete!" : `Synthesizing venture Concepts${dots}`}
+                </h1>
+                <p className="text-base" style={{ color: "var(--muted-foreground)" }}>
+                  Our Project Intelligence engine cross-references your observations with global trends.
+                </p>
+              </div>
+
+              {/* Illustration — DELIBERATE raster artwork exception to the lucide-only rule
+                  (the library has no equivalent AI-head illustration). 456x456 native,
+                  rendered at 174px. Source: exported from Figma. */}
+              <Image src="/icons/phase2/digital-ai-green.png" alt="" width={174} height={174} className="object-contain" aria-hidden />
+
+              {/* Synthesis progress card */}
+              <div className="w-full rounded-xl border p-6 flex flex-col gap-5" style={{ backgroundColor: "var(--card)", borderColor: "var(--primary)" }}>
+                <span className="text-center text-base" style={{ color: "var(--muted-foreground)" }}>SYNTHESIS PROGRESS</span>
+                <div className="flex flex-col gap-4">
+                  {PROCESSING_STAGES.map((stage, i) => {
+                    const isActive = i === activeStage && !done;
+                    const isDone = i < activeStage || done;
+                    return (
+                      <div key={stage.label} className={`flex items-center gap-2 ${!isDone && !isActive ? "opacity-40" : ""}`}>
+                        {isActive ? (
+                          <span className="rounded-full shrink-0 flex items-center justify-center" style={{ width: 12, height: 12, borderWidth: "2px", borderStyle: "solid", borderColor: "var(--primary)" }}>
+                            <span className="rounded-full" style={{ width: 5, height: 5, backgroundColor: "var(--primary)" }} />
+                          </span>
+                        ) : (
+                          <CheckCircle2 className="w-3 h-3 shrink-0" style={{ color: "var(--muted-foreground)" }} />
+                        )}
+                        <span className="flex-1 text-left text-xs" style={{ color: isActive ? "var(--primary)" : "var(--foreground)" }}>
+                          {stage.label}
+                        </span>
+                        <span className="text-xs" style={{ color: isActive ? "var(--primary)" : isDone ? "var(--muted-foreground)" : "var(--dr-yellow)" }}>
+                          {isDone ? "100%" : isActive ? "Processing..." : "Pending"}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
-            {/* Copywriting */}
-            <div className="space-y-4 mb-8">
-              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-                {done ? "Synthesis Complete!" : `Synthesizing venture concepts${dots}`}
-              </h1>
-              <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                Our Project Intelligence engine cross-references your observations with global trends. Mondial analyzes market signals to ensure each venture path is grounded in real-world demand.
-              </p>
-            </div>
-
-            {/* Synthesis Steps List */}
-            <div className="w-full max-w-sm space-y-3">
-              {PROCESSING_STAGES.map((stage, i) => {
-                const Icon = stage.icon;
-                const isActive = i === activeStage && !done;
-                const isDone = i < activeStage || done;
-                return (
-                  <div
-                    key={stage.label}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition-all duration-300 ${
-                      isDone
-                        ? "border-green-200 dark:border-green-950 bg-green-50/50 dark:bg-green-950/20 text-green-700 dark:text-green-400"
-                        : isActive
-                        ? "border-primary bg-primary/5 text-primary"
-                        : "border-border bg-card/40 opacity-40 text-muted-foreground"
-                    }`}
-                  >
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                      isDone
-                        ? "bg-green-500 text-white"
-                        : isActive
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground"
-                    }`}>
-                      {isDone ? <CheckCircle2 className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
-                    </div>
-                    <span className="text-xs font-bold flex-1 text-left">
-                      {stage.label}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
+            {/* Pro tip */}
+            <p className="text-[13px]" style={{ color: "var(--muted-foreground)" }}>
+              <span className="font-semibold">Pro tip </span>: Mondial OS analyzes over 10M+ data points to ensure every venture path is backed by real-world market demand.
+            </p>
           </>
         )}
-      </main>
+      </div>
     </div>
   );
 }

@@ -122,6 +122,11 @@ namespace WebApp.Services.Ai.Jobs
                 return new AiHandlerResult(OutputPayload: null);
             }
 
+            // Extend the AI's 12 months to a 36-month horizon by deterministic projection
+            // from the user's own inputs (growth rate + opex). The AI call envelope is
+            // unchanged — this is pure post-processing on the parsed contract.
+            ExtendToThirtySixMonths(contract, request.InputPayload);
+
             if (sessionId != null)
             {
                 // Append-only: preserve all prior versions.
@@ -145,6 +150,102 @@ namespace WebApp.Services.Ai.Jobs
 
             return new AiHandlerResult(OutputPayload: contract);
         }
+
+        private const int TargetHorizonMonths = 36;
+
+        /// <summary>
+        /// Extends the AI's leading months (typically 12) to a 36-month horizon by
+        /// deterministic projection anchored on the AI's last real month:
+        ///   revenue[m]       = revenue[n] * (1+g)^(m-n)     (g = monthlyGrowthPct/100)
+        ///   fixedCosts[m]    = fixedCosts[n] (or opex if 0) — fixed stays fixed
+        ///   variableCosts[m] = revenue[m] * (variableCosts[n] / revenue[n])
+        ///   netCashFlow[m]   = revenue[m] - fixedCosts[m] - variableCosts[m]
+        ///   endingBalance[m] = endingBalance[m-1] + netCashFlow[m]
+        /// Stamps <c>aiMonthCount = n</c> so consumers flag months &gt; n as projected,
+        /// and recomputes break-even over the full horizon. Degrades to a flat projection
+        /// when the growth input is absent/zero (no NaN/Infinity). Mutates the contract.
+        /// </summary>
+        private static void ExtendToThirtySixMonths(BsonDocument contract, BsonDocument? input)
+        {
+            var revMonthly = MonthlyArray(contract, "revenueForecast");
+            var costMonthly = MonthlyArray(contract, "costForecast");
+            var cashMonthly = MonthlyArray(contract, "cashFlowProjection");
+
+            int n = revMonthly?.Count ?? 0;
+            contract["aiMonthCount"] = n; // legacy 12-month sessions never carried this
+            if (n == 0 || n >= TargetHorizonMonths) return; // nothing to anchor on / already long
+
+            double g = InputDouble(input, "monthlyGrowthPct") / 100.0;
+            double f = Math.Max(0, 1 + g);
+            double opex = InputDouble(input, "opex");
+
+            double rev12 = Num(revMonthly![n - 1].AsBsonDocument, "amount");
+            double fc12 = 0, vc12 = 0, eb12 = 0;
+            if (costMonthly != null && costMonthly.Count >= n)
+            {
+                var c = costMonthly[n - 1].AsBsonDocument;
+                fc12 = Num(c, "fixedCosts");
+                vc12 = Num(c, "variableCosts");
+            }
+            if (cashMonthly != null && cashMonthly.Count >= n)
+                eb12 = Num(cashMonthly[n - 1].AsBsonDocument, "endingBalance");
+
+            double vRatio = rev12 > 0 ? vc12 / rev12 : 0;   // preserve the AI's variable-cost margin
+            double fixedCost = fc12 > 0 ? fc12 : opex;       // fixed stays fixed
+            string note = g > 0
+                ? $"Projected from month {n} at {g * 100:0.#}%/mo growth."
+                : $"Projected from month {n} (flat — no growth rate provided).";
+
+            double prevEb = eb12;
+            for (int m = n + 1; m <= TargetHorizonMonths; m++)
+            {
+                double rev = Math.Round(rev12 * Math.Pow(f, m - n));
+                double vc = Math.Round(rev * vRatio);
+                double ncf = rev - fixedCost - vc;
+                prevEb += ncf;
+
+                revMonthly.Add(new BsonDocument { ["month"] = m, ["amount"] = rev, ["notes"] = note });
+                costMonthly?.Add(new BsonDocument { ["month"] = m, ["fixedCosts"] = fixedCost, ["variableCosts"] = vc, ["notes"] = note });
+                cashMonthly?.Add(new BsonDocument { ["month"] = m, ["netCashFlow"] = ncf, ["endingBalance"] = prevEb, ["notes"] = note });
+            }
+
+            RecomputeBreakEven(contract, cashMonthly);
+        }
+
+        /// <summary>Operating break-even over the full horizon: first month whose
+        /// netCashFlow is non-negative. Honest null when never reached.</summary>
+        private static void RecomputeBreakEven(BsonDocument contract, BsonArray? cashMonthly)
+        {
+            if (cashMonthly == null) return;
+            int? breakEven = null;
+            foreach (var v in cashMonthly)
+            {
+                var d = v.AsBsonDocument;
+                if (Num(d, "netCashFlow") >= 0) { breakEven = (int)Num(d, "month"); break; }
+            }
+            var be = contract.Contains("breakEvenAnalysis") && contract["breakEvenAnalysis"].IsBsonDocument
+                ? contract["breakEvenAnalysis"].AsBsonDocument
+                : new BsonDocument();
+            be["breakEvenMonth"] = breakEven.HasValue ? (BsonValue)breakEven.Value : BsonNull.Value;
+            be["isAchievedWithinHorizon"] = breakEven.HasValue;
+            contract["breakEvenAnalysis"] = be;
+        }
+
+        private static BsonArray? MonthlyArray(BsonDocument contract, string section)
+        {
+            if (contract.Contains(section) && contract[section].IsBsonDocument)
+            {
+                var s = contract[section].AsBsonDocument;
+                if (s.Contains("monthly") && s["monthly"].IsBsonArray) return s["monthly"].AsBsonArray;
+            }
+            return null;
+        }
+
+        private static double Num(BsonDocument doc, string key) =>
+            doc.Contains(key) && doc[key].IsNumeric ? doc[key].ToDouble() : 0;
+
+        private static double InputDouble(BsonDocument? input, string key) =>
+            input != null && input.Contains(key) && input[key].IsNumeric ? input[key].ToDouble() : 0;
 
         /// <summary>
         /// The parent plan's current editable version content (NOT GeneratedContent),

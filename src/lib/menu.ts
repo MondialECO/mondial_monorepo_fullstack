@@ -1,16 +1,17 @@
 import { UserRole } from "./roles";
 import {
   LayoutDashboard,
+  BadgeCheck,
   Lightbulb,
   Users,
   User,
   Settings,
   Wallet,
-  BadgeCheck,
   Compass,
   LayoutGrid,
   MessageSquare,
   Handshake,
+  Gavel,
   ShieldCheck,
   Sparkles,
   BarChart3,
@@ -25,12 +26,17 @@ import {
   Bell,
   Lock,
   Layers,
+  CheckCircle2,
 } from "lucide-react";
 
 export type MenuItem = {
   label: string;
   href: string;
   icon?: React.ComponentType<{ className?: string }>;
+  children?: Array<{
+    label: string;
+    href: string;
+  }>;
 };
 
 export type MenuSection = {
@@ -53,6 +59,11 @@ export const menu: Record<UserRole, MenuSection[]> = {
           href: "/dashboard/admin/serviceproviders",
           icon: ShieldCheck,
         },
+        {
+          label: "Dispute Resolution",
+          href: "/dashboard/admin/disputes",
+          icon: Gavel,
+        },
       ],
     },
   ],
@@ -65,6 +76,16 @@ export const menu: Record<UserRole, MenuSection[]> = {
           label: "Dashboard",
           href: "/dashboard/creator",
           icon: LayoutDashboard,
+        },
+        {
+          label: "Services Marketplace",
+          href: "/marketplace/services",
+          icon: Store,
+        },
+        {
+          label: "My Engagements",
+          href: "/dashboard/creator/engagements",
+          icon: Handshake,
         },
         {
           label: "My Idea",
@@ -158,6 +179,16 @@ export const menu: Record<UserRole, MenuSection[]> = {
           icon: Wallet,
         },
         {
+          label: "Services Marketplace",
+          href: "/marketplace/services",
+          icon: Store,
+        },
+        {
+          label: "My Engagements",
+          href: "/dashboard/investor/engagements",
+          icon: Handshake,
+        },
+        {
           label: "Discovery",
           href: "/dashboard/investor/discovery",
           icon: Compass,
@@ -201,6 +232,16 @@ export const menu: Record<UserRole, MenuSection[]> = {
           label: "Dashboard",
           href: "/dashboard/entrepreneur",
           icon: LayoutDashboard,
+        },
+        {
+          label: "Services Marketplace",
+          href: "/marketplace/services",
+          icon: Store,
+        },
+        {
+          label: "My Engagements",
+          href: "/dashboard/entrepreneur/engagements",
+          icon: Handshake,
         },
         {
           label: "Financials & KPIs",
@@ -266,9 +307,64 @@ export const menu: Record<UserRole, MenuSection[]> = {
       title: "Dashboard",
       items: [
         {
-          label: "Provider Profile",
+          label: "Dashboard",
+          href: "/dashboard/serviceprovider",
+          icon: LayoutDashboard,
+        },
+        {
+          label: "Services Marketplace",
+          href: "/marketplace/services",
+          icon: Store,
+        },
+        {
+          label: "My Engagements",
+          href: "/dashboard/serviceprovider/engagements",
+          icon: Handshake,
+        },
+        {
+          label: "Profile & Trust",
           href: "/dashboard/serviceprovider/profile",
           icon: BadgeCheck,
+        },
+        {
+          label: "Client Briefs",
+          href: "/dashboard/serviceprovider/leads?view=leads",
+          icon: FileText,
+        },
+        {
+          label: "Pipeline",
+          href: "/dashboard/serviceprovider/leads?view=proposals",
+          icon: GitFork,
+        },
+        {
+          label: "Active Projects",
+          href: "/dashboard/serviceprovider/workroom?view=active",
+          icon: FolderOpen,
+        },
+        {
+          label: "Completed Projects",
+          href: "/dashboard/serviceprovider/workroom?view=completed",
+          icon: CheckCircle2,
+        },
+        {
+          label: "Service Catalog",
+          href: "/dashboard/serviceprovider/services",
+          icon: LayoutGrid,
+        },
+        {
+          label: "Analytics & Growth",
+          href: "/dashboard/serviceprovider/analytics",
+          icon: BarChart3,
+        },
+        {
+          label: "Earnings & Payouts",
+          href: "/dashboard/serviceprovider/earnings?tab=activity",
+          icon: Wallet,
+          children: [
+            { label: "Earnings Overview", href: "/dashboard/serviceprovider/earnings?tab=activity" },
+            { label: "Payouts", href: "/dashboard/serviceprovider/earnings?tab=payouts" },
+            { label: "Financial Settings", href: "/dashboard/serviceprovider/earnings?tab=settings" },
+          ],
         },
       ],
     },

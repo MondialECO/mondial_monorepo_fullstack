@@ -2,64 +2,108 @@
 {
     public class SaveFile
     {
+        private static readonly Dictionary<string, FolderPolicy> _policies = new(StringComparer.Ordinal)
+        {
+            {
+                "media", new(
+                    new[] { ".jpg", ".jpeg", ".png", ".webp", ".gif", ".mp4", ".webm", ".mov" },
+                    30 * 1024 * 1024
+                )
+            },
+            {
+                "documents", new(
+                    new[] { ".pdf", ".doc", ".docx", ".ppt", ".pptx", ".jpg", ".jpeg", ".png", ".webp", ".gif" },
+                    20 * 1024 * 1024
+                )
+            },
+            {
+                "Identity", new(
+                    new[] { ".pdf", ".doc", ".docx", ".ppt", ".pptx" },
+                    20 * 1024 * 1024
+                )
+            },
+            {
+                "Face", new(
+                    new[] { ".mp4", ".webm", ".mov" },
+                    20 * 1024 * 1024
+                )
+            },
+            {
+                "profile", new(
+                    new[] { ".jpg", ".jpeg", ".png", ".webp", ".gif" },
+                    20 * 1024 * 1024
+                )
+            },
+            {
+                "branding", new(
+                    new[] { ".png", ".svg", ".jpg", ".jpeg" },
+                    5 * 1024 * 1024
+                )
+            },
+            {
+                "identity/documents", new(
+                    new[] { ".png", ".jpg", ".jpeg" },
+                    20 * 1024 * 1024
+                )
+            },
+            {
+                "service-provider/profile", new(
+                    new[] { ".jpg", ".jpeg", ".png", ".webp" },
+                    5 * 1024 * 1024
+                )
+            },
+            {
+                "service-provider/cover", new(
+                    new[] { ".jpg", ".jpeg", ".png", ".webp" },
+                    8 * 1024 * 1024
+                )
+            },
+            {
+                "service-provider/portfolio", new(
+                    new[] { ".jpg", ".jpeg", ".png", ".webp" },
+                    8 * 1024 * 1024
+                )
+            },
+            // Credential documents are the one Service Provider upload that accepts a
+            // document type as well as images, matching the credential upload policy
+            // (PDF, PNG, JPG). Images-only policies above are unchanged.
+            {
+                "service-provider/credentials", new(
+                    new[] { ".pdf", ".png", ".jpg", ".jpeg" },
+                    10 * 1024 * 1024
+                )
+            },
+            {
+                "service-provider/gallery", new(
+                    new[] { ".jpg", ".jpeg", ".png", ".webp" },
+                    8 * 1024 * 1024
+                )
+            },
+            {
+                "service-provider/preview-video", new(
+                    new[] { ".mp4", ".webm", ".mov" },
+                    50 * 1024 * 1024
+                )
+            },
+        };
 
-        public async Task<string> SaveFileAsync(IFormFile file, string folderName)
+        private sealed record FolderPolicy(string[] AllowedExtensions, long MaxBytes);
+
+        public virtual async Task<string> SaveFileAsync(IFormFile file, string folderName)
         {
             if (file == null || file.Length == 0)
                 throw new ArgumentException("File is empty");
 
-            // Allowed extensions
-            var allowedImageExt = new[] { ".jpg", ".jpeg", ".png", ".webp", ".gif" };
-            var allowedVideoExt = new[] { ".mp4", ".webm", ".mov" };
-            var allowedDocExt = new[] { ".pdf", ".doc", ".docx", ".ppt", ".pptx" };
+            if (!_policies.TryGetValue(folderName, out var policy))
+                throw new ArgumentException($"Unknown folder: {folderName}");
 
             var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
 
-            bool isValid = false;
-
-            if (folderName == "media")
-            {
-                isValid = allowedImageExt.Contains(extension) || allowedVideoExt.Contains(extension);
-            }
-            else if (folderName == "documents")
-            {
-                // Phase-1 supplementary uploads can be PDFs (utility bills,
-                // statements) or photos of physical documents (driver's
-                // licence), so allow both image and doc extensions.
-                isValid = allowedDocExt.Contains(extension) || allowedImageExt.Contains(extension);
-            }
-            else if (folderName == "Identity")
-            {
-                isValid = allowedDocExt.Contains(extension);
-            }
-            else if (folderName == "Face")
-            {
-                isValid = allowedVideoExt.Contains(extension);
-            }
-            else if (folderName == "profile")
-            {
-                isValid = allowedImageExt.Contains(extension);
-            }
-            else if (folderName == "branding")
-            {
-                var allowedLogoExt = new[] { ".png", ".svg", ".jpg", ".jpeg" };
-                isValid = allowedLogoExt.Contains(extension);
-            }
-            else if (folderName == "identity/documents")
-            {
-                var allowedIdentityExt = new[] { ".png", ".jpg", ".jpeg" };
-                isValid = allowedIdentityExt.Contains(extension);
-            }
-
-            if (!isValid)
+            if (!policy.AllowedExtensions.Contains(extension))
                 throw new ArgumentException($"Invalid file type: {extension}");
 
-            // Max size: 30MB media, 5MB branding logos, 20MB everything else.
-            long maxSize = folderName == "media" ? 30 * 1024 * 1024
-                : folderName == "branding" ? 5 * 1024 * 1024
-                : 20 * 1024 * 1024;
-            if (file.Length > maxSize)
-                throw new ArgumentException($"File too large. Max allowed: {maxSize / (1024 * 1024)}MB");
+            if (file.Length > policy.MaxBytes)
+                throw new ArgumentException($"File too large. Max allowed: {policy.MaxBytes / (1024 * 1024)}MB");
 
             // Unique file name
             var uniqueFileName = $"{Guid.NewGuid()}{extension}";
@@ -77,8 +121,5 @@
             // Return relative path (frontend / API)
             return $"/uploads/{folderName}/{uniqueFileName}";
         }
-
-
-
     }
 }

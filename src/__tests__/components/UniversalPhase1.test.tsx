@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import React from 'react';
@@ -7,6 +7,7 @@ import api from '@/lib/axios';
 
 const authUser = { id: 'user-1', name: 'QA User', role: 'Creator', onboardingPhase: 0 };
 const refreshAuthMe = vi.fn();
+const push = vi.fn();
 
 vi.mock('@/lib/axios', () => ({
   default: {
@@ -20,6 +21,10 @@ vi.mock('@/app/_providers/AuthProvider', () => ({
     user: authUser,
     refreshAuthMe,
   }),
+}));
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push }),
 }));
 
 vi.mock('next/link', () => ({
@@ -41,7 +46,7 @@ const onboardingStatus = {
   },
 };
 
-describe('UniversalPhase1 phone verification', () => {
+describe('UniversalPhase1 verification actions', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     Element.prototype.hasPointerCapture ??= vi.fn(() => false);
@@ -52,64 +57,55 @@ describe('UniversalPhase1 phone verification', () => {
     vi.mocked(api.post).mockResolvedValue({ data: { success: true } });
   });
 
-  it('sends a Bangladesh phone number with the selected +880 country code', async () => {
+  it('routes identity-document verification to the connected identity flow', async () => {
     const user = userEvent.setup();
     render(<UniversalPhase1 />);
 
-    const phoneInput = await screen.findByLabelText('Phone number');
-    await user.type(phoneInput, '01712345678');
-    await user.click(screen.getAllByRole('button', { name: 'Verify' })[2]);
+    await user.click(
+      await screen.findByRole('button', { name: /Identity Document/i })
+    );
 
-    await waitFor(() => {
-      expect(api.post).toHaveBeenCalledWith('/onboarding/send-otp', {
-        phone: '+8801712345678',
-      });
-    });
+    expect(push).toHaveBeenCalledWith('/onboarding/identity');
+    expect(api.post).not.toHaveBeenCalled();
   });
 
-  it('changes the country code dropdown and sends a Europe phone number', async () => {
+  it('routes facial verification to the connected identity flow', async () => {
     const user = userEvent.setup();
     render(<UniversalPhase1 />);
 
-    const countryCode = await screen.findByRole('combobox', {
-      name: 'Phone country code',
-    });
-    await user.click(countryCode);
-    await user.click(await screen.findByRole('option', { name: 'Europe - France +33' }));
+    await user.click(
+      await screen.findByRole('button', { name: /Facial verification/i })
+    );
 
-    await user.type(screen.getByLabelText('Phone number'), '0612345678');
-    await user.click(screen.getAllByRole('button', { name: 'Verify' })[2]);
-
-    await waitFor(() => {
-      expect(api.post).toHaveBeenCalledWith('/onboarding/send-otp', {
-        phone: '+33612345678',
-      });
-    });
+    expect(push).toHaveBeenCalledWith('/onboarding/identity');
+    expect(api.post).not.toHaveBeenCalled();
   });
 
-  it('does not locally complete identity verification', async () => {
+  it('honestly reports that phone verification is not connected here', async () => {
     const user = userEvent.setup();
     render(<UniversalPhase1 />);
 
-    await screen.findByText('Legal Identity');
-    await user.click(screen.getAllByRole('button', { name: 'Verify' })[0]);
+    await user.click(
+      await screen.findByRole('button', { name: /Phone Verification/i })
+    );
 
     expect(api.post).not.toHaveBeenCalled();
     expect(
-      screen.getByText('No verification action configured for identity')
+      screen.getByText('phone verification coming soon')
     ).toBeInTheDocument();
   });
 
-  it('requires a phone number before requesting phone verification', async () => {
+  it('honestly reports that email verification is not connected here', async () => {
     const user = userEvent.setup();
     render(<UniversalPhase1 />);
 
-    await screen.findByLabelText('Phone number');
-    await user.click(screen.getAllByRole('button', { name: 'Verify' })[2]);
+    await user.click(
+      await screen.findByRole('button', { name: /Email Verification/i })
+    );
 
     expect(api.post).not.toHaveBeenCalled();
     expect(
-      screen.getByText('Enter your phone number before requesting a verification code.')
+      screen.getByText('email verification coming soon')
     ).toBeInTheDocument();
   });
 });

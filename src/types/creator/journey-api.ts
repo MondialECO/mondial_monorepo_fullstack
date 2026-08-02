@@ -58,6 +58,10 @@ export type BackendCreatorJourney = {
   userId: string;
   businessIdeaId: string | null;
   companyId: string | null;
+  /** The user's active CreatorIdea id (multi-idea step 5). Backend-authoritative. */
+  activeIdeaId: string | null;
+  /** The idea taken through Level Up, if any. Backend-authoritative. */
+  leveledUpIdeaId: string | null;
   project: JourneyProject;
   phase2Data: {
     selectedEntryPath: string | null;

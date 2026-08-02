@@ -87,6 +87,10 @@ export default function CompliancePage() {
 
   const mandatory = checklist?.items.filter((i) => i.category === 'mandatory') ?? [];
   const optional = checklist?.items.filter((i) => i.category === 'optional') ?? [];
+  // ADVISORY: legal items no longer gate Phase-3 completion (backend gate removed —
+  // the checklist is pure self-attestation). Counts below are guidance only.
+  const mandatoryDone = mandatory.filter((i) => i.status === 'done').length;
+  const mandatoryRemaining = mandatory.length - mandatoryDone;
   const pct = checklist && checklist.totalCount > 0 ? Math.round((checklist.completedCount / checklist.totalCount) * 100) : 0;
 
   return (
@@ -126,7 +130,7 @@ export default function CompliancePage() {
             <div className="flex items-center gap-2">
               <ShieldCheck className="h-5 w-5 text-destructive" />
               <h3 className="text-sm font-bold text-foreground">Required Items</h3>
-              <span className="text-xs text-muted-foreground">({mandatory.length})</span>
+              <span className="text-xs text-muted-foreground">({mandatoryDone}/{mandatory.length} done — recommended before launch)</span>
             </div>
             <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4 space-y-2">
               {mandatory.map((item) => (
@@ -193,9 +197,16 @@ export default function CompliancePage() {
             </div>
           )}
 
-          <div className="flex justify-between pt-2">
-            <Button variant="outline" onClick={() => router.push('/dashboard/creator/phase-3')}><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>
-            <Button onClick={handleContinue} className="gap-2"><ShieldCheck className="h-4 w-4" /> Continue <ArrowRight className="h-4 w-4" /></Button>
+          <div className="space-y-2 pt-2">
+            {mandatoryRemaining > 0 && (
+              <p className="text-xs text-warning text-right">
+                You can continue — {mandatoryRemaining} required {mandatoryRemaining === 1 ? 'item is' : 'items are'} still outstanding. Recommended before launch.
+              </p>
+            )}
+            <div className="flex justify-between">
+              <Button variant="outline" onClick={() => router.push('/dashboard/creator/phase-3')}><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>
+              <Button onClick={handleContinue} className="gap-2"><ShieldCheck className="h-4 w-4" /> Continue <ArrowRight className="h-4 w-4" /></Button>
+            </div>
           </div>
         </div>
       )}

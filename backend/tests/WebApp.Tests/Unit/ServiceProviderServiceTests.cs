@@ -1,5 +1,6 @@
 using System.Linq;
 using FluentAssertions;
+using Hangfire;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
@@ -15,13 +16,15 @@ namespace WebApp.Tests.Unit;
 /// <summary>
 /// D-1 Phase 4 — Service-layer behaviour for the embedded ServiceProviderProfile:
 /// normalization, portfolio index handling, completeness gate, duplicate-submission
-/// guard, and the Pending→UnderReview transition. UserManager is mocked; no DB.
+/// guard, immediate first-submission verification, and moderation transitions.
+/// UserManager is mocked; no DB.
 /// </summary>
 public class ServiceProviderServiceTests
 {
     private readonly Mock<UserManager<ApplicationUser>> _userManager = MockUserManager();
     private readonly Mock<IAuditLogger> _audit = new();
     private readonly Mock<INotificationService> _notifications = new();
+    private readonly SpSplitTestHarness _harness = new();
     private readonly ServiceProviderService _service;
 
     public ServiceProviderServiceTests()
@@ -30,8 +33,16 @@ public class ServiceProviderServiceTests
             .Setup(m => m.UpdateAsync(It.IsAny<ApplicationUser>()))
             .ReturnsAsync(IdentityResult.Success);
         _service = new ServiceProviderService(
-            _userManager.Object, _audit.Object, _notifications.Object, NullLogger<ServiceProviderService>.Instance);
+            _userManager.Object,
+            _harness.Professional,
+            _harness.Sp,
+            _harness.Credentials,
+            _harness.CreateMigrator(_userManager.Object),
+            _audit.Object, _notifications.Object, Mock.Of<IBackgroundJobClient>(), NullLogger<ServiceProviderService>.Instance);
     }
+
+    /// <summary>Post-cutover state assertions read the split record, not the frozen embedded profile.</summary>
+    private ServiceProviderProfileRecord Rec(ApplicationUser user) => _harness.Sp.Records[user.Id.ToString()];
 
     private static Mock<UserManager<ApplicationUser>> MockUserManager() =>
         new(Mock.Of<IUserStore<ApplicationUser>>(), null!, null!, null!, null!, null!, null!, null!, null!);
@@ -112,7 +123,10 @@ public class ServiceProviderServiceTests
         result.Value!.Skills.Should().Equal("contracts", "fundraising");
         result.Value.ServiceCategories.Should().Equal("Legal", "Finance");
         result.Value.ProviderId.Should().Be(user.Id.ToString());
-        _userManager.Verify(m => m.UpdateAsync(user), Times.Once);
+        // Embedded write freeze: SP writes land on the split records only.
+        _userManager.Verify(m => m.UpdateAsync(user), Times.Never);
+        _harness.Sp.Records.Should().ContainKey(user.Id.ToString());
+        _harness.Professional.Records.Should().ContainKey(user.Id.ToString());
     }
 
     // ---------------- Stage 2 upsert (D-2 Phase 4) ----------------
@@ -215,7 +229,7 @@ public class ServiceProviderServiceTests
 
         result.Value!.CurrentPhase.Should().Be(2);
         result.Value.ProfileComplete.Should().BeTrue();
-        user.ServiceProviderProfile.CurrentPhase.Should().Be(2);
+        Rec(user).CurrentPhase.Should().Be(2);
     }
 
     [Fact]
@@ -302,17 +316,18 @@ public class ServiceProviderServiceTests
     public async Task UpdatePortfolio_preserves_AddedAt_and_replaces_fields()
     {
         var addedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var existingItem = new PortfolioItem { Title = "old", AddedAt = addedAt };
         var user = GivenUser(new ApplicationUser
         {
             ServiceProviderProfile = new ServiceProviderProfile
             {
-                PortfolioItems = new() { new PortfolioItem { Title = "old", AddedAt = addedAt } },
+                PortfolioItems = new() { existingItem },
             },
         });
 
         var result = await _service.UpdatePortfolioItemAsync(user.Id.ToString(), new UpdatePortfolioItemRequest
         {
-            Index = 0,
+            Id = existingItem.Id,
             Title = "new",
             Description = "updated",
         });
@@ -323,12 +338,12 @@ public class ServiceProviderServiceTests
     }
 
     [Fact]
-    public async Task UpdatePortfolio_returns_NotFound_for_bad_index()
+    public async Task UpdatePortfolio_returns_NotFound_for_bad_id()
     {
         var user = GivenUser(new ApplicationUser());
         var result = await _service.UpdatePortfolioItemAsync(user.Id.ToString(), new UpdatePortfolioItemRequest
         {
-            Index = 5,
+            Id = "nonexistent-id",
             Title = "x",
             Description = "y",
         });
@@ -338,19 +353,20 @@ public class ServiceProviderServiceTests
     [Fact]
     public async Task DeletePortfolio_removes_item_then_404_on_reuse()
     {
+        var existingItem = new PortfolioItem { Title = "a" };
         var user = GivenUser(new ApplicationUser
         {
             ServiceProviderProfile = new ServiceProviderProfile
             {
-                PortfolioItems = new() { new PortfolioItem { Title = "a" } },
+                PortfolioItems = new() { existingItem },
             },
         });
 
-        var first = await _service.DeletePortfolioItemAsync(user.Id.ToString(), 0);
+        var first = await _service.DeletePortfolioItemAsync(user.Id.ToString(), existingItem.Id);
         first.Outcome.Should().Be(ServiceProviderOutcome.Ok);
         first.Value!.PortfolioItems.Should().BeEmpty();
 
-        var second = await _service.DeletePortfolioItemAsync(user.Id.ToString(), 0);
+        var second = await _service.DeletePortfolioItemAsync(user.Id.ToString(), existingItem.Id);
         second.Outcome.Should().Be(ServiceProviderOutcome.NotFound);
     }
 
@@ -360,14 +376,19 @@ public class ServiceProviderServiceTests
     {
         ServiceProviderProfile = new ServiceProviderProfile
         {
+            Headline = "Commercial contracts specialist",
+            Bio = "I help early-stage teams prepare and negotiate commercial agreements.",
             Skills = new() { "contracts" },
             ServiceCategories = new() { ServiceCategory.Legal },
+            Industries = new() { "SaaS" },
+            Languages = new() { "English" },
+            PricingModels = new() { PricingModel.FixedPrice },
             PortfolioItems = new() { new PortfolioItem { Title = "a", Description = "b" } },
         },
     };
 
     [Fact]
-    public async Task Submit_transitions_pending_to_under_review_and_stamps_time()
+    public async Task Submit_auto_verifies_complete_pending_profile_and_stamps_one_time()
     {
         var user = GivenUser(CompleteProviderUser());
 
@@ -375,10 +396,13 @@ public class ServiceProviderServiceTests
             new SubmitVerificationRequest { ConfirmAccuracy = true });
 
         result.Outcome.Should().Be(ServiceProviderOutcome.Ok);
-        result.Value!.VerificationStatus.Should().Be("UnderReview");
+        result.Value!.VerificationStatus.Should().Be("Verified");
         result.Value.VerificationSubmittedAt.Should().NotBeNull();
-        result.Value.IsVerified.Should().BeFalse();
-        user.ServiceProviderProfile.VerificationStatus.Should().Be(ServiceProviderVerificationStatus.UnderReview);
+        result.Value.VerifiedAt.Should().Be(result.Value.VerificationSubmittedAt);
+        result.Value.IsVerified.Should().BeTrue();
+        result.Value.TrustScore.Should().Be(0);
+        Rec(user).VerificationStatus.Should().Be(ServiceProviderVerificationStatus.Verified);
+        Rec(user).HasEnoughTrustData.Should().BeFalse();
     }
 
     [Fact]
@@ -388,9 +412,15 @@ public class ServiceProviderServiceTests
         {
             ServiceProviderProfile = new ServiceProviderProfile
             {
+                Headline = "Commercial contracts specialist",
+                Bio = "I help early-stage teams prepare and negotiate commercial agreements.",
                 Skills = new() { "contracts" },
                 ServiceCategories = new() { ServiceCategory.Legal },
-                // no portfolio items
+                Industries = new() { "SaaS" },
+                // Languages is deliberately missing: the old three-field minimum
+                // would have accepted this otherwise-complete profile.
+                PricingModels = new() { PricingModel.FixedPrice },
+                PortfolioItems = new() { new PortfolioItem { Title = "a", Description = "b" } },
             },
         });
 
@@ -400,11 +430,13 @@ public class ServiceProviderServiceTests
         result.Outcome.Should().Be(ServiceProviderOutcome.Conflict);
     }
 
-    [Fact]
-    public async Task Submit_prevents_duplicate_submission()
+    [Theory]
+    [InlineData(ServiceProviderVerificationStatus.UnderReview)]
+    [InlineData(ServiceProviderVerificationStatus.Verified)]
+    public async Task Submit_prevents_duplicate_submission(ServiceProviderVerificationStatus status)
     {
         var user = CompleteProviderUser();
-        user.ServiceProviderProfile.VerificationStatus = ServiceProviderVerificationStatus.UnderReview;
+        user.ServiceProviderProfile.VerificationStatus = status;
         GivenUser(user);
 
         var result = await _service.SubmitVerificationAsync(user.Id.ToString(),
@@ -427,7 +459,7 @@ public class ServiceProviderServiceTests
     }
 
     [Fact]
-    public async Task Submit_allows_resubmission_from_rejected_and_clears_reason()
+    public async Task Submit_routes_rejected_resubmission_to_moderation_and_clears_reason()
     {
         var user = CompleteProviderUser();
         user.ServiceProviderProfile.VerificationStatus = ServiceProviderVerificationStatus.Rejected;
@@ -439,7 +471,9 @@ public class ServiceProviderServiceTests
 
         result.Outcome.Should().Be(ServiceProviderOutcome.Ok);
         result.Value!.VerificationStatus.Should().Be("UnderReview");
-        user.ServiceProviderProfile.RejectionReason.Should().BeNull();
+        result.Value.VerificationSubmittedAt.Should().NotBeNull();
+        result.Value.VerifiedAt.Should().BeNull();
+        Rec(user).RejectionReason.Should().BeNull();
     }
 
     // ---------------- Admin approve ----------------
@@ -452,7 +486,7 @@ public class ServiceProviderServiceTests
     }
 
     [Fact]
-    public async Task Approve_verifies_seeds_trustscore_and_notifies()
+    public async Task Approve_verifies_starts_trust_neutral_and_notifies()
     {
         var user = GivenUser(UnderReviewUser());
 
@@ -462,8 +496,11 @@ public class ServiceProviderServiceTests
         result.Value!.VerificationStatus.Should().Be("Verified");
         result.Value.IsVerified.Should().BeTrue();
         result.Value.VerifiedAt.Should().NotBeNull();
-        result.Value.TrustScore.Should().Be(ServiceProviderService.TrustScoreBaseline);
-        user.ServiceProviderProfile.TrustScore.Should().Be(50.0);
+        // TrustScore is DERIVED: a freshly-verified provider has no signals yet, so the
+        // score is the neutral "not enough data" state (0), never a hand-set baseline.
+        result.Value.TrustScore.Should().Be(0);
+        Rec(user).TrustScore.Should().Be(0);
+        Rec(user).HasEnoughTrustData.Should().BeFalse();
 
         _audit.Verify(a => a.Record("ServiceProviderVerification.Approve", "admin-1", true, It.IsAny<object>()), Times.Once);
         _notifications.Verify(n => n.NotifyUser(user.Id, "Provider verification approved", It.IsAny<string>()), Times.Once);
@@ -499,7 +536,7 @@ public class ServiceProviderServiceTests
         var result = await _service.ApproveVerificationAsync(user.Id.ToString(), "admin-1");
 
         result.Outcome.Should().Be(ServiceProviderOutcome.Ok);
-        user.ServiceProviderProfile.VerificationStatus.Should().Be(ServiceProviderVerificationStatus.Verified);
+        Rec(user).VerificationStatus.Should().Be(ServiceProviderVerificationStatus.Verified);
     }
 
     // ---------------- Admin reject ----------------
@@ -515,14 +552,31 @@ public class ServiceProviderServiceTests
         result.Value!.VerificationStatus.Should().Be("Rejected");
         result.Value.RejectionReason.Should().Be("blurry portfolio");
         result.Value.VerifiedAt.Should().BeNull();
-        user.ServiceProviderProfile.TrustScore.Should().Be(0); // not seeded on reject
+        Rec(user).TrustScore.Should().Be(0); // not seeded on reject
 
         _audit.Verify(a => a.Record("ServiceProviderVerification.Reject", "admin-1", true, It.IsAny<object>()), Times.Once);
         _notifications.Verify(n => n.NotifyUser(user.Id, "Provider verification needs changes", It.IsAny<string>()), Times.Once);
     }
 
     [Fact]
-    public async Task Reject_conflicts_when_not_under_review()
+    public async Task Reject_suspends_an_already_verified_provider()
+    {
+        var user = CompleteProviderUser();
+        user.ServiceProviderProfile.VerificationStatus = ServiceProviderVerificationStatus.Verified;
+        user.ServiceProviderProfile.VerifiedAt = DateTime.UtcNow.AddDays(-10);
+        GivenUser(user);
+
+        var result = await _service.RejectVerificationAsync(
+            user.Id.ToString(), "admin-1", "moderation concern");
+
+        result.Outcome.Should().Be(ServiceProviderOutcome.Ok);
+        result.Value!.VerificationStatus.Should().Be("Rejected");
+        result.Value.VerifiedAt.Should().BeNull();
+        result.Value.RejectionReason.Should().Be("moderation concern");
+    }
+
+    [Fact]
+    public async Task Reject_conflicts_when_pending()
     {
         var user = GivenUser(CompleteProviderUser()); // Pending
         var result = await _service.RejectVerificationAsync(user.Id.ToString(), "admin-1", "reason");
