@@ -347,6 +347,11 @@ export const menu: Record<UserRole, MenuSection[]> = {
           icon: CheckCircle2,
         },
         {
+          label: "Messages",
+          href: "/dashboard/serviceprovider/messages",
+          icon: MessageSquare,
+        },
+        {
           label: "Service Catalog",
           href: "/dashboard/serviceprovider/services",
           icon: LayoutGrid,
