@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { CalendarClock, CheckCircle2, FileCheck2, Gavel, Info, ShieldAlert } from 'lucide-react';
 import { formatPrice } from '@/lib/marketplace-format';
+import { formatDate } from '@/lib/workroom-format';
 import {
   canOpenDispute,
   disputeState,
@@ -30,11 +31,6 @@ import type { Deliverable, Milestone, RevisionRequest } from '@/types/workroom';
 
 /** States where a submitted deliverable is sitting with the client. */
 const AWAITING_CLIENT = new Set(['ClientReviewing', 'Resubmitted']);
-
-function formatDate(value?: string | null): string {
-  if (!value) return '—';
-  return new Date(value).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-}
 
 export function MilestoneCard({
   milestone,

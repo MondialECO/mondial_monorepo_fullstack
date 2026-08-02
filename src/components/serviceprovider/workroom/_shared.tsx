@@ -1,3 +1,4 @@
+import { formatDate as formatDateBase } from '@/lib/workroom-format';
 import { canOpenDispute, disputeState, isRefundedMilestone } from '@/lib/workroom-status';
 import type { Engagement, Milestone } from '@/types/workroom';
 
@@ -15,11 +16,13 @@ export function money(value: number, currency: string) {
   }
 }
 
+/**
+ * Delegates to the shared formatter but keeps the SP surface's own empty label. This
+ * helper is imported by earnings and trust screens as well as the workroom, so switching
+ * "Not set" to the buyer side's em-dash would change copy well outside this module.
+ */
 export function formatDate(value?: string | null, includeTime = false) {
-  if (!value) return 'Not set';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'Not set';
-  return new Intl.DateTimeFormat(undefined, includeTime ? { dateStyle: 'medium', timeStyle: 'short' } : { dateStyle: 'medium' }).format(date);
+  return formatDateBase(value, { includeTime, emptyLabel: 'Not set' });
 }
 
 export function words(value: string) {

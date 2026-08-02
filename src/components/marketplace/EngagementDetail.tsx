@@ -6,6 +6,7 @@ import AuthGuard from '@/components/layout/AuthGuard';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatPrice } from '@/lib/marketplace-format';
+import { formatDate } from '@/lib/workroom-format';
 import { statusChipClass } from '@/lib/workroom-status';
 import { useClientEngagement } from '@/hooks/queries/workroom-client';
 import { useAuth } from '@/app/_providers/AuthProvider';
@@ -18,15 +19,6 @@ import { ReviewPanel } from '@/components/marketplace/workroom/ReviewPanel';
 import type { WorkroomDetail } from '@/types/workroom';
 
 const CLOSED = new Set(['Completed', 'Cancelled', 'Archived']);
-
-function formatDate(value?: string | null): string {
-  if (!value) return '—';
-  return new Date(value).toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
-}
 
 export function EngagementDetail({
   basePath,
