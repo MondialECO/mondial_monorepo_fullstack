@@ -14,6 +14,7 @@ import {
 import { SpCard, SpMutationFeedback, SpSectionHeader, SpStatusBadge } from '@/components/serviceprovider/ui';
 import { useConfirmContract } from '@/hooks/queries/workroom';
 import type { WorkroomDetail } from '@/types/workroom';
+import { deliveryDayTypeLabel, deliveryStartRuleLabel, deliveryTimeUnitLabel, isHourlyPricing, pricingModelLabel } from '@/lib/workroom-format';
 import { apiError, formatDate, money, words } from './_shared';
 
 export function ContractPanel({ data, readOnly }: { data: WorkroomDetail; readOnly: boolean }) {
@@ -44,14 +45,14 @@ export function ContractPanel({ data, readOnly }: { data: WorkroomDetail; readOn
             <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start"><SpSectionHeader title="Accepted commercial terms" description="Immutable snapshot created from the accepted proposal." /><SpStatusBadge tone={contract.status === 'Signed' ? 'positive' : contract.status === 'Voided' ? 'negative' : 'warning'}>{words(contract.status)}</SpStatusBadge></div>
             <dl className="mt-6 grid gap-4 sm:grid-cols-2">
               <Term label="Contract value" value={money(terms.price, terms.currency)} />
-              <Term label="Pricing model" value={words(terms.pricingType)} />
-              <Term label="Delivery duration" value={`${terms.deliveryTimeValue} ${words(terms.deliveryTimeUnit).toLocaleLowerCase()}`} />
-              <Term label="Day calculation" value={words(terms.deliveryDayType)} />
-              <Term label="Delivery starts" value={words(terms.deliveryStartRule)} />
+              <Term label="Pricing model" value={pricingModelLabel(terms.pricingType)} />
+              <Term label="Delivery duration" value={`${terms.deliveryTimeValue} ${deliveryTimeUnitLabel(terms.deliveryTimeUnit).toLocaleLowerCase()}`} />
+              <Term label="Day calculation" value={deliveryDayTypeLabel(terms.deliveryDayType)} />
+              <Term label="Delivery starts" value={deliveryStartRuleLabel(terms.deliveryStartRule)} />
               <Term label="Revision policy" value={terms.unlimitedRevisions ? 'Unlimited revisions' : `${terms.includedRevisionCount} included`} />
               <Term label="Revision request window" value={`${terms.revisionRequestWindowDays} days`} />
               <Term label="Parallel milestones" value={terms.allowsParallelMilestones ? 'Allowed' : 'Sequential approval required'} />
-              {terms.pricingType === 'Hourly' && <Term label="Hourly terms" value={`${terms.hourlyRate == null ? 'Rate not set' : money(terms.hourlyRate, terms.currency)} · ${terms.weeklyHourLimit ?? 'No'} weekly hour limit`} />}
+              {isHourlyPricing(terms.pricingType) && <Term label="Hourly terms" value={`${terms.hourlyRate == null ? 'Rate not set' : money(terms.hourlyRate, terms.currency)} · ${terms.weeklyHourLimit ?? 'No'} weekly hour limit`} />}
             </dl>
             <div className="mt-6"><p className="text-sm font-semibold text-[#171717]">Deliverables</p>{terms.deliverables.length ? <ul className="mt-3 space-y-2 text-sm text-[#374151]">{terms.deliverables.map((item) => <li key={item} className="rounded-lg bg-[#F9FAFB] px-4 py-3">{item}</li>)}</ul> : <p className="mt-2 text-sm text-[#6B7280]">No deliverables listed.</p>}</div>
           </SpCard>

@@ -37,6 +37,65 @@ export function formatDate(value?: string | null, options: FormatDateOptions = {
 }
 
 /**
+ * ContractTerms is the one workroom payload whose enums reach the client as integers.
+ * `ToContract` assigns `Terms = c.Terms` — the raw BSON class — while every sibling field
+ * on that response goes through `.ToString()`, so `pricingType`, `deliveryTimeUnit`,
+ * `deliveryDayType` and `deliveryStartRule` all arrive as numbers.
+ *
+ * These helpers accept either shape deliberately. Correcting the wire format is a
+ * canon-level decision that has not been taken, so the UI must survive it changing under
+ * it in either direction.
+ *
+ * Index order mirrors the C# declaration order and must not be reordered:
+ * PricingModel (ApplicationUser.cs:614), DeliveryTimeUnit / DeliveryDayType /
+ * DeliveryStartRule (ServiceCatalog.cs:37-56).
+ */
+const PRICING_MODEL = [
+  'Fixed price',
+  'Hourly',
+  'Monthly retainer',
+  'Project based',
+  'Equity compensation',
+  'Revenue share',
+  'Other',
+] as const;
+const DELIVERY_TIME_UNIT = ['Hours', 'Days', 'Weeks'] as const;
+const DELIVERY_DAY_TYPE = ['Business days', 'Calendar days'] as const;
+const DELIVERY_START_RULE = [
+  'After order confirmation',
+  'After escrow funding',
+  'After client requirements complete',
+  'After provider starts',
+] as const;
+
+function enumLabel(labels: readonly string[], value: unknown, fallback: string): string {
+  if (typeof value === 'number') return labels[value] ?? fallback;
+  if (typeof value === 'string' && value.length > 0) {
+    // Tolerates a numeric string as well as an enum name, in case the wire format shifts.
+    const index = Number(value);
+    if (Number.isInteger(index)) return labels[index] ?? fallback;
+    return value.replace(/([a-z])([A-Z])/g, '$1 $2');
+  }
+  return fallback;
+}
+
+export const pricingModelLabel = (value: unknown) =>
+  enumLabel(PRICING_MODEL, value, 'Fixed price');
+export const deliveryTimeUnitLabel = (value: unknown) =>
+  enumLabel(DELIVERY_TIME_UNIT, value, 'Days');
+export const deliveryDayTypeLabel = (value: unknown) =>
+  enumLabel(DELIVERY_DAY_TYPE, value, 'Business days');
+export const deliveryStartRuleLabel = (value: unknown) =>
+  enumLabel(DELIVERY_START_RULE, value, 'After escrow funding');
+
+/**
+ * `pricingType === 'Hourly'` is false at runtime because the value is the integer 1.
+ * Every hourly-only branch was therefore dead — including the one gating the Time Entries
+ * tab. Accepts both shapes for the same reason as the label helpers.
+ */
+export const isHourlyPricing = (value: unknown) => value === 1 || value === 'Hourly';
+
+/**
  * Backend errors carry a human-readable `message`; surface it verbatim rather than
  * mapping it, so a specific server reason is never collapsed into a generic one
  * (canon §10.6).
