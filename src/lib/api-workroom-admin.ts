@@ -5,6 +5,7 @@
  */
 import api from '@/lib/axios';
 import type { ApiEnvelope } from '@/types/service-provider';
+import { CLIENT_FAVORED, PROVIDER_FAVORED } from '@/lib/workroom-status';
 import type { WorkroomDetail } from '@/types/workroom';
 
 const BASE = '/workroom';
@@ -20,13 +21,13 @@ const BASE = '/workroom';
  */
 export const DISPUTE_OUTCOMES = [
   {
-    value: 'ProviderFavored',
+    value: PROVIDER_FAVORED,
     label: 'Provider favoured',
     effect:
       'Escrow returns to Funded and the milestone goes back to client review. The buyer can then approve and release payment as normal.',
   },
   {
-    value: 'ClientFavored',
+    value: CLIENT_FAVORED,
     label: 'Client favoured',
     effect:
       'Escrow is refunded to the buyer. The milestone settles as Paid with a refund timestamp, so the engagement can still be completed.',

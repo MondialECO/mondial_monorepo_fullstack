@@ -6,10 +6,12 @@ import { formatPrice } from '@/lib/marketplace-format';
 import { formatDate } from '@/lib/workroom-format';
 import {
   canOpenDispute,
+  CLIENT_FAVORED,
   disputeState,
   isRefundedMilestone,
   milestoneChipClass,
   milestoneStatusLabel,
+  PROVIDER_FAVORED,
 } from '@/lib/workroom-status';
 import {
   useClientApproveMilestone,
@@ -190,13 +192,18 @@ export function MilestoneCard({
             <Gavel className="size-4" />
             Dispute resolved
           </p>
-          {/* No resolution timestamp exists for a provider-favoured outcome — the backend
-              stores none — so the opened date is the only date shown rather than
-              inventing one. refundedAt doubles as the resolution date when it is set. */}
+          {/* Branches on disputeOutcome, not on refundedAt. Only the client-favoured path
+              writes refundedAt today, so inferring the outcome from it happened to work —
+              but that coupled the copy to a backend invariant nothing enforces. refundedAt
+              is still used below, for the one thing it actually is: a timestamp. No
+              resolution timestamp exists for a provider-favoured outcome, so that arm
+              shows only the opened date rather than inventing one. */}
           <p className="mt-1 text-xs text-muted-foreground">
-            {refunded
-              ? `Support decided in your favour on ${formatDate(milestone.refundedAt)}. ${money} was refunded to you and this milestone is closed.`
-              : `Support decided in the provider's favour. The delivery is back with you to review, and payment can be released.`}{' '}
+            {milestone.disputeOutcome === CLIENT_FAVORED
+              ? `Support decided in your favour${milestone.refundedAt ? ` on ${formatDate(milestone.refundedAt)}` : ''}. ${money} was refunded to you and this milestone is closed.`
+              : milestone.disputeOutcome === PROVIDER_FAVORED
+                ? `Support decided in the provider's favour. The delivery is back with you to review, and payment can be released.`
+                : ''}{' '}
             Dispute opened {formatDate(milestone.disputeOpenedAt)}.
           </p>
         </div>

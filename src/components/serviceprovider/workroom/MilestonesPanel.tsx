@@ -31,6 +31,7 @@ import {
 } from '@/hooks/queries/workroom';
 import type { Milestone, SubmitDeliverablePayload, WorkroomDetail } from '@/types/workroom';
 import { HTTP_URL_ERROR, safeHttpUrl, validateHttpUrlList } from '@/lib/service-provider/url-security';
+import { CLIENT_FAVORED, PROVIDER_FAVORED } from '@/lib/workroom-status';
 import {
   apiError,
   canOpenDispute,
@@ -153,7 +154,7 @@ function MilestoneDetail({ data, milestone, readOnly }: { data: WorkroomDetail; 
           a red "dispute open" alarm on screen forever after resolution. The timestamp is
           still rendered: it is valid history, it just is not the current state. */}
       {disputeState(milestone) === 'open' && <SpMutationFeedback status="error">Dispute opened {formatDate(milestone.disputeOpenedAt, true)} and is awaiting support review. Payment release is blocked until it resolves. Support review target: {formatDate(milestone.disputeReviewEndsAt, true)}.</SpMutationFeedback>}
-      {disputeState(milestone) === 'resolved' && <SpMutationFeedback status="info">Dispute opened {formatDate(milestone.disputeOpenedAt, true)} was resolved in support review: {words(milestone.disputeOutcome ?? '')}. {isRefundedMilestone(milestone) ? 'The milestone amount was refunded to the client and this milestone is settled.' : 'The milestone returned to client review and payment release is unblocked.'}</SpMutationFeedback>}
+      {disputeState(milestone) === 'resolved' && <SpMutationFeedback status="info">Dispute opened {formatDate(milestone.disputeOpenedAt, true)} was resolved in support review: {words(milestone.disputeOutcome ?? '')}. {milestone.disputeOutcome === CLIENT_FAVORED ? 'The milestone amount was refunded to the client and this milestone is settled.' : milestone.disputeOutcome === PROVIDER_FAVORED ? 'The milestone returned to client review and payment release is unblocked.' : ''}</SpMutationFeedback>}
       {revision && <RevisionCard revision={revision} />}
       {(milestone.reviewWindowEndsAt || milestone.autoReleaseAt) && <SpCard><SpSectionHeader title="Client review window" description="These timestamps are backend-owned. No client approval or payment release is performed by this screen." /><dl className="mt-5 grid gap-4 sm:grid-cols-2"><Metric label="Review window ends" value={formatDate(milestone.reviewWindowEndsAt, true)} /><Metric label="Scheduled rule evaluation" value={`${formatDate(milestone.autoReleaseAt, true)} · STUB-backed payment`} /></dl></SpCard>}
 

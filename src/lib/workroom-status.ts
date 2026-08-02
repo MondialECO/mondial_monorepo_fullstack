@@ -65,6 +65,17 @@ type DisputedMilestone = { status: string; disputeOutcome?: string | null };
  * means settled. Never derive this from `disputeOpenedAt`, which the backend keeps as
  * immutable history and never clears (canon §10.7, commit 6289f13).
  */
+/**
+ * The two resolved dispute outcomes, spelled once.
+ *
+ * The backend parses these against a C# enum by name and uses American spelling —
+ * `Favored`, not `Favoured`. `Milestone.disputeOutcome` is typed as a plain `string`, so
+ * a misspelt comparison compiles and silently never matches. Comparing against these
+ * constants keeps the spelling in one place.
+ */
+export const CLIENT_FAVORED = 'ClientFavored';
+export const PROVIDER_FAVORED = 'ProviderFavored';
+
 export function disputeState(milestone: DisputedMilestone): 'open' | 'resolved' | null {
   if (!milestone.disputeOutcome) return null;
   return milestone.disputeOutcome === 'Open' ? 'open' : 'resolved';

@@ -12,10 +12,11 @@ import {
   type DisputeOutcomeValue,
 } from '@/lib/api-workroom-admin';
 import { workroomErrorMessage } from '@/lib/workroom-format';
+import { PROVIDER_FAVORED } from '@/lib/workroom-status';
 
 export function DisputeResolutionPanel() {
   const [milestoneId, setMilestoneId] = useState('');
-  const [outcome, setOutcome] = useState<DisputeOutcomeValue>('ProviderFavored');
+  const [outcome, setOutcome] = useState<DisputeOutcomeValue>(PROVIDER_FAVORED);
   const [reason, setReason] = useState('');
 
   const resolve = useMutation({
