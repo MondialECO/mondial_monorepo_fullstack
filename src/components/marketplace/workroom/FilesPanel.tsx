@@ -1,8 +1,9 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { Loader2, Paperclip, Upload } from 'lucide-react';
+import { Download, Loader2, Paperclip, Upload } from 'lucide-react';
 import { statusChipClass } from '@/lib/workroom-status';
+import { isFileDownloadable, workroomFileDownloadUrl, workroomFileStatusLabel } from '@/lib/workroom-files';
 import { useClientUploadFile, workroomErrorMessage } from '@/hooks/queries/workroom-client';
 import type { WorkroomDetail } from '@/types/workroom';
 
@@ -54,15 +55,30 @@ export function FilesPanel({ detail }: { detail: WorkroomDetail }) {
           {visible.map((f) => (
             <li key={f.id} className="flex items-center justify-between gap-3 py-2">
               <div className="min-w-0">
-                <p className="truncate text-sm text-foreground">{f.originalName}</p>
+                {/* Only Ready files are linked: anything still scanning is incomplete, and
+                    Failed/Restricted files are withheld on purpose. */}
+                {isFileDownloadable(f) ? (
+                  <a
+                    href={workroomFileDownloadUrl(f)}
+                    download={f.originalName}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 text-sm text-foreground underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-primary"
+                  >
+                    <Download className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                    <span className="truncate">{f.originalName}</span>
+                  </a>
+                ) : (
+                  <p className="truncate text-sm text-foreground">{f.originalName}</p>
+                )}
                 <p className="text-xs text-muted-foreground">
                   {formatSize(f.sizeBytes)} · {new Date(f.createdAt).toLocaleDateString()}
                 </p>
               </div>
               <span
-                className={`shrink-0 rounded-full px-2 py-1 text-xs font-medium ${statusChipClass(f.status)}`}
+                className={`shrink-0 rounded-full px-2 py-1 text-xs font-medium ${statusChipClass(workroomFileStatusLabel(f.status))}`}
               >
-                {f.status}
+                {workroomFileStatusLabel(f.status)}
               </span>
             </li>
           ))}
