@@ -142,7 +142,7 @@ public sealed class WorkroomService : IWorkroomService
         var now = DateTime.UtcNow;
         var releaseIds = await _db.WorkroomMilestones.Find(x =>
             (x.MilestoneStatus == WorkroomMilestoneStatus.ClientReviewing || x.MilestoneStatus == WorkroomMilestoneStatus.Resubmitted) &&
-            x.AutoReleaseAt <= now && x.DisputeOpenedAt == null).Project(x => x.Id).Limit(200).ToListAsync();
+            x.AutoReleaseAt <= now && x.DisputeOutcome != DisputeOutcome.Open).Project(x => x.Id).Limit(200).ToListAsync();
         foreach (var id in releaseIds) await ReleaseMilestoneAsync("system", id, true);
 
         var dueSoon = await _db.WorkroomMilestones.Find(x => x.MilestoneStatus == WorkroomMilestoneStatus.Active &&
@@ -701,7 +701,7 @@ public sealed class WorkroomService : IWorkroomService
         if (m.MilestoneStatus is not (WorkroomMilestoneStatus.ClientReviewing or WorkroomMilestoneStatus.Resubmitted))
             return ServiceProviderResult<WorkroomDetailResponse>.Conflict("This milestone is not ready for approval.");
         if(!WorkroomStateMachine.CanTransition(m.MilestoneStatus,WorkroomMilestoneStatus.Paid))return ServiceProviderResult<WorkroomDetailResponse>.Conflict("Payment release is not allowed from the current milestone state.");
-        if (m.DisputeOpenedAt.HasValue) return ServiceProviderResult<WorkroomDetailResponse>.Conflict("Payment release is blocked by an active dispute.");
+        if (m.DisputeOutcome == DisputeOutcome.Open) return ServiceProviderResult<WorkroomDetailResponse>.Conflict("Payment release is blocked by an active dispute.");
         var key=$"release:{m.Id}"; var op=await BeginOperation(key, PaymentOperationType.ReleaseEscrow, e.Id, m.Id, null, m.Amount, m.Currency);
         var gateway=await _gateway.ReleaseEscrowAsync(key, $"stub_escrow_escrow:{m.Id}", m.Amount, m.Currency);
         if (!gateway.Success) { await FailOperation(op, gateway.Error); return ServiceProviderResult<WorkroomDetailResponse>.Conflict("Payment release failed and no financial state changed."); }
