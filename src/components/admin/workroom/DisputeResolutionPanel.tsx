@@ -11,12 +11,7 @@ import {
   resolveDispute,
   type DisputeOutcomeValue,
 } from '@/lib/api-workroom-admin';
-
-function errorMessage(error: unknown): string {
-  const message = (error as { response?: { data?: { message?: string } } })?.response?.data
-    ?.message;
-  return message || 'The dispute could not be resolved. Please try again.';
-}
+import { workroomErrorMessage } from '@/lib/workroom-format';
 
 export function DisputeResolutionPanel() {
   const [milestoneId, setMilestoneId] = useState('');
@@ -123,7 +118,7 @@ export function DisputeResolutionPanel() {
 
           {resolve.isError && (
             <p className="rounded-md border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
-              {errorMessage(resolve.error)}
+              {workroomErrorMessage(resolve.error, 'The dispute could not be resolved. Please try again.')}
             </p>
           )}
 

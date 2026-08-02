@@ -112,9 +112,6 @@ export const useClientUploadFile = () =>
     }) => api.uploadFile(engagementId, file, milestoneId)
   );
 
-/** Backend errors carry a human-readable `message`; surface it verbatim. */
-export function workroomErrorMessage(error: unknown): string {
-  const message = (error as { response?: { data?: { message?: string } } })?.response?.data
-    ?.message;
-  return message || 'Something went wrong. Please try again.';
-}
+/** Re-exported so the many existing `@/hooks/queries/workroom-client` imports keep working;
+ *  the implementation lives in lib/workroom-format alongside the other shared formatters. */
+export { workroomErrorMessage } from '@/lib/workroom-format';

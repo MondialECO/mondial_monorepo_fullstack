@@ -35,3 +35,17 @@ export function formatDate(value?: string | null, options: FormatDateOptions = {
     ...(includeTime ? { hour: 'numeric', minute: '2-digit' } : {}),
   }).format(date);
 }
+
+/**
+ * Backend errors carry a human-readable `message`; surface it verbatim rather than
+ * mapping it, so a specific server reason is never collapsed into a generic one
+ * (canon §10.6).
+ */
+export function workroomErrorMessage(
+  error: unknown,
+  fallback = 'Something went wrong. Please try again.'
+): string {
+  const message = (error as { response?: { data?: { message?: string } } })?.response?.data
+    ?.message;
+  return message || fallback;
+}

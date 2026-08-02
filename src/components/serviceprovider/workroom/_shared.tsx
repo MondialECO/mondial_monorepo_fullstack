@@ -1,4 +1,4 @@
-import { formatDate as formatDateBase } from '@/lib/workroom-format';
+import { formatDate as formatDateBase, workroomErrorMessage } from '@/lib/workroom-format';
 import { canOpenDispute, disputeState, isRefundedMilestone } from '@/lib/workroom-status';
 import type { Engagement, Milestone } from '@/types/workroom';
 
@@ -29,8 +29,9 @@ export function words(value: string) {
   return value.replace(/([a-z])([A-Z])/g, '$1 $2');
 }
 
+/** Same extractor as the buyer side, with the SP convention of a required fallback. */
 export function apiError(error: unknown, fallback: string) {
-  return (error as { response?: { data?: { message?: string } } })?.response?.data?.message ?? fallback;
+  return workroomErrorMessage(error, fallback);
 }
 
 export function engagementTone(status: string) {
@@ -52,7 +53,8 @@ export function milestoneBadge(milestone: Pick<Milestone, 'status' | 'refundedAt
     : { tone: milestoneTone(milestone.status), label: words(milestone.status) };
 }
 
-export function milestoneTone(status: string) {
+/** Internal to milestoneBadge — callers use that, so tone and label cannot drift. */
+function milestoneTone(status: string) {
   if (status === 'Paid' || status === 'Approved') return 'positive' as const;
   if (status === 'Disputed' || status === 'Cancelled') return 'negative' as const;
   if (status === 'RevisionRequested' || status === 'RevisionInProgress') return 'warning' as const;
