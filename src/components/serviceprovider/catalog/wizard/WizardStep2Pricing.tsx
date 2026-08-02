@@ -40,7 +40,7 @@ export function WizardStep2Pricing({
       packageTitle: `${type} Package`,
       packageDescription: '',
       price: 0,
-      currency: 'USD',
+      currency: 'EUR',
       pricingModel: null,
       deliveryTimeValue: 5,
       deliveryTimeUnit: 'Days' as const,
