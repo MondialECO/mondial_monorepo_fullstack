@@ -22,6 +22,7 @@ import {
   SpStatusBadge,
   SpTabBar,
 } from '@/components/serviceprovider/ui';
+import { useAuth } from '@/app/_providers/AuthProvider';
 import { useCompleteEngagement, useEngagement, usePauseEngagement, useResumeEngagement } from '@/hooks/queries/workroom';
 import type { WorkroomDetail as WorkroomDetailType } from '@/types/workroom';
 import { ContractPanel } from './ContractPanel';
@@ -59,6 +60,7 @@ export function ProjectDetail({
   onTab: (tab: WorkroomTab) => void;
   onMilestone: (id: string) => void;
 }) {
+  const { user } = useAuth();
   const query = useEngagement(id);
   const pause = usePauseEngagement();
   const resume = useResumeEngagement();
@@ -71,6 +73,15 @@ export function ProjectDetail({
   if (query.isLoading) return <DetailSkeleton />;
   if (query.isError || !query.data) {
     return <SpPage><BackButton onClick={onBack} /><SpEmptyState icon={BriefcaseBusiness} title="Project unavailable" description="The Workroom could not be loaded." action={<Button type="button" variant="outline" onClick={() => query.refetch()}>Try again</Button>} /></SpPage>;
+  }
+
+  // Direct-URL guard: a provider landing on an engagement they bought rather than sold
+  // would otherwise get the delivery UI — submit, request extension, complete — for work
+  // that is not theirs to deliver, and every action would fail server-side. Wording stays
+  // vague about existence, matching the backend's NotFound for non-participants and the
+  // buyer-side guard in EngagementDetail.
+  if (user && query.data.engagement.providerId !== user.id) {
+    return <SpPage><BackButton onClick={onBack} /><SpEmptyState icon={BriefcaseBusiness} title="Project unavailable" description="This engagement isn't part of your provider activity." /></SpPage>;
   }
 
   const data = query.data;
