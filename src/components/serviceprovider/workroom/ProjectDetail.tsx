@@ -147,7 +147,7 @@ export function ProjectDetail({
 
       {activeTab === 'overview' && <ProjectOverview data={data} onOpenMilestones={() => onTab('milestones')} onSelectMilestone={onMilestone} />}
       {activeTab === 'milestones' && <MilestonesPanel data={data} selectedId={milestoneId} onSelect={onMilestone} readOnly={closed} />}
-      {activeTab === 'deliveries' && <DeliveriesPanel data={data} readOnly={closed} />}
+      {activeTab === 'deliveries' && <DeliveriesPanel data={data} />}
       {activeTab === 'coordination' && <CoordinationPanel data={data} readOnly={closed} />}
       {activeTab === 'contract' && <ContractPanel data={data} readOnly={closed} />}
       {activeTab === 'time' && isHourly && <TimeEntriesPanel data={data} readOnly={closed} />}
