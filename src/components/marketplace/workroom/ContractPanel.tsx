@@ -2,6 +2,7 @@
 
 import { FileText } from 'lucide-react';
 import { formatPrice } from '@/lib/marketplace-format';
+import { deliveryTimeUnitLabel, pricingModelLabel } from '@/lib/workroom-format';
 import { statusChipClass } from '@/lib/workroom-status';
 import {
   useClientConfirmContract,
@@ -48,7 +49,7 @@ export function ContractPanel({
         <div>
           <dt className="text-xs text-muted-foreground">Delivery</dt>
           <dd className="text-sm font-medium text-foreground">
-            {terms.deliveryTimeValue} {terms.deliveryTimeUnit}
+            {terms.deliveryTimeValue} {deliveryTimeUnitLabel(terms.deliveryTimeUnit).toLocaleLowerCase()}
           </dd>
         </div>
         <div>
@@ -59,7 +60,7 @@ export function ContractPanel({
         </div>
         <div>
           <dt className="text-xs text-muted-foreground">Pricing</dt>
-          <dd className="text-sm font-medium text-foreground">{terms.pricingType}</dd>
+          <dd className="text-sm font-medium text-foreground">{pricingModelLabel(terms.pricingType)}</dd>
         </div>
       </dl>
 

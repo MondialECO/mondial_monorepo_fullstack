@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { isHourlyPricing } from '@/lib/workroom-format';
 import Link from 'next/link';
 import { ArrowLeft, BriefcaseBusiness, CalendarDays, CheckCircle2, CirclePause, CirclePlay, ShieldCheck, UserRound, WalletCards } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -86,7 +87,7 @@ export function ProjectDetail({
   const engagement = data.engagement;
   const closed = providerActionsLocked(engagement);
   const canComplete = !closed && data.milestones.length > 0 && data.milestones.every((item) => item.status === 'Paid') && !data.revisionRequests.some((item) => !['Resolved', 'Cancelled'].includes(item.revisionRequestStatus));
-  const isHourly = data.contract.terms.pricingType === 'Hourly';
+  const isHourly = isHourlyPricing(data.contract.terms.pricingType);
   const activeTab = tab === 'time' && !isHourly ? 'overview' : tab;
 
   const confirmAction = async () => {

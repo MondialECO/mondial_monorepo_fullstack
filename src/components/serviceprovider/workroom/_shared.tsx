@@ -25,8 +25,17 @@ export function formatDate(value?: string | null, includeTime = false) {
   return formatDateBase(value, { includeTime, emptyLabel: 'Not set' });
 }
 
-export function words(value: string) {
-  return value.replace(/([a-z])([A-Z])/g, '$1 $2');
+/**
+ * Splits a PascalCase enum name into words. Guards non-strings because ContractTerms
+ * enums arrive as integers (see the label helpers in lib/workroom-format) — this used to
+ * throw "value.replace is not a function" and take down the whole Contract tab.
+ * Numbers are stringified rather than mapped: callers that need a real label use the
+ * dedicated helpers.
+ */
+export function words(value: unknown): string {
+  if (value == null) return '';
+  const text = typeof value === 'string' ? value : String(value);
+  return text.replace(/([a-z])([A-Z])/g, '$1 $2');
 }
 
 /** Same extractor as the buyer side, with the SP convention of a required fallback. */
