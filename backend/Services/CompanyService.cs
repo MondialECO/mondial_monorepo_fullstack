@@ -2177,6 +2177,8 @@ public class CompanyService : ICompanyService
         if (!double.IsFinite(request.TermSheet.PostMoneyValuation) || request.TermSheet.PostMoneyValuation <= 0)
             throw new ArgumentException("termSheet.postMoneyValuation must be > 0");
 
+        var company = await GetCompanyAsync(companyId);
+
         // InvestorId must resolve to a live, active Investor row. Without this, callers
         // can spawn deals against arbitrary strings, deleted investors, or inactive investors,
         // and the deal timeline will render orphaned investor identities forever.
@@ -2193,6 +2195,7 @@ public class CompanyService : ICompanyService
             Id = dealId,
             CompanyId = companyId,
             Status = Phase9Requirements.DealStatusInitiated,
+            CompanyNameSnapshot = company.CompanyName,
             InvestorNameSnapshot = investor.Name,
             InvestorTypeSnapshot = investor.Type,
             CreatedByUserId = actorUserId,
@@ -2293,12 +2296,21 @@ public class CompanyService : ICompanyService
         return await GetDealActivityAsync(ctx.Deal.Id);
     }
 
-    public async Task<List<DealStatusResponse>> GetDealsForParticipantAsync(string? ownedCompanyId, string? investorId)
+    public async Task<List<DealStatusResponse>> GetDealsForParticipantAsync(string? founderUserId, string? investorId)
     {
         var f = Builders<DealExecution>.Filter;
         var clauses = new List<FilterDefinition<DealExecution>>();
-        if (!string.IsNullOrWhiteSpace(ownedCompanyId))
-            clauses.Add(f.Eq(d => d.CompanyId, ownedCompanyId));
+
+        if (!string.IsNullOrWhiteSpace(founderUserId))
+        {
+            var owned = await _dbContext.Companies
+                .Find(c => c.OwnerId == founderUserId)
+                .ToListAsync();
+            var ownedCompanyIds = owned.Select(c => c.Id).ToList();
+            if (ownedCompanyIds.Count > 0)
+                clauses.Add(f.In(d => d.CompanyId, ownedCompanyIds));
+        }
+
         if (!string.IsNullOrWhiteSpace(investorId))
             clauses.Add(f.ElemMatch(d => d.Investors, i => i.InvestorId == investorId));
 
@@ -2849,7 +2861,7 @@ public class CompanyService : ICompanyService
         if (string.IsNullOrWhiteSpace(investorId))
             throw new ArgumentException("investorId is required");
 
-        _ = await GetCompanyAsync(companyId)
+        var company = await GetCompanyAsync(companyId)
             ?? throw new KeyNotFoundException($"Company {companyId} not found");
 
         var investor = await _dbContext.Investors
@@ -2874,6 +2886,7 @@ public class CompanyService : ICompanyService
                 Id = ObjectId.GenerateNewId().ToString(),
                 CompanyId = companyId,
                 Status = Phase9Requirements.DealStatusInitiated,
+                CompanyNameSnapshot = company.CompanyName,
                 InvestorNameSnapshot = investor.Name,
                 InvestorTypeSnapshot = investor.Type,
                 CreatedByUserId = actorUserId,
@@ -3211,6 +3224,7 @@ public class CompanyService : ICompanyService
         {
             DealId = deal.Id,
             Status = deal.Status,
+            CompanyName = deal.CompanyNameSnapshot ?? "",
             ProgressPercent = CalculateDealProgress(deal),
             TermSheet = new TermSheetResponse
             {
@@ -3232,6 +3246,7 @@ public class CompanyService : ICompanyService
             Investors = deal.Investors.Select(inv => new DealParticipantStatusDto
             {
                 InvestorId = inv.InvestorId,
+                InvestorName = inv.InvestorName,
                 CommittedAmount = inv.CommittedAmount,
                 Status = inv.Status
             }).ToList(),
@@ -3257,7 +3272,17 @@ public class CompanyService : ICompanyService
                         Status = r.Terms.Status,
                         SignedAt = r.Terms.SignedAt,
                     }
-                }).ToList()
+                }).ToList(),
+            FounderSignature = deal.Signatures != null ? new SignatureRecordDto
+            {
+                SignedAt = deal.Signatures.FounderSignedAt,
+                SignedBy = deal.Signatures.FounderSignedByUserId
+            } : null,
+            InvestorSignature = deal.Signatures != null ? new SignatureRecordDto
+            {
+                SignedAt = deal.Signatures.InvestorSignedAt,
+                SignedBy = deal.Signatures.InvestorSignedByInvestorId
+            } : null
         };
     }
 
@@ -3384,7 +3409,7 @@ public class CompanyService : ICompanyService
             MatchScore = match.MatchScore,
             MatchStatus = match.Status,
             MatchRationale = match.MatchRationale,
-            ScoreBreakdown = BuildScoreBreakdown(match.MatchScore),
+            ScoreBreakdown = BuildScoreBreakdown(match),
             NdaRequired = company.IsDataRoomNdaRequired,
             NdaAccepted = ndaAccepted,
             NdaAcceptedAt = nda?.AcceptedAt,
@@ -3421,7 +3446,7 @@ public class CompanyService : ICompanyService
         if (matches.Count == 0)
             return new InvestorPipelineResponse
             {
-                Summary = new InvestorPipelineSummaryDto { ActiveDeals = 0, CapitalCommitted = 0, AverageMatchScore = 0, Moic = 0 },
+                Summary = new InvestorPipelineSummaryDto { ActiveDeals = 0, CapitalCommitted = 0, AverageMatchScore = 0, Moic = null },
                 Columns = new InvestorPipelineColumnsDto(),
             };
 
@@ -3491,8 +3516,7 @@ public class CompanyService : ICompanyService
                 ActiveDeals = activeDeals,
                 CapitalCommitted = capitalCommitted,
                 AverageMatchScore = Math.Round(avgScore, 1),
-                // Demo placeholder until a per-investment current-valuation field exists.
-                Moic = capitalCommitted > 0 ? 1.44 : 0,
+                Moic = null,
             },
             Columns = columns,
         };
@@ -3652,19 +3676,21 @@ public class CompanyService : ICompanyService
             LastUpdatedAt = co.UpdatedAt,
         };
 
-    /// <summary>
-    /// Derives 4 factor bars from the overall match score. Deterministic, clamped 0-100.
-    /// Cheap stand-in until <see cref="InvestorMatch.MatchRationale"/> becomes a typed shape.
-    /// </summary>
-    private static OpportunityScoreBreakdownDto BuildScoreBreakdown(int matchScore)
+    private static OpportunityScoreBreakdownDto BuildScoreBreakdown(InvestorMatch match)
     {
         static int Clamp(int v) => Math.Clamp(v, 0, 100);
+        var score = match.ScoreComponents ?? new ScoreComponents();
         return new OpportunityScoreBreakdownDto
         {
-            SectorFit = Clamp(matchScore),
-            StageFit = Clamp(matchScore - 3),
-            GeographyFit = Clamp(matchScore - 5),
-            TeamScore = Clamp(matchScore + 2),
+            SectorFit = Clamp(score.SectorScore),
+            StageFit = Clamp(score.StageScore),
+            CheckSizeFit = Clamp(score.CheckSizeScore),
+            GeographyFit = Clamp(score.GeographyScore),
+            EquityTypeFit = Clamp(score.EquityTypeScore),
+            InvestmentHistoryFit = Clamp(score.InvestmentHistoryScore),
+            RevenueStageScore = Clamp(score.RevenueStageScore),
+            MarketSizeScore = Clamp(score.MarketSizeScore),
+            GrowthPotentialScore = Clamp(score.GrowthPotentialScore),
         };
     }
 

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowUpRight, BadgeCheck, MapPin } from "lucide-react";
+import { ArrowUpRight, MapPin } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import DealCardBase from "@/components/investor/DealCardBase";
 import MatchScoreBadge from "@/components/investor/MatchScoreBadge";
@@ -51,22 +51,14 @@ export default function OpportunityCardListItem({ card }: OpportunityCardListIte
             {initials(card.companyName)}
           </div>
           <div className="min-w-0 space-y-2">
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <h3 className="text-base font-semibold text-foreground truncate">
-                <Link
-                  href={href}
-                  className="hover:underline focus:outline-none focus:ring-2 focus:ring-ring/40 rounded"
-                >
-                  {card.companyName}
-                </Link>
-              </h3>
-              {card.isInvestorReady ? (
-                <span className="inline-flex items-center gap-1 text-xs text-primary">
-                  <BadgeCheck className="h-3.5 w-3.5" aria-hidden />
-                  Investor-Ready
-                </span>
-              ) : null}
-            </div>
+            <h3 className="text-base font-semibold text-foreground truncate">
+              <Link
+                href={href}
+                className="hover:underline focus:outline-none focus:ring-2 focus:ring-ring/40 rounded"
+              >
+                {card.companyName}
+              </Link>
+            </h3>
 
             {card.tagline ? (
               <p className="text-sm text-muted-foreground line-clamp-2">{card.tagline}</p>
@@ -86,7 +78,12 @@ export default function OpportunityCardListItem({ card }: OpportunityCardListIte
         </div>
 
         <div className="flex shrink-0 flex-col items-start gap-3 md:items-end">
-          <MatchScoreBadge score={card.matchScore} />
+          <div className="flex flex-col items-end gap-1">
+            <MatchScoreBadge score={card.matchScore} />
+            <div className="text-[10px] text-muted-foreground">
+              {card.matchScore >= 80 ? "Excellent" : card.matchScore >= 60 ? "Good" : "Fair"} match
+            </div>
+          </div>
           <div className="flex items-baseline gap-3 text-xs">
             <div className="text-right">
               <div className="text-muted-foreground">Asking</div>

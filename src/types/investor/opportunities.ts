@@ -44,8 +44,13 @@ export interface OpportunityFeed {
 export interface OpportunityScoreBreakdown {
   sectorFit: number;
   stageFit: number;
+  checkSizeFit: number;
   geographyFit: number;
-  teamScore: number;
+  equityTypeFit: number;
+  investmentHistoryFit: number;
+  revenueStageScore: number;
+  marketSizeScore: number;
+  growthPotentialScore: number;
 }
 
 export interface EquityEntry {
@@ -100,8 +105,6 @@ export interface InvestorPipelineSummary {
   activeDeals: number;
   capitalCommitted: number;
   averageMatchScore: number;
-  /** Demo placeholder (1.44) until per-investment current-valuation lands. */
-  moic: number;
 }
 
 export interface InvestorPipelineColumns {

@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import NDALockedPanel from "@/components/investor/NDALockedPanel";
+import OwnershipDonut, { type OwnershipSegment } from "@/components/investor/OwnershipDonut";
 import type { OpportunityDetail } from "@/types/investor/opportunities";
 
 interface CapTableTabPanelProps {
@@ -27,12 +28,31 @@ export default function CapTableTabPanel({ detail, onSignNda }: CapTableTabPanel
 
   const { totalShares, esopPoolPercent, entries } = detail.capTableSummary;
 
+  // Donut segments come straight from the cap table — no mock values. Any
+  // shares not attributed to a listed stakeholder are surfaced honestly as a
+  // computed remainder rather than hidden.
+  const allocated = entries.reduce((s, e) => s + Math.max(0, e.sharesOwned), 0);
+  const remainder = Math.max(0, totalShares - allocated);
+  const segments: OwnershipSegment[] = [
+    ...entries.map((e) => ({
+      label: e.stakeholderName ?? "Unnamed stakeholder",
+      value: Math.max(0, e.sharesOwned),
+    })),
+    ...(remainder > 0 ? [{ label: "Other / Unallocated", value: remainder }] : []),
+  ];
+
   return (
     <Card className="border-border rounded-2xl">
       <CardHeader>
         <CardTitle className="text-base">Ownership Structure</CardTitle>
       </CardHeader>
       <CardContent>
+        {segments.length > 0 ? (
+          <div className="mb-6 rounded-xl border border-border bg-muted/30 p-4">
+            <OwnershipDonut segments={segments} />
+          </div>
+        ) : null}
+
         <dl className="mb-4 grid grid-cols-2 gap-4 text-sm">
           <div>
             <dt className="text-xs text-muted-foreground">Total Shares</dt>

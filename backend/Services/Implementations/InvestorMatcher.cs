@@ -88,7 +88,7 @@ public class InvestorMatcher : IInvestorMatcher
                 // var (parsedScore, parsedRationale) = SchemaValidator.Parse(llmRaw);
                 // if (parse failed OR no credentials) FALL BACK TO the rule scorer below.
 
-                var (score, rationale) = ScoreAndExplain(company, investor);
+                var (score, components, rationale) = ScoreAndExplain(company, investor);
 
                 if (score < Phase8Requirements.MinScoreToCount)
                     continue;
@@ -104,6 +104,7 @@ public class InvestorMatcher : IInvestorMatcher
                     InvestorId = investorId,
                     MatchScore = score,
                     MatchRationale = rationale,
+                    ScoreComponents = components,
                     EngineVersion = EngineVersion,
                     Status = "new",
                     InvestorPreferences = new InvestorPreferences
@@ -142,15 +143,15 @@ public class InvestorMatcher : IInvestorMatcher
     public async Task<int> CalculateMatchScoreAsync(Companies company, string investorId)
     {
         var investor = await _investorService.GetInvestorAsync(investorId);
-        var (score, _) = ScoreAndExplain(company, investor);
+        var (score, _, _) = ScoreAndExplain(company, investor);
         return score;
     }
 
     /// <summary>
     /// Deterministic, weighted intersection between company state and
     /// investor preferences across the full set of product-doc dimensions.
-    /// Returns the 0-100 score plus a human-readable rationale that names
-    /// every scored dimension (hit or miss).
+    /// Returns the 0-100 score, real component scores, and a human-readable rationale
+    /// that names every scored dimension (hit or miss).
     ///
     /// Weights (sum = 100):
     ///   Sector              0-25  (Industry  ∩ PreferredSectors)
@@ -165,11 +166,12 @@ public class InvestorMatcher : IInvestorMatcher
     ///   Market size         0-4   (Companies.MarketSizeEstimate bands)
     ///   Growth potential    0-4   (Companies.GrowthPotentialScore 0-100)
     /// </summary>
-    internal (int Score, string Rationale) ScoreAndExplain(Companies company, Investor investor)
+    internal (int Score, ScoreComponents Components, string Rationale) ScoreAndExplain(Companies company, Investor investor)
     {
         var hits = new List<string>();
         var misses = new List<string>();
         int score = 0;
+        var components = new ScoreComponents();
 
         // ---- Sector (0-25) -------------------------------------------------
         if (!string.IsNullOrWhiteSpace(company.Industry))
@@ -178,20 +180,24 @@ public class InvestorMatcher : IInvestorMatcher
                     string.Equals(s, company.Industry, StringComparison.OrdinalIgnoreCase)) == true)
             {
                 score += 25;
+                components.SectorScore = 25;
                 hits.Add($"sector match ({company.Industry})");
             }
             else if (investor.PreferredSectors == null || investor.PreferredSectors.Count == 0)
             {
                 score += 12;
+                components.SectorScore = 12;
                 hits.Add("investor sector-agnostic");
             }
             else
             {
+                components.SectorScore = 0;
                 misses.Add($"sector mismatch (company={company.Industry}, investor prefers {string.Join("/", investor.PreferredSectors)})");
             }
         }
         else
         {
+            components.SectorScore = 0;
             misses.Add("sector not evaluable (company industry unset)");
         }
 
@@ -202,20 +208,24 @@ public class InvestorMatcher : IInvestorMatcher
                     string.Equals(s, company.FundingRoundType, StringComparison.OrdinalIgnoreCase)) == true)
             {
                 score += 15;
+                components.StageScore = 15;
                 hits.Add($"stage match ({company.FundingRoundType})");
             }
             else if (investor.PreferredStages == null || investor.PreferredStages.Count == 0)
             {
                 score += 7;
+                components.StageScore = 7;
                 hits.Add("investor stage-agnostic");
             }
             else
             {
+                components.StageScore = 0;
                 misses.Add($"stage mismatch (company={company.FundingRoundType}, investor prefers {string.Join("/", investor.PreferredStages)})");
             }
         }
         else
         {
+            components.StageScore = 0;
             misses.Add("stage not evaluable (company funding round unset)");
         }
 
@@ -226,20 +236,24 @@ public class InvestorMatcher : IInvestorMatcher
             if (ask >= investor.MinCheckSize && ask <= investor.MaxCheckSize)
             {
                 score += 20;
+                components.CheckSizeScore = 20;
                 hits.Add($"check size in band (ask EUR {ask:N0} within EUR {investor.MinCheckSize:N0}-{investor.MaxCheckSize:N0})");
             }
             else if (ask >= investor.MinCheckSize * 0.5 && ask <= investor.MaxCheckSize * 1.5)
             {
                 score += 8;
+                components.CheckSizeScore = 8;
                 hits.Add("check size adjacent to band");
             }
             else
             {
+                components.CheckSizeScore = 0;
                 misses.Add($"check size outside band (ask EUR {ask:N0} vs investor EUR {investor.MinCheckSize:N0}-{investor.MaxCheckSize:N0})");
             }
         }
         else
         {
+            components.CheckSizeScore = 0;
             misses.Add("check-size not evaluable (missing ask or investor band)");
         }
 
@@ -250,20 +264,24 @@ public class InvestorMatcher : IInvestorMatcher
                     string.Equals(g, company.Country, StringComparison.OrdinalIgnoreCase)) == true)
             {
                 score += 10;
+                components.GeographyScore = 10;
                 hits.Add($"geography match ({company.Country})");
             }
             else if (investor.PreferredGeographies == null || investor.PreferredGeographies.Count == 0)
             {
                 score += 5;
+                components.GeographyScore = 5;
                 hits.Add("investor geography-agnostic");
             }
             else
             {
+                components.GeographyScore = 0;
                 misses.Add($"geography mismatch (company={company.Country}, investor prefers {string.Join("/", investor.PreferredGeographies)})");
             }
         }
         else
         {
+            components.GeographyScore = 0;
             misses.Add("geography not evaluable (company country unset)");
         }
 
@@ -275,15 +293,18 @@ public class InvestorMatcher : IInvestorMatcher
                     string.Equals(t, company.ShareType, StringComparison.OrdinalIgnoreCase)))
             {
                 score += 5;
+                components.EquityTypeScore = 5;
                 hits.Add($"share-type match ({company.ShareType})");
             }
             else
             {
+                components.EquityTypeScore = 0;
                 misses.Add($"share-type mismatch (company={company.ShareType}, investor prefers {string.Join("/", investor.PreferredEquityTypes)})");
             }
         }
         else
         {
+            components.EquityTypeScore = 0;
             misses.Add("share-type not evaluable (company shareType or investor equity types unset)");
         }
 
@@ -343,6 +364,7 @@ public class InvestorMatcher : IInvestorMatcher
             }
 
             score += historyPoints;
+            components.InvestmentHistoryScore = Math.Clamp(historyPoints, 0, 10);
             hits.AddRange(historyHits.Select(h => "investment-history: " + h));
             misses.AddRange(historyMisses.Select(m => "investment-history: " + m));
         }
@@ -379,16 +401,19 @@ public class InvestorMatcher : IInvestorMatcher
             if (investor.PreferredStages == null || investor.PreferredStages.Count == 0)
             {
                 score += 3;
+                components.RevenueStageScore = 3;
                 hits.Add($"revenue-stage: {revenueStage} (investor stage-agnostic)");
             }
             else if (investor.PreferredStages.Any(s =>
                          compatibleInvestorStages.Any(c => string.Equals(c, s, StringComparison.OrdinalIgnoreCase))))
             {
                 score += 7;
+                components.RevenueStageScore = 7;
                 hits.Add($"revenue-stage: {revenueStage} aligns with investor stage appetite");
             }
             else
             {
+                components.RevenueStageScore = 0;
                 misses.Add(
                     $"revenue-stage: {revenueStage} does not match investor stages ({string.Join("/", investor.PreferredStages)})");
             }
@@ -401,24 +426,29 @@ public class InvestorMatcher : IInvestorMatcher
             if (market >= 1_000_000_000)        // >= EUR 1B TAM
             {
                 score += 4;
+                components.MarketSizeScore = 4;
                 hits.Add($"market-size: EUR {market:N0} (large TAM)");
             }
             else if (market >= 100_000_000)
             {
                 score += 3;
+                components.MarketSizeScore = 3;
                 hits.Add($"market-size: EUR {market:N0} (mid TAM)");
             }
             else if (market >= 10_000_000)
             {
                 score += 1;
+                components.MarketSizeScore = 1;
                 hits.Add($"market-size: EUR {market:N0} (small TAM)");
             }
             else if (market > 0)
             {
+                components.MarketSizeScore = 0;
                 misses.Add($"market-size: EUR {market:N0} (tiny TAM, < EUR 10M)");
             }
             else
             {
+                components.MarketSizeScore = 0;
                 misses.Add("market-size not evaluable (MarketSizeEstimate unset)");
             }
         }
@@ -431,24 +461,29 @@ public class InvestorMatcher : IInvestorMatcher
             if (growth >= 80)
             {
                 score += 4;
+                components.GrowthPotentialScore = 4;
                 hits.Add($"growth-potential: {growth:F0}/100 (high)");
             }
             else if (growth >= 60)
             {
                 score += 3;
+                components.GrowthPotentialScore = 3;
                 hits.Add($"growth-potential: {growth:F0}/100 (above average)");
             }
             else if (growth >= 40)
             {
                 score += 2;
+                components.GrowthPotentialScore = 2;
                 hits.Add($"growth-potential: {growth:F0}/100 (average)");
             }
             else if (growth >= 0)
             {
+                components.GrowthPotentialScore = 0;
                 misses.Add($"growth-potential: {growth:F0}/100 (low)");
             }
             else
             {
+                components.GrowthPotentialScore = 0;
                 misses.Add("growth-potential not evaluable (GrowthPotentialScore unset)");
             }
         }
@@ -467,6 +502,6 @@ public class InvestorMatcher : IInvestorMatcher
         // deterministic template as fallback when validation fails or no
         // credentials are configured.
 
-        return (Math.Min(score, 100), rationale);
+        return (Math.Min(score, 100), components, rationale);
     }
 }

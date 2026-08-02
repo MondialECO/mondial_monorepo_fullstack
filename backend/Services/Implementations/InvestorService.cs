@@ -41,7 +41,6 @@ public class InvestorService : IInvestorService
     {
         return await _dbContext.Investors
             .Find(i => i.IsActive)
-            .SortByDescending(i => i.ProfileScore)
             .ToListAsync();
     }
 
@@ -79,7 +78,6 @@ public class InvestorService : IInvestorService
 
         return await _dbContext.Investors
             .Find(combinedFilter)
-            .SortByDescending(i => i.ProfileScore)
             .ToListAsync();
     }
 

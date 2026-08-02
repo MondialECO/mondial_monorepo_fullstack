@@ -78,7 +78,7 @@ export default function TermSheetPage({ params }: PageProps) {
 
         <aside className="space-y-4 lg:sticky lg:top-6 lg:self-start">
           <DealTimeline currentStage={stage} />
-          <ReadOnlyActionsRow />
+          <ReadOnlyActionsRow companyId={companyId} />
         </aside>
       </div>
     </div>

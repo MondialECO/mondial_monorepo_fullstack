@@ -7,10 +7,15 @@ interface ScoreBreakdownPanelProps {
 }
 
 const ROWS: Array<{ key: keyof OpportunityScoreBreakdown; label: string }> = [
-  { key: "sectorFit", label: "Sector Fit" },
-  { key: "stageFit", label: "Stage Fit" },
+  { key: "sectorFit", label: "Sector Match" },
+  { key: "stageFit", label: "Funding Stage" },
+  { key: "checkSizeFit", label: "Check Size" },
   { key: "geographyFit", label: "Geography" },
-  { key: "teamScore", label: "Team Score" },
+  { key: "equityTypeFit", label: "Equity Type" },
+  { key: "investmentHistoryFit", label: "Investment History" },
+  { key: "revenueStageScore", label: "Revenue Stage" },
+  { key: "marketSizeScore", label: "Market Size" },
+  { key: "growthPotentialScore", label: "Growth Potential" },
 ];
 
 export default function ScoreBreakdownPanel({
