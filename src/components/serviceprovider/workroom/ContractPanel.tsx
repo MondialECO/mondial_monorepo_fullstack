@@ -73,7 +73,6 @@ export function ContractPanel({ data, readOnly }: { data: WorkroomDetail; readOn
               <ConsentStep label="Both parties confirmed" complete={contract.status === 'Signed'} />
             </ol>
             {!readOnly && !contract.providerSignedAt && contract.status !== 'Voided' && <Button type="button" className="mt-6 w-full" onClick={() => setDialogOpen(true)}><ShieldCheck className="size-4" aria-hidden="true" /> Confirm terms</Button>}
-            <p className="mt-5 text-xs leading-5 text-[#6B7280]">No downloadable signed contract, signature image, legal certificate, amendment workflow, or audit-trail view is available in the current contract.</p>
           </SpCard>
         </aside>
       </div>

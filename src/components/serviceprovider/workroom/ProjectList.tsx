@@ -24,7 +24,9 @@ import {
 } from './_shared';
 
 const activeStatuses = ['', 'ContractPending', 'EscrowPending', 'ReadyToStart', 'Active', 'Paused', 'ClientInputRequired', 'MilestoneReview', 'RevisionInProgress', 'FinalDelivery', 'Disputed'];
-const completedStatuses = ['', 'Completed', 'Archived', 'Cancelled'];
+// Archived and Cancelled are omitted: neither engagement state has a backend writer, so
+// offering them produced a filter that always returned nothing.
+const completedStatuses = ['', 'Completed'];
 
 export function ProjectList({
   view,
