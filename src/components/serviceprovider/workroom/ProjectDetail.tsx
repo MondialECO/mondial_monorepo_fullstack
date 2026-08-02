@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { ArrowLeft, BriefcaseBusiness, CalendarDays, CheckCircle2, CirclePause, CirclePlay, ShieldCheck, UserRound, WalletCards } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -116,7 +117,15 @@ export function ProjectDetail({
 
   return (
     <SpPage>
-      <BackButton onClick={onBack} />
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <BackButton onClick={onBack} />
+        {/* The Active/Completed switcher lives on the list view only, so reaching the
+            other list from a project used to take two steps. A single link avoids
+            stacking a second tab bar above the section tabs. */}
+        <Link href={`/dashboard/serviceprovider/workroom?view=${view === 'completed' ? 'active' : 'completed'}`} className="text-sm font-semibold text-[#3C61DD] underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-[#3C61DD]">
+          {view === 'completed' ? 'View active projects' : 'View completed projects'}
+        </Link>
+      </div>
       <SpPageHeader
         title={engagement.title}
         description={`${engagement.clientDisplayName || 'Client'} · ${words(engagement.engagementStatus)}`}
