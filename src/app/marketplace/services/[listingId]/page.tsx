@@ -15,6 +15,9 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import AuthGuard from '@/components/layout/AuthGuard';
 import { useMarketplaceListingDetail } from '@/hooks/queries/marketplace';
+import { useCreateConversation } from '@/hooks/queries/chat';
+import { useAuth } from '@/app/_providers/AuthProvider';
+import { ROLE_DASHBOARD_ROUTES } from '@/lib/roles';
 
 export default function MarketplaceListingDetailPage() {
   return (
@@ -33,6 +36,8 @@ function MarketplaceListingDetailContent() {
 
   const { data, isLoading, isError } = useMarketplaceListingDetail(listingId);
   const listing = data;
+  const { user } = useAuth();
+  const createConversation = useCreateConversation();
 
   // Analytics Phase C: Fire impression on mount
   useEffect(() => {
@@ -64,9 +69,24 @@ function MarketplaceListingDetailContent() {
     router.push(`/marketplace/services/${listingId}/order?${params.toString()}`);
   }, [fireAnalyticsClick, listingId, selectedPackage, selectedAddOnNames, router]);
 
-  const handleMessageClick = useCallback(() => {
+  // provider.providerId is the ApplicationUser GUID, not a profile id: MarketplaceService
+  // resolves it through _userManager.FindByIdAsync and echoes provider.Id back, which is
+  // exactly what CreateConversationRequest.targetUserId expects.
+  const handleMessageClick = useCallback(async () => {
+    const targetUserId = listing?.provider?.providerId;
+    if (!targetUserId || createConversation.isPending) return;
     fireAnalyticsClick('message');
-  }, [fireAnalyticsClick]);
+    try {
+      const conversation = await createConversation.mutateAsync({ targetUserId });
+      // The page sits behind AuthGuard, so user is present by the time this runs; the
+      // fallback only covers the render between hydration and the guard resolving.
+      const base = user ? ROLE_DASHBOARD_ROUTES[user.role] : '/login';
+      router.push(`${base}/messages?c=${conversation.id}`);
+    } catch {
+      // Contextual action — a failure here should not take over the listing page.
+      // The button re-enables itself when the mutation settles.
+    }
+  }, [listing, createConversation, fireAnalyticsClick, user, router]);
 
   const handlePackageChange = useCallback(
     (tier: string) => {
@@ -234,7 +254,7 @@ function MarketplaceListingDetailContent() {
               </div>
             )}
 
-            <ProviderAboutCard provider={listing.provider} onMessage={handleMessageClick} />
+            <ProviderAboutCard provider={listing.provider} onMessage={handleMessageClick} messagePending={createConversation.isPending} />
           </div>
 
           {/* Right Column: sticky package selector */}
@@ -249,6 +269,7 @@ function MarketplaceListingDetailContent() {
               onToggleAddOn={toggleAddOn}
               onOrder={handleOrderClick}
               onMessage={handleMessageClick}
+              messagePending={createConversation.isPending}
             />
           </div>
         </div>
