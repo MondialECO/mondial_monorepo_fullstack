@@ -18,6 +18,8 @@ interface Props {
   onToggleAddOn: (name: string) => void;
   onOrder: () => void;
   onMessage: () => void;
+  /** True while the conversation is being created, to block a second click. */
+  messagePending?: boolean;
 }
 
 export function PackageSelectorCard({
@@ -30,6 +32,7 @@ export function PackageSelectorCard({
   onToggleAddOn,
   onOrder,
   onMessage,
+  messagePending,
 }: Props) {
   if (!selectedPackage) return null;
 
@@ -142,7 +145,7 @@ export function PackageSelectorCard({
             <Button onClick={onOrder} className="h-11 w-full rounded-lg">
               Continue ({formatPrice(total, currency)})
             </Button>
-            <Button onClick={onMessage} variant="outline" className="h-11 w-full rounded-lg">
+            <Button onClick={onMessage} disabled={messagePending} variant="outline" className="h-11 w-full rounded-lg">
               Message provider
             </Button>
           </div>

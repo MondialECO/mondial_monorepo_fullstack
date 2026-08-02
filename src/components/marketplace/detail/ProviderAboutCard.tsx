@@ -14,9 +14,12 @@ import type { MarketplaceListingDetail } from '@/lib/api-marketplace';
 export function ProviderAboutCard({
   provider,
   onMessage,
+  messagePending,
 }: {
   provider: MarketplaceListingDetail['provider'];
   onMessage: () => void;
+  /** True while the conversation is being created, to block a second click. */
+  messagePending?: boolean;
 }) {
   const meta: string[] = [];
   if (provider.medianResponseTime) meta.push(`Responds in ${provider.medianResponseTime}`);
@@ -66,7 +69,7 @@ export function ProviderAboutCard({
         </div>
       </div>
 
-      <Button onClick={onMessage} variant="outline" className="mt-5 w-full">
+      <Button onClick={onMessage} disabled={messagePending} variant="outline" className="mt-5 w-full">
         Contact provider
       </Button>
     </section>
