@@ -34,6 +34,7 @@ import { HTTP_URL_ERROR, safeHttpUrl, validateHttpUrlList } from '@/lib/service-
 import {
   apiError,
   canOpenDispute,
+  disputeState,
   formatDate,
   isRefundedMilestone,
   milestoneBadge,
@@ -147,7 +148,12 @@ function MilestoneDetail({ data, milestone, readOnly }: { data: WorkroomDetail; 
 
       {milestone.extensionRequested && <SpMutationFeedback status="info">An extension is awaiting client decision. The existing due date has not changed automatically.</SpMutationFeedback>}
       {milestone.approvedExtensionDays > 0 && <SpMutationFeedback status="info">The client approved {milestone.approvedExtensionDays} extension day(s); the backend calculated the current due date.</SpMutationFeedback>}
-      {milestone.disputeOpenedAt && <SpMutationFeedback status="error">Dispute opened {formatDate(milestone.disputeOpenedAt, true)}. Outcome: {words(milestone.disputeOutcome ?? 'Open')}. Support review target: {formatDate(milestone.disputeReviewEndsAt, true)}.</SpMutationFeedback>}
+      {/* Gated on disputeOutcome, never on disputeOpenedAt — that timestamp is immutable
+          history the backend never clears (canon §10.7), so keying the banner off it left
+          a red "dispute open" alarm on screen forever after resolution. The timestamp is
+          still rendered: it is valid history, it just is not the current state. */}
+      {disputeState(milestone) === 'open' && <SpMutationFeedback status="error">Dispute opened {formatDate(milestone.disputeOpenedAt, true)} and is awaiting support review. Payment release is blocked until it resolves. Support review target: {formatDate(milestone.disputeReviewEndsAt, true)}.</SpMutationFeedback>}
+      {disputeState(milestone) === 'resolved' && <SpMutationFeedback status="info">Dispute opened {formatDate(milestone.disputeOpenedAt, true)} was resolved in support review: {words(milestone.disputeOutcome ?? '')}. {isRefundedMilestone(milestone) ? 'The milestone amount was refunded to the client and this milestone is settled.' : 'The milestone returned to client review and payment release is unblocked.'}</SpMutationFeedback>}
       {revision && <RevisionCard revision={revision} />}
       {(milestone.reviewWindowEndsAt || milestone.autoReleaseAt) && <SpCard><SpSectionHeader title="Client review window" description="These timestamps are backend-owned. No client approval or payment release is performed by this screen." /><dl className="mt-5 grid gap-4 sm:grid-cols-2"><Metric label="Review window ends" value={formatDate(milestone.reviewWindowEndsAt, true)} /><Metric label="Scheduled rule evaluation" value={`${formatDate(milestone.autoReleaseAt, true)} · STUB-backed payment`} /></dl></SpCard>}
 
