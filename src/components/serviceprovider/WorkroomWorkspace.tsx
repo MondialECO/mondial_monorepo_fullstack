@@ -35,7 +35,6 @@ export function WorkroomWorkspace() {
         tab={tab}
         milestoneId={milestoneId}
         onBack={() => navigate({ project: null, tab: null, milestone: null })}
-        onTab={(next) => navigate({ tab: next === 'overview' ? null : next, milestone: next === 'milestones' ? milestoneId : null }, true)}
         onMilestone={(id) => navigate({ tab: 'milestones', milestone: id }, true)}
       />
     );

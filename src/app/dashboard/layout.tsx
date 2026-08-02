@@ -7,6 +7,7 @@ import Topbar from "@/components/layout/Topbar";
 import AuthGuard from "@/components/layout/AuthGuard";
 import { SpMobileHeader } from "@/components/serviceprovider/SpMobileHeader";
 import { SpDesktopTopbar } from "@/components/serviceprovider/SpDesktopTopbar";
+import { SpSandboxNotice } from "@/components/serviceprovider/SpSandboxNotice";
 import { isPhase2ChromeRoute } from "@/lib/layout-config";
 import { isServiceProviderRoute } from "@/lib/service-provider-navigation";
 
@@ -36,6 +37,7 @@ export default function DashboardLayout({
               <>
                 <SpMobileHeader />
                 <SpDesktopTopbar />
+                <SpSandboxNotice />
               </>
             )}
 

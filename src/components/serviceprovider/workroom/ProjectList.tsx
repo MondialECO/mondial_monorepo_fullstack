@@ -24,7 +24,9 @@ import {
 } from './_shared';
 
 const activeStatuses = ['', 'ContractPending', 'EscrowPending', 'ReadyToStart', 'Active', 'Paused', 'ClientInputRequired', 'MilestoneReview', 'RevisionInProgress', 'FinalDelivery', 'Disputed'];
-const completedStatuses = ['', 'Completed', 'Archived', 'Cancelled'];
+// Archived and Cancelled are omitted: neither engagement state has a backend writer, so
+// offering them produced a filter that always returned nothing.
+const completedStatuses = ['', 'Completed'];
 
 export function ProjectList({
   view,
@@ -83,7 +85,7 @@ export function ProjectList({
         <SpEmptyState
           icon={BriefcaseBusiness}
           title={(query.data ?? []).length ? `No ${view} projects match these filters` : view === 'completed' ? 'No completed projects' : 'No active projects'}
-          description={(query.data ?? []).length ? 'Clear or adjust the current search and status filters.' : view === 'completed' ? 'Completed, archived, and cancelled engagement history will appear here.' : 'Accepted proposals appear here after the transaction-safe Workroom conversion completes.'}
+          description={(query.data ?? []).length ? 'Clear or adjust the current search and status filters.' : view === 'completed' ? 'Completed, archived, and cancelled engagement history will appear here.' : 'Projects appear here once a client accepts your proposal. Setting one up takes a moment after acceptance.'}
           action={(query.data ?? []).length ? <Button type="button" variant="outline" onClick={clear}>Clear filters</Button> : undefined}
         />
       ) : (
@@ -109,7 +111,7 @@ function ProjectCard({ engagement, onOpen }: { engagement: Engagement; onOpen: (
           <CardMetric icon={UserRound} label="Client" value={engagement.clientDisplayName || 'Client'} />
           <CardMetric icon={CalendarDays} label="Schedule" value={`${formatDate(engagement.startDate)} – ${formatDate(engagement.actualEndDate ?? engagement.expectedEndDate)}`} />
           <CardMetric icon={BriefcaseBusiness} label="Contract value" value={money(engagement.contractValue, engagement.currency)} />
-          <CardMetric icon={ShieldCheck} label="Payment state" value={`${words(engagement.escrowStatus)} · STUB-backed`} />
+          <CardMetric icon={ShieldCheck} label="Payment state" value={words(engagement.escrowStatus)} />
         </dl>
 
         <div className="mt-auto pt-5">

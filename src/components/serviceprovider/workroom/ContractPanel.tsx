@@ -14,7 +14,7 @@ import {
 import { SpCard, SpMutationFeedback, SpSectionHeader, SpStatusBadge } from '@/components/serviceprovider/ui';
 import { useConfirmContract } from '@/hooks/queries/workroom';
 import type { WorkroomDetail } from '@/types/workroom';
-import { apiError, formatDate, milestoneBadge, money, words } from './_shared';
+import { apiError, formatDate, money, words } from './_shared';
 
 export function ContractPanel({ data, readOnly }: { data: WorkroomDetail; readOnly: boolean }) {
   const confirm = useConfirmContract();
@@ -38,7 +38,6 @@ export function ContractPanel({ data, readOnly }: { data: WorkroomDetail; readOn
   return (
     <div className="space-y-6">
       {feedback && <SpMutationFeedback status={feedback.status}>{feedback.message}</SpMutationFeedback>}
-      <SpMutationFeedback status="info">Contract confirmation is authenticated in-app consent only. It is a STUB mechanism—not a legal e-signature, signed PDF, identity certificate, or external signature provider.</SpMutationFeedback>
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.75fr)]">
         <div className="space-y-6">
           <SpCard>
@@ -59,7 +58,7 @@ export function ContractPanel({ data, readOnly }: { data: WorkroomDetail; readOn
 
           <SpCard>
             <SpSectionHeader title="Milestone schedule" description="Live due dates reflect approved extensions and pause/resume calculations." />
-            <div className="mt-5 overflow-x-auto"><table className="w-full min-w-[560px] text-left text-sm"><thead><tr className="border-b border-[#E5E7EB] text-xs uppercase tracking-[0.08em] text-[#6B7280]"><th className="px-3 py-3 font-semibold">Milestone</th><th className="px-3 py-3 font-semibold">Amount</th><th className="px-3 py-3 font-semibold">Due date</th><th className="px-3 py-3 font-semibold">Status</th></tr></thead><tbody>{data.milestones.map((item) => <tr key={item.id} className="border-b border-[#E5E7EB] last:border-0"><td className="px-3 py-4 font-semibold text-[#171717]">{item.title}</td><td className="px-3 py-4 text-[#374151]">{money(item.amount, item.currency)}</td><td className="px-3 py-4 text-[#374151]">{formatDate(item.dueDate)}</td><td className="px-3 py-4 text-[#374151]">{milestoneBadge(item).label}</td></tr>)}</tbody></table></div>
+            <div className="mt-5 overflow-x-auto"><table className="w-full min-w-[560px] text-left text-sm"><thead><tr className="border-b border-[#E5E7EB] text-xs uppercase tracking-[0.08em] text-[#6B7280]"><th className="px-3 py-3 font-semibold">Milestone</th><th className="px-3 py-3 font-semibold">Amount</th><th className="px-3 py-3 font-semibold">Due date</th></tr></thead><tbody>{data.milestones.map((item) => <tr key={item.id} className="border-b border-[#E5E7EB] last:border-0"><td className="px-3 py-4 font-semibold text-[#171717]">{item.title}</td><td className="px-3 py-4 text-[#374151]">{money(item.amount, item.currency)}</td><td className="px-3 py-4 text-[#374151]">{formatDate(item.dueDate)}</td></tr>)}</tbody></table></div>
           </SpCard>
         </div>
 
@@ -73,7 +72,6 @@ export function ContractPanel({ data, readOnly }: { data: WorkroomDetail; readOn
               <ConsentStep label="Both parties confirmed" complete={contract.status === 'Signed'} />
             </ol>
             {!readOnly && !contract.providerSignedAt && contract.status !== 'Voided' && <Button type="button" className="mt-6 w-full" onClick={() => setDialogOpen(true)}><ShieldCheck className="size-4" aria-hidden="true" /> Confirm terms</Button>}
-            <p className="mt-5 text-xs leading-5 text-[#6B7280]">No downloadable signed contract, signature image, legal certificate, amendment workflow, or audit-trail view is available in the current contract.</p>
           </SpCard>
         </aside>
       </div>
