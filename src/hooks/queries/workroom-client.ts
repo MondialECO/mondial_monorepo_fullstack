@@ -33,11 +33,19 @@ export const useClientEngagements = () => {
   });
 };
 
+/**
+ * Polls because several transitions originate outside this session and produce no local
+ * mutation to invalidate on: an admin resolving a dispute, the provider submitting a
+ * delivery, and the 7-day auto-release sweep. Without it the buyer sits on stale state
+ * until they reload. 30s is slow enough to be unnoticeable in cost and fast enough that
+ * a two-window walkthrough does not need manual refreshes.
+ */
 export const useClientEngagement = (id: string | null) =>
   useQuery({
     queryKey: clientWorkroomKeys.detail(id ?? ''),
     queryFn: () => getEngagement(id!),
     enabled: !!id,
+    refetchInterval: 30_000,
   });
 
 /** Every mutation refetches the whole client-workroom tree — state transitions
@@ -104,9 +112,6 @@ export const useClientUploadFile = () =>
     }) => api.uploadFile(engagementId, file, milestoneId)
   );
 
-/** Backend errors carry a human-readable `message`; surface it verbatim. */
-export function workroomErrorMessage(error: unknown): string {
-  const message = (error as { response?: { data?: { message?: string } } })?.response?.data
-    ?.message;
-  return message || 'Something went wrong. Please try again.';
-}
+/** Re-exported so the many existing `@/hooks/queries/workroom-client` imports keep working;
+ *  the implementation lives in lib/workroom-format alongside the other shared formatters. */
+export { workroomErrorMessage } from '@/lib/workroom-format';

@@ -1,11 +1,31 @@
 'use client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as api from '@/lib/api-workroom';
+import { useAuth } from '@/app/_providers/AuthProvider';
 import type { CreateClientInputPayload, CreateTaskPayload, CreateTimeEntryPayload, SubmitDeliverablePayload } from '@/types/workroom';
 
 const WORKROOM = ['workroom'] as const; const EARNINGS = ['earnings'] as const;
-export const useEngagements = () => useQuery({ queryKey: [...WORKROOM, 'list'], queryFn: api.getEngagements });
-export const useEngagement = (id: string | null) => useQuery({ queryKey: [...WORKROOM, id], queryFn: () => api.getEngagement(id!), enabled: !!id });
+/**
+ * Seller-role engagements only. The endpoint returns every engagement the actor
+ * participates in, so a provider who has also bought a service would otherwise see
+ * their own purchase listed as work to deliver — with their own name in the client
+ * column. Mirrors the buyer-side filter in workroom-client.ts (M3a).
+ */
+export const useEngagements = () => {
+  const { user } = useAuth();
+  return useQuery({
+    // user.id is in the key so a session change re-scopes the cache instead of
+    // briefly showing the previous user's filtered rows.
+    queryKey: [...WORKROOM, 'list', user?.id ?? 'anon'],
+    queryFn: api.getEngagements,
+    select: (rows) => rows.filter((e) => e.providerId === user?.id),
+    enabled: !!user?.id,
+  });
+};
+/** Polls for the same reason as the buyer twin — admin dispute resolution, client
+ *  approval/revision, and the auto-release sweep all land without a local mutation to
+ *  invalidate on. See the comment on useClientEngagement. */
+export const useEngagement = (id: string | null) => useQuery({ queryKey: [...WORKROOM, id], queryFn: () => api.getEngagement(id!), enabled: !!id, refetchInterval: 30_000 });
 export const useEarnings = (currency = 'EUR') => useQuery({ queryKey: [...EARNINGS, currency], queryFn: () => api.getEarnings(currency) });
 export const useFinancialStatement = (from: string, to: string, currency: string, enabled: boolean) => useQuery({ queryKey: [...EARNINGS, 'statement', currency, from, to], queryFn: () => api.getStatement(from, to, currency), enabled });
 function useWrite<TArg, TResult>(fn: (arg: TArg) => Promise<TResult>, keys: readonly string[] = WORKROOM) { const qc = useQueryClient(); return useMutation({ mutationFn: fn, onSuccess: () => keys.forEach((key) => qc.invalidateQueries({ queryKey: [key] })) }); }

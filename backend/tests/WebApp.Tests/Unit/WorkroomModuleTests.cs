@@ -22,6 +22,21 @@ public class WorkroomModuleTests
         second.GatewayReference.Should().Be(first.GatewayReference).And.Be("stub_escrow_milestone-1");
     }
 
+    /// <summary>
+    /// Documents the trap behind BUG-3. The stub derives its reference from the
+    /// idempotency key, so the reference for a fund keyed "escrow:{id}" is exactly the
+    /// string release/refund used to fabricate inline. The fabrication was therefore
+    /// invisible under the stub and would have failed against every real gateway. Release
+    /// and refund must read PaymentOperation.GatewayReference; if this test ever has to
+    /// change because the stub's format moved, that is not a licence to reconstruct it.
+    /// </summary>
+    [Fact]
+    public async Task Stub_escrow_reference_coincides_with_the_key_that_masked_fabrication()
+    {
+        var authorized = await Gateway().AuthorizeEscrowAsync("escrow:milestone-1", 100m, "EUR");
+        authorized.GatewayReference.Should().Be("stub_escrow_escrow:milestone-1");
+    }
+
     [Fact]
     public async Task Payment_stub_can_exercise_failure_path()
     {
@@ -156,8 +171,25 @@ public class WorkroomModuleTests
     [InlineData(WorkroomMilestoneStatus.Funded, WorkroomMilestoneStatus.Active, true)]
     [InlineData(WorkroomMilestoneStatus.ClientReviewing, WorkroomMilestoneStatus.RevisionRequested, true)]
     [InlineData(WorkroomMilestoneStatus.Paid, WorkroomMilestoneStatus.Active, false)]
+    [InlineData(WorkroomMilestoneStatus.Disputed, WorkroomMilestoneStatus.Paid, true)]
     public void Milestone_state_machine_enforces_direction(WorkroomMilestoneStatus from, WorkroomMilestoneStatus to, bool expected)
         => WorkroomStateMachine.CanTransition(from, to).Should().Be(expected);
+
+    /// <summary>
+    /// BUG-2 pin. A client-favoured dispute settles the milestone to Paid with RefundedAt
+    /// set, never to Cancelled — Cancelled satisfies no completion guard, so routing a
+    /// resolved dispute there stranded the engagement permanently. Paid therefore means
+    /// "payment settled" in either direction, and RefundedAt is the only thing separating
+    /// a refund from a provider release; it must survive on both the model and the DTO or
+    /// the two cases become indistinguishable to every consumer.
+    /// </summary>
+    [Fact]
+    public void Client_favoured_dispute_settles_to_paid_and_stays_distinguishable_from_a_release()
+    {
+        WorkroomStateMachine.CanTransition(WorkroomMilestoneStatus.Disputed, WorkroomMilestoneStatus.Paid).Should().BeTrue();
+        typeof(WorkroomMilestone).GetProperties().Select(x => x.Name).Should().Contain("RefundedAt");
+        typeof(WorkroomMilestoneResponse).GetProperties().Select(x => x.Name).Should().Contain("RefundedAt");
+    }
 
     [Theory]
     [InlineData(EngagementStatus.ContractPending, EngagementStatus.EscrowPending, true)]

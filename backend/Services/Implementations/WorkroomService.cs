@@ -142,7 +142,7 @@ public sealed class WorkroomService : IWorkroomService
         var now = DateTime.UtcNow;
         var releaseIds = await _db.WorkroomMilestones.Find(x =>
             (x.MilestoneStatus == WorkroomMilestoneStatus.ClientReviewing || x.MilestoneStatus == WorkroomMilestoneStatus.Resubmitted) &&
-            x.AutoReleaseAt <= now && x.DisputeOpenedAt == null).Project(x => x.Id).Limit(200).ToListAsync();
+            x.AutoReleaseAt <= now && x.DisputeOutcome != DisputeOutcome.Open).Project(x => x.Id).Limit(200).ToListAsync();
         foreach (var id in releaseIds) await ReleaseMilestoneAsync("system", id, true);
 
         var dueSoon = await _db.WorkroomMilestones.Find(x => x.MilestoneStatus == WorkroomMilestoneStatus.Active &&
@@ -441,9 +441,16 @@ public sealed class WorkroomService : IWorkroomService
         if(resolved==DisputeOutcome.ProviderFavored){m.MilestoneStatus=WorkroomMilestoneStatus.ClientReviewing;m.EscrowStatus=WorkroomEscrowStatus.Funded;e.EngagementStatus=EngagementStatus.MilestoneReview;e.EscrowStatus=WorkroomEscrowStatus.Funded;}
         else
         {
-            var key=$"refund:{m.Id}";var op=await BeginOperation(key,PaymentOperationType.RefundEscrow,e.Id,m.Id,null,m.Amount,m.Currency);var gateway=await _gateway.RefundEscrowAsync(key,$"stub_escrow_escrow:{m.Id}",m.Amount,m.Currency);
+            var key=$"refund:{m.Id}";var escrowReference=await EscrowReference(m.Id,"refund");var op=await BeginOperation(key,PaymentOperationType.RefundEscrow,e.Id,m.Id,null,m.Amount,m.Currency);var gateway=await _gateway.RefundEscrowAsync(key,escrowReference,m.Amount,m.Currency);
             if(!gateway.Success){await FailOperation(op,gateway.Error);return ServiceProviderResult<WorkroomDetailResponse>.Conflict("Refund failed; dispute remains on hold.");}
-            await GatewaySucceeded(op,gateway.GatewayReference);m.MilestoneStatus=WorkroomMilestoneStatus.Cancelled;m.EscrowStatus=WorkroomEscrowStatus.Refunded;e.EngagementStatus=EngagementStatus.Active;e.EscrowStatus=WorkroomEscrowStatus.Refunded;
+            await GatewaySucceeded(op,gateway.GatewayReference);
+            // Client-favoured dispute resolution: milestone reaches its payment-settled
+            // terminal state, but funds are refunded to client rather than released to
+            // provider. RefundedAt distinguishes this from provider-released milestones.
+            // Cancelled is deliberately NOT used — it is unreachable from every completion
+            // and settlement guard, which stranded the engagement permanently (BUG-2).
+            // See canon §10.7 dispute resolution invariant.
+            m.MilestoneStatus=WorkroomMilestoneStatus.Paid;m.RefundedAt=m.UpdatedAt;m.EscrowStatus=WorkroomEscrowStatus.Refunded;e.EngagementStatus=EngagementStatus.Active;e.EscrowStatus=WorkroomEscrowStatus.Refunded;
             await _db.FinancialTransactions.InsertOneAsync(new FinancialTransaction{EngagementId=e.Id,MilestoneId=m.Id,ProviderId=e.ProviderId,ClientId=e.ClientId,GrossAmount=m.Amount,Currency=m.Currency,TransactionType=FinancialTransactionType.Refund,PaymentStatus=PaymentStatus.Refunded,IdempotencyKey=key,CreatedAt=DateTime.UtcNow});op.Status=PaymentOperationStatus.Completed;op.UpdatedAt=DateTime.UtcNow;await _db.PaymentOperations.ReplaceOneAsync(x=>x.Id==op.Id,op);
         }
         e.UpdatedAt=m.UpdatedAt;await _db.WorkroomMilestones.ReplaceOneAsync(x=>x.Id==m.Id,m);await _db.WorkroomEngagements.ReplaceOneAsync(x=>x.Id==e.Id,e);await AuditAsync(adminId,"Admin","Dispute.Resolved","WorkroomMilestone",m.Id,"Open",$"{resolved}: {reason}");await RefreshTrust(e.ProviderId);
@@ -701,9 +708,10 @@ public sealed class WorkroomService : IWorkroomService
         if (m.MilestoneStatus is not (WorkroomMilestoneStatus.ClientReviewing or WorkroomMilestoneStatus.Resubmitted))
             return ServiceProviderResult<WorkroomDetailResponse>.Conflict("This milestone is not ready for approval.");
         if(!WorkroomStateMachine.CanTransition(m.MilestoneStatus,WorkroomMilestoneStatus.Paid))return ServiceProviderResult<WorkroomDetailResponse>.Conflict("Payment release is not allowed from the current milestone state.");
-        if (m.DisputeOpenedAt.HasValue) return ServiceProviderResult<WorkroomDetailResponse>.Conflict("Payment release is blocked by an active dispute.");
-        var key=$"release:{m.Id}"; var op=await BeginOperation(key, PaymentOperationType.ReleaseEscrow, e.Id, m.Id, null, m.Amount, m.Currency);
-        var gateway=await _gateway.ReleaseEscrowAsync(key, $"stub_escrow_escrow:{m.Id}", m.Amount, m.Currency);
+        if (m.DisputeOutcome == DisputeOutcome.Open) return ServiceProviderResult<WorkroomDetailResponse>.Conflict("Payment release is blocked by an active dispute.");
+        var key=$"release:{m.Id}"; var escrowReference=await EscrowReference(m.Id, "release payment");
+        var op=await BeginOperation(key, PaymentOperationType.ReleaseEscrow, e.Id, m.Id, null, m.Amount, m.Currency);
+        var gateway=await _gateway.ReleaseEscrowAsync(key, escrowReference, m.Amount, m.Currency);
         if (!gateway.Success) { await FailOperation(op, gateway.Error); return ServiceProviderResult<WorkroomDetailResponse>.Conflict("Payment release failed and no financial state changed."); }
         await GatewaySucceeded(op, gateway.GatewayReference);
         var now=DateTime.UtcNow; var commission=decimal.Round(m.Amount*PlatformCommerceConstants.CommissionRate,2,MidpointRounding.AwayFromZero); var net=m.Amount-commission;
@@ -781,9 +789,29 @@ public sealed class WorkroomService : IWorkroomService
     private async Task<WorkroomEngagement?> Participant(string actorId,string id)=>await _db.WorkroomEngagements.Find(x=>x.Id==id&&(x.ProviderId==actorId||x.ClientId==actorId)).FirstOrDefaultAsync();
     private async Task<(WorkroomMilestone? m,WorkroomEngagement? e,Contract? c)> MilestoneContext(string id){var m=await _db.WorkroomMilestones.Find(x=>x.Id==id).FirstOrDefaultAsync();if(m is null)return(null,null,null);var e=await _db.WorkroomEngagements.Find(x=>x.Id==m.EngagementId).FirstOrDefaultAsync();var c=e is null?null:await _db.Contracts.Find(x=>x.Id==e.ContractId).FirstOrDefaultAsync();return(m,e,c);}
     private static ContractResponse ToContract(Contract c)=>new(){Id=c.Id,Terms=c.Terms,ProviderSignedAt=c.ProviderSignedAt,ClientSignedAt=c.ClientSignedAt,Status=c.Status.ToString(),SimpleConsentStub=true};
-    private static WorkroomMilestoneResponse ToMilestone(WorkroomMilestone m,WorkroomEngagement e)=>new(){Id=m.Id,Title=m.Title,Description=m.Description,Amount=m.Amount,Currency=m.Currency,DisplayOrder=m.DisplayOrder,StartDate=m.StartDate,DueDate=m.DueDate,CompletionCriteria=m.CompletionCriteria,RemainingRevisions=m.UnlimitedRevisions?int.MaxValue:RevisionCalculator.Remaining(m.IncludedRevisionCount,m.PurchasedAdditionalRevisions,m.UsedRevisionCount),UnlimitedRevisions=m.UnlimitedRevisions,Status=m.MilestoneStatus.ToString(),EscrowStatus=m.EscrowStatus.ToString(),DeliveryClockState=ClockState(m,e),ExtensionRequested=m.ExtensionRequestedAt.HasValue,ApprovedExtensionDays=m.ApprovedExtensionDays,ReviewWindowEndsAt=m.ReviewWindowEndsAt,AutoReleaseAt=m.AutoReleaseAt,DisputeOpenedAt=m.DisputeOpenedAt,DisputeReviewEndsAt=m.DisputeReviewEndsAt,DisputeOutcome=m.DisputeOutcome?.ToString()};
+    private static WorkroomMilestoneResponse ToMilestone(WorkroomMilestone m,WorkroomEngagement e)=>new(){Id=m.Id,Title=m.Title,Description=m.Description,Amount=m.Amount,Currency=m.Currency,DisplayOrder=m.DisplayOrder,StartDate=m.StartDate,DueDate=m.DueDate,CompletionCriteria=m.CompletionCriteria,RemainingRevisions=m.UnlimitedRevisions?int.MaxValue:RevisionCalculator.Remaining(m.IncludedRevisionCount,m.PurchasedAdditionalRevisions,m.UsedRevisionCount),UnlimitedRevisions=m.UnlimitedRevisions,Status=m.MilestoneStatus.ToString(),EscrowStatus=m.EscrowStatus.ToString(),DeliveryClockState=ClockState(m,e),ExtensionRequested=m.ExtensionRequestedAt.HasValue,ApprovedExtensionDays=m.ApprovedExtensionDays,ReviewWindowEndsAt=m.ReviewWindowEndsAt,AutoReleaseAt=m.AutoReleaseAt,DisputeOpenedAt=m.DisputeOpenedAt,DisputeReviewEndsAt=m.DisputeReviewEndsAt,DisputeOutcome=m.DisputeOutcome?.ToString(),RefundedAt=m.RefundedAt};
     private static string ClockState(WorkroomMilestone m,WorkroomEngagement e){if(e.EngagementStatus==EngagementStatus.Paused)return"Paused";if(e.EngagementStatus==EngagementStatus.ClientInputRequired)return"WaitingForRequirements";if(m.EscrowStatus!=WorkroomEscrowStatus.Funded&&m.EscrowStatus!=WorkroomEscrowStatus.Released)return"WaitingForEscrow";if(m.ExtensionRequestedAt.HasValue&&m.ApprovedExtensionDays==0)return"ExtensionRequested";if(m.ApprovedExtensionDays>0)return"ExtensionApproved";if(m.DueDate is null)return"ReadyToStart";return DeliveryScheduleCalculator.ComputeState(DateTime.UtcNow,m.DueDate.Value,m.StartDate.HasValue,m.SubmittedAt.HasValue).ToString();}
     private static string NextVersion(string? previous,bool major){if(previous is null)return"1.0";var parts=previous.Split('.');var majorN=int.TryParse(parts[0],out var a)?a:1;var minor=int.TryParse(parts.ElementAtOrDefault(1),out var b)?b:0;return major?$"{majorN+1}.0":$"{majorN}.{minor+1}";}
+    /// <summary>
+    /// The escrow reference the gateway issued at fund time, read back from the
+    /// AuthorizeEscrow operation. Release and refund MUST present this exact value.
+    /// Constructing it inline happens to work against the stub — which derives its
+    /// reference from the same idempotency key — and would fail against every real
+    /// gateway, so this lookup is a hard prerequisite for M8.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">
+    /// A funded milestone with no recorded reference is corrupt state, not a user error:
+    /// escrow was authorized but the reference was lost. Fail loudly rather than send the
+    /// gateway a value it never issued.
+    /// </exception>
+    private async Task<string> EscrowReference(string milestoneId,string action)
+    {
+        var op=await _db.PaymentOperations.Find(x=>x.IdempotencyKey==$"escrow:{milestoneId}").FirstOrDefaultAsync();
+        if(op is null||string.IsNullOrWhiteSpace(op.GatewayReference))
+            throw new InvalidOperationException($"Escrow reference missing for milestone {milestoneId}; cannot {action}.");
+        return op.GatewayReference;
+    }
+
     private async Task<PaymentOperation> BeginOperation(string key,PaymentOperationType type,string? engagementId,string? milestoneId,string? payoutId,decimal amount,string currency){var existing=await _db.PaymentOperations.Find(x=>x.IdempotencyKey==key).FirstOrDefaultAsync();if(existing is not null)return existing;var op=new PaymentOperation{IdempotencyKey=key,Type=type,EngagementId=engagementId,MilestoneId=milestoneId,PayoutRequestId=payoutId,Amount=amount,Currency=currency,AttemptCount=1};await _db.PaymentOperations.InsertOneAsync(op);return op;}
     private async Task GatewaySucceeded(PaymentOperation op,string? reference){op.Status=PaymentOperationStatus.GatewaySucceeded;op.GatewayReference=reference;op.UpdatedAt=DateTime.UtcNow;await _db.PaymentOperations.ReplaceOneAsync(x=>x.Id==op.Id,op);}
     private async Task FailOperation(PaymentOperation op,string? error){op.Status=PaymentOperationStatus.Failed;op.Error=error;op.UpdatedAt=DateTime.UtcNow;await _db.PaymentOperations.ReplaceOneAsync(x=>x.Id==op.Id,op);}

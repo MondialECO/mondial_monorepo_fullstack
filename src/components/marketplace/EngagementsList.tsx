@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatPrice } from '@/lib/marketplace-format';
+import { formatDate } from '@/lib/workroom-format';
 import { statusChipClass } from '@/lib/workroom-status';
 import { useClientEngagements } from '@/hooks/queries/workroom-client';
 import { PendingProposalsSection } from '@/components/marketplace/PendingProposalsSection';
@@ -50,15 +51,6 @@ const FILTERS: { key: string; label: string; match: (e: Engagement) => boolean }
   },
   { key: 'disputed', label: 'Disputed', match: (e) => e.engagementStatus === 'Disputed' },
 ];
-
-function formatDate(value?: string | null): string {
-  if (!value) return '—';
-  return new Date(value).toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
-}
 
 export function EngagementsList({ basePath }: { basePath: string }) {
   return (

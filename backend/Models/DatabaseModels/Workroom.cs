@@ -107,9 +107,20 @@ public class WorkroomMilestone
     public DateTime? SubmittedAt { get; set; }
     public DateTime? ReviewWindowEndsAt { get; set; }
     public DateTime? AutoReleaseAt { get; set; }
+    /// <summary>Immutable history: when a dispute was first opened. Never cleared —
+    /// analytics buckets disputes by this timestamp and the UI renders it alongside the
+    /// outcome. To ask "is a dispute active right now", read <see cref="DisputeOutcome"/>
+    /// instead; gating on this field freezes escrow permanently once resolved.</summary>
     public DateTime? DisputeOpenedAt { get; set; }
     public DateTime? DisputeReviewEndsAt { get; set; }
+    /// <summary>Authoritative dispute state. <c>Open</c> blocks payment release and
+    /// auto-release; any other value (including null) means no dispute is in flight.</summary>
     public DisputeOutcome? DisputeOutcome { get; set; }
+    /// <summary>Immutable history: when escrow was refunded to the client after a
+    /// client-favoured dispute. <c>Paid</c> means "payment settled" in either direction —
+    /// set here it means refunded to the client, null it means released to the provider.
+    /// Anything summing provider revenue must exclude <c>Paid &amp;&amp; RefundedAt != null</c>.</summary>
+    public DateTime? RefundedAt { get; set; }
     public DateTime? ApprovedAt { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

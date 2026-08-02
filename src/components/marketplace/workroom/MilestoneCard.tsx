@@ -1,9 +1,18 @@
 'use client';
 
 import { useState } from 'react';
-import { CalendarClock, CheckCircle2, FileCheck2, Info } from 'lucide-react';
+import { CalendarClock, CheckCircle2, FileCheck2, Gavel, Info, ShieldAlert } from 'lucide-react';
 import { formatPrice } from '@/lib/marketplace-format';
-import { statusChipClass } from '@/lib/workroom-status';
+import { formatDate } from '@/lib/workroom-format';
+import {
+  canOpenDispute,
+  CLIENT_FAVORED,
+  disputeState,
+  isRefundedMilestone,
+  milestoneChipClass,
+  milestoneStatusLabel,
+  PROVIDER_FAVORED,
+} from '@/lib/workroom-status';
 import {
   useClientApproveMilestone,
   useClientDecideExtension,
@@ -24,11 +33,6 @@ import type { Deliverable, Milestone, RevisionRequest } from '@/types/workroom';
 
 /** States where a submitted deliverable is sitting with the client. */
 const AWAITING_CLIENT = new Set(['ClientReviewing', 'Resubmitted']);
-
-function formatDate(value?: string | null): string {
-  if (!value) return '—';
-  return new Date(value).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-}
 
 export function MilestoneCard({
   milestone,
@@ -53,6 +57,9 @@ export function MilestoneCard({
 
   const status = milestone.status;
   const money = formatPrice(milestone.amount, milestone.currency);
+  // Paid covers both settlement directions; refunded must not read as "provider paid".
+  const refunded = isRefundedMilestone(milestone);
+  const disputePhase = disputeState(milestone);
 
   // Latest submission for this milestone; earlier ones are Superseded server-side.
   const latestDeliverable = [...deliverables]
@@ -65,9 +72,9 @@ export function MilestoneCard({
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-3">
         <h3 className="min-w-0 text-lg font-semibold text-foreground">{milestone.title}</h3>
         <span
-          className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium ${statusChipClass(status)}`}
+          className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium ${milestoneChipClass(milestone)}`}
         >
-          {status}
+          {milestoneStatusLabel(milestone)}
         </span>
       </div>
 
@@ -77,8 +84,10 @@ export function MilestoneCard({
 
       {/* Metadata row: only fields that are actually present. */}
       <p className="text-xs text-muted-foreground">
+        {/* Amount is split out of the joined list so a refunded milestone can strike it
+            through — the money went back to the buyer, so the figure is no longer owed. */}
+        <span className={refunded ? 'line-through' : undefined}>Amount {money}</span>
         {[
-          `Amount ${money}`,
           milestone.dueDate ? `Due ${formatDate(milestone.dueDate)}` : null,
           milestone.approvedExtensionDays > 0
             ? `+${milestone.approvedExtensionDays}d extension`
@@ -89,7 +98,8 @@ export function MilestoneCard({
           milestone.escrowStatus ? `Escrow ${milestone.escrowStatus}` : null,
         ]
           .filter(Boolean)
-          .join(' · ')}
+          .map((part) => ` · ${part}`)
+          .join('')}
       </p>
 
       {/* Provider-requested extension — sits above state content because it's
@@ -153,6 +163,49 @@ export function MilestoneCard({
               />
             </ConfirmAction>
           </div>
+        </div>
+      )}
+
+      {/* Dispute state sits outside the status branches because a resolved dispute must
+          stay visible after the milestone moves on to ClientReviewing or Paid. Gated on
+          disputeOutcome, never disputeOpenedAt — the backend keeps that timestamp as
+          permanent history (canon §10.7), so it would never stop rendering. */}
+      {disputePhase === 'open' && (
+        <div className="mt-3 rounded-md border border-destructive/30 bg-destructive/10 p-3">
+          <p className="flex items-center gap-2 text-sm font-medium text-foreground">
+            <ShieldAlert className="size-4" />
+            Your dispute is under review
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Opened {formatDate(milestone.disputeOpenedAt)}. Your payment stays held until
+            support decides.
+            {milestone.disputeReviewEndsAt
+              ? ` Support aims to respond by ${formatDate(milestone.disputeReviewEndsAt)}.`
+              : ''}
+          </p>
+        </div>
+      )}
+
+      {disputePhase === 'resolved' && (
+        <div className="mt-3 rounded-md border border-border bg-muted p-3">
+          <p className="flex items-center gap-2 text-sm font-medium text-foreground">
+            <Gavel className="size-4" />
+            Dispute resolved
+          </p>
+          {/* Branches on disputeOutcome, not on refundedAt. Only the client-favoured path
+              writes refundedAt today, so inferring the outcome from it happened to work —
+              but that coupled the copy to a backend invariant nothing enforces. refundedAt
+              is still used below, for the one thing it actually is: a timestamp. No
+              resolution timestamp exists for a provider-favoured outcome, so that arm
+              shows only the opened date rather than inventing one. */}
+          <p className="mt-1 text-xs text-muted-foreground">
+            {milestone.disputeOutcome === CLIENT_FAVORED
+              ? `Support decided in your favour${milestone.refundedAt ? ` on ${formatDate(milestone.refundedAt)}` : ''}. ${money} was refunded to you and this milestone is closed.`
+              : milestone.disputeOutcome === PROVIDER_FAVORED
+                ? `Support decided in the provider's favour. The delivery is back with you to review, and payment can be released.`
+                : ''}{' '}
+            Dispute opened {formatDate(milestone.disputeOpenedAt)}.
+          </p>
         </div>
       )}
 
@@ -261,6 +314,11 @@ export function MilestoneCard({
                 />
               </ConfirmAction>
 
+              {/* Hidden once this milestone has any dispute outcome: the backend keys the
+                  dispute ledger entry on the milestone id, so a second open 500s. Most
+                  visible right after a provider-favoured resolution, which returns the
+                  milestone here to ClientReviewing. */}
+              {canOpenDispute(milestone) && (
               <ConfirmAction
                 label="Open dispute"
                 variant="outline"
@@ -283,6 +341,7 @@ export function MilestoneCard({
                   className="w-full rounded-md border border-input bg-background p-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 />
               </ConfirmAction>
+              )}
             </div>
           </div>
         )}
@@ -311,16 +370,17 @@ export function MilestoneCard({
           <Note>The provider is working on your revision.</Note>
         )}
 
-        {status === 'Paid' && (
+        {status === 'Paid' && !refunded && (
           <p className="flex items-center gap-2 text-sm text-success-text">
             <CheckCircle2 className="size-4" />
             Milestone complete. {money} released to the provider.
           </p>
         )}
 
-        {status === 'Disputed' && (
-          <Note>Dispute open — under review. Other actions are locked until it resolves.</Note>
-        )}
+        {/* The refund confirmation and the "dispute open" note both moved into the
+            dispute banners above: refundedAt is only ever set by a client-favoured
+            resolution, so the two always appeared together and said the same thing
+            twice. */}
 
         {status === 'Cancelled' && <Note>This milestone was cancelled.</Note>}
 

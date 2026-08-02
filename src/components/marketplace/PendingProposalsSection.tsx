@@ -7,6 +7,7 @@ import { Clock, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatPrice } from '@/lib/marketplace-format';
 import { getEngagements } from '@/lib/api-workroom';
+import { workroomErrorMessage } from '@/lib/workroom-format';
 import {
   packagePurchaseKeys,
   useAcceptProposal,
@@ -18,11 +19,8 @@ import type { Proposal } from '@/types/leads';
 /** Statuses that still need something from the client. Everything else is history. */
 const ACTIONABLE = new Set(['Submitted', 'ClientReviewing']);
 
-function apiErrorMessage(error: unknown): string {
-  const message = (error as { response?: { data?: { message?: string } } })?.response?.data
-    ?.message;
-  return message || 'Could not complete your order. Please try again.';
-}
+const apiErrorMessage = (error: unknown) =>
+  workroomErrorMessage(error, 'Could not complete your order. Please try again.');
 
 export function PendingProposalsSection({ basePath }: { basePath: string }) {
   const router = useRouter();
