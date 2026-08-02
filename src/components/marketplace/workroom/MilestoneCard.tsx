@@ -3,7 +3,12 @@
 import { useState } from 'react';
 import { CalendarClock, CheckCircle2, FileCheck2, Info, RotateCcw } from 'lucide-react';
 import { formatPrice } from '@/lib/marketplace-format';
-import { isRefundedMilestone, milestoneChipClass, milestoneStatusLabel } from '@/lib/workroom-status';
+import {
+  canOpenDispute,
+  isRefundedMilestone,
+  milestoneChipClass,
+  milestoneStatusLabel,
+} from '@/lib/workroom-status';
 import {
   useClientApproveMilestone,
   useClientDecideExtension,
@@ -266,6 +271,11 @@ export function MilestoneCard({
                 />
               </ConfirmAction>
 
+              {/* Hidden once this milestone has any dispute outcome: the backend keys the
+                  dispute ledger entry on the milestone id, so a second open 500s. Most
+                  visible right after a provider-favoured resolution, which returns the
+                  milestone here to ClientReviewing. */}
+              {canOpenDispute(milestone) && (
               <ConfirmAction
                 label="Open dispute"
                 variant="outline"
@@ -288,6 +298,7 @@ export function MilestoneCard({
                   className="w-full rounded-md border border-input bg-background p-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 />
               </ConfirmAction>
+              )}
             </div>
           </div>
         )}

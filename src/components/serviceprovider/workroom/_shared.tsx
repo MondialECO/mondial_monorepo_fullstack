@@ -1,7 +1,9 @@
-import { isRefundedMilestone } from '@/lib/workroom-status';
+import { canOpenDispute, disputeState, isRefundedMilestone } from '@/lib/workroom-status';
 import type { Engagement, Milestone } from '@/types/workroom';
 
-export { isRefundedMilestone };
+// Re-exported so SP components keep a single import surface. The predicates themselves
+// live in lib/ because the buyer-side workroom needs the identical logic.
+export { canOpenDispute, disputeState, isRefundedMilestone };
 
 export type NavigationChange = (change: Record<string, string | null>, replace?: boolean) => void;
 
@@ -70,9 +72,6 @@ export function providerActionsLocked(engagement: Engagement) {
   return terminalEngagement(engagement) || engagement.engagementStatus === 'Disputed';
 }
 
-export function canOpenDispute(milestone: Milestone) {
-  return ['Submitted', 'ClientReviewing', 'Resubmitted', 'RevisionRequested'].includes(milestone.status);
-}
 
 export function relativeDue(value?: string | null) {
   if (!value) return { label: 'No due date', urgent: false, overdue: false };

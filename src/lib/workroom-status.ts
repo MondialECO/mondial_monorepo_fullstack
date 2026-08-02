@@ -56,6 +56,36 @@ export function statusChipClass(status: string): string {
 
 /** The subset of a milestone these helpers need, so they work on partial shapes too. */
 type SettledMilestone = { status: string; refundedAt?: string | null };
+type DisputedMilestone = { status: string; disputeOutcome?: string | null };
+
+/**
+ * Presentation state of a milestone's dispute, or null if it was never disputed.
+ *
+ * `disputeOutcome` is the authoritative flag — `Open` means in flight, any other value
+ * means settled. Never derive this from `disputeOpenedAt`, which the backend keeps as
+ * immutable history and never clears (canon §10.7, commit 6289f13).
+ */
+export function disputeState(milestone: DisputedMilestone): 'open' | 'resolved' | null {
+  if (!milestone.disputeOutcome) return null;
+  return milestone.disputeOutcome === 'Open' ? 'open' : 'resolved';
+}
+
+/**
+ * A milestone carries at most one dispute for its whole lifetime. The backend keys the
+ * dispute ledger entry on `dispute:{milestoneId}` against a unique index, so a second
+ * open throws a duplicate-key error that surfaces as an unhandled 500 rather than a
+ * useful message. Once `disputeOutcome` is set — open or resolved — this milestone's
+ * dispute chapter is closed.
+ *
+ * This matters most right after a provider-favoured resolution, which returns the
+ * milestone to ClientReviewing: status alone would happily re-offer the button.
+ */
+export function canOpenDispute(milestone: DisputedMilestone): boolean {
+  if (milestone.disputeOutcome) return false;
+  return ['Submitted', 'ClientReviewing', 'Resubmitted', 'RevisionRequested'].includes(
+    milestone.status
+  );
+}
 
 /**
  * A milestone whose escrow went back to the client after a client-favoured dispute.
