@@ -3,7 +3,7 @@
 import { MessageSquare } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/app/_providers/AuthProvider";
 import { ROLE_DASHBOARD_ROUTES } from "@/lib/roles";
 import { useCreateConversationByCompany } from "@/hooks/queries/chat";
 

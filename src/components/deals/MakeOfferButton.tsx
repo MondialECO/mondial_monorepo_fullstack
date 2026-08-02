@@ -5,7 +5,7 @@ import { FileText } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import OfferComposerDialog from "./OfferComposerDialog";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/app/_providers/AuthProvider";
 import { ROLE_DASHBOARD_ROUTES } from "@/lib/roles";
 import { useCreateInvestorOffer } from "@/hooks/queries/deals";
 import type { OfferTermsInput } from "@/types/deals";
