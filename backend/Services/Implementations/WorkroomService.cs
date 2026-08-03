@@ -607,8 +607,16 @@ public sealed class WorkroomService : IWorkroomService
         var e = await Participant(actorId, engagementId); if (e is null) return ServiceProviderResult<WorkroomTask>.NotFound("Workroom not found.");
         if (!Enum.TryParse<WorkroomTaskVisibility>(r.Visibility, true, out var visibility)) return ServiceProviderResult<WorkroomTask>.Conflict("Invalid task visibility.");
         if (visibility == WorkroomTaskVisibility.ProviderPrivate && actorId != e.ProviderId) return ServiceProviderResult<WorkroomTask>.Conflict("Only providers can create private tasks.");
+        // An engagement has exactly two people in it, so an assignee outside that pair is
+        // meaningless. Any string was stored unchecked, including another user's id, which
+        // would render as a stranger's task the moment a surface displays assignee identity.
+        // Blank still defaults to the caller.
+        var assigneeId = string.IsNullOrWhiteSpace(r.AssigneeId) ? actorId : r.AssigneeId.Trim();
+        if (!string.Equals(assigneeId, e.ProviderId, StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(assigneeId, e.ClientId, StringComparison.OrdinalIgnoreCase))
+            return ServiceProviderResult<WorkroomTask>.Conflict("A task can only be assigned to a participant of this workroom.");
         var task = new WorkroomTask { EngagementId=e.Id, MilestoneId=r.MilestoneId, Title=r.Title.Trim(), Description=r.Description.Trim(),
-            AssigneeId=string.IsNullOrWhiteSpace(r.AssigneeId) ? actorId : r.AssigneeId, DueDate=r.DueDate, Visibility=visibility };
+            AssigneeId=assigneeId, DueDate=r.DueDate, Visibility=visibility };
         await _db.WorkroomTasks.InsertOneAsync(task); return ServiceProviderResult<WorkroomTask>.Ok(task, "Task created.");
     }
 
