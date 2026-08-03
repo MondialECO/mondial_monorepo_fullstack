@@ -1829,7 +1829,23 @@ The property list was re-derived programmatically over the whole reachable graph
 
 *Raw models instead of DTOs.* The six workroom collections and the four earnings ones still ship internal BSON models. The enum fixes patch the symptom; the architectural fix is real response DTOs, which would also stop leaking internal fields and give a stable contract. Deliberately not bundled — a larger, riskier change than the serialization fix needed.
 
-*`ContractTerms`'s four enums* (`PricingModel`, `DeliveryTimeUnit`, `DeliveryDayType`, `DeliveryStartRule`) are still ordinals — they live outside `Workroom.cs` and are handled by label helpers in `lib/workroom-format`, which is why `words()` guards non-string input.
+**ContractTerms shared enums — FIXED 2026-08-03 (`1903ff7`; frontend `13950a7`).** `ContractResponse.Terms` embeds the raw `ContractTerms` model rather than a remapped DTO, so `PricingModel`, `DeliveryTimeUnit`, `DeliveryDayType` and `DeliveryStartRule` were the wire contract for the contract panel and arrived as ordinals. Third instance of this pattern, now fixed the same way.
+
+**Wider blast radius than the previous two, so a full audit ran first.** These are shared enums (§4.2 — reuse, never fork) used across Service Catalog, Leads and Workroom. Every class carrying them was parsed, then every DTO was separately parsed for properties whose *type* is one of the enum-carrying models — which is how `ContractResponse` leaks them. Result:
+
+| Surface | Handling |
+|---|---|
+| `ServicePackageResponse`, `ProposalResponse`, `ClientBriefResponse` | already `.ToString()` at the DTO boundary — unaffected |
+| `ProposalVersionResponse`, `ProposalMilestoneRequest`, `MarketplacePackage` | declared `string` — unaffected |
+| **`ContractResponse.Terms`** | **raw model — the only exposure, fixed here** |
+
+`PurchaseSnapshot` is not exposed at all; `ProposalResponse` carries only a `HasPurchaseSnapshot` bool.
+
+**§4.2 ordinal stability is unaffected, and the two rules must not be confused.** Ordinal stability forbids **reordering values**, because stored BSON documents hold the ordinal — `Other` stays last, entries keep their order, new values are appended only. A `JsonConverter` changes only what JSON *emits*; MongoDB.Driver has its own serializer and still writes the integer. Tests pin both: BSON remains `Int32`, and the declared ordinals are asserted explicitly. The comment above `PricingModel` previously read "Serialized as Int32 ordinals" without naming the layer, and now states the distinction.
+
+**Frontend follow-up (`13950a7`).** `enumLabel()` already tolerated both shapes, so nothing broke — but its two branches produced *different text*: the numeric branch indexes a curated array (`"Business days"`), the string branch ran a regex capitalising every word (`"Business Days"`). Shipping the wire fix alone would have silently restyled every contract term. The string branch now resolves the enum name back to the same curated label by matching on the squashed form, so both formats render identically; the regex remains the fallback for an unknown future value. `isHourlyPricing` needed no change — `=== 'Hourly'` now matches on the live path, reviving the **Time Entries tab** and the SP hourly-rate row, which had only ever worked through the numeric fallback.
+
+**Rule:** a DTO that embeds a raw model inherits that model's enum wire format. Check for these by parsing DTO property *types*, not just by looking for enum-typed properties.
 
 ### 10.10 Client dashboard (planned M3)
 
@@ -2276,6 +2292,8 @@ It throws in the builder, **before any assertion runs**, so the failure is pure 
 ---
 
 ## Changelog
+
+**2026-08-03 — ContractTerms shared-enum serialization fixed; third and last instance of the pattern.** Commits `1903ff7` (backend + 8 tests) / `13950a7` (frontend + 17 tests). `ContractResponse.Terms` embeds the raw `ContractTerms` model, so `PricingModel`, `DeliveryTimeUnit`, `DeliveryDayType` and `DeliveryStartRule` reached the client as ordinals. Wider blast radius than the workroom and earnings fixes because these are **shared** enums (§4.2) spanning Service Catalog, Leads and Workroom, so a full audit ran first — parsing every class carrying them and, separately, every DTO whose property *type* is an enum-carrying model. `ContractResponse.Terms` was the only raw exposure; six other surfaces already map to string via `.ToString()` or declare `string`. **§4.2 ordinal stability is untouched** — that rule forbids reordering values because BSON stores the ordinal, whereas this changes only the JSON form; tests pin BSON as `Int32` and assert the declared order. Frontend: `enumLabel()`'s two branches produced different casing (`"Business days"` vs `"Business Days"`), so the wire fix alone would have restyled every contract term — the name branch now resolves back to the same curated label. `isHourlyPricing` needed no change and the **Time Entries tab** now works via the real string path. Suite **771 passed / 80 skipped** backend, **230 passed / 1 pre-existing failure** frontend. See §10.9.
 
 **2026-08-03 — Earnings-surface enum serialization fixed; one live frontend gap with it.** Commits `00e20fa` (backend + 11 tests) / `ed991bb` (frontend). Sibling of `f673521` on the financial surface: `ProviderFinancialSummaryResponse` and `StatementResponse` ship raw BSON models, so five enum properties — `FinancialTransaction.TransactionType`/`.PaymentStatus`, `PayoutRequest.Status`, `Invoice.Status`, `MaskedPayoutMethod.Rail` — were serialising as ordinals against frontend types declaring them `string`. The list was re-derived by parsing the reachable graph rather than trusting the prose, after the workroom batch showed a hand-written audit could miss one; exactly five, as recorded. These were **live UI bugs**: payouts rendered as positive amounts, every status badge rendered neutral, and labels rendered a bare digit instead of a readable name. Fixed at the enum type level so future properties are covered; `PaymentOperation`'s two enums excluded as server-internal. Verified the tests bite by removing an attribute and confirming failure before restoring. Separately, `transactionTone()` knew only the `PaymentStatus` vocabulary — 0 of 7 `InvoiceStatus` values mapped — so the wire fix alone would have left a cancelled invoice looking identical to a paid one; the payout and invoice vocabularies were added. Suite **763 passed / 80 skipped**, same single pre-existing failure. See §10.9.
 
