@@ -462,10 +462,48 @@ function GrowthTasks({ tasks, loading }: { tasks: GrowthTask[]; loading: boolean
   );
 }
 
+/**
+ * The tab's headline KPI row. Rendered with the shared SpMetricCard, always as the
+ * top-level section of a view — never nested inside a card.
+ *
+ * Deliberately NOT the same component as MetricTile below, and the difference is
+ * functional rather than stylistic: SpMetricCard shows only metricText(), so an
+ * unavailable metric reads "Not tracked yet" / "Not enough activity" with NO reason.
+ * That is fine here because every view using MetricGrid for a metric that can be
+ * permanently untracked also renders a TrackingGaps panel, which is where those reasons
+ * are explained at length.
+ *
+ * See the note on MetricTile before merging the two.
+ */
 function MetricGrid({ entries }: { entries: [string, AnalyticsMetric][] }) {
   return <section aria-label="Key metrics" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{entries.map(([label, metric]) => <SpMetricCard key={label} label={label} value={metricText(metric)} detail={<Trend metric={metric} />} />)}</section>;
 }
 
+/**
+ * A dense secondary metric, always nested inside an SpCard next to its siblings —
+ * proposal-pipeline status counts, trust-signal breakdown, rating dimensions, dispute
+ * counts.
+ *
+ * The load-bearing difference from MetricGrid: this renders metric.reason INLINE when the
+ * metric is not available, because these metrics have nowhere else to explain themselves.
+ * TrackingGaps carries a curated list of permanently-untracked metrics, and — verified
+ * across all three views that render both — that list is always DISJOINT from whatever
+ * the tiles show:
+ *
+ *   ProposalsView  tiles = 11 pipeline status counts;  gaps = view rate, response rate
+ *   ProfileView    tile  = dispute penalty;            gaps = 6 profile-traffic metrics
+ *   ServicesView   (no tiles)                          gaps = 6 service-traffic metrics
+ *
+ * So a tile's reason is never a duplicate of the panel's, and the panel never covers a
+ * tile's metric. A tile that lost its inline reason would simply stop explaining itself.
+ *
+ * DO NOT naively merge these two into one component. Either outcome is a regression:
+ * give the merged component an inline reason and ProposalsView/ProfileView print the
+ * same explanation twice for metrics that ARE in TrackingGaps; take the reason away and
+ * the tiles in ClientsView and ComparisonPanel — neither of which has a TrackingGaps
+ * sibling at all — silently drop it. If they ever are unified, the real prerequisite is
+ * deciding where reasons belong, not extracting shared markup.
+ */
 function MetricTile({ label, metric }: { label: string; metric: AnalyticsMetric }) {
   return (
     <div className="rounded-xl border border-border bg-[#F9FAFB] p-4">
