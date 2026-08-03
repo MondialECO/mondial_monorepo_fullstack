@@ -1,4 +1,4 @@
-using MongoDB.Bson;
+﻿using MongoDB.Bson;
 using MongoDB.Driver;
 using Microsoft.AspNetCore.Identity;
 using WebApp.DbContext;
@@ -15,17 +15,20 @@ namespace WebApp.Services.Implementations
         private readonly ILogger<MarketplaceService> _logger;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IProfessionalProfileStore _professionalStore;
+        private readonly IResponseRateService _responseRates;
 
         public MarketplaceService(
             MongoDbContext db,
             ILogger<MarketplaceService> logger,
             UserManager<ApplicationUser> userManager,
-            IProfessionalProfileStore professionalStore)
+            IProfessionalProfileStore professionalStore,
+            IResponseRateService responseRates)
         {
             _db = db;
             _logger = logger;
             _userManager = userManager;
             _professionalStore = professionalStore;
+            _responseRates = responseRates;
         }
 
         public async Task<ServiceProviderResult<MarketplaceListingsResponse>> GetPublishedListingsAsync(
@@ -204,6 +207,7 @@ namespace WebApp.Services.Implementations
 
                 var professional = await _professionalStore.GetByUserIdAsync(listing.ProviderId);
                 var completedOrders = await CountCompletedEngagementsAsync(listing.ProviderId, ct);
+                var medianResponseTime = await _responseRates.CalculateMedianResponseTimeAsync(listing.ProviderId);
 
                 var packages = await _db.ServicePackages
                     .Find(x => x.ServiceId == listingId)
@@ -224,7 +228,7 @@ namespace WebApp.Services.Implementations
                         IndustryFocus = listing.IndustryFocus ?? new(),
                         GeographicCoverage = listing.GeographicCoverage ?? new(),
                         DescriptionHtml = listing.Description,
-                        Provider = ToMarketplaceProviderHeader(provider, professional, completedOrders),
+                        Provider = ToMarketplaceProviderHeader(provider, professional, completedOrders, medianResponseTime),
                         Packages = packages.Select(p => ToMarketplacePackage(p)).ToList(),
                         Gallery = (listing.GalleryImages ?? new())
                             .OrderBy(x => x.DisplayOrder)
@@ -355,7 +359,8 @@ namespace WebApp.Services.Implementations
         private MarketplaceProviderHeader ToMarketplaceProviderHeader(
             ApplicationUser provider,
             ProfessionalProfileRecord? professional,
-            int completedOrders)
+            int completedOrders,
+            string? medianResponseTime)
         {
             var profile = provider.ServiceProviderProfile;
 
@@ -371,7 +376,7 @@ namespace WebApp.Services.Implementations
                 // UI reads null as "unknown" and hides the row entirely — so a brand-new
                 // provider shows nothing rather than an unflattering "0 completed".
                 CompletedOrders = completedOrders > 0 ? completedOrders : null,
-                MedianResponseTime = null
+                MedianResponseTime = medianResponseTime
             };
         }
 
