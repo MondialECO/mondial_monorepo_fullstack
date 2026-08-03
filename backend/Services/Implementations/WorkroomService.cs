@@ -7,6 +7,7 @@ using WebApp.DbContext;
 using WebApp.Models.DatabaseModels;
 using WebApp.Models.Dtos;
 using WebApp.Services.Interface;
+using WebApp.Validation;
 
 namespace WebApp.Services.Implementations;
 
@@ -51,9 +52,26 @@ public sealed class WorkroomService : IWorkroomService
         var proposal = await _db.Proposals.Find(x => x.Id == proposalId && x.Status == ProposalStatus.Accepted && x.ConversionStatus == ProposalConversionStatus.AwaitingModule4).FirstOrDefaultAsync();
         if (proposal is null) return;
 
+        // The structural guarantee: this method holds the only `new WorkroomEngagement` in
+        // the codebase, so no engagement can be created self-dealing regardless of which
+        // path accepted the proposal, including any added later.
+        //
+        // Returns rather than throwing, deliberately. SweepConversionsAsync iterates
+        // proposals with no try/catch, so an exception here would abort the whole batch and
+        // block conversion for every legitimate proposal behind this one — a poison pill,
+        // made permanent by the retry attributes on both methods. Leaving the proposal
+        // unconverted is the safe failure: no engagement, no crash, and the row stays
+        // visible in AwaitingModule4 for someone to inspect.
+        if (SelfDealingGuard.IsSelfDealing(proposal.ProviderId, proposal.ClientId))
+        {
+            _logger.LogError(
+                "Refusing to convert proposal {ProposalId}: provider and client are the same user ({UserId}). " +
+                "The entry-point guards should have rejected this, so it is either pre-existing data or a new acceptance path that bypassed them.",
+                proposal.Id, proposal.ProviderId);
+            return;
+        }
+
         var plans = proposal.MilestonePlan.OrderBy(x => x.DisplayOrder).ToList();
-        if (plans.Count > 0 && plans.Sum(x => x.Amount) != proposal.ProposedPrice)
-            throw new InvalidOperationException("Proposal milestone amounts must equal the accepted proposal price.");
         if (plans.Count == 0)
         {
             plans.Add(new ProposalMilestonePlanItem
@@ -66,6 +84,12 @@ public sealed class WorkroomService : IWorkroomService
                 DisplayOrder = 0,
             });
         }
+
+        // Validated AFTER the empty-plan fallback so the synthesised milestone is covered
+        // too — that one carries ProposedPrice verbatim, so a non-positive proposal price
+        // would otherwise create a non-positive milestone with nothing checking it.
+        var planError = MoneyPositivityRules.ValidateMilestonePlan(plans, proposal.ProposedPrice);
+        if (planError is not null) throw new InvalidOperationException(planError);
 
         var now = DateTime.UtcNow;
         var engagementId = ObjectId.GenerateNewId().ToString();
@@ -133,7 +157,17 @@ public sealed class WorkroomService : IWorkroomService
     {
         var ids = await _db.Proposals.Find(x => x.Status == ProposalStatus.Accepted && x.ConversionStatus == ProposalConversionStatus.AwaitingModule4)
             .Project(x => x.Id).Limit(200).ToListAsync();
-        foreach (var id in ids) await ConvertProposalAsync(id);
+        // Isolated per proposal. ConvertProposalAsync throws on a plan it refuses to
+        // convert (mismatched sum, non-positive amount), and an unguarded loop turned any
+        // one such row into a poison pill: the batch aborted, every legitimate proposal
+        // behind it stayed unconverted, and the retry attributes made that permanent
+        // because the same row failed again each sweep. The row stays in AwaitingModule4
+        // and is logged; the rest of the batch proceeds.
+        foreach (var id in ids)
+        {
+            try { await ConvertProposalAsync(id); }
+            catch (Exception ex) { _logger.LogError(ex, "Conversion sweep skipped proposal {ProposalId}.", id); }
+        }
     }
 
     [AutomaticRetry(Attempts = 3)]
@@ -287,6 +321,11 @@ public sealed class WorkroomService : IWorkroomService
         if (string.IsNullOrWhiteSpace(r.Title) || string.IsNullOrWhiteSpace(r.Description) || string.IsNullOrWhiteSpace(r.ClientInstructions) ||
             (r.FileIds.Count == 0 && r.ExternalLinks.Count == 0))
             return ServiceProviderResult<WorkroomDetailResponse>.Conflict("Title, description, client instructions, and at least one ready file or link are required.");
+        // External links are rendered as anchors in the client's workroom, so the scheme
+        // has to be checked server-side. The frontend already refuses javascript:/data:
+        // and friends, but that is defence in depth only — a direct API call skips it.
+        if (r.ExternalLinks.Any(link => !string.IsNullOrWhiteSpace(link) && !UrlSafety.IsHttpUrl(link)))
+            return ServiceProviderResult<WorkroomDetailResponse>.Conflict(UrlSafety.HttpUrlError);
         if (!r.AllDeliverablesIncluded || !r.FilesReviewed || !r.NoUnrelatedPrivateInfo || !r.ReadyForReview)
             return ServiceProviderResult<WorkroomDetailResponse>.Conflict("All delivery confirmations are required.");
         if (r.FileIds.Count > 0)
@@ -568,8 +607,16 @@ public sealed class WorkroomService : IWorkroomService
         var e = await Participant(actorId, engagementId); if (e is null) return ServiceProviderResult<WorkroomTask>.NotFound("Workroom not found.");
         if (!Enum.TryParse<WorkroomTaskVisibility>(r.Visibility, true, out var visibility)) return ServiceProviderResult<WorkroomTask>.Conflict("Invalid task visibility.");
         if (visibility == WorkroomTaskVisibility.ProviderPrivate && actorId != e.ProviderId) return ServiceProviderResult<WorkroomTask>.Conflict("Only providers can create private tasks.");
+        // An engagement has exactly two people in it, so an assignee outside that pair is
+        // meaningless. Any string was stored unchecked, including another user's id, which
+        // would render as a stranger's task the moment a surface displays assignee identity.
+        // Blank still defaults to the caller.
+        var assigneeId = string.IsNullOrWhiteSpace(r.AssigneeId) ? actorId : r.AssigneeId.Trim();
+        if (!string.Equals(assigneeId, e.ProviderId, StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(assigneeId, e.ClientId, StringComparison.OrdinalIgnoreCase))
+            return ServiceProviderResult<WorkroomTask>.Conflict("A task can only be assigned to a participant of this workroom.");
         var task = new WorkroomTask { EngagementId=e.Id, MilestoneId=r.MilestoneId, Title=r.Title.Trim(), Description=r.Description.Trim(),
-            AssigneeId=string.IsNullOrWhiteSpace(r.AssigneeId) ? actorId : r.AssigneeId, DueDate=r.DueDate, Visibility=visibility };
+            AssigneeId=assigneeId, DueDate=r.DueDate, Visibility=visibility };
         await _db.WorkroomTasks.InsertOneAsync(task); return ServiceProviderResult<WorkroomTask>.Ok(task, "Task created.");
     }
 

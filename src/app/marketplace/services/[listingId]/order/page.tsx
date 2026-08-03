@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { AlertCircle, ChevronLeft } from 'lucide-react';
+import type { AxiosError } from 'axios';
 import AuthGuard from '@/components/layout/AuthGuard';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -256,8 +257,16 @@ function MarketplaceOrderContent() {
             onBack={() => goToStep(2)}
             onSubmit={handleSubmit}
             isSubmitting={purchase.isPending}
+            /* Prefer the server's explanation over the generic retry prompt. Some
+               refusals — buying your own service, most obviously — can never succeed
+               on retry, so "please try again" is worse than useless for them. Falls
+               back to the generic text when the server sent no message (network
+               failure, 500). */
             errorMessage={
-              purchase.isError ? 'We could not place your order. Please try again.' : null
+              purchase.isError
+                ? (purchase.error as AxiosError<{ message?: string }>)?.response?.data
+                    ?.message ?? 'We could not place your order. Please try again.'
+                : null
             }
           />
         )}

@@ -163,11 +163,16 @@ export default function UniversalPhase1() {
           </div>
         )}
 
-        {/* Success Message */}
+        {/* Success Message.
+            Uses success-light/success-text, NOT success-bg/success-border/success: those
+            three have no --color-* mapping in @theme inline, so Tailwind generates no
+            utility for them and they emit nothing. Note this banner is currently
+            unreachable — setSuccessMessage is only ever called to clear, never to set —
+            so the styling is correct for whoever wires it rather than a live fix. */}
         {successMessage && (
-          <div className="mb-6 p-4 bg-success-bg border border-success-border rounded-lg flex gap-3">
-            <CheckCircle2 className="text-success flex-shrink-0 mt-0.5" size={20} />
-            <p className="text-sm text-success">{successMessage}</p>
+          <div className="mb-6 p-4 bg-success-light border border-success-text/20 rounded-lg flex gap-3">
+            <CheckCircle2 className="text-success-text flex-shrink-0 mt-0.5" size={20} />
+            <p className="text-sm text-success-text">{successMessage}</p>
           </div>
         )}
 
@@ -219,7 +224,10 @@ export default function UniversalPhase1() {
                       {verifying === key ? (
                         <Loader2 className="text-muted-foreground animate-spin" size={20} />
                       ) : isCompleted ? (
-                        <CheckCircle2 className="text-success" size={20} />
+                        // success-text, not the unmapped bare `success` this used to
+                        // carry, which emitted nothing and left the tick inheriting the
+                        // row's colour.
+                        <CheckCircle2 className="text-success-text" size={20} />
                       ) : (
                         <ChevronRight className="text-muted-foreground" size={20} />
                       )}

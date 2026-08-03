@@ -84,6 +84,17 @@ public class ServiceCatalogService : IServiceCatalogService
         if (!string.IsNullOrWhiteSpace(request.ServiceType) && !ServiceTypeLookup.IsValidServiceType(category, request.ServiceType))
             return ServiceProviderResult<ServiceListingResponse>.Conflict($"'{request.ServiceType}' is not an approved sub-category for {category}.");
 
+        // Defence in depth behind the controller's role attribute. A role claim proves this
+        // JWT belongs to someone in the ServiceProvider bucket; it does not prove they
+        // completed and passed verification, and a suspended provider keeps the claim. The
+        // marketplace grid filters listings on Status == Published only, never on provider
+        // verification, so an unverified account's published listing would surface publicly.
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user is null) return ServiceProviderResult<ServiceListingResponse>.NotFound("Service provider profile not found.");
+        var record = await _spStore.GetByUserIdAsync(userId) ?? SpProfileSplitMapper.ToServiceProviderRecord(user);
+        if (record.VerificationStatus != ServiceProviderVerificationStatus.Verified)
+            return ServiceProviderResult<ServiceListingResponse>.Conflict("A verified provider profile is required before creating a service.");
+
         // Enforce lifetime cap: each provider may create a maximum of 4 ServiceListings total (across all statuses)
         var existingCount = await _db.ServiceListings.CountDocumentsAsync(l => l.ProviderId == userId);
         if (existingCount >= 4)
@@ -217,7 +228,11 @@ public class ServiceCatalogService : IServiceCatalogService
         // Required-before-publish (hard blocks, §6.2).
         var missing = new List<string>();
         if (string.IsNullOrWhiteSpace(pkg.PackageTitle)) missing.Add("title");
-        if (pkg.Price <= 0) missing.Add("price > 0");
+        // Every price that reaches a buyer's total, not just the base one — see
+        // MoneyPositivityRules. Gated at publish rather than on save, matching how the
+        // base price has always worked: a draft mid-edit may legitimately hold a
+        // placeholder, and only Published packages are meant to be sellable.
+        missing.AddRange(MoneyPositivityRules.MissingMoneyRequirements(pkg));
         if (string.IsNullOrWhiteSpace(pkg.Currency)) missing.Add("currency");
         if (pkg.DeliveryTimeValue <= 0) missing.Add("delivery time");
         if (!pkg.UnlimitedRevisions && pkg.RevisionRequestWindowDays <= 0) missing.Add("a revision policy (request window)");

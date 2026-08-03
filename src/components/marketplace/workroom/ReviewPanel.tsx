@@ -40,7 +40,7 @@ function StarRow({
           <Star
             className={`size-5 ${
               n <= value
-                ? 'fill-amber-400 text-amber-400'
+                ? 'fill-rating text-rating'
                 : 'text-muted-foreground/40'
             }`}
           />

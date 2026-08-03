@@ -1,3 +1,4 @@
+﻿using System.Text.Json.Serialization;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
@@ -34,6 +35,12 @@ public enum PackageType
     Custom, // reserved for Module-3 custom offers; excluded from the public package table
 }
 
+// Shared across Service Catalog, Leads and Workroom (canon §4.2 — reuse, never fork).
+// The converter is a JSON-layer concern only: ContractTerms reaches the client raw on
+// ContractResponse.Terms, so without it these arrive as ordinals against frontend types
+// expecting names. It does NOT touch value ORDER, which is what the §4.2 ordinal-stability
+// rule protects — BSON still persists the ordinal, so append-only still applies.
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum DeliveryTimeUnit
 {
     Hours,
@@ -41,12 +48,14 @@ public enum DeliveryTimeUnit
     Weeks,
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum DeliveryDayType
 {
     BusinessDays,
     CalendarDays,
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum DeliveryStartRule
 {
     AfterOrderConfirmation,

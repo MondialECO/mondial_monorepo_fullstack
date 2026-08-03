@@ -103,9 +103,9 @@ internal static class ServiceProviderLimits
     public static bool IsAllowedPricingModel(string? v) =>
         !string.IsNullOrWhiteSpace(v) && AllowedPricingModels.Contains(v.Trim());
 
-    public static bool BeValidHttpUrl(string? url) =>
-        Uri.TryCreate(url, UriKind.Absolute, out var u) &&
-        (u.Scheme == Uri.UriSchemeHttp || u.Scheme == Uri.UriSchemeHttps);
+    // Delegates so there is one definition of "a storable URL" shared with the Leads and
+    // Workroom link fields, and one place to keep in step with the frontend guard.
+    public static bool BeValidHttpUrl(string? url) => UrlSafety.IsHttpUrl(url);
 
     public static bool NoBlankEntries(IEnumerable<string> items) =>
         items.All(v => !string.IsNullOrWhiteSpace(v));

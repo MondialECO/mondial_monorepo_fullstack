@@ -1,4 +1,4 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using WebApp.Models;
@@ -19,7 +19,10 @@ namespace WebApp.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/service-provider")]
-[Authorize]
+// Provider-owned profile, trust, portfolio and capacity surfaces only. See the note on
+// ServiceCatalogController: a role claim is not verification, so service-layer
+// VerificationStatus checks stay where they are.
+[Authorize(Roles = "ServiceProvider")]
 public class ServiceProviderController : ControllerBase
 {
     private readonly IServiceProviderService _service;

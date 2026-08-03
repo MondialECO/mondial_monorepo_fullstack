@@ -1,10 +1,11 @@
-using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Identity;
 using Hangfire;
 using MongoDB.Driver;
 using WebApp.DbContext;
 using WebApp.Models.DatabaseModels;
 using WebApp.Models.Dtos;
 using WebApp.Services.Interface;
+using WebApp.Validation;
 
 namespace WebApp.Services.Implementations;
 
@@ -277,6 +278,8 @@ public class LeadsService : ILeadsService
         if (p is null) return ServiceProviderResult<ProposalResponse>.NotFound("Proposal not found.");
         if (!ProposalStateMachine.CanTransition(p.Status, ProposalStatus.Accepted)) return TransitionConflict<ProposalResponse>(p.Status, ProposalStatus.Accepted);
         if (p.ExpiresAt <= DateTime.UtcNow) return ServiceProviderResult<ProposalResponse>.Conflict("An expired proposal cannot be accepted.");
+        if (SelfDealingGuard.IsSelfDealing(p.ProviderId, p.ClientId))
+            return ServiceProviderResult<ProposalResponse>.Conflict(SelfDealingGuard.Message);
         if (!r.ExplicitlyConfirmed || !r.EscrowAuthorized) return ServiceProviderResult<ProposalResponse>.Conflict("Client confirmation and escrow authorization are required.");
         p.Status = ProposalStatus.Accepted; p.AcceptedAt = p.UpdatedAt = DateTime.UtcNow; p.AcceptedBy = clientId;
         p.AcceptanceTrigger = "ClientConfirmed"; p.EscrowStatus = ProposalEscrowStatus.Authorized;
@@ -296,6 +299,14 @@ public class LeadsService : ILeadsService
         var provider = await _users.FindByIdAsync(listing.ProviderId); var client = await _users.FindByIdAsync(clientId);
         await HydrateProviderViewAsync(provider);
         if (provider?.ServiceProviderProfile is null || client is null) return ServiceProviderResult<PackagePurchaseResponse>.Conflict("Provider or client account is unavailable.");
+        // Hard stop, deliberately NOT a `failures.Add(...)` entry like the eleven gates
+        // below. A failed gate does not reject the purchase — it routes to the manual
+        // path, creating a Submitted proposal for the provider to approve. When buyer and
+        // provider are the same person that is not a barrier: they would approve their own
+        // order and continue. Self-dealing is also not a condition that can be remedied by
+        // retrying with better input, which is what the gate list is for.
+        if (SelfDealingGuard.IsSelfDealing(listing.ProviderId, clientId))
+            return ServiceProviderResult<PackagePurchaseResponse>.Conflict(SelfDealingGuard.Message);
         var selected = pkg.AddOns.Where(a => a.Enabled && r.SelectedAddOnNames.Contains(a.Name, StringComparer.OrdinalIgnoreCase))
             .Select(a => new SelectedAddOnSnapshot { Name = a.Name, Price = a.Price, DeliveryTimeAdjustmentDays = a.DeliveryTimeAdjustmentDays }).ToList();
         var answers = ToAnswers(r.Requirements); var requiredIds = pkg.RequirementsTemplate.Where(x => x.Required).Select(x => x.FieldId).ToHashSet();
@@ -318,6 +329,22 @@ public class LeadsService : ILeadsService
         if (r.ComplianceHold) failures.Add("Compliance hold");
         if (!r.FinalSummaryShown) failures.Add("Final summary was not confirmed");
         var final = pkg.Price + selected.Sum(x => x.Price); var now = DateTime.UtcNow; var auto = failures.Count == 0;
+        // Load-bearing, not merely belt-and-braces. The publish gate cannot be relied on
+        // here: an unpublished package does NOT reject — "Package is not active" is a
+        // `failures` entry, which routes to the manual path and can still become a real
+        // proposal once the provider approves it. So a draft package carrying a negative
+        // add-on reaches this line without ever passing publish validation.
+        //
+        // Both conditions are needed. `final <= 0` alone would miss the more profitable
+        // version: a -900 add-on on a 1000 package leaves a positive 100 total while
+        // quietly cutting the 12% commission base by 108.
+        //
+        // A hard Conflict rather than a `failures` entry, for the same reason as the
+        // self-dealing guard — routing this to manual approval would let it through.
+        if (selected.Any(a => a.Price < 0))
+            return ServiceProviderResult<PackagePurchaseResponse>.Conflict("This package has an invalid add-on price and cannot be ordered.");
+        if (final <= 0)
+            return ServiceProviderResult<PackagePurchaseResponse>.Conflict("This package has an invalid total price and cannot be ordered.");
         var faqs = await _db.ServiceFAQs.Find(x => x.ServiceId == listing.Id && x.Status == CatalogStatus.Published).ToListAsync();
         var p = new Proposal
         {
@@ -363,6 +390,16 @@ public class LeadsService : ILeadsService
     {
         var p = await ProviderProposal(providerId, proposalId);
         if (p is null) return ServiceProviderResult<ProposalResponse>.NotFound("Proposal not found.");
+        // Same eligibility bar ValidateSubmission applies to a negotiated proposal. Without
+        // it this was the one way an unverified or suspended provider could still take on
+        // paid work: a purchase against their package fails the "Provider is unavailable"
+        // gate, which routes to this manual path rather than rejecting, and approving here
+        // pushed it straight on to client acceptance.
+        var reviewer = await _users.FindByIdAsync(providerId);
+        await HydrateProviderViewAsync(reviewer);
+        var reviewerProfile = reviewer?.ServiceProviderProfile;
+        if (reviewerProfile is null || reviewerProfile.VerificationStatus != ServiceProviderVerificationStatus.Verified || !IsAvailable(reviewerProfile))
+            return ServiceProviderResult<ProposalResponse>.Conflict("The provider account is not eligible for paid work or is currently at capacity.");
         if (p.ProposalSource != ProposalSource.PublishedPackagePurchase || p.AcceptanceTrigger != "ProviderApprovalRequired" || p.Status != ProposalStatus.Submitted)
             return ServiceProviderResult<ProposalResponse>.Conflict("This proposal is not awaiting provider approval.");
         p.Status = accept ? ProposalStatus.ClientReviewing : ProposalStatus.Declined;
@@ -394,11 +431,19 @@ public class LeadsService : ILeadsService
     private async Task<string?> ValidateSubmission(string providerId, Proposal p, ClientBrief? brief)
     {
         if (brief is null || brief.Status != ClientBriefStatus.Open) return "This opportunity is no longer accepting proposals.";
+        // Caught here as well as at acceptance so a provider is told immediately, rather
+        // than composing a full proposal against their own brief and only being refused
+        // at the very end.
+        if (SelfDealingGuard.IsSelfDealing(providerId, brief.ClientId)) return SelfDealingGuard.Message;
         if (p.ExpiresAt is null || p.ExpiresAt <= DateTime.UtcNow) return "Select a future proposal expiration date.";
         if (string.IsNullOrWhiteSpace(p.Title) || string.IsNullOrWhiteSpace(p.CoverMessage) || p.ProposedPrice <= 0 ||
             p.DeliveryTimeValue <= 0 || p.Deliverables.Count == 0 || p.IncludedRevisionCount < 0)
             return "Complete the title, cover message, price, delivery duration, deliverables, and revision policy.";
         if (!p.Currency.Equals(brief.Currency, StringComparison.OrdinalIgnoreCase)) return "Proposal currency must match the brief currency.";
+        // Caught here so the provider is told at submission. Conversion enforces the same
+        // rule, but that runs in a background job whose failure the provider never sees,
+        // and it would leave an accepted proposal permanently stuck.
+        if (MoneyPositivityRules.HasNonPositiveMilestone(p.MilestonePlan)) return MoneyPositivityRules.NonPositiveMilestoneMessage;
         var user = await _users.FindByIdAsync(providerId);
         await HydrateProviderViewAsync(user);
         var profile = user?.ServiceProviderProfile;
@@ -414,6 +459,10 @@ public class LeadsService : ILeadsService
             !TryEnum<DeliveryStartRule>(r.DeliveryStartRule, out var startRule)) return "One or more proposal options are invalid.";
         if (r.ProposedPrice < 0 || r.IncludedRevisionCount < 0 || r.RevisionRequestWindowDays < 0 || r.WeeklyHourLimit < 0) return "Price, hour limits, and revision values cannot be negative.";
         if (r.UnlimitedRevisions && !r.ConfirmUnlimitedRevisions) return "Unlimited revisions require explicit confirmation.";
+        // Attachments stay contract-compatible opaque strings (§15.1) — a storage token is
+        // still legal. But once a value is shaped like a link, something downstream will
+        // render it as one, so it has to be a real http(s) URL.
+        if (Normalize(r.Attachments).Any(a => !UrlSafety.IsSafeOpaqueOrHttpUrl(a))) return UrlSafety.HttpUrlError;
         p.ServiceId = r.ServiceId ?? p.ServiceId; p.PackageId = r.PackageId ?? p.PackageId; p.ProposalSource = source;
         p.Title = r.Title?.Trim() ?? ""; p.CoverMessage = r.CoverMessage?.Trim() ?? ""; p.ProposedPrice = r.ProposedPrice;
         p.Currency = Currency(r.Currency); p.PricingType = pricing; p.WeeklyHourLimit = pricing == PricingModel.Hourly ? r.WeeklyHourLimit : null; p.DeliveryTimeValue = r.DeliveryTimeValue; p.DeliveryTimeUnit = unit;

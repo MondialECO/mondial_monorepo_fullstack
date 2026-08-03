@@ -99,6 +99,22 @@ export function canOpenDispute(milestone: DisputedMilestone): boolean {
 }
 
 /**
+ * States where a submitted deliverable is sitting with the client, waiting on them.
+ *
+ * This is the correct gate for anything about the auto-release clock, and field presence
+ * is NOT a substitute. `SubmitDeliverableAsync` sets `ReviewWindowEndsAt` and
+ * `AutoReleaseAt` once and nothing ever clears them, so both stay populated for the rest
+ * of the milestone's life — including after it is Paid, Cancelled or Disputed. Gating on
+ * presence therefore shows a "payment releases automatically on [date]" warning, with a
+ * date already in the past, on milestones where nothing of the kind will happen.
+ *
+ * These two states are exactly the set `SweepTimedRulesAsync` auto-releases, so the
+ * warning renders when and only when it is true. Shared rather than declared per surface
+ * because the buyer card and the SP panel must agree — they diverged once already.
+ */
+export const AWAITING_CLIENT = new Set(['ClientReviewing', 'Resubmitted']);
+
+/**
  * A milestone whose escrow went back to the client after a client-favoured dispute.
  * The backend broadens `Paid` to mean "payment settled" in either direction — released
  * to the provider OR refunded to the client — so `status === 'Paid'` alone no longer

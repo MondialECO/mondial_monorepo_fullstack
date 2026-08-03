@@ -234,7 +234,7 @@ export default function IdentityVerification() {
                 >
                   {frontPhoto ? (
                     <div className="flex items-center justify-center gap-2">
-                      <CheckCircle2 className="w-5 h-5 text-success" />
+                      <CheckCircle2 className="w-5 h-5 text-success-text" />
                       <span className="text-sm font-medium text-foreground">{frontPhoto.name}</span>
                     </div>
                   ) : (
@@ -269,7 +269,7 @@ export default function IdentityVerification() {
                   >
                     {backPhoto ? (
                       <div className="flex items-center justify-center gap-2">
-                        <CheckCircle2 className="w-5 h-5 text-success" />
+                        <CheckCircle2 className="w-5 h-5 text-success-text" />
                         <span className="text-sm font-medium text-foreground">{backPhoto.name}</span>
                       </div>
                     ) : (

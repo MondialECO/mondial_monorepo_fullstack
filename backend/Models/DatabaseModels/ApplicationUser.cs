@@ -1,5 +1,6 @@
 ﻿using AspNetCore.Identity.MongoDbCore.Models;
 using Microsoft.AspNetCore.Identity;
+using System.Text.Json.Serialization;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using System.Collections.Generic;
@@ -608,9 +609,16 @@ namespace WebApp.Models.DatabaseModels
     }
 
     // Pricing arrangements a provider is willing to work under (Stage 2). Locked
-    // D-2 decision audit values. Serialized as Int32 ordinals like ServiceCategory,
+    // D-2 decision audit values. Persisted as Int32 ordinals in BSON like ServiceCategory,
     // so Other MUST stay last and existing entries MUST keep their order to keep
     // persisted ordinals stable across releases.
+    //
+    // The JSON converter below does not weaken that rule — the two are different layers.
+    // Ordinal stability is about never REORDERING values, because stored documents hold
+    // the ordinal. Serialising the NAME over JSON changes only what the client reads;
+    // MongoDB.Driver has its own serializer and still writes the ordinal. Appending a
+    // value stays safe, reordering stays forbidden, exactly as before.
+    [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum PricingModel
     {
         FixedPrice,

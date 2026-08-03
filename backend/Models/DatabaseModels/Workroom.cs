@@ -1,4 +1,4 @@
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
@@ -35,12 +35,30 @@ public enum WorkroomTaskVisibility { ClientVisible, ProviderPrivate, SharedTeam 
 public enum ClientInputType { File, Decision, Feedback, Approval, Clarification, Meeting }
 [JsonConverter(typeof(JsonStringEnumConverter))]
 public enum ClientInputStatus { Requested, Supplied, Cancelled }
+// The five enums below reach the client raw, exactly like the workroom set above:
+// ProviderFinancialSummaryResponse returns FinancialTransaction, PayoutRequest, Invoice
+// and ProviderFinancialSettings as the BSON models themselves, and StatementResponse
+// returns FinancialTransaction, so these declarations are the wire contract. Unannotated
+// they serialised as ordinals while types/workroom.ts declares the fields `string`, so
+// every comparison against them silently never matched — badges rendered neutral, payout
+// amounts rendered positive, and labels rendered a bare digit.
+//
+// Type-level, not per-property, for the same reason as the workroom batch: a per-property
+// audit there missed FeedbackCollectionStatus. Anything that later uses one of these types
+// is covered automatically.
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum FinancialTransactionType { EscrowFunded, MilestoneApproved, PaymentReleased, CommissionCharged, PayoutRequested, PayoutProcessing, PayoutCompleted, PayoutFailed, Refund, Adjustment, DisputeHold, HoldReleased }
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum PaymentStatus { Pending, Processing, Completed, Failed, OnHold, Refunded }
+// PaymentOperation is server-internal — never returned on any response — so its two enums
+// are deliberately left unannotated rather than swept in for symmetry.
 public enum PaymentOperationType { AuthorizeEscrow, ReleaseEscrow, RefundEscrow, CreatePayout }
 public enum PaymentOperationStatus { Pending, GatewaySucceeded, Completed, Failed, ReconciliationRequired }
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum PayoutStatus { Draft, Requested, UnderReview, Processing, Completed, Failed, Cancelled, OnHold }
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum PayoutRail { StripeConnect, Wise, BankTransfer, PayPal }
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum InvoiceStatus { Draft, Generated, Issued, Paid, Cancelled, Corrected, CreditNote }
 [JsonConverter(typeof(JsonStringEnumConverter))]
 public enum ReviewVisibility { Public, Private }
@@ -258,7 +276,12 @@ public class WorkroomFile
     [BsonRepresentation(BsonType.ObjectId)] public string? MilestoneId { get; set; }
     public string UploadedBy { get; set; } = "";
     public string OriginalName { get; set; } = "";
-    public string StoragePath { get; set; } = "";
+    /// <summary>Server-internal physical location. <c>WorkroomDetailResponse</c> returns this
+    /// model raw, so without <c>[JsonIgnore]</c> every participant received the storage path
+    /// for every file in the engagement. Downloads go through the authorised
+    /// <c>files/{id}/download</c> endpoint, which resolves the path server-side; no client
+    /// needs it. JSON only — MongoDB.Driver has its own serializer and still persists it.</summary>
+    [JsonIgnore] public string StoragePath { get; set; } = "";
     public string ContentType { get; set; } = "";
     public long SizeBytes { get; set; }
     public WorkroomFileStatus Status { get; set; }
