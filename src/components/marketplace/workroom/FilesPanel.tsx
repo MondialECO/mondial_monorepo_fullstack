@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react';
 import { Download, Loader2, Paperclip, Upload } from 'lucide-react';
 import { statusChipClass } from '@/lib/workroom-status';
-import { downloadWorkroomFile, isFileDownloadable, workroomFileStatusLabel } from '@/lib/workroom-files';
+import { downloadWorkroomFile, isFileDownloadable } from '@/lib/workroom-files';
 import { useClientUploadFile, workroomErrorMessage } from '@/hooks/queries/workroom-client';
 import type { WorkroomDetail } from '@/types/workroom';
 
@@ -82,9 +82,9 @@ export function FilesPanel({ detail }: { detail: WorkroomDetail }) {
                 </p>
               </div>
               <span
-                className={`shrink-0 rounded-full px-2 py-1 text-xs font-medium ${statusChipClass(workroomFileStatusLabel(f.status))}`}
+                className={`shrink-0 rounded-full px-2 py-1 text-xs font-medium ${statusChipClass(f.status)}`}
               >
-                {workroomFileStatusLabel(f.status)}
+                {f.status}
               </span>
             </li>
           ))}

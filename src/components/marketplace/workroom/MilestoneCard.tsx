@@ -82,6 +82,17 @@ export function MilestoneCard({
         <p className="mb-2 text-sm text-muted-foreground">{milestone.description}</p>
       )}
 
+      {/* The bar the delivery will be judged against. Persistent rather than tied to the
+          review state: a buyer needs it before funding, not only once something has been
+          submitted to approve. Styled like the deliverable's client-instructions block
+          further down rather than as a new pattern. */}
+      {milestone.completionCriteria && (
+        <div className="mb-2 rounded bg-muted p-2">
+          <p className="text-xs font-medium text-foreground">Completion criteria</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{milestone.completionCriteria}</p>
+        </div>
+      )}
+
       {/* Metadata row: only fields that are actually present. */}
       <p className="text-xs text-muted-foreground">
         {/* Amount is split out of the joined list so a refunded milestone can strike it
@@ -234,6 +245,28 @@ export function MilestoneCard({
 
         {AWAITING_CLIENT.has(status) && (
           <div className="space-y-3">
+            {/* Gated on AWAITING_CLIENT rather than on field presence alone, which is what
+                the SP panel does. The two are not equivalent: SubmitDeliverableAsync sets
+                these once and nothing ever clears them, so presence stays true after the
+                milestone is Paid. SweepTimedRulesAsync only auto-releases ClientReviewing
+                and Resubmitted milestones, so this renders exactly when the warning is
+                true — telling a buyer their payment is about to release automatically
+                after they already approved would be worse than not showing it at all. */}
+            {milestone.autoReleaseAt && (
+              <div className="rounded-md border border-warning/30 bg-warning/10 p-3">
+                <p className="flex items-center gap-2 text-sm font-medium text-foreground">
+                  <CalendarClock className="size-4" />
+                  Approve or request changes by {formatDate(milestone.autoReleaseAt)}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  If you do neither, {money} is released to the provider automatically on
+                  that date.
+                  {milestone.reviewWindowEndsAt
+                    ? ` Your review window closes ${formatDate(milestone.reviewWindowEndsAt)}.`
+                    : ''}
+                </p>
+              </div>
+            )}
             {latestDeliverable ? (
               <div className="rounded-md border border-border bg-card p-3">
                 <p className="flex items-center gap-2 text-sm font-medium text-foreground">

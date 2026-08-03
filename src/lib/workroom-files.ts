@@ -2,44 +2,18 @@ import api from '@/lib/axios';
 import type { WorkroomFile } from '@/types/workroom';
 
 /**
- * `WorkroomFileStatus.Ready` — index 3 in
- * `backend/Models/DatabaseModels/Workroom.cs:14`
- * (Selected, Uploading, Scanning, Ready, Failed, Archived, Restricted).
- *
- * The numeric form is what actually arrives: `WorkroomDetailResponse.Files` is
- * `List<WorkroomFile>`, the raw BSON model, so its enum serialises as an integer rather
- * than a name. `status === 'Ready'` is therefore never true at runtime — the same defect
- * fixed for ContractTerms in 0fb0739. Both forms are accepted so this keeps working if
- * the wire format is corrected later.
- */
-const READY_ORDINAL = 3;
-const FILE_STATUS = [
-  'Selected',
-  'Uploading',
-  'Scanning',
-  'Ready',
-  'Failed',
-  'Archived',
-  'Restricted',
-] as const;
-
-/** Display label for a file status, tolerating the integer the API actually sends. */
-export function workroomFileStatusLabel(status: string | number): string {
-  if (typeof status === 'number') return FILE_STATUS[status] ?? 'Unknown';
-  const index = Number(status);
-  if (status.length > 0 && Number.isInteger(index)) return FILE_STATUS[index] ?? 'Unknown';
-  return status || 'Unknown';
-}
-
-/**
  * Only completed, scanned files are offered for download. Anything still uploading or
  * scanning is incomplete, and Failed/Restricted files are withheld deliberately.
+ *
+ * The ordinal tolerance this used to carry is gone: WorkroomFileStatus serialises as its
+ * name since f673521, so `status` is a real enum name and the numeric form can no longer
+ * occur. This is a UI affordance check only — the download endpoint re-checks Ready
+ * server-side, so bypassing the UI does not reach a Scanning or Restricted file.
  */
 export function isFileDownloadable(
   file: Pick<WorkroomFile, 'status' | 'storagePath'>
 ): boolean {
-  if (!file.storagePath) return false;
-  return file.status === READY_ORDINAL || file.status === 'Ready';
+  return !!file.storagePath && file.status === 'Ready';
 }
 
 /**

@@ -1784,6 +1784,29 @@ Direct static access to `/uploads/documents` is blocked by middleware placed bef
 
 **Superseded — what this replaced.** Prior to `3b11c98`, download relied on `app.UseStaticFiles()` serving `wwwroot/uploads/documents/{guid}.ext` with no authentication or authorization: anyone holding a `storagePath` value, which was exposed in API responses, could fetch any workroom file including `providerPrivate: true` ones. That was a deliberate Path A tradeoff taken on 2026-08-03 and closed the same day.
 
+**Enum wire format on the raw workroom models (2026-08-03, commit `f673521`; frontend `25780ec`).** `WorkroomDetailResponse` returns six BSON model classes directly — `Deliverables`, `RevisionRequests`, `Tasks`, `ClientInputRequests`, `Files`, `Review` — with no DTO in between, so those enum declarations *are* the wire contract. System.Text.Json serialises an unannotated enum as its integer ordinal while every frontend consumer reads a string, so the comparisons silently never matched. Same root cause as the `ChatMessage` ObjectId defect (`99bb33f`), different field type.
+
+Fixed by `[JsonConverter(typeof(JsonStringEnumConverter))]` on the enum **type** declarations in `Workroom.cs`, not per property. Eleven properties are affected:
+
+| Model | Properties |
+|---|---|
+| `Deliverable` | `DeliverableStatus` |
+| `RevisionRequest` | `ScopeClassification`, `FeedbackCollectionStatus`, `RevisionRequestStatus` |
+| `WorkroomTask` | `Visibility`, `Status` |
+| `ClientInputRequest` | `Type`, `Status` |
+| `WorkroomFile` | `Status` |
+| `Review` | `Visibility`, `VerificationStatus` |
+
+`RevisionRequest.FeedbackCollectionStatus` was **missed by an earlier per-property audit**, which reported ten. That miss is the reason the converter is applied at type level: any current or future property using one of these enums is covered automatically. 17 tests assert each field renders as a name, plus a theory over every member of every in-scope enum so that inserting a member at the front of a declaration — shifting every ordinal — cannot pass unnoticed.
+
+JSON only. MongoDB.Driver has its own serializers and ignores System.Text.Json attributes, so stored documents are unchanged.
+
+**Still open — two separate items.**
+
+*Raw models instead of DTOs.* The six collections above still ship internal BSON models. The enum fix patches the symptom; the architectural fix is real response DTOs, which would also stop leaking internal fields and give a stable contract. Deliberately not bundled — it is a larger, riskier change than the serialization fix needed.
+
+*The same defect on the earnings surface.* `ProviderFinancialSummaryResponse` and `StatementResponse` return raw `FinancialTransaction`, `PayoutRequest` and `Invoice`, so `FinancialTransactionType`, `PaymentStatus`, `PayoutStatus`, `InvoiceStatus` and `PayoutRail` still serialise as ordinals while `types/workroom.ts` declares them `string`. This was assumed DTO-mapped when the workroom batch was scoped and is not; it was found during that batch and left untouched rather than silently widening scope. `ContractTerms`'s four enums (`PricingModel`, `DeliveryTimeUnit`, `DeliveryDayType`, `DeliveryStartRule`) are likewise still ordinals — they live outside `Workroom.cs` and are handled by label helpers in `lib/workroom-format`.
+
 ### 10.10 Client dashboard (planned M3)
 
 **Route:** `/dashboard/[role]/engagements`.

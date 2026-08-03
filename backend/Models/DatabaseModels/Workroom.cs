@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
@@ -7,14 +8,32 @@ public enum EngagementStatus { ContractPending, EscrowPending, ReadyToStart, Act
 public enum WorkroomEscrowStatus { NotFunded, AuthorizationPending, Funded, ReleasePending, Released, Refunded, OnHold, Failed }
 public enum ContractStatus { Pending, Signed, Voided }
 public enum WorkroomMilestoneStatus { Draft, FundingRequired, Funded, Active, SubmissionDraft, Submitted, ClientReviewing, RevisionRequested, RevisionInProgress, Resubmitted, Approved, PaymentProcessing, Paid, Cancelled, Disputed }
+// The eleven enums below are exposed RAW on WorkroomDetailResponse — Deliverables,
+// RevisionRequests, Tasks, ClientInputRequests, Files and Review ship the BSON model
+// itself, with no DTO in between — so these declarations are the wire contract.
+// System.Text.Json serialises an unannotated enum as its integer ordinal, which every
+// frontend consumer reads as a string; the attribute sits on the TYPE rather than each
+// property so any future property using one of these is covered automatically. That gap
+// is exactly how RevisionRequest.FeedbackCollectionStatus escaped an earlier per-property
+// audit. JSON only: MongoDB.Driver has its own serializers and ignores these attributes,
+// so stored documents are unaffected.
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum DeliverableStatus { Draft, Submitted, Locked, Superseded, Approved, Restricted }
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum RevisionScopeClassification { WithinScope, NeedsClarification, PotentialScopeChange, ConfirmedScopeChange }
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum RevisionRequestStatus { FeedbackCollecting, Submitted, Accepted, InProgress, Resolved, Declined, Cancelled }
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum FeedbackCollectionStatus { Collecting, Consolidated, Locked }
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum WorkroomFileStatus { Selected, Uploading, Scanning, Ready, Failed, Archived, Restricted }
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum WorkroomTaskStatus { NotStarted, InProgress, Blocked, Completed, Cancelled }
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum WorkroomTaskVisibility { ClientVisible, ProviderPrivate, SharedTeam }
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum ClientInputType { File, Decision, Feedback, Approval, Clarification, Meeting }
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum ClientInputStatus { Requested, Supplied, Cancelled }
 public enum FinancialTransactionType { EscrowFunded, MilestoneApproved, PaymentReleased, CommissionCharged, PayoutRequested, PayoutProcessing, PayoutCompleted, PayoutFailed, Refund, Adjustment, DisputeHold, HoldReleased }
 public enum PaymentStatus { Pending, Processing, Completed, Failed, OnHold, Refunded }
@@ -23,7 +42,9 @@ public enum PaymentOperationStatus { Pending, GatewaySucceeded, Completed, Faile
 public enum PayoutStatus { Draft, Requested, UnderReview, Processing, Completed, Failed, Cancelled, OnHold }
 public enum PayoutRail { StripeConnect, Wise, BankTransfer, PayPal }
 public enum InvoiceStatus { Draft, Generated, Issued, Paid, Cancelled, Corrected, CreditNote }
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum ReviewVisibility { Public, Private }
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum ReviewVerificationStatus { Pending, Verified, Rejected }
 public enum DisputeOutcome { Open, ProviderFavored, ClientFavored, Split }
 public enum CouponStatus { Active, Redeemed, Expired, Cancelled }
