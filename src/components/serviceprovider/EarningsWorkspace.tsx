@@ -49,20 +49,19 @@ export function EarningsWorkspace() {
         description="Track server-recorded earnings, payment lifecycle states, payouts, invoices and tax settings."
         actions={<label className="flex items-center gap-2 text-sm font-semibold text-[#374151]"><span>Currency</span><select aria-label="Financial currency" value={currency} onChange={(event) => setCurrency(event.target.value)} className="h-10 rounded-xl border border-input bg-white px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring">{currencies.map((item) => <option key={item}>{item}</option>)}</select></label>}
       />
-      <SpMutationFeedback status="info"><strong>Payment Sandbox.</strong> Balances, protected-fund states and payouts reflect the STUB payment adapter and database lifecycle—not real custody, transfer, release or bank movement.</SpMutationFeedback>
       <SpTabBar label="Earnings sections" items={[{ label: 'Earnings Overview', href: href('activity'), active: activeTab === 'activity' }, { label: 'Payouts', href: href('payouts'), active: activeTab === 'payouts' }, { label: 'Financial Settings', href: href('settings'), active: activeTab === 'settings' }]} />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <SpMetricCard label="Available balance" value={money(data.available, currency)} detail="Eligible for a sandbox payout request" icon={WalletCards} iconClassName="bg-[#E8F7F0] text-[#157A55]" />
+        <SpMetricCard label="Available balance" value={money(data.available, currency)} detail="Eligible for a payout request" icon={WalletCards} iconClassName="bg-[#E8F7F0] text-[#157A55]" />
         <SpMetricCard label="Work in progress" value={money(data.workInProgress, currency)} detail="Funded project work still in delivery" icon={Clock3} />
         <SpMetricCard label="In review" value={money(data.inReview, currency)} detail="Submitted work awaiting client action" icon={LockKeyhole} iconClassName="bg-warning/10 text-warning" />
         <SpMetricCard label="Pending release" value={money(data.pending, currency)} detail="Approved lifecycle amount not yet available" icon={HandCoins} />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <CompactMetric label="Protected funds" value={data.protectedEscrow} currency={currency} icon={Landmark} note="STUB-backed funded state" />
+        <CompactMetric label="Protected funds" value={data.protectedEscrow} currency={currency} icon={Landmark} note="Held for funded milestones" />
         <CompactMetric label="On hold" value={data.onHold} currency={currency} icon={AlertCircle} note="Blocked by the recorded lifecycle" warning />
-        <CompactMetric label="Withdrawn" value={data.withdrawn} currency={currency} icon={CircleDollarSign} note="Completed sandbox payouts" />
+        <CompactMetric label="Withdrawn" value={data.withdrawn} currency={currency} icon={CircleDollarSign} note="Completed payouts" />
       </div>
 
       {activeTab === 'activity' && <EarningsActivity data={data} currency={currency} />}
