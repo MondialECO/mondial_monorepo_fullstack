@@ -31,6 +31,22 @@ public class WorkroomController(IWorkroomService service) : ControllerBase
     [HttpPost("engagements/{id}/complete")] public async Task<IActionResult> Complete(string id) => Map(await service.CompleteEngagementAsync(CurrentUserId, id));
     [HttpPost("engagements/{id}/reviews")] public async Task<IActionResult> Review(string id, CreateReviewRequest r) => Map(await service.SubmitReviewAsync(CurrentUserId, id, r));
     [HttpPost("reviews/{id}/response")] public async Task<IActionResult> ReviewResponse(string id, ProviderReviewResponseRequest r) => Map(await service.RespondToReviewAsync(CurrentUserId, id, r.Response));
+    /// <summary>
+    /// Auth-gated replacement for serving workroom documents off the static-file handler.
+    /// Streams rather than buffers; the response is the bytes, so it deliberately bypasses
+    /// Map() on success and only uses it to shape failures.
+    /// </summary>
+    [HttpGet("files/{id}/download")]
+    public async Task<IActionResult> DownloadFile(string id)
+    {
+        var result = await service.DownloadFileAsync(CurrentUserId, id);
+        if (result.Outcome != ServiceProviderOutcome.Ok || result.Value is null) return Map(result);
+
+        var file = result.Value;
+        // enableRangeProcessing lets large documents resume and seek.
+        return PhysicalFile(file.PhysicalPath, file.ContentType, file.OriginalName, enableRangeProcessing: true);
+    }
+
     [HttpPost("engagements/{id}/files")]
     [RequestSizeLimit(20 * 1024 * 1024)]
     public async Task<IActionResult> Upload(string id, IFormFile file, [FromForm] string? milestoneId, [FromForm] bool providerPrivate = false) => Map(await service.UploadFileAsync(CurrentUserId, id, milestoneId, file, providerPrivate));

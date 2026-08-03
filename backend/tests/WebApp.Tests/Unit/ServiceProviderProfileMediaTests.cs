@@ -5,6 +5,7 @@ using Hangfire;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging.Abstractions;
+using MongoDB.Driver;
 using Moq;
 using SkiaSharp;
 using WebApp.Models.DatabaseModels;
@@ -363,6 +364,7 @@ public class ServiceProviderProfileMediaTests
                     scanner.Object,
                     Mock.Of<IAuditLogger>(),
                     Mock.Of<IBackgroundJobClient>(),
+                    Mock.Of<IMongoDatabase>(),
                     NullLogger<ServiceProviderMediaService>.Instance);
 
                 var png = CreateMinimalPng();
@@ -436,6 +438,7 @@ public class ServiceProviderProfileMediaTests
             scanner.Object,
             Mock.Of<IAuditLogger>(),
             Mock.Of<IBackgroundJobClient>(),
+            Mock.Of<IMongoDatabase>(),
             NullLogger<ServiceProviderMediaService>.Instance);
     }
 

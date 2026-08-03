@@ -521,6 +521,45 @@ public sealed class WorkroomService : IWorkroomService
         return ServiceProviderResult<WorkroomFile>.Ok(record, "File scanned and ready.");
     }
 
+    /// <summary>
+    /// Resolves a workroom file for streaming, after checking the caller may have it.
+    /// Replaces the unauthenticated static-file access that previously served these bytes:
+    /// anyone holding a StoragePath could read any workroom file, provider-private
+    /// included (canon §10.9 security debt).
+    /// </summary>
+    public async Task<ServiceProviderResult<WorkroomFileDownload>> DownloadFileAsync(string actorId, string fileId)
+    {
+        var file = await _db.WorkroomFiles.Find(x => x.Id == fileId).FirstOrDefaultAsync();
+        // Participant() is scoped to the caller, so a non-participant gets null here and
+        // the policy collapses that into the same answer as "no such file".
+        var engagement = file is null ? null : await Participant(actorId, file.EngagementId);
+
+        switch (WorkroomFileAccess.Evaluate(file, engagement, actorId))
+        {
+            case WorkroomFileAccessResult.Denied:
+                return ServiceProviderResult<WorkroomFileDownload>.NotFound("File not found.");
+            case WorkroomFileAccessResult.NotReady:
+                return ServiceProviderResult<WorkroomFileDownload>.Conflict("This file is not available for download yet.");
+        }
+
+        // StoragePath is "/uploads/documents/{guid}.ext" and SaveFile writes relative to
+        // "wwwroot", so the physical file is wwwroot + that path. Resolved to an absolute
+        // path and re-checked against the documents root: StoragePath comes from our own
+        // database, but a traversal sequence stored there must not be able to hand out
+        // arbitrary files.
+        var documentsRoot = Path.GetFullPath(Path.Combine("wwwroot", "uploads", "documents"));
+        var relative = file!.StoragePath.Replace('\\', '/').TrimStart('/');
+        var physical = Path.GetFullPath(Path.Combine("wwwroot", relative));
+        if (!physical.StartsWith(documentsRoot + Path.DirectorySeparatorChar, StringComparison.Ordinal))
+            return ServiceProviderResult<WorkroomFileDownload>.NotFound("File not found.");
+        if (!System.IO.File.Exists(physical))
+            return ServiceProviderResult<WorkroomFileDownload>.NotFound("File not found.");
+
+        var contentType = string.IsNullOrWhiteSpace(file.ContentType) ? "application/octet-stream" : file.ContentType;
+        var name = string.IsNullOrWhiteSpace(file.OriginalName) ? Path.GetFileName(physical) : file.OriginalName;
+        return ServiceProviderResult<WorkroomFileDownload>.Ok(new WorkroomFileDownload(physical, contentType, name));
+    }
+
     public async Task<ServiceProviderResult<WorkroomTask>> CreateTaskAsync(string actorId, string engagementId, CreateTaskRequest r)
     {
         var e = await Participant(actorId, engagementId); if (e is null) return ServiceProviderResult<WorkroomTask>.NotFound("Workroom not found.");

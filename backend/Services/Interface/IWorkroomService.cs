@@ -27,6 +27,7 @@ public interface IWorkroomService
     Task<ServiceProviderResult<Review>> SubmitReviewAsync(string clientId, string engagementId, CreateReviewRequest request);
     Task<ServiceProviderResult<Review>> RespondToReviewAsync(string providerId, string reviewId, string response);
     Task<ServiceProviderResult<WorkroomFile>> UploadFileAsync(string actorId, string engagementId, string? milestoneId, IFormFile file, bool providerPrivate);
+    Task<ServiceProviderResult<WorkroomFileDownload>> DownloadFileAsync(string actorId, string fileId);
     Task<ServiceProviderResult<WorkroomTask>> CreateTaskAsync(string actorId, string engagementId, CreateTaskRequest request);
     Task<ServiceProviderResult<ClientInputRequest>> RequestClientInputAsync(string providerId, string engagementId, CreateClientInputRequest request);
     Task<ServiceProviderResult<HourlyTimeEntry>> AddTimeEntryAsync(string providerId, string engagementId, CreateTimeEntryRequest request);
