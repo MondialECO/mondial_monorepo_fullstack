@@ -77,11 +77,17 @@ describe('metric de-duplication', () => {
   it('no longer duplicates the earnings KPI grid that /earnings owns', () => {
     const earnings = source.slice(source.indexOf('function EarningsView'), source.indexOf('function ClientsView'));
     expect(earnings).not.toContain('MetricGrid');
-    // The content that is genuinely unique to this tab must survive.
-    expect(earnings).toContain('By service');
-    expect(earnings).toContain('By month');
-    expect(earnings).toContain('By category');
-    expect(earnings).toContain('By client');
-    expect(earnings).toContain('Open Earnings & Payouts');
+
+    // The content genuinely unique to this tab must survive. Updated with the Earnings
+    // redesign: the four flat Breakdown lists (By service / month / category / client) and
+    // the generic "Open Earnings & Payouts" link were the unique content when this guard
+    // was written. Category survives as a proportional bar chart, client source replaces
+    // the rest, and the link narrowed to payout settings specifically. The ORIGINAL intent
+    // — this tab keeps its own substance rather than restating /earnings — is unchanged;
+    // only the list of what that substance is has moved on.
+    expect(earnings).toContain('Earnings by category');
+    expect(earnings).toContain('Client source');
+    expect(earnings).toContain('EarningsTrendChart');
+    expect(earnings).toContain('tab=settings');
   });
 });

@@ -9,7 +9,7 @@ import { FormEvent, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowDownRight, ArrowRight, ArrowUpRight, BarChart3, BriefcaseBusiness,
-  CheckCircle2, ClipboardList, Eye, Info, Plus, Send,
+  CheckCircle2, ClipboardList, Eye, Plus, Send,
   ShieldCheck, Users, Wallet,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -41,8 +41,9 @@ import {
 //            with the underscore visible — that is a known trade, not an oversight.
 import { money, words } from '@/components/serviceprovider/workroom/_shared';
 import type {
-  AnalyticsBreakdown, AnalyticsDashboard, AnalyticsMetric, CreateGrowthTaskPayload,
-  GrowthTask, ProfileFunnel, ServiceAnalytics, TopService,
+  AnalyticsBreakdown, AnalyticsDashboard, AnalyticsMetric, ClientSourceAnalytics,
+  CreateGrowthTaskPayload, GrowthTask, ProfileFunnel, RevenueAnalytics,
+  ServiceAnalytics, TopService,
 } from '@/types/analytics';
 
 type AnalyticsView = 'overview' | 'services' | 'proposals' | 'profile' | 'earnings' | 'clients';
@@ -573,17 +574,217 @@ function EarningsView({ data }: { data: AnalyticsDashboard }) {
   const revenue = data.revenue;
   return (
     <div className="space-y-6">
-      <SpCard className="border-l-4 border-l-[#0D9488]">
-        <div className="flex gap-3"><Info aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-[#0D9488]" /><p className="text-sm leading-6 text-[#4B5563]">All gross, commission, and net values come from server-created financial records. This screen performs no commission calculation. Payment movement is currently gateway-stub backed; protected funding is not earned income.</p></div>
-      </SpCard>
+      <section className="grid gap-4 sm:grid-cols-2">
+        <SpMetricCard
+          label="Total earnings"
+          icon={Wallet}
+          value={metricText(revenue.net)}
+          detail={<Trend metric={revenue.net} />}
+        />
+        <SpMetricCard
+          label="Average project value"
+          icon={BriefcaseBusiness}
+          value={metricText(revenue.averageProjectValue)}
+          detail={<Trend metric={revenue.averageProjectValue} />}
+        />
+      </section>
+
+      <EarningsTrendChart data={data} />
+
       <div className="grid gap-6 xl:grid-cols-2">
-        <Breakdown title="By service" rows={revenue.byService} currency={data.currency} />
-        <Breakdown title="By month" rows={revenue.byMonth} currency={data.currency} />
-        <Breakdown title="By category" rows={revenue.byCategory} currency={data.currency} />
-        <Breakdown title="By client" rows={revenue.byClient} currency={data.currency} />
+        <CategoryBreakdown rows={revenue.byCategory} currency={data.currency} />
+        <ClientSourceBreakdown source={revenue.clientSource} currency={data.currency} />
       </div>
-      <div><Button asChild variant="outline"><Link href="/dashboard/serviceprovider/earnings?tab=activity">Open Earnings & Payouts<ArrowRight aria-hidden="true" className="ml-2 size-4" /></Link></Button></div>
+
+      <BalancesFooter revenue={revenue} />
     </div>
+  );
+}
+
+/**
+ * The Overview trend with the rating series dropped. Overview answers "how is the business
+ * doing" and pairs money against satisfaction; this tab is only about money, and a second
+ * axis on a chart headed "earnings" reads as a claimed relationship that was never made.
+ *
+ * Granularity is whatever the server bucketed the SELECTED period into — the heading
+ * reports it rather than assuming weeks, so changing the date range changes the chart
+ * honestly instead of relabelling the same shape.
+ */
+export function EarningsTrendChart({ data }: { data: AnalyticsDashboard }) {
+  const points = data.trend ?? [];
+  const hasEarnings = points.some((point) => point.netEarnings > 0);
+  const granularity = data.trendGranularity === 'month' ? 'Monthly' : data.trendGranularity === 'day' ? 'Daily' : 'Weekly';
+
+  return (
+    <SpCard aria-labelledby="earnings-trend-title">
+      <SpSectionHeader
+        titleId="earnings-trend-title"
+        title={`${granularity} earnings trend`}
+        description="Net earnings released, bucketed across the selected period."
+      />
+      {!points.length || !hasEarnings ? (
+        <SpEmptyState
+          className="mt-5 border-0 bg-[#F9FAFB]"
+          icon={BarChart3}
+          title="No earnings in this period"
+          description="Released payments appear here once the first one lands in the selected range."
+        />
+      ) : (
+        <div className="mt-5">
+          <ResponsiveContainer width="100%" height={280}>
+            <LineChart data={points}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+              <XAxis dataKey="label" tick={{ fontSize: 12 }} />
+              <YAxis tick={{ fontSize: 12 }} />
+              <Tooltip />
+              <Line type="monotone" dataKey="netEarnings" name={`Net earnings (${data.currency})`} stroke="#3C61DD" dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+    </SpCard>
+  );
+}
+
+/**
+ * One labelled row with a proportional bar. Shared by both breakdowns below so they read as
+ * the same kind of statement, but they scale differently on purpose:
+ *
+ *   Category      width is relative to the LARGEST row, so the top earner fills the bar and
+ *                 the rest are read against it. Categories are an open-ended list that does
+ *                 not sum to anything meaningful.
+ *   Client source width is the row's own percentage of an exhaustive two-way split, so the
+ *                 two bars are directly comparable and together account for the whole.
+ */
+function ProportionRow({ label, value, percent }: { label: string; value: string; percent: number }) {
+  return (
+    <li className="py-3">
+      <div className="flex items-center justify-between gap-4 text-sm">
+        <span className="min-w-0 truncate font-medium text-[#374151]">{label}</span>
+        <span className="shrink-0 font-semibold text-foreground">{value}</span>
+      </div>
+      <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-[#F3F4F6]">
+        <div className="h-full rounded-full bg-primary" style={{ width: `${Math.max(0, Math.min(100, percent))}%` }} />
+      </div>
+    </li>
+  );
+}
+
+export function CategoryBreakdown({ rows, currency }: { rows: AnalyticsBreakdown[]; currency: string }) {
+  // Relative to the largest row, not to the total: with one dominant category every other
+  // bar would round to a sliver and the comparison the section exists for would be lost.
+  const highest = rows.reduce((max, row) => Math.max(max, row.net), 0);
+
+  return (
+    <SpCard aria-labelledby="earnings-category-title">
+      <SpSectionHeader
+        titleId="earnings-category-title"
+        title="Earnings by category"
+        description="Net released revenue per service category, drawn relative to the highest."
+      />
+      {rows.length ? (
+        <ul className="mt-4 divide-y divide-border">
+          {rows.map((row) => (
+            <ProportionRow
+              key={row.key}
+              label={row.label}
+              value={`${money(row.net, currency)} net`}
+              percent={highest > 0 ? (row.net / highest) * 100 : 0}
+            />
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-4 text-sm text-muted-foreground">No released revenue exists in this period.</p>
+      )}
+    </SpCard>
+  );
+}
+
+/**
+ * Where the money came from, by how the client arrived. Weighted by revenue rather than
+ * deal count — see ClientSourceAnalyticsResponse on the server for why.
+ */
+export function ClientSourceBreakdown({ source, currency }: { source: ClientSourceAnalytics; currency: string }) {
+  const rows = [
+    { key: 'ecosystem', label: 'Ecosystem Match', metric: source.ecosystemMatch, net: source.ecosystemNet },
+    { key: 'marketplace', label: 'Marketplace Search', metric: source.marketplaceSearch, net: source.marketplaceNet },
+  ];
+  // Both percentages share one denominator, so they are unavailable together or not at all.
+  const unavailable = source.ecosystemMatch.state !== 'available';
+
+  return (
+    <SpCard aria-labelledby="earnings-source-title">
+      <SpSectionHeader
+        titleId="earnings-source-title"
+        title="Client source"
+        description="Share of released revenue by how the client reached you."
+      />
+      {unavailable ? (
+        // No bars at all rather than two empty ones: a 0%-wide bar still draws its track,
+        // which reads as a measured zero rather than an absent measurement.
+        <div className="mt-4">
+          <p className="text-sm font-semibold text-[#4B5563]">{stateLabel(source.ecosystemMatch)}</p>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">{source.ecosystemMatch.reason}</p>
+        </div>
+      ) : (
+        <ul className="mt-4 divide-y divide-border">
+          {rows.map((row) => (
+            <ProportionRow
+              key={row.key}
+              label={row.label}
+              value={`${metricText(row.metric)} · ${money(row.net, currency)}`}
+              percent={Number(row.metric.value ?? 0)}
+            />
+          ))}
+        </ul>
+      )}
+      {source.unattributedNet > 0 && (
+        <p className="mt-3 text-xs leading-5 text-muted-foreground">
+          {money(source.unattributedNet, currency)} could not be traced back to a proposal and is excluded from this split.
+        </p>
+      )}
+    </SpCard>
+  );
+}
+
+/**
+ * Current balances, NOT period figures — deliberately unlike everything above.
+ *
+ * "Released" was the obvious label for the second tile and is the wrong one: revenue.net is
+ * already the Total Earnings headline, so a Released tile would restate that exact number
+ * lower down the page under a new name. availableBalance answers something the headline
+ * does not — of the money already released, how much can be withdrawn right now — and sits
+ * on the same live-balance footing as escrow, so the pair is coherent.
+ */
+export function BalancesFooter({ revenue }: { revenue: RevenueAnalytics }) {
+  return (
+    <SpCard aria-labelledby="earnings-balances-title">
+      <SpSectionHeader
+        titleId="earnings-balances-title"
+        title="Current balances"
+        description="Where your money sits right now. Unlike the figures above, these are live balances rather than totals for the selected period."
+      />
+      <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="grid flex-1 gap-4 sm:grid-cols-2">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">In escrow</p>
+            <p className="mt-1 text-xl font-semibold text-foreground">{metricText(revenue.protectedEscrow)}</p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">Held against milestones that have not been released yet.</p>
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">Available to withdraw</p>
+            <p className="mt-1 text-xl font-semibold text-foreground">{metricText(revenue.availableBalance)}</p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">Released and clear of any hold.</p>
+          </div>
+        </div>
+        <Button asChild variant="outline" className="shrink-0">
+          <Link href="/dashboard/serviceprovider/earnings?tab=settings">
+            Go to Payout Settings
+            <ArrowRight aria-hidden="true" className="ml-2 size-4" />
+          </Link>
+        </Button>
+      </div>
+    </SpCard>
   );
 }
 
@@ -763,14 +964,6 @@ export function TrackingGapsNote({ metrics }: { metrics: [string, AnalyticsMetri
   );
 }
 
-function Breakdown({ title, rows, currency }: { title: string; rows: AnalyticsBreakdown[]; currency: string }) {
-  return (
-    <SpCard>
-      <SpSectionHeader title={title} />
-      {rows.length ? <ul className="mt-4 divide-y divide-border">{rows.map((row) => <li key={row.key} className="flex items-center justify-between gap-4 py-3 text-sm"><span className="min-w-0 truncate font-medium text-[#374151]">{row.label}</span><span className="shrink-0 font-semibold text-foreground">{money(row.net, currency)} net</span></li>)}</ul> : <p className="mt-4 text-sm text-muted-foreground">No released revenue exists in this period.</p>}
-    </SpCard>
-  );
-}
 
 function Trend({ metric }: { metric: AnalyticsMetric }) {
   if (metric.state !== 'available') return <span className="text-xs text-muted-foreground">{stateLabel(metric)}</span>;
