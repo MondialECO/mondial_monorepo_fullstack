@@ -657,6 +657,33 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 app.UseHttpsRedirection();
+
+// Workroom documents are the one upload folder that must NOT be publicly readable: they
+// are engagement-scoped and some are provider-private. They are served instead by the
+// auth-gated GET /api/workroom/files/{id}/download, which checks participation and the
+// ProviderPrivate flag (canon §10.9).
+//
+// This runs before UseStaticFiles and 404s the path rather than reconfiguring the static
+// handler with a filtered file provider. Two reasons: it keeps every other upload folder
+// — media, profile, service-provider/*, branding, identity — on the plain wwwroot serving
+// they already rely on, with no chance of an exclusion list silently widening; and a
+// request that reaches this returns exactly what a nonexistent path returns, so the
+// documents folder is not merely protected but indistinguishable from absent.
+//
+// It is a deny rule over files that are still physically inside wwwroot. The stronger end
+// state is to move the documents folder outside the web root entirely so no static
+// handler can reach it regardless of middleware order; that is a SaveFile change and a
+// migration of existing files, filed rather than done here.
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.StartsWithSegments("/uploads/documents", StringComparison.OrdinalIgnoreCase))
+    {
+        context.Response.StatusCode = StatusCodes.Status404NotFound;
+        return;
+    }
+    await next();
+});
+
 app.UseStaticFiles();
 app.UseRequestTimeouts();
 app.UseRateLimiter();

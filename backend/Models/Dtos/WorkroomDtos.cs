@@ -146,6 +146,13 @@ public class WorkroomMilestoneResponse
     /// than released to the provider. UI renders "Refunded" as the primary label.</summary>
     public DateTime? RefundedAt { get; set; }
 }
+/// <summary>
+/// Everything the controller needs to stream a workroom file. Carries a resolved absolute
+/// path rather than bytes so the response can be streamed instead of buffered — the
+/// documents folder policy allows files far larger than is sensible to hold in memory.
+/// </summary>
+public sealed record WorkroomFileDownload(string PhysicalPath, string ContentType, string OriginalName);
+
 public class WorkroomDetailResponse
 {
     public WorkroomEngagementResponse Engagement { get; set; } = new();
