@@ -150,13 +150,19 @@ namespace WebApp.Services.Implementations
                     .ToListAsync(ct);
                 var packageMap = packages.GroupBy(p => p.ServiceId).ToDictionary(g => g.Key, g => g.First());
 
+                // One query for the whole page, not one per card.
+                var ratings = await ProviderRatingsAsync(providerIds, ct);
+
                 var cards = new List<MarketplaceListingCard>();
                 foreach (var listing in pagedListings)
                 {
                     providerMap.TryGetValue(listing.ProviderId, out var providerTuple);
                     packageMap.TryGetValue(listing.Id, out var basicPkg);
                     professionalMap.TryGetValue(listing.ProviderId, out var professional);
-                    cards.Add(ToMarketplaceListingCard(listing, providerTuple.Item1, basicPkg, professional));
+                    var rating = ratings.TryGetValue(listing.ProviderId, out var r)
+                        ? r
+                        : ((decimal, int)?)null;
+                    cards.Add(ToMarketplaceListingCard(listing, providerTuple.Item1, basicPkg, professional, rating));
                 }
 
                 return ServiceProviderResult<MarketplaceListingsResponse>.Ok(
@@ -267,7 +273,8 @@ namespace WebApp.Services.Implementations
             ServiceListing listing,
             ApplicationUser? provider,
             ServicePackage? basicPackage,
-            ProfessionalProfileRecord? professional)
+            ProfessionalProfileRecord? professional,
+            (decimal Rating, int Count)? rating)
         {
             var coverUrl = (listing.GalleryImages?.FirstOrDefault()?.PublicUrl)
                 ?? provider?.ServiceProviderProfile?.CoverImage?.PublicUrl;
@@ -289,9 +296,47 @@ namespace WebApp.Services.Implementations
                 Currency = basicPackage?.Currency ?? "EUR",
                 DeliveryTimeValue = basicPackage?.DeliveryTimeValue ?? 0,
                 DeliveryTimeUnit = basicPackage?.DeliveryTimeUnit.ToString() ?? "days",
-                Rating = null,
-                ReviewCount = null
+                // Both stay null for a provider with no qualifying reviews: the card gates
+                // its whole star row on non-null, which is what keeps an unrated listing
+                // from rendering an empty or zero-star rating it hasn't earned.
+                Rating = rating?.Rating,
+                ReviewCount = rating?.Count
             };
+        }
+
+        /// <summary>
+        /// Public rating aggregate per provider, keyed by ProviderId.
+        ///
+        /// Scoped to the PROVIDER, not the listing. Review carries only EngagementId and
+        /// ProviderId — no ServiceId — so a listing-scoped average would need a
+        /// Review → WorkroomEngagement → Proposal → ServiceId join on every grid page.
+        /// That cost buys little here: a provider is capped at 4 listings (canon §6.1b),
+        /// so the same number repeats on at most four cards, and splitting an early-stage
+        /// review count four ways produces per-listing samples too small to mean anything.
+        /// Revisit if listing-level reputation is ever required.
+        ///
+        /// Excludes Private reviews (the buyer withheld them from public display) and
+        /// non-Verified ones, matching how RefreshTrust and AnalyticsService already
+        /// qualify a review — a Rejected review must never reach a public average.
+        /// </summary>
+        private async Task<Dictionary<string, (decimal Rating, int Count)>> ProviderRatingsAsync(
+            List<string> providerIds,
+            CancellationToken ct)
+        {
+            if (providerIds.Count == 0) return new();
+
+            var reviews = await _db.Reviews
+                .Find(x => providerIds.Contains(x.ProviderId)
+                           && x.Visibility == ReviewVisibility.Public
+                           && x.VerificationStatus == ReviewVerificationStatus.Verified)
+                .ToListAsync(ct);
+
+            return reviews
+                .GroupBy(x => x.ProviderId)
+                .ToDictionary(
+                    g => g.Key,
+                    g => (Math.Round((decimal)g.Average(r => r.OverallRating), 1, MidpointRounding.AwayFromZero),
+                          g.Count()));
         }
 
         /// <summary>
