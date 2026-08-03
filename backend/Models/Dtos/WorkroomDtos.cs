@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using WebApp.Models.DatabaseModels;
 
 namespace WebApp.Models.Dtos;
@@ -145,6 +145,9 @@ public class WorkroomMilestoneResponse
     public DateTime? DisputeOpenedAt { get; set; }
     public DateTime? DisputeReviewEndsAt { get; set; }
     public string? DisputeOutcome { get; set; }
+    /// <summary>When support settled the dispute, for either outcome. Immutable history —
+    /// DisputeOutcome says what was decided, this says when.</summary>
+    public DateTime? DisputeResolvedAt { get; set; }
     /// <summary>Set when Status is Paid because escrow was refunded to the client rather
     /// than released to the provider. UI renders "Refunded" as the primary label.</summary>
     public DateTime? RefundedAt { get; set; }

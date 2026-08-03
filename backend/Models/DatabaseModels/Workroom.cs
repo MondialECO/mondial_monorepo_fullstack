@@ -137,6 +137,12 @@ public class WorkroomMilestone
     /// <summary>Authoritative dispute state. <c>Open</c> blocks payment release and
     /// auto-release; any other value (including null) means no dispute is in flight.</summary>
     public DisputeOutcome? DisputeOutcome { get; set; }
+    /// <summary>Immutable history: when support settled the dispute, set once for either
+    /// outcome and never cleared. <c>DisputeOutcome</c> records what was decided but not
+    /// when; <c>UpdatedAt</c> is overwritten by the next action on the milestone, so
+    /// without this the timing of a provider-favoured resolution is lost as soon as
+    /// anything else happens. Counterpart to <c>DisputeOpenedAt</c>.</summary>
+    public DateTime? DisputeResolvedAt { get; set; }
     /// <summary>Immutable history: when escrow was refunded to the client after a
     /// client-favoured dispute. <c>Paid</c> means "payment settled" in either direction —
     /// set here it means refunded to the client, null it means released to the provider.

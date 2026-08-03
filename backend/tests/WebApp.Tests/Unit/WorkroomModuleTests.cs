@@ -218,6 +218,53 @@ public class WorkroomModuleTests
         typeof(WorkroomMilestoneResponse).GetProperties().Select(x => x.Name).Should().Contain("RefundedAt");
     }
 
+    /// <summary>
+    /// DisputeResolvedAt is the one stable fact both dispute outcomes earn. A
+    /// provider-favoured resolution writes no other permanent trace: UpdatedAt is
+    /// overwritten by the next milestone action, so without this the timing is lost and
+    /// nothing surfaces it again. A regression here is silent — the banner keeps
+    /// rendering, just without the date — so the field is pinned on model and DTO.
+    /// </summary>
+    [Fact]
+    public void Dispute_resolution_records_a_permanent_timestamp_for_either_outcome()
+    {
+        typeof(WorkroomMilestone).GetProperties().Select(x => x.Name).Should().Contain("DisputeResolvedAt");
+        typeof(WorkroomMilestoneResponse).GetProperties().Select(x => x.Name).Should().Contain("DisputeResolvedAt");
+    }
+
+    /// <summary>
+    /// It must be nullable and default to null: every milestone that was never disputed,
+    /// and every dispute settled before this field existed, reads as "no resolution
+    /// recorded" rather than a fabricated date.
+    /// </summary>
+    [Fact]
+    public void Dispute_resolution_timestamp_is_absent_until_a_dispute_is_settled()
+    {
+        new WorkroomMilestone().DisputeResolvedAt.Should().BeNull();
+        new WorkroomMilestoneResponse().DisputeResolvedAt.Should().BeNull();
+    }
+
+    /// <summary>
+    /// Both timestamps are stamped from the same UTC value at resolution, so a
+    /// client-favoured settlement can never report being refunded at a different moment
+    /// than it was resolved.
+    /// </summary>
+    [Fact]
+    public void A_client_favoured_settlement_agrees_on_its_refund_and_resolution_time()
+    {
+        var settled = DateTime.UtcNow;
+        var milestone = new WorkroomMilestone
+        {
+            DisputeOutcome = DisputeOutcome.ClientFavored,
+            MilestoneStatus = WorkroomMilestoneStatus.Paid,
+            UpdatedAt = settled,
+            DisputeResolvedAt = settled,
+            RefundedAt = settled,
+        };
+
+        milestone.DisputeResolvedAt.Should().Be(milestone.RefundedAt);
+    }
+
     [Theory]
     [InlineData(EngagementStatus.ContractPending, EngagementStatus.EscrowPending, true)]
     [InlineData(EngagementStatus.FinalDelivery, EngagementStatus.Completed, true)]
