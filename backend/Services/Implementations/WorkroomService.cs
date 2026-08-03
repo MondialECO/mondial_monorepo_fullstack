@@ -7,6 +7,7 @@ using WebApp.DbContext;
 using WebApp.Models.DatabaseModels;
 using WebApp.Models.Dtos;
 using WebApp.Services.Interface;
+using WebApp.Validation;
 
 namespace WebApp.Services.Implementations;
 
@@ -320,6 +321,11 @@ public sealed class WorkroomService : IWorkroomService
         if (string.IsNullOrWhiteSpace(r.Title) || string.IsNullOrWhiteSpace(r.Description) || string.IsNullOrWhiteSpace(r.ClientInstructions) ||
             (r.FileIds.Count == 0 && r.ExternalLinks.Count == 0))
             return ServiceProviderResult<WorkroomDetailResponse>.Conflict("Title, description, client instructions, and at least one ready file or link are required.");
+        // External links are rendered as anchors in the client's workroom, so the scheme
+        // has to be checked server-side. The frontend already refuses javascript:/data:
+        // and friends, but that is defence in depth only — a direct API call skips it.
+        if (r.ExternalLinks.Any(link => !string.IsNullOrWhiteSpace(link) && !UrlSafety.IsHttpUrl(link)))
+            return ServiceProviderResult<WorkroomDetailResponse>.Conflict(UrlSafety.HttpUrlError);
         if (!r.AllDeliverablesIncluded || !r.FilesReviewed || !r.NoUnrelatedPrivateInfo || !r.ReadyForReview)
             return ServiceProviderResult<WorkroomDetailResponse>.Conflict("All delivery confirmations are required.");
         if (r.FileIds.Count > 0)

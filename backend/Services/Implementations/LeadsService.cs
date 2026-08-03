@@ -1,10 +1,11 @@
-using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Identity;
 using Hangfire;
 using MongoDB.Driver;
 using WebApp.DbContext;
 using WebApp.Models.DatabaseModels;
 using WebApp.Models.Dtos;
 using WebApp.Services.Interface;
+using WebApp.Validation;
 
 namespace WebApp.Services.Implementations;
 
@@ -448,6 +449,10 @@ public class LeadsService : ILeadsService
             !TryEnum<DeliveryStartRule>(r.DeliveryStartRule, out var startRule)) return "One or more proposal options are invalid.";
         if (r.ProposedPrice < 0 || r.IncludedRevisionCount < 0 || r.RevisionRequestWindowDays < 0 || r.WeeklyHourLimit < 0) return "Price, hour limits, and revision values cannot be negative.";
         if (r.UnlimitedRevisions && !r.ConfirmUnlimitedRevisions) return "Unlimited revisions require explicit confirmation.";
+        // Attachments stay contract-compatible opaque strings (§15.1) — a storage token is
+        // still legal. But once a value is shaped like a link, something downstream will
+        // render it as one, so it has to be a real http(s) URL.
+        if (Normalize(r.Attachments).Any(a => !UrlSafety.IsSafeOpaqueOrHttpUrl(a))) return UrlSafety.HttpUrlError;
         p.ServiceId = r.ServiceId ?? p.ServiceId; p.PackageId = r.PackageId ?? p.PackageId; p.ProposalSource = source;
         p.Title = r.Title?.Trim() ?? ""; p.CoverMessage = r.CoverMessage?.Trim() ?? ""; p.ProposedPrice = r.ProposedPrice;
         p.Currency = Currency(r.Currency); p.PricingType = pricing; p.WeeklyHourLimit = pricing == PricingModel.Hourly ? r.WeeklyHourLimit : null; p.DeliveryTimeValue = r.DeliveryTimeValue; p.DeliveryTimeUnit = unit;
