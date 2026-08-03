@@ -1,4 +1,4 @@
-namespace WebApp.Models.Dtos;
+﻿namespace WebApp.Models.Dtos;
 
 public class AnalyticsQuery
 {
@@ -196,6 +196,22 @@ public class AnalyticsEmptyStatesResponse
     public bool NoRevenueActivity { get; set; }
 }
 
+/// <summary>
+/// One point on the Overview trend chart.
+///
+/// NetEarnings is a real 0 for a period with no releases — money genuinely was not
+/// earned. AverageRating is NULL rather than 0 when no review was submitted: the average
+/// of nothing is not zero, matching the notEnoughActivity discipline used by every metric
+/// on this surface.
+/// </summary>
+public class AnalyticsTrendPointResponse
+{
+    public DateTime PeriodStart { get; set; }
+    public string Label { get; set; } = "";
+    public decimal NetEarnings { get; set; }
+    public decimal? AverageRating { get; set; }
+}
+
 public class AnalyticsDashboardResponse
 {
     public AnalyticsPeriodResponse Period { get; set; } = default!;
@@ -211,6 +227,13 @@ public class AnalyticsDashboardResponse
     public ProfileAnalyticsResponse Profile { get; set; } = new();
     public RevenueAnalyticsResponse Revenue { get; set; } = new();
     public ClientAnalyticsResponse Clients { get; set; } = new();
+    /// <summary>
+    /// Time series for the Overview trend chart. Granularity adapts to the selected span
+    /// (see AnalyticsTrendBuckets) and is reported alongside so the client can label the
+    /// axis honestly rather than assuming weeks.
+    /// </summary>
+    public List<AnalyticsTrendPointResponse> Trend { get; set; } = new();
+    public string TrendGranularity { get; set; } = "week";
     public List<GrowthObservationResponse> Observations { get; set; } = new();
     public List<string> UnavailableObservationRuleIds { get; set; } = new();
     public AnalyticsEmptyStatesResponse EmptyStates { get; set; } = new();

@@ -273,6 +273,9 @@ public class AnalyticsService(
                 previousRevenue, earned, reviews, milestones, period, relationships, currency),
         };
 
+        response.TrendGranularity = AnalyticsTrendBuckets.GranularityFor(period.From, period.To);
+        response.Trend = BuildTrend(earned, reviews, period, response.TrendGranularity);
+
         response.Services = BuildServiceAnalytics(
             listings, proposals, engagements, milestones, earned, proposalById,
             listingById, briefById, period, relationships, currency, buckets);
@@ -519,6 +522,55 @@ public class AnalyticsService(
                     NetRevenue = currentRevenue.Where(x => x.ClientId == g.Key).Sum(x => x.NetAmount),
                 }).OrderByDescending(x => x.CompletedProjects).ThenByDescending(x => x.NetRevenue).Take(5).ToList(),
         };
+    }
+
+    /// <summary>
+    /// The Overview trend series.
+    ///
+    /// Both inputs are the SAME collections the headline metrics use, deliberately: the
+    /// chart sits directly beneath revenue.net and clients.averageClientRating, and a
+    /// chart that disagrees with the number above it is worse than no chart. `earned` has
+    /// already been filtered to PaymentReleased + Completed with refunded milestones
+    /// excluded, and reviews are qualified the same way averageClientRating qualifies
+    /// them (Verified) rather than by a separate rule.
+    /// </summary>
+    private static List<AnalyticsTrendPointResponse> BuildTrend(
+        List<FinancialTransaction> earned,
+        List<Review> reviews,
+        AnalyticsPeriod period,
+        string granularity)
+    {
+        static DateTime RevenueAt(FinancialTransaction value) => value.ReleasedAt ?? value.CreatedAt;
+        var qualifying = reviews.Where(x => x.VerificationStatus == ReviewVerificationStatus.Verified).ToList();
+
+        return AnalyticsTrendBuckets.Buckets(period.From, period.To, granularity)
+            .Select(bucket =>
+            {
+                var net = earned
+                    .Where(x => RevenueAt(x) >= bucket.Start && RevenueAt(x) < bucket.End)
+                    .Sum(x => x.NetAmount);
+                var ratings = qualifying
+                    .Where(x => x.SubmittedAt >= bucket.Start && x.SubmittedAt < bucket.End)
+                    .Select(x => (decimal)x.OverallRating)
+                    .ToList();
+
+                return new AnalyticsTrendPointResponse
+                {
+                    PeriodStart = bucket.Start,
+                    Label = granularity switch
+                    {
+                        AnalyticsTrendBuckets.Monthly => bucket.Start.ToString("MMM yyyy"),
+                        AnalyticsTrendBuckets.Daily => bucket.Start.ToString("d MMM"),
+                        _ => bucket.Start.ToString("d MMM"),
+                    },
+                    NetEarnings = decimal.Round(net, 2, MidpointRounding.AwayFromZero),
+                    // Null, not 0: no review submitted is not a rating of zero.
+                    AverageRating = ratings.Count == 0
+                        ? null
+                        : decimal.Round(ratings.Average(), 2, MidpointRounding.AwayFromZero),
+                };
+            })
+            .ToList();
     }
 
     private static List<ServiceAnalyticsItemResponse> BuildServiceAnalytics(

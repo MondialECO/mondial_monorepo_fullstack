@@ -153,6 +153,84 @@ public static class AnalyticsBucketWindow
     }
 }
 
+/// <summary>
+/// Bucketing for the Overview trend chart.
+///
+/// Module 5 is otherwise "one current value against one comparison value" — there is no
+/// time series anywhere else in it — so the granularity rule lives here, pure and
+/// testable, rather than inline in the dashboard builder.
+///
+/// Granularity adapts to the span because a fixed weekly bucket serves the range set
+/// badly at both ends: Last7Days would yield one or two points (not a trend at all) and
+/// ThisYear would yield ~52 (unreadable at chart width). Thresholds target roughly
+/// 5-20 points:
+///
+///   span &lt;= 14 days   -> daily    (7d gives 7 points, 14d gives 14)
+///   span &lt;= 112 days  -> weekly   (30d gives ~5, 90d gives ~13)
+///   longer             -> monthly  (a full year gives 12)
+///
+/// 112 days is 16 weeks — the point at which weekly buckets pass ~16 points and start
+/// crowding. The granularity is returned alongside the points so the client labels the
+/// axis honestly instead of calling a daily point a "week".
+/// </summary>
+public static class AnalyticsTrendBuckets
+{
+    public const string Daily = "day";
+    public const string Weekly = "week";
+    public const string Monthly = "month";
+
+    private const int DailyMaxSpanDays = 14;
+    private const int WeeklyMaxSpanDays = 112;
+
+    public static string GranularityFor(DateTime from, DateTime to)
+    {
+        var days = (to - from).TotalDays;
+        if (days <= DailyMaxSpanDays) return Daily;
+        return days <= WeeklyMaxSpanDays ? Weekly : Monthly;
+    }
+
+    /// <summary>
+    /// Half-open [start, next) bucket boundaries covering the window, in order. Matches
+    /// Module 5's own convention so a value on a boundary lands in exactly one bucket.
+    ///
+    /// Weekly buckets start on Monday, so a "week of" label means a real calendar week
+    /// rather than an arbitrary offset from whenever the range happened to begin.
+    /// </summary>
+    public static List<(DateTime Start, DateTime End)> Buckets(DateTime from, DateTime to, string granularity)
+    {
+        var buckets = new List<(DateTime, DateTime)>();
+        if (to <= from) return buckets;
+
+        var cursor = granularity switch
+        {
+            Daily => from.Date,
+            Weekly => StartOfWeek(from),
+            _ => new DateTime(from.Year, from.Month, 1, 0, 0, 0, DateTimeKind.Utc),
+        };
+
+        while (cursor < to)
+        {
+            var next = granularity switch
+            {
+                Daily => cursor.AddDays(1),
+                Weekly => cursor.AddDays(7),
+                _ => cursor.AddMonths(1),
+            };
+            buckets.Add((DateTime.SpecifyKind(cursor, DateTimeKind.Utc), DateTime.SpecifyKind(next, DateTimeKind.Utc)));
+            cursor = next;
+        }
+        return buckets;
+    }
+
+    /// <summary>Monday-anchored, matching ISO week convention.</summary>
+    public static DateTime StartOfWeek(DateTime value)
+    {
+        var date = value.Date;
+        var offset = ((int)date.DayOfWeek + 6) % 7; // Monday = 0
+        return DateTime.SpecifyKind(date.AddDays(-offset), DateTimeKind.Utc);
+    }
+}
+
 public static class GrowthObservationRules
 {
     public const string ServiceConversionRule = "service-visibility-conversion";
