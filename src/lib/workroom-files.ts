@@ -9,11 +9,14 @@ import type { WorkroomFile } from '@/types/workroom';
  * name since f673521, so `status` is a real enum name and the numeric form can no longer
  * occur. This is a UI affordance check only — the download endpoint re-checks Ready
  * server-side, so bypassing the UI does not reach a Scanning or Restricted file.
+ *
+ * The storagePath test that used to accompany this is gone with the field, which is now
+ * server-internal. Nothing is lost: UploadFileAsync assigns the path and Ready in the same
+ * statement, so Ready never exists without one, and WorkroomFileAccess still rejects a
+ * Ready record with a blank path server-side.
  */
-export function isFileDownloadable(
-  file: Pick<WorkroomFile, 'status' | 'storagePath'>
-): boolean {
-  return !!file.storagePath && file.status === 'Ready';
+export function isFileDownloadable(file: Pick<WorkroomFile, 'status'>): boolean {
+  return file.status === 'Ready';
 }
 
 /**

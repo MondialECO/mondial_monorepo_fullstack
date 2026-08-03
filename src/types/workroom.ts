@@ -23,9 +23,10 @@ export interface Deliverable { id: string; milestoneId: string; title: string; d
 export interface RevisionRequest { id: string; milestoneId: string; deliverableId: string; description: string; requestedChanges: string[]; dueDate?: string | null; scopeClassification: RevisionScopeValue; revisionRequestStatus: RevisionRequestStatusValue }
 export interface WorkroomTask { id: string; title: string; description: string; dueDate?: string | null; visibility: WorkroomTaskVisibilityValue; status: WorkroomTaskStatusValue }
 export interface ClientInput { id: string; type: ClientInputTypeValue; description: string; dueDate?: string | null; deliveryImpact: string; status: ClientInputStatusValue }
-// storagePath is server-root-relative ("/uploads/documents/{guid}.ext"), served by the
-// auth-gated download endpoint (3b11c98) rather than statically.
-export interface WorkroomFile { id: string; engagementId: string; milestoneId?: string | null; uploadedBy: string; originalName: string; storagePath: string; contentType: string; sizeBytes: number; status: WorkroomFileStatusValue; providerPrivate: boolean; immutable: boolean; createdAt: string }
+// storagePath is deliberately absent: it is server-internal and [JsonIgnore]d, so it no
+// longer reaches the client. Downloads go through the auth-gated files/{id}/download
+// endpoint, which resolves the physical path server-side.
+export interface WorkroomFile { id: string; engagementId: string; milestoneId?: string | null; uploadedBy: string; originalName: string; contentType: string; sizeBytes: number; status: WorkroomFileStatusValue; providerPrivate: boolean; immutable: boolean; createdAt: string }
 export interface HourlyTimeEntry { id: string; engagementId: string; providerId: string; startedAt: string; endedAt: string; description: string; clientApproved: boolean; createdAt: string }
 export interface Review { id: string; engagementId: string; clientId: string; providerId: string; overallRating: number; qualityRating: number; communicationRating: number; deliveryRating: number; professionalismRating: number; valueRating: number; writtenReview: string; providerResponse?: string | null; visibility: ReviewVisibilityValue; submittedAt: string; verificationStatus: ReviewVerificationStatusValue }
 export interface WorkroomDetail { engagement: Engagement; contract: Contract; milestones: Milestone[]; deliverables: Deliverable[]; revisionRequests: RevisionRequest[]; tasks: WorkroomTask[]; clientInputRequests: ClientInput[]; files: WorkroomFile[]; hourlyTimeEntries: HourlyTimeEntry[]; review?: Review | null }

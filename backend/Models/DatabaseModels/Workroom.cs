@@ -258,7 +258,12 @@ public class WorkroomFile
     [BsonRepresentation(BsonType.ObjectId)] public string? MilestoneId { get; set; }
     public string UploadedBy { get; set; } = "";
     public string OriginalName { get; set; } = "";
-    public string StoragePath { get; set; } = "";
+    /// <summary>Server-internal physical location. <c>WorkroomDetailResponse</c> returns this
+    /// model raw, so without <c>[JsonIgnore]</c> every participant received the storage path
+    /// for every file in the engagement. Downloads go through the authorised
+    /// <c>files/{id}/download</c> endpoint, which resolves the path server-side; no client
+    /// needs it. JSON only — MongoDB.Driver has its own serializer and still persists it.</summary>
+    [JsonIgnore] public string StoragePath { get; set; } = "";
     public string ContentType { get; set; } = "";
     public long SizeBytes { get; set; }
     public WorkroomFileStatus Status { get; set; }
