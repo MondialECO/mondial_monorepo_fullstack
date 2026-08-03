@@ -793,30 +793,17 @@ function ClientsView({ data }: { data: AnalyticsDashboard }) {
   const clients = data.clients;
   return (
     <div className="space-y-6">
-      <MetricGrid entries={[
-        ['Clients this period', clients.totalClients], ['New clients', clients.newClients],
-        ['Returning clients', clients.returningClients], ['Repeat clients', clients.repeatClients],
-        ['Repeat-client rate', clients.repeatClientRate], ['Completed engagements', clients.completedEngagements],
-        ['On-time delivery', clients.onTimeDeliveryRate], ['Average engagement value', clients.averageClientLifetimeValue],
-      ]} />
+      {/* The satisfaction card keeps the headline average and the histogram only. The four
+          secondary tiles it used to carry (Quality, Communication, Delivery, Verified
+          reviews) were removed with the redesign: the first three restate the same reviews
+          the average already summarises, and Verified reviews is the histogram's own total
+          counted a second time. */}
       <SpCard>
         <SpSectionHeader title="Client satisfaction" description="Verified reviews submitted during the selected period." />
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <MetricTile label="Overall rating" metric={clients.averageClientRating} />
-          <MetricTile label="Quality" metric={clients.averageQualityRating} />
-          <MetricTile label="Communication" metric={clients.averageCommunicationRating} />
-          <MetricTile label="Delivery" metric={clients.averageDeliveryRating} />
-          <MetricTile label="Verified reviews" metric={clients.reviewCount} />
         </div>
         <RatingHistogram buckets={clients.ratingDistribution} total={clients.totalReviews} />
-      </SpCard>
-      <SpCard>
-        <SpSectionHeader title="Disputes" description="Counts use the stored dispute-opened timestamp and recorded resolution outcome." />
-        <div className="mt-5 grid gap-3 sm:grid-cols-3">
-          <MetricTile label="Opened" metric={clients.disputesOpened} />
-          <MetricTile label="Resolved" metric={clients.disputesResolved} />
-          <MetricTile label="Client-favoured" metric={clients.adverseDisputes} />
-        </div>
       </SpCard>
       <div className="grid gap-6 xl:grid-cols-2">
         <ClientOriginationSection origination={clients.origination} />
@@ -1044,8 +1031,7 @@ function MetricGrid({ entries }: { entries: [string, AnalyticsMetric][] }) {
 
 /**
  * A dense secondary metric, always nested inside an SpCard next to its siblings —
- * proposal-pipeline status counts, trust-signal breakdown, rating dimensions, dispute
- * counts.
+ * proposal-pipeline status counts, the client-satisfaction average.
  *
  * The load-bearing difference from MetricGrid: this renders metric.reason INLINE when the
  * metric is not available, because these metrics have nowhere else to explain themselves.
@@ -1054,7 +1040,7 @@ function MetricGrid({ entries }: { entries: [string, AnalyticsMetric][] }) {
  * source rather than trusted from the last edit of this comment:
  *
  *   ProposalsView  tiles = 11 pipeline status counts;  gaps = view rate, response rate
- *   ClientsView    tiles = ratings + disputes;         (no gaps panel)
+ *   ClientsView    tile  = overall rating;             (no gaps panel)
  *   ServicesView   grid only                           gaps = 6 service-traffic metrics
  *   ProfileView    neither tiles nor grid              gaps = 6 profile-traffic metrics
  *

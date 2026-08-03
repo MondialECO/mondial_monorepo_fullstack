@@ -219,4 +219,47 @@ describe('clients tab composition', () => {
     expect(clientsView).not.toContain('completed ·');
     expect(clientsView).toContain('Top client relationships');
   });
+
+  /**
+   * The eight-item grid predated the redesign and restated counts the new sections carry
+   * more usefully. Asserted on the metric references rather than the labels, so prose
+   * explaining the removal cannot satisfy the test.
+   */
+  it('no longer renders the pre-redesign metric grid', () => {
+    expect(clientsView).not.toContain('MetricGrid');
+    for (const metric of [
+      'totalClients', 'newClients', 'returningClients', 'repeatClients',
+      'completedEngagements', 'onTimeDeliveryRate', 'averageClientLifetimeValue',
+    ]) {
+      expect(clientsView).not.toContain(metric);
+    }
+  });
+
+  /**
+   * The three dimension tiles restate the reviews the overall average already summarises,
+   * and Verified reviews is the histogram's own total counted twice.
+   */
+  it('reduces the satisfaction card to the average and the histogram', () => {
+    expect(clientsView).toContain('averageClientRating');
+    expect(clientsView).toContain('<RatingHistogram');
+    for (const metric of ['averageQualityRating', 'averageCommunicationRating', 'averageDeliveryRating', 'reviewCount']) {
+      expect(clientsView).not.toContain(metric);
+    }
+  });
+
+  it('no longer renders the disputes card', () => {
+    expect(clientsView).not.toContain('disputesOpened');
+    expect(clientsView).not.toContain('disputesResolved');
+    expect(clientsView).not.toContain('adverseDisputes');
+    expect(clientsView).not.toContain('Client-favoured');
+  });
+
+  /**
+   * Removing the grid must not take the repeat-client rate out of the product — Overview's
+   * headline card is where it actually lives, and this tab was only restating it.
+   */
+  it('leaves the repeat-client rate on the Overview headline card', () => {
+    const overview = source.slice(source.indexOf('function Overview'), source.indexOf('function ServicesView'));
+    expect(overview).toContain('data.clients.repeatClientRate');
+  });
 });
