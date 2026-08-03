@@ -24,7 +24,7 @@ function StageRow({ icon: Icon, label, value, status }: { icon: React.ElementTyp
       </div>
       <div className="w-40 text-right">
         {isCompleted ? (
-          <div className="inline-flex items-center gap-1 bg-success/10 px-3 py-1 rounded-full">
+          <div className="inline-flex items-center gap-1 bg-success-light px-3 py-1 rounded-full">
             <CheckCircle2 className="w-4 h-4 text-success-text" />
             <span className="text-xs font-medium text-success-text">Completed</span>
           </div>
@@ -117,7 +117,7 @@ export function Phase7ReviewVisuals({ review }: Phase7ReviewVisualsProps) {
                 </p>
               </div>
               <div className="flex gap-2 flex-wrap">
-                <div className="bg-success/10 px-3 py-1.5 rounded-full">
+                <div className="bg-success-light px-3 py-1.5 rounded-full">
                   <p className="text-xs font-semibold text-success-text">
                     {review.investorReadyBadge ? '✓ Badge Eligible' : '⊘ Below Threshold'}
                   </p>
@@ -217,7 +217,7 @@ export function Phase7ReviewVisuals({ review }: Phase7ReviewVisualsProps) {
                 {[
                   { label: 'Clarity & Narrative', score: review.pitchDeckAnalysis.clarityNarrative, color: 'bg-primary' },
                   { label: 'Market Size Proof', score: review.pitchDeckAnalysis.marketSizeProof, color: 'bg-info' },
-                  { label: 'Traction & Metrics', score: review.pitchDeckAnalysis.tractionMetrics, color: 'bg-success' },
+                  { label: 'Traction & Metrics', score: review.pitchDeckAnalysis.tractionMetrics, color: 'bg-success-text' },
                   { label: 'Team Pedigree', score: review.pitchDeckAnalysis.teamPedigree, color: 'bg-warning' },
                 ].map(({ label, score, color }) => (
                   <div key={label} className="space-y-1.5">
@@ -239,10 +239,10 @@ export function Phase7ReviewVisuals({ review }: Phase7ReviewVisualsProps) {
 
         {/* Investor-Ready Badge Card */}
           {review?.investorReadyBadge && (
-            <div className="bg-card border border-success/30 p-6 shadow-sm space-y-4">
+            <div className="bg-card border border-success-text/30 p-6 shadow-sm space-y-4">
               {/* Badge Icon + Score */}
               <div className="flex flex-col items-center gap-3">
-                <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center border border-success/30">
+                <div className="w-16 h-16 rounded-full bg-success-light flex items-center justify-center border border-success-text/30">
                   <Trophy className="w-8 h-8 text-success-text" />
                 </div>
                 <div className="text-center">
@@ -275,7 +275,7 @@ export function Phase7ReviewVisuals({ review }: Phase7ReviewVisualsProps) {
 
               {/* Action Buttons */}
               <div className="space-y-2">
-                <button className="w-full px-4 py-2.5 bg-success hover:bg-success/90 text-white rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-2">
+                <button className="w-full px-4 py-2.5 bg-success-text hover:bg-success-text/90 text-white rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-2">
                   <Trophy className="w-4 h-4" />
                   Claim Badge
                 </button>

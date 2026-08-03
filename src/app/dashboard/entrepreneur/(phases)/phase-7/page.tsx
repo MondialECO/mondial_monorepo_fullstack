@@ -15,7 +15,7 @@ import { Phase7Data } from '@/types/entrepreneur';
 
 function KPICard({ title, value, subtext, badge, badgeColor }: { title: string; value: string; subtext?: string; badge: string; badgeColor?: 'green' | 'yellow' | 'red' | 'blue' }) {
   const badgeStyles = {
-    green: 'bg-success/10 text-success-text',
+    green: 'bg-success-light text-success-text',
     yellow: 'bg-warning/10 text-warning',
     red: 'bg-destructive/10 text-destructive',
     blue: 'bg-primary/10 text-primary',
