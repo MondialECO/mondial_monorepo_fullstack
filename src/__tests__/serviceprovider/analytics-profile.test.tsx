@@ -10,6 +10,16 @@ const source = readFileSync(
   'utf8'
 );
 
+/**
+ * ProfileView's own slice. Asserting against the whole file is what let the Trust-page
+ * link regress unnoticed: the URL also appears in Overview's HeadlineCard, so a
+ * file-wide `toContain` passed while ProfileView had no link at all.
+ */
+const profileView = source.slice(
+  source.indexOf('function ProfileView'),
+  source.indexOf('function EarningsView')
+);
+
 const metric = (over: Partial<AnalyticsMetric> = {}): AnalyticsMetric => ({
   state: 'available', value: 10, previousValue: null, changePercentage: null,
   unit: 'count', reason: null, ...over,
@@ -111,14 +121,24 @@ describe('top performing services', () => {
 });
 
 describe('profile tab composition', () => {
-  /** Audit Item 1: identical data to the real Trust page, with no period scoping. */
-  it('no longer carries the Trust breakdown card', () => {
-    expect(source).not.toContain('Trust breakdown');
+  /**
+   * Audit Item 1: identical data to the real Trust page, with no period scoping.
+   *
+   * Asserts the CARD is gone, not that the words never appear — prose explaining why it
+   * was removed legitimately mentions it, and a bare string match would forbid that.
+   */
+  it('no longer renders the Trust breakdown card', () => {
+    expect(profileView).not.toContain('title="Trust breakdown"');
+    expect(profileView).not.toContain('trustSignals');
   });
 
-  /** The link that makes removing the breakdown safe must survive. */
-  it('still links to the real Trust page', () => {
-    expect(source).toContain('/dashboard/serviceprovider/profile?view=trust');
+  /**
+   * The Trust breakdown was only safe to remove because this route existed. Scoped to
+   * ProfileView specifically — the previous file-wide assertion matched Overview's card
+   * and passed for weeks of nothing.
+   */
+  it('still links to the real Trust page from this tab', () => {
+    expect(profileView).toContain('/dashboard/serviceprovider/profile?view=trust');
   });
 
   /**
@@ -126,7 +146,6 @@ describe('profile tab composition', () => {
    * completeness exists, so "profile strength over time" cannot be drawn honestly.
    */
   it('does not chart profile strength over time', () => {
-    const profileView = source.slice(source.indexOf('function ProfileView'), source.indexOf('function EarningsView'));
     expect(profileView).not.toContain('LineChart');
     expect(profileView).not.toContain('TrendChart');
   });

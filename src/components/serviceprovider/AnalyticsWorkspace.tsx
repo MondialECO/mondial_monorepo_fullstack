@@ -223,6 +223,19 @@ function Overview({ data, tasks, tasksLoading }: { data: AnalyticsDashboard; tas
  * because the drop between stages is the thing worth reading. A rate with no denominator
  * shows its state instead of 0% — nothing entered that step, which is not the same as
  * nothing converting.
+ *
+ * REASON HANDLING, resolving the contradiction an audit found with MetricTile's rule that
+ * "a tile that lost its inline reason would simply stop explaining itself":
+ *
+ *   Step cards follow MetricTile exactly — state label plus the reason inline. They are
+ *   shaped like tiles and have the room, and this funnel has no TrackingGaps sibling to
+ *   defer explanation to.
+ *
+ *   Rate chips deviate deliberately. A pill between two cards cannot carry a paragraph
+ *   without becoming the widest thing in the row. The state label stays VISIBLE, and the
+ *   reason reaches both pointer users (title) and assistive tech (sr-only) — so it is not
+ *   hover-only, which was the actual defect. That is the narrowest deviation that keeps
+ *   the layout, not a silent drop.
  */
 export function ProfileFunnelSection({ funnel }: { funnel: ProfileFunnel }) {
   const steps = [
@@ -250,18 +263,19 @@ export function ProfileFunnelSection({ funnel }: { funnel: ProfileFunnel }) {
               {step.metric.state === 'available' ? (
                 <p className="mt-2 text-2xl font-semibold text-foreground">{metricText(step.metric)}</p>
               ) : (
-                <p className="mt-2 text-sm font-semibold text-[#4B5563]" title={step.metric.reason ?? undefined}>
-                  {stateLabel(step.metric)}
-                </p>
+                <>
+                  <p className="mt-2 text-sm font-semibold text-[#4B5563]">{stateLabel(step.metric)}</p>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">{step.metric.reason}</p>
+                </>
               )}
             </div>
             {index < rates.length && (
               <div className="flex items-center justify-center px-1 text-xs font-semibold text-muted-foreground">
-                <span
-                  className="rounded-full bg-muted px-2 py-1"
-                  title={rates[index].reason ?? undefined}
-                >
+                <span className="rounded-full bg-muted px-2 py-1" title={rates[index].reason ?? undefined}>
                   {rates[index].state === 'available' ? metricText(rates[index]) : stateLabel(rates[index])}
+                  {rates[index].state !== 'available' && rates[index].reason && (
+                    <span className="sr-only"> — {rates[index].reason}</span>
+                  )}
                 </span>
               </div>
             )}
@@ -502,7 +516,29 @@ function ProfileView({ data }: { data: AnalyticsDashboard }) {
   return (
     <div className="space-y-6">
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <SpMetricCard label="Trust score" icon={ShieldCheck} value={metricText(profile.trustScore)} detail={profile.trustScore.state === 'available' ? 'Calculated from qualifying signals' : profile.trustScore.reason} />
+        {/* The link is attached here because removing the Trust breakdown card removed the
+            only route from this tab to the Trust page — and the breakdown was only safe to
+            remove BECAUSE that route existed. The per-signal detail and the skills test
+            live there; this tab keeps the headline number and the way to reach them. */}
+        <SpMetricCard
+          label="Trust score"
+          icon={ShieldCheck}
+          value={metricText(profile.trustScore)}
+          detail={
+            <>
+              <span className="block">
+                {profile.trustScore.state === 'available' ? 'Calculated from qualifying signals' : profile.trustScore.reason}
+              </span>
+              <Link
+                href="/dashboard/serviceprovider/profile?view=trust"
+                className="mt-1 inline-flex items-center gap-1 font-semibold text-primary outline-none hover:underline focus-visible:rounded focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                View Trust details
+                <ArrowRight aria-hidden="true" className="size-4" />
+              </Link>
+            </>
+          }
+        />
         <SpMetricCard label="Profile completion" icon={CheckCircle2} value={metricText(profile.profileCompleteness)} detail="Required public profile fields" />
         <SpMetricCard label="Verification" icon={ShieldCheck} value={words(profile.verificationStatus)} detail="Provider profile status" />
         <SpMetricCard label="Tier" icon={TrendingUp} value={`Tier ${profile.tierLevel}`} detail={profile.tierMeaning} />
