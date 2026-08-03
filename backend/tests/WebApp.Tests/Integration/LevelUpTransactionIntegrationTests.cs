@@ -156,7 +156,7 @@ public class LevelUpTransactionIntegrationTests : IClassFixture<ReplicaSetAppFix
         j.Phase6Data?.LevelUpTriggered.Should().NotBe(true);   // #3 — THE key assertion
         string.IsNullOrEmpty(j.CompanyId).Should().BeTrue();    // #4
 
-        var user = await Coll<ApplicationUser>("ApplicationUsers").Find(u => u.Id == userGuid).FirstAsync();
+        var user = await Coll<ApplicationUser>("applicationUsers").Find(u => u.Id == userGuid).FirstAsync();
         var entRoleId = (await Sp.GetRequiredService<RoleManager<ApplicationRole>>().FindByNameAsync("Entrepreneur"))!.Id;
         (user.Roles ?? new List<Guid>()).Should().NotContain(entRoleId); // #5
 
@@ -169,7 +169,7 @@ public class LevelUpTransactionIntegrationTests : IClassFixture<ReplicaSetAppFix
         var j2 = await journeys.GetOrCreateAsync(userId);
         j2.Phase6Data!.LevelUpTriggered.Should().BeTrue();
         j2.CompanyId.Should().NotBeNullOrEmpty();
-        var user2 = await Coll<ApplicationUser>("ApplicationUsers").Find(u => u.Id == userGuid).FirstAsync();
+        var user2 = await Coll<ApplicationUser>("applicationUsers").Find(u => u.Id == userGuid).FirstAsync();
         user2.Roles.Should().Contain(entRoleId);
     }
 

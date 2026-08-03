@@ -224,7 +224,12 @@ namespace WebApp.DbContext
             }
         }
 
-        public virtual IMongoCollection<ApplicationUser> ApplicationUsers => _database.GetCollection<ApplicationUser>("ApplicationUsers");
+        // "applicationUsers", not "ApplicationUsers": Identity owns this collection and
+        // AspNetCore.Identity.MongoDbCore derives the name through MongoDbGenericRepository's
+        // Pluralize -> Camelize. MongoDB is case-sensitive and GetCollection on an absent
+        // name returns an empty collection instead of throwing, so the PascalCase spelling
+        // silently returned nothing for every reader and matched nothing for every writer.
+        public virtual IMongoCollection<ApplicationUser> ApplicationUsers => _database.GetCollection<ApplicationUser>("applicationUsers");
 
         // ---- Service Provider data split (approved SP-only migration) ----
         // Three root collections joined by unique UserId. Initially populated and
