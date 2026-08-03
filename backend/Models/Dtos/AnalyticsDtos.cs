@@ -184,6 +184,37 @@ public class RevenueAnalyticsResponse
     public List<AnalyticsBreakdownResponse> ByClient { get; set; } = new();
     public List<AnalyticsBreakdownResponse> ByMonth { get; set; } = new();
     public List<AnalyticsBreakdownResponse> ByCategory { get; set; } = new();
+    public ClientSourceAnalyticsResponse ClientSource { get; set; } = new();
+}
+
+/// <summary>
+/// Released revenue split by how the client arrived, collapsed from ProposalSource into
+/// the two channels a provider can actually act on:
+///
+///   Ecosystem Match     StandardProposal, DirectInvitationProposal, CustomOffer
+///                       — reached through the Leads / matching flow.
+///   Marketplace Search  PublishedPackagePurchase, PackageAddOn, ChangeRequest
+///                       — the client found the listing and bought directly.
+///
+/// Weighted by NET REVENUE, not by count. This sits on the Earnings tab directly beneath
+/// Total Earnings, where every other figure is money, so a count-based percentage would be
+/// read as a revenue share by anyone scanning the column. The two also disagree in the case
+/// that matters: ten small package purchases against two large matched projects is a
+/// majority of DEALS to marketplace and a majority of INCOME to ecosystem, and "where does
+/// my money come from" is the question this section is placed here to answer.
+///
+/// UnattributedNet is revenue that cannot be traced to a proposal at all — a transaction
+/// with no EngagementId, or an engagement whose proposal is missing. It is excluded from
+/// the percentages rather than folded into either channel, and surfaced separately so a
+/// large unattributed remainder is visible instead of silently distorting the split.
+/// </summary>
+public class ClientSourceAnalyticsResponse
+{
+    public AnalyticsMetricResponse EcosystemMatch { get; set; } = new();
+    public AnalyticsMetricResponse MarketplaceSearch { get; set; } = new();
+    public decimal EcosystemNet { get; set; }
+    public decimal MarketplaceNet { get; set; }
+    public decimal UnattributedNet { get; set; }
 }
 
 public class ActiveClientAnalyticsResponse

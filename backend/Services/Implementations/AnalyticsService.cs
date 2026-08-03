@@ -559,8 +559,28 @@ public class AnalyticsService(
             ByMonth = Breakdown(current,
                 x => (x.ReleasedAt ?? x.CreatedAt).ToString("yyyy-MM"),
                 x => (x.ReleasedAt ?? x.CreatedAt).ToString("yyyy-MM")),
+            ClientSource = BuildClientSource(current, engagements, proposals),
         };
     }
+
+    /// <summary>
+    /// Resolves each release to the ProposalSource behind it and delegates the split to
+    /// AnalyticsClientSource. <paramref name="current"/> arrives already filtered to
+    /// PaymentReleased + Completed with refunded milestones removed, so the split inherits
+    /// the same exclusions as the Net figure it sits beneath and cannot disagree with it.
+    /// </summary>
+    private static ClientSourceAnalyticsResponse BuildClientSource(
+        List<FinancialTransaction> current,
+        IReadOnlyDictionary<string, WorkroomEngagement> engagements,
+        IReadOnlyDictionary<string, Proposal> proposals)
+        => AnalyticsClientSource.Split(current.Select(transaction =>
+        {
+            if (transaction.EngagementId is null ||
+                !engagements.TryGetValue(transaction.EngagementId, out var engagement) ||
+                !proposals.TryGetValue(engagement.ProposalId, out var proposal))
+                return ((ProposalSource?)null, transaction.NetAmount);
+            return ((ProposalSource?)proposal.ProposalSource, transaction.NetAmount);
+        }));
 
     private static ClientAnalyticsResponse BuildClientAnalytics(
         List<WorkroomEngagement> engagements,
