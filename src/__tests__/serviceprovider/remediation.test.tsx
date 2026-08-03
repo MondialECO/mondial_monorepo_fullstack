@@ -163,9 +163,21 @@ describe('navigation and compliance regressions', () => {
     const proposal = source('../../components/serviceprovider/leads/ProposalEditor.tsx');
     const earnings = source('../../components/serviceprovider/EarningsWorkspace.tsx');
     const contract = source('../../components/serviceprovider/workroom/ContractPanel.tsx');
+    const dashboardLayout = source('../../app/dashboard/layout.tsx');
+    const sandboxNotice = source('../../components/serviceprovider/SpSandboxNotice.tsx');
     expect(proposal).toMatch(/IFileSecurityScanner.*STUB/);
     expect(earnings).toMatch(/Payment Sandbox.*STUB/s);
-    expect(contract).toMatch(/STUB mechanism.*not a legal e-signature/s);
+
+    // Contract consent. This used to assert /STUB mechanism.*not a legal e-signature/, but
+    // c31b574 consolidated ten per-panel STUB disclaimers into one environment-level
+    // notice, so the "STUB mechanism" wording no longer lives here. The substantive
+    // disclosure does — the consent dialog still tells the provider what they are NOT
+    // signing — so this narrows to that rather than dropping the check.
+    expect(contract).toMatch(/not a legal e-signature/);
+    // ...and the STUB framing it lost is now centralised: mounted once for the whole SP
+    // surface, and still naming contract signing specifically rather than only payments.
+    expect(dashboardLayout).toMatch(/<SpSandboxNotice \/>/);
+    expect(sandboxNotice).toMatch(/contract signing are simulated/);
     expect(proposal).toContain('percent(preview.rate)');
     expect(proposal).not.toMatch(/0\.12|12\s*\/\s*100|proposedPrice\s*\*\s*/);
   });
