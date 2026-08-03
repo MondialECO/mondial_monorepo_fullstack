@@ -18,8 +18,19 @@ export interface AnalyticsBreakdown { key: string; label: string; gross: number;
  */
 export interface ClientSourceAnalytics { ecosystemMatch: AnalyticsMetric; marketplaceSearch: AnalyticsMetric; ecosystemNet: number; marketplaceNet: number; unattributedNet: number }
 export interface RevenueAnalytics { gross: AnalyticsMetric; net: AnalyticsMetric; commission: AnalyticsMetric; availableBalance: AnalyticsMetric; pendingBalance: AnalyticsMetric; protectedEscrow: AnalyticsMetric; withdrawn: AnalyticsMetric; averageProjectValue: AnalyticsMetric; highestProjectValue: AnalyticsMetric; byService: AnalyticsBreakdown[]; byClient: AnalyticsBreakdown[]; byMonth: AnalyticsBreakdown[]; byCategory: AnalyticsBreakdown[]; clientSource: ClientSourceAnalytics }
-export interface ActiveClientAnalytics { clientId: string; completedProjects: number; netRevenue: number }
-export interface ClientAnalytics { totalClients: AnalyticsMetric; newClients: AnalyticsMetric; returningClients: AnalyticsMetric; repeatClients: AnalyticsMetric; repeatClientRate: AnalyticsMetric; completedEngagements: AnalyticsMetric; onTimeDeliveryRate: AnalyticsMetric; repeatClientRevenue: AnalyticsMetric; averageProjectsPerClient: AnalyticsMetric; averageClientLifetimeValue: AnalyticsMetric; averageClientRating: AnalyticsMetric; reviewCount: AnalyticsMetric; averageQualityRating: AnalyticsMetric; averageCommunicationRating: AnalyticsMetric; averageDeliveryRating: AnalyticsMetric; disputesOpened: AnalyticsMetric; disputesResolved: AnalyticsMetric; adverseDisputes: AnalyticsMetric; mostActiveClients: ActiveClientAnalytics[] }
+/**
+ * clientId arrives already masked by the API's MaskClient (first three characters, an
+ * ellipsis, last three). Render it verbatim — reformatting it in the browser is how a raw
+ * identifier gets reconstructed by accident. averageRating is null, never 0, when the
+ * client left no verified review in the period.
+ */
+export interface ActiveClientAnalytics { clientId: string; completedProjects: number; netRevenue: number; averageRating: number | null }
+
+export interface ClientOriginationAnalytics { ecosystemMatch: AnalyticsMetric; marketplaceSearch: AnalyticsMetric; ecosystemClients: number; marketplaceClients: number; unattributedClients: number }
+export interface RatingBucket { rating: number; count: number }
+/** Counts do NOT sum to the project total: a multi-industry brief counts in each. */
+export interface IndustryAnalytics { industry: string; projects: number }
+export interface ClientAnalytics { totalClients: AnalyticsMetric; newClients: AnalyticsMetric; returningClients: AnalyticsMetric; repeatClients: AnalyticsMetric; repeatClientRate: AnalyticsMetric; completedEngagements: AnalyticsMetric; onTimeDeliveryRate: AnalyticsMetric; repeatClientRevenue: AnalyticsMetric; averageProjectsPerClient: AnalyticsMetric; averageClientLifetimeValue: AnalyticsMetric; averageClientRating: AnalyticsMetric; reviewCount: AnalyticsMetric; averageQualityRating: AnalyticsMetric; averageCommunicationRating: AnalyticsMetric; averageDeliveryRating: AnalyticsMetric; disputesOpened: AnalyticsMetric; disputesResolved: AnalyticsMetric; adverseDisputes: AnalyticsMetric; mostActiveClients: ActiveClientAnalytics[]; origination: ClientOriginationAnalytics; ratingDistribution: RatingBucket[]; totalReviews: number; topIndustries: IndustryAnalytics[] }
 export interface GrowthObservation { ruleId: string; title: string; message: string; tone: string; suggestedActions: string[] }
 export interface AnalyticsEmptyStates { notEnoughActivityYet: boolean; noPublishedServices: boolean; noRevenueActivity: boolean }
 /**

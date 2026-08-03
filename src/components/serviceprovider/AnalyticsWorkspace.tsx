@@ -41,9 +41,10 @@ import {
 //            with the underscore visible — that is a known trade, not an oversight.
 import { money, words } from '@/components/serviceprovider/workroom/_shared';
 import type {
-  AnalyticsBreakdown, AnalyticsDashboard, AnalyticsMetric, ClientSourceAnalytics,
-  CreateGrowthTaskPayload, GrowthTask, ProfileFunnel, RevenueAnalytics,
-  ServiceAnalytics, TopService,
+  ActiveClientAnalytics, AnalyticsBreakdown, AnalyticsDashboard, AnalyticsMetric,
+  ClientOriginationAnalytics, ClientSourceAnalytics, CreateGrowthTaskPayload, GrowthTask,
+  IndustryAnalytics, ProfileFunnel, RatingBucket, RevenueAnalytics, ServiceAnalytics,
+  TopService,
 } from '@/types/analytics';
 
 type AnalyticsView = 'overview' | 'services' | 'proposals' | 'profile' | 'earnings' | 'clients';
@@ -807,6 +808,7 @@ function ClientsView({ data }: { data: AnalyticsDashboard }) {
           <MetricTile label="Delivery" metric={clients.averageDeliveryRating} />
           <MetricTile label="Verified reviews" metric={clients.reviewCount} />
         </div>
+        <RatingHistogram buckets={clients.ratingDistribution} total={clients.totalReviews} />
       </SpCard>
       <SpCard>
         <SpSectionHeader title="Disputes" description="Counts use the stored dispute-opened timestamp and recorded resolution outcome." />
@@ -816,14 +818,167 @@ function ClientsView({ data }: { data: AnalyticsDashboard }) {
           <MetricTile label="Client-favoured" metric={clients.adverseDisputes} />
         </div>
       </SpCard>
+      <div className="grid gap-6 xl:grid-cols-2">
+        <ClientOriginationSection origination={clients.origination} />
+        <TopIndustriesSection industries={clients.topIndustries} />
+      </div>
       <SpCard>
-        <SpSectionHeader title="Most active clients" description="Identifiers are masked by the API; no client identity is inferred in the browser." />
+        <SpSectionHeader title="Top client relationships" description="Identifiers are masked by the API; no client identity is inferred in the browser." />
         {clients.mostActiveClients.length ? (
-          <ul className="mt-4 divide-y divide-border">{clients.mostActiveClients.map((client) => (
-            <li key={client.clientId} className="flex flex-col justify-between gap-1 py-3 text-sm sm:flex-row sm:items-center"><span className="font-semibold text-foreground">{client.clientId}</span><span className="text-muted-foreground">{client.completedProjects} completed · {money(client.netRevenue, data.currency)} net</span></li>
-          ))}</ul>
+          <ActiveClientsTable clients={clients.mostActiveClients} currency={data.currency} />
         ) : <p className="mt-4 text-sm text-muted-foreground">No completed client relationships exist in this period.</p>}
       </SpCard>
+    </div>
+  );
+}
+
+/**
+ * Five bars, one per star value, always rendered even at zero — a histogram missing its
+ * 2-star bar reads as "no such bar exists" rather than "nobody gave 2 stars". Plain CSS
+ * widths rather than a chart component: five values on one axis is a list, and pulling
+ * recharts in for it would cost more than it explains.
+ */
+export function RatingHistogram({ buckets, total }: { buckets: RatingBucket[]; total: number }) {
+  if (!total) {
+    return (
+      <p className="mt-5 text-sm text-muted-foreground">
+        No verified review was submitted in this period, so there is no rating distribution to show.
+      </p>
+    );
+  }
+
+  // Scaled against the tallest bar rather than the total, so a distribution piled on one
+  // value still shows the shape of the rest.
+  const tallest = buckets.reduce((max, bucket) => Math.max(max, bucket.count), 0);
+
+  return (
+    <div className="mt-5">
+      <p className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">Rating distribution</p>
+      <ul className="mt-3 space-y-2">
+        {[...buckets].sort((a, b) => b.rating - a.rating).map((bucket) => (
+          <li key={bucket.rating} className="flex items-center gap-3 text-sm">
+            <span className="w-14 shrink-0 text-muted-foreground">{bucket.rating} star</span>
+            <div className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-[#F3F4F6]">
+              <div className="h-full rounded-full bg-primary" style={{ width: `${tallest > 0 ? (bucket.count / tallest) * 100 : 0}%` }} />
+            </div>
+            <span className="w-8 shrink-0 text-right font-semibold text-foreground">{bucket.count}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/**
+ * The same two-bar shape as the Earnings tab's Client source, deliberately — they answer
+ * the same question about different quantities, so they should read the same way. This one
+ * counts clients; that one weighs revenue.
+ */
+export function ClientOriginationSection({ origination }: { origination: ClientOriginationAnalytics }) {
+  const rows = [
+    { key: 'ecosystem', label: 'Ecosystem Match', metric: origination.ecosystemMatch, count: origination.ecosystemClients },
+    { key: 'marketplace', label: 'Marketplace Search', metric: origination.marketplaceSearch, count: origination.marketplaceClients },
+  ];
+  // Both percentages share one denominator, so they are unavailable together or not at all.
+  const unavailable = origination.ecosystemMatch.state !== 'available';
+
+  return (
+    <SpCard aria-labelledby="client-origination-title">
+      <SpSectionHeader
+        titleId="client-origination-title"
+        title="Client origination source"
+        description="How the clients you completed work for in this period first reached you."
+      />
+      {unavailable ? (
+        <div className="mt-4">
+          <p className="text-sm font-semibold text-[#4B5563]">{stateLabel(origination.ecosystemMatch)}</p>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">{origination.ecosystemMatch.reason}</p>
+        </div>
+      ) : (
+        <ul className="mt-4 divide-y divide-border">
+          {rows.map((row) => (
+            <ProportionRow
+              key={row.key}
+              label={row.label}
+              value={`${metricText(row.metric)} · ${row.count} ${row.count === 1 ? 'client' : 'clients'}`}
+              percent={Number(row.metric.value ?? 0)}
+            />
+          ))}
+        </ul>
+      )}
+      {origination.unattributedClients > 0 && (
+        <p className="mt-3 text-xs leading-5 text-muted-foreground">
+          {origination.unattributedClients} {origination.unattributedClients === 1 ? 'client' : 'clients'} could not be traced back to a proposal and {origination.unattributedClients === 1 ? 'is' : 'are'} excluded from this split.
+        </p>
+      )}
+    </SpCard>
+  );
+}
+
+/**
+ * Bars scale against the LARGEST row rather than a total, because these counts deliberately
+ * do not sum to the project count: a brief listing several industries counts once in each.
+ * Scaling to a total would present them as shares of a whole they do not partition.
+ */
+export function TopIndustriesSection({ industries }: { industries: IndustryAnalytics[] }) {
+  const highest = industries.reduce((max, row) => Math.max(max, row.projects), 0);
+
+  return (
+    <SpCard aria-labelledby="client-industries-title">
+      <SpSectionHeader
+        titleId="client-industries-title"
+        title="Top industries"
+        description="Completed projects by the industry on the originating brief. A brief naming several industries counts once in each, so these do not sum to your project total."
+      />
+      {industries.length ? (
+        <ul className="mt-4 divide-y divide-border">
+          {industries.map((row) => (
+            <ProportionRow
+              key={row.industry}
+              label={row.industry}
+              value={`${row.projects} ${row.projects === 1 ? 'project' : 'projects'}`}
+              percent={highest > 0 ? (row.projects / highest) * 100 : 0}
+            />
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-4 text-sm text-muted-foreground">No completed project exists in this period.</p>
+      )}
+    </SpCard>
+  );
+}
+
+/**
+ * clientId is rendered exactly as the API returned it. MaskClient has already reduced it to
+ * first-three + ellipsis + last-three, and any further formatting here risks reassembling
+ * something identifying — so there is deliberately no per-row action and no client name.
+ */
+export function ActiveClientsTable({ clients, currency }: { clients: ActiveClientAnalytics[]; currency: string }) {
+  return (
+    <div className="mt-4 overflow-x-auto">
+      <table className="w-full min-w-[34rem] text-sm">
+        <thead>
+          <tr className="border-b border-border text-left text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+            <th scope="col" className="pb-2 pr-4 font-semibold">Client</th>
+            <th scope="col" className="pb-2 pr-4 text-right font-semibold">Projects</th>
+            <th scope="col" className="pb-2 pr-4 text-right font-semibold">Total value</th>
+            <th scope="col" className="pb-2 text-right font-semibold">Avg rating</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border">
+          {clients.map((client) => (
+            <tr key={client.clientId}>
+              <th scope="row" className="py-3 pr-4 text-left font-semibold text-foreground">{client.clientId}</th>
+              <td className="py-3 pr-4 text-right tabular-nums text-[#374151]">{client.completedProjects}</td>
+              <td className="py-3 pr-4 text-right tabular-nums text-[#374151]">{money(client.netRevenue, currency)}</td>
+              {/* An unrated client has not rated you badly — no 0, and no dash standing in for one. */}
+              <td className="py-3 text-right tabular-nums text-[#374151]">
+                {client.averageRating === null ? <span className="text-muted-foreground">Not rated</span> : client.averageRating.toFixed(1)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
