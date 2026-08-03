@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using Microsoft.AspNetCore.Identity;
 using MongoDB.Bson;
 using MongoDB.Driver;
@@ -40,6 +40,24 @@ public class AnalyticsService(
         var tierLevel = composite.TierLevel;
         var now = DateTime.UtcNow;
         var thirtyDaysAgo = now.AddDays(-30);
+        // Provider-wide traffic for the same rolling 30-day window the rest of this
+        // response uses, rounded outward to whole UTC days like every other bucket read.
+        // This response carries only Impressions and Clicks — it is not the three-metric
+        // service-row shape — so there is no rate to compute here.
+        var (overviewFrom, overviewTo) = AnalyticsBucketWindow.ToWholeDays(thirtyDaysAgo, now);
+        var overviewBuckets = await db.AnalyticsDailyBuckets
+            .Find(x => x.ProviderId == providerId && x.Date >= overviewFrom && x.Date < overviewTo)
+            .ToListAsync();
+        var overviewTraffic = new ProviderDashboardServiceViewsResponse
+        {
+            State = "available",
+            Impressions = overviewBuckets.Sum(x => (long)x.Impressions),
+            Clicks = overviewBuckets.Sum(x => (long)x.Clicks),
+            // Reason is non-nullable on this DTO and defaults to the old notTracked text,
+            // so it is replaced either with the rounding disclosure or with empty — never
+            // left claiming the data is untracked now that it is not.
+            Reason = AnalyticsBucketWindow.RoundingNote(thirtyDaysAgo, now) ?? "",
+        };
         var today = now.Date;
         var tomorrow = today.AddDays(1);
         var weekEnd = now.AddDays(7);
@@ -117,11 +135,7 @@ public class AnalyticsService(
                 AverageResponseMinutes = responseMinutes.Count == 0 ? null : Math.Round(responseMinutes.Average(), 1),
                 AverageResponseReason = responseMinutes.Count == 0 ? "No qualifying brief response exists in the last 30 days." : null,
             },
-            ServiceViews = new ProviderDashboardServiceViewsResponse
-            {
-                State = "notTracked",
-                Reason = ServiceTrackingReason,
-            },
+            ServiceViews = overviewTraffic,
             RecentActivity = activities.OrderByDescending(x => x.OccurredAt).Take(6).ToList(),
             ProfileStrength = new ProviderDashboardProgressResponse
             {
@@ -168,6 +182,16 @@ public class AnalyticsService(
             .Find(x => x.ProviderId == providerId && x.Currency == currency).ToListAsync();
         var reviews = await db.Reviews.Find(x => x.ProviderId == providerId).ToListAsync();
         var listings = await db.ServiceListings.Find(x => x.ProviderId == providerId).ToListAsync();
+
+        // One query for every service row. The widest window spans the comparison period
+        // through the current one, both rounded outward to whole UTC days, and rows are
+        // grouped per listing in memory — a query per service would be N round-trips for
+        // a page that already renders every service at once.
+        var (bucketFrom, _) = AnalyticsBucketWindow.ToWholeDays(period.ComparisonFrom, period.ComparisonTo);
+        var (_, bucketTo) = AnalyticsBucketWindow.ToWholeDays(period.From, period.To);
+        var buckets = await db.AnalyticsDailyBuckets
+            .Find(x => x.ProviderId == providerId && x.Date >= bucketFrom && x.Date < bucketTo)
+            .ToListAsync();
         var briefIds = proposals.Where(x => !string.IsNullOrWhiteSpace(x.ClientBriefId)).Select(x => x.ClientBriefId!).Distinct().ToList();
         var briefs = briefIds.Count == 0
             ? new List<ClientBrief>()
@@ -251,7 +275,7 @@ public class AnalyticsService(
 
         response.Services = BuildServiceAnalytics(
             listings, proposals, engagements, milestones, earned, proposalById,
-            listingById, briefById, period, relationships, currency);
+            listingById, briefById, period, relationships, currency, buckets);
 
         var repeatRate = response.Clients.RepeatClientRate.State == "available"
             ? response.Clients.RepeatClientRate.Value
@@ -508,10 +532,18 @@ public class AnalyticsService(
         IReadOnlyDictionary<string, ClientBrief> briefById,
         AnalyticsPeriod period,
         IClientRelationshipCalculator relationships,
-        string currency)
+        string currency,
+        IReadOnlyList<AnalyticsDailyBucket> buckets)
     {
         bool Current(DateTime value) => value >= period.From && value < period.To;
         bool Previous(DateTime value) => value >= period.ComparisonFrom && value < period.ComparisonTo;
+
+        // Bucket windows are rounded outward to whole UTC days; see AnalyticsBucketWindow.
+        var (currentFrom, currentTo) = AnalyticsBucketWindow.ToWholeDays(period.From, period.To);
+        var (previousFrom, previousTo) = AnalyticsBucketWindow.ToWholeDays(period.ComparisonFrom, period.ComparisonTo);
+        var roundingNote = AnalyticsBucketWindow.RoundingNote(period.From, period.To);
+        var byListing = buckets.GroupBy(x => x.ListingId, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.Ordinal);
         var keys = listings.Select(x => x.Id).ToHashSet(StringComparer.Ordinal);
         foreach (var proposalServiceId in proposals.Select(EffectiveServiceId).Where(x => x != null)) keys.Add(proposalServiceId!);
         if (proposals.Any(x => EffectiveServiceId(x) is null)) keys.Add(CustomServiceLabel);
@@ -544,6 +576,14 @@ public class AnalyticsService(
                 ? proposals.Where(ProposalMatch).Select(x => ResolveCategory(x, listingById, briefById)).FirstOrDefault(x => x != "Unattributed") ?? "Unattributed"
                 : listing?.Category.ToString() ?? "Unattributed";
 
+            // Custom/Unattributed has no ListingId, so there is no bucket row to read and
+            // these four stay honestly untracked rather than reporting zero.
+            var traffic = custom
+                ? ServiceTraffic.Unavailable
+                : ServiceTraffic.From(
+                    byListing.GetValueOrDefault(key) ?? new List<AnalyticsDailyBucket>(),
+                    currentFrom, currentTo, previousFrom, previousTo, roundingNote);
+
             results.Add(new ServiceAnalyticsItemResponse
             {
                 ServiceId = custom ? null : key,
@@ -551,12 +591,12 @@ public class AnalyticsService(
                 Category = category,
                 CustomUnattributed = custom,
                 Status = custom ? "Custom" : listing?.Status.ToString() ?? "Historical",
-                Impressions = AnalyticsMetricResponse.NotTracked(ServiceTrackingReason),
-                ServiceViews = AnalyticsMetricResponse.NotTracked(ServiceTrackingReason),
-                ClickThroughRate = AnalyticsMetricResponse.NotTracked(ServiceTrackingReason, "percent"),
+                Impressions = traffic.Impressions,
+                ServiceViews = traffic.Clicks,
+                ClickThroughRate = traffic.ClickThroughRate,
                 Enquiries = AnalyticsMetricResponse.NotTracked(EnquiryTrackingReason),
                 Orders = Metric(currentOrders, previousOrders),
-                ConversionRate = AnalyticsMetricResponse.NotTracked(ServiceTrackingReason, "percent"),
+                ConversionRate = traffic.OrderConversionRate(currentOrders, previousOrders),
                 EnquiryConversion = AnalyticsMetricResponse.NotTracked(EnquiryTrackingReason, "percent"),
                 AverageSellingPrice = Metric(AverageProjectRevenue(currentRevenue), AverageProjectRevenue(previousRevenue), currency),
                 AverageDeliveryDays = NullableMetric(AverageDeliveryDays(currentCompleted), AverageDeliveryDays(previousCompleted), "days"),
@@ -818,6 +858,94 @@ public class AnalyticsService(
     private static string? EffectiveServiceId(Proposal proposal) =>
         !string.IsNullOrWhiteSpace(proposal.ServiceId) ? proposal.ServiceId :
         !string.IsNullOrWhiteSpace(proposal.PurchaseSnapshot?.ServiceId) ? proposal.PurchaseSnapshot.ServiceId : null;
+
+    /// <summary>
+    /// The bucket-sourced traffic figures for one service row.
+    ///
+    /// Three product decisions are encoded here rather than at the call site:
+    ///
+    ///   ServiceViews aliases CLICKS, not impressions. The frontend column is labelled
+    ///   "Clicks" under a "Traffic" heading, and AnalyticsDailyBucket has no separate
+    ///   views counter — impressions are detail-page loads.
+    ///
+    ///   ConversionRate here is ORDERS / impressions, deliberately a different metric
+    ///   from the Phase A-D dashboard's ConversionRate (inquiries / impressions). This row
+    ///   sits beside an Orders column and a separate EnquiryConversion, so orders is the
+    ///   reading that makes the row coherent. The dashboard figure is unchanged.
+    ///
+    ///   Zero impressions yields notEnoughActivity for the two rates rather than a
+    ///   divide-by-zero zero, which would read as "nobody converts" instead of "nobody
+    ///   visited".
+    /// </summary>
+    private readonly record struct ServiceTraffic(
+        AnalyticsMetricResponse Impressions,
+        AnalyticsMetricResponse Clicks,
+        AnalyticsMetricResponse ClickThroughRate,
+        decimal CurrentImpressions,
+        decimal PreviousImpressions,
+        string? Note)
+    {
+        internal static ServiceTraffic Unavailable => new(
+            AnalyticsMetricResponse.NotTracked(ServiceTrackingReason),
+            AnalyticsMetricResponse.NotTracked(ServiceTrackingReason),
+            AnalyticsMetricResponse.NotTracked(ServiceTrackingReason, "percent"),
+            0, 0, null);
+
+        internal static ServiceTraffic From(
+            IReadOnlyList<AnalyticsDailyBucket> rows,
+            DateTime currentFrom, DateTime currentTo,
+            DateTime previousFrom, DateTime previousTo,
+            string? note)
+        {
+            var current = AnalyticsBucketWindow.Sum(rows, currentFrom, currentTo);
+            var previous = AnalyticsBucketWindow.Sum(rows, previousFrom, previousTo);
+
+            return new ServiceTraffic(
+                WithNote(Metric(current.Impressions, previous.Impressions), note),
+                WithNote(Metric(current.Clicks, previous.Clicks), note),
+                WithNote(Rate(current.Clicks, current.Impressions, previous.Clicks, previous.Impressions), note),
+                current.Impressions,
+                previous.Impressions,
+                note);
+        }
+
+        /// <summary>Orders over impressions — see the note on this type.</summary>
+        internal AnalyticsMetricResponse OrderConversionRate(decimal currentOrders, decimal previousOrders) =>
+            Impressions.State == "notTracked"
+                ? AnalyticsMetricResponse.NotTracked(ServiceTrackingReason, "percent")
+                : WithNote(Rate(currentOrders, CurrentImpressions, previousOrders, PreviousImpressions), Note);
+
+        private static AnalyticsMetricResponse Rate(
+            decimal currentNumerator, decimal currentDenominator,
+            decimal previousNumerator, decimal previousDenominator) =>
+            currentDenominator <= 0
+                ? new AnalyticsMetricResponse
+                {
+                    State = "notEnoughActivity",
+                    Unit = "percent",
+                    Reason = "No impressions were recorded in this period.",
+                }
+                // Computed in decimal rather than via AnalyticsMath.Rate(int, int): the
+                // bucket sums are decimals and casting down would lose precision on the
+                // very ratios this metric exists to report.
+                : Metric(
+                    Percent(currentNumerator, currentDenominator),
+                    previousDenominator > 0 ? Percent(previousNumerator, previousDenominator) : null,
+                    "percent");
+
+        private static decimal Percent(decimal numerator, decimal denominator) =>
+            denominator == 0 ? 0 : Math.Round(100m * numerator / denominator, 2);
+
+        /// <summary>
+        /// Appends the day-rounding disclosure without clobbering an existing reason —
+        /// notEnoughActivity already carries one that matters more.
+        /// </summary>
+        private static AnalyticsMetricResponse WithNote(AnalyticsMetricResponse metric, string? note)
+        {
+            if (note is not null) metric.Reason = metric.Reason is null ? note : $"{metric.Reason} {note}";
+            return metric;
+        }
+    }
 
     private static AnalyticsMetricResponse Metric(decimal current, decimal? previous, string unit = "count") =>
         AnalyticsMetricResponse.Available(current, previous, unit);

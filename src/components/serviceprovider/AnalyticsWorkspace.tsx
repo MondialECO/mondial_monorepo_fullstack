@@ -280,14 +280,18 @@ function ServicesView({ data }: { data: AnalyticsDashboard }) {
           </div>
         </SpCard>
       )}
+      {/* Impressions, clicks, click-through and conversion used to be listed here as
+          permanently untracked. They are now sourced per listing from AnalyticsDailyBuckets,
+          so they belong to the row rather than to this panel — a Custom/Unattributed row
+          still reports them as untracked in its own cells, because it has no ListingId to
+          aggregate against.
+
+          Only the two that remain structurally untracked for EVERY row are left. Sampling
+          services[0] is sound for exactly that reason: these two never vary by row. */}
       <TrackingGaps title="Service metrics not tracked yet" metrics={[
-        ['Impressions', data.services[0]?.impressions],
-        ['Clicks', data.services[0]?.serviceViews],
-        ['Click-through rate', data.services[0]?.clickThroughRate],
         ['Enquiries', data.services[0]?.enquiries],
-        ['Date-filtered conversion', data.services[0]?.conversionRate],
         ['Cancellation rate', data.services[0]?.cancellationRate],
-      ]} fallback="Date-stamped service traffic, enquiry, and cancellation events do not exist upstream yet." />
+      ]} fallback="Enquiry and cancellation events do not exist upstream yet." />
     </div>
   );
 }

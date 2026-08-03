@@ -1,3 +1,4 @@
+﻿using WebApp.Models.DatabaseModels;
 using WebApp.Models.Dtos;
 
 namespace WebApp.Services.Implementations;
@@ -80,6 +81,76 @@ public static class AnalyticsPeriodResolver
         DateTimeKind.Local => value.ToUniversalTime(),
         _ => DateTime.SpecifyKind(value, DateTimeKind.Utc),
     };
+}
+
+/// <summary>
+/// Aligns an analytics period to the day-granular AnalyticsDailyBuckets collection.
+///
+/// Buckets are one row per listing per UTC day, so a window that starts or ends mid-day
+/// cannot be answered exactly — the smallest unit available is a whole day. Rounding
+/// OUTWARD (down to the start day, up past the end day) is the honest direction: it never
+/// hides traffic that occurred, and the widening is disclosed on the metric rather than
+/// silently applied.
+///
+/// Contrary to the assumption that only Custom needs this, almost every range does.
+/// AnalyticsPeriodResolver sets <c>to = now</c> for ThisMonth, Last7Days, Last30Days,
+/// Last90Days and ThisYear, and Last*Days also derive <c>from</c> from <c>now</c>, so both
+/// ends carry a wall-clock time. PreviousYear is the only range already whole-day on both
+/// ends. Rounding is therefore applied uniformly and disclosure is driven by whether it
+/// actually changed anything, not by which range was requested.
+/// </summary>
+public static class AnalyticsBucketWindow
+{
+    /// <summary>
+    /// Widens a half-open [from, to) window to whole UTC days, preserving the half-open
+    /// convention: the returned To is an exclusive midnight boundary.
+    /// </summary>
+    public static (DateTime From, DateTime To) ToWholeDays(DateTime from, DateTime to)
+    {
+        var start = from.Date;
+        // Already an exclusive midnight boundary — advancing would swallow an extra day.
+        var end = to == to.Date ? to.Date : to.Date.AddDays(1);
+        return (DateTime.SpecifyKind(start, DateTimeKind.Utc), DateTimeKind.Utc == end.Kind ? end : DateTime.SpecifyKind(end, DateTimeKind.Utc));
+    }
+
+    /// <summary>True when the window already sits on whole-day boundaries.</summary>
+    public static bool IsWholeDays(DateTime from, DateTime to) => from == from.Date && to == to.Date;
+
+    /// <summary>
+    /// Totals the buckets falling inside a half-open [from, to) window.
+    ///
+    /// Half-open deliberately, matching every other window predicate in Module 5
+    /// (>= From && &lt; To). The Phase A-D summary endpoint uses an INCLUSIVE end instead;
+    /// reusing that convention here would have counted the final day twice or not at all
+    /// depending on direction, and a second convention inside one module is what let this
+    /// gap survive unnoticed in the first place.
+    /// </summary>
+    public static (decimal Impressions, decimal Clicks) Sum(
+        IEnumerable<AnalyticsDailyBucket> rows, DateTime from, DateTime to)
+    {
+        decimal impressions = 0, clicks = 0;
+        foreach (var row in rows)
+        {
+            if (row.Date < from || row.Date >= to) continue;
+            impressions += row.Impressions;
+            clicks += row.Clicks;
+        }
+        return (impressions, clicks);
+    }
+
+    /// <summary>
+    /// The disclosure shown alongside bucket-sourced metrics, or null when the requested
+    /// window already aligned and nothing was widened. Never claim rounding that did not
+    /// happen — that is as misleading as hiding rounding that did.
+    /// </summary>
+    public static string? RoundingNote(DateTime from, DateTime to)
+    {
+        if (IsWholeDays(from, to)) return null;
+        var (start, end) = ToWholeDays(from, to);
+        return "Traffic counts are recorded per whole UTC day, so this figure covers "
+            + $"{start:yyyy-MM-dd} through {end.AddDays(-1):yyyy-MM-dd} inclusive, "
+            + "which is slightly wider than the selected range.";
+    }
 }
 
 public static class GrowthObservationRules
