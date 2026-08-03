@@ -4,11 +4,12 @@
 // have no exact token equivalent. See the PENDING DESIGN-TOKEN DECISION note in
 // src/app/globals.css (below the .sp-workspace block) for the full list and why.
 import Link from 'next/link';
+import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { FormEvent, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowDownRight, ArrowRight, ArrowUpRight, BarChart3, BriefcaseBusiness,
-  CheckCircle2, ClipboardList, Eye, Info, Plus, Send,
+  CheckCircle2, ClipboardList, Eye, Info, Plus,
   ShieldCheck, TrendingUp, Users, Wallet,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -174,100 +175,155 @@ function Overview({ data, tasks, tasksLoading }: { data: AnalyticsDashboard; tas
 
   return (
     <div className="space-y-6">
-      <section aria-label="Analytics overview" className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <SpMetricCard label="Profile strength" icon={ShieldCheck} value={metricText(data.profile.profileCompleteness)} detail="Public profile completion" />
-        <SpMetricCard label="Accepted proposals" icon={Send} value={metricText(data.proposals.accepted)} detail={<Trend metric={data.proposals.accepted} />} />
-        <SpMetricCard label="Net earnings" icon={Wallet} value={metricText(data.revenue.net)} detail={<Trend metric={data.revenue.net} />} />
-        <SpMetricCard label="Repeat clients" icon={Users} value={metricText(data.clients.repeatClientRate)} detail="Shared Workroom relationship calculation" />
+      <section aria-label="Analytics overview" className="grid gap-4 lg:grid-cols-3">
+        <HeadlineCard
+          icon={ShieldCheck}
+          label="Profile"
+          headline={data.profile.trustScore}
+          detailLabel="Profile completion"
+          detail={data.profile.profileCompleteness}
+          linkLabel="View Profile Analytics"
+          href="/dashboard/serviceprovider/profile?view=trust"
+        />
+        <HeadlineCard
+          icon={Wallet}
+          label="Earnings"
+          headline={data.revenue.net}
+          detailLabel="Average project value"
+          detail={data.revenue.averageProjectValue}
+          linkLabel="View Earnings Overview"
+          href="/dashboard/serviceprovider/earnings?tab=activity"
+        />
+        <HeadlineCard
+          icon={Users}
+          label="Clients"
+          headline={data.clients.repeatClientRate}
+          detailLabel="Average rating"
+          detail={data.clients.averageClientRating}
+          linkLabel="View Client Insights"
+          href={`${basePath}?view=clients`}
+        />
       </section>
 
-      <ComparisonPanel data={data} />
+      <TrendChart data={data} />
 
-      {/* Observations renders null when it has nothing to report, so the grid collapses
-          to a single column rather than leaving Growth tasks stranded in a half-width
-          column beside empty space. */}
-      <div className={`grid gap-6 ${hasObservationContent(data) ? 'xl:grid-cols-[1fr_1.1fr]' : ''}`}>
-        <Observations data={data} />
-        <GrowthTasks tasks={tasks} loading={tasksLoading} />
-      </div>
-
-      <QuickLinks />
+      <GrowthTasks tasks={tasks} loading={tasksLoading} />
     </div>
   );
 }
 
-function ComparisonPanel({ data }: { data: AnalyticsDashboard }) {
-  // Net earnings and Accepted proposals were removed: both already sit in the KPI row
-  // immediately above this panel, so the page showed each of them twice within one screen.
-  // What is left is the delivery pair, which appears nowhere else.
-  const metrics = [
-    ['Completed engagements', data.clients.completedEngagements],
-    ['On-time delivery', data.clients.onTimeDeliveryRate],
-  ] as const;
+/**
+ * One of the three Overview headline cards: a prominent metric, a supporting one, and a
+ * link to the workspace that owns the subject.
+ *
+ * Prominence does not buy an exemption from the honest-state discipline. When a metric is
+ * unavailable the card shows its state and the server's reason instead of the number —
+ * "Trust score appears after the first qualifying trust signal" rather than a zero or a
+ * dash. That reason is exactly the "building your trust score" framing the rest of the SP
+ * surface uses, so it is read from the response instead of being restated here and left
+ * to drift.
+ */
+export function HeadlineCard({
+  icon: Icon, label, headline, detailLabel, detail, linkLabel, href,
+}: {
+  icon: typeof ShieldCheck;
+  label: string;
+  headline: AnalyticsMetric;
+  detailLabel: string;
+  detail: AnalyticsMetric;
+  linkLabel: string;
+  href: string;
+}) {
+  const available = headline.state === 'available';
   return (
-    <SpCard aria-labelledby="period-comparison-title">
-      <SpSectionHeader title="Period comparison" description="Current values against the directly preceding comparison window; no interpolated time series." />
-      <div id="period-comparison-title" className="mt-5 grid gap-4 sm:grid-cols-2">
-        {metrics.map(([label, metric]) => <MetricTile key={label} label={label} metric={metric} />)}
+    <SpCard>
+      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+        <Icon aria-hidden="true" className="size-4" />
+        {label}
       </div>
+
+      {available ? (
+        <>
+          <p className="mt-3 text-3xl font-semibold text-foreground">{metricText(headline)}</p>
+          <div className="mt-1"><Trend metric={headline} /></div>
+        </>
+      ) : (
+        <>
+          <p className="mt-3 text-lg font-semibold text-[#4B5563]">{stateLabel(headline)}</p>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">{headline.reason}</p>
+        </>
+      )}
+
+      <p className="mt-4 border-t border-border pt-3 text-sm text-muted-foreground">
+        {detailLabel}{' '}
+        <span className="font-semibold text-foreground">
+          {detail.state === 'available' ? metricText(detail) : stateLabel(detail)}
+        </span>
+      </p>
+
+      <Link
+        href={href}
+        className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-primary outline-none hover:underline focus-visible:rounded focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        {linkLabel}
+        <ArrowRight aria-hidden="true" className="size-4" />
+      </Link>
     </SpCard>
   );
 }
 
 /**
- * Renders nothing at all when there is genuinely nothing to say — no triggered
- * observation AND no unavailable rule worth flagging.
+ * Earnings and average rating over the selected period.
  *
- * Only one of the four deterministic rules can currently fire (Rules 1-3 need upstream
- * inputs that do not exist), so the common case was a card whose entire content was "No
- * rule-based observation is triggered by the metrics currently available." An empty state
- * earns its space when it tells you what to do next; this one only reported that a
- * feature had nothing to report.
+ * Two series on one chart with two axes, because they share a time axis and nothing else:
+ * earnings are currency on an open-ended scale, ratings are 1-5. A single axis would
+ * flatten the rating line into the baseline.
  *
- * The partially-empty case still renders: if rules could not run, that IS worth saying,
- * and the existing copy says it.
+ * Bucket width is the server's decision (day / week / month, chosen from the span), so the
+ * heading reports which one is in use rather than assuming weeks. Recharts is already the
+ * charting library on the SP surface — see the impressions/clicks chart in
+ * ServicesWorkspace — so this reuses it rather than introducing a second one.
+ *
+ * A rating gap is a real gap: averageRating is null for a bucket with no reviews, and
+ * connectNulls is deliberately off so the line breaks instead of implying a rating that
+ * was never given.
  */
-function hasObservationContent(data: AnalyticsDashboard) {
-  return data.observations.length > 0 || data.unavailableObservationRuleIds.length > 0;
-}
+export function TrendChart({ data }: { data: AnalyticsDashboard }) {
+  const points = data.trend ?? [];
+  const hasEarnings = points.some((point) => point.netEarnings > 0);
+  const hasRatings = points.some((point) => point.averageRating != null);
+  const granularity = data.trendGranularity === 'month' ? 'Monthly' : data.trendGranularity === 'day' ? 'Daily' : 'Weekly';
 
-export function Observations({ data }: { data: AnalyticsDashboard }) {
-  if (!hasObservationContent(data)) return null;
   return (
-    <SpCard aria-labelledby="observations-title">
-      <SpSectionHeader title="Growth observations" description="Deterministic rules evaluate the current response when this page loads. They never create tasks or change marketplace data." />
-      <div id="observations-title" className="mt-5 space-y-3">
-        {data.observations.length ? data.observations.map((item) => (
-          <article key={item.ruleId} className="rounded-xl border border-[#BBE8D3] border-l-4 border-l-[#0D9488] bg-[#F7FCFA] p-4">
-            <div className="flex items-center gap-2"><TrendingUp aria-hidden="true" className="size-4 text-[#157A55]" /><h3 className="font-heading text-sm font-semibold text-foreground">{item.title}</h3></div>
-            <p className="mt-2 text-sm leading-6 text-[#4B5563]">{item.message}</p>
-            {item.suggestedActions.length > 0 && <ul className="mt-2 list-inside list-disc text-sm text-[#4B5563]">{item.suggestedActions.map((action) => <li key={action}>{action}</li>)}</ul>}
-          </article>
-        )) : <p className="text-sm leading-6 text-muted-foreground">No rule-based observation is triggered by the metrics currently available.</p>}
-        {data.unavailableObservationRuleIds.length > 0 && (
-          <div className="flex gap-2 rounded-xl bg-muted p-3 text-xs leading-5 text-muted-foreground">
-            <Info aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-            <span>{data.unavailableObservationRuleIds.length} observation rules cannot run because their source metrics are not tracked yet.</span>
-          </div>
-        )}
-      </div>
-    </SpCard>
-  );
-}
-
-function QuickLinks() {
-  const links = [
-    ['Complete or refresh your profile', '/dashboard/serviceprovider/profile'],
-    ['Review your service catalogue', '/dashboard/serviceprovider/services'],
-    ['Follow up on active proposals', '/dashboard/serviceprovider/leads?view=proposals'],
-    ['Review available earnings', '/dashboard/serviceprovider/earnings?tab=activity'],
-  ];
-  return (
-    <SpCard>
-      <SpSectionHeader title="Quick links" description="Navigate to the source workspace to take action." />
-      <ul className="mt-4 grid gap-3 sm:grid-cols-2">
-        {links.map(([label, href]) => <li key={href}><Link href={href} className="inline-flex items-center gap-1 text-sm font-semibold text-[#374151] outline-none hover:text-[#0D9488] focus-visible:rounded focus-visible:ring-2 focus-visible:ring-ring">{label}<ArrowRight aria-hidden="true" className="size-4" /></Link></li>)}
-      </ul>
+    <SpCard aria-labelledby="trend-title">
+      <SpSectionHeader
+        titleId="trend-title"
+        title={`${granularity} trend`}
+        description="Net earnings released and the average rating of reviews submitted, bucketed across the selected period."
+      />
+      {!points.length || (!hasEarnings && !hasRatings) ? (
+        <SpEmptyState
+          className="mt-5 border-0 bg-[#F9FAFB]"
+          icon={BarChart3}
+          title="No activity in this period"
+          description="Released payments and submitted reviews appear here once the first one lands in the selected range."
+        />
+      ) : (
+        <div className="mt-5">
+          <ResponsiveContainer width="100%" height={280}>
+            <LineChart data={points}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+              <XAxis dataKey="label" tick={{ fontSize: 12 }} />
+              <YAxis yAxisId="earnings" tick={{ fontSize: 12 }} />
+              <YAxis yAxisId="rating" orientation="right" domain={[0, 5]} tick={{ fontSize: 12 }} />
+              <Tooltip />
+              <Legend />
+              <Line yAxisId="earnings" type="monotone" dataKey="netEarnings" name={`Net earnings (${data.currency})`} stroke="#3C61DD" dot={false} />
+              <Line yAxisId="rating" type="monotone" dataKey="averageRating" name="Average rating" stroke="#0D9488" strokeDasharray="5 5" connectNulls={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
     </SpCard>
   );
 }
@@ -450,7 +506,7 @@ function GrowthTasks({ tasks, loading }: { tasks: GrowthTask[]; loading: boolean
 
   return (
     <SpCard aria-labelledby="growth-tasks-title">
-      <SpSectionHeader title="Manual growth tasks" description="Only you create and update these tasks. Observations never persist tasks automatically." />
+      <SpSectionHeader title="Quick wins" description="Your own checklist. Every task here is one you created — nothing on this page generates them for you." />
       <div id="growth-tasks-title" className="mt-5 space-y-5">
         {loading ? <Skeleton className="h-24 w-full rounded-xl" /> : tasks.length ? (
           <ul className="space-y-2">{tasks.map((task) => (
@@ -518,8 +574,7 @@ function MetricGrid({ entries }: { entries: [string, AnalyticsMetric][] }) {
  * DO NOT naively merge these two into one component. Either outcome is a regression:
  * give the merged component an inline reason and ProposalsView/ProfileView print the
  * same explanation twice for metrics that ARE in TrackingGaps; take the reason away and
- * the tiles in ClientsView and ComparisonPanel — neither of which has a TrackingGaps
- * sibling at all — silently drop it. If they ever are unified, the real prerequisite is
+ * the tiles in ClientsView — which has no TrackingGaps sibling at all — silently drop it. If they ever are unified, the real prerequisite is
  * deciding where reasons belong, not extracting shared markup.
  */
 function MetricTile({ label, metric }: { label: string; metric: AnalyticsMetric }) {

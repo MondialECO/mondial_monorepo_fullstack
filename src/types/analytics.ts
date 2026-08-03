@@ -12,7 +12,14 @@ export interface ActiveClientAnalytics { clientId: string; completedProjects: nu
 export interface ClientAnalytics { totalClients: AnalyticsMetric; newClients: AnalyticsMetric; returningClients: AnalyticsMetric; repeatClients: AnalyticsMetric; repeatClientRate: AnalyticsMetric; completedEngagements: AnalyticsMetric; onTimeDeliveryRate: AnalyticsMetric; repeatClientRevenue: AnalyticsMetric; averageProjectsPerClient: AnalyticsMetric; averageClientLifetimeValue: AnalyticsMetric; averageClientRating: AnalyticsMetric; reviewCount: AnalyticsMetric; averageQualityRating: AnalyticsMetric; averageCommunicationRating: AnalyticsMetric; averageDeliveryRating: AnalyticsMetric; disputesOpened: AnalyticsMetric; disputesResolved: AnalyticsMetric; adverseDisputes: AnalyticsMetric; mostActiveClients: ActiveClientAnalytics[] }
 export interface GrowthObservation { ruleId: string; title: string; message: string; tone: string; suggestedActions: string[] }
 export interface AnalyticsEmptyStates { notEnoughActivityYet: boolean; noPublishedServices: boolean; noRevenueActivity: boolean }
-export interface AnalyticsDashboard { period: AnalyticsPeriod; currency: string; availableCurrencies: string[]; historyStartedAt?: string | null; hasMinimumHistory: boolean; includesRecordsWithoutTestProvenance: boolean; dataLimitation: string; overview: AnalyticsOverview; services: ServiceAnalytics[]; proposals: ProposalAnalytics; profile: ProfileAnalytics; revenue: RevenueAnalytics; clients: ClientAnalytics; observations: GrowthObservation[]; unavailableObservationRuleIds: string[]; emptyStates: AnalyticsEmptyStates }
+/**
+ * One point on the Overview trend chart. netEarnings is a real 0 for a period with no
+ * releases; averageRating is null (never 0) when no review was submitted, since the
+ * average of nothing is not zero.
+ */
+export interface AnalyticsTrendPoint { periodStart: string; label: string; netEarnings: number; averageRating: number | null }
+
+export interface AnalyticsDashboard { period: AnalyticsPeriod; currency: string; availableCurrencies: string[]; historyStartedAt?: string | null; hasMinimumHistory: boolean; includesRecordsWithoutTestProvenance: boolean; dataLimitation: string; overview: AnalyticsOverview; services: ServiceAnalytics[]; proposals: ProposalAnalytics; profile: ProfileAnalytics; revenue: RevenueAnalytics; clients: ClientAnalytics; trend: AnalyticsTrendPoint[]; trendGranularity: string; observations: GrowthObservation[]; unavailableObservationRuleIds: string[]; emptyStates: AnalyticsEmptyStates }
 export interface AnalyticsFilters { range: string; currency: string; from?: string; to?: string }
 export interface GrowthTask { id: string; taskType: string; title: string; description: string; status: string; triggerRuleId?: string | null; relatedEntityType?: string | null; relatedEntityId?: string | null; createdAt: string; updatedAt: string; expiresAt?: string | null }
 export interface CreateGrowthTaskPayload { taskType: string; title: string; description: string; relatedEntityType?: string; relatedEntityId?: string; expiresAt?: string }
