@@ -31,7 +31,7 @@ import {
 } from '@/hooks/queries/workroom';
 import type { Milestone, SubmitDeliverablePayload, WorkroomDetail } from '@/types/workroom';
 import { HTTP_URL_ERROR, safeHttpUrl, validateHttpUrlList } from '@/lib/service-provider/url-security';
-import { CLIENT_FAVORED, PROVIDER_FAVORED } from '@/lib/workroom-status';
+import { AWAITING_CLIENT, CLIENT_FAVORED, PROVIDER_FAVORED } from '@/lib/workroom-status';
 import {
   apiError,
   canOpenDispute,
@@ -156,7 +156,12 @@ function MilestoneDetail({ data, milestone, readOnly }: { data: WorkroomDetail; 
       {disputeState(milestone) === 'open' && <SpMutationFeedback status="error">Dispute opened {formatDate(milestone.disputeOpenedAt, true)} and is awaiting support review. Payment release is blocked until it resolves. Support review target: {formatDate(milestone.disputeReviewEndsAt, true)}. Only Mondial support can settle a dispute — contact support if you have more information to add.</SpMutationFeedback>}
       {disputeState(milestone) === 'resolved' && <SpMutationFeedback status="info">Dispute opened {formatDate(milestone.disputeOpenedAt, true)} was resolved{milestone.disputeResolvedAt ? ` ${formatDate(milestone.disputeResolvedAt, true)}` : ''} in support review: {words(milestone.disputeOutcome ?? '')}. {milestone.disputeOutcome === CLIENT_FAVORED ? 'The milestone amount was refunded to the client and this milestone is settled.' : milestone.disputeOutcome === PROVIDER_FAVORED ? 'The milestone returned to client review and payment release is unblocked.' : ''}</SpMutationFeedback>}
       {revision && <RevisionCard revision={revision} />}
-      {(milestone.reviewWindowEndsAt || milestone.autoReleaseAt) && <SpCard><SpSectionHeader title="Client review window" description="If the client neither approves nor requests changes, payment releases to you automatically on the date below." /><dl className="mt-5 grid gap-4 sm:grid-cols-2"><Metric label="Review window ends" value={formatDate(milestone.reviewWindowEndsAt, true)} /><Metric label="Automatic payment release" value={formatDate(milestone.autoReleaseAt, true)} /></dl></SpCard>}
+      {/* Gated on AWAITING_CLIENT, not on field presence — see the note on the set.
+          SubmitDeliverableAsync sets these two once and nothing clears them, so presence
+          alone kept this card on screen after the milestone was Paid, showing a provider
+          an automatic-release date that had already passed for money already received.
+          Same condition the buyer card uses (10b2756), from the same shared set. */}
+      {AWAITING_CLIENT.has(milestone.status) && milestone.autoReleaseAt && <SpCard><SpSectionHeader title="Client review window" description="If the client neither approves nor requests changes, payment releases to you automatically on the date below." /><dl className="mt-5 grid gap-4 sm:grid-cols-2"><Metric label="Review window ends" value={formatDate(milestone.reviewWindowEndsAt, true)} /><Metric label="Automatic payment release" value={formatDate(milestone.autoReleaseAt, true)} /></dl></SpCard>}
 
       <SimpleConfirmation kind={confirmation} pending={pending} onClose={() => setConfirmation(null)} onConfirm={confirm} />
       <ExtensionDialog open={extensionOpen} form={extensionForm} setForm={setExtensionForm} pending={extension.isPending} onClose={() => setExtensionOpen(false)} onConfirm={requestExtension} />

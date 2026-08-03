@@ -5,6 +5,7 @@ import { CalendarClock, CheckCircle2, FileCheck2, Gavel, Info, ShieldAlert } fro
 import { formatPrice } from '@/lib/marketplace-format';
 import { formatDate } from '@/lib/workroom-format';
 import {
+  AWAITING_CLIENT,
   canOpenDispute,
   CLIENT_FAVORED,
   disputeState,
@@ -30,9 +31,6 @@ import {
   type RevisionFormState,
 } from './RevisionRequestForm';
 import type { Deliverable, Milestone, RevisionRequest } from '@/types/workroom';
-
-/** States where a submitted deliverable is sitting with the client. */
-const AWAITING_CLIENT = new Set(['ClientReviewing', 'Resubmitted']);
 
 export function MilestoneCard({
   milestone,
@@ -248,12 +246,8 @@ export function MilestoneCard({
 
         {AWAITING_CLIENT.has(status) && (
           <div className="space-y-3">
-            {/* Gated on AWAITING_CLIENT rather than on field presence alone, which is what
-                the SP panel does. The two are not equivalent: SubmitDeliverableAsync sets
-                these once and nothing ever clears them, so presence stays true after the
-                milestone is Paid. SweepTimedRulesAsync only auto-releases ClientReviewing
-                and Resubmitted milestones, so this renders exactly when the warning is
-                true — telling a buyer their payment is about to release automatically
+            {/* Gated on AWAITING_CLIENT, not on field presence — see the note on the set
+                itself. Telling a buyer their payment is about to release automatically
                 after they already approved would be worse than not showing it at all. */}
             {milestone.autoReleaseAt && (
               <div className="rounded-md border border-warning/30 bg-warning/10 p-3">
