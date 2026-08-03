@@ -71,8 +71,6 @@ public sealed class WorkroomService : IWorkroomService
         }
 
         var plans = proposal.MilestonePlan.OrderBy(x => x.DisplayOrder).ToList();
-        if (plans.Count > 0 && plans.Sum(x => x.Amount) != proposal.ProposedPrice)
-            throw new InvalidOperationException("Proposal milestone amounts must equal the accepted proposal price.");
         if (plans.Count == 0)
         {
             plans.Add(new ProposalMilestonePlanItem
@@ -85,6 +83,12 @@ public sealed class WorkroomService : IWorkroomService
                 DisplayOrder = 0,
             });
         }
+
+        // Validated AFTER the empty-plan fallback so the synthesised milestone is covered
+        // too — that one carries ProposedPrice verbatim, so a non-positive proposal price
+        // would otherwise create a non-positive milestone with nothing checking it.
+        var planError = MoneyPositivityRules.ValidateMilestonePlan(plans, proposal.ProposedPrice);
+        if (planError is not null) throw new InvalidOperationException(planError);
 
         var now = DateTime.UtcNow;
         var engagementId = ObjectId.GenerateNewId().ToString();
@@ -152,7 +156,17 @@ public sealed class WorkroomService : IWorkroomService
     {
         var ids = await _db.Proposals.Find(x => x.Status == ProposalStatus.Accepted && x.ConversionStatus == ProposalConversionStatus.AwaitingModule4)
             .Project(x => x.Id).Limit(200).ToListAsync();
-        foreach (var id in ids) await ConvertProposalAsync(id);
+        // Isolated per proposal. ConvertProposalAsync throws on a plan it refuses to
+        // convert (mismatched sum, non-positive amount), and an unguarded loop turned any
+        // one such row into a poison pill: the batch aborted, every legitimate proposal
+        // behind it stayed unconverted, and the retry attributes made that permanent
+        // because the same row failed again each sweep. The row stays in AwaitingModule4
+        // and is logged; the rest of the batch proceeds.
+        foreach (var id in ids)
+        {
+            try { await ConvertProposalAsync(id); }
+            catch (Exception ex) { _logger.LogError(ex, "Conversion sweep skipped proposal {ProposalId}.", id); }
+        }
     }
 
     [AutomaticRetry(Attempts = 3)]

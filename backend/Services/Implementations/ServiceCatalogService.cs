@@ -217,7 +217,11 @@ public class ServiceCatalogService : IServiceCatalogService
         // Required-before-publish (hard blocks, §6.2).
         var missing = new List<string>();
         if (string.IsNullOrWhiteSpace(pkg.PackageTitle)) missing.Add("title");
-        if (pkg.Price <= 0) missing.Add("price > 0");
+        // Every price that reaches a buyer's total, not just the base one — see
+        // MoneyPositivityRules. Gated at publish rather than on save, matching how the
+        // base price has always worked: a draft mid-edit may legitimately hold a
+        // placeholder, and only Published packages are meant to be sellable.
+        missing.AddRange(MoneyPositivityRules.MissingMoneyRequirements(pkg));
         if (string.IsNullOrWhiteSpace(pkg.Currency)) missing.Add("currency");
         if (pkg.DeliveryTimeValue <= 0) missing.Add("delivery time");
         if (!pkg.UnlimitedRevisions && pkg.RevisionRequestWindowDays <= 0) missing.Add("a revision policy (request window)");

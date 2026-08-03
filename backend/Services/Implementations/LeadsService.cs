@@ -328,6 +328,22 @@ public class LeadsService : ILeadsService
         if (r.ComplianceHold) failures.Add("Compliance hold");
         if (!r.FinalSummaryShown) failures.Add("Final summary was not confirmed");
         var final = pkg.Price + selected.Sum(x => x.Price); var now = DateTime.UtcNow; var auto = failures.Count == 0;
+        // Load-bearing, not merely belt-and-braces. The publish gate cannot be relied on
+        // here: an unpublished package does NOT reject — "Package is not active" is a
+        // `failures` entry, which routes to the manual path and can still become a real
+        // proposal once the provider approves it. So a draft package carrying a negative
+        // add-on reaches this line without ever passing publish validation.
+        //
+        // Both conditions are needed. `final <= 0` alone would miss the more profitable
+        // version: a -900 add-on on a 1000 package leaves a positive 100 total while
+        // quietly cutting the 12% commission base by 108.
+        //
+        // A hard Conflict rather than a `failures` entry, for the same reason as the
+        // self-dealing guard — routing this to manual approval would let it through.
+        if (selected.Any(a => a.Price < 0))
+            return ServiceProviderResult<PackagePurchaseResponse>.Conflict("This package has an invalid add-on price and cannot be ordered.");
+        if (final <= 0)
+            return ServiceProviderResult<PackagePurchaseResponse>.Conflict("This package has an invalid total price and cannot be ordered.");
         var faqs = await _db.ServiceFAQs.Find(x => x.ServiceId == listing.Id && x.Status == CatalogStatus.Published).ToListAsync();
         var p = new Proposal
         {
@@ -413,6 +429,10 @@ public class LeadsService : ILeadsService
             p.DeliveryTimeValue <= 0 || p.Deliverables.Count == 0 || p.IncludedRevisionCount < 0)
             return "Complete the title, cover message, price, delivery duration, deliverables, and revision policy.";
         if (!p.Currency.Equals(brief.Currency, StringComparison.OrdinalIgnoreCase)) return "Proposal currency must match the brief currency.";
+        // Caught here so the provider is told at submission. Conversion enforces the same
+        // rule, but that runs in a background job whose failure the provider never sees,
+        // and it would leave an accepted proposal permanently stuck.
+        if (MoneyPositivityRules.HasNonPositiveMilestone(p.MilestonePlan)) return MoneyPositivityRules.NonPositiveMilestoneMessage;
         var user = await _users.FindByIdAsync(providerId);
         await HydrateProviderViewAsync(user);
         var profile = user?.ServiceProviderProfile;
