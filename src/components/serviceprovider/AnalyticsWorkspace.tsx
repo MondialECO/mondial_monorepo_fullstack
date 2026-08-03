@@ -21,6 +21,24 @@ import {
 import {
   useCreateGrowthTask, useGrowthTasks, useProviderAnalytics, useUpdateGrowthTaskStatus,
 } from '@/hooks/queries/analytics';
+// money/words come from the shared SP helpers rather than local copies, matching
+// EarningsWorkspace. Two deliberate behaviour changes, both checked rather than assumed:
+//
+//   money  — the shared version pins maximumFractionDigits: 2. Reachable here: the
+//            analytics currency is a real user-selectable dropdown fed by
+//            AvailableCurrencies, so a zero-decimal currency (JPY) or three-decimal one
+//            (KWD) will now render with 2 decimals instead of its locale convention.
+//            Consistent with every other SP money figure, which is the point.
+//
+//   words  — the local copy also replaced underscores with spaces; the shared one does
+//            not (it guards null instead, which the local copy did not). Verified this
+//            loses nothing TODAY: the only values reaching words() here are
+//            profile.verificationStatus, service.status and task.status, whose sources
+//            are ServiceProviderVerificationStatus, CatalogStatus and GrowthTaskStatus
+//            (13 members, no underscores) plus the literals "Custom", "Historical" and
+//            "Unattributed". If a snake_case value ever reaches this file, it will render
+//            with the underscore visible — that is a known trade, not an oversight.
+import { money, words } from '@/components/serviceprovider/workroom/_shared';
 import type {
   AnalyticsBreakdown, AnalyticsDashboard, AnalyticsMetric, CreateGrowthTaskPayload,
   GrowthTask,
@@ -535,13 +553,7 @@ function formatValue(value: number, unit: string) {
   return integer(value);
 }
 
-function money(value: number, currency: string) {
-  try { return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(value); }
-  catch { return `${currency} ${value.toFixed(2)}`; }
-}
-
 function unique(values: string[]) { return [...new Set(values.filter(Boolean))]; }
 function integer(value: number) { return new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(value); }
 function number(value: number) { return new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(value); }
 function date(value: string) { return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date(value)); }
-function words(value: string) { return value.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/_/g, ' '); }
