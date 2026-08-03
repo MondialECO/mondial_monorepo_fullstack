@@ -1801,11 +1801,35 @@ Fixed by `[JsonConverter(typeof(JsonStringEnumConverter))]` on the enum **type**
 
 JSON only. MongoDB.Driver has its own serializers and ignores System.Text.Json attributes, so stored documents are unchanged.
 
+**Earnings-surface enums — FIXED 2026-08-03 (`00e20fa`; frontend `ed991bb`).** `ProviderFinancialSummaryResponse` and `StatementResponse` return raw `FinancialTransaction`, `PayoutRequest`, `Invoice` and `ProviderFinancialSettings`, so those enum declarations are the wire contract and were serialising as ordinals while `types/workroom.ts` declares the fields `string`. Same root cause as `f673521`, same fix: `[JsonConverter(typeof(JsonStringEnumConverter))]` at the enum **type** level.
+
+The property list was re-derived programmatically over the whole reachable graph rather than trusting the prose list above — the workroom batch had shown a hand-written audit could miss one. **Exactly five**, matching what was recorded:
+
+| Model | Property | Enum |
+|---|---|---|
+| `FinancialTransaction` | `TransactionType` | `FinancialTransactionType` |
+| `FinancialTransaction` | `PaymentStatus` | `PaymentStatus` |
+| `PayoutRequest` | `Status` | `PayoutStatus` |
+| `Invoice` | `Status` | `InvoiceStatus` |
+| `MaskedPayoutMethod` | `Rail` | `PayoutRail` |
+
+**These were live UI bugs, not latent exposure.** Every consumer comparison had silently never matched:
+
+- **Payouts rendered as positive amounts.** `transactionAmount()` negates on `transactionType === 'PayoutCompleted'`; money leaving displayed as money arriving.
+- **Every status badge rendered neutral**, because `transactionTone()`'s comparisons never matched.
+- **Labels rendered a bare digit** — `words()` stringifies a number, so `"2"` appeared where `"Payment Released"` belonged, across `EarningsActivity`, `PayoutsPanel` and `FinancialSettingsPanel`, including payout rail names.
+
+`PaymentOperationType`/`PaymentOperationStatus` are deliberately excluded: `PaymentOperation` is server-internal and never returned on a response.
+
+**One genuine frontend gap surfaced while confirming the fix (`ed991bb`).** `transactionTone()` is called with three different enums but knew only the `PaymentStatus` vocabulary — 6/6 mapped for payments, but 4/8 for `PayoutStatus` and **0/7** for `InvoiceStatus`. Invisible while everything was an ordinal; without this the wire fix would have been a half-fix, with a cancelled invoice still rendering identically to a paid one. `Paid` is now positive, `Cancelled` negative, and `Requested`/`UnderReview`/`Generated`/`Issued` in flight. `Draft`, `Corrected` and `CreditNote` stay neutral deliberately — not good or bad news, and a colour would assert meaning the domain has not defined.
+
+**Rule:** any enum reaching the client on a raw model needs the type-level converter. Check by parsing the reachable graph, not by reading the model.
+
 **Still open — two separate items.**
 
-*Raw models instead of DTOs.* The six collections above still ship internal BSON models. The enum fix patches the symptom; the architectural fix is real response DTOs, which would also stop leaking internal fields and give a stable contract. Deliberately not bundled — it is a larger, riskier change than the serialization fix needed.
+*Raw models instead of DTOs.* The six workroom collections and the four earnings ones still ship internal BSON models. The enum fixes patch the symptom; the architectural fix is real response DTOs, which would also stop leaking internal fields and give a stable contract. Deliberately not bundled — a larger, riskier change than the serialization fix needed.
 
-*The same defect on the earnings surface.* `ProviderFinancialSummaryResponse` and `StatementResponse` return raw `FinancialTransaction`, `PayoutRequest` and `Invoice`, so `FinancialTransactionType`, `PaymentStatus`, `PayoutStatus`, `InvoiceStatus` and `PayoutRail` still serialise as ordinals while `types/workroom.ts` declares them `string`. This was assumed DTO-mapped when the workroom batch was scoped and is not; it was found during that batch and left untouched rather than silently widening scope. `ContractTerms`'s four enums (`PricingModel`, `DeliveryTimeUnit`, `DeliveryDayType`, `DeliveryStartRule`) are likewise still ordinals — they live outside `Workroom.cs` and are handled by label helpers in `lib/workroom-format`.
+*`ContractTerms`'s four enums* (`PricingModel`, `DeliveryTimeUnit`, `DeliveryDayType`, `DeliveryStartRule`) are still ordinals — they live outside `Workroom.cs` and are handled by label helpers in `lib/workroom-format`, which is why `words()` guards non-string input.
 
 ### 10.10 Client dashboard (planned M3)
 
@@ -2252,6 +2276,8 @@ It throws in the builder, **before any assertion runs**, so the failure is pure 
 ---
 
 ## Changelog
+
+**2026-08-03 — Earnings-surface enum serialization fixed; one live frontend gap with it.** Commits `00e20fa` (backend + 11 tests) / `ed991bb` (frontend). Sibling of `f673521` on the financial surface: `ProviderFinancialSummaryResponse` and `StatementResponse` ship raw BSON models, so five enum properties — `FinancialTransaction.TransactionType`/`.PaymentStatus`, `PayoutRequest.Status`, `Invoice.Status`, `MaskedPayoutMethod.Rail` — were serialising as ordinals against frontend types declaring them `string`. The list was re-derived by parsing the reachable graph rather than trusting the prose, after the workroom batch showed a hand-written audit could miss one; exactly five, as recorded. These were **live UI bugs**: payouts rendered as positive amounts, every status badge rendered neutral, and labels rendered a bare digit instead of a readable name. Fixed at the enum type level so future properties are covered; `PaymentOperation`'s two enums excluded as server-internal. Verified the tests bite by removing an attribute and confirming failure before restoring. Separately, `transactionTone()` knew only the `PaymentStatus` vocabulary — 0 of 7 `InvoiceStatus` values mapped — so the wire fix alone would have left a cancelled invoice looking identical to a paid one; the payout and invoice vocabularies were added. Suite **763 passed / 80 skipped**, same single pre-existing failure. See §10.9.
 
 **2026-08-03 — Backend data addenda shipped: five declared-but-never-populated fields.** Commits `4aeda89`, `eaa878d`, `a45f7cb`, `b770993`, `eb7c17f`, plus test fix `ace6087` and docs `9d93525` — seven in all. Each field was already consumed and null-gated by the UI, so B/C/D needed no frontend change — the markup simply began rendering, which is argued from the call sites rather than observed in a browser. (A) `WorkroomEngagementResponse.ProviderDisplayName` added, so a buyer's own engagements name the counterparty; also fixed four bare `ToResponse()` call sites in pause/resume/complete that returned an empty `ClientDisplayName`. (B) `CompletedOrders` counted with the same `EngagementStatus.Completed` predicate as `CreateRepeatCouponIfEligible`; null rather than 0 so a new provider shows no row instead of "0 completed orders". (C) Ratings aggregate scoped **per provider, not per listing** — `Review` has no `ServiceId`, and a provider caps at 4 listings, so the join cost buys nothing; filters Public **and** Verified, matching how Trust and Analytics already qualify a review. (D) `MedianResponseTime` computed from a new `FirstResponseLatenciesAsync` shared with the response rate, which is behaviour-identical; median not mean, unanswered briefs excluded, late responses included, labels are bare duration phrases because both call sites render "Responds in {value}". (E) `WorkroomMilestone.DisputeResolvedAt` gives a provider-favoured resolution the permanent timestamp only the client-favoured branch had; both dispute banners now show it, gated for pre-existing rows. No migration. See §10.16. Suite: **690 passed / 60 skipped**, verified stable over 12 consecutive runs; the single remaining failure is the known `ServiceCatalogGalleryVideoValidationTests` Windows file-lock, which also fails at the base commit. **Still open:** `MarketplaceListingCard` has no `completedOrders`/`medianResponseTime` and `MarketplaceListingDetailResponse` has no `Rating`/`ReviewCount` — the earlier follow-up note asserted both existed; neither does. Also new **Appendix B**, recording the process-wide-CWD hazard in `ServiceProviderProfileMediaTests` that `ace6087` worked around but did not remove.
 
