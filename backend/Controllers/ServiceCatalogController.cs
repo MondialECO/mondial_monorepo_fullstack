@@ -1,4 +1,4 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using WebApp.Models;
@@ -17,7 +17,11 @@ namespace WebApp.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/service-provider/catalog")]
-[Authorize]
+// Every action here is provider-owned catalog management; no client action lives in this
+// controller. Bare [Authorize] let any authenticated user — Investor, Creator,
+// Entrepreneur — create and publish service listings, with ownership checks the only thing
+// keeping them apart. Role membership is now required to reach the endpoint at all.
+[Authorize(Roles = "ServiceProvider")]
 public class ServiceCatalogController : ControllerBase
 {
     private readonly IServiceCatalogService _service;

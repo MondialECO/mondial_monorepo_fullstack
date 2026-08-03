@@ -84,6 +84,17 @@ public class ServiceCatalogService : IServiceCatalogService
         if (!string.IsNullOrWhiteSpace(request.ServiceType) && !ServiceTypeLookup.IsValidServiceType(category, request.ServiceType))
             return ServiceProviderResult<ServiceListingResponse>.Conflict($"'{request.ServiceType}' is not an approved sub-category for {category}.");
 
+        // Defence in depth behind the controller's role attribute. A role claim proves this
+        // JWT belongs to someone in the ServiceProvider bucket; it does not prove they
+        // completed and passed verification, and a suspended provider keeps the claim. The
+        // marketplace grid filters listings on Status == Published only, never on provider
+        // verification, so an unverified account's published listing would surface publicly.
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user is null) return ServiceProviderResult<ServiceListingResponse>.NotFound("Service provider profile not found.");
+        var record = await _spStore.GetByUserIdAsync(userId) ?? SpProfileSplitMapper.ToServiceProviderRecord(user);
+        if (record.VerificationStatus != ServiceProviderVerificationStatus.Verified)
+            return ServiceProviderResult<ServiceListingResponse>.Conflict("A verified provider profile is required before creating a service.");
+
         // Enforce lifetime cap: each provider may create a maximum of 4 ServiceListings total (across all statuses)
         var existingCount = await _db.ServiceListings.CountDocumentsAsync(l => l.ProviderId == userId);
         if (existingCount >= 4)

@@ -390,6 +390,16 @@ public class LeadsService : ILeadsService
     {
         var p = await ProviderProposal(providerId, proposalId);
         if (p is null) return ServiceProviderResult<ProposalResponse>.NotFound("Proposal not found.");
+        // Same eligibility bar ValidateSubmission applies to a negotiated proposal. Without
+        // it this was the one way an unverified or suspended provider could still take on
+        // paid work: a purchase against their package fails the "Provider is unavailable"
+        // gate, which routes to this manual path rather than rejecting, and approving here
+        // pushed it straight on to client acceptance.
+        var reviewer = await _users.FindByIdAsync(providerId);
+        await HydrateProviderViewAsync(reviewer);
+        var reviewerProfile = reviewer?.ServiceProviderProfile;
+        if (reviewerProfile is null || reviewerProfile.VerificationStatus != ServiceProviderVerificationStatus.Verified || !IsAvailable(reviewerProfile))
+            return ServiceProviderResult<ProposalResponse>.Conflict("The provider account is not eligible for paid work or is currently at capacity.");
         if (p.ProposalSource != ProposalSource.PublishedPackagePurchase || p.AcceptanceTrigger != "ProviderApprovalRequired" || p.Status != ProposalStatus.Submitted)
             return ServiceProviderResult<ProposalResponse>.Conflict("This proposal is not awaiting provider approval.");
         p.Status = accept ? ProposalStatus.ClientReviewing : ProposalStatus.Declined;
