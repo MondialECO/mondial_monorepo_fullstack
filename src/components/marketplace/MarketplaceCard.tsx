@@ -96,7 +96,7 @@ export function MarketplaceCard({ card }: { card: MarketplaceListingCard }) {
         <div className="flex items-center justify-between gap-2">
           {card.rating != null ? (
             <span className="flex items-center gap-1">
-              <Star className="size-3 fill-amber-400 text-amber-400" />
+              <Star className="size-3 fill-rating text-rating" />
               <span className="text-xs font-medium text-foreground">{card.rating.toFixed(1)}</span>
               {card.reviewCount != null && (
                 <span className="text-xs text-muted-foreground">({card.reviewCount})</span>

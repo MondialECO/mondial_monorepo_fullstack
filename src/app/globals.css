@@ -113,9 +113,9 @@
   --success-light: #E5F7ED;
   --success-text: #00A854;
   --warning: #B45309;
-  /* Star/rating amber. Matches the amber-400 currently hardcoded in
-     MarketplaceCard and ReviewPanel, so migrating them later is a zero-diff
-     change. Defined but intentionally unused for now. */
+  /* Star/rating amber, consumed via text-rating / fill-rating by MarketplaceCard
+     and ReviewPanel. Identical to the amber-400 those two previously hardcoded,
+     so the migration was a zero-pixel change. */
   --rating: #F59E0B;
   --warning-foreground: #FFFFFF;
   --info: #0369A1;
