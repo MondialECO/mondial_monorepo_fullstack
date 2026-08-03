@@ -1,7 +1,9 @@
 # Tech debt — `MongoDbContext.ApplicationUsers` collection-name casing
 
-**Filed:** 2026-08-03. **Status:** open, planned batch.
-**Tactical chat-only mitigation shipped:** `5eb458a`.
+**Filed:** 2026-08-03. **Status:** binding fixed in `5867dc1`; the separate `"users"` bug
+and the manual write-path verification remain open.
+**Tactical chat-only mitigation:** `5eb458a` (now redundant — the binding it bypassed is
+correct, though the direct query is harmless and was left in place).
 **Estimated scope:** 1–2 focused sessions. Not a small fix — do not bundle.
 
 ---
@@ -111,27 +113,38 @@ underneath — the exact failure mode of pinning tests to the wrong data.
 
 ## Canonical fix — three options
 
-**Option A — surgical.** Correct the literal at `MongoDbContext.cs:227` to
-`"applicationUsers"`. Smallest diff; matches today's Identity convention exactly. Risk:
-the name is asserted in two places (Identity's convention and our literal) with nothing
-keeping them in step, so a package upgrade that changes the inflector reintroduces the
-bug silently.
+**Option A — surgical. ✅ SHIPPED 2026-08-03 in commit `5867dc1`.** Correct the literal at
+`MongoDbContext.cs:227` to `"applicationUsers"`. Residual risk: the name is asserted in
+two places (Identity's convention and our literal) with nothing keeping them in step, so a
+package upgrade that changes the inflector could drift them apart. Mitigated by
+`MongoDbContextBindingTests`, added in the same commit, which fails the moment the string
+changes.
 
-**Option B — attribute-based.** Add
-`[CollectionName("applicationUsers")]` (`MongoDbGenericRepository.Attributes`) to
-`ApplicationUser`. This is the library's own documented override and takes precedence over
-the convention, so Identity and `MongoDbContext` would both read one declaration on the
-type. Stronger guarantee than A. **Must be verified against Identity's own resolution
-before adopting** — the attribute changes Identity's behaviour too, so the value has to
-match the existing collection exactly or Identity starts reading an empty collection,
-turning a display bug into an auth outage.
+**Option B — attribute-based. ❌ NOT VIABLE. Superseded — this section was wrong.**
 
-**Option C — composite.** Option B, plus renaming the two `"users"` references
-(`Program.cs:763`, `AiCreditSeeder.cs:35`) and updating the three integration tests.
-Fixes both bugs and removes the misleading fixtures in one pass. Largest blast radius;
-strongest end state.
+The original filing proposed `[CollectionName("applicationUsers")]`
+(`MongoDbGenericRepository.Attributes`) on `ApplicationUser` as the stronger fix, on the
+assumption that both Identity and `MongoDbContext` would then read one declaration.
+**`MongoDbContext` would not.** Verified 2026-08-03:
 
-Recommendation: **Option C, sequenced**, with Option B verified in isolation first.
+- `WebApp.DbContext.MongoDbContext` is our own class, not the library's. It holds a
+  `private readonly IMongoDatabase _database` assigned from `client.GetDatabase(...)`.
+- Line 227 calls the **driver's** `IMongoDatabase.GetCollection<T>(string name)`, which
+  takes the name as an explicit argument and never inspects attributes.
+- `[CollectionName]` is read only by `MongoDbGenericRepository.MongoDbContext.
+  GetCollectionName<T>()`. A repo-wide grep for `GetCollectionName`,
+  `CollectionNameAttribute` and `[CollectionName` returns **zero** hits in our code — that
+  path is never entered.
+
+So the attribute would have been **inert for this bug** while still changing Identity's
+own resolution: no upside, and an auth outage if the value were ever wrong. Do not
+reintroduce it as a fix for collection bindings that pass an explicit name.
+
+**Option C — composite.** Was defined as Option B plus the `"users"` rename and the test
+corrections. With B removed it reduces to: Option A (done), plus renaming the two `"users"`
+references (`Program.cs:763`, `AiCreditSeeder.cs:35`) and the one test still pinned to that
+name (`AiPersistenceIntegrationTests.cs:164`). **That remainder is the separate second bug
+and is still open** — see the sequencing section.
 
 ---
 
@@ -171,10 +184,14 @@ is the assertion whose absence let this survive.
 
 ## Recommended sequencing
 
-1. Verify Option B in isolation — annotate `ApplicationUser`, confirm Identity still
-   resolves `applicationUsers` and login works.
-2. Fix the binding and the three integration tests in one commit.
-3. Rename the two `"users"` references (second bug) in a separate commit.
+1. ~~Verify Option B in isolation.~~ **Dropped** — Option B cannot affect this binding;
+   see the corrected Option B section above.
+2. ~~Fix the binding and the integration tests in one commit.~~ **Done in `5867dc1`** —
+   binding, the two `LevelUpTransactionIntegrationTests` pins, and a new
+   `MongoDbContextBindingTests` that fails against the old value. Note this was two tests,
+   not three: `AiPersistenceIntegrationTests.cs:164` is pinned to `"users"` and belongs to
+   step 3.
+3. Rename the two `"users"` references plus that third test (second bug), separate commit.
 4. Manually verify each write path in dev: Crossroads decision persists and returns 200;
    Creator→Entrepreneur promotion writes both `CompanyId` and the role.
 5. Check each production environment for phantom `ApplicationUsers` / `users` collections;
