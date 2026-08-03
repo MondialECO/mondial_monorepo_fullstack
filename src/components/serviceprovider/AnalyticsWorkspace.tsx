@@ -174,9 +174,8 @@ function Overview({ data, tasks, tasksLoading }: { data: AnalyticsDashboard; tas
 
   return (
     <div className="space-y-6">
-      <section aria-label="Analytics overview" className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+      <section aria-label="Analytics overview" className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <SpMetricCard label="Profile strength" icon={ShieldCheck} value={metricText(data.profile.profileCompleteness)} detail="Public profile completion" />
-        <SpMetricCard label="Published services" icon={BriefcaseBusiness} value={metricText(data.profile.publishedServices)} detail="Live catalogue listings" />
         <SpMetricCard label="Accepted proposals" icon={Send} value={metricText(data.proposals.accepted)} detail={<Trend metric={data.proposals.accepted} />} />
         <SpMetricCard label="Net earnings" icon={Wallet} value={metricText(data.revenue.net)} detail={<Trend metric={data.revenue.net} />} />
         <SpMetricCard label="Repeat clients" icon={Users} value={metricText(data.clients.repeatClientRate)} detail="Shared Workroom relationship calculation" />
@@ -184,7 +183,10 @@ function Overview({ data, tasks, tasksLoading }: { data: AnalyticsDashboard; tas
 
       <ComparisonPanel data={data} />
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_1.1fr]">
+      {/* Observations renders null when it has nothing to report, so the grid collapses
+          to a single column rather than leaving Growth tasks stranded in a half-width
+          column beside empty space. */}
+      <div className={`grid gap-6 ${hasObservationContent(data) ? 'xl:grid-cols-[1fr_1.1fr]' : ''}`}>
         <Observations data={data} />
         <GrowthTasks tasks={tasks} loading={tasksLoading} />
       </div>
@@ -195,23 +197,42 @@ function Overview({ data, tasks, tasksLoading }: { data: AnalyticsDashboard; tas
 }
 
 function ComparisonPanel({ data }: { data: AnalyticsDashboard }) {
+  // Net earnings and Accepted proposals were removed: both already sit in the KPI row
+  // immediately above this panel, so the page showed each of them twice within one screen.
+  // What is left is the delivery pair, which appears nowhere else.
   const metrics = [
-    ['Net earnings', data.revenue.net],
-    ['Accepted proposals', data.proposals.accepted],
     ['Completed engagements', data.clients.completedEngagements],
     ['On-time delivery', data.clients.onTimeDeliveryRate],
   ] as const;
   return (
     <SpCard aria-labelledby="period-comparison-title">
       <SpSectionHeader title="Period comparison" description="Current values against the directly preceding comparison window; no interpolated time series." />
-      <div id="period-comparison-title" className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div id="period-comparison-title" className="mt-5 grid gap-4 sm:grid-cols-2">
         {metrics.map(([label, metric]) => <MetricTile key={label} label={label} metric={metric} />)}
       </div>
     </SpCard>
   );
 }
 
-function Observations({ data }: { data: AnalyticsDashboard }) {
+/**
+ * Renders nothing at all when there is genuinely nothing to say — no triggered
+ * observation AND no unavailable rule worth flagging.
+ *
+ * Only one of the four deterministic rules can currently fire (Rules 1-3 need upstream
+ * inputs that do not exist), so the common case was a card whose entire content was "No
+ * rule-based observation is triggered by the metrics currently available." An empty state
+ * earns its space when it tells you what to do next; this one only reported that a
+ * feature had nothing to report.
+ *
+ * The partially-empty case still renders: if rules could not run, that IS worth saying,
+ * and the existing copy says it.
+ */
+function hasObservationContent(data: AnalyticsDashboard) {
+  return data.observations.length > 0 || data.unavailableObservationRuleIds.length > 0;
+}
+
+export function Observations({ data }: { data: AnalyticsDashboard }) {
+  if (!hasObservationContent(data)) return null;
   return (
     <SpCard aria-labelledby="observations-title">
       <SpSectionHeader title="Growth observations" description="Deterministic rules evaluate the current response when this page loads. They never create tasks or change marketplace data." />
@@ -288,10 +309,10 @@ function ServicesView({ data }: { data: AnalyticsDashboard }) {
 
           Only the two that remain structurally untracked for EVERY row are left. Sampling
           services[0] is sound for exactly that reason: these two never vary by row. */}
-      <TrackingGaps title="Service metrics not tracked yet" metrics={[
+      <TrackingGapsNote metrics={[
         ['Enquiries', data.services[0]?.enquiries],
         ['Cancellation rate', data.services[0]?.cancellationRate],
-      ]} fallback="Enquiry and cancellation events do not exist upstream yet." />
+      ]} />
     </div>
   );
 }
@@ -316,7 +337,7 @@ function ProposalsView({ data }: { data: AnalyticsDashboard }) {
           ].map(([label, metric]) => <MetricTile key={label as string} label={label as string} metric={metric as AnalyticsMetric} />)}
         </div>
       </SpCard>
-      <TrackingGaps title="Proposal metrics not tracked yet" metrics={[
+      <TrackingGapsNote metrics={[
         ['Proposal view rate', proposal.proposalViewRate],
         ['Client response rate', proposal.clientResponseRate],
       ]} />
@@ -349,9 +370,8 @@ function ProfileView({ data }: { data: AnalyticsDashboard }) {
       <MetricGrid entries={[
         ['Skills tests taken', profile.skillsTestsTaken], ['Skills tests passed', profile.skillsTestsPassed],
         ['Latest test score', profile.latestSkillsTestScore], ['Portfolio items', profile.portfolioItems],
-        ['Published services', profile.publishedServices],
       ]} />
-      <TrackingGaps title="Profile metrics not tracked yet" metrics={[
+      <TrackingGapsNote metrics={[
         ['Profile views', profile.profileViews], ['Search appearances', profile.searchAppearances],
         ['Portfolio views', profile.portfolioViews], ['Profile saves', profile.profileSaves],
         ['Contact rate', profile.contactRate], ['Portfolio engagement', profile.portfolioEngagement],
@@ -364,12 +384,6 @@ function EarningsView({ data }: { data: AnalyticsDashboard }) {
   const revenue = data.revenue;
   return (
     <div className="space-y-6">
-      <MetricGrid entries={[
-        ['Gross earnings', revenue.gross], ['Platform commission', revenue.commission],
-        ['Net earnings', revenue.net], ['Average engagement', revenue.averageProjectValue],
-        ['Available balance', revenue.availableBalance], ['Pending balance', revenue.pendingBalance],
-        ['Protected funding', revenue.protectedEscrow], ['Withdrawn', revenue.withdrawn],
-      ]} />
       <SpCard className="border-l-4 border-l-[#0D9488]">
         <div className="flex gap-3"><Info aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-[#0D9488]" /><p className="text-sm leading-6 text-[#4B5563]">All gross, commission, and net values come from server-created financial records. This screen performs no commission calculation. Payment movement is currently gateway-stub backed; protected funding is not earned income.</p></div>
       </SpCard>
@@ -517,15 +531,38 @@ function MetricTile({ label, metric }: { label: string; metric: AnalyticsMetric 
   );
 }
 
-function TrackingGaps({ title, metrics, fallback }: { title: string; metrics: [string, AnalyticsMetric | undefined][]; fallback?: string }) {
+/**
+ * A one-line note that N metrics are waiting on upstream tracking, with each reason on
+ * hover.
+ *
+ * This replaced a bordered card listing every gap in full. That card rendered on every
+ * visit and never changed: profile traffic needs a public browsing/search surface that
+ * does not exist, and proposal view/response rates need durable event history that is not
+ * recorded. Giving permanent, unactionable gaps the same visual weight as live results
+ * trains people to skip the page furniture — the same reasoning that consolidated ten
+ * STUB banners into one notice.
+ *
+ * The information is not removed, only de-emphasised: the count is visible and every
+ * reason is still one hover away. Styled to match the "Data provenance" aside, which is
+ * the established weight for a standing caveat on this page.
+ */
+export function TrackingGapsNote({ metrics }: { metrics: [string, AnalyticsMetric | undefined][] }) {
   const gaps = metrics.filter((entry): entry is [string, AnalyticsMetric] => !!entry[1] && entry[1].state !== 'available');
-  if (!gaps.length && !fallback) return null;
+  if (!gaps.length) return null;
   return (
-    <SpCard className="border-l-4 border-l-warning">
-      <SpSectionHeader title={title} description="These are honest upstream data gaps, not zero-valued performance." />
-      <ul className="mt-4 space-y-3">{gaps.map(([label, metric]) => <li key={label} className="flex gap-3 text-sm leading-6"><Eye aria-hidden="true" className="mt-1 size-4 shrink-0 text-warning" /><span><strong className="font-semibold text-[#374151]">{label}:</strong> <span className="text-muted-foreground">{metric.reason}</span></span></li>)}</ul>
-      {!gaps.length && fallback && <p className="mt-4 text-sm leading-6 text-muted-foreground">{fallback}</p>}
-    </SpCard>
+    <aside className="rounded-xl border border-dashed border-input bg-white px-4 py-3 text-xs leading-5 text-muted-foreground">
+      <Eye aria-hidden="true" className="mr-1.5 inline size-3.5 align-[-2px]" />
+      {gaps.length} {gaps.length === 1 ? 'metric awaits' : 'metrics await'} upstream tracking infrastructure:{' '}
+      {gaps.map(([label, metric], index) => (
+        <span key={label}>
+          {index > 0 && ', '}
+          <span title={metric.reason ?? undefined} className="underline decoration-dotted underline-offset-2">
+            {label}
+          </span>
+        </span>
+      ))}
+      .
+    </aside>
   );
 }
 
