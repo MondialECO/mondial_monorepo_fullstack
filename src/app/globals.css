@@ -295,6 +295,25 @@
   color: #171717;
 }
 
+/* PENDING DESIGN-TOKEN DECISION — hex literals still hardcoded on the SP
+   Earnings and Analytics surfaces (EarningsWorkspace, the earnings panels, and
+   AnalyticsWorkspace), deliberately NOT migrated.
+
+   The seven values that map exactly to a token above were migrated. These
+   twelve have NO exact equivalent, and three are near-misses that would
+   silently shift colour if swapped for the closest-looking token:
+
+     #157A55  NOT --success-text (#00A854)   currently only --p8-green
+     #B42318  NOT --destructive  (#C24141)
+     #965F11  NOT --warning      (#B45309)   currently only --dr-yellow
+
+   No token at all: #F9FAFB (19), #374151 (19), #4B5563 (5), #E8F7F0 (4),
+   #0D9488 (4), #BBE8D3 (3), #F7FCFA, #F3F4F6, #9CA3AF.
+
+   They are left as hex on purpose: resolving them means either adding
+   tokens here or accepting a colour change, which is a design call rather
+   than a mechanical swap. Remaining hex on those files is not an oversight. */
+
 /* Existing SP screens still using the generic Card primitive inherit the
    canonical surface until later redesign steps migrate them to SpCard. */
 .sp-workspace [data-slot="card"] {

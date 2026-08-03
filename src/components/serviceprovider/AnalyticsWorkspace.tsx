@@ -1,5 +1,8 @@
 'use client';
 
+// Remaining hardcoded hex on this file is deliberate, not an oversight: those values
+// have no exact token equivalent. See the PENDING DESIGN-TOKEN DECISION note in
+// src/app/globals.css (below the .sp-workspace block) for the full list and why.
 import Link from 'next/link';
 import { FormEvent, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -122,7 +125,7 @@ export function AnalyticsWorkspace() {
         }))}
       />
 
-      <p className="text-xs leading-5 text-[#6B7280]">
+      <p className="text-xs leading-5 text-muted-foreground">
         {date(data.period.from)}–{date(data.period.to)} compared with {date(data.period.comparisonFrom)}–{date(data.period.comparisonTo)}. Financial values are scoped to {data.currency}.
       </p>
 
@@ -133,7 +136,7 @@ export function AnalyticsWorkspace() {
       {view === 'earnings' && <EarningsView data={data} />}
       {view === 'clients' && <ClientsView data={data} />}
 
-      <aside className="rounded-xl border border-dashed border-[#D1D5DB] bg-white px-4 py-3 text-xs leading-5 text-[#6B7280]">
+      <aside className="rounded-xl border border-dashed border-input bg-white px-4 py-3 text-xs leading-5 text-muted-foreground">
         <strong className="font-semibold text-[#374151]">Data provenance:</strong> {data.dataLimitation}
       </aside>
     </SpPage>
@@ -197,13 +200,13 @@ function Observations({ data }: { data: AnalyticsDashboard }) {
       <div id="observations-title" className="mt-5 space-y-3">
         {data.observations.length ? data.observations.map((item) => (
           <article key={item.ruleId} className="rounded-xl border border-[#BBE8D3] border-l-4 border-l-[#0D9488] bg-[#F7FCFA] p-4">
-            <div className="flex items-center gap-2"><TrendingUp aria-hidden="true" className="size-4 text-[#157A55]" /><h3 className="font-heading text-sm font-semibold text-[#171717]">{item.title}</h3></div>
+            <div className="flex items-center gap-2"><TrendingUp aria-hidden="true" className="size-4 text-[#157A55]" /><h3 className="font-heading text-sm font-semibold text-foreground">{item.title}</h3></div>
             <p className="mt-2 text-sm leading-6 text-[#4B5563]">{item.message}</p>
             {item.suggestedActions.length > 0 && <ul className="mt-2 list-inside list-disc text-sm text-[#4B5563]">{item.suggestedActions.map((action) => <li key={action}>{action}</li>)}</ul>}
           </article>
-        )) : <p className="text-sm leading-6 text-[#6B7280]">No rule-based observation is triggered by the metrics currently available.</p>}
+        )) : <p className="text-sm leading-6 text-muted-foreground">No rule-based observation is triggered by the metrics currently available.</p>}
         {data.unavailableObservationRuleIds.length > 0 && (
-          <div className="flex gap-2 rounded-xl bg-[#F4F5F7] p-3 text-xs leading-5 text-[#6B7280]">
+          <div className="flex gap-2 rounded-xl bg-muted p-3 text-xs leading-5 text-muted-foreground">
             <Info aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
             <span>{data.unavailableObservationRuleIds.length} observation rules cannot run because their source metrics are not tracked yet.</span>
           </div>
@@ -224,7 +227,7 @@ function QuickLinks() {
     <SpCard>
       <SpSectionHeader title="Quick links" description="Navigate to the source workspace to take action." />
       <ul className="mt-4 grid gap-3 sm:grid-cols-2">
-        {links.map(([label, href]) => <li key={href}><Link href={href} className="inline-flex items-center gap-1 text-sm font-semibold text-[#374151] outline-none hover:text-[#0D9488] focus-visible:rounded focus-visible:ring-2 focus-visible:ring-[#3C61DD]">{label}<ArrowRight aria-hidden="true" className="size-4" /></Link></li>)}
+        {links.map(([label, href]) => <li key={href}><Link href={href} className="inline-flex items-center gap-1 text-sm font-semibold text-[#374151] outline-none hover:text-[#0D9488] focus-visible:rounded focus-visible:ring-2 focus-visible:ring-ring">{label}<ArrowRight aria-hidden="true" className="size-4" /></Link></li>)}
       </ul>
     </SpCard>
   );
@@ -246,10 +249,10 @@ function ServicesView({ data }: { data: AnalyticsDashboard }) {
           <SpSectionHeader title="Service performance" description="Brief-based work without a ServiceId is grouped under Custom/Unattributed. Traffic metrics remain unavailable until dated view events exist." />
           <div className="mt-5 overflow-x-auto">
             <table className="w-full min-w-[1100px] text-left text-sm">
-              <thead><tr className="border-b border-[#E5E7EB] text-xs uppercase tracking-wide text-[#6B7280]"><th className="pb-3 pr-4">Service</th><th className="pb-3 pr-4">Status</th><th className="pb-3 pr-4">Orders</th><th className="pb-3 pr-4">Gross</th><th className="pb-3 pr-4">Net</th><th className="pb-3 pr-4">Avg sale</th><th className="pb-3 pr-4">Completion</th><th className="pb-3 pr-4">On time</th><th className="pb-3">Traffic</th></tr></thead>
+              <thead><tr className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground"><th className="pb-3 pr-4">Service</th><th className="pb-3 pr-4">Status</th><th className="pb-3 pr-4">Orders</th><th className="pb-3 pr-4">Gross</th><th className="pb-3 pr-4">Net</th><th className="pb-3 pr-4">Avg sale</th><th className="pb-3 pr-4">Completion</th><th className="pb-3 pr-4">On time</th><th className="pb-3">Traffic</th></tr></thead>
               <tbody>{data.services.map((service) => (
-                <tr key={service.serviceId ?? 'custom'} className="border-b border-[#E5E7EB] last:border-0">
-                  <td className="py-4 pr-4"><p className="font-semibold text-[#171717]">{service.title}</p><p className="mt-1 text-xs text-[#6B7280]">{service.category}</p></td>
+                <tr key={service.serviceId ?? 'custom'} className="border-b border-border last:border-0">
+                  <td className="py-4 pr-4"><p className="font-semibold text-foreground">{service.title}</p><p className="mt-1 text-xs text-muted-foreground">{service.category}</p></td>
                   <td className="pr-4"><SpStatusBadge tone={service.status === 'Published' ? 'positive' : 'neutral'}>{words(service.status)}</SpStatusBadge></td>
                   <MetricCell metric={service.orders} /><MetricCell metric={service.grossRevenue} /><MetricCell metric={service.netRevenue} /><MetricCell metric={service.averageSellingPrice} /><MetricCell metric={service.orderCompletionRate} /><MetricCell metric={service.onTimeDeliveryRate} />
                   <td><NotTrackedInline metric={service.serviceViews} /></td>
@@ -313,9 +316,9 @@ function ProfileView({ data }: { data: AnalyticsDashboard }) {
         <SpSectionHeader title="Trust breakdown" description="The existing Trust calculation is shown read-only. Signals without data are excluded from the score." action={<Button asChild variant="outline"><Link href="/dashboard/serviceprovider/profile?view=trust">Open Trust details</Link></Button>} />
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {profile.trustSignals.map((signal) => (
-            <div key={signal.key} className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-4">
-              <div className="flex items-center justify-between gap-3"><h3 className="text-sm font-semibold text-[#171717]">{signal.label}</h3><span className="text-xs text-[#6B7280]">{number(signal.weight)}% weight</span></div>
-              <p className="mt-3 text-2xl font-semibold text-[#171717]">{signal.hasData && signal.value != null ? `${number(signal.value)} / 100` : 'Not enough activity'}</p>
+            <div key={signal.key} className="rounded-xl border border-border bg-[#F9FAFB] p-4">
+              <div className="flex items-center justify-between gap-3"><h3 className="text-sm font-semibold text-foreground">{signal.label}</h3><span className="text-xs text-muted-foreground">{number(signal.weight)}% weight</span></div>
+              <p className="mt-3 text-2xl font-semibold text-foreground">{signal.hasData && signal.value != null ? `${number(signal.value)} / 100` : 'Not enough activity'}</p>
             </div>
           ))}
           <MetricTile label="Dispute penalty" metric={profile.disputePenalty} />
@@ -390,10 +393,10 @@ function ClientsView({ data }: { data: AnalyticsDashboard }) {
       <SpCard>
         <SpSectionHeader title="Most active clients" description="Identifiers are masked by the API; no client identity is inferred in the browser." />
         {clients.mostActiveClients.length ? (
-          <ul className="mt-4 divide-y divide-[#E5E7EB]">{clients.mostActiveClients.map((client) => (
-            <li key={client.clientId} className="flex flex-col justify-between gap-1 py-3 text-sm sm:flex-row sm:items-center"><span className="font-semibold text-[#171717]">{client.clientId}</span><span className="text-[#6B7280]">{client.completedProjects} completed · {money(client.netRevenue, data.currency)} net</span></li>
+          <ul className="mt-4 divide-y divide-border">{clients.mostActiveClients.map((client) => (
+            <li key={client.clientId} className="flex flex-col justify-between gap-1 py-3 text-sm sm:flex-row sm:items-center"><span className="font-semibold text-foreground">{client.clientId}</span><span className="text-muted-foreground">{client.completedProjects} completed · {money(client.netRevenue, data.currency)} net</span></li>
           ))}</ul>
-        ) : <p className="mt-4 text-sm text-[#6B7280]">No completed client relationships exist in this period.</p>}
+        ) : <p className="mt-4 text-sm text-muted-foreground">No completed client relationships exist in this period.</p>}
       </SpCard>
     </div>
   );
@@ -415,9 +418,9 @@ function GrowthTasks({ tasks, loading }: { tasks: GrowthTask[]; loading: boolean
       <div id="growth-tasks-title" className="mt-5 space-y-5">
         {loading ? <Skeleton className="h-24 w-full rounded-xl" /> : tasks.length ? (
           <ul className="space-y-2">{tasks.map((task) => (
-            <li key={task.id} className="rounded-xl border border-[#E5E7EB] p-3">
+            <li key={task.id} className="rounded-xl border border-border p-3">
               <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
-                <div><p className="text-sm font-semibold text-[#171717]">{task.title}</p><p className="mt-1 text-xs leading-5 text-[#6B7280]">{task.description}</p></div>
+                <div><p className="text-sm font-semibold text-foreground">{task.title}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{task.description}</p></div>
                 <SpStatusBadge tone={task.status === 'Completed' ? 'positive' : 'neutral'}>{words(task.status)}</SpStatusBadge>
               </div>
               {['Open', 'InProgress'].includes(task.status) && <div className="mt-3 flex flex-wrap gap-2">{task.status === 'Open' && <Button size="sm" variant="outline" disabled={update.isPending} onClick={() => update.mutate({ id: task.id, status: 'InProgress' })}>Start</Button>}<Button size="sm" variant="outline" disabled={update.isPending} onClick={() => update.mutate({ id: task.id, status: 'Completed' })}>Mark complete</Button><Button size="sm" variant="outline" disabled={update.isPending} onClick={() => update.mutate({ id: task.id, status: 'Dismissed' })}>Dismiss</Button></div>}
@@ -425,8 +428,8 @@ function GrowthTasks({ tasks, loading }: { tasks: GrowthTask[]; loading: boolean
           ))}</ul>
         ) : <SpEmptyState className="min-h-40" icon={ClipboardList} title="No manual tasks" description="Create a task when you decide an observation needs follow-up." />}
 
-        <form className="space-y-3 border-t border-[#E5E7EB] pt-5" onSubmit={submit}>
-          <h3 className="font-heading text-sm font-semibold text-[#171717]">Add a task</h3>
+        <form className="space-y-3 border-t border-border pt-5" onSubmit={submit}>
+          <h3 className="font-heading text-sm font-semibold text-foreground">Add a task</h3>
           <label className="block text-sm font-semibold text-[#374151]" htmlFor="growth-task-title">Title</label>
           <Input id="growth-task-title" required maxLength={160} value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} />
           <label className="block text-sm font-semibold text-[#374151]" htmlFor="growth-task-description">Description</label>
@@ -447,9 +450,9 @@ function MetricGrid({ entries }: { entries: [string, AnalyticsMetric][] }) {
 
 function MetricTile({ label, metric }: { label: string; metric: AnalyticsMetric }) {
   return (
-    <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-4">
-      <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[#6B7280]">{label}</p>
-      {metric.state === 'available' ? <><p className="mt-2 text-xl font-semibold text-[#171717]">{metricText(metric)}</p><div className="mt-1"><Trend metric={metric} /></div></> : <><p className="mt-2 text-sm font-semibold text-[#4B5563]">{stateLabel(metric)}</p><p className="mt-1 text-xs leading-5 text-[#6B7280]">{metric.reason}</p></>}
+    <div className="rounded-xl border border-border bg-[#F9FAFB] p-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">{label}</p>
+      {metric.state === 'available' ? <><p className="mt-2 text-xl font-semibold text-foreground">{metricText(metric)}</p><div className="mt-1"><Trend metric={metric} /></div></> : <><p className="mt-2 text-sm font-semibold text-[#4B5563]">{stateLabel(metric)}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{metric.reason}</p></>}
     </div>
   );
 }
@@ -460,8 +463,8 @@ function TrackingGaps({ title, metrics, fallback }: { title: string; metrics: [s
   return (
     <SpCard className="border-l-4 border-l-warning">
       <SpSectionHeader title={title} description="These are honest upstream data gaps, not zero-valued performance." />
-      <ul className="mt-4 space-y-3">{gaps.map(([label, metric]) => <li key={label} className="flex gap-3 text-sm leading-6"><Eye aria-hidden="true" className="mt-1 size-4 shrink-0 text-warning" /><span><strong className="font-semibold text-[#374151]">{label}:</strong> <span className="text-[#6B7280]">{metric.reason}</span></span></li>)}</ul>
-      {!gaps.length && fallback && <p className="mt-4 text-sm leading-6 text-[#6B7280]">{fallback}</p>}
+      <ul className="mt-4 space-y-3">{gaps.map(([label, metric]) => <li key={label} className="flex gap-3 text-sm leading-6"><Eye aria-hidden="true" className="mt-1 size-4 shrink-0 text-warning" /><span><strong className="font-semibold text-[#374151]">{label}:</strong> <span className="text-muted-foreground">{metric.reason}</span></span></li>)}</ul>
+      {!gaps.length && fallback && <p className="mt-4 text-sm leading-6 text-muted-foreground">{fallback}</p>}
     </SpCard>
   );
 }
@@ -470,14 +473,14 @@ function Breakdown({ title, rows, currency }: { title: string; rows: AnalyticsBr
   return (
     <SpCard>
       <SpSectionHeader title={title} />
-      {rows.length ? <ul className="mt-4 divide-y divide-[#E5E7EB]">{rows.map((row) => <li key={row.key} className="flex items-center justify-between gap-4 py-3 text-sm"><span className="min-w-0 truncate font-medium text-[#374151]">{row.label}</span><span className="shrink-0 font-semibold text-[#171717]">{money(row.net, currency)} net</span></li>)}</ul> : <p className="mt-4 text-sm text-[#6B7280]">No released revenue exists in this period.</p>}
+      {rows.length ? <ul className="mt-4 divide-y divide-border">{rows.map((row) => <li key={row.key} className="flex items-center justify-between gap-4 py-3 text-sm"><span className="min-w-0 truncate font-medium text-[#374151]">{row.label}</span><span className="shrink-0 font-semibold text-foreground">{money(row.net, currency)} net</span></li>)}</ul> : <p className="mt-4 text-sm text-muted-foreground">No released revenue exists in this period.</p>}
     </SpCard>
   );
 }
 
 function Trend({ metric }: { metric: AnalyticsMetric }) {
-  if (metric.state !== 'available') return <span className="text-xs text-[#6B7280]">{stateLabel(metric)}</span>;
-  if (metric.changePercentage == null) return <span className="text-xs text-[#6B7280]">No comparable prior value</span>;
+  if (metric.state !== 'available') return <span className="text-xs text-muted-foreground">{stateLabel(metric)}</span>;
+  if (metric.changePercentage == null) return <span className="text-xs text-muted-foreground">No comparable prior value</span>;
   const positive = metric.changePercentage >= 0;
   const Icon = positive ? ArrowUpRight : ArrowDownRight;
   return <span className={`inline-flex items-center gap-1 text-xs font-semibold ${positive ? 'text-[#157A55]' : 'text-[#965F11]'}`}><Icon aria-hidden="true" className="size-3.5" />{positive ? '+' : ''}{number(metric.changePercentage)}%<span className="sr-only">{positive ? 'increase' : 'decrease'} compared with the previous period</span></span>;
@@ -488,11 +491,11 @@ function MetricCell({ metric }: { metric: AnalyticsMetric }) {
 }
 
 function NotTrackedInline({ metric }: { metric: AnalyticsMetric }) {
-  return <span title={metric.reason ?? undefined} className="text-xs text-[#6B7280]">{stateLabel(metric)}</span>;
+  return <span title={metric.reason ?? undefined} className="text-xs text-muted-foreground">{stateLabel(metric)}</span>;
 }
 
 function SelectControl({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: { value: string; label: string }[] }) {
-  return <select aria-label={label} value={value} onChange={(event) => onChange(event.target.value)} className="h-10 rounded-lg border border-[#D1D5DB] bg-white px-3 text-sm font-medium text-[#374151] outline-none focus-visible:ring-2 focus-visible:ring-[#3C61DD]">{options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select>;
+  return <select aria-label={label} value={value} onChange={(event) => onChange(event.target.value)} className="h-10 rounded-lg border border-input bg-white px-3 text-sm font-medium text-[#374151] outline-none focus-visible:ring-2 focus-visible:ring-ring">{options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select>;
 }
 
 function DateControl({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
