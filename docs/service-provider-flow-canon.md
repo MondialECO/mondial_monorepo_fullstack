@@ -24,7 +24,7 @@ Every feature carries a STATUS tag:
 - **PLANNED** — specced here, not built yet
 - **FORBIDDEN** — must never be built (violates a core rule)
 
-Section map: **§1** architecture · **§1A** SP data ownership architecture (split collections, editor, tier, trust, migration, status) · **§2** AI (none) · **§3** design system · **§4** database · **§5** Module 1 Profile & Trust (LIVE) · **§6** Module 2 Service Catalog (LIVE) · **§7** Module 3 Leads (LIVE) · **§8** Module 4 Workroom & Earnings (LIVE) · **§9** Module 5 Analytics & Growth (LIVE) · **§10** cross-cutting rules · **§11** SP journey (product experience) · **§12** notifications · **§13** audit log · **§14** validation/error · **§15** security/trust · **§16** roles & permissions · **§17** acceptance criteria · Appendix + Changelog.
+Section map: **§1** architecture · **§1A** SP data ownership architecture (split collections, editor, tier, trust, migration, status) · **§2** AI (none) · **§3** design system · **§4** database · **§5** Module 1 Profile & Trust (LIVE) · **§6** Module 2 Service Catalog (LIVE) · **§7** Module 3 Leads (LIVE) · **§8** Module 4 Workroom & Earnings (LIVE) · **§9** Module 5 Analytics & Growth (LIVE) · **§10** cross-cutting rules · **§11** SP journey (product experience) · **§12** notifications · **§13** audit log · **§14** validation/error · **§15** security/trust · **§16** roles & permissions · **§17** acceptance criteria · Appendix A (grep/.gitignore gotcha) · Appendix B (test-suite CWD gotcha) · Changelog.
 
 ---
 
@@ -1975,14 +1975,12 @@ Design vocabulary decisions locked platform-wide:
 - Green success pair for Verified + included features + order success. Blue primary for Recommended + tier tabs + primary CTAs.
 - No fake data — rating rows / provider stats / metrics gated on backend-returned non-null values.
 
-**Outstanding follow-ups (backend data addenda phase):**
+**Backend data addenda — SHIPPED 2026-08-03.** All four follow-ups below are implemented; the markup they gated now renders. Seven commits: `4aeda89` (provider name), `eaa878d` (completed orders), `a45f7cb` (ratings), `b770993` (median response time), `eb7c17f` (dispute resolved timestamp), `ace6087` (test isolation), `9d93525` (this doc). Suite **690 passed / 60 skipped / 1 pre-existing failure**, stable over 12 consecutive runs. Details in §10.16.
 
-1. `WorkroomEngagementResponse.providerDisplayName` — buyer sees only `clientDisplayName` on their own engagements; provider name absent from R4 list card + detail header.
-2. `MarketplaceListingCard.completedOrders` + `medianResponseTime` — R1 tooltip is thin because these fields exist only on the detail-level `MarketplaceProviderHeader`, and are hardcoded `null` there too (`ToMarketplaceProviderHeader` sets literal `null` rather than computing).
-3. `MarketplaceProviderHeader.completedOrders` + `medianResponseTime` — computed values (count of `Completed` engagements per provider; median response time from messaging layer). Same field, backend fix.
-4. Ratings aggregate — `rating` + `reviewCount` are typed on `MarketplaceListingCard` and `MarketplaceListingDetail` but backend returns `null` until a Reviews aggregate exists. Currently gates dead markup that never renders.
-
-Once these four addenda ship, R1 tooltips gain genuine information, R2 detail header shows provider name + stats + rating row activates, R4 engagement cards show provider name.
+1. ~~`WorkroomEngagementResponse.providerDisplayName`~~ — **DONE** (`4aeda89`). Also fixed four bare `ToResponse()` call sites that returned an empty `ClientDisplayName`.
+2. ~~`MarketplaceListingCard.completedOrders` + `medianResponseTime`~~ — **N/A as stated.** Neither field exists on the card DTO; both are detail-level only, so there was nothing to wire on the grid. Item 3 is the real fix.
+3. ~~`MarketplaceProviderHeader.completedOrders` + `medianResponseTime`~~ — **DONE** (`eaa878d`, `b770993`).
+4. ~~Ratings aggregate~~ — **DONE** (`a45f7cb`), scoped per provider, on `MarketplaceListingCard` only. `MarketplaceListingDetailResponse` has no `Rating`/`ReviewCount` property, contrary to the note above — no detail rating row exists to activate.
 
 **Star migration deferred:** `--rating: #F59E0B` token defined (commit `c825285`), but no usage migrated. Two files carry `text-amber-400 fill-amber-400`: `MarketplaceCard.tsx:99` and `workroom/ReviewPanel.tsx:43`. Migration is one grep-and-replace commit whenever Sirajul chooses.
 
@@ -2018,6 +2016,37 @@ Once these four addenda ship, R1 tooltips gain genuine information, R2 detail he
 - Do NOT add `ChatMessage.OrderId`. Use `Conversation.RelatedEngagementId` (parallel to the existing `RelatedProjectId` pattern).
 - Do NOT ship any phase with fake sample data. Empty states are honest.
 - Do NOT create separate marketplaces per role. One `/marketplace/services` serves all roles. Future `/marketplace/pitches`, `/marketplace/investors`, etc. are separate marketplaces for entirely different content types, not role variants.
+
+### 10.16 Backend data addenda — populated fields *(shipped 2026-08-03)*
+
+Five fields that were declared, consumed by the UI, and permanently null. Each was already null-gated on the frontend, so the markup simply never rendered — no frontend change was needed for B/C/D.
+
+**Provider display name (`4aeda89`).** `WorkroomEngagementResponse.ProviderDisplayName` added and threaded through `ToResponse` as a second optional parameter, exactly as `ClientDisplayName` already was. Both list and detail resolve it the same batch-lookup way the client name already used: `GetEngagementsAsync` builds a `providerNames` dictionary beside the existing `clientNames` one via a shared `DisplayNames()` helper that dedupes ids before lookup (one provider commonly owns several of an actor's engagements, so per-row resolution would be gratuitously N+1); `Detail()` resolves both names for its single engagement. **Also fixed a pre-existing gap in the same path:** `PauseEngagementAsync` (both returns), `ResumeEngagementAsync`, and `CompleteEngagementAsync` called a bare `ToResponse()`, so `ClientDisplayName` came back empty from all four — the SP workroom's "Client" metric fell through to its placeholder after any pause, resume, or completion until the next list refetch.
+
+**Rule:** never call `WorkroomEngagement.ToResponse()` with no arguments. Use `ToResponseWithParties(e)` for a single engagement, or the `DisplayNames()` dictionaries for a list.
+
+**CompletedOrders (`eaa878d`).** Counted with the same predicate `CreateRepeatCouponIfEligible` uses — `EngagementStatus.Completed` only. `Archived` is deliberately excluded: it has no writer (§10.7), so including it would be a no-op that silently starts counting if an archive path ships. Returns **null rather than 0** for a provider with no completions. Both consumers gate on `!= null` — `ListingHeader.tsx:21` and `ProviderAboutCard.tsx:26` — so null omits the row while `0` would render a literal "0 completed orders" on every new provider. That gating was already in place and was **not** changed by this batch.
+
+> **Verification limit:** the null-suppression behaviour is confirmed by reading those two call sites, not by running them. No browser check was performed for any field in this batch — B, C and D shipped with no frontend change precisely because the markup was already null-gated, so their render paths are argued from source, not observed. Worth a look when someone is next in the marketplace UI with a provider that has zero completions and zero reviews.
+
+**Ratings aggregate (`a45f7cb`) — scoped to the PROVIDER, not the listing.** `Review` carries only `EngagementId` and `ProviderId`, no `ServiceId`, so a listing-scoped average needs a `Review → WorkroomEngagement → Proposal → ServiceId` join on every grid page. That cost buys little: a provider is capped at 4 listings (§6.1b), so the same number repeats on at most four cards, and splitting an early-stage review count four ways yields per-listing samples too small to mean anything. Filters **`Visibility == Public` AND `VerificationStatus == Verified`** — the second condition is not optional, because `RefreshTrust` (`WorkroomService.cs:787`) and `AnalyticsService` (`:463`) both already qualify a review that way and a `Rejected` review must never reach a public star average. One batched query per page.
+
+**MedianResponseTime (`b770993`).** `ResponseRateService` already gathered the right data but reduced it to a yes/no-within-48h. The interaction/proposal/message join is now `FirstResponseLatenciesAsync`, returning elapsed time to first response per surfaced brief; both the rate and the median derive from it, so they cannot disagree about what counts as a response. `CalculateAsync` is behaviour-identical — `latency <= ResponseWindow` is algebraically the same predicate as `first <= CreatedAt + ResponseWindow`.
+
+- **Median, not mean** — one brief abandoned for a month would drag a mean away from what a buyer experiences.
+- **Unanswered briefs excluded, not counted as infinite** — this answers "when they reply, how fast"; "how often they reply at all" is the response rate's job.
+- **Responses past 48h are included** — excluding them would bias the median low by dropping exactly the slow cases the figure exists to surface.
+- **Buckets are bare duration phrases**, not sentences: `under an hour` / `a couple of hours` / `a few hours` / `under a day` / `1-2 days` / `2+ days`. Both call sites render `Responds in {value}`, so a "Within 2 hours"-shaped label would read *"Responds in Within 2 hours"*. A test asserts this grammatical contract.
+
+**DisputeResolvedAt (`eb7c17f`).** A client-favoured resolution stamped `RefundedAt`; a provider-favoured one stamped nothing but `UpdatedAt`, which the next milestone action overwrites — so the timing of a provider-favoured settlement was lost. `WorkroomMilestone.DisputeResolvedAt` is now set in `ResolveDisputeAsync` before the outcome branch, from the same UTC value as `UpdatedAt` and `RefundedAt`.
+
+**Rule:** `DisputeOpenedAt`, `DisputeResolvedAt`, and `RefundedAt` are all immutable history — set once, never cleared. Dispute *activity* is still gated on `DisputeOutcome == Open` and never on a timestamp (§10.7).
+
+Both dispute banners now show the resolution date, gated on non-null so disputes settled before the field existed keep their sentence. No migration: null is correct for a never-disputed milestone and honest for a pre-existing resolution.
+
+**Test-isolation fix (`ace6087`), unrelated to the above.** Surfaced by this batch, not caused by it — see **Appendix B** for the standing hazard and the recommended fix.
+
+**Still null / not computed:** `MarketplaceListingCard` has no `completedOrders` or `medianResponseTime` property — those are detail-level only. `MarketplaceListingDetailResponse` has no `Rating`/`ReviewCount` property, so there is no detail-page rating row.
 
 ---
 
@@ -2202,7 +2231,29 @@ The repo's **root `.gitignore` is a binary / non-UTF8 file**, which can make the
 
 ---
 
+## Appendix B — test-suite gotcha: process-wide CWD (preserve)
+
+**`ServiceProviderProfileMediaTests` mutates global process state.** It calls `Directory.SetCurrentDirectory()` into a temp folder (`Temp/sp-test-{guid}`), runs, and then deletes that folder. The current directory is **process-wide**, and xUnit runs test classes in parallel, so this is visible to every other test in the assembly for the duration.
+
+**The trap.** `WebApplication.CreateBuilder()` — and `CreateSlimBuilder`/`CreateEmptyBuilder` with default options — resolves its content root from `Directory.GetCurrentDirectory()`. Any test that builds a host while the media tests are mid-flight can therefore be handed a content root that has just been deleted:
+
+```
+System.ArgumentException: The content root 'C:\...\Temp\sp-test-{guid}' does not exist. (Parameter 'contentRootPath')
+```
+
+It throws in the builder, **before any assertion runs**, so the failure is pure noise and points at the innocent test. Observed at roughly **1 run in 5**, and the rate scales with total suite parallelism — `StartupConfigValidationTests` was clean 6/6 before this batch and failed 2/10 after 24 unrelated pure-function tests were added. Nothing about the new tests was implicated; they only widened the window.
+
+**Diagnosing this class of failure:** a test that passes under `--filter` but fails in the full suite is order/parallelism-dependent, not broken. Confirm by running the full suite at the previous commit in a throwaway `git worktree` — if it is clean there and flaky at HEAD, the new code is a trigger, not a cause.
+
+**Current mitigation (`ace6087`, defensive):** `StartupConfigValidationTests` pins `ContentRootPath = AppContext.BaseDirectory`, which is fixed for the life of the process and never chdir'd away.
+
+> **This is a workaround, not the fix.** It requires every future test class that builds a host to defensively pin its own content root, and nothing enforces that — the next one to forget gets the same intermittent failure. **The real fix is to restructure `ServiceProviderProfileMediaTests` so it never touches process-wide CWD**, by passing the temp path into the code under test rather than chdir'ing into it. Until then, treat "content root does not exist" anywhere in this suite as this hazard, not as a bug in the failing test.
+
+---
+
 ## Changelog
+
+**2026-08-03 — Backend data addenda shipped: five declared-but-never-populated fields.** Commits `4aeda89`, `eaa878d`, `a45f7cb`, `b770993`, `eb7c17f`, plus test fix `ace6087` and docs `9d93525` — seven in all. Each field was already consumed and null-gated by the UI, so B/C/D needed no frontend change — the markup simply began rendering, which is argued from the call sites rather than observed in a browser. (A) `WorkroomEngagementResponse.ProviderDisplayName` added, so a buyer's own engagements name the counterparty; also fixed four bare `ToResponse()` call sites in pause/resume/complete that returned an empty `ClientDisplayName`. (B) `CompletedOrders` counted with the same `EngagementStatus.Completed` predicate as `CreateRepeatCouponIfEligible`; null rather than 0 so a new provider shows no row instead of "0 completed orders". (C) Ratings aggregate scoped **per provider, not per listing** — `Review` has no `ServiceId`, and a provider caps at 4 listings, so the join cost buys nothing; filters Public **and** Verified, matching how Trust and Analytics already qualify a review. (D) `MedianResponseTime` computed from a new `FirstResponseLatenciesAsync` shared with the response rate, which is behaviour-identical; median not mean, unanswered briefs excluded, late responses included, labels are bare duration phrases because both call sites render "Responds in {value}". (E) `WorkroomMilestone.DisputeResolvedAt` gives a provider-favoured resolution the permanent timestamp only the client-favoured branch had; both dispute banners now show it, gated for pre-existing rows. No migration. See §10.16. Suite: **690 passed / 60 skipped**, verified stable over 12 consecutive runs; the single remaining failure is the known `ServiceCatalogGalleryVideoValidationTests` Windows file-lock, which also fails at the base commit. **Still open:** `MarketplaceListingCard` has no `completedOrders`/`medianResponseTime` and `MarketplaceListingDetailResponse` has no `Rating`/`ReviewCount` — the earlier follow-up note asserted both existed; neither does. Also new **Appendix B**, recording the process-wide-CWD hazard in `ServiceProviderProfileMediaTests` that `ace6087` worked around but did not remove.
 
 **2026-08-02 — BUG-2 fixed: client-favoured dispute no longer strands the engagement.** Commit `3420a4f`. A client-favoured resolution set the milestone to `Cancelled`, which no completion guard can satisfy, so the engagement could never complete, cancel, or archive while still consuming provider capacity. It now settles to `Paid` with a new `RefundedAt` timestamp, broadening `Paid` to "payment settled in either direction" with `RefundedAt` as the discriminator; `Disputed → Paid` added to the milestone transition map. No new enum state — every `Paid` guard would have needed a matching edge, which is how `Cancelled` became a dead end in the first place. No earnings or analytics change was required: every provider-revenue figure already gates on `EscrowStatus` or on `PaymentReleased` transactions rather than milestone status. UI renders "Refunded" with a struck-through amount on both the buyer card and the SP panel. No migration needed — the dev database held zero `Cancelled` milestones. See §10.7. Supersedes the "BUG-2 deferred" note added earlier the same day. **Still open:** `EngagementStatus.Cancelled`/`Archived` have no writer, so there is still no cancellation or archival path in the system.
 

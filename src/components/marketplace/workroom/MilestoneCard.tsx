@@ -206,14 +206,17 @@ export function MilestoneCard({
           {/* Branches on disputeOutcome, not on refundedAt. Only the client-favoured path
               writes refundedAt today, so inferring the outcome from it happened to work —
               but that coupled the copy to a backend invariant nothing enforces. refundedAt
-              is still used below, for the one thing it actually is: a timestamp. No
-              resolution timestamp exists for a provider-favoured outcome, so that arm
-              shows only the opened date rather than inventing one. */}
+              is still used below, for the one thing it actually is: a timestamp.
+              The provider-favoured arm now has disputeResolvedAt, but it stays gated:
+              disputes settled before that field existed have it null, and those rows
+              must not lose the sentence. The client-favoured arm keeps refundedAt for
+              the same reason — both are stamped from one UTC value at resolution, so
+              they agree wherever both are present. */}
           <p className="mt-1 text-xs text-muted-foreground">
             {milestone.disputeOutcome === CLIENT_FAVORED
               ? `Support decided in your favour${milestone.refundedAt ? ` on ${formatDate(milestone.refundedAt)}` : ''}. ${money} was refunded to you and this milestone is closed.`
               : milestone.disputeOutcome === PROVIDER_FAVORED
-                ? `Support decided in the provider's favour. The delivery is back with you to review, and payment can be released.`
+                ? `Support decided in the provider's favour${milestone.disputeResolvedAt ? ` on ${formatDate(milestone.disputeResolvedAt)}` : ''}. The delivery is back with you to review, and payment can be released.`
                 : ''}{' '}
             Dispute opened {formatDate(milestone.disputeOpenedAt)}.
           </p>

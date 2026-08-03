@@ -145,8 +145,14 @@ function EngagementCard({
     >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          {/* Engagement carries no provider display name or avatar, so no party
-              identity is shown here rather than fabricating one. */}
+          {/* No avatar: the engagement carries the provider's name but no image
+              reference, and this is a buyer surface, so the counterparty is the
+              provider rather than the client name the SP workroom shows. */}
+          {e.providerDisplayName && (
+            <p className="truncate text-xs font-medium text-muted-foreground">
+              {e.providerDisplayName}
+            </p>
+          )}
           <h3 className="truncate text-lg font-semibold text-foreground">{e.title}</h3>
           {e.description && (
             <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{e.description}</p>

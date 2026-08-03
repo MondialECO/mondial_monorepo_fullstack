@@ -1,4 +1,4 @@
-using MongoDB.Bson;
+﻿using MongoDB.Bson;
 using MongoDB.Driver;
 using Microsoft.AspNetCore.Identity;
 using WebApp.DbContext;
@@ -15,17 +15,20 @@ namespace WebApp.Services.Implementations
         private readonly ILogger<MarketplaceService> _logger;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IProfessionalProfileStore _professionalStore;
+        private readonly IResponseRateService _responseRates;
 
         public MarketplaceService(
             MongoDbContext db,
             ILogger<MarketplaceService> logger,
             UserManager<ApplicationUser> userManager,
-            IProfessionalProfileStore professionalStore)
+            IProfessionalProfileStore professionalStore,
+            IResponseRateService responseRates)
         {
             _db = db;
             _logger = logger;
             _userManager = userManager;
             _professionalStore = professionalStore;
+            _responseRates = responseRates;
         }
 
         public async Task<ServiceProviderResult<MarketplaceListingsResponse>> GetPublishedListingsAsync(
@@ -150,13 +153,19 @@ namespace WebApp.Services.Implementations
                     .ToListAsync(ct);
                 var packageMap = packages.GroupBy(p => p.ServiceId).ToDictionary(g => g.Key, g => g.First());
 
+                // One query for the whole page, not one per card.
+                var ratings = await ProviderRatingsAsync(providerIds, ct);
+
                 var cards = new List<MarketplaceListingCard>();
                 foreach (var listing in pagedListings)
                 {
                     providerMap.TryGetValue(listing.ProviderId, out var providerTuple);
                     packageMap.TryGetValue(listing.Id, out var basicPkg);
                     professionalMap.TryGetValue(listing.ProviderId, out var professional);
-                    cards.Add(ToMarketplaceListingCard(listing, providerTuple.Item1, basicPkg, professional));
+                    var rating = ratings.TryGetValue(listing.ProviderId, out var r)
+                        ? r
+                        : ((decimal, int)?)null;
+                    cards.Add(ToMarketplaceListingCard(listing, providerTuple.Item1, basicPkg, professional, rating));
                 }
 
                 return ServiceProviderResult<MarketplaceListingsResponse>.Ok(
@@ -197,6 +206,8 @@ namespace WebApp.Services.Implementations
                 }
 
                 var professional = await _professionalStore.GetByUserIdAsync(listing.ProviderId);
+                var completedOrders = await CountCompletedEngagementsAsync(listing.ProviderId, ct);
+                var medianResponseTime = await _responseRates.CalculateMedianResponseTimeAsync(listing.ProviderId);
 
                 var packages = await _db.ServicePackages
                     .Find(x => x.ServiceId == listingId)
@@ -217,7 +228,7 @@ namespace WebApp.Services.Implementations
                         IndustryFocus = listing.IndustryFocus ?? new(),
                         GeographicCoverage = listing.GeographicCoverage ?? new(),
                         DescriptionHtml = listing.Description,
-                        Provider = ToMarketplaceProviderHeader(provider, professional),
+                        Provider = ToMarketplaceProviderHeader(provider, professional, completedOrders, medianResponseTime),
                         Packages = packages.Select(p => ToMarketplacePackage(p)).ToList(),
                         Gallery = (listing.GalleryImages ?? new())
                             .OrderBy(x => x.DisplayOrder)
@@ -266,7 +277,8 @@ namespace WebApp.Services.Implementations
             ServiceListing listing,
             ApplicationUser? provider,
             ServicePackage? basicPackage,
-            ProfessionalProfileRecord? professional)
+            ProfessionalProfileRecord? professional,
+            (decimal Rating, int Count)? rating)
         {
             var coverUrl = (listing.GalleryImages?.FirstOrDefault()?.PublicUrl)
                 ?? provider?.ServiceProviderProfile?.CoverImage?.PublicUrl;
@@ -288,12 +300,67 @@ namespace WebApp.Services.Implementations
                 Currency = basicPackage?.Currency ?? "EUR",
                 DeliveryTimeValue = basicPackage?.DeliveryTimeValue ?? 0,
                 DeliveryTimeUnit = basicPackage?.DeliveryTimeUnit.ToString() ?? "days",
-                Rating = null,
-                ReviewCount = null
+                // Both stay null for a provider with no qualifying reviews: the card gates
+                // its whole star row on non-null, which is what keeps an unrated listing
+                // from rendering an empty or zero-star rating it hasn't earned.
+                Rating = rating?.Rating,
+                ReviewCount = rating?.Count
             };
         }
 
-        private MarketplaceProviderHeader ToMarketplaceProviderHeader(ApplicationUser provider, ProfessionalProfileRecord? professional)
+        /// <summary>
+        /// Public rating aggregate per provider, keyed by ProviderId.
+        ///
+        /// Scoped to the PROVIDER, not the listing. Review carries only EngagementId and
+        /// ProviderId — no ServiceId — so a listing-scoped average would need a
+        /// Review → WorkroomEngagement → Proposal → ServiceId join on every grid page.
+        /// That cost buys little here: a provider is capped at 4 listings (canon §6.1b),
+        /// so the same number repeats on at most four cards, and splitting an early-stage
+        /// review count four ways produces per-listing samples too small to mean anything.
+        /// Revisit if listing-level reputation is ever required.
+        ///
+        /// Excludes Private reviews (the buyer withheld them from public display) and
+        /// non-Verified ones, matching how RefreshTrust and AnalyticsService already
+        /// qualify a review — a Rejected review must never reach a public average.
+        /// </summary>
+        private async Task<Dictionary<string, (decimal Rating, int Count)>> ProviderRatingsAsync(
+            List<string> providerIds,
+            CancellationToken ct)
+        {
+            if (providerIds.Count == 0) return new();
+
+            var reviews = await _db.Reviews
+                .Find(x => providerIds.Contains(x.ProviderId)
+                           && x.Visibility == ReviewVisibility.Public
+                           && x.VerificationStatus == ReviewVerificationStatus.Verified)
+                .ToListAsync(ct);
+
+            return reviews
+                .GroupBy(x => x.ProviderId)
+                .ToDictionary(
+                    g => g.Key,
+                    g => (Math.Round((decimal)g.Average(r => r.OverallRating), 1, MidpointRounding.AwayFromZero),
+                          g.Count()));
+        }
+
+        /// <summary>
+        /// Engagements this provider has carried to completion. Counted with the same
+        /// predicate <see cref="WorkroomService.CreateRepeatCouponIfEligible"/> uses, so
+        /// "completed" means one thing platform-wide: EngagementStatus.Completed only.
+        /// Archived is deliberately excluded — it has no writer today (canon §10.7), and
+        /// including a state nothing can reach would be a silent no-op that later starts
+        /// counting when an archive path ships.
+        /// </summary>
+        private async Task<int> CountCompletedEngagementsAsync(string providerId, CancellationToken ct) =>
+            (int)await _db.WorkroomEngagements.CountDocumentsAsync(
+                x => x.ProviderId == providerId && x.EngagementStatus == EngagementStatus.Completed,
+                cancellationToken: ct);
+
+        private MarketplaceProviderHeader ToMarketplaceProviderHeader(
+            ApplicationUser provider,
+            ProfessionalProfileRecord? professional,
+            int completedOrders,
+            string? medianResponseTime)
         {
             var profile = provider.ServiceProviderProfile;
 
@@ -305,8 +372,11 @@ namespace WebApp.Services.Implementations
                 ProfileImageUrl = ResolveMediaUrl(professional?.ProfileImage?.PublicUrl),
                 Verified = profile?.VerificationStatus == ServiceProviderVerificationStatus.Verified,
                 TrustScore = profile?.TrustScore > 0 ? (decimal)profile.TrustScore : null,
-                CompletedOrders = null,
-                MedianResponseTime = null
+                // Zero completions is a real, meaningful answer for a new provider, but the
+                // UI reads null as "unknown" and hides the row entirely — so a brand-new
+                // provider shows nothing rather than an unflattering "0 completed".
+                CompletedOrders = completedOrders > 0 ? completedOrders : null,
+                MedianResponseTime = medianResponseTime
             };
         }
 

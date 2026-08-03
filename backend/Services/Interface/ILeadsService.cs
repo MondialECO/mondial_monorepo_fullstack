@@ -31,5 +31,8 @@ public interface ILeadsService
 public interface IResponseRateService
 {
     Task<double?> CalculateAsync(string providerId);
+    /// <summary>Median first-response latency as a display phrase completing
+    /// "Responds in ___", or null when the provider has answered nothing yet.</summary>
+    Task<string?> CalculateMedianResponseTimeAsync(string providerId);
     Task RefreshTrustSignalAsync(string providerId);
 }

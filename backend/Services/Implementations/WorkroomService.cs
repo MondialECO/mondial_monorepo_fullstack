@@ -1,4 +1,4 @@
-using Hangfire;
+﻿using Hangfire;
 using Microsoft.AspNetCore.Identity;
 using MongoDB.Bson;
 using MongoDB.Driver;
@@ -175,14 +175,14 @@ public sealed class WorkroomService : IWorkroomService
     public async Task<ServiceProviderResult<List<WorkroomEngagementResponse>>> GetEngagementsAsync(string actorId)
     {
         var rows = await _db.WorkroomEngagements.Find(x => x.ProviderId == actorId || x.ClientId == actorId).SortByDescending(x => x.UpdatedAt).ToListAsync();
-        var clientNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var clientId in rows.Select(x => x.ClientId).Distinct(StringComparer.OrdinalIgnoreCase))
-        {
-            var client = await _users.FindByIdAsync(clientId);
-            clientNames[clientId] = string.IsNullOrWhiteSpace(client?.Name) ? "Client" : client.Name;
-        }
+        // Resolved per distinct id rather than per row: one provider or client commonly owns
+        // several of an actor's engagements, and this endpoint serves both roles.
+        var clientNames = await DisplayNames(rows.Select(x => x.ClientId), "Client");
+        var providerNames = await DisplayNames(rows.Select(x => x.ProviderId), "Provider");
         return ServiceProviderResult<List<WorkroomEngagementResponse>>.Ok(rows
-            .Select(x => x.ToResponse(clientNames.GetValueOrDefault(x.ClientId, "Client"))).ToList());
+            .Select(x => x.ToResponse(
+                clientNames.GetValueOrDefault(x.ClientId, "Client"),
+                providerNames.GetValueOrDefault(x.ProviderId, "Provider"))).ToList());
     }
 
     public async Task<ServiceProviderResult<WorkroomDetailResponse>> GetEngagementAsync(string actorId, string engagementId)
@@ -385,10 +385,10 @@ public sealed class WorkroomService : IWorkroomService
         var e=await Participant(actorId,engagementId); if(e is null)return ServiceProviderResult<WorkroomEngagementResponse>.NotFound("Workroom not found.");
         if(e.EngagementStatus is EngagementStatus.Completed or EngagementStatus.Archived or EngagementStatus.Cancelled)
             return ServiceProviderResult<WorkroomEngagementResponse>.Conflict("A closed workroom cannot be paused.");
-        if(e.EngagementStatus==EngagementStatus.Paused)return ServiceProviderResult<WorkroomEngagementResponse>.Ok(e.ToResponse());
+        if(e.EngagementStatus==EngagementStatus.Paused)return ServiceProviderResult<WorkroomEngagementResponse>.Ok(await ToResponseWithParties(e));
         var before=e.EngagementStatus.ToString(); e.EngagementStatus=EngagementStatus.Paused;e.PausedAt=DateTime.UtcNow;e.UpdatedAt=e.PausedAt.Value;
         await _db.WorkroomEngagements.ReplaceOneAsync(x=>x.Id==e.Id,e);await AuditAsync(actorId,actorId==e.ProviderId?"ServiceProvider":"Client","Engagement.Paused","WorkroomEngagement",e.Id,before,reason);
-        return ServiceProviderResult<WorkroomEngagementResponse>.Ok(e.ToResponse(),"Workroom paused; deadline clocks are frozen.");
+        return ServiceProviderResult<WorkroomEngagementResponse>.Ok(await ToResponseWithParties(e),"Workroom paused; deadline clocks are frozen.");
     }
 
     public async Task<ServiceProviderResult<WorkroomEngagementResponse>> ResumeEngagementAsync(string actorId, string engagementId)
@@ -400,7 +400,7 @@ public sealed class WorkroomService : IWorkroomService
         foreach(var m in milestones){m.DueDate=m.DueDate!.Value.Add(frozen);m.UpdatedAt=now;}
         e.AccumulatedPausedMinutes+=(int)Math.Ceiling(frozen.TotalMinutes);e.PausedAt=null;e.EngagementStatus=EngagementStatus.Active;e.UpdatedAt=now;
         using var session=await _mongo.StartSessionAsync();session.StartTransaction();try{foreach(var m in milestones)await _db.WorkroomMilestones.ReplaceOneAsync(session,x=>x.Id==m.Id,m);await _db.WorkroomEngagements.ReplaceOneAsync(session,x=>x.Id==e.Id,e);await _db.WorkroomAuditEvents.InsertOneAsync(session,Audit(actorId,actorId==e.ProviderId?"ServiceProvider":"Client","Engagement.Resumed","WorkroomEngagement",e.Id,"Paused",$"Deadlines shifted {frozen}"));await session.CommitTransactionAsync();}catch{await session.AbortTransactionAsync();throw;}
-        return ServiceProviderResult<WorkroomEngagementResponse>.Ok(e.ToResponse(),"Workroom resumed and active deadlines shifted by the frozen duration.");
+        return ServiceProviderResult<WorkroomEngagementResponse>.Ok(await ToResponseWithParties(e),"Workroom resumed and active deadlines shifted by the frozen duration.");
     }
 
     public async Task<ServiceProviderResult<WorkroomMilestoneResponse>> RequestExtensionAsync(string providerId,string milestoneId,int days,string reason)
@@ -437,7 +437,10 @@ public sealed class WorkroomService : IWorkroomService
         var(m,e,_)=await MilestoneContext(milestoneId);if(m is null||e is null)return ServiceProviderResult<WorkroomDetailResponse>.NotFound("Milestone not found.");
         if(m.MilestoneStatus!=WorkroomMilestoneStatus.Disputed||m.DisputeOutcome!=DisputeOutcome.Open)return ServiceProviderResult<WorkroomDetailResponse>.Conflict("No open dispute exists.");
         if(resolved==DisputeOutcome.Split)return ServiceProviderResult<WorkroomDetailResponse>.Conflict("Split settlements require an explicit contract amendment and are not auto-priced.");
-        m.DisputeOutcome=resolved;m.UpdatedAt=DateTime.UtcNow;
+        // Stamped before branching so both outcomes record the settlement time from the
+        // same UTC value. UpdatedAt alone cannot carry this — the next milestone action
+        // overwrites it.
+        m.DisputeOutcome=resolved;m.UpdatedAt=DateTime.UtcNow;m.DisputeResolvedAt=m.UpdatedAt;
         if(resolved==DisputeOutcome.ProviderFavored){m.MilestoneStatus=WorkroomMilestoneStatus.ClientReviewing;m.EscrowStatus=WorkroomEscrowStatus.Funded;e.EngagementStatus=EngagementStatus.MilestoneReview;e.EscrowStatus=WorkroomEscrowStatus.Funded;}
         else
         {
@@ -475,7 +478,7 @@ public sealed class WorkroomService : IWorkroomService
         await CreateRepeatCouponIfEligible(e.ProviderId, e.ClientId);
         await RefreshTrust(e.ProviderId);
         await Notify(e.ClientId, "Project completed", $"Review {e.Title} and share your experience.");
-        return ServiceProviderResult<WorkroomEngagementResponse>.Ok(e.ToResponse(), "Project completed.");
+        return ServiceProviderResult<WorkroomEngagementResponse>.Ok(await ToResponseWithParties(e), "Project completed.");
     }
 
     public async Task<ServiceProviderResult<Review>> SubmitReviewAsync(string clientId, string engagementId, CreateReviewRequest r)
@@ -812,6 +815,35 @@ public sealed class WorkroomService : IWorkroomService
         await _db.RepeatClientCoupons.InsertOneAsync(new RepeatClientCoupon{ProviderId=providerId,ClientId=clientId,Code=$"RETURN-{Guid.NewGuid():N}"[..15].ToUpperInvariant(),DiscountPercent=5,ExpiresAt=DateTime.UtcNow.AddDays(90)});
     }
 
+    /// <summary>
+    /// Display names for a set of user ids, deduplicated so a repeated party costs one lookup.
+    /// <paramref name="fallback"/> differs per role ("Client"/"Provider") so an id that no
+    /// longer resolves still reads correctly rather than rendering blank.
+    /// </summary>
+    private async Task<Dictionary<string,string>> DisplayNames(IEnumerable<string> userIds,string fallback)
+    {
+        var names=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase);
+        foreach(var id in userIds.Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            var user=await _users.FindByIdAsync(id);
+            names[id]=string.IsNullOrWhiteSpace(user?.Name)?fallback:user.Name;
+        }
+        return names;
+    }
+
+    /// <summary>
+    /// Both party names for a single engagement. The mutation endpoints (pause, resume,
+    /// complete) previously returned a bare ToResponse(), leaving every name field empty.
+    /// </summary>
+    private async Task<WorkroomEngagementResponse> ToResponseWithParties(WorkroomEngagement e)
+    {
+        var client=await _users.FindByIdAsync(e.ClientId);
+        var provider=await _users.FindByIdAsync(e.ProviderId);
+        return e.ToResponse(
+            string.IsNullOrWhiteSpace(client?.Name)?"Client":client.Name,
+            string.IsNullOrWhiteSpace(provider?.Name)?"Provider":provider.Name);
+    }
+
     private async Task<WorkroomDetailResponse> Detail(WorkroomEngagement e,string actorId)
     {
         var c=await _db.Contracts.Find(x=>x.Id==e.ContractId).FirstOrDefaultAsync(); var ms=await _db.WorkroomMilestones.Find(x=>x.EngagementId==e.Id).SortBy(x=>x.DisplayOrder).ToListAsync();
@@ -823,12 +855,13 @@ public sealed class WorkroomService : IWorkroomService
         var timeEntries=await _db.HourlyTimeEntries.Find(x=>x.EngagementId==e.Id).SortByDescending(x=>x.StartedAt).ToListAsync();
         var review=await _db.Reviews.Find(x=>x.EngagementId==e.Id).FirstOrDefaultAsync();
         var client=await _users.FindByIdAsync(e.ClientId);var clientName=string.IsNullOrWhiteSpace(client?.Name)?"Client":client.Name;
-        return new WorkroomDetailResponse{Engagement=e.ToResponse(clientName),Contract=c is null?new():ToContract(c),Milestones=ms.Select(x=>ToMilestone(x,e)).ToList(),Deliverables=ds,RevisionRequests=rs,Tasks=tasks,ClientInputRequests=inputs,Files=files,HourlyTimeEntries=timeEntries,Review=review};
+        var provider=await _users.FindByIdAsync(e.ProviderId);var providerName=string.IsNullOrWhiteSpace(provider?.Name)?"Provider":provider.Name;
+        return new WorkroomDetailResponse{Engagement=e.ToResponse(clientName,providerName),Contract=c is null?new():ToContract(c),Milestones=ms.Select(x=>ToMilestone(x,e)).ToList(),Deliverables=ds,RevisionRequests=rs,Tasks=tasks,ClientInputRequests=inputs,Files=files,HourlyTimeEntries=timeEntries,Review=review};
     }
     private async Task<WorkroomEngagement?> Participant(string actorId,string id)=>await _db.WorkroomEngagements.Find(x=>x.Id==id&&(x.ProviderId==actorId||x.ClientId==actorId)).FirstOrDefaultAsync();
     private async Task<(WorkroomMilestone? m,WorkroomEngagement? e,Contract? c)> MilestoneContext(string id){var m=await _db.WorkroomMilestones.Find(x=>x.Id==id).FirstOrDefaultAsync();if(m is null)return(null,null,null);var e=await _db.WorkroomEngagements.Find(x=>x.Id==m.EngagementId).FirstOrDefaultAsync();var c=e is null?null:await _db.Contracts.Find(x=>x.Id==e.ContractId).FirstOrDefaultAsync();return(m,e,c);}
     private static ContractResponse ToContract(Contract c)=>new(){Id=c.Id,Terms=c.Terms,ProviderSignedAt=c.ProviderSignedAt,ClientSignedAt=c.ClientSignedAt,Status=c.Status.ToString(),SimpleConsentStub=true};
-    private static WorkroomMilestoneResponse ToMilestone(WorkroomMilestone m,WorkroomEngagement e)=>new(){Id=m.Id,Title=m.Title,Description=m.Description,Amount=m.Amount,Currency=m.Currency,DisplayOrder=m.DisplayOrder,StartDate=m.StartDate,DueDate=m.DueDate,CompletionCriteria=m.CompletionCriteria,RemainingRevisions=m.UnlimitedRevisions?int.MaxValue:RevisionCalculator.Remaining(m.IncludedRevisionCount,m.PurchasedAdditionalRevisions,m.UsedRevisionCount),UnlimitedRevisions=m.UnlimitedRevisions,Status=m.MilestoneStatus.ToString(),EscrowStatus=m.EscrowStatus.ToString(),DeliveryClockState=ClockState(m,e),ExtensionRequested=m.ExtensionRequestedAt.HasValue,ApprovedExtensionDays=m.ApprovedExtensionDays,ReviewWindowEndsAt=m.ReviewWindowEndsAt,AutoReleaseAt=m.AutoReleaseAt,DisputeOpenedAt=m.DisputeOpenedAt,DisputeReviewEndsAt=m.DisputeReviewEndsAt,DisputeOutcome=m.DisputeOutcome?.ToString(),RefundedAt=m.RefundedAt};
+    private static WorkroomMilestoneResponse ToMilestone(WorkroomMilestone m,WorkroomEngagement e)=>new(){Id=m.Id,Title=m.Title,Description=m.Description,Amount=m.Amount,Currency=m.Currency,DisplayOrder=m.DisplayOrder,StartDate=m.StartDate,DueDate=m.DueDate,CompletionCriteria=m.CompletionCriteria,RemainingRevisions=m.UnlimitedRevisions?int.MaxValue:RevisionCalculator.Remaining(m.IncludedRevisionCount,m.PurchasedAdditionalRevisions,m.UsedRevisionCount),UnlimitedRevisions=m.UnlimitedRevisions,Status=m.MilestoneStatus.ToString(),EscrowStatus=m.EscrowStatus.ToString(),DeliveryClockState=ClockState(m,e),ExtensionRequested=m.ExtensionRequestedAt.HasValue,ApprovedExtensionDays=m.ApprovedExtensionDays,ReviewWindowEndsAt=m.ReviewWindowEndsAt,AutoReleaseAt=m.AutoReleaseAt,DisputeOpenedAt=m.DisputeOpenedAt,DisputeReviewEndsAt=m.DisputeReviewEndsAt,DisputeOutcome=m.DisputeOutcome?.ToString(),DisputeResolvedAt=m.DisputeResolvedAt,RefundedAt=m.RefundedAt};
     private static string ClockState(WorkroomMilestone m,WorkroomEngagement e){if(e.EngagementStatus==EngagementStatus.Paused)return"Paused";if(e.EngagementStatus==EngagementStatus.ClientInputRequired)return"WaitingForRequirements";if(m.EscrowStatus!=WorkroomEscrowStatus.Funded&&m.EscrowStatus!=WorkroomEscrowStatus.Released)return"WaitingForEscrow";if(m.ExtensionRequestedAt.HasValue&&m.ApprovedExtensionDays==0)return"ExtensionRequested";if(m.ApprovedExtensionDays>0)return"ExtensionApproved";if(m.DueDate is null)return"ReadyToStart";return DeliveryScheduleCalculator.ComputeState(DateTime.UtcNow,m.DueDate.Value,m.StartDate.HasValue,m.SubmittedAt.HasValue).ToString();}
     private static string NextVersion(string? previous,bool major){if(previous is null)return"1.0";var parts=previous.Split('.');var majorN=int.TryParse(parts[0],out var a)?a:1;var minor=int.TryParse(parts.ElementAtOrDefault(1),out var b)?b:0;return major?$"{majorN+1}.0":$"{majorN}.{minor+1}";}
     /// <summary>

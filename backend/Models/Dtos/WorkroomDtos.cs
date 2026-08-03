@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using WebApp.Models.DatabaseModels;
 
 namespace WebApp.Models.Dtos;
@@ -93,6 +93,9 @@ public class WorkroomEngagementResponse
     public string ProviderId { get; set; } = "";
     public string ClientId { get; set; } = "";
     public string ClientDisplayName { get; set; } = "";
+    /// <summary>The provider's display name. This endpoint is actor-scoped and serves both
+    /// parties, so a buyer viewing their own engagements needs the counterparty named too.</summary>
+    public string ProviderDisplayName { get; set; } = "";
     public string ContractId { get; set; } = "";
     public string Title { get; set; } = "";
     public string Description { get; set; } = "";
@@ -142,6 +145,9 @@ public class WorkroomMilestoneResponse
     public DateTime? DisputeOpenedAt { get; set; }
     public DateTime? DisputeReviewEndsAt { get; set; }
     public string? DisputeOutcome { get; set; }
+    /// <summary>When support settled the dispute, for either outcome. Immutable history —
+    /// DisputeOutcome says what was decided, this says when.</summary>
+    public DateTime? DisputeResolvedAt { get; set; }
     /// <summary>Set when Status is Paid because escrow was refunded to the client rather
     /// than released to the provider. UI renders "Refunded" as the primary label.</summary>
     public DateTime? RefundedAt { get; set; }
@@ -200,10 +206,11 @@ public class StatementResponse
 
 public static class WorkroomMapping
 {
-    public static WorkroomEngagementResponse ToResponse(this WorkroomEngagement e, string? clientDisplayName = null) => new()
+    public static WorkroomEngagementResponse ToResponse(this WorkroomEngagement e, string? clientDisplayName = null, string? providerDisplayName = null) => new()
     {
         Id=e.Id, ProposalId=e.ProposalId, ProviderId=e.ProviderId, ClientId=e.ClientId, ContractId=e.ContractId,
         ClientDisplayName=clientDisplayName ?? "",
+        ProviderDisplayName=providerDisplayName ?? "",
         Title=e.Title, Description=e.Description, ContractValue=e.ContractValue, Currency=e.Currency, StartDate=e.StartDate,
         ExpectedEndDate=e.ExpectedEndDate, ActualEndDate=e.ActualEndDate, CurrentMilestoneId=e.CurrentMilestoneId,
         CompletionPercentage=e.CompletionPercentage, EngagementStatus=e.EngagementStatus.ToString(),

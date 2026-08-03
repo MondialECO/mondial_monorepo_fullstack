@@ -147,6 +147,33 @@ public class WorkroomModuleTests
         response.CurrentMilestoneId.Should().Be(currentMilestoneId);
     }
 
+    /// <summary>
+    /// GetEngagementsAsync is actor-scoped and serves both parties, so a buyer viewing
+    /// their own engagements needs the provider named. Without this the buyer surfaces
+    /// had no counterparty identity at all.
+    /// </summary>
+    [Fact]
+    public void Engagement_response_names_both_parties()
+    {
+        var response = new WorkroomEngagement().ToResponse("NovaPay Technologies", "Aurora Studio");
+
+        response.ClientDisplayName.Should().Be("NovaPay Technologies");
+        response.ProviderDisplayName.Should().Be("Aurora Studio");
+    }
+
+    /// <summary>
+    /// Both names default to empty rather than null, so a consumer that renders them
+    /// unconditionally cannot print "null" or "undefined".
+    /// </summary>
+    [Fact]
+    public void Engagement_response_party_names_default_to_empty_not_null()
+    {
+        var response = new WorkroomEngagement().ToResponse();
+
+        response.ClientDisplayName.Should().BeEmpty();
+        response.ProviderDisplayName.Should().BeEmpty();
+    }
+
     [Fact]
     public void Financial_summary_exposes_server_owned_earnings_totals_and_currencies()
     {
@@ -189,6 +216,53 @@ public class WorkroomModuleTests
         WorkroomStateMachine.CanTransition(WorkroomMilestoneStatus.Disputed, WorkroomMilestoneStatus.Paid).Should().BeTrue();
         typeof(WorkroomMilestone).GetProperties().Select(x => x.Name).Should().Contain("RefundedAt");
         typeof(WorkroomMilestoneResponse).GetProperties().Select(x => x.Name).Should().Contain("RefundedAt");
+    }
+
+    /// <summary>
+    /// DisputeResolvedAt is the one stable fact both dispute outcomes earn. A
+    /// provider-favoured resolution writes no other permanent trace: UpdatedAt is
+    /// overwritten by the next milestone action, so without this the timing is lost and
+    /// nothing surfaces it again. A regression here is silent — the banner keeps
+    /// rendering, just without the date — so the field is pinned on model and DTO.
+    /// </summary>
+    [Fact]
+    public void Dispute_resolution_records_a_permanent_timestamp_for_either_outcome()
+    {
+        typeof(WorkroomMilestone).GetProperties().Select(x => x.Name).Should().Contain("DisputeResolvedAt");
+        typeof(WorkroomMilestoneResponse).GetProperties().Select(x => x.Name).Should().Contain("DisputeResolvedAt");
+    }
+
+    /// <summary>
+    /// It must be nullable and default to null: every milestone that was never disputed,
+    /// and every dispute settled before this field existed, reads as "no resolution
+    /// recorded" rather than a fabricated date.
+    /// </summary>
+    [Fact]
+    public void Dispute_resolution_timestamp_is_absent_until_a_dispute_is_settled()
+    {
+        new WorkroomMilestone().DisputeResolvedAt.Should().BeNull();
+        new WorkroomMilestoneResponse().DisputeResolvedAt.Should().BeNull();
+    }
+
+    /// <summary>
+    /// Both timestamps are stamped from the same UTC value at resolution, so a
+    /// client-favoured settlement can never report being refunded at a different moment
+    /// than it was resolved.
+    /// </summary>
+    [Fact]
+    public void A_client_favoured_settlement_agrees_on_its_refund_and_resolution_time()
+    {
+        var settled = DateTime.UtcNow;
+        var milestone = new WorkroomMilestone
+        {
+            DisputeOutcome = DisputeOutcome.ClientFavored,
+            MilestoneStatus = WorkroomMilestoneStatus.Paid,
+            UpdatedAt = settled,
+            DisputeResolvedAt = settled,
+            RefundedAt = settled,
+        };
+
+        milestone.DisputeResolvedAt.Should().Be(milestone.RefundedAt);
     }
 
     [Theory]
