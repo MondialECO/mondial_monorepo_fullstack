@@ -1,4 +1,4 @@
-import { API_ORIGIN } from '@/lib/api-config';
+import api from '@/lib/axios';
 import type { WorkroomFile } from '@/types/workroom';
 
 /**
@@ -43,18 +43,34 @@ export function isFileDownloadable(
 }
 
 /**
- * Direct link to the stored file.
+ * Fetches a workroom file and hands it to the browser as a download.
  *
- * `storagePath` is a server-root-relative path such as
- * `/uploads/documents/{guid}.docx`, served by `app.UseStaticFiles()`
- * (`backend/Program.cs:660`). API_ORIGIN is API_BASE_URL without the trailing `/api`,
- * which api-config already designates for resolving relative media paths.
+ * Goes through the shared axios instance so the Authorization header and the
+ * token-refresh interceptor apply — the endpoint is authenticated, and a plain anchor
+ * href cannot carry a bearer token. The server re-checks participation, the
+ * ProviderPrivate flag and Ready status; isFileDownloadable() only decides whether to
+ * offer the control.
  *
- * SECURITY DEBT: this URL is unauthenticated. Anyone holding a storagePath can fetch the
- * file, including one marked providerPrivate. Deliberate Path A tradeoff — see the file
- * download security debt entry in canon §10.9.
+ * Throws on failure so each panel can surface it in its own idiom.
  */
-export function workroomFileDownloadUrl(file: Pick<WorkroomFile, 'storagePath'>): string {
-  const path = file.storagePath.startsWith('/') ? file.storagePath : `/${file.storagePath}`;
-  return `${API_ORIGIN}${path}`;
+export async function downloadWorkroomFile(
+  file: Pick<WorkroomFile, 'id' | 'originalName'>
+): Promise<void> {
+  const response = await api.get<Blob>(`/workroom/files/${file.id}/download`, {
+    responseType: 'blob',
+  });
+
+  // Object URLs are leaked if not revoked, so the anchor is created, clicked and torn
+  // down synchronously rather than left in the document.
+  const objectUrl = URL.createObjectURL(response.data);
+  try {
+    const anchor = document.createElement('a');
+    anchor.href = objectUrl;
+    anchor.download = file.originalName || 'download';
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
 }

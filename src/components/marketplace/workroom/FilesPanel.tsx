@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react';
 import { Download, Loader2, Paperclip, Upload } from 'lucide-react';
 import { statusChipClass } from '@/lib/workroom-status';
-import { isFileDownloadable, workroomFileDownloadUrl, workroomFileStatusLabel } from '@/lib/workroom-files';
+import { downloadWorkroomFile, isFileDownloadable, workroomFileStatusLabel } from '@/lib/workroom-files';
 import { useClientUploadFile, workroomErrorMessage } from '@/hooks/queries/workroom-client';
 import type { WorkroomDetail } from '@/types/workroom';
 
@@ -22,6 +22,7 @@ export function FilesPanel({ detail }: { detail: WorkroomDetail }) {
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   const [milestoneId, setMilestoneId] = useState('');
+  const [downloadError, setDownloadError] = useState<string | null>(null);
   const [sizeError, setSizeError] = useState<string | null>(null);
 
   // Safety net: provider-private files should never reach the client from the API,
@@ -58,16 +59,21 @@ export function FilesPanel({ detail }: { detail: WorkroomDetail }) {
                 {/* Only Ready files are linked: anything still scanning is incomplete, and
                     Failed/Restricted files are withheld on purpose. */}
                 {isFileDownloadable(f) ? (
-                  <a
-                    href={workroomFileDownloadUrl(f)}
-                    download={f.originalName}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      setDownloadError(null);
+                      try {
+                        await downloadWorkroomFile(f);
+                      } catch (error) {
+                        setDownloadError(workroomErrorMessage(error));
+                      }
+                    }}
                     className="flex items-center gap-1.5 text-sm text-foreground underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-primary"
                   >
                     <Download className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                     <span className="truncate">{f.originalName}</span>
-                  </a>
+                  </button>
                 ) : (
                   <p className="truncate text-sm text-foreground">{f.originalName}</p>
                 )}
@@ -129,6 +135,7 @@ export function FilesPanel({ detail }: { detail: WorkroomDetail }) {
         </button>
 
         {sizeError && <p className="text-xs text-destructive">{sizeError}</p>}
+        {downloadError && <p className="text-xs text-destructive">{downloadError}</p>}
         {upload.isError && (
           <p className="text-xs text-destructive">{workroomErrorMessage(upload.error)}</p>
         )}

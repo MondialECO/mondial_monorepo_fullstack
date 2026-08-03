@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { SpCard, SpEmptyState, SpMutationFeedback, SpSectionHeader, SpStatusBadge } from '@/components/serviceprovider/ui';
 import { useRespondToReview } from '@/hooks/queries/workroom';
 import type { WorkroomDetail, WorkroomFile } from '@/types/workroom';
-import { isFileDownloadable, workroomFileDownloadUrl } from '@/lib/workroom-files';
+import { downloadWorkroomFile, isFileDownloadable } from '@/lib/workroom-files';
 import { apiError, formatDate, words } from './_shared';
 import { safeHttpUrl } from '@/lib/service-provider/url-security';
 
@@ -34,6 +34,7 @@ function ReviewPanel({ data }: { data: WorkroomDetail }) {
 }
 
 function DeliveryFileList({ fileIds, files }: { fileIds: string[]; files: WorkroomFile[] }) {
+  const [error, setError] = useState<string | null>(null);
   return (
     <div>
       <p className="text-xs font-semibold text-[#6B7280]">Files</p>
@@ -46,15 +47,20 @@ function DeliveryFileList({ fileIds, files }: { fileIds: string[]; files: Workro
               <li key={id} className="flex items-center gap-2 text-sm text-[#374151]">
                 <FileClock className="size-4 shrink-0 text-[#6B7280]" aria-hidden="true" />
                 {file && isFileDownloadable(file) ? (
-                  <a
-                    href={workroomFileDownloadUrl(file)}
-                    download={file.originalName}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="break-all underline underline-offset-4 outline-none focus-visible:ring-2 focus-visible:ring-[#3C61DD]"
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      setError(null);
+                      try {
+                        await downloadWorkroomFile(file);
+                      } catch (downloadError) {
+                        setError(apiError(downloadError, 'The file could not be downloaded.'));
+                      }
+                    }}
+                    className="break-all text-left underline underline-offset-4 outline-none focus-visible:ring-2 focus-visible:ring-[#3C61DD]"
                   >
                     {label}
-                  </a>
+                  </button>
                 ) : (
                   label
                 )}
@@ -65,6 +71,7 @@ function DeliveryFileList({ fileIds, files }: { fileIds: string[]; files: Workro
       ) : (
         <p className="mt-2 text-sm text-[#6B7280]">None</p>
       )}
+      {error && <SpMutationFeedback status="error" className="mt-3">{error}</SpMutationFeedback>}
     </div>
   );
 }
