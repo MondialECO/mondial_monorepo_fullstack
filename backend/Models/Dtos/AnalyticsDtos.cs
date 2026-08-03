@@ -101,8 +101,44 @@ public class TrustSignalAnalyticsResponse
     public decimal? Value { get; set; }
 }
 
+/// <summary>
+/// The three real steps between a brief being surfaced and work being won. Every step is
+/// scoped to the selected period, not lifetime.
+///
+/// Rates use notEnoughActivity when their denominator is zero rather than reporting 0%:
+/// "0% of briefs converted" and "no briefs were shown" are different facts, and only one
+/// of them is true when nothing was surfaced.
+/// </summary>
+public class ProfileFunnelResponse
+{
+    public AnalyticsMetricResponse BriefsShown { get; set; } = new();
+    public AnalyticsMetricResponse ProposalsSent { get; set; } = new();
+    public AnalyticsMetricResponse Hired { get; set; } = new();
+    /// <summary>Proposals sent as a share of briefs shown.</summary>
+    public AnalyticsMetricResponse ProposalRate { get; set; } = new();
+    /// <summary>Hires as a share of proposals sent.</summary>
+    public AnalyticsMetricResponse HireRate { get; set; } = new();
+}
+
+/// <summary>
+/// One row of the provider's own best-performing listings, ranked by clicks within the
+/// period. Impressions ride along so the click count is interpretable rather than a bare
+/// number. Services only — no portfolio or case-study rows, because
+/// AnalyticsRecordingService records against ListingId and nothing else, so no other
+/// content type has engagement data to rank.
+/// </summary>
+public class TopServiceResponse
+{
+    public string ServiceId { get; set; } = "";
+    public string Title { get; set; } = "";
+    public int Clicks { get; set; }
+    public int Impressions { get; set; }
+}
+
 public class ProfileAnalyticsResponse
 {
+    public ProfileFunnelResponse Funnel { get; set; } = new();
+    public List<TopServiceResponse> TopServices { get; set; } = new();
     public AnalyticsMetricResponse TrustScore { get; set; } = new();
     public List<TrustSignalAnalyticsResponse> TrustSignals { get; set; } = new();
     public AnalyticsMetricResponse DisputePenalty { get; set; } = new();

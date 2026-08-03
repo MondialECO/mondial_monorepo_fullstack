@@ -182,6 +182,9 @@ public class AnalyticsService(
             .Find(x => x.ProviderId == providerId && x.Currency == currency).ToListAsync();
         var reviews = await db.Reviews.Find(x => x.ProviderId == providerId).ToListAsync();
         var listings = await db.ServiceListings.Find(x => x.ProviderId == providerId).ToListAsync();
+        // Feeds the profile funnel's first step. CreatedAt on this row is the brief's
+        // provider-specific availability time, not the persistence time.
+        var interactions = await db.ClientBriefInteractions.Find(x => x.ProviderId == providerId).ToListAsync();
 
         // One query for every service row. The widest window spans the comparison period
         // through the current one, both rounded outward to whole UTC days, and rows are
@@ -264,7 +267,7 @@ public class AnalyticsService(
                 OnTimeRate = NullableMetric(ToDecimal(currentOnTime), ToDecimal(previousOnTime), "percent"),
             },
             Proposals = BuildProposalAnalytics(proposals, currentProposals, previousProposals, period, currency),
-            Profile = BuildProfileAnalytics(profile, analyticsComposite.TierLevel, listings.Count(x => x.Status == CatalogStatus.Published)),
+            Profile = BuildProfileAnalytics(profile, analyticsComposite.TierLevel, listings.Count(x => x.Status == CatalogStatus.Published), interactions, proposals, listings, buckets, period),
             Revenue = BuildRevenueAnalytics(
                 currentRevenue, previousRevenue, financialValue, engagementById,
                 proposalById, listingById, briefById, currency),
@@ -386,12 +389,115 @@ public class AnalyticsService(
         };
     }
 
-    private static ProfileAnalyticsResponse BuildProfileAnalytics(ServiceProviderProfile profile, int tierLevel, int publishedServices)
+    /// <summary>
+    /// Briefs shown -> proposals sent -> hired, all within the selected period.
+    ///
+    /// "Shown" uses ClientBriefInteraction.CreatedAt, which the model documents as the
+    /// brief's provider-specific availability time rather than when the row happened to be
+    /// persisted — so it answers "surfaced to me in this window", not "written to the
+    /// database in this window".
+    ///
+    /// "Hired" keys off Proposal.AcceptedAt, matching how proposals.accepted is counted
+    /// on this same surface. Using the resulting engagement's CreatedAt was the
+    /// alternative and is rejected: conversion is asynchronous (a Hangfire job plus a
+    /// minutely sweeper), so a proposal accepted just before the period boundary would
+    /// land its engagement in the next period and the funnel would disagree with the
+    /// Accepted figure on the Proposals tab.
+    /// </summary>
+    private static ProfileFunnelResponse BuildFunnel(
+        List<ClientBriefInteraction> interactions,
+        List<Proposal> proposals,
+        AnalyticsPeriod period)
+    {
+        bool Current(DateTime value) => value >= period.From && value < period.To;
+        bool Previous(DateTime value) => value >= period.ComparisonFrom && value < period.ComparisonTo;
+
+        var shown = interactions.Count(x => Current(x.CreatedAt));
+        var previousShown = interactions.Count(x => Previous(x.CreatedAt));
+        var sent = proposals.Count(x => x.SubmittedAt is { } at && Current(at));
+        var previousSent = proposals.Count(x => x.SubmittedAt is { } at && Previous(at));
+        var hired = proposals.Count(x => x.AcceptedAt is { } at && Current(at));
+        var previousHired = proposals.Count(x => x.AcceptedAt is { } at && Previous(at));
+
+        return new ProfileFunnelResponse
+        {
+            BriefsShown = Metric(shown, previousShown),
+            ProposalsSent = Metric(sent, previousSent),
+            Hired = Metric(hired, previousHired),
+            ProposalRate = FunnelRate(sent, shown, previousSent, previousShown, "brief was surfaced"),
+            HireRate = FunnelRate(hired, sent, previousHired, previousSent, "proposal was sent"),
+        };
+    }
+
+    /// <summary>
+    /// A conversion step. A zero denominator is notEnoughActivity, never 0% — nothing
+    /// entered the step, which is not the same as nothing converting.
+    /// </summary>
+    private static AnalyticsMetricResponse FunnelRate(
+        int numerator, int denominator, int previousNumerator, int previousDenominator, string subject) =>
+        denominator == 0
+            ? new AnalyticsMetricResponse
+            {
+                State = "notEnoughActivity",
+                Unit = "percent",
+                Reason = $"No {subject} in this period, so there is no rate to calculate.",
+            }
+            : Metric(
+                AnalyticsMath.Rate(numerator, denominator),
+                previousDenominator > 0 ? AnalyticsMath.Rate(previousNumerator, previousDenominator) : null,
+                "percent");
+
+    /// <summary>
+    /// The provider's own listings ranked by CLICKS in the period, best five.
+    ///
+    /// Clicks rather than impressions: impressions measure exposure, which is largely a
+    /// function of where the listing happened to rank, while a click is the visitor
+    /// choosing to act on it. A listing seen a thousand times with two clicks is
+    /// performing worse than one seen a hundred times with twenty, and only the click
+    /// ranking says so. Impressions are returned alongside so the number can be read in
+    /// context rather than in the abstract.
+    ///
+    /// Listings with no clicks are excluded entirely rather than ranked at zero — a list
+    /// of zeroes is not a performance ranking.
+    /// </summary>
+    private static List<TopServiceResponse> BuildTopServices(
+        List<ServiceListing> listings,
+        IReadOnlyList<AnalyticsDailyBucket> buckets,
+        AnalyticsPeriod period)
+    {
+        var (from, to) = AnalyticsBucketWindow.ToWholeDays(period.From, period.To);
+        var titles = listings.ToDictionary(x => x.Id, x => x.Title, StringComparer.Ordinal);
+
+        return buckets
+            .Where(x => x.Date >= from && x.Date < to && titles.ContainsKey(x.ListingId))
+            .GroupBy(x => x.ListingId, StringComparer.Ordinal)
+            .Select(g => new TopServiceResponse
+            {
+                ServiceId = g.Key,
+                Title = titles[g.Key],
+                Clicks = g.Sum(x => x.Clicks),
+                Impressions = g.Sum(x => x.Impressions),
+            })
+            .Where(x => x.Clicks > 0)
+            .OrderByDescending(x => x.Clicks)
+            .ThenByDescending(x => x.Impressions)
+            .Take(5)
+            .ToList();
+    }
+
+    private static ProfileAnalyticsResponse BuildProfileAnalytics(ServiceProviderProfile profile, int tierLevel, int publishedServices,
+        List<ClientBriefInteraction> interactions,
+        List<Proposal> proposals,
+        List<ServiceListing> listings,
+        IReadOnlyList<AnalyticsDailyBucket> buckets,
+        AnalyticsPeriod period)
     {
         var attempts = profile.SkillsTestAttempts.OrderByDescending(x => x.TakenAt).ToList();
         var trust = profile.ToTrustBreakdownResponse();
         return new ProfileAnalyticsResponse
         {
+            Funnel = BuildFunnel(interactions, proposals, period),
+            TopServices = BuildTopServices(listings, buckets, period),
             TrustScore = profile.HasEnoughTrustData
                 ? Metric((decimal)profile.TrustScore, null, "score")
                 : new AnalyticsMetricResponse { State = "notEnoughActivity", Unit = "score", Reason = "Trust score appears after the first qualifying trust signal." },
