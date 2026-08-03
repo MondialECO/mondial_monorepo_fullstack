@@ -51,6 +51,25 @@ public sealed class WorkroomService : IWorkroomService
         var proposal = await _db.Proposals.Find(x => x.Id == proposalId && x.Status == ProposalStatus.Accepted && x.ConversionStatus == ProposalConversionStatus.AwaitingModule4).FirstOrDefaultAsync();
         if (proposal is null) return;
 
+        // The structural guarantee: this method holds the only `new WorkroomEngagement` in
+        // the codebase, so no engagement can be created self-dealing regardless of which
+        // path accepted the proposal, including any added later.
+        //
+        // Returns rather than throwing, deliberately. SweepConversionsAsync iterates
+        // proposals with no try/catch, so an exception here would abort the whole batch and
+        // block conversion for every legitimate proposal behind this one — a poison pill,
+        // made permanent by the retry attributes on both methods. Leaving the proposal
+        // unconverted is the safe failure: no engagement, no crash, and the row stays
+        // visible in AwaitingModule4 for someone to inspect.
+        if (SelfDealingGuard.IsSelfDealing(proposal.ProviderId, proposal.ClientId))
+        {
+            _logger.LogError(
+                "Refusing to convert proposal {ProposalId}: provider and client are the same user ({UserId}). " +
+                "The entry-point guards should have rejected this, so it is either pre-existing data or a new acceptance path that bypassed them.",
+                proposal.Id, proposal.ProviderId);
+            return;
+        }
+
         var plans = proposal.MilestonePlan.OrderBy(x => x.DisplayOrder).ToList();
         if (plans.Count > 0 && plans.Sum(x => x.Amount) != proposal.ProposedPrice)
             throw new InvalidOperationException("Proposal milestone amounts must equal the accepted proposal price.");

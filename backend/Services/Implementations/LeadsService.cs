@@ -277,6 +277,8 @@ public class LeadsService : ILeadsService
         if (p is null) return ServiceProviderResult<ProposalResponse>.NotFound("Proposal not found.");
         if (!ProposalStateMachine.CanTransition(p.Status, ProposalStatus.Accepted)) return TransitionConflict<ProposalResponse>(p.Status, ProposalStatus.Accepted);
         if (p.ExpiresAt <= DateTime.UtcNow) return ServiceProviderResult<ProposalResponse>.Conflict("An expired proposal cannot be accepted.");
+        if (SelfDealingGuard.IsSelfDealing(p.ProviderId, p.ClientId))
+            return ServiceProviderResult<ProposalResponse>.Conflict(SelfDealingGuard.Message);
         if (!r.ExplicitlyConfirmed || !r.EscrowAuthorized) return ServiceProviderResult<ProposalResponse>.Conflict("Client confirmation and escrow authorization are required.");
         p.Status = ProposalStatus.Accepted; p.AcceptedAt = p.UpdatedAt = DateTime.UtcNow; p.AcceptedBy = clientId;
         p.AcceptanceTrigger = "ClientConfirmed"; p.EscrowStatus = ProposalEscrowStatus.Authorized;
@@ -296,6 +298,14 @@ public class LeadsService : ILeadsService
         var provider = await _users.FindByIdAsync(listing.ProviderId); var client = await _users.FindByIdAsync(clientId);
         await HydrateProviderViewAsync(provider);
         if (provider?.ServiceProviderProfile is null || client is null) return ServiceProviderResult<PackagePurchaseResponse>.Conflict("Provider or client account is unavailable.");
+        // Hard stop, deliberately NOT a `failures.Add(...)` entry like the eleven gates
+        // below. A failed gate does not reject the purchase — it routes to the manual
+        // path, creating a Submitted proposal for the provider to approve. When buyer and
+        // provider are the same person that is not a barrier: they would approve their own
+        // order and continue. Self-dealing is also not a condition that can be remedied by
+        // retrying with better input, which is what the gate list is for.
+        if (SelfDealingGuard.IsSelfDealing(listing.ProviderId, clientId))
+            return ServiceProviderResult<PackagePurchaseResponse>.Conflict(SelfDealingGuard.Message);
         var selected = pkg.AddOns.Where(a => a.Enabled && r.SelectedAddOnNames.Contains(a.Name, StringComparer.OrdinalIgnoreCase))
             .Select(a => new SelectedAddOnSnapshot { Name = a.Name, Price = a.Price, DeliveryTimeAdjustmentDays = a.DeliveryTimeAdjustmentDays }).ToList();
         var answers = ToAnswers(r.Requirements); var requiredIds = pkg.RequirementsTemplate.Where(x => x.Required).Select(x => x.FieldId).ToHashSet();
@@ -394,6 +404,10 @@ public class LeadsService : ILeadsService
     private async Task<string?> ValidateSubmission(string providerId, Proposal p, ClientBrief? brief)
     {
         if (brief is null || brief.Status != ClientBriefStatus.Open) return "This opportunity is no longer accepting proposals.";
+        // Caught here as well as at acceptance so a provider is told immediately, rather
+        // than composing a full proposal against their own brief and only being refused
+        // at the very end.
+        if (SelfDealingGuard.IsSelfDealing(providerId, brief.ClientId)) return SelfDealingGuard.Message;
         if (p.ExpiresAt is null || p.ExpiresAt <= DateTime.UtcNow) return "Select a future proposal expiration date.";
         if (string.IsNullOrWhiteSpace(p.Title) || string.IsNullOrWhiteSpace(p.CoverMessage) || p.ProposedPrice <= 0 ||
             p.DeliveryTimeValue <= 0 || p.Deliverables.Count == 0 || p.IncludedRevisionCount < 0)
