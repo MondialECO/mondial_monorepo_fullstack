@@ -41,7 +41,7 @@ import {
 import { money, words } from '@/components/serviceprovider/workroom/_shared';
 import type {
   AnalyticsBreakdown, AnalyticsDashboard, AnalyticsMetric, CreateGrowthTaskPayload,
-  GrowthTask,
+  GrowthTask, ServiceAnalytics,
 } from '@/types/analytics';
 
 type AnalyticsView = 'overview' | 'services' | 'proposals' | 'profile' | 'earnings' | 'clients';
@@ -264,16 +264,16 @@ function ServicesView({ data }: { data: AnalyticsDashboard }) {
         <SpEmptyState icon={BriefcaseBusiness} title="No service analytics yet" description="Publish a service or complete custom brief-based work to populate this view." action={<Button asChild variant="outline"><Link href="/dashboard/serviceprovider/services">Open Service Catalog</Link></Button>} />
       ) : (
         <SpCard>
-          <SpSectionHeader title="Service performance" description="Brief-based work without a ServiceId is grouped under Custom/Unattributed. Traffic metrics remain unavailable until dated view events exist." />
+          <SpSectionHeader title="Service performance" description="Impressions, clicks and conversion come from dated traffic events per listing. Brief-based work without a ServiceId is grouped under Custom/Unattributed and has no listing to measure, so its funnel columns stay untracked." />
           <div className="mt-5 overflow-x-auto">
-            <table className="w-full min-w-[1100px] text-left text-sm">
-              <thead><tr className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground"><th className="pb-3 pr-4">Service</th><th className="pb-3 pr-4">Status</th><th className="pb-3 pr-4">Orders</th><th className="pb-3 pr-4">Gross</th><th className="pb-3 pr-4">Net</th><th className="pb-3 pr-4">Avg sale</th><th className="pb-3 pr-4">Completion</th><th className="pb-3 pr-4">On time</th><th className="pb-3">Traffic</th></tr></thead>
+            <table className="w-full min-w-[1280px] text-left text-sm">
+              <thead><tr className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground"><th className="pb-3 pr-4">Service</th><th className="pb-3 pr-4">Status</th><th className="pb-3 pr-4">Orders</th><th className="pb-3 pr-4">Gross</th><th className="pb-3 pr-4">Net</th><th className="pb-3 pr-4">Avg sale</th><th className="pb-3 pr-4">Completion</th><th className="pb-3 pr-4">On time</th><th className="pb-3 pr-4">Impressions</th><th className="pb-3 pr-4">Clicks</th><th className="pb-3">Conv.</th></tr></thead>
               <tbody>{data.services.map((service) => (
                 <tr key={service.serviceId ?? 'custom'} className="border-b border-border last:border-0">
                   <td className="py-4 pr-4"><p className="font-semibold text-foreground">{service.title}</p><p className="mt-1 text-xs text-muted-foreground">{service.category}</p></td>
                   <td className="pr-4"><SpStatusBadge tone={service.status === 'Published' ? 'positive' : 'neutral'}>{words(service.status)}</SpStatusBadge></td>
                   <MetricCell metric={service.orders} /><MetricCell metric={service.grossRevenue} /><MetricCell metric={service.netRevenue} /><MetricCell metric={service.averageSellingPrice} /><MetricCell metric={service.orderCompletionRate} /><MetricCell metric={service.onTimeDeliveryRate} />
-                  <td><NotTrackedInline metric={service.serviceViews} /></td>
+                  <MetricCell metric={service.impressions} /><ClicksCell service={service} /><MetricCell metric={service.conversionRate} />
                 </tr>
               ))}</tbody>
             </table>
@@ -546,7 +546,40 @@ function Trend({ metric }: { metric: AnalyticsMetric }) {
   return <span className={`inline-flex items-center gap-1 text-xs font-semibold ${positive ? 'text-[#157A55]' : 'text-[#965F11]'}`}><Icon aria-hidden="true" className="size-3.5" />{positive ? '+' : ''}{number(metric.changePercentage)}%<span className="sr-only">{positive ? 'increase' : 'decrease'} compared with the previous period</span></span>;
 }
 
-function MetricCell({ metric }: { metric: AnalyticsMetric }) {
+/**
+ * Clicks, with click-through rate as a muted second line. Exported for tests, matching
+ * the precedent set by financialTaxForm in FinancialSettingsPanel.
+ *
+ * CTR gets no column of its own because it is derived from exactly the two columns either
+ * side of it — impressions and clicks — so a third column would restate what the row
+ * already shows, on a table that already scrolls horizontally.
+ *
+ * The sub-line is omitted rather than labelled when CTR is unavailable. That is not
+ * hiding a gap: CTR is unavailable precisely when there are no impressions, and the
+ * Impressions cell immediately to the left already says so. Printing "Not enough activity"
+ * twice on one row would be noise, not honesty.
+ */
+export function ClicksCell({ service }: { service: ServiceAnalytics }) {
+  const ctr = service.clickThroughRate;
+  return (
+    <td className="pr-4 font-medium text-[#374151]">
+      {service.serviceViews.state === 'available' ? (
+        <>
+          {metricText(service.serviceViews)}
+          {ctr.state === 'available' && (
+            <span className="ml-1 text-xs font-normal text-muted-foreground">
+              ({metricText(ctr)} CTR)
+            </span>
+          )}
+        </>
+      ) : (
+        <NotTrackedInline metric={service.serviceViews} />
+      )}
+    </td>
+  );
+}
+
+export function MetricCell({ metric }: { metric: AnalyticsMetric }) {
   return <td className="pr-4 font-medium text-[#374151]">{metric.state === 'available' ? metricText(metric) : <NotTrackedInline metric={metric} />}</td>;
 }
 
