@@ -273,7 +273,8 @@ public class AnalyticsService(
                 proposalById, listingById, briefById, currency),
             Clients = BuildClientAnalytics(
                 engagements, currentCompleted, previousCompleted, currentRevenue,
-                previousRevenue, earned, reviews, milestones, period, relationships, currency),
+                previousRevenue, earned, reviews, milestones, period, relationships,
+                proposalById, briefById, currency),
         };
 
         response.TrendGranularity = AnalyticsTrendBuckets.GranularityFor(period.From, period.To);
@@ -593,6 +594,8 @@ public class AnalyticsService(
         List<WorkroomMilestone> milestones,
         AnalyticsPeriod period,
         IClientRelationshipCalculator relationships,
+        IReadOnlyDictionary<string, Proposal> proposals,
+        IReadOnlyDictionary<string, ClientBrief> briefs,
         string currency)
     {
         var historyTo = engagements.Where(x => IsCompleted(x) && x.ActualEndDate < period.To).ToList();
@@ -646,9 +649,44 @@ public class AnalyticsService(
                     ClientId = MaskClient(g.Key),
                     CompletedProjects = g.Count(),
                     NetRevenue = currentRevenue.Where(x => x.ClientId == g.Key).Sum(x => x.NetAmount),
+                    // Null, not 0, when this client left no verified review in the period —
+                    // an unrated client has not rated you badly. Grouping happens on the RAW
+                    // id and only the projection is masked, so two clients whose masks
+                    // collide cannot merge into one row.
+                    AverageRating = AnalyticsClientInsights.AverageRatingFor(g.Key, currentReviews),
                 }).OrderByDescending(x => x.CompletedProjects).ThenByDescending(x => x.NetRevenue).Take(5).ToList(),
+            Origination = BuildOrigination(currentCompleted, proposals),
+            RatingDistribution = AnalyticsClientInsights.BuildRatingDistribution(currentReviews),
+            TotalReviews = currentReviews.Count,
+            TopIndustries = AnalyticsClientInsights.BuildTopIndustries(currentCompleted, proposals, briefs, CustomServiceLabel),
         };
     }
+
+    /// <summary>
+    /// How many CLIENTS came from each channel, by head rather than by revenue — the
+    /// Earnings tab already answers the money question, and this tab is about relationships.
+    ///
+    /// Each client is attributed to the channel behind their EARLIEST engagement in the
+    /// period, which is what "origination" means: the way they first arrived, not every way
+    /// they have since transacted. That also keeps the two counts a genuine partition of the
+    /// client set. Counting a client under every channel they ever used would let the
+    /// percentages exceed 100 and stop being a split.
+    ///
+    /// The window is the selected period, like every other metric here, so this is first
+    /// contact WITHIN the range rather than lifetime origination.
+    /// </summary>
+    private static ClientOriginationAnalyticsResponse BuildOrigination(
+        List<WorkroomEngagement> currentCompleted,
+        IReadOnlyDictionary<string, Proposal> proposals)
+        => AnalyticsClientSource.SplitCounts(currentCompleted
+            .GroupBy(x => x.ClientId)
+            .Select(group =>
+            {
+                var first = group.OrderBy(x => x.CreatedAt).First();
+                return proposals.TryGetValue(first.ProposalId, out var proposal)
+                    ? (ProposalSource?)proposal.ProposalSource
+                    : null;
+            }));
 
     /// <summary>
     /// The Overview trend series.

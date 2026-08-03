@@ -31,6 +31,50 @@ public static class AnalyticsClientSource
     };
 
     /// <summary>
+    /// Splits a set of already-resolved originations by channel, counted by head. Each
+    /// element is one CLIENT's originating source; null means it could not be traced.
+    ///
+    /// Shares IsEcosystemMatch with the revenue split above rather than restating the
+    /// enum-to-channel mapping, so the Clients tab and the Earnings tab can never disagree
+    /// about which channel a source belongs to.
+    /// </summary>
+    public static ClientOriginationAnalyticsResponse SplitCounts(IEnumerable<ProposalSource?> originations)
+    {
+        int ecosystem = 0, marketplace = 0, unattributed = 0;
+        foreach (var source in originations)
+        {
+            if (source is null) unattributed++;
+            else if (IsEcosystemMatch(source.Value)) ecosystem++;
+            else marketplace++;
+        }
+
+        var response = new ClientOriginationAnalyticsResponse
+        {
+            EcosystemClients = ecosystem,
+            MarketplaceClients = marketplace,
+            UnattributedClients = unattributed,
+        };
+
+        var attributed = ecosystem + marketplace;
+        if (attributed == 0)
+        {
+            var reason = unattributed > 0
+                ? "The clients active in this period could not be traced back to a proposal, so their origin is unknown."
+                : "No client completed work in this period, so there is no origination split to calculate.";
+            response.EcosystemMatch = new AnalyticsMetricResponse { State = "notEnoughActivity", Unit = "percent", Reason = reason };
+            response.MarketplaceSearch = new AnalyticsMetricResponse { State = "notEnoughActivity", Unit = "percent", Reason = reason };
+            return response;
+        }
+
+        // Marketplace takes the remainder, exactly as the revenue split does, so the pair
+        // totals 100 rather than 33.3/33.3 against a full-width bar.
+        var ecosystemPercent = Math.Round((decimal)ecosystem / attributed * 100m, 1);
+        response.EcosystemMatch = AnalyticsMetricResponse.Available(ecosystemPercent, null, "percent");
+        response.MarketplaceSearch = AnalyticsMetricResponse.Available(100m - ecosystemPercent, null, "percent");
+        return response;
+    }
+
+    /// <summary>
     /// Splits released revenue by channel. A null source means the release could not be
     /// traced back to a proposal; those are excluded from the ratio rather than folded into
     /// a channel, and reported separately so a large untraceable remainder stays visible

@@ -219,9 +219,52 @@ public class ClientSourceAnalyticsResponse
 
 public class ActiveClientAnalyticsResponse
 {
+    /// <summary>Already masked by MaskClient. Never a raw identifier.</summary>
     public string ClientId { get; set; } = "";
     public int CompletedProjects { get; set; }
     public decimal NetRevenue { get; set; }
+
+    /// <summary>
+    /// Null when this client submitted no verified review inside the period. Deliberately
+    /// nullable rather than 0: an unrated client has not rated you badly.
+    /// </summary>
+    public decimal? AverageRating { get; set; }
+}
+
+/// <summary>
+/// How many CLIENTS arrived through each channel, counted by head rather than by revenue.
+/// The Earnings tab asks where the money comes from and weights by revenue; this tab asks
+/// where the relationships come from, so one client is one client regardless of spend.
+///
+/// Each client is attributed to exactly ONE channel — the one behind their earliest
+/// engagement inside the period — so the two counts partition the client set and the bars
+/// total 100%. Counting a client in both channels they ever used would let the percentages
+/// exceed 100 and stop being a split at all.
+/// </summary>
+public class ClientOriginationAnalyticsResponse
+{
+    public AnalyticsMetricResponse EcosystemMatch { get; set; } = new();
+    public AnalyticsMetricResponse MarketplaceSearch { get; set; } = new();
+    public int EcosystemClients { get; set; }
+    public int MarketplaceClients { get; set; }
+    public int UnattributedClients { get; set; }
+}
+
+public class RatingBucketResponse
+{
+    public int Rating { get; set; }
+    public int Count { get; set; }
+}
+
+/// <summary>
+/// One project count per industry. A brief listing several industries counts once in EACH
+/// of them, so these do NOT sum to the project total — see BuildTopIndustries for why that
+/// is the honest choice here.
+/// </summary>
+public class IndustryAnalyticsResponse
+{
+    public string Industry { get; set; } = "";
+    public int Projects { get; set; }
 }
 
 public class ClientAnalyticsResponse
@@ -245,6 +288,15 @@ public class ClientAnalyticsResponse
     public AnalyticsMetricResponse DisputesResolved { get; set; } = new();
     public AnalyticsMetricResponse AdverseDisputes { get; set; } = new();
     public List<ActiveClientAnalyticsResponse> MostActiveClients { get; set; } = new();
+    public ClientOriginationAnalyticsResponse Origination { get; set; } = new();
+
+    /// <summary>
+    /// Always five entries, ratings 1-5, including zero-count ones so the histogram keeps
+    /// its shape. TotalReviews distinguishes "nobody rated 5" from "nobody rated at all".
+    /// </summary>
+    public List<RatingBucketResponse> RatingDistribution { get; set; } = new();
+    public int TotalReviews { get; set; }
+    public List<IndustryAnalyticsResponse> TopIndustries { get; set; } = new();
 }
 
 public class GrowthObservationResponse
