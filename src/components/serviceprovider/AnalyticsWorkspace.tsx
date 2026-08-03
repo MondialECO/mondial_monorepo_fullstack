@@ -9,7 +9,7 @@ import { FormEvent, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowDownRight, ArrowRight, ArrowUpRight, BarChart3, BriefcaseBusiness,
-  CheckCircle2, ClipboardList, Eye, Info, Plus,
+  CheckCircle2, ClipboardList, Eye, Info, Plus, Send,
   ShieldCheck, TrendingUp, Users, Wallet,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -42,7 +42,7 @@ import {
 import { money, words } from '@/components/serviceprovider/workroom/_shared';
 import type {
   AnalyticsBreakdown, AnalyticsDashboard, AnalyticsMetric, CreateGrowthTaskPayload,
-  GrowthTask, ServiceAnalytics,
+  GrowthTask, ProfileFunnel, ServiceAnalytics, TopService,
 } from '@/types/analytics';
 
 type AnalyticsView = 'overview' | 'services' | 'proposals' | 'profile' | 'earnings' | 'clients';
@@ -209,6 +209,102 @@ function Overview({ data, tasks, tasksLoading }: { data: AnalyticsDashboard; tas
 
       <GrowthTasks tasks={tasks} loading={tasksLoading} />
     </div>
+  );
+}
+
+/**
+ * Briefs shown -> proposals sent -> hired, with the conversion rate between each pair.
+ *
+ * Three steps because three are real. Anything upstream of "a brief was surfaced to me"
+ * (profile views, search appearances) has no data source on this platform, so a wider
+ * funnel could only be padded with invented stages.
+ *
+ * The rates are rendered as their own step between the counts rather than as a caption,
+ * because the drop between stages is the thing worth reading. A rate with no denominator
+ * shows its state instead of 0% — nothing entered that step, which is not the same as
+ * nothing converting.
+ */
+export function ProfileFunnelSection({ funnel }: { funnel: ProfileFunnel }) {
+  const steps = [
+    { label: 'Briefs shown', metric: funnel.briefsShown, icon: Eye },
+    { label: 'Proposals sent', metric: funnel.proposalsSent, icon: Send },
+    { label: 'Hired', metric: funnel.hired, icon: CheckCircle2 },
+  ];
+  const rates = [funnel.proposalRate, funnel.hireRate];
+
+  return (
+    <SpCard aria-labelledby="funnel-title">
+      <SpSectionHeader
+        titleId="funnel-title"
+        title="From brief to hire"
+        description="Every step is counted within the selected period. Rates compare each step with the one before it."
+      />
+      <ol className="mt-5 flex flex-col gap-3 lg:flex-row lg:items-stretch">
+        {steps.map((step, index) => (
+          <li key={step.label} className="flex flex-1 flex-col gap-3 lg:flex-row lg:items-center">
+            <div className="flex-1 rounded-xl border border-border bg-[#F9FAFB] p-4">
+              <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                <step.icon aria-hidden="true" className="size-4" />
+                {step.label}
+              </p>
+              {step.metric.state === 'available' ? (
+                <p className="mt-2 text-2xl font-semibold text-foreground">{metricText(step.metric)}</p>
+              ) : (
+                <p className="mt-2 text-sm font-semibold text-[#4B5563]" title={step.metric.reason ?? undefined}>
+                  {stateLabel(step.metric)}
+                </p>
+              )}
+            </div>
+            {index < rates.length && (
+              <div className="flex items-center justify-center px-1 text-xs font-semibold text-muted-foreground">
+                <span
+                  className="rounded-full bg-muted px-2 py-1"
+                  title={rates[index].reason ?? undefined}
+                >
+                  {rates[index].state === 'available' ? metricText(rates[index]) : stateLabel(rates[index])}
+                </span>
+              </div>
+            )}
+          </li>
+        ))}
+      </ol>
+    </SpCard>
+  );
+}
+
+/**
+ * The provider's listings ranked by clicks in the period. Services only — no portfolio or
+ * case-study rows, because neither has any tracked engagement to rank.
+ *
+ * Reuses the "Most active clients" list shape rather than inventing a second ranked-list
+ * treatment on the same page.
+ */
+export function TopServicesSection({ services }: { services: TopService[] }) {
+  return (
+    <SpCard aria-labelledby="top-services-title">
+      <SpSectionHeader
+        titleId="top-services-title"
+        title="Top performing services"
+        description="Ranked by clicks in the selected period. Impressions are shown for context — a listing seen often but rarely clicked is not performing well."
+      />
+      {services.length ? (
+        <ul className="mt-4 divide-y divide-border">
+          {services.map((service) => (
+            <li key={service.serviceId} className="flex flex-col justify-between gap-1 py-3 text-sm sm:flex-row sm:items-center">
+              <span className="font-semibold text-foreground">{service.title}</span>
+              <span className="text-muted-foreground">
+                <span className="font-semibold text-foreground">{integer(service.clicks)}</span>
+                {service.clicks === 1 ? ' click' : ' clicks'} · {integer(service.impressions)} impressions
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-4 text-sm text-muted-foreground">
+          No listing received a click in this period. Rankings appear once visitors start interacting with your services.
+        </p>
+      )}
+    </SpCard>
   );
 }
 
@@ -411,18 +507,10 @@ function ProfileView({ data }: { data: AnalyticsDashboard }) {
         <SpMetricCard label="Verification" icon={ShieldCheck} value={words(profile.verificationStatus)} detail="Provider profile status" />
         <SpMetricCard label="Tier" icon={TrendingUp} value={`Tier ${profile.tierLevel}`} detail={profile.tierMeaning} />
       </section>
-      <SpCard>
-        <SpSectionHeader title="Trust breakdown" description="The existing Trust calculation is shown read-only. Signals without data are excluded from the score." action={<Button asChild variant="outline"><Link href="/dashboard/serviceprovider/profile?view=trust">Open Trust details</Link></Button>} />
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {profile.trustSignals.map((signal) => (
-            <div key={signal.key} className="rounded-xl border border-border bg-[#F9FAFB] p-4">
-              <div className="flex items-center justify-between gap-3"><h3 className="text-sm font-semibold text-foreground">{signal.label}</h3><span className="text-xs text-muted-foreground">{number(signal.weight)}% weight</span></div>
-              <p className="mt-3 text-2xl font-semibold text-foreground">{signal.hasData && signal.value != null ? `${number(signal.value)} / 100` : 'Not enough activity'}</p>
-            </div>
-          ))}
-          <MetricTile label="Dispute penalty" metric={profile.disputePenalty} />
-        </div>
-      </SpCard>
+      <ProfileFunnelSection funnel={profile.funnel} />
+
+      <TopServicesSection services={profile.topServices} />
+
       <MetricGrid entries={[
         ['Skills tests taken', profile.skillsTestsTaken], ['Skills tests passed', profile.skillsTestsPassed],
         ['Latest test score', profile.latestSkillsTestScore], ['Portfolio items', profile.portfolioItems],
