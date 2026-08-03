@@ -147,6 +147,33 @@ public class WorkroomModuleTests
         response.CurrentMilestoneId.Should().Be(currentMilestoneId);
     }
 
+    /// <summary>
+    /// GetEngagementsAsync is actor-scoped and serves both parties, so a buyer viewing
+    /// their own engagements needs the provider named. Without this the buyer surfaces
+    /// had no counterparty identity at all.
+    /// </summary>
+    [Fact]
+    public void Engagement_response_names_both_parties()
+    {
+        var response = new WorkroomEngagement().ToResponse("NovaPay Technologies", "Aurora Studio");
+
+        response.ClientDisplayName.Should().Be("NovaPay Technologies");
+        response.ProviderDisplayName.Should().Be("Aurora Studio");
+    }
+
+    /// <summary>
+    /// Both names default to empty rather than null, so a consumer that renders them
+    /// unconditionally cannot print "null" or "undefined".
+    /// </summary>
+    [Fact]
+    public void Engagement_response_party_names_default_to_empty_not_null()
+    {
+        var response = new WorkroomEngagement().ToResponse();
+
+        response.ClientDisplayName.Should().BeEmpty();
+        response.ProviderDisplayName.Should().BeEmpty();
+    }
+
     [Fact]
     public void Financial_summary_exposes_server_owned_earnings_totals_and_currencies()
     {

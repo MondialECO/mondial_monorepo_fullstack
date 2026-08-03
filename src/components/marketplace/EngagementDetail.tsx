@@ -117,6 +117,12 @@ function EngagementDetailContent({
             {engagement.engagementStatus}
           </span>
         </div>
+        {engagement.providerDisplayName && (
+          <p className="mt-2 text-sm text-muted-foreground">
+            Delivered by{' '}
+            <span className="font-medium text-foreground">{engagement.providerDisplayName}</span>
+          </p>
+        )}
         {engagement.description && (
           <p className="mt-2 text-muted-foreground">{engagement.description}</p>
         )}

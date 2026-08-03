@@ -93,6 +93,9 @@ public class WorkroomEngagementResponse
     public string ProviderId { get; set; } = "";
     public string ClientId { get; set; } = "";
     public string ClientDisplayName { get; set; } = "";
+    /// <summary>The provider's display name. This endpoint is actor-scoped and serves both
+    /// parties, so a buyer viewing their own engagements needs the counterparty named too.</summary>
+    public string ProviderDisplayName { get; set; } = "";
     public string ContractId { get; set; } = "";
     public string Title { get; set; } = "";
     public string Description { get; set; } = "";
@@ -200,10 +203,11 @@ public class StatementResponse
 
 public static class WorkroomMapping
 {
-    public static WorkroomEngagementResponse ToResponse(this WorkroomEngagement e, string? clientDisplayName = null) => new()
+    public static WorkroomEngagementResponse ToResponse(this WorkroomEngagement e, string? clientDisplayName = null, string? providerDisplayName = null) => new()
     {
         Id=e.Id, ProposalId=e.ProposalId, ProviderId=e.ProviderId, ClientId=e.ClientId, ContractId=e.ContractId,
         ClientDisplayName=clientDisplayName ?? "",
+        ProviderDisplayName=providerDisplayName ?? "",
         Title=e.Title, Description=e.Description, ContractValue=e.ContractValue, Currency=e.Currency, StartDate=e.StartDate,
         ExpectedEndDate=e.ExpectedEndDate, ActualEndDate=e.ActualEndDate, CurrentMilestoneId=e.CurrentMilestoneId,
         CompletionPercentage=e.CompletionPercentage, EngagementStatus=e.EngagementStatus.ToString(),
