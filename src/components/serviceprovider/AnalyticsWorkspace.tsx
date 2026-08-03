@@ -10,7 +10,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowDownRight, ArrowRight, ArrowUpRight, BarChart3, BriefcaseBusiness,
   CheckCircle2, ClipboardList, Eye, Info, Plus, Send,
-  ShieldCheck, TrendingUp, Users, Wallet,
+  ShieldCheck, Users, Wallet,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -511,11 +511,11 @@ function ProposalsView({ data }: { data: AnalyticsDashboard }) {
   );
 }
 
-function ProfileView({ data }: { data: AnalyticsDashboard }) {
+export function ProfileView({ data }: { data: AnalyticsDashboard }) {
   const profile = data.profile;
   return (
     <div className="space-y-6">
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-4 lg:grid-cols-3">
         {/* The link is attached here because removing the Trust breakdown card removed the
             only route from this tab to the Trust page — and the breakdown was only safe to
             remove BECAUSE that route existed. The per-signal detail and the skills test
@@ -540,17 +540,26 @@ function ProfileView({ data }: { data: AnalyticsDashboard }) {
           }
         />
         <SpMetricCard label="Profile completion" icon={CheckCircle2} value={metricText(profile.profileCompleteness)} detail="Required public profile fields" />
-        <SpMetricCard label="Verification" icon={ShieldCheck} value={words(profile.verificationStatus)} detail="Provider profile status" />
-        <SpMetricCard label="Tier" icon={TrendingUp} value={`Tier ${profile.tierLevel}`} detail={profile.tierMeaning} />
+        {/* One card, because today these are one fact stated twice. Verification is what
+            grants the tier — ServiceProviderService sets ProviderTier = Tier2 on the
+            verification paths, and Tier3/Tier4 have no writer anywhere — so the mapping is
+            total: unverified reads Tier 1, verified reads Tier 2, nothing else is
+            reachable. Two cards implied two independent axes.
+
+            Both parts are still shown rather than collapsed to one, so an unverified
+            provider reads "Pending · Tier 1" honestly instead of being told a tier they
+            have not earned. If Tier 3/4 ever gain a writer this can split again. */}
+        <SpMetricCard
+          label="Verification & tier"
+          icon={ShieldCheck}
+          value={`${words(profile.verificationStatus)} · Tier ${profile.tierLevel}`}
+          detail={profile.tierMeaning}
+        />
       </section>
       <ProfileFunnelSection funnel={profile.funnel} />
 
       <TopServicesSection services={profile.topServices} />
 
-      <MetricGrid entries={[
-        ['Skills tests taken', profile.skillsTestsTaken], ['Skills tests passed', profile.skillsTestsPassed],
-        ['Latest test score', profile.latestSkillsTestScore], ['Portfolio items', profile.portfolioItems],
-      ]} />
       <TrackingGapsNote metrics={[
         ['Profile views', profile.profileViews], ['Search appearances', profile.searchAppearances],
         ['Portfolio views', profile.portfolioViews], ['Profile saves', profile.profileSaves],
@@ -684,22 +693,31 @@ function MetricGrid({ entries }: { entries: [string, AnalyticsMetric][] }) {
  *
  * The load-bearing difference from MetricGrid: this renders metric.reason INLINE when the
  * metric is not available, because these metrics have nowhere else to explain themselves.
- * TrackingGaps carries a curated list of permanently-untracked metrics, and — verified
- * across all three views that render both — that list is always DISJOINT from whatever
- * the tiles show:
+ * TrackingGaps carries a curated list of permanently-untracked metrics, and that list is
+ * always DISJOINT from whatever the tiles show. Current consumers, re-derived from the
+ * source rather than trusted from the last edit of this comment:
  *
  *   ProposalsView  tiles = 11 pipeline status counts;  gaps = view rate, response rate
- *   ProfileView    tile  = dispute penalty;            gaps = 6 profile-traffic metrics
- *   ServicesView   (no tiles)                          gaps = 6 service-traffic metrics
+ *   ClientsView    tiles = ratings + disputes;         (no gaps panel)
+ *   ServicesView   grid only                           gaps = 6 service-traffic metrics
+ *   ProfileView    neither tiles nor grid              gaps = 6 profile-traffic metrics
  *
- * So a tile's reason is never a duplicate of the panel's, and the panel never covers a
- * tile's metric. A tile that lost its inline reason would simply stop explaining itself.
+ * ProposalsView is now the ONLY view rendering both, so it alone carries the disjointness
+ * requirement. A tile's reason is never a duplicate of the panel's, and the panel never
+ * covers a tile's metric; a tile that lost its inline reason would stop explaining itself.
+ *
+ * ProfileView dropped out of both tables on 2026-08-04: the dispute-penalty tile went with
+ * the Trust breakdown card, and the four-item MetricGrid (skills tests, portfolio) was
+ * removed as unscoped duplication of the real Profile & Trust page. It keeps only its
+ * TrackingGaps note. NOTE: profile.disputePenalty is consequently rendered nowhere — the
+ * server still computes it, and it is the obvious re-entry point if it is ever wanted back.
  *
  * DO NOT naively merge these two into one component. Either outcome is a regression:
- * give the merged component an inline reason and ProposalsView/ProfileView print the
- * same explanation twice for metrics that ARE in TrackingGaps; take the reason away and
- * the tiles in ClientsView — which has no TrackingGaps sibling at all — silently drop it. If they ever are unified, the real prerequisite is
- * deciding where reasons belong, not extracting shared markup.
+ * give the merged component an inline reason and ProposalsView prints the same explanation
+ * twice for metrics that ARE in TrackingGaps; take the reason away and the tiles in
+ * ClientsView — which has no TrackingGaps sibling at all — silently drop it. If they ever
+ * are unified, the real prerequisite is deciding where reasons belong, not extracting
+ * shared markup.
  */
 function MetricTile({ label, metric }: { label: string; metric: AnalyticsMetric }) {
   return (

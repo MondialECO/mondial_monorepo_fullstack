@@ -1,9 +1,18 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
-import { ProfileFunnelSection, TopServicesSection } from '@/components/serviceprovider/AnalyticsWorkspace';
-import type { AnalyticsMetric, ProfileFunnel, TopService } from '@/types/analytics';
+import React from 'react';
+import { describe, expect, it, vi } from 'vitest';
+import { ProfileFunnelSection, ProfileView, TopServicesSection } from '@/components/serviceprovider/AnalyticsWorkspace';
+import type { AnalyticsDashboard, AnalyticsMetric, ProfileAnalytics, ProfileFunnel, TopService } from '@/types/analytics';
+
+// next/link renders through Next's client router, which is not mounted here. Mocked to a
+// plain anchor, matching analytics-overview.test.tsx.
+vi.mock('next/link', () => ({
+  __esModule: true,
+  default: ({ children, href, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement>) =>
+    React.createElement('a', { href, ...props }, children),
+}));
 
 const source = readFileSync(
   resolve(process.cwd(), 'src/components/serviceprovider/AnalyticsWorkspace.tsx'),
@@ -36,6 +45,19 @@ const funnel = (over: Partial<ProfileFunnel> = {}): ProfileFunnel => ({
 
 const service = (over: Partial<TopService> = {}): TopService =>
   ({ serviceId: 's1', title: 'UX audit', clicks: 20, impressions: 100, ...over });
+
+const profileData = (over: Partial<ProfileAnalytics> = {}): AnalyticsDashboard => ({
+  profile: {
+    funnel: funnel(), topServices: [], trustScore: metric({ value: 72 }), trustSignals: [],
+    disputePenalty: metric({ value: 0 }), profileCompleteness: metric({ value: 80, unit: 'percent' }),
+    verificationStatus: 'Verified', tierLevel: 2, tierMeaning: 'Verified providers rank higher in matching.',
+    skillsTestsTaken: metric(), skillsTestsPassed: metric(), latestSkillsTestScore: metric(),
+    portfolioItems: metric(), publishedServices: metric(), profileViews: metric(),
+    searchAppearances: metric(), portfolioViews: metric(), profileSaves: metric(),
+    contactRate: metric(), portfolioEngagement: metric(),
+    ...over,
+  },
+} as AnalyticsDashboard);
 
 describe('profile funnel', () => {
   it('shows all three real steps with the rate between each pair', () => {
@@ -148,5 +170,64 @@ describe('profile tab composition', () => {
   it('does not chart profile strength over time', () => {
     expect(profileView).not.toContain('LineChart');
     expect(profileView).not.toContain('TrendChart');
+  });
+
+  /**
+   * Audit Item 1. Skills tests and portfolio counts carried no period scoping — the server
+   * passes null as the previous value for every one — and the real Profile & Trust page
+   * shows both far more usefully: per-category attempt status with pass/fail, score and
+   * retest date, plus the interactive card to actually take a test. Same reasoning that
+   * removed the Trust breakdown.
+   */
+  it('no longer restates skills-test and portfolio counts from the real Profile page', () => {
+    expect(profileView).not.toContain('MetricGrid');
+    expect(profileView).not.toContain('skillsTests');
+    expect(profileView).not.toContain('portfolioItems');
+  });
+});
+
+/**
+ * Verification and tier are one fact today, not two: the verification paths in
+ * ServiceProviderService set ProviderTier = Tier2, and Tier3/Tier4 have no writer
+ * anywhere. Two cards implied two independent axes a provider could move along.
+ */
+describe('merged verification and tier card', () => {
+  it('reads verification and tier as one statement for a verified provider', () => {
+    render(<ProfileView data={profileData()} />);
+
+    expect(screen.getByText('Verified · Tier 2')).toBeInTheDocument();
+    expect(screen.getByText('Verified providers rank higher in matching.')).toBeInTheDocument();
+  });
+
+  /**
+   * The state that makes the merge safe. An unverified provider is genuinely Tier 1, so
+   * the card must not imply the Tier 2 that only verification grants.
+   */
+  it('does not claim a tier an unverified provider has not earned', () => {
+    render(<ProfileView data={profileData({
+      verificationStatus: 'Pending', tierLevel: 1,
+      tierMeaning: 'Complete verification to reach Tier 2.',
+    })} />);
+
+    expect(screen.getByText('Pending · Tier 1')).toBeInTheDocument();
+    expect(screen.queryByText('Verified · Tier 2')).not.toBeInTheDocument();
+    // The detail line may still MENTION Tier 2 — "Complete verification to reach Tier 2"
+    // is guidance toward it, the opposite of claiming it. Only the headline is asserted.
+    expect(screen.getByText('Complete verification to reach Tier 2.')).toBeInTheDocument();
+  });
+
+  /** Split camelCase status strings stay readable rather than leaking the enum name. */
+  it('humanises a multi-word verification status', () => {
+    render(<ProfileView data={profileData({ verificationStatus: 'UnderReview', tierLevel: 1 })} />);
+
+    expect(screen.getByText('Under Review · Tier 1')).toBeInTheDocument();
+  });
+
+  it('renders one card for the pair, not two', () => {
+    render(<ProfileView data={profileData()} />);
+
+    expect(screen.queryByText('Verification')).not.toBeInTheDocument();
+    expect(screen.queryByText('Tier')).not.toBeInTheDocument();
+    expect(screen.getByText('Verification & tier')).toBeInTheDocument();
   });
 });
