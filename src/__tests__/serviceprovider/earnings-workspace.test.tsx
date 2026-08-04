@@ -4,7 +4,7 @@ import { render, screen, within } from '@testing-library/react';
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import {
-  AvailableBalanceHero, EarningsLoading, EscrowPanel,
+  AvailableBalanceHero, EarningsLoading,
 } from '@/components/serviceprovider/EarningsWorkspace';
 import { EarningsTrendChart } from '@/components/serviceprovider/charts/EarningsTrendChart';
 import { PayoutsPanel } from '@/components/serviceprovider/earnings/PayoutsPanel';
@@ -86,55 +86,6 @@ describe('available balance hero', () => {
   });
 });
 
-describe('escrow panel', () => {
-  it('presents protected funds as the total with its stages nested inside', () => {
-    render(<EscrowPanel data={summary()} currency="EUR" />);
-
-    expect(screen.getByText('Held in escrow')).toBeInTheDocument();
-    expect(screen.getByText(/7,200/)).toBeInTheDocument();
-    expect(screen.getByText('Included in the amount above')).toBeInTheDocument();
-    expect(screen.getByText('Work in progress')).toBeInTheDocument();
-    expect(screen.getByText('In review')).toBeInTheDocument();
-  });
-
-  /**
-   * The whole point of the reframe. Work in progress is a strict subset of protected funds,
-   * so the old peer-card layout invited adding two figures that overlap completely.
-   */
-  it('states that the stages are parts of the total rather than additions to it', () => {
-    render(<EscrowPanel data={summary()} currency="EUR" />);
-
-    expect(screen.getByText(/not amounts to add to it/)).toBeInTheDocument();
-  });
-
-  /**
-   * Protected funds was the ONLY place revision and dispute money appeared. The reframe must
-   * not drop it — it stays visible in words, since no sound figure can be computed for it.
-   */
-  it('keeps the revision and dispute money visible in the new framing', () => {
-    render(<EscrowPanel data={summary()} currency="EUR" />);
-
-    expect(screen.getByText(/revision or dispute are also included in the total/)).toBeInTheDocument();
-  });
-
-  /** In review is not escrow-filtered upstream, so on-hold money lands elsewhere. */
-  it('explains that on-hold escrow is counted under On hold instead', () => {
-    render(<EscrowPanel data={summary()} currency="EUR" />);
-
-    expect(screen.getByText(/placed on hold is counted under On hold instead/)).toBeInTheDocument();
-  });
-
-  /**
-   * protectedEscrow - workInProgress - inReview can legitimately go negative, so no
-   * remainder is derived. Every figure on this page stays server-recorded.
-   */
-  it('derives no remainder figure of its own', () => {
-    const panel = workspaceSource.slice(workspaceSource.indexOf('export function EscrowPanel'));
-    expect(panel).not.toMatch(/protectedEscrow\s*-\s*/);
-    expect(panel).not.toMatch(/-\s*data\.workInProgress/);
-  });
-});
-
 describe('earnings card grouping', () => {
   const grid = workspaceSource.slice(
     workspaceSource.indexOf('<AvailableBalanceHero'),
@@ -154,11 +105,17 @@ describe('earnings card grouping', () => {
     expect(onHold).toBeLessThan(withdrawn);
   });
 
-  /** Work in progress and In review moved inside the escrow total they are part of. */
-  it('keeps the escrow stages inside the total rather than beside it', () => {
-    expect(grid).not.toContain('label="Work in progress"');
-    expect(grid).not.toContain('label="In review"');
-    expect(grid).toContain('<EscrowPanel');
+  /**
+   * The Held-in-escrow section was removed outright. Work in progress, In review and the
+   * protected-escrow total no longer appear on this page in any form — asserted so a later
+   * change cannot reintroduce them as peer cards, which is the double-count the escrow
+   * reframe existed to prevent in the first place.
+   */
+  it('no longer surfaces the escrow stages anywhere on the page', () => {
+    expect(grid).not.toContain('EscrowPanel');
+    expect(workspaceSource).not.toContain('workInProgress');
+    expect(workspaceSource).not.toContain('inReview');
+    expect(workspaceSource).not.toContain('protectedEscrow');
   });
 });
 

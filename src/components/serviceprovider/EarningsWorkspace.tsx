@@ -4,7 +4,7 @@
 // file. Greens use --success-light / --success-strong; the latter was added because
 // --success-text is 2.80:1 on --success-light and fails AA. See globals.css.
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { AlertCircle, ArrowRight, CircleDollarSign, Clock3, HandCoins, Landmark, LockKeyhole, WalletCards } from 'lucide-react';
+import { AlertCircle, ArrowRight, CircleDollarSign, HandCoins, WalletCards } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useEarnings } from '@/hooks/queries/workroom';
@@ -15,7 +15,6 @@ import { EarningsActivity } from '@/components/serviceprovider/earnings/Earnings
 import { PayoutsPanel } from '@/components/serviceprovider/earnings/PayoutsPanel';
 import { FinancialSettingsPanel } from '@/components/serviceprovider/earnings/FinancialSettingsPanel';
 import { money } from '@/components/serviceprovider/workroom/_shared';
-import type { FinancialSummary } from '@/types/workroom';
 import Link from 'next/link';
 
 type EarningsTab = 'activity' | 'payouts' | 'settings';
@@ -62,13 +61,10 @@ export function EarningsWorkspace() {
 
       <AvailableBalanceHero amount={data.available} currency={currency} payoutHref={href('payouts')} />
 
-      <EscrowPanel data={data} currency={currency} />
-
-      {/* Every card below the hero carries the same weight on purpose. The previous split
-          put On hold in a smaller row than Work in progress and Pending release, which
-          inverted their urgency: On hold is the only one of the three a provider can act
-          on, and the other two are equally passive. Ordered by lifecycle instead —
-          approaching payout, blocked, already paid. */}
+      {/* Equal weight on purpose. An earlier split put On hold in a smaller row than the
+          passive lifecycle figures, inverting their urgency — On hold is the only one of
+          these a provider can act on. Ordered by lifecycle: approaching payout, blocked,
+          already paid. */}
       <div className="grid gap-4 sm:grid-cols-3">
         <SpMetricCard label="Pending release" value={money(data.pending, currency)} detail="Approved, not yet in your available balance" icon={HandCoins} />
         <SpMetricCard label="On hold" value={money(data.onHold, currency)} detail="Blocked by the recorded lifecycle" icon={AlertCircle} iconClassName="bg-warning/10 text-warning" />
@@ -123,57 +119,6 @@ export function AvailableBalanceHero({ amount, currency, payoutHref }: { amount:
 }
 
 /**
- * Protected funds is NOT a seventh pool of money, and presenting it as a peer card implied
- * it was. Traced through WorkroomService: it is every milestone whose escrow is Funded and
- * whose status is neither Approved nor Paid — which makes Work in progress a strict SUBSET
- * of it (all three of its statuses are inside that set), and funded In review milestones
- * subsets too. A provider adding the old seven boxes got a total well above their real
- * money.
- *
- * So it is shown as the total with its stages nested inside it. The stages deliberately do
- * not add up to it, and the note says so rather than leaving the arithmetic looking broken:
- *
- *   - Milestones in revision or dispute are inside the total but are not a listed stage.
- *     Before this change the total was the ONLY place that money appeared at all, so it
- *     must not be dropped in the reframe.
- *   - In review is not escrow-filtered upstream, so a submitted milestone whose escrow went
- *     On hold counts under On hold instead of here.
- *
- * No remainder is computed. protectedEscrow - workInProgress - inReview can legitimately go
- * negative for exactly the second reason above, so a "everything else" figure would be a
- * fabricated number on a page where every other figure is server-recorded.
- */
-export function EscrowPanel({ data, currency }: { data: FinancialSummary; currency: string }) {
-  return (
-    <SpCard aria-labelledby="escrow-total-title">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
-              <Landmark className="size-5" aria-hidden="true" />
-            </span>
-            <p id="escrow-total-title" className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Held in escrow</p>
-          </div>
-          <p className="mt-5 font-heading text-3xl font-bold tracking-tight text-foreground">{money(data.protectedEscrow, currency)}</p>
-          <p className="mt-2 text-sm text-muted-foreground">Client funds held against milestones that have not been released.</p>
-        </div>
-      </div>
-
-      <div className="mt-6 border-t border-border pt-5">
-        <p className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">Included in the amount above</p>
-        <div className="mt-3 grid gap-4 sm:grid-cols-2">
-          <SpMetricCard className="min-h-0 bg-muted/40" label="Work in progress" value={money(data.workInProgress, currency)} detail="Funded work still in delivery" icon={Clock3} />
-          <SpMetricCard className="min-h-0 bg-muted/40" label="In review" value={money(data.inReview, currency)} detail="Submitted, awaiting client action" icon={LockKeyhole} iconClassName="bg-warning/10 text-warning" />
-        </div>
-        <p className="mt-4 text-xs leading-5 text-muted-foreground">
-          These are parts of the total above, not amounts to add to it. Milestones in revision or dispute are also included in the total but are not listed as a stage, and anything whose escrow has been placed on hold is counted under On hold instead.
-        </p>
-      </div>
-    </SpCard>
-  );
-}
-
-/**
  * Mirrors the real layout block for block: hero, escrow panel, three cards, content. The
  * previous version rendered four card skeletons and nothing for the second row, so the row
  * appeared unaccounted-for on every load.
@@ -187,7 +132,6 @@ export function EarningsLoading() {
       </div>
       <Skeleton className="h-14 w-full rounded-xl" />
       <Skeleton className="h-40 rounded-2xl" />
-      <Skeleton className="h-72 rounded-2xl" />
       <div className="grid gap-4 sm:grid-cols-3">
         {Array.from({ length: 3 }, (_, index) => <Skeleton key={index} className="h-44 rounded-2xl" />)}
       </div>
