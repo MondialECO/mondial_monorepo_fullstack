@@ -24,7 +24,23 @@ function formatTime(iso: string): string {
   }
 }
 
-export default function NotificationBell() {
+/**
+ * `triggerClassName` styles the BELL BUTTON only.
+ *
+ * It exists because the SP headers previously wrapped this component in
+ * `[&_button]:size-11` to give the trigger a 44px touch target. That arbitrary variant
+ * compiles to a DESCENDANT selector, and the panel below renders inline rather than through
+ * a portal — so it also matched every notification row, each of which is a <button>, and
+ * forced them to 44x44px. Descendant specificity (class + element) outranks the row's own
+ * `w-full` (class alone), so rows collapsed to a square: the title's `truncate` and the
+ * body's `line-clamp-2` clipped to nothing while the timestamp's `shrink-0` kept its width
+ * and spilled into the panel. Only the time survived. SP-only, and present for as long as
+ * that wrapper has been there.
+ *
+ * Passing a class for the trigger explicitly makes that whole class of leak impossible:
+ * a caller can no longer reach the panel's internals by selector.
+ */
+export default function NotificationBell({ triggerClassName }: { triggerClassName?: string } = {}) {
   const { token } = useAuth();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -55,7 +71,7 @@ export default function NotificationBell() {
       <Button
         variant="ghost"
         size="icon"
-        className="relative"
+        className={cn("relative", triggerClassName)}
         aria-label="Notifications"
         aria-haspopup="menu"
         aria-expanded={open}
