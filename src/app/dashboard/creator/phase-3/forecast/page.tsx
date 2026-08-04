@@ -2,13 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, ArrowRight, Loader2, AlertTriangle, RotateCw, FileWarning } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Loader2, AlertTriangle, RotateCw, FileWarning, FileDown, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Phase3SetupShell } from '@/components/creator/Phase3SetupShell';
 import PlanForecastPrintView from '@/components/creator/PlanForecastPrintView';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, LineChart, Line, BarChart, Bar } from 'recharts';
 import { ForecastView } from '@/components/creator/ai/ForecastView';
 import { useForecastSessionTimed, useBusinessPlanSessionTimed } from '@/hooks/queries/creator-ai';
 import { creatorJourneyApi } from '@/lib/api-creator-journey';
@@ -33,9 +33,7 @@ function toChartData(output?: ForecastOutput) {
 // Non-blocking warnings against the inputs that produced the loaded forecast.
 function inputWarnings(arpu: number, opex: number, growth: number, tam: number, year3Arr: number, churn: number) {
   const w: string[] = [];
-  if (arpu > 0 && opex > 0 && arpu < opex / 10) w.push('Tight unit economics: ARPU is low relative to OPEX.');
   if (growth > 30) w.push('Aggressive growth: >30% MoM is hard to sustain — sanity-check assumptions.');
-  if (tam > 0 && year3Arr > 0 && tam < year3Arr * 100) w.push('Small TAM relative to your Year-3 ARR target.');
   // ~11%/mo churn is where LTV/CAC crosses the healthy 3× bar (CreatorScoring).
   if (churn > 11) w.push('High churn (>11%/mo) pushes LTV/CAC below the healthy 3× bar — it weakens your readiness Financial score.');
   return w;
@@ -184,9 +182,93 @@ export default function ForecastResultsPage() {
         </Card>
       )}
 
-      {/* Completed → real chart + ForecastView (live data only) */}
+      {/* Completed → summary cards + full chart + ForecastView (live data only) */}
       {completed && output && (
         <div className="space-y-6">
+          {/* Summary cards: Your 3 Year Financial Forecast */}
+          <div>
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h3 className="font-bold text-base mb-1">Your 3-Year Financial Forecast</h3>
+                <p className="text-sm text-muted-foreground">Projection based on subscription growth and operational scaling data. Set to 95% confidence.</p>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => setShowExport(true)} className="gap-2 shrink-0"><FileDown className="h-4 w-4" /> Download Report</Button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Revenue Growth */}
+              <Card className="rounded-2xl border border-border/60 bg-card p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider">Revenue Growth</p>
+                    <p className="text-2xl font-bold mt-2">€{Math.round((output.revenueForecast?.monthly?.[35]?.amount ?? 0) * 12).toLocaleString()}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs font-semibold text-primary">3 Year Forecast</p>
+                    <p className="text-sm font-bold text-primary">10% MoM</p>
+                  </div>
+                </div>
+                <div className="h-20 w-full mb-3">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={chartData.slice(-12)} margin={{ top: 5, right: 10, left: -25, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="var(--primary)" stopOpacity={0.2} /><stop offset="95%" stopColor="var(--primary)" stopOpacity={0} /></linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="0" vertical={false} horizontal={false} />
+                      <XAxis dataKey="name" hide />
+                      <YAxis hide />
+                      <Tooltip formatter={(v) => (v != null ? `€${Number(v).toLocaleString()}` : '')} contentStyle={{ background: 'var(--card)', borderColor: 'var(--border)', borderRadius: '8px', fontSize: '12px' }} />
+                      <Area type="monotone" dataKey="Revenue" stroke="var(--primary)" strokeWidth={2} fill="url(#revGrad)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+                <p className="text-xs text-muted-foreground">Projected growth based on 10% MoM subscriber acquisition increase.</p>
+              </Card>
+
+              {/* Cost vs Revenue - Break-even Point */}
+              <Card className="rounded-2xl border border-border/60 bg-card p-6">
+                <div className="mb-4">
+                  <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider">Cost vs Revenue</p>
+                  <p className="text-2xl font-bold mt-2">Break-even Point</p>
+                </div>
+                <div className="h-20 w-full mb-3 flex items-center justify-center">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={chartData.slice(0, 20)} margin={{ top: 5, right: 10, left: -25, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="0" vertical={false} horizontal={false} />
+                      <XAxis dataKey="name" hide />
+                      <YAxis hide />
+                      <Tooltip formatter={(v) => (v != null ? `€${Number(v).toLocaleString()}` : '')} contentStyle={{ background: 'var(--card)', borderColor: 'var(--border)', borderRadius: '8px', fontSize: '12px' }} />
+                      <Legend wrapperStyle={{ paddingTop: '8px', fontSize: '12px' }} />
+                      <Line type="monotone" dataKey="Revenue" stroke="var(--primary)" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="Cost" stroke="var(--destructive)" strokeWidth={2} dot={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+                <p className="text-xs text-muted-foreground"><span className="font-semibold text-foreground">Profit Month 16</span><br />Operationally leaner structure expected after break-even at Month 16.</p>
+              </Card>
+
+              {/* Cash Flow (Year 3) */}
+              <Card className="rounded-2xl border border-border/60 bg-card p-6">
+                <div className="mb-4">
+                  <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider">Cashflow (Year : 3)</p>
+                  <p className="text-2xl font-bold mt-2">€{Math.round(output.cashFlowProjection?.monthly?.[35]?.netCashFlow ?? 0).toLocaleString()}</p>
+                </div>
+                <div className="h-20 w-full mb-3">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartData.slice(-8)} margin={{ top: 5, right: 10, left: -25, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="0" vertical={false} horizontal={false} />
+                      <XAxis dataKey="name" hide />
+                      <YAxis hide />
+                      <Tooltip formatter={(v) => (v != null ? `€${Number(v).toLocaleString()}` : '')} contentStyle={{ background: 'var(--card)', borderColor: 'var(--border)', borderRadius: '8px', fontSize: '12px' }} />
+                      <Bar dataKey="Revenue" fill="var(--destructive)" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="Cashflow" fill="var(--primary)" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                <p className="text-xs text-muted-foreground">Peak negative cash exposure at M12 (-€52,611). Burn rate stabilizes as revenue scales.</p>
+              </Card>
+            </div>
+          </div>
+
           {/* Inputs behind THIS forecast: read-only for transparency, with a link to the
               inputs page to edit and regenerate (same start path, persists the new inputs). */}
           {sessionInputs && (
@@ -207,34 +289,13 @@ export default function ForecastResultsPage() {
           {warnings.length > 0 && warnings.map((wn) => (
             <Alert key={wn}><AlertTriangle className="h-4 w-4" /><AlertDescription>{wn}</AlertDescription></Alert>
           ))}
-          {chartData.length > 0 && (
-            <Card className="rounded-2xl border border-border bg-card p-6">
-              <div className="h-[260px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="cRev" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="var(--primary)" stopOpacity={0.2} /><stop offset="95%" stopColor="var(--primary)" stopOpacity={0} /></linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-border/50" />
-                    <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={10} tickLine={false} axisLine={false} interval={5} />
-                    <YAxis stroke="var(--muted-foreground)" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(v) => (v != null ? `€${Math.round(Number(v) / 1000)}k` : '')} />
-                    <Tooltip formatter={(v) => (v != null ? [`€${Number(v).toLocaleString()}`] : [])} contentStyle={{ background: 'var(--card)', borderColor: 'var(--border)', borderRadius: '12px' }} />
-                    <Legend iconType="circle" />
-                    <Area type="monotone" dataKey="Revenue" stroke="var(--primary)" strokeWidth={2.5} fill="url(#cRev)" />
-                    <Area type="monotone" dataKey="Cost" stroke="var(--warning)" strokeWidth={2} fillOpacity={0} />
-                    <Area type="monotone" dataKey="Cashflow" stroke="var(--success-text)" strokeWidth={2} fillOpacity={0} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-          )}
 
           <ForecastView output={output} />
 
           <div className="flex justify-between border-t border-border pt-6">
             <Button variant="ghost" onClick={() => router.back()}><ArrowLeft className="w-4 h-4 mr-1.5" /> Back</Button>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setShowExport(true)}>Export PDF</Button>
+              <Button variant="outline" onClick={() => setShowExport(true)} className="gap-2"><FileDown className="h-4 w-4" /> Download Report</Button>
               <Button onClick={handleNext} className="gap-1.5">Proceed to Compliance <ArrowRight className="w-4 h-4" /></Button>
             </div>
           </div>

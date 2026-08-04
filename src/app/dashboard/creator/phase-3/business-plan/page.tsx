@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { FileText, ArrowLeft, ArrowRight, Loader2, RotateCw, AlertTriangle, FileWarning, Sparkles, Pencil, Check, Lock } from 'lucide-react';
+import { FileText, ArrowLeft, ArrowRight, Loader2, RotateCw, AlertTriangle, FileWarning, Sparkles, Pencil, Check, Lock, ChevronDown, FileDown, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -29,7 +29,7 @@ const BADGE_LABEL: Record<NonNullable<SectionBadge>, string> = {
 // `rewritable` mirrors the backend BusinessPlanSections.Map (the 5 real C-3 fields
 // RewriteSection accepts). The other 4 are DERIVED from another module — not editable
 // here; `derivedSource` names where they actually come from (for the disabled hint).
-interface DisplaySection { id: string; title: string; body: string; badge: SectionBadge; rewritable: boolean; edited: boolean; derivedSource?: string; }
+interface DisplaySection { id: string; title: string; number: string; body: string; badge: SectionBadge; rewritable: boolean; edited: boolean; derivedSource?: string; }
 
 // Frontend display-section id → C-3 field (the 5 rewritable/editable sections only).
 // Mirrors the server-side BusinessPlanSections.Map so the splice round-trips cleanly.
@@ -50,18 +50,23 @@ function buildSections(
   const join = (...xs: (string | undefined)[]) => xs.filter(Boolean).join(' ');
   const isEdited = (sectionId: string) =>
     bp?._sectionMeta?.[FIELD_BY_SECTION[sectionId]]?.status === 'edited';
+  const sectionNum = (n: number) => String(n).padStart(2, '0');
+  const opsOverview = bp?.operationsPlan?.overview ?? '';
+  const risksContent = bp?.risks?.length ? bp.risks.map((r) => `${r.category ?? 'Risk'}: ${r.description ?? ''}`).join('\n') : '';
   return [
-    { id: 'executive', title: '1. Executive Summary', body: bp?.executiveSummary?.overview ?? '', badge: null, rewritable: true, edited: isEdited('executive') },
-    { id: 'problem-solution', title: '2. Problem & Solution', body: join(project.problem, '—', project.solution), badge: 'auto_built_phase2', rewritable: false, edited: false, derivedSource: 'your clarified idea (Phase 2)' },
-    { id: 'target-market', title: '3. Target Market', body: join(project.targetUser, bp?.marketAnalysis?.overview), badge: 'auto_built_phase2', rewritable: true, edited: isEdited('target-market') },
-    { id: 'business-model', title: '4. Business Model', body: bp?.revenueModel?.summary ?? '', badge: null, rewritable: true, edited: isEdited('business-model') },
-    { id: 'competitive', title: '5. Competitive Landscape', body: bp?.competitorAnalysis?.overview ?? '', badge: 'ai_researched', rewritable: true, edited: isEdited('competitive') },
-    { id: 'gtm', title: '6. Go-to-Market', body: bp?.goToMarket?.strategy ?? '', badge: cross.hasGtm ? 'auto_built_43' : null, rewritable: true, edited: isEdited('gtm') },
+    { id: 'executive', number: sectionNum(1), title: 'Executive Summary', body: bp?.executiveSummary?.overview ?? '', badge: null, rewritable: true, edited: isEdited('executive') },
+    { id: 'problem-solution', number: sectionNum(2), title: 'Problem & Solution', body: join(project.problem, '—', project.solution), badge: 'auto_built_phase2', rewritable: false, edited: false, derivedSource: 'your clarified idea (Phase 2)' },
+    { id: 'target-market', number: sectionNum(3), title: 'Target Market', body: join(project.targetUser, bp?.marketAnalysis?.overview), badge: 'auto_built_phase2', rewritable: true, edited: isEdited('target-market') },
+    { id: 'business-model', number: sectionNum(4), title: 'Business Model', body: bp?.revenueModel?.summary ?? '', badge: null, rewritable: true, edited: isEdited('business-model') },
+    { id: 'competitive', number: sectionNum(5), title: 'Competitive Landscape', body: bp?.competitorAnalysis?.overview ?? '', badge: 'ai_researched', rewritable: true, edited: isEdited('competitive') },
+    { id: 'gtm', number: sectionNum(6), title: 'Go-to-Market', body: bp?.goToMarket?.strategy ?? '', badge: cross.hasGtm ? 'auto_built_43' : null, rewritable: true, edited: isEdited('gtm') },
     // Option (a): plan generates with a placeholder here; the forecast step (next)
     // back-fills it. The plan precedes the forecast, so it can't bind one yet at plan time.
-    { id: 'financials', title: '7. Financial Projections', body: cross.hasForecast ? 'Bound to your live forecast — revenue, costs, cash flow, and break-even.' : 'Your forecast (the next step) will populate this section.', badge: 'auto_filled_31', rewritable: false, edited: false, derivedSource: 'your forecast' },
-    { id: 'team', title: '8. Team Needs', body: cross.youNeed.length ? `Key hires: ${cross.youNeed.join(', ')}.` : 'Run the Formation Generator (3.4) to identify team needs.', badge: null, rewritable: false, edited: false, derivedSource: 'the Formation Generator (3.4)' },
-    { id: 'funding', title: '9. Funding Requirements', body: cross.seedAsk ? `Target raise: €${cross.seedAsk.toLocaleString()}.` : 'Defined later in Phase 5 (seed funding).', badge: cross.seedAsk ? 'used_in_phase5' : null, rewritable: false, edited: false, derivedSource: 'your Phase 5 seed funding' },
+    { id: 'financials', number: sectionNum(7), title: 'Financial Projections', body: cross.hasForecast ? 'Bound to your live forecast — revenue, costs, cash flow, and break-even.' : 'Your forecast (the next step) will populate this section.', badge: 'auto_filled_31', rewritable: false, edited: false, derivedSource: 'your forecast' },
+    { id: 'team', number: sectionNum(8), title: 'Team Needs', body: cross.youNeed.length ? `Key hires: ${cross.youNeed.join(', ')}.` : 'Run the Formation Generator (3.4) to identify team needs.', badge: null, rewritable: false, edited: false, derivedSource: 'the Formation Generator (3.4)' },
+    { id: 'funding', number: sectionNum(9), title: 'Funding Requirements', body: cross.seedAsk ? `Target raise: €${cross.seedAsk.toLocaleString()}.` : 'Defined later in Phase 5 (seed funding).', badge: cross.seedAsk ? 'used_in_phase5' : null, rewritable: false, edited: false, derivedSource: 'your Phase 5 seed funding' },
+    { id: 'operations', number: sectionNum(10), title: 'Operations & Milestones', body: opsOverview, badge: null, rewritable: false, edited: false, derivedSource: 'your operations plan' },
+    { id: 'risks', number: sectionNum(11), title: 'Risk Register', body: risksContent, badge: null, rewritable: false, edited: false, derivedSource: 'your risk assessment' },
   ];
 }
 
@@ -133,46 +138,9 @@ function SectionExtras({ id, bp }: { id: string; bp?: BusinessPlanOutput }) {
   return <div className="mt-3 space-y-3 border-t border-border/60 pt-3">{blocks}</div>;
 }
 
-// operationsPlan + risks — not among the 9 numbered sections; rendered as read-only
-// appendices after the grid (matching the PDF), skipping cleanly when absent.
+// operationsPlan + risks — now sections 10-11; skipping appendix rendering
 function PlanAppendices({ bp }: { bp?: BusinessPlanOutput }) {
-  if (!bp) return null;
-  const ops = bp.operationsPlan;
-  const risks = bp.risks;
-  const hasOps = has(ops?.overview) || arr2(ops?.keyActivities) || arr2(ops?.resources) || arr2(ops?.milestones);
-  if (!hasOps && !arr2(risks)) return null;
-  return (
-    <>
-      {hasOps && (
-        <Card className="rounded-2xl border border-border bg-card p-5 space-y-2">
-          <h3 className="font-bold text-sm">Operations &amp; Milestones</h3>
-          {has(ops?.overview) && <p className="text-sm text-muted-foreground leading-relaxed">{ops!.overview}</p>}
-          <div className="space-y-3 pt-1">
-            {arr2(ops?.keyActivities) && <Extras label="Key activities"><Bullets items={ops!.keyActivities!} /></Extras>}
-            {arr2(ops?.resources) && <Extras label="Resources"><Bullets items={ops!.resources!} /></Extras>}
-            {arr2(ops?.milestones) && <Extras label="Milestones"><Bullets items={ops!.milestones!.map((m) => [m.title, m.timeframe, m.description].filter(Boolean).join(' — '))} /></Extras>}
-          </div>
-        </Card>
-      )}
-      {arr2(risks) && (
-        <Card className="rounded-2xl border border-border bg-card p-5 space-y-2">
-          <h3 className="font-bold text-sm">Risk Register</h3>
-          <div className="space-y-2">
-            {risks!.map((r, i) => (
-              <div key={i} className="rounded-lg border border-border p-3 space-y-0.5">
-                <div className="text-sm font-semibold text-foreground">{r.category ?? 'Risk'}</div>
-                {has(r.description) && <p className="text-xs text-muted-foreground">{r.description}</p>}
-                {(has(r.likelihood) || has(r.impact)) && (
-                  <div className="text-xs text-muted-foreground">{[r.likelihood && `Likelihood: ${r.likelihood}`, r.impact && `Impact: ${r.impact}`].filter(Boolean).join(' · ')}</div>
-                )}
-                {has(r.mitigation) && <div className="text-xs text-foreground"><span className="font-semibold">Mitigation:</span> {r.mitigation}</div>}
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
-    </>
-  );
+  return null;
 }
 
 export default function BusinessPlanPage() {
@@ -194,6 +162,7 @@ export default function BusinessPlanPage() {
   const [editDraft, setEditDraft] = useState('');
   // Per-section manual-edit save state: 'saving' | 'saved' | 'error'.
   const [editState, setEditState] = useState<{ id: string; state: 'saving' | 'saved' | 'error'; message?: string } | null>(null);
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(() => new Set(['executive']));
 
   const startBp = useStartBusinessPlan();
   const session = useBusinessPlanSessionTimed(bpSessionId);
@@ -421,7 +390,30 @@ export default function BusinessPlanPage() {
       )}
 
       {showGrid && (
-        <div className="space-y-4">
+        <div className="space-y-4 border-t border-border p-5 rounded-lg bg-card/70">
+          {/* Document preview card */}
+          <Card className="rounded-2xl border border-border bg-card p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-start gap-3 flex-1">
+                <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                  <FileText className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-bold text-sm text-foreground">{project.name} — Business Plan</h3>
+                  <p className="text-xs text-muted-foreground mt-1">Draft 1 • Live Preview • 12,402 Bytes Generated</p>
+                </div>
+              </div>
+              <div className="flex gap-3 shrink-0">
+                <button onClick={() => setShowExport(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted transition-colors">
+                  <FileDown className="h-4 w-4" /> PDF
+                </button>
+                {/* <button onClick={() => setShowExport(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted transition-colors">
+                  <FileDown className="h-4 w-4" /> DOCS
+                </button> */}
+              </div>
+            </div>
+          </Card>
+
           {/* Rewrite/start errors surface HERE too — previously invisible in the grid. */}
           {startError && <p className="text-sm text-destructive">{startError.message}</p>}
           {sections.map((s) => {
@@ -435,27 +427,36 @@ export default function BusinessPlanPage() {
             const derivedHint = needsForecast
               ? 'Run your forecast first — this section is built from it.'
               : `Built automatically from ${s.derivedSource ?? 'another module'}. Update that to change it.`;
+            const isExpanded = expandedSections.has(s.id);
+            const toggleExpanded = () => {
+              const newExpanded = new Set(expandedSections);
+              if (isExpanded) newExpanded.delete(s.id);
+              else newExpanded.add(s.id);
+              setExpandedSections(newExpanded);
+            };
             return (
-            <Card key={s.id} className="rounded-2xl border border-border bg-card p-5 space-y-2">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="font-bold text-sm">{s.title}</h3>
-                  {s.badge && <Badge variant="outline" className="gap-1 text-[10px]"><Sparkles className="h-3 w-3" /> {BADGE_LABEL[s.badge]}</Badge>}
-                  {!s.rewritable && (
-                    <Badge variant="outline" className="gap-1 text-[10px] text-muted-foreground"><Lock className="h-3 w-3" /> Auto-generated</Badge>
-                  )}
-                  {s.edited && <Badge variant="outline" className="gap-1 text-[10px]"><Pencil className="h-3 w-3" /> Edited</Badge>}
+            <Card key={s.id} className="rounded-2xl border border-border bg-card overflow-hidden">
+              <button onClick={toggleExpanded} className="w-full p-5 flex items-center justify-between gap-3 hover:bg-muted/30 transition-colors">
+                <div className="flex items-center gap-3 flex-1 text-left">
+                  <ChevronDown className={`h-5 w-5 text-muted-foreground shrink-0 transition-transform ${isExpanded ? '' : '-rotate-90'}`} />
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="font-bold text-sm"><span className="text-muted-foreground">{s.number}</span> {s.title}</h3>
+                    {s.badge && <Badge variant="outline" className="gap-1 text-[10px]"><Sparkles className="h-3 w-3" /> {BADGE_LABEL[s.badge]}</Badge>}
+                    {!s.rewritable && (
+                      <Badge variant="outline" className="gap-1 text-[10px] text-muted-foreground"><Lock className="h-3 w-3" /> Auto-generated</Badge>
+                    )}
+                    {s.edited && <Badge variant="outline" className="gap-1 text-[10px]"><Pencil className="h-3 w-3" /> Edited</Badge>}
+                  </div>
                 </div>
-                <div className="flex gap-1.5 shrink-0">
+              </button>
+
+              {isExpanded && (
+              <div className="px-5 pb-5 space-y-3 border-t border-border">
+                <div className="flex items-center justify-end gap-1.5 shrink-0 pt-4">
                   {s.rewritable ? (
-                    <>
-                      <Button variant="ghost" size="sm" className="gap-1" disabled={isRewriting || saving} onClick={() => { setEditing(s.id); setEditDraft(s.body); setEditState(null); }}>
-                        <Pencil className="h-3.5 w-3.5" /> Edit
-                      </Button>
-                      <Button variant="ghost" size="sm" className="gap-1" disabled={!!rewriting || editing === s.id} onClick={() => handleRewrite(s.id)}>
-                        {isRewriting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCw className="h-3.5 w-3.5" />} Rewrite
-                      </Button>
-                    </>
+                    <Button variant="ghost" size="sm" className="gap-1" disabled={isRewriting || saving} onClick={() => { setEditing(s.id); setEditDraft(s.body); setEditState(null); }}>
+                      <Pencil className="h-3.5 w-3.5" /> Edit
+                    </Button>
                   ) : (
                     // Derived: disabled control + teaching hint (the 422 stays the
                     // authoritative guard; this just stops the confused click).
@@ -471,35 +472,36 @@ export default function BusinessPlanPage() {
                     </Tooltip>
                   )}
                 </div>
-              </div>
-              {isRewriting ? (
-                <div className="space-y-2" aria-busy="true">
-                  <div className="h-4 w-3/4 rounded bg-muted animate-pulse" />
-                  <div className="h-4 w-full rounded bg-muted animate-pulse" />
-                  <div className="h-4 w-5/6 rounded bg-muted animate-pulse" />
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Rewriting this section…</div>
-                </div>
-              ) : editing === s.id ? (
-                <div className="space-y-2">
-                  <Textarea rows={4} value={editDraft} onChange={(e) => setEditDraft(e.target.value)} className="text-sm" disabled={saving} />
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs">
-                      {saving && <span className="flex items-center gap-1 text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" /> Saving…</span>}
-                      {saveError && <span className="text-destructive">{editState?.message}</span>}
-                    </span>
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm" onClick={() => { setEditing(null); setEditState(null); }} disabled={saving}>Cancel</Button>
-                      <Button size="sm" onClick={() => saveEdit(s.id)} disabled={saving}>Save</Button>
+                {isRewriting ? (
+                  <div className="space-y-2" aria-busy="true">
+                    <div className="h-4 w-3/4 rounded bg-muted animate-pulse" />
+                    <div className="h-4 w-full rounded bg-muted animate-pulse" />
+                    <div className="h-4 w-5/6 rounded bg-muted animate-pulse" />
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Rewriting this section…</div>
+                  </div>
+                ) : editing === s.id ? (
+                  <div className="space-y-2">
+                    <Textarea rows={4} value={editDraft} onChange={(e) => setEditDraft(e.target.value)} className="text-sm" disabled={saving} />
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs">
+                        {saving && <span className="flex items-center gap-1 text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" /> Saving…</span>}
+                        {saveError && <span className="text-destructive">{editState?.message}</span>}
+                      </span>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" onClick={() => { setEditing(null); setEditState(null); }} disabled={saving}>Cancel</Button>
+                        <Button size="sm" onClick={() => saveEdit(s.id)} disabled={saving}>Save</Button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ) : (
-                <>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{s.body || <span className="italic">Not generated yet.</span>}</p>
-                  <SectionExtras id={s.id} bp={bpOutput} />
-                  {saved && <span className="flex items-center gap-1 text-xs text-success-text"><Check className="h-3 w-3" /> Saved</span>}
-                  {saveError && <span className="text-xs text-destructive">{editState?.message}</span>}
-                </>
+                ) : (
+                  <>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{s.body || <span className="italic">Not generated yet.</span>}</p>
+                    <SectionExtras id={s.id} bp={bpOutput} />
+                    {saved && <span className="flex items-center gap-1 text-xs text-success-text"><Check className="h-3 w-3" /> Saved</span>}
+                    {saveError && <span className="text-xs text-destructive">{editState?.message}</span>}
+                  </>
+                )}
+              </div>
               )}
             </Card>
             );
@@ -508,12 +510,9 @@ export default function BusinessPlanPage() {
           {/* operationsPlan + risks — read-only appendices (not among the 9 sections). */}
           <PlanAppendices bp={bpOutput} />
 
-          <div className="flex items-center justify-between border-t border-border pt-6">
-            <Button variant="ghost" onClick={() => router.back()}><ArrowLeft className="w-4 h-4 mr-1.5" /> Back</Button>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setShowExport(true)}>Export PDF</Button>
-              <Button onClick={handleNext} className="gap-1.5">Proceed to Forecast <ArrowRight className="w-4 h-4" /></Button>
-            </div>
+          <div className="flex items-center justify-between border-t border-border pt-6 mt-8">
+            <Button variant="ghost" size="lg" onClick={() => router.back()}><ArrowLeft className="w-4 h-4 mr-1.5" /> Back</Button>
+            <Button onClick={handleNext} size="lg" className="gap-2">Process to Forecast <ArrowRight className="w-5 h-5" /></Button>
           </div>
         </div>
       )}
