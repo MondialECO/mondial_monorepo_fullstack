@@ -1,5 +1,8 @@
 'use client';
 
+// Remaining hardcoded hex on this file is deliberate, not an oversight: those values
+// have no exact token equivalent. See the PENDING DESIGN-TOKEN DECISION note in
+// src/app/globals.css (below the .sp-workspace block) for the full list and why.
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { AlertCircle, CircleDollarSign, Clock3, HandCoins, Landmark, LockKeyhole, WalletCards } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -44,22 +47,21 @@ export function EarningsWorkspace() {
       <SpPageHeader
         title="Earnings & Payouts"
         description="Track server-recorded earnings, payment lifecycle states, payouts, invoices and tax settings."
-        actions={<label className="flex items-center gap-2 text-sm font-semibold text-[#374151]"><span>Currency</span><select aria-label="Financial currency" value={currency} onChange={(event) => setCurrency(event.target.value)} className="h-10 rounded-xl border border-[#D1D5DB] bg-white px-3 text-sm text-[#171717] outline-none focus-visible:ring-2 focus-visible:ring-[#3C61DD]">{currencies.map((item) => <option key={item}>{item}</option>)}</select></label>}
+        actions={<label className="flex items-center gap-2 text-sm font-semibold text-[#374151]"><span>Currency</span><select aria-label="Financial currency" value={currency} onChange={(event) => setCurrency(event.target.value)} className="h-10 rounded-xl border border-input bg-white px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring">{currencies.map((item) => <option key={item}>{item}</option>)}</select></label>}
       />
-      <SpMutationFeedback status="info"><strong>Payment Sandbox.</strong> Balances, protected-fund states and payouts reflect the STUB payment adapter and database lifecycle—not real custody, transfer, release or bank movement.</SpMutationFeedback>
       <SpTabBar label="Earnings sections" items={[{ label: 'Earnings Overview', href: href('activity'), active: activeTab === 'activity' }, { label: 'Payouts', href: href('payouts'), active: activeTab === 'payouts' }, { label: 'Financial Settings', href: href('settings'), active: activeTab === 'settings' }]} />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <SpMetricCard label="Available balance" value={money(data.available, currency)} detail="Eligible for a sandbox payout request" icon={WalletCards} iconClassName="bg-[#E8F7F0] text-[#157A55]" />
+        <SpMetricCard label="Available balance" value={money(data.available, currency)} detail="Eligible for a payout request" icon={WalletCards} iconClassName="bg-[#E8F7F0] text-[#157A55]" />
         <SpMetricCard label="Work in progress" value={money(data.workInProgress, currency)} detail="Funded project work still in delivery" icon={Clock3} />
         <SpMetricCard label="In review" value={money(data.inReview, currency)} detail="Submitted work awaiting client action" icon={LockKeyhole} iconClassName="bg-warning/10 text-warning" />
         <SpMetricCard label="Pending release" value={money(data.pending, currency)} detail="Approved lifecycle amount not yet available" icon={HandCoins} />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <CompactMetric label="Protected funds" value={data.protectedEscrow} currency={currency} icon={Landmark} note="STUB-backed funded state" />
+        <CompactMetric label="Protected funds" value={data.protectedEscrow} currency={currency} icon={Landmark} note="Held for funded milestones" />
         <CompactMetric label="On hold" value={data.onHold} currency={currency} icon={AlertCircle} note="Blocked by the recorded lifecycle" warning />
-        <CompactMetric label="Withdrawn" value={data.withdrawn} currency={currency} icon={CircleDollarSign} note="Completed sandbox payouts" />
+        <CompactMetric label="Withdrawn" value={data.withdrawn} currency={currency} icon={CircleDollarSign} note="Completed payouts" />
       </div>
 
       {activeTab === 'activity' && <EarningsActivity data={data} currency={currency} />}
@@ -70,7 +72,7 @@ export function EarningsWorkspace() {
 }
 
 function CompactMetric({ label, value, currency, icon: Icon, note, warning = false }: { label: string; value: number; currency: string; icon: typeof Landmark; note: string; warning?: boolean }) {
-  return <SpCard className="flex items-center gap-4"><span className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${warning ? 'bg-warning/10 text-warning' : 'bg-[#F3F4F6] text-[#4B5563]'}`}><Icon className="size-5" aria-hidden="true" /></span><div><p className="text-xs font-semibold uppercase tracking-[0.1em] text-[#6B7280]">{label}</p><p className="mt-1 text-xl font-semibold text-[#171717]">{money(value, currency)}</p><p className="mt-1 text-xs text-[#6B7280]">{note}</p></div></SpCard>;
+  return <SpCard className="flex items-center gap-4"><span className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${warning ? 'bg-warning/10 text-warning' : 'bg-[#F3F4F6] text-[#4B5563]'}`}><Icon className="size-5" aria-hidden="true" /></span><div><p className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">{label}</p><p className="mt-1 text-xl font-semibold text-foreground">{money(value, currency)}</p><p className="mt-1 text-xs text-muted-foreground">{note}</p></div></SpCard>;
 }
 
 function EarningsLoading() {

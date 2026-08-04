@@ -1,12 +1,16 @@
 'use client';
 
+// Remaining hardcoded hex on this file is deliberate, not an oversight: those values
+// have no exact token equivalent. See the PENDING DESIGN-TOKEN DECISION note in
+// src/app/globals.css (below the .sp-workspace block) for the full list and why.
 import Link from 'next/link';
+import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { FormEvent, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowDownRight, ArrowRight, ArrowUpRight, BarChart3, BriefcaseBusiness,
-  CheckCircle2, ClipboardList, Eye, Info, Plus, Send,
-  ShieldCheck, TrendingUp, Users, Wallet,
+  CheckCircle2, ClipboardList, Eye, Plus, Send,
+  ShieldCheck, Users, Wallet,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,9 +22,29 @@ import {
 import {
   useCreateGrowthTask, useGrowthTasks, useProviderAnalytics, useUpdateGrowthTaskStatus,
 } from '@/hooks/queries/analytics';
+// money/words come from the shared SP helpers rather than local copies, matching
+// EarningsWorkspace. Two deliberate behaviour changes, both checked rather than assumed:
+//
+//   money  — the shared version pins maximumFractionDigits: 2. Reachable here: the
+//            analytics currency is a real user-selectable dropdown fed by
+//            AvailableCurrencies, so a zero-decimal currency (JPY) or three-decimal one
+//            (KWD) will now render with 2 decimals instead of its locale convention.
+//            Consistent with every other SP money figure, which is the point.
+//
+//   words  — the local copy also replaced underscores with spaces; the shared one does
+//            not (it guards null instead, which the local copy did not). Verified this
+//            loses nothing TODAY: the only values reaching words() here are
+//            profile.verificationStatus, service.status and task.status, whose sources
+//            are ServiceProviderVerificationStatus, CatalogStatus and GrowthTaskStatus
+//            (13 members, no underscores) plus the literals "Custom", "Historical" and
+//            "Unattributed". If a snake_case value ever reaches this file, it will render
+//            with the underscore visible — that is a known trade, not an oversight.
+import { money, words } from '@/components/serviceprovider/workroom/_shared';
 import type {
-  AnalyticsBreakdown, AnalyticsDashboard, AnalyticsMetric, CreateGrowthTaskPayload,
-  GrowthTask,
+  ActiveClientAnalytics, AnalyticsBreakdown, AnalyticsDashboard, AnalyticsMetric,
+  ClientOriginationAnalytics, ClientSourceAnalytics, CreateGrowthTaskPayload, GrowthTask,
+  IndustryAnalytics, ProfileFunnel, RatingBucket, RevenueAnalytics, ServiceAnalytics,
+  TopService,
 } from '@/types/analytics';
 
 type AnalyticsView = 'overview' | 'services' | 'proposals' | 'profile' | 'earnings' | 'clients';
@@ -122,7 +146,7 @@ export function AnalyticsWorkspace() {
         }))}
       />
 
-      <p className="text-xs leading-5 text-[#6B7280]">
+      <p className="text-xs leading-5 text-muted-foreground">
         {date(data.period.from)}–{date(data.period.to)} compared with {date(data.period.comparisonFrom)}–{date(data.period.comparisonTo)}. Financial values are scoped to {data.currency}.
       </p>
 
@@ -133,7 +157,7 @@ export function AnalyticsWorkspace() {
       {view === 'earnings' && <EarningsView data={data} />}
       {view === 'clients' && <ClientsView data={data} />}
 
-      <aside className="rounded-xl border border-dashed border-[#D1D5DB] bg-white px-4 py-3 text-xs leading-5 text-[#6B7280]">
+      <aside className="rounded-xl border border-dashed border-input bg-white px-4 py-3 text-xs leading-5 text-muted-foreground">
         <strong className="font-semibold text-[#374151]">Data provenance:</strong> {data.dataLimitation}
       </aside>
     </SpPage>
@@ -153,79 +177,265 @@ function Overview({ data, tasks, tasksLoading }: { data: AnalyticsDashboard; tas
 
   return (
     <div className="space-y-6">
-      <section aria-label="Analytics overview" className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        <SpMetricCard label="Profile strength" icon={ShieldCheck} value={metricText(data.profile.profileCompleteness)} detail="Public profile completion" />
-        <SpMetricCard label="Published services" icon={BriefcaseBusiness} value={metricText(data.profile.publishedServices)} detail="Live catalogue listings" />
-        <SpMetricCard label="Accepted proposals" icon={Send} value={metricText(data.proposals.accepted)} detail={<Trend metric={data.proposals.accepted} />} />
-        <SpMetricCard label="Net earnings" icon={Wallet} value={metricText(data.revenue.net)} detail={<Trend metric={data.revenue.net} />} />
-        <SpMetricCard label="Repeat clients" icon={Users} value={metricText(data.clients.repeatClientRate)} detail="Shared Workroom relationship calculation" />
+      <section aria-label="Analytics overview" className="grid gap-4 lg:grid-cols-3">
+        <HeadlineCard
+          icon={ShieldCheck}
+          label="Profile"
+          headline={data.profile.trustScore}
+          detailLabel="Profile completion"
+          detail={data.profile.profileCompleteness}
+          linkLabel="View Profile Analytics"
+          href="/dashboard/serviceprovider/profile?view=trust"
+        />
+        <HeadlineCard
+          icon={Wallet}
+          label="Earnings"
+          headline={data.revenue.net}
+          detailLabel="Average project value"
+          detail={data.revenue.averageProjectValue}
+          linkLabel="View Earnings Overview"
+          href="/dashboard/serviceprovider/earnings?tab=activity"
+        />
+        <HeadlineCard
+          icon={Users}
+          label="Clients"
+          headline={data.clients.repeatClientRate}
+          detailLabel="Average rating"
+          detail={data.clients.averageClientRating}
+          linkLabel="View Client Insights"
+          href={`${basePath}?view=clients`}
+        />
       </section>
 
-      <ComparisonPanel data={data} />
+      <TrendChart data={data} />
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_1.1fr]">
-        <Observations data={data} />
-        <GrowthTasks tasks={tasks} loading={tasksLoading} />
-      </div>
-
-      <QuickLinks />
+      <GrowthTasks tasks={tasks} loading={tasksLoading} />
     </div>
   );
 }
 
-function ComparisonPanel({ data }: { data: AnalyticsDashboard }) {
-  const metrics = [
-    ['Net earnings', data.revenue.net],
-    ['Accepted proposals', data.proposals.accepted],
-    ['Completed engagements', data.clients.completedEngagements],
-    ['On-time delivery', data.clients.onTimeDeliveryRate],
-  ] as const;
-  return (
-    <SpCard aria-labelledby="period-comparison-title">
-      <SpSectionHeader title="Period comparison" description="Current values against the directly preceding comparison window; no interpolated time series." />
-      <div id="period-comparison-title" className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {metrics.map(([label, metric]) => <MetricTile key={label} label={label} metric={metric} />)}
-      </div>
-    </SpCard>
-  );
-}
-
-function Observations({ data }: { data: AnalyticsDashboard }) {
-  return (
-    <SpCard aria-labelledby="observations-title">
-      <SpSectionHeader title="Growth observations" description="Deterministic rules evaluate the current response when this page loads. They never create tasks or change marketplace data." />
-      <div id="observations-title" className="mt-5 space-y-3">
-        {data.observations.length ? data.observations.map((item) => (
-          <article key={item.ruleId} className="rounded-xl border border-[#BBE8D3] border-l-4 border-l-[#0D9488] bg-[#F7FCFA] p-4">
-            <div className="flex items-center gap-2"><TrendingUp aria-hidden="true" className="size-4 text-[#157A55]" /><h3 className="font-heading text-sm font-semibold text-[#171717]">{item.title}</h3></div>
-            <p className="mt-2 text-sm leading-6 text-[#4B5563]">{item.message}</p>
-            {item.suggestedActions.length > 0 && <ul className="mt-2 list-inside list-disc text-sm text-[#4B5563]">{item.suggestedActions.map((action) => <li key={action}>{action}</li>)}</ul>}
-          </article>
-        )) : <p className="text-sm leading-6 text-[#6B7280]">No rule-based observation is triggered by the metrics currently available.</p>}
-        {data.unavailableObservationRuleIds.length > 0 && (
-          <div className="flex gap-2 rounded-xl bg-[#F4F5F7] p-3 text-xs leading-5 text-[#6B7280]">
-            <Info aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-            <span>{data.unavailableObservationRuleIds.length} observation rules cannot run because their source metrics are not tracked yet.</span>
-          </div>
-        )}
-      </div>
-    </SpCard>
-  );
-}
-
-function QuickLinks() {
-  const links = [
-    ['Complete or refresh your profile', '/dashboard/serviceprovider/profile'],
-    ['Review your service catalogue', '/dashboard/serviceprovider/services'],
-    ['Follow up on active proposals', '/dashboard/serviceprovider/leads?view=proposals'],
-    ['Review available earnings', '/dashboard/serviceprovider/earnings?tab=activity'],
+/**
+ * Briefs shown -> proposals sent -> hired, with the conversion rate between each pair.
+ *
+ * Three steps because three are real. Anything upstream of "a brief was surfaced to me"
+ * (profile views, search appearances) has no data source on this platform, so a wider
+ * funnel could only be padded with invented stages.
+ *
+ * The rates are rendered as their own step between the counts rather than as a caption,
+ * because the drop between stages is the thing worth reading. A rate with no denominator
+ * shows its state instead of 0% — nothing entered that step, which is not the same as
+ * nothing converting.
+ *
+ * REASON HANDLING, resolving the contradiction an audit found with MetricTile's rule that
+ * "a tile that lost its inline reason would simply stop explaining itself":
+ *
+ *   Step cards follow MetricTile exactly — state label plus the reason inline. They are
+ *   shaped like tiles and have the room, and this funnel has no TrackingGaps sibling to
+ *   defer explanation to.
+ *
+ *   Rate chips deviate deliberately. A pill between two cards cannot carry a paragraph
+ *   without becoming the widest thing in the row. The state label stays VISIBLE, and the
+ *   reason reaches both pointer users (title) and assistive tech (sr-only) — so it is not
+ *   hover-only, which was the actual defect. That is the narrowest deviation that keeps
+ *   the layout, not a silent drop.
+ */
+export function ProfileFunnelSection({ funnel }: { funnel: ProfileFunnel }) {
+  const steps = [
+    { label: 'Briefs shown', metric: funnel.briefsShown, icon: Eye },
+    { label: 'Proposals sent', metric: funnel.proposalsSent, icon: Send },
+    { label: 'Hired', metric: funnel.hired, icon: CheckCircle2 },
   ];
+  const rates = [funnel.proposalRate, funnel.hireRate];
+
+  return (
+    <SpCard aria-labelledby="funnel-title">
+      <SpSectionHeader
+        titleId="funnel-title"
+        title="From brief to hire"
+        description="Every step is counted within the selected period. Rates compare each step with the one before it."
+      />
+      <ol className="mt-5 flex flex-col gap-3 lg:flex-row lg:items-stretch">
+        {steps.map((step, index) => (
+          <li key={step.label} className="flex flex-1 flex-col gap-3 lg:flex-row lg:items-center">
+            <div className="flex-1 rounded-xl border border-border bg-[#F9FAFB] p-4">
+              <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                <step.icon aria-hidden="true" className="size-4" />
+                {step.label}
+              </p>
+              {step.metric.state === 'available' ? (
+                <p className="mt-2 text-2xl font-semibold text-foreground">{metricText(step.metric)}</p>
+              ) : (
+                <>
+                  <p className="mt-2 text-sm font-semibold text-[#4B5563]">{stateLabel(step.metric)}</p>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">{step.metric.reason}</p>
+                </>
+              )}
+            </div>
+            {index < rates.length && (
+              <div className="flex items-center justify-center px-1 text-xs font-semibold text-muted-foreground">
+                <span className="rounded-full bg-muted px-2 py-1" title={rates[index].reason ?? undefined}>
+                  {rates[index].state === 'available' ? metricText(rates[index]) : stateLabel(rates[index])}
+                  {rates[index].state !== 'available' && rates[index].reason && (
+                    <span className="sr-only"> — {rates[index].reason}</span>
+                  )}
+                </span>
+              </div>
+            )}
+          </li>
+        ))}
+      </ol>
+    </SpCard>
+  );
+}
+
+/**
+ * The provider's listings ranked by clicks in the period. Services only — no portfolio or
+ * case-study rows, because neither has any tracked engagement to rank.
+ *
+ * Reuses the "Most active clients" list shape rather than inventing a second ranked-list
+ * treatment on the same page.
+ */
+export function TopServicesSection({ services }: { services: TopService[] }) {
+  return (
+    <SpCard aria-labelledby="top-services-title">
+      <SpSectionHeader
+        titleId="top-services-title"
+        title="Top performing services"
+        description="Ranked by clicks in the selected period. Impressions are shown for context — a listing seen often but rarely clicked is not performing well."
+      />
+      {services.length ? (
+        <ul className="mt-4 divide-y divide-border">
+          {services.map((service) => (
+            <li key={service.serviceId} className="flex flex-col justify-between gap-1 py-3 text-sm sm:flex-row sm:items-center">
+              <span className="font-semibold text-foreground">{service.title}</span>
+              <span className="text-muted-foreground">
+                <span className="font-semibold text-foreground">{integer(service.clicks)}</span>
+                {service.clicks === 1 ? ' click' : ' clicks'} · {integer(service.impressions)} impressions
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-4 text-sm text-muted-foreground">
+          No listing received a click in this period. Rankings appear once visitors start interacting with your services.
+        </p>
+      )}
+    </SpCard>
+  );
+}
+
+/**
+ * One of the three Overview headline cards: a prominent metric, a supporting one, and a
+ * link to the workspace that owns the subject.
+ *
+ * Prominence does not buy an exemption from the honest-state discipline. When a metric is
+ * unavailable the card shows its state and the server's reason instead of the number —
+ * "Trust score appears after the first qualifying trust signal" rather than a zero or a
+ * dash. That reason is exactly the "building your trust score" framing the rest of the SP
+ * surface uses, so it is read from the response instead of being restated here and left
+ * to drift.
+ */
+export function HeadlineCard({
+  icon: Icon, label, headline, detailLabel, detail, linkLabel, href,
+}: {
+  icon: typeof ShieldCheck;
+  label: string;
+  headline: AnalyticsMetric;
+  detailLabel: string;
+  detail: AnalyticsMetric;
+  linkLabel: string;
+  href: string;
+}) {
+  const available = headline.state === 'available';
   return (
     <SpCard>
-      <SpSectionHeader title="Quick links" description="Navigate to the source workspace to take action." />
-      <ul className="mt-4 grid gap-3 sm:grid-cols-2">
-        {links.map(([label, href]) => <li key={href}><Link href={href} className="inline-flex items-center gap-1 text-sm font-semibold text-[#374151] outline-none hover:text-[#0D9488] focus-visible:rounded focus-visible:ring-2 focus-visible:ring-[#3C61DD]">{label}<ArrowRight aria-hidden="true" className="size-4" /></Link></li>)}
-      </ul>
+      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+        <Icon aria-hidden="true" className="size-4" />
+        {label}
+      </div>
+
+      {available ? (
+        <>
+          <p className="mt-3 text-3xl font-semibold text-foreground">{metricText(headline)}</p>
+          <div className="mt-1"><Trend metric={headline} /></div>
+        </>
+      ) : (
+        <>
+          <p className="mt-3 text-lg font-semibold text-[#4B5563]">{stateLabel(headline)}</p>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">{headline.reason}</p>
+        </>
+      )}
+
+      <p className="mt-4 border-t border-border pt-3 text-sm text-muted-foreground">
+        {detailLabel}{' '}
+        <span className="font-semibold text-foreground">
+          {detail.state === 'available' ? metricText(detail) : stateLabel(detail)}
+        </span>
+      </p>
+
+      <Link
+        href={href}
+        className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-primary outline-none hover:underline focus-visible:rounded focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        {linkLabel}
+        <ArrowRight aria-hidden="true" className="size-4" />
+      </Link>
+    </SpCard>
+  );
+}
+
+/**
+ * Earnings and average rating over the selected period.
+ *
+ * Two series on one chart with two axes, because they share a time axis and nothing else:
+ * earnings are currency on an open-ended scale, ratings are 1-5. A single axis would
+ * flatten the rating line into the baseline.
+ *
+ * Bucket width is the server's decision (day / week / month, chosen from the span), so the
+ * heading reports which one is in use rather than assuming weeks. Recharts is already the
+ * charting library on the SP surface — see the impressions/clicks chart in
+ * ServicesWorkspace — so this reuses it rather than introducing a second one.
+ *
+ * A rating gap is a real gap: averageRating is null for a bucket with no reviews, and
+ * connectNulls is deliberately off so the line breaks instead of implying a rating that
+ * was never given.
+ */
+export function TrendChart({ data }: { data: AnalyticsDashboard }) {
+  const points = data.trend ?? [];
+  const hasEarnings = points.some((point) => point.netEarnings > 0);
+  const hasRatings = points.some((point) => point.averageRating != null);
+  const granularity = data.trendGranularity === 'month' ? 'Monthly' : data.trendGranularity === 'day' ? 'Daily' : 'Weekly';
+
+  return (
+    <SpCard aria-labelledby="trend-title">
+      <SpSectionHeader
+        titleId="trend-title"
+        title={`${granularity} trend`}
+        description="Net earnings released and the average rating of reviews submitted, bucketed across the selected period."
+      />
+      {!points.length || (!hasEarnings && !hasRatings) ? (
+        <SpEmptyState
+          className="mt-5 border-0 bg-[#F9FAFB]"
+          icon={BarChart3}
+          title="No activity in this period"
+          description="Released payments and submitted reviews appear here once the first one lands in the selected range."
+        />
+      ) : (
+        <div className="mt-5">
+          <ResponsiveContainer width="100%" height={280}>
+            <LineChart data={points}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+              <XAxis dataKey="label" tick={{ fontSize: 12 }} />
+              <YAxis yAxisId="earnings" tick={{ fontSize: 12 }} />
+              <YAxis yAxisId="rating" orientation="right" domain={[0, 5]} tick={{ fontSize: 12 }} />
+              <Tooltip />
+              <Legend />
+              <Line yAxisId="earnings" type="monotone" dataKey="netEarnings" name={`Net earnings (${data.currency})`} stroke="#3C61DD" dot={false} />
+              <Line yAxisId="rating" type="monotone" dataKey="averageRating" name="Average rating" stroke="#0D9488" strokeDasharray="5 5" connectNulls={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
     </SpCard>
   );
 }
@@ -243,30 +453,34 @@ function ServicesView({ data }: { data: AnalyticsDashboard }) {
         <SpEmptyState icon={BriefcaseBusiness} title="No service analytics yet" description="Publish a service or complete custom brief-based work to populate this view." action={<Button asChild variant="outline"><Link href="/dashboard/serviceprovider/services">Open Service Catalog</Link></Button>} />
       ) : (
         <SpCard>
-          <SpSectionHeader title="Service performance" description="Brief-based work without a ServiceId is grouped under Custom/Unattributed. Traffic metrics remain unavailable until dated view events exist." />
+          <SpSectionHeader title="Service performance" description="Impressions, clicks and conversion come from dated traffic events per listing. Brief-based work without a ServiceId is grouped under Custom/Unattributed and has no listing to measure, so its funnel columns stay untracked." />
           <div className="mt-5 overflow-x-auto">
-            <table className="w-full min-w-[1100px] text-left text-sm">
-              <thead><tr className="border-b border-[#E5E7EB] text-xs uppercase tracking-wide text-[#6B7280]"><th className="pb-3 pr-4">Service</th><th className="pb-3 pr-4">Status</th><th className="pb-3 pr-4">Orders</th><th className="pb-3 pr-4">Gross</th><th className="pb-3 pr-4">Net</th><th className="pb-3 pr-4">Avg sale</th><th className="pb-3 pr-4">Completion</th><th className="pb-3 pr-4">On time</th><th className="pb-3">Traffic</th></tr></thead>
+            <table className="w-full min-w-[1280px] text-left text-sm">
+              <thead><tr className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground"><th className="pb-3 pr-4">Service</th><th className="pb-3 pr-4">Status</th><th className="pb-3 pr-4">Orders</th><th className="pb-3 pr-4">Gross</th><th className="pb-3 pr-4">Net</th><th className="pb-3 pr-4">Avg sale</th><th className="pb-3 pr-4">Completion</th><th className="pb-3 pr-4">On time</th><th className="pb-3 pr-4">Impressions</th><th className="pb-3 pr-4">Clicks</th><th className="pb-3">Conv.</th></tr></thead>
               <tbody>{data.services.map((service) => (
-                <tr key={service.serviceId ?? 'custom'} className="border-b border-[#E5E7EB] last:border-0">
-                  <td className="py-4 pr-4"><p className="font-semibold text-[#171717]">{service.title}</p><p className="mt-1 text-xs text-[#6B7280]">{service.category}</p></td>
+                <tr key={service.serviceId ?? 'custom'} className="border-b border-border last:border-0">
+                  <td className="py-4 pr-4"><p className="font-semibold text-foreground">{service.title}</p><p className="mt-1 text-xs text-muted-foreground">{service.category}</p></td>
                   <td className="pr-4"><SpStatusBadge tone={service.status === 'Published' ? 'positive' : 'neutral'}>{words(service.status)}</SpStatusBadge></td>
                   <MetricCell metric={service.orders} /><MetricCell metric={service.grossRevenue} /><MetricCell metric={service.netRevenue} /><MetricCell metric={service.averageSellingPrice} /><MetricCell metric={service.orderCompletionRate} /><MetricCell metric={service.onTimeDeliveryRate} />
-                  <td><NotTrackedInline metric={service.serviceViews} /></td>
+                  <MetricCell metric={service.impressions} /><ClicksCell service={service} /><MetricCell metric={service.conversionRate} />
                 </tr>
               ))}</tbody>
             </table>
           </div>
         </SpCard>
       )}
-      <TrackingGaps title="Service metrics not tracked yet" metrics={[
-        ['Impressions', data.services[0]?.impressions],
-        ['Clicks', data.services[0]?.serviceViews],
-        ['Click-through rate', data.services[0]?.clickThroughRate],
+      {/* Impressions, clicks, click-through and conversion used to be listed here as
+          permanently untracked. They are now sourced per listing from AnalyticsDailyBuckets,
+          so they belong to the row rather than to this panel — a Custom/Unattributed row
+          still reports them as untracked in its own cells, because it has no ListingId to
+          aggregate against.
+
+          Only the two that remain structurally untracked for EVERY row are left. Sampling
+          services[0] is sound for exactly that reason: these two never vary by row. */}
+      <TrackingGapsNote metrics={[
         ['Enquiries', data.services[0]?.enquiries],
-        ['Date-filtered conversion', data.services[0]?.conversionRate],
         ['Cancellation rate', data.services[0]?.cancellationRate],
-      ]} fallback="Date-stamped service traffic, enquiry, and cancellation events do not exist upstream yet." />
+      ]} />
     </div>
   );
 }
@@ -291,7 +505,7 @@ function ProposalsView({ data }: { data: AnalyticsDashboard }) {
           ].map(([label, metric]) => <MetricTile key={label as string} label={label as string} metric={metric as AnalyticsMetric} />)}
         </div>
       </SpCard>
-      <TrackingGaps title="Proposal metrics not tracked yet" metrics={[
+      <TrackingGapsNote metrics={[
         ['Proposal view rate', proposal.proposalViewRate],
         ['Client response rate', proposal.clientResponseRate],
       ]} />
@@ -299,34 +513,56 @@ function ProposalsView({ data }: { data: AnalyticsDashboard }) {
   );
 }
 
-function ProfileView({ data }: { data: AnalyticsDashboard }) {
+export function ProfileView({ data }: { data: AnalyticsDashboard }) {
   const profile = data.profile;
   return (
     <div className="space-y-6">
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <SpMetricCard label="Trust score" icon={ShieldCheck} value={metricText(profile.trustScore)} detail={profile.trustScore.state === 'available' ? 'Calculated from qualifying signals' : profile.trustScore.reason} />
+      <section className="grid gap-4 lg:grid-cols-3">
+        {/* The link is attached here because removing the Trust breakdown card removed the
+            only route from this tab to the Trust page — and the breakdown was only safe to
+            remove BECAUSE that route existed. The per-signal detail and the skills test
+            live there; this tab keeps the headline number and the way to reach them. */}
+        <SpMetricCard
+          label="Trust score"
+          icon={ShieldCheck}
+          value={metricText(profile.trustScore)}
+          detail={
+            <>
+              <span className="block">
+                {profile.trustScore.state === 'available' ? 'Calculated from qualifying signals' : profile.trustScore.reason}
+              </span>
+              <Link
+                href="/dashboard/serviceprovider/profile?view=trust"
+                className="mt-1 inline-flex items-center gap-1 font-semibold text-primary outline-none hover:underline focus-visible:rounded focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                View Trust details
+                <ArrowRight aria-hidden="true" className="size-4" />
+              </Link>
+            </>
+          }
+        />
         <SpMetricCard label="Profile completion" icon={CheckCircle2} value={metricText(profile.profileCompleteness)} detail="Required public profile fields" />
-        <SpMetricCard label="Verification" icon={ShieldCheck} value={words(profile.verificationStatus)} detail="Provider profile status" />
-        <SpMetricCard label="Tier" icon={TrendingUp} value={`Tier ${profile.tierLevel}`} detail={profile.tierMeaning} />
+        {/* One card, because today these are one fact stated twice. Verification is what
+            grants the tier — ServiceProviderService sets ProviderTier = Tier2 on the
+            verification paths, and Tier3/Tier4 have no writer anywhere — so the mapping is
+            total: unverified reads Tier 1, verified reads Tier 2, nothing else is
+            reachable. Two cards implied two independent axes.
+
+            Both parts are still shown rather than collapsed to one, so an unverified
+            provider reads "Pending · Tier 1" honestly instead of being told a tier they
+            have not earned. If Tier 3/4 ever gain a writer this can split again. */}
+        <SpMetricCard
+          label="Verification & tier"
+          icon={ShieldCheck}
+          value={`${words(profile.verificationStatus)} · Tier ${profile.tierLevel}`}
+          detail={profile.tierMeaning}
+        />
       </section>
-      <SpCard>
-        <SpSectionHeader title="Trust breakdown" description="The existing Trust calculation is shown read-only. Signals without data are excluded from the score." action={<Button asChild variant="outline"><Link href="/dashboard/serviceprovider/profile?view=trust">Open Trust details</Link></Button>} />
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {profile.trustSignals.map((signal) => (
-            <div key={signal.key} className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-4">
-              <div className="flex items-center justify-between gap-3"><h3 className="text-sm font-semibold text-[#171717]">{signal.label}</h3><span className="text-xs text-[#6B7280]">{number(signal.weight)}% weight</span></div>
-              <p className="mt-3 text-2xl font-semibold text-[#171717]">{signal.hasData && signal.value != null ? `${number(signal.value)} / 100` : 'Not enough activity'}</p>
-            </div>
-          ))}
-          <MetricTile label="Dispute penalty" metric={profile.disputePenalty} />
-        </div>
-      </SpCard>
-      <MetricGrid entries={[
-        ['Skills tests taken', profile.skillsTestsTaken], ['Skills tests passed', profile.skillsTestsPassed],
-        ['Latest test score', profile.latestSkillsTestScore], ['Portfolio items', profile.portfolioItems],
-        ['Published services', profile.publishedServices],
-      ]} />
-      <TrackingGaps title="Profile metrics not tracked yet" metrics={[
+      <ProfileFunnelSection funnel={profile.funnel} />
+
+      <TopServicesSection services={profile.topServices} />
+
+      <TrackingGapsNote metrics={[
         ['Profile views', profile.profileViews], ['Search appearances', profile.searchAppearances],
         ['Portfolio views', profile.portfolioViews], ['Profile saves', profile.profileSaves],
         ['Contact rate', profile.contactRate], ['Portfolio engagement', profile.portfolioEngagement],
@@ -339,23 +575,217 @@ function EarningsView({ data }: { data: AnalyticsDashboard }) {
   const revenue = data.revenue;
   return (
     <div className="space-y-6">
-      <MetricGrid entries={[
-        ['Gross earnings', revenue.gross], ['Platform commission', revenue.commission],
-        ['Net earnings', revenue.net], ['Average engagement', revenue.averageProjectValue],
-        ['Available balance', revenue.availableBalance], ['Pending balance', revenue.pendingBalance],
-        ['Protected funding', revenue.protectedEscrow], ['Withdrawn', revenue.withdrawn],
-      ]} />
-      <SpCard className="border-l-4 border-l-[#0D9488]">
-        <div className="flex gap-3"><Info aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-[#0D9488]" /><p className="text-sm leading-6 text-[#4B5563]">All gross, commission, and net values come from server-created financial records. This screen performs no commission calculation. Payment movement is currently gateway-stub backed; protected funding is not earned income.</p></div>
-      </SpCard>
+      <section className="grid gap-4 sm:grid-cols-2">
+        <SpMetricCard
+          label="Total earnings"
+          icon={Wallet}
+          value={metricText(revenue.net)}
+          detail={<Trend metric={revenue.net} />}
+        />
+        <SpMetricCard
+          label="Average project value"
+          icon={BriefcaseBusiness}
+          value={metricText(revenue.averageProjectValue)}
+          detail={<Trend metric={revenue.averageProjectValue} />}
+        />
+      </section>
+
+      <EarningsTrendChart data={data} />
+
       <div className="grid gap-6 xl:grid-cols-2">
-        <Breakdown title="By service" rows={revenue.byService} currency={data.currency} />
-        <Breakdown title="By month" rows={revenue.byMonth} currency={data.currency} />
-        <Breakdown title="By category" rows={revenue.byCategory} currency={data.currency} />
-        <Breakdown title="By client" rows={revenue.byClient} currency={data.currency} />
+        <CategoryBreakdown rows={revenue.byCategory} currency={data.currency} />
+        <ClientSourceBreakdown source={revenue.clientSource} currency={data.currency} />
       </div>
-      <div><Button asChild variant="outline"><Link href="/dashboard/serviceprovider/earnings?tab=activity">Open Earnings & Payouts<ArrowRight aria-hidden="true" className="ml-2 size-4" /></Link></Button></div>
+
+      <BalancesFooter revenue={revenue} />
     </div>
+  );
+}
+
+/**
+ * The Overview trend with the rating series dropped. Overview answers "how is the business
+ * doing" and pairs money against satisfaction; this tab is only about money, and a second
+ * axis on a chart headed "earnings" reads as a claimed relationship that was never made.
+ *
+ * Granularity is whatever the server bucketed the SELECTED period into — the heading
+ * reports it rather than assuming weeks, so changing the date range changes the chart
+ * honestly instead of relabelling the same shape.
+ */
+export function EarningsTrendChart({ data }: { data: AnalyticsDashboard }) {
+  const points = data.trend ?? [];
+  const hasEarnings = points.some((point) => point.netEarnings > 0);
+  const granularity = data.trendGranularity === 'month' ? 'Monthly' : data.trendGranularity === 'day' ? 'Daily' : 'Weekly';
+
+  return (
+    <SpCard aria-labelledby="earnings-trend-title">
+      <SpSectionHeader
+        titleId="earnings-trend-title"
+        title={`${granularity} earnings trend`}
+        description="Net earnings released, bucketed across the selected period."
+      />
+      {!points.length || !hasEarnings ? (
+        <SpEmptyState
+          className="mt-5 border-0 bg-[#F9FAFB]"
+          icon={BarChart3}
+          title="No earnings in this period"
+          description="Released payments appear here once the first one lands in the selected range."
+        />
+      ) : (
+        <div className="mt-5">
+          <ResponsiveContainer width="100%" height={280}>
+            <LineChart data={points}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+              <XAxis dataKey="label" tick={{ fontSize: 12 }} />
+              <YAxis tick={{ fontSize: 12 }} />
+              <Tooltip />
+              <Line type="monotone" dataKey="netEarnings" name={`Net earnings (${data.currency})`} stroke="#3C61DD" dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+    </SpCard>
+  );
+}
+
+/**
+ * One labelled row with a proportional bar. Shared by both breakdowns below so they read as
+ * the same kind of statement, but they scale differently on purpose:
+ *
+ *   Category      width is relative to the LARGEST row, so the top earner fills the bar and
+ *                 the rest are read against it. Categories are an open-ended list that does
+ *                 not sum to anything meaningful.
+ *   Client source width is the row's own percentage of an exhaustive two-way split, so the
+ *                 two bars are directly comparable and together account for the whole.
+ */
+function ProportionRow({ label, value, percent }: { label: string; value: string; percent: number }) {
+  return (
+    <li className="py-3">
+      <div className="flex items-center justify-between gap-4 text-sm">
+        <span className="min-w-0 truncate font-medium text-[#374151]">{label}</span>
+        <span className="shrink-0 font-semibold text-foreground">{value}</span>
+      </div>
+      <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-[#F3F4F6]">
+        <div className="h-full rounded-full bg-primary" style={{ width: `${Math.max(0, Math.min(100, percent))}%` }} />
+      </div>
+    </li>
+  );
+}
+
+export function CategoryBreakdown({ rows, currency }: { rows: AnalyticsBreakdown[]; currency: string }) {
+  // Relative to the largest row, not to the total: with one dominant category every other
+  // bar would round to a sliver and the comparison the section exists for would be lost.
+  const highest = rows.reduce((max, row) => Math.max(max, row.net), 0);
+
+  return (
+    <SpCard aria-labelledby="earnings-category-title">
+      <SpSectionHeader
+        titleId="earnings-category-title"
+        title="Earnings by category"
+        description="Net released revenue per service category, drawn relative to the highest."
+      />
+      {rows.length ? (
+        <ul className="mt-4 divide-y divide-border">
+          {rows.map((row) => (
+            <ProportionRow
+              key={row.key}
+              label={row.label}
+              value={`${money(row.net, currency)} net`}
+              percent={highest > 0 ? (row.net / highest) * 100 : 0}
+            />
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-4 text-sm text-muted-foreground">No released revenue exists in this period.</p>
+      )}
+    </SpCard>
+  );
+}
+
+/**
+ * Where the money came from, by how the client arrived. Weighted by revenue rather than
+ * deal count — see ClientSourceAnalyticsResponse on the server for why.
+ */
+export function ClientSourceBreakdown({ source, currency }: { source: ClientSourceAnalytics; currency: string }) {
+  const rows = [
+    { key: 'ecosystem', label: 'Ecosystem Match', metric: source.ecosystemMatch, net: source.ecosystemNet },
+    { key: 'marketplace', label: 'Marketplace Search', metric: source.marketplaceSearch, net: source.marketplaceNet },
+  ];
+  // Both percentages share one denominator, so they are unavailable together or not at all.
+  const unavailable = source.ecosystemMatch.state !== 'available';
+
+  return (
+    <SpCard aria-labelledby="earnings-source-title">
+      <SpSectionHeader
+        titleId="earnings-source-title"
+        title="Client source"
+        description="Share of released revenue by how the client reached you."
+      />
+      {unavailable ? (
+        // No bars at all rather than two empty ones: a 0%-wide bar still draws its track,
+        // which reads as a measured zero rather than an absent measurement.
+        <div className="mt-4">
+          <p className="text-sm font-semibold text-[#4B5563]">{stateLabel(source.ecosystemMatch)}</p>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">{source.ecosystemMatch.reason}</p>
+        </div>
+      ) : (
+        <ul className="mt-4 divide-y divide-border">
+          {rows.map((row) => (
+            <ProportionRow
+              key={row.key}
+              label={row.label}
+              value={`${metricText(row.metric)} · ${money(row.net, currency)}`}
+              percent={Number(row.metric.value ?? 0)}
+            />
+          ))}
+        </ul>
+      )}
+      {source.unattributedNet > 0 && (
+        <p className="mt-3 text-xs leading-5 text-muted-foreground">
+          {money(source.unattributedNet, currency)} could not be traced back to a proposal and is excluded from this split.
+        </p>
+      )}
+    </SpCard>
+  );
+}
+
+/**
+ * Current balances, NOT period figures — deliberately unlike everything above.
+ *
+ * "Released" was the obvious label for the second tile and is the wrong one: revenue.net is
+ * already the Total Earnings headline, so a Released tile would restate that exact number
+ * lower down the page under a new name. availableBalance answers something the headline
+ * does not — of the money already released, how much can be withdrawn right now — and sits
+ * on the same live-balance footing as escrow, so the pair is coherent.
+ */
+export function BalancesFooter({ revenue }: { revenue: RevenueAnalytics }) {
+  return (
+    <SpCard aria-labelledby="earnings-balances-title">
+      <SpSectionHeader
+        titleId="earnings-balances-title"
+        title="Current balances"
+        description="Where your money sits right now. Unlike the figures above, these are live balances rather than totals for the selected period."
+      />
+      <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="grid flex-1 gap-4 sm:grid-cols-2">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">In escrow</p>
+            <p className="mt-1 text-xl font-semibold text-foreground">{metricText(revenue.protectedEscrow)}</p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">Held against milestones that have not been released yet.</p>
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">Available to withdraw</p>
+            <p className="mt-1 text-xl font-semibold text-foreground">{metricText(revenue.availableBalance)}</p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">Released and clear of any hold.</p>
+          </div>
+        </div>
+        <Button asChild variant="outline" className="shrink-0">
+          <Link href="/dashboard/serviceprovider/earnings?tab=settings">
+            Go to Payout Settings
+            <ArrowRight aria-hidden="true" className="ml-2 size-4" />
+          </Link>
+        </Button>
+      </div>
+    </SpCard>
   );
 }
 
@@ -363,38 +793,214 @@ function ClientsView({ data }: { data: AnalyticsDashboard }) {
   const clients = data.clients;
   return (
     <div className="space-y-6">
-      <MetricGrid entries={[
-        ['Clients this period', clients.totalClients], ['New clients', clients.newClients],
-        ['Returning clients', clients.returningClients], ['Repeat clients', clients.repeatClients],
-        ['Repeat-client rate', clients.repeatClientRate], ['Completed engagements', clients.completedEngagements],
-        ['On-time delivery', clients.onTimeDeliveryRate], ['Average engagement value', clients.averageClientLifetimeValue],
-      ]} />
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <RepeatClientRateCard metric={clients.repeatClientRate} />
+      </section>
+      {/* The satisfaction card keeps the headline average and the histogram only. The four
+          secondary tiles it used to carry (Quality, Communication, Delivery, Verified
+          reviews) were removed with the redesign: the first three restate the same reviews
+          the average already summarises, and Verified reviews is the histogram's own total
+          counted a second time. */}
       <SpCard>
         <SpSectionHeader title="Client satisfaction" description="Verified reviews submitted during the selected period." />
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <MetricTile label="Overall rating" metric={clients.averageClientRating} />
-          <MetricTile label="Quality" metric={clients.averageQualityRating} />
-          <MetricTile label="Communication" metric={clients.averageCommunicationRating} />
-          <MetricTile label="Delivery" metric={clients.averageDeliveryRating} />
-          <MetricTile label="Verified reviews" metric={clients.reviewCount} />
         </div>
+        <RatingHistogram buckets={clients.ratingDistribution} total={clients.totalReviews} />
       </SpCard>
+      <div className="grid gap-6 xl:grid-cols-2">
+        <ClientOriginationSection origination={clients.origination} />
+        <TopIndustriesSection industries={clients.topIndustries} />
+      </div>
       <SpCard>
-        <SpSectionHeader title="Disputes" description="Counts use the stored dispute-opened timestamp and recorded resolution outcome." />
-        <div className="mt-5 grid gap-3 sm:grid-cols-3">
-          <MetricTile label="Opened" metric={clients.disputesOpened} />
-          <MetricTile label="Resolved" metric={clients.disputesResolved} />
-          <MetricTile label="Client-favoured" metric={clients.adverseDisputes} />
-        </div>
-      </SpCard>
-      <SpCard>
-        <SpSectionHeader title="Most active clients" description="Identifiers are masked by the API; no client identity is inferred in the browser." />
+        <SpSectionHeader title="Top client relationships" description="Identifiers are masked by the API; no client identity is inferred in the browser." />
         {clients.mostActiveClients.length ? (
-          <ul className="mt-4 divide-y divide-[#E5E7EB]">{clients.mostActiveClients.map((client) => (
-            <li key={client.clientId} className="flex flex-col justify-between gap-1 py-3 text-sm sm:flex-row sm:items-center"><span className="font-semibold text-[#171717]">{client.clientId}</span><span className="text-[#6B7280]">{client.completedProjects} completed · {money(client.netRevenue, data.currency)} net</span></li>
-          ))}</ul>
-        ) : <p className="mt-4 text-sm text-[#6B7280]">No completed client relationships exist in this period.</p>}
+          <ActiveClientsTable clients={clients.mostActiveClients} currency={data.currency} />
+        ) : <p className="mt-4 text-sm text-muted-foreground">No completed client relationships exist in this period.</p>}
       </SpCard>
+    </div>
+  );
+}
+
+/**
+ * Also on Overview, deliberately — but framed for where it sits. Overview labels the card
+ * "Clients", uses this rate as the stand-in for the whole subject, pairs it with average
+ * rating and links HERE. On this tab that framing makes no sense: there is no onward link
+ * to offer from the destination, and the sections around it name themselves precisely
+ * ("Client satisfaction", "Top industries"), so this one does too.
+ *
+ * SpMetricCard rather than Overview's HeadlineCard, which requires both a second metric and
+ * a mandatory href. Neither exists here, and inventing them to satisfy the signature would
+ * be worse than reusing the simpler card this surface already uses for a single metric with
+ * a trend (the Earnings headlines, the Profile KPI row).
+ */
+export function RepeatClientRateCard({ metric }: { metric: AnalyticsMetric }) {
+  return (
+    <SpMetricCard
+      label="Repeat client rate"
+      icon={Users}
+      value={metricText(metric)}
+      detail={
+        <>
+          {/* metricText already prints the state label as the value, so an unavailable
+              metric shows the server's reason here rather than repeating that label. */}
+          {metric.state === 'available'
+            ? <Trend metric={metric} />
+            : <span className="block">{metric.reason}</span>}
+          <span className="mt-1 block">Clients who returned for an additional project.</span>
+        </>
+      }
+    />
+  );
+}
+
+/**
+ * Five bars, one per star value, always rendered even at zero — a histogram missing its
+ * 2-star bar reads as "no such bar exists" rather than "nobody gave 2 stars". Plain CSS
+ * widths rather than a chart component: five values on one axis is a list, and pulling
+ * recharts in for it would cost more than it explains.
+ */
+export function RatingHistogram({ buckets, total }: { buckets: RatingBucket[]; total: number }) {
+  if (!total) {
+    return (
+      <p className="mt-5 text-sm text-muted-foreground">
+        No verified review was submitted in this period, so there is no rating distribution to show.
+      </p>
+    );
+  }
+
+  // Scaled against the tallest bar rather than the total, so a distribution piled on one
+  // value still shows the shape of the rest.
+  const tallest = buckets.reduce((max, bucket) => Math.max(max, bucket.count), 0);
+
+  return (
+    <div className="mt-5">
+      <p className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">Rating distribution</p>
+      <ul className="mt-3 space-y-2">
+        {[...buckets].sort((a, b) => b.rating - a.rating).map((bucket) => (
+          <li key={bucket.rating} className="flex items-center gap-3 text-sm">
+            <span className="w-14 shrink-0 text-muted-foreground">{bucket.rating} star</span>
+            <div className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-[#F3F4F6]">
+              <div className="h-full rounded-full bg-primary" style={{ width: `${tallest > 0 ? (bucket.count / tallest) * 100 : 0}%` }} />
+            </div>
+            <span className="w-8 shrink-0 text-right font-semibold text-foreground">{bucket.count}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/**
+ * The same two-bar shape as the Earnings tab's Client source, deliberately — they answer
+ * the same question about different quantities, so they should read the same way. This one
+ * counts clients; that one weighs revenue.
+ */
+export function ClientOriginationSection({ origination }: { origination: ClientOriginationAnalytics }) {
+  const rows = [
+    { key: 'ecosystem', label: 'Ecosystem Match', metric: origination.ecosystemMatch, count: origination.ecosystemClients },
+    { key: 'marketplace', label: 'Marketplace Search', metric: origination.marketplaceSearch, count: origination.marketplaceClients },
+  ];
+  // Both percentages share one denominator, so they are unavailable together or not at all.
+  const unavailable = origination.ecosystemMatch.state !== 'available';
+
+  return (
+    <SpCard aria-labelledby="client-origination-title">
+      <SpSectionHeader
+        titleId="client-origination-title"
+        title="Client origination source"
+        description="How the clients you completed work for in this period first reached you."
+      />
+      {unavailable ? (
+        <div className="mt-4">
+          <p className="text-sm font-semibold text-[#4B5563]">{stateLabel(origination.ecosystemMatch)}</p>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">{origination.ecosystemMatch.reason}</p>
+        </div>
+      ) : (
+        <ul className="mt-4 divide-y divide-border">
+          {rows.map((row) => (
+            <ProportionRow
+              key={row.key}
+              label={row.label}
+              value={`${metricText(row.metric)} · ${row.count} ${row.count === 1 ? 'client' : 'clients'}`}
+              percent={Number(row.metric.value ?? 0)}
+            />
+          ))}
+        </ul>
+      )}
+      {origination.unattributedClients > 0 && (
+        <p className="mt-3 text-xs leading-5 text-muted-foreground">
+          {origination.unattributedClients} {origination.unattributedClients === 1 ? 'client' : 'clients'} could not be traced back to a proposal and {origination.unattributedClients === 1 ? 'is' : 'are'} excluded from this split.
+        </p>
+      )}
+    </SpCard>
+  );
+}
+
+/**
+ * Bars scale against the LARGEST row rather than a total, because these counts deliberately
+ * do not sum to the project count: a brief listing several industries counts once in each.
+ * Scaling to a total would present them as shares of a whole they do not partition.
+ */
+export function TopIndustriesSection({ industries }: { industries: IndustryAnalytics[] }) {
+  const highest = industries.reduce((max, row) => Math.max(max, row.projects), 0);
+
+  return (
+    <SpCard aria-labelledby="client-industries-title">
+      <SpSectionHeader
+        titleId="client-industries-title"
+        title="Top industries"
+        description="Completed projects by the industry on the originating brief. A brief naming several industries counts once in each, so these do not sum to your project total."
+      />
+      {industries.length ? (
+        <ul className="mt-4 divide-y divide-border">
+          {industries.map((row) => (
+            <ProportionRow
+              key={row.industry}
+              label={row.industry}
+              value={`${row.projects} ${row.projects === 1 ? 'project' : 'projects'}`}
+              percent={highest > 0 ? (row.projects / highest) * 100 : 0}
+            />
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-4 text-sm text-muted-foreground">No completed project exists in this period.</p>
+      )}
+    </SpCard>
+  );
+}
+
+/**
+ * clientId is rendered exactly as the API returned it. MaskClient has already reduced it to
+ * first-three + ellipsis + last-three, and any further formatting here risks reassembling
+ * something identifying — so there is deliberately no per-row action and no client name.
+ */
+export function ActiveClientsTable({ clients, currency }: { clients: ActiveClientAnalytics[]; currency: string }) {
+  return (
+    <div className="mt-4 overflow-x-auto">
+      <table className="w-full min-w-[34rem] text-sm">
+        <thead>
+          <tr className="border-b border-border text-left text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+            <th scope="col" className="pb-2 pr-4 font-semibold">Client</th>
+            <th scope="col" className="pb-2 pr-4 text-right font-semibold">Projects</th>
+            <th scope="col" className="pb-2 pr-4 text-right font-semibold">Total value</th>
+            <th scope="col" className="pb-2 text-right font-semibold">Avg rating</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border">
+          {clients.map((client) => (
+            <tr key={client.clientId}>
+              <th scope="row" className="py-3 pr-4 text-left font-semibold text-foreground">{client.clientId}</th>
+              <td className="py-3 pr-4 text-right tabular-nums text-[#374151]">{client.completedProjects}</td>
+              <td className="py-3 pr-4 text-right tabular-nums text-[#374151]">{money(client.netRevenue, currency)}</td>
+              {/* An unrated client has not rated you badly — no 0, and no dash standing in for one. */}
+              <td className="py-3 text-right tabular-nums text-[#374151]">
+                {client.averageRating === null ? <span className="text-muted-foreground">Not rated</span> : client.averageRating.toFixed(1)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -411,13 +1017,13 @@ function GrowthTasks({ tasks, loading }: { tasks: GrowthTask[]; loading: boolean
 
   return (
     <SpCard aria-labelledby="growth-tasks-title">
-      <SpSectionHeader title="Manual growth tasks" description="Only you create and update these tasks. Observations never persist tasks automatically." />
+      <SpSectionHeader title="Quick wins" description="Your own checklist. Every task here is one you created — nothing on this page generates them for you." />
       <div id="growth-tasks-title" className="mt-5 space-y-5">
         {loading ? <Skeleton className="h-24 w-full rounded-xl" /> : tasks.length ? (
           <ul className="space-y-2">{tasks.map((task) => (
-            <li key={task.id} className="rounded-xl border border-[#E5E7EB] p-3">
+            <li key={task.id} className="rounded-xl border border-border p-3">
               <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
-                <div><p className="text-sm font-semibold text-[#171717]">{task.title}</p><p className="mt-1 text-xs leading-5 text-[#6B7280]">{task.description}</p></div>
+                <div><p className="text-sm font-semibold text-foreground">{task.title}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{task.description}</p></div>
                 <SpStatusBadge tone={task.status === 'Completed' ? 'positive' : 'neutral'}>{words(task.status)}</SpStatusBadge>
               </div>
               {['Open', 'InProgress'].includes(task.status) && <div className="mt-3 flex flex-wrap gap-2">{task.status === 'Open' && <Button size="sm" variant="outline" disabled={update.isPending} onClick={() => update.mutate({ id: task.id, status: 'InProgress' })}>Start</Button>}<Button size="sm" variant="outline" disabled={update.isPending} onClick={() => update.mutate({ id: task.id, status: 'Completed' })}>Mark complete</Button><Button size="sm" variant="outline" disabled={update.isPending} onClick={() => update.mutate({ id: task.id, status: 'Dismissed' })}>Dismiss</Button></div>}
@@ -425,8 +1031,8 @@ function GrowthTasks({ tasks, loading }: { tasks: GrowthTask[]; loading: boolean
           ))}</ul>
         ) : <SpEmptyState className="min-h-40" icon={ClipboardList} title="No manual tasks" description="Create a task when you decide an observation needs follow-up." />}
 
-        <form className="space-y-3 border-t border-[#E5E7EB] pt-5" onSubmit={submit}>
-          <h3 className="font-heading text-sm font-semibold text-[#171717]">Add a task</h3>
+        <form className="space-y-3 border-t border-border pt-5" onSubmit={submit}>
+          <h3 className="font-heading text-sm font-semibold text-foreground">Add a task</h3>
           <label className="block text-sm font-semibold text-[#374151]" htmlFor="growth-task-title">Title</label>
           <Input id="growth-task-title" required maxLength={160} value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} />
           <label className="block text-sm font-semibold text-[#374151]" htmlFor="growth-task-description">Description</label>
@@ -441,58 +1047,151 @@ function GrowthTasks({ tasks, loading }: { tasks: GrowthTask[]; loading: boolean
   );
 }
 
+/**
+ * The tab's headline KPI row. Rendered with the shared SpMetricCard, always as the
+ * top-level section of a view — never nested inside a card.
+ *
+ * Deliberately NOT the same component as MetricTile below, and the difference is
+ * functional rather than stylistic: SpMetricCard shows only metricText(), so an
+ * unavailable metric reads "Not tracked yet" / "Not enough activity" with NO reason.
+ * That is fine here because every view using MetricGrid for a metric that can be
+ * permanently untracked also renders a TrackingGaps panel, which is where those reasons
+ * are explained at length.
+ *
+ * See the note on MetricTile before merging the two.
+ */
 function MetricGrid({ entries }: { entries: [string, AnalyticsMetric][] }) {
   return <section aria-label="Key metrics" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{entries.map(([label, metric]) => <SpMetricCard key={label} label={label} value={metricText(metric)} detail={<Trend metric={metric} />} />)}</section>;
 }
 
+/**
+ * A dense secondary metric, always nested inside an SpCard next to its siblings —
+ * proposal-pipeline status counts, the client-satisfaction average.
+ *
+ * The load-bearing difference from MetricGrid: this renders metric.reason INLINE when the
+ * metric is not available, because these metrics have nowhere else to explain themselves.
+ * TrackingGaps carries a curated list of permanently-untracked metrics, and that list is
+ * always DISJOINT from whatever the tiles show. Current consumers, re-derived from the
+ * source rather than trusted from the last edit of this comment:
+ *
+ *   ProposalsView  tiles = 11 pipeline status counts;  gaps = view rate, response rate
+ *   ClientsView    tile  = overall rating;             (no gaps panel)
+ *   ServicesView   grid only                           gaps = 6 service-traffic metrics
+ *   ProfileView    neither tiles nor grid              gaps = 6 profile-traffic metrics
+ *
+ * ProposalsView is now the ONLY view rendering both, so it alone carries the disjointness
+ * requirement. A tile's reason is never a duplicate of the panel's, and the panel never
+ * covers a tile's metric; a tile that lost its inline reason would stop explaining itself.
+ *
+ * ProfileView dropped out of both tables on 2026-08-04: the dispute-penalty tile went with
+ * the Trust breakdown card, and the four-item MetricGrid (skills tests, portfolio) was
+ * removed as unscoped duplication of the real Profile & Trust page. It keeps only its
+ * TrackingGaps note. NOTE: profile.disputePenalty is consequently rendered nowhere — the
+ * server still computes it, and it is the obvious re-entry point if it is ever wanted back.
+ *
+ * DO NOT naively merge these two into one component. Either outcome is a regression:
+ * give the merged component an inline reason and ProposalsView prints the same explanation
+ * twice for metrics that ARE in TrackingGaps; take the reason away and the tiles in
+ * ClientsView — which has no TrackingGaps sibling at all — silently drop it. If they ever
+ * are unified, the real prerequisite is deciding where reasons belong, not extracting
+ * shared markup.
+ */
 function MetricTile({ label, metric }: { label: string; metric: AnalyticsMetric }) {
   return (
-    <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-4">
-      <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[#6B7280]">{label}</p>
-      {metric.state === 'available' ? <><p className="mt-2 text-xl font-semibold text-[#171717]">{metricText(metric)}</p><div className="mt-1"><Trend metric={metric} /></div></> : <><p className="mt-2 text-sm font-semibold text-[#4B5563]">{stateLabel(metric)}</p><p className="mt-1 text-xs leading-5 text-[#6B7280]">{metric.reason}</p></>}
+    <div className="rounded-xl border border-border bg-[#F9FAFB] p-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">{label}</p>
+      {metric.state === 'available' ? <><p className="mt-2 text-xl font-semibold text-foreground">{metricText(metric)}</p><div className="mt-1"><Trend metric={metric} /></div></> : <><p className="mt-2 text-sm font-semibold text-[#4B5563]">{stateLabel(metric)}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{metric.reason}</p></>}
     </div>
   );
 }
 
-function TrackingGaps({ title, metrics, fallback }: { title: string; metrics: [string, AnalyticsMetric | undefined][]; fallback?: string }) {
+/**
+ * A one-line note that N metrics are waiting on upstream tracking, with each reason on
+ * hover.
+ *
+ * This replaced a bordered card listing every gap in full. That card rendered on every
+ * visit and never changed: profile traffic needs a public browsing/search surface that
+ * does not exist, and proposal view/response rates need durable event history that is not
+ * recorded. Giving permanent, unactionable gaps the same visual weight as live results
+ * trains people to skip the page furniture — the same reasoning that consolidated ten
+ * STUB banners into one notice.
+ *
+ * The information is not removed, only de-emphasised: the count is visible and every
+ * reason is still one hover away. Styled to match the "Data provenance" aside, which is
+ * the established weight for a standing caveat on this page.
+ */
+export function TrackingGapsNote({ metrics }: { metrics: [string, AnalyticsMetric | undefined][] }) {
   const gaps = metrics.filter((entry): entry is [string, AnalyticsMetric] => !!entry[1] && entry[1].state !== 'available');
-  if (!gaps.length && !fallback) return null;
+  if (!gaps.length) return null;
   return (
-    <SpCard className="border-l-4 border-l-warning">
-      <SpSectionHeader title={title} description="These are honest upstream data gaps, not zero-valued performance." />
-      <ul className="mt-4 space-y-3">{gaps.map(([label, metric]) => <li key={label} className="flex gap-3 text-sm leading-6"><Eye aria-hidden="true" className="mt-1 size-4 shrink-0 text-warning" /><span><strong className="font-semibold text-[#374151]">{label}:</strong> <span className="text-[#6B7280]">{metric.reason}</span></span></li>)}</ul>
-      {!gaps.length && fallback && <p className="mt-4 text-sm leading-6 text-[#6B7280]">{fallback}</p>}
-    </SpCard>
+    <aside className="rounded-xl border border-dashed border-input bg-white px-4 py-3 text-xs leading-5 text-muted-foreground">
+      <Eye aria-hidden="true" className="mr-1.5 inline size-3.5 align-[-2px]" />
+      {gaps.length} {gaps.length === 1 ? 'metric awaits' : 'metrics await'} upstream tracking infrastructure:{' '}
+      {gaps.map(([label, metric], index) => (
+        <span key={label}>
+          {index > 0 && ', '}
+          <span title={metric.reason ?? undefined} className="underline decoration-dotted underline-offset-2">
+            {label}
+          </span>
+        </span>
+      ))}
+      .
+    </aside>
   );
 }
 
-function Breakdown({ title, rows, currency }: { title: string; rows: AnalyticsBreakdown[]; currency: string }) {
-  return (
-    <SpCard>
-      <SpSectionHeader title={title} />
-      {rows.length ? <ul className="mt-4 divide-y divide-[#E5E7EB]">{rows.map((row) => <li key={row.key} className="flex items-center justify-between gap-4 py-3 text-sm"><span className="min-w-0 truncate font-medium text-[#374151]">{row.label}</span><span className="shrink-0 font-semibold text-[#171717]">{money(row.net, currency)} net</span></li>)}</ul> : <p className="mt-4 text-sm text-[#6B7280]">No released revenue exists in this period.</p>}
-    </SpCard>
-  );
-}
 
 function Trend({ metric }: { metric: AnalyticsMetric }) {
-  if (metric.state !== 'available') return <span className="text-xs text-[#6B7280]">{stateLabel(metric)}</span>;
-  if (metric.changePercentage == null) return <span className="text-xs text-[#6B7280]">No comparable prior value</span>;
+  if (metric.state !== 'available') return <span className="text-xs text-muted-foreground">{stateLabel(metric)}</span>;
+  if (metric.changePercentage == null) return <span className="text-xs text-muted-foreground">No comparable prior value</span>;
   const positive = metric.changePercentage >= 0;
   const Icon = positive ? ArrowUpRight : ArrowDownRight;
   return <span className={`inline-flex items-center gap-1 text-xs font-semibold ${positive ? 'text-[#157A55]' : 'text-[#965F11]'}`}><Icon aria-hidden="true" className="size-3.5" />{positive ? '+' : ''}{number(metric.changePercentage)}%<span className="sr-only">{positive ? 'increase' : 'decrease'} compared with the previous period</span></span>;
 }
 
-function MetricCell({ metric }: { metric: AnalyticsMetric }) {
+/**
+ * Clicks, with click-through rate as a muted second line. Exported for tests, matching
+ * the precedent set by financialTaxForm in FinancialSettingsPanel.
+ *
+ * CTR gets no column of its own because it is derived from exactly the two columns either
+ * side of it — impressions and clicks — so a third column would restate what the row
+ * already shows, on a table that already scrolls horizontally.
+ *
+ * The sub-line is omitted rather than labelled when CTR is unavailable. That is not
+ * hiding a gap: CTR is unavailable precisely when there are no impressions, and the
+ * Impressions cell immediately to the left already says so. Printing "Not enough activity"
+ * twice on one row would be noise, not honesty.
+ */
+export function ClicksCell({ service }: { service: ServiceAnalytics }) {
+  const ctr = service.clickThroughRate;
+  return (
+    <td className="pr-4 font-medium text-[#374151]">
+      {service.serviceViews.state === 'available' ? (
+        <>
+          {metricText(service.serviceViews)}
+          {ctr.state === 'available' && (
+            <span className="ml-1 text-xs font-normal text-muted-foreground">
+              ({metricText(ctr)} CTR)
+            </span>
+          )}
+        </>
+      ) : (
+        <NotTrackedInline metric={service.serviceViews} />
+      )}
+    </td>
+  );
+}
+
+export function MetricCell({ metric }: { metric: AnalyticsMetric }) {
   return <td className="pr-4 font-medium text-[#374151]">{metric.state === 'available' ? metricText(metric) : <NotTrackedInline metric={metric} />}</td>;
 }
 
 function NotTrackedInline({ metric }: { metric: AnalyticsMetric }) {
-  return <span title={metric.reason ?? undefined} className="text-xs text-[#6B7280]">{stateLabel(metric)}</span>;
+  return <span title={metric.reason ?? undefined} className="text-xs text-muted-foreground">{stateLabel(metric)}</span>;
 }
 
 function SelectControl({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: { value: string; label: string }[] }) {
-  return <select aria-label={label} value={value} onChange={(event) => onChange(event.target.value)} className="h-10 rounded-lg border border-[#D1D5DB] bg-white px-3 text-sm font-medium text-[#374151] outline-none focus-visible:ring-2 focus-visible:ring-[#3C61DD]">{options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select>;
+  return <select aria-label={label} value={value} onChange={(event) => onChange(event.target.value)} className="h-10 rounded-lg border border-input bg-white px-3 text-sm font-medium text-[#374151] outline-none focus-visible:ring-2 focus-visible:ring-ring">{options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select>;
 }
 
 function DateControl({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
@@ -532,13 +1231,7 @@ function formatValue(value: number, unit: string) {
   return integer(value);
 }
 
-function money(value: number, currency: string) {
-  try { return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(value); }
-  catch { return `${currency} ${value.toFixed(2)}`; }
-}
-
 function unique(values: string[]) { return [...new Set(values.filter(Boolean))]; }
 function integer(value: number) { return new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(value); }
 function number(value: number) { return new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(value); }
 function date(value: string) { return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date(value)); }
-function words(value: string) { return value.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/_/g, ' '); }

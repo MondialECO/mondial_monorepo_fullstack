@@ -1,4 +1,4 @@
-namespace WebApp.Models.Dtos;
+﻿namespace WebApp.Models.Dtos;
 
 public class AnalyticsQuery
 {
@@ -101,8 +101,44 @@ public class TrustSignalAnalyticsResponse
     public decimal? Value { get; set; }
 }
 
+/// <summary>
+/// The three real steps between a brief being surfaced and work being won. Every step is
+/// scoped to the selected period, not lifetime.
+///
+/// Rates use notEnoughActivity when their denominator is zero rather than reporting 0%:
+/// "0% of briefs converted" and "no briefs were shown" are different facts, and only one
+/// of them is true when nothing was surfaced.
+/// </summary>
+public class ProfileFunnelResponse
+{
+    public AnalyticsMetricResponse BriefsShown { get; set; } = new();
+    public AnalyticsMetricResponse ProposalsSent { get; set; } = new();
+    public AnalyticsMetricResponse Hired { get; set; } = new();
+    /// <summary>Proposals sent as a share of briefs shown.</summary>
+    public AnalyticsMetricResponse ProposalRate { get; set; } = new();
+    /// <summary>Hires as a share of proposals sent.</summary>
+    public AnalyticsMetricResponse HireRate { get; set; } = new();
+}
+
+/// <summary>
+/// One row of the provider's own best-performing listings, ranked by clicks within the
+/// period. Impressions ride along so the click count is interpretable rather than a bare
+/// number. Services only — no portfolio or case-study rows, because
+/// AnalyticsRecordingService records against ListingId and nothing else, so no other
+/// content type has engagement data to rank.
+/// </summary>
+public class TopServiceResponse
+{
+    public string ServiceId { get; set; } = "";
+    public string Title { get; set; } = "";
+    public int Clicks { get; set; }
+    public int Impressions { get; set; }
+}
+
 public class ProfileAnalyticsResponse
 {
+    public ProfileFunnelResponse Funnel { get; set; } = new();
+    public List<TopServiceResponse> TopServices { get; set; } = new();
     public AnalyticsMetricResponse TrustScore { get; set; } = new();
     public List<TrustSignalAnalyticsResponse> TrustSignals { get; set; } = new();
     public AnalyticsMetricResponse DisputePenalty { get; set; } = new();
@@ -148,13 +184,87 @@ public class RevenueAnalyticsResponse
     public List<AnalyticsBreakdownResponse> ByClient { get; set; } = new();
     public List<AnalyticsBreakdownResponse> ByMonth { get; set; } = new();
     public List<AnalyticsBreakdownResponse> ByCategory { get; set; } = new();
+    public ClientSourceAnalyticsResponse ClientSource { get; set; } = new();
+}
+
+/// <summary>
+/// Released revenue split by how the client arrived, collapsed from ProposalSource into
+/// the two channels a provider can actually act on:
+///
+///   Ecosystem Match     StandardProposal, DirectInvitationProposal, CustomOffer
+///                       — reached through the Leads / matching flow.
+///   Marketplace Search  PublishedPackagePurchase, PackageAddOn, ChangeRequest
+///                       — the client found the listing and bought directly.
+///
+/// Weighted by NET REVENUE, not by count. This sits on the Earnings tab directly beneath
+/// Total Earnings, where every other figure is money, so a count-based percentage would be
+/// read as a revenue share by anyone scanning the column. The two also disagree in the case
+/// that matters: ten small package purchases against two large matched projects is a
+/// majority of DEALS to marketplace and a majority of INCOME to ecosystem, and "where does
+/// my money come from" is the question this section is placed here to answer.
+///
+/// UnattributedNet is revenue that cannot be traced to a proposal at all — a transaction
+/// with no EngagementId, or an engagement whose proposal is missing. It is excluded from
+/// the percentages rather than folded into either channel, and surfaced separately so a
+/// large unattributed remainder is visible instead of silently distorting the split.
+/// </summary>
+public class ClientSourceAnalyticsResponse
+{
+    public AnalyticsMetricResponse EcosystemMatch { get; set; } = new();
+    public AnalyticsMetricResponse MarketplaceSearch { get; set; } = new();
+    public decimal EcosystemNet { get; set; }
+    public decimal MarketplaceNet { get; set; }
+    public decimal UnattributedNet { get; set; }
 }
 
 public class ActiveClientAnalyticsResponse
 {
+    /// <summary>Already masked by MaskClient. Never a raw identifier.</summary>
     public string ClientId { get; set; } = "";
     public int CompletedProjects { get; set; }
     public decimal NetRevenue { get; set; }
+
+    /// <summary>
+    /// Null when this client submitted no verified review inside the period. Deliberately
+    /// nullable rather than 0: an unrated client has not rated you badly.
+    /// </summary>
+    public decimal? AverageRating { get; set; }
+}
+
+/// <summary>
+/// How many CLIENTS arrived through each channel, counted by head rather than by revenue.
+/// The Earnings tab asks where the money comes from and weights by revenue; this tab asks
+/// where the relationships come from, so one client is one client regardless of spend.
+///
+/// Each client is attributed to exactly ONE channel — the one behind their earliest
+/// engagement inside the period — so the two counts partition the client set and the bars
+/// total 100%. Counting a client in both channels they ever used would let the percentages
+/// exceed 100 and stop being a split at all.
+/// </summary>
+public class ClientOriginationAnalyticsResponse
+{
+    public AnalyticsMetricResponse EcosystemMatch { get; set; } = new();
+    public AnalyticsMetricResponse MarketplaceSearch { get; set; } = new();
+    public int EcosystemClients { get; set; }
+    public int MarketplaceClients { get; set; }
+    public int UnattributedClients { get; set; }
+}
+
+public class RatingBucketResponse
+{
+    public int Rating { get; set; }
+    public int Count { get; set; }
+}
+
+/// <summary>
+/// One project count per industry. A brief listing several industries counts once in EACH
+/// of them, so these do NOT sum to the project total — see BuildTopIndustries for why that
+/// is the honest choice here.
+/// </summary>
+public class IndustryAnalyticsResponse
+{
+    public string Industry { get; set; } = "";
+    public int Projects { get; set; }
 }
 
 public class ClientAnalyticsResponse
@@ -178,6 +288,15 @@ public class ClientAnalyticsResponse
     public AnalyticsMetricResponse DisputesResolved { get; set; } = new();
     public AnalyticsMetricResponse AdverseDisputes { get; set; } = new();
     public List<ActiveClientAnalyticsResponse> MostActiveClients { get; set; } = new();
+    public ClientOriginationAnalyticsResponse Origination { get; set; } = new();
+
+    /// <summary>
+    /// Always five entries, ratings 1-5, including zero-count ones so the histogram keeps
+    /// its shape. TotalReviews distinguishes "nobody rated 5" from "nobody rated at all".
+    /// </summary>
+    public List<RatingBucketResponse> RatingDistribution { get; set; } = new();
+    public int TotalReviews { get; set; }
+    public List<IndustryAnalyticsResponse> TopIndustries { get; set; } = new();
 }
 
 public class GrowthObservationResponse
@@ -196,6 +315,22 @@ public class AnalyticsEmptyStatesResponse
     public bool NoRevenueActivity { get; set; }
 }
 
+/// <summary>
+/// One point on the Overview trend chart.
+///
+/// NetEarnings is a real 0 for a period with no releases — money genuinely was not
+/// earned. AverageRating is NULL rather than 0 when no review was submitted: the average
+/// of nothing is not zero, matching the notEnoughActivity discipline used by every metric
+/// on this surface.
+/// </summary>
+public class AnalyticsTrendPointResponse
+{
+    public DateTime PeriodStart { get; set; }
+    public string Label { get; set; } = "";
+    public decimal NetEarnings { get; set; }
+    public decimal? AverageRating { get; set; }
+}
+
 public class AnalyticsDashboardResponse
 {
     public AnalyticsPeriodResponse Period { get; set; } = default!;
@@ -211,6 +346,13 @@ public class AnalyticsDashboardResponse
     public ProfileAnalyticsResponse Profile { get; set; } = new();
     public RevenueAnalyticsResponse Revenue { get; set; } = new();
     public ClientAnalyticsResponse Clients { get; set; } = new();
+    /// <summary>
+    /// Time series for the Overview trend chart. Granularity adapts to the selected span
+    /// (see AnalyticsTrendBuckets) and is reported alongside so the client can label the
+    /// axis honestly rather than assuming weeks.
+    /// </summary>
+    public List<AnalyticsTrendPointResponse> Trend { get; set; } = new();
+    public string TrendGranularity { get; set; } = "week";
     public List<GrowthObservationResponse> Observations { get; set; } = new();
     public List<string> UnavailableObservationRuleIds { get; set; } = new();
     public AnalyticsEmptyStatesResponse EmptyStates { get; set; } = new();

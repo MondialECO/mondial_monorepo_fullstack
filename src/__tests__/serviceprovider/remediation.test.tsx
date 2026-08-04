@@ -165,8 +165,20 @@ describe('navigation and compliance regressions', () => {
     const contract = source('../../components/serviceprovider/workroom/ContractPanel.tsx');
     const dashboardLayout = source('../../app/dashboard/layout.tsx');
     const sandboxNotice = source('../../components/serviceprovider/SpSandboxNotice.tsx');
+    const payouts = source('../../components/serviceprovider/earnings/PayoutsPanel.tsx');
+    const settings = source('../../components/serviceprovider/earnings/FinancialSettingsPanel.tsx');
     expect(proposal).toMatch(/IFileSecurityScanner.*STUB/);
-    expect(earnings).toMatch(/Payment Sandbox.*STUB/s);
+
+    // Earnings previously repeated the sandbox disclaimer seventeen times, including a
+    // page-level "Payment Sandbox" banner this used to assert on. Fifteen were redundant
+    // with the global notice and were removed; the file no longer mentions STUB at all.
+    expect(earnings).not.toMatch(/STUB|[Ss]andbox/);
+    // The two that survived say something the global notice does not: payout-method
+    // verification is fake. WorkroomService hardcodes Verified = true, so softening these
+    // to a plain "Verified" would make the UI assert something untrue.
+    expect(payouts).toMatch(/Verified by STUB/);
+    expect(settings).toMatch(/STUB verified/);
+    expect(settings).toMatch(/does not confirm that you own/);
 
     // Contract consent. This used to assert /STUB mechanism.*not a legal e-signature/, but
     // c31b574 consolidated ten per-panel STUB disclaimers into one environment-level

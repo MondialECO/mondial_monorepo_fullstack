@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using Microsoft.AspNetCore.Identity;
 using MongoDB.Bson;
 using MongoDB.Driver;
@@ -40,6 +40,24 @@ public class AnalyticsService(
         var tierLevel = composite.TierLevel;
         var now = DateTime.UtcNow;
         var thirtyDaysAgo = now.AddDays(-30);
+        // Provider-wide traffic for the same rolling 30-day window the rest of this
+        // response uses, rounded outward to whole UTC days like every other bucket read.
+        // This response carries only Impressions and Clicks — it is not the three-metric
+        // service-row shape — so there is no rate to compute here.
+        var (overviewFrom, overviewTo) = AnalyticsBucketWindow.ToWholeDays(thirtyDaysAgo, now);
+        var overviewBuckets = await db.AnalyticsDailyBuckets
+            .Find(x => x.ProviderId == providerId && x.Date >= overviewFrom && x.Date < overviewTo)
+            .ToListAsync();
+        var overviewTraffic = new ProviderDashboardServiceViewsResponse
+        {
+            State = "available",
+            Impressions = overviewBuckets.Sum(x => (long)x.Impressions),
+            Clicks = overviewBuckets.Sum(x => (long)x.Clicks),
+            // Reason is non-nullable on this DTO and defaults to the old notTracked text,
+            // so it is replaced either with the rounding disclosure or with empty — never
+            // left claiming the data is untracked now that it is not.
+            Reason = AnalyticsBucketWindow.RoundingNote(thirtyDaysAgo, now) ?? "",
+        };
         var today = now.Date;
         var tomorrow = today.AddDays(1);
         var weekEnd = now.AddDays(7);
@@ -117,11 +135,7 @@ public class AnalyticsService(
                 AverageResponseMinutes = responseMinutes.Count == 0 ? null : Math.Round(responseMinutes.Average(), 1),
                 AverageResponseReason = responseMinutes.Count == 0 ? "No qualifying brief response exists in the last 30 days." : null,
             },
-            ServiceViews = new ProviderDashboardServiceViewsResponse
-            {
-                State = "notTracked",
-                Reason = ServiceTrackingReason,
-            },
+            ServiceViews = overviewTraffic,
             RecentActivity = activities.OrderByDescending(x => x.OccurredAt).Take(6).ToList(),
             ProfileStrength = new ProviderDashboardProgressResponse
             {
@@ -168,6 +182,19 @@ public class AnalyticsService(
             .Find(x => x.ProviderId == providerId && x.Currency == currency).ToListAsync();
         var reviews = await db.Reviews.Find(x => x.ProviderId == providerId).ToListAsync();
         var listings = await db.ServiceListings.Find(x => x.ProviderId == providerId).ToListAsync();
+        // Feeds the profile funnel's first step. CreatedAt on this row is the brief's
+        // provider-specific availability time, not the persistence time.
+        var interactions = await db.ClientBriefInteractions.Find(x => x.ProviderId == providerId).ToListAsync();
+
+        // One query for every service row. The widest window spans the comparison period
+        // through the current one, both rounded outward to whole UTC days, and rows are
+        // grouped per listing in memory — a query per service would be N round-trips for
+        // a page that already renders every service at once.
+        var (bucketFrom, _) = AnalyticsBucketWindow.ToWholeDays(period.ComparisonFrom, period.ComparisonTo);
+        var (_, bucketTo) = AnalyticsBucketWindow.ToWholeDays(period.From, period.To);
+        var buckets = await db.AnalyticsDailyBuckets
+            .Find(x => x.ProviderId == providerId && x.Date >= bucketFrom && x.Date < bucketTo)
+            .ToListAsync();
         var briefIds = proposals.Where(x => !string.IsNullOrWhiteSpace(x.ClientBriefId)).Select(x => x.ClientBriefId!).Distinct().ToList();
         var briefs = briefIds.Count == 0
             ? new List<ClientBrief>()
@@ -240,18 +267,22 @@ public class AnalyticsService(
                 OnTimeRate = NullableMetric(ToDecimal(currentOnTime), ToDecimal(previousOnTime), "percent"),
             },
             Proposals = BuildProposalAnalytics(proposals, currentProposals, previousProposals, period, currency),
-            Profile = BuildProfileAnalytics(profile, analyticsComposite.TierLevel, listings.Count(x => x.Status == CatalogStatus.Published)),
+            Profile = BuildProfileAnalytics(profile, analyticsComposite.TierLevel, listings.Count(x => x.Status == CatalogStatus.Published), interactions, proposals, listings, buckets, period),
             Revenue = BuildRevenueAnalytics(
                 currentRevenue, previousRevenue, financialValue, engagementById,
                 proposalById, listingById, briefById, currency),
             Clients = BuildClientAnalytics(
                 engagements, currentCompleted, previousCompleted, currentRevenue,
-                previousRevenue, earned, reviews, milestones, period, relationships, currency),
+                previousRevenue, earned, reviews, milestones, period, relationships,
+                proposalById, briefById, currency),
         };
+
+        response.TrendGranularity = AnalyticsTrendBuckets.GranularityFor(period.From, period.To);
+        response.Trend = BuildTrend(earned, reviews, period, response.TrendGranularity);
 
         response.Services = BuildServiceAnalytics(
             listings, proposals, engagements, milestones, earned, proposalById,
-            listingById, briefById, period, relationships, currency);
+            listingById, briefById, period, relationships, currency, buckets);
 
         var repeatRate = response.Clients.RepeatClientRate.State == "available"
             ? response.Clients.RepeatClientRate.Value
@@ -359,12 +390,115 @@ public class AnalyticsService(
         };
     }
 
-    private static ProfileAnalyticsResponse BuildProfileAnalytics(ServiceProviderProfile profile, int tierLevel, int publishedServices)
+    /// <summary>
+    /// Briefs shown -> proposals sent -> hired, all within the selected period.
+    ///
+    /// "Shown" uses ClientBriefInteraction.CreatedAt, which the model documents as the
+    /// brief's provider-specific availability time rather than when the row happened to be
+    /// persisted — so it answers "surfaced to me in this window", not "written to the
+    /// database in this window".
+    ///
+    /// "Hired" keys off Proposal.AcceptedAt, matching how proposals.accepted is counted
+    /// on this same surface. Using the resulting engagement's CreatedAt was the
+    /// alternative and is rejected: conversion is asynchronous (a Hangfire job plus a
+    /// minutely sweeper), so a proposal accepted just before the period boundary would
+    /// land its engagement in the next period and the funnel would disagree with the
+    /// Accepted figure on the Proposals tab.
+    /// </summary>
+    private static ProfileFunnelResponse BuildFunnel(
+        List<ClientBriefInteraction> interactions,
+        List<Proposal> proposals,
+        AnalyticsPeriod period)
+    {
+        bool Current(DateTime value) => value >= period.From && value < period.To;
+        bool Previous(DateTime value) => value >= period.ComparisonFrom && value < period.ComparisonTo;
+
+        var shown = interactions.Count(x => Current(x.CreatedAt));
+        var previousShown = interactions.Count(x => Previous(x.CreatedAt));
+        var sent = proposals.Count(x => x.SubmittedAt is { } at && Current(at));
+        var previousSent = proposals.Count(x => x.SubmittedAt is { } at && Previous(at));
+        var hired = proposals.Count(x => x.AcceptedAt is { } at && Current(at));
+        var previousHired = proposals.Count(x => x.AcceptedAt is { } at && Previous(at));
+
+        return new ProfileFunnelResponse
+        {
+            BriefsShown = Metric(shown, previousShown),
+            ProposalsSent = Metric(sent, previousSent),
+            Hired = Metric(hired, previousHired),
+            ProposalRate = FunnelRate(sent, shown, previousSent, previousShown, "brief was surfaced"),
+            HireRate = FunnelRate(hired, sent, previousHired, previousSent, "proposal was sent"),
+        };
+    }
+
+    /// <summary>
+    /// A conversion step. A zero denominator is notEnoughActivity, never 0% — nothing
+    /// entered the step, which is not the same as nothing converting.
+    /// </summary>
+    private static AnalyticsMetricResponse FunnelRate(
+        int numerator, int denominator, int previousNumerator, int previousDenominator, string subject) =>
+        denominator == 0
+            ? new AnalyticsMetricResponse
+            {
+                State = "notEnoughActivity",
+                Unit = "percent",
+                Reason = $"No {subject} in this period, so there is no rate to calculate.",
+            }
+            : Metric(
+                AnalyticsMath.Rate(numerator, denominator),
+                previousDenominator > 0 ? AnalyticsMath.Rate(previousNumerator, previousDenominator) : null,
+                "percent");
+
+    /// <summary>
+    /// The provider's own listings ranked by CLICKS in the period, best five.
+    ///
+    /// Clicks rather than impressions: impressions measure exposure, which is largely a
+    /// function of where the listing happened to rank, while a click is the visitor
+    /// choosing to act on it. A listing seen a thousand times with two clicks is
+    /// performing worse than one seen a hundred times with twenty, and only the click
+    /// ranking says so. Impressions are returned alongside so the number can be read in
+    /// context rather than in the abstract.
+    ///
+    /// Listings with no clicks are excluded entirely rather than ranked at zero — a list
+    /// of zeroes is not a performance ranking.
+    /// </summary>
+    private static List<TopServiceResponse> BuildTopServices(
+        List<ServiceListing> listings,
+        IReadOnlyList<AnalyticsDailyBucket> buckets,
+        AnalyticsPeriod period)
+    {
+        var (from, to) = AnalyticsBucketWindow.ToWholeDays(period.From, period.To);
+        var titles = listings.ToDictionary(x => x.Id, x => x.Title, StringComparer.Ordinal);
+
+        return buckets
+            .Where(x => x.Date >= from && x.Date < to && titles.ContainsKey(x.ListingId))
+            .GroupBy(x => x.ListingId, StringComparer.Ordinal)
+            .Select(g => new TopServiceResponse
+            {
+                ServiceId = g.Key,
+                Title = titles[g.Key],
+                Clicks = g.Sum(x => x.Clicks),
+                Impressions = g.Sum(x => x.Impressions),
+            })
+            .Where(x => x.Clicks > 0)
+            .OrderByDescending(x => x.Clicks)
+            .ThenByDescending(x => x.Impressions)
+            .Take(5)
+            .ToList();
+    }
+
+    private static ProfileAnalyticsResponse BuildProfileAnalytics(ServiceProviderProfile profile, int tierLevel, int publishedServices,
+        List<ClientBriefInteraction> interactions,
+        List<Proposal> proposals,
+        List<ServiceListing> listings,
+        IReadOnlyList<AnalyticsDailyBucket> buckets,
+        AnalyticsPeriod period)
     {
         var attempts = profile.SkillsTestAttempts.OrderByDescending(x => x.TakenAt).ToList();
         var trust = profile.ToTrustBreakdownResponse();
         return new ProfileAnalyticsResponse
         {
+            Funnel = BuildFunnel(interactions, proposals, period),
+            TopServices = BuildTopServices(listings, buckets, period),
             TrustScore = profile.HasEnoughTrustData
                 ? Metric((decimal)profile.TrustScore, null, "score")
                 : new AnalyticsMetricResponse { State = "notEnoughActivity", Unit = "score", Reason = "Trust score appears after the first qualifying trust signal." },
@@ -426,8 +560,28 @@ public class AnalyticsService(
             ByMonth = Breakdown(current,
                 x => (x.ReleasedAt ?? x.CreatedAt).ToString("yyyy-MM"),
                 x => (x.ReleasedAt ?? x.CreatedAt).ToString("yyyy-MM")),
+            ClientSource = BuildClientSource(current, engagements, proposals),
         };
     }
+
+    /// <summary>
+    /// Resolves each release to the ProposalSource behind it and delegates the split to
+    /// AnalyticsClientSource. <paramref name="current"/> arrives already filtered to
+    /// PaymentReleased + Completed with refunded milestones removed, so the split inherits
+    /// the same exclusions as the Net figure it sits beneath and cannot disagree with it.
+    /// </summary>
+    private static ClientSourceAnalyticsResponse BuildClientSource(
+        List<FinancialTransaction> current,
+        IReadOnlyDictionary<string, WorkroomEngagement> engagements,
+        IReadOnlyDictionary<string, Proposal> proposals)
+        => AnalyticsClientSource.Split(current.Select(transaction =>
+        {
+            if (transaction.EngagementId is null ||
+                !engagements.TryGetValue(transaction.EngagementId, out var engagement) ||
+                !proposals.TryGetValue(engagement.ProposalId, out var proposal))
+                return ((ProposalSource?)null, transaction.NetAmount);
+            return ((ProposalSource?)proposal.ProposalSource, transaction.NetAmount);
+        }));
 
     private static ClientAnalyticsResponse BuildClientAnalytics(
         List<WorkroomEngagement> engagements,
@@ -440,6 +594,8 @@ public class AnalyticsService(
         List<WorkroomMilestone> milestones,
         AnalyticsPeriod period,
         IClientRelationshipCalculator relationships,
+        IReadOnlyDictionary<string, Proposal> proposals,
+        IReadOnlyDictionary<string, ClientBrief> briefs,
         string currency)
     {
         var historyTo = engagements.Where(x => IsCompleted(x) && x.ActualEndDate < period.To).ToList();
@@ -493,8 +649,92 @@ public class AnalyticsService(
                     ClientId = MaskClient(g.Key),
                     CompletedProjects = g.Count(),
                     NetRevenue = currentRevenue.Where(x => x.ClientId == g.Key).Sum(x => x.NetAmount),
+                    // Null, not 0, when this client left no verified review in the period —
+                    // an unrated client has not rated you badly. Grouping happens on the RAW
+                    // id and only the projection is masked, so two clients whose masks
+                    // collide cannot merge into one row.
+                    AverageRating = AnalyticsClientInsights.AverageRatingFor(g.Key, currentReviews),
                 }).OrderByDescending(x => x.CompletedProjects).ThenByDescending(x => x.NetRevenue).Take(5).ToList(),
+            Origination = BuildOrigination(currentCompleted, proposals),
+            RatingDistribution = AnalyticsClientInsights.BuildRatingDistribution(currentReviews),
+            TotalReviews = currentReviews.Count,
+            TopIndustries = AnalyticsClientInsights.BuildTopIndustries(currentCompleted, proposals, briefs, CustomServiceLabel),
         };
+    }
+
+    /// <summary>
+    /// How many CLIENTS came from each channel, by head rather than by revenue — the
+    /// Earnings tab already answers the money question, and this tab is about relationships.
+    ///
+    /// Each client is attributed to the channel behind their EARLIEST engagement in the
+    /// period, which is what "origination" means: the way they first arrived, not every way
+    /// they have since transacted. That also keeps the two counts a genuine partition of the
+    /// client set. Counting a client under every channel they ever used would let the
+    /// percentages exceed 100 and stop being a split.
+    ///
+    /// The window is the selected period, like every other metric here, so this is first
+    /// contact WITHIN the range rather than lifetime origination.
+    /// </summary>
+    private static ClientOriginationAnalyticsResponse BuildOrigination(
+        List<WorkroomEngagement> currentCompleted,
+        IReadOnlyDictionary<string, Proposal> proposals)
+        => AnalyticsClientSource.SplitCounts(currentCompleted
+            .GroupBy(x => x.ClientId)
+            .Select(group =>
+            {
+                var first = group.OrderBy(x => x.CreatedAt).First();
+                return proposals.TryGetValue(first.ProposalId, out var proposal)
+                    ? (ProposalSource?)proposal.ProposalSource
+                    : null;
+            }));
+
+    /// <summary>
+    /// The Overview trend series.
+    ///
+    /// Both inputs are the SAME collections the headline metrics use, deliberately: the
+    /// chart sits directly beneath revenue.net and clients.averageClientRating, and a
+    /// chart that disagrees with the number above it is worse than no chart. `earned` has
+    /// already been filtered to PaymentReleased + Completed with refunded milestones
+    /// excluded, and reviews are qualified the same way averageClientRating qualifies
+    /// them (Verified) rather than by a separate rule.
+    /// </summary>
+    private static List<AnalyticsTrendPointResponse> BuildTrend(
+        List<FinancialTransaction> earned,
+        List<Review> reviews,
+        AnalyticsPeriod period,
+        string granularity)
+    {
+        static DateTime RevenueAt(FinancialTransaction value) => value.ReleasedAt ?? value.CreatedAt;
+        var qualifying = reviews.Where(x => x.VerificationStatus == ReviewVerificationStatus.Verified).ToList();
+
+        return AnalyticsTrendBuckets.Buckets(period.From, period.To, granularity)
+            .Select(bucket =>
+            {
+                var net = earned
+                    .Where(x => RevenueAt(x) >= bucket.Start && RevenueAt(x) < bucket.End)
+                    .Sum(x => x.NetAmount);
+                var ratings = qualifying
+                    .Where(x => x.SubmittedAt >= bucket.Start && x.SubmittedAt < bucket.End)
+                    .Select(x => (decimal)x.OverallRating)
+                    .ToList();
+
+                return new AnalyticsTrendPointResponse
+                {
+                    PeriodStart = bucket.Start,
+                    Label = granularity switch
+                    {
+                        AnalyticsTrendBuckets.Monthly => bucket.Start.ToString("MMM yyyy"),
+                        AnalyticsTrendBuckets.Daily => bucket.Start.ToString("d MMM"),
+                        _ => bucket.Start.ToString("d MMM"),
+                    },
+                    NetEarnings = decimal.Round(net, 2, MidpointRounding.AwayFromZero),
+                    // Null, not 0: no review submitted is not a rating of zero.
+                    AverageRating = ratings.Count == 0
+                        ? null
+                        : decimal.Round(ratings.Average(), 2, MidpointRounding.AwayFromZero),
+                };
+            })
+            .ToList();
     }
 
     private static List<ServiceAnalyticsItemResponse> BuildServiceAnalytics(
@@ -508,10 +748,18 @@ public class AnalyticsService(
         IReadOnlyDictionary<string, ClientBrief> briefById,
         AnalyticsPeriod period,
         IClientRelationshipCalculator relationships,
-        string currency)
+        string currency,
+        IReadOnlyList<AnalyticsDailyBucket> buckets)
     {
         bool Current(DateTime value) => value >= period.From && value < period.To;
         bool Previous(DateTime value) => value >= period.ComparisonFrom && value < period.ComparisonTo;
+
+        // Bucket windows are rounded outward to whole UTC days; see AnalyticsBucketWindow.
+        var (currentFrom, currentTo) = AnalyticsBucketWindow.ToWholeDays(period.From, period.To);
+        var (previousFrom, previousTo) = AnalyticsBucketWindow.ToWholeDays(period.ComparisonFrom, period.ComparisonTo);
+        var roundingNote = AnalyticsBucketWindow.RoundingNote(period.From, period.To);
+        var byListing = buckets.GroupBy(x => x.ListingId, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.Ordinal);
         var keys = listings.Select(x => x.Id).ToHashSet(StringComparer.Ordinal);
         foreach (var proposalServiceId in proposals.Select(EffectiveServiceId).Where(x => x != null)) keys.Add(proposalServiceId!);
         if (proposals.Any(x => EffectiveServiceId(x) is null)) keys.Add(CustomServiceLabel);
@@ -544,6 +792,14 @@ public class AnalyticsService(
                 ? proposals.Where(ProposalMatch).Select(x => ResolveCategory(x, listingById, briefById)).FirstOrDefault(x => x != "Unattributed") ?? "Unattributed"
                 : listing?.Category.ToString() ?? "Unattributed";
 
+            // Custom/Unattributed has no ListingId, so there is no bucket row to read and
+            // these four stay honestly untracked rather than reporting zero.
+            var traffic = custom
+                ? ServiceTraffic.Unavailable
+                : ServiceTraffic.From(
+                    byListing.GetValueOrDefault(key) ?? new List<AnalyticsDailyBucket>(),
+                    currentFrom, currentTo, previousFrom, previousTo, roundingNote);
+
             results.Add(new ServiceAnalyticsItemResponse
             {
                 ServiceId = custom ? null : key,
@@ -551,12 +807,12 @@ public class AnalyticsService(
                 Category = category,
                 CustomUnattributed = custom,
                 Status = custom ? "Custom" : listing?.Status.ToString() ?? "Historical",
-                Impressions = AnalyticsMetricResponse.NotTracked(ServiceTrackingReason),
-                ServiceViews = AnalyticsMetricResponse.NotTracked(ServiceTrackingReason),
-                ClickThroughRate = AnalyticsMetricResponse.NotTracked(ServiceTrackingReason, "percent"),
+                Impressions = traffic.Impressions,
+                ServiceViews = traffic.Clicks,
+                ClickThroughRate = traffic.ClickThroughRate,
                 Enquiries = AnalyticsMetricResponse.NotTracked(EnquiryTrackingReason),
                 Orders = Metric(currentOrders, previousOrders),
-                ConversionRate = AnalyticsMetricResponse.NotTracked(ServiceTrackingReason, "percent"),
+                ConversionRate = traffic.OrderConversionRate(currentOrders, previousOrders),
                 EnquiryConversion = AnalyticsMetricResponse.NotTracked(EnquiryTrackingReason, "percent"),
                 AverageSellingPrice = Metric(AverageProjectRevenue(currentRevenue), AverageProjectRevenue(previousRevenue), currency),
                 AverageDeliveryDays = NullableMetric(AverageDeliveryDays(currentCompleted), AverageDeliveryDays(previousCompleted), "days"),
@@ -818,6 +1074,94 @@ public class AnalyticsService(
     private static string? EffectiveServiceId(Proposal proposal) =>
         !string.IsNullOrWhiteSpace(proposal.ServiceId) ? proposal.ServiceId :
         !string.IsNullOrWhiteSpace(proposal.PurchaseSnapshot?.ServiceId) ? proposal.PurchaseSnapshot.ServiceId : null;
+
+    /// <summary>
+    /// The bucket-sourced traffic figures for one service row.
+    ///
+    /// Three product decisions are encoded here rather than at the call site:
+    ///
+    ///   ServiceViews aliases CLICKS, not impressions. The frontend column is labelled
+    ///   "Clicks" under a "Traffic" heading, and AnalyticsDailyBucket has no separate
+    ///   views counter — impressions are detail-page loads.
+    ///
+    ///   ConversionRate here is ORDERS / impressions, deliberately a different metric
+    ///   from the Phase A-D dashboard's ConversionRate (inquiries / impressions). This row
+    ///   sits beside an Orders column and a separate EnquiryConversion, so orders is the
+    ///   reading that makes the row coherent. The dashboard figure is unchanged.
+    ///
+    ///   Zero impressions yields notEnoughActivity for the two rates rather than a
+    ///   divide-by-zero zero, which would read as "nobody converts" instead of "nobody
+    ///   visited".
+    /// </summary>
+    private readonly record struct ServiceTraffic(
+        AnalyticsMetricResponse Impressions,
+        AnalyticsMetricResponse Clicks,
+        AnalyticsMetricResponse ClickThroughRate,
+        decimal CurrentImpressions,
+        decimal PreviousImpressions,
+        string? Note)
+    {
+        internal static ServiceTraffic Unavailable => new(
+            AnalyticsMetricResponse.NotTracked(ServiceTrackingReason),
+            AnalyticsMetricResponse.NotTracked(ServiceTrackingReason),
+            AnalyticsMetricResponse.NotTracked(ServiceTrackingReason, "percent"),
+            0, 0, null);
+
+        internal static ServiceTraffic From(
+            IReadOnlyList<AnalyticsDailyBucket> rows,
+            DateTime currentFrom, DateTime currentTo,
+            DateTime previousFrom, DateTime previousTo,
+            string? note)
+        {
+            var current = AnalyticsBucketWindow.Sum(rows, currentFrom, currentTo);
+            var previous = AnalyticsBucketWindow.Sum(rows, previousFrom, previousTo);
+
+            return new ServiceTraffic(
+                WithNote(Metric(current.Impressions, previous.Impressions), note),
+                WithNote(Metric(current.Clicks, previous.Clicks), note),
+                WithNote(Rate(current.Clicks, current.Impressions, previous.Clicks, previous.Impressions), note),
+                current.Impressions,
+                previous.Impressions,
+                note);
+        }
+
+        /// <summary>Orders over impressions — see the note on this type.</summary>
+        internal AnalyticsMetricResponse OrderConversionRate(decimal currentOrders, decimal previousOrders) =>
+            Impressions.State == "notTracked"
+                ? AnalyticsMetricResponse.NotTracked(ServiceTrackingReason, "percent")
+                : WithNote(Rate(currentOrders, CurrentImpressions, previousOrders, PreviousImpressions), Note);
+
+        private static AnalyticsMetricResponse Rate(
+            decimal currentNumerator, decimal currentDenominator,
+            decimal previousNumerator, decimal previousDenominator) =>
+            currentDenominator <= 0
+                ? new AnalyticsMetricResponse
+                {
+                    State = "notEnoughActivity",
+                    Unit = "percent",
+                    Reason = "No impressions were recorded in this period.",
+                }
+                // Computed in decimal rather than via AnalyticsMath.Rate(int, int): the
+                // bucket sums are decimals and casting down would lose precision on the
+                // very ratios this metric exists to report.
+                : Metric(
+                    Percent(currentNumerator, currentDenominator),
+                    previousDenominator > 0 ? Percent(previousNumerator, previousDenominator) : null,
+                    "percent");
+
+        private static decimal Percent(decimal numerator, decimal denominator) =>
+            denominator == 0 ? 0 : Math.Round(100m * numerator / denominator, 2);
+
+        /// <summary>
+        /// Appends the day-rounding disclosure without clobbering an existing reason —
+        /// notEnoughActivity already carries one that matters more.
+        /// </summary>
+        private static AnalyticsMetricResponse WithNote(AnalyticsMetricResponse metric, string? note)
+        {
+            if (note is not null) metric.Reason = metric.Reason is null ? note : $"{metric.Reason} {note}";
+            return metric;
+        }
+    }
 
     private static AnalyticsMetricResponse Metric(decimal current, decimal? previous, string unit = "count") =>
         AnalyticsMetricResponse.Available(current, previous, unit);

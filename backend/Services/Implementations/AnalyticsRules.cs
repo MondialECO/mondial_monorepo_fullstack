@@ -1,3 +1,4 @@
+﻿using WebApp.Models.DatabaseModels;
 using WebApp.Models.Dtos;
 
 namespace WebApp.Services.Implementations;
@@ -80,6 +81,154 @@ public static class AnalyticsPeriodResolver
         DateTimeKind.Local => value.ToUniversalTime(),
         _ => DateTime.SpecifyKind(value, DateTimeKind.Utc),
     };
+}
+
+/// <summary>
+/// Aligns an analytics period to the day-granular AnalyticsDailyBuckets collection.
+///
+/// Buckets are one row per listing per UTC day, so a window that starts or ends mid-day
+/// cannot be answered exactly — the smallest unit available is a whole day. Rounding
+/// OUTWARD (down to the start day, up past the end day) is the honest direction: it never
+/// hides traffic that occurred, and the widening is disclosed on the metric rather than
+/// silently applied.
+///
+/// Contrary to the assumption that only Custom needs this, almost every range does.
+/// AnalyticsPeriodResolver sets <c>to = now</c> for ThisMonth, Last7Days, Last30Days,
+/// Last90Days and ThisYear, and Last*Days also derive <c>from</c> from <c>now</c>, so both
+/// ends carry a wall-clock time. PreviousYear is the only range already whole-day on both
+/// ends. Rounding is therefore applied uniformly and disclosure is driven by whether it
+/// actually changed anything, not by which range was requested.
+/// </summary>
+public static class AnalyticsBucketWindow
+{
+    /// <summary>
+    /// Widens a half-open [from, to) window to whole UTC days, preserving the half-open
+    /// convention: the returned To is an exclusive midnight boundary.
+    /// </summary>
+    public static (DateTime From, DateTime To) ToWholeDays(DateTime from, DateTime to)
+    {
+        var start = from.Date;
+        // Already an exclusive midnight boundary — advancing would swallow an extra day.
+        var end = to == to.Date ? to.Date : to.Date.AddDays(1);
+        return (DateTime.SpecifyKind(start, DateTimeKind.Utc), DateTimeKind.Utc == end.Kind ? end : DateTime.SpecifyKind(end, DateTimeKind.Utc));
+    }
+
+    /// <summary>True when the window already sits on whole-day boundaries.</summary>
+    public static bool IsWholeDays(DateTime from, DateTime to) => from == from.Date && to == to.Date;
+
+    /// <summary>
+    /// Totals the buckets falling inside a half-open [from, to) window.
+    ///
+    /// Half-open deliberately, matching every other window predicate in Module 5
+    /// (>= From && &lt; To). The Phase A-D summary endpoint uses an INCLUSIVE end instead;
+    /// reusing that convention here would have counted the final day twice or not at all
+    /// depending on direction, and a second convention inside one module is what let this
+    /// gap survive unnoticed in the first place.
+    /// </summary>
+    public static (decimal Impressions, decimal Clicks) Sum(
+        IEnumerable<AnalyticsDailyBucket> rows, DateTime from, DateTime to)
+    {
+        decimal impressions = 0, clicks = 0;
+        foreach (var row in rows)
+        {
+            if (row.Date < from || row.Date >= to) continue;
+            impressions += row.Impressions;
+            clicks += row.Clicks;
+        }
+        return (impressions, clicks);
+    }
+
+    /// <summary>
+    /// The disclosure shown alongside bucket-sourced metrics, or null when the requested
+    /// window already aligned and nothing was widened. Never claim rounding that did not
+    /// happen — that is as misleading as hiding rounding that did.
+    /// </summary>
+    public static string? RoundingNote(DateTime from, DateTime to)
+    {
+        if (IsWholeDays(from, to)) return null;
+        var (start, end) = ToWholeDays(from, to);
+        return "Traffic counts are recorded per whole UTC day, so this figure covers "
+            + $"{start:yyyy-MM-dd} through {end.AddDays(-1):yyyy-MM-dd} inclusive, "
+            + "which is slightly wider than the selected range.";
+    }
+}
+
+/// <summary>
+/// Bucketing for the Overview trend chart.
+///
+/// Module 5 is otherwise "one current value against one comparison value" — there is no
+/// time series anywhere else in it — so the granularity rule lives here, pure and
+/// testable, rather than inline in the dashboard builder.
+///
+/// Granularity adapts to the span because a fixed weekly bucket serves the range set
+/// badly at both ends: Last7Days would yield one or two points (not a trend at all) and
+/// ThisYear would yield ~52 (unreadable at chart width). Thresholds target roughly
+/// 5-20 points:
+///
+///   span &lt;= 14 days   -> daily    (7d gives 7 points, 14d gives 14)
+///   span &lt;= 112 days  -> weekly   (30d gives ~5, 90d gives ~13)
+///   longer             -> monthly  (a full year gives 12)
+///
+/// 112 days is 16 weeks — the point at which weekly buckets pass ~16 points and start
+/// crowding. The granularity is returned alongside the points so the client labels the
+/// axis honestly instead of calling a daily point a "week".
+/// </summary>
+public static class AnalyticsTrendBuckets
+{
+    public const string Daily = "day";
+    public const string Weekly = "week";
+    public const string Monthly = "month";
+
+    private const int DailyMaxSpanDays = 14;
+    private const int WeeklyMaxSpanDays = 112;
+
+    public static string GranularityFor(DateTime from, DateTime to)
+    {
+        var days = (to - from).TotalDays;
+        if (days <= DailyMaxSpanDays) return Daily;
+        return days <= WeeklyMaxSpanDays ? Weekly : Monthly;
+    }
+
+    /// <summary>
+    /// Half-open [start, next) bucket boundaries covering the window, in order. Matches
+    /// Module 5's own convention so a value on a boundary lands in exactly one bucket.
+    ///
+    /// Weekly buckets start on Monday, so a "week of" label means a real calendar week
+    /// rather than an arbitrary offset from whenever the range happened to begin.
+    /// </summary>
+    public static List<(DateTime Start, DateTime End)> Buckets(DateTime from, DateTime to, string granularity)
+    {
+        var buckets = new List<(DateTime, DateTime)>();
+        if (to <= from) return buckets;
+
+        var cursor = granularity switch
+        {
+            Daily => from.Date,
+            Weekly => StartOfWeek(from),
+            _ => new DateTime(from.Year, from.Month, 1, 0, 0, 0, DateTimeKind.Utc),
+        };
+
+        while (cursor < to)
+        {
+            var next = granularity switch
+            {
+                Daily => cursor.AddDays(1),
+                Weekly => cursor.AddDays(7),
+                _ => cursor.AddMonths(1),
+            };
+            buckets.Add((DateTime.SpecifyKind(cursor, DateTimeKind.Utc), DateTime.SpecifyKind(next, DateTimeKind.Utc)));
+            cursor = next;
+        }
+        return buckets;
+    }
+
+    /// <summary>Monday-anchored, matching ISO week convention.</summary>
+    public static DateTime StartOfWeek(DateTime value)
+    {
+        var date = value.Date;
+        var offset = ((int)date.DayOfWeek + 6) % 7; // Monday = 0
+        return DateTime.SpecifyKind(date.AddDays(-offset), DateTimeKind.Utc);
+    }
 }
 
 public static class GrowthObservationRules
