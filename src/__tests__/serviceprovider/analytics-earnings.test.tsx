@@ -4,8 +4,9 @@ import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import {
-  BalancesFooter, CategoryBreakdown, ClientSourceBreakdown, EarningsTrendChart,
+  BalancesFooter, CategoryBreakdown, ClientSourceBreakdown,
 } from '@/components/serviceprovider/AnalyticsWorkspace';
+import { EarningsTrendChart } from '@/components/serviceprovider/charts/EarningsTrendChart';
 import type {
   AnalyticsBreakdown, AnalyticsDashboard, AnalyticsMetric, AnalyticsTrendPoint,
   ClientSourceAnalytics, RevenueAnalytics,

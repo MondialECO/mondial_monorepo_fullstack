@@ -1,18 +1,19 @@
 'use client';
 
-// Remaining hardcoded hex on this file is deliberate, not an oversight: those values
-// have no exact token equivalent. See the PENDING DESIGN-TOKEN DECISION note in
-// src/app/globals.css (below the .sp-workspace block) for the full list and why.
+// Fully token-driven as of the Earnings visual redesign — no hex literals remain on this
+// file. Greens use --success-light / --success-strong; the latter was added because
+// --success-text is 2.80:1 on --success-light and fails AA. See globals.css.
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { AlertCircle, CircleDollarSign, Clock3, HandCoins, Landmark, LockKeyhole, WalletCards } from 'lucide-react';
+import { ArrowRight, WalletCards } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useEarnings } from '@/hooks/queries/workroom';
-import { SpCard, SpMetricCard, SpMutationFeedback, SpPage, SpPageHeader, SpTabBar } from '@/components/serviceprovider/ui';
+import { SpCard, SpMutationFeedback, SpPage, SpPageHeader, SpTabBar } from '@/components/serviceprovider/ui';
 import { EarningsActivity } from '@/components/serviceprovider/earnings/EarningsActivity';
 import { PayoutsPanel } from '@/components/serviceprovider/earnings/PayoutsPanel';
 import { FinancialSettingsPanel } from '@/components/serviceprovider/earnings/FinancialSettingsPanel';
 import { money } from '@/components/serviceprovider/workroom/_shared';
+import Link from 'next/link';
 
 type EarningsTab = 'activity' | 'payouts' | 'settings';
 
@@ -47,22 +48,11 @@ export function EarningsWorkspace() {
       <SpPageHeader
         title="Earnings & Payouts"
         description="Track server-recorded earnings, payment lifecycle states, payouts, invoices and tax settings."
-        actions={<label className="flex items-center gap-2 text-sm font-semibold text-[#374151]"><span>Currency</span><select aria-label="Financial currency" value={currency} onChange={(event) => setCurrency(event.target.value)} className="h-10 rounded-xl border border-input bg-white px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring">{currencies.map((item) => <option key={item}>{item}</option>)}</select></label>}
+        actions={<label className="flex items-center gap-2 text-sm font-semibold text-foreground"><span>Currency</span><select aria-label="Financial currency" value={currency} onChange={(event) => setCurrency(event.target.value)} className="h-10 rounded-xl border border-input bg-white px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring">{currencies.map((item) => <option key={item}>{item}</option>)}</select></label>}
       />
       <SpTabBar label="Earnings sections" items={[{ label: 'Earnings Overview', href: href('activity'), active: activeTab === 'activity' }, { label: 'Payouts', href: href('payouts'), active: activeTab === 'payouts' }, { label: 'Financial Settings', href: href('settings'), active: activeTab === 'settings' }]} />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <SpMetricCard label="Available balance" value={money(data.available, currency)} detail="Eligible for a payout request" icon={WalletCards} iconClassName="bg-[#E8F7F0] text-[#157A55]" />
-        <SpMetricCard label="Work in progress" value={money(data.workInProgress, currency)} detail="Funded project work still in delivery" icon={Clock3} />
-        <SpMetricCard label="In review" value={money(data.inReview, currency)} detail="Submitted work awaiting client action" icon={LockKeyhole} iconClassName="bg-warning/10 text-warning" />
-        <SpMetricCard label="Pending release" value={money(data.pending, currency)} detail="Approved lifecycle amount not yet available" icon={HandCoins} />
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-3">
-        <CompactMetric label="Protected funds" value={data.protectedEscrow} currency={currency} icon={Landmark} note="Held for funded milestones" />
-        <CompactMetric label="On hold" value={data.onHold} currency={currency} icon={AlertCircle} note="Blocked by the recorded lifecycle" warning />
-        <CompactMetric label="Withdrawn" value={data.withdrawn} currency={currency} icon={CircleDollarSign} note="Completed payouts" />
-      </div>
+      <AvailableBalanceHero amount={data.available} currency={currency} payoutHref={href('payouts')} />
 
       {activeTab === 'activity' && <EarningsActivity data={data} currency={currency} />}
       {activeTab === 'payouts' && <PayoutsPanel data={data} currency={currency} />}
@@ -71,12 +61,54 @@ export function EarningsWorkspace() {
   );
 }
 
-function CompactMetric({ label, value, currency, icon: Icon, note, warning = false }: { label: string; value: number; currency: string; icon: typeof Landmark; note: string; warning?: boolean }) {
-  return <SpCard className="flex items-center gap-4"><span className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${warning ? 'bg-warning/10 text-warning' : 'bg-[#F3F4F6] text-[#4B5563]'}`}><Icon className="size-5" aria-hidden="true" /></span><div><p className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">{label}</p><p className="mt-1 text-xl font-semibold text-foreground">{money(value, currency)}</p><p className="mt-1 text-xs text-muted-foreground">{note}</p></div></SpCard>;
+/**
+ * The one number this page exists to answer, and the only one with an action behind it.
+ * It previously sat as one of seven equal boxes with the text "Eligible for a payout
+ * request" and no way to make one — the request form was a tab away. Size and the CTA are
+ * the same argument: this is the actionable figure, so it looks and behaves like it.
+ */
+export function AvailableBalanceHero({ amount, currency, payoutHref }: { amount: number; currency: string; payoutHref: string }) {
+  return (
+    <SpCard className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-success-light text-success-strong">
+            <WalletCards className="size-5" aria-hidden="true" />
+          </span>
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Available balance</p>
+        </div>
+        {/* Leads the page. One step up from the 3xl the escrow total uses, so the hierarchy
+            is readable at a glance rather than by comparison. */}
+        <p className="mt-5 font-heading text-5xl font-bold tracking-tight text-success-strong sm:text-6xl">{money(amount, currency)}</p>
+        <p className="mt-3 text-sm leading-6 text-muted-foreground">Released, clear of any hold, and eligible for a payout request.</p>
+      </div>
+      <Button asChild className="shrink-0">
+        <Link href={payoutHref}>
+          Request a payout
+          <ArrowRight aria-hidden="true" className="ml-2 size-4" />
+        </Link>
+      </Button>
+    </SpCard>
+  );
 }
 
-function EarningsLoading() {
-  return <SpPage className="pb-8"><div className="flex items-center justify-between"><Skeleton className="h-16 w-72 rounded-xl" /><Skeleton className="h-10 w-28 rounded-xl" /></div><Skeleton className="h-14 w-full rounded-xl" /><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{Array.from({ length: 4 }, (_, index) => <Skeleton key={index} className="h-44 rounded-2xl" />)}</div><Skeleton className="h-96 rounded-2xl" /></SpPage>;
+/**
+ * Mirrors the real layout block for block: hero, escrow panel, three cards, content. The
+ * previous version rendered four card skeletons and nothing for the second row, so the row
+ * appeared unaccounted-for on every load.
+ */
+export function EarningsLoading() {
+  return (
+    <SpPage className="pb-8">
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-16 w-72 rounded-xl" />
+        <Skeleton className="h-10 w-28 rounded-xl" />
+      </div>
+      <Skeleton className="h-14 w-full rounded-xl" />
+      <Skeleton className="h-40 rounded-2xl" />
+      <Skeleton className="h-96 rounded-2xl" />
+    </SpPage>
+  );
 }
 
 function earningsTab(value: string | null): EarningsTab {

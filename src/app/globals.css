@@ -54,6 +54,7 @@
   --color-skin-tone-4: var(--skin-tone-4);
   --color-success-light: var(--success-light);
   --color-success-text: var(--success-text);
+  --color-success-strong: var(--success-strong);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
   --color-rating: var(--rating);
@@ -112,6 +113,11 @@
   --skin-tone-4: #422B22;
   --success-light: #E5F7ED;
   --success-text: #00A854;
+  /* Accessible green for TEXT on a light-green surface. --success-text is 2.80:1 on
+     --success-light, which fails even the 3:1 large-text threshold; this is 4.78:1 and
+     passes AA for body copy. Not a new colour — it is the value the SP Earnings surface
+     was already using as a raw literal. */
+  --success-strong: #157A55;
   --warning: #B45309;
   /* Star/rating amber, consumed via text-rating / fill-rating by MarketplaceCard
      and ReviewPanel. Identical to the amber-400 those two previously hardcoded,
@@ -222,6 +228,7 @@
   --skin-tone-4: #2a2220;
   --success-light: #1a3d2a;
   --success-text: #34d399;
+  --success-strong: #34d399;
   --warning: #FBBF24;
   --warning-foreground: #08090A;
   --info: #38BDF8;
@@ -296,19 +303,28 @@
 }
 
 /* PENDING DESIGN-TOKEN DECISION — hex literals still hardcoded on the SP
-   Earnings and Analytics surfaces (EarningsWorkspace, the earnings panels, and
-   AnalyticsWorkspace), deliberately NOT migrated.
+   Analytics surface (AnalyticsWorkspace), deliberately NOT migrated.
+
+   The Earnings surface (EarningsWorkspace and the earnings panels) is NO LONGER
+   in scope here: its visual redesign migrated it to tokens completely and it now
+   contains no hex literals at all. The counts below still describe Analytics.
 
    The seven values that map exactly to a token above were migrated. These
    twelve have NO exact equivalent, and three are near-misses that would
    silently shift colour if swapped for the closest-looking token:
 
-     #157A55  NOT --success-text (#00A854)   currently only --p8-green
      #B42318  NOT --destructive  (#C24141)
      #965F11  NOT --warning      (#B45309)   currently only --dr-yellow
 
-   No token at all: #F9FAFB (19), #374151 (19), #4B5563 (5), #E8F7F0 (4),
+   No token at all: #F9FAFB (19), #374151 (19), #4B5563 (5),
    #0D9488 (4), #BBE8D3 (3), #F7FCFA, #F3F4F6, #9CA3AF.
+
+   RESOLVED during the Earnings visual redesign:
+     #157A55 -> --success-strong, added rather than folded into --success-text,
+                which is 2.80:1 on --success-light and fails AA. See that token.
+     #E8F7F0 -> --success-light. Channel delta R+3 B+3 against the token, which is
+                imperceptible, and contrast against --success-strong is unchanged
+                at 4.78:1.
 
    They are left as hex on purpose: resolving them means either adding
    tokens here or accepting a colour change, which is a design call rather
