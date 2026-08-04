@@ -40,6 +40,7 @@ import {
 //            "Unattributed". If a snake_case value ever reaches this file, it will render
 //            with the underscore visible — that is a known trade, not an oversight.
 import { money, words } from '@/components/serviceprovider/workroom/_shared';
+import { EarningsTrendChart } from '@/components/serviceprovider/charts/EarningsTrendChart';
 import type {
   ActiveClientAnalytics, AnalyticsBreakdown, AnalyticsDashboard, AnalyticsMetric,
   ClientOriginationAnalytics, ClientSourceAnalytics, CreateGrowthTaskPayload, GrowthTask,
@@ -599,51 +600,6 @@ function EarningsView({ data }: { data: AnalyticsDashboard }) {
 
       <BalancesFooter revenue={revenue} />
     </div>
-  );
-}
-
-/**
- * The Overview trend with the rating series dropped. Overview answers "how is the business
- * doing" and pairs money against satisfaction; this tab is only about money, and a second
- * axis on a chart headed "earnings" reads as a claimed relationship that was never made.
- *
- * Granularity is whatever the server bucketed the SELECTED period into — the heading
- * reports it rather than assuming weeks, so changing the date range changes the chart
- * honestly instead of relabelling the same shape.
- */
-export function EarningsTrendChart({ data }: { data: AnalyticsDashboard }) {
-  const points = data.trend ?? [];
-  const hasEarnings = points.some((point) => point.netEarnings > 0);
-  const granularity = data.trendGranularity === 'month' ? 'Monthly' : data.trendGranularity === 'day' ? 'Daily' : 'Weekly';
-
-  return (
-    <SpCard aria-labelledby="earnings-trend-title">
-      <SpSectionHeader
-        titleId="earnings-trend-title"
-        title={`${granularity} earnings trend`}
-        description="Net earnings released, bucketed across the selected period."
-      />
-      {!points.length || !hasEarnings ? (
-        <SpEmptyState
-          className="mt-5 border-0 bg-[#F9FAFB]"
-          icon={BarChart3}
-          title="No earnings in this period"
-          description="Released payments appear here once the first one lands in the selected range."
-        />
-      ) : (
-        <div className="mt-5">
-          <ResponsiveContainer width="100%" height={280}>
-            <LineChart data={points}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-              <XAxis dataKey="label" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} />
-              <Tooltip />
-              <Line type="monotone" dataKey="netEarnings" name={`Net earnings (${data.currency})`} stroke="#3C61DD" dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-    </SpCard>
   );
 }
 

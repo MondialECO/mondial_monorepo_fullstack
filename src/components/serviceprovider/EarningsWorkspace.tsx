@@ -8,6 +8,8 @@ import { AlertCircle, ArrowRight, CircleDollarSign, Clock3, HandCoins, Landmark,
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useEarnings } from '@/hooks/queries/workroom';
+import { useProviderAnalytics } from '@/hooks/queries/analytics';
+import { EarningsTrendChart } from '@/components/serviceprovider/charts/EarningsTrendChart';
 import { SpCard, SpMetricCard, SpMutationFeedback, SpPage, SpPageHeader, SpTabBar } from '@/components/serviceprovider/ui';
 import { EarningsActivity } from '@/components/serviceprovider/earnings/EarningsActivity';
 import { PayoutsPanel } from '@/components/serviceprovider/earnings/PayoutsPanel';
@@ -25,6 +27,11 @@ export function EarningsWorkspace() {
   const activeTab = earningsTab(searchParams.get('tab'));
   const currency = (searchParams.get('currency') || 'EUR').toUpperCase();
   const query = useEarnings(currency);
+  // Fixed range: this page has a currency selector but no date picker, and adding one to
+  // drive a single chart would be a bigger change than the chart. Last90Days is what the
+  // server buckets weekly (AnalyticsTrendBuckets), giving ~13 weekly points — the "last
+  // twelve weeks" shape without inventing a control.
+  const trend = useProviderAnalytics({ range: 'Last90Days', currency });
 
   const href = (tab: EarningsTab) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -67,6 +74,15 @@ export function EarningsWorkspace() {
         <SpMetricCard label="On hold" value={money(data.onHold, currency)} detail="Blocked by the recorded lifecycle" icon={AlertCircle} iconClassName="bg-warning/10 text-warning" />
         <SpMetricCard label="Withdrawn" value={money(data.withdrawn, currency)} detail="Completed payouts" icon={CircleDollarSign} />
       </div>
+
+      {/* Reuses the Analytics dashboard's server-built series rather than bucketing the
+          ledger already loaded here. That ledger is the raw transaction list, including
+          refunds and payouts, so charting it would mean reproducing the refunded-milestone
+          exclusion in the browser — and this chart sits on the same page as the gross/net
+          figures it would then be free to contradict. */}
+      {trend.isLoading ? <Skeleton className="h-80 rounded-2xl" />
+        : trend.data ? <EarningsTrendChart data={trend.data} title="Earnings trend" description={`Net earnings released over the last 90 days, in ${currency}.`} />
+        : null}
 
       {activeTab === 'activity' && <EarningsActivity data={data} currency={currency} />}
       {activeTab === 'payouts' && <PayoutsPanel data={data} currency={currency} />}

@@ -6,8 +6,19 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   AvailableBalanceHero, EarningsLoading, EscrowPanel,
 } from '@/components/serviceprovider/EarningsWorkspace';
+import { EarningsTrendChart } from '@/components/serviceprovider/charts/EarningsTrendChart';
 import { PayoutsPanel } from '@/components/serviceprovider/earnings/PayoutsPanel';
 import type { FinancialSummary } from '@/types/workroom';
+import type { AnalyticsDashboard, AnalyticsTrendPoint } from '@/types/analytics';
+
+vi.mock('recharts', () => {
+  const Stub = ({ children }: { children?: React.ReactNode }) => <div>{children}</div>;
+  const Line = ({ dataKey }: { dataKey?: string }) => <div data-testid="series" data-key={dataKey} />;
+  return {
+    ResponsiveContainer: Stub, LineChart: Stub, Line, XAxis: Stub,
+    YAxis: Stub, CartesianGrid: Stub, Tooltip: Stub, Legend: Stub,
+  };
+});
 
 vi.mock('next/link', () => ({
   __esModule: true,
@@ -190,6 +201,50 @@ describe('payouts panel', () => {
    */
   it('still states the available balance in the confirmation dialog', () => {
     expect(payoutsSource).toContain('label="Available before request"');
+  });
+});
+
+describe('earnings trend chart on this page', () => {
+  const point = (over: Partial<AnalyticsTrendPoint> = {}): AnalyticsTrendPoint =>
+    ({ periodStart: '2026-05-04T00:00:00Z', label: '4 May', netEarnings: 0, averageRating: null, ...over });
+  const dashboard = (trend: AnalyticsTrendPoint[]) =>
+    ({ trend, trendGranularity: 'week', currency: 'EUR' }) as AnalyticsDashboard;
+
+  it('charts released earnings when history exists', () => {
+    render(<EarningsTrendChart data={dashboard([point({ netEarnings: 400 })])} title="Earnings trend" description="Net earnings released over the last 90 days, in EUR." />);
+
+    expect(screen.getByText('Earnings trend')).toBeInTheDocument();
+    expect(screen.getByTestId('series')).toHaveAttribute('data-key', 'netEarnings');
+  });
+
+  /** No history is an honest empty state, never a flat zero line. */
+  it('states there are no earnings rather than drawing an empty chart', () => {
+    render(<EarningsTrendChart data={dashboard([point(), point({ label: '11 May' })])} />);
+
+    expect(screen.getByText('No earnings in this period')).toBeInTheDocument();
+    expect(screen.queryByTestId('series')).not.toBeInTheDocument();
+  });
+
+  it('handles a provider with no trend buckets at all', () => {
+    render(<EarningsTrendChart data={dashboard([])} />);
+
+    expect(screen.getByText('No earnings in this period')).toBeInTheDocument();
+  });
+
+  /**
+   * One implementation, two surfaces. Bucketing the ledger loaded on this page would have
+   * meant reproducing the refunded-milestone exclusion in the browser, on a page that also
+   * prints the gross and net totals such a chart could then contradict.
+   */
+  it('reuses the shared chart and the server series rather than bucketing locally', () => {
+    expect(workspaceSource).toContain("from '@/components/serviceprovider/charts/EarningsTrendChart'");
+    expect(workspaceSource).not.toContain('<LineChart');
+    expect(workspaceSource).not.toMatch(/data\.transactions\s*\.\s*reduce/);
+  });
+
+  /** The page has a currency selector but no date picker, so the range is fixed. */
+  it('requests a fixed 90-day range scoped to the selected currency', () => {
+    expect(workspaceSource).toContain("useProviderAnalytics({ range: 'Last90Days', currency })");
   });
 });
 
