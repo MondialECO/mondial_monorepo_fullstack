@@ -180,7 +180,7 @@ export const creatorJourneyApi = {
     return unwrap<FormationGenerator>(res.data);
   },
 
-  selectFormationType: async (selectedType: 'SAS' | 'SARL' | 'SAS-U'): Promise<{ formation: FormationGenerator; legalChecklist: LegalChecklist }> => {
+  selectFormationType: async (selectedType: FormationTypeCode): Promise<{ formation: FormationGenerator; legalChecklist: LegalChecklist }> => {
     const res = await api.patch('/creator/formation/select-type', { selectedType });
     return unwrap<{ formation: FormationGenerator; legalChecklist: LegalChecklist }>(res.data);
   },
@@ -398,12 +398,33 @@ export interface CofounderDraft {
   locationPreference?: string;
 }
 
+export type FormationTypeCode = 'SAS' | 'SARL' | 'SAS-U';
+
+export interface FormationOption {
+  code: FormationTypeCode;
+  description: string;
+  capital: string;
+  formationTime: string;
+  estimatedCost: string;
+}
+
 export interface FormationGenerator {
-  recommendedType: string;
+  recommendedType: FormationTypeCode;
+  recommendationReason?: string | null;
+  forecastBasis?: {
+    forecastSessionId: string;
+    monthlyGrowthPct?: number | null;
+    tam?: number | null;
+    opex?: number | null;
+    breakEvenMonth?: number | null;
+    currency?: string | null;
+    forecastUpdatedAt: string;
+  } | null;
+  options: FormationOption[];
   youHave: string[];
   youNeed: SkillGap[];
   matchedSpIds: string[];
-  selectedType: string | null;
+  selectedType: FormationTypeCode | null;
   skillsDeclared?: boolean;
   cofounderDraft?: CofounderDraft | null;
 }

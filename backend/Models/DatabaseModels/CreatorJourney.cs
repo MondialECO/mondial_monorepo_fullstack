@@ -173,6 +173,9 @@ namespace WebApp.Models.DatabaseModels
     public class CreatorFormationGenerator
     {
         public string RecommendedType { get; set; } // SAS | SAS-U | SARL
+        public string RecommendationReason { get; set; }
+        public CreatorFormationForecastBasis ForecastBasis { get; set; }
+        public List<CreatorFormationOption> Options { get; set; } = new();
         public List<string> YouHave { get; set; } = new();
         public List<CreatorSkillGap> YouNeed { get; set; } = new();
         public List<string> MatchedSpIds { get; set; } = new();
@@ -186,6 +189,26 @@ namespace WebApp.Models.DatabaseModels
         // Co-founder preferences captured on 3.5b. Stored now; matched at Level Up (P6),
         // never in Phase 3 (matchmaking is a P6 privilege).
         public CreatorCofounderDraft CofounderDraft { get; set; }
+    }
+
+    public class CreatorFormationOption
+    {
+        public string Code { get; set; }
+        public string Description { get; set; }
+        public string Capital { get; set; }
+        public string FormationTime { get; set; }
+        public string EstimatedCost { get; set; }
+    }
+
+    public class CreatorFormationForecastBasis
+    {
+        public string ForecastSessionId { get; set; }
+        public double? MonthlyGrowthPct { get; set; }
+        public double? Tam { get; set; }
+        public double? Opex { get; set; }
+        public int? BreakEvenMonth { get; set; }
+        public string Currency { get; set; }
+        public DateTime ForecastUpdatedAt { get; set; }
     }
 
     public class CreatorCofounderDraft
