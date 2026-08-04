@@ -6,6 +6,7 @@ using WebApp.Models;
 using WebApp.Models.DatabaseModels;
 using WebApp.Models.DatabaseModels.Ai;
 using WebApp.Models.Dtos;
+using WebApp.Services.Ai;
 using WebApp.Services.Implementations;
 using WebApp.Services.Interface;
 using WebApp.Services.Repository.Ai;
@@ -14,9 +15,9 @@ namespace WebApp.Controllers
 {
     /// <summary>
     /// Phase 3 deterministic modules: Legal Checklist (3.3) and Formation Generator
-    /// (3.4). No AI session, no polling — pure server-side logic over the journey's
-    /// sector + project data. Reads/writes CreatorJourneys.phase3Data; status stays
-    /// derived. SP matching reuses the shared <see cref="ISpMatchingService"/> formula.
+    /// (3.4). No polling — synchronous server-side logic over the journey's project
+    /// data plus the creator's completed forecast when available. Status stays derived.
+    /// SP matching reuses the shared <see cref="ISpMatchingService"/> formula.
     ///
     /// Routes: the AI-style generate endpoints keep the /ai/ prefix for convention
     /// parity with C-2/C-3/C-4 even though they run synchronously; the mutation
@@ -49,6 +50,95 @@ namespace WebApp.Controllers
             ?? throw new UnauthorizedAccessException("User not authenticated");
 
         private static readonly string[] FinTechKeywords = { "payment", "invoice", "billing", "transaction", "bank" };
+
+        // Central API-owned reference catalogue for the Formation cards. These are
+        // indicative planning ranges, not statutory figures. Persisting the returned
+        // options with the formation snapshot keeps the UI and downloaded records in sync.
+        private static List<CreatorFormationOption> FormationOptions() => new()
+        {
+            new()
+            {
+                Code = "SAS",
+                Description = "Multiple goals, flexible governance.",
+                Capital = "Min €1 (flexible)",
+                FormationTime = "1-2 weeks",
+                EstimatedCost = "€500-€1,200",
+            },
+            new()
+            {
+                Code = "SAS-U",
+                Description = "Single shareholder SAS - solo founders.",
+                Capital = "Min €1 (flexible)",
+                FormationTime = "1-2 weeks",
+                EstimatedCost = "€500-€1,200",
+            },
+            new()
+            {
+                Code = "SARL",
+                Description = "Traditional, real-estate/family-friendly.",
+                Capital = "Min €1 (fixed shares)",
+                FormationTime = "2-3 weeks",
+                EstimatedCost = "€500-€1,200",
+            },
+        };
+
+        private static BsonDocument CurrentForecastContent(ForecastSession forecast) =>
+            forecast?.Versions?
+                .FirstOrDefault(v => v.Version == forecast.CurrentVersion)?.Content
+            ?? forecast?.Versions?
+                .OrderByDescending(v => v.Version)
+                .FirstOrDefault()?.Content;
+
+        private static int? ForecastBreakEvenMonth(ForecastSession forecast)
+        {
+            var content = CurrentForecastContent(forecast);
+            if (content == null ||
+                !content.TryGetValue("breakEvenAnalysis", out var analysis) ||
+                !analysis.IsBsonDocument ||
+                !analysis.AsBsonDocument.TryGetValue("breakEvenMonth", out var month) ||
+                !month.IsNumeric)
+                return null;
+
+            var value = month.ToDouble();
+            if (!double.IsFinite(value) || value < 1 || value > 1_200) return null;
+            return (int)Math.Round(value);
+        }
+
+        private static string ForecastCurrency(ForecastSession forecast)
+        {
+            var content = CurrentForecastContent(forecast);
+            if (content == null) return null;
+
+            foreach (var sectionName in new[] { "revenueForecast", "costForecast", "cashFlowProjection" })
+            {
+                if (content.TryGetValue(sectionName, out var section) &&
+                    section.IsBsonDocument &&
+                    section.AsBsonDocument.TryGetValue("currency", out var currency) &&
+                    currency.IsString &&
+                    !string.IsNullOrWhiteSpace(currency.AsString))
+                    return currency.AsString.ToUpperInvariant();
+            }
+
+            return null;
+        }
+
+        private static string ForecastSummary(CreatorFormationForecastBasis basis)
+        {
+            if (basis == null) return "";
+
+            var signals = new List<string>();
+            var currencyPrefix = string.IsNullOrWhiteSpace(basis.Currency) ? "" : $"{basis.Currency} ";
+            if (basis.MonthlyGrowthPct.HasValue)
+                signals.Add($"{basis.MonthlyGrowthPct.Value:0.#}% projected monthly growth");
+            if (basis.Tam.HasValue)
+                signals.Add($"{currencyPrefix}{basis.Tam.Value:N0} TAM");
+            if (basis.Opex.HasValue)
+                signals.Add($"{currencyPrefix}{basis.Opex.Value:N0} monthly OPEX");
+            if (basis.BreakEvenMonth.HasValue)
+                signals.Add($"break-even in month {basis.BreakEvenMonth.Value}");
+
+            return signals.Count == 0 ? "" : $" Forecast basis: {string.Join(", ", signals)}.";
+        }
 
         // 3.5b — the fixed set of skills a creator can DECLARE ("You have"). Mirrored on the frontend.
         private static readonly HashSet<string> DeclarableSkills = new(StringComparer.OrdinalIgnoreCase)
@@ -167,13 +257,69 @@ namespace WebApp.Controllers
                 bool familyRetail = ((p.Sector ?? "") + " " + (p.Concept ?? "")).ToLowerInvariant() is var blob &&
                                     (blob.Contains("family") || blob.Contains("retail"));
 
-                // Company-type decision tree (deterministic).
-                string recommendedType =
-                    isFinTech ? "SAS" :
-                    hasInvestors ? "SAS" :
-                    (soloFounder && !hasInvestors) ? "SAS-U" :
-                    familyRetail ? "SARL" :
-                    "SAS";
+                // Only a completed, owner-scoped forecast can influence formation. The
+                // stored inputs are creator data; the current output is the version the
+                // creator sees on the Forecast page.
+                ForecastSession forecast = null;
+                if (!string.IsNullOrWhiteSpace(p3.ForecastSessionId))
+                {
+                    var candidate = await _forecasts.GetOwnedAsync(p3.ForecastSessionId, userId);
+                    if (candidate != null && AiSessionSuccess.IsComplete(candidate.Status, candidate.CurrentVersion))
+                        forecast = candidate;
+                }
+
+                var forecastBasis = forecast == null ? null : new CreatorFormationForecastBasis
+                {
+                    ForecastSessionId = forecast.Id,
+                    MonthlyGrowthPct = forecast.Inputs?.MonthlyGrowthPct,
+                    Tam = forecast.Inputs?.Tam,
+                    Opex = forecast.Inputs?.Opex,
+                    BreakEvenMonth = ForecastBreakEvenMonth(forecast),
+                    Currency = ForecastCurrency(forecast),
+                    ForecastUpdatedAt = forecast.UpdatedAt,
+                };
+
+                // Reuse the established >100M TAM tier from CreatorScoring and add a
+                // documented 10% monthly-growth scale signal. These signals refine the
+                // recommendation; they never claim to determine statutory legal facts.
+                bool forecastSupportsScale =
+                    (forecastBasis?.Tam ?? 0) > 100_000_000 ||
+                    (forecastBasis?.MonthlyGrowthPct ?? 0) >= 10;
+
+                string recommendedType;
+                string recommendationReason;
+                if (isFinTech)
+                {
+                    recommendedType = "SAS";
+                    recommendationReason = "SAS is the starting suggestion because the venture is in or adjacent to FinTech, where flexible governance is commonly useful.";
+                }
+                else if (hasInvestors)
+                {
+                    recommendedType = "SAS";
+                    recommendationReason = "SAS is the starting suggestion because the funding plan includes external investment and benefits from flexible governance.";
+                }
+                else if (forecastSupportsScale)
+                {
+                    recommendedType = "SAS";
+                    recommendationReason = "SAS is the starting suggestion because the completed forecast indicates a high-growth or large-market venture.";
+                }
+                else if (soloFounder)
+                {
+                    recommendedType = "SAS-U";
+                    recommendationReason = "SAS-U is the starting suggestion because the current resource plan has no additional team requirements.";
+                }
+                else if (familyRetail)
+                {
+                    recommendedType = "SARL";
+                    recommendationReason = "SARL is the starting suggestion because the venture profile indicates a family or retail operating model.";
+                }
+                else
+                {
+                    recommendedType = "SAS";
+                    recommendationReason = "SAS is the general starting suggestion based on the current venture, team, and funding data.";
+                }
+
+                recommendationReason += ForecastSummary(forecastBasis);
 
                 // youHave — deterministic keyword extraction from creatorEdge.
                 // TODO: swap to IAiProvider for a smarter parse when model-router is ready.
@@ -210,6 +356,9 @@ namespace WebApp.Controllers
                 var formation = new CreatorFormationGenerator
                 {
                     RecommendedType = recommendedType,
+                    RecommendationReason = recommendationReason,
+                    ForecastBasis = forecastBasis,
+                    Options = FormationOptions(),
                     YouHave = declared ? existingF.YouHave : youHave,
                     YouNeed = declared ? existingF.YouNeed : youNeed,
                     MatchedSpIds = declared ? existingF.MatchedSpIds : matchedSpIds.Distinct().ToList(),

@@ -19,6 +19,9 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const isPhase2 = isPhase2ChromeRoute(pathname);
   const isServiceProvider = isServiceProviderRoute(pathname);
+  const isCreatorPhase3FullWidth =
+    pathname === "/dashboard/creator/phase-3/business-plan" ||
+    pathname === "/dashboard/creator/phase-3/forecast";
 
   return (
     <AuthGuard>
@@ -42,7 +45,7 @@ export default function DashboardLayout({
             )}
 
             {/* Content (padding suppressed for full-bleed Phase 2 design) */}
-            <main className={`flex-1 overflow-auto ${isServiceProvider ? "bg-[#F4F5F7] p-4 sm:p-6 lg:p-8" : `bg-background ${isPhase2 ? "" : "pt-6 pr-6"}`}`}>
+            <main className={`flex-1 overflow-auto ${isServiceProvider ? "bg-[#F4F5F7] p-4 sm:p-6 lg:p-8" : `bg-background ${isPhase2 || isCreatorPhase3FullWidth ? "" : "pt-6 pr-6"}`}`}>
               {children}
             </main>
            </div>

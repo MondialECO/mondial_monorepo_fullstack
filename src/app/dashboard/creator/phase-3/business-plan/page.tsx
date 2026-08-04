@@ -305,7 +305,8 @@ export default function BusinessPlanPage() {
       cross={{ youNeed: cross.youNeed, seedAsk: cross.seedAsk }}
     />
     <Phase3SetupShell
-      stepEyebrow="Step 3.2"
+      fullWidth
+      stepEyebrow=""
       title="AI Business Plan"
       description="Your plan in nine sections, drafted from your clarified idea. Edit any section or ask the AI to rewrite it."
     >
@@ -314,7 +315,7 @@ export default function BusinessPlanPage() {
       {!loading && !bpSessionId && (
         <Card className="rounded-2xl border border-border bg-card p-6 space-y-4 max-w-xl">
           <h3 className="font-bold text-sm">Generate your business plan</h3>
-          <p className="text-sm text-muted-foreground">We&apos;ll build a nine-section plan from your clarified idea (C-3).</p>
+          <p className="text-sm text-muted-foreground">We&apos;ll build a 11-section plan from your clarified idea (C-3).</p>
           {startError && (
             <div className="space-y-2">
               <p className="text-sm text-destructive">{startError.message}</p>
