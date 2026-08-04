@@ -3,8 +3,8 @@ import { resolve } from 'node:path';
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import {
-  ActiveClientsTable, ClientOriginationSection, RatingHistogram, RepeatClientRateCard,
-  TopIndustriesSection,
+  ActiveClientsTable, ClientOriginationSection, OverallRatingCard, RatingHistogram,
+  RepeatClientRateCard, TopIndustriesSection,
 } from '@/components/serviceprovider/AnalyticsWorkspace';
 import type {
   ActiveClientAnalytics, AnalyticsMetric, ClientOriginationAnalytics, IndustryAnalytics,
@@ -200,12 +200,53 @@ describe('top client relationships table', () => {
   });
 });
 
+describe('overall rating card', () => {
+  it('shows the average with its period-over-period trend', () => {
+    render(<OverallRatingCard metric={metric({ value: 4.6, unit: 'rating', changePercentage: 8 })} />);
+
+    expect(screen.getByText('Overall rating')).toBeInTheDocument();
+    expect(screen.getByText(/4.6/)).toBeInTheDocument();
+    expect(screen.getByText('Average of verified reviews in this period.')).toBeInTheDocument();
+  });
+
+  /** An average of nothing is not zero — the server reason shows instead. */
+  it('reports an unavailable rating with the server reason, not a fabricated zero', () => {
+    render(<OverallRatingCard metric={metric({
+      state: 'notEnoughActivity', value: null, changePercentage: null,
+      reason: 'No verified review was submitted in this period.',
+    })} />);
+
+    expect(screen.getByText('Not enough activity')).toBeInTheDocument();
+    expect(screen.getByText('No verified review was submitted in this period.')).toBeInTheDocument();
+    expect(screen.queryByText('0')).not.toBeInTheDocument();
+  });
+});
+
 describe('clients tab composition', () => {
   const clientsView = source.slice(source.indexOf('function ClientsView'), source.indexOf('function RatingHistogram'));
 
   it('renders the masked id straight from the API without further processing', () => {
     // No slice/substring/replace/mask helper anywhere near the client identifier.
     expect(source).not.toMatch(/clientId\.(slice|substring|substr|replace|split)/);
+  });
+
+  /**
+   * The two headline figures for this tab sit side by side and equally weighted. Overall
+   * rating was previously a dense MetricTile inside the satisfaction card, which made the
+   * tab's second most important number smaller than everything around it.
+   */
+  it('pairs the repeat rate and the overall rating as equal headline cards', () => {
+    const row = clientsView.slice(clientsView.indexOf('<section'), clientsView.indexOf('</section>'));
+
+    expect(row).toContain('<RepeatClientRateCard');
+    expect(row).toContain('<OverallRatingCard');
+    expect(row).toContain('sm:grid-cols-2');
+  });
+
+  /** The average moved up; the satisfaction card is the distribution alone. */
+  it('leaves the satisfaction card carrying only the distribution', () => {
+    expect(clientsView).not.toContain('<MetricTile');
+    expect(clientsView).toContain('<RatingHistogram');
   });
 
   it('wires every new section into the tab', () => {

@@ -10,7 +10,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowDownRight, ArrowRight, ArrowUpRight, BarChart3, BriefcaseBusiness,
   CheckCircle2, ClipboardList, Eye, Plus, Send,
-  ShieldCheck, Users, Wallet,
+  ShieldCheck, Star, Users, Wallet,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -749,19 +749,21 @@ function ClientsView({ data }: { data: AnalyticsDashboard }) {
   const clients = data.clients;
   return (
     <div className="space-y-6">
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {/* The two headline figures for this tab, side by side and equally weighted: how many
+          clients come back, and how they rated the work. Overall rating used to be a dense
+          MetricTile buried inside the satisfaction card, which made the tab's second most
+          important number smaller than everything around it. */}
+      <section className="grid gap-4 sm:grid-cols-2">
         <RepeatClientRateCard metric={clients.repeatClientRate} />
+        <OverallRatingCard metric={clients.averageClientRating} />
       </section>
-      {/* The satisfaction card keeps the headline average and the histogram only. The four
-          secondary tiles it used to carry (Quality, Communication, Delivery, Verified
-          reviews) were removed with the redesign: the first three restate the same reviews
-          the average already summarises, and Verified reviews is the histogram's own total
-          counted a second time. */}
+      {/* The satisfaction card is now the distribution alone. Its average moved up to the
+          headline row; the four secondary tiles it used to carry (Quality, Communication,
+          Delivery, Verified reviews) were removed earlier — the first three restate the same
+          reviews the average already summarises, and Verified reviews is the histogram's own
+          total counted a second time. */}
       <SpCard>
         <SpSectionHeader title="Client satisfaction" description="Verified reviews submitted during the selected period." />
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <MetricTile label="Overall rating" metric={clients.averageClientRating} />
-        </div>
         <RatingHistogram buckets={clients.ratingDistribution} total={clients.totalReviews} />
       </SpCard>
       <div className="grid gap-6 xl:grid-cols-2">
@@ -804,6 +806,30 @@ export function RepeatClientRateCard({ metric }: { metric: AnalyticsMetric }) {
             ? <Trend metric={metric} />
             : <span className="block">{metric.reason}</span>}
           <span className="mt-1 block">Clients who returned for an additional project.</span>
+        </>
+      }
+    />
+  );
+}
+
+/**
+ * The Repeat-client-rate card's twin, deliberately identical in construction so the two read
+ * as one pair rather than a card and a near-card. Same SpMetricCard, same Trend in the
+ * detail slot, same honest-state handling: metricText prints the state label as the value,
+ * so an unavailable rating shows the server's reason here instead of repeating it.
+ */
+export function OverallRatingCard({ metric }: { metric: AnalyticsMetric }) {
+  return (
+    <SpMetricCard
+      label="Overall rating"
+      icon={Star}
+      value={metricText(metric)}
+      detail={
+        <>
+          {metric.state === 'available'
+            ? <Trend metric={metric} />
+            : <span className="block">{metric.reason}</span>}
+          <span className="mt-1 block">Average of verified reviews in this period.</span>
         </>
       }
     />
@@ -1031,12 +1057,13 @@ function MetricGrid({ entries }: { entries: [string, AnalyticsMetric][] }) {
  * source rather than trusted from the last edit of this comment:
  *
  *   ProposalsView  tiles = 11 pipeline status counts;  gaps = view rate, response rate
- *   ClientsView    tile  = overall rating;             (no gaps panel)
  *   ServicesView   grid only                           gaps = 6 service-traffic metrics
  *   ProfileView    neither tiles nor grid              gaps = 6 profile-traffic metrics
+ *   ClientsView    neither                             (no gaps panel)
  *
- * ProposalsView is now the ONLY view rendering both, so it alone carries the disjointness
- * requirement. A tile's reason is never a duplicate of the panel's, and the panel never
+ * ProposalsView is now the ONLY view rendering EITHER tiles or both, so it alone carries
+ * the disjointness requirement. ClientsView dropped its last tile on 2026-08-04 when the
+ * overall-rating average was promoted to a headline SpMetricCard beside the repeat rate. A tile's reason is never a duplicate of the panel's, and the panel never
  * covers a tile's metric; a tile that lost its inline reason would stop explaining itself.
  *
  * ProfileView dropped out of both tables on 2026-08-04: the dispute-penalty tile went with
