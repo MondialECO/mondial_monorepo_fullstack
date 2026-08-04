@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useRequestPayout } from '@/hooks/queries/workroom';
-import { SpCard, SpEmptyState, SpFormField, SpMutationFeedback, SpSectionHeader, SpStatusBadge } from '@/components/serviceprovider/ui';
+import { SpCard, SpEmptyState, SpFormField, SpMetricCard, SpMutationFeedback, SpSectionHeader, SpStatusBadge } from '@/components/serviceprovider/ui';
 import { apiError, formatDate, money, words } from '@/components/serviceprovider/workroom/_shared';
 import type { FinancialSummary } from '@/types/workroom';
 import { transactionTone } from './_shared';
@@ -54,7 +54,11 @@ export function PayoutsPanel({ data, currency }: { data: FinancialSummary; curre
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.72fr)]">
       <SpCard>
         <SpSectionHeader title="Request a payout" description="Request a payout to a verified destination." />
-        <div className="mt-6 grid gap-4 sm:grid-cols-2"><AmountSummary label="Available balance" value={data.available} currency={currency} strong /><AmountSummary label="Minimum payout" value={data.settings.minimumPayoutAmount} currency={currency} /></div>
+        {/* Available balance is deliberately NOT repeated here. It is the hero card at the
+            top of this page, visible on this tab, and the confirm dialog restates it at the
+            moment it matters ("Available before request"). A third copy mid-form added no
+            information and gave the page three places to disagree. */}
+        <div className="mt-6"><SpMetricCard className="min-h-0" label={`Minimum payout (${currency})`} value={money(data.settings.minimumPayoutAmount, currency)} detail="Requests below this are rejected by the backend" icon={BanknoteArrowDown} /></div>
         {data.settings.payoutMethods.length === 0 ? <SpEmptyState className="mt-5 border-0 bg-[#F9FAFB]" icon={CreditCard} title="No payout method" description="Add a masked payout method in Financial Settings before requesting a payout." /> : <div className="mt-6 space-y-5">
           <SpFormField id="payout-amount" label={`Requested amount (${currency})`} description="The backend validates the minimum, available balance, account hold and active-payout rules." error={amount ? validation : null} required><Input type="number" min={data.settings.minimumPayoutAmount} max={data.available} step="0.01" inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} /></SpFormField>
           <SpFormField id="payout-method" label="Payout method" required><select value={methodId} onChange={(event) => setMethodId(event.target.value)} className="h-10 w-full rounded-xl border border-input bg-white px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"><option value="">Select a verified method</option>{data.settings.payoutMethods.map((method) => <option key={method.id} value={method.id} disabled={!method.verified}>{method.displayName} · {method.maskedDescriptor}{method.id === data.settings.defaultPayoutMethodId ? ' · Default' : ''}{!method.verified ? ' · Unverified' : ''}</option>)}</select></SpFormField>
@@ -78,5 +82,4 @@ export function PayoutsPanel({ data, currency }: { data: FinancialSummary; curre
   </div>;
 }
 
-function AmountSummary({ label, value, currency, strong = false }: { label: string; value: number; currency: string; strong?: boolean }) { return <div className={`rounded-xl border p-4 ${strong ? 'border-[#BBE8D3] bg-[#E8F7F0]' : 'border-border bg-[#F9FAFB]'}`}><p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">{label}</p><p className="mt-2 text-xl font-semibold text-foreground">{money(value, currency)}</p></div>; }
 function ConfirmRow({ label, value }: { label: string; value: string }) { return <div className="flex items-start justify-between gap-4"><dt className="text-sm text-muted-foreground">{label}</dt><dd className="text-right text-sm font-semibold text-foreground">{value}</dd></div>; }
