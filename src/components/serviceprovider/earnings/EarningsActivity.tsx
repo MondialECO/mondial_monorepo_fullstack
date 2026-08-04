@@ -4,17 +4,28 @@
 // file. Greens use --success-light / --success-strong; the latter was added because
 // --success-text is 2.80:1 on --success-light and fails AA. See globals.css.
 import { useMemo, useState } from 'react';
-import { ArrowDownLeft, ArrowUpRight, CalendarRange, FileBarChart2, Filter, ReceiptText, Search, Wallet } from 'lucide-react';
+import { AlertCircle, ArrowDownLeft, ArrowUpRight, CalendarRange, CircleDollarSign, FileBarChart2, Filter, HandCoins, ReceiptText, Search, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { useFinancialStatement } from '@/hooks/queries/workroom';
+import { useProviderAnalytics } from '@/hooks/queries/analytics';
+import { EarningsTrendChart } from '@/components/serviceprovider/charts/EarningsTrendChart';
 import { SpCard, SpEmptyState, SpFilterBar, SpMetricCard, SpMutationFeedback, SpSectionHeader, SpStatusBadge } from '@/components/serviceprovider/ui';
 import { apiError, formatDate, money, words } from '@/components/serviceprovider/workroom/_shared';
 import type { FinancialSummary, FinancialTransaction } from '@/types/workroom';
 import { monthStartInput, rangeIso, shortReference, todayInput, transactionAmount, transactionTone } from './_shared';
 
 export function EarningsActivity({ data, currency }: { data: FinancialSummary; currency: string }) {
+  // Lives here rather than on the workspace so the analytics dashboard is only fetched for
+  // the tab that renders the chart. Payouts and Financial Settings no longer pay for a
+  // five-section computation they never display.
+  //
+  // Fixed range: this page has a currency selector and no date picker, and adding one to
+  // drive a single chart would be a bigger change than the chart. Last90Days is the span
+  // the server buckets weekly (AnalyticsTrendBuckets), giving ~13 weekly points.
+  const trend = useProviderAnalytics({ range: 'Last90Days', currency });
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('all');
   const [from, setFrom] = useState('');
@@ -43,10 +54,25 @@ export function EarningsActivity({ data, currency }: { data: FinancialSummary; c
 
   const statuses = Array.from(new Set(data.transactions.flatMap((item) => [item.paymentStatus, item.transactionType]))).sort();
   return <div className="space-y-6">
-    <div className="grid gap-4 sm:grid-cols-3">
+    {/* Reuses the Analytics dashboard's server-built series rather than bucketing the ledger
+        loaded on this page. That ledger is the raw transaction list, refunds and payouts
+        included, so charting it would mean reproducing the refunded-milestone exclusion in
+        the browser — beside the very gross and net figures it could then contradict. */}
+    {trend.isLoading ? <Skeleton className="h-80 rounded-2xl" />
+      : trend.data ? <EarningsTrendChart data={trend.data} title="Earnings trend" description={`Net earnings released over the last 90 days, in ${currency}.`} />
+      : null}
+
+    {/* Six figures, read left to right as one story: what came in, what the platform took,
+        what is yours, then where the rest of it currently sits. Totals first because they
+        are what the chart above is a picture of; lifecycle states after, because they
+        qualify the totals rather than compete with them. */}
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       <SpMetricCard label="Gross earnings" value={money(data.grossEarnings, currency)} detail="Completed server-recorded releases" icon={ArrowUpRight} className="min-h-0" />
       <SpMetricCard label="Fixed platform commission" value={money(data.commissionPaid, currency)} detail="Server-calculated at the canonical 12% release rate" icon={ReceiptText} iconClassName="bg-warning/10 text-warning" className="min-h-0" />
       <SpMetricCard label="Net earnings" value={money(data.netEarnings, currency)} detail="Gross less the server-recorded commission" icon={ArrowDownLeft} iconClassName="bg-success-light text-success-strong" className="min-h-0" />
+      <SpMetricCard label="Pending release" value={money(data.pending, currency)} detail="Approved, not yet in your available balance" icon={HandCoins} className="min-h-0" />
+      <SpMetricCard label="On hold" value={money(data.onHold, currency)} detail="Blocked by the recorded lifecycle" icon={AlertCircle} iconClassName="bg-warning/10 text-warning" className="min-h-0" />
+      <SpMetricCard label="Withdrawn" value={money(data.withdrawn, currency)} detail="Completed payouts" icon={CircleDollarSign} className="min-h-0" />
     </div>
 
     <SpCard>
@@ -60,7 +86,7 @@ export function EarningsActivity({ data, currency }: { data: FinancialSummary; c
       </SpFilterBar>
 
       {data.transactions.length === 0 ? <SpEmptyState className="mt-5 border-0 bg-muted/40" icon={Wallet} title="No earnings activity yet" description="Server-recorded financial events will appear after the first project payment lifecycle event." /> : groups.length === 0 ? <SpEmptyState className="mt-5 border-0 bg-muted/40" icon={Filter} title="No transactions match" description="Clear or adjust the current search, status and date filters." /> : <div className="mt-5 space-y-6">{groups.map(([label, items]) => <section key={label} aria-labelledby={`group-${label.replace(/\s/g, '-')}`}><h3 id={`group-${label.replace(/\s/g, '-')}`} className="mb-2 text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">{label}</h3><div className="overflow-hidden rounded-xl border border-border">{items.map((transaction) => <button type="button" key={transaction.id} onClick={() => setSelected(transaction)} className="flex w-full items-center justify-between gap-4 border-b border-border px-4 py-4 text-left outline-none transition-colors last:border-0 hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"><div className="min-w-0"><p className="truncate text-sm font-semibold text-foreground">{words(transaction.transactionType)}</p><p className="mt-1 text-xs text-muted-foreground">{formatDate(transaction.createdAt, true)} · Project {shortReference(transaction.engagementId)}</p></div><div className="flex shrink-0 items-center gap-4">{/* Amounts right-aligned on tabular figures so decimal points line up down the column, the usual convention for a financial ledger. Money is the scanning axis; the badge sits beside it at a fixed width so neither shifts the other. */}<p className={`min-w-28 text-right text-sm font-semibold tabular-nums ${transactionAmount(transaction) < 0 ? 'text-destructive' : 'text-success-strong'}`}>{money(transactionAmount(transaction), transaction.currency)}</p><SpStatusBadge tone={transactionTone(transaction.paymentStatus)} className="w-28 justify-center">{words(transaction.paymentStatus)}</SpStatusBadge></div></button>)}</div></section>)}</div>}
-      {data.transactions.length === 0 && (data.available > 0 || data.workInProgress > 0 || data.inReview > 0) && <SpMutationFeedback status="info" className="mt-4">Balance lifecycle totals are available, but this currency has no transaction-detail rows yet.</SpMutationFeedback>}
+      {data.transactions.length === 0 && (data.available > 0 || data.pending > 0 || data.withdrawn > 0) && <SpMutationFeedback status="info" className="mt-4">Balance totals are available for this currency, but it has no transaction-detail rows yet.</SpMutationFeedback>}
     </SpCard>
 
     <StatementPanel currency={currency} />

@@ -87,35 +87,49 @@ describe('available balance hero', () => {
 });
 
 describe('earnings card grouping', () => {
-  const grid = workspaceSource.slice(
-    workspaceSource.indexOf('<AvailableBalanceHero'),
+  const sharedArea = workspaceSource.slice(
+    workspaceSource.indexOf('<SpTabBar'),
     workspaceSource.indexOf("{activeTab === 'activity'")
   );
 
   /**
-   * On hold was in the SMALLER row while Work in progress and Pending release were in the
-   * prominent one, inverting their urgency — On hold is the only one of the three a provider
-   * can act on. Everything below the hero now carries equal weight.
+   * Only the hero survives above the tab content. The lifecycle cards and the chart used to
+   * render on every tab, so Payouts and Financial Settings carried six figures and a graph
+   * that had nothing to do with what the user had navigated to.
    */
-  it('no longer demotes On hold below the passive lifecycle figures', () => {
-    expect(grid).not.toContain('CompactMetric');
-    const onHold = grid.indexOf('label="On hold"');
-    const withdrawn = grid.indexOf('label="Withdrawn"');
-    expect(onHold).toBeGreaterThan(-1);
-    expect(onHold).toBeLessThan(withdrawn);
+  it('renders nothing but the hero outside the tab content', () => {
+    expect(sharedArea).toContain('<AvailableBalanceHero');
+    expect(sharedArea).not.toContain('<SpMetricCard');
+    expect(sharedArea).not.toContain('<EarningsTrendChart');
+  });
+
+  it('puts all six overview figures on the Overview tab', () => {
+    for (const label of [
+      'Gross earnings', 'Fixed platform commission', 'Net earnings',
+      'Pending release', 'On hold', 'Withdrawn',
+    ]) {
+      expect(activitySource).toContain(`label="${label}"`);
+    }
+  });
+
+  /** On hold must not sit below the passive figures it is more urgent than. */
+  it('keeps On hold among the six rather than trailing them', () => {
+    expect(activitySource.indexOf('label="On hold"'))
+      .toBeLessThan(activitySource.indexOf('label="Withdrawn"'));
   });
 
   /**
    * The Held-in-escrow section was removed outright. Work in progress, In review and the
-   * protected-escrow total no longer appear on this page in any form — asserted so a later
+   * protected-escrow total appear nowhere on this page in any form — asserted so a later
    * change cannot reintroduce them as peer cards, which is the double-count the escrow
-   * reframe existed to prevent in the first place.
+   * reframe existed to prevent.
    */
   it('no longer surfaces the escrow stages anywhere on the page', () => {
-    expect(grid).not.toContain('EscrowPanel');
-    expect(workspaceSource).not.toContain('workInProgress');
-    expect(workspaceSource).not.toContain('inReview');
-    expect(workspaceSource).not.toContain('protectedEscrow');
+    for (const source of [workspaceSource, activitySource, payoutsSource]) {
+      expect(source).not.toContain('workInProgress');
+      expect(source).not.toContain('inReview');
+      expect(source).not.toContain('protectedEscrow');
+    }
   });
 });
 
@@ -194,14 +208,28 @@ describe('earnings trend chart on this page', () => {
    * prints the gross and net totals such a chart could then contradict.
    */
   it('reuses the shared chart and the server series rather than bucketing locally', () => {
-    expect(workspaceSource).toContain("from '@/components/serviceprovider/charts/EarningsTrendChart'");
-    expect(workspaceSource).not.toContain('<LineChart');
-    expect(workspaceSource).not.toMatch(/data\.transactions\s*\.\s*reduce/);
+    expect(activitySource).toContain("from '@/components/serviceprovider/charts/EarningsTrendChart'");
+    expect(activitySource).not.toContain('<LineChart');
+    expect(activitySource).not.toMatch(/data\.transactions\s*\.\s*reduce/);
   });
 
   /** The page has a currency selector but no date picker, so the range is fixed. */
   it('requests a fixed 90-day range scoped to the selected currency', () => {
-    expect(workspaceSource).toContain("useProviderAnalytics({ range: 'Last90Days', currency })");
+    expect(activitySource).toContain("useProviderAnalytics({ range: 'Last90Days', currency })");
+  });
+
+  /**
+   * The query lives with the chart, so Payouts and Financial Settings no longer pay for a
+   * five-section dashboard computation they never render.
+   */
+  it('fetches the dashboard only for the tab that draws the chart', () => {
+    expect(workspaceSource).not.toContain('useProviderAnalytics');
+  });
+
+  /** The chart leads the tab — it is the picture the six figures beneath it describe. */
+  it('places the chart above the six figures', () => {
+    expect(activitySource.indexOf('<EarningsTrendChart'))
+      .toBeLessThan(activitySource.indexOf('label="Gross earnings"'));
   });
 });
 
@@ -244,19 +272,26 @@ describe('loading skeleton', () => {
    * The old skeleton rendered four card blocks and nothing for the second row, so a row
    * appeared unaccounted-for on every load. It now mirrors the real layout block for block.
    */
-  it('mirrors the real layout rather than the old four-card row', () => {
+  it('stands in for what actually renders above the tab content', () => {
     const { container } = render(<EarningsLoading />);
     const skeletons = container.querySelectorAll('[data-slot="skeleton"], .animate-pulse');
 
-    expect(skeletons.length).toBeGreaterThanOrEqual(8);
-    expect(container.querySelector('.sm\\:grid-cols-3')).not.toBeNull();
+    // Header pair, tab bar, hero, tab content. No card row: the cards moved onto the
+    // Overview tab, which brings its own loading state.
+    expect(skeletons.length).toBeGreaterThanOrEqual(5);
+    expect(container.querySelector('.sm\\:grid-cols-3')).toBeNull();
     expect(container.querySelector('.xl\\:grid-cols-4')).toBeNull();
   });
 
-  it('matches the live card row count', () => {
+  /** The skeleton must not promise a row the loaded page does not render. */
+  it('does not reserve space for cards that no longer sit above the tabs', () => {
     const { container } = render(<EarningsLoading />);
-    const row = container.querySelector('.sm\\:grid-cols-3');
+    const sharedArea = workspaceSource.slice(
+      workspaceSource.indexOf('<SpTabBar'),
+      workspaceSource.indexOf("{activeTab === 'activity'")
+    );
 
-    expect(row?.children).toHaveLength(3);
+    expect(sharedArea).not.toContain('<SpMetricCard');
+    expect(container.querySelectorAll('.grid')).toHaveLength(0);
   });
 });
