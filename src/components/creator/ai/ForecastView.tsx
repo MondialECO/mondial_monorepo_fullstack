@@ -59,7 +59,6 @@ export function ForecastView({ output }: { output: ForecastOutput }) {
     return {
       month: i + 1,
       revenue: revM?.amount ?? 0,
-      subscribers: (revM as any)?.subscribers ?? 0,
       costFixed: costM?.fixedCosts ?? 0,
       costVar: costM?.variableCosts ?? 0,
       netCashFlow: cashM?.netCashFlow ?? 0,
@@ -75,7 +74,7 @@ export function ForecastView({ output }: { output: ForecastOutput }) {
         <div className="mb-4">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Financial Forecast Results</p>
           <h3 className="text-2xl font-bold">Financial Forecast - 36-Month Projection</h3>
-          <p className="text-sm text-muted-foreground mt-1">A consolidated 24-month model aligning subscription growth, operational expenditures, and cumulative runway health.</p>
+          <p className="text-sm text-muted-foreground mt-1">A consolidated {forecastHorizon || 36}-month model aligning revenue growth, operational expenditures, and cumulative runway health.</p>
         </div>
 
         <div className="overflow-x-auto rounded-2xl border border-border">
@@ -84,7 +83,6 @@ export function ForecastView({ output }: { output: ForecastOutput }) {
               <tr className="border-b border-border bg-muted/50">
                 <th className="px-4 py-3 font-semibold text-left text-xs text-muted-foreground">Month</th>
                 <th className="px-4 py-3 font-semibold text-right text-xs text-muted-foreground">Revenue</th>
-                <th className="px-4 py-3 font-semibold text-right text-xs text-muted-foreground">Subscribers</th>
                 <th className="px-4 py-3 font-semibold text-right text-xs text-muted-foreground">Cost (Fixed)</th>
                 <th className="px-4 py-3 font-semibold text-right text-xs text-muted-foreground">Cost (Var)</th>
                 <th className="px-4 py-3 font-semibold text-right text-xs text-muted-foreground">Total Cost</th>
@@ -98,7 +96,6 @@ export function ForecastView({ output }: { output: ForecastOutput }) {
                 <tr key={i} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
                   <td className="px-4 py-2.5 font-medium text-foreground">M{row.month}</td>
                   <td className="px-4 py-2.5 text-right">{fmt(row.revenue, rev?.currency)}</td>
-                  <td className="px-4 py-2.5 text-right">{row.subscribers}</td>
                   <td className="px-4 py-2.5 text-right">{fmt(row.costFixed, cost?.currency)}</td>
                   <td className="px-4 py-2.5 text-right">{fmt(row.costVar, cost?.currency)}</td>
                   <td className="px-4 py-2.5 text-right">{fmt(row.costFixed + row.costVar, cost?.currency)}</td>

@@ -1,6 +1,9 @@
+import { cn } from "@/lib/utils";
+
 interface Phase3SetupShellProps {
   children: React.ReactNode;
   description: string;
+  fullWidth?: boolean;
   stepEyebrow: string;
   title: string;
 }
@@ -8,12 +11,20 @@ interface Phase3SetupShellProps {
 export function Phase3SetupShell({
   children,
   description,
+  fullWidth = false,
   stepEyebrow,
   title,
 }: Phase3SetupShellProps) {
   return (
-    <div className="flex min-h-screen w-full flex-col bg-muted/40 text-foreground">
-      <main className="mx-auto flex w-full max-w-[1140px] flex-1 flex-col px-5 py-12 sm:px-8 lg:py-16">
+    <div className="flex min-h-screen w-full flex-col bg-muted/40 text-foreground px-5 py-12 sm:px-8 lg:py-16">
+      <main
+        className={cn(
+          "mx-auto flex w-full flex-1 flex-col py-12 lg:py-16",
+          fullWidth
+            ? "max-w-none px-0"
+            : "max-w-[1140px] px-5 sm:px-8",
+        )}
+      >
         <div className="mx-auto max-w-3xl space-y-3 text-center">
           <span className="text-xs font-bold uppercase tracking-wider text-primary">{stepEyebrow}</span>
           <h1 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">{title}</h1>

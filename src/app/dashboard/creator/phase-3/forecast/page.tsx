@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, ArrowRight, Loader2, AlertTriangle, RotateCw, FileWarning, FileDown, TrendingUp } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Loader2, AlertTriangle, RotateCw, FileWarning, FileDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -112,9 +112,11 @@ export default function ForecastResultsPage() {
       project={project}
       plan={planOutput}
       forecast={output ?? null}
+      forecastInputs={sessionInputs}
       cross={cross}
     />
     <Phase3SetupShell
+      fullWidth
       stepEyebrow="Step 3.3"
       title="Financial Projections & Simulations"
       description="A 36-month forecast computed from your inputs — revenue, costs, cash flow, and break-even."
