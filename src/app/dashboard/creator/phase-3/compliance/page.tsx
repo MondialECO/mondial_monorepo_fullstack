@@ -1,13 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ShieldCheck, ArrowLeft, ArrowRight, Check, Loader2, AlertTriangle, UserPlus, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Loader2, Search, Square, SquareCheckBig, WandSparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { Phase3SetupShell } from '@/components/creator/Phase3SetupShell';
 import { useCreatorProgress } from '@/providers/CreatorProgressProvider';
+import { cn } from '@/lib/utils';
 import {
   creatorJourneyApi,
   type LegalChecklist,
@@ -16,7 +18,7 @@ import {
 } from '@/lib/api-creator-journey';
 
 const NEXT_STATUS: Record<ChecklistStatus, ChecklistStatus> = {
-  pending: 'in_progress',
+  pending: 'done',
   in_progress: 'done',
   done: 'pending',
 };
@@ -28,8 +30,6 @@ export default function CompliancePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyItem, setBusyItem] = useState<string | null>(null);
-  const [findingSp, setFindingSp] = useState<string | null>(null);
-  const [workroomNote, setWorkroomNote] = useState<string | null>(null);
 
   // Load existing checklist; generate-if-absent.
   useEffect(() => {
@@ -61,45 +61,36 @@ export default function CompliancePage() {
     }
   };
 
-  const findSp = async (item: LegalChecklistItem) => {
-    if (!item.spSpecialty) return;
-    setFindingSp(item.id);
-    setWorkroomNote(null);
-    try {
-      const matches = await creatorJourneyApi.spMatches(item.spSpecialty);
-      if (matches.length === 0) { setWorkroomNote(`No verified ${item.spSpecialty} specialists available right now.`); return; }
-      await creatorJourneyApi.openWorkroom(matches[0].spId, item.label);
-      setWorkroomNote(`Workroom opened with ${matches[0].name}.`);
-    } catch (e) {
-      setWorkroomNote(e instanceof Error ? e.message : "Couldn't open a workroom.");
-    } finally {
-      setFindingSp(null);
-    }
-  };
-
   const handleContinue = () => {
     completeStep(3, 4); // local cursor only; status derived server-side
     router.push('/dashboard/creator/phase-3/formation');
   };
 
-  const statusColor = (s: ChecklistStatus) =>
-    s === 'done' ? 'text-primary' : s === 'in_progress' ? 'text-warning' : 'text-muted-foreground';
-
   const mandatory = checklist?.items.filter((i) => i.category === 'mandatory') ?? [];
-  const optional = checklist?.items.filter((i) => i.category === 'optional') ?? [];
   // ADVISORY: legal items no longer gate Phase-3 completion (backend gate removed —
   // the checklist is pure self-attestation). Counts below are guidance only.
   const mandatoryDone = mandatory.filter((i) => i.status === 'done').length;
   const mandatoryRemaining = mandatory.length - mandatoryDone;
   const pct = checklist && checklist.totalCount > 0 ? Math.round((checklist.completedCount / checklist.totalCount) * 100) : 0;
+  const orderedItems = checklist
+    ? [...checklist.items].sort((a, b) => Number(b.status === 'done') - Number(a.status === 'done'))
+    : [];
 
   return (
     <Phase3SetupShell
-      stepEyebrow="Step 3.4"
+      compact
+      stepEyebrow=""
       title="Legal & Compliance Checklist"
-      description="A tailored checklist for your sector. Mark items as you progress — you can finish these anytime."
+      description="A tailored checklist for your sector. Mark items as you progress - you can finish these anytime."
+      headerAlign="left"
+      contentClassName="mt-8 space-y-0"
+      titleClassName="text-[32px] font-semibold leading-10 sm:text-[32px]"
     >
-      {loading && <div className="flex items-center gap-2 text-muted-foreground py-12 justify-center"><Loader2 className="h-5 w-5 animate-spin" /> Generating your checklist…</div>}
+      {loading && (
+        <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
+          <Loader2 className="h-5 w-5 animate-spin" /> Generating your checklist...
+        </div>
+      )}
 
       {error && !loading && (
         <div className="flex flex-col items-center gap-3 py-12">
@@ -109,103 +100,108 @@ export default function CompliancePage() {
       )}
 
       {checklist && !loading && (
-        <div className="space-y-6">
-          {/* Progress */}
-          <div className="rounded-2xl border border-border bg-card p-5">
-            <div className="flex items-center justify-between mb-2 text-sm">
-              <span className="font-semibold">{checklist.completedCount}/{checklist.totalCount} complete</span>
-              <span className="text-muted-foreground">{pct}%</span>
+        <div className="space-y-8">
+          <Card className="space-y-2 rounded-lg border-border/60 bg-card p-4 shadow-none">
+            <div className="flex items-center justify-between gap-4 text-sm">
+              <span className="text-muted-foreground">Compliance Readiness</span>
+              <span className="font-semibold text-primary">{pct}%</span>
             </div>
-            <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-              <div className="h-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+            <Progress value={pct} className="h-1 bg-muted" aria-label={`${pct}% compliance readiness`} />
+            <div className="text-sm text-muted-foreground">
+              Task: <span className="font-medium text-foreground">{checklist.completedCount}/{checklist.totalCount}</span>
             </div>
-          </div>
+          </Card>
 
-          {workroomNote && (
-            <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 text-sm text-primary">{workroomNote}</div>
-          )}
-
-          {/* Mandatory Section */}
           <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="h-5 w-5 text-destructive" />
-              <h3 className="text-sm font-bold text-foreground">Required Items</h3>
-              <span className="text-xs text-muted-foreground">({mandatoryDone}/{mandatory.length} done — recommended before launch)</span>
-            </div>
-            <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4 space-y-2">
-              {mandatory.map((item) => (
-                <Card key={item.id} className="flex items-center justify-between rounded-xl border border-border bg-card p-4 hover:border-destructive/30 transition-colors">
-                  <div className="flex items-center gap-3 flex-1">
-                    <button onClick={() => cycle(item)} disabled={busyItem === item.id}
-                      className={`h-6 w-6 rounded-md border flex items-center justify-center shrink-0 ${item.status === 'done' ? 'bg-primary border-primary text-primary-foreground' : item.status === 'in_progress' ? 'border-warning bg-warning/5' : 'border-destructive/30 bg-destructive/5'}`}>
-                      {busyItem === item.id ? <Loader2 className="h-3 w-3 animate-spin" /> : item.status === 'done' ? <Check className="h-4 w-4" /> : null}
+            {orderedItems.map((item) => {
+              const done = item.status === 'done';
+              const busy = busyItem === item.id;
+
+              return (
+                <Card
+                  key={item.id}
+                  className="min-h-20 rounded-xl border-border/50 bg-card px-4 py-3 shadow-none transition-colors hover:border-border"
+                  aria-busy={busy}
+                >
+                  <div className="flex min-h-[54px] items-start gap-3">
+                    <button
+                      type="button"
+                      onClick={() => cycle(item)}
+                      disabled={busy}
+                      aria-label={`${done ? 'Mark as pending' : 'Mark as done'}: ${item.label}`}
+                      aria-pressed={done}
+                      className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60"
+                    >
+                      {busy ? (
+                        <Loader2 className="size-4 animate-spin text-primary" />
+                      ) : done ? (
+                        <SquareCheckBig className="size-4 text-[#157a55]" strokeWidth={2.25} />
+                      ) : (
+                        <Square className="size-4 text-[#965f11]" strokeWidth={1.5} />
+                      )}
                     </button>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-sm font-medium text-foreground">{item.label}</span>
-                        {item.badge === 'urgent' && <Badge className="bg-destructive text-white gap-1 text-xs"><AlertTriangle className="h-3 w-3" /> Urgent</Badge>}
-                        {item.badge === 'fintech' && <Badge className="bg-warning text-white text-xs">FinTech</Badge>}
-                        {item.aiGenerable && <Badge variant="outline" className="gap-1 text-xs"><Sparkles className="h-3 w-3" /> AI-generable</Badge>}
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex min-h-7 items-start justify-between gap-3">
+                        <p
+                          className={cn(
+                            "min-w-0 flex-1 text-base font-medium leading-6 text-foreground",
+                            done && "text-muted-foreground line-through",
+                          )}
+                        >
+                          {item.label}
+                        </p>
+
+                        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                          {item.badge && (
+                            <span className="inline-flex h-7 items-center rounded-full border border-warning/25 bg-warning/10 px-2 text-xs font-medium text-warning">
+                              {item.badge === 'urgent' ? 'Urgent' : 'FinTech'}
+                            </span>
+                          )}
+                          {item.aiGenerable && (
+                            <span className="inline-flex h-7 items-center gap-1 rounded-full bg-muted px-2.5 text-[11px] font-medium text-muted-foreground">
+                              <WandSparkles className="size-3" /> AI-generable
+                            </span>
+                          )}
+                          {item.showFindSp && (
+                            <Button
+                              asChild
+                              variant="outline"
+                              size="sm"
+                              className="h-7 rounded-full border-border bg-muted/60 px-2 text-xs font-medium text-muted-foreground shadow-none hover:bg-muted"
+                            >
+                              <Link href="/marketplace/services">
+                                <Search className="size-3" />
+                                Find Service Providers
+                              </Link>
+                            </Button>
+                          )}
+                        </div>
                       </div>
-                      <span className={`text-xs ${statusColor(item.status)}`}>{item.status.replace('_', ' ')}</span>
+
+                      <p className={cn("text-sm font-medium leading-5", done ? "text-[#157a55]" : "text-[#965f11]")}>
+                        {done ? 'Done' : 'Pending'}
+                      </p>
                     </div>
                   </div>
-                  {item.showFindSp && (
-                    <Button variant="outline" size="sm" onClick={() => findSp(item)} disabled={findingSp === item.id} className="gap-1.5 shrink-0 ml-2">
-                      {findingSp === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />} Find SP
-                    </Button>
-                  )}
                 </Card>
-              ))}
-            </div>
+              );
+            })}
           </div>
 
-          {/* Optional Section */}
-          {optional.length > 0 && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Check className="h-5 w-5 text-muted-foreground" />
-                <h3 className="text-sm font-semibold text-muted-foreground">Optional Items</h3>
-                <span className="text-xs text-muted-foreground">({optional.length})</span>
-              </div>
-              <div className="space-y-2">
-                {optional.map((item) => (
-                  <Card key={item.id} className="flex items-center justify-between rounded-xl border border-border bg-card p-4 hover:border-primary/30 transition-colors">
-                    <div className="flex items-center gap-3 flex-1">
-                      <button onClick={() => cycle(item)} disabled={busyItem === item.id}
-                        className={`h-6 w-6 rounded-md border flex items-center justify-center shrink-0 ${item.status === 'done' ? 'bg-primary border-primary text-primary-foreground' : item.status === 'in_progress' ? 'border-warning bg-warning/5' : 'border-border'}`}>
-                        {busyItem === item.id ? <Loader2 className="h-3 w-3 animate-spin" /> : item.status === 'done' ? <Check className="h-4 w-4" /> : null}
-                      </button>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-sm font-medium text-foreground">{item.label}</span>
-                          {item.badge === 'urgent' && <Badge className="bg-destructive text-white gap-1 text-xs"><AlertTriangle className="h-3 w-3" /> Urgent</Badge>}
-                          {item.badge === 'fintech' && <Badge className="bg-warning text-white text-xs">FinTech</Badge>}
-                          {item.aiGenerable && <Badge variant="outline" className="gap-1 text-xs"><Sparkles className="h-3 w-3" /> AI-generable</Badge>}
-                        </div>
-                        <span className={`text-xs ${statusColor(item.status)}`}>{item.status.replace('_', ' ')}</span>
-                      </div>
-                    </div>
-                    {item.showFindSp && (
-                      <Button variant="outline" size="sm" onClick={() => findSp(item)} disabled={findingSp === item.id} className="gap-1.5 shrink-0 ml-2">
-                        {findingSp === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />} Find SP
-                      </Button>
-                    )}
-                  </Card>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="space-y-2 pt-2">
+          <div className="space-y-4">
             {mandatoryRemaining > 0 && (
-              <p className="text-xs text-warning text-right">
-                You can continue — {mandatoryRemaining} required {mandatoryRemaining === 1 ? 'item is' : 'items are'} still outstanding. Recommended before launch.
+              <p className="text-sm font-medium text-[#965f11]">
+                You can continue - {mandatoryRemaining} required {mandatoryRemaining === 1 ? 'item is' : 'items are'} still outstanding. Recommended before launch.
               </p>
             )}
-            <div className="flex justify-between">
-              <Button variant="outline" onClick={() => router.push('/dashboard/creator/phase-3')}><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>
-              <Button onClick={handleContinue} className="gap-2"><ShieldCheck className="h-4 w-4" /> Continue <ArrowRight className="h-4 w-4" /></Button>
+            <div className="flex items-center justify-between border-t border-border pt-6">
+              <Button variant="ghost" onClick={() => router.push('/dashboard/creator/phase-3')}>
+                <ArrowLeft className="size-4" /> Back
+              </Button>
+              <Button onClick={handleContinue} className="gap-2">
+                Continue <ArrowRight className="size-4" />
+              </Button>
             </div>
           </div>
         </div>
