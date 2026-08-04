@@ -1,8 +1,8 @@
 'use client';
 
-// Remaining hardcoded hex on this file is deliberate, not an oversight: those values
-// have no exact token equivalent. See the PENDING DESIGN-TOKEN DECISION note in
-// src/app/globals.css (below the .sp-workspace block) for the full list and why.
+// Fully token-driven as of the Earnings visual redesign — no hex literals remain on this
+// file. Greens use --success-light / --success-strong; the latter was added because
+// --success-text is 2.80:1 on --success-light and fails AA. See globals.css.
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { AlertCircle, ArrowRight, CircleDollarSign, Clock3, HandCoins, Landmark, LockKeyhole, WalletCards } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -56,7 +56,7 @@ export function EarningsWorkspace() {
       <SpPageHeader
         title="Earnings & Payouts"
         description="Track server-recorded earnings, payment lifecycle states, payouts, invoices and tax settings."
-        actions={<label className="flex items-center gap-2 text-sm font-semibold text-[#374151]"><span>Currency</span><select aria-label="Financial currency" value={currency} onChange={(event) => setCurrency(event.target.value)} className="h-10 rounded-xl border border-input bg-white px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring">{currencies.map((item) => <option key={item}>{item}</option>)}</select></label>}
+        actions={<label className="flex items-center gap-2 text-sm font-semibold text-foreground"><span>Currency</span><select aria-label="Financial currency" value={currency} onChange={(event) => setCurrency(event.target.value)} className="h-10 rounded-xl border border-input bg-white px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring">{currencies.map((item) => <option key={item}>{item}</option>)}</select></label>}
       />
       <SpTabBar label="Earnings sections" items={[{ label: 'Earnings Overview', href: href('activity'), active: activeTab === 'activity' }, { label: 'Payouts', href: href('payouts'), active: activeTab === 'payouts' }, { label: 'Financial Settings', href: href('settings'), active: activeTab === 'settings' }]} />
 
@@ -102,13 +102,15 @@ export function AvailableBalanceHero({ amount, currency, payoutHref }: { amount:
     <SpCard className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0">
         <div className="flex items-center gap-2">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#E8F7F0] text-[#157A55]">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-success-light text-success-strong">
             <WalletCards className="size-5" aria-hidden="true" />
           </span>
           <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Available balance</p>
         </div>
-        <p className="mt-4 text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">{money(amount, currency)}</p>
-        <p className="mt-2 text-sm text-muted-foreground">Released, clear of any hold, and eligible for a payout request.</p>
+        {/* Leads the page. One step up from the 3xl the escrow total uses, so the hierarchy
+            is readable at a glance rather than by comparison. */}
+        <p className="mt-5 font-heading text-5xl font-bold tracking-tight text-success-strong sm:text-6xl">{money(amount, currency)}</p>
+        <p className="mt-3 text-sm leading-6 text-muted-foreground">Released, clear of any hold, and eligible for a payout request.</p>
       </div>
       <Button asChild className="shrink-0">
         <Link href={payoutHref}>
@@ -147,12 +149,12 @@ export function EscrowPanel({ data, currency }: { data: FinancialSummary; curren
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#F3F4F6] text-[#4B5563]">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
               <Landmark className="size-5" aria-hidden="true" />
             </span>
             <p id="escrow-total-title" className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Held in escrow</p>
           </div>
-          <p className="mt-4 text-3xl font-semibold tracking-tight text-foreground">{money(data.protectedEscrow, currency)}</p>
+          <p className="mt-5 font-heading text-3xl font-bold tracking-tight text-foreground">{money(data.protectedEscrow, currency)}</p>
           <p className="mt-2 text-sm text-muted-foreground">Client funds held against milestones that have not been released.</p>
         </div>
       </div>
@@ -160,8 +162,8 @@ export function EscrowPanel({ data, currency }: { data: FinancialSummary; curren
       <div className="mt-6 border-t border-border pt-5">
         <p className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">Included in the amount above</p>
         <div className="mt-3 grid gap-4 sm:grid-cols-2">
-          <SpMetricCard className="min-h-0 bg-[#F9FAFB]" label="Work in progress" value={money(data.workInProgress, currency)} detail="Funded work still in delivery" icon={Clock3} />
-          <SpMetricCard className="min-h-0 bg-[#F9FAFB]" label="In review" value={money(data.inReview, currency)} detail="Submitted, awaiting client action" icon={LockKeyhole} iconClassName="bg-warning/10 text-warning" />
+          <SpMetricCard className="min-h-0 bg-muted/40" label="Work in progress" value={money(data.workInProgress, currency)} detail="Funded work still in delivery" icon={Clock3} />
+          <SpMetricCard className="min-h-0 bg-muted/40" label="In review" value={money(data.inReview, currency)} detail="Submitted, awaiting client action" icon={LockKeyhole} iconClassName="bg-warning/10 text-warning" />
         </div>
         <p className="mt-4 text-xs leading-5 text-muted-foreground">
           These are parts of the total above, not amounts to add to it. Milestones in revision or dispute are also included in the total but are not listed as a stage, and anything whose escrow has been placed on hold is counted under On hold instead.

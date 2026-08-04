@@ -303,8 +303,11 @@
 }
 
 /* PENDING DESIGN-TOKEN DECISION — hex literals still hardcoded on the SP
-   Earnings and Analytics surfaces (EarningsWorkspace, the earnings panels, and
-   AnalyticsWorkspace), deliberately NOT migrated.
+   Analytics surface (AnalyticsWorkspace), deliberately NOT migrated.
+
+   The Earnings surface (EarningsWorkspace and the earnings panels) is NO LONGER
+   in scope here: its visual redesign migrated it to tokens completely and it now
+   contains no hex literals at all. The counts below still describe Analytics.
 
    The seven values that map exactly to a token above were migrated. These
    twelve have NO exact equivalent, and three are near-misses that would

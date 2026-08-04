@@ -248,6 +248,40 @@ describe('earnings trend chart on this page', () => {
   });
 });
 
+describe('visual token discipline', () => {
+  const settingsSource = readFileSync(
+    resolve(process.cwd(), 'src/components/serviceprovider/earnings/FinancialSettingsPanel.tsx'),
+    'utf8'
+  );
+
+  /** The redesign migrated this surface completely; the "deliberate hex" note is retired. */
+  it.each([
+    ['EarningsWorkspace', () => workspaceSource],
+    ['EarningsActivity', () => activitySource],
+    ['PayoutsPanel', () => payoutsSource],
+    ['FinancialSettingsPanel', () => settingsSource],
+  ])('%s carries no hex colour literals', (_name, read) => {
+    expect(read()).not.toMatch(/#[0-9A-Fa-f]{6}/);
+  });
+
+  /**
+   * --success-text is 2.80:1 on --success-light and fails even the 3:1 UI threshold, so
+   * green TEXT uses --success-strong (4.78:1). A future "consistency" sweep swapping one
+   * for the other would be an accessibility regression, not a cleanup.
+   */
+  it('uses success-strong for green text rather than the failing success-text', () => {
+    expect(workspaceSource).toContain('text-success-strong');
+    expect(workspaceSource).not.toContain('text-success-text');
+    expect(activitySource).not.toContain('text-success-text');
+  });
+
+  /** Amounts align on a shared decimal column, the usual financial-table convention. */
+  it('right-aligns ledger amounts on tabular figures', () => {
+    expect(activitySource).toContain('text-right text-sm font-semibold tabular-nums');
+    expect(payoutsSource).toContain('text-right font-semibold tabular-nums');
+  });
+});
+
 describe('loading skeleton', () => {
   /**
    * The old skeleton rendered four card blocks and nothing for the second row, so a row
