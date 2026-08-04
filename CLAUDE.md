@@ -28,8 +28,13 @@ src/
     globals.css          Theme tokens live here (light + .dark blocks)
   components/
     ui/                  shadcn primitives — ALWAYS reuse before creating new
+    serviceprovider/     SP dashboard. Has its OWN design system in ui/ (SpCard,
+                         SpMetricCard, SpPage…) — reuse those, not raw Card/div.
+                         charts/ holds series shared with the Analytics surface.
     layout/              AppSidebar, Topbar, AuthGuard
     homepage/            Marketing sections
+    marketplace/, entrepreneur/, creator/, investor/, admin/, dashboard/,
+    onboarding/, messaging/, notifications/, deals/, form/, phase-3/,
     auth/, billing/, founder/, messages/, shared/
   context/AuthContext.tsx
   hooks/                 useBreadcrumb, use-mobile
@@ -46,6 +51,9 @@ src/
 4. **Images: always `next/image`.** Never `<img>`. Check `ImageWithFallback.tsx` for the reusable wrapper.
 5. **Dark mode: every new component must work in both themes.** Sanity-check by reading the `.dark` block in `globals.css` and avoiding fixed grays.
 6. **Radius scale:** use `rounded-md/lg/xl/2xl` — they're wired to `--radius` in globals.css.
+7. **Green text:** use `text-success-strong`, NOT `text-success-text`. The latter is 2.80:1
+   on `--success-light` and fails AA; `--success-strong` is 4.78:1. They are not
+   interchangeable — see the caveat in `FIGMA.md`.
 
 ## Perf rules (hard rules)
 
@@ -67,10 +75,18 @@ src/
 
 ## Known issues to fix on sight (cleanup backlog)
 
-- **Unused deps** in `package.json`: `wouter`, `react-icons`, `@uiw/react-md-editor`, `marked`. Remove if you touch package.json.
-- **Hardcoded hex colors** in `components/homepage/HeroSection.tsx` (`#FAFAFA`, `#070707`), `components/homepage/FeaturesSection.tsx` (`#3C61DD`), `components/shared/ProjectCard.tsx` (SVG `fill="#2563EB"`). Move to theme tokens.
-- **Raw `<img>`** in `components/shared/ProjectCard.tsx`. Convert to `next/image`.
-- **Over-broad `"use client"`** in `components/homepage/FeaturesSection.tsx`, `ProfileCard.tsx`, `layout/Topbar.tsx`, `dashboard/creator/settings/page.tsx`. Push boundary inward.
+Verified 2026-08-04. Three earlier entries — unused deps (`wouter`, `react-icons`,
+`@uiw/react-md-editor`, `marked`), hardcoded hex in `HeroSection`/`FeaturesSection`/
+`ProjectCard`, and the raw `<img>` in `ProjectCard` — are **done** and were removed from
+this list rather than left to send people after work that no longer exists. Re-check before
+re-adding anything here.
+
+- **Over-broad `"use client"`** in `components/homepage/FeaturesSection.tsx`,
+  `ProfileCard.tsx`, `layout/Topbar.tsx`, `dashboard/creator/settings/page.tsx`. Push the
+  boundary inward. (Still present.)
+- **Hex literals on the Analytics surface** (`AnalyticsWorkspace.tsx`) — deliberately not
+  migrated; several have no exact token. See the PENDING DESIGN-TOKEN DECISION note in
+  `globals.css`. The Earnings surface is fully migrated and is NOT in scope there.
 
 ## Cost & token discipline (read this)
 

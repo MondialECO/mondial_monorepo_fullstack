@@ -27,7 +27,7 @@ Map Figma variables → these CSS vars. **Never** emit raw hex in components.
 | Body text | `--foreground` | `text-foreground` |
 | Surface / card | `--card` | `bg-card` `text-card-foreground` |
 | Popover / menu | `--popover` | `bg-popover` `text-popover-foreground` |
-| Brand / primary | `--primary` (`#3C50E0` light, `#818CF8` dark) | `bg-primary` `text-primary-foreground` |
+| Brand / primary | `--primary` (`#3C61DD` light, `#818CF8` dark) | `bg-primary` `text-primary-foreground` |
 | Secondary | `--secondary` | `bg-secondary` `text-secondary-foreground` |
 | Muted surface / placeholder | `--muted` / `--muted-foreground` | `bg-muted` `text-muted-foreground` |
 | Accent (hover surface) | `--accent` | `bg-accent` `text-accent-foreground` |
@@ -39,6 +39,15 @@ Map Figma variables → these CSS vars. **Never** emit raw hex in components.
 | Sidebar active item | `--sidebar-primary` | `bg-sidebar-primary text-sidebar-primary-foreground` |
 | Sidebar hover | `--sidebar-accent` | `bg-sidebar-accent` |
 | Charts (5 slots) | `--chart-1` … `--chart-5` | `text-chart-1`, etc. |
+| Warning | `--warning` (`#B45309`) | `bg-warning/10` `text-warning` |
+| Success surface | `--success-light` (`#E5F7ED`) | `bg-success-light` |
+| Success text | `--success-strong` (`#157A55`) | `text-success-strong` |
+| Success accent | `--success-text` (`#00A854`) | `text-success-text` — **see caveat** |
+
+**Green text caveat.** `--success-text` on `--success-light` is **2.80:1**, which fails AA
+for body copy *and* the 3:1 threshold for large text and UI. Use `--success-strong`
+(**4.78:1**) for any green TEXT on a light surface. `--success-text` is for accents on
+white or for fills, not for reading against `--success-light`. Do not "unify" the two.
 
 If a Figma color doesn't fit any of the above, ADD a token to BOTH `:root` and `.dark` blocks in `globals.css`. Never inline.
 
@@ -46,7 +55,10 @@ If a Figma color doesn't fit any of the above, ADD a token to BOTH `:root` and `
 `--radius: 0.75rem` → use `rounded-md` (sm-2px), `rounded-lg` (base), `rounded-xl` (+4), `rounded-2xl` (+8), `rounded-3xl` (+12), `rounded-4xl` (+16). No arbitrary `rounded-[Npx]`.
 
 ### Typography
-`font-sans` → Geist Sans (`--font-geist-sans`). `font-mono` → Geist Mono. Don't import other fonts; don't use Google `<link>`.
+`font-sans` → DM Sans (`--font-dm-sans`), body copy. `font-heading` → Inter
+(`--font-inter`), headings and large display figures. `font-mono` → Geist Mono
+(`--font-geist-mono`). Geist Sans is NOT in use. Don't import other fonts; don't use
+Google `<link>`.
 
 ---
 
@@ -73,6 +85,42 @@ Reuse these before generating raw JSX. All use `data-slot` + `cn()` and respect 
 
 If Figma uses a primitive NOT in this list (e.g. `Dialog`, `Tabs`, `Select`, `Dropdown`, `Form`, `Switch`, `Checkbox`, `RadioGroup`, `Accordion`, `Popover`, `Command`, `Toast`):
 > Run `npx shadcn@latest add <name>` — DO NOT hand-roll.
+
+---
+
+## Service-provider design system (`src/components/serviceprovider/ui/`)
+
+The SP dashboard has its OWN layer on top of `components/ui/`. Generating an SP screen
+from Figma means reusing these, not hand-rolling cards and headers from `Card`/`div`.
+
+| Component | Use for |
+|---|---|
+| `SpPage` | Page shell — owns the vertical rhythm between sections |
+| `SpPageHeader` | Title, description, and a right-hand `actions` slot |
+| `SpSectionHeader` | Title / description inside a card, with optional `titleId` + `action` |
+| `SpCard` | The standard surface. `rounded-2xl`, soft border, no shadow |
+| `SpMetricCard` | Labelled figure. `icon` and `detail` are optional; `detail` takes a ReactNode, so a trend or a link can live there |
+| `SpTabBar` | In-page tabs driven by hrefs, not local state |
+| `SpFilterBar` | Search / select / date filter row |
+| `SpFormField` | Label, description, error, required marker |
+| `SpTagInput` | Chip-style multi-value entry |
+| `SpStatusBadge` | Status pill. Tones: `positive`, `warning`, `neutral`, `critical` |
+| `SpEmptyState` | Icon, title, description, optional action |
+| `SpMutationFeedback` | Inline success / error / info after a write |
+
+Shared beyond the primitives:
+
+| Component | Path | Notes |
+|---|---|---|
+| `EarningsTrendChart` | `@/components/serviceprovider/charts/EarningsTrendChart` | Net-earnings line chart over a server-bucketed period. Used by BOTH the Analytics Earnings tab and the real Earnings page — do not fork it |
+
+Two rules learned the hard way on this surface:
+
+- **Don't add a third "labelled money box".** `SpMetricCard` plus one hero treatment covers
+  it. Four near-identical variants accumulated once and had to be consolidated back.
+- **Charts read server-built series.** Don't bucket a raw ledger in the browser to save a
+  request — the exclusions (refunded milestones) live on the server, and a chart that
+  disagrees with the totals printed beside it is worse than no chart.
 
 ---
 
