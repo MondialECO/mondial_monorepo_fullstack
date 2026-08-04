@@ -2,13 +2,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatMoney } from "@/lib/format-money";
 import {
+  CircleDashed,
   ListChecks,
   ShieldAlert,
   CheckCircle2,
 } from "lucide-react";
 import type { ForecastOutput } from "@/types/creator/ai";
 
-const fmt = (n: number, currency?: string) => formatMoney(n, currency);
+const fmt = (n?: number | null, currency?: string) => formatMoney(n, currency);
 
 const likelihoodVariant = (v?: string) => {
   const s = v?.toLowerCase();
@@ -24,6 +25,31 @@ export function ForecastView({ output }: { output: ForecastOutput }) {
   const be = output.breakEvenAnalysis;
 
   const totalMonths = rev?.monthly?.length ?? 0;
+  const forecastMonthNumbers = [
+    ...(rev?.monthly ?? []).map((month) => month.month),
+    ...(cost?.monthly ?? []).map((month) => month.month),
+    ...(cash?.monthly ?? []).map((month) => month.month),
+  ];
+  const forecastHorizon = forecastMonthNumbers.length
+    ? Math.max(...forecastMonthNumbers)
+    : 0;
+  const breakEvenMonth =
+    be?.isAchievedWithinHorizon && typeof be.breakEvenMonth === "number"
+      ? be.breakEvenMonth
+      : null;
+  // When break-even is outside the horizon, show the final modeled month so the
+  // cards still describe real forecast data rather than invented target values.
+  const analysisMonth =
+    breakEvenMonth ?? (forecastHorizon > 0 ? forecastHorizon : null);
+  const analysisRevenue = analysisMonth
+    ? rev?.monthly?.find((month) => month.month === analysisMonth)
+    : undefined;
+  const analysisCost = analysisMonth
+    ? cost?.monthly?.find((month) => month.month === analysisMonth)
+    : undefined;
+  const totalCostAtAnalysis = analysisCost
+    ? analysisCost.fixedCosts + analysisCost.variableCosts
+    : null;
 
   // Build consolidated table data from all three forecasts
   const tableRows = Array.from({ length: totalMonths }, (_, i) => {
@@ -93,13 +119,22 @@ export function ForecastView({ output }: { output: ForecastOutput }) {
       {/* Break-Even Analysis */}
       {be && (
         <div className="mt-6 bg-card/70 rounded-2xl border border-border p-4">
-          <div className="flex items-center mb-4">
-            <CheckCircle2 className="h-5 w-5 text-muted-foreground" />
+          <div className="flex items-center gap-2 mb-4">
+            {breakEvenMonth ? (
+              <CheckCircle2 className="h-5 w-5 text-success-text" />
+            ) : (
+              <CircleDashed className="h-5 w-5 text-warning" />
+            )}
             <h3 className="text-lg font-bold">Break-Even Analysis</h3>
-            {be.isAchievedWithinHorizon && (
-              <Badge className="gap-1 ml-auto text-xs">
+            {breakEvenMonth ? (
+              <Badge variant="success" className="gap-1 ml-auto text-xs">
                 <CheckCircle2 className="h-3 w-3" />
-                Break-Even Achieved: Month {be.breakEvenMonth ?? "—"}
+                Break-Even Achieved: Month {breakEvenMonth}
+              </Badge>
+            ) : (
+              <Badge variant="warning" className="gap-1 ml-auto text-xs">
+                <CircleDashed className="h-3 w-3" />
+                Not achieved within forecast
               </Badge>
             )}
           </div>
@@ -107,25 +142,33 @@ export function ForecastView({ output }: { output: ForecastOutput }) {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-2">
             <Card className="rounded-xl border border-border/60 bg-card">
               <CardContent className="pt-4">
-                <p className="text-xs font-semibold text-muted-foreground mb-2">Monthly Fixed Overhead</p>
-                <p className="text-2xl font-bold">€8,000/month</p>
-                <p className="text-xs text-muted-foreground mt-2">Base operations cost</p>
+                <p className="text-xs font-semibold text-muted-foreground mb-2">Break-Even Timing</p>
+                <p className="text-2xl font-bold">{breakEvenMonth ? `Month ${breakEvenMonth}` : "Not achieved"}</p>
+                <p className="text-xs text-muted-foreground mt-2">
+                  {forecastHorizon > 0
+                    ? `${breakEvenMonth ? "Within" : "Not reached within"} the ${forecastHorizon}-month forecast`
+                    : "Forecast horizon unavailable"}
+                </p>
               </CardContent>
             </Card>
 
             <Card className="rounded-xl border border-border/60 bg-card">
               <CardContent className="pt-4">
-                <p className="text-xs font-semibold text-muted-foreground mb-2">Subscriber ARPU</p>
-                <p className="text-2xl font-bold">€32.00/month</p>
-                <p className="text-xs text-muted-foreground mt-2">Average monthly yield</p>
+                <p className="text-xs font-semibold text-muted-foreground mb-2">
+                  {breakEvenMonth ? "Revenue at Break-Even" : `Revenue at Month ${analysisMonth ?? "—"}`}
+                </p>
+                <p className="text-2xl font-bold">{fmt(analysisRevenue?.amount, rev?.currency)}</p>
+                <p className="text-xs text-muted-foreground mt-2">Forecast monthly revenue</p>
               </CardContent>
             </Card>
 
             <Card className="rounded-xl border border-border/60 bg-card">
               <CardContent className="pt-4">
-                <p className="text-xs font-semibold text-muted-foreground mb-2">Required Volume for Break-Even</p>
-                <p className="text-2xl font-bold">296 Active Subscribers</p>
-                <p className="text-xs text-muted-foreground mt-2">Break-even target size</p>
+                <p className="text-xs font-semibold text-muted-foreground mb-2">
+                  {breakEvenMonth ? "Total Cost at Break-Even" : `Total Cost at Month ${analysisMonth ?? "—"}`}
+                </p>
+                <p className="text-2xl font-bold">{fmt(totalCostAtAnalysis, cost?.currency)}</p>
+                <p className="text-xs text-muted-foreground mt-2">Fixed and variable costs combined</p>
               </CardContent>
             </Card>
           </div>
