@@ -275,7 +275,19 @@ builder.Services.AddAuthentication(options =>
 // SignalR with a Redis backplane so connections/messages are shared
 // across all replicas (a client connected to replica A still receives
 // messages published from replica B).
-var signalRBuilder = builder.Services.AddSignalR();
+// Hub payload casing is pinned explicitly rather than inherited. JsonHubProtocolOptions
+// already defaults to camelCase, so this changes NOTHING today — it is a contract pin, not
+// a fix. It exists because the frontend reads hub payloads with the same camelCase property
+// names it reads REST responses with (see the MVC AddJsonOptions call below), and nothing
+// previously stated that dependency in code. A future framework default flipping to
+// PascalCase would silently blank every realtime-delivered field; NotificationBell would
+// render empty rows and its unread badge would never clear, because `isRead` would arrive
+// as `IsRead`. AnalyticsHubCasingTests pins hub and REST to the same policy.
+var signalRBuilder = builder.Services.AddSignalR()
+    .AddJsonProtocol(options =>
+    {
+        options.PayloadSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+    });
 if (useRedis)
 {
     signalRBuilder.AddStackExchangeRedis(redisConnection, o =>

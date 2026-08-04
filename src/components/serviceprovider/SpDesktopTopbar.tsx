@@ -35,7 +35,7 @@ export function SpDesktopTopbar() {
 
         <div className="flex shrink-0 items-center gap-1" aria-label="Workspace controls">
           <div className="[&_button]:size-11"><MessageIcon /></div>
-          <div className="[&_button]:size-11"><NotificationBell /></div>
+          <NotificationBell triggerClassName="size-11" />
           <SpAccountMenu />
         </div>
       </div>

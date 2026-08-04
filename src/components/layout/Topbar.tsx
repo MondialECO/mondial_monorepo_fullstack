@@ -4,19 +4,52 @@ import { usePathname } from "next/navigation";
 import Image from "next/image";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import ThemeToggle from "../ThemeToggle";
-import { LayoutGrid, ChevronRight, LogOut } from "lucide-react";
+import { LayoutGrid, ChevronRight, Settings, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useBreadcrumb } from "@/hooks/useBreadcrumb";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import MessageIcon from "@/components/messages/MessageIcon";
 import { useAuth } from "@/app/_providers/AuthProvider";
 import { isPhase2ChromeRoute } from "@/lib/layout-config";
+import { AccountMenu, type AccountMenuItem } from "@/components/layout/AccountMenu";
+import { UserRole } from "@/lib/roles";
+
+/**
+ * Account destinations per role, verified against the routes that actually exist under
+ * src/app/dashboard rather than assumed from the role list. Entrepreneur and Admin have no
+ * profile or settings page today, so they get an empty list and the menu falls back to
+ * sign-out alone — the control is never opened onto nothing, and no link is offered that
+ * would 404.
+ */
+const ROLE_MENU_ITEMS: Record<UserRole, AccountMenuItem[]> = {
+  [UserRole.CREATOR]: [
+    { href: "/dashboard/creator/profile", icon: UserRound, label: "Profile" },
+    { href: "/dashboard/creator/settings", icon: Settings, label: "Settings" },
+  ],
+  [UserRole.INVESTOR]: [
+    { href: "/dashboard/investor/profile", icon: UserRound, label: "Profile" },
+  ],
+  [UserRole.ENTREPRENEUR]: [],
+  [UserRole.ADMIN]: [],
+  // Service Provider never reaches this topbar — dashboard/layout.tsx routes SP to
+  // SpDesktopTopbar/SpMobileHeader — but the map must be total for the Record type.
+  [UserRole.SERVICE_PROVIDER]: [],
+};
+
+const ROLE_LABELS: Record<UserRole, string> = {
+  [UserRole.CREATOR]: "Creator",
+  [UserRole.INVESTOR]: "Investor",
+  [UserRole.ENTREPRENEUR]: "Entrepreneur",
+  [UserRole.ADMIN]: "Admin",
+  [UserRole.SERVICE_PROVIDER]: "Service Provider",
+};
 
 export default function Topbar() {
   const pathname = usePathname();
   const isPhase2 = isPhase2ChromeRoute(pathname);
   const breadcrumbs = useBreadcrumb();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
+  const role = user?.role ?? UserRole.CREATOR;
 
   if (isPhase2) {
     // Reduced Phase 2 chrome: logo tile, breadcrumb, avatar only
@@ -127,14 +160,14 @@ export default function Topbar() {
           <MessageIcon />
           <NotificationBell />
           <ThemeToggle />
-          <button
-            onClick={logout}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-foreground hover:bg-muted transition-colors"
-            title="Logout"
-          >
-            <LogOut className="h-5 w-5" />
-            <span className="hidden sm:inline">Logout</span>
-          </button>
+          {/* Replaces a bare Logout button. Sign-out is still here, now inside the menu
+              alongside the role's own destinations, so the control does the old job plus
+              the identity display SP already had. */}
+          <AccountMenu
+            roleLabel={ROLE_LABELS[role]}
+            initialsFallback={ROLE_LABELS[role].charAt(0)}
+            items={ROLE_MENU_ITEMS[role]}
+          />
         </div>
 
       </div>

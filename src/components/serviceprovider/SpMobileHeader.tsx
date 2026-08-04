@@ -23,7 +23,7 @@ export function SpMobileHeader() {
       </div>
 
       <div className="flex shrink-0 items-center gap-1">
-        <div className="[&_button]:size-11"><NotificationBell /></div>
+        <NotificationBell triggerClassName="size-11" />
         <SpAccountMenu />
       </div>
     </header>
