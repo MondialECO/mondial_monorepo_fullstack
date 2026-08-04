@@ -113,6 +113,8 @@ Shared beyond the primitives:
 | Component | Path | Notes |
 |---|---|---|
 | `EarningsTrendChart` | `@/components/serviceprovider/charts/EarningsTrendChart` | Net-earnings line chart over a server-bucketed period. Used by BOTH the Analytics Earnings tab and the real Earnings page — do not fork it |
+| `AccountMenu` | `@/components/layout/AccountMenu` | Avatar-initials trigger, identity header, role destinations, sign-out. **Role-agnostic and used by EVERY role**, so it takes `roleLabel`, `initialsFallback` and `items` rather than baking any in. `SpAccountMenu` is SP's configuration of it |
+| `NotificationBell` | `@/components/notifications/NotificationBell` | Shared by every topbar. Style its trigger via `triggerClassName` — see the rule below |
 
 Two rules learned the hard way on this surface:
 
@@ -121,6 +123,12 @@ Two rules learned the hard way on this surface:
 - **Charts read server-built series.** Don't bucket a raw ledger in the browser to save a
   request — the exclusions (refunded milestones) live on the server, and a chart that
   disagrees with the totals printed beside it is worse than no chart.
+- **Never style a shared component from its mount site with a descendant variant.**
+  `[&_button]:size-11` on a wrapper looks like it targets one button; it targets EVERY
+  descendant button, including rows inside a dropdown that renders inline. That exact
+  wrapper silently collapsed the SP notification panel's rows for months — only the
+  timestamp survived. Pass a class for the specific element (`triggerClassName`) instead.
+  Full account in the canon's Appendix C.
 
 ---
 

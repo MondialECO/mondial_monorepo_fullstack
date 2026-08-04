@@ -2202,6 +2202,23 @@ Categories: `Opportunities, Proposals, Projects, Deadlines, Revisions, Payments,
 Fields: `notificationId, recipientId, category, title, message, relatedEntityType, relatedEntityId, isRead, createdAt, actionLabel`.
 **Rule:** a notification may *suggest* an action but **never executes** one (§2). Per-module notification lists live in §7 and §8.
 
+### 12.1 As-built shape — spec drift called out *(verified 2026-08-04)*
+
+The stored model is `Notification` (`Notifications`): `Id, UserId, Title, Body, Type, ReferenceId, IsRead, CreatedAt`. Mapping to the spec above:
+
+| Spec | As-built | Note |
+|---|---|---|
+| `notificationId` / `recipientId` | `Id` / `UserId` | `UserId` is a `Guid` |
+| `title` | `Title` | populated by every writer |
+| `message` | `Body` | populated by every writer |
+| `category` | `Type` | **declared but NEVER assigned** — see below |
+| `relatedEntityId` | `ReferenceId` | |
+| `relatedEntityType`, `actionLabel` | — | no such fields exist |
+
+**`Type` is never populated.** `NotificationService.CreateNotification` is the only writer and sets `UserId`, `Title`, `Body`, `CreatedAt` and `IsRead` only, so `Type` keeps its `""` default on every row in the collection. The nine categories above are therefore aspirational: nothing writes them and nothing reads them. The frontend declares a `NotificationType` union but never reads the field at runtime — no switch, icon map or template lookup — so the empty value is inert rather than harmful. Closing this is worthwhile only if category filtering is actually wanted; it is not a rendering defect and was explicitly not "fixed" alongside one.
+
+**Wire casing is pinned, not inherited.** The client holds one type for both transports and reads camelCase with no fallback. MVC sets `PropertyNamingPolicy = CamelCase`; SignalR's `JsonHubProtocolOptions` already defaults to the same, and `Program.cs` now states it explicitly so a framework default change cannot silently blank realtime-delivered fields. `HubWireCasingTests` pins both.
+
 ## 13. Audit log (source §12)
 
 **Module-4 audit — LIVE:** `WorkroomAuditEvent` → `"WorkroomAuditEvents"` records conversion, **STUB contract-consent**, STUB-backed funding, activation, delivery, revision, pause/resume, extensions, disputes/admin resolution, STUB-backed release/payout, completion, and review actions. Real fields: `Id, ActorId, ActorRole, Action, EntityType, EntityId, PreviousState, NewState, Timestamp, Reason`. It has no edit/delete endpoint. Broader cross-module audit coverage remains partial.
@@ -2326,7 +2343,41 @@ It throws in the builder, **before any assertion runs**, so the failure is pure 
 
 ---
 
+## Appendix C — CSS gotcha: arbitrary descendant variants over shared components (preserve)
+
+**Do not style a shared component from its mount site with a descendant selector.**
+
+The SP headers wrapped the shared `NotificationBell` in `[&_button]:size-11`, intending a
+44px touch target for the bell. Tailwind compiles that arbitrary variant to a DESCENDANT
+selector, and the notification panel renders inline rather than through a portal — so it
+also matched every row in the open dropdown, each of which is a `<button>`, and forced them
+to 44x44px.
+
+Descendant specificity (class + element) outranks the row's own `w-full` (class alone), so
+rows collapsed to a square. With `px-4` taking 32 of those 44px, the title's `truncate` and
+the body's `line-clamp-2` clipped to nothing, while the timestamp's `shrink-0` kept its
+intrinsic width and spilled into the 320px panel, staying visible. **The panel rendered rows
+showing only a relative timestamp.** SP-only, because the generic Topbar mounts the same
+component unwrapped, and present for as long as the wrapper existed.
+
+Why it resisted diagnosis, worth preserving as much as the rule: the data was healthy at
+every layer — 333 stored notifications with real titles and bodies, correct camelCase on both
+transports, no DTO or projection, a pass-through axios interceptor, and a component that
+renders correctly in isolation. Two audits concluded "healthy" from that evidence without
+ever rendering the component **in its SP mount context**, which is where the defect lived.
+Data-layer health is not evidence that a feature works.
+
+The fix is the general rule: pass a class for the specific element (`triggerClassName`)
+rather than reaching into a component's internals by selector. Guarded by test — neither SP
+header may reintroduce a descendant-button selector around this component.
+
+---
+
 ## Changelog
+
+**2026-08-04 — SP notification panel fixed: a mount-site CSS selector, not a data defect.** Commits `ad96a14`, `3c86e23`. SP notification rows had rendered as a bare timestamp with no title or body since the SP topbar was written. Cause was `[&_button]:size-11` on the SP headers' wrapper around the shared NotificationBell: an arbitrary Tailwind variant compiling to a descendant selector, matching every row button in the inline-rendered dropdown and collapsing each to 44x44px, where `truncate` and `line-clamp-2` clipped title and body to nothing while the timestamp's `shrink-0` survived. Fixed by passing `triggerClassName` for the trigger instead of styling by selector. Two candidate causes were investigated and DISPROVEN with evidence rather than left as open suspicions: stray blank documents (333 rows queried, zero blank, zero null, all strings) and a SignalR PascalCase asymmetry (the hub protocol already defaults to camelCase). A third, the empty `Type` field visible in the captured response, is real but inert — nothing reads it (§12.1). Full reasoning preserved as Appendix C, including why data-layer health was mistaken twice for feature health.
+
+**2026-08-04 — Shared role-parameterized AccountMenu replaces SpAccountMenu and the generic Logout button.** Commit `be9f541`. SpAccountMenu was role-agnostic apart from a hardcoded label, an "SP" initials fallback and two SP-only links; those became props and the component moved to `components/layout/AccountMenu.tsx`. SpAccountMenu remains as SP's configuration of it. The generic Topbar's plain Logout button is replaced by the same menu, with items chosen against routes that actually exist — Creator gets Profile and Settings, Investor Profile, Entrepreneur and Admin sign-out only, since neither has a profile route. Tokenized in the same commit rather than after: SP renders inside `.sp-workspace` which pins light values, so its raw hex was safe there, but the shared component also renders under each other role's theme including dark mode, where `bg-white` + `text-[#171717]` would paint near-black text on a dark surface.
 
 **2026-08-04 — Earnings & Payouts page redesigned; escrow categories corrected in doc and UI.** Commits `f47416c`, `b0be122`, `21a5415`, `0c1b175`, `e6b6ab6`. Frontend and documentation only — **no backend field changed**. Traced `GetProviderFinancialSummaryAsync` and found the amount categories overlap rather than sum: Work in Progress is a **strict subset** of Protected Escrow, In Review is inside it when funded, and Pending straddles it. The seven-peer-card layout invited adding figures that double-count. Protected Escrow was first reframed as a total with its stages nested, then the whole section was removed by decision — so `WorkInProgress`, `InReview` and `ProtectedEscrow` are now computed but **not displayed**, and revision/dispute amounts (previously visible only inside that total) are currently unrepresented in the UI. §8B's three balance formulas were corrected against code: `Available` has a `max(0, …)` clamp; `Pending` is a status-scoped sum, not a subtraction; `Protected Escrow` excludes `Paid`, not `Refunded`. Available balance gained a hero treatment and the payout CTA it had been describing without offering. An earnings trend chart was added, **reusing the existing dashboard trend series** rather than bucketing the loaded ledger client-side — that ledger carries refund and payout rows, so charting it would have meant reproducing the refunded-milestone exclusion in the browser beside the totals it could then contradict. The trend and the six metric cards are scoped to the Overview tab, so Payouts and Financial Settings no longer render them or pay for the dashboard query. Four near-identical metric-box components were consolidated to two, and the surface is now fully token-driven with zero hex literals — including a new `--success-strong` token (§3), added because `--success-text` fails AA on `--success-light`.
 

@@ -54,6 +54,10 @@ src/
 7. **Green text:** use `text-success-strong`, NOT `text-success-text`. The latter is 2.80:1
    on `--success-light` and fails AA; `--success-strong` is 4.78:1. They are not
    interchangeable — see the caveat in `FIGMA.md`.
+8. **Never style a shared component from its mount site with an arbitrary descendant
+   variant** (`[&_button]:…`, `[&_div]:…`). It matches every descendant, not the one you
+   mean — including elements inside a dropdown that renders inline. This silently broke the
+   SP notification panel for months. Pass a class prop for the specific element instead.
 
 ## Perf rules (hard rules)
 
