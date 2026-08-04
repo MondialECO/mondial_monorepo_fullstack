@@ -3,7 +3,8 @@ import { resolve } from 'node:path';
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import {
-  ActiveClientsTable, ClientOriginationSection, RatingHistogram, TopIndustriesSection,
+  ActiveClientsTable, ClientOriginationSection, RatingHistogram, RepeatClientRateCard,
+  TopIndustriesSection,
 } from '@/components/serviceprovider/AnalyticsWorkspace';
 import type {
   ActiveClientAnalytics, AnalyticsMetric, ClientOriginationAnalytics, IndustryAnalytics,
@@ -255,11 +256,64 @@ describe('clients tab composition', () => {
   });
 
   /**
-   * Removing the grid must not take the repeat-client rate out of the product — Overview's
-   * headline card is where it actually lives, and this tab was only restating it.
+   * Was pinned as ABSENT by the previous cleanup, on the reasoning that Overview already
+   * carried it. Now shown on both on purpose: this tab is where a provider goes to reason
+   * about clients, and the rate is a headline for that subject rather than a restatement.
+   * Overview must keep it too — the assertion below is what stops one tab's change from
+   * silently taking it off the other.
    */
-  it('leaves the repeat-client rate on the Overview headline card', () => {
+  it('shows the repeat-client rate on this tab as well as on Overview', () => {
+    expect(clientsView).toContain('<RepeatClientRateCard');
+    expect(clientsView).toContain('clients.repeatClientRate');
+
     const overview = source.slice(source.indexOf('function Overview'), source.indexOf('function ServicesView'));
     expect(overview).toContain('data.clients.repeatClientRate');
+  });
+
+  /** Reuse, not a third card pattern: no bespoke headline markup was added for it. */
+  it('reuses SpMetricCard rather than introducing another headline card shape', () => {
+    const card = source.slice(source.indexOf('export function RepeatClientRateCard'), source.indexOf('function RatingHistogram'));
+    expect(card).toContain('<SpMetricCard');
+    expect(card).not.toContain('<HeadlineCard');
+  });
+});
+
+describe('repeat client rate card', () => {
+  it('shows the rate with its period-over-period trend', () => {
+    render(<RepeatClientRateCard metric={metric({ value: 42, changePercentage: 12 })} />);
+
+    expect(screen.getByText('Repeat client rate')).toBeInTheDocument();
+    expect(screen.getByText('42%')).toBeInTheDocument();
+    expect(screen.getByText(/12/)).toBeInTheDocument();
+    expect(screen.getByText('Clients who returned for an additional project.')).toBeInTheDocument();
+  });
+
+  /** The tab's own wording, not Overview's — that card labels this metric "Clients". */
+  it('names the metric rather than borrowing the Overview section framing', () => {
+    render(<RepeatClientRateCard metric={metric({ value: 42 })} />);
+
+    expect(screen.queryByText('Clients')).not.toBeInTheDocument();
+  });
+
+  /**
+   * metricText already prints the state label as the value, so the detail line must carry
+   * the server's reason instead of repeating that label.
+   */
+  it('reports an unavailable rate with the server reason, not a fabricated zero', () => {
+    render(<RepeatClientRateCard metric={metric({
+      state: 'notEnoughActivity', value: null, changePercentage: null,
+      reason: 'No client completed a second project in this period.',
+    })} />);
+
+    expect(screen.getByText('Not enough activity')).toBeInTheDocument();
+    expect(screen.getByText('No client completed a second project in this period.')).toBeInTheDocument();
+    expect(screen.queryByText('0%')).not.toBeInTheDocument();
+  });
+
+  /** A real 0% is a fact, not an empty state. */
+  it('renders a genuine zero rather than suppressing it', () => {
+    render(<RepeatClientRateCard metric={metric({ value: 0 })} />);
+
+    expect(screen.getByText('0%')).toBeInTheDocument();
   });
 });

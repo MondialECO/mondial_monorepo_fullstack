@@ -793,6 +793,9 @@ function ClientsView({ data }: { data: AnalyticsDashboard }) {
   const clients = data.clients;
   return (
     <div className="space-y-6">
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <RepeatClientRateCard metric={clients.repeatClientRate} />
+      </section>
       {/* The satisfaction card keeps the headline average and the histogram only. The four
           secondary tiles it used to carry (Quality, Communication, Delivery, Verified
           reviews) were removed with the redesign: the first three restate the same reviews
@@ -816,6 +819,38 @@ function ClientsView({ data }: { data: AnalyticsDashboard }) {
         ) : <p className="mt-4 text-sm text-muted-foreground">No completed client relationships exist in this period.</p>}
       </SpCard>
     </div>
+  );
+}
+
+/**
+ * Also on Overview, deliberately — but framed for where it sits. Overview labels the card
+ * "Clients", uses this rate as the stand-in for the whole subject, pairs it with average
+ * rating and links HERE. On this tab that framing makes no sense: there is no onward link
+ * to offer from the destination, and the sections around it name themselves precisely
+ * ("Client satisfaction", "Top industries"), so this one does too.
+ *
+ * SpMetricCard rather than Overview's HeadlineCard, which requires both a second metric and
+ * a mandatory href. Neither exists here, and inventing them to satisfy the signature would
+ * be worse than reusing the simpler card this surface already uses for a single metric with
+ * a trend (the Earnings headlines, the Profile KPI row).
+ */
+export function RepeatClientRateCard({ metric }: { metric: AnalyticsMetric }) {
+  return (
+    <SpMetricCard
+      label="Repeat client rate"
+      icon={Users}
+      value={metricText(metric)}
+      detail={
+        <>
+          {/* metricText already prints the state label as the value, so an unavailable
+              metric shows the server's reason here rather than repeating that label. */}
+          {metric.state === 'available'
+            ? <Trend metric={metric} />
+            : <span className="block">{metric.reason}</span>}
+          <span className="mt-1 block">Clients who returned for an additional project.</span>
+        </>
+      }
+    />
   );
 }
 
