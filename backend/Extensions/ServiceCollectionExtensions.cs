@@ -1,6 +1,7 @@
 using WebApp.Services;
 using WebApp.Services.Implementations;
 using WebApp.Services.Interface;
+using WebApp.Services.Repository;
 
 namespace WebApp.Extensions;
 
@@ -34,6 +35,11 @@ public static class ServiceCollectionExtensions
 
         // Creator journey (Phases 2–6 source of truth; derived-status engine)
         services.AddScoped<ICreatorJourneyService, CreatorJourneyService>();
+
+        // Maintained Phase 4 resource/GTM benchmarks. A single resolver owns sector
+        // normalization and fallback behavior for both reads and calculations.
+        services.AddSingleton<IMarketBenchmarkStore, MarketBenchmarkStore>();
+        services.AddSingleton<IMarketBenchmarkResolver, MarketBenchmarkResolver>();
 
         // Multi-idea STEP 3: idea resolution/management. Registered but NOT yet called
         // by any controller — cutover happens in step 4 all at once.

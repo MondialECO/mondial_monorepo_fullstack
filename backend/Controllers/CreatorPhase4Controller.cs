@@ -22,7 +22,15 @@ namespace WebApp.Controllers
     public class CreatorPhase4Controller : ControllerBase
     {
         private readonly ICreatorJourneyService _journeys;
-        public CreatorPhase4Controller(ICreatorJourneyService journeys) => _journeys = journeys;
+        private readonly IMarketBenchmarkResolver _benchmarks;
+
+        public CreatorPhase4Controller(
+            ICreatorJourneyService journeys,
+            IMarketBenchmarkResolver benchmarks)
+        {
+            _journeys = journeys;
+            _benchmarks = benchmarks;
+        }
 
         private string GetUserId() =>
             User.FindFirst(ClaimTypes.NameIdentifier)?.Value
@@ -30,6 +38,23 @@ namespace WebApp.Controllers
 
         private static readonly HashSet<string> PricingModels =
             new(StringComparer.OrdinalIgnoreCase) { "subscription", "one_time", "freemium", "usage_based" };
+
+        // GET /api/creator/offer/benchmark?sector=FinTech
+        // Reference-data read: standard controller auth applies, but it does not
+        // resolve or mutate a creator journey and therefore needs no idea ownership.
+        [HttpGet("benchmark")]
+        public async Task<IActionResult> Benchmark([FromQuery] string? sector = null)
+        {
+            try
+            {
+                var resolution = await _benchmarks.ResolveAsync(sector);
+                return Ok(ApiResponse.Ok("OK", ToBenchmarkResponse(resolution)));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+        }
 
         // Static sector → competitor reference (MVP). Deterministic.
         // TODO: swap to IAiProvider / live research when model-router ready.
@@ -55,6 +80,7 @@ namespace WebApp.Controllers
                     ? hit : (new[] { "Generic SaaS A (€12)", "Generic SaaS B (€15)" }, 13m);
                 return Ok(ApiResponse.Ok("OK", new { competitors, sectorAveragePrice = avg }));
             }
+            catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
             catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
             catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
         }
@@ -107,22 +133,54 @@ namespace WebApp.Controllers
             try
             {
                 var userId = GetUserId();
-                var team = request?.TeamRequirements ?? new List<CreatorTeamRequirement>();
-                var saas = request?.SaasStack ?? new List<CreatorSaasItem>();
+                var current = await _journeys.GetOrCreateComposedAsync(userId, ideaId);
+                var resolution = await _benchmarks.ResolveAsync(current.Project?.Sector);
+                var benchmark = resolution.Benchmark;
+                var saved = current.Phase4Data?.ResourceCalculation;
+
+                // Explicit request values win, followed by the already-saved block.
+                // The maintained benchmark fills only a genuinely empty block.
+                var team = request?.TeamRequirements?.Count > 0
+                    ? request.TeamRequirements
+                    : saved?.TeamRequirements?.Count > 0
+                        ? saved.TeamRequirements
+                        : new List<CreatorTeamRequirement>
+                        {
+                            new()
+                            {
+                                Role = "Full-stack developer",
+                                Cost = benchmark.DeveloperCostPerMonth,
+                                DurationMonths = benchmark.DeveloperDurationMonths,
+                                OneTime = false,
+                            },
+                        };
+                var saas = request?.SaasStack?.Count > 0
+                    ? request.SaasStack
+                    : saved?.SaasStack?.Count > 0
+                        ? saved.SaasStack
+                        : new List<CreatorSaasItem>
+                        {
+                            new() { Name = "Hosting", MonthlyCost = benchmark.HostingCostPerMonth },
+                        };
 
                 decimal teamRecurring = team.Where(t => !t.OneTime).Sum(t => t.Cost * Math.Max(1, t.DurationMonths));
                 decimal oneTime = team.Where(t => t.OneTime).Sum(t => t.Cost);
                 decimal monthlyRunning = saas.Sum(s => s.MonthlyCost);
 
-                decimal launchMin = Math.Round(teamRecurring * 0.8m, 0);
-                decimal launchMax = Math.Round(teamRecurring * 1.2m + oneTime, 0);
-
                 // Budget breakdown from actual category sums, normalized to 100.
                 decimal teamCost = teamRecurring + oneTime;
-                decimal toolsCost = monthlyRunning * 3;       // ~launch window
-                decimal legalCost = 2000m;                    // flat MVP estimate // TODO: derive
-                decimal miscCost = Math.Round((teamCost + toolsCost + legalCost) * 0.10m, 0);
+                decimal toolsCost = monthlyRunning * benchmark.DeveloperDurationMonths;
+                decimal legalCost = benchmark.LegalCost;
+                decimal miscCost = Math.Round(
+                    (teamCost + toolsCost + legalCost) * (decimal)benchmark.MiscPercentage / 100m,
+                    0);
                 decimal total = teamCost + toolsCost + legalCost + miscCost;
+                decimal launchMin = Math.Round(
+                    total * (1m + (decimal)benchmark.LaunchVarianceMinPercentage / 100m),
+                    0);
+                decimal launchMax = Math.Round(
+                    total * (1m + (decimal)benchmark.LaunchVarianceMaxPercentage / 100m),
+                    0);
                 double Pct(decimal v) => total > 0 ? Math.Round((double)(v / total) * 100, 1) : 0;
 
                 var calc = new CreatorResourceCalculation
@@ -132,8 +190,8 @@ namespace WebApp.Controllers
                     TotalLaunchBudgetMin = launchMin,
                     TotalLaunchBudgetMax = launchMax,
                     MonthlyRunningCost = monthlyRunning,
-                    TimeToLaunchWeeksMin = 8,   // TODO: scale by a complexity score when available
-                    TimeToLaunchWeeksMax = 12,
+                    TimeToLaunchWeeksMin = benchmark.LaunchDurationWeeksMin,
+                    TimeToLaunchWeeksMax = benchmark.LaunchDurationWeeksMax,
                     BudgetBreakdown = new CreatorBudgetBreakdown
                     {
                         TeamPct = Pct(teamCost),
@@ -146,6 +204,7 @@ namespace WebApp.Controllers
                 var journey = await _journeys.SetPhase4ResourceAsync(userId, calc, ideaId);
                 return Ok(ApiResponse.Ok("Resource plan computed", journey.Phase4Data.ResourceCalculation));
             }
+            catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
             catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
             catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
         }
@@ -159,9 +218,27 @@ namespace WebApp.Controllers
             try
             {
                 var userId = GetUserId();
-                var web = request?.WebPresence ?? new List<CreatorWebPresenceItem>();
-                var audiences = request?.TargetAudiences ?? new List<string>();
-                var channelMix = request?.ChannelMix ?? new List<CreatorChannelMix>();
+                var current = await _journeys.GetOrCreateComposedAsync(userId, ideaId);
+                var resolution = await _benchmarks.ResolveAsync(current.Project?.Sector);
+                var saved = current.Phase4Data?.GtmSetup;
+
+                var web = request?.WebPresence?.Count > 0
+                    ? request.WebPresence
+                    : saved?.WebPresence?.Count > 0
+                        ? saved.WebPresence
+                        : new List<CreatorWebPresenceItem>();
+                var audiences = request?.TargetAudiences?.Count > 0
+                    ? request.TargetAudiences
+                    : saved?.TargetAudiences?.Count > 0
+                        ? saved.TargetAudiences
+                        : new List<string>();
+                var channelMix = request?.ChannelMix?.Count > 0
+                    ? request.ChannelMix
+                    : saved?.ChannelMix?.Count > 0
+                        ? saved.ChannelMix
+                        : resolution.Benchmark.GtmChannelSplit
+                            .Select(CloneChannelMix)
+                            .ToList();
 
                 if (audiences.Count > 8)
                     return UnprocessableEntity(ApiResponse.Error("Up to 8 target audiences."));
@@ -173,28 +250,81 @@ namespace WebApp.Controllers
                 bool DonePresence(string id) => web.Any(w => string.Equals(w.Id, id, StringComparison.OrdinalIgnoreCase) && w.Done);
                 bool foundations = DonePresence("domain") && DonePresence("landing-page");
 
-                // Deterministic 4-week GTM template; Week 1 auto-checks on domain+landing.
-                var weeks = new List<CreatorGtmWeek>
-                {
-                    new() { Week = 1, Title = "Foundations", Tasks = new() { "Register domain", "Ship landing page", "Set up email capture" }, Completed = foundations },
-                    new() { Week = 2, Title = "Beta Outreach", Tasks = new() { "Invite beta users", "Collect feedback", "Iterate messaging" } },
-                    new() { Week = 3, Title = "ProductHunt Prep", Tasks = new() { "Assets + copy", "Line up hunters", "Schedule launch" } },
-                    new() { Week = 4, Title = "Launch Week", Tasks = new() { "Go live", "Activate channels", "Track conversions" } },
-                };
+                var weeks = resolution.Benchmark.BenchmarkGtmWeeks
+                    .Select(CloneGtmWeek)
+                    .ToList();
+                var foundationsWeek = weeks.FirstOrDefault(w => w.Week == 1);
+                if (foundationsWeek != null)
+                    foundationsWeek.Completed = foundations;
 
                 var gtm = new CreatorGtmSetup
                 {
                     WebPresence = web,
                     TargetAudiences = audiences,
                     ChannelMix = channelMix,
-                    AiGtmWeeks = weeks,
+                    BenchmarkGtmWeeks = weeks,
                 };
 
                 var journey = await _journeys.SetPhase4GtmAsync(userId, gtm, ideaId);
                 return Ok(ApiResponse.Ok("GTM setup saved", journey.Phase4Data.GtmSetup));
             }
+            catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
             catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
             catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
+        }
+
+        private static CreatorGtmWeek CloneGtmWeek(CreatorGtmWeek week) => new()
+        {
+            Week = week.Week,
+            Title = week.Title,
+            Tasks = week.Tasks?.ToList() ?? new List<string>(),
+            Completed = week.Completed,
+        };
+
+        private static CreatorChannelMix CloneChannelMix(CreatorChannelMix channel) => new()
+        {
+            Channel = channel.Channel,
+            Percent = channel.Percent,
+        };
+
+        private static MarketBenchmarkResponse ToBenchmarkResponse(MarketBenchmarkResolution resolution)
+        {
+            var benchmark = resolution.Benchmark;
+            return new MarketBenchmarkResponse
+            {
+                RequestedSector = resolution.RequestedSector,
+                ResolvedBenchmarkSector = resolution.ResolvedBenchmarkSector,
+                MatchType = resolution.MatchType,
+                DisplayLabel = benchmark.DisplayLabel,
+                Region = benchmark.Region,
+                Currency = benchmark.Currency,
+                ResourceDefaults = new MarketBenchmarkResourceDefaults
+                {
+                    DeveloperCostPerMonth = benchmark.DeveloperCostPerMonth,
+                    DeveloperDurationMonths = benchmark.DeveloperDurationMonths,
+                    HostingCostPerMonth = benchmark.HostingCostPerMonth,
+                    LegalCost = benchmark.LegalCost,
+                    MiscPercentage = benchmark.MiscPercentage,
+                    LaunchDurationWeeksMin = benchmark.LaunchDurationWeeksMin,
+                    LaunchDurationWeeksMax = benchmark.LaunchDurationWeeksMax,
+                    LaunchVarianceMinPercentage = benchmark.LaunchVarianceMinPercentage,
+                    LaunchVarianceMaxPercentage = benchmark.LaunchVarianceMaxPercentage,
+                },
+                GtmDefaults = new MarketBenchmarkGtmDefaults
+                {
+                    ChannelSplit = benchmark.GtmChannelSplit.Select(CloneChannelMix).ToList(),
+                    BenchmarkGtmWeeks = benchmark.BenchmarkGtmWeeks.Select(CloneGtmWeek).ToList(),
+                },
+                Source = new MarketBenchmarkSource
+                {
+                    Label = benchmark.SourceLabel,
+                    Url = benchmark.SourceUrl,
+                    Provenance = benchmark.SourceProvenance,
+                },
+                EffectiveDate = benchmark.EffectiveDate,
+                Version = benchmark.Version,
+                LastUpdatedAt = benchmark.LastUpdatedAt,
+            };
         }
 
         // ======================= COMPLETION =======================
@@ -219,6 +349,7 @@ namespace WebApp.Controllers
                 // Status auto-derives to completed via the engine; nothing to write.
                 return Ok(ApiResponse.Ok("Phase 4 complete", new { complete = true }));
             }
+            catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
             catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
             catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
         }

@@ -828,6 +828,22 @@ using (var scope = app.Services.CreateScope())
         Log.Warning(ex, "AI prompt seeding skipped (non-fatal)");
     }
 
+    // Phase 4 maintained reference data. Insert-only: startup never overwrites a
+    // benchmark row that an operator has subsequently refined.
+    try
+    {
+        var benchmarkStore = scope.ServiceProvider
+            .GetRequiredService<WebApp.Services.Repository.IMarketBenchmarkStore>();
+        var inserted = await benchmarkStore.SeedGeneralAsync(
+            WebApp.Services.Implementations.MarketBenchmarkSeed.General());
+        if (inserted)
+            Log.Information("Seeded the general EUR market benchmark");
+    }
+    catch (Exception ex)
+    {
+        Log.Warning(ex, "Market benchmark seeding skipped (non-fatal)");
+    }
+
     // C-1 Phase 7: optional, config-gated, idempotent starter-credit grant to
     // existing users. Off by default. Only users with no AICredits ledger are
     // touched, so this is safe on every boot.

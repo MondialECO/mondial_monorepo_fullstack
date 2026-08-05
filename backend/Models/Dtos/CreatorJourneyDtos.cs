@@ -113,7 +113,10 @@ namespace WebApp.Models.Dtos
     public class DeclareFormationSkillsRequest
     {
         public List<string> YouHave { get; set; } = new();
-        public CofounderDraftDto Cofounder { get; set; }
+        // Skills autosave deliberately omits the optional co-founder draft. This must
+        // remain nullable so [ApiController] does not reject `{ cofounder: null }`
+        // with a model-binding 400 before the partial-merge handler can run.
+        public CofounderDraftDto? Cofounder { get; set; }
     }
 
     public class CofounderDraftDto

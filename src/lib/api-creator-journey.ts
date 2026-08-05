@@ -28,6 +28,9 @@ const unwrap = <T>(body: ApiEnvelope<T> | T): T => {
   return body as T;
 };
 
+const withIdeaId = (ideaId?: string | null) =>
+  ideaId ? { params: { ideaId } } : undefined;
+
 export interface UpdateProjectPayload {
   name?: string;
   tagline?: string;
@@ -175,20 +178,20 @@ export const creatorJourneyApi = {
     return unwrap<LegalChecklist>(res.data);
   },
 
-  generateFormation: async (): Promise<FormationGenerator> => {
-    const res = await api.post('/creator/ai/formation-generator/start', {});
+  generateFormation: async (ideaId?: string | null): Promise<FormationGenerator> => {
+    const res = await api.post('/creator/ai/formation-generator/start', {}, withIdeaId(ideaId));
     return unwrap<FormationGenerator>(res.data);
   },
 
-  selectFormationType: async (selectedType: FormationTypeCode): Promise<{ formation: FormationGenerator; legalChecklist: LegalChecklist }> => {
-    const res = await api.patch('/creator/formation/select-type', { selectedType });
+  selectFormationType: async (selectedType: FormationTypeCode, ideaId?: string | null): Promise<{ formation: FormationGenerator; legalChecklist: LegalChecklist }> => {
+    const res = await api.patch('/creator/formation/select-type', { selectedType }, withIdeaId(ideaId));
     return unwrap<{ formation: FormationGenerator; legalChecklist: LegalChecklist }>(res.data);
   },
 
   // 3.5b: persist self-declared skills (+ optional co-founder draft). Backend derives the
   // SP-backed gaps + matches; returns the updated formation.
-  declareFormationSkills: async (youHave: string[], cofounder?: CofounderDraft): Promise<FormationGenerator> => {
-    const res = await api.patch('/creator/formation/skills', { youHave, cofounder: cofounder ?? null });
+  declareFormationSkills: async (youHave: string[], cofounder?: CofounderDraft, ideaId?: string | null): Promise<FormationGenerator> => {
+    const res = await api.patch('/creator/formation/skills', { youHave, cofounder: cofounder ?? null }, withIdeaId(ideaId));
     return unwrap<FormationGenerator>(res.data);
   },
 
@@ -214,28 +217,35 @@ export const creatorJourneyApi = {
 
   // ---- Phase 4 (deterministic) ----
 
-  pricingInsights: async (): Promise<{ competitors: string[]; sectorAveragePrice: number }> => {
-    const res = await api.get('/creator/offer/pricing-insights');
+  marketBenchmark: async (sector?: string): Promise<MarketBenchmark> => {
+    const res = await api.get('/creator/offer/benchmark', {
+      params: sector?.trim() ? { sector: sector.trim() } : undefined,
+    });
+    return unwrap<MarketBenchmark>(res.data);
+  },
+
+  pricingInsights: async (ideaId?: string | null): Promise<{ competitors: string[]; sectorAveragePrice: number }> => {
+    const res = await api.get('/creator/offer/pricing-insights', withIdeaId(ideaId));
     return unwrap<{ competitors: string[]; sectorAveragePrice: number }>(res.data);
   },
 
-  setPricing: async (pricingModel: string, tiers: PricingTier[]): Promise<{ phase4: unknown; suggestion: string | null }> => {
-    const res = await api.post('/creator/offer/pricing', { pricingModel, tiers });
+  setPricing: async (pricingModel: string, tiers: PricingTier[], ideaId?: string | null): Promise<{ phase4: unknown; suggestion: string | null }> => {
+    const res = await api.post('/creator/offer/pricing', { pricingModel, tiers }, withIdeaId(ideaId));
     return unwrap<{ phase4: unknown; suggestion: string | null }>(res.data);
   },
 
-  resourceCalculator: async (teamRequirements: TeamRequirement[], saasStack: SaasItem[]): Promise<ResourceCalculation> => {
-    const res = await api.post('/creator/offer/resource-calculator', { teamRequirements, saasStack });
+  resourceCalculator: async (teamRequirements: TeamRequirement[], saasStack: SaasItem[], ideaId?: string | null): Promise<ResourceCalculation> => {
+    const res = await api.post('/creator/offer/resource-calculator', { teamRequirements, saasStack }, withIdeaId(ideaId));
     return unwrap<ResourceCalculation>(res.data);
   },
 
-  gtmSetup: async (payload: { webPresence: WebPresenceItem[]; targetAudiences: string[]; channelMix: ChannelMix[] }): Promise<GtmSetup> => {
-    const res = await api.post('/creator/offer/gtm-setup', payload);
+  gtmSetup: async (payload: { webPresence: WebPresenceItem[]; targetAudiences: string[]; channelMix: ChannelMix[] }, ideaId?: string | null): Promise<GtmSetup> => {
+    const res = await api.post('/creator/offer/gtm-setup', payload, withIdeaId(ideaId));
     return unwrap<GtmSetup>(res.data);
   },
 
-  completeOffer: async (): Promise<void> => {
-    await api.patch('/creator/offer/complete', {});
+  completeOffer: async (ideaId?: string | null): Promise<void> => {
+    await api.patch('/creator/offer/complete', {}, withIdeaId(ideaId));
   },
 
   // ---- Phase 5 (Crossroads) ----
@@ -354,7 +364,44 @@ export interface ResourceCalculation {
 export interface WebPresenceItem { id: string; label: string; done: boolean; }
 export interface ChannelMix { channel: string; percent: number; }
 export interface GtmWeek { week: number; title: string; tasks: string[]; completed: boolean; }
-export interface GtmSetup { webPresence: WebPresenceItem[]; targetAudiences: string[]; channelMix: ChannelMix[]; aiGtmWeeks: GtmWeek[]; }
+export interface GtmSetup {
+  webPresence: WebPresenceItem[];
+  targetAudiences: string[];
+  channelMix: ChannelMix[];
+  benchmarkGtmWeeks: GtmWeek[];
+}
+
+export interface MarketBenchmark {
+  requestedSector: string;
+  resolvedBenchmarkSector: string;
+  matchType: 'sector' | 'general';
+  displayLabel: string;
+  region: string;
+  currency: string;
+  resourceDefaults: {
+    developerCostPerMonth: number;
+    developerDurationMonths: number;
+    hostingCostPerMonth: number;
+    legalCost: number;
+    miscPercentage: number;
+    launchDurationWeeksMin: number;
+    launchDurationWeeksMax: number;
+    launchVarianceMinPercentage: number;
+    launchVarianceMaxPercentage: number;
+  };
+  gtmDefaults: {
+    channelSplit: ChannelMix[];
+    benchmarkGtmWeeks: GtmWeek[];
+  };
+  source: {
+    label: string;
+    url?: string | null;
+    provenance: string;
+  };
+  effectiveDate: string;
+  version: number;
+  lastUpdatedAt: string;
+}
 
 export interface InvestorReadinessScore {
   total: number;

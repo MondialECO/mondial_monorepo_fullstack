@@ -59,8 +59,8 @@ namespace WebApp.Services.Implementations
         // =================================================================
 
         /// <summary>
-        /// Resolve the caller's idea. Explicit id → owned-or-404 (NEVER a silent
-        /// fallback — a foreign/stale route id must not "work" with the wrong data).
+        /// Resolve the caller's idea. An explicit id must be owned and match the
+        /// active idea (NEVER silently fall back to a different idea).
         /// No id → the active idea; a stale pointer repoints to the most recent idea;
         /// no ideas at all → mint the first from the journey's inline blocks.
         /// Persists any pointer change atomically and reflects it on the in-memory j.
@@ -72,6 +72,8 @@ namespace WebApp.Services.Implementations
                 var owned = await _creatorIdeas.GetOwnedAsync(ideaId, j.UserId);
                 if (owned == null)
                     throw new CreatorJourneyException(404, "Idea not found.");
+                if (!string.Equals(owned.Id, j.ActiveIdeaId, StringComparison.Ordinal))
+                    throw new CreatorJourneyException(409, "You've switched to a different idea elsewhere — refresh this page and try again.");
                 return owned;
             }
 

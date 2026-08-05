@@ -9,6 +9,7 @@ import {
   type TeamRequirement,
   type SaasItem,
   type ResourceCalculation,
+  type MarketBenchmark,
 } from "@/lib/api-creator-journey";
 
 // The backend persists the calculator's INPUTS (teamRequirements/saasStack) alongside
@@ -18,33 +19,96 @@ type SavedResourceCalculation = ResourceCalculation & {
   saasStack?: SaasItem[];
 };
 
-export function Phase4Resource({ initial, onSaved, onNext, onBack }: {
+type ValueSource = "saved" | "benchmark" | "manual" | "unavailable";
+
+function SourceBadge({ source, benchmark }: { source: ValueSource; benchmark?: MarketBenchmark | null }) {
+  const label = source === "saved"
+    ? "Saved value"
+    : source === "manual"
+      ? "Manual entry"
+      : source === "unavailable"
+        ? "Reference unavailable"
+      : benchmark?.matchType === "sector"
+        ? `Benchmark: ${benchmark.resolvedBenchmarkSector}`
+        : benchmark?.displayLabel ?? "Benchmark";
+
+  return (
+    <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${
+      source === "benchmark" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+    }`}>
+      {label}
+    </span>
+  );
+}
+
+export function Phase4Resource({ ideaId, initial, benchmark, onSaved, onNext, onBack }: {
+  ideaId: string | null;
   initial?: SavedResourceCalculation | null;
+  benchmark?: MarketBenchmark | null;
   onSaved?: (calc: SavedResourceCalculation) => void;
   onNext: () => void;
   onBack: () => void;
 }) {
-  // Seed inputs AND the computed result from the saved block; hardcoded defaults only
-  // when it's genuinely empty. Host hydrates before mount — no late-fetch clobber.
+  // Parent hydration completes before mount, so saved inputs or benchmark defaults
+  // are selected once without a late-fetch state overwrite.
+  const hasSavedTeam = Boolean(initial?.teamRequirements?.length);
+  const hasSavedSaas = Boolean(initial?.saasStack?.length);
   const [team, setTeam] = useState<TeamRequirement[]>(() =>
-    initial?.teamRequirements?.length
-      ? initial.teamRequirements
-      : [{ role: "Full-stack Developer", cost: 4000, durationMonths: 3, oneTime: false }],
+    hasSavedTeam
+      ? initial!.teamRequirements!
+      : benchmark
+        ? [{
+            role: "Full-stack Developer",
+            cost: benchmark.resourceDefaults.developerCostPerMonth,
+            durationMonths: benchmark.resourceDefaults.developerDurationMonths,
+            oneTime: false,
+          }]
+        : [],
   );
   const [saas, setSaas] = useState<SaasItem[]>(() =>
-    initial?.saasStack?.length ? initial.saasStack : [{ name: "Hosting & infra", monthlyCost: 80 }],
+    hasSavedSaas
+      ? initial!.saasStack!
+      : benchmark
+        ? [{ name: "Hosting & infra", monthlyCost: benchmark.resourceDefaults.hostingCostPerMonth }]
+        : [],
   );
   const [calc, setCalc] = useState<ResourceCalculation | null>(initial ?? null);
+  const [teamSource, setTeamSource] = useState<ValueSource>(hasSavedTeam ? "saved" : benchmark ? "benchmark" : "manual");
+  const [saasSource, setSaasSource] = useState<ValueSource>(hasSavedSaas ? "saved" : benchmark ? "benchmark" : "manual");
+  const [launchSource, setLaunchSource] = useState<ValueSource>(initial ? "saved" : benchmark ? "benchmark" : "unavailable");
+  const [legalMiscSource, setLegalMiscSource] = useState<ValueSource>(initial ? "saved" : benchmark ? "benchmark" : "unavailable");
   const [computing, setComputing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [providerNote, setProviderNote] = useState<string | null>(null);
   const [booking, setBooking] = useState(false);
 
+  const invalidateCalculation = () => {
+    setCalc(null);
+    setLaunchSource(benchmark ? "benchmark" : "unavailable");
+    setLegalMiscSource(benchmark ? "benchmark" : "unavailable");
+  };
+
+  const editTeam = (update: (items: TeamRequirement[]) => TeamRequirement[]) => {
+    setTeam((items) => update(items));
+    setTeamSource("manual");
+    invalidateCalculation();
+  };
+
+  const editSaas = (update: (items: SaasItem[]) => SaasItem[]) => {
+    setSaas((items) => update(items));
+    setSaasSource("manual");
+    invalidateCalculation();
+  };
+
   const compute = async () => {
     setComputing(true); setError(null);
     try {
-      const result = (await creatorJourneyApi.resourceCalculator(team, saas)) as SavedResourceCalculation;
+      const result = (await creatorJourneyApi.resourceCalculator(team, saas, ideaId)) as SavedResourceCalculation;
       setCalc(result);
+      setTeamSource("saved");
+      setSaasSource("saved");
+      setLaunchSource("saved");
+      setLegalMiscSource("saved");
       onSaved?.(result); // keep the host's saved snapshot current for Back-navigation
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't compute.");
@@ -63,38 +127,88 @@ export function Phase4Resource({ initial, onSaved, onNext, onBack }: {
     } finally { setBooking(false); }
   };
 
-  const fmt = (n: number) => `€${Math.round(n).toLocaleString()}`;
+  const currency = benchmark?.currency || "EUR";
+  const fmt = (n: number) => new Intl.NumberFormat(undefined, {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0,
+  }).format(Math.round(n));
 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Team */}
         <Card className="rounded-2xl border border-border bg-card p-4 space-y-3">
-          <div className="text-sm font-semibold">Team requirements</div>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="text-sm font-semibold">Developer / team requirements</div>
+            <SourceBadge source={teamSource} benchmark={benchmark} />
+          </div>
+          {team.length === 0 && <p className="text-xs text-muted-foreground">Add the roles and costs you want to use.</p>}
           {team.map((t, i) => (
             <div key={i} className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center">
-              <input value={t.role} onChange={(e) => setTeam((x) => x.map((y, j) => j === i ? { ...y, role: e.target.value } : y))} className="text-xs rounded-lg border border-border bg-background px-2 py-1.5 outline-none" placeholder="Role" />
-              <input type="number" value={t.cost} onChange={(e) => setTeam((x) => x.map((y, j) => j === i ? { ...y, cost: Number(e.target.value) } : y))} className="w-20 text-xs rounded-lg border border-border bg-background px-2 py-1.5 outline-none" title="€/mo" />
-              <input type="number" value={t.durationMonths} onChange={(e) => setTeam((x) => x.map((y, j) => j === i ? { ...y, durationMonths: Number(e.target.value) } : y))} className="w-14 text-xs rounded-lg border border-border bg-background px-2 py-1.5 outline-none" title="months" />
-              <button onClick={() => setTeam((x) => x.filter((_, j) => j !== i))}><Trash2 className="h-3.5 w-3.5 text-muted-foreground" /></button>
+              <input value={t.role} onChange={(e) => editTeam((x) => x.map((y, j) => j === i ? { ...y, role: e.target.value } : y))} className="text-xs rounded-lg border border-border bg-background px-2 py-1.5 outline-none" placeholder="Role" />
+              <input type="number" value={t.cost} onChange={(e) => editTeam((x) => x.map((y, j) => j === i ? { ...y, cost: Number(e.target.value) } : y))} className="w-20 text-xs rounded-lg border border-border bg-background px-2 py-1.5 outline-none" title={`${currency}/mo`} />
+              <input type="number" value={t.durationMonths} onChange={(e) => editTeam((x) => x.map((y, j) => j === i ? { ...y, durationMonths: Number(e.target.value) } : y))} className="w-14 text-xs rounded-lg border border-border bg-background px-2 py-1.5 outline-none" title="months" />
+              <button onClick={() => editTeam((x) => x.filter((_, j) => j !== i))} aria-label={`Remove ${t.role || "role"}`}><Trash2 className="h-3.5 w-3.5 text-muted-foreground" /></button>
             </div>
           ))}
-          <button onClick={() => setTeam((x) => [...x, { role: "", cost: 0, durationMonths: 1, oneTime: false }])} className="text-xs text-primary inline-flex items-center gap-1"><Plus className="h-3 w-3" /> Add role</button>
+          <button onClick={() => editTeam((x) => [...x, { role: "", cost: 0, durationMonths: 1, oneTime: false }])} className="text-xs text-primary inline-flex items-center gap-1"><Plus className="h-3 w-3" /> Add role</button>
         </Card>
 
         {/* SaaS */}
         <Card className="rounded-2xl border border-border bg-card p-4 space-y-3">
-          <div className="text-sm font-semibold">SaaS stack (monthly)</div>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="text-sm font-semibold">Hosting / SaaS stack (monthly)</div>
+            <SourceBadge source={saasSource} benchmark={benchmark} />
+          </div>
+          {saas.length === 0 && <p className="text-xs text-muted-foreground">Add hosting or tools with their monthly costs.</p>}
           {saas.map((s, i) => (
             <div key={i} className="grid grid-cols-[1fr_auto_auto] gap-2 items-center">
-              <input value={s.name} onChange={(e) => setSaas((x) => x.map((y, j) => j === i ? { ...y, name: e.target.value } : y))} className="text-xs rounded-lg border border-border bg-background px-2 py-1.5 outline-none" placeholder="Tool" />
-              <input type="number" value={s.monthlyCost} onChange={(e) => setSaas((x) => x.map((y, j) => j === i ? { ...y, monthlyCost: Number(e.target.value) } : y))} className="w-20 text-xs rounded-lg border border-border bg-background px-2 py-1.5 outline-none" title="€/mo" />
-              <button onClick={() => setSaas((x) => x.filter((_, j) => j !== i))}><Trash2 className="h-3.5 w-3.5 text-muted-foreground" /></button>
+              <input value={s.name} onChange={(e) => editSaas((x) => x.map((y, j) => j === i ? { ...y, name: e.target.value } : y))} className="text-xs rounded-lg border border-border bg-background px-2 py-1.5 outline-none" placeholder="Tool" />
+              <input type="number" value={s.monthlyCost} onChange={(e) => editSaas((x) => x.map((y, j) => j === i ? { ...y, monthlyCost: Number(e.target.value) } : y))} className="w-20 text-xs rounded-lg border border-border bg-background px-2 py-1.5 outline-none" title={`${currency}/mo`} />
+              <button onClick={() => editSaas((x) => x.filter((_, j) => j !== i))} aria-label={`Remove ${s.name || "tool"}`}><Trash2 className="h-3.5 w-3.5 text-muted-foreground" /></button>
             </div>
           ))}
-          <button onClick={() => setSaas((x) => [...x, { name: "", monthlyCost: 0 }])} className="text-xs text-primary inline-flex items-center gap-1"><Plus className="h-3 w-3" /> Add tool</button>
+          <button onClick={() => editSaas((x) => [...x, { name: "", monthlyCost: 0 }])} className="text-xs text-primary inline-flex items-center gap-1"><Plus className="h-3 w-3" /> Add tool</button>
         </Card>
       </div>
+
+      <Card className="rounded-2xl border border-border bg-card p-4">
+        <div className="mb-3 text-sm font-semibold">Planning assumptions</div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="space-y-1.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-medium">Launch duration</span>
+              <SourceBadge source={launchSource} benchmark={benchmark} />
+            </div>
+            <p className="text-sm font-semibold">
+              {calc
+                ? `${calc.timeToLaunchWeeksMin}–${calc.timeToLaunchWeeksMax} weeks`
+                : benchmark
+                  ? `${benchmark.resourceDefaults.launchDurationWeeksMin}–${benchmark.resourceDefaults.launchDurationWeeksMax} weeks`
+                  : "Calculated when you compute"}
+            </p>
+          </div>
+          <div className="space-y-1.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-medium">Legal</span>
+              <SourceBadge source={legalMiscSource} benchmark={benchmark} />
+            </div>
+            <p className="text-sm font-semibold">
+              {calc ? "Included in saved calculation" : benchmark ? fmt(benchmark.resourceDefaults.legalCost) : "Calculated when you compute"}
+            </p>
+          </div>
+          <div className="space-y-1.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-medium">Miscellaneous</span>
+              <SourceBadge source={legalMiscSource} benchmark={benchmark} />
+            </div>
+            <p className="text-sm font-semibold">
+              {calc ? "Included in saved calculation" : benchmark ? `${benchmark.resourceDefaults.miscPercentage}%` : "Calculated when you compute"}
+            </p>
+          </div>
+        </div>
+      </Card>
 
       <Button variant="outline" onClick={compute} disabled={computing} className="gap-2">{computing ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Compute plan</Button>
 
