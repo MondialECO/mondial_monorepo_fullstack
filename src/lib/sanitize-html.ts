@@ -38,9 +38,6 @@ export function sanitizeDescriptionHtml(html: string): string {
     KEEP_CONTENT: true,
     RETURN_DOM: false,
     RETURN_DOM_FRAGMENT: false,
-    RETURN_DOM_IMPORT: false,
-    // Custom hook to restrict inline styles to text-align only
-    CUSTOM_ELEMENT_HANDLER: undefined,
   });
 }
 
@@ -70,8 +67,6 @@ export function sanitizeDescriptionHtmlStrict(html: string): string {
     FORCE_BODY: false,
     KEEP_CONTENT: true,
     RETURN_DOM: false,
-    // Custom hook to sanitize style attributes
-    CUSTOM_ELEMENT_HANDLER: undefined,
   };
 
   let sanitized = DOMPurify.sanitize(html, config);

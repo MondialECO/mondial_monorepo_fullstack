@@ -19,6 +19,7 @@ import type {
   UpsertProfileRequest,
   VerificationStatusResponse,
 } from "@/types/service-provider";
+import type { GalleryImage, PreviewVideo, ServiceListing } from "@/types/service-catalog";
 
 // REST client for the Service Provider domain. Mirrors ServiceProviderController
 // routes (api/service-provider/*). Unlike most peers, this surface wraps payloads
@@ -264,7 +265,7 @@ export async function uploadListingGalleryImage(
   file: File,
   onProgress?: UploadProgressHandler
 ) {
-  const res = await api.post<ApiEnvelope<GalleryImageResponse>>(
+  const res = await api.post<ApiEnvelope<GalleryImage>>(
     `/service-provider/listings/${encodeURIComponent(listingId)}/gallery-images`,
     imageForm(file),
     { onUploadProgress: progress(onProgress) }
@@ -273,7 +274,7 @@ export async function uploadListingGalleryImage(
 }
 
 export async function deleteListingGalleryImage(listingId: string, imageId: string) {
-  const res = await api.delete<ApiEnvelope<ServiceListingResponse>>(
+  const res = await api.delete<ApiEnvelope<ServiceListing>>(
     `/service-provider/listings/${encodeURIComponent(listingId)}/gallery-images/${encodeURIComponent(imageId)}`
   );
   return unwrap(res.data);
@@ -284,7 +285,7 @@ export async function uploadListingPreviewVideo(
   file: File,
   onProgress?: UploadProgressHandler
 ) {
-  const res = await api.post<ApiEnvelope<PreviewVideoResponse>>(
+  const res = await api.post<ApiEnvelope<PreviewVideo>>(
     `/service-provider/listings/${encodeURIComponent(listingId)}/preview-video`,
     imageForm(file),
     { onUploadProgress: progress(onProgress) }
@@ -293,7 +294,7 @@ export async function uploadListingPreviewVideo(
 }
 
 export async function deleteListingPreviewVideo(listingId: string) {
-  const res = await api.delete<ApiEnvelope<ServiceListingResponse>>(
+  const res = await api.delete<ApiEnvelope<ServiceListing>>(
     `/service-provider/listings/${encodeURIComponent(listingId)}/preview-video`
   );
   return unwrap(res.data);

@@ -1,5 +1,5 @@
 import api from '@/lib/axios';
-import type { ApiEnvelope, ApiResponse } from '@/types/service-provider';
+import type { ApiEnvelope } from '@/types/service-provider';
 
 const unwrap = <T>(envelope: ApiEnvelope<T>): T => envelope.data;
 
