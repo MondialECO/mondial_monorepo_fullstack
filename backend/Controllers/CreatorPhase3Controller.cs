@@ -370,6 +370,7 @@ namespace WebApp.Controllers
                 journey = await _journeys.SetFormationAsync(userId, formation, ideaId);
                 return Ok(ApiResponse.Ok("Formation generated", journey.Phase3Data.FormationGenerator));
             }
+            catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
             catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
             catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
         }

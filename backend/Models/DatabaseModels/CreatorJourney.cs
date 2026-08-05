@@ -297,7 +297,26 @@ namespace WebApp.Models.DatabaseModels
     public class CreatorGtmSetup
     {
         public List<CreatorWebPresenceItem> WebPresence { get; set; } = new();
-        public List<CreatorGtmWeek> AiGtmWeeks { get; set; } = new();
+
+        [BsonElement("BenchmarkGtmWeeks")]
+        public List<CreatorGtmWeek> BenchmarkGtmWeeks { get; set; } = new();
+
+        // Read bridge for Phase 4 documents persisted before the field was renamed.
+        // The null getter + IgnoreIfNull ensure all new writes use only the honest
+        // BenchmarkGtmWeeks name; no data migration is required.
+        [BsonElement("AiGtmWeeks")]
+        [BsonIgnoreIfNull]
+        [JsonIgnore]
+        public List<CreatorGtmWeek>? LegacyAiGtmWeeks
+        {
+            get => null;
+            set
+            {
+                if ((BenchmarkGtmWeeks == null || BenchmarkGtmWeeks.Count == 0) && value != null)
+                    BenchmarkGtmWeeks = value;
+            }
+        }
+
         public List<string> TargetAudiences { get; set; } = new();
         public List<CreatorChannelMix> ChannelMix { get; set; } = new();
     }

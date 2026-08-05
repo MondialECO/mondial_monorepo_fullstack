@@ -37,11 +37,12 @@ const SKILLS_AUTOSAVE_DEBOUNCE_MS = 400;
 type PendingSkillsSave = {
   skills: string[];
   revision: number;
+  ideaId: string | null;
 };
 
 export default function FormationPage() {
   const router = useRouter();
-  const { completeStep } = useCreatorProgress();
+  const { state: { activeIdeaId }, completeStep, isLoading: progressLoading } = useCreatorProgress();
 
   const [view, setView] = useState<'type' | 'skills'>('type');
   const [formation, setFormation] = useState<FormationGenerator | null>(null);
@@ -79,7 +80,11 @@ export default function FormationPage() {
         pendingSkillsSaveRef.current = null;
 
         try {
-          const updatedFormation = await creatorJourneyApi.declareFormationSkills(snapshot.skills);
+          const updatedFormation = await creatorJourneyApi.declareFormationSkills(
+            snapshot.skills,
+            undefined,
+            snapshot.ideaId,
+          );
           if (isMountedRef.current && snapshot.revision === latestSkillsRevisionRef.current) {
             setFormation(updatedFormation);
             setError(null);
@@ -110,14 +115,14 @@ export default function FormationPage() {
   const queueSkillsAutosave = useCallback((skills: string[]) => {
     const revision = latestSkillsRevisionRef.current + 1;
     latestSkillsRevisionRef.current = revision;
-    pendingSkillsSaveRef.current = { skills: [...skills], revision };
+    pendingSkillsSaveRef.current = { skills: [...skills], revision, ideaId: activeIdeaId };
 
     if (skillsSaveTimerRef.current) clearTimeout(skillsSaveTimerRef.current);
     skillsSaveTimerRef.current = setTimeout(() => {
       skillsSaveTimerRef.current = null;
       void drainSkillsQueue().catch(() => undefined);
     }, SKILLS_AUTOSAVE_DEBOUNCE_MS);
-  }, [drainSkillsQueue]);
+  }, [activeIdeaId, drainSkillsQueue]);
 
   const flushSkills = useCallback(async () => {
     if (skillsSaveTimerRef.current) {
@@ -155,6 +160,7 @@ export default function FormationPage() {
   }, [drainSkillsQueue, flushSkills]);
 
   useEffect(() => {
+    if (progressLoading) return;
     let active = true;
     (async () => {
       try {
@@ -172,7 +178,7 @@ export default function FormationPage() {
         const hasBackendOptions = (existing?.options?.length ?? 0) > 0;
         const f = existing?.recommendedType && existing.recommendationReason && forecastIsCurrent && hasBackendOptions
           ? existing
-          : await creatorJourneyApi.generateFormation();
+          : await creatorJourneyApi.generateFormation(activeIdeaId);
         if (!active) return;
         setFormation(f);
         // Legacy formations (no declaration) start EMPTY — the old youHave was an echo of the
@@ -194,12 +200,12 @@ export default function FormationPage() {
       }
     })();
     return () => { active = false; };
-  }, []);
+  }, [activeIdeaId, progressLoading]);
 
   const selectType = async (type: FormationTypeCode) => {
     setSelecting(true);
     try {
-      const { formation: f } = await creatorJourneyApi.selectFormationType(type);
+      const { formation: f } = await creatorJourneyApi.selectFormationType(type, activeIdeaId);
       setFormation(f); // type ↔ skills are decoupled — this never recalculates the gap
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't select type.");
@@ -234,7 +240,11 @@ export default function FormationPage() {
     setError(null);
     try {
       await flushSkills();
-      const f = await creatorJourneyApi.declareFormationSkills(declaredSkillsRef.current, cofounderDraft());
+      const f = await creatorJourneyApi.declareFormationSkills(
+        declaredSkillsRef.current,
+        cofounderDraft(),
+        activeIdeaId,
+      );
       setFormation(f);
       setCfSaved(true);
     } catch (e) {
@@ -253,7 +263,11 @@ export default function FormationPage() {
     try {
       await flushSkills();
       // Persist declared skills (+ co-founder draft when the tech-gap form is in play).
-      await creatorJourneyApi.declareFormationSkills(declaredSkillsRef.current, cofounderDraft());
+      await creatorJourneyApi.declareFormationSkills(
+        declaredSkillsRef.current,
+        cofounderDraft(),
+        activeIdeaId,
+      );
       completeStep(3, 5); // local cursor only; status stays engine-derived
       router.push('/dashboard/creator/phase-3/complete');
     } catch (e) {

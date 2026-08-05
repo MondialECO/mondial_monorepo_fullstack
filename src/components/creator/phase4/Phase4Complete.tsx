@@ -7,13 +7,14 @@ import { creatorJourneyApi } from "@/lib/api-creator-journey";
 import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
 import type { ComputedJourneyStatus } from "@/types/creator/journey-api";
 
-export function Phase4Complete({ onContinue }: { onContinue: () => void }) {
+export function Phase4Complete({ ideaId, onContinue }: { ideaId: string | null; onContinue: () => void }) {
   const { advancePhase } = useCreatorProgress();
   const [computed, setComputed] = useState<ComputedJourneyStatus | null>(null);
   const [missing, setMissing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isNavigating, setIsNavigating] = useState(false);
+  const [ideaConflict, setIdeaConflict] = useState(false);
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
@@ -22,13 +23,24 @@ export function Phase4Complete({ onContinue }: { onContinue: () => void }) {
       setLoading(true);
       setError(null);
       setMissing(null);
+      setComputed(null);
+      setIdeaConflict(false);
       try {
         try {
-          await creatorJourneyApi.completeOffer();
+          await creatorJourneyApi.completeOffer(ideaId);
         } catch (e) {
           const err = e as { response?: { status?: number; data?: { message?: string } } };
           if (err.response?.status === 422) {
             setMissing((err.response.data?.message ?? "").replace("Missing module: ", ""));
+          } else if (err.response?.status === 409) {
+            if (active) {
+              setIdeaConflict(true);
+              setError(
+                err.response.data?.message
+                ?? "You've switched to a different idea elsewhere — refresh this page and try again.",
+              );
+            }
+            return;
           }
         }
         const { computedStatus } = await creatorJourneyApi.get();
@@ -41,7 +53,7 @@ export function Phase4Complete({ onContinue }: { onContinue: () => void }) {
       }
     })();
     return () => { active = false; };
-  }, [attempt]);
+  }, [attempt, ideaId]);
 
   // Derived gate — no manual status write.
   const canContinue = computed?.phase4.status === "completed" && computed?.phase5.status === "available";
@@ -70,7 +82,13 @@ export function Phase4Complete({ onContinue }: { onContinue: () => void }) {
       {!loading && error && (
         <div className="flex flex-col items-center gap-2">
           <p className="text-sm text-destructive">{error}</p>
-          <Button variant="outline" size="sm" onClick={() => setAttempt((a) => a + 1)}>Retry</Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => ideaConflict ? window.location.reload() : setAttempt((a) => a + 1)}
+          >
+            {ideaConflict ? "Refresh page" : "Retry"}
+          </Button>
         </div>
       )}
 
