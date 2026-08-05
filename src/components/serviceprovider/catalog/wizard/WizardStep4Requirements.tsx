@@ -195,11 +195,15 @@ function RequirementQuestionCard({
   onUpdate: (updates: Partial<RequirementsField>) => void;
   onDelete: () => void;
 }) {
-  const fieldTypeLabel = {
+  const fieldTypeLabels: Record<RequirementsField['fieldType'], string> = {
     Text: 'Free Text',
     File: 'File Upload',
     Choice: 'Choice',
-  }[question.fieldType] || question.fieldType;
+    Number: 'Number',
+    Date: 'Date',
+    Boolean: 'Yes / No',
+  };
+  const fieldTypeLabel = fieldTypeLabels[question.fieldType];
 
   return (
     <SpCard className="p-5">

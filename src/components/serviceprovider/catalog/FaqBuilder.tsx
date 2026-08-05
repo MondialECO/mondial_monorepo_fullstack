@@ -38,7 +38,7 @@ import {
   useUnpublishFaq,
   useUpdateFaq,
 } from '@/hooks/queries/service-catalog';
-import { FAQ_VISIBILITIES, type ServiceFaq, type ServicePackage } from '@/types/service-catalog';
+import { FAQ_VISIBILITIES, type FaqVisibility, type ServiceFaq, type ServicePackage } from '@/types/service-catalog';
 import { EnumSelect, Field } from './_shared';
 
 type Feedback = { status: 'success' | 'error'; message: string };
@@ -337,13 +337,13 @@ function FaqForm({
 }: {
   packages: ServicePackage[];
   initial?: ServiceFaq;
-  onSubmit: (payload: { packageId: string | null; question: string; answer: string; visibility: string; displayOrder: number }) => Promise<void>;
+  onSubmit: (payload: { packageId: string | null; question: string; answer: string; visibility: FaqVisibility; displayOrder: number }) => Promise<void>;
   onCancel: () => void;
   pending: boolean;
 }) {
   const [question, setQuestion] = useState(initial?.question ?? '');
   const [answer, setAnswer] = useState(initial?.answer ?? '');
-  const [visibility, setVisibility] = useState<string>(initial?.visibility ?? 'AllPackages');
+  const [visibility, setVisibility] = useState<FaqVisibility>(initial?.visibility ?? 'AllPackages');
   const [packageId, setPackageId] = useState<string>(initial?.packageId ?? '');
   const [error, setError] = useState<string | null>(null);
 
@@ -378,7 +378,12 @@ function FaqForm({
         </Field>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Visibility" htmlFor="faq-visibility">
-            <EnumSelect labelFor="faq-visibility" value={visibility} onChange={setVisibility} options={FAQ_VISIBILITIES} />
+            <EnumSelect
+              labelFor="faq-visibility"
+              value={visibility}
+              onChange={(value) => setVisibility(value as FaqVisibility)}
+              options={FAQ_VISIBILITIES}
+            />
           </Field>
           <Field label="Applies to package" htmlFor="faq-package">
             <select

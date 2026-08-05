@@ -88,6 +88,7 @@ export function ServiceDescriptionEditor({
     .filter((word) => word.length > 0).length;
 
   function setLink() {
+    if (!editor) return;
     const existing = editor.getAttributes('link').href as string | undefined;
     const entered = window.prompt('Enter a complete http(s) URL', existing ?? 'https://');
     if (entered === null) return;
