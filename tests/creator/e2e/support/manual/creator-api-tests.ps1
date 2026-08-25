@@ -4,8 +4,8 @@
 #
 # Run the backend (dotnet run in /backend) + MongoDB first, then:
 #   cd tests
-#   powershell -ExecutionPolicy Bypass -File .\creator-api-tests.ps1
-#   powershell -ExecutionPolicy Bypass -File .\creator-api-tests.ps1 -Demo   # use the demo account directly
+#   powershell -ExecutionPolicy Bypass -File .\creator\e2e\support\manual\creator-api-tests.ps1
+#   powershell -ExecutionPolicy Bypass -File .\creator\e2e\support\manual\creator-api-tests.ps1 -Demo   # use the demo account directly
 #
 # Auth fallback: if register / login / the universal-phase gate blocks the
 # fresh account, the harness automatically falls back to the demo account

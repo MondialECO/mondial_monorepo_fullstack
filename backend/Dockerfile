@@ -1,15 +1,21 @@
 # ---- Build stage ----
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
+ARG E2E_SUPPORT=false
 
 # Restore first (cached layer) using the repo-local NuGet source.
 COPY NuGet.config ./
 COPY WebApp.csproj ./
+COPY tests/WebApp.E2eSupport/WebApp.E2eSupport.csproj tests/WebApp.E2eSupport/
 RUN dotnet restore WebApp.csproj
 
 # Build & publish only the web project (tests excluded by csproj globs).
 COPY . .
 RUN dotnet publish WebApp.csproj -c Release -o /app/publish /p:UseAppHost=false
+RUN if [ "$E2E_SUPPORT" = "true" ]; then \
+      dotnet build tests/WebApp.E2eSupport/WebApp.E2eSupport.csproj -c Release -o /app/e2e-support && \
+      cp /app/e2e-support/WebApp.E2eSupport.dll /app/publish/; \
+    fi
 
 # ---- Runtime stage ----
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final

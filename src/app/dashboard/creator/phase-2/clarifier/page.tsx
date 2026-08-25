@@ -42,8 +42,8 @@ const STEP_LABELS = [
   "Target Users",
   "Alternatives",
   "Solution",
-  "Differentiation",
-  "Key Risk",
+  "Differentiation & Edge",
+  "Timing & Key Risk",
 ];
 
 // Progress bands for the clarity ring. The ring fills from questions ANSWERED, not
@@ -346,6 +346,9 @@ export default function AIClarifierPage() {
         targetAudience: answers[1] ?? "",
         description: answers[3] ?? answers[0] ?? "",
         existingAlternatives: answers[2] ?? "",
+        founderAdvantage: answers[4] ?? "",
+        whyNow: answers[5] ?? "",
+        riskiestAssumption: answers[5] ?? "",
       };
 
       // Start the C-2 AI clarifier (1 credit), poll it, then map onto the project.

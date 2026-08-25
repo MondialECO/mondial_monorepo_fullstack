@@ -9,6 +9,7 @@ using WebApp.Models;
 using WebApp.Models.DatabaseModels;
 using WebApp.Models.Dtos;
 using WebApp.Services;
+using WebApp.Services.Implementations;
 using WebApp.Services.Interface;
 using WebApp.Services.Repository;
 
@@ -35,6 +36,7 @@ namespace WebApp.Controllers
         private readonly ICreatorIdeaStore _ideas;
         private readonly IMongoClient _mongoClient;
         private readonly bool _transactionsEnabled;
+        private readonly bool _isDevelopment;
         private readonly ILogger<CreatorPhase6Controller> _logger;
 
         public CreatorPhase6Controller(
@@ -42,7 +44,7 @@ namespace WebApp.Controllers
             MongoDbContext context, UserManager<ApplicationUser> userManager,
             RoleManager<ApplicationRole> roleManager, IDealEventPublisher events,
             ICompanyService companies, ICreatorIdeaStore ideas, IMongoClient mongoClient, IConfiguration config,
-            ILogger<CreatorPhase6Controller> logger)
+            IHostEnvironment environment, ILogger<CreatorPhase6Controller> logger)
         {
             _journeys = journeys;
             _matching = matching;
@@ -53,6 +55,7 @@ namespace WebApp.Controllers
             _companies = companies;
             _ideas = ideas;
             _mongoClient = mongoClient;
+            _isDevelopment = environment.IsDevelopment();
             // Multi-doc transactions require a replica set / Atlas. Production runs a
             // replica set, so this defaults TRUE. Standalone-local dev sets it false
             // ("Mongo:TransactionsEnabled": false) to use the logged ordered-writes
@@ -64,6 +67,60 @@ namespace WebApp.Controllers
         private string GetUserId() =>
             User.FindFirst(ClaimTypes.NameIdentifier)?.Value
             ?? throw new UnauthorizedAccessException("User not authenticated");
+
+        private async Task<CreatorReadinessResponse> BuildReadinessAsync(string userId, CreatorJourney journey)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            var phase1Complete = (user?.Onboarding?.Phase ?? 0) >= 1;
+            var computed = await _journeys.ComputePhaseStatusAsync(journey, phase1Complete);
+            var project = journey.Project ?? new CreatorJourneyProject();
+            var p5 = journey.Phase5Data ?? new CreatorPhase5Data();
+            var isBuild = p5.ChosenPath == "build";
+            var isSell = p5.ChosenPath == "sell" || p5.ChosenPath == "sell_license";
+            var requirements = new List<CreatorReadinessRequirement>
+            {
+                new() { Key = "verification", Label = "Verify your identity", Route = "/dashboard/creator/phase-1", Complete = phase1Complete, Required = true },
+                new() { Key = "idea_core", Label = "Define your idea", Route = "/dashboard/creator/phase-2", Complete = !string.IsNullOrWhiteSpace(project.Problem) && !string.IsNullOrWhiteSpace(project.TargetUser) && !string.IsNullOrWhiteSpace(project.Solution), Required = true },
+                new() { Key = "business_planning", Label = "Complete your business plan", Route = "/dashboard/creator/phase-3/business-plan", Complete = computed.Phase3.Status == "completed", Required = true },
+                new() { Key = "commercial_preparation", Label = "Prepare your commercial offer", Route = "/dashboard/creator/offer-pricing", Complete = computed.Phase4.Status == "completed", Required = true },
+                new() { Key = "direction", Label = "Choose your direction", Route = "/dashboard/creator/crossroads", Complete = !string.IsNullOrWhiteSpace(p5.ChosenPath), Required = true },
+                new() { Key = "company_setup", Label = "Complete company planning", Route = "/dashboard/creator/crossroads", Complete = isBuild && p5.PathB?.CompanyFormation != null, Required = isBuild },
+                new() { Key = "funding_preparation", Label = "Set your funding target", Route = "/dashboard/creator/crossroads", Complete = isBuild && p5.PathB?.SeedFunding != null, Required = isBuild },
+            };
+            var missing = requirements.Where(x => x.Required && !x.Complete).Select(x => x.Key).ToList();
+            // The score is path-aware: Build-only rows must not lower a Sell
+            // project's readiness merely because they are intentionally irrelevant.
+            var relevant = requirements.Where(x => x.Required).ToList();
+            var complete = relevant.Count(x => x.Complete);
+            var response = new CreatorReadinessResponse
+            {
+                OverallProgress = relevant.Count == 0 ? 0 : (int)Math.Round(complete * 100d / relevant.Count),
+                LevelUpEligible = isBuild && missing.Count == 0,
+                SelectedPath = p5.ChosenPath ?? "",
+                Requirements = requirements,
+                MissingRequired = missing,
+            };
+            response.NextBestAction = isSell
+                ? (p5.PathA?.MarketplaceListing?.Status == "live" ? null : new CreatorReadinessRequirement { Key = "publish_full_buyout", Label = "Publish your Full Buyout listing", Route = "/dashboard/creator/crossroads", Required = false })
+                : response.LevelUpEligible
+                    ? new CreatorReadinessRequirement { Key = "level_up", Label = "Become an Entrepreneur", Route = "/dashboard/creator/investors", Required = true, Complete = true }
+                    : requirements.FirstOrDefault(x => x.Required && !x.Complete);
+            return response;
+        }
+
+        [HttpGet("readiness")]
+        public async Task<IActionResult> Readiness([FromQuery] string ideaId = null)
+        {
+            try
+            {
+                var userId = GetUserId();
+                var journey = await _journeys.GetOrCreateComposedAsync(userId, ideaId);
+                return Ok(ApiResponse.Ok("OK", await BuildReadinessAsync(userId, journey)));
+            }
+            catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
+            catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
+            catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
+        }
 
         // Maps the Phase-5 ownership PLAN (percentages) → a Phase-4 cap-table request
         // and writes it via the canonical SubmitCapTableAsync path (no parallel writer).
@@ -147,18 +204,6 @@ namespace WebApp.Controllers
                 var context = await DerivedMatchContextAsync(userId, journey);
                 var matches = await _matching.MatchAsync(journey, country, context);
 
-                // Snapshot + version (phase: 6).
-                await _context.SmartMatchRuns.InsertOneAsync(new SmartMatchRun
-                {
-                    UserId = userId, PhaseContext = context,
-                    MatchCount = matches.Count, TopScore = matches.FirstOrDefault()?.FinalScore ?? 0,
-                });
-                await _journeys.AppendOutputAsync(userId, new Models.Dtos.AppendOutputRequest
-                {
-                    OutputKey = "matchingRuns", Phase = 6,
-                    Payload = new Dictionary<string, object> { ["phaseContext"] = context, ["matchCount"] = matches.Count },
-                }, ideaId);
-
                 return Ok(ApiResponse.Ok("OK", new { matches, isEmpty = matches.Count == 0 }));
             }
             catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
@@ -196,11 +241,20 @@ namespace WebApp.Controllers
             try
             {
                 var userId = GetUserId();
+                if (string.IsNullOrWhiteSpace(ideaId))
+                    return BadRequest(ApiResponse.Error("ideaId is required for Creator changes.", HttpContext.TraceIdentifier));
+                if (!long.TryParse(Request.Query["expectedVersion"], out var expectedVersion) || expectedVersion < 1)
+                    return BadRequest(ApiResponse.Error("expectedVersion is required for Creator changes.", HttpContext.TraceIdentifier));
+                var ownedIdea = await _ideas.GetOwnedAsync(ideaId, userId);
+                if (ownedIdea == null)
+                    return NotFound(ApiResponse.Error("Idea not found.", HttpContext.TraceIdentifier));
+                if ((ownedIdea.Version > 0 ? ownedIdea.Version : 1) != expectedVersion)
+                    return StatusCode(409, ApiResponse.Error("This idea was updated in another tab. Refresh to load the latest version before continuing.", HttpContext.TraceIdentifier));
                 // STEP 4: prerequisites are checked against the resolved idea's data.
                 // No id → the active idea (today's single-idea behavior); explicit id →
                 // owned-or-404 inside the composed resolve. Once-per-user stays guarded below.
                 var journey = await _journeys.GetOrCreateComposedAsync(userId, ideaId);
-                var levelUpIdeaId = ideaId ?? journey.ActiveIdeaId;
+                var levelUpIdeaId = ideaId;
                 var p5 = journey.Phase5Data ?? new CreatorPhase5Data();
                 var p6 = journey.Phase6Data ??= new CreatorPhase6Data();
 
@@ -223,15 +277,16 @@ namespace WebApp.Controllers
                     return StatusCode(409, ApiResponse.Error("Another idea has already been taken through Level Up.", HttpContext.TraceIdentifier));
                 }
 
-                // Hard gate.
-                var missing = new List<string>();
-                bool phase5Done = p5.ChosenPath == "build" && p5.PathB?.SeedFunding != null;
-                if (p5.ChosenPath != "build") missing.Add("build_path");
-                if (p5.PathB?.SeedFunding == null) missing.Add("seed_funding");
-                if (!phase5Done) // proxy for "phasesCompleted includes 5"
-                    if (!missing.Contains("seed_funding") && !missing.Contains("build_path")) missing.Add("phase5_complete");
-                if (missing.Count > 0)
-                    return UnprocessableEntity(ApiResponse.Error("prerequisites_not_met", HttpContext.TraceIdentifier, new { missing }));
+                var readiness = await BuildReadinessAsync(userId, journey);
+                if (!readiness.LevelUpEligible)
+                    return UnprocessableEntity(ApiResponse.Error("prerequisites_not_met", HttpContext.TraceIdentifier, new { missing = readiness.MissingRequired }));
+
+                // A multi-document Level Up must never masquerade as atomic in a
+                // production-like environment. The ordered fallback is deliberately
+                // local-development-only for standalone Mongo installations.
+                if (!_transactionsEnabled && !_isDevelopment)
+                    return StatusCode(StatusCodes.Status503ServiceUnavailable,
+                        ApiResponse.Error("Level Up requires a transaction-capable Mongo deployment. Please contact support.", HttpContext.TraceIdentifier));
 
                 // Provenance + plan inputs. (The Phase-5 spin stays dead intentionally;
                 // the company is created here keyed by OwnerId at CurrentPhase=2.)
@@ -281,6 +336,19 @@ namespace WebApp.Controllers
                     p6.LevelUpTriggeredAt = DateTime.UtcNow;
                     p6.EntrepreneurProfileId = profile.Id;
                     (p6.SmartMatchmaking ??= new CreatorSmartMatchmaking()).Status = "live";
+
+                    // The per-idea match state is a critical part of the transition, not
+                    // a best-effort mirror. Match its optimistic-concurrency token inside
+                    // the same Mongo transaction as the new Entrepreneur identity.
+                    var ideaUpdated = await _ideas.UpdateAsync(
+                        levelUpIdeaId,
+                        userId,
+                        Builders<CreatorIdea>.Update.Set(x => x.SmartMatchmaking, p6.SmartMatchmaking),
+                        expectedVersion,
+                        session);
+                    if (!ideaUpdated)
+                        throw new CreatorJourneyException(409, "This idea was updated in another tab. Refresh to load the latest version before continuing.");
+
                     // Step 6iii: TARGETED user-level $set — never ReplaceAsync(journey),
                     // which would write the composed (idea) phase blocks onto the frozen
                     // journey copy. Only pointers + Level-Up markers are journey writes now.
@@ -298,9 +366,18 @@ namespace WebApp.Controllers
                     if (userGuid != Guid.Empty)
                     {
                         var upd = Builders<ApplicationUser>.Update.Set(u => u.EntrepreneurProfile.CompanyId, companyId);
-                        if (entRole != null) upd = upd.AddToSet(u => u.Roles, entRole.Id); // idempotent
-                        if (session is null) await _context.ApplicationUsers.UpdateOneAsync(u => u.Id == userGuid, upd);
-                        else await _context.ApplicationUsers.UpdateOneAsync(session, u => u.Id == userGuid, upd);
+                        var filter = Builders<ApplicationUser>.Filter.Eq("_id", userGuid) | Builders<ApplicationUser>.Filter.Eq("_id", userId);
+                        if (session is null) await _context.ApplicationUsers.UpdateOneAsync(filter, upd);
+                        else await _context.ApplicationUsers.UpdateOneAsync(session, filter, upd);
+
+                        if (entRole != null)
+                        {
+                            var targetUser = await _userManager.FindByIdAsync(userId);
+                            if (targetUser != null && !await _userManager.IsInRoleAsync(targetUser, "Entrepreneur"))
+                            {
+                                await _userManager.AddToRoleAsync(targetUser, "Entrepreneur");
+                            }
+                        }
                     }
                 }
 
@@ -312,6 +389,11 @@ namespace WebApp.Controllers
                     {
                         await CoreWritesAsync(session);
                         await session.CommitTransactionAsync();
+                    }
+                    catch (CreatorJourneyException ex)
+                    {
+                        try { await session.AbortTransactionAsync(); } catch { /* nothing to abort */ }
+                        return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
                     }
                     catch (Exception ex)
                     {
@@ -337,17 +419,6 @@ namespace WebApp.Controllers
                     try { await SeedCapTableFromPlanAsync(companyId, formation.Ownership); }
                     catch (Exception ex) { _logger.LogWarning(ex, "Cap-table seed failed post-Level-Up for {CompanyId}; re-enterable at Phase 4.", companyId); }
                 }
-                // Per-idea mirror of the matchmaking flip (idea = source of truth for
-                // SmartMatchmaking). Best-effort: the journey carries it in the atomic core.
-                if (!string.IsNullOrEmpty(levelUpIdeaId))
-                {
-                    try
-                    {
-                        await _ideas.UpdateAsync(levelUpIdeaId, userId,
-                            Builders<CreatorIdea>.Update.Set(x => x.SmartMatchmaking, p6.SmartMatchmaking));
-                    }
-                    catch (Exception ex) { _logger.LogWarning(ex, "Idea SmartMatchmaking mirror failed post-Level-Up for {IdeaId}.", levelUpIdeaId); }
-                }
                 // SignalR notification (not data) — a miss is a missed toast, not inconsistency.
                 try
                 {
@@ -366,6 +437,7 @@ namespace WebApp.Controllers
                     redirectTo = "/dashboard/entrepreneur",
                 }));
             }
+            catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
             catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
             catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
         }

@@ -36,9 +36,12 @@ export default function CreatorPhaseGuard({ children }: { children: React.ReactN
       return;
     }
 
-    if (pathname.includes('/dashboard/creator/investors') && journeyState.phase6.status === 'locked') {
-      router.replace('/dashboard/creator');
-      return;
+    if (pathname.includes('/dashboard/creator/investors')) {
+      const isBuildPathReadyMode = journeyState.phase5.status !== 'locked' && journeyState.phase5.selectedPath === 'build';
+      if (journeyState.phase6.status === 'locked' && !isBuildPathReadyMode) {
+        router.replace('/dashboard/creator');
+        return;
+      }
     }
 
     setIsAuthorized(true);

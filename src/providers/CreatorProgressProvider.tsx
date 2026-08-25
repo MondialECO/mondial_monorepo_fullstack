@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, ReactNode } from 'react';
 import { useCreatorProgressState, type HydrateResult } from '@/hooks/useCreatorProgressState';
-import type { CreatorDocument, CreatorJourneyData, CreatorOutputKey, CreatorProject } from '@/types/creator/creator-journey';
+import type { CreatorJourneyData, CreatorOutputKey, CreatorProject } from '@/types/creator/creator-journey';
 
 interface CreatorProgressContextType {
   state: CreatorJourneyData;
@@ -11,14 +11,13 @@ interface CreatorProgressContextType {
   error: Error | null;
   updateProject: (fields: Partial<CreatorProject>) => void;
   saveOutputVersion: (outputKey: CreatorOutputKey, payload: Record<string, unknown>) => void;
-  upsertDocument: (document: Omit<CreatorDocument, 'createdAt'> & { createdAt?: string }) => void;
   completeStep: (phaseNum: number, stepNum: number) => void;
   setEntryPath: (path: 'already_have_idea' | null) => void;
-  setCrossroadsPath: (path: 'sell_license' | 'build' | null) => void;
+  setCrossroadsPath: (path: 'sell' | 'build' | null) => Promise<boolean>;
   advancePhase: (phaseNum: number) => void;
   resetJourney: () => void;
   /** Resolves with the hydration outcome — navigation-after-refetch MUST check it. */
-  refetch: () => Promise<HydrateResult>;
+  refetch: (ideaId?: string | null) => Promise<HydrateResult>;
 }
 
 const CreatorProgressContext = createContext<CreatorProgressContextType | undefined>(undefined);

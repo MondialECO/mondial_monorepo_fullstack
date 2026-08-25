@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { creatorJourneyApi, type SmartMatch } from "@/lib/api-creator-journey";
+import { creatorJourneyApi, type CreatorReadiness, type SmartMatch } from "@/lib/api-creator-journey";
 import { useCreateConversation } from "@/hooks/queries/chat";
 import { LevelUpCelebration } from "@/components/creator/phase6/LevelUpCelebration";
+import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
 
 function MatchCard({ m, featured }: { m: SmartMatch; featured?: boolean }) {
   const router = useRouter();
@@ -69,25 +70,29 @@ function MatchCard({ m, featured }: { m: SmartMatch; featured?: boolean }) {
 
 export default function InvestorsPage() {
   const router = useRouter();
+  const { state: { activeIdeaId } } = useCreatorProgress();
   const [data, setData] = useState<{ featured: SmartMatch | null; qualified: SmartMatch[]; matchingTip: string; isEmpty: boolean } | null>(null);
+  const [readiness, setReadiness] = useState<CreatorReadiness | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [leveling, setLeveling] = useState(false);
 
   const load = () => {
     setLoading(true); setError(null);
-    creatorJourneyApi.getInvestors().then(setData)
+    Promise.all([creatorJourneyApi.getInvestors(activeIdeaId), creatorJourneyApi.creatorReadiness(activeIdeaId)]).then(([matches, nextReadiness]) => {
+      setData(matches); setReadiness(nextReadiness);
+    })
       .catch((e) => setError(e instanceof Error ? e.message : "Couldn't load matches."))
       .finally(() => setLoading(false));
   };
-  useEffect(load, []);
+  useEffect(load, [activeIdeaId]);
 
-  if (leveling) return <LevelUpCelebration onDone={(redirect) => router.push(redirect)} onCancel={() => setLeveling(false)} />;
+  if (leveling) return <LevelUpCelebration ideaId={activeIdeaId} onDone={(redirect) => router.push(redirect)} onCancel={() => setLeveling(false)} />;
 
   return (
     <div className="w-full min-h-screen bg-background text-foreground">
       <header className="flex items-center justify-between border-b border-border bg-card/50 px-6 py-4">
-        <h1 className="text-sm font-bold">Phase 6 — Smart Matchmaking</h1>
+        <h1 className="text-sm font-bold">Growth, readiness & matching</h1>
         <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
           <Sparkles className="h-3 w-3" /> Investor matching
         </div>
@@ -118,14 +123,23 @@ export default function InvestorsPage() {
           </div>
         )}
 
-        {/* Level Up CTA */}
+        {readiness && (
+          <Card className="rounded-2xl border border-border bg-card p-4">
+            <div className="flex items-center justify-between gap-4"><div><div className="font-semibold">{(readiness.selectedPath === "sell" || readiness.selectedPath === "sell_license") ? "Full Buyout readiness" : "Project readiness"}: {readiness.overallProgress}%</div><p className="text-sm text-muted-foreground">{readiness.nextBestAction?.label ?? "Your required preparation is complete."}</p></div>{readiness.nextBestAction && !readiness.levelUpEligible && <Button variant="outline" onClick={() => router.push(readiness.nextBestAction!.route)}>Continue</Button>}</div>
+            {readiness.missingRequired.length > 0 && <p className="mt-2 text-xs text-muted-foreground">Still needed: {readiness.requirements.filter((item) => readiness.missingRequired.includes(item.key)).map((item) => item.label).join(", ")}</p>}
+          </Card>
+        )}
+
+        {/* Level Up CTA is Build-only and server eligibility remains authoritative. */}
+        {readiness?.levelUpEligible && (
         <Card className="rounded-2xl border border-primary/30 bg-primary/5 p-5 flex items-center justify-between">
           <div>
             <div className="font-bold flex items-center gap-2"><Rocket className="h-4 w-4 text-primary" /> Ready to go all in?</div>
-            <p className="text-sm text-muted-foreground">Level up to Entrepreneur to unlock the full deal room and equity tools.</p>
+            <p className="text-sm text-muted-foreground">Move your prepared project into the existing Entrepreneur workspace.</p>
           </div>
           <Button onClick={() => setLeveling(true)} className="gap-2"><Rocket className="h-4 w-4" /> Level Up</Button>
         </Card>
+        )}
       </main>
     </div>
   );

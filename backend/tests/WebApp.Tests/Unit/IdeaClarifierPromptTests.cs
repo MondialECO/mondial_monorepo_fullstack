@@ -25,7 +25,7 @@ public class IdeaClarifierPromptTests
     public void Has_stable_key_and_version()
     {
         Template.Key.Should().Be("idea-clarifier");
-        Template.Version.Should().Be(1);
+        Template.Version.Should().Be(2);
         Template.SystemText.Should().NotBeNullOrWhiteSpace();
         Template.OutputContract.Should().NotBeNullOrWhiteSpace();
     }

@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
-    "test:coverage": "vitest --coverage"
+    "test:coverage": "vitest --coverage",
+    "test:e2e:creator": "node tests/creator/e2e/support/creator-e2e-runner.mjs"
   },
   "dependencies": {
     "@fontsource/inter": "^5.2.8",
@@ -54,6 +55,7 @@
     "zustand": "^5.0.10"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4",
     "@tanstack/react-query-devtools": "^5.99.2",
     "@testing-library/jest-dom": "^6.1.5",

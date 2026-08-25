@@ -34,23 +34,44 @@ public sealed class ReplicaSetAppFixture : IAsyncLifetime
     {
         try
         {
-            // Single-node replica set. --bind_ip_all so the mapped port is reachable.
+            Console.WriteLine("[ReplicaSetAppFixture] Starting MongoDb container (mongo:7 with --replSet rs0)...");
             _mongo = new MongoDbBuilder()
                 .WithImage("mongo:7")
+                .WithUsername(string.Empty)
+                .WithPassword(string.Empty)
+                .WithEnvironment("MONGO_INITDB_ROOT_USERNAME", string.Empty)
+                .WithEnvironment("MONGO_INITDB_ROOT_PASSWORD", string.Empty)
                 .WithCommand("--replSet", "rs0", "--bind_ip_all")
                 .Build();
+
+            Console.WriteLine("[ReplicaSetAppFixture] Starting Redis container (redis:7)...");
             _redis = new RedisBuilder().WithImage("redis:7").Build();
 
-            await _mongo.StartAsync();
-            await _redis.StartAsync();
+            var startMongoTask = _mongo.StartAsync();
+            var startRedisTask = _redis.StartAsync();
 
-            // Initiate the replica set, then wait until the node is primary.
-            await _mongo.ExecAsync(new[]
+            await Task.WhenAll(startMongoTask, startRedisTask);
+
+            var mappedPort = _mongo.GetMappedPublicPort(27017);
+            var connStr = _mongo.GetConnectionString();
+            Console.WriteLine($"[ReplicaSetAppFixture] Mongo started on mapped port {mappedPort}. Connection string: {connStr}");
+
+            Console.WriteLine("[ReplicaSetAppFixture] Initiating replica set rs0 via mongosh...");
+            var initResult = await _mongo.ExecAsync(new[]
             {
                 "mongosh", "--quiet", "--eval",
-                "rs.initiate({_id:'rs0',members:[{_id:0,host:'localhost:27017'}]})"
+                "rs.initiate({_id:'rs0',members:[{_id:0,host:'127.0.0.1:27017'}]})"
             });
+            Console.WriteLine($"[ReplicaSetAppFixture] rs.initiate ExitCode: {initResult.ExitCode}, Stdout: '{initResult.Stdout.Trim()}', Stderr: '{initResult.Stderr.Trim()}'");
+
+            if (initResult.ExitCode != 0 && !initResult.Stdout.Contains("already initialized", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException($"rs.initiate failed with exit code {initResult.ExitCode}: {initResult.Stderr} {initResult.Stdout}");
+            }
+
+            Console.WriteLine("[ReplicaSetAppFixture] Waiting for primary...");
             await WaitForPrimaryAsync(_mongo);
+            Console.WriteLine("[ReplicaSetAppFixture] Replica set rs0 primary elected successfully!");
 
             // directConnection=true: talk to the mapped port directly; transactions still
             // work against a single-node RS this way.
@@ -87,8 +108,35 @@ public sealed class ReplicaSetAppFixture : IAsyncLifetime
         }
         catch (Exception ex)
         {
+            var mongoLogs = "";
+            var rsStatus = "";
+            if (_mongo != null)
+            {
+                try
+                {
+                    var (stdout, stderr) = await _mongo.GetLogsAsync();
+                    mongoLogs = $"STDOUT:\n{stdout}\nSTDERR:\n{stderr}";
+                }
+                catch { }
+
+                try
+                {
+                    var res = await _mongo.ExecAsync(new[] { "mongosh", "--quiet", "--eval", "rs.status()" });
+                    rsStatus = res.Stdout + "\n" + res.Stderr;
+                }
+                catch { }
+            }
+
+            var fullDiag = $"[ReplicaSetAppFixture FAILURE]\nError: {ex.Message}\nStack: {ex.StackTrace}\n--- Mongo Logs ---\n{mongoLogs}\n--- RS Status ---\n{rsStatus}";
+            Console.WriteLine(fullDiag);
+
             Available = false;
-            SkipReason = $"Docker/replica-set unavailable: {ex.Message}";
+            SkipReason = fullDiag;
+
+            if (_mongo != null)
+            {
+                throw new InvalidOperationException(fullDiag, ex);
+            }
         }
     }
 
@@ -100,11 +148,14 @@ public sealed class ReplicaSetAppFixture : IAsyncLifetime
             {
                 "mongosh", "--quiet", "--eval", "db.hello().isWritablePrimary"
             });
-            if (result.Stdout.Trim().Equals("true", StringComparison.OrdinalIgnoreCase))
+            var outText = result.Stdout.Trim();
+            if (outText.Equals("true", StringComparison.OrdinalIgnoreCase))
                 return;
             await Task.Delay(500);
         }
-        throw new InvalidOperationException("Replica set did not elect a primary in time.");
+
+        var statusRes = await mongo.ExecAsync(new[] { "mongosh", "--quiet", "--eval", "rs.status()" });
+        throw new InvalidOperationException($"Replica set did not elect a primary in 15 seconds. rs.status(): {statusRes.Stdout} {statusRes.Stderr}");
     }
 
     public async Task DisposeAsync()

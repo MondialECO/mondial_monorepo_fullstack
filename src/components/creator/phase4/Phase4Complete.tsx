@@ -43,7 +43,7 @@ export function Phase4Complete({ ideaId, onContinue }: { ideaId: string | null; 
             return;
           }
         }
-        const { computedStatus } = await creatorJourneyApi.get();
+        const { computedStatus } = await creatorJourneyApi.get(ideaId);
         if (active) setComputed(computedStatus);
       } catch {
         // A failed status fetch must read as an ERROR, not as "you haven't finished".

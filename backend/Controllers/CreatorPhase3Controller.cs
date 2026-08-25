@@ -216,6 +216,7 @@ namespace WebApp.Controllers
                 journey = await _journeys.SetLegalChecklistAsync(userId, checklist, ideaId);
                 return Ok(ApiResponse.Ok("Legal checklist generated", journey.Phase3Data.LegalChecklist));
             }
+            catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
             catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
             catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
         }
@@ -490,6 +491,7 @@ namespace WebApp.Controllers
                 var (conversation, _) = await _chat.GetOrCreateConversation(creatorGuid, spGuid);
                 var brief =
                     $"📋 Specialist request{(string.IsNullOrWhiteSpace(request.Context) ? "" : $" — {request.Context}")}\n" +
+                    $"Creator idea: {ideaId}\n" +
                     $"Project: {(string.IsNullOrWhiteSpace(p.Name) ? "(unnamed)" : p.Name)}\n" +
                     $"Sector: {(string.IsNullOrWhiteSpace(p.Sector) ? "—" : p.Sector)}";
                 await _chat.AddMessage(new ChatMessage

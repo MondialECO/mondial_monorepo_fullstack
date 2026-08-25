@@ -41,8 +41,8 @@ namespace WebApp.Controllers
             "Who feels this problem most acutely — describe your target user.",
             "How do they cope today? What are the existing alternatives?",
             "What's your proposed solution, in a sentence or two?",
-            "What makes your approach different or better?",
-            "What's the single riskiest assumption you're making?",
+            "What makes your approach different or better, and what relevant experience or advantage do you bring?",
+            "Why is this important now, and what's the single riskiest assumption you're making?",
         };
 
         private readonly MongoDbContext _context;
@@ -116,7 +116,7 @@ namespace WebApp.Controllers
         // malformed/incomplete output: falls back to clarityScore 50 + aiParseFailed
         // so the user can edit on the summary screen — the session is never failed here.
         [HttpPost("finalize-clarifier")]
-        public async Task<IActionResult> FinalizeClarifier([FromBody] FinalizeClarifierRequest request)
+        public async Task<IActionResult> FinalizeClarifier([FromBody] FinalizeClarifierRequest request, [FromQuery] string ideaId = null)
         {
             try
             {
@@ -140,7 +140,7 @@ namespace WebApp.Controllers
                 // (1) AI-request failure — the AI never produced output.
                 if (string.Equals(session.Status, "Failed", StringComparison.Ordinal))
                 {
-                    var journeyNow = await _journeys.GetOrCreateComposedAsync(userId); // idea-sourced project
+                    var journeyNow = await _journeys.GetOrCreateComposedAsync(userId, ideaId); // idea-sourced project
                     return Ok(ApiResponse.Ok("Clarifier AI request failed", new
                     {
                         aiRequestFailed = true,
@@ -153,7 +153,7 @@ namespace WebApp.Controllers
                 // (2) Not a completed run with output (NeedsReview, or no Output) — parse failure.
                 if (!string.Equals(session.Status, "Completed", StringComparison.Ordinal) || session.Output == null)
                 {
-                    var journeyNow = await _journeys.GetOrCreateComposedAsync(userId); // idea-sourced project
+                    var journeyNow = await _journeys.GetOrCreateComposedAsync(userId, ideaId); // idea-sourced project
                     return Ok(ApiResponse.Ok("Clarifier output could not be interpreted", new
                     {
                         aiRequestFailed = false,
@@ -166,6 +166,7 @@ namespace WebApp.Controllers
                 // (3) Completed with output — extract the mapped fields.
                 bool aiParseFailed = false;
                 string problem = "", targetUser = "", solution = "", marketGap = "", creatorEdge = "";
+                string existingAlternatives = "", founderAdvantage = "", whyNow = "", riskiestAssumption = "";
                 double clarityScore = session.ClarityScore ?? 0;
                 var tags = new List<string>();
 
@@ -180,6 +181,11 @@ namespace WebApp.Controllers
                     solution = proposedSolution.GetValue("summary", "").AsString;
                     marketGap = proposedSolution.GetValue("valueProposition", "").AsString;
                     creatorEdge = proposedSolution.GetValue("differentiation", "").AsString;
+                    existingAlternatives = session.Input?.GetValue("existingAlternatives", "").AsString ?? "";
+                    founderAdvantage = session.Input?.GetValue("founderAdvantage", "").AsString ?? "";
+                    if (!string.IsNullOrWhiteSpace(founderAdvantage)) creatorEdge = founderAdvantage;
+                    whyNow = o.GetValue("whyNow", "").AsString;
+                    riskiestAssumption = o.GetValue("riskiestAssumption", "").AsString;
                     if (o.TryGetValue("clarityScore", out var cs) && cs.IsNumeric) clarityScore = cs.ToDouble();
                     if (o.TryGetValue("tags", out var t) && t.IsBsonArray)
                         tags = t.AsBsonArray.Where(x => x.IsString).Select(x => x.AsString).ToList();
@@ -196,7 +202,7 @@ namespace WebApp.Controllers
 
                 if (aiParseFailed)
                 {
-                    var journeyNow = await _journeys.GetOrCreateComposedAsync(userId); // idea-sourced project
+                    var journeyNow = await _journeys.GetOrCreateComposedAsync(userId, ideaId); // idea-sourced project
                     return Ok(ApiResponse.Ok("Clarifier output could not be interpreted", new
                     {
                         aiRequestFailed = false,
@@ -208,7 +214,8 @@ namespace WebApp.Controllers
 
                 // Success — map the clarified opportunity onto the project and link the session.
                 var journey = await _journeys.ApplyClarifierMappingAsync(
-                    userId, session.Id, problem, targetUser, solution, clarityScore, tags, marketGap, creatorEdge);
+                    userId, session.Id, problem, targetUser, solution, clarityScore, tags, marketGap, creatorEdge,
+                    existingAlternatives, whyNow, riskiestAssumption, ideaId);
 
                 return Ok(ApiResponse.Ok("Clarifier finalized", new
                 {
@@ -218,6 +225,7 @@ namespace WebApp.Controllers
                     project = journey.Project,
                 }));
             }
+            catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
             catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
             catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
         }
@@ -230,13 +238,13 @@ namespace WebApp.Controllers
         // link the session. No AI call, no clarifier UI. Path-B's finalize-clarifier is
         // untouched. The user proceeds to idea-summary → name → branding → Phase 3.
         [HttpPost("finalize-discovery")]
-        public async Task<IActionResult> FinalizeDiscovery([FromBody] FinalizeDiscoveryRequest request)
+        public async Task<IActionResult> FinalizeDiscovery([FromBody] FinalizeDiscoveryRequest request, [FromQuery] string ideaId = null)
         {
             try
             {
                 var userId = GetUserId();
 
-                var journey = await _journeys.GetOrCreateComposedAsync(userId); // idea-sourced Phase2Data
+                var journey = await _journeys.GetOrCreateComposedAsync(userId, ideaId); // idea-sourced Phase2Data
                 var p2 = journey.Phase2Data;
                 var conceptId = !string.IsNullOrWhiteSpace(request?.ConceptId)
                     ? request.ConceptId
@@ -333,7 +341,7 @@ namespace WebApp.Controllers
                 await _clarifier.AddAsync(session);                       // assigns ObjectId
                 await _clarifier.SetCompletedAsync(session.Id, output, clarityScore);
 
-                var updated = await _journeys.ApplyDiscoveryMappingAsync(userId, session.Id, concept);
+                var updated = await _journeys.ApplyDiscoveryMappingAsync(userId, session.Id, concept, ideaId);
 
                 return Ok(ApiResponse.Ok("Discovery finalized", new
                 {
@@ -342,6 +350,7 @@ namespace WebApp.Controllers
                     project = updated.Project,
                 }));
             }
+            catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
             catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
             catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
         }

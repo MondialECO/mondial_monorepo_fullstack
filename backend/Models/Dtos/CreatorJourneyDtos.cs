@@ -46,6 +46,11 @@ namespace WebApp.Models.Dtos
         public string? Solution { get; set; }
         public string? MarketGap { get; set; }
         public string? CreatorEdge { get; set; }
+        public string? ExistingAlternatives { get; set; }
+        public string? WhyNow { get; set; }
+        public string? RiskiestAssumption { get; set; }
+        public string? TargetMarket { get; set; }
+        public string? Geography { get; set; }
         public string? Category { get; set; }
         public string? Sector { get; set; }
         public List<string>? Tags { get; set; }
@@ -164,6 +169,9 @@ namespace WebApp.Models.Dtos
     public class MarketplacePublishRequest
     {
         public bool NdaRequired { get; set; }
+        public decimal AskingPrice { get; set; }
+        // Compatibility-only input fields for older clients. New Full Buyout clients
+        // send neither; the controller explicitly persists purchase=true/license=false.
         public bool OpenToPurchase { get; set; }
         public bool OpenToLicense { get; set; }
         public string Audience { get; set; } // public | matched | private
@@ -173,7 +181,9 @@ namespace WebApp.Models.Dtos
     {
         public string SelectedType { get; set; }
         public List<CreatorOwnershipEntry> Ownership { get; set; } = new();
-        public string FormationSpId { get; set; }
+        // A creator may save their ownership plan before choosing a formation provider.
+        // Keep this optional so [ApiController] does not reject an otherwise valid plan.
+        public string? FormationSpId { get; set; }
     }
 
     public class SeedFundingRequest
@@ -181,6 +191,25 @@ namespace WebApp.Models.Dtos
         public decimal TotalAsk { get; set; }
         public List<CreatorUseOfFunds> UseOfFunds { get; set; } = new();
         public List<string> InvestorTypesTargeted { get; set; } = new();
+    }
+
+    public class CreatorReadinessRequirement
+    {
+        public string Key { get; set; }
+        public string Label { get; set; }
+        public string Route { get; set; }
+        public bool Complete { get; set; }
+        public bool Required { get; set; }
+    }
+
+    public class CreatorReadinessResponse
+    {
+        public int OverallProgress { get; set; }
+        public bool LevelUpEligible { get; set; }
+        public string SelectedPath { get; set; }
+        public List<CreatorReadinessRequirement> Requirements { get; set; } = new();
+        public List<string> MissingRequired { get; set; } = new();
+        public CreatorReadinessRequirement NextBestAction { get; set; }
     }
 
     public class DesignerDto

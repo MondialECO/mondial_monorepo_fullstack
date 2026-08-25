@@ -15,8 +15,8 @@ using WebApp.Services.Repository.Ai;
 namespace WebApp.Controllers
 {
     /// <summary>
-    /// Phase 5 — The Crossroads. Path A (sell_license): IP valuation + marketplace
-    /// listing. Path B (build): company formation + seed funding + company spin.
+    /// Phase 5 — The Crossroads. Path A (sell): Full Buyout planning + marketplace
+    /// listing. Path B (build): company formation + funding preparation.
     /// Deterministic; reads/writes CreatorJourneys.phase5Data; versions carry
     /// phase: 5. Status stays derived (path-dependent). Buyer/investor matching is
     /// stubbed where the pool isn't ready — clearly marked, never fake-wired.
@@ -82,8 +82,9 @@ namespace WebApp.Controllers
 
         // ======================= PART 3 — IP VALUATION (Path A) =======================
 
-        // GET /api/creator/ip-valuation
-        [HttpGet("ip-valuation")]
+        // POST /api/creator/ip-valuation — recalculation persists a versioned
+        // planning estimate, therefore this is a versioned workspace write.
+        [HttpPost("ip-valuation")]
         public async Task<IActionResult> IpValuation([FromQuery] string ideaId = null)
         {
             try
@@ -109,25 +110,31 @@ namespace WebApp.Controllers
                 var p = journey.Project ?? new CreatorJourneyProject();
                 var p3 = journey.Phase3Data ?? new CreatorPhase3Data();
 
-                double readiness = p3.InvestorReadinessScore?.Total ?? 0;
-                double bbase = (p.ClarityScore + readiness) / 2;
-
-                // Canonical TAM = the persisted forecast input (FG-2 unification) — the SAME
-                // source the readiness score reads, via the SAME tier helper. Null (no
-                // forecast yet) degrades identically everywhere.
+                // TAM is retained strictly as market-opportunity context. It must never
+                // be converted into a project/IP price.
                 double? tam = await CanonicalTamAsync(userId, p3);
-                double marketMult = CreatorScoring.MarketMult(tam);
-                double marketPotential = CreatorScoring.MarketPotential(tam);
+                var resource = journey.Phase4Data?.ResourceCalculation;
+                var launchInvestment = resource?.TotalLaunchBudgetMax > 0
+                    ? resource.TotalLaunchBudgetMax
+                    : resource?.TotalLaunchBudgetMin ?? 0;
+                if (launchInvestment <= 0)
+                    return UnprocessableEntity(ApiResponse.Error("Complete the Resource Calculator before creating a planning valuation estimate."));
 
+                double readiness = p3.InvestorReadinessScore?.Total ?? 0;
                 bool hasPlan = !string.IsNullOrEmpty(p3.BusinessPlanSessionId);
                 bool legalOver50 = p3.LegalChecklist is { TotalCount: > 0 } &&
                                    (double)p3.LegalChecklist.CompletedCount / p3.LegalChecklist.TotalCount > 0.5;
                 bool brandingResolved = !string.IsNullOrEmpty(p.Branding?.BrandingMethod) && p.Branding.BrandingMethod != "pending";
-
-                double stageMult = (hasPlan ? 0.15 : 0) + (legalOver50 ? 0.10 : 0) + (brandingResolved ? 0.05 : 0);
-
-                decimal min = Math.Max(5000m, (decimal)(bbase * marketMult * (1 + stageMult) * 250));
-                decimal max = Math.Min(200000m, (decimal)(bbase * marketMult * (1 + stageMult) * 800));
+                var maturitySignals = (hasPlan ? 1 : 0) + (legalOver50 ? 1 : 0) + (brandingResolved ? 1 : 0)
+                    + (p3.FormationGenerator != null ? 1 : 0);
+                // Transparent planning method: the known launch-resource investment,
+                // adjusted modestly by actual completion/readiness signals. This is a
+                // planning range, not a market-cap or certified valuation formula.
+                decimal readinessFactor = 0.75m + (decimal)Math.Clamp(readiness, 0, 100) / 100m * 0.35m;
+                decimal maturityFactor = 0.85m + maturitySignals * 0.05m;
+                decimal planningBase = launchInvestment * readinessFactor * maturityFactor;
+                decimal min = Math.Round(planningBase * 0.80m, 0);
+                decimal max = Math.Round(planningBase * 1.20m, 0);
 
                 int p3Modules = (p3.ForecastSessionId != null ? 1 : 0) + (hasPlan ? 1 : 0) +
                                 (p3.LegalChecklist != null ? 1 : 0) + (p3.FormationGenerator != null ? 1 : 0);
@@ -138,10 +145,11 @@ namespace WebApp.Controllers
                     EstimatedMin = Math.Round(min, 0),
                     EstimatedMax = Math.Round(max, 0),
                     Confidence = confidence,
+                    MarketOpportunityContext = tam is > 0 ? Math.Round((decimal)tam.Value, 0) : null,
                     Breakdown = new CreatorIpValuationBreakdown
                     {
                         ConceptClarity = p.ClarityScore,
-                        MarketPotential = marketPotential,
+                        MarketPotential = tam is > 0 ? Math.Min(100, Math.Log10(tam.Value + 1) * 12.5) : 0,
                         TechFeasibility = p3.FormationGenerator != null ? 75 : 50,
                         FounderCredibility = !string.IsNullOrWhiteSpace(p.CreatorEdge) && p.CreatorEdge.Length > 50 ? 80 : 60,
                         BusinessPlanQuality = hasPlan ? 90 : 40,
@@ -163,6 +171,7 @@ namespace WebApp.Controllers
 
                 return Ok(ApiResponse.Ok("OK", valuation));
             }
+            catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
             catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
             catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
         }
@@ -178,10 +187,10 @@ namespace WebApp.Controllers
                 var userId = GetUserId();
                 var journey = await _journeys.GetOrCreateComposedAsync(userId, ideaId); // idea-sourced path gate
 
-                if (journey.Phase5Data?.ChosenPath != "sell_license")
-                    return UnprocessableEntity(ApiResponse.Error("Marketplace publishing requires the sell_license path."));
-                if (!(request?.OpenToPurchase ?? false) && !(request?.OpenToLicense ?? false))
-                    return UnprocessableEntity(ApiResponse.Error("Enable at least one of purchase or license."));
+                if (journey.Phase5Data?.ChosenPath != "sell")
+                    return UnprocessableEntity(ApiResponse.Error("Marketplace publishing requires the Sell the Project path."));
+                if ((request?.AskingPrice ?? 0) <= 0)
+                    return UnprocessableEntity(ApiResponse.Error("Enter an asking price greater than zero for a Full Buyout listing."));
                 var audience = request.Audience ?? "public";
                 if (audience != "public" && audience != "matched" && audience != "private")
                     return UnprocessableEntity(ApiResponse.Error("audience must be public | matched | private."));
@@ -189,9 +198,11 @@ namespace WebApp.Controllers
                 var listing = new CreatorMarketplaceListing
                 {
                     Status = "live",
+                    SaleType = "full_buyout",
+                    AskingPrice = request.AskingPrice,
                     NdaRequired = request.NdaRequired,
-                    OpenToPurchase = request.OpenToPurchase,
-                    OpenToLicense = request.OpenToLicense,
+                    OpenToPurchase = true,
+                    OpenToLicense = false,
                     Audience = audience,
                     PublishedAt = DateTime.UtcNow,
                 };
@@ -210,10 +221,12 @@ namespace WebApp.Controllers
                 return Ok(ApiResponse.Ok("Listing published", new
                 {
                     listing = journey.Phase5Data.PathA.MarketplaceListing,
-                    matchedBuyerIds,
-                    isEmpty = matchedBuyerIds.Count == 0, // honest empty state, not a stub flag
+                    matches = matchedBuyerIds,
+                    hasMatches = matchedBuyerIds.Count > 0,
+                    isEmpty = matchedBuyerIds.Count == 0,
                 }));
             }
+            catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
             catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
             catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
         }
@@ -228,6 +241,13 @@ namespace WebApp.Controllers
             {
                 var userId = GetUserId();
                 var ownership = request?.Ownership ?? new List<CreatorOwnershipEntry>();
+
+                if (string.IsNullOrWhiteSpace(request?.SelectedType) || !new[] { "SAS", "SAS-U", "SARL" }.Contains(request.SelectedType, StringComparer.OrdinalIgnoreCase))
+                    return UnprocessableEntity(ApiResponse.Error("selectedType must be SAS | SAS-U | SARL."));
+                if (ownership.Count == 0)
+                    return UnprocessableEntity(ApiResponse.Error("Add at least one ownership entry."));
+                if (ownership.Any(o => string.IsNullOrWhiteSpace(o.Holder) || !double.IsFinite(o.Percent) || o.Percent < 0 || o.Percent > 100))
+                    return UnprocessableEntity(ApiResponse.Error("Each ownership entry needs a holder and a percentage from 0 to 100."));
 
                 var sum = ownership.Sum(o => o.Percent);
                 if (Math.Abs(sum - 100) > 0.01)
@@ -251,6 +271,7 @@ namespace WebApp.Controllers
                 var journey = await _journeys.SetCompanyFormationAsync(userId, formation, ideaId);
                 return Ok(ApiResponse.Ok("Formation saved", new { formation = journey.Phase5Data.PathB.CompanyFormation, warnings }));
             }
+            catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
             catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
             catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
         }
@@ -263,6 +284,9 @@ namespace WebApp.Controllers
             {
                 var userId = GetUserId();
                 var use = request?.UseOfFunds ?? new List<CreatorUseOfFunds>();
+
+                if (use.Count == 0 || use.Any(u => string.IsNullOrWhiteSpace(u.Category) || !double.IsFinite(u.Percent) || u.Percent < 0 || u.Percent > 100))
+                    return UnprocessableEntity(ApiResponse.Error("Each use-of-funds entry needs a category and a percentage from 0 to 100."));
 
                 var sum = use.Sum(u => u.Percent);
                 if (Math.Abs(sum - 100) > 0.01)
@@ -303,6 +327,7 @@ namespace WebApp.Controllers
                     investorPoolEmpty = matchedInvestorCount == 0, // honest empty state
                 }));
             }
+            catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
             catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
             catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
         }

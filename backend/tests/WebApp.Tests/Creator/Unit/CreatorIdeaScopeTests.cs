@@ -36,6 +36,16 @@ public class CreatorIdeaScopeTests
         nullability.WriteState.Should().Be(NullabilityState.Nullable);
     }
 
+    [Fact]
+    public void Company_formation_request_allows_an_absent_formation_provider()
+    {
+        var property = typeof(CompanyFormationRequest).GetProperty(nameof(CompanyFormationRequest.FormationSpId));
+        property.Should().NotBeNull();
+
+        var nullability = new NullabilityInfoContext().Create(property!);
+        nullability.WriteState.Should().Be(NullabilityState.Nullable);
+    }
+
     private CreatorJourneyService BuildJourneyService()
     {
         var database = new Mock<IMongoDatabase>();
@@ -76,19 +86,17 @@ public class CreatorIdeaScopeTests
     }
 
     [Fact]
-    public async Task Explicit_owned_non_active_idea_throws_409()
+    public async Task Explicit_owned_non_active_idea_is_resolved_for_its_own_workspace()
     {
         var owned = new CreatorIdea { Id = StaleIdeaId, UserId = UserId };
         _ideas.Setup(store => store.GetOwnedAsync(StaleIdeaId, UserId)).ReturnsAsync(owned);
 
-        var action = () => ResolveIdeaAsync(
+        var resolved = await ResolveIdeaAsync(
             BuildJourneyService(),
             new CreatorJourney { UserId = UserId, ActiveIdeaId = ActiveIdeaId },
             StaleIdeaId);
 
-        var thrown = await action.Should().ThrowAsync<CreatorJourneyException>();
-        thrown.Which.StatusCode.Should().Be(StatusCodes.Status409Conflict);
-        thrown.Which.Message.Should().Be(ConflictMessage);
+        resolved.Should().BeSameAs(owned);
     }
 
     [Fact]

@@ -111,19 +111,21 @@ export function Phase4Resource({ ideaId, initial, benchmark, onSaved, onNext, on
       setLegalMiscSource("saved");
       onSaved?.(result); // keep the host's saved snapshot current for Back-navigation
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't compute.");
+      const message = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setError(message ?? (e instanceof Error ? e.message : "Couldn't compute."));
     } finally { setComputing(false); }
   };
 
   const bookTalent = async () => {
     setBooking(true); setProviderNote(null);
     try {
-      const matches = await creatorJourneyApi.spMatches("development");
+      const matches = await creatorJourneyApi.spMatches("development", ideaId);
       if (matches.length === 0) { setProviderNote("No verified developers available right now."); return; }
-      await creatorJourneyApi.openWorkroom(matches[0].spId, "Launch team — development");
+      await creatorJourneyApi.openWorkroom(matches[0].spId, "Launch team — development", ideaId);
       setProviderNote(`Workroom opened with ${matches[0].name}.`);
     } catch (e) {
-      setProviderNote(e instanceof Error ? e.message : "Couldn't open a workroom.");
+      const message = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setProviderNote(message ?? (e instanceof Error ? e.message : "Couldn't open a workroom."));
     } finally { setBooking(false); }
   };
 

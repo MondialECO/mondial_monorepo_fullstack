@@ -1,0 +1,75 @@
+services:
+  mongo:
+    image: mongo:7
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
+    ports:
+      - "${CREATOR_E2E_MONGO_PORT:-27018}:27017"
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval 'db.hello().isWritablePrimary' | grep true"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 5s
+
+  mongo-init:
+    image: mongo:7
+    depends_on:
+      mongo:
+        condition: service_started
+    restart: "no"
+    command:
+      - /bin/sh
+      - -c
+      - >-
+        until mongosh --host mongo:27017 --quiet --eval
+        "try { rs.status().ok } catch (e) { rs.initiate({_id:'rs0',members:[{_id:0,host:'mongo:27017'}]}); }";
+        do sleep 1; done
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "${CREATOR_E2E_REDIS_PORT:-6380}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: ../../../backend
+      args:
+        E2E_SUPPORT: "true"
+    environment:
+      ASPNETCORE_ENVIRONMENT: E2E
+      MongoDbSettings__ConnectionString: mongodb://mongo:27017/?replicaSet=rs0
+      MongoDbSettings__DatabaseName: ${CREATOR_E2E_DB:-MondialE2E}
+      Mongo__TransactionsEnabled: "true"
+      Redis__Configuration: redis:6379
+      Redis__InstanceName: MondialE2E
+      JwtSettings__Issuer: mondial-e2e
+      JwtSettings__Audience: mondial-e2e
+      JwtSettings__Key: e2e-only-signing-key-that-is-long-enough-to-be-safe-123456
+      EmailSettings__SmtpServer: smtp.e2e.invalid
+      EmailSettings__Email: e2e@mondial-e2e.invalid
+      EmailSettings__Password: e2e-only
+      OpenRouter__ApiKey: e2e-not-used
+      Ai__Enabled: "false"
+      Ai__GrantStarterCreditsToExisting: "false"
+      E2E__AuthRateLimitPermitLimit: "100"
+      E2E__GlobalRateLimitPermitLimit: "1000"
+      Twilio__Enabled: "false"
+      Cors__AllowedOrigins__0: http://localhost:3001
+    ports:
+      - "${CREATOR_E2E_API_PORT:-5094}:8080"
+    depends_on:
+      mongo-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health/ready"]
+      interval: 3s
+      timeout: 5s
+      retries: 40
+      start_period: 20s

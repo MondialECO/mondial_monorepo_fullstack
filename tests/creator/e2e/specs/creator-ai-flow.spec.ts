@@ -9,7 +9,7 @@ import { test, expect, Page } from "@playwright/test";
  *   MongoDB connected.
  *
  * Run all:
- *   npx playwright test e2e/creator-ai-flow.spec.ts --headed
+ *   npx playwright test tests/creator/e2e/specs/creator-ai-flow.spec.ts --headed
  *
  * Run one test:
  *   npx playwright test --headed -g "TEST 7"

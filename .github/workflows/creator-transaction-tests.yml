@@ -1,0 +1,45 @@
+name: Creator Transaction Tests
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/creator-transaction-tests.yml'
+  workflow_dispatch:
+
+jobs:
+  level-up-transaction:
+    # GitHub-hosted Linux runners include Docker, which Testcontainers uses for
+    # ReplicaSetAppFixture's disposable Mongo replica set and Redis instance.
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Verify Docker is available for Testcontainers
+        run: docker version
+
+      - name: Restore backend test dependencies
+        run: dotnet restore backend/tests/WebApp.Tests/WebApp.Tests.csproj
+
+      - name: Run Creator Level Up transaction suite
+        run: >-
+          dotnet test backend/tests/WebApp.Tests/WebApp.Tests.csproj
+          --no-restore
+          --filter "FullyQualifiedName~LevelUpTransactionIntegrationTests"
+          --logger "trx;LogFileName=creator-level-up-transactions.trx"
+          --results-directory backend/tests/WebApp.Tests/TestResults
+
+      - name: Upload transaction test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: creator-level-up-transaction-results
+          path: backend/tests/WebApp.Tests/TestResults/**
+          if-no-files-found: warn

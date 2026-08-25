@@ -57,6 +57,10 @@ namespace WebApp.Models.DatabaseModels
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+        /// <summary>Response-only version of the CreatorIdea overlaid into this journey.</summary>
+        [BsonIgnore]
+        public long IdeaVersion { get; set; }
     }
 
     // ---------------- Project (canonical idea) ----------------
@@ -71,6 +75,16 @@ namespace WebApp.Models.DatabaseModels
         public string Solution { get; set; } = string.Empty;
         public string MarketGap { get; set; } = string.Empty;
         public string CreatorEdge { get; set; } = string.Empty;
+        /// <summary>How users address the problem today; empty for legacy ideas without evidence.</summary>
+        public string ExistingAlternatives { get; set; } = string.Empty;
+        /// <summary>Founder-supplied timing rationale; never inferred for legacy ideas.</summary>
+        public string WhyNow { get; set; } = string.Empty;
+        /// <summary>Founder-supplied highest-risk assumption; never fabricated by a backfill.</summary>
+        public string RiskiestAssumption { get; set; } = string.Empty;
+        /// <summary>clarifier | discovery | empty for legacy ideas.</summary>
+        public string SourceMethod { get; set; } = string.Empty;
+        public string TargetMarket { get; set; } = string.Empty;
+        public string Geography { get; set; } = string.Empty;
         public string Category { get; set; } = string.Empty;
         public List<string> Tags { get; set; } = new();
         public double ClarityScore { get; set; }
@@ -246,8 +260,22 @@ namespace WebApp.Models.DatabaseModels
     {
         public string PricingModel { get; set; } // subscription | one_time | freemium | usage_based
         public List<CreatorPricingTier> Tiers { get; set; } = new();
+        /// <summary>
+        /// The forecast input that Pricing was compared against when the Creator last
+        /// saved their chosen tiers. It is context only: the forecast is never mutated
+        /// by a commercial-pricing save.
+        /// </summary>
+        public CreatorPricingForecastContext? PricingForecastContext { get; set; }
         public CreatorResourceCalculation ResourceCalculation { get; set; }
         public CreatorGtmSetup GtmSetup { get; set; }
+    }
+
+    public class CreatorPricingForecastContext
+    {
+        public string ForecastSessionId { get; set; } = "";
+        public decimal? ForecastArpu { get; set; }
+        public DateTime ForecastUpdatedAt { get; set; }
+        public bool IsPotentiallyOutdated { get; set; }
     }
 
     public class CreatorPricingTier
@@ -346,7 +374,7 @@ namespace WebApp.Models.DatabaseModels
 
     public class CreatorPhase5Data
     {
-        /// <summary>"sell_license" | "build". Path A ("sell_license") covers BOTH selling and licensing.</summary>
+        /// <summary>"sell" | "build". Historical "sell_license" remains readable only.</summary>
         public string ChosenPath { get; set; }
 
         /// <summary>When the path was first locked in — drives the 72h switch window.</summary>
@@ -369,6 +397,11 @@ namespace WebApp.Models.DatabaseModels
         public decimal EstimatedMin { get; set; }
         public decimal EstimatedMax { get; set; }
         public string Confidence { get; set; } // low | medium | high
+        /// <summary>Planning estimate only; never a certified business or IP valuation.</summary>
+        public string Method { get; set; } = "resource_and_readiness_planning";
+        public string Disclaimer { get; set; } = "Planning estimate based on the information currently available for your project. It is not a certified business or IP valuation.";
+        /// <summary>Forecast TAM is market-opportunity context, not a valuation input.</summary>
+        public decimal? MarketOpportunityContext { get; set; }
         public CreatorIpValuationBreakdown Breakdown { get; set; } = new();
     }
 
@@ -385,7 +418,12 @@ namespace WebApp.Models.DatabaseModels
     public class CreatorMarketplaceListing
     {
         public string Status { get; set; } // draft | live
+        /// <summary>New Creator listings use "full_buyout". Legacy listings may have no sale type.</summary>
+        public string SaleType { get; set; }
+        /// <summary>Creator-selected asking price, distinct from the planning estimate.</summary>
+        public decimal? AskingPrice { get; set; }
         public bool NdaRequired { get; set; }
+        // Legacy compatibility fields. New Creator flow neither sets nor presents licensing.
         public bool OpenToPurchase { get; set; }
         public bool OpenToLicense { get; set; }
         public string Audience { get; set; } // public | matched
@@ -402,7 +440,7 @@ namespace WebApp.Models.DatabaseModels
     {
         public string SelectedType { get; set; }
         public List<CreatorOwnershipEntry> Ownership { get; set; } = new();
-        public string FormationSpId { get; set; }
+        public string? FormationSpId { get; set; }
         public string Status { get; set; }
     }
 

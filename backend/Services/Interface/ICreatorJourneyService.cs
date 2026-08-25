@@ -32,7 +32,7 @@ namespace WebApp.Services.Interface
         /// <summary>Set the Phase 2 entry path. Only "already_have_idea" is accepted.</summary>
         Task<CreatorJourney> SetEntryPathAsync(string userId, string path, string ideaId = null);
 
-        /// <summary>Set the Phase 5 path ("sell_license" | "build") with the 72h switch lock.</summary>
+        /// <summary>Set the Phase 5 path ("sell" | "build") with the 72h switch lock.</summary>
         Task<CreatorJourney> SetCrossroadsPathAsync(string userId, string path, string ideaId = null);
 
         /// <summary>Append a versioned output (newest LAST), carrying its own phase.</summary>
@@ -47,7 +47,8 @@ namespace WebApp.Services.Interface
         /// </summary>
         Task<CreatorJourney> ApplyClarifierMappingAsync(
             string userId, string clarifierSessionId, string problem, string targetUser,
-            string solution, double clarityScore, List<string> tags, string marketGap = "", string creatorEdge = "");
+            string solution, double clarityScore, List<string> tags, string marketGap = "", string creatorEdge = "",
+            string existingAlternatives = "", string whyNow = "", string riskiestAssumption = "", string ideaId = null);
 
         /// <summary>
         /// Discovery convergence: map a confirmed Discovery concept onto the project and
@@ -55,7 +56,7 @@ namespace WebApp.Services.Interface
         /// without the clarifier Q&amp;A). Also sets Concept/Category.
         /// </summary>
         Task<CreatorJourney> ApplyDiscoveryMappingAsync(
-            string userId, string clarifierSessionId, CreatorDiscoveryConcept concept);
+            string userId, string clarifierSessionId, CreatorDiscoveryConcept concept, string ideaId = null);
 
         /// <summary>
         /// Set branding (asset + type + method), optionally persisting the chosen
@@ -102,7 +103,7 @@ namespace WebApp.Services.Interface
         // ---- Phase 4 (deterministic) — every version carries phase: 4 (R6) ----
 
         /// <summary>Persist pricing model + tiers; append a phase-4 pricing version.</summary>
-        Task<CreatorJourney> SetPhase4PricingAsync(string userId, string pricingModel, List<CreatorPricingTier> tiers, string ideaId = null);
+        Task<CreatorJourney> SetPhase4PricingAsync(string userId, string pricingModel, List<CreatorPricingTier> tiers, CreatorPricingForecastContext? forecastContext = null, string ideaId = null);
 
         /// <summary>Persist the resource calculation; append a phase-4 resource version.</summary>
         Task<CreatorJourney> SetPhase4ResourceAsync(string userId, CreatorResourceCalculation calc, string ideaId = null);

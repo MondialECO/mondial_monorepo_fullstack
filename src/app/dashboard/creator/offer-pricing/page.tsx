@@ -45,6 +45,7 @@ const STEP_COPY = [
 type SavedPhase4Data = {
   pricingModel?: string | null;
   tiers?: PricingTier[] | null;
+  pricingForecastContext?: { isPotentiallyOutdated?: boolean } | null;
   resourceCalculation?: (ResourceCalculation & { teamRequirements?: TeamRequirement[]; saasStack?: SaasItem[] }) | null;
   gtmSetup?: GtmSetup | null;
 };
@@ -91,7 +92,7 @@ export default function OfferPricingPage() {
       setBenchmarkNoticeDismissed(false);
       setBenchmark(null);
       try {
-        const { journey, computedStatus } = await creatorJourneyApi.get();
+        const { journey, computedStatus } = await creatorJourneyApi.get(activeIdeaId);
         if (!active) return;
 
         let loadedBenchmark: MarketBenchmark | null = null;
@@ -200,7 +201,12 @@ export default function OfferPricingPage() {
               {step === 0 && (
                 <Phase4Pricing
                   ideaId={activeIdeaId}
-                  initial={{ pricingModel: saved.pricingModel, tiers: saved.tiers }}
+                  initial={{
+                    pricingModel: saved.pricingModel,
+                    tiers: saved.tiers,
+                    pricingForecastContext: saved.pricingForecastContext,
+                  }}
+                  currency={benchmark?.currency ?? "EUR"}
                   onSaved={(phase4) => setSaved((phase4 ?? {}) as SavedPhase4Data)}
                   onNext={() => setStep(1)}
                 />

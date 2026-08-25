@@ -23,6 +23,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\WebApp.csproj" />
+    <ProjectReference Include="..\WebApp.E2eSupport\WebApp.E2eSupport.csproj" />
   </ItemGroup>
 
 </Project>

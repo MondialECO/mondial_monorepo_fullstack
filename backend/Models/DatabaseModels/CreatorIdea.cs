@@ -50,10 +50,55 @@ namespace WebApp.Models.DatabaseModels
         /// </summary>
         public CreatorOutputSnapshots OutputSnapshots { get; set; } = new();
 
+        /// <summary>
+        /// Real file assets owned by this idea. This deliberately stores asset metadata
+        /// only; the canonical business plan and forecast data remain in their session
+        /// records. Entries are added only after a file has actually been produced.
+        /// </summary>
+        public List<CreatorIdeaDocument> Documents { get; set; } = new();
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
         /// <summary>Last time the user worked on this idea — sorts the my-ideas list.</summary>
         public DateTime LastActiveAt { get; set; } = DateTime.UtcNow;
+
+        /// <summary>Monotonic per-idea optimistic-concurrency token.</summary>
+        public long Version { get; set; } = 1;
+    }
+
+    /// <summary>
+    /// Metadata for one Creator-idea file asset. StorageReference is a filename/key
+    /// inside the idea-scoped Creator uploads directory, never a user-supplied path.
+    /// No rows are seeded: a metadata record is not a substitute for a generated file.
+    /// </summary>
+    public class CreatorIdeaDocument
+    {
+        public string Id { get; set; } = ObjectId.GenerateNewId().ToString();
+        public string DocumentType { get; set; } = "";
+        public string Title { get; set; } = "";
+        public string FileName { get; set; } = "";
+        public string MimeType { get; set; } = "application/octet-stream";
+        public long? SizeBytes { get; set; }
+        public string StorageReference { get; set; } = "";
+        public string SourceModule { get; set; } = "";
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public string Status { get; set; } = "ready";
+    }
+
+    /// <summary>
+    /// The vault only exposes file types for Creator generators that exist today.
+    /// Adding a constant here does not create an asset; registration still requires a
+    /// real stored file and a ready metadata record.
+    /// </summary>
+    public static class CreatorIdeaDocumentTypes
+    {
+        public const string BusinessPlan = "business_plan";
+        public const string FinancialForecast = "financial_forecast";
+
+        public static bool IsSupported(string? documentType) =>
+            string.Equals(documentType, BusinessPlan, StringComparison.Ordinal) ||
+            string.Equals(documentType, FinancialForecast, StringComparison.Ordinal);
     }
 }

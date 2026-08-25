@@ -1,5 +1,6 @@
 import { CreatorProgressProvider } from "@/providers/CreatorProgressProvider";
 import CreatorPhaseGuard from "@/components/layout/CreatorPhaseGuard";
+import { CreatorConflictNotice } from "@/components/creator/CreatorConflictNotice";
 
 export default function CreatorLayout({
   children,
@@ -8,6 +9,7 @@ export default function CreatorLayout({
 }) {
   return (
     <CreatorProgressProvider>
+      <CreatorConflictNotice />
       <CreatorPhaseGuard>
         {children}
       </CreatorPhaseGuard>
