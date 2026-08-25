@@ -57,7 +57,7 @@ export function Phase4Gtm({ ideaId, initial, benchmark, onSaved, onNext, onBack 
       : benchmark?.gtmDefaults.channelSplit.map((channel) => ({ ...channel })) ?? [],
   );
   const [audiences, setAudiences] = useState<string[]>(() =>
-    initial ? initial.targetAudiences ?? [] : ["Early-stage founders"],
+    initial ? initial.targetAudiences ?? [] : [],
   );
   const [audienceDraft, setAudienceDraft] = useState("");
   const [weeks, setWeeks] = useState<GtmWeek[] | null>(() =>
@@ -70,6 +70,7 @@ export function Phase4Gtm({ ideaId, initial, benchmark, onSaved, onNext, onBack 
   const [gtmSaved, setGtmSaved] = useState(hasSavedWeeks);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [providerError, setProviderError] = useState<string | null>(null);
 
   const doneCount = web.filter((w) => w.done).length;
   const channelSum = channels.reduce((s, c) => s + (c.percent || 0), 0);
@@ -117,7 +118,15 @@ export function Phase4Gtm({ ideaId, initial, benchmark, onSaved, onNext, onBack 
             {w.id === "landing-page" && (
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={async () => {
-                  try { const m = await creatorJourneyApi.spMatches("branding"); if (m[0]) await creatorJourneyApi.openWorkroom(m[0].spId, "Landing page design"); } catch { /* noop */ }
+                  setProviderError(null);
+                  try {
+                    const matches = await creatorJourneyApi.spMatches("branding", ideaId);
+                    if (!matches[0]) { setProviderError("No verified branding providers are available right now."); return; }
+                    await creatorJourneyApi.openWorkroom(matches[0].spId, "Landing page design", ideaId);
+                  } catch (caught) {
+                    const message = (caught as { response?: { data?: { message?: string } } })?.response?.data?.message;
+                    setProviderError(message ?? (caught instanceof Error ? caught.message : "Couldn't open a workroom."));
+                  }
                 }}>Hire SP Designer</Button>
                 <Button variant="ghost" size="sm" disabled title="Platform Builder coming soon">Use Platform Builder</Button>
               </div>
@@ -189,6 +198,7 @@ export function Phase4Gtm({ ideaId, initial, benchmark, onSaved, onNext, onBack 
       </div>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
+      {providerError && <p className="text-sm text-destructive">{providerError}</p>}
       <div className="flex justify-between">
         <Button variant="outline" onClick={onBack}><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>
         <div className="flex gap-2">

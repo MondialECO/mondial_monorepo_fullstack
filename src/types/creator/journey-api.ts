@@ -37,6 +37,12 @@ export type JourneyProject = {
   solution: string;
   marketGap: string;
   creatorEdge: string;
+  existingAlternatives: string;
+  whyNow: string;
+  riskiestAssumption: string;
+  sourceMethod: 'clarifier' | 'discovery' | '';
+  targetMarket: string;
+  geography: string;
   category: string;
   tags: string[];
   clarityScore: number;
@@ -62,6 +68,8 @@ export type BackendCreatorJourney = {
   activeIdeaId: string | null;
   /** The idea taken through Level Up, if any. Backend-authoritative. */
   leveledUpIdeaId: string | null;
+  /** Optimistic-concurrency version of the idea represented by this response. */
+  ideaVersion: number;
   project: JourneyProject;
   phase2Data: {
     selectedEntryPath: string | null;
@@ -74,7 +82,7 @@ export type BackendCreatorJourney = {
   phase3Data: Record<string, unknown>;
   phase4Data: Record<string, unknown>;
   phase5Data: {
-    chosenPath: 'sell_license' | 'build' | null;
+    chosenPath: 'sell' | 'build' | 'sell_license' | null;
     pathSelectedAt: string | null;
     completedAt: string | null;
     [k: string]: unknown;

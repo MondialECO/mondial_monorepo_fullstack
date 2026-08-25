@@ -9,18 +9,14 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
-  CheckCircle2,
   Clock,
-  Download,
   Edit2,
   Eye,
-  FileSpreadsheet,
   FileText,
   Folder,
   Gauge,
   Lock,
   MessageSquare,
-  Palette,
   Play,
   Rocket,
   RotateCw,
@@ -45,6 +41,7 @@ import { useForecastSessionTimed } from '@/hooks/queries/creator-ai';
 import { useConversations } from '@/hooks/queries/chat';
 import { useNotifications } from '@/hooks/queries/notifications';
 import { creatorJourneyApi } from '@/lib/api-creator-journey';
+import { creatorDocumentsApi } from '@/lib/api-creator-documents';
 import type { ForecastOutput } from '@/types/creator/ai';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -92,7 +89,12 @@ export default function CreatorDashboard() {
     isLoading: journeyLoading, error: journeyError, refetch: refetchJourney,
   } = useCreatorProgress();
   const { journeyState, project } = state;
-  const phase3Documents = state.documents.filter((doc) => doc.phase === 3);
+  const documentsQ = useQuery({
+    queryKey: ['creator', 'idea-documents', state.activeIdeaId],
+    queryFn: () => creatorDocumentsApi.list(state.activeIdeaId!),
+    enabled: Boolean(state.activeIdeaId),
+  });
+  const phase3Documents = documentsQ.data ?? [];
 
   // ---- Real data sources (replaces every former hardcoded sample constant) ----
   // Readiness score (P1.8) from /creator/dashboard/stats. Errors propagate (no fallback).
@@ -101,7 +103,11 @@ export default function CreatorDashboard() {
 
   // The mapped progress state drops these raw refs, so fetch the journey once for
   // the forecast session id + matched-investor count (real loading/error states).
-  const refsQ = useQuery({ queryKey: ['creator', 'dashboardRefs'], queryFn: () => creatorJourneyApi.get() });
+  const refsQ = useQuery({
+    queryKey: ['creator', 'dashboardRefs', state.activeIdeaId],
+    queryFn: () => creatorJourneyApi.get(state.activeIdeaId),
+    enabled: Boolean(state.activeIdeaId),
+  });
   const forecastSessionId =
     (refsQ.data?.journey.phase3Data as { forecastSessionId?: string } | undefined)?.forecastSessionId ?? null;
   const matchedInvestorCount =
@@ -123,7 +129,7 @@ export default function CreatorDashboard() {
 
   // KPI values (real; honest empty when genuinely absent — never a placeholder).
   const clarityScore = project.clarityScore || null;
-  const assetsGenerated = state.documents.length;
+  const assetsGenerated = phase3Documents.length;
 
   // Real chat + notification sources (replaces the sample Messages/Notifications cards).
   const conversationsQ = useConversations();
@@ -151,7 +157,18 @@ export default function CreatorDashboard() {
   else if (isPhase4Done && !isPhase5Done) dashboardState = 'E';
   else if (isPhase5Done) dashboardState = 'F';
 
-  const action = getNextCreatorAction(journeyState);
+  // Phase 6 readiness is backend-derived from the exact idea; only presentation
+  // happens here, so this dashboard never reimplements Level Up rules locally.
+  const finalReadinessQ = useQuery({
+    queryKey: ['creator', 'readiness', state.activeIdeaId],
+    queryFn: () => creatorJourneyApi.creatorReadiness(state.activeIdeaId),
+    enabled: Boolean(state.activeIdeaId) && isPhase5Done,
+  });
+  const fallbackAction = getNextCreatorAction(journeyState);
+  const readinessAction = finalReadinessQ.data?.nextBestAction;
+  const action = dashboardState === 'F' && readinessAction
+    ? { targetPhase: 6, targetStep: readinessAction.key, route: readinessAction.route, buttonLabel: readinessAction.label }
+    : fallbackAction;
 
   // Dynamic progress calculation based on phase completion
   let completedCount = 0;
@@ -250,7 +267,12 @@ export default function CreatorDashboard() {
           </div>
           <div>
             <div className="text-2xl font-black text-foreground tracking-tight">
-              <StatCell loading={journeyLoading} error={!!journeyError} empty={assetsGenerated === 0} onRetry={refetchJourney}>
+              <StatCell
+                loading={journeyLoading || documentsQ.isLoading}
+                error={!!journeyError || documentsQ.isError}
+                empty={assetsGenerated === 0}
+                onRetry={() => { void refetchJourney(); void documentsQ.refetch(); }}
+              >
                 {assetsGenerated}
               </StatCell>
             </div>
@@ -312,7 +334,7 @@ export default function CreatorDashboard() {
                 ⚡ You've reached The Crossroads — Phase 5
               </h3>
               <p className="text-xs text-muted-foreground leading-relaxed max-w-xl">
-                Fully packaged idea. Sell/license it OR build your company and unlock investor matching. Select your strategic path below.
+                Fully packaged idea. Sell the project through a Full Buyout, or build your company. Select your strategic path below.
               </p>
             </div>
           </div>
@@ -320,11 +342,11 @@ export default function CreatorDashboard() {
             <Button
               className="flex-1 md:flex-none rounded-xl bg-warning text-white hover:bg-warning/95 text-xs font-bold px-5 h-10"
               onClick={() => {
-                setCrossroadsPath('sell_license');
+                setCrossroadsPath('sell');
                 advancePhase(5);
               }}
             >
-              Sell / License
+              Sell the Project
             </Button>
             <Button
               className="flex-1 md:flex-none rounded-xl bg-primary text-white hover:bg-primary/95 text-xs font-bold px-5 h-10"
@@ -485,6 +507,18 @@ export default function CreatorDashboard() {
                 </Button>
               </div>
             )}
+            {dashboardState === 'F' && finalReadinessQ.data && (
+              <div className="flex items-center justify-between gap-4 p-4 bg-primary/5 border border-primary/10 rounded-xl">
+                <div className="min-w-0">
+                  <span className="block text-[10px] font-bold text-primary uppercase tracking-wider">Project readiness</span>
+                  <span className="block text-sm font-bold text-foreground truncate">
+                    {finalReadinessQ.data.levelUpEligible ? 'Ready to become an Entrepreneur' : `${finalReadinessQ.data.overallProgress}% ready`}
+                  </span>
+                  {!finalReadinessQ.data.levelUpEligible && <span className="block text-xs text-muted-foreground truncate">Next: {finalReadinessQ.data.nextBestAction?.label}</span>}
+                </div>
+                {readinessAction && <Button asChild size="sm" className="rounded-full px-5 text-xs font-bold shrink-0"><Link href={readinessAction.route}>Continue <ArrowRight className="w-3.5 h-3.5 ml-1.5" /></Link></Button>}
+              </div>
+            )}
           </Card>
 
           {/* AI Financial Forecast Card */}
@@ -577,120 +611,51 @@ export default function CreatorDashboard() {
             )}
           </Card>
 
-          {/* Asset Library Card */}
+          {/* Document Vault summary — real persisted idea assets only. */}
           <Card className="rounded-2xl border-border bg-card shadow-sm p-6 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
                 <Folder className="w-4 h-4 text-primary" />
-                Asset Library
+                Document Vault
               </h3>
-              {completedCount > 1 && (
-                <Button variant="outline" size="sm" asChild className="rounded-lg text-xs h-7 border-border px-2.5">
-                  <Link href="/dashboard/creator/asset-library">View all</Link>
-                </Button>
-              )}
+              <Button variant="outline" size="sm" asChild className="rounded-lg text-xs h-7 border-border px-2.5">
+                <Link href="/dashboard/creator/documents">View vault</Link>
+              </Button>
             </div>
 
-            {completedCount <= 1 ? (
+            {documentsQ.isLoading ? (
+              <div className="space-y-3"><Skeleton className="h-11 w-full" /><Skeleton className="h-11 w-full" /></div>
+            ) : documentsQ.isError ? (
+              <div className="flex flex-col items-center gap-2 py-6 text-center">
+                <AlertTriangle className="h-5 w-5 text-destructive" />
+                <p className="text-[11px] text-destructive">Couldn&apos;t load your documents.</p>
+                <Button variant="outline" size="sm" onClick={() => documentsQ.refetch()} className="gap-1.5 text-xs"><RotateCw className="h-3.5 w-3.5" /> Retry</Button>
+              </div>
+            ) : phase3Documents.length === 0 ? (
               <div className="p-8 border border-dashed border-border rounded-xl text-center space-y-1.5 bg-muted/10 flex flex-col items-center justify-center">
                 <Folder className="w-6 h-6 text-muted-foreground/40" />
-                <h4 className="text-xs font-bold text-foreground">Nothing Here Yet</h4>
+                <h4 className="text-xs font-bold text-foreground">No documents yet</h4>
                 <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  Your completed work and generated assets will appear here.
+                  Documents generated for this idea will appear here.
                 </p>
               </div>
             ) : (
               <div className="divide-y divide-border/60">
-                {isPhase3Done && phase3Documents.length > 0 && phase3Documents.map((doc) => (
+                {phase3Documents.map((doc) => (
                   <div key={doc.id} className="flex items-center justify-between py-3">
                     <div className="flex items-center gap-3">
                       <div className="h-9 w-9 bg-primary/10 rounded-lg flex items-center justify-center text-primary">
-                        {doc.category === 'Financial Model' ? (
-                          <FileSpreadsheet className="w-4.5 h-4.5" />
-                        ) : (
-                          <FileText className="w-4.5 h-4.5" />
-                        )}
+                        <FileText className="w-4.5 h-4.5" />
                       </div>
                       <div className="space-y-0.5">
-                        <h4 className="text-xs font-bold text-foreground">{doc.name.replace(/\.[^.]+$/, '').replace(/_/g, ' ')}</h4>
-                        <span className="text-[10px] text-muted-foreground">{doc.category} · Phase 3.{doc.step}</span>
+                        <h4 className="text-xs font-bold text-foreground">{doc.title || doc.fileName}</h4>
+                        <span className="text-[10px] text-muted-foreground">{doc.documentType === 'business_plan' ? 'Business Plan' : 'Financial Forecast'}</span>
                       </div>
                     </div>
-                    <Button variant="ghost" size="icon" aria-label="Download" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-                      <Download className="w-4 h-4" />
-                    </Button>
+                    <Link href="/dashboard/creator/documents" aria-label="Open Document Vault" className="text-muted-foreground hover:text-foreground"><ArrowRight className="w-4 h-4" /></Link>
                   </div>
                 ))}
 
-                {isPhase3Done && phase3Documents.length === 0 && (
-                  <>
-                    <div className="flex items-center justify-between py-3">
-                      <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 bg-primary/10 rounded-lg flex items-center justify-center text-primary">
-                          <FileSpreadsheet className="w-4.5 h-4.5" />
-                        </div>
-                        <div className="space-y-0.5">
-                          <h4 className="text-xs font-bold text-foreground">3-Year Financial Forecast</h4>
-                          <span className="text-[10px] text-muted-foreground">Financial Model · Phase 3.2</span>
-                        </div>
-                      </div>
-                      <Button variant="ghost" size="icon" aria-label="Download" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-                        <Download className="w-4 h-4" />
-                      </Button>
-                    </div>
-
-                    <div className="flex items-center justify-between py-3">
-                      <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 bg-primary/10 rounded-lg flex items-center justify-center text-primary">
-                          <FileText className="w-4.5 h-4.5" />
-                        </div>
-                        <div className="space-y-0.5">
-                          <h4 className="text-xs font-bold text-foreground">AI Business Plan</h4>
-                          <span className="text-[10px] text-muted-foreground">Strategic Plan · Phase 3.3</span>
-                        </div>
-                      </div>
-                      <Button variant="ghost" size="icon" aria-label="Download" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-                        <Download className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </>
-                )}
-
-                {isPhase2Done && (
-                  <div className="flex items-center justify-between py-3">
-                    <div className="flex items-center gap-3">
-                      <div className="h-9 w-9 bg-success-light/30 rounded-lg flex items-center justify-center text-success-text">
-                        <Palette className="w-4.5 h-4.5" />
-                      </div>
-                      <div className="space-y-0.5">
-                        <h4 className="text-xs font-bold text-foreground">Brand Identity Kit</h4>
-                        <span className="text-[10px] text-muted-foreground">Logo · Palette · Fonts · Phase 2.3</span>
-                      </div>
-                    </div>
-                    <Button variant="ghost" size="icon" aria-label="Download" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-                      <Download className="w-4 h-4" />
-                    </Button>
-                  </div>
-                )}
-
-                {isPhase3Done && (
-                  <div className="flex items-center justify-between py-3">
-                    <div className="flex items-center gap-3">
-                      <div className="h-9 w-9 bg-warning/10 rounded-lg flex items-center justify-center text-warning">
-                        <CheckCircle2 className="w-4.5 h-4.5" />
-                      </div>
-                      <div className="space-y-0.5">
-                        <h4 className="text-xs font-bold text-foreground">Legal Checklist</h4>
-                        <span className="text-[10px] text-muted-foreground">4 of 12 addressed · 8 remaining</span>
-                      </div>
-                    </div>
-                    <Button variant="ghost" size="icon" aria-label="Open compliance checklist" className="h-8 w-8 text-muted-foreground hover:text-foreground" asChild>
-                      <Link href="/dashboard/creator/phase-3/compliance">
-                        <ArrowRight className="w-4 h-4" />
-                      </Link>
-                    </Button>
-                  </div>
-                )}
               </div>
             )}
           </Card>

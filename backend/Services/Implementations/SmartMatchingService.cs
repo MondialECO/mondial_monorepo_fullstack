@@ -16,7 +16,9 @@ namespace WebApp.Services.Implementations
             // not exist yet → honest empty list (NOT a stub, NOT mock candidates).
             if (phaseContext != 6) return new List<SmartMatch>();
 
-            var investors = await _context.Investors.Find(i => i.IsActive).Limit(200).ToListAsync();
+            // Demo/catalogue entries have no linked platform user and must not be
+            // represented to creators as live investor matches.
+            var investors = await _context.Investors.Find(i => i.IsActive && i.LinkedUserId != null).Limit(200).ToListAsync();
             if (investors.Count == 0) return new List<SmartMatch>();
 
             var p = journey.Project ?? new CreatorJourneyProject();

@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { Phase4Resource } from "./Phase4Resource";
-import { Phase4Gtm } from "./Phase4Gtm";
+import { Phase4Resource } from "@/components/creator/phase4/Phase4Resource";
+import { Phase4Gtm } from "@/components/creator/phase4/Phase4Gtm";
 import type { GtmSetup, MarketBenchmark, ResourceCalculation } from "@/lib/api-creator-journey";
 
 vi.mock("@/lib/api-creator-journey", () => ({

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { creatorJourneyApi, type PricingTier } from "@/lib/api-creator-journey";
+import { creatorJourneyApi, type PricingInsights, type PricingTier } from "@/lib/api-creator-journey";
 
 const ASSET_ROOT = "/figma/offer-pricing";
 
@@ -50,35 +50,25 @@ const tierTemplate = (
 });
 
 const createDefaultTiers = (): PricingTier[] => [
-  tierTemplate("Basic", 19, ["Up to 25 Invoices/Month", "Payment Reminders", "Email Support"]),
-  tierTemplate(
-    "Standard",
-    49,
-    ["Unlimited Invoices", "Recurring Billing", "Client Portal Access", "Multi-Currency Support", "AI Reconciliation"],
-    true,
-  ),
-  tierTemplate("Premium", 99, [
-    "Unlimited Team Members",
-    "Full API Integration",
-    "White-Label Invoices",
-    "Dedicated Account Manager",
-    "Advanced Analytics & Reports",
-  ]),
+  tierTemplate("Package 1", 0, ["", "", ""]),
+  tierTemplate("Package 2", 0, ["", "", ""], true),
+  tierTemplate("Package 3", 0, ["", "", ""]),
 ];
-
-type PricingInsights = {
-  competitors: string[];
-  sectorAveragePrice: number;
-};
 
 export function Phase4Pricing({
   ideaId,
   initial,
+  currency = "EUR",
   onSaved,
   onNext,
 }: {
   ideaId: string | null;
-  initial?: { pricingModel?: string | null; tiers?: PricingTier[] | null };
+  initial?: {
+    pricingModel?: string | null;
+    tiers?: PricingTier[] | null;
+    pricingForecastContext?: { isPotentiallyOutdated?: boolean } | null;
+  };
+  currency?: string;
   onSaved?: (phase4: unknown) => void;
   onNext: () => void;
 }) {
@@ -88,13 +78,25 @@ export function Phase4Pricing({
     initial?.tiers?.length ? initial.tiers : createDefaultTiers(),
   );
   const [insights, setInsights] = useState<PricingInsights | null>(null);
-  const [suggestion, setSuggestion] = useState<string | null>(null);
+  const [insightsError, setInsightsError] = useState<string | null>(null);
+  const [insightsAttempt, setInsightsAttempt] = useState(0);
+  const [forecastOutdated, setForecastOutdated] = useState(Boolean(initial?.pricingForecastContext?.isPotentiallyOutdated));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    creatorJourneyApi.pricingInsights(ideaId).then(setInsights).catch(() => {});
-  }, [ideaId]);
+    let active = true;
+    setInsights(null);
+    setInsightsError(null);
+    creatorJourneyApi.pricingInsights(ideaId)
+      .then((value) => { if (active) setInsights(value); })
+      .catch((caught) => {
+        if (!active) return;
+        const message = (caught as { response?: { data?: { message?: string } } })?.response?.data?.message;
+        setInsightsError(message ?? "Couldn't load pricing context.");
+      });
+    return () => { active = false; };
+  }, [ideaId, insightsAttempt]);
 
   const setTier = (index: number, patch: Partial<PricingTier>) =>
     setTiers((current) => current.map((tier, tierIndex) => (tierIndex === index ? { ...tier, ...patch } : tier)));
@@ -114,11 +116,11 @@ export function Phase4Pricing({
   const save = async () => {
     setSaving(true);
     setError(null);
-    setSuggestion(null);
+    setForecastOutdated(false);
     try {
       const clean = tiers.map((tier) => ({ ...tier, features: tier.features.filter((feature) => feature.trim()) }));
       const response = await creatorJourneyApi.setPricing(model, clean, ideaId);
-      setSuggestion(response.suggestion);
+      setForecastOutdated(response.forecastPricingOutdated);
       onSaved?.(response.phase4);
       onNext();
     } catch (caught) {
@@ -127,6 +129,12 @@ export function Phase4Pricing({
     } finally {
       setSaving(false);
     }
+  };
+
+  const applyForecastAssumption = () => {
+    const price = insights?.forecastContext?.arpu;
+    if (price == null) return;
+    setTier(0, { price });
   };
 
   return (
@@ -187,7 +195,7 @@ export function Phase4Pricing({
                     className="w-[calc(100%_-_104px)] bg-transparent font-heading text-xl font-medium leading-6 text-foreground outline-none placeholder:text-muted-foreground"
                   />
                   <div className="flex items-end border-b border-border pb-8">
-                    <span className="font-heading text-5xl font-semibold leading-[52px] text-foreground">$</span>
+                    <span className="font-heading text-5xl font-semibold leading-[52px] text-foreground">{currency === "EUR" ? "€" : currency}</span>
                     <input
                       type="number"
                       min="0"
@@ -259,6 +267,14 @@ export function Phase4Pricing({
         </div>
       </section>
 
+      {insightsError && (
+        <section className="mt-8 rounded-[20px] border border-warning/40 bg-warning/10 p-6" role="status">
+          <p className="text-sm font-medium text-foreground">Couldn&apos;t load pricing context.</p>
+          <p className="mt-1 text-xs text-muted-foreground">You can still set your own prices. No market data has been substituted.</p>
+          <Button variant="outline" size="sm" className="mt-3" onClick={() => setInsightsAttempt((value) => value + 1)}>Retry</Button>
+        </section>
+      )}
+
       {insights && (
         <section
           className="mt-8 rounded-[20px] border border-[var(--card-edge)] bg-card p-6"
@@ -273,20 +289,21 @@ export function Phase4Pricing({
             </h2>
           </div>
           <div className="mt-4">
-            <p className="text-sm font-medium leading-5 text-foreground">
-              Sector average entry price: <strong className="font-semibold">{"\u20AC"}{insights.sectorAveragePrice}</strong>
-            </p>
-            <div className="mt-3 flex flex-wrap gap-3">
-              {insights.competitors.map((competitor) => (
-                <span
-                  key={competitor}
-                  className="rounded-full border border-black/[0.06] bg-secondary px-3.5 py-2 text-[13px] font-medium leading-5 text-primary"
-                >
-                  {competitor}
-                </span>
-              ))}
+            {insights.selectedEntryPrice != null && <p className="text-sm text-foreground">Your selected entry price: <strong>{currency === "EUR" ? "€" : `${currency} `}{insights.selectedEntryPrice}</strong></p>}
+            {insights.forecastContext && (
+              <div className="mt-3 rounded-xl bg-secondary p-3 text-sm">
+                <p className="font-medium text-foreground">Forecast context: {currency === "EUR" ? "€" : `${currency} `}{insights.forecastContext.arpu}/month ARPU</p>
+                <p className="mt-1 text-xs text-muted-foreground">This is the assumption used by your current forecast, not a selected price.</p>
+                <Button type="button" variant="outline" size="sm" className="mt-2" onClick={applyForecastAssumption}>Apply to Package 1</Button>
+              </div>
+            )}
+            {insights.recommendation && <p className="mt-3 text-xs leading-4 text-muted-foreground"><strong>Planning recommendation:</strong> {insights.recommendation.message}</p>}
+            <div className="mt-3 rounded-xl border border-border p-3 text-xs text-muted-foreground">
+              <p className="font-medium text-foreground">Competitor pricing data unavailable</p>
+              <p className="mt-1">{insights.competitorPricing.message}</p>
+              <p className="mt-2">{insights.marketBenchmark.message}</p>
             </div>
-            {suggestion && <p className="mt-3 text-xs leading-4 text-warning">{suggestion}</p>}
+            {forecastOutdated && <p className="mt-3 text-xs leading-4 text-warning">Your selected entry price differs from your forecast ARPU. Update Forecast when you&apos;re ready; your existing forecast has not been changed.</p>}
           </div>
         </section>
       )}

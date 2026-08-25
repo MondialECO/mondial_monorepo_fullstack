@@ -6,10 +6,10 @@ import { Button } from "@/components/ui/button";
 import { creatorJourneyApi } from "@/lib/api-creator-journey";
 
 const UNLOCKS = [
-  { icon: BarChart3, label: "Investor Dashboard" },
-  { icon: Users, label: "Smart Matchmaking" },
-  { icon: Coins, label: "Equity Management" },
-  { icon: FileText, label: "Deal Room" },
+  { icon: BarChart3, label: "Entrepreneur workspace" },
+  { icon: Users, label: "Company profile" },
+  { icon: Coins, label: "Company ownership setup" },
+  { icon: FileText, label: "Your planning stays linked" },
 ];
 
 // ---- Confetti (hand-rolled, zero-dependency) --------------------------------
@@ -88,7 +88,7 @@ function ConfettiBurst() {
   );
 }
 
-export function LevelUpCelebration({ onDone, onCancel }: { onDone: (redirect: string) => void; onCancel: () => void }) {
+export function LevelUpCelebration({ onDone, onCancel, ideaId }: { onDone: (redirect: string) => void; onCancel: () => void; ideaId: string | null }) {
   const [phase, setPhase] = useState<"intro" | "working" | "done">("intro");
   const [missing, setMissing] = useState<string[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -96,7 +96,7 @@ export function LevelUpCelebration({ onDone, onCancel }: { onDone: (redirect: st
   const trigger = async () => {
     setPhase("working"); setMissing(null); setError(null);
     try {
-      const res = await creatorJourneyApi.levelUp();
+      const res = await creatorJourneyApi.levelUp(ideaId ?? undefined);
       setPhase("done");
       // Brief celebration, then route (also fired via SignalR LevelUpComplete).
       setTimeout(() => onDone(res.redirectTo || "/dashboard/entrepreneur"), 1600);
@@ -133,7 +133,7 @@ export function LevelUpCelebration({ onDone, onCancel }: { onDone: (redirect: st
             </div>
             <div>
               <h1 className="text-3xl font-extrabold">Level Up</h1>
-              <p className="text-white/70 mt-2">This is permanent. You&apos;ll transition to the Entrepreneur experience with your company and raise carried forward.</p>
+              <p className="text-white/70 mt-2">Your existing project, planning, and Creator history stay linked as you enter the Entrepreneur workspace.</p>
             </div>
 
             <div className="grid grid-cols-2 gap-3">

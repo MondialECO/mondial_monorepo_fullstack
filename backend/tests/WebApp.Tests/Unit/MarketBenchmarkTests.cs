@@ -8,10 +8,12 @@ using Moq;
 using WebApp.Controllers;
 using WebApp.Models;
 using WebApp.Models.DatabaseModels;
+using WebApp.Models.DatabaseModels.Ai;
 using WebApp.Models.Dtos;
 using WebApp.Services.Implementations;
 using WebApp.Services.Interface;
 using WebApp.Services.Repository;
+using WebApp.Services.Repository.Ai;
 using Xunit;
 
 namespace WebApp.Tests.Unit;
@@ -127,6 +129,83 @@ public class MarketBenchmarkTests
     }
 
     [Fact]
+    public async Task Pricing_insights_uses_forecast_arpu_without_fabricating_competitor_data()
+    {
+        var journey = Journey("SaaS");
+        journey.Phase3Data = new CreatorPhase3Data { ForecastSessionId = "forecast-1" };
+        journey.Phase4Data.Tiers = new List<CreatorPricingTier>
+        {
+            Tier("Selected package", 45),
+        };
+        var journeys = new Mock<ICreatorJourneyService>();
+        journeys.Setup(x => x.GetOrCreateComposedAsync(UserId, null)).ReturnsAsync(journey);
+        var forecasts = new Mock<IForecastSessionStore>();
+        forecasts.Setup(x => x.GetOwnedAsync("forecast-1", UserId)).ReturnsAsync(new ForecastSession
+        {
+            Id = "forecast-1",
+            Inputs = new ForecastInputs { Arpu = 30 },
+            UpdatedAt = new DateTime(2026, 8, 25, 0, 0, 0, DateTimeKind.Utc),
+        });
+        var controller = Controller(journeys.Object, Mock.Of<IMarketBenchmarkResolver>(), forecasts.Object);
+
+        var result = await controller.PricingInsights();
+
+        var response = ((OkObjectResult)result).Value.Should().BeOfType<ApiResponse>().Subject;
+        var json = System.Text.Json.JsonSerializer.Serialize(response.Data);
+        json.Should().Contain("forecast_assumption");
+        json.Should().Contain("selectedEntryPrice\":45");
+        json.Should().Contain("Competitor pricing data unavailable");
+        json.Should().NotContain("Bonsai");
+        json.Should().NotContain("Generic SaaS");
+    }
+
+    [Fact]
+    public async Task Pricing_save_keeps_the_user_tier_and_marks_a_large_forecast_difference_for_review()
+    {
+        var journey = Journey("SaaS");
+        journey.Phase3Data = new CreatorPhase3Data { ForecastSessionId = "forecast-1" };
+        var journeys = new Mock<ICreatorJourneyService>();
+        journeys.Setup(x => x.GetOrCreateComposedAsync(UserId, null)).ReturnsAsync(journey);
+        journeys.Setup(x => x.SetPhase4PricingAsync(
+                UserId,
+                "subscription",
+                It.IsAny<List<CreatorPricingTier>>(),
+                It.IsAny<CreatorPricingForecastContext?>(),
+                null))
+            .ReturnsAsync(journey);
+        var forecasts = new Mock<IForecastSessionStore>();
+        forecasts.Setup(x => x.GetOwnedAsync("forecast-1", UserId)).ReturnsAsync(new ForecastSession
+        {
+            Id = "forecast-1",
+            Inputs = new ForecastInputs { Arpu = 30 },
+            UpdatedAt = DateTime.UtcNow,
+        });
+        var controller = Controller(journeys.Object, Mock.Of<IMarketBenchmarkResolver>(), forecasts.Object);
+        var request = new SetPricingRequest
+        {
+            PricingModel = "subscription",
+            Tiers = new List<CreatorPricingTier>
+            {
+                Tier("Starter", 45), Tier("Growth", 80), Tier("Scale", 120),
+            },
+        };
+
+        var result = await controller.SetPricing(request);
+
+        result.Should().BeOfType<OkObjectResult>();
+        journeys.Verify(x => x.SetPhase4PricingAsync(
+            UserId,
+            "subscription",
+            It.Is<List<CreatorPricingTier>>(tiers => tiers[0].Price == 45),
+            It.Is<CreatorPricingForecastContext?>(context =>
+                context != null
+                && context.ForecastSessionId == "forecast-1"
+                && context.ForecastArpu == 30
+                && context.IsPotentiallyOutdated),
+            null), Times.Once);
+    }
+
+    [Fact]
     public async Task Empty_resource_request_uses_resolved_benchmark_values()
     {
         var journeys = new Mock<ICreatorJourneyService>();
@@ -178,7 +257,8 @@ public class MarketBenchmarkTests
 
     private static CreatorPhase4Controller Controller(
         ICreatorJourneyService journeys,
-        IMarketBenchmarkResolver resolver) => new(journeys, resolver)
+        IMarketBenchmarkResolver resolver,
+        IForecastSessionStore? forecasts = null) => new(journeys, resolver, forecasts)
         {
             ControllerContext = new ControllerContext
             {
@@ -214,4 +294,11 @@ public class MarketBenchmarkTests
     };
 
     private static MarketBenchmark GeneralBenchmark() => MarketBenchmarkSeed.General();
+
+    private static CreatorPricingTier Tier(string name, decimal price) => new()
+    {
+        Name = name,
+        Price = price,
+        Features = new List<string> { "One", "Two", "Three" },
+    };
 }

@@ -53,9 +53,9 @@ export interface CreatorJourneyState {
   phase2: PhaseState;
   phase3: PhaseState;
   phase4: PhaseState;
-  // Path A = 'sell_license' (sell OR license), Path B = 'build'. The legacy
-  // alias was retired in P1.10; only these two canonical values exist now.
-  phase5: PhaseState & { selectedPath?: 'sell_license' | 'build' | null };
+  // New paths are Full Buyout ('sell') and Build. 'sell_license' is read-only
+  // compatibility for historical records and is never selected by new UI.
+  phase5: PhaseState & { selectedPath?: 'sell' | 'build' | 'sell_license' | null };
   phase6: PhaseState;
 }
 
@@ -70,6 +70,12 @@ export interface CreatorProject {
   solution: string;
   marketGap: string;
   creatorEdge: string;
+  existingAlternatives: string;
+  whyNow: string;
+  riskiestAssumption: string;
+  sourceMethod: 'clarifier' | 'discovery' | '';
+  targetMarket: string;
+  geography: string;
   category: string;
   sector: string;
   tags: string[];
@@ -110,7 +116,6 @@ export interface CreatorJourneyData {
     matchingRuns: CreatorOutputVersion[];
   };
   assets: any[];
-  documents: any[];
   conversations: any[];
   notifications: any[];
   activityHistory: any[];
@@ -148,14 +153,3 @@ export interface CreatorForecastVersion extends CreatorOutputVersion {
 }
 
 export type CreatorOutputKey = keyof CreatorJourneyData['outputs'];
-
-export interface CreatorDocument {
-  id: string;
-  name: string;
-  category: string;
-  size: string;
-  phase: number;
-  step: number;
-  createdAt: string;
-  outputKey?: CreatorOutputKey;
-}

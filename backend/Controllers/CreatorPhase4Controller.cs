@@ -6,6 +6,7 @@ using WebApp.Models.DatabaseModels;
 using WebApp.Models.Dtos;
 using WebApp.Services.Implementations;
 using WebApp.Services.Interface;
+using WebApp.Services.Repository.Ai;
 
 namespace WebApp.Controllers
 {
@@ -23,13 +24,16 @@ namespace WebApp.Controllers
     {
         private readonly ICreatorJourneyService _journeys;
         private readonly IMarketBenchmarkResolver _benchmarks;
+        private readonly IForecastSessionStore? _forecasts;
 
         public CreatorPhase4Controller(
             ICreatorJourneyService journeys,
-            IMarketBenchmarkResolver benchmarks)
+            IMarketBenchmarkResolver benchmarks,
+            IForecastSessionStore? forecasts = null)
         {
             _journeys = journeys;
             _benchmarks = benchmarks;
+            _forecasts = forecasts;
         }
 
         private string GetUserId() =>
@@ -56,15 +60,6 @@ namespace WebApp.Controllers
             }
         }
 
-        // Static sector → competitor reference (MVP). Deterministic.
-        // TODO: swap to IAiProvider / live research when model-router ready.
-        private static readonly Dictionary<string, (string[] competitors, decimal avg)> SectorCompetitors = new(StringComparer.OrdinalIgnoreCase)
-        {
-            ["FinTech"] = (new[] { "Bonsai (€19)", "HoneyBook (€16)", "Moxie (€20)" }, 18m),
-            ["SaaS"] = (new[] { "Notion (€8)", "Airtable (€10)", "Linear (€8)" }, 9m),
-            ["Ecommerce"] = (new[] { "Shopify (€27)", "BigCommerce (€29)", "Wix (€16)" }, 24m),
-        };
-
         // ======================= 4.1 — SERVICES & PRICING =======================
 
         // GET /api/creator/offer/pricing-insights
@@ -74,11 +69,39 @@ namespace WebApp.Controllers
             try
             {
                 var userId = GetUserId();
-                var journey = await _journeys.GetOrCreateComposedAsync(userId, ideaId); // idea-sourced sector
-                var sector = journey.Project?.Sector ?? "";
-                var (competitors, avg) = SectorCompetitors.TryGetValue(sector, out var hit)
-                    ? hit : (new[] { "Generic SaaS A (€12)", "Generic SaaS B (€15)" }, 13m);
-                return Ok(ApiResponse.Ok("OK", new { competitors, sectorAveragePrice = avg }));
+                var journey = await _journeys.GetOrCreateComposedAsync(userId, ideaId);
+                var forecastContext = await GetForecastPricingContextAsync(userId, journey);
+                var selectedEntryPrice = journey.Phase4Data?.Tiers?
+                    .Where(t => t.Price > 0)
+                    .OrderBy(t => t.Price)
+                    .Select(t => (decimal?)t.Price)
+                    .FirstOrDefault();
+
+                // No maintained competitor or sector-pricing data exists yet. Launch
+                // resource benchmarks must never be misrepresented as price research.
+                return Ok(ApiResponse.Ok("OK", new
+                {
+                    selectedEntryPrice,
+                    forecastContext,
+                    recommendation = forecastContext?.Arpu is decimal arpu
+                        ? new
+                        {
+                            suggestedEntryPrice = arpu,
+                            source = "forecast_assumption",
+                            message = "Based on the ARPU used in your current forecast. This is a planning input, not verified market pricing.",
+                        }
+                        : null,
+                    competitorPricing = new
+                    {
+                        available = false,
+                        message = "Competitor pricing data unavailable. Use the recommendation below as a planning estimate, not verified market pricing.",
+                    },
+                    marketBenchmark = new
+                    {
+                        available = false,
+                        message = "No maintained sector pricing benchmark is available for this idea yet.",
+                    },
+                }));
             }
             catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
             catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
@@ -107,17 +130,27 @@ namespace WebApp.Controllers
                 if (tiers.Count(t => t.IsHighlighted) > 1)
                     return UnprocessableEntity(ApiResponse.Error("At most one tier can be highlighted (Most Popular)."));
 
-                var journey = await _journeys.SetPhase4PricingAsync(userId, request.PricingModel.ToLowerInvariant(), tiers, ideaId);
-
-                // Deterministic insight: basic tier above sector average +30% → suggest lowering.
-                var sector = journey.Project?.Sector ?? "";
-                var avg = SectorCompetitors.TryGetValue(sector, out var hit) ? hit.avg : 13m;
+                var current = await _journeys.GetOrCreateComposedAsync(userId, ideaId);
                 var basic = tiers.Where(t => t.Price > 0).OrderBy(t => t.Price).FirstOrDefault();
-                string suggestion = basic != null && basic.Price > avg * 1.3m
-                    ? $"Your entry tier (€{basic.Price}) is well above the sector average (€{avg}). Consider lowering it to improve conversion."
-                    : null;
+                var forecast = await GetForecastPricingContextAsync(userId, current);
+                var forecastContext = forecast == null ? null : new CreatorPricingForecastContext
+                {
+                    ForecastSessionId = forecast.SessionId,
+                    ForecastArpu = forecast.Arpu,
+                    ForecastUpdatedAt = forecast.UpdatedAt,
+                    // This only prompts a review; it never rewrites a forecast session.
+                    IsPotentiallyOutdated = basic != null && forecast.Arpu > 0
+                        && Math.Abs(basic.Price - forecast.Arpu) / forecast.Arpu >= 0.10m,
+                };
+                var journey = await _journeys.SetPhase4PricingAsync(
+                    userId, request.PricingModel.ToLowerInvariant(), tiers, forecastContext, ideaId);
 
-                return Ok(ApiResponse.Ok("Pricing saved", new { phase4 = journey.Phase4Data, suggestion }));
+                return Ok(ApiResponse.Ok("Pricing saved", new
+                {
+                    phase4 = journey.Phase4Data,
+                    forecastPricingOutdated = forecastContext?.IsPotentiallyOutdated ?? false,
+                    forecastArpu = forecastContext?.ForecastArpu,
+                }));
             }
             catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
             catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
@@ -286,6 +319,29 @@ namespace WebApp.Controllers
             Channel = channel.Channel,
             Percent = channel.Percent,
         };
+
+        private async Task<PricingForecastContextResponse?> GetForecastPricingContextAsync(string userId, CreatorJourney journey)
+        {
+            var sessionId = journey.Phase3Data?.ForecastSessionId;
+            if (_forecasts == null || string.IsNullOrWhiteSpace(sessionId)) return null;
+
+            var forecast = await _forecasts.GetOwnedAsync(sessionId, userId);
+            if (forecast?.Inputs?.Arpu is not double arpu || arpu < 0) return null;
+
+            return new PricingForecastContextResponse
+            {
+                SessionId = forecast.Id,
+                Arpu = decimal.Round((decimal)arpu, 2),
+                UpdatedAt = forecast.UpdatedAt,
+            };
+        }
+
+        private sealed class PricingForecastContextResponse
+        {
+            public string SessionId { get; init; } = "";
+            public decimal Arpu { get; init; }
+            public DateTime UpdatedAt { get; init; }
+        }
 
         private static MarketBenchmarkResponse ToBenchmarkResponse(MarketBenchmarkResolution resolution)
         {

@@ -4,6 +4,7 @@ using Hangfire;
 using Microsoft.AspNetCore.ResponseCompression;
 using System.IO.Compression;
 using System.Reflection;
+using System.Runtime.Loader;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -39,6 +40,7 @@ using WebApp.Services;
 using WebApp.Services.Email;
 using WebApp.Services.Interface;
 using WebApp.Services.Implementations;
+using WebApp.Services.E2e;
 using WebApp.Services.Repository;
 using WebApp.Validation;
 
@@ -445,6 +447,15 @@ builder.Services.AddValidatorsFromAssemblyContaining<LoginRequestModelValidator>
 
 // Rate limiting. Global per-IP limit protects every endpoint; the stricter
 // "auth" policy is applied to AuthController to blunt credential brute-force.
+// The disposable browser harness creates a distinct authenticated user per
+// scenario from one Docker IP. It may raise this one limit in E2E only; every
+// other environment retains the production five-attempt policy.
+var authPermitLimit = builder.Environment.IsEnvironment("E2E")
+    ? builder.Configuration.GetValue("E2E:AuthRateLimitPermitLimit", 5)
+    : 5;
+var globalPermitLimit = builder.Environment.IsEnvironment("E2E")
+    ? builder.Configuration.GetValue("E2E:GlobalRateLimitPermitLimit", 100)
+    : 100;
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -464,7 +475,7 @@ builder.Services.AddRateLimiter(options =>
             partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             factory: _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 5,
+                PermitLimit = authPermitLimit,
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0
             }));
@@ -491,7 +502,7 @@ builder.Services.AddRateLimiter(options =>
             partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             factory: _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 100,
+                PermitLimit = globalPermitLimit,
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0
             }));
@@ -515,11 +526,22 @@ builder.Services.AddApiVersioning(options =>
 });
 
 builder.Services.AddAuthorization();
-builder.Services.AddControllers(options =>
+var mvc = builder.Services.AddControllers(options =>
 {
     options.Filters.Add<ValidationFilter>();
-})
-.ConfigureApiBehaviorOptions(options =>
+});
+
+// The disposable Creator fixture endpoint lives in the test-support assembly,
+// not in the production web assembly. The E2E Docker image explicitly carries
+// that assembly; normal builds never load or expose its routes.
+if (E2eEnvironment.IsEnabled(builder.Environment))
+{
+    var e2eSupportPath = Path.Combine(AppContext.BaseDirectory, "WebApp.E2eSupport.dll");
+    var e2eSupport = AssemblyLoadContext.Default.LoadFromAssemblyPath(e2eSupportPath);
+    mvc.AddApplicationPart(e2eSupport);
+}
+
+mvc.ConfigureApiBehaviorOptions(options =>
 {
     // Make the built-in [ApiController] model-state 400 use the shared
     // ApiResponse envelope so every validation error has one shape.
@@ -701,6 +723,20 @@ app.UseRequestTimeouts();
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Creator idea mutations set the new optimistic-concurrency version in the
+// request context. Publish it consistently without every controller having to
+// duplicate response-header plumbing.
+app.Use(async (context, next) =>
+{
+    context.Response.OnStarting(() =>
+    {
+        if (context.Items.TryGetValue("CreatorIdeaVersion", out var value) && value is long version)
+            context.Response.Headers["X-Creator-Idea-Version"] = version.ToString();
+        return Task.CompletedTask;
+    });
+    await next();
+});
 
 // Hangfire ops dashboard. Mounted after auth so the Admin-only authorization
 // filter sees the populated principal. Dashboard requests are short AJAX polls,

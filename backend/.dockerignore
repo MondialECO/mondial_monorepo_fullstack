@@ -7,6 +7,9 @@
 .gitattributes
 .dockerignore
 tests/
+!tests/
+!tests/WebApp.E2eSupport/
+!tests/WebApp.E2eSupport/**
 **/*.user
 **/*.md
 docker-compose*.yml

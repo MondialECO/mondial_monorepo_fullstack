@@ -32,6 +32,15 @@ namespace WebApp.Models.Dtos.Ai
 
         public string? ExistingAlternatives { get; set; }
 
+        /// <summary>Founder-provided reason the idea is timely.</summary>
+        public string? WhyNow { get; set; }
+
+        /// <summary>Founder-provided highest-risk assumption.</summary>
+        public string? RiskiestAssumption { get; set; }
+
+        /// <summary>Founder-provided relevant experience or unfair advantage.</summary>
+        public string? FounderAdvantage { get; set; }
+
         /// <summary>Optional supporting reference/attachment URLs.</summary>
         public List<string> Attachments { get; set; } = new();
     }

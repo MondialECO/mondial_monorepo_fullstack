@@ -28,8 +28,50 @@ const unwrap = <T>(body: ApiEnvelope<T> | T): T => {
   return body as T;
 };
 
-const withIdeaId = (ideaId?: string | null) =>
-  ideaId ? { params: { ideaId } } : undefined;
+// Workspace identity is tab-local. The provider sets it once when an idea is
+// opened; it is not recomputed from the mutable global ActiveIdeaId.
+let workspaceIdeaId: string | null = null;
+const ideaVersions = new Map<string, number>();
+
+export const setCreatorWorkspaceIdea = (ideaId: string | null) => {
+  workspaceIdeaId = ideaId;
+};
+
+export const getCreatorWorkspaceIdea = () => workspaceIdeaId;
+
+const resolveIdeaId = (ideaId?: string | null): string => {
+  const resolved = ideaId ?? workspaceIdeaId;
+  if (!resolved) throw new Error('An idea workspace must be selected before saving Creator data.');
+  return resolved;
+};
+
+const withIdeaRead = (ideaId?: string | null) => ({ params: { ideaId: resolveIdeaId(ideaId) } });
+
+const withIdeaWrite = (ideaId?: string | null) => {
+  const resolved = resolveIdeaId(ideaId);
+  const expectedVersion = ideaVersions.get(resolved);
+  if (!expectedVersion) throw new Error('Idea version is not loaded yet. Refresh and try again.');
+  return { params: { ideaId: resolved, expectedVersion } };
+};
+
+type IdeaVersionHeaders = Record<string, unknown> & {
+  get?: (name: string) => unknown;
+};
+
+const readIdeaVersionHeader = (headers?: IdeaVersionHeaders): unknown => {
+  const fromGetter = headers?.get?.('x-creator-idea-version');
+  if (fromGetter !== undefined) return fromGetter;
+
+  return Object.entries(headers ?? {}).find(
+    ([name]) => name.toLowerCase() === 'x-creator-idea-version',
+  )?.[1];
+};
+
+const rememberIdeaVersion = (response: { headers?: IdeaVersionHeaders }, ideaId?: string | null) => {
+  const version = Number(readIdeaVersionHeader(response.headers));
+  const resolved = ideaId ?? workspaceIdeaId;
+  if (resolved && Number.isSafeInteger(version) && version > 0) ideaVersions.set(resolved, version);
+};
 
 export interface UpdateProjectPayload {
   name?: string;
@@ -40,6 +82,11 @@ export interface UpdateProjectPayload {
   solution?: string;
   marketGap?: string;
   creatorEdge?: string;
+  existingAlternatives?: string;
+  whyNow?: string;
+  riskiestAssumption?: string;
+  targetMarket?: string;
+  geography?: string;
   category?: string;
   sector?: string;
   tags?: string[];
@@ -47,26 +94,33 @@ export interface UpdateProjectPayload {
 }
 
 export const creatorJourneyApi = {
-  get: async (): Promise<JourneyResponse> => {
-    const res = await api.get('/creator/journey');
-    return unwrap<JourneyResponse>(res.data);
+  get: async (ideaId?: string | null): Promise<JourneyResponse> => {
+    const resolved = ideaId ?? workspaceIdeaId;
+    const res = await api.get('/creator/journey', resolved ? { params: { ideaId: resolved } } : undefined);
+    const data = unwrap<JourneyResponse>(res.data);
+    const loadedIdeaId = resolved ?? data.journey.activeIdeaId;
+    if (loadedIdeaId && data.journey.ideaVersion > 0) ideaVersions.set(loadedIdeaId, data.journey.ideaVersion);
+    return data;
   },
 
   // Optional ideaId: a debounced write captures its target idea at QUEUE time so a
   // pending patch can never land on a different idea after a switch (backend falls
   // back to the active idea when absent — unchanged for all other callers).
   updateProject: async (payload: UpdateProjectPayload, ideaId?: string): Promise<JourneyResponse> => {
-    const res = await api.patch('/creator/journey/project', payload, ideaId ? { params: { ideaId } } : undefined);
+    const res = await api.patch('/creator/journey/project', payload, withIdeaWrite(ideaId));
+    rememberIdeaVersion(res, ideaId);
     return unwrap<JourneyResponse>(res.data);
   },
 
-  setEntryPath: async (path: 'already_have_idea'): Promise<JourneyResponse> => {
-    const res = await api.patch('/creator/journey/phase2/entry-path', { path });
+  setEntryPath: async (path: 'already_have_idea', ideaId?: string | null): Promise<JourneyResponse> => {
+    const res = await api.patch('/creator/journey/phase2/entry-path', { path }, withIdeaWrite(ideaId));
+    rememberIdeaVersion(res, ideaId);
     return unwrap<JourneyResponse>(res.data);
   },
 
-  setCrossroadsPath: async (path: 'sell_license' | 'build'): Promise<JourneyResponse> => {
-    const res = await api.patch('/creator/journey/phase5/path', { path });
+  setCrossroadsPath: async (path: 'sell' | 'build', ideaId?: string | null): Promise<JourneyResponse> => {
+    const res = await api.patch('/creator/journey/phase5/path', { path }, withIdeaWrite(ideaId));
+    rememberIdeaVersion(res, ideaId);
     return unwrap<JourneyResponse>(res.data);
   },
 
@@ -75,33 +129,38 @@ export const creatorJourneyApi = {
     phase: number,
     payload: Record<string, unknown>,
     sessionId?: string,
+    ideaId?: string | null,
   ): Promise<JourneyResponse> => {
     const res = await api.post('/creator/journey/output', {
       outputKey,
       phase,
       sessionId: sessionId ?? null,
       payload,
-    });
+    }, withIdeaWrite(ideaId));
+    rememberIdeaVersion(res, ideaId);
     return unwrap<JourneyResponse>(res.data);
   },
 
   // ---- Phase 2 ----
 
-  chatMessage: async (message: string): Promise<ChatMessageResult> => {
-    const res = await api.post('/creator/journey/phase2/chat-message', { message });
+  chatMessage: async (message: string, ideaId?: string | null): Promise<ChatMessageResult> => {
+    const res = await api.post('/creator/journey/phase2/chat-message', { message }, withIdeaWrite(ideaId));
+    rememberIdeaVersion(res, ideaId);
     return unwrap<ChatMessageResult>(res.data);
   },
 
-  finalizeClarifier: async (sessionId: string): Promise<FinalizeClarifierResult> => {
-    const res = await api.post('/creator/journey/phase2/finalize-clarifier', { sessionId });
+  finalizeClarifier: async (sessionId: string, ideaId?: string | null): Promise<FinalizeClarifierResult> => {
+    const res = await api.post('/creator/journey/phase2/finalize-clarifier', { sessionId }, withIdeaWrite(ideaId));
+    rememberIdeaVersion(res, ideaId);
     return unwrap<FinalizeClarifierResult>(res.data);
   },
 
   // Discovery convergence: seed a completed clarifier session from the confirmed
   // concept (satisfies the Phase 3 prerequisite) and map it onto the project.
   // conceptId is optional — the backend defaults to the persisted SelectedConceptId.
-  finalizeDiscovery: async (conceptId?: string): Promise<FinalizeDiscoveryResult> => {
-    const res = await api.post('/creator/journey/phase2/finalize-discovery', { conceptId });
+  finalizeDiscovery: async (conceptId?: string, ideaId?: string | null): Promise<FinalizeDiscoveryResult> => {
+    const res = await api.post('/creator/journey/phase2/finalize-discovery', { conceptId }, withIdeaWrite(ideaId));
+    rememberIdeaVersion(res, ideaId);
     return unwrap<FinalizeDiscoveryResult>(res.data);
   },
 
@@ -110,11 +169,12 @@ export const creatorJourneyApi = {
     return unwrap<{ names: string[] }>(res.data);
   },
 
-  uploadLogo: async (file: File | Blob, source: 'ai_logo' | 'm50_designer'): Promise<{ logoAsset: string }> => {
+  uploadLogo: async (file: File | Blob, source: 'ai_logo' | 'm50_designer', ideaId?: string | null): Promise<{ logoAsset: string }> => {
     const form = new FormData();
     form.append('logo', file, file instanceof File ? file.name : 'logo.png');
     form.append('source', source);
-    const res = await api.post('/creator/journey/phase2/branding/upload-logo', form);
+    const res = await api.post('/creator/journey/phase2/branding/upload-logo', form, withIdeaWrite(ideaId));
+    rememberIdeaVersion(res, ideaId);
     return unwrap<{ logoAsset: string }>(res.data);
   },
 
@@ -123,14 +183,15 @@ export const creatorJourneyApi = {
     return unwrap<Designer[]>(res.data);
   },
 
-  bookDesigner: async (spId: string): Promise<{ workroomId: string; conversationId: string }> => {
-    const res = await api.post('/creator/journey/phase2/m50-designers/book', { spId });
+  bookDesigner: async (spId: string, ideaId?: string | null): Promise<{ workroomId: string; conversationId: string }> => {
+    const res = await api.post('/creator/journey/phase2/m50-designers/book', { spId }, withIdeaWrite(ideaId));
+    rememberIdeaVersion(res, ideaId);
     return unwrap<{ workroomId: string; conversationId: string }>(res.data);
   },
 
   uploadAiLogo: async (
     blob: Blob,
-    opts: { paletteName?: string; typographyPairing?: string; colorPalette?: string[] },
+    opts: { paletteName?: string; typographyPairing?: string; colorPalette?: string[] }, ideaId?: string | null,
   ): Promise<{ logoAsset: string }> => {
     const form = new FormData();
     form.append('logo', blob, 'logo.png');
@@ -138,12 +199,14 @@ export const creatorJourneyApi = {
     if (opts.paletteName) form.append('paletteName', opts.paletteName);
     if (opts.typographyPairing) form.append('typographyPairing', opts.typographyPairing);
     if (opts.colorPalette?.length) form.append('colorPalette', opts.colorPalette.join(','));
-    const res = await api.post('/creator/journey/phase2/branding/upload-logo', form);
+    const res = await api.post('/creator/journey/phase2/branding/upload-logo', form, withIdeaWrite(ideaId));
+    rememberIdeaVersion(res, ideaId);
     return unwrap<{ logoAsset: string }>(res.data);
   },
 
-  skipBranding: async (): Promise<void> => {
-    await api.post('/creator/journey/phase2/branding/skip', {});
+  skipBranding: async (ideaId?: string | null): Promise<void> => {
+    const res = await api.post('/creator/journey/phase2/branding/skip', {}, withIdeaWrite(ideaId));
+    rememberIdeaVersion(res, ideaId);
   },
 
   // ---- Discovery path working state ----
@@ -152,66 +215,77 @@ export const creatorJourneyApi = {
   // state at completion) so an in-flight generation can't write onto a different
   // idea after a switch. Omitted when unknown (zero-idea user) — never an empty id.
   saveDiscoveryInputs: async (inputs: { sectors: string[]; observedProblem: string; strengths: string[] }, ideaId?: string): Promise<JourneyResponse> => {
-    const res = await api.post('/creator/journey/phase2/discovery-inputs', { inputs }, ideaId ? { params: { ideaId } } : undefined);
+    const res = await api.post('/creator/journey/phase2/discovery-inputs', { inputs }, withIdeaWrite(ideaId));
+    rememberIdeaVersion(res, ideaId);
     return unwrap<JourneyResponse>(res.data);
   },
 
   saveGeneratedConcepts: async (concepts: any[], ideaId?: string): Promise<JourneyResponse> => {
-    const res = await api.post('/creator/journey/phase2/generated-concepts', { concepts }, ideaId ? { params: { ideaId } } : undefined);
+    const res = await api.post('/creator/journey/phase2/generated-concepts', { concepts }, withIdeaWrite(ideaId));
+    rememberIdeaVersion(res, ideaId);
     return unwrap<JourneyResponse>(res.data);
   },
 
   saveSelectedConceptId: async (conceptId: string, ideaId?: string): Promise<JourneyResponse> => {
-    const res = await api.post('/creator/journey/phase2/selected-concept', { conceptId }, ideaId ? { params: { ideaId } } : undefined);
+    const res = await api.post('/creator/journey/phase2/selected-concept', { conceptId }, withIdeaWrite(ideaId));
+    rememberIdeaVersion(res, ideaId);
     return unwrap<JourneyResponse>(res.data);
   },
 
   // ---- Phase 3 (deterministic modules) ----
 
-  generateLegalChecklist: async (): Promise<LegalChecklist> => {
-    const res = await api.post('/creator/ai/legal-checklist/generate', {});
+  generateLegalChecklist: async (ideaId?: string | null): Promise<LegalChecklist> => {
+    const res = await api.post('/creator/ai/legal-checklist/generate', {}, withIdeaWrite(ideaId));
+    rememberIdeaVersion(res, ideaId);
     return unwrap<LegalChecklist>(res.data);
   },
 
-  updateLegalItem: async (itemId: string, status: ChecklistStatus): Promise<LegalChecklist> => {
-    const res = await api.patch(`/creator/legal-checklist/item/${itemId}`, { status });
+  updateLegalItem: async (itemId: string, status: ChecklistStatus, ideaId?: string | null): Promise<LegalChecklist> => {
+    const res = await api.patch(`/creator/legal-checklist/item/${itemId}`, { status }, withIdeaWrite(ideaId));
+    rememberIdeaVersion(res, ideaId);
     return unwrap<LegalChecklist>(res.data);
   },
 
   generateFormation: async (ideaId?: string | null): Promise<FormationGenerator> => {
-    const res = await api.post('/creator/ai/formation-generator/start', {}, withIdeaId(ideaId));
+    const res = await api.post('/creator/ai/formation-generator/start', {}, withIdeaWrite(ideaId));
+    rememberIdeaVersion(res, ideaId);
     return unwrap<FormationGenerator>(res.data);
   },
 
   selectFormationType: async (selectedType: FormationTypeCode, ideaId?: string | null): Promise<{ formation: FormationGenerator; legalChecklist: LegalChecklist }> => {
-    const res = await api.patch('/creator/formation/select-type', { selectedType }, withIdeaId(ideaId));
+    const res = await api.patch('/creator/formation/select-type', { selectedType }, withIdeaWrite(ideaId));
+    rememberIdeaVersion(res, ideaId);
     return unwrap<{ formation: FormationGenerator; legalChecklist: LegalChecklist }>(res.data);
   },
 
   // 3.5b: persist self-declared skills (+ optional co-founder draft). Backend derives the
   // SP-backed gaps + matches; returns the updated formation.
   declareFormationSkills: async (youHave: string[], cofounder?: CofounderDraft, ideaId?: string | null): Promise<FormationGenerator> => {
-    const res = await api.patch('/creator/formation/skills', { youHave, cofounder: cofounder ?? null }, withIdeaId(ideaId));
+    const res = await api.patch('/creator/formation/skills', { youHave, cofounder: cofounder ?? null }, withIdeaWrite(ideaId));
+    rememberIdeaVersion(res, ideaId);
     return unwrap<FormationGenerator>(res.data);
   },
 
-  spMatches: async (specialty: string): Promise<SpMatchDto[]> => {
-    const res = await api.get('/creator/sp-matches', { params: { specialty } });
+  spMatches: async (specialty: string, ideaId?: string | null): Promise<SpMatchDto[]> => {
+    const res = await api.get('/creator/sp-matches', { params: { ...withIdeaRead(ideaId).params, specialty } });
     return unwrap<SpMatchDto[]>(res.data);
   },
 
-  openWorkroom: async (spId: string, context?: string): Promise<{ workroomId: string; conversationId: string }> => {
-    const res = await api.post('/creator/workroom/open', { spId, context });
+  openWorkroom: async (spId: string, context?: string, ideaId?: string | null): Promise<{ workroomId: string; conversationId: string }> => {
+    const res = await api.post('/creator/workroom/open', { spId, context }, withIdeaWrite(ideaId));
+    rememberIdeaVersion(res, ideaId);
     return unwrap<{ workroomId: string; conversationId: string }>(res.data);
   },
 
   // Link a Phase-3 AI session (forecast | businessPlan) onto the journey.
-  setPhase3Session: async (kind: 'forecast' | 'businessPlan', sessionId: string): Promise<void> => {
-    await api.post('/creator/journey/phase3/session', { kind, sessionId });
+  setPhase3Session: async (kind: 'forecast' | 'businessPlan', sessionId: string, ideaId?: string | null): Promise<void> => {
+    const res = await api.post('/creator/journey/phase3/session', { kind, sessionId }, withIdeaWrite(ideaId));
+    rememberIdeaVersion(res, ideaId);
   },
 
-  completeMasterplan: async (): Promise<{ investorReadinessScore: InvestorReadinessScore }> => {
-    const res = await api.patch('/creator/masterplan/complete', {});
+  completeMasterplan: async (ideaId?: string | null): Promise<{ investorReadinessScore: InvestorReadinessScore }> => {
+    const res = await api.patch('/creator/masterplan/complete', {}, withIdeaWrite(ideaId));
+    rememberIdeaVersion(res, ideaId);
     return unwrap<{ investorReadinessScore: InvestorReadinessScore }>(res.data);
   },
 
@@ -224,63 +298,77 @@ export const creatorJourneyApi = {
     return unwrap<MarketBenchmark>(res.data);
   },
 
-  pricingInsights: async (ideaId?: string | null): Promise<{ competitors: string[]; sectorAveragePrice: number }> => {
-    const res = await api.get('/creator/offer/pricing-insights', withIdeaId(ideaId));
-    return unwrap<{ competitors: string[]; sectorAveragePrice: number }>(res.data);
+  pricingInsights: async (ideaId?: string | null): Promise<PricingInsights> => {
+    const res = await api.get('/creator/offer/pricing-insights', withIdeaRead(ideaId));
+    return unwrap<PricingInsights>(res.data);
   },
 
-  setPricing: async (pricingModel: string, tiers: PricingTier[], ideaId?: string | null): Promise<{ phase4: unknown; suggestion: string | null }> => {
-    const res = await api.post('/creator/offer/pricing', { pricingModel, tiers }, withIdeaId(ideaId));
-    return unwrap<{ phase4: unknown; suggestion: string | null }>(res.data);
+  setPricing: async (pricingModel: string, tiers: PricingTier[], ideaId?: string | null): Promise<{ phase4: unknown; forecastPricingOutdated: boolean; forecastArpu?: number | null }> => {
+    const res = await api.post('/creator/offer/pricing', { pricingModel, tiers }, withIdeaWrite(ideaId));
+    rememberIdeaVersion(res, ideaId);
+    return unwrap<{ phase4: unknown; forecastPricingOutdated: boolean; forecastArpu?: number | null }>(res.data);
   },
 
   resourceCalculator: async (teamRequirements: TeamRequirement[], saasStack: SaasItem[], ideaId?: string | null): Promise<ResourceCalculation> => {
-    const res = await api.post('/creator/offer/resource-calculator', { teamRequirements, saasStack }, withIdeaId(ideaId));
+    const res = await api.post('/creator/offer/resource-calculator', { teamRequirements, saasStack }, withIdeaWrite(ideaId));
+    rememberIdeaVersion(res, ideaId);
     return unwrap<ResourceCalculation>(res.data);
   },
 
   gtmSetup: async (payload: { webPresence: WebPresenceItem[]; targetAudiences: string[]; channelMix: ChannelMix[] }, ideaId?: string | null): Promise<GtmSetup> => {
-    const res = await api.post('/creator/offer/gtm-setup', payload, withIdeaId(ideaId));
+    const res = await api.post('/creator/offer/gtm-setup', payload, withIdeaWrite(ideaId));
+    rememberIdeaVersion(res, ideaId);
     return unwrap<GtmSetup>(res.data);
   },
 
   completeOffer: async (ideaId?: string | null): Promise<void> => {
-    await api.patch('/creator/offer/complete', {}, withIdeaId(ideaId));
+    const res = await api.patch('/creator/offer/complete', {}, withIdeaWrite(ideaId));
+    rememberIdeaVersion(res, ideaId);
   },
 
   // ---- Phase 5 (Crossroads) ----
 
-  ipValuation: async (): Promise<IpValuation> => {
-    const res = await api.get('/creator/ip-valuation');
+  ipValuation: async (ideaId?: string | null): Promise<IpValuation> => {
+    const res = await api.post('/creator/ip-valuation', {}, withIdeaWrite(ideaId));
+    rememberIdeaVersion(res, ideaId);
     return unwrap<IpValuation>(res.data);
   },
 
-  publishMarketplace: async (payload: { ndaRequired: boolean; openToPurchase: boolean; openToLicense: boolean; audience: string }): Promise<{ listing: unknown; matchedBuyerIds: string[]; matchingStubbed: boolean }> => {
-    const res = await api.post('/creator/marketplace/publish', payload);
-    return unwrap<{ listing: unknown; matchedBuyerIds: string[]; matchingStubbed: boolean }>(res.data);
+  creatorReadiness: async (ideaId?: string | null): Promise<CreatorReadiness> => {
+    const res = await api.get('/creator/readiness', withIdeaRead(ideaId));
+    return unwrap<CreatorReadiness>(res.data);
   },
 
-  companyFormation: async (payload: { selectedType: string; ownership: OwnershipEntry[]; formationSpId?: string }): Promise<{ formation: unknown; warnings: string[] }> => {
-    const res = await api.post('/creator/company-formation', payload);
+  publishMarketplace: async (payload: { ndaRequired: boolean; askingPrice: number; audience: string }, ideaId?: string | null): Promise<{ listing: unknown; matches: string[]; hasMatches: boolean; isEmpty: boolean }> => {
+    const res = await api.post('/creator/marketplace/publish', payload, withIdeaWrite(ideaId));
+    rememberIdeaVersion(res, ideaId);
+    return unwrap<{ listing: unknown; matches: string[]; hasMatches: boolean; isEmpty: boolean }>(res.data);
+  },
+
+  companyFormation: async (payload: { selectedType: string; ownership: OwnershipEntry[]; formationSpId?: string }, ideaId?: string | null): Promise<{ formation: unknown; warnings: string[] }> => {
+    const res = await api.post('/creator/company-formation', payload, withIdeaWrite(ideaId));
+    rememberIdeaVersion(res, ideaId);
     return unwrap<{ formation: unknown; warnings: string[] }>(res.data);
   },
 
-  seedFunding: async (payload: { totalAsk: number; useOfFunds: UseOfFunds[]; investorTypesTargeted: string[] }): Promise<{ seedFunding: unknown; companyId: string | null; matchedInvestorCount: number; investorPoolEmpty: boolean }> => {
-    const res = await api.post('/creator/seed-funding', payload);
+  seedFunding: async (payload: { totalAsk: number; useOfFunds: UseOfFunds[]; investorTypesTargeted: string[] }, ideaId?: string | null): Promise<{ seedFunding: unknown; companyId: string | null; matchedInvestorCount: number; investorPoolEmpty: boolean }> => {
+    const res = await api.post('/creator/seed-funding', payload, withIdeaWrite(ideaId));
+    rememberIdeaVersion(res, ideaId);
     return unwrap<{ seedFunding: unknown; companyId: string | null; matchedInvestorCount: number; investorPoolEmpty: boolean }>(res.data);
   },
 
   // ---- Phase 6 (Matchmaking + Level Up) ----
 
-  getInvestors: async (): Promise<{ featured: SmartMatch | null; qualified: SmartMatch[]; matchingTip: string; isEmpty: boolean }> => {
-    const res = await api.get('/creator/investors');
+  getInvestors: async (ideaId?: string | null): Promise<{ featured: SmartMatch | null; qualified: SmartMatch[]; matchingTip: string; isEmpty: boolean }> => {
+    const res = await api.get('/creator/investors', withIdeaRead(ideaId));
     return unwrap<{ featured: SmartMatch | null; qualified: SmartMatch[]; matchingTip: string; isEmpty: boolean }>(res.data);
   },
 
   // Optional ideaId (step 6ii): Level Up a SPECIFIC idea (my-ideas card, later).
   // Existing callers pass nothing — the backend falls back to the active idea.
   levelUp: async (ideaId?: string): Promise<LevelUpResult> => {
-    const res = await api.post('/creator/level-up', {}, ideaId ? { params: { ideaId } } : undefined);
+    const res = await api.post('/creator/level-up', {}, withIdeaWrite(ideaId));
+    rememberIdeaVersion(res, ideaId);
     return unwrap<LevelUpResult>(res.data);
   },
 
@@ -348,12 +436,36 @@ export interface IpValuation {
   estimatedMin: number;
   estimatedMax: number;
   confidence: 'low' | 'medium' | 'high';
+  method: string;
+  disclaimer: string;
+  marketOpportunityContext?: number | null;
   breakdown: { conceptClarity: number; marketPotential: number; techFeasibility: number; founderCredibility: number; businessPlanQuality: number };
 }
 export interface OwnershipEntry { holder: string; percent: number; isFounder: boolean; isEsop: boolean; }
 export interface UseOfFunds { category: string; percent: number; }
 
 export interface PricingTier { id?: string; name: string; price: number; billingCycle?: string; features: string[]; isHighlighted: boolean; }
+export interface PricingForecastContext {
+  sessionId: string;
+  arpu: number;
+  updatedAt: string;
+}
+export interface CreatorReadinessRequirement { key: string; label: string; route: string; complete: boolean; required: boolean; }
+export interface CreatorReadiness {
+  overallProgress: number;
+  levelUpEligible: boolean;
+  selectedPath: string;
+  requirements: CreatorReadinessRequirement[];
+  missingRequired: string[];
+  nextBestAction?: CreatorReadinessRequirement | null;
+}
+export interface PricingInsights {
+  selectedEntryPrice?: number | null;
+  forecastContext?: PricingForecastContext | null;
+  recommendation?: { suggestedEntryPrice: number; source: 'forecast_assumption'; message: string } | null;
+  competitorPricing: { available: false; message: string };
+  marketBenchmark: { available: false; message: string };
+}
 export interface TeamRequirement { role: string; cost: number; durationMonths: number; oneTime: boolean; }
 export interface SaasItem { name: string; monthlyCost: number; }
 export interface ResourceCalculation {

@@ -12,6 +12,7 @@ using WebApp.Services.Ai;
 using WebApp.Services.Ai.Jobs;
 using WebApp.Services.Audit;
 using WebApp.Services.Repository.Ai;
+using WebApp.Services.Repository;
 
 namespace WebApp.Controllers
 {
@@ -34,6 +35,7 @@ namespace WebApp.Controllers
         private readonly IAuditLogger _audit;
         private readonly AiSettings _settings;
         private readonly ILogger<ClarifierController> _logger;
+        private readonly ICreatorIdeaStore _creatorIdeas;
 
         public ClarifierController(
             IClarifierSessionStore sessions,
@@ -41,7 +43,8 @@ namespace WebApp.Controllers
             IAiCreditService creditService,
             IAuditLogger audit,
             IOptions<AiSettings> settings,
-            ILogger<ClarifierController> logger)
+            ILogger<ClarifierController> logger,
+            ICreatorIdeaStore creatorIdeas)
         {
             _sessions = sessions;
             _jobService = jobService;
@@ -49,6 +52,7 @@ namespace WebApp.Controllers
             _audit = audit;
             _settings = settings.Value;
             _logger = logger;
+            _creatorIdeas = creatorIdeas;
         }
 
         private string CurrentUserId =>
@@ -59,6 +63,11 @@ namespace WebApp.Controllers
         public async Task<IActionResult> Start([FromBody] StartClarifierRequest request)
         {
             var owner = CurrentUserId;
+
+            if (string.IsNullOrWhiteSpace(request?.BusinessIdeaId))
+                return BadRequest(ApiResponse.Error("businessIdeaId is required.", HttpContext.TraceIdentifier));
+            if (await _creatorIdeas.GetOwnedAsync(request.BusinessIdeaId, owner) == null)
+                return NotFound(ApiResponse.Error("Idea not found.", HttpContext.TraceIdentifier));
 
             if (!_settings.Enabled)
                 return StatusCode(503, ApiResponse.Error("AI features are currently disabled.", HttpContext.TraceIdentifier));
@@ -136,6 +145,9 @@ namespace WebApp.Controllers
             ["targetAudience"] = raw.TargetAudience ?? "",
             ["description"] = raw.Description ?? "",
             ["existingAlternatives"] = raw.ExistingAlternatives ?? "",
+            ["whyNow"] = raw.WhyNow ?? "",
+            ["riskiestAssumption"] = raw.RiskiestAssumption ?? "",
+            ["founderAdvantage"] = raw.FounderAdvantage ?? "",
         };
 
         private static ClarifierSessionDto ToDto(ClarifierSession s) => new()

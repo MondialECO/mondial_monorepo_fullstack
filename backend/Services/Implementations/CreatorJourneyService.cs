@@ -31,6 +31,7 @@ namespace WebApp.Services.Implementations
         // anchoring clarifier. Additive — nothing reads CreatorIdeas / the anchor yet.
         private readonly ICreatorIdeaStore _creatorIdeas;
         private readonly IClarifierSessionStore _clarifiers;
+        private readonly IHttpContextAccessor _httpContextAccessor;
         private static readonly TimeSpan PathSwitchWindow = TimeSpan.FromHours(72);
 
         // Legacy Path-A value, retired in P1.10. Centralized here so the one-time
@@ -42,13 +43,15 @@ namespace WebApp.Services.Implementations
             IBusinessPlanSessionStore businessPlans,
             IForecastSessionStore forecasts,
             ICreatorIdeaStore creatorIdeas,
-            IClarifierSessionStore clarifiers)
+            IClarifierSessionStore clarifiers,
+            IHttpContextAccessor httpContextAccessor = null)
         {
             _context = context;
             _businessPlans = businessPlans;
             _forecasts = forecasts;
             _creatorIdeas = creatorIdeas;
             _clarifiers = clarifiers;
+            _httpContextAccessor = httpContextAccessor;
         }
 
         // =================================================================
@@ -59,8 +62,8 @@ namespace WebApp.Services.Implementations
         // =================================================================
 
         /// <summary>
-        /// Resolve the caller's idea. An explicit id must be owned and match the
-        /// active idea (NEVER silently fall back to a different idea).
+        /// Resolve the caller's idea. An explicit id must be owned by the caller.
+        /// ActiveIdeaId remains a navigation preference only.
         /// No id → the active idea; a stale pointer repoints to the most recent idea;
         /// no ideas at all → mint the first from the journey's inline blocks.
         /// Persists any pointer change atomically and reflects it on the in-memory j.
@@ -72,7 +75,7 @@ namespace WebApp.Services.Implementations
                 var owned = await _creatorIdeas.GetOwnedAsync(ideaId, j.UserId);
                 if (owned == null)
                     throw new CreatorJourneyException(404, "Idea not found.");
-                if (!string.Equals(owned.Id, j.ActiveIdeaId, StringComparison.Ordinal))
+                if (!string.Equals(owned.UserId, j.UserId, StringComparison.Ordinal))
                     throw new CreatorJourneyException(409, "You've switched to a different idea elsewhere — refresh this page and try again.");
                 return owned;
             }
@@ -141,12 +144,42 @@ namespace WebApp.Services.Implementations
             // the step-1 backfill guarantees LeveledUpIdeaId for every leveled-up user.
             p6.LevelUpTriggered = !string.IsNullOrEmpty(j.LeveledUpIdeaId) && j.LeveledUpIdeaId == idea.Id;
             j.OutputSnapshots = idea.OutputSnapshots ??= new CreatorOutputSnapshots();
+            j.IdeaVersion = idea.Version > 0 ? idea.Version : 1;
             return j;
         }
 
-        /// <summary>Targeted atomic write on the idea (source of truth).</summary>
-        private Task WriteIdeaAsync(CreatorIdea idea, UpdateDefinition<CreatorIdea> update)
-            => _creatorIdeas.UpdateAsync(idea.Id, idea.UserId, update);
+        /// <summary>Targeted optimistic write on the per-idea source of truth.</summary>
+        private async Task WriteIdeaAsync(CreatorIdea idea, UpdateDefinition<CreatorIdea> update)
+        {
+            var http = _httpContextAccessor?.HttpContext;
+            long? expectedVersion = null;
+            if (http != null)
+            {
+                var submittedIdeaId = http.Request.Query["ideaId"].ToString();
+                if (string.IsNullOrWhiteSpace(submittedIdeaId))
+                    throw new CreatorJourneyException(400, "ideaId is required for Creator changes.");
+                if (!string.Equals(submittedIdeaId, idea.Id, StringComparison.Ordinal))
+                    throw new CreatorJourneyException(400, "Submitted ideaId does not match the workspace idea.");
+
+                if (http.Items.TryGetValue("CreatorIdeaVersion", out var current) && current is long version)
+                    expectedVersion = version;
+                else if (!long.TryParse(http.Request.Query["expectedVersion"], out var submittedVersion) || submittedVersion < 1)
+                    throw new CreatorJourneyException(400, "expectedVersion is required for Creator changes.");
+                else
+                    expectedVersion = submittedVersion;
+            }
+
+            var updated = await _creatorIdeas.UpdateAsync(idea.Id, idea.UserId, update, expectedVersion);
+            if (!updated)
+                throw new CreatorJourneyException(409, "This idea was updated in another tab. Refresh to load the latest version before continuing.");
+
+            if (expectedVersion.HasValue)
+            {
+                var nextVersion = expectedVersion.Value + 1;
+                http!.Items["CreatorIdeaVersion"] = nextVersion;
+                idea.Version = nextVersion;
+            }
+        }
 
         public async Task<CreatorJourney> GetOrCreateComposedAsync(string userId, string ideaId = null)
         {
@@ -355,7 +388,8 @@ namespace WebApp.Services.Implementations
             if (r == null || (r.Name == null && r.Tagline == null && r.Concept == null
                 && r.TargetUser == null && r.Problem == null && r.Solution == null
                 && r.MarketGap == null && r.CreatorEdge == null && r.Category == null
-                && r.Sector == null && r.Tags == null && !r.ClarityScore.HasValue))
+                && r.ExistingAlternatives == null && r.WhyNow == null && r.RiskiestAssumption == null
+                && r.TargetMarket == null && r.Geography == null && r.Sector == null && r.Tags == null && !r.ClarityScore.HasValue))
                 throw new CreatorJourneyException(400, "Provide at least one field to update.");
 
             var j = await GetOrCreateAsync(userId);
@@ -381,6 +415,11 @@ namespace WebApp.Services.Implementations
             if (r.Solution != null) p.Solution = r.Solution;
             if (r.MarketGap != null) p.MarketGap = r.MarketGap;
             if (r.CreatorEdge != null) p.CreatorEdge = r.CreatorEdge;
+            if (r.ExistingAlternatives != null) p.ExistingAlternatives = r.ExistingAlternatives;
+            if (r.WhyNow != null) p.WhyNow = r.WhyNow;
+            if (r.RiskiestAssumption != null) p.RiskiestAssumption = r.RiskiestAssumption;
+            if (r.TargetMarket != null) p.TargetMarket = r.TargetMarket;
+            if (r.Geography != null) p.Geography = r.Geography;
             if (r.Category != null) p.Category = r.Category;
             if (r.Sector != null) p.Sector = r.Sector;
             if (r.Tags != null) p.Tags = r.Tags;
@@ -408,10 +447,10 @@ namespace WebApp.Services.Implementations
 
         public async Task<CreatorJourney> SetCrossroadsPathAsync(string userId, string path, string ideaId = null)
         {
-            // Only the two canonical values are accepted; the legacy alias and any
-            // other value are rejected here with 400.
-            if (path != "sell_license" && path != "build")
-                throw new CreatorJourneyException(400, "Path must be \"sell_license\" or \"build\".");
+            // New Creator choices are Full Buyout or Build. Historical
+            // "sell_license" records remain readable, but clients cannot select it.
+            if (path != "sell" && path != "build")
+                throw new CreatorJourneyException(400, "Path must be \"sell\" or \"build\".");
 
             var j = await GetOrCreateAsync(userId);
             var idea = await ResolveIdeaAsync(j, ideaId);
@@ -420,7 +459,7 @@ namespace WebApp.Services.Implementations
 
             // 72-hour switch lock: once a path is chosen, switching is allowed only
             // within the window. After it elapses, the choice is locked.
-            if (!string.IsNullOrEmpty(p5.ChosenPath) && p5.ChosenPath != path && p5.PathSelectedAt.HasValue)
+            if (!string.IsNullOrEmpty(p5.ChosenPath) && p5.ChosenPath != "sell_license" && p5.ChosenPath != path && p5.PathSelectedAt.HasValue)
             {
                 if (DateTime.UtcNow - p5.PathSelectedAt.Value > PathSwitchWindow)
                     throw new CreatorJourneyException(403, "Path is locked. Contact support to switch.");
@@ -506,29 +545,18 @@ namespace WebApp.Services.Implementations
 
         public async Task<CreatorJourney> ApplyClarifierMappingAsync(
             string userId, string clarifierSessionId, string problem, string targetUser,
-            string solution, double clarityScore, List<string> tags, string marketGap = "", string creatorEdge = "")
+            string solution, double clarityScore, List<string> tags, string marketGap = "", string creatorEdge = "",
+            string existingAlternatives = "", string whyNow = "", string riskiestAssumption = "", string ideaId = null)
         {
             // Mint/converge semantics: this finalize maps onto the ACTIVE idea (minting
             // the first one for a brand-new user) — an explicit ideaId is meaningless here.
             var j = await GetOrCreateAsync(userId);
-            var idea = await ResolveIdeaAsync(j, null);
+            var idea = await ResolveIdeaAsync(j, ideaId);
             OverlayIdea(j, idea);
             var p = j.Project ??= new CreatorJourneyProject();
-            p.Problem = problem ?? p.Problem;
-            p.TargetUser = targetUser ?? p.TargetUser;
-            p.Solution = solution ?? p.Solution;
-            p.ClarityScore = clarityScore;
-            if (!string.IsNullOrWhiteSpace(marketGap)) p.MarketGap = marketGap;
-            if (!string.IsNullOrWhiteSpace(creatorEdge)) p.CreatorEdge = creatorEdge;
-            if (tags != null && tags.Count > 0) p.Tags = tags;
-
-            // Path-B parity with Discovery (which sets Concept from the concept text):
-            // the clarifier's closest analog to a one-line venture description is the
-            // proposed-solution summary, falling back to the value proposition
-            // (carried here as marketGap). Without this, every clarifier-path idea
-            // reads "no concept" forever on cards/summary despite being fully built.
-            var conceptLine = !string.IsNullOrWhiteSpace(solution) ? solution : marketGap;
-            if (!string.IsNullOrWhiteSpace(conceptLine)) p.Concept = conceptLine;
+            CreatorIdeaCoreMapper.ApplyClarifier(
+                p, problem, targetUser, solution, clarityScore, tags, marketGap, creatorEdge,
+                existingAlternatives, whyNow, riskiestAssumption);
 
             (j.Phase2Data ??= new CreatorPhase2Data()).ClarifierSessionId = clarifierSessionId;
             // STEP 2 anchor: the (possibly new) clarifier joins this idea; plan/forecast inherit it.
@@ -547,23 +575,15 @@ namespace WebApp.Services.Implementations
         // clarifier Q&A. Mirrors ApplyClarifierMappingAsync but also sets Concept/Category
         // (which the concept carries) in a single write. Path-B's mapping is untouched.
         public async Task<CreatorJourney> ApplyDiscoveryMappingAsync(
-            string userId, string clarifierSessionId, CreatorDiscoveryConcept concept)
+            string userId, string clarifierSessionId, CreatorDiscoveryConcept concept, string ideaId = null)
         {
             // Mint/converge semantics — same active-idea convergence as the clarifier path,
             // so discovery-then-clarify (either order) lands on exactly ONE idea.
             var j = await GetOrCreateAsync(userId);
-            var idea = await ResolveIdeaAsync(j, null);
+            var idea = await ResolveIdeaAsync(j, ideaId);
             OverlayIdea(j, idea);
             var p = j.Project ??= new CreatorJourneyProject();
-            if (!string.IsNullOrWhiteSpace(concept.CoreProblem)) p.Problem = concept.CoreProblem;
-            if (!string.IsNullOrWhiteSpace(concept.TargetUser)) p.TargetUser = concept.TargetUser;
-            if (!string.IsNullOrWhiteSpace(concept.Solution)) p.Solution = concept.Solution;
-            if (!string.IsNullOrWhiteSpace(concept.MarketGap)) p.MarketGap = concept.MarketGap;
-            if (!string.IsNullOrWhiteSpace(concept.FounderEdge)) p.CreatorEdge = concept.FounderEdge;
-            var conceptText = !string.IsNullOrWhiteSpace(concept.Concept) ? concept.Concept : concept.Description;
-            if (!string.IsNullOrWhiteSpace(conceptText)) p.Concept = conceptText;
-            if (!string.IsNullOrWhiteSpace(concept.Category)) { p.Category = concept.Category; p.Tags = new List<string> { concept.Category }; }
-            p.ClarityScore = concept.Score;
+            CreatorIdeaCoreMapper.ApplyDiscovery(p, concept);
 
             (j.Phase2Data ??= new CreatorPhase2Data()).ClarifierSessionId = clarifierSessionId;
             if (!string.IsNullOrEmpty(clarifierSessionId))
@@ -818,7 +838,7 @@ namespace WebApp.Services.Implementations
 
         // ---- Phase 4 ----
 
-        public async Task<CreatorJourney> SetPhase4PricingAsync(string userId, string pricingModel, List<CreatorPricingTier> tiers, string ideaId = null)
+        public async Task<CreatorJourney> SetPhase4PricingAsync(string userId, string pricingModel, List<CreatorPricingTier> tiers, CreatorPricingForecastContext? forecastContext = null, string ideaId = null)
         {
             var j = await GetOrCreateAsync(userId);
             var idea = await ResolveIdeaAsync(j, ideaId);
@@ -826,6 +846,7 @@ namespace WebApp.Services.Implementations
             var p4 = j.Phase4Data ??= new CreatorPhase4Data();
             p4.PricingModel = pricingModel;
             p4.Tiers = tiers ?? new List<CreatorPricingTier>();
+            p4.PricingForecastContext = forecastContext;
             var entry = CreatorJourneyVersioning.Append(
                 (j.OutputSnapshots ??= new CreatorOutputSnapshots()).PricingVersions, 4, null,
                 new BsonDocument { ["pricingModel"] = pricingModel, ["tierCount"] = p4.Tiers.Count });
@@ -835,6 +856,7 @@ namespace WebApp.Services.Implementations
             await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update
                 .Set(x => x.Phase4Data.PricingModel, p4.PricingModel)
                 .Set(x => x.Phase4Data.Tiers, p4.Tiers)
+                .Set(x => x.Phase4Data.PricingForecastContext, p4.PricingForecastContext)
                 .Push(x => x.OutputSnapshots.PricingVersions, entry));
             return j;
         }

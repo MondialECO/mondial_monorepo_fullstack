@@ -365,7 +365,7 @@ if [[ $FAIL_COUNT -eq 0 ]]; then
   echo -e "${GREEN}✅ All API-level tests passed${NC}"
   echo ""
   echo "Next: Run the Playwright tests for UI-level coverage:"
-  echo "  npx playwright test creator-e2e.spec.ts --headed"
+  echo "  npx playwright test tests/creator/e2e/support/manual/creator-e2e.spec.ts --headed"
 else
   echo -e "${RED}❌ $FAIL_COUNT test(s) failed — review output above${NC}"
 fi
@@ -377,4 +377,4 @@ echo "  TEST 3: Verify charts show real data (not mock) in browser"
 echo "  TEST 5: Check /dashboard/entrepreneur/phase-4 cap table in browser"
 echo "          (Tanvir 70% / ESOP 10% / Investors 20% — or empty if seed failed)"
 echo "          Grep backend log for 'Cap-table seed failed' if empty"
-echo "  TEST 7: Run npx playwright test creator-e2e.spec.ts --headed for DOM check"
+echo "  TEST 7: Run npx playwright test tests/creator/e2e/support/manual/creator-e2e.spec.ts --headed for DOM check"

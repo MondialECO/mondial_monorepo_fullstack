@@ -1,10 +1,10 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Image as ImageIcon, ShieldCheck, Download, ExternalLink, Sparkles, FolderOpen } from 'lucide-react';
+import { Image as ImageIcon, Sparkles } from 'lucide-react';
 import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
 
 export default function AssetLibraryPage() {
@@ -20,7 +20,7 @@ export default function AssetLibraryPage() {
           Asset Library
         </h1>
         <p className="text-sm font-normal text-muted-foreground">
-          Review and download your saved project assets and brand identity packages.
+          Review the saved brand identity data for this idea.
         </p>
       </div>
 
@@ -45,14 +45,6 @@ export default function AssetLibraryPage() {
               <Badge className="bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 font-bold text-[10px] px-2.5 py-0.5">
                 {branding.logoType === 'ai' ? 'AI Logo Generator' : 'Verified M50 designer'}
               </Badge>
-              <div className="flex gap-2 justify-center pt-2">
-                <Button size="sm" variant="outline" className="rounded-xl text-xs font-semibold h-9 px-3">
-                  <Download className="w-3.5 h-3.5 mr-1" /> SVG
-                </Button>
-                <Button size="sm" variant="outline" className="rounded-xl text-xs font-semibold h-9 px-3">
-                  <Download className="w-3.5 h-3.5 mr-1" /> PNG
-                </Button>
-              </div>
             </div>
           </Card>
 
@@ -94,9 +86,6 @@ export default function AssetLibraryPage() {
                 <p className="text-sm font-medium text-muted-foreground font-sans">{branding.typographyPairing?.split('+')[1] || 'DM Sans'}</p>
               </div>
             </div>
-            <Button size="sm" variant="outline" className="rounded-xl text-xs font-semibold h-9 w-full">
-              Download Web Fonts
-            </Button>
           </Card>
         </div>
       ) : (
@@ -115,43 +104,6 @@ export default function AssetLibraryPage() {
           </Button>
         </Card>
       )}
-
-      {/* Presentation Materials Section */}
-      <Card className="rounded-2xl border-border bg-card shadow-sm overflow-hidden">
-        <CardHeader className="border-b border-border/80">
-          <CardTitle className="text-base font-bold">Media & Links Gallery</CardTitle>
-          <CardDescription className="text-xs">Saved startup pitch decks, validation recordings, and workspace files.</CardDescription>
-        </CardHeader>
-        <CardContent className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-4 rounded-xl border border-border/80 bg-muted/20 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-                  <FolderOpen className="w-5 h-5" />
-                </div>
-                <div>
-                  <span className="font-bold text-xs text-foreground block">AI Masterplan Presentation</span>
-                  <span className="text-[10px] text-muted-foreground">Keynote Pitch Deck template</span>
-                </div>
-              </div>
-              <Button size="icon" variant="ghost" aria-label="Download"><Download className="w-4 h-4" /></Button>
-            </div>
-
-            <div className="p-4 rounded-xl border border-border/80 bg-muted/20 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-                  <ExternalLink className="w-5 h-5" />
-                </div>
-                <div>
-                  <span className="font-bold text-xs text-foreground block">M50 Developer Workroom</span>
-                  <span className="text-[10px] text-muted-foreground">Matched engineering channel</span>
-                </div>
-              </div>
-              <Button size="icon" variant="ghost" aria-label="Open in new tab"><ExternalLink className="w-4 h-4" /></Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

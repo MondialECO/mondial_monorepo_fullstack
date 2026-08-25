@@ -8,8 +8,8 @@ Two test suites covering the full Creator flow.
 
 | File | What it tests | How to run |
 |------|--------------|------------|
-| `creator-api-tests.sh` | API-level: Phase 3 order (422), credit exhaustion (402), rate limit (429) | bash script |
-| `creator-e2e.spec.ts` | Browser + API: credits grant, AI sessions, Level Up, dashboard de-mock | Playwright |
+| `creator/e2e/support/manual/creator-api-tests.sh` | API-level: Phase 3 order (422), credit exhaustion (402), rate limit (429) | bash script |
+| `creator/e2e/support/manual/creator-e2e.spec.ts` | Browser + API: credits grant, AI sessions, Level Up, dashboard de-mock | Playwright |
 | `playwright.config.ts` | Playwright configuration | (auto-used) |
 
 ---
@@ -35,8 +35,8 @@ dotnet user-secrets set "OpenRouter:ApiKey" "sk-or-v1-<your-new-key>"
 ## 1. API Tests (curl — fastest, no browser needed)
 
 ```bash
-chmod +x creator-api-tests.sh
-./creator-api-tests.sh
+chmod +x tests/creator/e2e/support/manual/creator-api-tests.sh
+./tests/creator/e2e/support/manual/creator-api-tests.sh
 ```
 
 What it covers:
@@ -64,7 +64,7 @@ npm install --save-dev @playwright/test
 npx playwright install chromium
 
 # Run
-npx playwright test creator-e2e.spec.ts --headed
+npx playwright test tests/creator/e2e/support/manual/creator-e2e.spec.ts --headed
 ```
 
 What it covers:

@@ -82,7 +82,7 @@ export default function MyIdeasPage() {
         status: computedStatus.phase5.status,
         currentStep: computedStatus.phase5.currentStep ?? 1,
         completedSteps: [],
-        selectedPath: (journey.phase5Data?.chosenPath as "sell_license" | "build" | null) ?? null,
+        selectedPath: (journey.phase5Data?.chosenPath as "sell" | "build" | "sell_license" | null) ?? null,
       },
       phase6: { status: computedStatus.phase6.status, currentStep: computedStatus.phase6.currentStep ?? 1, completedSteps: [] },
     } as CreatorJourneyState;
@@ -100,7 +100,7 @@ export default function MyIdeasPage() {
     setCreateError(null);
     try {
       const { activeIdeaId } = await creatorJourneyApi.setActiveIdea(ideaId);
-      const hydrated = await refetch();
+      const hydrated = await refetch(ideaId);
       if (!hydrated.ok || hydrated.activeIdeaId !== activeIdeaId) {
         setCreateError("Switched, but reloading state failed — please retry.");
       }
@@ -121,7 +121,7 @@ export default function MyIdeasPage() {
     try {
       if (!idea.isActive) {
         const { activeIdeaId } = await creatorJourneyApi.setActiveIdea(idea.ideaId);
-        const hydrated = await refetch();
+        const hydrated = await refetch(idea.ideaId);
         if (!hydrated.ok || hydrated.activeIdeaId !== activeIdeaId) {
           setCreateError("Couldn't load that idea's state — please retry.");
           return;
@@ -174,7 +174,7 @@ export default function MyIdeasPage() {
     // gated on the verified state; a failed hydration surfaces and stays put
     // (the idea exists — the list below offers it; retrying create would duplicate).
     try {
-      const hydrated = await refetch();
+      const hydrated = await refetch(newIdeaId);
       await loadIdeas();
       if (!hydrated.ok || hydrated.activeIdeaId !== newIdeaId) {
         setCreateError("Idea created, but loading it failed — open it from the list below.");

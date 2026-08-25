@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import type {
-  CreatorDocument,
   CreatorJourneyData,
   CreatorJourneyState,
   CreatorOutputKey,
@@ -14,7 +13,7 @@ import type {
   ComputedJourneyStatus,
   JourneyOutputKey,
 } from '@/types/creator/journey-api';
-import { creatorJourneyApi, type UpdateProjectPayload } from '@/lib/api-creator-journey';
+import { creatorJourneyApi, setCreatorWorkspaceIdea, type UpdateProjectPayload } from '@/lib/api-creator-journey';
 
 const STORAGE_KEY = 'mondial_creator_progress_draft';
 const SAVE_DEBOUNCE_MS = 500;
@@ -65,6 +64,12 @@ const INITIAL_STATE: CreatorJourneyData = {
     solution: '',
     marketGap: '',
     creatorEdge: '',
+    existingAlternatives: '',
+    whyNow: '',
+    riskiestAssumption: '',
+    sourceMethod: '',
+    targetMarket: '',
+    geography: '',
     category: '',
     sector: '',
     tags: [],
@@ -96,7 +101,6 @@ const INITIAL_STATE: CreatorJourneyData = {
     matchingRuns: [],
   },
   assets: [],
-  documents: [],
   conversations: [],
   notifications: [],
   activityHistory: [],
@@ -120,26 +124,28 @@ function readCache(): CreatorJourneyData | null {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
+    // Retire the old local-only document cache. It never represented persisted
+    // Creator assets and must not be carried into the real document vault.
+    const { documents: _legacyDocuments, ...cached } = parsed;
     // One-time migration: coerce the retired Path-A alias in any old cached draft.
     const cachedPath = parsed.journeyState?.phase5?.selectedPath;
-    const migratedPath = cachedPath === 'buyout' ? 'sell_license' : cachedPath;
+    const migratedPath = cachedPath === 'buyout' ? 'sell' : cachedPath;
     return {
       ...fresh(INITIAL_STATE),
-      ...parsed,
+      ...cached,
       journeyState: {
         ...fresh(INITIAL_STATE.journeyState),
-        ...parsed.journeyState,
-        phase2: { ...INITIAL_STATE.journeyState.phase2, ...parsed.journeyState?.phase2 },
-        phase3: { ...INITIAL_STATE.journeyState.phase3, ...parsed.journeyState?.phase3 },
-        phase5: { ...INITIAL_STATE.journeyState.phase5, ...parsed.journeyState?.phase5, selectedPath: migratedPath ?? null },
+        ...cached.journeyState,
+        phase2: { ...INITIAL_STATE.journeyState.phase2, ...cached.journeyState?.phase2 },
+        phase3: { ...INITIAL_STATE.journeyState.phase3, ...cached.journeyState?.phase3 },
+        phase5: { ...INITIAL_STATE.journeyState.phase5, ...cached.journeyState?.phase5, selectedPath: migratedPath ?? null },
       },
       project: {
         ...INITIAL_STATE.project,
-        ...parsed.project,
-        branding: { ...INITIAL_STATE.project.branding, ...parsed.project?.branding },
+        ...cached.project,
+        branding: { ...INITIAL_STATE.project.branding, ...cached.project?.branding },
       },
-      outputs: { ...INITIAL_STATE.outputs, ...parsed.outputs },
-      documents: Array.isArray(parsed.documents) ? parsed.documents : [],
+      outputs: { ...INITIAL_STATE.outputs, ...cached.outputs },
     };
   } catch {
     return null;
@@ -230,6 +236,12 @@ function reconcile(prev: CreatorJourneyData, backend: BackendCreatorJourney, com
       solution: bp.solution ?? next.project.solution,
       marketGap: bp.marketGap ?? next.project.marketGap,
       creatorEdge: bp.creatorEdge ?? next.project.creatorEdge,
+      existingAlternatives: bp.existingAlternatives ?? next.project.existingAlternatives,
+      whyNow: bp.whyNow ?? next.project.whyNow,
+      riskiestAssumption: bp.riskiestAssumption ?? next.project.riskiestAssumption,
+      sourceMethod: bp.sourceMethod ?? next.project.sourceMethod,
+      targetMarket: bp.targetMarket ?? next.project.targetMarket,
+      geography: bp.geography ?? next.project.geography,
       category: bp.category ?? next.project.category,
       sector: bp.sector ?? next.project.sector,
       tags: bp.tags ?? next.project.tags,
@@ -263,6 +275,7 @@ export function useCreatorProgressState() {
   // PATCH (previously shared with the cache write-through, which could cancel a
   // pending save). A queued write always fires against the idea it was typed on.
   const activeIdeaIdRef = useRef<string | null>(null);
+  const workspaceIdeaIdRef = useRef<string | null>(null);
   const projectPatchTargetRef = useRef<string | null>(null);
   const projectSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   useEffect(() => { activeIdeaIdRef.current = state.activeIdeaId; }, [state.activeIdeaId]);
@@ -280,7 +293,7 @@ export function useCreatorProgressState() {
   // caller MUST verify likewise, or bypass this shared request.
   const inFlightRef = useRef<Promise<HydrateResult> | null>(null);
 
-  const hydrate = useCallback((): Promise<HydrateResult> => {
+  const hydrate = useCallback((requestedIdeaId?: string | null): Promise<HydrateResult> => {
     if (inFlightRef.current) return inFlightRef.current;
     // Backend is the authoritative source of truth. Fetch + reconcile from a clean
     // base, then render THAT — the cache is never read/rendered as truth here.
@@ -295,10 +308,37 @@ export function useCreatorProgressState() {
     // stored forever — the sticky-cache failure this guard exists to avoid.
     const request = Promise.resolve().then(async (): Promise<HydrateResult> => {
       try {
-        const { journey, computedStatus } = await creatorJourneyApi.get();
-        setState(reconcile(INITIAL_STATE, journey, computedStatus));
+        const queryIdeaId = typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('idea');
+        const storedIdeaId = typeof window === 'undefined' ? null : sessionStorage.getItem('creator_workspace_idea_id');
+        const explicitWorkspaceId = requestedIdeaId ?? workspaceIdeaIdRef.current ?? queryIdeaId;
+        const requested = explicitWorkspaceId ?? storedIdeaId;
+        let loaded;
+        try {
+          loaded = await creatorJourneyApi.get(requested);
+        } catch (err) {
+          // A sessionStorage workspace is only a convenience pointer. It may refer
+          // to a deleted or no-longer-owned idea, so recover through the server's
+          // permitted default rather than trapping this tab on a permanent 404.
+          // Explicit navigation/refetch targets must keep their real error.
+          const canRecoverStoredWorkspace = !explicitWorkspaceId && !!storedIdeaId;
+          if (!canRecoverStoredWorkspace) throw err;
+          sessionStorage.removeItem('creator_workspace_idea_id');
+          workspaceIdeaIdRef.current = null;
+          setCreatorWorkspaceIdea(null);
+          loaded = await creatorJourneyApi.get();
+        }
+        const { journey, computedStatus } = loaded;
+        // An explicit workspace remains stable even when another tab repoints the
+        // user's ActiveIdeaId. State.activeIdeaId is the workspace identity in this tab.
+        const workspaceIdeaId = requested ?? journey.activeIdeaId;
+        if (workspaceIdeaId) {
+          workspaceIdeaIdRef.current = workspaceIdeaId;
+          setCreatorWorkspaceIdea(workspaceIdeaId);
+          if (typeof window !== 'undefined') sessionStorage.setItem('creator_workspace_idea_id', workspaceIdeaId);
+        }
+        setState(reconcile(INITIAL_STATE, { ...journey, activeIdeaId: workspaceIdeaId ?? null }, computedStatus));
         setError(null);
-        return { ok: true, activeIdeaId: journey.activeIdeaId ?? null };
+        return { ok: true, activeIdeaId: workspaceIdeaId ?? null };
       } catch (err) {
         // Backend error: surface an honest error state AND report failure to the
         // awaiter — never resolve identically whether hydration worked or not.
@@ -344,10 +384,12 @@ export function useCreatorProgressState() {
         // same-idea race guards would let old values survive the new idea's nulls.
         // The data is already persisted server-side; the next hydrate shows it.
         // Idea switches themselves go through refetch() = clean full replace.
-        if (prev.activeIdeaId && journey.activeIdeaId && journey.activeIdeaId !== prev.activeIdeaId) {
+        const workspaceIdeaId = workspaceIdeaIdRef.current;
+        const scopedJourney = workspaceIdeaId ? { ...journey, activeIdeaId: workspaceIdeaId } : journey;
+        if (prev.activeIdeaId && scopedJourney.activeIdeaId && scopedJourney.activeIdeaId !== prev.activeIdeaId) {
           return prev;
         }
-        return reconcile(prev, journey, computedStatus);
+        return reconcile(prev, scopedJourney, computedStatus);
       });
     },
     [],
@@ -392,7 +434,8 @@ export function useCreatorProgressState() {
     const map: UpdateProjectPayload = projectPatchRef.current;
     const allow: (keyof UpdateProjectPayload)[] = [
       'name', 'tagline', 'concept', 'targetUser', 'problem', 'solution',
-      'marketGap', 'creatorEdge', 'category', 'sector', 'tags', 'clarityScore',
+      'marketGap', 'creatorEdge', 'existingAlternatives', 'whyNow', 'riskiestAssumption',
+      'targetMarket', 'geography', 'category', 'sector', 'tags', 'clarityScore',
     ];
     for (const k of allow) {
       if (k in fields && (fields as Record<string, unknown>)[k] !== undefined) {
@@ -423,18 +466,10 @@ export function useCreatorProgressState() {
     if (!mapped) return;
     const sessionId = typeof payload.sessionId === 'string' ? payload.sessionId : undefined;
     creatorJourneyApi
-      .appendOutput(mapped.key, mapped.phase, payload, sessionId)
+      .appendOutput(mapped.key, mapped.phase, payload, sessionId, activeIdeaIdRef.current)
       .then(({ journey, computedStatus }) => applyResponse(journey, computedStatus))
       .catch((err) => setError(err as Error));
   }, [applyResponse]);
-
-  const upsertDocument = useCallback((document: Omit<CreatorDocument, 'createdAt'> & { createdAt?: string }) => {
-    setState((prev) => {
-      const nextDocument = { ...document, createdAt: document.createdAt ?? new Date().toISOString() };
-      const documents = prev.documents.filter((item: CreatorDocument) => item.id !== nextDocument.id);
-      return { ...prev, documents: [nextDocument, ...documents] };
-    });
-  }, []);
 
   // Status is DERIVED server-side now; completeStep only advances the local
   // optimistic cursor and is MONOTONIC (never downgrades a completed phase, R2).
@@ -467,24 +502,23 @@ export function useCreatorProgressState() {
       },
     }));
     creatorJourneyApi
-      .setEntryPath('already_have_idea')
+      .setEntryPath('already_have_idea', activeIdeaIdRef.current)
       .then(({ journey, computedStatus }) => applyResponse(journey, computedStatus))
       .catch((err) => setError(err as Error));
   }, [applyResponse]);
 
-  const setCrossroadsPath = useCallback((path: 'sell_license' | 'build' | null) => {
-    if (path !== 'sell_license' && path !== 'build') return;
-    setState((prev) => ({
-      ...prev,
-      journeyState: {
-        ...prev.journeyState,
-        phase5: { ...prev.journeyState.phase5, selectedPath: path, status: 'in_progress', currentStep: 2 },
-      },
-    }));
-    creatorJourneyApi
-      .setCrossroadsPath(path)
-      .then(({ journey, computedStatus }) => applyResponse(journey, computedStatus))
-      .catch((err) => setError(err as Error));
+  const setCrossroadsPath = useCallback(async (path: 'sell' | 'build' | null): Promise<boolean> => {
+    if (path !== 'sell' && path !== 'build') return false;
+    try {
+      // Path B contains further stateful writes. Do not reveal those controls until
+      // this write has completed and advanced the workspace version token.
+      const { journey, computedStatus } = await creatorJourneyApi.setCrossroadsPath(path, activeIdeaIdRef.current);
+      applyResponse(journey, computedStatus);
+      return true;
+    } catch (err) {
+      setError(err as Error);
+      return false;
+    }
   }, [applyResponse]);
 
   // With derived status, "advancing" just means the phase's artifacts are
@@ -517,7 +551,6 @@ export function useCreatorProgressState() {
     setState,
     updateProject,
     saveOutputVersion,
-    upsertDocument,
     completeStep,
     setEntryPath,
     setCrossroadsPath,

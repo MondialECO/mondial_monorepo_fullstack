@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { Phase4Complete } from "./Phase4Complete";
+import { Phase4Complete } from "@/components/creator/phase4/Phase4Complete";
 
 const journeyApi = vi.hoisted(() => ({
   completeOffer: vi.fn(),

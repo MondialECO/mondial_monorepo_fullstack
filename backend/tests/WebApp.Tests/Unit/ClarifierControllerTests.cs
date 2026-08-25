@@ -7,11 +7,13 @@ using Microsoft.Extensions.Options;
 using Moq;
 using WebApp.Configuration.AiOptions;
 using WebApp.Controllers;
+using WebApp.Models.DatabaseModels;
 using WebApp.Models.Dtos.Ai;
 using WebApp.Services.Ai;
 using WebApp.Services.Ai.Jobs;
 using WebApp.Services.Audit;
 using WebApp.Services.Repository.Ai;
+using WebApp.Services.Repository;
 using Xunit;
 
 namespace WebApp.Tests.Unit;
@@ -26,13 +28,18 @@ public class ClarifierControllerTests
     private readonly Mock<IClarifierSessionStore> _sessions = new();
     private readonly Mock<IAiJobService> _jobs = new();
     private readonly Mock<IAiCreditService> _credits = new();
+    private readonly Mock<ICreatorIdeaStore> _creatorIdeas = new();
+    private const string IdeaId = "65b000000000000000000001";
 
     private ClarifierController Build(AiSettings settings)
     {
         var controller = new ClarifierController(
             _sessions.Object, _jobs.Object, _credits.Object,
             Mock.Of<IAuditLogger>(), Options.Create(settings),
-            NullLogger<ClarifierController>.Instance);
+            NullLogger<ClarifierController>.Instance,
+            _creatorIdeas.Object);
+        _creatorIdeas.Setup(x => x.GetOwnedAsync(IdeaId, "user-1"))
+            .ReturnsAsync(new CreatorIdea { Id = IdeaId, UserId = "user-1" });
 
         var user = new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim(ClaimTypes.NameIdentifier, "user-1") }));
         controller.ControllerContext = new ControllerContext
@@ -44,6 +51,7 @@ public class ClarifierControllerTests
 
     private static StartClarifierRequest ValidRequest() => new()
     {
+        BusinessIdeaId = IdeaId,
         RawIdea = new RawIdeaInput { Title = "t", ProblemStatement = "p", TargetAudience = "a" },
     };
 

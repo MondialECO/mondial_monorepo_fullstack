@@ -32,6 +32,9 @@ export interface RawIdeaInput {
   targetAudience: string;
   description?: string;
   existingAlternatives?: string;
+  whyNow?: string;
+  riskiestAssumption?: string;
+  founderAdvantage?: string;
   attachments?: string[];
 }
 

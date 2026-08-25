@@ -41,7 +41,7 @@ namespace WebApp.Services.Ai.Prompts
         public static readonly PromptTemplate IdeaClarifier = new()
         {
             Key = "idea-clarifier",
-            Version = 1,
+            Version = 2,
             SystemText =
                 "You are Mondial's Idea Clarifier. In a single pass, transform a " +
                 "founder's raw business idea into a clear, structured opportunity. " +
@@ -64,6 +64,8 @@ namespace WebApp.Services.Ai.Prompts
                 "  \"targetAudience\": { \"primarySegment\": string, \"characteristics\": [string], \"sizeQualitative\": string },\n" +
                 "  \"existingAlternatives\": [ { \"name\": string, \"gap\": string } ],\n" +
                 "  \"proposedSolution\": { \"summary\": string, \"differentiation\": string, \"valueProposition\": string },\n" +
+                "  \"whyNow\": string,\n" +
+                "  \"riskiestAssumption\": string,\n" +
                 "  \"riskAssessment\": [ { \"category\": string, \"description\": string, \"likelihood\": \"low\" | \"medium\" | \"high\", \"mitigation\": string } ],\n" +
                 "  \"assumptions\": [string],\n" +
                 "  \"clarityScore\": integer (0-100),\n" +
@@ -73,7 +75,7 @@ namespace WebApp.Services.Ai.Prompts
                 "schemaVersion MUST be 1. clarityScore MUST be an integer between 0 " +
                 "and 100. severity and likelihood MUST be one of low, medium, or high. " +
                 "sizeQualitative is a qualitative reach statement only — never a " +
-                "specific market value or revenue figure.",
+                "specific market value or revenue figure. Use founder-supplied facts only for whyNow and riskiestAssumption; use an empty string when the founder did not provide that detail.",
         };
 
         /// <summary>

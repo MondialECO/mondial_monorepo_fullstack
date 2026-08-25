@@ -7,6 +7,7 @@ using WebApp.Services.Ai.Jobs;
 using WebApp.Services.Ai.Prompts;
 using WebApp.Services.Ai.Providers;
 using WebApp.Services.Repository.Ai;
+using WebApp.Services.Repository;
 using Xunit;
 
 namespace WebApp.Tests.Unit;
@@ -21,12 +22,13 @@ public class BusinessPlanHandlerTests
 {
     private readonly Mock<IBusinessPlanSessionStore> _sessions = new();
     private readonly Mock<IClarifierSessionStore> _clarifiers = new();
+    private readonly Mock<ICreatorIdeaStore> _creatorIdeas = new();
     private readonly Mock<IAiInsightWriter> _insights = new();
 
     // The BusinessIdeas repo is only touched when a businessIdeaId is supplied; the
     // tests below never exercise that path, so the concrete dependency stays null.
     private BusinessPlanHandler Handler() =>
-        new(_sessions.Object, _clarifiers.Object, null!, _insights.Object,
+        new(_sessions.Object, _clarifiers.Object, _creatorIdeas.Object, null!, _insights.Object,
             NullLogger<BusinessPlanHandler>.Instance);
 
     private static AiRequest Request(BsonDocument input) =>
@@ -70,9 +72,42 @@ public class BusinessPlanHandlerTests
         prep.PromptKey.Should().Be(PromptTemplate.BusinessPlan.Key);
         prep.TaskType.Should().Be("BusinessPlan");
         prep.MaxTokens.Should().Be(2800);
-        prep.UserContext.Should().Contain("CLARIFIED OPPORTUNITY");
-        prep.UserContext.Should().Contain("Crop monitoring is manual."); // pulled from the authoritative output
+        prep.UserContext.Should().Contain("CLARIFIER HISTORY");
+        prep.UserContext.Should().Contain("Crop monitoring is manual."); // retained as supporting history
         prep.Task.Should().Contain("JSON");
+    }
+
+    [Fact]
+    public async Task Prepare_prefers_the_canonical_idea_core_over_clarifier_history()
+    {
+        var ideaId = ObjectId.GenerateNewId().ToString();
+        var clarifierId = ObjectId.GenerateNewId().ToString();
+        _creatorIdeas.Setup(i => i.GetOwnedAsync(ideaId, "user-1"))
+            .ReturnsAsync(new WebApp.Models.DatabaseModels.CreatorIdea
+            {
+                Id = ideaId,
+                UserId = "user-1",
+                Project = new WebApp.Models.DatabaseModels.CreatorJourneyProject
+                {
+                    Problem = "Creator-edited irrigation scheduling problem.",
+                    TargetUser = "Smallholder farms",
+                    SourceMethod = "discovery",
+                },
+            });
+        _clarifiers.Setup(c => c.GetOwnedAsync(clarifierId, "user-1"))
+            .ReturnsAsync(new ClarifierSession { Id = clarifierId, OwnerUserId = "user-1", Status = "Completed", Output = ClarifierOutput() });
+
+        var prep = await Handler().PrepareAsync(Request(new BsonDocument
+        {
+            ["sessionId"] = ObjectId.GenerateNewId().ToString(),
+            ["clarifierSessionId"] = clarifierId,
+            ["businessIdeaId"] = ideaId,
+        }));
+
+        prep.UserContext.Should().Contain("CANONICAL IDEA CORE (authoritative source");
+        prep.UserContext.Should().Contain("Creator-edited irrigation scheduling problem.");
+        prep.UserContext.Should().Contain("CLARIFIER HISTORY (supporting context only");
+        prep.Task.Should().Contain("Preserve creator edits");
     }
 
     [Fact]

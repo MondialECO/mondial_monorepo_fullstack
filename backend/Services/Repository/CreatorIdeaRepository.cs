@@ -36,7 +36,7 @@ namespace WebApp.Services.Repository
         /// $set/$push definition; UpdatedAt/LastActiveAt are stamped here so every
         /// idea write keeps the my-ideas sort honest.
         /// </summary>
-        Task UpdateAsync(string ideaId, string ownerUserId, UpdateDefinition<CreatorIdea> update);
+        Task<bool> UpdateAsync(string ideaId, string ownerUserId, UpdateDefinition<CreatorIdea> update, long? expectedVersion = null, IClientSessionHandle? session = null);
     }
 
     /// <summary>
@@ -108,12 +108,28 @@ namespace WebApp.Services.Repository
                     .Set(x => x.OutputSnapshots, snapshots)
                     .Set(x => x.UpdatedAt, DateTime.UtcNow));
 
-        public Task UpdateAsync(string ideaId, string ownerUserId, UpdateDefinition<CreatorIdea> update)
+        public async Task<bool> UpdateAsync(string ideaId, string ownerUserId, UpdateDefinition<CreatorIdea> update, long? expectedVersion = null, IClientSessionHandle? session = null)
         {
             var now = DateTime.UtcNow;
-            return _collection.UpdateOneAsync(
-                x => x.Id == ideaId && x.UserId == ownerUserId,
-                update.Set(x => x.UpdatedAt, now).Set(x => x.LastActiveAt, now));
+            var filter = Builders<CreatorIdea>.Filter.Eq(x => x.Id, ideaId)
+                & Builders<CreatorIdea>.Filter.Eq(x => x.UserId, ownerUserId);
+            if (expectedVersion.HasValue)
+            {
+                var versionFilter = Builders<CreatorIdea>.Filter.Eq(x => x.Version, expectedVersion.Value);
+                // Existing ideas predate Version; treat an absent value as the initial
+                // version exactly once, so rolling out this token needs no migration.
+                if (expectedVersion.Value == 1)
+                    versionFilter |= Builders<CreatorIdea>.Filter.Exists(x => x.Version, false);
+                filter &= versionFilter;
+            }
+
+            var stampedUpdate = update.Set(x => x.UpdatedAt, now)
+                .Set(x => x.LastActiveAt, now)
+                .Inc(x => x.Version, 1);
+            var result = session is null
+                ? await _collection.UpdateOneAsync(filter, stampedUpdate)
+                : await _collection.UpdateOneAsync(session, filter, stampedUpdate);
+            return result.MatchedCount == 1;
         }
     }
 }

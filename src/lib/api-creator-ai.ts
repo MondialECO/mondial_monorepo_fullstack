@@ -8,6 +8,7 @@
  */
 
 import api from "@/lib/axios";
+import { getCreatorWorkspaceIdea } from "@/lib/api-creator-journey";
 import type {
   BusinessPlanSession,
   ClarifierSession,
@@ -53,7 +54,9 @@ export const creatorAiApi = {
   startClarifier: async (
     payload: StartClarifierRequest,
   ): Promise<StartSessionResult> => {
-    const res = await api.post("/ai/idea-clarifier", payload);
+    const businessIdeaId = payload.businessIdeaId ?? getCreatorWorkspaceIdea();
+    if (!businessIdeaId) throw new Error("An idea workspace must be selected before starting the Clarifier.");
+    const res = await api.post("/ai/idea-clarifier", { ...payload, businessIdeaId });
     return unwrap<StartSessionResult>(res.data);
   },
 

@@ -10,9 +10,9 @@ namespace WebApp.Services.Ai.Jobs
 {
     /// <summary>
     /// C-3 Business Plan handler (one-shot, single structured JSON completion).
-    /// <see cref="PrepareAsync"/> loads the referenced clarifier session's output —
-    /// the sole authoritative input (locked C-3 decision #2) — plus, optionally, the
-    /// founder's original business idea as secondary context, and turns them into the
+    /// <see cref="PrepareAsync"/> loads the canonical Creator Idea Core as the
+    /// authoritative input and retains the linked clarifier session as historical
+    /// compatibility context, then turns them into the
     /// prompt's User Context / Task layers. <see cref="InterpretAsync"/> parses the
     /// model's JSON into the locked seven-section BusinessPlanOutput contract and
     /// appends it as a new immutable version on the <see cref="BusinessPlanSession"/>
@@ -28,6 +28,7 @@ namespace WebApp.Services.Ai.Jobs
 
         private readonly IBusinessPlanSessionStore _sessions;
         private readonly IClarifierSessionStore _clarifiers;
+        private readonly ICreatorIdeaStore _creatorIdeas;
         private readonly BusinessIdeasRepository _ideas;
         private readonly IAiInsightWriter _insights;
         private readonly ILogger<BusinessPlanHandler> _logger;
@@ -35,12 +36,14 @@ namespace WebApp.Services.Ai.Jobs
         public BusinessPlanHandler(
             IBusinessPlanSessionStore sessions,
             IClarifierSessionStore clarifiers,
+            ICreatorIdeaStore creatorIdeas,
             BusinessIdeasRepository ideas,
             IAiInsightWriter insights,
             ILogger<BusinessPlanHandler> logger)
         {
             _sessions = sessions;
             _clarifiers = clarifiers;
+            _creatorIdeas = creatorIdeas;
             _ideas = ideas;
             _insights = insights;
             _logger = logger;
@@ -58,8 +61,23 @@ namespace WebApp.Services.Ai.Jobs
             var clarifierSessionId = Field("clarifierSessionId");
             var businessIdeaId = Field("businessIdeaId");
 
-            // Authoritative input: the clarified opportunity (locked C-3 decision #2).
             var contextLines = new List<string>();
+            var hasCanonicalIdeaCore = false;
+            // Canonical Idea Core takes precedence over the historical Clarifier output.
+            // Discovery retains a seeded Clarifier session for compatibility, but no
+            // longer needs a separate Business Plan input path.
+            if (businessIdeaId.Length > 0)
+            {
+                var creatorIdea = await _creatorIdeas.GetOwnedAsync(businessIdeaId, request.OwnerUserId);
+                if (creatorIdea?.Project is not null)
+                {
+                    hasCanonicalIdeaCore = true;
+                    contextLines.Add(
+                        "CANONICAL IDEA CORE (authoritative source — preserve creator edits):\n" +
+                        creatorIdea.Project.ToBsonDocument().ToJson());
+                }
+            }
+
             var clarifier = clarifierSessionId.Length > 0
                 ? await _clarifiers.GetOwnedAsync(clarifierSessionId, request.OwnerUserId)
                 : null;
@@ -67,7 +85,7 @@ namespace WebApp.Services.Ai.Jobs
             if (clarifier?.Output is not null)
             {
                 contextLines.Add(
-                    "CLARIFIED OPPORTUNITY (authoritative source — base every section on this):\n" +
+                    "CLARIFIER HISTORY (supporting context only — do not override the canonical Idea Core):\n" +
                     clarifier.Output.ToJson());
             }
             else
@@ -75,11 +93,11 @@ namespace WebApp.Services.Ai.Jobs
                 _logger.LogWarning(
                     "BusinessPlan request {RequestId} has no usable clarifier output (clarifierSessionId={ClarifierId}).",
                     request.Id, clarifierSessionId);
-                contextLines.Add("CLARIFIED OPPORTUNITY: (unavailable — proceed cautiously and state assumptions)");
+                contextLines.Add("CLARIFIER HISTORY: (unavailable — use the canonical Idea Core and state assumptions for gaps)");
             }
 
-            // Secondary context only: the founder's original submission, if attached.
-            if (businessIdeaId.Length > 0)
+            // Legacy BusinessIdeas context remains optional supporting context.
+            if (businessIdeaId.Length > 0 && !hasCanonicalIdeaCore)
             {
                 var idea = await _ideas.GetByIdAsync(businessIdeaId);
                 if (idea is not null && idea.CreatorId == request.OwnerUserId)
@@ -127,10 +145,10 @@ namespace WebApp.Services.Ai.Jobs
             }
 
             const string task =
-                "Produce a complete, structured business plan for the clarified " +
-                "opportunity above, following the output contract exactly. Base every " +
-                "section on the clarified opportunity; use the secondary context only " +
-                "to fill gaps, never to override it. Return only the JSON object.";
+                "Produce a complete, structured business plan for the canonical Idea Core " +
+                "above, following the output contract exactly. Preserve creator edits in " +
+                "that core; use supporting history only to fill gaps, never to override it. " +
+                "Return only the JSON object.";
 
             return new AiHandlerRequest(
                 PromptKey: PromptTemplate.BusinessPlan.Key,

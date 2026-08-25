@@ -86,7 +86,7 @@ public class PromptVersionStoreIntegrationTests : IClassFixture<AppFixture>
         var active = await Store.GetActiveAsync(PromptTemplate.IdeaClarifier.Key);
 
         active.Should().NotBeNull();
-        active!.Version.Should().Be(1);
+        active!.Version.Should().Be(2);
         active.SystemText.Should().Contain("Idea Clarifier");
         active.OutputContract.Should().Contain("\"schemaVersion\": 1");
     }

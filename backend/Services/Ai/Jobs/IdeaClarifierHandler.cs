@@ -51,6 +51,9 @@ namespace WebApp.Services.Ai.Jobs
             var audience = Field("targetAudience");
             var description = Field("description");
             var alternatives = Field("existingAlternatives");
+            var whyNow = Field("whyNow");
+            var riskiestAssumption = Field("riskiestAssumption");
+            var founderAdvantage = Field("founderAdvantage");
 
             // User Context layer: the raw idea, labelled. Task layer: the instruction.
             var contextLines = new List<string>();
@@ -59,6 +62,9 @@ namespace WebApp.Services.Ai.Jobs
             if (audience.Length > 0) contextLines.Add($"Target audience: {audience}");
             if (description.Length > 0) contextLines.Add($"Description: {description}");
             if (alternatives.Length > 0) contextLines.Add($"Existing alternatives the founder is aware of: {alternatives}");
+            if (whyNow.Length > 0) contextLines.Add($"Why now (founder supplied): {whyNow}");
+            if (riskiestAssumption.Length > 0) contextLines.Add($"Riskiest assumption (founder supplied): {riskiestAssumption}");
+            if (founderAdvantage.Length > 0) contextLines.Add($"Founder advantage (founder supplied): {founderAdvantage}");
 
             var userContext = contextLines.Count > 0
                 ? string.Join("\n", contextLines)

@@ -1,0 +1,53 @@
+name: Creator Browser E2E
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'src/**'
+      - 'tests/creator/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/creator-e2e.yml'
+  workflow_dispatch:
+
+jobs:
+  creator-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: npm
+
+      - name: Install frontend dependencies and Chromium
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Run Creator frontend verification
+        run: |
+          npx tsc --noEmit
+          npm test
+          npm run lint
+          git diff --check
+
+      - name: Verify Docker is available for the isolated Creator stack
+        run: docker version
+
+      - name: Run isolated authenticated Creator browser suite
+        run: npm run test:e2e:creator
+
+      - name: Upload Creator E2E report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: creator-browser-e2e-report
+          path: |
+            playwright-report/creator-e2e
+            test-results
+          if-no-files-found: warn

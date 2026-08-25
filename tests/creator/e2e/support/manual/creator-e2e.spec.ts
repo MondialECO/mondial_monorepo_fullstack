@@ -7,7 +7,7 @@
  *   npx playwright install chromium
  *
  * RUN:
- *   npx playwright test creator-e2e.spec.ts --headed
+ *   npx playwright test tests/creator/e2e/support/manual/creator-e2e.spec.ts --headed
  *
  * CONFIG:
  *   BASE_URL      — frontend (default: http://localhost:3000)
