@@ -98,9 +98,25 @@ namespace WebApp.Controllers
                 ? clarifier.BusinessIdeaId
                 : (string.IsNullOrWhiteSpace(request.BusinessIdeaId) ? null : request.BusinessIdeaId);
 
-            // Create the session first so it owns the lifecycle (source of truth).
+            // Pre-allocate the session ID so it serves as the stable idempotency key for debit and compensation
+            var sessionId = ObjectId.GenerateNewId().ToString();
+
+            // Step 1: Secure credit debit BEFORE creating or persisting the session.
+            try
+            {
+                await _creditService.DebitForJobAsync(owner, AiJobType.BusinessPlan, sessionId);
+            }
+            catch (InsufficientCreditsException)
+            {
+                _audit.Record("BusinessPlan.Start", owner, success: false,
+                    new { clarifierSessionId = request.ClarifierSessionId, businessIdeaId, error = "insufficient_credits" });
+                return StatusCode(402, ApiResponse.Error("Insufficient credits.", HttpContext.TraceIdentifier));
+            }
+
+            // Step 2: Create session in-memory and persist
             var session = new BusinessPlanSession
             {
+                Id = sessionId,
                 OwnerUserId = owner,
                 ClarifierSessionId = request.ClarifierSessionId,
                 BusinessIdeaId = businessIdeaId,
@@ -108,16 +124,56 @@ namespace WebApp.Controllers
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
             };
-            await _sessions.AddAsync(session); // ObjectId id assigned here
 
-            _audit.Record("BusinessPlan.Start", owner, success: true,
-                new { sessionId = session.Id, clarifierSessionId = session.ClarifierSessionId, businessIdeaId });
+            try
+            {
+                await _sessions.AddAsync(session);
 
-            var jobId = await EnqueueGenerationAsync(session, owner);
-            if (jobId is null)
-                return StatusCode(402, ApiResponse.Error("Insufficient credits.", HttpContext.TraceIdentifier));
+                var input = new BsonDocument
+                {
+                    ["sessionId"] = session.Id,
+                    ["clarifierSessionId"] = session.ClarifierSessionId,
+                };
+                if (session.BusinessIdeaId != null)
+                    input["businessIdeaId"] = session.BusinessIdeaId;
 
-            return Ok(ApiResponse.Ok("Business plan generation started.", new { sessionId = session.Id, jobId }));
+                var jobId = await _jobService.EnqueueAsync(AiJobType.BusinessPlan, owner, input);
+                await _sessions.SetRequestIdAsync(session.Id, jobId);
+
+                _audit.Record("BusinessPlan.Start", owner, success: true,
+                    new { sessionId = session.Id, clarifierSessionId = session.ClarifierSessionId, businessIdeaId, jobId });
+
+                return Ok(ApiResponse.Ok("Business plan generation started.", new { sessionId = session.Id, jobId }));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to complete session creation or job enqueue after credit debit for user {OwnerUserId}", owner);
+                try
+                {
+                    await _creditService.RefundForJobAsync(owner, AiJobType.BusinessPlan, sessionId, "Start generation failed before acceptance");
+                }
+                catch (Exception refundEx)
+                {
+                    _logger.LogCritical(refundEx, "CRITICAL: Credit compensation failed for user {OwnerUserId} after generation failure", owner);
+                }
+
+                if (!string.IsNullOrEmpty(session.Id))
+                {
+                    try
+                    {
+                        await _sessions.DeleteAsync(session.Id);
+                    }
+                    catch (Exception deleteEx)
+                    {
+                        _logger.LogWarning(deleteEx, "Failed to clean up unaccepted session {SessionId}", session.Id);
+                    }
+                }
+
+                _audit.Record("BusinessPlan.Start", owner, success: false,
+                    new { clarifierSessionId = request.ClarifierSessionId, businessIdeaId, error = "session_or_enqueue_failed" });
+
+                return StatusCode(500, ApiResponse.Error("Failed to start business plan generation. Please retry.", HttpContext.TraceIdentifier));
+            }
         }
 
         [HttpGet("{sessionId}")]
@@ -173,16 +229,56 @@ namespace WebApp.Controllers
             if (clarifier is null || !string.Equals(clarifier.Status, "Completed", StringComparison.Ordinal) || clarifier.Output is null)
                 return Conflict(ApiResponse.Error("The source clarifier session is no longer available or not completed.", HttpContext.TraceIdentifier));
 
-            _audit.Record("BusinessPlan.Regenerate", owner, success: true,
-                new { sessionId = session.Id, currentVersion = session.CurrentVersion });
+            var operationId = ObjectId.GenerateNewId().ToString();
 
-            var jobId = await EnqueueGenerationAsync(session, owner);
-            if (jobId is null)
+            // Secure credit debit first
+            try
+            {
+                await _creditService.DebitForJobAsync(owner, AiJobType.BusinessPlan, operationId);
+            }
+            catch (InsufficientCreditsException)
+            {
+                _audit.Record("BusinessPlan.Regenerate", owner, success: false,
+                    new { sessionId = session.Id, currentVersion = session.CurrentVersion, error = "insufficient_credits" });
                 return StatusCode(402, ApiResponse.Error("Insufficient credits.", HttpContext.TraceIdentifier));
+            }
 
-            await _sessions.SetProcessingAsync(session.Id);
+            try
+            {
+                var input = new BsonDocument
+                {
+                    ["sessionId"] = session.Id,
+                    ["clarifierSessionId"] = session.ClarifierSessionId,
+                };
+                if (session.BusinessIdeaId != null)
+                    input["businessIdeaId"] = session.BusinessIdeaId;
 
-            return Ok(ApiResponse.Ok("Business plan regeneration started.", new { sessionId = session.Id, jobId }));
+                var jobId = await _jobService.EnqueueAsync(AiJobType.BusinessPlan, owner, input);
+                await _sessions.SetRequestIdAsync(session.Id, jobId);
+                await _sessions.SetProcessingAsync(session.Id);
+
+                _audit.Record("BusinessPlan.Regenerate", owner, success: true,
+                    new { sessionId = session.Id, currentVersion = session.CurrentVersion, jobId });
+
+                return Ok(ApiResponse.Ok("Business plan regeneration started.", new { sessionId = session.Id, jobId }));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to enqueue business plan regeneration for session {SessionId}", session.Id);
+                try
+                {
+                    await _creditService.RefundForJobAsync(owner, AiJobType.BusinessPlan, operationId, "Regenerate failed before acceptance");
+                }
+                catch (Exception refundEx)
+                {
+                    _logger.LogCritical(refundEx, "CRITICAL: Credit compensation failed for user {OwnerUserId} after regeneration failure", owner);
+                }
+
+                _audit.Record("BusinessPlan.Regenerate", owner, success: false,
+                    new { sessionId = session.Id, currentVersion = session.CurrentVersion, error = "enqueue_failed" });
+
+                return StatusCode(500, ApiResponse.Error("Failed to regenerate business plan. Please retry.", HttpContext.TraceIdentifier));
+            }
         }
 
         /// <summary>
@@ -234,15 +330,57 @@ namespace WebApp.Controllers
             if (clarifier is null || !string.Equals(clarifier.Status, "Completed", StringComparison.Ordinal) || clarifier.Output is null)
                 return Conflict(ApiResponse.Error("The source clarifier session is no longer available or not completed.", HttpContext.TraceIdentifier));
 
-            _audit.Record("BusinessPlan.RewriteSection", owner, success: true,
-                new { sessionId = session.Id, sectionId = request.SectionId });
+            var operationId = ObjectId.GenerateNewId().ToString();
 
-            var jobId = await EnqueueGenerationAsync(session, owner, request.SectionId);
-            if (jobId is null)
+            // Secure credit debit first
+            try
+            {
+                await _creditService.DebitForJobAsync(owner, AiJobType.BusinessPlan, operationId);
+            }
+            catch (InsufficientCreditsException)
+            {
+                _audit.Record("BusinessPlan.RewriteSection", owner, success: false,
+                    new { sessionId = session.Id, sectionId = request.SectionId, error = "insufficient_credits" });
                 return StatusCode(402, ApiResponse.Error("Insufficient credits.", HttpContext.TraceIdentifier));
+            }
 
-            await _sessions.SetProcessingAsync(session.Id);
-            return Ok(ApiResponse.Ok("Section rewrite started.", new { sessionId = session.Id, jobId, sectionId = request.SectionId }));
+            try
+            {
+                var input = new BsonDocument
+                {
+                    ["sessionId"] = session.Id,
+                    ["clarifierSessionId"] = session.ClarifierSessionId,
+                    ["sectionId"] = request.SectionId,
+                };
+                if (session.BusinessIdeaId != null)
+                    input["businessIdeaId"] = session.BusinessIdeaId;
+
+                var jobId = await _jobService.EnqueueAsync(AiJobType.BusinessPlan, owner, input);
+                await _sessions.SetRequestIdAsync(session.Id, jobId);
+                await _sessions.SetProcessingAsync(session.Id);
+
+                _audit.Record("BusinessPlan.RewriteSection", owner, success: true,
+                    new { sessionId = session.Id, sectionId = request.SectionId, jobId });
+
+                return Ok(ApiResponse.Ok("Section rewrite started.", new { sessionId = session.Id, jobId, sectionId = request.SectionId }));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to enqueue section rewrite for session {SessionId}", session.Id);
+                try
+                {
+                    await _creditService.RefundForJobAsync(owner, AiJobType.BusinessPlan, operationId, "RewriteSection failed before acceptance");
+                }
+                catch (Exception refundEx)
+                {
+                    _logger.LogCritical(refundEx, "CRITICAL: Credit compensation failed for user {OwnerUserId} after rewrite failure", owner);
+                }
+
+                _audit.Record("BusinessPlan.RewriteSection", owner, success: false,
+                    new { sessionId = session.Id, sectionId = request.SectionId, error = "enqueue_failed" });
+
+                return StatusCode(500, ApiResponse.Error("Failed to rewrite section. Please retry.", HttpContext.TraceIdentifier));
+            }
         }
 
         /// <summary>
@@ -332,45 +470,6 @@ namespace WebApp.Controllers
             return Ok(ApiResponse.Ok("Business plan updated.", ToDto(updated!, includeVersionContent: true)));
         }
 
-        /// <summary>
-        /// Debit the BusinessPlan credit cost and enqueue one engine job. Returns the
-        /// job id, or null when the owner has insufficient credits (caller maps to 402).
-        /// </summary>
-        private async Task<string?> EnqueueGenerationAsync(BusinessPlanSession session, string owner, string? sectionId = null)
-        {
-            try
-            {
-                await _creditService.DebitForJobAsync(owner, AiJobType.BusinessPlan);
-            }
-            catch (InsufficientCreditsException)
-            {
-                // DebitForJobAsync only raises a LOCAL zero-balance failure here (it never
-                // calls the provider), so null always means the user's own credits are
-                // exhausted → caller returns 402. An upstream provider 402 surfaces later
-                // via the async job-failure path (see AiJobRunner), never on this request.
-                // Only fail the session on the very first attempt; a regenerate keeps
-                // the existing completed plan intact.
-                if (session.CurrentVersion <= 0)
-                    await _sessions.SetFailedAsync(session.Id, "Insufficient credits.");
-                return null;
-            }
-
-            var input = new BsonDocument
-            {
-                ["sessionId"] = session.Id,
-                ["clarifierSessionId"] = session.ClarifierSessionId,
-            };
-            if (session.BusinessIdeaId != null)
-                input["businessIdeaId"] = session.BusinessIdeaId;
-            // Single-section scope: the handler regenerates only this section and splices
-            // it into the current plan, leaving the others untouched.
-            if (!string.IsNullOrWhiteSpace(sectionId))
-                input["sectionId"] = sectionId;
-
-            var jobId = await _jobService.EnqueueAsync(AiJobType.BusinessPlan, owner, input);
-            await _sessions.SetRequestIdAsync(session.Id, jobId);
-            return jobId;
-        }
 
         private static BusinessPlanSessionDto ToDto(BusinessPlanSession s, bool includeVersionContent)
         {

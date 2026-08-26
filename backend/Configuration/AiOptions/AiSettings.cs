@@ -33,7 +33,7 @@ namespace WebApp.Configuration.AiOptions
         ///   • lazily on a user's first paid AI job (covers signups after boot).
         /// 0 = no grant.
         /// </summary>
-        public int StarterCredits { get; set; } = 100;
+        public int StarterCredits { get; set; } = 200;
 
         /// <summary>
         /// Config gate for the one-time idempotent starter-credit backfill of

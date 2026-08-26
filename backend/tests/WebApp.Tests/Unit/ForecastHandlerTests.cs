@@ -30,8 +30,8 @@ public class ForecastHandlerTests
     private static AiRequest Request(BsonDocument input) =>
         new() { Id = ObjectId.GenerateNewId().ToString(), OwnerUserId = "user-1", JobType = "Forecast", InputPayload = input };
 
-    private static AiCompletion Completion(string text) =>
-        new() { Text = text, Model = "openai/gpt-oss-20b:free", Usage = new AiTokenUsage(60, 500, 560) };
+    private static AiCompletion Completion(string text, string finishReason = "stop") =>
+        new() { Text = text, Model = "minimax/minimax-m2.7:free", FinishReason = finishReason, Usage = new AiTokenUsage(60, 500, 560) };
 
     private static BusinessPlanSession CompletedPlan(string id, string editedOverview = "Edited plan.") =>
         new()
@@ -82,8 +82,9 @@ public class ForecastHandlerTests
 
         prep.PromptKey.Should().Be(PromptTemplate.Forecast.Key);
         prep.TaskType.Should().Be("Forecast");
-        prep.MaxTokens.Should().Be(3800);
+        prep.MaxTokens.Should().Be(6000);
         prep.Temperature.Should().Be(0.3);
+        prep.ResponseFormat.Should().Be("json_object");
         prep.Task.Should().Contain("12-month");
     }
 
@@ -185,7 +186,7 @@ public class ForecastHandlerTests
             ins.Payload != null)), Times.Once);
     }
 
-    // ---- InterpretAsync: malformed / invalid -> NeedsReview ----
+    // ---- InterpretAsync: malformed / invalid / truncated -> NeedsReview ----
 
     [Theory]
     [InlineData("not json at all")]
@@ -198,7 +199,21 @@ public class ForecastHandlerTests
         var result = await Handler().InterpretAsync(Request(new BsonDocument("sessionId", sessionId)), Completion(badOutput));
 
         result.OutputPayload.Should().BeNull();
-        _sessions.Verify(s => s.SetNeedsReviewAsync(sessionId, It.Is<string>(e => e.Length > 0)), Times.Once);
+        _sessions.Verify(s => s.SetNeedsReviewAsync(sessionId, It.Is<string>(e => e.Length > 0 && !e.Contains("truncated"))), Times.Once);
+        _sessions.Verify(s => s.AppendGeneratedVersionAsync(It.IsAny<string>(), It.IsAny<BsonDocument>(), It.IsAny<string>()), Times.Never);
+        _insights.Verify(i => i.WriteAsync(It.IsAny<AiInsight>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Interpret_classifies_finish_reason_length_as_truncation()
+    {
+        var sessionId = ObjectId.GenerateNewId().ToString();
+        var truncatedJson = "{\"revenueForecast\": {\"currency\": \"EUR\", \"monthly\": ["; // cut off mid-stream
+
+        var result = await Handler().InterpretAsync(Request(new BsonDocument("sessionId", sessionId)), Completion(truncatedJson, finishReason: "length"));
+
+        result.OutputPayload.Should().BeNull();
+        _sessions.Verify(s => s.SetNeedsReviewAsync(sessionId, "AI output was truncated before the forecast JSON completed."), Times.Once);
         _sessions.Verify(s => s.AppendGeneratedVersionAsync(It.IsAny<string>(), It.IsAny<BsonDocument>(), It.IsAny<string>()), Times.Never);
         _insights.Verify(i => i.WriteAsync(It.IsAny<AiInsight>()), Times.Never);
     }

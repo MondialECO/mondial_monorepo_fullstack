@@ -40,8 +40,10 @@ public class ForecastSessionRepositoryIntegrationTests : IClassFixture<AppFixtur
             Status = "Pending",
         };
         await Repo.AddAsync(session);
-        await Repo.SetRequestIdAsync(session.Id, "req-" + session.Id);
-        await Repo.AppendGeneratedVersionAsync(session.Id, Forecast(1000), "req-" + session.Id);
+        var reqId = ObjectId.GenerateNewId().ToString();
+        await Repo.SetRequestIdAsync(session.Id, reqId);
+        session.RequestId = reqId;
+        await Repo.AppendGeneratedVersionAsync(session.Id, Forecast(1000), reqId);
         return session;
     }
 
@@ -56,7 +58,7 @@ public class ForecastSessionRepositoryIntegrationTests : IClassFixture<AppFixtur
 
         (await Repo.GetOwnedAsync(session.Id, owner)).Should().NotBeNull();
         (await Repo.GetOwnedAsync(session.Id, Guid.NewGuid().ToString())).Should().BeNull(); // not the owner
-        (await Repo.GetByRequestAsync("req-" + session.Id, owner))!.Id.Should().Be(session.Id);
+        (await Repo.GetByRequestAsync(session.RequestId, owner))!.Id.Should().Be(session.Id);
 
         var byPlan = await Repo.ListByBusinessPlanAsync(bpId, owner, 0, 10);
         byPlan.Should().ContainSingle().Which.Id.Should().Be(session.Id);
@@ -70,7 +72,7 @@ public class ForecastSessionRepositoryIntegrationTests : IClassFixture<AppFixtur
         var owner = Guid.NewGuid().ToString();
 
         var session = await NewCompletedSession(owner, ObjectId.GenerateNewId().ToString());
-        await Repo.AppendGeneratedVersionAsync(session.Id, Forecast(2000), "req-2"); // regenerate
+        await Repo.AppendGeneratedVersionAsync(session.Id, Forecast(2000), ObjectId.GenerateNewId().ToString()); // regenerate
 
         var loaded = await Repo.GetOwnedAsync(session.Id, owner);
         loaded!.Versions.Should().HaveCount(2);
