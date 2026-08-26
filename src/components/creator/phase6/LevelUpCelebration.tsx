@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Rocket, Lightbulb, ArrowRight, Loader2, AlertTriangle, BarChart3, Users, Coins, FileText, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { creatorJourneyApi } from "@/lib/api-creator-journey";
+import { useAuth } from "@/app/_providers/AuthProvider";
 
 const UNLOCKS = [
   { icon: BarChart3, label: "Entrepreneur workspace" },
@@ -89,6 +90,7 @@ function ConfettiBurst() {
 }
 
 export function LevelUpCelebration({ onDone, onCancel, ideaId }: { onDone: (redirect: string) => void; onCancel: () => void; ideaId: string | null }) {
+  const { refreshAuthMe } = useAuth();
   const [phase, setPhase] = useState<"intro" | "working" | "done">("intro");
   const [missing, setMissing] = useState<string[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -97,6 +99,7 @@ export function LevelUpCelebration({ onDone, onCancel, ideaId }: { onDone: (redi
     setPhase("working"); setMissing(null); setError(null);
     try {
       const res = await creatorJourneyApi.levelUp(ideaId ?? undefined);
+      await refreshAuthMe();
       setPhase("done");
       // Brief celebration, then route (also fired via SignalR LevelUpComplete).
       setTimeout(() => onDone(res.redirectTo || "/dashboard/entrepreneur"), 1600);
@@ -138,24 +141,35 @@ export function LevelUpCelebration({ onDone, onCancel, ideaId }: { onDone: (redi
 
             <div className="grid grid-cols-2 gap-3">
               {UNLOCKS.map((u) => (
-                <div key={u.label} className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 p-3 text-sm">
-                  <u.icon className="h-4 w-4 text-primary" /> {u.label}
+                <div key={u.label} className="flex items-center gap-2.5 p-3 rounded-lg bg-white/5 border border-white/10 text-left text-sm font-medium text-white/90">
+                  <u.icon className="h-4 w-4 text-primary shrink-0" />
+                  <span>{u.label}</span>
                 </div>
               ))}
             </div>
 
-            {missing && (
-              <div className="flex items-start gap-3 rounded-xl border border-warning/30 bg-warning/10 p-4 text-sm text-warning text-left">
-                <AlertTriangle className="h-5 w-5 shrink-0" />
-                <p>Not ready yet — still needed: <strong>{missing.map((m) => m.replace(/_/g, " ")).join(", ") || "complete Phase 5 (Build path + seed funding)"}</strong>.</p>
+            {missing && missing.length > 0 && (
+              <div className="p-3 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-200 text-sm text-left">
+                <p className="font-semibold mb-1 flex items-center gap-1.5"><AlertTriangle className="h-4 w-4 shrink-0" /> Incomplete items</p>
+                <ul className="list-disc list-inside space-y-0.5 text-xs opacity-90">
+                  {missing.map((m) => <li key={m}>{m}</li>)}
+                </ul>
               </div>
             )}
-            {error && <p className="text-sm text-destructive">{error}</p>}
 
-            <div className="flex items-center justify-center gap-3">
-              <Button variant="ghost" onClick={onCancel} className="text-white/70 hover:text-white hover:bg-white/10">Not yet</Button>
-              <Button onClick={trigger} disabled={phase === "working"} className="gap-2">
-                {phase === "working" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Rocket className="h-4 w-4" />} Confirm Level Up
+            {error && (
+              <p className="p-3 rounded-md bg-rose-500/10 border border-rose-500/20 text-rose-200 text-sm text-left flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 shrink-0 text-rose-400" />
+                <span>{error}</span>
+              </p>
+            )}
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <Button variant="ghost" onClick={onCancel} disabled={phase === "working"} className="text-white/70 hover:text-white hover:bg-white/10">
+                Cancel
+              </Button>
+              <Button onClick={trigger} disabled={phase === "working"} className="gap-2 font-semibold">
+                {phase === "working" ? <><Loader2 className="h-4 w-4 animate-spin" /> Upgrading…</> : <><Rocket className="h-4 w-4" /> Confirm Level Up</>}
               </Button>
             </div>
           </>

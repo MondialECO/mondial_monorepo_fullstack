@@ -61,7 +61,7 @@ public class IdeaClarifierHandlerTests
 
         prep.PromptKey.Should().Be(PromptTemplate.IdeaClarifier.Key);
         prep.TaskType.Should().Be("IdeaClarifier");
-        prep.MaxTokens.Should().Be(1500);
+        prep.MaxTokens.Should().Be(3500);
         prep.UserContext.Should().Contain("Solar drones");
         prep.UserContext.Should().Contain("Crop monitoring is manual.");
         prep.UserContext.Should().Contain("Farmers");
@@ -107,6 +107,31 @@ public class IdeaClarifierHandlerTests
         _sessions.Verify(s => s.SetCompletedAsync(sessionId, It.IsAny<BsonDocument>(), 50), Times.Once);
     }
 
+    [Fact]
+    public async Task Interpret_extracts_json_when_surrounded_by_prose()
+    {
+        var sessionId = ObjectId.GenerateNewId().ToString();
+        var surrounded = "Here is the clarified idea output:\n```json\n" + ValidJson(85) + "\n```\nHope this helps!";
+
+        var result = await Handler().InterpretAsync(Request(new BsonDocument("sessionId", sessionId)), Completion(surrounded));
+
+        result.OutputPayload.Should().NotBeNull();
+        result.OutputPayload!["clarityScore"].AsInt32.Should().Be(85);
+        _sessions.Verify(s => s.SetCompletedAsync(sessionId, It.IsAny<BsonDocument>(), 85), Times.Once);
+    }
+
+    [Fact]
+    public async Task Interpret_accepts_numeric_string_clarity_score()
+    {
+        var sessionId = ObjectId.GenerateNewId().ToString();
+        var jsonWithStrScore = ValidJson(80).Replace("\"clarityScore\": 80", "\"clarityScore\": \"80\"");
+
+        var result = await Handler().InterpretAsync(Request(new BsonDocument("sessionId", sessionId)), Completion(jsonWithStrScore));
+
+        result.OutputPayload.Should().NotBeNull();
+        result.OutputPayload!["clarityScore"].AsInt32.Should().Be(80);
+    }
+
     // ---- InterpretAsync: insight creation ----
 
     [Fact]
@@ -139,12 +164,13 @@ public class IdeaClarifierHandlerTests
         _sessions.Verify(s => s.SetCompletedAsync(sessionId, It.IsAny<BsonDocument>(), expected), Times.Once);
     }
 
-    // ---- InterpretAsync: malformed / invalid -> NeedsReview ----
+    // ---- InterpretAsync: malformed / invalid / truncated -> NeedsReview ----
 
     [Theory]
     [InlineData("not json at all")]
-    [InlineData("{ \"clarityScore\": 50 }")]                 // missing required fields
-    [InlineData("")]                                          // empty
+    [InlineData("{ \"clarityScore\": 50 }")]                                 // missing required fields
+    [InlineData("{\"problemDefinition\": {}, \"targetAudience\": {}, \"pr")] // truncated JSON
+    [InlineData("")]                                                          // empty
     public async Task Interpret_marks_needs_review_without_throwing(string badOutput)
     {
         var sessionId = ObjectId.GenerateNewId().ToString();

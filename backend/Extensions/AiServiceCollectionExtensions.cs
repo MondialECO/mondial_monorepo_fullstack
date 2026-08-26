@@ -30,16 +30,11 @@ public static class AiServiceCollectionExtensions
         services.AddSingleton<IModelRouter, ModelRouter>();
 
         // Typed client. Auth (Bearer) + attribution headers + BaseAddress come from
-        // OpenRouterSettings; a Polly retry policy (429/5xx) is layered on top.
+        // OpenRouterSettings; transient resilience is managed directly inside OpenRouterClient.
         services.AddHttpClient<IAiProvider, OpenRouterClient>((sp, client) =>
         {
             var s = sp.GetRequiredService<IOptions<OpenRouterSettings>>().Value;
             OpenRouterClient.ConfigureHttpClient(client, s);
-        })
-        .AddPolicyHandler((sp, _) =>
-        {
-            var s = sp.GetRequiredService<IOptions<OpenRouterSettings>>().Value;
-            return OpenRouterResiliencePolicies.Default(s.MaxRetries);
         });
 
         // ---- AI persistence (Phase 2): repositories for the 7 AI collections ----

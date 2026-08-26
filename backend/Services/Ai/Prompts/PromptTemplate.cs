@@ -97,12 +97,13 @@ namespace WebApp.Services.Ai.Prompts
                 "business plan. Ground every section strictly in the clarified " +
                 "opportunity you are given — it is the authoritative source. You may " +
                 "use the founder's original submission only as secondary context to " +
-                "fill gaps; never contradict the clarified opportunity. Be specific " +
-                "and realistic: name real segments, channels, competitors and risks " +
-                "implied by the input. Do NOT invent precise market sizes, revenue " +
-                "figures, valuations, or a funding ask — keep sizing and economics " +
-                "qualitative. When the input is thin, state the assumption plainly " +
-                "rather than fabricating numbers.",
+                "fill gaps; never contradict the clarified opportunity. Be specific, " +
+                "concise, and realistic: name real segments, channels, competitors and " +
+                "risks implied by the input. Avoid repetition and generic filler across " +
+                "sections. Do NOT invent precise market sizes, revenue figures, " +
+                "valuations, or a funding ask — keep sizing and economics qualitative. " +
+                "When the input is thin, state the assumption plainly rather than " +
+                "fabricating numbers.",
             OutputContract =
                 "Respond with ONE JSON object and nothing else — no markdown, no code " +
                 "fences, no commentary before or after. It MUST match this schema " +

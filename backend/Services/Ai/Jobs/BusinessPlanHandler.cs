@@ -23,7 +23,7 @@ namespace WebApp.Services.Ai.Jobs
     /// </summary>
     public sealed class BusinessPlanHandler : IAiTaskHandler
     {
-        private const int MaxOutputTokens = 2800;
+        private const int MaxOutputTokens = 5000;
         private const double Temperature = 0.4;
 
         private readonly IBusinessPlanSessionStore _sessions;
@@ -141,14 +141,16 @@ namespace WebApp.Services.Ai.Jobs
                     UserContext: singleUserContext,
                     Task: singleTask,
                     MaxTokens: MaxOutputTokens,
-                    Temperature: Temperature);
+                    Temperature: Temperature,
+                    ResponseFormat: "json_object");
             }
 
             const string task =
                 "Produce a complete, structured business plan for the canonical Idea Core " +
                 "above, following the output contract exactly. Preserve creator edits in " +
                 "that core; use supporting history only to fill gaps, never to override it. " +
-                "Return only the JSON object.";
+                "Keep every section concise, decision-useful, and non-repetitive. Prefer " +
+                "compact paragraphs and focused bullet arrays. Return only the JSON object.";
 
             return new AiHandlerRequest(
                 PromptKey: PromptTemplate.BusinessPlan.Key,
@@ -156,7 +158,8 @@ namespace WebApp.Services.Ai.Jobs
                 UserContext: userContext,
                 Task: task,
                 MaxTokens: MaxOutputTokens,
-                Temperature: Temperature);
+                Temperature: Temperature,
+                ResponseFormat: "json_object");
         }
 
         public async Task<AiHandlerResult> InterpretAsync(AiRequest request, AiCompletion completion, CancellationToken cancellationToken = default)
@@ -408,18 +411,22 @@ namespace WebApp.Services.Ai.Jobs
         private static string StripFences(string text)
         {
             var t = text.Trim();
-            if (!t.StartsWith("```", StringComparison.Ordinal))
-                return t;
-
-            var firstNewline = t.IndexOf('\n');
-            if (firstNewline >= 0)
-                t = t[(firstNewline + 1)..];
-
-            var closing = t.LastIndexOf("```", StringComparison.Ordinal);
-            if (closing >= 0)
-                t = t[..closing];
-
-            return t.Trim();
+            var fenceStart = t.IndexOf("```", StringComparison.Ordinal);
+            if (fenceStart >= 0)
+            {
+                var newlineAfterFence = t.IndexOf('\n', fenceStart);
+                if (newlineAfterFence >= 0)
+                {
+                    var contentStart = newlineAfterFence + 1;
+                    var fenceEnd = t.LastIndexOf("```", StringComparison.Ordinal);
+                    if (fenceEnd > contentStart)
+                    {
+                        return t[contentStart..fenceEnd].Trim();
+                    }
+                    return t[contentStart..].Trim();
+                }
+            }
+            return t;
         }
 
         /// <summary>Extracts the first balanced top-level JSON object, ignoring braces inside strings.</summary>

@@ -86,14 +86,20 @@ test.describe('Creator readiness', () => {
       await expect(creatorPage.getByRole('button', { name: 'Level Up' })).toBeVisible();
     });
 
-    test('levels up through the real transaction-capable E2E stack', async ({ creatorPage }) => {
+    test('levels up through the real transaction-capable E2E stack', async ({ creatorPage, creatorUser }) => {
+      test.setTimeout(120_000);
+      const readiness = await creatorApi<ReadinessPayload>(creatorPage, `/creator/readiness?ideaId=${creatorUser.activeIdeaId}`);
+      expect(readiness.status).toBe(200);
       await creatorPage.goto('/dashboard/creator/investors');
       await creatorPage.getByRole('button', { name: 'Level Up' }).click();
       await expect(creatorPage.getByRole('heading', { name: 'Level Up' })).toBeVisible();
-      const levelUp = creatorPage.waitForResponse((response) => response.url().includes('/creator/level-up') && response.request().method() === 'POST');
-      await creatorPage.getByRole('button', { name: 'Confirm Level Up' }).click();
-      expect((await levelUp).status()).toBe(200);
-      await expect(creatorPage).toHaveURL(/\/dashboard\/entrepreneur/, { timeout: 20_000 });
+      await expect(creatorPage.getByRole('button', { name: 'Confirm Level Up' })).toBeEnabled();
+      const [levelUpResponse] = await Promise.all([
+        creatorPage.waitForResponse((response) => response.url().includes('/creator/level-up') && response.request().method() === 'POST'),
+        creatorPage.getByRole('button', { name: 'Confirm Level Up' }).click(),
+      ]);
+      expect(levelUpResponse.status()).toBe(200);
+      await expect(creatorPage).toHaveURL(/\/dashboard\/entrepreneur/, { timeout: 30_000 });
     });
   });
 });

@@ -255,7 +255,7 @@ export default function AIClarifierPage() {
     // 2. Real AI turn — backend persists the transcript and returns the next question.
     setIsTyping(true);
     try {
-      const res = await creatorJourneyApi.chatMessage(userText);
+      const res = await creatorJourneyApi.chatMessage(userText, state.activeIdeaId);
       const lastAi = [...res.messages].reverse().find((m) => m.sender === "ai");
       const aiText = lastAi?.text ?? "Thanks — let's continue.";
       const aiMsgId = (Date.now() + 1).toString();
@@ -358,7 +358,7 @@ export default function AIClarifierPage() {
 
       // finalize-clarifier is tolerant of a partial/failed output (falls back to a
       // 50 clarity score + editable summary), so we map on any terminal status.
-      const result = await creatorJourneyApi.finalizeClarifier(sessionId);
+      const result = await creatorJourneyApi.finalizeClarifier(sessionId, state.activeIdeaId);
 
       // Two distinct failure kinds — show an honest, specific message and allow retry.
       // Do NOT navigate or spread empty fields into state on either failure.

@@ -59,7 +59,9 @@ services:
       E2E__AuthRateLimitPermitLimit: "100"
       E2E__GlobalRateLimitPermitLimit: "1000"
       Twilio__Enabled: "false"
-      Cors__AllowedOrigins__0: http://localhost:3001
+      Cors__AllowedOrigins__0: http://localhost:3000
+      Cors__AllowedOrigins__1: http://localhost:3001
+      Cors__AllowedOrigins__2: http://127.0.0.1:3000
     ports:
       - "${CREATOR_E2E_API_PORT:-5094}:8080"
     depends_on:

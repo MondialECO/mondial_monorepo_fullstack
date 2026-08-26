@@ -102,4 +102,104 @@ describe("Creator Formation and Phase 4 idea scoping", () => {
       { params: { ideaId, expectedVersion: 2 } },
     );
   });
+
+  it("propagates version changes across chained single-tab Phase 2 mutations", async () => {
+    const ideaId = "idea-phase2-chain";
+
+    // Initial hydration: version = 2
+    api.get.mockResolvedValueOnce({
+      data: { data: { journey: { ideaVersion: 2 } } },
+      headers: { "x-creator-idea-version": "2" },
+    });
+
+    // Write 1 (chatMessage): returns version 3
+    api.post.mockResolvedValueOnce({
+      data: { data: { messages: [], questionIndex: 1, totalQuestions: 6, summaryReady: false } },
+      headers: { "x-creator-idea-version": "3" },
+    });
+
+    // Write 2 (chatMessage): returns version 4
+    api.post.mockResolvedValueOnce({
+      data: { data: { messages: [], questionIndex: 2, totalQuestions: 6, summaryReady: false } },
+      headers: { "X-Creator-Idea-Version": "4" },
+    });
+
+    // Write 3 (finalizeClarifier): returns version 5
+    api.post.mockResolvedValueOnce({
+      data: { data: { sessionId: "sess-123", summary: {} } },
+      headers: { "x-creator-idea-version": "5" },
+    });
+
+    // A. Initial hydration
+    await creatorJourneyApi.get(ideaId);
+
+    // B. First chatMessage mutation sends expectedVersion=2
+    await creatorJourneyApi.chatMessage("First answer", ideaId);
+    expect(api.post).toHaveBeenLastCalledWith(
+      "/creator/journey/phase2/chat-message",
+      { message: "First answer" },
+      { params: { ideaId, expectedVersion: 2 } },
+    );
+
+    // C. Second chatMessage mutation sends expectedVersion=3
+    await creatorJourneyApi.chatMessage("Second answer", ideaId);
+    expect(api.post).toHaveBeenLastCalledWith(
+      "/creator/journey/phase2/chat-message",
+      { message: "Second answer" },
+      { params: { ideaId, expectedVersion: 3 } },
+    );
+
+    // D. Finalize clarifier mutation sends expectedVersion=4
+    await creatorJourneyApi.finalizeClarifier("sess-123", ideaId);
+    expect(api.post).toHaveBeenLastCalledWith(
+      "/creator/journey/phase2/finalize-clarifier",
+      { sessionId: "sess-123" },
+      { params: { ideaId, expectedVersion: 4 } },
+    );
+  });
+
+  it("preserves multi-idea isolation so idea A versions do not overwrite idea B versions", async () => {
+    const ideaA = "idea-A";
+    const ideaB = "idea-B";
+
+    api.get
+      .mockResolvedValueOnce({
+        data: { data: { journey: { ideaVersion: 10 } } },
+        headers: { "x-creator-idea-version": "10" },
+      })
+      .mockResolvedValueOnce({
+        data: { data: { journey: { ideaVersion: 20 } } },
+        headers: { "x-creator-idea-version": "20" },
+      });
+
+    api.post.mockResolvedValueOnce({
+      data: { data: { messages: [], questionIndex: 1 } },
+      headers: { "x-creator-idea-version": "11" },
+    });
+
+    await creatorJourneyApi.get(ideaA);
+    await creatorJourneyApi.get(ideaB);
+
+    await creatorJourneyApi.chatMessage("Answer on A", ideaA);
+
+    expect(api.post).toHaveBeenLastCalledWith(
+      "/creator/journey/phase2/chat-message",
+      { message: "Answer on A" },
+      { params: { ideaId: ideaA, expectedVersion: 10 } },
+    );
+
+    // Write on B must still send ideaB's version (20), not ideaA's updated version (11)
+    api.post.mockResolvedValueOnce({
+      data: { data: { messages: [], questionIndex: 1 } },
+      headers: { "x-creator-idea-version": "21" },
+    });
+
+    await creatorJourneyApi.chatMessage("Answer on B", ideaB);
+
+    expect(api.post).toHaveBeenLastCalledWith(
+      "/creator/journey/phase2/chat-message",
+      { message: "Answer on B" },
+      { params: { ideaId: ideaB, expectedVersion: 20 } },
+    );
+  });
 });

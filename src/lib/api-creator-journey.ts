@@ -361,6 +361,7 @@ export const creatorJourneyApi = {
 
   getInvestors: async (ideaId?: string | null): Promise<{ featured: SmartMatch | null; qualified: SmartMatch[]; matchingTip: string; isEmpty: boolean }> => {
     const res = await api.get('/creator/investors', withIdeaRead(ideaId));
+    rememberIdeaVersion(res, ideaId);
     return unwrap<{ featured: SmartMatch | null; qualified: SmartMatch[]; matchingTip: string; isEmpty: boolean }>(res.data);
   },
 
