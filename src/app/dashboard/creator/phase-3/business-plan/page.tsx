@@ -314,15 +314,19 @@ export default function BusinessPlanPage() {
 
       {!loading && !bpSessionId && (
         <Card className="rounded-2xl border border-border bg-card p-6 space-y-4 max-w-xl">
-          <h3 className="font-bold text-sm">Generate your business plan</h3>
-          <p className="text-sm text-muted-foreground">We&apos;ll build a 11-section plan from your clarified idea (C-3).</p>
-          {startError && (
+          <h3 className="font-bold text-sm">
+            {startError?.kind === 'credits'
+              ? "You've used all your AI credits"
+              : "Generate your business plan"}
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            {startError?.kind === 'credits'
+              ? "You've used all your AI credits. Contact support to add more AI credits to your account."
+              : "We'll build an 11-section plan from your clarified idea (C-3)."}
+          </p>
+          {startError && startError.kind !== 'credits' && (
             <div className="space-y-2">
               <p className="text-sm text-destructive">{startError.message}</p>
-              {/* Credits exhausted is NOT retryable — point to support, not a retry. */}
-              {startError.kind === 'credits' && (
-                <p className="text-xs text-muted-foreground">Contact support to add more AI credits to your account.</p>
-              )}
               {/* Provider/rate-limit issues are transient — offer a retry, not an upgrade. */}
               {(startError.kind === 'service' || startError.kind === 'rateLimited') && (
                 <Button variant="outline" size="sm" onClick={handleStart} disabled={startBp.isPending} className="gap-1.5">
@@ -364,27 +368,29 @@ export default function BusinessPlanPage() {
         <Card className="rounded-2xl border border-border bg-card p-6 space-y-4 max-w-xl">
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-destructive" />
-            <h3 className="font-bold text-sm">We couldn&apos;t generate your business plan</h3>
+            <h3 className="font-bold text-sm">
+              {startError?.kind === 'credits' || failedIsCredits
+                ? "You've used all your AI credits"
+                : "We couldn't generate your business plan"}
+            </h3>
           </div>
           <p className="text-sm text-muted-foreground">
-            {failedIsProviderBilling
+            {startError?.kind === 'credits' || failedIsCredits
+              ? "You've used all your AI credits. Contact support to add more AI credits to your account."
+              : failedIsProviderBilling
               ? 'The AI service is temporarily unavailable on our side, so your plan couldn’t be generated. This isn’t your credits and there’s nothing you need to buy — please try again shortly.'
-              : failedIsCredits
-              ? 'You’ve used all your AI credits, so your plan couldn’t be generated.'
               : 'The AI service was temporarily unavailable (a provider error, rate limit, or timeout), so your plan didn’t finish. This isn’t anything you did — please try again.'}
           </p>
-          {failedIsCredits && (
-            <p className="text-xs text-muted-foreground">Contact support to add more AI credits, then generate again.</p>
-          )}
-          {startError && (
+          {startError && startError.kind !== 'credits' && (
             <div className="space-y-1">
               <p className="text-sm text-destructive">{startError.message}</p>
-              {startError.kind === 'credits' && (
-                <p className="text-xs text-muted-foreground">Contact support to add more AI credits to your account.</p>
-              )}
             </div>
           )}
-          <Button onClick={handleStart} disabled={startBp.isPending || startError?.kind === 'credits'} className="gap-2">
+          <Button
+            onClick={handleStart}
+            disabled={startBp.isPending || startError?.kind === 'credits' || failedIsCredits}
+            className="gap-2"
+          >
             {startBp.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCw className="h-4 w-4" />} Generate again
           </Button>
         </Card>

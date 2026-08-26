@@ -62,7 +62,7 @@ public class ForecastControllerIntegrationTests : IClassFixture<AppFixture>
         {
             ["schemaVersion"] = 1,
             ["executiveSummary"] = new BsonDocument("overview", "Autonomous crop monitoring."),
-        }, "req-seed");
+        }, ObjectId.GenerateNewId().ToString());
         return plan.Id;
     }
 
@@ -77,7 +77,7 @@ public class ForecastControllerIntegrationTests : IClassFixture<AppFixture>
             ["schemaVersion"] = 1,
             ["revenueForecast"] = new BsonDocument { ["currency"] = "USD", ["monthly"] = new BsonArray() },
             ["advisoryNotice"] = "estimates only",
-        }, "req-seed");
+        }, ObjectId.GenerateNewId().ToString());
         return fc.Id;
     }
 
@@ -95,7 +95,7 @@ public class ForecastControllerIntegrationTests : IClassFixture<AppFixture>
         await FundAsync(owner, 20);
         var planId = await CompletedPlanAsync(owner);
 
-        var resp = await Authed(owner).PostAsJsonAsync("/api/ai/forecast", new { businessPlanSessionId = planId });
+        var resp = await Authed(owner).PostAsJsonAsync("/api/ai/forecast", new { businessPlanSessionId = planId, monthlyChurnPct = 5.0 });
 
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
         (await resp.Content.ReadAsStringAsync()).Should().Contain("sessionId").And.Contain("jobId");
@@ -108,7 +108,7 @@ public class ForecastControllerIntegrationTests : IClassFixture<AppFixture>
     }
 
     [SkippableFact]
-    public async Task Start_returns_409_when_business_plan_not_completed()
+    public async Task Start_returns_422_when_business_plan_not_completed()
     {
         Skip.IfNot(_fx.Available, _fx.SkipReason);
         var owner = Guid.NewGuid().ToString();
@@ -119,12 +119,12 @@ public class ForecastControllerIntegrationTests : IClassFixture<AppFixture>
         var plan = new BusinessPlanSession { OwnerUserId = owner, ClarifierSessionId = ObjectId.GenerateNewId().ToString(), Status = "Pending" };
         await repo.AddAsync(plan);
 
-        var resp = await Authed(owner).PostAsJsonAsync("/api/ai/forecast", new { businessPlanSessionId = plan.Id });
-        resp.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        var resp = await Authed(owner).PostAsJsonAsync("/api/ai/forecast", new { businessPlanSessionId = plan.Id, monthlyChurnPct = 5.0 });
+        resp.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
     }
 
     [SkippableFact]
-    public async Task Start_returns_404_for_foreign_business_plan()
+    public async Task Start_returns_422_for_foreign_business_plan()
     {
         Skip.IfNot(_fx.Available, _fx.SkipReason);
         var owner = Guid.NewGuid().ToString();
@@ -132,8 +132,8 @@ public class ForecastControllerIntegrationTests : IClassFixture<AppFixture>
         await FundAsync(other, 20);
         var planId = await CompletedPlanAsync(owner); // owned by someone else
 
-        var resp = await Authed(other).PostAsJsonAsync("/api/ai/forecast", new { businessPlanSessionId = planId });
-        resp.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var resp = await Authed(other).PostAsJsonAsync("/api/ai/forecast", new { businessPlanSessionId = planId, monthlyChurnPct = 5.0 });
+        resp.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
     }
 
     [SkippableFact]
@@ -144,7 +144,7 @@ public class ForecastControllerIntegrationTests : IClassFixture<AppFixture>
         await FundAsync(owner, 0); // Forecast costs 5
         var planId = await CompletedPlanAsync(owner);
 
-        var resp = await Authed(owner).PostAsJsonAsync("/api/ai/forecast", new { businessPlanSessionId = planId });
+        var resp = await Authed(owner).PostAsJsonAsync("/api/ai/forecast", new { businessPlanSessionId = planId, monthlyChurnPct = 5.0 });
         resp.StatusCode.Should().Be((HttpStatusCode)402);
     }
 

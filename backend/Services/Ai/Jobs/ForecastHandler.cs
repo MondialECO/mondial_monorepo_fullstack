@@ -22,7 +22,7 @@ namespace WebApp.Services.Ai.Jobs
     /// </summary>
     public sealed class ForecastHandler : IAiTaskHandler
     {
-        private const int MaxOutputTokens = 3800;
+        private const int MaxOutputTokens = 6000;
         private const double Temperature = 0.3;
 
         private readonly IForecastSessionStore _sessions;
@@ -88,10 +88,10 @@ namespace WebApp.Services.Ai.Jobs
             var userContext = string.Join("\n\n", contextLines);
 
             const string task =
-                "Produce a 12-month financial forecast grounded in the BUSINESS PLAN above " +
+                "Produce a compact 12-month financial forecast grounded in the BUSINESS PLAN above " +
                 "and refined by the FORECAST PARAMETERS (ARPU, OPEX, monthly growth, TAM), " +
                 "following the output contract exactly: 12 consecutive monthly periods, " +
-                "numeric monthly arrays, no funding ask. State every assumption. " +
+                "numeric monthly arrays, no funding ask. Keep summaries, notes, and narrative concise. State driving assumptions. " +
                 "Return only the JSON object.";
 
             return new AiHandlerRequest(
@@ -100,7 +100,8 @@ namespace WebApp.Services.Ai.Jobs
                 UserContext: userContext,
                 Task: task,
                 MaxTokens: MaxOutputTokens,
-                Temperature: Temperature);
+                Temperature: Temperature,
+                ResponseFormat: "json_object");
         }
 
         public async Task<AiHandlerResult> InterpretAsync(AiRequest request, AiCompletion completion, CancellationToken cancellationToken = default)
@@ -112,11 +113,15 @@ namespace WebApp.Services.Ai.Jobs
 
             if (!ForecastOutputParser.TryParse(completion.Text, out var contract, out var parseError))
             {
-                _logger.LogWarning("Forecast output for request {RequestId} could not be parsed: {Error}",
-                    request.Id, parseError);
+                var failureReason = string.Equals(completion.FinishReason, "length", StringComparison.OrdinalIgnoreCase)
+                    ? "AI output was truncated before the forecast JSON completed."
+                    : parseError;
+
+                _logger.LogWarning("Forecast output for request {RequestId} could not be parsed: {Error} (FinishReason: {FinishReason})",
+                    request.Id, failureReason, completion.FinishReason);
 
                 if (sessionId != null)
-                    await _sessions.SetNeedsReviewAsync(sessionId, parseError);
+                    await _sessions.SetNeedsReviewAsync(sessionId, failureReason);
 
                 // Do NOT throw: the job completes, raw text stays on the response.
                 return new AiHandlerResult(OutputPayload: null);

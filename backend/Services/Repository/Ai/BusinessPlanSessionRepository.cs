@@ -28,6 +28,7 @@ namespace WebApp.Services.Repository.Ai
 
         Task SetNeedsReviewAsync(string id, string error);
         Task SetFailedAsync(string id, string error);
+        Task DeleteAsync(string id);
     }
 
     /// <summary>

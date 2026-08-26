@@ -148,11 +148,11 @@ namespace WebApp.Services.Ai.Prompts
                 "periods (month 1 through month 12) — never a custom horizon and never " +
                 "a yearly forecast. Ground every figure in the input and in the " +
                 "assumptions you state; when the input is thin, make the driving " +
-                "assumption explicit rather than fabricating precision. Present all " +
-                "numbers as planning estimates, not guarantees. Do NOT include any " +
+                "assumption explicit rather than fabricating precision. Keep all text concise. " +
+                "Present all numbers as planning estimates, not guarantees. Do NOT include any " +
                 "funding ask, capital request, or valuation of any kind.",
             OutputContract =
-                "Respond with ONE JSON object and nothing else — no markdown, no code " +
+                "Respond with ONE compact JSON object and nothing else — no markdown, no code " +
                 "fences, no commentary before or after. It MUST match this schema " +
                 "exactly (camelCase keys, all keys present; arrays may be empty but " +
                 "must not be omitted; add no extra keys; do NOT add any funding ask):\n" +
@@ -168,10 +168,12 @@ namespace WebApp.Services.Ai.Prompts
                 "}\n" +
                 "schemaVersion MUST be 1. Each monthly array MUST contain exactly 12 " +
                 "entries, one per month, with month values 1 through 12 in order. " +
+                "Keep monthly notes very short (labels only or empty). Keep summaries brief (1-2 sentences). " +
+                "assumptions MUST contain max 5 concise items. risks MUST contain max 5 concise items. " +
                 "breakEvenMonth MUST be an integer 1-12 when break-even is reached " +
                 "within the horizon, otherwise null with isAchievedWithinHorizon false. " +
                 "likelihood and impact MUST each be one of low, medium, or high. " +
-                "advisoryNotice MUST state plainly that these figures are planning " +
+                "advisoryNotice MUST state plainly in one concise paragraph (max 250 chars) that these figures are planning " +
                 "estimates, not guarantees of financial outcomes, and that qualified " +
                 "professional advice is recommended. Do not include any funding ask, " +
                 "capital request, or valuation field of any kind.",

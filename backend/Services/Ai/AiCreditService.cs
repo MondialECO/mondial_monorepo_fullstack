@@ -19,6 +19,19 @@ namespace WebApp.Services.Ai
         /// <see cref="InsufficientCreditsException"/> when the balance is too low.
         /// </summary>
         Task DebitForJobAsync(string ownerUserId, AiJobType jobType);
+
+        /// <summary>
+        /// Debits the configured cost for <paramref name="jobType"/> from the
+        /// owner's balance with an explicit <paramref name="operationId"/>.
+        /// </summary>
+        Task DebitForJobAsync(string ownerUserId, AiJobType jobType, string? operationId);
+
+        /// <summary>
+        /// Compensates / refunds the configured cost for <paramref name="jobType"/> back to the
+        /// owner's balance for a specific <paramref name="operationId"/> if downstream session persistence
+        /// or job enqueue fails. Atomically idempotent: multiple calls for the same operationId mutate at most once.
+        /// </summary>
+        Task<CreditRefundResult> RefundForJobAsync(string ownerUserId, AiJobType jobType, string operationId, string reason = "Generation failed before acceptance");
     }
 
     public sealed class AiCreditService : IAiCreditService
@@ -32,7 +45,10 @@ namespace WebApp.Services.Ai
             _settings = settings.Value;
         }
 
-        public async Task DebitForJobAsync(string ownerUserId, AiJobType jobType)
+        public Task DebitForJobAsync(string ownerUserId, AiJobType jobType) =>
+            DebitForJobAsync(ownerUserId, jobType, null);
+
+        public async Task DebitForJobAsync(string ownerUserId, AiJobType jobType, string? operationId)
         {
             var cost = _settings.CreditCosts.TryGetValue(jobType.ToString(), out var c) ? c : 0;
             if (cost <= 0)
@@ -46,17 +62,30 @@ namespace WebApp.Services.Ai
             if (_settings.StarterCredits > 0)
                 await _credits.TryGrantInitialAsync(ownerUserId, _settings.StarterCredits);
 
-            var debited = await _credits.TryDebitAsync(ownerUserId, cost, new AiCreditDebit
+            var result = await _credits.TryDebitAsync(ownerUserId, cost, new AiCreditDebit
             {
+                OperationId = string.IsNullOrWhiteSpace(operationId) ? MongoDB.Bson.ObjectId.GenerateNewId().ToString() : operationId,
                 Amount = cost,
                 Reason = jobType.ToString(),
+                Refunded = false,
                 At = DateTime.UtcNow,
             });
 
-            if (!debited)
-                throw new InsufficientCreditsException(
-                    $"Insufficient AI credits for '{jobType}' (requires {cost}).", statusCode: 402)
-                    { Source = CreditFailureSource.LocalBalance };
+            if (result == CreditDebitResult.Applied || result == CreditDebitResult.AlreadyDebited)
+                return; // success (either fresh debit or idempotent replay)
+
+            throw new InsufficientCreditsException(
+                $"Insufficient AI credits for '{jobType}' (requires {cost}).", statusCode: 402)
+                { Source = CreditFailureSource.LocalBalance };
+        }
+
+        public async Task<CreditRefundResult> RefundForJobAsync(string ownerUserId, AiJobType jobType, string operationId, string reason = "Generation failed before acceptance")
+        {
+            var cost = _settings.CreditCosts.TryGetValue(jobType.ToString(), out var c) ? c : 0;
+            if (cost <= 0)
+                return CreditRefundResult.Applied; // free job — no refund needed
+
+            return await _credits.TryRefundAsync(ownerUserId, operationId, cost, reason);
         }
     }
 }
