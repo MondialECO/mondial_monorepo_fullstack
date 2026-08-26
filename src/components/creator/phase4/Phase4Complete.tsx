@@ -56,11 +56,15 @@ export function Phase4Complete({ ideaId, onContinue }: { ideaId: string | null; 
   }, [attempt, ideaId]);
 
   // Derived gate — no manual status write.
-  const canContinue = computed?.phase4.status === "completed" && computed?.phase5.status === "available";
+  const phase5Status = computed?.phase5?.status;
+  const canContinue =
+    computed?.phase4.status === "completed" &&
+    phase5Status != null &&
+    phase5Status !== "locked";
 
   const handleContinue = () => {
     // Respect the derived gate: never navigate unless the backend says Phase 4 is
-    // completed and Phase 5 is available (mirrors the Phase-3 complete page).
+    // completed and Phase 5 is unlocked (mirrors the Phase-3 complete page).
     if (!canContinue) return;
     setIsNavigating(true);
     advancePhase(4);
