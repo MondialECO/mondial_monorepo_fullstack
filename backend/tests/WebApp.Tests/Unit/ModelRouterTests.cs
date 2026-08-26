@@ -31,16 +31,37 @@ public class ModelRouterTests
 
     private static ModelRouter ShippedRouter() => Build(new()
     {
-        ["Probe"] = "openai/gpt-oss-20b:free",
-        ["IdeaClarifier"] = "openai/gpt-oss-20b:free",
-        ["BusinessPlan"] = "openai/gpt-oss-20b:free",
-        ["Forecast"] = "openai/gpt-oss-20b:free",
-    }, "openai/gpt-oss-20b:free");
+        ["Probe"] = "minimax/minimax-m2.7:free",
+        ["IdeaClarifier"] = "minimax/minimax-m2.7:free",
+        ["BusinessPlan"] = "minimax/minimax-m2.7:free",
+        ["Forecast"] = "minimax/minimax-m2.7:free",
+        ["IdeaGenerator"] = "minimax/minimax-m2.7:free",
+    }, "minimax/minimax-m2.7:free");
 
     [Fact]
-    public void Routes_idea_clarifier_to_free_model()
+    public void Shipped_router_routes_all_tasks_to_minimax_free_model()
     {
-        ShippedRouter().Resolve("IdeaClarifier").Should().Be("openai/gpt-oss-20b:free");
+        var router = ShippedRouter();
+        router.Resolve("Probe").Should().Be("minimax/minimax-m2.7:free");
+        router.Resolve("IdeaClarifier").Should().Be("minimax/minimax-m2.7:free");
+        router.Resolve("BusinessPlan").Should().Be("minimax/minimax-m2.7:free");
+        router.Resolve("Forecast").Should().Be("minimax/minimax-m2.7:free");
+        router.Resolve("IdeaGenerator").Should().Be("minimax/minimax-m2.7:free");
+        router.Resolve("UnknownFallback").Should().Be("minimax/minimax-m2.7:free");
+    }
+
+    [Fact]
+    public void Routes_business_plan_to_minimax_free_model()
+    {
+        var resolved = ShippedRouter().Resolve("BusinessPlan");
+        resolved.Should().Be("minimax/minimax-m2.7:free");
+        resolved.Should().NotBe("minimax/minimax-m2.7");
+    }
+
+    [Fact]
+    public void Routes_idea_clarifier_to_minimax_free_model()
+    {
+        ShippedRouter().Resolve("IdeaClarifier").Should().Be("minimax/minimax-m2.7:free");
     }
 
     [Fact]
@@ -54,9 +75,9 @@ public class ModelRouterTests
     }
 
     [Fact]
-    public void Probe_routing_remains_on_the_free_model()
+    public void Probe_routing_remains_on_minimax_free_model()
     {
-        ShippedRouter().Resolve("Probe").Should().Be("openai/gpt-oss-20b:free");
+        ShippedRouter().Resolve("Probe").Should().Be("minimax/minimax-m2.7:free");
     }
 
     [Fact]

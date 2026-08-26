@@ -1,4 +1,4 @@
-﻿using Asp.Versioning;
+using Asp.Versioning;
 using FluentValidation;
 using Hangfire;
 using Microsoft.AspNetCore.ResponseCompression;
@@ -191,7 +191,8 @@ builder.Services.AddCors(options =>
         policy.SetIsOriginAllowed(IsAllowedOrigin)
               .AllowAnyHeader()
               .AllowAnyMethod()
-              .AllowCredentials();
+              .AllowCredentials()
+              .WithExposedHeaders("X-Creator-Idea-Version");
     });
 });
 

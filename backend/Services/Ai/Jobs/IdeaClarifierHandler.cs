@@ -20,7 +20,7 @@ namespace WebApp.Services.Ai.Jobs
     /// </summary>
     public sealed class IdeaClarifierHandler : IAiTaskHandler
     {
-        private const int MaxOutputTokens = 1500;
+        private const int MaxOutputTokens = 3500;
         private const double Temperature = 0.3;
 
         private readonly IClarifierSessionStore _sessions;
@@ -80,7 +80,8 @@ namespace WebApp.Services.Ai.Jobs
                 UserContext: userContext,
                 Task: task,
                 MaxTokens: MaxOutputTokens,
-                Temperature: Temperature));
+                Temperature: Temperature,
+                ResponseFormat: "json_object"));
         }
 
         public async Task<AiHandlerResult> InterpretAsync(AiRequest request, AiCompletion completion, CancellationToken cancellationToken = default)
@@ -184,8 +185,15 @@ namespace WebApp.Services.Ai.Jobs
 
             if (!doc["clarityScore"].IsNumeric)
             {
-                error = "Field 'clarityScore' is not a number.";
-                return false;
+                if (doc["clarityScore"].IsString && int.TryParse(doc["clarityScore"].AsString, out var parsedScore))
+                {
+                    doc["clarityScore"] = parsedScore;
+                }
+                else
+                {
+                    error = "Field 'clarityScore' is not a number.";
+                    return false;
+                }
             }
 
             // Clamp to 0–100 and normalize to an int.
@@ -203,19 +211,22 @@ namespace WebApp.Services.Ai.Jobs
         private static string StripFences(string text)
         {
             var t = text.Trim();
-            if (!t.StartsWith("```", StringComparison.Ordinal))
-                return t;
-
-            // Drop the opening fence line (``` or ```json) and any closing fence.
-            var firstNewline = t.IndexOf('\n');
-            if (firstNewline >= 0)
-                t = t[(firstNewline + 1)..];
-
-            var closing = t.LastIndexOf("```", StringComparison.Ordinal);
-            if (closing >= 0)
-                t = t[..closing];
-
-            return t.Trim();
+            var fenceStart = t.IndexOf("```", StringComparison.Ordinal);
+            if (fenceStart >= 0)
+            {
+                var newlineAfterFence = t.IndexOf('\n', fenceStart);
+                if (newlineAfterFence >= 0)
+                {
+                    var contentStart = newlineAfterFence + 1;
+                    var fenceEnd = t.LastIndexOf("```", StringComparison.Ordinal);
+                    if (fenceEnd > contentStart)
+                    {
+                        return t[contentStart..fenceEnd].Trim();
+                    }
+                    return t[contentStart..].Trim();
+                }
+            }
+            return t;
         }
 
         /// <summary>Extracts the first balanced top-level JSON object, ignoring braces inside strings.</summary>

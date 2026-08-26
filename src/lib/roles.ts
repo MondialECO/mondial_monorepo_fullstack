@@ -45,3 +45,24 @@ export function parseStrictUserRole(input: unknown): UserRole | null {
 
   return roleMap[raw] ?? null;
 }
+
+export function resolvePrimaryRole(roles: unknown): UserRole | null {
+  if (!roles) return null;
+  const list = Array.isArray(roles) ? roles : [roles];
+  const parsedRoles = list.map((r) => parseStrictUserRole(r)).filter((r): r is UserRole => r !== null);
+  if (parsedRoles.length === 0) return null;
+
+  const priority = [
+    UserRole.ADMIN,
+    UserRole.ENTREPRENEUR,
+    UserRole.INVESTOR,
+    UserRole.SERVICE_PROVIDER,
+    UserRole.CREATOR,
+  ];
+
+  for (const role of priority) {
+    if (parsedRoles.includes(role)) return role;
+  }
+
+  return parsedRoles[0];
+}

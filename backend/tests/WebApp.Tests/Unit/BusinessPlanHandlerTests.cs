@@ -71,7 +71,8 @@ public class BusinessPlanHandlerTests
 
         prep.PromptKey.Should().Be(PromptTemplate.BusinessPlan.Key);
         prep.TaskType.Should().Be("BusinessPlan");
-        prep.MaxTokens.Should().Be(2800);
+        prep.MaxTokens.Should().Be(5000);
+        prep.ResponseFormat.Should().Be("json_object");
         prep.UserContext.Should().Contain("CLARIFIER HISTORY");
         prep.UserContext.Should().Contain("Crop monitoring is manual."); // retained as supporting history
         prep.Task.Should().Contain("JSON");

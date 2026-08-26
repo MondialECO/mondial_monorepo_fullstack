@@ -257,6 +257,9 @@ namespace WebApp.Controllers
                 var levelUpIdeaId = ideaId;
                 var p5 = journey.Phase5Data ?? new CreatorPhase5Data();
                 var p6 = journey.Phase6Data ??= new CreatorPhase6Data();
+                var entRole = await _roleManager.FindByNameAsync("Entrepreneur");
+                if (entRole == null)
+                    _logger.LogWarning("Level Up: 'Entrepreneur' role missing in DB; user role will not be set for {UserId}.", userId);
 
                 // Idempotency is USER-LEVEL (step 6iii): the composed p6.LevelUpTriggered
                 // is now per-idea, so the once-per-user guard reads the journey's
@@ -267,6 +270,21 @@ namespace WebApp.Controllers
                 {
                     if (journey.LeveledUpIdeaId == levelUpIdeaId || string.IsNullOrEmpty(journey.LeveledUpIdeaId))
                     {
+                        if (entRole != null)
+                        {
+                            try
+                            {
+                                var targetUser = await _userManager.FindByIdAsync(userId);
+                                if (targetUser != null && !await _userManager.IsInRoleAsync(targetUser, "Entrepreneur"))
+                                {
+                                    await _userManager.AddToRoleAsync(targetUser, "Entrepreneur");
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogWarning(ex, "Failed to reconcile missing 'Entrepreneur' role for {UserId} on idempotent call.", userId);
+                            }
+                        }
                         return Ok(ApiResponse.Ok("Already leveled up", new
                         {
                             levelUpComplete = true,
@@ -296,11 +314,6 @@ namespace WebApp.Controllers
                     : !string.IsNullOrEmpty(levelUpIdeaId) ? levelUpIdeaId : journey.Id; // idea anchor is the provenance
                 double? fundingAsk = seed?.TotalAsk > 0 ? (double?)(double)seed.TotalAsk : null; // Phase-5 totalAsk is authoritative
 
-                // UserManager can't take a Mongo session, so we write the role + companyId
-                // directly to the user doc inside the transaction. Read the role id first.
-                var entRole = await _roleManager.FindByNameAsync("Entrepreneur");
-                if (entRole == null)
-                    _logger.LogWarning("Level Up: 'Entrepreneur' role missing in DB; user role will not be set for {UserId}.", userId);
                 Guid.TryParse(userId, out var userGuid);
 
                 // Pre-generate the profile id so the journey can reference it in the same txn.
@@ -366,18 +379,13 @@ namespace WebApp.Controllers
                     if (userGuid != Guid.Empty)
                     {
                         var upd = Builders<ApplicationUser>.Update.Set(u => u.EntrepreneurProfile.CompanyId, companyId);
+                        if (entRole != null)
+                        {
+                            upd = upd.AddToSet(u => u.Roles, entRole.Id);
+                        }
                         var filter = Builders<ApplicationUser>.Filter.Eq("_id", userGuid) | Builders<ApplicationUser>.Filter.Eq("_id", userId);
                         if (session is null) await _context.ApplicationUsers.UpdateOneAsync(filter, upd);
                         else await _context.ApplicationUsers.UpdateOneAsync(session, filter, upd);
-
-                        if (entRole != null)
-                        {
-                            var targetUser = await _userManager.FindByIdAsync(userId);
-                            if (targetUser != null && !await _userManager.IsInRoleAsync(targetUser, "Entrepreneur"))
-                            {
-                                await _userManager.AddToRoleAsync(targetUser, "Entrepreneur");
-                            }
-                        }
                     }
                 }
 
@@ -412,6 +420,22 @@ namespace WebApp.Controllers
                 }
 
                 // ---- Post-commit, best-effort (NOT part of the atomic guarantee) ----
+                if (entRole != null)
+                {
+                    try
+                    {
+                        var targetUser = await _userManager.FindByIdAsync(userId);
+                        if (targetUser != null && !await _userManager.IsInRoleAsync(targetUser, "Entrepreneur"))
+                        {
+                            await _userManager.AddToRoleAsync(targetUser, "Entrepreneur");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Role update post-Level-Up failed for {UserId}.", userId);
+                    }
+                }
+
                 // Cap table (Option B): plan data, re-enterable at Phase 4 — a leveled-up
                 // user with an empty cap table is a valid recoverable state. Never blocks.
                 if ((formation?.Ownership?.Count ?? 0) > 0)

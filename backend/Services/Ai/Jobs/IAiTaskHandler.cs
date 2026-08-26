@@ -30,7 +30,8 @@ namespace WebApp.Services.Ai.Jobs
         string UserContext,
         string Task,
         int? MaxTokens = null,
-        double? Temperature = null);
+        double? Temperature = null,
+        string? ResponseFormat = null);
 
     /// <summary>
     /// Interpreted output: an optional structured payload persisted on the

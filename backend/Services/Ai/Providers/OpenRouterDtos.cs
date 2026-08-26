@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace WebApp.Services.Ai.Providers
@@ -21,9 +22,19 @@ namespace WebApp.Services.Ai.Providers
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public double? Temperature { get; set; }
 
+        [JsonPropertyName("response_format")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public OpenRouterResponseFormat? ResponseFormat { get; set; }
+
         // Ask OpenRouter to include the cost/usage accounting block in the response.
         [JsonPropertyName("usage")]
         public OpenRouterUsageRequest Usage { get; set; } = new();
+    }
+
+    internal sealed class OpenRouterResponseFormat
+    {
+        [JsonPropertyName("type")]
+        public string Type { get; set; } = "json_object";
     }
 
     internal sealed class OpenRouterUsageRequest
@@ -38,7 +49,7 @@ namespace WebApp.Services.Ai.Providers
         public string Role { get; set; } = "";
 
         [JsonPropertyName("content")]
-        public string Content { get; set; } = "";
+        public string? Content { get; set; } = "";
     }
 
     internal sealed class OpenRouterChatResponse
@@ -54,6 +65,9 @@ namespace WebApp.Services.Ai.Providers
 
         [JsonPropertyName("usage")]
         public OpenRouterUsage? Usage { get; set; }
+
+        [JsonPropertyName("error")]
+        public OpenRouterError? Error { get; set; }
     }
 
     internal sealed class OpenRouterChoice
@@ -96,9 +110,33 @@ namespace WebApp.Services.Ai.Providers
         public string? Message { get; set; }
 
         [JsonPropertyName("code")]
+        [JsonConverter(typeof(FlexibleStringConverter))]
         public string? Code { get; set; }
 
         [JsonPropertyName("type")]
         public string? Type { get; set; }
+    }
+
+    /// <summary>
+    /// Reads either a string or a numeric JSON value into a C# string without throwing.
+    /// </summary>
+    internal sealed class FlexibleStringConverter : JsonConverter<string>
+    {
+        public override string? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            if (reader.TokenType == JsonTokenType.Number)
+            {
+                if (reader.TryGetInt64(out var intVal)) return intVal.ToString();
+                if (reader.TryGetDouble(out var doubleVal)) return doubleVal.ToString();
+            }
+            if (reader.TokenType == JsonTokenType.String)
+                return reader.GetString();
+            return null;
+        }
+
+        public override void Write(Utf8JsonWriter writer, string value, JsonSerializerOptions options)
+        {
+            writer.WriteStringValue(value);
+        }
     }
 }

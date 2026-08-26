@@ -23,6 +23,7 @@ namespace WebApp.Services.Ai.Providers
         public required IReadOnlyList<AiMessage> Messages { get; init; }
         public int? MaxTokens { get; init; }
         public double? Temperature { get; init; }
+        public string? ResponseFormat { get; init; }
     }
 
     /// <summary>Token accounting returned by the provider.</summary>

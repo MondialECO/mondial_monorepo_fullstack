@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import api from '@/lib/axios';
 import {
   parseStrictUserRole,
+  resolvePrimaryRole,
   ROLE_DASHBOARD_ROUTES,
   UserRole,
 } from '@/lib/roles';
@@ -99,9 +100,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           throw new Error('Backend user has no roles; cannot authorize session');
         }
 
-        const resolvedRole = parseStrictUserRole(apiRoles[0]);
+        const resolvedRole = resolvePrimaryRole(apiRoles);
         if (!resolvedRole) {
-          throw new Error(`Unknown role from backend: "${apiRoles[0]}". Cannot authorize session.`);
+          throw new Error(`Unknown role from backend: "${JSON.stringify(apiRoles)}". Cannot authorize session.`);
         }
 
         const updatedUser: User = {
@@ -160,9 +161,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Use strict role validation; reject unknown roles
-    const resolvedRole = parseStrictUserRole(apiRoles[0]);
+    const resolvedRole = resolvePrimaryRole(apiRoles);
     if (!resolvedRole) {
-      throw new Error(`Login failed: unknown role "${apiRoles[0]}". Please contact support.`);
+      throw new Error(`Login failed: unknown role "${JSON.stringify(apiRoles)}". Please contact support.`);
     }
 
     // Capture onboarding phase from login response (backend includes it at apiUser.Onboarding.phase)
@@ -212,9 +213,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error('Backend user has no roles');
       }
 
-      const resolvedRole = parseStrictUserRole(apiRoles[0]);
+      const resolvedRole = resolvePrimaryRole(apiRoles);
       if (!resolvedRole) {
-        throw new Error(`Unknown role: "${apiRoles[0]}"`);
+        throw new Error(`Unknown role: "${JSON.stringify(apiRoles)}"`);
       }
 
       const updatedUser: User = {

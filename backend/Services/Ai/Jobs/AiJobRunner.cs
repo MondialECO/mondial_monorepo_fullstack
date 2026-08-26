@@ -100,6 +100,7 @@ namespace WebApp.Services.Ai.Jobs
                     Messages = composition.Messages,
                     MaxTokens = prep.MaxTokens,
                     Temperature = prep.Temperature,
+                    ResponseFormat = prep.ResponseFormat,
                 });
 
                 var interpreted = await handler.InterpretAsync(request, completion);
