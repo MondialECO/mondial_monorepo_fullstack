@@ -179,7 +179,7 @@ namespace WebApp.Models.Dtos
 
     public class CompanyFormationRequest
     {
-        public string SelectedType { get; set; }
+        public string SelectedType { get; set; } = string.Empty;
         public List<CreatorOwnershipEntry> Ownership { get; set; } = new();
         // A creator may save their ownership plan before choosing a formation provider.
         // Keep this optional so [ApiController] does not reject an otherwise valid plan.

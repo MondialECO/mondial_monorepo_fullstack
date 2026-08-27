@@ -260,11 +260,15 @@ namespace WebApp.Controllers
                 var warnings = new List<string>();
                 if (esop < 10) warnings.Add("esop_recommended"); // non-blocking
 
+                var formationSpId = string.IsNullOrWhiteSpace(request?.FormationSpId)
+                    ? null
+                    : request.FormationSpId.Trim();
+
                 var formation = new CreatorCompanyFormation
                 {
-                    SelectedType = request.SelectedType,
+                    SelectedType = request!.SelectedType,
                     Ownership = ownership,
-                    FormationSpId = request.FormationSpId,
+                    FormationSpId = formationSpId,
                     Status = "drafted",
                 };
 
