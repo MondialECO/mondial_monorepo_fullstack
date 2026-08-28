@@ -52,7 +52,7 @@ type SavedPhase4Data = {
 
 function Phase4HydrationSkeleton() {
   return (
-    <div className="max-w-5xl space-y-6" aria-label="Loading saved plan and reference estimates">
+    <div className="max-w-7xl space-y-6" aria-label="Loading saved plan and reference estimates">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {[0, 1].map((card) => (
           <div key={card} className="space-y-3 rounded-2xl border border-border bg-card p-4">
@@ -120,8 +120,8 @@ export default function OfferPricingPage() {
   }, [activeIdeaId, attempt, progressLoading]);
 
   return (
-    <div className="min-h-[calc(100vh-68px)] bg-background px-4 py-8 text-foreground sm:px-6">
-      <main className="mx-auto w-full max-w-5xl">
+    <div className="min-h-[calc(100vh-68px)] bg-background px-4 py-8 text-foreground sm:px-6 lg:px-8">
+      <main className="mx-auto w-full max-w-7xl">
         <header className="space-y-2">
           <h1 className="font-heading text-[32px] font-semibold leading-10 tracking-[-0.02em] text-foreground">
             {STEP_COPY[step].title}

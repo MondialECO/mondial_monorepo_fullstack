@@ -121,7 +121,7 @@ export default function MySalesPage() {
   const hasNeither = !loading && !hasActive && !hasCompleted;
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 pb-16 text-foreground font-sans">
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8 pb-16 text-foreground font-sans">
       {/* HEADER */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-6">
         <div>

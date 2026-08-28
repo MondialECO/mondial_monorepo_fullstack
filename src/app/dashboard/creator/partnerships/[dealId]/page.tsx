@@ -14,7 +14,7 @@ export default function CreatorPartnershipDetailPage() {
   if (!dealId) return null;
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto p-4 sm:p-6 lg:p-8 text-foreground font-sans">
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 text-foreground font-sans">
       <div className="flex items-center justify-between pb-2 border-b border-border">
         <Button asChild variant="ghost" size="sm" className="gap-2 text-xs text-muted-foreground hover:text-foreground">
           <Link href="/dashboard/creator/partnerships">

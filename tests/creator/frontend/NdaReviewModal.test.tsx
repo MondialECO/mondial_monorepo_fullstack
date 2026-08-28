@@ -63,6 +63,21 @@ describe("NdaReviewModal", () => {
     });
   });
 
+  it("renders gracefully with fallback values when ndaStatus is null", () => {
+    render(
+      <NdaReviewModal
+        isOpen={true}
+        onClose={vi.fn()}
+        ndaStatus={null}
+        projectName="Fallback Drone Project"
+        onSign={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText(/Project Non-Disclosure Agreement/i)).toBeInTheDocument();
+    expect(screen.getByText("Fallback Drone Project")).toBeInTheDocument();
+  });
+
   it("does not render when isOpen is false", () => {
     const { container } = render(
       <NdaReviewModal

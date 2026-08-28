@@ -34,28 +34,40 @@ export const BuyoutLegalReviewModal: React.FC<BuyoutLegalReviewModalProps> = ({
   const [pkg, setPkg] = useState<BuyoutLegalPackage | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const inFlightDealIdRef = React.useRef<string | null>(null);
 
-  const loadPackage = async () => {
+  const loadPackage = React.useCallback(async () => {
     if (!dealId) return;
+    if (inFlightDealIdRef.current === dealId) return;
+
+    inFlightDealIdRef.current = dealId;
     try {
       setLoading(true);
       setError(null);
       const res = await marketplaceProjectsApi.getBuyoutLegalPackage(dealId);
       setPkg(res);
-      onPackageChanged?.(res);
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } }; message?: string };
-      setError(e.response?.data?.message || e.message || "Failed to load buyout legal review package.");
+      const e = err as { response?: { status?: number; data?: { message?: string } }; message?: string };
+      if (e?.response?.status === 429) {
+        setError("Legal review package is temporarily refreshing too quickly. Please try again shortly.");
+      } else {
+        setError(e.response?.data?.message || e.message || "Failed to load buyout legal review package.");
+      }
     } finally {
       setLoading(false);
+      inFlightDealIdRef.current = null;
     }
-  };
+  }, [dealId]);
 
   useEffect(() => {
     if (isOpen && dealId) {
       loadPackage();
+    } else if (!isOpen) {
+      setPkg(null);
+      setError(null);
+      inFlightDealIdRef.current = null;
     }
-  }, [isOpen, dealId]);
+  }, [isOpen, dealId, loadPackage]);
 
   if (!isOpen) return null;
 

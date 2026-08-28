@@ -172,7 +172,7 @@ export const FullBuyoutDealWorkspace: React.FC<FullBuyoutDealWorkspaceProps> = (
 
   if (loading) {
     return (
-      <div className="max-w-5xl mx-auto py-24 flex flex-col items-center justify-center gap-3 text-muted-foreground">
+      <div className="w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-24 flex flex-col items-center justify-center gap-3 text-muted-foreground">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
         <p className="text-sm font-medium">Loading Full Buyout Workspace...</p>
       </div>
@@ -181,7 +181,7 @@ export const FullBuyoutDealWorkspace: React.FC<FullBuyoutDealWorkspaceProps> = (
 
   if (error || !deal) {
     return (
-      <div className="max-w-5xl mx-auto py-12 space-y-4">
+      <div className="w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-4">
         <Button
           variant="ghost"
           size="sm"
@@ -206,7 +206,7 @@ export const FullBuyoutDealWorkspace: React.FC<FullBuyoutDealWorkspaceProps> = (
   const currentStageNum = getStageNumberFromDealStage(deal.dealStage);
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 pb-20 text-foreground">
+    <div className="w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 pb-20 text-foreground">
       {/* Top Navigation Bar */}
       <div className="flex items-center justify-between">
         <Button

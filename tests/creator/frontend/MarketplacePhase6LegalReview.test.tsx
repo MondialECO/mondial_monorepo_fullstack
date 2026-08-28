@@ -314,4 +314,89 @@ describe("MarketplacePhase6LegalReview", () => {
     fireEvent.click(proceedBtn);
     expect(onProceed).toHaveBeenCalled();
   });
+
+  it("renders Not Assigned (Optional) when no legal provider is assigned", () => {
+    const pkgNoProvider: LegalReviewPackage = {
+      ...mockPackage,
+      assignedLegalProviderId: null,
+      assignedLegalProviderName: null,
+      providerReviewStatus: "NOT_ASSIGNED",
+    };
+
+    render(
+      <LegalReviewScreen
+        dealId="deal_123"
+        pkg={pkgNoProvider}
+        isCreator={true}
+        onApprove={vi.fn()}
+        onRequestChanges={vi.fn()}
+        onInviteProvider={vi.fn()}
+        onSetJurisdiction={vi.fn()}
+      />
+    );
+
+    expect(screen.getAllByText(/Not Assigned \(Optional\)/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Review the legal package together. You may optionally invite a verified Legal Service Provider for professional review./i).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("enables Approve button when NO provider is assigned and jurisdiction is set", async () => {
+    const onApprove = vi.fn().mockResolvedValue(undefined);
+    const pkgNoProvider: LegalReviewPackage = {
+      ...mockPackage,
+      assignedLegalProviderId: null,
+      assignedLegalProviderName: null,
+      providerReviewStatus: "NOT_ASSIGNED",
+    };
+
+    render(
+      <LegalReviewScreen
+        dealId="deal_123"
+        pkg={pkgNoProvider}
+        isCreator={true}
+        onApprove={onApprove}
+        onRequestChanges={vi.fn()}
+        onInviteProvider={vi.fn()}
+        onSetJurisdiction={vi.fn()}
+      />
+    );
+
+    const approveButton = screen.getByRole("button", { name: /Approve Legal Terms/i });
+    expect(approveButton).not.toBeDisabled();
+
+    fireEvent.click(approveButton);
+    expect(onApprove).toHaveBeenCalled();
+  });
+
+  it("renders Proceed to Sign Agreements button when no provider is assigned and both parties approved", () => {
+    const pkgNoProviderApproved: LegalReviewPackage = {
+      ...mockPackage,
+      assignedLegalProviderId: null,
+      assignedLegalProviderName: null,
+      providerReviewStatus: "NOT_ASSIGNED",
+      creatorApprovedVersion: 1,
+      entrepreneurApprovedVersion: 1,
+      status: "APPROVED",
+    };
+
+    const onProceed = vi.fn();
+
+    render(
+      <LegalReviewScreen
+        dealId="deal_123"
+        pkg={pkgNoProviderApproved}
+        isCreator={true}
+        onApprove={vi.fn()}
+        onRequestChanges={vi.fn()}
+        onInviteProvider={vi.fn()}
+        onSetJurisdiction={vi.fn()}
+        onProceedToSigning={onProceed}
+      />
+    );
+
+    const proceedBtn = screen.getByRole("button", { name: /Proceed to Sign Agreements/i });
+    expect(proceedBtn).toBeInTheDocument();
+
+    fireEvent.click(proceedBtn);
+    expect(onProceed).toHaveBeenCalled();
+  });
 });

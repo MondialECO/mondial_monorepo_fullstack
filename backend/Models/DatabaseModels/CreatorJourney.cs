@@ -447,6 +447,7 @@ namespace WebApp.Models.DatabaseModels
         public bool OpenToLicense { get; set; }
         public string Audience { get; set; } // public | matched | private
         public DateTime? PublishedAt { get; set; }
+        public DateTime? UpdatedAt { get; set; }
     }
 
     public class CreatorPathB

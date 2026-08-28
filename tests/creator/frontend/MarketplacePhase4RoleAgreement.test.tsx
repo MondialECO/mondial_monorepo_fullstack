@@ -2,7 +2,8 @@ import React from "react";
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { RoleAgreementScreen } from "@/components/marketplace/RoleAgreementScreen";
-import { RoleResponsibilityAgreement } from "@/lib/api-marketplace-projects";
+import { RoleAgreementModal } from "@/components/marketplace/RoleAgreementModal";
+import { RoleResponsibilityAgreement, marketplaceProjectsApi } from "@/lib/api-marketplace-projects";
 
 const mockAgreement: RoleResponsibilityAgreement = {
   id: "agree_123",
@@ -210,3 +211,146 @@ describe("MarketplacePhase4RoleAgreement - Screen 02 UI", () => {
     expect(onProceed).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("RoleAgreementModal - Request Budget & Over-fetching Prevention", () => {
+  it("fetches GET /roles exactly once when opened and does NOT trigger onAgreementChanged on read", async () => {
+    const getSpy = vi.spyOn(marketplaceProjectsApi, "getRoleAgreement").mockResolvedValue(mockAgreement);
+    const onAgreementChanged = vi.fn();
+    const onClose = vi.fn();
+
+    const { rerender } = render(
+      <RoleAgreementModal
+        isOpen={true}
+        onClose={onClose}
+        dealId="deal_123"
+        isCreator={false}
+        onAgreementChanged={onAgreementChanged}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Creator Role & Duties")).toBeDefined();
+    });
+
+    expect(getSpy).toHaveBeenCalledTimes(1);
+    expect(getSpy).toHaveBeenCalledWith("deal_123");
+    // Critical: onAgreementChanged must NOT be called on initial fetch (breaks useEffect loops)
+    expect(onAgreementChanged).not.toHaveBeenCalled();
+
+    // Rerender with same props
+    rerender(
+      <RoleAgreementModal
+        isOpen={true}
+        onClose={onClose}
+        dealId="deal_123"
+        isCreator={false}
+        onAgreementChanged={onAgreementChanged}
+      />
+    );
+
+    expect(getSpy).toHaveBeenCalledTimes(1);
+    expect(onAgreementChanged).not.toHaveBeenCalled();
+    getSpy.mockRestore();
+  });
+
+  it("handles saving changes with exactly 1 PUT /roles request and triggers onAgreementChanged", async () => {
+    const getSpy = vi.spyOn(marketplaceProjectsApi, "getRoleAgreement").mockResolvedValue(mockAgreement);
+    const updateSpy = vi.spyOn(marketplaceProjectsApi, "updateRoleAgreement").mockResolvedValue({
+      ...mockAgreement,
+      version: 2,
+      creatorResponsibilities: [...mockAgreement.creatorResponsibilities, "New Responsibility"],
+    });
+    const onAgreementChanged = vi.fn();
+
+    render(
+      <RoleAgreementModal
+        isOpen={true}
+        onClose={vi.fn()}
+        dealId="deal_123"
+        isCreator={false}
+        onAgreementChanged={onAgreementChanged}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Edit Agreement")).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByText("Edit Agreement"));
+
+    const addInput = screen.getAllByPlaceholderText("Add responsibility...")[0];
+    fireEvent.change(addInput, { target: { value: "New Responsibility" } });
+    const addBtn = screen.getAllByText("Add")[0];
+    fireEvent.click(addBtn);
+
+    const saveBtn = screen.getByText("Save & Propose V2");
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(updateSpy).toHaveBeenCalledTimes(1);
+      expect(onAgreementChanged).toHaveBeenCalledTimes(1);
+    });
+
+    // Verify GET was called only once initially, and no additional GET was fired
+    expect(getSpy).toHaveBeenCalledTimes(1);
+
+    getSpy.mockRestore();
+    updateSpy.mockRestore();
+  });
+
+  it("handles confirmation with exactly 1 POST /roles/confirm request for Entrepreneur and Creator sides", async () => {
+    const getSpy = vi.spyOn(marketplaceProjectsApi, "getRoleAgreement").mockResolvedValue(mockAgreement);
+    const confirmSpy = vi.spyOn(marketplaceProjectsApi, "confirmRoleAgreement").mockResolvedValue({
+      ...mockAgreement,
+      entrepreneurConfirmedVersion: 1,
+    });
+    const onAgreementChanged = vi.fn();
+
+    // Test Entrepreneur Side (isCreator = false)
+    const { unmount } = render(
+      <RoleAgreementModal
+        isOpen={true}
+        onClose={vi.fn()}
+        dealId="deal_123"
+        isCreator={false}
+        onAgreementChanged={onAgreementChanged}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Confirm Roles (Version 1)")).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByText("Confirm Roles (Version 1)"));
+
+    await waitFor(() => {
+      expect(confirmSpy).toHaveBeenCalledTimes(1);
+      expect(onAgreementChanged).toHaveBeenCalledTimes(1);
+    });
+
+    expect(getSpy).toHaveBeenCalledTimes(1);
+    unmount();
+
+    // Test Creator Side (isCreator = true)
+    render(
+      <RoleAgreementModal
+        isOpen={true}
+        onClose={vi.fn()}
+        dealId="deal_123"
+        isCreator={true}
+        onAgreementChanged={onAgreementChanged}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Confirm Roles (Version 1)")).toBeDefined();
+    });
+
+    // 1 get for first render + 1 get for second render = 2 total
+    expect(getSpy).toHaveBeenCalledTimes(2);
+
+    getSpy.mockRestore();
+    confirmSpy.mockRestore();
+  });
+});
+

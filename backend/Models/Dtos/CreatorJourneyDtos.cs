@@ -176,6 +176,12 @@ namespace WebApp.Models.Dtos
         public bool OpenToPurchase { get; set; }
         public bool OpenToLicense { get; set; }
         public string Audience { get; set; } // public | matched | private
+        public string? Status { get; set; }
+    }
+
+    public class MarketplaceStatusRequest
+    {
+        public string Status { get; set; } = "available"; // available | paused
     }
 
     public class CompanyFormationRequest

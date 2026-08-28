@@ -28,27 +28,39 @@ export const CapTableDraftModal: React.FC<CapTableDraftModalProps> = ({
   const [draft, setDraft] = useState<DealCapTableDraft | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const inFlightDealIdRef = React.useRef<string | null>(null);
 
-  const loadDraft = async () => {
+  const loadDraft = React.useCallback(async () => {
     if (!dealId) return;
+    if (inFlightDealIdRef.current === dealId) return;
+
+    inFlightDealIdRef.current = dealId;
     try {
       setLoading(true);
       setError(null);
       const res = await marketplaceProjectsApi.getCapTableDraft(dealId);
       setDraft(res);
-      onDraftChanged?.(res);
     } catch (err: any) {
-      setError(err.response?.data?.message || err.message || "Failed to load equity cap table draft.");
+      if (err?.response?.status === 429) {
+        setError("Cap table draft is temporarily refreshing too quickly. Please try again shortly.");
+      } else {
+        setError(err.response?.data?.message || err.message || "Failed to load equity cap table draft.");
+      }
     } finally {
       setLoading(false);
+      inFlightDealIdRef.current = null;
     }
-  };
+  }, [dealId]);
 
   useEffect(() => {
     if (isOpen && dealId) {
       loadDraft();
+    } else if (!isOpen) {
+      setDraft(null);
+      setError(null);
+      inFlightDealIdRef.current = null;
     }
-  }, [isOpen, dealId]);
+  }, [isOpen, dealId, loadDraft]);
 
   if (!isOpen) return null;
 

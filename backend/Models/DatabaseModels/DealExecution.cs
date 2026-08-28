@@ -404,6 +404,7 @@ public class LegalReviewPackage
     /// "NOT_ASSIGNED" | "ASSIGNED" | "IN_REVIEW" | "CHANGES_REQUESTED" | "REVIEW_COMPLETE"
     /// </summary>
     public string ProviderReviewStatus { get; set; } = "NOT_ASSIGNED";
+    public int ProviderReviewedVersion { get; set; }
     public DateTime? ProviderReviewedAt { get; set; }
     public string? ProviderReviewNotes { get; set; }
 

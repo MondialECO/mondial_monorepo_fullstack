@@ -264,5 +264,117 @@ namespace WebApp.Tests.Unit
             response.Success.Should().BeFalse();
             response.Message.Should().Contain("Licensing is not supported");
         }
+
+        [Fact]
+        public async Task TestF_Update_PreservesPublishedAt_AndSetsUpdatedAt()
+        {
+            var publishedDate = new DateTime(2026, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+            var journey = new CreatorJourney
+            {
+                UserId = "creator_123",
+                Phase5Data = new CreatorPhase5Data
+                {
+                    ChosenPath = "sell",
+                    PathA = new CreatorPathA
+                    {
+                        MarketplaceListing = new CreatorMarketplaceListing
+                        {
+                            Status = "available",
+                            AskingPrice = 75000,
+                            PublishedAt = publishedDate
+                        }
+                    }
+                }
+            };
+            _journeysMock.Setup(j => j.GetOrCreateComposedAsync("creator_123", null)).ReturnsAsync(journey);
+
+            var updateReq = new MarketplacePublishRequest
+            {
+                DealModes = new List<string> { "full_buyout", "equity_partnership" },
+                AskingPrice = 120000,
+                Audience = "public"
+            };
+
+            CreatorMarketplaceListing? savedListing = null;
+            _journeysMock
+                .Setup(j => j.SetMarketplaceListingAsync("creator_123", It.IsAny<CreatorMarketplaceListing>(), It.IsAny<List<string>>(), null))
+                .Callback<string, CreatorMarketplaceListing, List<string>, string>((uid, list, m, iid) => savedListing = list)
+                .ReturnsAsync(journey);
+
+            var result = await _phase5Controller.Publish(updateReq, null);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var response = okResult.Value.Should().BeOfType<ApiResponse>().Subject;
+            response.Success.Should().BeTrue();
+            response.Message.Should().Be("Listing updated");
+
+            savedListing.Should().NotBeNull();
+            savedListing!.PublishedAt.Should().Be(publishedDate);
+            savedListing.UpdatedAt.Should().NotBeNull();
+            savedListing.AskingPrice.Should().Be(120000);
+        }
+
+        [Fact]
+        public async Task TestG_Publish_SoldProject_Rejects422()
+        {
+            var journey = new CreatorJourney
+            {
+                UserId = "creator_123",
+                ProjectOutcome = "SOLD",
+                Phase5Data = new CreatorPhase5Data { ChosenPath = "sell" }
+            };
+            _journeysMock.Setup(j => j.GetOrCreateComposedAsync("creator_123", null)).ReturnsAsync(journey);
+
+            var req = new MarketplacePublishRequest
+            {
+                DealModes = new List<string> { "full_buyout" },
+                AskingPrice = 50000
+            };
+
+            var result = await _phase5Controller.Publish(req, null);
+            var unproc = result.Should().BeOfType<UnprocessableEntityObjectResult>().Subject;
+            var response = unproc.Value.Should().BeOfType<ApiResponse>().Subject;
+            response.Success.Should().BeFalse();
+            response.Message.Should().Contain("cannot update their marketplace listing");
+        }
+
+        [Fact]
+        public async Task TestH_SetMarketplaceStatus_PauseAndResume()
+        {
+            var journey = new CreatorJourney
+            {
+                UserId = "creator_123",
+                Phase5Data = new CreatorPhase5Data
+                {
+                    ChosenPath = "sell",
+                    PathA = new CreatorPathA
+                    {
+                        MarketplaceListing = new CreatorMarketplaceListing
+                        {
+                            Status = "available",
+                            AskingPrice = 50000,
+                            PublishedAt = DateTime.UtcNow.AddDays(-1)
+                        }
+                    }
+                }
+            };
+            _journeysMock.Setup(j => j.GetOrCreateComposedAsync("creator_123", null)).ReturnsAsync(journey);
+
+            CreatorMarketplaceListing? savedListing = null;
+            _journeysMock
+                .Setup(j => j.SetMarketplaceListingAsync("creator_123", It.IsAny<CreatorMarketplaceListing>(), It.IsAny<List<string>>(), null))
+                .Callback<string, CreatorMarketplaceListing, List<string>, string>((uid, list, m, iid) => savedListing = list)
+                .ReturnsAsync(journey);
+
+            var pauseReq = new MarketplaceStatusRequest { Status = "paused" };
+            var result = await _phase5Controller.SetStatus(pauseReq, null);
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var response = okResult.Value.Should().BeOfType<ApiResponse>().Subject;
+            response.Success.Should().BeTrue();
+            response.Message.Should().Be("Status updated");
+
+            savedListing.Should().NotBeNull();
+            savedListing!.Status.Should().Be("paused");
+            savedListing.UpdatedAt.Should().NotBeNull();
+        }
     }
 }

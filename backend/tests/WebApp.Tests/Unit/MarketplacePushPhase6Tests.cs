@@ -664,16 +664,46 @@ namespace WebApp.Tests.Unit
         }
 
         [Fact]
-        public async Task Test_T_ProviderReviewRequired_BeforeFinalApproval()
+        public async Task Test_T_ProviderReviewRequired_WhenProviderAssigned()
         {
             var deal = SeedApprovedDeal();
             var creatorController = CreateController(deal.CreatorId);
 
             await creatorController.GetLegalPackage(deal.Id);
-            deal.LegalPackage!.ProviderReviewStatus = "NOT_ASSIGNED";
+            deal.LegalPackage!.AssignedLegalProviderId = "sp-legal-1";
+            deal.LegalPackage.AssignedLegalProviderName = "Attorney Smith";
+            deal.LegalPackage.ProviderReviewStatus = "IN_REVIEW";
 
             var result = await creatorController.ApproveLegalPackage(deal.Id);
             result.Should().BeOfType<UnprocessableEntityObjectResult>();
+        }
+
+        [Fact]
+        public async Task Test_T2_NoProviderAssigned_AllowsBilateralApprovalAndAdvancesStage()
+        {
+            var deal = SeedApprovedDeal();
+            var creatorController = CreateController(deal.CreatorId);
+            var entController = CreateController(deal.EntrepreneurId, "Entrepreneur");
+
+            await creatorController.GetLegalPackage(deal.Id);
+            deal.LegalPackage!.AssignedLegalProviderId = null;
+            deal.LegalPackage.AssignedLegalProviderName = null;
+            deal.LegalPackage.ProviderReviewStatus = "NOT_ASSIGNED";
+
+            // Creator approves without provider
+            var creatorRes = await creatorController.ApproveLegalPackage(deal.Id);
+            creatorRes.Should().BeOfType<OkObjectResult>();
+            deal.LegalPackage.Status.Should().Be("CREATOR_APPROVED");
+            deal.DealStage.Should().Be("LEGAL_REVIEW_PENDING");
+
+            // Entrepreneur approves without provider
+            var entRes = await entController.ApproveLegalPackage(deal.Id);
+            var ok = entRes.Should().BeOfType<OkObjectResult>().Subject;
+            var resp = ok.Value.Should().BeOfType<ApiResponse>().Subject;
+            var dto = resp.Data.Should().BeOfType<LegalReviewPackageDto>().Subject;
+
+            dto.Status.Should().Be("APPROVED");
+            deal.DealStage.Should().Be("SIGNATURE_PENDING");
         }
 
         [Fact]

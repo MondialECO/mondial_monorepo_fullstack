@@ -85,7 +85,12 @@ export const LegalReviewScreen: React.FC<LegalReviewScreenProps> = ({
     ? pkg.entrepreneurApprovedVersion === pkg.version
     : pkg.creatorApprovedVersion === pkg.version;
 
-  const isProviderReviewComplete = pkg.providerReviewStatus === "REVIEW_COMPLETE";
+  const hasAssignedProvider = Boolean(
+    (pkg.assignedLegalProviderId && pkg.assignedLegalProviderId.trim().length > 0) ||
+    (pkg.assignedLegalProviderName && pkg.assignedLegalProviderName.trim().length > 0)
+  );
+
+  const isProviderReviewComplete = !hasAssignedProvider || pkg.providerReviewStatus === "REVIEW_COMPLETE";
   const hasJurisdiction = Boolean(pkg.jurisdiction && pkg.jurisdiction.trim().length > 0);
 
   const isFullyApproved =
@@ -270,11 +275,11 @@ export const LegalReviewScreen: React.FC<LegalReviewScreenProps> = ({
               </span>
               <Scale className="w-4 h-4 text-primary" />
             </div>
-            {pkg.assignedLegalProviderName ? (
+            {hasAssignedProvider ? (
               <div>
                 <div className="flex items-center gap-1.5 text-base font-bold text-foreground">
                   <UserCheck className="w-4 h-4 text-success-strong" />
-                  {pkg.assignedLegalProviderName}
+                  {pkg.assignedLegalProviderName || "Assigned Counsel"}
                 </div>
                 <div className="mt-1 flex items-center gap-2">
                   <span
@@ -283,14 +288,14 @@ export const LegalReviewScreen: React.FC<LegalReviewScreenProps> = ({
                         ? "bg-success-light text-success-strong border border-success-strong/30"
                         : pkg.providerReviewStatus === "CHANGES_REQUESTED"
                         ? "bg-destructive/10 text-destructive border border-destructive/30"
-                        : "bg-primary/10 text-primary border border-primary/20"
+                        : "bg-warning/10 text-warning border border-warning/30"
                     }`}
                   >
                     {pkg.providerReviewStatus === "REVIEW_COMPLETE"
                       ? "Review Complete"
                       : pkg.providerReviewStatus === "CHANGES_REQUESTED"
                       ? "Changes Requested"
-                      : "Review In Progress"}
+                      : "Pending Review"}
                   </span>
                 </div>
               </div>
@@ -298,10 +303,10 @@ export const LegalReviewScreen: React.FC<LegalReviewScreenProps> = ({
               <div>
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-muted border border-border text-muted-foreground">
                   <Clock className="w-3.5 h-3.5" />
-                  No Provider Assigned
+                  Not Assigned (Optional)
                 </span>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Invite an approved Legal Service Provider to review.
+                  Review the legal package together. You may optionally invite a verified Legal Service Provider for professional review.
                 </p>
               </div>
             )}
@@ -313,7 +318,7 @@ export const LegalReviewScreen: React.FC<LegalReviewScreenProps> = ({
               onClick={() => setIsInvitingProvider(true)}
               className="mt-4 w-full bg-background border-border text-foreground hover:bg-muted"
             >
-              {pkg.assignedLegalProviderName ? "Reassign Legal Provider" : "Invite Legal Provider"}
+              {hasAssignedProvider ? "Reassign Legal Provider" : "Invite Legal Provider"}
             </Button>
           )}
         </div>
@@ -471,15 +476,21 @@ export const LegalReviewScreen: React.FC<LegalReviewScreenProps> = ({
             </div>
 
             <div className="flex items-center gap-2 text-sm">
-              <span className="text-muted-foreground">Legal Review:</span>
-              {isProviderReviewComplete ? (
-                <span className="flex items-center gap-1 text-success-strong font-semibold text-xs bg-success-light px-2 py-0.5 rounded-full border border-success-strong/30">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  Complete
-                </span>
+              <span className="text-muted-foreground">Legal Provider:</span>
+              {hasAssignedProvider ? (
+                pkg.providerReviewStatus === "REVIEW_COMPLETE" ? (
+                  <span className="flex items-center gap-1 text-success-strong font-semibold text-xs bg-success-light px-2 py-0.5 rounded-full border border-success-strong/30">
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    Approved
+                  </span>
+                ) : (
+                  <span className="text-warning font-semibold text-xs bg-warning/10 px-2 py-0.5 rounded-full border border-warning/30">
+                    Pending Review
+                  </span>
+                )
               ) : (
-                <span className="text-warning font-semibold text-xs bg-warning/10 px-2 py-0.5 rounded-full border border-warning/30">
-                  Required
+                <span className="text-muted-foreground text-xs bg-muted px-2 py-0.5 rounded-full">
+                  Not Assigned (Optional)
                 </span>
               )}
             </div>
@@ -487,13 +498,15 @@ export const LegalReviewScreen: React.FC<LegalReviewScreenProps> = ({
 
           <p className="text-xs text-muted-foreground">
             {isFullyApproved
-              ? "All legal documents and terms have been mutually approved and verified. Ready to sign."
+              ? "All legal documents and terms have been mutually approved. Ready to sign."
               : !hasJurisdiction
               ? "Specify governing jurisdiction before legal approval."
-              : !isProviderReviewComplete
-              ? "A human verified Legal Service Provider must complete the legal review first."
+              : hasAssignedProvider && !isProviderReviewComplete
+              ? "A verified Legal Service Provider has been assigned. Provider review must be completed before the legal package can be finalized."
               : userApprovedCurrent
               ? "You have approved the current version. Awaiting partner approval."
+              : !hasAssignedProvider
+              ? "Review the legal package together. You may optionally invite a verified Legal Service Provider for professional review."
               : "Review terms carefully. Approving will lock the legal package for final signature."}
           </p>
         </div>

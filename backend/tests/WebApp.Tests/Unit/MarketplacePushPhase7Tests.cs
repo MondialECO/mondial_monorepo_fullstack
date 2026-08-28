@@ -289,6 +289,23 @@ namespace WebApp.Tests.Unit
         }
 
         [Fact]
+        public async Task Test_C2_NoProviderAssigned_AllowsSigning()
+        {
+            var deal = SeedApprovedDealForSigning("deal-no-provider-sign");
+            deal.LegalPackage!.AssignedLegalProviderId = null;
+            deal.LegalPackage.AssignedLegalProviderName = null;
+            deal.LegalPackage.ProviderReviewStatus = "NOT_ASSIGNED";
+
+            var controller = CreateController("creator-1");
+            var res = await controller.GetSigningPackage("deal-no-provider-sign");
+
+            var ok = res.Should().BeOfType<OkObjectResult>().Subject;
+            var resp = ok.Value.Should().BeOfType<ApiResponse>().Subject;
+            var dto = resp.Data.Should().BeOfType<AgreementSigningPackageDto>().Subject;
+            dto.Status.Should().Be("PENDING_SIGNATURES");
+        }
+
+        [Fact]
         public async Task Test_D_SigningPackageBindsApprovedLegalPackageVersion()
         {
             var deal = SeedApprovedDealForSigning("deal-bind-v");

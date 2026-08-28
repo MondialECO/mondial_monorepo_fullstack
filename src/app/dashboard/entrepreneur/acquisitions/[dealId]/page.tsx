@@ -39,7 +39,7 @@ export default function EntrepreneurAcquisitionDetailPage() {
 
   if (loading) {
     return (
-      <div className="max-w-6xl mx-auto py-24 flex flex-col items-center justify-center gap-3 text-muted-foreground">
+      <div className="w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-24 flex flex-col items-center justify-center gap-3 text-muted-foreground">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
         <p className="text-sm font-medium">Loading acquisition workspace...</p>
       </div>
@@ -48,7 +48,7 @@ export default function EntrepreneurAcquisitionDetailPage() {
 
   if (error || !deal) {
     return (
-      <div className="max-w-5xl mx-auto py-12 space-y-4">
+      <div className="w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-4">
         <Card className="rounded-2xl border border-destructive/30 bg-destructive/5 p-8 text-center space-y-3">
           <AlertTriangle className="h-8 w-8 text-destructive mx-auto" />
           <h3 className="text-base font-bold text-foreground">Acquisition Record Not Available</h3>
@@ -79,7 +79,7 @@ export default function EntrepreneurAcquisitionDetailPage() {
   return (
     <div className="space-y-6">
       {/* TOP-LEVEL VIEW SWITCHER FOR SOLD ACQUISITION */}
-      <div className="max-w-6xl mx-auto flex items-center justify-center sm:justify-start">
+      <div className="w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-center sm:justify-start">
         <div className="inline-flex p-1 bg-muted/60 border border-border rounded-xl">
           <button
             onClick={() => setViewMode("purchased_project")}

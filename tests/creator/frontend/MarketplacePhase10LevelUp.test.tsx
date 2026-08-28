@@ -195,4 +195,85 @@ describe('Marketplace Phase 10 — Co-founded Phase 6 Readiness & Level Up Front
     fireEvent.click(screen.getByText('Cancel'));
     expect(onCancel).toHaveBeenCalled();
   });
+
+  it('hides Level Up CTA for SELL / Full Buyout path before sale even if preparation is 100%', async () => {
+    const sellReadiness: CreatorReadiness = {
+      overallProgress: 100,
+      levelUpEligible: false,
+      selectedPath: 'sell',
+      qualificationPath: 'SELL',
+      companyName: '',
+      creatorRole: '',
+      creatorEquityPercent: null,
+      partnerName: '',
+      requirements: [
+        { key: 'verification', label: 'Verify your identity', route: '/dashboard/creator/phase-1', complete: true, required: true, blocking: true, status: 'COMPLETE' },
+        { key: 'idea_core', label: 'Define your idea', route: '/dashboard/creator/phase-2', complete: true, required: true, blocking: true, status: 'COMPLETE' },
+      ],
+      missingRequired: [],
+      nextBestAction: { key: 'publish_full_buyout', label: 'Publish your Full Buyout listing', route: '/dashboard/creator/crossroads', complete: false, required: false },
+    };
+
+    (creatorJourneyApi.creatorReadiness as any).mockResolvedValue(sellReadiness);
+
+    render(<InvestorsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Full Buyout readiness: 100%/i)).toBeInTheDocument();
+      expect(screen.queryByText('Level Up to Entrepreneur')).not.toBeInTheDocument();
+    });
+  });
+
+  it('hides Level Up CTA for SOLD projects', async () => {
+    const soldReadiness: CreatorReadiness = {
+      overallProgress: 100,
+      levelUpEligible: false,
+      selectedPath: 'sell',
+      qualificationPath: 'SELL',
+      companyName: '',
+      creatorRole: '',
+      creatorEquityPercent: null,
+      partnerName: '',
+      outcomeBadge: 'SOLD',
+      requirements: [],
+      missingRequired: [],
+      nextBestAction: null,
+    };
+
+    (creatorJourneyApi.creatorReadiness as any).mockResolvedValue(soldReadiness);
+
+    render(<InvestorsPage />);
+
+    await waitFor(() => {
+      expect(screen.queryByText('Level Up to Entrepreneur')).not.toBeInTheDocument();
+    });
+  });
+
+  it('shows Level Up CTA for BUILD path when all requirements are complete', async () => {
+    const buildReadiness: CreatorReadiness = {
+      overallProgress: 100,
+      levelUpEligible: true,
+      selectedPath: 'build',
+      qualificationPath: 'BUILD',
+      companyName: 'Acme SaaS',
+      creatorRole: 'Founder',
+      creatorEquityPercent: 100,
+      partnerName: '',
+      requirements: [
+        { key: 'verification', label: 'Verify your identity', route: '/dashboard/creator/phase-1', complete: true, required: true, blocking: true, status: 'COMPLETE' },
+        { key: 'company_setup', label: 'Complete company planning', route: '/dashboard/creator/crossroads', complete: true, required: true, blocking: true, status: 'COMPLETE' },
+      ],
+      missingRequired: [],
+      nextBestAction: { key: 'level_up', label: 'Become an Entrepreneur', route: '/dashboard/creator/investors', complete: true, required: true, status: 'READY' },
+    };
+
+    (creatorJourneyApi.creatorReadiness as any).mockResolvedValue(buildReadiness);
+
+    render(<InvestorsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Ready to go all in?')).toBeInTheDocument();
+      expect(screen.getByText('Level Up to Entrepreneur')).toBeInTheDocument();
+    });
+  });
 });
