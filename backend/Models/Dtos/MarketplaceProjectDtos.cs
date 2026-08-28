@@ -1529,5 +1529,40 @@ namespace WebApp.Models.Dtos
         public string? Notes { get; set; }
         public int ExpectedVersion { get; set; } = 0;
     }
+
+    public class EntrepreneurProjectConnectionDto
+    {
+        public string IdeaId { get; set; } = string.Empty;
+        public string ProjectName { get; set; } = string.Empty;
+        public string? ProjectLogoUrl { get; set; }
+        public string? ProjectSummary { get; set; }
+        public string? ProblemStatement { get; set; }
+        public string? TargetAudience { get; set; }
+        public string? Sector { get; set; }
+        public int ClarityScore { get; set; }
+
+        public string CreatorId { get; set; } = string.Empty;
+        public string CreatorName { get; set; } = string.Empty;
+        public string? CreatorAvatarUrl { get; set; }
+
+        public string? InterestId { get; set; }
+        public string? InterestStatus { get; set; }
+        public string? SelectedDealMode { get; set; }
+
+        public bool NdaRequired { get; set; }
+        public string? NdaStatus { get; set; }
+
+        public string? DealExecutionId { get; set; }
+        public string? DealType { get; set; }
+        public string? DealStage { get; set; }
+        public string? DealStatus { get; set; }
+
+        public string DisplayStatus { get; set; } = "Interest Pending";
+        public string Category { get; set; } = "Pending";
+        public string? ProjectOutcome { get; set; }
+
+        public DateTime? LastActivityAt { get; set; }
+        public DateTime CreatedAt { get; set; }
+    }
 }
 

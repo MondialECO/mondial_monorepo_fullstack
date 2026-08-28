@@ -330,19 +330,38 @@ export default function ProjectDetailPage() {
     : null;
   const currentInterest = interestState.interest;
   const isAccepted = currentInterest?.status === "accepted";
+  const isDeclined = currentInterest?.status === "declined" && !deal;
   const isAccessGranted = Boolean(ndaStatus?.accessGranted || privateProject);
-  const isSold = Boolean(
-    project.status === "closed" ||
-    deal?.dealStage === "SOLD" ||
-    deal?.dealStage === "BUYOUT_COMPLETED" ||
-    (project as { outcome?: string }).outcome === "SOLD"
+
+  const isCompletedBuyout = Boolean(
+    deal?.dealType === "FULL_BUYOUT" &&
+    (deal?.dealStage === "SOLD" || deal?.dealStage === "BUYOUT_COMPLETED" || deal?.status === "sold" || (project as { outcome?: string }).outcome === "SOLD")
   );
+
+  const isCompletedPartnership = Boolean(
+    deal?.dealType === "EQUITY_PARTNERSHIP" &&
+    (deal?.dealStage === "PARTNERSHIP_ACTIVE" || deal?.status === "active" || (project as { outcome?: string }).outcome === "PARTNERSHIP_ACTIVE" || (project as { outcome?: string }).outcome === "CO_FOUNDED")
+  );
+
+  const isCompleted = isCompletedBuyout || isCompletedPartnership;
+  const isSold = isCompletedBuyout;
 
   return (
     <div className="w-full min-h-screen bg-background text-foreground">
       <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         {/* Navigation back */}
-        <div>
+        <div className="flex items-center gap-2">
+          <Button
+            asChild
+            variant="ghost"
+            size="sm"
+            className="gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+          >
+            <Link href="/dashboard/entrepreneur/discover/projects">
+              <ArrowLeft className="h-4 w-4" /> Back to My Project Connections
+            </Link>
+          </Button>
+          <span className="text-muted-foreground/40 text-xs">/</span>
           <Button
             asChild
             variant="ghost"
@@ -350,7 +369,7 @@ export default function ProjectDetailPage() {
             className="gap-1.5 text-xs text-muted-foreground hover:text-foreground"
           >
             <Link href="/dashboard/entrepreneur/discover">
-              <ArrowLeft className="h-4 w-4" /> Back to Discovery
+              Discover
             </Link>
           </Button>
         </div>
@@ -367,7 +386,15 @@ export default function ProjectDetailPage() {
               </Badge>
             </div>
 
-            {isAccessGranted ? (
+            {isCompletedBuyout ? (
+              <Badge variant="outline" className="gap-1.5 text-xs font-bold text-success-strong border-success-strong/30 bg-success-light">
+                <CheckCircle2 className="h-3.5 w-3.5" /> Project Acquisition Completed
+              </Badge>
+            ) : isCompletedPartnership ? (
+              <Badge variant="outline" className="gap-1.5 text-xs font-bold text-success-strong border-success-strong/30 bg-success-light">
+                <Award className="h-3.5 w-3.5" /> Partnership Active
+              </Badge>
+            ) : isAccessGranted ? (
               <Badge variant="outline" className="gap-1.5 text-xs font-medium text-success-strong border-success-strong/30 bg-success-light">
                 <FileCheck className="h-3.5 w-3.5" /> Scoped Private Access Granted
               </Badge>
@@ -416,8 +443,129 @@ export default function ProjectDetailPage() {
           </div>
         </Card>
 
-        {/* NDA Review Callout Banner (when interest is accepted & NDA required & not yet signed & not sold) */}
-        {isAccepted && project.ndaRequired && !isAccessGranted && !isSold && (
+        {/* Completed Buyout Banner */}
+        {isCompletedBuyout && (
+          <Card className="p-5 rounded-2xl border-success-strong/30 bg-success-light/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-success-strong/20 text-success-strong flex items-center justify-center flex-shrink-0 mt-0.5 sm:mt-0">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-bold font-heading text-foreground">
+                    Project Acquisition Completed
+                  </h3>
+                  <Badge variant="outline" className="text-[10px] font-bold bg-success-light text-success-strong border-success-strong/30">
+                    Completed
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  This project has been successfully acquired. You can continue from your Acquired Project workspace or review the completed acquisition record.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+              <Button
+                asChild
+                size="sm"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold gap-1.5 shadow-sm w-full sm:w-auto"
+              >
+                <Link href={`/dashboard/entrepreneur/acquisitions/${deal?.id || ideaId}`}>
+                  <Package className="w-4 h-4" /> Open Acquired Project
+                </Link>
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setIsBuyoutSaleRecordModalOpen(true)}
+                className="text-xs font-semibold gap-1.5 w-full sm:w-auto"
+              >
+                <FileCheck className="w-4 h-4" /> View Acquisition Record
+              </Button>
+            </div>
+          </Card>
+        )}
+
+        {/* Completed Equity Partnership Banner */}
+        {isCompletedPartnership && (
+          <Card className="p-5 rounded-2xl border-success-strong/30 bg-success-light/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-success-strong/20 text-success-strong flex items-center justify-center flex-shrink-0 mt-0.5 sm:mt-0">
+                <Award className="w-5 h-5" />
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-bold font-heading text-foreground">
+                    Partnership Formation Completed
+                  </h3>
+                  <Badge variant="outline" className="text-[10px] font-bold bg-success-light text-success-strong border-success-strong/30">
+                    Partnership Active
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Partnership formation is complete. Continue managing your shared company, ownership, and partnership activity from the active partnership workspace.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setIsPartnershipModalOpen(true)}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold gap-1.5 shadow-sm w-full sm:w-auto"
+              >
+                <Award className="w-4 h-4" /> Open Partnership Workspace
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setIsCapTableModalOpen(true)}
+                className="text-xs font-semibold gap-1.5 w-full sm:w-auto"
+              >
+                <PieChart className="w-4 h-4" /> View Equity & Cap Table
+              </Button>
+            </div>
+          </Card>
+        )}
+
+        {/* Declined Interest Callout Banner */}
+        {isDeclined && (
+          <Card className="p-5 rounded-2xl border-destructive/30 bg-destructive/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-xl bg-destructive/20 text-destructive flex items-center justify-center flex-shrink-0 mt-0.5 sm:mt-0">
+                <AlertCircle className="w-5 h-5" />
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-bold font-heading text-foreground">
+                    Interest Closed
+                  </h3>
+                  <Badge variant="outline" className="text-[10px] font-semibold bg-destructive/10 text-destructive border-destructive/30">
+                    Declined
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  This project is no longer active for your request.
+                </p>
+              </div>
+            </div>
+            <Button
+              asChild
+              size="sm"
+              variant="outline"
+              className="text-xs font-semibold gap-1.5 w-full sm:w-auto"
+            >
+              <Link href="/dashboard/entrepreneur/discover/projects">
+                Back to My Project Connections
+              </Link>
+            </Button>
+          </Card>
+        )}
+
+        {/* NDA Review Callout Banner (when interest is accepted & NDA required & not yet signed & not completed) */}
+        {isAccepted && project.ndaRequired && !isAccessGranted && !isCompleted && !isDeclined && (
           <Card className="p-5 rounded-2xl border-warning/30 bg-warning/5 dark:bg-warning/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-start gap-3">
               <div className="w-9 h-9 rounded-xl bg-warning/20 text-warning flex items-center justify-center flex-shrink-0 mt-0.5 sm:mt-0">
@@ -905,7 +1053,153 @@ export default function ProjectDetailPage() {
               </div>
 
               {/* Status handling */}
-              {interestState.hasInterest && currentInterest ? (
+              {isCompletedBuyout ? (
+                <div className="rounded-xl border border-success-strong/30 bg-success-light/10 p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="h-5 w-5 text-success-strong" />
+                      <div>
+                        <div className="text-xs font-bold text-foreground">
+                          Acquisition Completed
+                        </div>
+                        <div className="text-[10px] text-muted-foreground">
+                          Project 100% Acquired
+                        </div>
+                      </div>
+                    </div>
+                    <Badge variant="outline" className="text-[10px] font-semibold bg-success-light text-success-strong border-success-strong/30">
+                      SOLD
+                    </Badge>
+                  </div>
+
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Full buyout has closed and asset handover is completed.
+                  </p>
+
+                  {/* Actions */}
+                  <div className="space-y-2 pt-2 border-t border-border/60">
+                    <Button asChild className="w-full h-auto min-h-10 px-3 py-2 text-sm font-semibold gap-2 shadow-sm">
+                      <Link href={`/dashboard/entrepreneur/acquisitions/${deal?.id || ideaId}`}>
+                        <Package className="h-4 w-4 shrink-0" />
+                        <span>Open Acquired Project</span>
+                      </Link>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsBuyoutSaleRecordModalOpen(true)}
+                      className="w-full h-auto min-h-10 px-3 py-2 text-sm font-semibold gap-2"
+                    >
+                      <FileCheck className="h-4 w-4 shrink-0" />
+                      <span>View Acquisition Record</span>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsBuyoutHandoverModalOpen(true)}
+                      className="w-full h-auto min-h-10 px-3 py-2 text-sm font-semibold gap-2"
+                    >
+                      <Package className="h-4 w-4 shrink-0" />
+                      <span>Asset Handover Details</span>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsReviewDealModalOpen(true)}
+                      className="w-full h-auto min-h-10 px-3 py-2 text-sm font-semibold gap-2"
+                    >
+                      <Handshake className="h-4 w-4 shrink-0" />
+                      <span>Agreed Buyout Terms 🔒</span>
+                    </Button>
+                  </div>
+
+                  {/* What's next panel */}
+                  <div className="mt-4 pt-3 border-t border-border/60 space-y-2 bg-background/50 rounded-lg p-3">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-foreground flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-primary" /> What&apos;s next?
+                    </span>
+                    <ol className="text-xs text-muted-foreground space-y-1.5 list-decimal list-inside leading-relaxed">
+                      <li>Open your acquired project workspace</li>
+                      <li>Review the completed handover and acquisition record</li>
+                      <li>Continue developing the acquired project from your Entrepreneur workspace</li>
+                    </ol>
+                  </div>
+                </div>
+              ) : isCompletedPartnership ? (
+                <div className="rounded-xl border border-success-strong/30 bg-success-light/10 p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <Award className="h-5 w-5 text-success-strong" />
+                      <div>
+                        <div className="text-xs font-bold text-foreground">
+                          Partnership Active
+                        </div>
+                        <div className="text-[10px] text-muted-foreground">
+                          Co-founder Formation Complete
+                        </div>
+                      </div>
+                    </div>
+                    <Badge variant="outline" className="text-[10px] font-semibold bg-success-light text-success-strong border-success-strong/30">
+                      Active
+                    </Badge>
+                  </div>
+
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Partnership agreement signed and company activated.
+                  </p>
+
+                  {/* Actions */}
+                  <div className="space-y-2 pt-2 border-t border-border/60">
+                    <Button
+                      type="button"
+                      onClick={() => setIsPartnershipModalOpen(true)}
+                      className="w-full h-auto min-h-10 px-3 py-2 text-sm font-semibold gap-2 shadow-sm"
+                    >
+                      <Award className="h-4 w-4 shrink-0" />
+                      <span>Open Partnership Workspace</span>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsCapTableModalOpen(true)}
+                      className="w-full h-auto min-h-10 px-3 py-2 text-sm font-semibold gap-2"
+                    >
+                      <PieChart className="h-4 w-4 shrink-0" />
+                      <span>View Equity & Cap Table</span>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsRoleModalOpen(true)}
+                      className="w-full h-auto min-h-10 px-3 py-2 text-sm font-semibold gap-2"
+                    >
+                      <Users className="h-4 w-4 shrink-0" />
+                      <span>View Role Agreement</span>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsReviewDealModalOpen(true)}
+                      className="w-full h-auto min-h-10 px-3 py-2 text-sm font-semibold gap-2"
+                    >
+                      <Handshake className="h-4 w-4 shrink-0" />
+                      <span>Review Agreed Terms 🔒</span>
+                    </Button>
+                  </div>
+
+                  {/* What's next panel */}
+                  <div className="mt-4 pt-3 border-t border-border/60 space-y-2 bg-background/50 rounded-lg p-3">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-foreground flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-primary" /> What&apos;s next?
+                    </span>
+                    <ol className="text-xs text-muted-foreground space-y-1.5 list-decimal list-inside leading-relaxed">
+                      <li>Open the active partnership workspace</li>
+                      <li>Review ownership in Equity & Cap Table</li>
+                      <li>Continue company execution and collaboration</li>
+                    </ol>
+                  </div>
+                </div>
+              ) : interestState.hasInterest && currentInterest ? (
                 (() => {
                   const getInterestDealMode = (): "full_buyout" | "equity_partnership" => {
                     if (deal?.dealType === "FULL_BUYOUT") return "full_buyout";

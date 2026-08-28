@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, Store, Sparkles, Filter, ArrowRight, Loader2, ShieldCheck, Tag } from "lucide-react";
+import { Search, Store, Sparkles, Filter, ArrowRight, Loader2, ShieldCheck, Tag, Compass, Link2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -50,6 +50,43 @@ export default function EntrepreneurDiscoverPage() {
   return (
     <div className="w-full min-h-screen bg-background text-foreground">
       <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        {/* Navigation Tabs Header */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border pb-4">
+          <div className="flex items-center gap-2 bg-muted/60 p-1 rounded-xl border border-border">
+            <Button
+              variant="secondary"
+              size="sm"
+              className="rounded-lg text-xs font-bold bg-background text-foreground shadow-sm flex items-center gap-1.5"
+            >
+              <Compass className="w-4 h-4 text-primary" />
+              Explore Discover
+            </Button>
+            <Button
+              asChild
+              variant="ghost"
+              size="sm"
+              className="rounded-lg text-xs font-semibold text-muted-foreground hover:text-foreground"
+            >
+              <Link href="/dashboard/entrepreneur/discover/projects" className="flex items-center gap-1.5">
+                <Link2 className="w-4 h-4" />
+                My Project Connections
+              </Link>
+            </Button>
+          </div>
+
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="rounded-xl border-border bg-card text-xs font-medium text-muted-foreground hover:text-foreground"
+          >
+            <Link href="/dashboard/entrepreneur/discover/projects">
+              <Link2 className="w-3.5 h-3.5 mr-1.5 text-primary" />
+              View My Connected Projects
+            </Link>
+          </Button>
+        </div>
+
         {/* Header Banner */}
         <div className="rounded-3xl border border-border bg-gradient-to-br from-card via-card to-primary/5 p-8 relative overflow-hidden">
           <div className="max-w-2xl space-y-3 relative z-10">

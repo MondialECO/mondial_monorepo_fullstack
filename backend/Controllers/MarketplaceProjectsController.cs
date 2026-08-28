@@ -165,15 +165,45 @@ namespace WebApp.Controllers
                 if (idea == null)
                     return NotFound(ApiResponse.Error("Project not found.", HttpContext.TraceIdentifier));
 
-                var listing = idea.Phase5Data?.PathA?.MarketplaceListing;
-                if (listing == null)
-                    return NotFound(ApiResponse.Error("Project has no active marketplace listing.", HttpContext.TraceIdentifier));
+                var listing = idea.Phase5Data?.PathA?.MarketplaceListing ?? new CreatorMarketplaceListing();
 
-                bool isOwner = idea.UserId == userId;
-                bool isAcquirer = !string.IsNullOrEmpty(idea.AcquiredByUserId) && idea.AcquiredByUserId == userId;
+                bool isOwner = !string.IsNullOrEmpty(userId) && idea.UserId == userId;
+                bool isAcquirer = !string.IsNullOrEmpty(userId) && !string.IsNullOrEmpty(idea.AcquiredByUserId) && idea.AcquiredByUserId == userId;
                 bool isPublic = listing.Audience == "public" && (listing.Status == "live" || listing.Status == "available");
 
-                if (!isOwner && !isAcquirer && !isPublic && !User.IsInRole("Admin"))
+                bool canView = isPublic || isOwner || isAcquirer || User.IsInRole("Admin");
+                if (!canView && !string.IsNullOrEmpty(userId))
+                {
+                    var hasInterest = (await _context.ProjectInterests
+                        .Find(x => x.IdeaId == ideaId && x.EntrepreneurId == userId)
+                        .FirstOrDefaultAsync()) != null;
+                    if (hasInterest)
+                    {
+                        canView = true;
+                    }
+                    else
+                    {
+                        var hasGrant = (await _context.MarketplaceProjectAccessGrants
+                            .Find(x => x.IdeaId == ideaId && x.EntrepreneurId == userId)
+                            .FirstOrDefaultAsync()) != null;
+                        if (hasGrant)
+                        {
+                            canView = true;
+                        }
+                        else
+                        {
+                            var hasDeal = (await _context.DealExecutions
+                                .Find(d => d.IdeaId == ideaId && (d.EntrepreneurId == userId || d.CreatedByUserId == userId))
+                                .FirstOrDefaultAsync()) != null;
+                            if (hasDeal)
+                            {
+                                canView = true;
+                            }
+                        }
+                    }
+                }
+
+                if (!canView)
                     return NotFound(ApiResponse.Error("Project not found or is private.", HttpContext.TraceIdentifier));
 
                 return Ok(ApiResponse.Ok("OK", MapToPublicDto(idea, listing)));
@@ -368,9 +398,7 @@ namespace WebApp.Controllers
                 if (idea == null)
                     return NotFound(ApiResponse.Error("Project not found.", HttpContext.TraceIdentifier));
 
-                var listing = idea.Phase5Data?.PathA?.MarketplaceListing;
-                if (listing == null)
-                    return NotFound(ApiResponse.Error("Project has no active marketplace listing.", HttpContext.TraceIdentifier));
+                var listing = idea.Phase5Data?.PathA?.MarketplaceListing ?? new CreatorMarketplaceListing();
 
                 var interest = await _context.ProjectInterests
                     .Find(x => x.IdeaId == ideaId && x.EntrepreneurId == userId)
@@ -567,9 +595,7 @@ namespace WebApp.Controllers
                 if (idea == null)
                     return NotFound(ApiResponse.Error("Project not found.", HttpContext.TraceIdentifier));
 
-                var listing = idea.Phase5Data?.PathA?.MarketplaceListing;
-                if (listing == null)
-                    return NotFound(ApiResponse.Error("Project has no active marketplace listing.", HttpContext.TraceIdentifier));
+                var listing = idea.Phase5Data?.PathA?.MarketplaceListing ?? new CreatorMarketplaceListing();
 
                 bool isOwner = idea.UserId == userId;
                 bool isAcquirer = !string.IsNullOrEmpty(idea.AcquiredByUserId) && idea.AcquiredByUserId == userId;
@@ -1100,6 +1126,391 @@ namespace WebApp.Controllers
                 }
             }
             catch { }
+        }
+
+        /// <summary>
+        /// GET /api/marketplace/projects/connections
+        /// and GET /api/entrepreneur/project-connections
+        /// Returns all Creator projects that the authenticated Entrepreneur has connected with or acted on.
+        /// </summary>
+        [HttpGet("connections")]
+        [HttpGet("/api/entrepreneur/project-connections")]
+        public async Task<IActionResult> GetEntrepreneurProjectConnections()
+        {
+            try
+            {
+                var userId = GetUserId();
+
+                // 1. Fetch all ProjectInterests for this entrepreneur
+                var interests = await _context.ProjectInterests
+                    .Find(pi => pi.EntrepreneurId == userId)
+                    .ToListAsync();
+
+                // 2. Fetch all AccessGrants for this entrepreneur
+                var grants = await _context.MarketplaceProjectAccessGrants
+                    .Find(g => g.EntrepreneurId == userId)
+                    .ToListAsync();
+
+                // 3. Fetch all DealExecutions where entrepreneur is involved
+                var deals = await _context.DealExecutions
+                    .Find(d => d.EntrepreneurId == userId || d.CreatedByUserId == userId)
+                    .ToListAsync();
+
+                // Collect distinct IdeaIds
+                var ideaIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                foreach (var pi in interests)
+                {
+                    if (!string.IsNullOrWhiteSpace(pi.IdeaId))
+                        ideaIds.Add(pi.IdeaId);
+                }
+
+                foreach (var g in grants)
+                {
+                    if (!string.IsNullOrWhiteSpace(g.IdeaId))
+                        ideaIds.Add(g.IdeaId);
+                }
+
+                foreach (var d in deals)
+                {
+                    if (!string.IsNullOrWhiteSpace(d.IdeaId))
+                        ideaIds.Add(d.IdeaId);
+                }
+
+                if (ideaIds.Count == 0)
+                {
+                    return Ok(ApiResponse.Ok("OK", new List<EntrepreneurProjectConnectionDto>()));
+                }
+
+                // 4. Fetch matching CreatorIdeas using valid 24-char hex ObjectIds only
+                var validHexIdeaIds = ideaIds
+                    .Where(id => !string.IsNullOrWhiteSpace(id) && ObjectId.TryParse(id, out _))
+                    .ToList();
+
+                var ideaList = validHexIdeaIds.Count > 0
+                    ? await _context.CreatorIdeas
+                        .Find(i => validHexIdeaIds.Contains(i.Id))
+                        .ToListAsync()
+                    : new List<CreatorIdea>();
+                var ideaDict = ideaList.ToDictionary(i => i.Id, i => i, StringComparer.OrdinalIgnoreCase);
+
+                // 5. Batch-fetch creator users
+                var creatorIds = ideaList.Select(i => i.UserId)
+                    .Concat(interests.Select(pi => pi.CreatorId))
+                    .Concat(deals.Select(d => d.CreatorId))
+                    .Where(id => !string.IsNullOrWhiteSpace(id))
+                    .Distinct()
+                    .ToList();
+
+                var creatorUsers = new Dictionary<string, ApplicationUser>(StringComparer.OrdinalIgnoreCase);
+                if (creatorIds.Count > 0)
+                {
+                    var guids = creatorIds.Select(id => Guid.TryParse(id, out var g) ? g : Guid.Empty).Where(g => g != Guid.Empty).ToList();
+                    if (guids.Count > 0)
+                    {
+                        var users = await _context.ApplicationUsers.Find(u => guids.Contains(u.Id)).ToListAsync();
+                        foreach (var u in users)
+                        {
+                            creatorUsers[u.Id.ToString()] = u;
+                        }
+                    }
+                }
+
+                var results = new List<EntrepreneurProjectConnectionDto>();
+
+                foreach (var ideaId in ideaIds)
+                {
+                    ideaDict.TryGetValue(ideaId, out var idea);
+                    var project = idea?.Project;
+                    var listing = idea?.Phase5Data?.PathA?.MarketplaceListing;
+
+                    // Match deals for this idea
+                    var ideaDeals = deals.Where(d => string.Equals(d.IdeaId, ideaId, StringComparison.OrdinalIgnoreCase)).ToList();
+                    var primaryDeal = ideaDeals
+                        .OrderByDescending(d => d.DealStage == "SOLD" || d.DealStage == "PARTNERSHIP_ACTIVE" || d.DealStage == "CO_FOUNDED" ? 2 : (d.Status == "initiated" || d.Status == "in_progress" ? 1 : 0))
+                        .ThenByDescending(d => d.UpdatedAt)
+                        .FirstOrDefault();
+
+                    // Match interests for this idea
+                    var ideaInterests = interests.Where(pi => string.Equals(pi.IdeaId, ideaId, StringComparison.OrdinalIgnoreCase)).ToList();
+                    var primaryInterest = ideaInterests
+                        .OrderByDescending(pi => pi.Status == "accepted" ? 2 : (pi.Status == "pending" ? 1 : 0))
+                        .ThenByDescending(pi => pi.UpdatedAt)
+                        .FirstOrDefault();
+
+                    // Match grant for this idea
+                    var primaryGrant = grants.Where(g => string.Equals(g.IdeaId, ideaId, StringComparison.OrdinalIgnoreCase))
+                        .OrderByDescending(g => g.NdaSigned ? 1 : 0)
+                        .ThenByDescending(g => g.GrantedAt)
+                        .FirstOrDefault();
+
+                    // Resolve creator info
+                    var creatorId = idea?.UserId ?? primaryDeal?.CreatorId ?? primaryInterest?.CreatorId ?? "";
+                    creatorUsers.TryGetValue(creatorId, out var creatorUser);
+                    var creatorName = !string.IsNullOrWhiteSpace(creatorUser?.Name)
+                        ? creatorUser.Name
+                        : (!string.IsNullOrWhiteSpace(creatorUser?.UserName) ? creatorUser.UserName : "Creator");
+                    var creatorAvatarUrl = creatorUser?.ImagePath;
+
+                    // Determine Deal Type
+                    string? dealType = primaryDeal?.DealType;
+                    if (string.IsNullOrEmpty(dealType))
+                    {
+                        var mode = primaryInterest?.DealMode ?? primaryInterest?.DealModes?.FirstOrDefault();
+                        if (!string.IsNullOrEmpty(mode))
+                        {
+                            dealType = mode.ToUpperInvariant();
+                        }
+                        else if (listing?.DealModes?.Count == 1)
+                        {
+                            dealType = listing.DealModes.First().ToUpperInvariant();
+                        }
+                    }
+
+                    // Determine NDA state
+                    bool ndaRequired = listing?.NdaRequired ?? primaryGrant?.NdaRequired ?? false;
+                    string ndaStatus = "NOT_REQUIRED";
+                    if (ndaRequired || primaryGrant != null)
+                    {
+                        if (primaryGrant != null && primaryGrant.NdaSigned)
+                            ndaStatus = "SIGNED";
+                        else
+                            ndaStatus = "PENDING";
+                    }
+
+                    // Determine Display Status, Category, Project Outcome
+                    string displayStatus = "Interest Pending";
+                    string category = "Pending";
+                    string? outcome = null;
+
+                    if (primaryDeal != null)
+                    {
+                        var dt = primaryDeal.DealType?.ToUpperInvariant();
+                        var stage = primaryDeal.DealStage?.ToUpperInvariant();
+                        var status = primaryDeal.Status?.ToLowerInvariant();
+
+                        if (dt == "FULL_BUYOUT")
+                        {
+                            if (stage == "SOLD" || status == "sold" || primaryDeal.BuyoutSaleRecord != null)
+                            {
+                                displayStatus = "SOLD";
+                                category = "Completed";
+                                outcome = "SOLD";
+                            }
+                            else if (stage == "HANDOVER_PENDING")
+                            {
+                                displayStatus = "Asset Handover";
+                                category = "Active";
+                            }
+                            else if (stage == "PAYMENT_PENDING")
+                            {
+                                displayStatus = "Payment & Closing";
+                                category = "Active";
+                            }
+                            else if (stage == "SIGNING_PENDING")
+                            {
+                                displayStatus = "Agreement Signing";
+                                category = "Active";
+                            }
+                            else if (stage == "LEGAL_TRANSFER_PENDING")
+                            {
+                                displayStatus = "Legal & Transfer";
+                                category = "Active";
+                            }
+                            else if (stage == "TERMS_NEGOTIATION" || stage == "OFFER_PENDING" || stage == "OFFER_NEGOTIATION")
+                            {
+                                displayStatus = "Buyout Terms";
+                                category = "Active";
+                            }
+                            else if (status == "rejected" || status == "withdrawn" || status == "closed")
+                            {
+                                displayStatus = "Closed";
+                                category = "Completed";
+                                outcome = "CLOSED";
+                            }
+                            else
+                            {
+                                displayStatus = "Buyout In Progress";
+                                category = "Active";
+                            }
+                        }
+                        else // EQUITY_PARTNERSHIP or default
+                        {
+                            if (stage == "PARTNERSHIP_ACTIVE" || stage == "CO_FOUNDED" || primaryDeal.Activation?.Status == "ACTIVATED")
+                            {
+                                displayStatus = "Partnership Active";
+                                category = "Completed";
+                                outcome = "PARTNERSHIP_ACTIVE";
+                            }
+                            else if (stage == "ACTIVATION_PENDING")
+                            {
+                                displayStatus = "Company Activation";
+                                category = "Active";
+                            }
+                            else if (stage == "SIGNATURE_PENDING")
+                            {
+                                displayStatus = "Agreement Signing";
+                                category = "Active";
+                            }
+                            else if (stage == "LEGAL_REVIEW_PENDING")
+                            {
+                                displayStatus = "Legal Review";
+                                category = "Active";
+                            }
+                            else if (stage == "CAP_TABLE_PENDING")
+                            {
+                                displayStatus = "Cap Table Draft";
+                                category = "Active";
+                            }
+                            else if (stage == "ROLE_AGREEMENT_PENDING" || stage == "ROLES_PENDING")
+                            {
+                                displayStatus = "Role Agreement";
+                                category = "Active";
+                            }
+                            else if (stage == "OFFER_NEGOTIATION" || stage == "OFFER_PENDING")
+                            {
+                                displayStatus = "Equity Offer";
+                                category = "Active";
+                            }
+                            else if (status == "rejected" || status == "withdrawn" || status == "closed")
+                            {
+                                displayStatus = "Closed";
+                                category = "Completed";
+                                outcome = "CLOSED";
+                            }
+                            else
+                            {
+                                displayStatus = "Equity In Progress";
+                                category = "Active";
+                            }
+                        }
+                    }
+                    else if (primaryInterest != null)
+                    {
+                        var istatus = primaryInterest.Status?.ToLowerInvariant();
+                        if (istatus == "accepted")
+                        {
+                            if (ndaRequired && ndaStatus == "PENDING")
+                            {
+                                displayStatus = "NDA Pending";
+                                category = "Pending";
+                            }
+                            else if (ndaStatus == "SIGNED")
+                            {
+                                displayStatus = "NDA Signed";
+                                category = "Active";
+                            }
+                            else
+                            {
+                                displayStatus = "Interest Accepted";
+                                category = "Active";
+                            }
+                        }
+                        else if (istatus == "pending")
+                        {
+                            displayStatus = "Interest Pending";
+                            category = "Pending";
+                        }
+                        else if (istatus == "declined")
+                        {
+                            displayStatus = "Interest Declined";
+                            category = "Completed";
+                            outcome = "DECLINED";
+                        }
+                        else
+                        {
+                            displayStatus = "Interest " + primaryInterest.Status;
+                            category = "Pending";
+                        }
+                    }
+                    else if (primaryGrant != null)
+                    {
+                        if (primaryGrant.NdaSigned)
+                        {
+                            displayStatus = "NDA Signed";
+                            category = "Active";
+                        }
+                        else
+                        {
+                            displayStatus = "NDA Pending";
+                            category = "Pending";
+                        }
+                    }
+
+                    // Timestamps
+                    DateTime? lastActivity = new[]
+                    {
+                        primaryDeal?.UpdatedAt,
+                        primaryDeal?.AcceptedAt,
+                        primaryDeal?.CreatedAt,
+                        primaryGrant?.NdaSignedAt,
+                        primaryGrant?.GrantedAt,
+                        primaryInterest?.UpdatedAt,
+                        primaryInterest?.CreatedAt,
+                        idea?.UpdatedAt,
+                        idea?.CreatedAt
+                    }.Where(t => t.HasValue).Select(t => t.Value).OrderByDescending(t => t).FirstOrDefault();
+
+                    DateTime created = new[]
+                    {
+                        primaryInterest?.CreatedAt,
+                        primaryDeal?.CreatedAt,
+                        primaryGrant?.GrantedAt,
+                        idea?.CreatedAt
+                    }.Where(t => t.HasValue && t.Value > DateTime.MinValue).Select(t => t.Value).OrderBy(t => t).FirstOrDefault();
+
+                    if (created == DateTime.MinValue)
+                        created = lastActivity ?? DateTime.UtcNow;
+
+                    results.Add(new EntrepreneurProjectConnectionDto
+                    {
+                        IdeaId = ideaId,
+                        ProjectName = project?.Name ?? "Untitled Project",
+                        ProjectLogoUrl = project?.Branding?.LogoAsset,
+                        ProjectSummary = project?.Tagline ?? project?.Problem ?? project?.Solution ?? "Validated creator project.",
+                        ProblemStatement = project?.Problem,
+                        TargetAudience = project?.TargetUser,
+                        Sector = project?.Sector ?? "General",
+                        ClarityScore = (int)Math.Round(project?.ClarityScore ?? 0),
+
+                        CreatorId = creatorId,
+                        CreatorName = creatorName,
+                        CreatorAvatarUrl = creatorAvatarUrl,
+
+                        InterestId = primaryInterest?.Id.ToString(),
+                        InterestStatus = primaryInterest?.Status,
+                        SelectedDealMode = primaryInterest?.DealMode ?? primaryInterest?.DealModes?.FirstOrDefault(),
+
+                        NdaRequired = ndaRequired,
+                        NdaStatus = ndaStatus,
+
+                        DealExecutionId = primaryDeal?.Id,
+                        DealType = dealType,
+                        DealStage = primaryDeal?.DealStage,
+                        DealStatus = primaryDeal?.Status,
+
+                        DisplayStatus = displayStatus,
+                        Category = category,
+                        ProjectOutcome = outcome,
+
+                        LastActivityAt = lastActivity ?? created,
+                        CreatedAt = created
+                    });
+                }
+
+                // Sort by most recently active first
+                var sortedResults = results.OrderByDescending(r => r.LastActivityAt ?? r.CreatedAt).ToList();
+
+                return Ok(ApiResponse.Ok("OK", sortedResults));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(401, ApiResponse.Error(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
         }
 
         // Mapping helpers

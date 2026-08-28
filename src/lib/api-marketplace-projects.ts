@@ -671,6 +671,12 @@ export const marketplaceProjectsApi = {
     return unwrap<EquityDeal[]>(res.data);
   },
 
+  // ======================= ENTREPRENEUR PROJECT CONNECTIONS API =======================
+  async getMyProjectConnections(): Promise<EntrepreneurProjectConnection[]> {
+    const res = await api.get('/entrepreneur/project-connections');
+    return unwrap<EntrepreneurProjectConnection[]>(res.data);
+  },
+
   // ======================= PHASE 7: AGREEMENT SIGNING APIS =======================
 
   async getSigningPackage(dealId: string): Promise<AgreementSigningPackage> {
@@ -1739,6 +1745,40 @@ export interface ConfirmBuyoutHandoverRequest {
 export interface CompleteBuyoutSaleRequest {
   notes?: string | null;
   expectedVersion?: number;
+}
+
+export interface EntrepreneurProjectConnection {
+  ideaId: string;
+  projectName: string;
+  projectLogoUrl?: string | null;
+  projectSummary?: string | null;
+  problemStatement?: string | null;
+  targetAudience?: string | null;
+  sector?: string | null;
+  clarityScore: number;
+
+  creatorId: string;
+  creatorName: string;
+  creatorAvatarUrl?: string | null;
+
+  interestId?: string | null;
+  interestStatus?: string | null;
+  selectedDealMode?: string | null;
+
+  ndaRequired: boolean;
+  ndaStatus?: string | null;
+
+  dealExecutionId?: string | null;
+  dealType?: string | null;
+  dealStage?: string | null;
+  dealStatus?: string | null;
+
+  displayStatus: string;
+  category: "Pending" | "Active" | "Completed" | "Closed" | string;
+  projectOutcome?: string | null;
+
+  lastActivityAt?: string | null;
+  createdAt: string;
 }
 
 export default marketplaceProjectsApi;
