@@ -1,4 +1,4 @@
-﻿using MongoDB.Bson;
+using MongoDB.Bson;
 using MongoDB.Driver;
 using WebApp.Models.DatabaseModels;
 
@@ -44,6 +44,21 @@ namespace WebApp.Services.Repository
                 Builders<Notification>.Update.Set(n => n.IsRead, true)
             );
             return result.MatchedCount > 0;
+        }
+
+        public async Task<int> GetUnreadCount(Guid userId)
+        {
+            var count = await _collection.CountDocumentsAsync(n => n.UserId == userId && !n.IsRead);
+            return (int)count;
+        }
+
+        public async Task<long> MarkAllAsRead(Guid userId)
+        {
+            var result = await _collection.UpdateManyAsync(
+                n => n.UserId == userId && !n.IsRead,
+                Builders<Notification>.Update.Set(n => n.IsRead, true)
+            );
+            return result.ModifiedCount;
         }
     }
 }

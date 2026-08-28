@@ -551,7 +551,8 @@ namespace WebApp.Controllers
                         await _notifications.NotifyUser(
                             creatorGuid,
                             "NDA Signed",
-                            $"{entrepreneurName} signed the NDA for {projectName}."
+                            $"{entrepreneurName} signed the NDA for {projectName}.",
+                            link: $"/dashboard/creator/crossroads?ideaId={idea.Id}"
                         );
                     }
                     catch { /* Best effort notification */ }
@@ -564,7 +565,8 @@ namespace WebApp.Controllers
                         await _notifications.NotifyUser(
                             entGuid,
                             "Private Access Granted",
-                            $"Private project access is now available for {projectName}."
+                            $"Private project access is now available for {projectName}.",
+                            link: $"/dashboard/entrepreneur/discover/{idea.Id}"
                         );
                     }
                     catch { /* Best effort notification */ }
@@ -825,7 +827,8 @@ namespace WebApp.Controllers
                         await _notifications.NotifyUser(
                             creatorGuid,
                             "New Equity Offer",
-                            $"{entrepreneurName} sent a {request.EquityPercentage}% Co-founder / Equity Offer for {projectName}."
+                            $"{entrepreneurName} sent a {request.EquityPercentage}% Co-founder / Equity Offer for {projectName}.",
+                            link: $"/dashboard/creator/crossroads?ideaId={idea.Id}"
                         );
                     }
                     catch { }

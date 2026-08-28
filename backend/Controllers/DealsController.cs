@@ -62,6 +62,27 @@ namespace WebApp.Controllers
             return ComputeSha256(ip);
         }
 
+        private static string ResolveDealLink(DealExecution deal, bool isRecipientCreator, bool isSold = false)
+        {
+            if (isRecipientCreator)
+            {
+                if (deal.DealType?.Equals("FullBuyout", StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    return $"/dashboard/creator/sales/{deal.Id}";
+                }
+                return $"/dashboard/creator/partnerships/{deal.Id}";
+            }
+            else
+            {
+                if (isSold)
+                {
+                    return $"/dashboard/entrepreneur/acquisitions/{deal.Id}";
+                }
+                return $"/dashboard/entrepreneur/discover/{deal.IdeaId}";
+            }
+        }
+
+
         // GET /api/deals (Investor / Company deals)
         [HttpGet]
         public async Task<ActionResult<List<DealStatusResponse>>> GetMyDeals()
@@ -259,7 +280,8 @@ namespace WebApp.Controllers
                             await _notifications.NotifyUser(
                                 targetGuid,
                                 "Buyout Counter Offer Received",
-                                $"A counter-offer of €{buyoutTerms.PurchasePrice:N0} was submitted for your project deal (V{newRev.RevisionNumber})."
+                                $"A counter-offer of €{buyoutTerms.PurchasePrice:N0} was submitted for your project deal (V{newRev.RevisionNumber}).",
+                                link: ResolveDealLink(deal, isRecipientCreator: targetUserId == deal.CreatorId)
                             );
                         }
                         catch { }
@@ -358,7 +380,8 @@ namespace WebApp.Controllers
                         await _notifications.NotifyUser(
                             targetEquityGuid,
                             "Counter Offer Received",
-                            $"A counter-offer of {counterTerms.EquityPercentage}% was submitted for your project deal (V{newEquityRev.RevisionNumber})."
+                            $"A counter-offer of {counterTerms.EquityPercentage}% was submitted for your project deal (V{newEquityRev.RevisionNumber}).",
+                            link: ResolveDealLink(deal, isRecipientCreator: targetEquityUserId == deal.CreatorId)
                         );
                     }
                     catch { }
@@ -452,7 +475,8 @@ namespace WebApp.Controllers
                             await _notifications.NotifyUser(
                                 targetGuid,
                                 "Buyout Offer Accepted",
-                                $"Buyout Offer V{latestRev.RevisionNumber} was accepted! Full Buyout commercial terms agreed."
+                                $"Buyout Offer V{latestRev.RevisionNumber} was accepted! Full Buyout commercial terms agreed.",
+                                link: ResolveDealLink(deal, isRecipientCreator: targetUserId == deal.CreatorId)
                             );
                         }
                         catch { }
@@ -496,7 +520,8 @@ namespace WebApp.Controllers
                         await _notifications.NotifyUser(
                             targetEquityAcceptGuid,
                             "Offer Accepted",
-                            $"Equity Offer V{latestRev.RevisionNumber} was accepted! Next step: Define roles and responsibilities."
+                            $"Equity Offer V{latestRev.RevisionNumber} was accepted! Next step: Define roles and responsibilities.",
+                            link: ResolveDealLink(deal, isRecipientCreator: targetEquityAcceptUserId == deal.CreatorId)
                         );
                     }
                     catch { }
@@ -759,7 +784,8 @@ namespace WebApp.Controllers
                         await _notifications.NotifyUser(
                             recipientGuid,
                             "Role Agreement Updated",
-                            $"{editorLabel} proposed updates to the roles and responsibilities agreement."
+                            $"{editorLabel} proposed updates to the roles and responsibilities agreement.",
+                            link: ResolveDealLink(deal, isRecipientCreator: recipientId == deal.CreatorId)
                         );
                     }
                     catch { }
@@ -869,11 +895,11 @@ namespace WebApp.Controllers
                     // Notify both
                     if (Guid.TryParse(deal.CreatorId, out var cGuid) && _notifications != null)
                     {
-                        try { await _notifications.NotifyUser(cGuid, "Roles Confirmed", "Roles and responsibilities fully confirmed. Next step: Equity structure."); } catch { }
+                        try { await _notifications.NotifyUser(cGuid, "Roles Confirmed", "Roles and responsibilities fully confirmed. Next step: Equity structure.", link: ResolveDealLink(deal, isRecipientCreator: true)); } catch { }
                     }
                     if (Guid.TryParse(deal.EntrepreneurId, out var eGuid) && _notifications != null)
                     {
-                        try { await _notifications.NotifyUser(eGuid, "Roles Confirmed", "Roles and responsibilities fully confirmed. Next step: Equity structure."); } catch { }
+                        try { await _notifications.NotifyUser(eGuid, "Roles Confirmed", "Roles and responsibilities fully confirmed. Next step: Equity structure.", link: ResolveDealLink(deal, isRecipientCreator: false)); } catch { }
                     }
 
                     await LogAuditAsync(deal.IdeaId ?? "", deal.Id, agreement.Version, userId, "roles_fully_confirmed");
@@ -894,7 +920,8 @@ namespace WebApp.Controllers
                             await _notifications.NotifyUser(
                                 recipientGuid,
                                 "Role Confirmation Received",
-                                $"{partyLabel} confirmed their responsibilities for Version {agreement.Version}. Your confirmation is required."
+                                $"{partyLabel} confirmed their responsibilities for Version {agreement.Version}. Your confirmation is required.",
+                                link: ResolveDealLink(deal, isRecipientCreator: recipientId == deal.CreatorId)
                             );
                         }
                         catch { }
@@ -979,7 +1006,8 @@ namespace WebApp.Controllers
                         await _notifications.NotifyUser(
                             recipientGuid,
                             "Role Changes Requested",
-                            $"{requesterLabel} requested changes on roles and responsibilities."
+                            $"{requesterLabel} requested changes on roles and responsibilities.",
+                            link: ResolveDealLink(deal, isRecipientCreator: recipientId == deal.CreatorId)
                         );
                     }
                     catch { }
@@ -1420,7 +1448,8 @@ namespace WebApp.Controllers
                         await _notifications.NotifyUser(
                             recipientGuid,
                             "Ownership Structure Updated",
-                            $"{partyLabel} updated the cap table to Version {draft.Version}. Please review and approve."
+                            $"{partyLabel} updated the cap table to Version {draft.Version}. Please review and approve.",
+                            link: ResolveDealLink(deal, isRecipientCreator: recipientId == deal.CreatorId)
                         );
                     }
                     catch { }
@@ -1540,11 +1569,11 @@ namespace WebApp.Controllers
                     // Notify both
                     if (Guid.TryParse(deal.CreatorId, out var cGuid) && _notifications != null)
                     {
-                        try { await _notifications.NotifyUser(cGuid, "Ownership Structure Approved", "Both parties have approved the cap table. Next step: Legal Review."); } catch { }
+                        try { await _notifications.NotifyUser(cGuid, "Ownership Structure Approved", "Both parties have approved the cap table. Next step: Legal Review.", link: ResolveDealLink(deal, isRecipientCreator: true)); } catch { }
                     }
                     if (Guid.TryParse(deal.EntrepreneurId, out var eGuid) && _notifications != null)
                     {
-                        try { await _notifications.NotifyUser(eGuid, "Ownership Structure Approved", "Both parties have approved the cap table. Next step: Legal Review."); } catch { }
+                        try { await _notifications.NotifyUser(eGuid, "Ownership Structure Approved", "Both parties have approved the cap table. Next step: Legal Review.", link: ResolveDealLink(deal, isRecipientCreator: false)); } catch { }
                     }
 
                     await LogAuditAsync(deal.IdeaId ?? "", deal.Id, draft.Version, userId, "cap_table_fully_approved");
@@ -1565,7 +1594,8 @@ namespace WebApp.Controllers
                             await _notifications.NotifyUser(
                                 recipientGuid,
                                 "Cap Table Approval Received",
-                                $"{partyLabel} approved the ownership structure for Version {draft.Version}. Your approval is required."
+                                $"{partyLabel} approved the ownership structure for Version {draft.Version}. Your approval is required.",
+                                link: ResolveDealLink(deal, isRecipientCreator: recipientId == deal.CreatorId)
                             );
                         }
                         catch { }
@@ -1649,7 +1679,8 @@ namespace WebApp.Controllers
                         await _notifications.NotifyUser(
                             recipientGuid,
                             "Cap Table Changes Requested",
-                            $"{partyLabel} requested changes to the ownership structure: {request.Feedback}"
+                            $"{partyLabel} requested changes to the ownership structure: {request.Feedback}",
+                            link: ResolveDealLink(deal, isRecipientCreator: recipientId == deal.CreatorId)
                         );
                     }
                     catch { }
@@ -2989,11 +3020,21 @@ namespace WebApp.Controllers
 
                     if (!string.IsNullOrEmpty(deal.CreatorId) && _notifications != null && Guid.TryParse(deal.CreatorId, out var crGuid))
                     {
-                        await _notifications.CreateNotification(crGuid, "Legal Changes Requested", "Legal provider requested changes to the Full Buyout package.");
+                        await _notifications.CreateNotification(
+                            crGuid,
+                            "Legal Changes Requested",
+                            "Legal provider requested changes to the Full Buyout package.",
+                            link: ResolveDealLink(deal, isRecipientCreator: true)
+                        );
                     }
                     if (!string.IsNullOrEmpty(deal.EntrepreneurId) && _notifications != null && Guid.TryParse(deal.EntrepreneurId, out var enGuid))
                     {
-                        await _notifications.CreateNotification(enGuid, "Legal Changes Requested", "Legal provider requested changes to the Full Buyout package.");
+                        await _notifications.CreateNotification(
+                            enGuid,
+                            "Legal Changes Requested",
+                            "Legal provider requested changes to the Full Buyout package.",
+                            link: ResolveDealLink(deal, isRecipientCreator: false)
+                        );
                     }
                 }
                 else
@@ -3214,7 +3255,12 @@ namespace WebApp.Controllers
                     string counterpartRole = isCreator ? "Creator" : "Entrepreneur";
                     if (!string.IsNullOrEmpty(counterpartId) && _notifications != null && Guid.TryParse(counterpartId, out var cpGuid))
                     {
-                        await _notifications.CreateNotification(cpGuid, "Buyout Legal Approval Required", $"{counterpartRole} approved the transfer package. Your approval is required.");
+                        await _notifications.CreateNotification(
+                            cpGuid,
+                            "Buyout Legal Approval Required",
+                            $"{counterpartRole} approved the transfer package. Your approval is required.",
+                            link: ResolveDealLink(deal, isRecipientCreator: counterpartId == deal.CreatorId)
+                        );
                     }
                 }
 
@@ -3786,11 +3832,21 @@ namespace WebApp.Controllers
 
                     if (!string.IsNullOrEmpty(deal.CreatorId) && _notifications != null && Guid.TryParse(deal.CreatorId, out var crGuid))
                     {
-                        await _notifications.CreateNotification(crGuid, "Buyout Legal Package Approved", "Transfer documents are ready for signature.");
+                        await _notifications.CreateNotification(
+                            crGuid,
+                            "Buyout Legal Package Approved",
+                            "Transfer documents are ready for signature.",
+                            link: ResolveDealLink(deal, isRecipientCreator: true)
+                        );
                     }
                     if (!string.IsNullOrEmpty(deal.EntrepreneurId) && _notifications != null && Guid.TryParse(deal.EntrepreneurId, out var enGuid))
                     {
-                        await _notifications.CreateNotification(enGuid, "Buyout Legal Package Approved", "Transfer documents are ready for signature.");
+                        await _notifications.CreateNotification(
+                            enGuid,
+                            "Buyout Legal Package Approved",
+                            "Transfer documents are ready for signature.",
+                            link: ResolveDealLink(deal, isRecipientCreator: false)
+                        );
                     }
                 }
                 return true;
@@ -4142,11 +4198,11 @@ namespace WebApp.Controllers
 
                     if (Guid.TryParse(deal.CreatorId, out var cGuid) && _notifications != null)
                     {
-                        try { await _notifications.NotifyUser(cGuid, "Full Buyout Agreement Fully Signed", "Both parties have executed all agreements. Next step: Closing."); } catch { }
+                        try { await _notifications.NotifyUser(cGuid, "Full Buyout Agreement Fully Signed", "Both parties have executed all agreements. Next step: Closing.", link: ResolveDealLink(deal, isRecipientCreator: true)); } catch { }
                     }
                     if (Guid.TryParse(deal.EntrepreneurId, out var eGuid) && _notifications != null)
                     {
-                        try { await _notifications.NotifyUser(eGuid, "Full Buyout Agreement Fully Signed", "Both parties have executed all agreements. Next step: Closing."); } catch { }
+                        try { await _notifications.NotifyUser(eGuid, "Full Buyout Agreement Fully Signed", "Both parties have executed all agreements. Next step: Closing.", link: ResolveDealLink(deal, isRecipientCreator: false)); } catch { }
                     }
 
                     await LogAuditAsync(deal.IdeaId ?? "", deal.Id, pkg.BuyoutLegalPackageVersion, currentUserId, "buyout_agreement_fully_signed");
@@ -4167,7 +4223,8 @@ namespace WebApp.Controllers
                             await _notifications.NotifyUser(
                                 otherGuid,
                                 "Buyout Agreement Signed by Counterparty",
-                                $"{signerRole} has signed the Full Buyout Agreement. Your signature is required."
+                                $"{signerRole} has signed the Full Buyout Agreement. Your signature is required.",
+                                link: ResolveDealLink(deal, isRecipientCreator: otherUserId == deal.CreatorId)
                             );
                         }
                         catch { }
@@ -4795,7 +4852,8 @@ namespace WebApp.Controllers
                         await _notifications.NotifyUser(
                             creatorGuid,
                             "Payment Confirmation Submitted",
-                            $"Buyer has submitted payment reference ({closing.PaymentReference}) for your project buyout. Please verify and confirm receipt."
+                            $"Buyer has submitted payment reference ({closing.PaymentReference}) for your project buyout. Please verify and confirm receipt.",
+                            link: ResolveDealLink(deal, isRecipientCreator: true)
                         );
                     }
                     catch { }
@@ -4904,7 +4962,8 @@ namespace WebApp.Controllers
                         await _notifications.NotifyUser(
                             entGuid,
                             "Payment Confirmed!",
-                            "Creator has verified and confirmed payment receipt. The deal is now ready for asset handover."
+                            "Creator has verified and confirmed payment receipt. The deal is now ready for asset handover.",
+                            link: ResolveDealLink(deal, isRecipientCreator: false)
                         );
                     }
                     catch { }
@@ -4994,7 +5053,8 @@ namespace WebApp.Controllers
                         await _notifications.NotifyUser(
                             otherGuid,
                             "Payment Issue Reported",
-                            $"{actorRole} reported an issue regarding payment: {closing.DisputeReason}"
+                            $"{actorRole} reported an issue regarding payment: {closing.DisputeReason}",
+                            link: ResolveDealLink(deal, isRecipientCreator: otherUserId == deal.CreatorId)
                         );
                     }
                     catch { }
@@ -5476,7 +5536,8 @@ namespace WebApp.Controllers
                         await _notifications.NotifyUser(
                             entGuid,
                             "Asset Delivered!",
-                            $"Creator has delivered '{asset.DisplayName}'. Please inspect and verify receipt."
+                            $"Creator has delivered '{asset.DisplayName}'. Please inspect and verify receipt.",
+                            link: ResolveDealLink(deal, isRecipientCreator: false)
                         );
                     }
                     catch { }
@@ -5578,7 +5639,8 @@ namespace WebApp.Controllers
                         await _notifications.NotifyUser(
                             creatorGuid,
                             "Asset Verified!",
-                            $"Buyer has verified and accepted '{asset.DisplayName}'."
+                            $"Buyer has verified and accepted '{asset.DisplayName}'.",
+                            link: ResolveDealLink(deal, isRecipientCreator: true)
                         );
                     }
                     catch { }
@@ -5666,7 +5728,8 @@ namespace WebApp.Controllers
                         await _notifications.NotifyUser(
                             creatorGuid,
                             "Asset Handover Issue Reported",
-                            $"Buyer reported an issue with '{asset.DisplayName}': {req.IssueReason}"
+                            $"Buyer reported an issue with '{asset.DisplayName}': {req.IssueReason}",
+                            link: ResolveDealLink(deal, isRecipientCreator: true)
                         );
                     }
                     catch { }
@@ -5676,73 +5739,6 @@ namespace WebApp.Controllers
 
                 var dto = await MapBuyoutHandoverDtoAsync(deal);
                 return Ok(ApiResponse.Ok($"Issue reported for asset '{asset.DisplayName}'.", dto));
-            }
-            catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
-            catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
-        }
-
-        /// <summary>
-        /// POST /api/deals/{dealId}/buyout/handover/confirm
-        /// Confirms final handover sign-off (by Creator or Buyer).
-        /// </summary>
-        [HttpPost("{dealId}/buyout/handover/confirm")]
-        public async Task<IActionResult> ConfirmBuyoutHandover(string dealId, [FromBody] ConfirmBuyoutHandoverRequest req)
-        {
-            try
-            {
-                var deal = await _context.DealExecutions.Find(d => d.Id == dealId).FirstOrDefaultAsync();
-                if (deal == null) return NotFound(ApiResponse.Error("Deal not found."));
-
-                var currentUserId = GetUserId();
-                if (deal.CreatorId != currentUserId && deal.EntrepreneurId != currentUserId)
-                {
-                    return StatusCode(403, ApiResponse.Error("You are not authorized to confirm handover for this deal."));
-                }
-
-                var gateError = ValidateBuyoutHandoverEntryGate(deal);
-                if (gateError != null)
-                {
-                    return UnprocessableEntity(ApiResponse.Error(gateError));
-                }
-
-                EnsureSeededBuyoutHandover(deal);
-                var handover = deal.BuyoutHandover!;
-
-                if (req.ExpectedVersion > 0 && req.ExpectedVersion != handover.Version)
-                {
-                    return Conflict(ApiResponse.Error("Version conflict: Handover state has been updated. Please refresh and try again."));
-                }
-
-                if (currentUserId == deal.CreatorId)
-                {
-                    handover.SellerConfirmedAt = DateTime.UtcNow;
-                }
-                else if (currentUserId == deal.EntrepreneurId)
-                {
-                    handover.BuyerConfirmedAt = DateTime.UtcNow;
-                }
-
-                handover.UpdatedAt = DateTime.UtcNow;
-                handover.Version++;
-
-                var oldVersion = deal.Version;
-                deal.Version++;
-                deal.UpdatedAt = DateTime.UtcNow;
-
-                var replaceResult = await _context.DealExecutions.ReplaceOneAsync(
-                    d => d.Id == deal.Id && d.Version == oldVersion,
-                    deal
-                );
-
-                if (replaceResult.MatchedCount == 0)
-                {
-                    return Conflict(ApiResponse.Error("A concurrent update occurred. Please refresh and try again."));
-                }
-
-                await LogAuditAsync(deal.IdeaId ?? "", deal.Id, handover.Version, currentUserId, "buyout_handover_confirmed");
-
-                var dto = await MapBuyoutHandoverDtoAsync(deal);
-                return Ok(ApiResponse.Ok("Handover sign-off recorded successfully.", dto));
             }
             catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
             catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
@@ -5914,7 +5910,8 @@ namespace WebApp.Controllers
                             await _notifications.NotifyUser(
                                 creatorGuid,
                                 "Project Successfully Sold!",
-                                $"Congratulations! The Full Buyout for '{saleRecord.ProjectName}' is complete. Purchase price: €{saleRecord.PurchasePrice:N0}."
+                                $"Congratulations! The Full Buyout for '{saleRecord.ProjectName}' is complete. Purchase price: €{saleRecord.PurchasePrice:N0}.",
+                                link: ResolveDealLink(deal, isRecipientCreator: true)
                             );
                         }
                         catch { }
@@ -5927,7 +5924,8 @@ namespace WebApp.Controllers
                             await _notifications.NotifyUser(
                                 entGuid,
                                 "Acquisition Complete!",
-                                $"You have successfully acquired '{saleRecord.ProjectName}'. All agreed assets have been transferred."
+                                $"You have successfully acquired '{saleRecord.ProjectName}'. All agreed assets have been transferred.",
+                                link: ResolveDealLink(deal, isRecipientCreator: false, isSold: true)
                             );
                         }
                         catch { }
@@ -6465,11 +6463,11 @@ namespace WebApp.Controllers
                     // Notifications
                     if (Guid.TryParse(deal.CreatorId, out var cGuid) && _notifications != null)
                     {
-                        try { await _notifications.NotifyUser(cGuid, "Agreement Fully Signed", "Both parties have executed all agreements. Next step: Company / Project Activation."); } catch { }
+                        try { await _notifications.NotifyUser(cGuid, "Agreement Fully Signed", "Both parties have executed all agreements. Next step: Company / Project Activation.", link: ResolveDealLink(deal, isRecipientCreator: true)); } catch { }
                     }
                     if (Guid.TryParse(deal.EntrepreneurId, out var eGuid) && _notifications != null)
                     {
-                        try { await _notifications.NotifyUser(eGuid, "Agreement Fully Signed", "Both parties have executed all agreements. Next step: Company / Project Activation."); } catch { }
+                        try { await _notifications.NotifyUser(eGuid, "Agreement Fully Signed", "Both parties have executed all agreements. Next step: Company / Project Activation.", link: ResolveDealLink(deal, isRecipientCreator: false)); } catch { }
                     }
 
                     await LogAuditAsync(deal.IdeaId ?? "", deal.Id, pkg.LegalPackageVersion, userId, "agreement_fully_signed");
@@ -6490,7 +6488,8 @@ namespace WebApp.Controllers
                             await _notifications.NotifyUser(
                                 otherGuid,
                                 "Agreement Signed by Partner",
-                                $"{signerRole} has signed the legal agreement package (V{pkg.LegalPackageVersion}). Your signature is required."
+                                $"{signerRole} has signed the legal agreement package (V{pkg.LegalPackageVersion}). Your signature is required.",
+                                link: ResolveDealLink(deal, isRecipientCreator: otherUserId == deal.CreatorId)
                             );
                         }
                         catch { }
@@ -6590,7 +6589,8 @@ namespace WebApp.Controllers
                         await _notifications.NotifyUser(
                             recipientGuid,
                             "Legal Modification Requested",
-                            $"{requesterLabel} requested changes to legal agreements. Deal returned to Legal Review."
+                            $"{requesterLabel} requested changes to legal agreements. Deal returned to Legal Review.",
+                            link: ResolveDealLink(deal, isRecipientCreator: recipientId == deal.CreatorId)
                         );
                     }
                     catch { }
@@ -7250,7 +7250,8 @@ namespace WebApp.Controllers
                     await _notifications.CreateNotification(
                         creatorGuid,
                         "Partnership Activated!",
-                        $"Partnership is now active for {deal.LegalPackage?.CompanyName ?? "your project"}. Co-founder ownership structure recorded."
+                        $"Partnership is now active for {deal.LegalPackage?.CompanyName ?? "your project"}. Co-founder ownership structure recorded.",
+                        link: ResolveDealLink(deal, isRecipientCreator: true)
                     );
                 }
 
@@ -7259,7 +7260,8 @@ namespace WebApp.Controllers
                     await _notifications.CreateNotification(
                         entGuid,
                         "Partnership Activated!",
-                        $"Partnership is now active for {deal.LegalPackage?.CompanyName ?? "your venture"}. Co-founder ownership structure recorded."
+                        $"Partnership is now active for {deal.LegalPackage?.CompanyName ?? "your venture"}. Co-founder ownership structure recorded.",
+                        link: ResolveDealLink(deal, isRecipientCreator: false)
                     );
                 }
 
@@ -7945,7 +7947,8 @@ namespace WebApp.Controllers
                     await _notifications.CreateNotification(
                         partnerGuid,
                         "New Partnership Milestone",
-                        $"{userName} created a new milestone: '{milestone.Title}'."
+                        $"{userName} created a new milestone: '{milestone.Title}'.",
+                        link: ResolveDealLink(deal, isRecipientCreator: partnerId == deal.CreatorId)
                     );
                 }
                 catch { }
@@ -8035,7 +8038,8 @@ namespace WebApp.Controllers
                     await _notifications.CreateNotification(
                         partnerGuid,
                         "Partnership Milestone Updated",
-                        $"Milestone '{milestone.Title}' updated to status '{milestone.Status}'."
+                        $"Milestone '{milestone.Title}' updated to status '{milestone.Status}'.",
+                        link: ResolveDealLink(deal, isRecipientCreator: partnerId == deal.CreatorId)
                     );
                 }
                 catch { }

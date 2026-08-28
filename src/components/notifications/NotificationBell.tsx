@@ -1,18 +1,28 @@
 "use client";
 
-import { Bell } from "lucide-react";
+import {
+  Bell,
+  CheckCheck,
+  DollarSign,
+  MessageSquare,
+  RefreshCw,
+  ShieldCheck,
+  Sparkles,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import Link from "next/link";
 import { formatDistanceToNowStrict } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import EmptyState from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/app/_providers/AuthProvider";
-import type { AppNotification } from "@/types/notifications";
+import { getNotificationRouteForRole } from "@/lib/roles";
+import type { AppNotification, NotificationType } from "@/types/notifications";
 import {
+  useMarkAllNotificationsRead,
   useMarkNotificationRead,
   useNotificationRealtime,
   useNotifications,
@@ -26,31 +36,40 @@ function formatTime(iso: string): string {
   }
 }
 
+function getNotificationIcon(type: NotificationType | string) {
+  switch (type) {
+    case "Message":
+      return <MessageSquare className="h-4 w-4" />;
+    case "Investment":
+      return <DollarSign className="h-4 w-4" />;
+    case "Security":
+      return <ShieldCheck className="h-4 w-4" />;
+    case "System":
+      return <Sparkles className="h-4 w-4" />;
+    default:
+      return <Bell className="h-4 w-4" />;
+  }
+}
+
 /**
  * `triggerClassName` styles the BELL BUTTON only.
- *
- * It exists because the SP headers previously wrapped this component in
- * `[&_button]:size-11` to give the trigger a 44px touch target. That arbitrary variant
- * compiles to a DESCENDANT selector, and the panel below renders inline rather than through
- * a portal — so it also matched every notification row, each of which is a <button>, and
- * forced them to 44x44px. Descendant specificity (class + element) outranks the row's own
- * `w-full` (class alone), so rows collapsed to a square: the title's `truncate` and the
- * body's `line-clamp-2` clipped to nothing while the timestamp's `shrink-0` kept its width
- * and spilled into the panel. Only the time survived. SP-only, and present for as long as
- * that wrapper has been there.
- *
- * Passing a class for the trigger explicitly makes that whole class of leak impossible:
- * a caller can no longer reach the panel's internals by selector.
  */
 export default function NotificationBell({ triggerClassName }: { triggerClassName?: string } = {}) {
   const router = useRouter();
-  const { token } = useAuth();
+  const pathname = usePathname();
+  const { user, token } = useAuth();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  const { notifications, unreadCount, isLoading, isError } = useNotifications();
+  // Request latest 10 items for the topbar dropdown
+  const { notifications, unreadCount, isLoading, isError, refetch } = useNotifications(10);
   const markRead = useMarkNotificationRead();
+  const markAllRead = useMarkAllNotificationsRead();
   useNotificationRealtime(!!token);
+
+  // Exact latest 10 items to display
+  const latestTen = notifications.slice(0, 10);
+  const notificationsRoute = getNotificationRouteForRole(user?.role, pathname);
 
   const handleNotificationClick = (n: AppNotification) => {
     if (!n.isRead) {
@@ -60,6 +79,10 @@ export default function NotificationBell({ triggerClassName }: { triggerClassNam
     if (n.link) {
       router.push(n.link);
     }
+  };
+
+  const handleMarkAllRead = () => {
+    markAllRead.mutate();
   };
 
   // Close on outside click / Escape.
@@ -92,85 +115,159 @@ export default function NotificationBell({ triggerClassName }: { triggerClassNam
       >
         <Bell className="h-5 w-5 text-muted-foreground" />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-medium text-white">
-            {unreadCount > 9 ? "9+" : unreadCount}
+          <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-white shadow-sm">
+            {unreadCount > 99 ? "99+" : unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
       </Button>
 
       {open && (
-        <div className="absolute right-0 z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-lg border bg-popover text-popover-foreground shadow-lg">
-          <div className="flex items-center justify-between border-b px-4 py-3">
-            <p className="text-sm font-semibold text-foreground">Notifications</p>
+        <div className="absolute right-0 z-50 mt-2 w-[380px] max-w-[calc(100vw-1.5rem)] max-h-[min(640px,calc(100vh-6rem))] flex flex-col overflow-hidden rounded-2xl border border-border bg-popover text-popover-foreground shadow-2xl">
+          {/* Header - Fixed */}
+          <div className="shrink-0 flex items-center justify-between border-b border-border px-4 py-3.5 bg-card/60">
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-bold font-heading text-foreground">Notifications</p>
+                {unreadCount > 0 && (
+                  <Badge variant="secondary" className="text-[10px] font-semibold bg-primary/10 text-primary border-primary/20 px-1.5 py-0 h-4">
+                    {unreadCount} new
+                  </Badge>
+                )}
+              </div>
+              <p className="text-[11px] text-muted-foreground font-sans">
+                Stay up to date with your activity.
+              </p>
+            </div>
+
             {unreadCount > 0 && (
-              <Badge variant="secondary">{unreadCount} new</Badge>
+              <button
+                type="button"
+                onClick={handleMarkAllRead}
+                disabled={markAllRead.isPending}
+                className="text-xs font-semibold text-primary hover:text-primary/80 transition-colors flex items-center gap-1 shrink-0 ml-2"
+              >
+                <CheckCheck className="h-3.5 w-3.5" />
+                <span>Mark all read</span>
+              </button>
             )}
           </div>
 
-          {isLoading ? (
-            <div className="space-y-3 p-4">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <Skeleton key={i} className="h-12 w-full" />
-              ))}
-            </div>
-          ) : isError ? (
-            <p className="px-4 py-8 text-center text-sm text-muted-foreground">
-              Could not load notifications.
-            </p>
-          ) : notifications.length === 0 ? (
-            <div className="p-4">
-              <EmptyState
-                size="sm"
-                icon={Bell}
-                title="You're all caught up"
-              />
-            </div>
-          ) : (
-            <ScrollArea className="max-h-96">
-              <ul className="divide-y divide-border">
-                {notifications.map((n) => (
+          {/* List Area - Scrollable */}
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            {isLoading ? (
+              <div className="space-y-2 p-3">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="flex items-start gap-3 p-2.5 rounded-xl border border-border/40 bg-muted/20">
+                    <Skeleton className="h-9 w-9 rounded-xl shrink-0" />
+                    <div className="flex-1 space-y-1.5 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <Skeleton className="h-3.5 w-24 rounded" />
+                        <Skeleton className="h-3 w-10 rounded" />
+                      </div>
+                      <Skeleton className="h-3 w-full rounded" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : isError ? (
+              <div className="p-6 text-center space-y-2">
+                <p className="text-xs text-destructive font-medium">
+                  Unable to load notifications
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => refetch()}
+                  className="text-xs font-semibold gap-1.5 h-7"
+                >
+                  <RefreshCw className="h-3 w-3" /> Try again
+                </Button>
+              </div>
+            ) : latestTen.length === 0 ? (
+              <div className="p-6">
+                <EmptyState
+                  size="default"
+                  icon={Bell}
+                  title="No notifications yet"
+                  description="New activity and updates will appear here."
+                />
+              </div>
+            ) : (
+              <ul className="divide-y divide-border/60">
+                {latestTen.map((n) => (
                   <li key={n.id}>
                     <button
                       type="button"
                       onClick={() => handleNotificationClick(n)}
                       className={cn(
-                        "flex w-full gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/50",
-                        !n.isRead && "bg-muted/30"
+                        "relative flex items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/50 w-full select-none",
+                        !n.isRead && "bg-primary/[0.04]"
                       )}
                     >
-                      <span
+                      {/* Icon */}
+                      <div
                         className={cn(
-                          "mt-1.5 h-2 w-2 shrink-0 rounded-full",
-                          n.isRead ? "bg-transparent" : "bg-primary"
+                          "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5",
+                          n.isRead
+                            ? "bg-muted text-muted-foreground"
+                            : "bg-primary/10 text-primary border border-primary/20"
                         )}
-                        aria-hidden
-                      />
-                      <span className="min-w-0 flex-1 space-y-0.5">
-                        <span className="flex items-center justify-between gap-2">
+                      >
+                        {getNotificationIcon(n.type)}
+                      </div>
+
+                      {/* Content */}
+                      <div className="min-w-0 flex-1 space-y-0.5">
+                        <div className="flex items-start justify-between gap-2">
                           <span
                             className={cn(
-                              "truncate text-sm text-foreground",
-                              n.isRead ? "font-medium" : "font-semibold"
+                              "text-xs leading-snug line-clamp-2",
+                              n.isRead ? "font-medium text-foreground" : "font-bold text-foreground"
                             )}
                           >
                             {n.title}
                           </span>
-                          <span className="shrink-0 text-[11px] text-muted-foreground">
+                          <span className="shrink-0 text-[10px] text-muted-foreground mt-0.5">
                             {formatTime(n.createdAt)}
                           </span>
-                        </span>
-                        <span className="line-clamp-2 text-xs text-muted-foreground">
+                        </div>
+                        <p className="line-clamp-2 text-xs text-muted-foreground leading-relaxed">
                           {n.body}
-                        </span>
-                      </span>
+                        </p>
+                      </div>
+
+                      {/* Unread indicator dot */}
+                      {!n.isRead && (
+                        <span
+                          className="h-1.5 w-1.5 rounded-full bg-primary shrink-0 mt-2 shadow-sm"
+                          aria-hidden
+                        />
+                      )}
                     </button>
                   </li>
                 ))}
               </ul>
-            </ScrollArea>
-          )}
+            )}
+          </div>
+
+          {/* Footer - Fixed See More CTA */}
+          <div className="shrink-0 border-t border-border bg-card/80 p-2">
+            <Button
+              asChild
+              variant="ghost"
+              size="sm"
+              className="w-full text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted/80 h-9 rounded-xl"
+              onClick={() => setOpen(false)}
+            >
+              <Link href={notificationsRoute}>
+                See More
+              </Link>
+            </Button>
+          </div>
         </div>
       )}
     </div>
   );
 }
+
+

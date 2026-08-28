@@ -66,3 +66,17 @@ export function resolvePrimaryRole(roles: unknown): UserRole | null {
 
   return parsedRoles[0];
 }
+
+export function getNotificationRouteForRole(role?: unknown, pathname?: string): string {
+  // If active pathname provides a clear dashboard context, use it
+  if (pathname?.startsWith("/dashboard/creator")) return "/dashboard/creator/notifications";
+  if (pathname?.startsWith("/dashboard/entrepreneur")) return "/dashboard/entrepreneur/notifications";
+  if (pathname?.startsWith("/dashboard/investor")) return "/dashboard/investor/notifications";
+  if (pathname?.startsWith("/dashboard/serviceprovider")) return "/dashboard/serviceprovider/notifications";
+  if (pathname?.startsWith("/dashboard/admin")) return "/dashboard/admin/notifications";
+
+  const normRole = normalizeUserRole(role);
+  const base = ROLE_DASHBOARD_ROUTES[normRole] || "/dashboard/creator";
+  return `${base}/notifications`;
+}
+

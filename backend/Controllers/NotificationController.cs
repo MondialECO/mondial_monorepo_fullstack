@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
@@ -33,6 +33,13 @@ namespace WebApp.Controllers
         }
 
 
+        [HttpGet("unread-count")]
+        public async Task<IActionResult> GetUnreadCount()
+        {
+            var count = await _service.GetUnreadCount(CurrentUserId);
+            return Ok(new { unreadCount = count });
+        }
+
         [HttpPost("read/{id}")]
         public async Task<IActionResult> MarkAsRead(string id)
         {
@@ -48,6 +55,13 @@ namespace WebApp.Controllers
             // enumeration signal).
             var updated = await _service.MarkAsRead(objectId, CurrentUserId);
             if (!updated) return NotFound();
+            return Ok();
+        }
+
+        [HttpPost("read-all")]
+        public async Task<IActionResult> MarkAllAsRead()
+        {
+            await _service.MarkAllAsRead(CurrentUserId);
             return Ok();
         }
     }
