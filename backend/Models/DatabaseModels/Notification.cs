@@ -1,4 +1,4 @@
-﻿using System.Text.Json.Serialization;
+using System.Text.Json.Serialization;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using WebApp.Serialization;
@@ -28,6 +28,9 @@ namespace WebApp.Models.DatabaseModels
         [JsonConverter(typeof(ObjectIdJsonConverter))]
         public ObjectId? ReferenceId { get; set; }
         // ConversationId / ProjectId / InvestmentId
+
+        [BsonElement("Link")]
+        public string? Link { get; set; }
 
         [BsonElement("IsRead")]
         public bool IsRead { get; set; } = false;

@@ -793,9 +793,9 @@ export default function CreatorDashboard() {
                   {matchedInvestorCount === 1 ? 'investor matched' : 'investors matched'}
                 </p>
                 <Button className="w-full text-xs rounded-xl h-9 mt-2 font-bold bg-primary hover:bg-primary/95 text-white" asChild>
-                  <Link href="/dashboard/creator/marketplace">
+                  <Link href="/dashboard/creator/crossroads">
                     <Eye className="w-3.5 h-3.5 mr-1.5" />
-                    View Buyers
+                    Marketplace Push
                   </Link>
                 </Button>
               </div>
@@ -834,27 +834,27 @@ export default function CreatorDashboard() {
 
           <Card
             className="rounded-2xl border-border bg-card p-4 hover:border-warning/50 cursor-pointer shadow-sm flex flex-col items-center text-center gap-2 transition-all hover:-translate-y-0.5 hover:shadow-md group"
-            onClick={() => router.push('/dashboard/creator/marketplace')}
+            onClick={() => router.push('/dashboard/creator/crossroads')}
           >
             <div className="w-10 h-10 rounded-xl bg-warning/10 text-warning group-hover:bg-warning group-hover:text-white flex items-center justify-center transition-colors">
               <Store className="w-5 h-5" />
             </div>
             <div>
-              <h4 className="font-bold text-foreground text-xs">List on Marketplace</h4>
-              <p className="text-[10px] text-muted-foreground mt-0.5">Sell or license concept</p>
+              <h4 className="font-bold text-foreground text-xs">Marketplace Push</h4>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Full Buyout or Co-founder</p>
             </div>
           </Card>
 
           <Card
             className="rounded-2xl border-border bg-card p-4 hover:border-success-text/50 cursor-pointer shadow-sm flex flex-col items-center text-center gap-2 transition-all hover:-translate-y-0.5 hover:shadow-md group"
-            onClick={() => router.push('/dashboard/creator/hire-providers')}
+            onClick={() => router.push('/marketplace/services')}
           >
             <div className="w-10 h-10 rounded-xl bg-success-light/30 text-success-text group-hover:bg-success-text group-hover:text-white flex items-center justify-center transition-colors">
               <Users className="w-5 h-5" />
             </div>
             <div>
               <h4 className="font-bold text-foreground text-xs">Hire a Provider</h4>
-              <p className="text-[10px] text-muted-foreground mt-0.5">M50 service directory</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Services marketplace</p>
             </div>
           </Card>
 

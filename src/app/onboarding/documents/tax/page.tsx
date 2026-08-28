@@ -10,7 +10,7 @@ export default function TaxPage() {
       icon={Receipt}
       title="Tax Documents"
       description="Tax residency certificate or most recent return."
-      helper="Upload a recent tax filing or residency certificate. Required for Investor accreditation."
+      helper="Upload a recent tax filing or residency certificate. Required for Investor verification."
     />
   );
 }

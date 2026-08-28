@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using MongoDB.Bson;
+using MongoDB.Driver;
 using StackExchange.Redis;
 using System.Security.Claims;
 using WebApp.DbContext;
@@ -10,6 +12,7 @@ using WebApp.Models.Dtos;
 using WebApp.Services;
 using WebApp.Services.Implementations;
 using WebApp.Services.Interface;
+using WebApp.Services.Repository;
 using WebApp.Services.Repository.Ai;
 
 namespace WebApp.Controllers
@@ -189,26 +192,46 @@ namespace WebApp.Controllers
 
                 if (journey.Phase5Data?.ChosenPath != "sell")
                     return UnprocessableEntity(ApiResponse.Error("Marketplace publishing requires the Sell the Project path."));
-                if ((request?.AskingPrice ?? 0) <= 0)
+
+                var dealModes = request?.DealModes?.Where(m => !string.IsNullOrWhiteSpace(m))
+                    .Select(m => m.Trim().ToLowerInvariant())
+                    .ToList() ?? new List<string>();
+
+                if (dealModes.Count == 0)
+                    dealModes = new List<string> { "full_buyout" };
+
+                if (dealModes.Any(m => m.Contains("license")))
+                    return UnprocessableEntity(ApiResponse.Error("Licensing is not supported. Choose Full Buyout or Co-founder/Equity."));
+
+                var validModes = new[] { "full_buyout", "equity_partnership" };
+                if (dealModes.Any(m => !validModes.Contains(m)))
+                    return UnprocessableEntity(ApiResponse.Error("dealModes must be full_buyout or equity_partnership."));
+
+                bool hasBuyout = dealModes.Contains("full_buyout");
+                bool hasEquity = dealModes.Contains("equity_partnership");
+
+                if (hasBuyout && (request?.AskingPrice ?? 0) <= 0)
                     return UnprocessableEntity(ApiResponse.Error("Enter an asking price greater than zero for a Full Buyout listing."));
-                var audience = request.Audience ?? "public";
+
+                var audience = request?.Audience ?? "public";
                 if (audience != "public" && audience != "matched" && audience != "private")
                     return UnprocessableEntity(ApiResponse.Error("audience must be public | matched | private."));
 
                 var listing = new CreatorMarketplaceListing
                 {
-                    Status = "live",
-                    SaleType = "full_buyout",
-                    AskingPrice = request.AskingPrice,
-                    NdaRequired = request.NdaRequired,
-                    OpenToPurchase = true,
+                    Status = "available",
+                    SaleType = hasBuyout && hasEquity ? "full_buyout,equity_partnership" : (dealModes.FirstOrDefault() ?? "full_buyout"),
+                    AskingPrice = hasBuyout ? request.AskingPrice : null,
+                    NdaRequired = request?.NdaRequired ?? false,
+                    DealModes = dealModes,
+                    OpenToPurchase = hasBuyout,
+                    OpenToEquityPartnership = hasEquity,
                     OpenToLicense = false,
                     Audience = audience,
                     PublishedAt = DateTime.UtcNow,
                 };
 
-                // Buyer matching via the shared service (phaseContext=5). The buyer pool
-                // is genuinely empty in this environment → honest empty list, not a stub.
+                // Buyer matching via the shared service (phaseContext=5).
                 var matchedBuyerIds = new List<string>();
                 if (audience == "matched")
                 {
@@ -230,6 +253,202 @@ namespace WebApp.Controllers
             catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
             catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
         }
+
+        // GET /api/creator/marketplace/interests
+        [HttpGet("marketplace/interests")]
+        public async Task<IActionResult> GetInterests([FromQuery] string ideaId = null)
+        {
+            try
+            {
+                var userId = GetUserId();
+                var journey = await _journeys.GetOrCreateComposedAsync(userId, ideaId);
+                var activeIdeaId = ideaId ?? journey.ActiveIdeaId;
+
+                var filter = Builders<ProjectInterest>.Filter.Eq(x => x.CreatorId, userId);
+                if (!string.IsNullOrWhiteSpace(activeIdeaId))
+                {
+                    filter = Builders<ProjectInterest>.Filter.And(
+                        filter,
+                        Builders<ProjectInterest>.Filter.Eq(x => x.IdeaId, activeIdeaId)
+                    );
+                }
+
+                var interests = await _context.ProjectInterests
+                    .Find(filter)
+                    .SortByDescending(x => x.CreatedAt)
+                    .ToListAsync();
+
+                var dtos = interests.Select(i => MapInterestDto(i, true, false, false)).ToList();
+                return Ok(ApiResponse.Ok("OK", dtos));
+            }
+            catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
+            catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
+            catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
+        }
+
+        // POST /api/creator/marketplace/interests/{interestId}/accept
+        [HttpPost("marketplace/interests/{interestId}/accept")]
+        public async Task<IActionResult> AcceptInterest(string interestId)
+        {
+            try
+            {
+                var userId = GetUserId();
+                if (!ObjectId.TryParse(interestId, out var oId))
+                    return BadRequest(ApiResponse.Error("Invalid interestId."));
+
+                var interest = await _context.ProjectInterests
+                    .Find(x => x.Id == oId && x.CreatorId == userId)
+                    .FirstOrDefaultAsync();
+
+                if (interest == null)
+                    return NotFound(ApiResponse.Error("Interest request not found.", HttpContext.TraceIdentifier));
+
+                if (interest.Status == "accepted")
+                    return Ok(ApiResponse.Ok("Interest already accepted.", MapInterestDto(interest)));
+
+                interest.Status = "accepted";
+                interest.UpdatedAt = DateTime.UtcNow;
+
+                var convoRepo = HttpContext?.RequestServices?.GetService(typeof(ConversationRepository)) as ConversationRepository;
+                var msgRepo = HttpContext?.RequestServices?.GetService(typeof(MessagesRepository)) as MessagesRepository;
+
+                if (convoRepo != null && Guid.TryParse(userId, out var creatorGuid) && Guid.TryParse(interest.EntrepreneurId, out var entGuid))
+                {
+                    ObjectId? ideaOid = ObjectId.TryParse(interest.IdeaId, out var parsedOid) ? parsedOid : null;
+                    var (convo, created) = await convoRepo.GetOrCreateConversation(creatorGuid, entGuid, ideaOid, "ProjectDeal");
+                    interest.ConversationId = convo.Id.ToString();
+
+                    if (created && msgRepo != null)
+                    {
+                        var user = await _userManager.FindByIdAsync(userId);
+                        var creatorName = user?.Name ?? user?.UserName ?? "Creator";
+                        var msg = new ChatMessage
+                        {
+                            ConversationId = convo.Id,
+                            SenderId = creatorGuid,
+                            Message = $"Hello! {creatorName} accepted your inquiry regarding the project.",
+                            MessageType = "Text",
+                            CreatedAt = DateTime.UtcNow
+                        };
+                        await msgRepo.AddAsync(msg);
+                    }
+                }
+
+                var idea = await _context.CreatorIdeas.Find(x => x.Id == interest.IdeaId).FirstOrDefaultAsync();
+                var listing = idea?.Phase5Data?.PathA?.MarketplaceListing;
+                bool ndaReq = listing?.NdaRequired ?? true;
+
+                // If NDA is not required, grant private access immediately upon acceptance
+                if (!ndaReq)
+                {
+                    var existingGrant = await _context.MarketplaceProjectAccessGrants
+                        .Find(g => g.IdeaId == interest.IdeaId && g.EntrepreneurId == interest.EntrepreneurId)
+                        .FirstOrDefaultAsync();
+
+                    if (existingGrant == null)
+                    {
+                        var autoGrant = new MarketplaceProjectAccessGrant
+                        {
+                            IdeaId = interest.IdeaId,
+                            ProjectInterestId = interest.Id.ToString(),
+                            CreatorId = userId,
+                            EntrepreneurId = interest.EntrepreneurId,
+                            NdaRequired = false,
+                            NdaSigned = false,
+                            GrantedAt = DateTime.UtcNow,
+                            ExpiresAt = DateTime.UtcNow.AddDays(90),
+                            Status = "active"
+                        };
+                        await _context.MarketplaceProjectAccessGrants.InsertOneAsync(autoGrant);
+                    }
+                }
+
+                await _context.ProjectInterests.ReplaceOneAsync(x => x.Id == oId, interest);
+
+                var notifService = HttpContext?.RequestServices?.GetService(typeof(INotificationService)) as INotificationService;
+                if (notifService != null && Guid.TryParse(interest.EntrepreneurId, out var entGuid2))
+                {
+                    var projName = idea?.Project?.Name ?? "the project";
+                    var entDeepLink = $"/dashboard/entrepreneur/discover/{interest.IdeaId}";
+                    await notifService.CreateNotification(
+                        entGuid2,
+                        $"Interest Accepted: {projName}",
+                        $"The creator accepted your inquiry for {projName}. Direct communication is now active.",
+                        link: entDeepLink,
+                        type: "MarketplaceInterest",
+                        referenceId: interest.Id
+                    );
+                }
+
+                return Ok(ApiResponse.Ok("Interest accepted.", MapInterestDto(interest, ndaReq, !ndaReq)));
+            }
+            catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
+            catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
+        }
+
+        // POST /api/creator/marketplace/interests/{interestId}/decline
+        [HttpPost("marketplace/interests/{interestId}/decline")]
+        public async Task<IActionResult> DeclineInterest(string interestId)
+        {
+            try
+            {
+                var userId = GetUserId();
+                if (!ObjectId.TryParse(interestId, out var oId))
+                    return BadRequest(ApiResponse.Error("Invalid interestId."));
+
+                var interest = await _context.ProjectInterests
+                    .Find(x => x.Id == oId && x.CreatorId == userId)
+                    .FirstOrDefaultAsync();
+
+                if (interest == null)
+                    return NotFound(ApiResponse.Error("Interest request not found.", HttpContext.TraceIdentifier));
+
+                interest.Status = "declined";
+                interest.UpdatedAt = DateTime.UtcNow;
+
+                await _context.ProjectInterests.ReplaceOneAsync(x => x.Id == oId, interest);
+
+                var notifService = HttpContext?.RequestServices?.GetService(typeof(INotificationService)) as INotificationService;
+                if (notifService != null && Guid.TryParse(interest.EntrepreneurId, out var entGuid2))
+                {
+                    var idea = await _context.CreatorIdeas.Find(x => x.Id == interest.IdeaId).FirstOrDefaultAsync();
+                    var projName = idea?.Project?.Name ?? "the project";
+                    var entDeepLink = $"/dashboard/entrepreneur/discover/{interest.IdeaId}";
+                    await notifService.CreateNotification(
+                        entGuid2,
+                        $"Interest Update: {projName}",
+                        $"The creator is not moving forward with your inquiry for {projName} at this time.",
+                        link: entDeepLink,
+                        type: "MarketplaceInterest",
+                        referenceId: interest.Id
+                    );
+                }
+
+                return Ok(ApiResponse.Ok("Interest declined.", MapInterestDto(interest)));
+            }
+            catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
+            catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
+        }
+
+        private static ProjectInterestDto MapInterestDto(ProjectInterest i, bool ndaRequired = true, bool accessGranted = false, bool ndaSigned = false) => new()
+        {
+            Id = i.Id.ToString(),
+            IdeaId = i.IdeaId,
+            CreatorId = i.CreatorId,
+            EntrepreneurId = i.EntrepreneurId,
+            EntrepreneurName = i.EntrepreneurName,
+            EntrepreneurEmail = i.EntrepreneurEmail,
+            Note = i.Note,
+            Status = i.Status,
+            DealModes = i.DealModes,
+            DealMode = i.DealMode,
+            ConversationId = i.ConversationId,
+            NdaRequired = ndaRequired,
+            NdaSigned = ndaSigned,
+            AccessGranted = accessGranted,
+            CreatedAt = i.CreatedAt,
+            UpdatedAt = i.UpdatedAt
+        };
 
         // ======================= PART 5 — FORMATION + SEED (Path B) =======================
 

@@ -170,8 +170,9 @@ namespace WebApp.Models.Dtos
     {
         public bool NdaRequired { get; set; }
         public decimal AskingPrice { get; set; }
-        // Compatibility-only input fields for older clients. New Full Buyout clients
-        // send neither; the controller explicitly persists purchase=true/license=false.
+        /// <summary>Supported deal modes: "full_buyout", "equity_partnership". If omitted, defaults to ["full_buyout"].</summary>
+        public List<string>? DealModes { get; set; }
+        // Compatibility-only input fields for older clients.
         public bool OpenToPurchase { get; set; }
         public bool OpenToLicense { get; set; }
         public string Audience { get; set; } // public | matched | private
@@ -195,21 +196,46 @@ namespace WebApp.Models.Dtos
 
     public class CreatorReadinessRequirement
     {
-        public string Key { get; set; }
-        public string Label { get; set; }
-        public string Route { get; set; }
+        public string Key { get; set; } = string.Empty;
+        public string Id { get => Key; set => Key = value; }
+        public string Label { get; set; } = string.Empty;
+        public string Route { get; set; } = string.Empty;
         public bool Complete { get; set; }
         public bool Required { get; set; }
+        public bool Blocking { get; set; } = true;
+        public string Status { get; set; } = "PENDING";
+        public string Details { get; set; } = string.Empty;
     }
 
     public class CreatorReadinessResponse
     {
         public int OverallProgress { get; set; }
         public bool LevelUpEligible { get; set; }
-        public string SelectedPath { get; set; }
+        public string SelectedPath { get; set; } = string.Empty;
+        public string QualificationPath { get; set; } = "BUILD";
+        public string? CompanyName { get; set; }
+        public string? CreatorRole { get; set; }
+        public double? CreatorEquityPercent { get; set; }
+        public string? PartnerName { get; set; }
+        public string? CompanyId { get; set; }
+        public string? DealId { get; set; }
+        public string? OutcomeBadge { get; set; }
+        public string? Details { get; set; }
         public List<CreatorReadinessRequirement> Requirements { get; set; } = new();
         public List<string> MissingRequired { get; set; } = new();
-        public CreatorReadinessRequirement NextBestAction { get; set; }
+        public CreatorReadinessRequirement? NextBestAction { get; set; }
+    }
+
+    public class LevelUpResponseDto
+    {
+        public bool LevelUpComplete { get; set; }
+        public string QualificationPath { get; set; } = "BUILD";
+        public string? CompanyId { get; set; }
+        public string? CompanyName { get; set; }
+        public string? CreatorRole { get; set; }
+        public double? CreatorEquityPercent { get; set; }
+        public string? EntrepreneurProfileId { get; set; }
+        public string RedirectTo { get; set; } = "/dashboard/entrepreneur";
     }
 
     public class DesignerDto

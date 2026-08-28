@@ -145,12 +145,19 @@ namespace WebApp.Services.Implementations
             p6.LevelUpTriggered = !string.IsNullOrEmpty(j.LeveledUpIdeaId) && j.LeveledUpIdeaId == idea.Id;
             j.OutputSnapshots = idea.OutputSnapshots ??= new CreatorOutputSnapshots();
             j.IdeaVersion = idea.Version > 0 ? idea.Version : 1;
+            j.IdeaId = idea.Id;
+            j.ProjectOutcome = idea.ProjectOutcome;
+            j.ActivePartnershipDealId = idea.ActivePartnershipDealId;
+            if (!string.IsNullOrEmpty(idea.CompanyId)) j.CompanyId = idea.CompanyId;
             return j;
         }
 
         /// <summary>Targeted optimistic write on the per-idea source of truth.</summary>
         private async Task WriteIdeaAsync(CreatorIdea idea, UpdateDefinition<CreatorIdea> update)
         {
+            if (string.Equals(idea.ProjectOutcome, "SOLD", StringComparison.OrdinalIgnoreCase))
+                throw new CreatorJourneyException(422, "This project has been sold and is permanently read-only.");
+
             var http = _httpContextAccessor?.HttpContext;
             long? expectedVersion = null;
             if (http != null)
@@ -330,13 +337,32 @@ namespace WebApp.Services.Implementations
 
             bool p5Done = s.Phase5.Status == "completed";
 
-            // ---- Phase 6 (Build path only) ----
+            // ---- Phase 6 (Two Valid Routes: BUILD or CO_FOUNDED; SOLD / Full Buyout locked) ----
             var p6 = j.Phase6Data ?? new CreatorPhase6Data();
-            if (!p5Done) s.Phase6.Status = "locked";
-            else if (p5.ChosenPath != "build") s.Phase6.Status = "locked"; // only Build unlocks matchmaking
-            else if (p6.LevelUpTriggered) s.Phase6.Status = "completed";
-            else if (p6.SmartMatchmaking?.Status == "live") s.Phase6.Status = "in_progress";
-            else s.Phase6.Status = "available";
+            bool isBuild = p5.ChosenPath == "build";
+            bool isCofounded = string.Equals(j.ProjectOutcome, "CO_FOUNDED", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(j.ActivePartnershipDealId);
+            bool isSoldOrBuyout = string.Equals(j.ProjectOutcome, "SOLD", StringComparison.OrdinalIgnoreCase);
+
+            if (isSoldOrBuyout)
+            {
+                s.Phase6.Status = "locked"; // Full Buyout is strictly locked
+            }
+            else if (isBuild && p5Done)
+            {
+                if (p6.LevelUpTriggered) s.Phase6.Status = "completed";
+                else if (p6.SmartMatchmaking?.Status == "live") s.Phase6.Status = "in_progress";
+                else s.Phase6.Status = "available";
+            }
+            else if (isCofounded)
+            {
+                if (p6.LevelUpTriggered) s.Phase6.Status = "completed";
+                else if (p6.SmartMatchmaking?.Status == "live") s.Phase6.Status = "in_progress";
+                else s.Phase6.Status = "available";
+            }
+            else
+            {
+                s.Phase6.Status = "locked";
+            }
 
             return s;
         }
@@ -598,7 +624,7 @@ namespace WebApp.Services.Implementations
         public async Task<CreatorJourney> SetBrandingLogoAsync(
             string userId, string logoAsset, string logoType, string brandingMethod,
             List<string> colorPalette = null, string paletteName = null, string typographyPairing = null,
-            string ideaId = null)
+            string ideaId = null, string designerId = null, string conversationId = null)
         {
             var j = await GetOrCreateAsync(userId);
             var idea = await ResolveIdeaAsync(j, ideaId);
@@ -610,6 +636,12 @@ namespace WebApp.Services.Implementations
             if (colorPalette != null) b.ColorPalette = colorPalette;
             if (paletteName != null) b.PaletteName = paletteName;
             if (typographyPairing != null) b.TypographyPairing = typographyPairing;
+            if (designerId != null)
+            {
+                b.DesignerId = designerId;
+                b.BookedAt = DateTime.UtcNow;
+            }
+            if (conversationId != null) b.ConversationId = conversationId;
 
             await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update.Set(x => x.Project.Branding, b));
             return j;

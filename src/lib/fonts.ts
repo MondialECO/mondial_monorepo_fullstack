@@ -1,8 +1,15 @@
-import { Inter, Playfair_Display, DM_Sans } from 'next/font/google';
+import { Inter, Playfair_Display, DM_Sans, Syne } from 'next/font/google';
 
 export const inter = Inter({
     subsets: ['latin'],
     variable: '--font-inter',
+    display: 'swap',
+    preload: true,
+});
+
+export const syne = Syne({
+    subsets: ['latin'],
+    variable: '--font-syne',
     display: 'swap',
     preload: true,
 });

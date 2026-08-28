@@ -1,4 +1,4 @@
-﻿using MongoDB.Bson;
+using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using Twilio.Annotations;
 using static System.Runtime.InteropServices.JavaScript.JSType;
@@ -16,6 +16,9 @@ public class Companies
     // Provenance: when a Company is created from a BusinessIdea via the
     // creator->entrepreneur transition, this holds the source idea id.
     public string SourceBusinessIdeaId { get; set; }
+
+    // Provenance: when a Company is created or linked via equity partnership deal activation
+    public string? SourceDealId { get; set; }
 
     // Phase 1: Basic Info
     public string CompanyName { get; set; }

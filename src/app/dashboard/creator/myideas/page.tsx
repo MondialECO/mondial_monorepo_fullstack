@@ -9,6 +9,7 @@ import { creatorJourneyApi, type IdeaCard } from "@/lib/api-creator-journey";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
 import {
   Lightbulb,
   ArrowRight,
@@ -18,7 +19,8 @@ import {
   Layout,
   Plus,
   Loader2,
-  Repeat
+  Repeat,
+  FileCheck
 } from "lucide-react";
 
 // Coarse phaseReached → card label. Display hint only — never gates anything.
@@ -240,43 +242,91 @@ export default function MyIdeasPage() {
                 <span className={`text-sm font-bold truncate ${idea.name ? "text-foreground" : "text-muted-foreground italic"}`}>
                   {idea.name || "Untitled idea"}
                 </span>
-                {idea.isActive && (
-                  <Badge className="bg-primary/10 hover:bg-primary/10 border-0 text-primary text-[10px] font-bold">Active</Badge>
-                )}
-                {idea.isLeveledUp && (
-                  <Badge className="bg-green-500/10 hover:bg-green-500/10 border-0 text-green-600 dark:text-green-400 text-[10px] font-bold">Leveled up</Badge>
+                {idea.projectOutcome === "SOLD" ? (
+                  <Badge className="bg-success-light border border-success-strong/30 text-success-strong text-[10px] font-bold uppercase">
+                    SOLD
+                  </Badge>
+                ) : idea.projectOutcome === "CO_FOUNDED" ? (
+                  <Badge className="bg-primary/10 border border-primary/30 text-primary text-[10px] font-bold uppercase">
+                    CO-FOUNDED
+                  </Badge>
+                ) : (
+                  <>
+                    {idea.isActive && (
+                      <Badge className="bg-primary/10 hover:bg-primary/10 border-0 text-primary text-[10px] font-bold">Active</Badge>
+                    )}
+                    {idea.isLeveledUp && (
+                      <Badge className="bg-success-light hover:bg-success-light border-0 text-success-strong text-[10px] font-bold">Leveled up</Badge>
+                    )}
+                  </>
                 )}
               </div>
               <p className="text-xs text-muted-foreground truncate mt-0.5">
-                {/* Concept → Problem snippet → honest empty (a truly blank idea has neither). */}
-                {idea.concept || idea.problem || "No concept yet — continue to define it."}
+                {idea.projectOutcome === "SOLD" ? (
+                  <span className="text-success-strong font-semibold">
+                    Transferred via Full Buyout {idea.salePrice ? `for €${idea.salePrice.toLocaleString()} EUR` : ""} {idea.soldAt ? `on ${new Date(idea.soldAt).toLocaleDateString()}` : ""}
+                  </span>
+                ) : idea.projectOutcome === "CO_FOUNDED" ? (
+                  <span className="text-primary font-semibold">
+                    Active Co-Founder Partnership
+                  </span>
+                ) : (
+                  idea.concept || idea.problem || "No concept yet — continue to define it."
+                )}
               </p>
               <p className="text-[10px] text-muted-foreground font-semibold mt-1">
-                {PHASE_LABEL[idea.phaseReached] ?? "Phase 2 · Identity"} · Last active {new Date(idea.lastActiveAt).toLocaleDateString()}
+                {idea.projectOutcome === "SOLD"
+                  ? `Completed Sale · Finalized ${idea.soldAt ? new Date(idea.soldAt).toLocaleDateString() : new Date(idea.lastActiveAt).toLocaleDateString()}`
+                  : `${PHASE_LABEL[idea.phaseReached] ?? "Phase 2 · Identity"} · Last active ${new Date(idea.lastActiveAt).toLocaleDateString()}`}
               </p>
             </div>
             <div className="flex gap-2 shrink-0">
-              {!idea.isActive && (
+              {idea.projectOutcome === "SOLD" ? (
                 <Button
-                  onClick={() => handleSwitch(idea.ideaId)}
-                  disabled={!!busy}
-                  variant="outline"
+                  asChild
                   size="sm"
-                  className="rounded-xl text-xs font-bold"
+                  className="rounded-xl text-xs font-bold bg-success-strong hover:bg-success-strong/90 text-white shadow-sm gap-1.5"
                 >
-                  {busy === idea.ideaId ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Repeat className="w-3.5 h-3.5 mr-1" />}
-                  Switch
+                  <Link href={`/dashboard/creator/sales/${idea.activeBuyoutDealId || idea.ideaId}`}>
+                    <FileCheck className="w-3.5 h-3.5" /> View Sale Record
+                  </Link>
                 </Button>
+              ) : idea.projectOutcome === "CO_FOUNDED" ? (
+                <Button
+                  asChild
+                  size="sm"
+                  variant="default"
+                  className="rounded-xl text-xs font-bold shadow-sm"
+                >
+                  <Link href="/dashboard/creator/partnerships">
+                    Open Partnership <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                  </Link>
+                </Button>
+              ) : (
+                <>
+                  {!idea.isActive && (
+                    <Button
+                      onClick={() => handleSwitch(idea.ideaId)}
+                      disabled={!!busy}
+                      variant="outline"
+                      size="sm"
+                      className="rounded-xl text-xs font-bold"
+                    >
+                      {busy === idea.ideaId ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Repeat className="w-3.5 h-3.5 mr-1" />}
+                      Switch
+                    </Button>
+                  )}
+                  <Button
+                    onClick={() => handleContinue(idea)}
+                    disabled={!!busy}
+                    size="sm"
+                    className="rounded-xl text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/95"
+                  >
+                    {busy === idea.ideaId ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                    Continue <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                  </Button>
+                </>
               )}
-              <Button
-                onClick={() => handleContinue(idea)}
-                disabled={!!busy}
-                size="sm"
-                className="rounded-xl text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/95"
-              >
-                {busy === idea.ideaId ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
-                Continue <ArrowRight className="w-3.5 h-3.5 ml-1" />
-              </Button>
             </div>
           </div>
         ))}
@@ -324,8 +374,6 @@ export default function MyIdeasPage() {
       </div>
     );
   }
-
-  // 2. IN-PROGRESS STATE
   if (!isPhase2Complete) {
     const currentStepLabel = (() => {
       const step = journeyState.phase2.currentStep;

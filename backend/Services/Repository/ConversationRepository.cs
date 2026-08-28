@@ -1,4 +1,4 @@
-﻿using MongoDB.Bson;
+using MongoDB.Bson;
 using MongoDB.Driver;
 using WebApp.Models.DatabaseModels;
 
@@ -26,22 +26,41 @@ namespace WebApp.Services.Repository
                 .ToListAsync();
         }
 
-        // Returns the existing Direct conversation between the pair, or creates
-        // one. `Created` is true only when a new conversation was inserted, so
-        // callers can fire a one-time "conversation created" realtime event.
-        public async Task<(Conversation Conversation, bool Created)> GetOrCreateConversation(Guid user1, Guid user2)
+        // Returns the existing Direct conversation between the pair for the given context (or null context),
+        // or creates one. `Created` is true only when a new conversation was inserted, so callers can fire
+        // a one-time "conversation created" realtime event.
+        public async Task<(Conversation Conversation, bool Created)> GetOrCreateConversation(
+            Guid user1, 
+            Guid user2, 
+            ObjectId? relatedProjectId = null,
+            string? contextType = null)
         {
-            var convo = await _collection.Find(c =>
-                c.Participants.Contains(user1) &&
-                c.Participants.Contains(user2) &&
-                c.Type == "Direct"
-            ).FirstOrDefaultAsync();
+            var filter = Builders<Conversation>.Filter.And(
+                Builders<Conversation>.Filter.AnyEq(c => c.Participants, user1),
+                Builders<Conversation>.Filter.AnyEq(c => c.Participants, user2),
+                Builders<Conversation>.Filter.Eq(c => c.Type, "Direct"),
+                relatedProjectId.HasValue
+                    ? Builders<Conversation>.Filter.Eq(c => c.RelatedProjectId, relatedProjectId.Value)
+                    : Builders<Conversation>.Filter.Eq(c => c.RelatedProjectId, null),
+                !string.IsNullOrEmpty(contextType)
+                    ? Builders<Conversation>.Filter.Eq(c => c.ContextType, contextType)
+                    : Builders<Conversation>.Filter.Or(
+                        Builders<Conversation>.Filter.Eq(c => c.ContextType, null),
+                        Builders<Conversation>.Filter.Exists(c => c.ContextType, false)
+                      )
+            );
+
+            var convo = await _collection.Find(filter).FirstOrDefaultAsync();
 
             if (convo != null) return (convo, false);
 
             var newConvo = new Conversation
             {
-                Participants = new List<Guid> { user1, user2 }
+                Participants = new List<Guid> { user1, user2 },
+                Type = "Direct",
+                RelatedProjectId = relatedProjectId,
+                ContextType = contextType,
+                CreatedAt = DateTime.UtcNow
             };
 
             await _collection.InsertOneAsync(newConvo);

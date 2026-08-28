@@ -18,7 +18,9 @@ export type PipelineColumnKey =
   | "inReview"
   | "ndaSigned"
   | "dataRoom"
-  | "negotiation";
+  | "negotiation"
+  | "won"
+  | "lost";
 
 export interface OpportunityCard {
   companyId: string;
@@ -113,6 +115,8 @@ export interface InvestorPipelineColumns {
   ndaSigned: OpportunityCard[];
   dataRoom: OpportunityCard[];
   negotiation: OpportunityCard[];
+  won?: OpportunityCard[];
+  lost?: OpportunityCard[];
 }
 
 export interface InvestorPipeline {

@@ -9,6 +9,7 @@ namespace WebApp.Models.Dtos
         public string Id { get; set; } = "";
         public List<ConversationParticipantDto> Participants { get; set; } = new();
         public string Type { get; set; } = "Direct";
+        public string? ContextType { get; set; }
         public string? LastMessage { get; set; }
         public DateTime? LastMessageAt { get; set; }
         public DateTime CreatedAt { get; set; }

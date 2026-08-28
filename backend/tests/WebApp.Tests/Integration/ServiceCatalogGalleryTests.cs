@@ -33,7 +33,7 @@ public class ServiceCatalogGalleryVideoValidationTests
         try
         {
             // Create FormFile from test video
-            var stream = File.OpenRead(testVideoPath);
+            using var stream = File.OpenRead(testVideoPath);
             var formFile = new FormFile(stream, 0, stream.Length, "file", "test_video.mp4")
             {
                 Headers = new HeaderDictionary(),

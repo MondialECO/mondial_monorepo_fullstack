@@ -68,7 +68,7 @@ export const menu: Record<UserRole, MenuSection[]> = {
     },
   ],
 
-[UserRole.CREATOR]: [
+  [UserRole.CREATOR]: [
     {
       title: "Main",
       items: [
@@ -78,20 +78,16 @@ export const menu: Record<UserRole, MenuSection[]> = {
           icon: LayoutDashboard,
         },
         {
-          label: "Services Marketplace",
-          href: "/marketplace/services",
-          icon: Store,
-        },
-        {
-          label: "My Engagements",
-          href: "/dashboard/creator/engagements",
-          icon: Handshake,
-        },
-        {
-          label: "My Idea",
+          label: "My Ideas",
           href: "/dashboard/creator/myideas",
           icon: Lightbulb,
         },
+      ],
+    },
+
+    {
+      title: "Build Your Project",
+      items: [
         {
           label: "Project Studio",
           href: "/dashboard/creator/project-studio",
@@ -102,31 +98,41 @@ export const menu: Record<UserRole, MenuSection[]> = {
           href: "/dashboard/creator/offer-pricing",
           icon: DollarSign,
         },
+        {
+          label: "Marketplace Push",
+          href: "/dashboard/creator/crossroads",
+          icon: Store,
+        },
+        {
+          label: "Growth & Readiness",
+          href: "/dashboard/creator/investors",
+          icon: Sparkles,
+        },
       ],
     },
 
     {
-      title: "Growth",
+      title: "Deals & Network",
       items: [
         {
-          label: "The Crossroads",
-          href: "/dashboard/creator/crossroads",
-          icon: GitFork,
+          label: "My Partnerships",
+          href: "/dashboard/creator/partnerships",
+          icon: Handshake,
         },
         {
-          label: "Marketplace",
-          href: "/dashboard/creator/marketplace",
+          label: "My Sales",
+          href: "/dashboard/creator/sales",
+          icon: DollarSign,
+        },
+        {
+          label: "Services Marketplace",
+          href: "/marketplace/services",
           icon: Store,
         },
         {
-          label: "Hire Providers",
-          href: "/dashboard/creator/hire-providers",
-          icon: Users,
-        },
-        {
-          label: "IP Vault",
-          href: "/dashboard/creator/ip-vault",
-          icon: Lock,
+          label: "My Engagements",
+          href: "/dashboard/creator/engagements",
+          icon: Handshake,
         },
       ],
     },
@@ -148,17 +154,17 @@ export const menu: Record<UserRole, MenuSection[]> = {
     },
 
     {
-      title: "Assets",
+      title: "Assets & Settings",
       items: [
-        {
-          label: "Asset Library",
-          href: "/dashboard/creator/asset-library",
-          icon: Folder,
-        },
         {
           label: "Documents",
           href: "/dashboard/creator/documents",
           icon: FileText,
+        },
+        {
+          label: "Asset Library",
+          href: "/dashboard/creator/asset-library",
+          icon: Folder,
         },
         {
           label: "Settings",
@@ -169,15 +175,47 @@ export const menu: Record<UserRole, MenuSection[]> = {
     },
   ],
 
+  // Investor sidebar mirrors the live functional areas:
+  // Main (Dashboard, Discovery) / Investment & Deals (Pipeline, Deals, Thesis) / Network & Services (Services, Engagements) / Profile & Communication (Profile, Messages).
   [UserRole.INVESTOR]: [
     {
-      title: "Dashboard",
+      title: "Main",
       items: [
         {
-          label: "Investments",
+          label: "Investments Dashboard",
           href: "/dashboard/investor",
           icon: Wallet,
         },
+        {
+          label: "Discover Opportunities",
+          href: "/dashboard/investor/discovery",
+          icon: Compass,
+        },
+      ],
+    },
+    {
+      title: "Investment & Deals",
+      items: [
+        {
+          label: "Pipeline",
+          href: "/dashboard/investor/pipeline",
+          icon: LayoutGrid,
+        },
+        {
+          label: "Deals & Term Sheets",
+          href: "/dashboard/investor/deals",
+          icon: Handshake,
+        },
+        {
+          label: "Investment Thesis",
+          href: "/dashboard/investor/thesis",
+          icon: BadgeCheck,
+        },
+      ],
+    },
+    {
+      title: "Services & Network",
+      items: [
         {
           label: "Services Marketplace",
           href: "/marketplace/services",
@@ -188,30 +226,15 @@ export const menu: Record<UserRole, MenuSection[]> = {
           href: "/dashboard/investor/engagements",
           icon: Handshake,
         },
-        {
-          label: "Discovery",
-          href: "/dashboard/investor/discovery",
-          icon: Compass,
-        },
-        {
-          label: "Investment Thesis",
-          href: "/dashboard/investor/thesis",
-          icon: BadgeCheck,
-        },
+      ],
+    },
+    {
+      title: "Profile & Communication",
+      items: [
         {
           label: "Public Profile",
           href: "/dashboard/investor/profile",
           icon: User,
-        },
-        {
-          label: "Pipeline",
-          href: "/dashboard/investor/pipeline",
-          icon: LayoutGrid,
-        },
-        {
-          label: "Deals",
-          href: "/dashboard/investor/deals",
-          icon: Handshake,
         },
         {
           label: "Messages",
@@ -222,8 +245,8 @@ export const menu: Record<UserRole, MenuSection[]> = {
     },
   ],
 
-  // Entrepreneur sidebar mirrors the Figma Dashboard Overview groups
-  // (MAIN / FUNDING / MATCHING). Every href points at a route that exists today.
+  // Entrepreneur sidebar mirrors the live functional areas:
+  // Main (Dashboard, Discover, Project Deals, My Acquisitions) / Operations (Financials, Cap Table, Services) / Funding & Matching (Ask, Data Room, Matching, Investor Deals) / Communication (Messages).
   [UserRole.ENTREPRENEUR]: [
     {
       title: "Main",
@@ -234,15 +257,25 @@ export const menu: Record<UserRole, MenuSection[]> = {
           icon: LayoutDashboard,
         },
         {
-          label: "Services Marketplace",
-          href: "/marketplace/services",
-          icon: Store,
+          label: "Discover Projects",
+          href: "/dashboard/entrepreneur/discover",
+          icon: Compass,
         },
         {
-          label: "My Engagements",
-          href: "/dashboard/entrepreneur/engagements",
-          icon: Handshake,
+          label: "Project Deals",
+          href: "/dashboard/entrepreneur/deals",
+          icon: GitFork,
         },
+        {
+          label: "My Acquisitions",
+          href: "/dashboard/entrepreneur/acquisitions",
+          icon: DollarSign,
+        },
+      ],
+    },
+    {
+      title: "Operations",
+      items: [
         {
           label: "Financials & KPIs",
           href: "/dashboard/entrepreneur/phase-3",
@@ -258,10 +291,20 @@ export const menu: Record<UserRole, MenuSection[]> = {
           href: "/dashboard/entrepreneur/phase-4",
           icon: PieChart,
         },
+        {
+          label: "Services Marketplace",
+          href: "/marketplace/services",
+          icon: Store,
+        },
+        {
+          label: "My Engagements",
+          href: "/dashboard/entrepreneur/engagements",
+          icon: Handshake,
+        },
       ],
     },
     {
-      title: "Funding",
+      title: "Funding & Matching",
       items: [
         {
           label: "Funding Ask",
@@ -278,21 +321,21 @@ export const menu: Record<UserRole, MenuSection[]> = {
           href: "/dashboard/entrepreneur/phase-7",
           icon: Sparkles,
         },
-      ],
-    },
-    {
-      title: "Matching",
-      items: [
         {
           label: "Investor Matching",
           href: "/dashboard/entrepreneur/phase-8",
           icon: Handshake,
         },
         {
-          label: "Deals",
+          label: "Investor Deals",
           href: "/dashboard/entrepreneur/phase-9",
           icon: Users,
         },
+      ],
+    },
+    {
+      title: "Communication",
+      items: [
         {
           label: "Messages",
           href: "/dashboard/entrepreneur/messages",

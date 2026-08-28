@@ -23,7 +23,7 @@ export default function PublicProfilePage() {
                         {/* Main Profile Card */}
                         <div className="overflow-hidden rounded-2xl">
                             {/* Cover Image */}
-                            <div className="h-20 bg-gradient-to-r from-blue-500 to-indigo-600 relative overflow-hidden">
+                            <div className="h-20 bg-primary/20 relative overflow-hidden">
                                 <Image src="https://unsplash.com/photos/turned-on-flat-screen-television-5Xwaj9gaR0g" alt="cover" fill className="absolute inset-0 object-cover opacity-30 mix-blend-overlay" />
                                 <button className="absolute top-3 right-3 p-1.5 bg-background/20 hover:bg-background/30 backdrop-blur-md rounded-md text-foreground transition-colors">
                                     <Plus size={16} />

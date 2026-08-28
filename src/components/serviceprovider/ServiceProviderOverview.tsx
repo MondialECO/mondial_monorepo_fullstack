@@ -92,7 +92,7 @@ export function ServiceProviderOverview() {
         </section>
 
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <MetricCard icon={Banknote} tone="green" label="Available Balance" value={money(data.metrics.availableBalance, data.currency)} detail={`${money(data.metrics.pendingEscrow, data.currency)} Pending Escrow`} />
+          <MetricCard icon={Banknote} tone="green" label="Available Balance" value={money(data.metrics.availableBalance, data.currency)} detail={`${money(data.metrics.pendingEscrow, data.currency)} Pending Payment`} />
           <MetricCard icon={FolderKanban} tone="blue" label="Active Projects" value={String(data.metrics.activeEngagements)} detail={`${data.metrics.deliverablesDueThisWeek} deliverables due this week`} />
           <MetricCard icon={BriefcaseBusiness} tone="amber" label="New Leads" value={String(data.metrics.newLeads)} detail={leadExpiry(data.metrics.nearestLeadExpiryAt, data.computedAt)} urgent={data.metrics.newLeads > 0} />
           <TrustMetricCard hasEnoughData={data.trust.hasEnoughData} score={data.trust.score} status={data.trust.status} />

@@ -2,6 +2,7 @@
 
 import { Bell } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { formatDistanceToNowStrict } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import EmptyState from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/app/_providers/AuthProvider";
+import type { AppNotification } from "@/types/notifications";
 import {
   useMarkNotificationRead,
   useNotificationRealtime,
@@ -41,6 +43,7 @@ function formatTime(iso: string): string {
  * a caller can no longer reach the panel's internals by selector.
  */
 export default function NotificationBell({ triggerClassName }: { triggerClassName?: string } = {}) {
+  const router = useRouter();
   const { token } = useAuth();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -48,6 +51,16 @@ export default function NotificationBell({ triggerClassName }: { triggerClassNam
   const { notifications, unreadCount, isLoading, isError } = useNotifications();
   const markRead = useMarkNotificationRead();
   useNotificationRealtime(!!token);
+
+  const handleNotificationClick = (n: AppNotification) => {
+    if (!n.isRead) {
+      markRead.mutate(n.id);
+    }
+    setOpen(false);
+    if (n.link) {
+      router.push(n.link);
+    }
+  };
 
   // Close on outside click / Escape.
   useEffect(() => {
@@ -119,9 +132,7 @@ export default function NotificationBell({ triggerClassName }: { triggerClassNam
                   <li key={n.id}>
                     <button
                       type="button"
-                      onClick={() => {
-                        if (!n.isRead) markRead.mutate(n.id);
-                      }}
+                      onClick={() => handleNotificationClick(n)}
                       className={cn(
                         "flex w-full gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/50",
                         !n.isRead && "bg-muted/30"
