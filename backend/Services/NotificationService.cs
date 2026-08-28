@@ -108,6 +108,10 @@ namespace WebApp.Services
         public Task<bool> MarkAsRead(ObjectId notificationId, Guid userId)
             => _repo.MarkAsRead(notificationId, userId);
 
+        public Task<int> GetUnreadCount(Guid userId)
+            => _repo.GetUnreadCount(userId);
 
+        public Task<long> MarkAllAsRead(Guid userId)
+            => _repo.MarkAllAsRead(userId);
     }
 }

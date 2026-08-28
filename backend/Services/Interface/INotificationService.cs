@@ -17,5 +17,7 @@ namespace WebApp.Services.Interface
         // to the caller. Returns true if a matching document was updated,
         // false if the (id, userId) pair did not match a row.
         Task<bool> MarkAsRead(ObjectId notificationId, Guid userId);
+        Task<int> GetUnreadCount(Guid userId);
+        Task<long> MarkAllAsRead(Guid userId);
     }
 }

@@ -241,6 +241,11 @@ export const menu: Record<UserRole, MenuSection[]> = {
           href: "/dashboard/investor/messages",
           icon: MessageSquare,
         },
+        {
+          label: "Notifications",
+          href: "/dashboard/investor/notifications",
+          icon: Bell,
+        },
       ],
     },
   ],
@@ -341,6 +346,11 @@ export const menu: Record<UserRole, MenuSection[]> = {
           href: "/dashboard/entrepreneur/messages",
           icon: MessageSquare,
         },
+        {
+          label: "Notifications",
+          href: "/dashboard/entrepreneur/notifications",
+          icon: Bell,
+        },
       ],
     },
   ],
@@ -393,6 +403,11 @@ export const menu: Record<UserRole, MenuSection[]> = {
           label: "Messages",
           href: "/dashboard/serviceprovider/messages",
           icon: MessageSquare,
+        },
+        {
+          label: "Notifications",
+          href: "/dashboard/serviceprovider/notifications",
+          icon: Bell,
         },
         {
           label: "Service Catalog",

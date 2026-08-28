@@ -6,40 +6,61 @@ import {
   useQueryClient,
   type QueryClient,
 } from '@tanstack/react-query';
-import { getNotifications, markAsRead } from '@/lib/api-notifications';
+import {
+  getNotifications,
+  getUnreadNotificationCount,
+  markAllAsRead,
+  markAsRead,
+} from '@/lib/api-notifications';
 import { hubEvent, useSignalRHub } from '@/lib/realtime';
 import type { AppNotification } from '@/types/notifications';
 
-// TanStack Query layer for the notifications domain. The backend exposes a
-// list endpoint and a single mark-as-read endpoint only — there is no
-// unread-count or mark-all endpoint, so the unread count is derived from the
-// fetched list. Realtime arrivals come over the shared notifications hub.
-
 export const notificationsKey = ['notifications', 'list'] as const;
+export const unreadCountKey = ['notifications', 'unreadCount'] as const;
 
-const PAGE_LIMIT = 30;
-// Keep the in-memory inbox bounded as realtime items prepend.
-const MAX_CACHED = 50;
+const MAX_CACHED = 100;
 
-// Insert a realtime notification at the top of the list, de-duplicated by id.
+// Insert a realtime notification at the top of the list, de-duplicated by id, and increment unread count.
 export function prependNotificationInCache(
   qc: QueryClient,
   n: AppNotification
 ): void {
-  qc.setQueryData<AppNotification[]>(notificationsKey, (prev = []) => {
+  // Update all notification list queries in cache
+  qc.setQueriesData<AppNotification[]>({ queryKey: ['notifications', 'list'] }, (prev = []) => {
     if (prev.some((x) => x.id === n.id)) return prev;
     return [n, ...prev].slice(0, MAX_CACHED);
   });
+
+  // Increment canonical unread count if newly arrived notification is unread
+  if (!n.isRead) {
+    qc.setQueryData<number>(unreadCountKey, (prev = 0) => prev + 1);
+  }
 }
 
-export function useNotifications() {
-  const query = useQuery<AppNotification[]>({
-    queryKey: notificationsKey,
-    queryFn: () => getNotifications(0, PAGE_LIMIT),
+export function useUnreadNotificationCount() {
+  const query = useQuery<number>({
+    queryKey: unreadCountKey,
+    queryFn: getUnreadNotificationCount,
+    staleTime: 1000 * 30, // 30 seconds
+  });
+  return query.data ?? 0;
+}
+
+export function useNotifications(limit = 10, skip = 0) {
+  const listQuery = useQuery<AppNotification[]>({
+    queryKey: ['notifications', 'list', skip, limit],
+    queryFn: () => getNotifications(skip, limit),
   });
 
-  const notifications = query.data ?? [];
-  const unreadCount = notifications.reduce(
+  const unreadQuery = useQuery<number>({
+    queryKey: unreadCountKey,
+    queryFn: getUnreadNotificationCount,
+    staleTime: 1000 * 30,
+  });
+
+  const notifications = listQuery.data ?? [];
+  // Fallback to local list calculation only if unreadQuery is not yet available
+  const unreadCount = unreadQuery.data ?? notifications.reduce(
     (n, item) => (item.isRead ? n : n + 1),
     0
   );
@@ -47,9 +68,11 @@ export function useNotifications() {
   return {
     notifications,
     unreadCount,
-    isLoading: query.isLoading,
-    isError: query.isError,
-    refetch: query.refetch,
+    isLoading: listQuery.isLoading || unreadQuery.isLoading,
+    isError: listQuery.isError || unreadQuery.isError,
+    refetch: async () => {
+      await Promise.all([listQuery.refetch(), unreadQuery.refetch()]);
+    },
   };
 }
 
@@ -59,15 +82,57 @@ export function useMarkNotificationRead() {
     mutationFn: (id: string) => markAsRead(id),
     // Optimistically flip isRead; roll back on failure.
     onMutate: async (id: string) => {
-      await qc.cancelQueries({ queryKey: notificationsKey });
-      const prev = qc.getQueryData<AppNotification[]>(notificationsKey);
-      qc.setQueryData<AppNotification[]>(notificationsKey, (list) =>
+      await qc.cancelQueries({ queryKey: ['notifications'] });
+      const prevLists = qc.getQueriesData<AppNotification[]>({ queryKey: ['notifications', 'list'] });
+      const prevUnread = qc.getQueryData<number>(unreadCountKey);
+
+      qc.setQueriesData<AppNotification[]>({ queryKey: ['notifications', 'list'] }, (list) =>
         list?.map((n) => (n.id === id ? { ...n, isRead: true } : n))
       );
-      return { prev };
+      qc.setQueryData<number>(unreadCountKey, (prev = 0) => Math.max(0, prev - 1));
+
+      return { prevLists, prevUnread };
     },
     onError: (_err, _id, ctx) => {
-      if (ctx?.prev) qc.setQueryData(notificationsKey, ctx.prev);
+      if (ctx?.prevLists) {
+        ctx.prevLists.forEach(([key, data]) => qc.setQueryData(key, data));
+      }
+      if (ctx?.prevUnread !== undefined) {
+        qc.setQueryData(unreadCountKey, ctx.prevUnread);
+      }
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ['notifications'] });
+    },
+  });
+}
+
+export function useMarkAllNotificationsRead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => markAllAsRead(),
+    onMutate: async () => {
+      await qc.cancelQueries({ queryKey: ['notifications'] });
+      const prevLists = qc.getQueriesData<AppNotification[]>({ queryKey: ['notifications', 'list'] });
+      const prevUnread = qc.getQueryData<number>(unreadCountKey);
+
+      qc.setQueriesData<AppNotification[]>({ queryKey: ['notifications', 'list'] }, (list) =>
+        list?.map((n) => ({ ...n, isRead: true }))
+      );
+      qc.setQueryData<number>(unreadCountKey, 0);
+
+      return { prevLists, prevUnread };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prevLists) {
+        ctx.prevLists.forEach(([key, data]) => qc.setQueryData(key, data));
+      }
+      if (ctx?.prevUnread !== undefined) {
+        qc.setQueryData(unreadCountKey, ctx.prevUnread);
+      }
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ['notifications'] });
     },
   });
 }
@@ -89,3 +154,4 @@ export function useNotificationRealtime(enabled: boolean) {
   });
   return status;
 }
+
