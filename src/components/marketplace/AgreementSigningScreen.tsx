@@ -222,7 +222,7 @@ export const AgreementSigningScreen: React.FC<AgreementSigningScreenProps> = ({
                 {isFullySigned ? "FULLY SIGNED" : pkg.status.replace(/_/g, " ")}
               </Badge>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground flex items-center gap-2 font-syne">
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground flex items-center gap-2 font-heading">
               Agreement Signing
             </h1>
             <p className="text-muted-foreground text-sm mt-1">
@@ -421,7 +421,7 @@ export const AgreementSigningScreen: React.FC<AgreementSigningScreenProps> = ({
       {/* DOCUMENTS LIST */}
       <Card className="rounded-2xl p-6 border-border bg-card shadow-sm space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-bold text-foreground flex items-center gap-2 font-syne">
+          <h2 className="text-base font-bold text-foreground flex items-center gap-2 font-heading">
             <FileText className="w-4 h-4 text-primary" />
             Binding Agreements to Execute ({pkg.documents.length})
           </h2>
@@ -487,7 +487,7 @@ export const AgreementSigningScreen: React.FC<AgreementSigningScreenProps> = ({
               <div className="flex items-center gap-3">
                 <CheckCircle2 className="w-6 h-6 text-success-strong shrink-0" />
                 <div>
-                  <h3 className="font-semibold text-foreground text-sm font-syne">Your Signature is Recorded</h3>
+                  <h3 className="font-semibold text-foreground text-sm font-heading">Your Signature is Recorded</h3>
                   <p className="text-xs text-muted-foreground">
                     Awaiting counterparty signature to complete execution. You will be notified once complete.
                   </p>
@@ -505,7 +505,7 @@ export const AgreementSigningScreen: React.FC<AgreementSigningScreenProps> = ({
           ) : isPrincipal ? (
             <div className="space-y-4">
               <div>
-                <h3 className="text-base font-bold text-foreground mb-1 font-syne">Execute Your Digital Signature</h3>
+                <h3 className="text-base font-bold text-foreground mb-1 font-heading">Execute Your Digital Signature</h3>
                 <p className="text-xs text-muted-foreground">
                   By executing this document package, you establish legal agreement under {pkg.jurisdiction || "Delaware, USA"} law.
                 </p>
@@ -572,7 +572,7 @@ export const AgreementSigningScreen: React.FC<AgreementSigningScreenProps> = ({
                 <CheckCircle2 className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="font-bold text-foreground text-base font-syne">Agreement Fully Executed!</h3>
+                <h3 className="font-bold text-foreground text-base font-heading">Agreement Fully Executed!</h3>
                 <p className="text-xs text-muted-foreground">
                   Both parties have signed identical Manifest SHA-256. Deal stage advanced to ACTIVATION_PENDING.
                 </p>
@@ -629,7 +629,7 @@ export const AgreementSigningScreen: React.FC<AgreementSigningScreenProps> = ({
           <Card className="border border-border rounded-2xl max-w-3xl w-full max-h-[85vh] flex flex-col shadow-xl bg-card overflow-hidden">
             <div className="p-5 border-b border-border flex items-center justify-between">
               <div>
-                <h3 className="font-bold text-foreground text-base font-syne">{selectedDoc.title}</h3>
+                <h3 className="font-bold text-foreground text-base font-heading">{selectedDoc.title}</h3>
                 <span className="text-xs text-muted-foreground font-mono">Version V{selectedDoc.documentVersion} • {selectedDoc.documentHash}</span>
               </div>
               <Button
@@ -673,7 +673,7 @@ export const AgreementSigningScreen: React.FC<AgreementSigningScreenProps> = ({
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
           <Card className="border border-border rounded-2xl max-w-lg w-full p-6 shadow-xl space-y-4 bg-card">
             <div className="flex items-center justify-between">
-              <h3 className="font-bold text-foreground text-base flex items-center gap-2 font-syne">
+              <h3 className="font-bold text-foreground text-base flex items-center gap-2 font-heading">
                 <Edit3 className="w-4 h-4 text-warning" />
                 Request Legal Modifications
               </h3>

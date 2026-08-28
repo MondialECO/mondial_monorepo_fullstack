@@ -594,7 +594,7 @@ export const AcquiredProjectWorkspace: React.FC<AcquiredProjectWorkspaceProps> =
                 </span>
               )}
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight font-syne">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight font-heading">
               {deal.projectName || projectData?.projectName || "Acquired Venture"}
             </h1>
             {projectData?.tagline && (
@@ -715,7 +715,7 @@ export const AcquiredProjectWorkspace: React.FC<AcquiredProjectWorkspaceProps> =
                 <Card className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-4">
                   <div className="flex items-center gap-2 pb-2 border-b border-border">
                     <Target className="h-5 w-5 text-primary" />
-                    <h3 className="text-base font-bold text-foreground font-syne">The Problem</h3>
+                    <h3 className="text-base font-bold text-foreground font-heading">The Problem</h3>
                   </div>
                   <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-line">
                     {projectData?.problem || "No problem statement recorded."}
@@ -725,7 +725,7 @@ export const AcquiredProjectWorkspace: React.FC<AcquiredProjectWorkspaceProps> =
                 <Card className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-4">
                   <div className="flex items-center gap-2 pb-2 border-b border-border">
                     <Sparkles className="h-5 w-5 text-primary" />
-                    <h3 className="text-base font-bold text-foreground font-syne">The Solution</h3>
+                    <h3 className="text-base font-bold text-foreground font-heading">The Solution</h3>
                   </div>
                   <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-line">
                     {projectData?.solution || "No solution description recorded."}
@@ -735,7 +735,7 @@ export const AcquiredProjectWorkspace: React.FC<AcquiredProjectWorkspaceProps> =
                 <Card className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-4">
                   <div className="flex items-center gap-2 pb-2 border-b border-border">
                     <User className="h-5 w-5 text-primary" />
-                    <h3 className="text-base font-bold text-foreground font-syne">Target User &amp; Market</h3>
+                    <h3 className="text-base font-bold text-foreground font-heading">Target User &amp; Market</h3>
                   </div>
                   <div className="space-y-2 text-sm text-foreground/90 leading-relaxed">
                     <p><strong>Target User:</strong> {projectData?.targetUser || "General audience / market."}</p>
@@ -751,7 +751,7 @@ export const AcquiredProjectWorkspace: React.FC<AcquiredProjectWorkspaceProps> =
                 <Card className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-4">
                   <div className="flex items-center gap-2 pb-2 border-b border-border">
                     <ShieldCheck className="h-5 w-5 text-success-strong" />
-                    <h3 className="text-base font-bold text-foreground font-syne">Acquisition Invariants</h3>
+                    <h3 className="text-base font-bold text-foreground font-heading">Acquisition Invariants</h3>
                   </div>
                   <div className="space-y-2 text-xs text-muted-foreground">
                     <div className="flex items-center gap-2">
@@ -772,7 +772,7 @@ export const AcquiredProjectWorkspace: React.FC<AcquiredProjectWorkspaceProps> =
 
               {/* STRATEGIC DIFFERENTIATION & FOUNDATION */}
               <Card className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-5">
-                <h3 className="text-base font-bold font-syne text-foreground">Strategic Foundation &amp; Validation</h3>
+                <h3 className="text-base font-bold font-heading text-foreground">Strategic Foundation &amp; Validation</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-xs">
                   <div className="p-4 bg-background border border-border rounded-xl space-y-1.5">
                     <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">Creator Edge</span>
@@ -827,7 +827,7 @@ export const AcquiredProjectWorkspace: React.FC<AcquiredProjectWorkspaceProps> =
                   <div className="flex items-center justify-between pb-2 border-b border-border">
                     <div className="flex items-center gap-2">
                       <Sparkles className="h-5 w-5 text-primary" />
-                      <h3 className="text-base font-bold text-foreground font-syne">Investor Readiness Evaluation</h3>
+                      <h3 className="text-base font-bold text-foreground font-heading">Investor Readiness Evaluation</h3>
                     </div>
                     <Badge className="bg-primary/10 text-primary border-primary/30 text-xs font-bold">
                       {projectData.intelligence.investorReadiness.label || "Evaluated"} (Score: {projectData.intelligence.investorReadiness.total}/100)
@@ -872,7 +872,7 @@ export const AcquiredProjectWorkspace: React.FC<AcquiredProjectWorkspaceProps> =
               {/* MARKET & COMPETITIVE ANALYSIS */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Card className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-3">
-                  <h3 className="text-sm font-bold text-foreground font-syne uppercase tracking-wider text-primary">
+                  <h3 className="text-sm font-bold text-foreground font-heading uppercase tracking-wider text-primary">
                     Market Opportunity
                   </h3>
                   <p className="text-sm text-foreground/90 leading-relaxed">
@@ -881,7 +881,7 @@ export const AcquiredProjectWorkspace: React.FC<AcquiredProjectWorkspaceProps> =
                 </Card>
 
                 <Card className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-3">
-                  <h3 className="text-sm font-bold text-foreground font-syne uppercase tracking-wider text-primary">
+                  <h3 className="text-sm font-bold text-foreground font-heading uppercase tracking-wider text-primary">
                     Competitive Advantage
                   </h3>
                   <p className="text-sm text-foreground/90 leading-relaxed">
@@ -895,7 +895,7 @@ export const AcquiredProjectWorkspace: React.FC<AcquiredProjectWorkspaceProps> =
                 <Card className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-4">
                   <div className="flex items-center gap-2 pb-2 border-b border-border">
                     <Building2 className="h-5 w-5 text-primary" />
-                    <h3 className="text-base font-bold text-foreground font-syne">Corporate Formation &amp; Skill Analysis</h3>
+                    <h3 className="text-base font-bold text-foreground font-heading">Corporate Formation &amp; Skill Analysis</h3>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
@@ -939,7 +939,7 @@ export const AcquiredProjectWorkspace: React.FC<AcquiredProjectWorkspaceProps> =
                   <div className="flex items-center justify-between pb-2 border-b border-border">
                     <div className="flex items-center gap-2">
                       <FileCheck className="h-5 w-5 text-primary" />
-                      <h3 className="text-base font-bold text-foreground font-syne">Legal &amp; Regulatory Checklist</h3>
+                      <h3 className="text-base font-bold text-foreground font-heading">Legal &amp; Regulatory Checklist</h3>
                     </div>
                     <span className="text-xs font-bold text-muted-foreground">
                       {projectData.intelligence.legalChecklist.completedCount} of {projectData.intelligence.legalChecklist.totalCount} Completed
@@ -1073,7 +1073,7 @@ export const AcquiredProjectWorkspace: React.FC<AcquiredProjectWorkspaceProps> =
                   {/* TOP HEADER & EXPORT ACTION */}
                   <div className="flex items-start justify-between gap-4 pb-2 border-b border-border">
                     <div>
-                      <h3 className="font-bold text-lg font-syne text-foreground">Your 3-Year Financial Forecast</h3>
+                      <h3 className="font-bold text-lg font-heading text-foreground">Your 3-Year Financial Forecast</h3>
                       <p className="text-sm text-muted-foreground">
                         Projection based on subscription growth and operational scaling data. Set to 95% confidence.
                       </p>
@@ -1203,7 +1203,7 @@ export const AcquiredProjectWorkspace: React.FC<AcquiredProjectWorkspaceProps> =
               {projectData?.pricing?.tiers && projectData.pricing.tiers.length > 0 && (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-base font-bold font-syne text-foreground">Pricing Strategy &amp; Commercial Tiers</h3>
+                    <h3 className="text-base font-bold font-heading text-foreground">Pricing Strategy &amp; Commercial Tiers</h3>
                     <Badge variant="outline" className="text-xs uppercase font-bold tracking-wider">
                       Model: {projectData.pricing.pricingModel || "Tiered"}
                     </Badge>
@@ -1218,7 +1218,7 @@ export const AcquiredProjectWorkspace: React.FC<AcquiredProjectWorkspaceProps> =
                       >
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
-                            <h4 className="font-bold text-base text-foreground font-syne">{tier.name}</h4>
+                            <h4 className="font-bold text-base text-foreground font-heading">{tier.name}</h4>
                             {tier.isHighlighted && (
                               <Badge className="bg-primary text-primary-foreground text-[10px] font-bold">Popular</Badge>
                             )}
@@ -1246,7 +1246,7 @@ export const AcquiredProjectWorkspace: React.FC<AcquiredProjectWorkspaceProps> =
               {/* RESOURCE & LAUNCH CALCULATION */}
               {projectData?.resourcePlan?.available && (
                 <Card className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-4">
-                  <h3 className="text-base font-bold font-syne text-foreground">Resource Plan &amp; Launch Budget</h3>
+                  <h3 className="text-base font-bold font-heading text-foreground">Resource Plan &amp; Launch Budget</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="p-4 bg-background border border-border rounded-xl">
                       <span className="text-[11px] text-muted-foreground uppercase tracking-wider block">Launch Budget</span>
@@ -1300,7 +1300,7 @@ export const AcquiredProjectWorkspace: React.FC<AcquiredProjectWorkspaceProps> =
               {/* GO-TO-MARKET STRATEGY */}
               {projectData?.gtmPlan?.available && (
                 <Card className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-4">
-                  <h3 className="text-base font-bold font-syne text-foreground">Go-to-Market Strategy</h3>
+                  <h3 className="text-base font-bold font-heading text-foreground">Go-to-Market Strategy</h3>
                   {projectData.gtmPlan.primaryChannels && projectData.gtmPlan.primaryChannels.length > 0 && (
                     <div className="space-y-1.5">
                       <span className="text-xs font-bold text-muted-foreground block">Acquisition Channels:</span>
@@ -1361,7 +1361,7 @@ export const AcquiredProjectWorkspace: React.FC<AcquiredProjectWorkspaceProps> =
           {activeTab === "brand" && (
             <div className="space-y-6">
               <Card className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-5">
-                <h3 className="text-base font-bold font-syne text-foreground">Brand Identity &amp; Visual Design</h3>
+                <h3 className="text-base font-bold font-heading text-foreground">Brand Identity &amp; Visual Design</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <div className="p-4 bg-background border border-border rounded-xl space-y-2">
                     <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">Palette Name</span>
@@ -1399,7 +1399,7 @@ export const AcquiredProjectWorkspace: React.FC<AcquiredProjectWorkspaceProps> =
               {/* TRANSFERRED HANDOVER DELIVERABLES SUMMARY */}
               <Card className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-base font-bold font-syne text-foreground">Transferred Handover Deliverables</h3>
+                  <h3 className="text-base font-bold font-heading text-foreground">Transferred Handover Deliverables</h3>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -1446,7 +1446,7 @@ export const AcquiredProjectWorkspace: React.FC<AcquiredProjectWorkspaceProps> =
               <Card className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-4">
                 <div className="flex items-center justify-between pb-3 border-b border-border">
                   <div>
-                    <h3 className="text-base font-bold font-syne text-foreground">Transferred Project Documents</h3>
+                    <h3 className="text-base font-bold font-heading text-foreground">Transferred Project Documents</h3>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       Downloadable files transferred as part of the acquisition.
                     </p>
