@@ -149,6 +149,45 @@ describe("Menu Navigation & Submenu Interaction Suite", () => {
       );
       expect(dashboardActive).toBe(false);
     });
+
+    it("highlights My Sales when viewing a specific Full Buyout deal workspace", () => {
+      const creatorSections = menu[UserRole.CREATOR];
+      const allCreatorHrefs = getAllMenuHrefs(creatorSections);
+
+      const salesActive = isMenuHrefActive(
+        "/dashboard/creator/sales",
+        "/dashboard/creator/sales/deal_buyout_999",
+        new URLSearchParams(),
+        allCreatorHrefs
+      );
+      expect(salesActive).toBe(true);
+    });
+
+    it("highlights My Partnerships when viewing a specific Equity deal workspace", () => {
+      const creatorSections = menu[UserRole.CREATOR];
+      const allCreatorHrefs = getAllMenuHrefs(creatorSections);
+
+      const partnershipsActive = isMenuHrefActive(
+        "/dashboard/creator/partnerships",
+        "/dashboard/creator/partnerships/deal_equity_888",
+        new URLSearchParams(),
+        allCreatorHrefs
+      );
+      expect(partnershipsActive).toBe(true);
+    });
+
+    it("highlights My Acquisitions when viewing an Acquired Project Workspace", () => {
+      const entrepreneurSections = menu[UserRole.ENTREPRENEUR];
+      const allEntrepreneurHrefs = getAllMenuHrefs(entrepreneurSections);
+
+      const acquisitionsActive = isMenuHrefActive(
+        "/dashboard/entrepreneur/acquisitions",
+        "/dashboard/entrepreneur/acquisitions/deal_acq_777",
+        new URLSearchParams(),
+        allEntrepreneurHrefs
+      );
+      expect(acquisitionsActive).toBe(true);
+    });
   });
 
   describe("B. Service Provider Query-Parameter Views", () => {

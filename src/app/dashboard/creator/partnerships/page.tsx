@@ -52,7 +52,7 @@ export default function MyPartnershipsPage() {
               Active Ventures
             </Badge>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight font-syne">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight font-heading">
             My Partnerships &amp; Equity
           </h1>
           <p className="text-muted-foreground text-sm">
@@ -94,7 +94,7 @@ export default function MyPartnershipsPage() {
       ) : partnerships.length === 0 ? (
         <Card className="p-12 border-dashed border-border bg-card rounded-3xl text-center space-y-4">
           <Award className="w-12 h-12 text-muted-foreground/50 mx-auto" />
-          <h3 className="text-lg font-bold text-foreground font-syne">No Active Partnerships Yet</h3>
+          <h3 className="text-lg font-bold text-foreground font-heading">No Active Partnerships Yet</h3>
           <p className="text-xs text-muted-foreground max-w-md mx-auto">
             When you finalize co-founder terms and activate a venture via Path A, your equity holdings and venture workspaces will appear here.
           </p>
@@ -127,7 +127,7 @@ export default function MyPartnershipsPage() {
 
                 <div className="pt-4 space-y-4">
                   <div>
-                    <h3 className="text-xl font-bold text-foreground group-hover:text-primary transition font-syne">
+                    <h3 className="text-xl font-bold text-foreground group-hover:text-primary transition font-heading">
                       {p.projectName}
                     </h3>
                     <p className="text-xs text-muted-foreground flex items-center gap-1.5 pt-1">

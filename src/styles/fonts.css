@@ -11,8 +11,7 @@ body {
     font-family: var(--font-dm-sans);
 }
 
-/* Headings use Syne with Inter fallback */
+/* Headings use Inter globally */
 h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-syne);
+    font-family: var(--font-inter);
 }
-

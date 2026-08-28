@@ -130,7 +130,7 @@ export default function EntrepreneurAcquisitionsPage() {
               <Package className="h-6 w-6" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-foreground font-syne">
+              <h1 className="text-2xl font-bold tracking-tight text-foreground font-heading">
                 My Acquisitions
               </h1>
               <p className="text-sm text-muted-foreground mt-0.5">
@@ -186,7 +186,7 @@ export default function EntrepreneurAcquisitionsPage() {
             <Package className="h-6 w-6" />
           </div>
           <div className="max-w-md mx-auto space-y-1">
-            <h3 className="text-base font-bold text-foreground font-syne">No Acquisitions Yet</h3>
+            <h3 className="text-base font-bold text-foreground font-heading">No Acquisitions Yet</h3>
             <p className="text-xs text-muted-foreground">
               When you make an offer to acquire a venture via Full Buyout on the marketplace, your active acquisition deals and completed asset transfers will appear here.
             </p>
@@ -212,7 +212,7 @@ export default function EntrepreneurAcquisitionsPage() {
               <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
                 <Handshake className="h-4 w-4" />
               </div>
-              <h2 className="text-lg font-bold font-syne text-foreground">
+              <h2 className="text-lg font-bold font-heading text-foreground">
                 Active Acquisitions {hasActive ? `(${activeAcquisitions!.length})` : "(0)"}
               </h2>
             </div>
@@ -249,7 +249,7 @@ export default function EntrepreneurAcquisitionsPage() {
                     <div className="space-y-3">
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <h3 className="text-lg font-bold text-foreground font-syne truncate max-w-[280px]">
+                          <h3 className="text-lg font-bold text-foreground font-heading truncate max-w-[280px]">
                             {deal.projectName || "Untitled Venture"}
                           </h3>
                           <div className="flex items-center gap-2 mt-1">
@@ -339,7 +339,7 @@ export default function EntrepreneurAcquisitionsPage() {
               <div className="p-1.5 rounded-lg bg-success-light text-success-strong">
                 <FileCheck className="h-4 w-4" />
               </div>
-              <h2 className="text-lg font-bold font-syne text-foreground">
+              <h2 className="text-lg font-bold font-heading text-foreground">
                 Completed Acquisitions {hasCompleted ? `(${acquisitions!.length})` : "(0)"}
               </h2>
             </div>
@@ -368,7 +368,7 @@ export default function EntrepreneurAcquisitionsPage() {
                   <div className="space-y-3">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <h3 className="text-lg font-bold text-foreground font-syne truncate max-w-[280px]">
+                        <h3 className="text-lg font-bold text-foreground font-heading truncate max-w-[280px]">
                           {item.projectName}
                         </h3>
                         <p className="text-xs text-muted-foreground font-mono mt-0.5">
