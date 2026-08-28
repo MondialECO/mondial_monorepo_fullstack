@@ -58,7 +58,19 @@ import { LegalReviewModal } from "@/components/marketplace/LegalReviewModal";
 import { AgreementSigningModal } from "@/components/marketplace/AgreementSigningModal";
 import { CompanyActivationModal } from "@/components/marketplace/CompanyActivationModal";
 import { PartnershipActiveModal } from "@/components/marketplace/PartnershipActiveModal";
-import { Handshake, RotateCcw, PieChart, Scale, Building2, Award, Package } from "lucide-react";
+import {
+  Handshake,
+  RotateCcw,
+  PieChart,
+  Scale,
+  Building2,
+  Award,
+  Package,
+  UsersRound,
+  FileSignature,
+  History,
+  ChevronRight,
+} from "lucide-react";
 
 export default function ProjectDetailPage() {
   const params = useParams();
@@ -96,14 +108,15 @@ export default function ProjectDetailPage() {
   >("overview");
 
   const [isNdaModalOpen, setIsNdaModalOpen] = useState(false);
+  const [selectedDealMode, setSelectedDealMode] = useState<"full_buyout" | "equity_partnership" | null>(null);
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [downloadingDocId, setDownloadingDocId] = useState<string | null>(null);
 
-  const loadData = async () => {
+  const loadData = async (silent = false) => {
     if (!ideaId) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
     setError(null);
     try {
       const [projData, interestData, nda, dealData] = await Promise.all([
@@ -119,19 +132,37 @@ export default function ProjectDetailPage() {
         setDeal(dealData.deal);
       }
 
+      const projModes = projData?.dealModes || (projData?.saleType ? [projData.saleType] : []);
+      const onlyBuyout = projModes.includes("full_buyout") && !projModes.includes("equity_partnership");
+      const onlyEquity = projModes.includes("equity_partnership") && !projModes.includes("full_buyout");
+      if (onlyBuyout) {
+        setSelectedDealMode("full_buyout");
+      } else if (onlyEquity) {
+        setSelectedDealMode("equity_partnership");
+      } else {
+        setSelectedDealMode(null);
+      }
+
       if (nda?.accessGranted) {
-        const priv = await marketplaceProjectsApi.getPrivateProject(ideaId).catch(() => null);
-        if (priv) setPrivateProject(priv);
+        try {
+          const priv = await marketplaceProjectsApi.getPrivateProject(ideaId);
+          if (priv) setPrivateProject(priv);
+        } catch {
+          // Non-critical if private project details fail to load
+        }
       }
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } } };
       setError(e.response?.data?.message ?? "Project could not be found or is private.");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => {
+    setSelectedDealMode(null);
+    setNote("");
+    setSubmitError(null);
     loadData();
   }, [ideaId]);
 
@@ -139,14 +170,14 @@ export default function ProjectDetailPage() {
     if (!ideaId) return;
     const newDeal = await marketplaceProjectsApi.createEquityOffer(ideaId, req);
     setDeal(newDeal);
-    await loadData();
+    await loadData(true);
   };
 
   const handleCreateBuyoutOffer = async (req: CreateBuyoutOfferRequest) => {
     if (!ideaId) return;
     const newDeal = await marketplaceProjectsApi.createBuyoutOffer(ideaId, req);
     setDeal(newDeal);
-    await loadData();
+    await loadData(true);
   };
 
   const handleCounterOffer = async (req: CounterEquityOfferRequest) => {
@@ -175,10 +206,21 @@ export default function ProjectDetailPage() {
 
   const handleExpressInterest = async () => {
     if (!ideaId) return;
+    const effectiveMode = (hasBuyout && !hasEquity)
+      ? "full_buyout"
+      : (hasEquity && !hasBuyout)
+      ? "equity_partnership"
+      : selectedDealMode;
+
+    if (!effectiveMode) {
+      setSubmitError("Please select a deal type before expressing interest.");
+      return;
+    }
+
     setSubmitting(true);
     setSubmitError(null);
     try {
-      const res = await marketplaceProjectsApi.expressInterest(ideaId, note);
+      const res = await marketplaceProjectsApi.expressInterest(ideaId, note, effectiveMode);
       setInterestState({ hasInterest: true, interest: res });
       setNote("");
       // Refresh NDA status
@@ -189,6 +231,7 @@ export default function ProjectDetailPage() {
       setSubmitError(
         e.response?.data?.message ?? "Could not send interest inquiry. Please try again."
       );
+      marketplaceProjectsApi.getProjectDetail(ideaId).then(setProject).catch(() => null);
     } finally {
       setSubmitting(false);
     }
@@ -196,8 +239,36 @@ export default function ProjectDetailPage() {
 
   const handleSignNda = async (confirmationText?: string) => {
     if (!ideaId) return;
-    await marketplaceProjectsApi.signNda(ideaId, confirmationText);
-    await loadData();
+    const signResult = await marketplaceProjectsApi.signNda(ideaId, confirmationText);
+    const freshStatus = await marketplaceProjectsApi.getNdaStatus(ideaId).catch(() => null);
+    if (freshStatus) {
+      setNdaStatus(freshStatus);
+      if (freshStatus.accessGranted) {
+        const priv = await marketplaceProjectsApi.getPrivateProject(ideaId).catch(() => null);
+        if (priv) setPrivateProject(priv);
+      }
+    } else if (signResult?.accessGranted) {
+      setNdaStatus((prev) =>
+        prev
+          ? { ...prev, ndaSigned: true, accessGranted: true, ndaSignedAt: signResult.signedAt }
+          : {
+              ideaId,
+              projectName: project?.projectName ?? "",
+              creatorName: project?.creatorName ?? "",
+              entrepreneurName: "",
+              interestId: interestState.interest?.id ?? "",
+              interestStatus: "accepted",
+              ndaRequired: true,
+              ndaSigned: true,
+              ndaSignedAt: signResult.signedAt,
+              ndaVersion: "1.0",
+              accessGranted: true,
+            }
+      );
+      const priv = await marketplaceProjectsApi.getPrivateProject(ideaId).catch(() => null);
+      if (priv) setPrivateProject(priv);
+    }
+    await loadData(true);
   };
 
   const handleDownloadDocument = async (documentId: string, fileName: string) => {
@@ -247,15 +318,29 @@ export default function ProjectDetailPage() {
     );
   }
 
-  const hasBuyout = project.dealModes?.includes("full_buyout");
-  const hasEquity = project.dealModes?.includes("equity_partnership");
+  const hasBuyout = Boolean(project.dealModes?.includes("full_buyout") || project.saleType === "full_buyout");
+  const hasEquity = Boolean(project.dealModes?.includes("equity_partnership") || project.saleType === "equity_partnership");
+  const isDualMode = hasBuyout && hasEquity;
+  const effectiveSelectedDealMode: "full_buyout" | "equity_partnership" | null = isDualMode
+    ? selectedDealMode
+    : hasBuyout
+    ? "full_buyout"
+    : hasEquity
+    ? "equity_partnership"
+    : null;
   const currentInterest = interestState.interest;
   const isAccepted = currentInterest?.status === "accepted";
   const isAccessGranted = Boolean(ndaStatus?.accessGranted || privateProject);
+  const isSold = Boolean(
+    project.status === "closed" ||
+    deal?.dealStage === "SOLD" ||
+    deal?.dealStage === "BUYOUT_COMPLETED" ||
+    (project as { outcome?: string }).outcome === "SOLD"
+  );
 
   return (
     <div className="w-full min-h-screen bg-background text-foreground">
-      <main className="max-w-5xl mx-auto w-full p-6 space-y-6">
+      <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         {/* Navigation back */}
         <div>
           <Button
@@ -331,15 +416,15 @@ export default function ProjectDetailPage() {
           </div>
         </Card>
 
-        {/* NDA Review Callout Banner (when interest is accepted & NDA required & not yet signed) */}
-        {isAccepted && project.ndaRequired && !isAccessGranted && (
-          <Card className="p-5 rounded-2xl border-amber-500/30 bg-amber-500/5 dark:bg-amber-950/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        {/* NDA Review Callout Banner (when interest is accepted & NDA required & not yet signed & not sold) */}
+        {isAccepted && project.ndaRequired && !isAccessGranted && !isSold && (
+          <Card className="p-5 rounded-2xl border-warning/30 bg-warning/5 dark:bg-warning/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-start gap-3">
-              <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center flex-shrink-0 mt-0.5 sm:mt-0">
+              <div className="w-9 h-9 rounded-xl bg-warning/20 text-warning flex items-center justify-center flex-shrink-0 mt-0.5 sm:mt-0">
                 <Lock className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-foreground">
+                <h3 className="text-sm font-bold font-heading text-foreground">
                   Sign NDA to Unlock Private Project Materials
                 </h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
@@ -348,8 +433,14 @@ export default function ProjectDetailPage() {
               </div>
             </div>
             <Button
-              onClick={() => setIsNdaModalOpen(true)}
-              className="bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold gap-1.5 whitespace-nowrap shadow-sm"
+              type="button"
+              onClick={() => {
+                if (!ndaStatus && ideaId) {
+                  marketplaceProjectsApi.getNdaStatus(ideaId).then(setNdaStatus).catch(() => {});
+                }
+                setIsNdaModalOpen(true);
+              }}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold gap-1.5 whitespace-nowrap shadow-sm"
             >
               <ShieldCheck className="w-4 h-4" /> Review & Sign NDA
             </Button>
@@ -423,9 +514,9 @@ export default function ProjectDetailPage() {
         )}
 
         {/* Main Content Area */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.6fr)_minmax(340px,0.8fr)] gap-6 items-start">
           {/* Left Column (Content according to active tab) */}
-          <div className="lg:col-span-2 space-y-4">
+          <div className="min-w-0 space-y-4">
             {activeTab === "overview" && (
               <>
                 {/* Problem & User */}
@@ -802,8 +893,8 @@ export default function ProjectDetailPage() {
           </div>
 
           {/* Right: Express Interest & Status Action Card */}
-          <div className="space-y-4">
-            <Card className="rounded-2xl border border-border bg-card p-6 space-y-4 sticky top-6">
+          <div className="min-w-0 space-y-4">
+            <Card data-testid="connect-creator-card" className="rounded-2xl border border-border bg-card p-6 space-y-4 sticky top-6">
               <div>
                 <div className="text-base font-bold flex items-center gap-2">
                   <MessageSquare className="h-4 w-4 text-primary" /> Connect with Creator
@@ -815,332 +906,601 @@ export default function ProjectDetailPage() {
 
               {/* Status handling */}
               {interestState.hasInterest && currentInterest ? (
-                <div className="rounded-xl border border-border bg-background p-4 space-y-3">
-                  <div className="flex items-center gap-2">
-                    {currentInterest.status === "accepted" ? (
-                      <CheckCircle2 className="h-5 w-5 text-primary" />
-                    ) : currentInterest.status === "declined" ? (
-                      <AlertCircle className="h-5 w-5 text-destructive" />
-                    ) : (
-                      <Clock className="h-5 w-5 text-amber-500" />
-                    )}
-                    <div>
-                      <div className="text-xs font-bold capitalize text-foreground">
-                        Interest Status: {currentInterest.status}
-                      </div>
-                      <div className="text-[10px] text-muted-foreground">
-                        Sent {new Date(currentInterest.createdAt).toLocaleDateString()}
-                      </div>
-                    </div>
-                  </div>
+                (() => {
+                  const getInterestDealMode = (): "full_buyout" | "equity_partnership" => {
+                    if (deal?.dealType === "FULL_BUYOUT") return "full_buyout";
+                    if (deal?.dealType === "EQUITY_PARTNERSHIP") return "equity_partnership";
+                    if (currentInterest?.dealMode === "full_buyout") return "full_buyout";
+                    if (currentInterest?.dealMode === "equity_partnership") return "equity_partnership";
+                    if (currentInterest?.dealModes?.includes("full_buyout") && !currentInterest?.dealModes?.includes("equity_partnership")) return "full_buyout";
+                    if (currentInterest?.dealModes?.includes("equity_partnership") && !currentInterest?.dealModes?.includes("full_buyout")) return "equity_partnership";
+                    if (hasBuyout && !hasEquity) return "full_buyout";
+                    return "equity_partnership";
+                  };
 
-                  {currentInterest.status === "pending" && (
-                    <p className="text-xs text-muted-foreground">
-                      The creator has received your interest note. You will be notified when they accept.
-                    </p>
-                  )}
+                  const interestDealMode = getInterestDealMode();
+                  const isBuyoutInquiry = interestDealMode === "full_buyout";
+                  const dealModeLabel = isBuyoutInquiry ? "Full Buyout" : "Co-founder / Equity";
 
-                  {currentInterest.status === "accepted" && (
-                    <div className="space-y-3 pt-1">
-                      <p className="text-xs text-muted-foreground">
-                        The creator accepted your inquiry! Direct messenger thread is active.
-                      </p>
-                      <Button asChild variant="outline" className="w-full gap-2 text-xs">
-                        <Link href={currentInterest.conversationId ? `/dashboard/entrepreneur/messages?conversationId=${currentInterest.conversationId}` : "/dashboard/entrepreneur/messages"}>
-                          <MessageSquare className="h-4 w-4" /> Open Messenger
-                        </Link>
-                      </Button>
+                  return (
+                    <div className="space-y-3">
+                      {currentInterest.status === "pending" && (
+                        <div className="rounded-xl border border-warning/30 bg-warning/5 p-4 space-y-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <Clock className="h-5 w-5 text-warning" />
+                              <div>
+                                <div className="text-xs font-bold text-foreground">
+                                  Interest Status: Pending
+                                </div>
+                                <div className="text-[10px] text-muted-foreground">
+                                  Sent {new Date(currentInterest.createdAt).toLocaleDateString()}
+                                </div>
+                              </div>
+                            </div>
+                            <Badge variant="outline" className="text-[10px] font-semibold bg-warning/10 text-warning border-warning/30">
+                              Pending
+                            </Badge>
+                          </div>
 
-                      {/* Co-founder / Equity Offer Section */}
-                      {isAccessGranted && (
-                        <div className="pt-3 border-t border-border space-y-2">
-                          <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                            Deal Negotiation
-                          </span>
+                          <div className="pt-2 border-t border-border/60 flex items-center justify-between text-xs">
+                            <span className="text-muted-foreground">Inquiry Type:</span>
+                            <span className="font-semibold text-foreground">{dealModeLabel}</span>
+                          </div>
 
-                          {deal ? (
-                            deal.dealType === "FULL_BUYOUT" ? (
-                              <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 space-y-2.5">
+                          <p className="text-xs text-muted-foreground leading-relaxed">
+                            Your inquiry has been sent to the Creator. You will be notified when they accept.
+                          </p>
+                        </div>
+                      )}
+
+                      {currentInterest.status === "accepted" && (
+                        <div className="rounded-xl border border-success-strong/30 bg-success-light/10 p-4 space-y-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <CheckCircle2 className="h-5 w-5 text-success-strong" />
+                              <div>
+                                <div className="text-xs font-bold text-foreground">
+                                  Interest Status: Accepted
+                                </div>
+                                <div className="text-[10px] text-muted-foreground">
+                                  Sent {new Date(currentInterest.createdAt).toLocaleDateString()}
+                                </div>
+                              </div>
+                            </div>
+                            <Badge variant="outline" className="text-[10px] font-semibold bg-success-light text-success-strong border-success-strong/30">
+                              Accepted
+                            </Badge>
+                          </div>
+
+                          <div className="pt-2 border-t border-border/60 flex items-center justify-between text-xs">
+                            <span className="text-muted-foreground">Accepted Deal Type:</span>
+                            <span className="font-semibold text-foreground">{dealModeLabel}</span>
+                          </div>
+
+                          <p className="text-xs text-muted-foreground leading-relaxed">
+                            {isBuyoutInquiry
+                              ? "The creator accepted your Full Buyout inquiry. You can now continue the acquisition discussion and use the direct messenger."
+                              : "The creator accepted your Co-founder / Equity inquiry. You can now continue the partnership discussion and use the direct messenger."}
+                          </p>
+
+                          <Button asChild variant="outline" className="w-full sm:w-auto h-auto min-h-10 px-3 py-2 text-sm font-semibold font-sans whitespace-normal text-center leading-snug inline-flex items-center justify-center gap-2 bg-background border-border text-foreground hover:bg-muted">
+                            <Link href={currentInterest.conversationId ? `/dashboard/entrepreneur/messages?conversationId=${currentInterest.conversationId}` : "/dashboard/entrepreneur/messages"}>
+                              <MessageSquare className="h-4 w-4 shrink-0" />
+                              <span>Open Messenger</span>
+                            </Link>
+                          </Button>
+
+                          {/* NDA Required Gate (when interest is accepted & NDA required & not yet signed & not sold) */}
+                          {project.ndaRequired && !isAccessGranted && !isSold && (
+                            <div className="pt-3 border-t border-border space-y-2.5">
+                              <div className="rounded-xl border border-warning/30 bg-warning/10 p-3 space-y-2">
                                 <div className="flex items-center justify-between">
-                                  <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                                    <DollarSign className="h-3.5 w-3.5 text-primary" />
-                                    Full Buyout Offer V{deal.currentRevisionNumber}
+                                  <span className="text-xs font-bold font-heading text-foreground flex items-center gap-1.5">
+                                    <ShieldCheck className="h-3.5 w-3.5 text-warning" />
+                                    NDA Required
                                   </span>
-                                  <Badge
-                                    variant="outline"
-                                    className={`text-[10px] uppercase font-semibold ${
-                                      deal.dealStage === "ROLES_PENDING" || deal.status === "completed"
-                                        ? "text-success-strong border-success-strong/30 bg-success-light"
-                                        : deal.dealStage === "REJECTED"
-                                        ? "text-destructive border-destructive/30 bg-destructive/10"
-                                        : "text-primary border-primary/30 bg-primary/10"
-                                    }`}
-                                  >
-                                    {deal.dealStage === "ROLES_PENDING" ? "Accepted" : deal.dealStage.replace("_", " ")}
+                                  <Badge variant="outline" className="text-[10px] font-semibold bg-warning/10 text-warning border-warning/30">
+                                    Pending
                                   </Badge>
                                 </div>
-
-                                <div className="text-[11px] text-muted-foreground">
-                                  Purchase Price: <strong className="text-foreground">{deal.buyoutTerms ? fmt(deal.buyoutTerms.purchasePrice) : "—"}</strong> · Handover: <strong className="text-foreground">{deal.buyoutTerms?.handoverPeriodWeeks ?? 2} weeks</strong>
-                                </div>
-
                                 <p className="text-[11px] text-muted-foreground leading-relaxed">
-                                  Offer submitted to creator. You will receive notifications when the creator responds or initiates closing steps.
+                                  The Creator requires a confidentiality agreement before private project materials and acquisition offers can proceed.
                                 </p>
-
-                                {(deal.dealStage === "BUYOUT_TERMS_ACCEPTED" || deal.dealStage === "BUYOUT_SIGNATURE_PENDING") && (
-                                  <Button
-                                    size="sm"
-                                    variant="default"
-                                    onClick={() => setIsBuyoutLegalModalOpen(true)}
-                                    className="w-full gap-1.5 text-xs font-semibold shadow-sm"
-                                  >
-                                    <Scale className="h-3.5 w-3.5" />
-                                    Legal & Asset Transfer Review
-                                  </Button>
-                                )}
-
-                                {(deal.dealStage === "BUYOUT_SIGNATURE_PENDING" || deal.dealStage === "BUYOUT_CLOSING_PENDING") && (
-                                  <Button
-                                    size="sm"
-                                    variant="default"
-                                    onClick={() => setIsBuyoutSigningModalOpen(true)}
-                                    className="w-full gap-1.5 text-xs font-semibold shadow-sm"
-                                  >
-                                    <FileCheck className="h-3.5 w-3.5" />
-                                    Agreement Signing
-                                  </Button>
-                                )}
-
-                                {(deal.dealStage === "BUYOUT_CLOSING_PENDING" || deal.dealStage === "BUYOUT_HANDOVER_PENDING") && (
-                                  <Button
-                                    size="sm"
-                                    variant="default"
-                                    onClick={() => setIsBuyoutClosingModalOpen(true)}
-                                    className="w-full gap-1.5 text-xs font-semibold shadow-sm"
-                                  >
-                                    <CreditCard className="h-3.5 w-3.5" />
-                                    Closing & Payment
-                                  </Button>
-                                )}
-
-                                {(deal.dealStage === "BUYOUT_HANDOVER_PENDING" || deal.dealStage === "SOLD" || deal.dealStage === "BUYOUT_COMPLETED") && (
-                                   <Button
-                                     size="sm"
-                                     variant="default"
-                                     onClick={() => setIsBuyoutHandoverModalOpen(true)}
-                                     className="w-full gap-1.5 text-xs font-semibold shadow-sm"
-                                   >
-                                     <Package className="h-3.5 w-3.5" />
-                                     Asset Handover
-                                   </Button>
-                                 )}
-
-                                 {(deal.dealStage === "SOLD" || deal.dealStage === "BUYOUT_COMPLETED") && (
-                                   <Button
-                                     size="sm"
-                                     onClick={() => setIsBuyoutSaleRecordModalOpen(true)}
-                                     className="w-full gap-1.5 text-xs font-bold bg-success-strong hover:bg-success-strong/90 text-white shadow-sm"
-                                   >
-                                     <FileCheck className="h-3.5 w-3.5" />
-                                     View Sale Record
-                                   </Button>
-                                 )}
-
                                 <Button
+                                  type="button"
                                   size="sm"
-                                  variant="outline"
-                                  onClick={() => setIsReviewDealModalOpen(true)}
-                                  className="w-full gap-1.5 text-xs font-semibold"
+                                  variant="default"
+                                  onClick={() => {
+                                    if (!ndaStatus && ideaId) {
+                                      marketplaceProjectsApi.getNdaStatus(ideaId).then(setNdaStatus).catch(() => {});
+                                    }
+                                    setIsNdaModalOpen(true);
+                                  }}
+                                  className="w-full sm:w-auto h-auto min-h-10 px-3 py-2 text-sm font-semibold font-sans whitespace-normal text-center leading-snug inline-flex items-center justify-center gap-2 shadow-sm"
                                 >
-                                  <Handshake className="h-3.5 w-3.5" />
-                                  {deal.dealStage === "BUYOUT_TERMS_ACCEPTED" || deal.dealStage === "BUYOUT_SIGNATURE_PENDING" || deal.dealStage === "BUYOUT_CLOSING_PENDING" || deal.dealStage === "BUYOUT_HANDOVER_PENDING" || deal.dealStage === "SOLD"
-                                    ? "Agreed Buyout Terms 🔒"
-                                    : `Review Buyout Offer (V${deal.currentRevisionNumber})`}
+                                  <ShieldCheck className="h-4 w-4 shrink-0" />
+                                  <span>Review & Sign NDA</span>
                                 </Button>
                               </div>
-                            ) : (
-                              <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 space-y-2.5">
-                                <div className="flex items-center justify-between">
-                                  <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                                    <Handshake className="h-3.5 w-3.5 text-primary" />
-                                    Equity Offer V{deal.currentRevisionNumber}
-                                  </span>
-                                  <Badge
-                                    variant="outline"
-                                    className={`text-[10px] uppercase font-semibold ${
-                                      deal.dealStage === "ROLES_PENDING"
-                                        ? "text-success-strong border-success-strong/30 bg-success-light"
-                                        : deal.dealStage === "REJECTED"
-                                        ? "text-destructive border-destructive/30 bg-destructive/10"
-                                        : "text-primary border-primary/30 bg-primary/10"
-                                    }`}
-                                  >
-                                    {deal.dealStage === "ROLES_PENDING" ? "Accepted" : deal.dealStage.replace("_", " ")}
-                                  </Badge>
-                                </div>
+                            </div>
+                          )}
 
-                                <div className="text-[11px] text-muted-foreground">
-                                  Creator Stake: <strong className="text-foreground">{deal.activeTerms.equityPercentage}%</strong> ·{" "}
-                                  Role: <strong className="text-foreground">{deal.activeTerms.creatorRole}</strong>
-                                </div>
+                          {/* NDA Status: Signed / Active (when NDA required and access granted) */}
+                          {project.ndaRequired && isAccessGranted && (
+                            <div className="pt-2 border-t border-border/60 flex items-center justify-between text-xs">
+                              <span className="text-muted-foreground flex items-center gap-1">
+                                <ShieldCheck className="h-3.5 w-3.5 text-success-strong" /> NDA Status:
+                              </span>
+                              <Badge variant="outline" className="text-[10px] font-semibold bg-success-light text-success-strong border-success-strong/30">
+                                Signed
+                              </Badge>
+                            </div>
+                          )}
 
-                                {(deal.dealStage === "ROLES_PENDING" || deal.dealStage === "CAP_TABLE_PENDING" || deal.dealStage === "LEGAL_REVIEW_PENDING") && (
-                                  <Button
-                                    size="sm"
-                                    variant="default"
-                                    onClick={() => setIsRoleModalOpen(true)}
-                                    className="w-full gap-1.5 text-xs font-semibold shadow-sm"
-                                  >
-                                    <Users className="h-3.5 w-3.5" />
-                                    Screen 02 — Role & Responsibility Agreement
-                                  </Button>
-                                )}
+                          {/* Deal Negotiation Section */}
+                          {isAccessGranted && !isSold && (
+                            <div className="pt-3 border-t border-border space-y-2">
+                              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                                Deal Negotiation
+                              </span>
 
-                                {(deal.dealStage === "CAP_TABLE_PENDING" || deal.dealStage === "LEGAL_REVIEW_PENDING" || deal.dealStage === "SIGNATURE_PENDING") && (
-                                  <Button
-                                    size="sm"
-                                    variant="default"
-                                    onClick={() => setIsCapTableModalOpen(true)}
-                                    className="w-full gap-1.5 text-xs font-semibold shadow-sm"
-                                  >
-                                    <PieChart className="h-3.5 w-3.5" />
-                                    Screen 03 — Equity & Cap Table Structure
-                                  </Button>
-                                )}
+                              {deal ? (
+                                deal.dealType === "FULL_BUYOUT" ? (
+                                  <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 space-y-2.5">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                                        <DollarSign className="h-3.5 w-3.5 text-primary" />
+                                        Full Buyout Offer V{deal.currentRevisionNumber}
+                                      </span>
+                                      <Badge
+                                        variant="outline"
+                                        className={`text-[10px] uppercase font-semibold ${
+                                          deal.dealStage === "ROLES_PENDING" || deal.status === "completed"
+                                            ? "text-success-strong border-success-strong/30 bg-success-light"
+                                            : deal.dealStage === "REJECTED"
+                                            ? "text-destructive border-destructive/30 bg-destructive/10"
+                                            : "text-primary border-primary/30 bg-primary/10"
+                                        }`}
+                                      >
+                                        {deal.dealStage === "ROLES_PENDING" ? "Accepted" : deal.dealStage.replace("_", " ")}
+                                      </Badge>
+                                    </div>
 
-                                {(deal.dealStage === "LEGAL_REVIEW_PENDING" || deal.dealStage === "SIGNATURE_PENDING" || deal.dealStage === "ACTIVATION_PENDING") && (
-                                  <Button
-                                    size="sm"
-                                    variant="default"
-                                    onClick={() => setIsLegalModalOpen(true)}
-                                    className="w-full gap-1.5 text-xs font-semibold shadow-sm"
-                                  >
-                                    <Scale className="h-3.5 w-3.5" />
-                                    Screen 04 — Legal & Shareholder Review
-                                  </Button>
-                                )}
+                                    <div className="text-[11px] text-muted-foreground">
+                                      Purchase Price: <strong className="text-foreground">{deal.buyoutTerms ? fmt(deal.buyoutTerms.purchasePrice) : "—"}</strong> · Handover: <strong className="text-foreground">{deal.buyoutTerms?.handoverPeriodWeeks ?? 2} weeks</strong>
+                                    </div>
 
-                                {(deal.dealStage === "SIGNATURE_PENDING" || deal.dealStage === "ACTIVATION_PENDING") && (
-                                  <Button
-                                    size="sm"
-                                    variant="default"
-                                    onClick={() => setIsSigningModalOpen(true)}
-                                    className="w-full gap-1.5 text-xs font-semibold shadow-sm"
-                                  >
-                                    <FileCheck className="h-3.5 w-3.5" />
-                                    Screen 05 — Final Agreement Signing
-                                  </Button>
-                                )}
+                                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                                      Offer submitted to creator. You will receive notifications when the creator responds or initiates closing steps.
+                                    </p>
 
-                                {(deal.dealStage === "ACTIVATION_PENDING" || deal.dealStage === "PARTNERSHIP_ACTIVE") && (
-                                  <Button
-                                    size="sm"
-                                    variant="default"
-                                    onClick={() => setIsActivationModalOpen(true)}
-                                    className="w-full gap-1.5 text-xs font-semibold shadow-sm"
-                                  >
-                                    <Building2 className="h-3.5 w-3.5" />
-                                    Screen 06 — Company & Project Activation
-                                  </Button>
-                                )}
+                                    <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 pt-1">
+                                      {(deal.dealStage === "BUYOUT_TERMS_ACCEPTED" || deal.dealStage === "BUYOUT_SIGNATURE_PENDING") && (
+                                        <Button
+                                          size="sm"
+                                          variant="default"
+                                          onClick={() => setIsBuyoutLegalModalOpen(true)}
+                                          className="w-full sm:w-auto h-auto min-h-10 px-3 py-2 text-sm font-semibold font-sans whitespace-normal text-center leading-snug inline-flex items-center justify-center gap-2 shadow-sm"
+                                        >
+                                          <Scale className="h-4 w-4 shrink-0" />
+                                          <span>Legal & Asset Transfer Review</span>
+                                        </Button>
+                                      )}
 
-                                {deal.dealStage === "PARTNERSHIP_ACTIVE" && (
-                                  <Button
-                                    size="sm"
-                                    variant="default"
-                                    onClick={() => setIsPartnershipModalOpen(true)}
-                                    className="w-full gap-1.5 text-xs font-semibold shadow-sm"
-                                  >
-                                    <Award className="h-3.5 w-3.5" />
-                                    Screen 07 — Active Partnership & Workspace
-                                  </Button>
-                                )}
+                                      {(deal.dealStage === "BUYOUT_SIGNATURE_PENDING" || deal.dealStage === "BUYOUT_CLOSING_PENDING") && (
+                                        <Button
+                                          size="sm"
+                                          variant="default"
+                                          onClick={() => setIsBuyoutSigningModalOpen(true)}
+                                          className="w-full sm:w-auto h-auto min-h-10 px-3 py-2 text-sm font-semibold font-sans whitespace-normal text-center leading-snug inline-flex items-center justify-center gap-2 shadow-sm"
+                                        >
+                                          <FileCheck className="h-4 w-4 shrink-0" />
+                                          <span>Agreement Signing</span>
+                                        </Button>
+                                      )}
 
-                                {deal.dealType === "FULL_BUYOUT" ? (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => setIsReviewDealModalOpen(true)}
-                                    className="w-full gap-1.5 text-xs font-semibold"
-                                  >
-                                    <DollarSign className="h-3.5 w-3.5" />
-                                    {deal.dealStage === "BUYOUT_TERMS_ACCEPTED"
-                                      ? `Buyout Terms Agreed (V${deal.acceptedRevisionNumber ?? deal.currentRevisionNumber})`
-                                      : `Review Buyout Offer & History (V${deal.currentRevisionNumber})`}
-                                  </Button>
+                                      {(deal.dealStage === "BUYOUT_CLOSING_PENDING" || deal.dealStage === "BUYOUT_HANDOVER_PENDING") && (
+                                        <Button
+                                          size="sm"
+                                          variant="default"
+                                          onClick={() => setIsBuyoutClosingModalOpen(true)}
+                                          className="w-full sm:w-auto h-auto min-h-10 px-3 py-2 text-sm font-semibold font-sans whitespace-normal text-center leading-snug inline-flex items-center justify-center gap-2 shadow-sm"
+                                        >
+                                          <CreditCard className="h-4 w-4 shrink-0" />
+                                          <span>Closing & Payment</span>
+                                        </Button>
+                                      )}
+
+                                      {(deal.dealStage === "BUYOUT_HANDOVER_PENDING" || deal.dealStage === "SOLD" || deal.dealStage === "BUYOUT_COMPLETED") && (
+                                        <Button
+                                          size="sm"
+                                          variant="default"
+                                          onClick={() => setIsBuyoutHandoverModalOpen(true)}
+                                          className="w-full sm:w-auto h-auto min-h-10 px-3 py-2 text-sm font-semibold font-sans whitespace-normal text-center leading-snug inline-flex items-center justify-center gap-2 shadow-sm"
+                                        >
+                                          <Package className="h-4 w-4 shrink-0" />
+                                          <span>Asset Handover</span>
+                                        </Button>
+                                      )}
+
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => setIsReviewDealModalOpen(true)}
+                                        className="w-full sm:w-auto h-auto min-h-10 px-3 py-2 text-sm font-semibold font-sans whitespace-normal text-center leading-snug inline-flex items-center justify-center gap-2"
+                                      >
+                                        <Handshake className="h-4 w-4 shrink-0" />
+                                        <span>
+                                          {deal.dealStage === "BUYOUT_TERMS_ACCEPTED" || deal.dealStage === "BUYOUT_SIGNATURE_PENDING" || deal.dealStage === "BUYOUT_CLOSING_PENDING" || deal.dealStage === "BUYOUT_HANDOVER_PENDING" || deal.dealStage === "SOLD"
+                                            ? "Agreed Buyout Terms 🔒"
+                                            : `Review Buyout Offer (V${deal.currentRevisionNumber})`}
+                                        </span>
+                                      </Button>
+                                    </div>
+                                  </div>
                                 ) : (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => setIsReviewDealModalOpen(true)}
-                                    className="w-full gap-1.5 text-xs font-semibold"
-                                  >
-                                    Review Offer & History (V{deal.currentRevisionNumber})
-                                  </Button>
-                                )}
-                              </div>
-                            )
-                          ) : (
-                            <div className="space-y-3">
-                              {hasBuyout && (
-                                <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 space-y-2">
-                                  <div className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                                    <DollarSign className="h-3.5 w-3.5 text-primary" /> Propose Full Buyout Acquisition
-                                  </div>
-                                  <p className="text-[11px] text-muted-foreground leading-relaxed">
-                                    Make a direct acquisition offer to purchase 100% ownership and all IP assets for this project.
-                                  </p>
-                                  <Button
-                                    size="sm"
-                                    variant="default"
-                                    onClick={() => setIsBuyoutFormOpen(true)}
-                                    className="w-full gap-1.5 text-xs font-semibold shadow-sm"
-                                  >
-                                    <DollarSign className="h-3.5 w-3.5" /> Send Buyout Offer
-                                  </Button>
-                                </div>
-                              )}
+                                  <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 space-y-2.5">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                                        <Handshake className="h-3.5 w-3.5 text-primary" />
+                                        Equity Offer V{deal.currentRevisionNumber}
+                                      </span>
+                                      <Badge
+                                        variant="outline"
+                                        className={`text-[10px] uppercase font-semibold ${
+                                          deal.dealStage === "ROLES_PENDING"
+                                            ? "text-success-strong border-success-strong/30 bg-success-light"
+                                            : deal.dealStage === "REJECTED"
+                                            ? "text-destructive border-destructive/30 bg-destructive/10"
+                                            : "text-primary border-primary/30 bg-primary/10"
+                                        }`}
+                                      >
+                                        {deal.dealStage === "ROLES_PENDING" ? "Accepted" : deal.dealStage.replace("_", " ")}
+                                      </Badge>
+                                    </div>
 
-                              {hasEquity && (
-                                <div className="rounded-xl border border-border bg-card p-3 space-y-2">
-                                  <div className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                                    <Handshake className="h-3.5 w-3.5 text-primary" /> Propose Co-founder Partnership
+                                    <div className="text-[11px] text-muted-foreground">
+                                      Creator Stake: <strong className="text-foreground">{deal.activeTerms.equityPercentage}%</strong> ·{" "}
+                                      Role: <strong className="text-foreground">{deal.activeTerms.creatorRole}</strong>
+                                    </div>
+
+                                    <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 pt-1">
+                                      {(deal.dealStage === "ROLES_PENDING" || deal.dealStage === "CAP_TABLE_PENDING" || deal.dealStage === "LEGAL_REVIEW_PENDING") && (
+                                        <Button
+                                          size="sm"
+                                          variant="default"
+                                          onClick={() => setIsRoleModalOpen(true)}
+                                          className="w-full sm:w-auto h-auto min-h-10 px-3 py-2 text-sm font-semibold font-sans whitespace-normal text-center leading-snug inline-flex items-center justify-center gap-2 shadow-sm"
+                                        >
+                                          <Users className="h-4 w-4 shrink-0" />
+                                          <span>Role & Responsibility Agreement</span>
+                                        </Button>
+                                      )}
+
+                                      {(deal.dealStage === "CAP_TABLE_PENDING" || deal.dealStage === "LEGAL_REVIEW_PENDING" || deal.dealStage === "SIGNATURE_PENDING") && (
+                                        <Button
+                                          size="sm"
+                                          variant="default"
+                                          onClick={() => setIsCapTableModalOpen(true)}
+                                          className="w-full sm:w-auto h-auto min-h-10 px-3 py-2 text-sm font-semibold font-sans whitespace-normal text-center leading-snug inline-flex items-center justify-center gap-2 shadow-sm"
+                                        >
+                                          <PieChart className="h-4 w-4 shrink-0" />
+                                          <span>Equity & Cap Table Structure</span>
+                                        </Button>
+                                      )}
+
+                                      {(deal.dealStage === "LEGAL_REVIEW_PENDING" || deal.dealStage === "SIGNATURE_PENDING" || deal.dealStage === "ACTIVATION_PENDING") && (
+                                        <Button
+                                          size="sm"
+                                          variant="default"
+                                          onClick={() => setIsLegalModalOpen(true)}
+                                          className="w-full sm:w-auto h-auto min-h-10 px-3 py-2 text-sm font-semibold font-sans whitespace-normal text-center leading-snug inline-flex items-center justify-center gap-2 shadow-sm"
+                                        >
+                                          <Scale className="h-4 w-4 shrink-0" />
+                                          <span>Legal & Shareholder Review</span>
+                                        </Button>
+                                      )}
+
+                                      {(deal.dealStage === "SIGNATURE_PENDING" || deal.dealStage === "ACTIVATION_PENDING") && (
+                                        <Button
+                                          size="sm"
+                                          variant="default"
+                                          onClick={() => setIsSigningModalOpen(true)}
+                                          className="w-full sm:w-auto h-auto min-h-10 px-3 py-2 text-sm font-semibold font-sans whitespace-normal text-center leading-snug inline-flex items-center justify-center gap-2 shadow-sm"
+                                        >
+                                          <FileCheck className="h-4 w-4 shrink-0" />
+                                          <span>Final Agreement Signing</span>
+                                        </Button>
+                                      )}
+
+                                      {(deal.dealStage === "ACTIVATION_PENDING" || deal.dealStage === "PARTNERSHIP_ACTIVE") && (
+                                        <Button
+                                          size="sm"
+                                          variant="default"
+                                          onClick={() => setIsActivationModalOpen(true)}
+                                          className="w-full sm:w-auto h-auto min-h-10 px-3 py-2 text-sm font-semibold font-sans whitespace-normal text-center leading-snug inline-flex items-center justify-center gap-2 shadow-sm"
+                                        >
+                                          <Building2 className="h-4 w-4 shrink-0" />
+                                          <span>Company & Project Activation</span>
+                                        </Button>
+                                      )}
+
+                                      {deal.dealStage === "PARTNERSHIP_ACTIVE" && (
+                                        <Button
+                                          size="sm"
+                                          variant="default"
+                                          onClick={() => setIsPartnershipModalOpen(true)}
+                                          className="w-full sm:w-auto h-auto min-h-10 px-3 py-2 text-sm font-semibold font-sans whitespace-normal text-center leading-snug inline-flex items-center justify-center gap-2 shadow-sm"
+                                        >
+                                          <Award className="h-4 w-4 shrink-0" />
+                                          <span>Active Partnership & Workspace</span>
+                                        </Button>
+                                      )}
+
+                                      {deal.dealType === "FULL_BUYOUT" ? (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => setIsReviewDealModalOpen(true)}
+                                          className="w-full sm:w-auto h-auto min-h-10 px-3 py-2 text-sm font-semibold font-sans whitespace-normal text-center leading-snug inline-flex items-center justify-center gap-2"
+                                        >
+                                          <DollarSign className="h-4 w-4 shrink-0" />
+                                          <span>
+                                            {deal.dealStage === "BUYOUT_TERMS_ACCEPTED"
+                                              ? `Buyout Terms Agreed (V${deal.acceptedRevisionNumber ?? deal.currentRevisionNumber})`
+                                              : `Review Buyout Offer & History (V${deal.currentRevisionNumber})`}
+                                          </span>
+                                        </Button>
+                                      ) : (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => setIsReviewDealModalOpen(true)}
+                                          className="w-full sm:w-auto h-auto min-h-10 px-3 py-2 text-sm font-semibold font-sans whitespace-normal text-center leading-snug inline-flex items-center justify-center gap-2"
+                                        >
+                                          <Handshake className="h-4 w-4 shrink-0" />
+                                          <span>Review Offer & History</span>
+                                        </Button>
+                                      )}
+                                    </div>
                                   </div>
-                                  <p className="text-[11px] text-muted-foreground leading-relaxed">
-                                    Formulate an equity percentage, creator role, vesting terms, and time commitment.
-                                  </p>
-                                  <Button
-                                    size="sm"
-                                    variant="default"
-                                    onClick={() => setIsEquityFormOpen(true)}
-                                    className="w-full gap-1.5 text-xs font-semibold shadow-sm"
-                                  >
-                                    <Handshake className="h-3.5 w-3.5" /> Send Equity Offer
-                                  </Button>
+                                )
+                              ) : (
+                                /* No Deal created yet — Show ONLY the offer CTA for accepted inquiry mode */
+                                <div className="space-y-3">
+                                  {isBuyoutInquiry ? (
+                                    <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 space-y-2">
+                                      <div className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                                        <DollarSign className="h-3.5 w-3.5 text-primary" /> Propose Full Buyout Acquisition
+                                      </div>
+                                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                                        Make a direct acquisition offer to purchase 100% ownership and all IP assets for this project.
+                                      </p>
+                                      <Button
+                                        size="sm"
+                                        variant="default"
+                                        onClick={() => setIsBuyoutFormOpen(true)}
+                                        className="w-full sm:w-auto h-auto min-h-10 px-3 py-2 text-sm font-semibold font-sans whitespace-normal text-center leading-snug inline-flex items-center justify-center gap-2 shadow-sm"
+                                      >
+                                        <DollarSign className="h-4 w-4 shrink-0" />
+                                        <span>Send Buyout Offer</span>
+                                      </Button>
+                                    </div>
+                                  ) : (
+                                    <div className="rounded-xl border border-border bg-card p-3 space-y-2">
+                                      <div className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                                        <Handshake className="h-3.5 w-3.5 text-primary" /> Propose Co-founder Partnership
+                                      </div>
+                                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                                        Formulate an equity percentage, creator role, vesting terms, and time commitment.
+                                      </p>
+                                      <Button
+                                        size="sm"
+                                        variant="default"
+                                        onClick={() => setIsEquityFormOpen(true)}
+                                        className="w-full sm:w-auto h-auto min-h-10 px-3 py-2 text-sm font-semibold font-sans whitespace-normal text-center leading-snug inline-flex items-center justify-center gap-2 shadow-sm"
+                                      >
+                                        <Handshake className="h-4 w-4 shrink-0" />
+                                        <span>Send Equity Offer</span>
+                                      </Button>
+                                    </div>
+                                  )}
                                 </div>
                               )}
                             </div>
                           )}
                         </div>
                       )}
+
+                      {currentInterest.status === "declined" && (
+                        <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 space-y-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <AlertCircle className="h-5 w-5 text-destructive" />
+                              <div>
+                                <div className="text-xs font-bold text-foreground">
+                                  Interest Status: Declined
+                                </div>
+                                <div className="text-[10px] text-muted-foreground">
+                                  Sent {new Date(currentInterest.createdAt).toLocaleDateString()}
+                                </div>
+                              </div>
+                            </div>
+                            <Badge variant="outline" className="text-[10px] font-semibold bg-destructive/10 text-destructive border-destructive/30">
+                              Declined
+                            </Badge>
+                          </div>
+
+                          <div className="pt-2 border-t border-border/60 flex items-center justify-between text-xs">
+                            <span className="text-muted-foreground">Inquiry Type:</span>
+                            <span className="font-semibold text-foreground">{dealModeLabel}</span>
+                          </div>
+
+                          <p className="text-xs text-muted-foreground leading-relaxed">
+                            The creator is currently not pursuing discussions for this inquiry.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()
+              ) : (
+                <div className="space-y-4">
+                  {/* Single Mode: Full Buyout only */}
+                  {!isDualMode && hasBuyout && (
+                    <div className="rounded-xl border border-border bg-muted/20 p-3 space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Available For</span>
+                        <Badge className="bg-primary/10 text-primary border-primary/20 text-xs">
+                          Full Buyout
+                        </Badge>
+                      </div>
+                      <div className="pt-2 border-t border-border/60 flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Selected Deal Type:</span>
+                        <span className="font-semibold text-foreground">Full Buyout</span>
+                      </div>
                     </div>
                   )}
 
-                  {currentInterest.status === "declined" && (
-                    <p className="text-xs text-muted-foreground">
-                      The creator is currently not pursuing discussions for this project.
-                    </p>
+                  {/* Single Mode: Equity only */}
+                  {!isDualMode && hasEquity && (
+                    <div className="rounded-xl border border-border bg-muted/20 p-3 space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Available For</span>
+                        <Badge className="bg-success-light text-success-strong border-success-strong/20 text-xs">
+                          Co-founder / Equity
+                        </Badge>
+                      </div>
+                      <div className="pt-2 border-t border-border/60 flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Selected Deal Type:</span>
+                        <span className="font-semibold text-foreground">Co-founder / Equity</span>
+                      </div>
+                    </div>
                   )}
-                </div>
-              ) : (
-                <div className="space-y-3">
+
+                  {/* Multi-Mode: Both Full Buyout & Equity available */}
+                  {isDualMode && (
+                    <div className="space-y-2.5">
+                      <div>
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                          Available For
+                        </span>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Select the deal type you wish to explore with this creator:
+                        </p>
+                      </div>
+
+                      <div
+                        role="radiogroup"
+                        aria-label="Select deal type"
+                        className="grid grid-cols-1 gap-2.5"
+                      >
+                        {/* Full Buyout Option Card */}
+                        <div
+                          role="radio"
+                          aria-checked={selectedDealMode === "full_buyout"}
+                          tabIndex={0}
+                          onClick={() => setSelectedDealMode("full_buyout")}
+                          onKeyDown={(e) => {
+                            if (e.key === " " || e.key === "Enter") {
+                              e.preventDefault();
+                              setSelectedDealMode("full_buyout");
+                            }
+                          }}
+                          className={`w-full text-left p-3 rounded-xl border transition-all cursor-pointer select-none ${
+                            selectedDealMode === "full_buyout"
+                              ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                              : "border-border bg-card hover:border-primary/40 hover:bg-primary/5"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div
+                                className={`h-4 w-4 rounded-full border flex items-center justify-center transition-colors ${
+                                  selectedDealMode === "full_buyout"
+                                    ? "border-primary bg-primary text-primary-foreground"
+                                    : "border-muted-foreground/40 bg-background"
+                                }`}
+                              >
+                                {selectedDealMode === "full_buyout" && (
+                                  <div className="h-1.5 w-1.5 rounded-full bg-white" />
+                                )}
+                              </div>
+                              <span
+                                className={`text-xs font-bold ${
+                                  selectedDealMode === "full_buyout" ? "text-primary" : "text-foreground"
+                                }`}
+                              >
+                                Full Buyout
+                              </span>
+                            </div>
+                            <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary border-primary/20">
+                              100% Acquisition
+                            </Badge>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground mt-1.5 pl-6 leading-relaxed">
+                            Acquire the project and its agreed included assets through a complete purchase.
+                          </p>
+                        </div>
+
+                        {/* Co-founder / Equity Option Card */}
+                        <div
+                          role="radio"
+                          aria-checked={selectedDealMode === "equity_partnership"}
+                          tabIndex={0}
+                          onClick={() => setSelectedDealMode("equity_partnership")}
+                          onKeyDown={(e) => {
+                            if (e.key === " " || e.key === "Enter") {
+                              e.preventDefault();
+                              setSelectedDealMode("equity_partnership");
+                            }
+                          }}
+                          className={`w-full text-left p-3 rounded-xl border transition-all cursor-pointer select-none ${
+                            selectedDealMode === "equity_partnership"
+                              ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                              : "border-border bg-card hover:border-primary/40 hover:bg-primary/5"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div
+                                className={`h-4 w-4 rounded-full border flex items-center justify-center transition-colors ${
+                                  selectedDealMode === "equity_partnership"
+                                    ? "border-primary bg-primary text-primary-foreground"
+                                    : "border-muted-foreground/40 bg-background"
+                                }`}
+                              >
+                                {selectedDealMode === "equity_partnership" && (
+                                  <div className="h-1.5 w-1.5 rounded-full bg-white" />
+                                )}
+                              </div>
+                              <span
+                                className={`text-xs font-bold ${
+                                  selectedDealMode === "equity_partnership" ? "text-primary" : "text-foreground"
+                                }`}
+                              >
+                                Co-founder / Equity
+                              </span>
+                            </div>
+                            <Badge variant="outline" className="text-[10px] bg-success-light text-success-strong border-success-strong/20">
+                              Partnership
+                            </Badge>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground mt-1.5 pl-6 leading-relaxed">
+                            Partner with the Creator and negotiate an equity-based co-founder relationship.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-muted-foreground">
-                      Add an introductory note (optional)
+                      Message to Creator (optional)
                     </label>
                     <Textarea
-                      placeholder="Introduce your background or mention whether you are interested in a full buyout or co-founder equity partnership..."
+                      placeholder="Tell the Creator why you're interested or what you'd like to discuss..."
                       value={note}
                       onChange={(e) => setNote(e.target.value)}
                       rows={3}
@@ -1148,19 +1508,47 @@ export default function ProjectDetailPage() {
                     />
                   </div>
 
-                  {submitError && <p className="text-xs text-destructive">{submitError}</p>}
+                  {/* Confirmation or Helper text */}
+                  {isDualMode && (
+                    <div>
+                      {selectedDealMode === "full_buyout" && (
+                        <p className="text-xs text-primary font-medium flex items-center gap-1.5">
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          You&apos;re expressing interest in a Full Buyout acquisition.
+                        </p>
+                      )}
+                      {selectedDealMode === "equity_partnership" && (
+                        <p className="text-xs text-primary font-medium flex items-center gap-1.5">
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          You&apos;re expressing interest in a Co-founder / Equity partnership.
+                        </p>
+                      )}
+                      {!selectedDealMode && (
+                        <p className="text-xs text-muted-foreground">
+                          Choose how you&apos;d like to work with this Creator.
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {submitError && (
+                    <div className="flex items-center gap-1.5 text-xs text-destructive">
+                      <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                      <span>{submitError}</span>
+                    </div>
+                  )}
 
                   <Button
                     onClick={handleExpressInterest}
-                    disabled={submitting}
-                    className="w-full gap-2 text-xs font-semibold"
+                    disabled={!effectiveSelectedDealMode || submitting}
+                    className="w-full sm:w-auto h-auto min-h-10 px-3 py-2 text-sm font-semibold font-sans whitespace-normal text-center leading-snug inline-flex items-center justify-center gap-2"
                   >
                     {submitting ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <Loader2 className="h-4 w-4 animate-spin shrink-0" />
                     ) : (
-                      <Send className="h-3.5 w-3.5" />
+                      <Send className="h-4 w-4 shrink-0" />
                     )}
-                    Express Interest
+                    <span>Express Interest</span>
                   </Button>
                 </div>
               )}
@@ -1173,7 +1561,24 @@ export default function ProjectDetailPage() {
       <NdaReviewModal
         isOpen={isNdaModalOpen}
         onClose={() => setIsNdaModalOpen(false)}
-        ndaStatus={ndaStatus}
+        ndaStatus={
+          ndaStatus ||
+          (project
+            ? {
+                ideaId: project.ideaId,
+                projectName: project.projectName,
+                creatorName: "Creator",
+                entrepreneurName: "Entrepreneur",
+                interestId: currentInterest?.id || "",
+                interestStatus: currentInterest?.status || "accepted",
+                ndaRequired: project.ndaRequired,
+                ndaSigned: false,
+                ndaVersion: "1.0",
+                accessGranted: false,
+              }
+            : null)
+        }
+        projectName={project?.projectName}
         onSign={handleSignNda}
       />
 
@@ -1297,7 +1702,7 @@ export default function ProjectDetailPage() {
           dealId={deal.id}
           isCreator={false}
           onAgreementChanged={async () => {
-            await loadData();
+            await loadData(true);
           }}
         />
       )}
@@ -1310,7 +1715,7 @@ export default function ProjectDetailPage() {
           dealId={deal.id}
           isCreator={false}
           onDraftChanged={async () => {
-            await loadData();
+            await loadData(true);
           }}
         />
       )}
@@ -1323,7 +1728,7 @@ export default function ProjectDetailPage() {
           dealId={deal.id}
           isCreator={false}
           onPackageChanged={async () => {
-            await loadData();
+            await loadData(true);
           }}
         />
       )}
@@ -1336,7 +1741,7 @@ export default function ProjectDetailPage() {
           dealId={deal.id}
           isCreator={false}
           onPackageChanged={async () => {
-            await loadData();
+            await loadData(true);
           }}
         />
       )}
@@ -1349,7 +1754,7 @@ export default function ProjectDetailPage() {
           dealId={deal.id}
           isCreator={false}
           onActivationComplete={async () => {
-            await loadData();
+            await loadData(true);
           }}
         />
       )}

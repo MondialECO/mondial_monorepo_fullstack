@@ -66,7 +66,7 @@ export default function CrossroadsPage() {
 
   return (
     <div className="w-full min-h-screen bg-background text-foreground">
-      <main className="max-w-5xl mx-auto w-full p-6 space-y-6">
+      <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         {/* Project strip */}
         <Card className="rounded-2xl border border-border bg-card p-6 flex items-center justify-between">
           <div>
@@ -81,16 +81,83 @@ export default function CrossroadsPage() {
 
         {/* Decision cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Card onClick={() => void choose("sell")}
-            className={`cursor-pointer rounded-2xl border-2 p-6 space-y-3 transition-all ${path === "sell" ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"}`}>
-            <div className="flex items-center justify-between">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-warning/10 text-warning"><Store className="h-6 w-6" /></div>
-              {path === "sell" && <CheckCircle2 className="h-5 w-5 text-primary" />}
-            </div>
-            <h3 className="text-lg font-bold">Marketplace Push</h3>
-            <p className="text-sm text-muted-foreground">Make your project discoverable on the marketplace for Full Buyout acquisition or Co-founder / Equity partnership.</p>
-            <Button variant={path === "sell" ? "default" : "outline"} className="w-full" disabled={selectingPath}>Explore Marketplace Push</Button>
-          </Card>
+          {(() => {
+            const isSold = (project as { projectOutcome?: string })?.projectOutcome === "SOLD";
+            const listing = (phase5Data?.pathA as { marketplaceListing?: { publishedAt?: string; status?: string; askingPrice?: number; dealModes?: string[]; audience?: string; updatedAt?: string } })?.marketplaceListing;
+            const isPublished = Boolean(listing?.publishedAt);
+            const isPaused = listing?.status === "paused";
+
+            return (
+              <Card onClick={() => void choose("sell")}
+                className={`cursor-pointer rounded-2xl border-2 p-6 space-y-3 transition-all ${path === "sell" ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"}`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-warning/10 text-warning"><Store className="h-6 w-6" /></div>
+                  <div className="flex items-center gap-1.5">
+                    {isSold ? (
+                      <Badge variant="destructive" className="font-bold text-[10px]">SOLD</Badge>
+                    ) : isPublished ? (
+                      <Badge className={`text-[10px] font-bold ${isPaused ? "bg-warning/10 text-warning border-warning/30" : "bg-success-light text-success-strong border-success-strong/30"}`}>
+                        {isPaused ? "PAUSED" : "LIVE"}
+                      </Badge>
+                    ) : null}
+                    {path === "sell" && <CheckCircle2 className="h-5 w-5 text-primary" />}
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-bold">
+                    {isSold ? "Sold — Marketplace Listing Closed" : isPublished ? (isPaused ? "Marketplace Listing Paused" : "Marketplace Listing Active") : "Marketplace Push"}
+                  </h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {isSold
+                      ? "This project has been sold via Full Buyout. The marketplace listing is permanently closed."
+                      : isPublished
+                      ? "Your project is live on the marketplace. You can update the public listing whenever your project information changes."
+                      : "Make your project discoverable on the marketplace for Full Buyout acquisition or Co-founder / Equity partnership."}
+                  </p>
+                </div>
+
+                {isPublished && !isSold && (
+                  <div className="rounded-xl border border-border/80 bg-background/60 p-3 text-xs space-y-1.5">
+                    <div className="flex items-center justify-between text-muted-foreground">
+                      <span>Modes:</span>
+                      <span className="font-medium text-foreground capitalize">
+                        {listing?.dealModes?.map(m => m.replace(/_/g, " ")).join(", ") || "Full Buyout"}
+                      </span>
+                    </div>
+                    {listing?.askingPrice != null && listing.askingPrice > 0 && (
+                      <div className="flex items-center justify-between text-muted-foreground">
+                        <span>Asking Price:</span>
+                        <span className="font-bold text-primary">€{listing.askingPrice.toLocaleString()}</span>
+                      </div>
+                    )}
+                    {listing?.publishedAt && (
+                      <div className="flex items-center justify-between text-muted-foreground text-[11px]">
+                        <span>Published:</span>
+                        <span>{new Date(listing.publishedAt).toLocaleDateString()}</span>
+                      </div>
+                    )}
+                    {listing?.updatedAt && (
+                      <div className="flex items-center justify-between text-muted-foreground text-[11px]">
+                        <span>Last updated:</span>
+                        <span>{new Date(listing.updatedAt).toLocaleDateString()}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="pt-1 flex flex-col gap-2">
+                  <Button variant={path === "sell" ? "default" : "outline"} className="w-full" disabled={selectingPath}>
+                    {isSold
+                      ? "View Sold Deal"
+                      : isPublished
+                      ? "Manage Marketplace Listing"
+                      : "Explore Marketplace Push"}
+                  </Button>
+                </div>
+              </Card>
+            );
+          })()}
 
           <Card onClick={() => void choose("build")}
             className={`cursor-pointer rounded-2xl border-2 p-6 space-y-3 transition-all ${path === "build" ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"}`}>

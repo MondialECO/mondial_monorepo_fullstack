@@ -2008,6 +2008,15 @@ namespace WebApp.Controllers
                 deal.LegalPackage!.AssignedLegalProviderId = providerUser?.Id.ToString() ?? req.ProviderId;
                 deal.LegalPackage.AssignedLegalProviderName = providerDisplayName;
                 deal.LegalPackage.ProviderReviewStatus = "ASSIGNED";
+                deal.LegalPackage.ProviderReviewedVersion = 0;
+                deal.LegalPackage.ProviderReviewedAt = null;
+                deal.LegalPackage.ProviderReviewNotes = null;
+                // Reset party approvals on this package version so that provider review precedes party approval
+                deal.LegalPackage.CreatorApprovedVersion = 0;
+                deal.LegalPackage.EntrepreneurApprovedVersion = 0;
+                deal.LegalPackage.CreatorApprovedAt = null;
+                deal.LegalPackage.EntrepreneurApprovedAt = null;
+                deal.LegalPackage.Status = "IN_REVIEW";
                 deal.LegalPackage.UpdatedAt = DateTime.UtcNow;
 
                 await LogAuditAsync(deal.IdeaId ?? "", deal.Id, deal.LegalPackage.Version, currentUserId, "legal_provider_invited");
@@ -2202,6 +2211,7 @@ namespace WebApp.Controllers
                 pkg.CreatorApprovedAt = null;
                 pkg.EntrepreneurApprovedAt = null;
                 pkg.Status = "CHANGES_REQUESTED";
+                pkg.ProviderReviewedVersion = 0;
                 pkg.Notes = req.Feedback;
 
                 bool isProvider = currentUserId == pkg.AssignedLegalProviderId;
@@ -2212,7 +2222,7 @@ namespace WebApp.Controllers
                 }
                 else
                 {
-                    // If user requested changes after review was complete, provider must review new version
+                    // If user requested changes after review was complete, provider must review new version if assigned
                     pkg.ProviderReviewStatus = !string.IsNullOrEmpty(pkg.AssignedLegalProviderId) ? "IN_REVIEW" : "NOT_ASSIGNED";
                 }
 
@@ -2290,6 +2300,7 @@ namespace WebApp.Controllers
                 else if (status == "REVIEW_COMPLETE")
                 {
                     pkg.ProviderReviewStatus = "REVIEW_COMPLETE";
+                    pkg.ProviderReviewedVersion = pkg.Version;
                     pkg.ProviderReviewedAt = DateTime.UtcNow;
                     pkg.ProviderReviewNotes = req.Notes ?? "Legal review completed with no material defects found.";
                     pkg.UpdatedAt = DateTime.UtcNow;
@@ -2352,9 +2363,13 @@ namespace WebApp.Controllers
                     return UnprocessableEntity(ApiResponse.Error("Jurisdiction Required. Please specify jurisdiction before legal approval."));
                 }
 
-                if (pkg.ProviderReviewStatus != "REVIEW_COMPLETE")
+                bool hasAssignedProvider = !string.IsNullOrWhiteSpace(pkg.AssignedLegalProviderId);
+                if (hasAssignedProvider)
                 {
-                    return UnprocessableEntity(ApiResponse.Error("Human legal review by a verified Legal Service Provider must be marked REVIEW_COMPLETE before final approval."));
+                    if (pkg.ProviderReviewStatus != "REVIEW_COMPLETE" || (pkg.ProviderReviewedVersion > 0 && pkg.ProviderReviewedVersion != pkg.Version))
+                    {
+                        return UnprocessableEntity(ApiResponse.Error("A verified Legal Service Provider has been assigned. Provider review must be marked REVIEW_COMPLETE before final approval."));
+                    }
                 }
 
                 bool isCreator = deal.CreatorId == currentUserId;
@@ -2370,8 +2385,9 @@ namespace WebApp.Controllers
                 }
 
                 bool bothApproved = pkg.CreatorApprovedVersion == pkg.Version && pkg.EntrepreneurApprovedVersion == pkg.Version;
+                bool providerSatisfied = !hasAssignedProvider || (pkg.ProviderReviewStatus == "REVIEW_COMPLETE" && (pkg.ProviderReviewedVersion == 0 || pkg.ProviderReviewedVersion == pkg.Version));
 
-                if (bothApproved)
+                if (bothApproved && providerSatisfied)
                 {
                     pkg.Status = "APPROVED";
                     deal.DealStage = "SIGNATURE_PENDING";
@@ -2757,6 +2773,7 @@ namespace WebApp.Controllers
                 AssignedLegalProviderId = pkg.AssignedLegalProviderId,
                 AssignedLegalProviderName = pkg.AssignedLegalProviderName,
                 ProviderReviewStatus = pkg.ProviderReviewStatus,
+                ProviderReviewedVersion = pkg.ProviderReviewedVersion,
                 ProviderReviewedAt = pkg.ProviderReviewedAt,
                 ProviderReviewNotes = pkg.ProviderReviewNotes,
                 CreatorApprovedVersion = pkg.CreatorApprovedVersion,
@@ -6528,7 +6545,8 @@ namespace WebApp.Controllers
                     deal.LegalPackage.EntrepreneurApprovedVersion = 0;
                     deal.LegalPackage.CreatorApprovedAt = null;
                     deal.LegalPackage.EntrepreneurApprovedAt = null;
-                    deal.LegalPackage.ProviderReviewStatus = "CHANGES_REQUESTED";
+                    deal.LegalPackage.ProviderReviewedVersion = 0;
+                    deal.LegalPackage.ProviderReviewStatus = !string.IsNullOrEmpty(deal.LegalPackage.AssignedLegalProviderId) ? "CHANGES_REQUESTED" : "NOT_ASSIGNED";
                     deal.LegalPackage.ProviderReviewNotes = request.Feedback;
                     deal.LegalPackage.LastEditedByRole = isCreator ? "creator" : "entrepreneur";
                     deal.LegalPackage.LastEditedByUserId = userId;
@@ -6731,7 +6749,8 @@ namespace WebApp.Controllers
             if (deal.LegalPackage == null || deal.LegalPackage.Status != "APPROVED")
                 return "Legal review package must be APPROVED by both parties before proceeding to signature.";
 
-            if (deal.LegalPackage.ProviderReviewStatus != "REVIEW_COMPLETE")
+            bool hasAssignedProvider = !string.IsNullOrWhiteSpace(deal.LegalPackage.AssignedLegalProviderId);
+            if (hasAssignedProvider && (deal.LegalPackage.ProviderReviewStatus != "REVIEW_COMPLETE" || (deal.LegalPackage.ProviderReviewedVersion > 0 && deal.LegalPackage.ProviderReviewedVersion != deal.LegalPackage.Version)))
                 return "A verified human Legal Service Provider review must be marked REVIEW_COMPLETE before signing.";
 
             if (deal.LegalPackage.CreatorApprovedVersion != deal.LegalPackage.Version ||
@@ -7206,6 +7225,18 @@ namespace WebApp.Controllers
                         od.UpdatedAt = DateTime.UtcNow;
                         await _context.DealExecutions.ReplaceOneAsync(d => d.Id == od.Id, od);
                     }
+
+                    // Close any competing pending ProjectInterests
+                    var competingInterests = await _context.ProjectInterests.Find(pi => pi.IdeaId == deal.IdeaId).ToListAsync();
+                    foreach (var ci in competingInterests)
+                    {
+                        if (ci.Id.ToString() != deal.ProjectInterestId && ci.Status != "declined" && ci.Status != "closed")
+                        {
+                            ci.Status = "closed";
+                            await _context.ProjectInterests.ReplaceOneAsync(pi => pi.Id == ci.Id, ci);
+                            await LogAuditAsync(deal.IdeaId, deal.Id, act.Version, userId, "competing_interest_closed_after_cofounded");
+                        }
+                    }
                 }
 
                 // Messenger & Notifications
@@ -7241,7 +7272,7 @@ namespace WebApp.Controllers
                 return Ok(ApiResponse.Ok("Partnership successfully activated! The project is now CO_FOUNDED.", dto));
             }
             catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
-            catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
+            catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext?.TraceIdentifier)); }
         }
 
         /// <summary>

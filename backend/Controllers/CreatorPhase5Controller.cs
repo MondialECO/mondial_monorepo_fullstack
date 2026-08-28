@@ -193,6 +193,10 @@ namespace WebApp.Controllers
                 if (journey.Phase5Data?.ChosenPath != "sell")
                     return UnprocessableEntity(ApiResponse.Error("Marketplace publishing requires the Sell the Project path."));
 
+                if (string.Equals(journey.ProjectOutcome, "SOLD", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(journey.ProjectOutcome, "CO_FOUNDED", StringComparison.OrdinalIgnoreCase))
+                    return UnprocessableEntity(ApiResponse.Error("Committed or sold projects cannot update their marketplace listing."));
+
                 var dealModes = request?.DealModes?.Where(m => !string.IsNullOrWhiteSpace(m))
                     .Select(m => m.Trim().ToLowerInvariant())
                     .ToList() ?? new List<string>();
@@ -217,9 +221,13 @@ namespace WebApp.Controllers
                 if (audience != "public" && audience != "matched" && audience != "private")
                     return UnprocessableEntity(ApiResponse.Error("audience must be public | matched | private."));
 
+                var existingListing = journey.Phase5Data?.PathA?.MarketplaceListing;
+                var isUpdate = existingListing?.PublishedAt != null;
+                var status = request?.Status == "paused" ? "paused" : "available";
+
                 var listing = new CreatorMarketplaceListing
                 {
-                    Status = "available",
+                    Status = status,
                     SaleType = hasBuyout && hasEquity ? "full_buyout,equity_partnership" : (dealModes.FirstOrDefault() ?? "full_buyout"),
                     AskingPrice = hasBuyout ? request.AskingPrice : null,
                     NdaRequired = request?.NdaRequired ?? false,
@@ -228,7 +236,8 @@ namespace WebApp.Controllers
                     OpenToEquityPartnership = hasEquity,
                     OpenToLicense = false,
                     Audience = audience,
-                    PublishedAt = DateTime.UtcNow,
+                    PublishedAt = existingListing?.PublishedAt ?? DateTime.UtcNow,
+                    UpdatedAt = isUpdate ? DateTime.UtcNow : existingListing?.UpdatedAt,
                 };
 
                 // Buyer matching via the shared service (phaseContext=5).
@@ -241,7 +250,7 @@ namespace WebApp.Controllers
                 }
 
                 journey = await _journeys.SetMarketplaceListingAsync(userId, listing, matchedBuyerIds, ideaId);
-                return Ok(ApiResponse.Ok("Listing published", new
+                return Ok(ApiResponse.Ok(isUpdate ? "Listing updated" : "Listing published", new
                 {
                     listing = journey.Phase5Data.PathA.MarketplaceListing,
                     matches = matchedBuyerIds,
@@ -250,6 +259,33 @@ namespace WebApp.Controllers
                 }));
             }
             catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
+            catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
+            catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
+        }
+
+        // POST /api/creator/marketplace/status
+        [HttpPost("marketplace/status")]
+        public async Task<IActionResult> SetStatus([FromBody] MarketplaceStatusRequest request, [FromQuery] string ideaId = null)
+        {
+            try
+            {
+                var userId = GetUserId();
+                var journey = await _journeys.GetOrCreateComposedAsync(userId, ideaId);
+                if (string.Equals(journey.ProjectOutcome, "SOLD", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(journey.ProjectOutcome, "CO_FOUNDED", StringComparison.OrdinalIgnoreCase))
+                    return UnprocessableEntity(ApiResponse.Error("Committed or sold projects cannot modify listing status."));
+
+                var listing = journey.Phase5Data?.PathA?.MarketplaceListing;
+                if (listing == null || listing.PublishedAt == null)
+                    return UnprocessableEntity(ApiResponse.Error("Listing must be published before setting status."));
+
+                var status = request?.Status == "paused" ? "paused" : "available";
+                listing.Status = status;
+                listing.UpdatedAt = DateTime.UtcNow;
+
+                journey = await _journeys.SetMarketplaceListingAsync(userId, listing, journey.Phase5Data?.PathA?.MatchedBuyerIds, ideaId);
+                return Ok(ApiResponse.Ok("Status updated", new { listing }));
+            }
             catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
             catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
         }

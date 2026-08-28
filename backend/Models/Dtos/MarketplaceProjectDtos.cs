@@ -48,6 +48,7 @@ namespace WebApp.Models.Dtos
     public class ExpressInterestRequest
     {
         public string? Note { get; set; }
+        public string? DealMode { get; set; }
     }
 
     public class NdaStatusDto
@@ -706,6 +707,7 @@ namespace WebApp.Models.Dtos
         public string? AssignedLegalProviderId { get; set; }
         public string? AssignedLegalProviderName { get; set; }
         public string ProviderReviewStatus { get; set; } = "NOT_ASSIGNED";
+        public int ProviderReviewedVersion { get; set; }
         public DateTime? ProviderReviewedAt { get; set; }
         public string? ProviderReviewNotes { get; set; }
 

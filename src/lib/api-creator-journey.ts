@@ -339,10 +339,16 @@ export const creatorJourneyApi = {
     return unwrap<CreatorReadiness>(res.data);
   },
 
-  publishMarketplace: async (payload: { ndaRequired: boolean; askingPrice?: number; audience: string; dealModes?: string[] }, ideaId?: string | null): Promise<{ listing: unknown; matches: string[]; hasMatches: boolean; isEmpty: boolean }> => {
+  publishMarketplace: async (payload: { ndaRequired: boolean; askingPrice?: number; audience: string; dealModes?: string[]; status?: string }, ideaId?: string | null): Promise<{ listing: unknown; matches: string[]; hasMatches: boolean; isEmpty: boolean }> => {
     const res = await api.post('/creator/marketplace/publish', payload, withIdeaWrite(ideaId));
     rememberIdeaVersion(res, ideaId);
     return unwrap<{ listing: unknown; matches: string[]; hasMatches: boolean; isEmpty: boolean }>(res.data);
+  },
+
+  setMarketplaceStatus: async (status: 'available' | 'paused', ideaId?: string | null): Promise<{ listing: unknown }> => {
+    const res = await api.post('/creator/marketplace/status', { status }, withIdeaWrite(ideaId));
+    rememberIdeaVersion(res, ideaId);
+    return unwrap<{ listing: unknown }>(res.data);
   },
 
   getInterests: async (ideaId?: string | null): Promise<ProjectInterest[]> => {

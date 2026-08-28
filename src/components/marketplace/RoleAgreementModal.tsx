@@ -28,27 +28,41 @@ export const RoleAgreementModal: React.FC<RoleAgreementModalProps> = ({
   const [agreement, setAgreement] = useState<RoleResponsibilityAgreement | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const inFlightDealIdRef = React.useRef<string | null>(null);
 
-  const loadAgreement = async () => {
+  const loadAgreement = React.useCallback(async () => {
     if (!dealId) return;
+    // Guard against duplicate in-flight requests for the same deal
+    if (inFlightDealIdRef.current === dealId) return;
+
+    inFlightDealIdRef.current = dealId;
     try {
       setLoading(true);
       setError(null);
       const res = await marketplaceProjectsApi.getRoleAgreement(dealId);
       setAgreement(res);
-      onAgreementChanged?.(res);
+      // Do NOT call onAgreementChanged here; read operations must not trigger parent re-fetch loops.
     } catch (err: any) {
-      setError(err.response?.data?.message || err.message || "Failed to load role agreement.");
+      if (err?.response?.status === 429) {
+        setError("Role agreement is temporarily refreshing too quickly. Please try again shortly.");
+      } else {
+        setError(err.response?.data?.message || err.message || "Failed to load role agreement.");
+      }
     } finally {
       setLoading(false);
+      inFlightDealIdRef.current = null;
     }
-  };
+  }, [dealId]);
 
   useEffect(() => {
     if (isOpen && dealId) {
       loadAgreement();
+    } else if (!isOpen) {
+      setAgreement(null);
+      setError(null);
+      inFlightDealIdRef.current = null;
     }
-  }, [isOpen, dealId]);
+  }, [isOpen, dealId, loadAgreement]);
 
   if (!isOpen) return null;
 

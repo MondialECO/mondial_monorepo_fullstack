@@ -516,7 +516,7 @@ export const AcquiredProjectWorkspace: React.FC<AcquiredProjectWorkspaceProps> =
   const lastMonthCash = adaptedForecast?.cashFlowProjection?.monthly?.slice(-1)?.[0]?.netCashFlow ?? 0;
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 pb-20 text-foreground font-sans">
+    <div className="w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 pb-20 text-foreground font-sans">
       {/* EXPORT OVERLAY VIEW (PRINT/PDF) */}
       <PlanForecastPrintView
         open={showExport}

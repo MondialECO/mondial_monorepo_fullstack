@@ -98,7 +98,7 @@ export default function InvestorsPage() {
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto w-full p-6 space-y-5">
+      <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         {data?.matchingTip && !loading && (
           <div className="flex items-center gap-2 rounded-xl border border-border bg-card p-3 text-sm text-muted-foreground"><Info className="h-4 w-4 text-primary" /> {data.matchingTip}</div>
         )}

@@ -49,7 +49,7 @@ export default function EntrepreneurDiscoverPage() {
 
   return (
     <div className="w-full min-h-screen bg-background text-foreground">
-      <main className="max-w-6xl mx-auto w-full p-6 space-y-6">
+      <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         {/* Header Banner */}
         <div className="rounded-3xl border border-border bg-gradient-to-br from-card via-card to-primary/5 p-8 relative overflow-hidden">
           <div className="max-w-2xl space-y-3 relative z-10">

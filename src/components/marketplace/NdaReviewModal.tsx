@@ -7,8 +7,11 @@ import { NdaStatus } from '@/lib/api-marketplace-projects';
 interface NdaReviewModalProps {
   isOpen: boolean;
   onClose: () => void;
-  ndaStatus: NdaStatus | null;
+  ndaStatus?: NdaStatus | null;
   onSign: (confirmationText?: string) => Promise<void>;
+  projectName?: string;
+  creatorName?: string;
+  entrepreneurName?: string;
 }
 
 export const NdaReviewModal: React.FC<NdaReviewModalProps> = ({
@@ -16,12 +19,28 @@ export const NdaReviewModal: React.FC<NdaReviewModalProps> = ({
   onClose,
   ndaStatus,
   onSign,
+  projectName: propProjectName,
+  creatorName: propCreatorName,
+  entrepreneurName: propEntrepreneurName,
 }) => {
   const [agreed, setAgreed] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (!isOpen || !ndaStatus) return null;
+  React.useEffect(() => {
+    if (isOpen) {
+      setAgreed(false);
+      setError(null);
+      setIsSubmitting(false);
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  const targetProjectName = ndaStatus?.projectName || propProjectName || 'Project';
+  const targetCreatorName = ndaStatus?.creatorName || propCreatorName || 'Project Creator';
+  const targetEntrepreneurName = ndaStatus?.entrepreneurName || propEntrepreneurName || 'Authenticated Entrepreneur';
+  const targetNdaVersion = ndaStatus?.ndaVersion || '1.0';
 
   const handleSign = async () => {
     if (!agreed) {
@@ -60,11 +79,12 @@ export const NdaReviewModal: React.FC<NdaReviewModalProps> = ({
                 Project Non-Disclosure Agreement
               </h2>
               <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                Mondial Platform Standard Confidentiality Terms (v{ndaStatus.ndaVersion || '1.0'})
+                Mondial Platform Standard Confidentiality Terms (v{targetNdaVersion})
               </p>
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
             className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
           >
@@ -81,7 +101,7 @@ export const NdaReviewModal: React.FC<NdaReviewModalProps> = ({
                 Disclosing Party (Creator)
               </span>
               <span className="font-semibold text-zinc-900 dark:text-zinc-100">
-                {ndaStatus.creatorName || 'Project Creator'}
+                {targetCreatorName}
               </span>
             </div>
             <div>
@@ -89,7 +109,7 @@ export const NdaReviewModal: React.FC<NdaReviewModalProps> = ({
                 Receiving Party (Entrepreneur)
               </span>
               <span className="font-semibold text-zinc-900 dark:text-zinc-100">
-                {ndaStatus.entrepreneurName || 'Authenticated Entrepreneur'}
+                {targetEntrepreneurName}
               </span>
             </div>
             <div>
@@ -97,7 +117,7 @@ export const NdaReviewModal: React.FC<NdaReviewModalProps> = ({
                 Target Project
               </span>
               <span className="font-semibold text-zinc-900 dark:text-zinc-100">
-                {ndaStatus.projectName}
+                {targetProjectName}
               </span>
             </div>
             <div>

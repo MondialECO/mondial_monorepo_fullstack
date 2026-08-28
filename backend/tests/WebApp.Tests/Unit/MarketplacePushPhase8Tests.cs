@@ -34,6 +34,7 @@ namespace WebApp.Tests.Unit
         private readonly List<DealExecution> _dealsDb = new();
         private readonly List<CreatorIdea> _ideasDb = new();
         private readonly List<Companies> _companiesDb = new();
+        private readonly List<ProjectInterest> _projectInterestsDb = new();
         private readonly List<MarketplaceProjectAccessLog> _auditLogsDb = new();
         private readonly List<ApplicationUser> _usersDb = new();
 
@@ -188,6 +189,47 @@ namespace WebApp.Tests.Unit
 
             _dbMock.Setup(d => d.GetCollection<Companies>("Companies", It.IsAny<MongoCollectionSettings>()))
                 .Returns(companiesCollectionMock.Object);
+
+            // Setup ProjectInterests mock collection
+            var projectInterestsCollectionMock = new Mock<IMongoCollection<ProjectInterest>>();
+            projectInterestsCollectionMock.Setup(c => c.FindAsync(
+                It.IsAny<FilterDefinition<ProjectInterest>>(),
+                It.IsAny<FindOptions<ProjectInterest, ProjectInterest>>(),
+                It.IsAny<CancellationToken>()))
+                .ReturnsAsync((FilterDefinition<ProjectInterest> f, FindOptions<ProjectInterest, ProjectInterest> opt, CancellationToken ct) =>
+                {
+                    if (f is ExpressionFilterDefinition<ProjectInterest> exprFilter)
+                    {
+                        try
+                        {
+                            var predicate = exprFilter.Expression.Compile();
+                            var matches = _projectInterestsDb.Where(predicate).ToList();
+                            return MakeCursor(matches);
+                        }
+                        catch { }
+                    }
+                    return MakeCursor(_projectInterestsDb);
+                });
+
+            projectInterestsCollectionMock.Setup(c => c.ReplaceOneAsync(
+                It.IsAny<FilterDefinition<ProjectInterest>>(),
+                It.IsAny<ProjectInterest>(),
+                It.IsAny<ReplaceOptions>(),
+                It.IsAny<CancellationToken>()))
+                .ReturnsAsync((FilterDefinition<ProjectInterest> filter, ProjectInterest doc, ReplaceOptions opt, CancellationToken ct) =>
+                {
+                    var idx = _projectInterestsDb.FindIndex(pi => pi.Id == doc.Id);
+                    if (idx >= 0)
+                    {
+                        _projectInterestsDb[idx] = doc;
+                        return new ReplaceOneResult.Acknowledged(1, 1, doc.Id);
+                    }
+                    _projectInterestsDb.Add(doc);
+                    return new ReplaceOneResult.Acknowledged(1, 1, doc.Id);
+                });
+
+            _dbMock.Setup(d => d.GetCollection<ProjectInterest>("ProjectInterests", It.IsAny<MongoCollectionSettings>()))
+                .Returns(projectInterestsCollectionMock.Object);
 
             // Setup MarketplaceProjectAccessLogs mock collection
             var auditLogsCollectionMock = new Mock<IMongoCollection<MarketplaceProjectAccessLog>>();

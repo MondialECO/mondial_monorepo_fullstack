@@ -222,6 +222,33 @@ namespace WebApp.Controllers
                     modes.Add(listing.SaleType);
                 }
 
+                // If request specifies a deal mode, validate it against available modes
+                string selectedMode;
+                if (!string.IsNullOrEmpty(request?.DealMode))
+                {
+                    var requestedMode = request.DealMode.Trim().ToLowerInvariant();
+                    if (!modes.Contains(requestedMode) && requestedMode != listing.SaleType)
+                    {
+                        return UnprocessableEntity(ApiResponse.Error($"The requested deal mode '{requestedMode}' is not currently available for this listing."));
+                    }
+                    selectedMode = requestedMode;
+                }
+                else
+                {
+                    if (modes.Count == 1)
+                    {
+                        selectedMode = modes[0];
+                    }
+                    else if (modes.Count > 1)
+                    {
+                        return UnprocessableEntity(ApiResponse.Error("Please select a specific deal mode (Full Buyout or Co-founder / Equity)."));
+                    }
+                    else
+                    {
+                        selectedMode = listing.SaleType ?? "full_buyout";
+                    }
+                }
+
                 var interest = new ProjectInterest
                 {
                     IdeaId = ideaId,
@@ -232,8 +259,8 @@ namespace WebApp.Controllers
                     EntrepreneurEmail = user?.Email,
                     Note = request?.Note?.Trim(),
                     Status = "pending",
-                    DealModes = modes,
-                    DealMode = modes.FirstOrDefault() ?? listing.SaleType,
+                    DealModes = new List<string> { selectedMode },
+                    DealMode = selectedMode,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };
@@ -243,9 +270,9 @@ namespace WebApp.Controllers
                 if (_notifications != null && Guid.TryParse(idea.UserId, out var creatorGuid))
                 {
                     var projName = idea.Project?.Name ?? "your project";
-                    var dealModeText = modes.Contains("full_buyout")
-                        ? (modes.Contains("equity_partnership") ? "Full Buyout / Co-founder" : "Full Buyout")
-                        : "Equity Partnership";
+                    var dealModeText = selectedMode == "full_buyout"
+                        ? "Full Buyout"
+                        : "Co-founder / Equity Partnership";
                     var deepLink = $"/dashboard/creator/crossroads?ideaId={ideaId}&interestId={interest.Id}";
                     await _notifications.CreateNotification(
                         creatorGuid,
@@ -328,10 +355,10 @@ namespace WebApp.Controllers
             }
         }
 
-        // ======================= PHASE 2: NDA & SCOPED PRIVATE DATA =======================
-
         // GET /api/marketplace/projects/{ideaId}/nda
+        // GET /api/marketplace/projects/{ideaId}/nda/status
         [HttpGet("{ideaId}/nda")]
+        [HttpGet("{ideaId}/nda/status")]
         public async Task<IActionResult> GetNdaStatus(string ideaId)
         {
             try

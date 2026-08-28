@@ -14,11 +14,13 @@ export interface MarketplaceProject {
   clarityScore: number;
   readinessScore: number;
   dealModes: string[];
+  saleType?: string;
   askingPrice?: number | null;
   ndaRequired: boolean;
   audience: string;
   status: string;
   publishedAt?: string;
+  creatorName?: string;
 }
 
 export interface MarketplaceProjectsQuery {
@@ -338,8 +340,8 @@ export const marketplaceProjectsApi = {
     return unwrap<MarketplaceProject>(res.data);
   },
 
-  expressInterest: async (ideaId: string, note?: string): Promise<ProjectInterest> => {
-    const res = await api.post(`/marketplace/projects/${ideaId}/interest`, { note });
+  expressInterest: async (ideaId: string, note?: string, dealMode?: string): Promise<ProjectInterest> => {
+    const res = await api.post(`/marketplace/projects/${ideaId}/interest`, { note, dealMode });
     return unwrap<ProjectInterest>(res.data);
   },
 
@@ -349,7 +351,7 @@ export const marketplaceProjectsApi = {
   },
 
   getNdaStatus: async (ideaId: string): Promise<NdaStatus> => {
-    const res = await api.get(`/marketplace/projects/${ideaId}/nda/status`);
+    const res = await api.get(`/marketplace/projects/${ideaId}/nda`);
     return unwrap<NdaStatus>(res.data);
   },
 
@@ -1045,6 +1047,7 @@ export interface LegalReviewPackage {
   assignedLegalProviderId?: string | null;
   assignedLegalProviderName?: string | null;
   providerReviewStatus: string; // NOT_ASSIGNED | ASSIGNED | IN_REVIEW | CHANGES_REQUESTED | REVIEW_COMPLETE
+  providerReviewedVersion?: number;
   providerReviewedAt?: string | null;
   providerReviewNotes?: string | null;
   creatorApprovedVersion: number;

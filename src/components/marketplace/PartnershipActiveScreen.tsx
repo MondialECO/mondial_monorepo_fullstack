@@ -136,7 +136,7 @@ export const PartnershipActiveScreen: React.FC<PartnershipActiveScreenProps> = (
   const partnerRole = isCreator ? details.entrepreneurRoleDetails : details.creatorRoleDetails;
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 pb-16 text-foreground">
+    <div className="w-full max-w-[1440px] mx-auto space-y-8 pb-16 text-foreground">
       {/* Hero Header */}
       <div className="relative overflow-hidden bg-card border border-border rounded-3xl p-8 shadow-sm">
         <div className="relative z-10 space-y-6">
