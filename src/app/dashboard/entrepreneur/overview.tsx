@@ -25,6 +25,7 @@ import {
   Briefcase,
   CheckCircle2,
   Clock,
+  Compass,
   FileText,
   FolderOpen,
   Handshake,
@@ -514,6 +515,67 @@ export default function EntrepreneurOverview() {
             )}
           </CardContent>
         </Card>
+      </div>
+
+      {/* ── Ventures & Acquisitions Relationships ── */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-foreground">Ventures & Acquisitions</h2>
+            <p className="text-xs text-muted-foreground">
+              Discover creator projects, manage commercial negotiations, and access acquired intellectual property.
+            </p>
+          </div>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Link href="/dashboard/entrepreneur/discover">
+            <Card className="hover:border-primary/40 hover:shadow-md transition-all cursor-pointer h-full">
+              <CardContent className="p-5 flex items-start gap-4">
+                <span className="rounded-xl bg-primary/10 p-3 text-primary shrink-0">
+                  <Compass className="h-5 w-5" />
+                </span>
+                <div className="space-y-1">
+                  <p className="font-bold text-sm text-foreground">Discover Projects</p>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Explore validated creator ventures open for Buyout or Equity Partnership.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link href="/dashboard/entrepreneur/deals">
+            <Card className="hover:border-primary/40 hover:shadow-md transition-all cursor-pointer h-full">
+              <CardContent className="p-5 flex items-start gap-4">
+                <span className="rounded-xl bg-indigo-500/10 p-3 text-indigo-500 shrink-0">
+                  <Handshake className="h-5 w-5" />
+                </span>
+                <div className="space-y-1">
+                  <p className="font-bold text-sm text-foreground">Project Deals</p>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Manage active term sheet negotiations, NDAs, and deal pipelines with creators.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link href="/dashboard/entrepreneur/acquisitions">
+            <Card className="hover:border-primary/40 hover:shadow-md transition-all cursor-pointer h-full">
+              <CardContent className="p-5 flex items-start gap-4">
+                <span className="rounded-xl bg-emerald-500/10 p-3 text-emerald-500 shrink-0">
+                  <Briefcase className="h-5 w-5" />
+                </span>
+                <div className="space-y-1">
+                  <p className="font-bold text-sm text-foreground">My Acquisitions</p>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Access verified inventory of intellectual property and assets acquired via Full Buyout.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+        </div>
       </div>
 
       {/* ── STEP 1 + 8: Phase journey grid (real status, no fake metrics) ── */}

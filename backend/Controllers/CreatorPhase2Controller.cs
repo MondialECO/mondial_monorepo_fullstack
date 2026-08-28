@@ -564,25 +564,31 @@ namespace WebApp.Controllers
                 var p = journey.Project ?? new CreatorJourneyProject();
 
                 // 1) Workroom (private conversation) between creator and SP.
-                var (conversation, _) = await _chat.GetOrCreateConversation(creatorGuid, spGuid);
+                ObjectId? ideaOid = ObjectId.TryParse(ideaId, out var parsedOid) ? parsedOid : null;
+                var (conversation, created) = await _chat.GetOrCreateConversation(creatorGuid, spGuid, ideaOid, "CreatorBranding");
 
-                // 2) Auto-send the brief as the first message.
-                var brief =
-                    $"📋 Branding brief\n" +
-                    $"Project: {(string.IsNullOrWhiteSpace(p.Name) ? "(unnamed)" : p.Name)}\n" +
-                    $"Pitch: {(string.IsNullOrWhiteSpace(p.Tagline) ? "—" : p.Tagline)}\n" +
-                    $"Sector: {(string.IsNullOrWhiteSpace(p.Sector) ? "—" : p.Sector)}\n" +
-                    $"Looking for: logo + visual identity. Budget: €500–€2,000.";
-                await _chat.AddMessage(new ChatMessage
+                // 2) Auto-send the brief as the first message only when freshly created.
+                if (created)
                 {
-                    ConversationId = conversation.Id,
-                    SenderId = creatorGuid,
-                    Message = brief,
-                    MessageType = "Text",
-                });
+                    var brief =
+                        $"📋 Branding brief\n" +
+                        $"Project: {(string.IsNullOrWhiteSpace(p.Name) ? "(unnamed)" : p.Name)}\n" +
+                        $"Pitch: {(string.IsNullOrWhiteSpace(p.Tagline) ? "—" : p.Tagline)}\n" +
+                        $"Sector: {(string.IsNullOrWhiteSpace(p.Sector) ? "—" : p.Sector)}\n" +
+                        $"Looking for: logo + visual identity. Budget: €500–€2,000.";
+                    await _chat.AddMessage(new ChatMessage
+                    {
+                        ConversationId = conversation.Id,
+                        SenderId = creatorGuid,
+                        Message = brief,
+                        MessageType = "Text",
+                    });
+                }
 
                 // 3) Branding designer-pending (resolved for the derived engine; logo delivered later).
-                await _journeys.SetBrandingLogoAsync(userId, null, "designer", "m50_designer", ideaId: ideaId);
+                await _journeys.SetBrandingLogoAsync(
+                    userId, null, "designer", "m50_designer", ideaId: ideaId,
+                    designerId: spGuid.ToString(), conversationId: conversation.Id.ToString());
 
                 var workroomId = conversation.Id.ToString();
                 return Ok(ApiResponse.Ok("Workroom opened", new { workroomId, conversationId = workroomId }));

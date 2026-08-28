@@ -38,13 +38,13 @@ export default function InvestorDashboard() {
         </CardHeader>
         <CardContent className="flex flex-col gap-3 sm:flex-row">
           <Button asChild className="w-full sm:w-auto">
-            <Link href="/dashboard/investor">
+            <Link href="/dashboard/investor/pipeline">
               Review investment pipeline
               <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>
           <Button asChild variant="outline" className="w-full sm:w-auto">
-            <Link href="/dashboard/investor">Track active investments</Link>
+            <Link href="/dashboard/investor/discovery">Discover Opportunities</Link>
           </Button>
         </CardContent>
       </Card>

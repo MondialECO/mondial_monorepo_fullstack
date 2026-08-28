@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Sparkles, Star, MessageSquare, Loader2, Rocket, Users, Info } from "lucide-react";
+import { Sparkles, Star, MessageSquare, Loader2, Rocket, Users, Info, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -123,22 +123,138 @@ export default function InvestorsPage() {
           </div>
         )}
 
-        {readiness && (
-          <Card className="rounded-2xl border border-border bg-card p-4">
-            <div className="flex items-center justify-between gap-4"><div><div className="font-semibold">{(readiness.selectedPath === "sell" || readiness.selectedPath === "sell_license") ? "Full Buyout readiness" : "Project readiness"}: {readiness.overallProgress}%</div><p className="text-sm text-muted-foreground">{readiness.nextBestAction?.label ?? "Your required preparation is complete."}</p></div>{readiness.nextBestAction && !readiness.levelUpEligible && <Button variant="outline" onClick={() => router.push(readiness.nextBestAction!.route)}>Continue</Button>}</div>
-            {readiness.missingRequired.length > 0 && <p className="mt-2 text-xs text-muted-foreground">Still needed: {readiness.requirements.filter((item) => readiness.missingRequired.includes(item.key)).map((item) => item.label).join(", ")}</p>}
-          </Card>
-        )}
+        {readiness && readiness.qualificationPath === "CO_FOUNDED" ? (
+          <div className="space-y-5">
+            {/* Co-founded Partnership Overview Card */}
+            <Card className="rounded-2xl border border-border bg-card p-6 space-y-4 shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Badge className="bg-primary text-primary-foreground font-bold gap-1 shadow-sm">
+                      <Sparkles className="h-3 w-3" /> CO-FOUNDED
+                    </Badge>
+                    <Badge variant="outline" className="border-success-strong/40 text-success-strong bg-success-light font-medium">
+                      Partnership Active ✓
+                    </Badge>
+                  </div>
+                  <h2 className="text-xl font-extrabold tracking-tight">{readiness.companyName || "Operating Company"}</h2>
+                </div>
 
-        {/* Level Up CTA is Build-only and server eligibility remains authoritative. */}
-        {readiness?.levelUpEligible && (
-        <Card className="rounded-2xl border border-primary/30 bg-primary/5 p-5 flex items-center justify-between">
-          <div>
-            <div className="font-bold flex items-center gap-2"><Rocket className="h-4 w-4 text-primary" /> Ready to go all in?</div>
-            <p className="text-sm text-muted-foreground">Move your prepared project into the existing Entrepreneur workspace.</p>
+                <div className="flex items-center gap-4 text-right">
+                  <div className="rounded-xl border border-border bg-muted/30 px-4 py-2 text-center">
+                    <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Your Equity</div>
+                    <div className="text-lg font-black text-primary">{readiness.creatorEquityPercent ?? 0}%</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-border text-sm">
+                <div>
+                  <span className="text-muted-foreground text-xs block">Your Role</span>
+                  <span className="font-semibold">{readiness.creatorRole || "Co-founder"}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground text-xs block">Co-founder Partner</span>
+                  <span className="font-semibold">{readiness.partnerName || "Partner"}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground text-xs block">Readiness Status</span>
+                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                    {readiness.levelUpEligible ? "100% Ready to Level Up" : `${readiness.overallProgress}% Complete`}
+                  </span>
+                </div>
+              </div>
+            </Card>
+
+            {/* Checklist */}
+            <Card className="rounded-2xl border border-border bg-card p-6 space-y-4">
+              <div>
+                <h3 className="font-bold text-base">Co-founded Readiness Verification</h3>
+                <p className="text-xs text-muted-foreground">Canonical verification against corporate records, cap table, and signed agreements.</p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {readiness.requirements.map((req) => (
+                  <div
+                    key={req.key || req.id}
+                    className={`flex items-start gap-3 p-3.5 rounded-xl border transition-colors ${
+                      req.complete
+                        ? "border-emerald-500/20 bg-emerald-500/5 text-foreground"
+                        : "border-border bg-muted/30 text-muted-foreground"
+                    }`}
+                  >
+                    <div className={`mt-0.5 rounded-full p-1 ${req.complete ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400" : "bg-muted text-muted-foreground"}`}>
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-semibold flex items-center justify-between">
+                        <span className="truncate">{req.label}</span>
+                        {req.complete && <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold ml-2 shrink-0">✓ Verified</span>}
+                      </div>
+                      {req.details && <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">{req.details}</p>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+            {/* Level Up CTA for Co-founded */}
+            {readiness.levelUpEligible ? (
+              <Card className="rounded-2xl border border-primary/40 bg-gradient-to-r from-primary/10 via-primary/5 to-card p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
+                <div className="space-y-1">
+                  <div className="font-extrabold text-base flex items-center gap-2 text-primary">
+                    <Rocket className="h-5 w-5" /> Ready to Level Up
+                  </div>
+                  <p className="text-sm font-medium">You have successfully co-founded {readiness.companyName}! You are eligible to level up and access your Entrepreneur workspace.</p>
+                  <p className="text-xs text-muted-foreground">
+                    You will keep access to your Creator projects and gain Entrepreneur access for your active company. Resulting roles: Creator and Entrepreneur.
+                  </p>
+                </div>
+                <Button onClick={() => setLeveling(true)} size="lg" className="gap-2 font-bold px-6 shrink-0 shadow-md">
+                  <Rocket className="h-4 w-4" /> Level Up to Entrepreneur
+                </Button>
+              </Card>
+            ) : (
+              <Card className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4 text-xs text-amber-700 dark:text-amber-300">
+                Some requirements are still pending. Complete all checklist items above to qualify for Level Up.
+              </Card>
+            )}
           </div>
-          <Button onClick={() => setLeveling(true)} className="gap-2"><Rocket className="h-4 w-4" /> Level Up</Button>
-        </Card>
+        ) : (
+          <>
+            {readiness && (
+              <Card className="rounded-2xl border border-border bg-card p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <div className="font-semibold">
+                      {(readiness.selectedPath === "sell" || readiness.selectedPath === "sell_license") ? "Full Buyout readiness" : "Project readiness"}: {readiness.overallProgress}%
+                    </div>
+                    <p className="text-sm text-muted-foreground">{readiness.nextBestAction?.label ?? "Your required preparation is complete."}</p>
+                  </div>
+                  {readiness.nextBestAction && !readiness.levelUpEligible && (
+                    <Button variant="outline" onClick={() => router.push(readiness.nextBestAction!.route)}>Continue</Button>
+                  )}
+                </div>
+                {readiness.missingRequired.length > 0 && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Still needed: {readiness.requirements.filter((item) => readiness.missingRequired.includes(item.key)).map((item) => item.label).join(", ")}
+                  </p>
+                )}
+              </Card>
+            )}
+
+            {/* Level Up CTA for Build path */}
+            {readiness?.levelUpEligible && (
+              <Card className="rounded-2xl border border-primary/30 bg-primary/5 p-5 flex items-center justify-between">
+                <div>
+                  <div className="font-bold flex items-center gap-2"><Rocket className="h-4 w-4 text-primary" /> Ready to go all in?</div>
+                  <p className="text-sm text-muted-foreground">Move your prepared project into the existing Entrepreneur workspace.</p>
+                  <p className="text-xs text-muted-foreground mt-1">You will keep access to your Creator projects and gain Entrepreneur access. Resulting roles: Creator and Entrepreneur.</p>
+                </div>
+                <Button onClick={() => setLeveling(true)} className="gap-2"><Rocket className="h-4 w-4" /> Level Up to Entrepreneur</Button>
+              </Card>
+            )}
+          </>
         )}
       </main>
     </div>

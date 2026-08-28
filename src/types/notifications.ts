@@ -11,6 +11,7 @@ export interface AppNotification {
   body: string;
   type: NotificationType;
   referenceId: string | null;
+  link?: string | null;
   isRead: boolean;
   createdAt: string;
 }

@@ -1,4 +1,4 @@
-﻿using MongoDB.Bson;
+using MongoDB.Bson;
 using WebApp.Models.DatabaseModels;
 using WebApp.Services.Interface;
 using WebApp.Services.Repository;
@@ -27,9 +27,9 @@ namespace WebApp.Services
            return await _messages.GetMessages(conversationId, skip, limit);
         }
 
-        public async Task<(Conversation Conversation, bool Created)> GetOrCreateConversation(Guid user1, Guid user2)
+        public async Task<(Conversation Conversation, bool Created)> GetOrCreateConversation(Guid user1, Guid user2, ObjectId? relatedProjectId = null, string? contextType = null)
         {
-            return await _conversation.GetOrCreateConversation(user1, user2);
+            return await _conversation.GetOrCreateConversation(user1, user2, relatedProjectId, contextType);
         }
 
         public Task<List<Guid>> GetParticipantsAsync(ObjectId conversationId)

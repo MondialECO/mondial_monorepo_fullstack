@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.SignalR;
+using Microsoft.AspNetCore.SignalR;
 using MongoDB.Bson;
 using WebApp.Hubs;
 using WebApp.Models.DatabaseModels;
@@ -30,44 +30,71 @@ namespace WebApp.Services
         }
 
 
-        public async Task<Notification> CreateNotification(Guid userId, string title, string body)
+        public Task<Notification> CreateNotification(Guid userId, string title, string body)
+            => CreateNotification(userId, title, body, null, null, null);
+
+        public async Task<Notification> CreateNotification(
+            Guid userId, string title, string body, string? link, string? type = null, ObjectId? referenceId = null)
         {
             var notif = new Notification
             {
                 UserId = userId,
                 Title = title,
                 Body = body,
+                Link = link,
+                Type = type ?? "System",
+                ReferenceId = referenceId,
                 CreatedAt = DateTime.UtcNow,
                 IsRead = false
             };
             await _repo.AddNotification(notif);
+
+            try
+            {
+                if (_hubContext != null)
+                {
+                    await _hubContext.Clients.Group(userId.ToString()).SendAsync("ReceiveNotification", notif);
+                }
+            }
+            catch
+            {
+                // Realtime delivery failure must not block persistence
+            }
+
+            try
+            {
+                if (_pushRepo != null && _webPushService != null)
+                {
+                    var subs = await _pushRepo.GetByUserId(userId);
+                    if (subs != null && subs.Count > 0)
+                    {
+                        foreach (var sub in subs)
+                        {
+                            await _webPushService.SendAsync(sub, notif);
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // WebPush failure must not block persistence
+            }
+
             return notif;
         }
 
+        public Task NotifyUser(Guid userId, string title, string body)
+            => NotifyUserWithReceipt(userId, title, body, null, null, null);
 
-        public async Task NotifyUser(Guid userId, string title, string body)
-            => _ = await NotifyUserWithReceipt(userId, title, body);
+        public async Task NotifyUser(Guid userId, string title, string body, string? link)
+            => _ = await NotifyUserWithReceipt(userId, title, body, link, null, null);
 
+        public Task<Notification> NotifyUserWithReceipt(Guid userId, string title, string body)
+            => NotifyUserWithReceipt(userId, title, body, null, null, null);
 
-        public async Task<Notification> NotifyUserWithReceipt(Guid userId, string title, string body)
-        {
-            var notification = await CreateNotification(userId, title, body);
-
-            if (await _presence.IsOnlineAsync(userId.ToString()))
-            {
-                await _hubContext.Clients.Group(userId.ToString()).SendAsync("ReceiveNotification", notification);
-            }
-            else
-            {
-                var subs = await _pushRepo.GetByUserId(userId);
-                foreach (var sub in subs)
-                {
-                    await _webPushService.SendAsync(sub, notification);
-                }
-            }
-
-            return notification;
-        }
+        public Task<Notification> NotifyUserWithReceipt(
+            Guid userId, string title, string body, string? link, string? type = null, ObjectId? referenceId = null)
+            => CreateNotification(userId, title, body, link, type, referenceId);
 
 
 

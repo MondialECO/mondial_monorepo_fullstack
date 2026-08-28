@@ -339,10 +339,25 @@ export const creatorJourneyApi = {
     return unwrap<CreatorReadiness>(res.data);
   },
 
-  publishMarketplace: async (payload: { ndaRequired: boolean; askingPrice: number; audience: string }, ideaId?: string | null): Promise<{ listing: unknown; matches: string[]; hasMatches: boolean; isEmpty: boolean }> => {
+  publishMarketplace: async (payload: { ndaRequired: boolean; askingPrice?: number; audience: string; dealModes?: string[] }, ideaId?: string | null): Promise<{ listing: unknown; matches: string[]; hasMatches: boolean; isEmpty: boolean }> => {
     const res = await api.post('/creator/marketplace/publish', payload, withIdeaWrite(ideaId));
     rememberIdeaVersion(res, ideaId);
     return unwrap<{ listing: unknown; matches: string[]; hasMatches: boolean; isEmpty: boolean }>(res.data);
+  },
+
+  getInterests: async (ideaId?: string | null): Promise<ProjectInterest[]> => {
+    const res = await api.get('/creator/marketplace/interests', withIdeaRead(ideaId));
+    return unwrap<ProjectInterest[]>(res.data);
+  },
+
+  acceptInterest: async (interestId: string): Promise<ProjectInterest> => {
+    const res = await api.post(`/creator/marketplace/interests/${interestId}/accept`);
+    return unwrap<ProjectInterest>(res.data);
+  },
+
+  declineInterest: async (interestId: string): Promise<ProjectInterest> => {
+    const res = await api.post(`/creator/marketplace/interests/${interestId}/decline`);
+    return unwrap<ProjectInterest>(res.data);
   },
 
   companyFormation: async (payload: { selectedType: string; ownership: OwnershipEntry[]; formationSpId?: string }, ideaId?: string | null): Promise<{ formation: unknown; warnings: string[] }> => {
@@ -414,6 +429,12 @@ export interface IdeaCard {
   isActive: boolean;
   isLeveledUp: boolean;
   phaseReached: IdeaPhaseReached;
+  projectOutcome?: string;
+  activeBuyoutDealId?: string | null;
+  activePartnershipDealId?: string | null;
+  salePrice?: number | null;
+  soldAt?: string | null;
+  acquiredByUserId?: string | null;
 }
 
 export interface SmartMatch {
@@ -431,6 +452,11 @@ export interface LevelUpResult {
   levelUpComplete: boolean;
   entrepreneurProfileId: string;
   redirectTo: string;
+  qualificationPath?: string;
+  companyId?: string;
+  companyName?: string;
+  creatorRole?: string;
+  creatorEquityPercent?: number | null;
 }
 
 export interface IpValuation {
@@ -451,11 +477,29 @@ export interface PricingForecastContext {
   arpu: number;
   updatedAt: string;
 }
-export interface CreatorReadinessRequirement { key: string; label: string; route: string; complete: boolean; required: boolean; }
+export interface CreatorReadinessRequirement {
+  id?: string;
+  key: string;
+  label: string;
+  route: string;
+  complete: boolean;
+  required: boolean;
+  blocking?: boolean;
+  status?: string;
+  details?: string;
+}
 export interface CreatorReadiness {
   overallProgress: number;
   levelUpEligible: boolean;
   selectedPath: string;
+  qualificationPath?: 'BUILD' | 'CO_FOUNDED' | 'SELL' | string;
+  companyName?: string;
+  creatorRole?: string;
+  creatorEquityPercent?: number | null;
+  partnerName?: string;
+  companyId?: string;
+  dealId?: string;
+  outcomeBadge?: string;
   requirements: CreatorReadinessRequirement[];
   missingRequired: string[];
   nextBestAction?: CreatorReadinessRequirement | null;
@@ -526,6 +570,26 @@ export interface InvestorReadinessScore {
     legalReadiness: number;
     teamCredibility: number;
   };
+}
+
+export interface ProjectInterest {
+  id: string;
+  ideaId: string;
+  projectName?: string;
+  creatorId: string;
+  entrepreneurId: string;
+  entrepreneurName: string;
+  entrepreneurEmail?: string;
+  note?: string;
+  status: 'pending' | 'accepted' | 'declined';
+  dealModes?: string[];
+  dealMode?: string;
+  conversationId?: string;
+  ndaRequired?: boolean;
+  ndaSigned?: boolean;
+  accessGranted?: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export type ChecklistStatus = 'pending' | 'in_progress' | 'done';

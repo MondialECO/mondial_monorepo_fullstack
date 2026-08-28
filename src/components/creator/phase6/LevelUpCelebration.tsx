@@ -136,7 +136,12 @@ export function LevelUpCelebration({ onDone, onCancel, ideaId }: { onDone: (redi
             </div>
             <div>
               <h1 className="text-3xl font-extrabold">Level Up</h1>
-              <p className="text-white/70 mt-2">Your existing project, planning, and Creator history stay linked as you enter the Entrepreneur workspace.</p>
+              <p className="text-white/80 mt-2 text-sm leading-relaxed">
+                You will keep access to your Creator projects and gain Entrepreneur access for your active company.
+              </p>
+              <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+                Resulting roles: Creator &amp; Entrepreneur
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
@@ -99,7 +99,8 @@ namespace WebApp.Controllers
             if (ownerId == CurrentUserId)
                 return BadRequest(new { error = "Cannot start a conversation with yourself." });
 
-            var (conversation, created) = await _chatService.GetOrCreateConversation(CurrentUserId, ownerId);
+            ObjectId? companyOid = ObjectId.TryParse(companyId, out var parsedOid) ? parsedOid : null;
+            var (conversation, created) = await _chatService.GetOrCreateConversation(CurrentUserId, ownerId, companyOid, "Company");
             var dto = (await ToDtosAsync(new List<Conversation> { conversation }))[0];
             if (created) await BroadcastConversationCreatedAsync(conversation, dto);
             return Ok(dto);

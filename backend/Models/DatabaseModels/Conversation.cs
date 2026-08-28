@@ -1,4 +1,4 @@
-﻿using MongoDB.Bson;
+using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace WebApp.Models.DatabaseModels
@@ -16,6 +16,9 @@ namespace WebApp.Models.DatabaseModels
 
         [BsonElement("RelatedProjectId")]
         public ObjectId? RelatedProjectId { get; set; }
+
+        [BsonElement("ContextType")]
+        public string? ContextType { get; set; }
 
         [BsonElement("LastMessage")]
         public string? LastMessage { get; set; }

@@ -61,6 +61,12 @@ namespace WebApp.Controllers
                     // which needs per-idea session reads and is computed when the user
                     // actually enters the idea. Good enough for a "Continue" card label.
                     phaseReached = PhaseReached(i),
+                    projectOutcome = i.ProjectOutcome ?? string.Empty,
+                    activeBuyoutDealId = i.ActiveBuyoutDealId,
+                    activePartnershipDealId = i.ActivePartnershipDealId,
+                    salePrice = i.SalePrice,
+                    soldAt = i.SoldAt,
+                    acquiredByUserId = i.AcquiredByUserId,
                 }).ToList();
 
                 return Ok(ApiResponse.Ok("OK", new { ideas = dtos }));

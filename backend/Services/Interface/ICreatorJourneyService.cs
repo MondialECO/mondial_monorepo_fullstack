@@ -65,7 +65,8 @@ namespace WebApp.Services.Interface
         /// </summary>
         Task<CreatorJourney> SetBrandingLogoAsync(
             string userId, string logoAsset, string logoType, string brandingMethod,
-            List<string> colorPalette = null, string paletteName = null, string typographyPairing = null, string ideaId = null);
+            List<string> colorPalette = null, string paletteName = null, string typographyPairing = null, string ideaId = null,
+            string designerId = null, string conversationId = null);
 
         /// <summary>Persist Discovery input form (sectors, problem, strengths) via targeted $set.</summary>
         Task<CreatorJourney> SetDiscoveryInputsAsync(string userId, CreatorDiscoveryInputs inputs, string ideaId = null);

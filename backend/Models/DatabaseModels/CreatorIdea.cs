@@ -57,6 +57,27 @@ namespace WebApp.Models.DatabaseModels
         /// </summary>
         public List<CreatorIdeaDocument> Documents { get; set; } = new();
 
+        /// <summary>Outcome marker: e.g. "CO_FOUNDED", "SOLD", null.</summary>
+        public string? ProjectOutcome { get; set; }
+
+        /// <summary>Active exclusive equity partnership deal id if co-founded.</summary>
+        public string? ActivePartnershipDealId { get; set; }
+
+        /// <summary>Active exclusive buyout deal id if sold.</summary>
+        public string? ActiveBuyoutDealId { get; set; }
+
+        /// <summary>User ID of the acquiring buyer if sold.</summary>
+        public string? AcquiredByUserId { get; set; }
+
+        /// <summary>Date and time the project was sold.</summary>
+        public DateTime? SoldAt { get; set; }
+
+        /// <summary>Final buyout sale price.</summary>
+        public decimal? SalePrice { get; set; }
+
+        /// <summary>Linked Company id upon activation.</summary>
+        public string? CompanyId { get; set; }
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 

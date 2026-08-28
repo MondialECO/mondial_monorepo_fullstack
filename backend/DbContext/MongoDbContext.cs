@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Options;
 using MongoDB.Driver;
 using MongoDbGenericRepository;
 using WebApp.Models.DatabaseModels;
@@ -241,6 +241,7 @@ namespace WebApp.DbContext
 
         // Creator journey collection (Phases 2–6 source of truth)
         public virtual IMongoCollection<CreatorJourney> CreatorJourneys => _database.GetCollection<CreatorJourney>("CreatorJourneys");
+        public virtual IMongoCollection<CreatorIdea> CreatorIdeas => _database.GetCollection<CreatorIdea>("CreatorIdeas");
 
         // IP valuation audit log (Phase 5 Path A)
         public virtual IMongoCollection<IpValuationRecord> IpValuations => _database.GetCollection<IpValuationRecord>("IpValuations");
@@ -262,6 +263,10 @@ namespace WebApp.DbContext
         public virtual IMongoCollection<InvestorMatch> InvestorMatches => _database.GetCollection<InvestorMatch>("InvestorMatches");
         public virtual IMongoCollection<DealExecution> DealExecutions => _database.GetCollection<DealExecution>("DealExecutions");
         public virtual IMongoCollection<Investor> Investors => _database.GetCollection<Investor>("Investors");
+        public virtual IMongoCollection<ProjectInterest> ProjectInterests => _database.GetCollection<ProjectInterest>("ProjectInterests");
+        public virtual IMongoCollection<MarketplaceProjectAccessGrant> MarketplaceProjectAccessGrants => _database.GetCollection<MarketplaceProjectAccessGrant>("MarketplaceProjectAccessGrants");
+        public virtual IMongoCollection<MarketplaceProjectAccessLog> MarketplaceProjectAccessLogs => _database.GetCollection<MarketplaceProjectAccessLog>("MarketplaceProjectAccessLogs");
+        public virtual IMongoDatabase Database => _database;
 
         // Phase 3 sub-collections
         public virtual IMongoCollection<Phase3Kpi> Phase3Kpis => _database.GetCollection<Phase3Kpi>("Phase3Kpis");

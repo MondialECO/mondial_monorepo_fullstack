@@ -2,30 +2,38 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CrossroadsPathA } from "@/components/creator/phase5/CrossroadsPathA";
 
-const api = vi.hoisted(() => ({ ipValuation: vi.fn(), publishMarketplace: vi.fn() }));
+const api = vi.hoisted(() => ({
+  ipValuation: vi.fn(),
+  publishMarketplace: vi.fn(),
+  getInterests: vi.fn(),
+  acceptInterest: vi.fn(),
+  declineInterest: vi.fn(),
+}));
+
 vi.mock("@/lib/api-creator-journey", () => ({ creatorJourneyApi: api }));
 
 describe("CrossroadsPathA", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     api.publishMarketplace.mockResolvedValue({ isEmpty: true, matches: [], hasMatches: false });
+    api.getInterests.mockResolvedValue([]);
   });
 
-  it("publishes only a Full Buyout with the creator asking price and an honest buyer empty state", async () => {
+  it("publishes to marketplace with deal modes, asking price and honest buyer empty state", async () => {
     render(<CrossroadsPathA ideaId="idea-a" onChanged={vi.fn()} />);
     expect(screen.queryByText(/license/i)).not.toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("Your asking price"), { target: { value: "28000" } });
-    fireEvent.click(screen.getByRole("button", { name: "Publish Full Buyout Listing" }));
+    fireEvent.click(screen.getByRole("button", { name: /publish to marketplace/i }));
 
-    expect(await screen.findByText(/No buyer matches yet/i)).toBeInTheDocument();
+    expect(await screen.findByText(/No automatic buyer matches yet/i)).toBeInTheDocument();
     expect(api.publishMarketplace).toHaveBeenCalledWith(
-      expect.objectContaining({ askingPrice: 28000, ndaRequired: true }),
+      expect.objectContaining({ askingPrice: 28000, ndaRequired: true, dealModes: ["full_buyout"] }),
       "idea-a",
     );
   });
 
-  it("hydrates persisted asking price when initial data arrives asynchronously", async () => {
+  it("hydrates persisted asking price and deal modes when initial data arrives asynchronously", async () => {
     const { rerender } = render(<CrossroadsPathA ideaId="idea-a" onChanged={vi.fn()} />);
     const input = screen.getByLabelText("Your asking price") as HTMLInputElement;
     expect(input.value).toBe("");
@@ -33,7 +41,13 @@ describe("CrossroadsPathA", () => {
     rerender(
       <CrossroadsPathA
         ideaId="idea-a"
-        initial={{ marketplaceListing: { askingPrice: 125000, publishedAt: "2026-08-25T00:00:00Z" } }}
+        initial={{
+          marketplaceListing: {
+            askingPrice: 125000,
+            dealModes: ["full_buyout", "equity_partnership"],
+            publishedAt: "2026-08-25T00:00:00Z",
+          },
+        }}
         onChanged={vi.fn()}
       />
     );

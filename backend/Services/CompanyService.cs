@@ -3469,10 +3469,9 @@ public class CompanyService : ICompanyService
         var deals = await _dbContext.DealExecutions
             .Find(Builders<DealExecution>.Filter.In(d => d.CompanyId, companyIds))
             .ToListAsync();
-        var dealCompanyIds = deals
+        var investorDeals = deals
             .Where(d => d.Investors != null && d.Investors.Any(p => p.InvestorId == investorId))
-            .Select(d => d.CompanyId)
-            .ToHashSet();
+            .ToDictionary(d => d.CompanyId);
 
         var columns = new InvestorPipelineColumnsDto();
         foreach (var m in matches)
@@ -3480,17 +3479,41 @@ public class CompanyService : ICompanyService
             if (!companiesById.TryGetValue(m.CompanyId, out var co)) continue;
             var card = BuildOpportunityCard(co, m);
 
-            // Most-advanced state wins. A card lives in exactly one column.
-            if (dealCompanyIds.Contains(co.Id))
-                columns.Negotiation.Add(card);
+            if (investorDeals.TryGetValue(co.Id, out var companyDeal))
+            {
+                if (companyDeal.Status is "completed" || companyDeal.DealStage is "WON" or "COMPLETED")
+                {
+                    columns.Won.Add(card);
+                }
+                else if (companyDeal.Status is "rejected" or "lost" || companyDeal.DealStage is "LOST" or "REJECTED")
+                {
+                    columns.Lost.Add(card);
+                }
+                else
+                {
+                    columns.Negotiation.Add(card);
+                }
+            }
+            else if (m.Status is "rejected" or "passed" or "lost")
+            {
+                columns.Lost.Add(card);
+            }
             else if (accessLogCompanyIds.Contains(co.Id))
+            {
                 columns.DataRoom.Add(card);
+            }
             else if (ndaCompanyIds.Contains(co.Id))
+            {
                 columns.NdaSigned.Add(card);
+            }
             else if (m.Status is "viewed" or "interested" or "reviewing")
+            {
                 columns.InReview.Add(card);
+            }
             else
+            {
                 columns.NewMatches.Add(card);
+            }
         }
 
         // Summary stats reuse the existing Investments collection (callerUserId is the

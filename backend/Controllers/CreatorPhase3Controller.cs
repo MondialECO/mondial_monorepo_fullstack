@@ -488,19 +488,24 @@ namespace WebApp.Controllers
                 var journey = await _journeys.GetOrCreateComposedAsync(userId, ideaId); // idea-sourced brief
                 var p = journey.Project ?? new CreatorJourneyProject();
 
-                var (conversation, _) = await _chat.GetOrCreateConversation(creatorGuid, spGuid);
-                var brief =
-                    $"📋 Specialist request{(string.IsNullOrWhiteSpace(request.Context) ? "" : $" — {request.Context}")}\n" +
-                    $"Creator idea: {ideaId}\n" +
-                    $"Project: {(string.IsNullOrWhiteSpace(p.Name) ? "(unnamed)" : p.Name)}\n" +
-                    $"Sector: {(string.IsNullOrWhiteSpace(p.Sector) ? "—" : p.Sector)}";
-                await _chat.AddMessage(new ChatMessage
+                ObjectId? ideaOid = ObjectId.TryParse(ideaId, out var parsedOid) ? parsedOid : null;
+                var contextTag = string.IsNullOrWhiteSpace(request?.Context) ? "general" : request.Context.Trim();
+                var (conversation, created) = await _chat.GetOrCreateConversation(creatorGuid, spGuid, ideaOid, $"CreatorSpecialist:{contextTag}");
+                if (created)
                 {
-                    ConversationId = conversation.Id,
-                    SenderId = creatorGuid,
-                    Message = brief,
-                    MessageType = "Text",
-                });
+                    var brief =
+                        $"📋 Specialist request{(string.IsNullOrWhiteSpace(request?.Context) ? "" : $" — {request.Context}")}\n" +
+                        $"Creator idea: {ideaId}\n" +
+                        $"Project: {(string.IsNullOrWhiteSpace(p.Name) ? "(unnamed)" : p.Name)}\n" +
+                        $"Sector: {(string.IsNullOrWhiteSpace(p.Sector) ? "—" : p.Sector)}";
+                    await _chat.AddMessage(new ChatMessage
+                    {
+                        ConversationId = conversation.Id,
+                        SenderId = creatorGuid,
+                        Message = brief,
+                        MessageType = "Text",
+                    });
+                }
 
                 var workroomId = conversation.Id.ToString();
                 return Ok(ApiResponse.Ok("Workroom opened", new { workroomId, conversationId = workroomId }));

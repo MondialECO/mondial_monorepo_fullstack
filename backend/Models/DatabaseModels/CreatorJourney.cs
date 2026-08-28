@@ -61,6 +61,18 @@ namespace WebApp.Models.DatabaseModels
         /// <summary>Response-only version of the CreatorIdea overlaid into this journey.</summary>
         [BsonIgnore]
         public long IdeaVersion { get; set; }
+
+        /// <summary>Response-only overlaid IdeaId from CreatorIdea.</summary>
+        [BsonIgnore]
+        public string? IdeaId { get; set; }
+
+        /// <summary>Response-only overlaid ProjectOutcome (e.g. "CO_FOUNDED", "SOLD").</summary>
+        [BsonIgnore]
+        public string? ProjectOutcome { get; set; }
+
+        /// <summary>Response-only overlaid ActivePartnershipDealId.</summary>
+        [BsonIgnore]
+        public string? ActivePartnershipDealId { get; set; }
     }
 
     // ---------------- Project (canonical idea) ----------------
@@ -104,6 +116,10 @@ namespace WebApp.Models.DatabaseModels
 
         /// <summary>"ai_logo" | "m50_designer" | "pending" — pending never blocks Phase 3.</summary>
         public string BrandingMethod { get; set; }
+
+        public string? DesignerId { get; set; }
+        public string? ConversationId { get; set; }
+        public DateTime? BookedAt { get; set; }
     }
 
     // ---------------- Phase 2 ----------------
@@ -417,16 +433,19 @@ namespace WebApp.Models.DatabaseModels
 
     public class CreatorMarketplaceListing
     {
-        public string Status { get; set; } // draft | live
-        /// <summary>New Creator listings use "full_buyout". Legacy listings may have no sale type.</summary>
+        public string Status { get; set; } // draft | live | available | paused | closed
+        /// <summary>New Creator listings use "full_buyout" or composite deal modes. Legacy listings may have no sale type.</summary>
         public string SaleType { get; set; }
-        /// <summary>Creator-selected asking price, distinct from the planning estimate.</summary>
+        /// <summary>Creator-selected asking price, distinct from the planning estimate. Applies when full_buyout is supported.</summary>
         public decimal? AskingPrice { get; set; }
         public bool NdaRequired { get; set; }
-        // Legacy compatibility fields. New Creator flow neither sets nor presents licensing.
+        /// <summary>Supported deal modes: "full_buyout", "equity_partnership".</summary>
+        public List<string> DealModes { get; set; } = new();
+        // Compatibility & intent fields.
         public bool OpenToPurchase { get; set; }
+        public bool OpenToEquityPartnership { get; set; }
         public bool OpenToLicense { get; set; }
-        public string Audience { get; set; } // public | matched
+        public string Audience { get; set; } // public | matched | private
         public DateTime? PublishedAt { get; set; }
     }
 

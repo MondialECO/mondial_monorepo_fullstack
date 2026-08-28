@@ -1,4 +1,4 @@
-﻿using MongoDB.Bson;
+using MongoDB.Bson;
 using WebApp.Models.DatabaseModels;
 using WebApp.Models.Dtos;
 
@@ -11,7 +11,7 @@ namespace WebApp.Services.Interface
 
 
         Task<List<Conversation>> GetUserConversations(Guid userId);
-        Task<(Conversation Conversation, bool Created)> GetOrCreateConversation(Guid user1, Guid user2);
+        Task<(Conversation Conversation, bool Created)> GetOrCreateConversation(Guid user1, Guid user2, ObjectId? relatedProjectId = null, string? contextType = null);
         Task<List<Guid>> GetParticipantsAsync(ObjectId conversationId);
         Task<List<ChatMessage>> GetMessages(ObjectId conversationId, int skip, int limit);
         Task<ChatMessage> AddMessage(ChatMessage message);

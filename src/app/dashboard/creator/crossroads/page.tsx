@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Sparkles, ArrowRight, ArrowLeft, Store, Building2, CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -14,16 +14,20 @@ import type { ComputedJourneyStatus } from "@/types/creator/journey-api";
 
 export default function CrossroadsPage() {
   const router = useRouter();
-  const { state, setCrossroadsPath, error: progressError } = useCreatorProgress();
+  const searchParams = useSearchParams();
+  const urlIdeaId = searchParams?.get("ideaId");
+  const urlInterestId = searchParams?.get("interestId");
+
+  const { state, setCrossroadsPath, refetch, error: progressError } = useCreatorProgress();
   const { project, journeyState } = state;
-  const activeIdeaId = state.activeIdeaId;
+  const activeIdeaId = urlIdeaId || state.activeIdeaId;
 
   const [computed, setComputed] = useState<ComputedJourneyStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectingPath, setSelectingPath] = useState(false);
   const [phase5Data, setPhase5Data] = useState<Record<string, unknown> | null>(null);
   const [phase3Data, setPhase3Data] = useState<Record<string, unknown> | null>(null);
-  const path = journeyState.phase5.selectedPath;
+  const path = journeyState.phase5.selectedPath || (urlInterestId ? "sell" : null);
 
   const refresh = () =>
     creatorJourneyApi.get(activeIdeaId).then(({ journey, computedStatus }) => {
@@ -31,6 +35,13 @@ export default function CrossroadsPage() {
       setPhase5Data(journey.phase5Data);
       setPhase3Data(journey.phase3Data);
     }).finally(() => setLoading(false));
+
+  useEffect(() => {
+    if (urlIdeaId && urlIdeaId !== state.activeIdeaId) {
+      refetch(urlIdeaId);
+    }
+  }, [urlIdeaId, state.activeIdeaId, refetch]);
+
   useEffect(() => {
     setLoading(true);
     setPhase5Data(null);
@@ -55,13 +66,6 @@ export default function CrossroadsPage() {
 
   return (
     <div className="w-full min-h-screen bg-background text-foreground">
-      {/* <header className="flex items-center justify-between border-b border-border bg-card/50 px-6 py-4">
-        <h1 className="text-sm font-bold">Phase 5 — The Crossroads</h1>
-        <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-          <Sparkles className="h-3 w-3" /> Decision point
-        </div>
-      </header> */}
-
       <main className="max-w-5xl mx-auto w-full p-6 space-y-6">
         {/* Project strip */}
         <Card className="rounded-2xl border border-border bg-card p-6 flex items-center justify-between">
@@ -83,9 +87,9 @@ export default function CrossroadsPage() {
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-warning/10 text-warning"><Store className="h-6 w-6" /></div>
               {path === "sell" && <CheckCircle2 className="h-5 w-5 text-primary" />}
             </div>
-            <h3 className="text-lg font-bold">Sell the Project</h3>
-            <p className="text-sm text-muted-foreground">Transfer the project through a Full Buyout and make it available to potential buyers.</p>
-            <Button variant={path === "sell" ? "default" : "outline"} className="w-full" disabled={selectingPath}>Explore Full Buyout</Button>
+            <h3 className="text-lg font-bold">Marketplace Push</h3>
+            <p className="text-sm text-muted-foreground">Make your project discoverable on the marketplace for Full Buyout acquisition or Co-founder / Equity partnership.</p>
+            <Button variant={path === "sell" ? "default" : "outline"} className="w-full" disabled={selectingPath}>Explore Marketplace Push</Button>
           </Card>
 
           <Card onClick={() => void choose("build")}
@@ -105,21 +109,35 @@ export default function CrossroadsPage() {
 
         {path === "sell_license" && (
           <Card className="rounded-2xl border border-warning/30 bg-warning/5 p-4 text-sm text-muted-foreground">
-            This idea has a historical licensing intent. It has been preserved and has not been converted into a Full Buyout listing. Choose “Sell the Project” to start a new Full Buyout flow.
+            This idea has a historical licensing intent. It has been preserved and has not been converted into a Full Buyout listing. Choose “Marketplace Push” to configure a Full Buyout listing.
           </Card>
         )}
 
         {/* Path-specific flow */}
-        {path === "sell" && !selectingPath && <CrossroadsPathA ideaId={activeIdeaId} initial={phase5Data?.pathA as Record<string, unknown> | undefined} onChanged={refresh} />}
-        {path === "build" && !selectingPath && <CrossroadsPathB ideaId={activeIdeaId} initial={phase5Data?.pathB as Record<string, unknown> | undefined} formationContext={phase3Data?.formationGenerator as Record<string, unknown> | undefined} onChanged={refresh} />}
+        {path === "sell" && !selectingPath && (
+          <CrossroadsPathA
+            ideaId={activeIdeaId}
+            initial={phase5Data?.pathA as Record<string, unknown> | undefined}
+            selectedInterestId={urlInterestId || undefined}
+            onChanged={refresh}
+          />
+        )}
+        {path === "build" && !selectingPath && (
+          <CrossroadsPathB
+            ideaId={activeIdeaId}
+            initial={phase5Data?.pathB as Record<string, unknown> | undefined}
+            formationContext={phase3Data?.formationGenerator as Record<string, unknown> | undefined}
+            onChanged={refresh}
+          />
+        )}
 
         {/* Derived completion gate */}
         <div className="flex items-center justify-between border-t border-border pt-6">
           <Button variant="ghost" onClick={() => router.push("/dashboard/creator")}><ArrowLeft className="h-4 w-4 mr-1" /> Dashboard</Button>
           {loading ? (
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-          ) : path === "build" && computed?.phase6.status !== "locked" ? (
-            <Button onClick={() => router.push("/dashboard/creator/investors")} className="gap-2">Continue to Matchmaking <ArrowRight className="h-4 w-4" /></Button>
+          ) : computed?.phase6.status !== "locked" ? (
+            <Button onClick={() => router.push("/dashboard/creator/investors")} className="gap-2">Continue to Readiness &amp; Matching <ArrowRight className="h-4 w-4" /></Button>
           ) : path === "sell" && computed?.phase5.status === "completed" ? (
             <Badge className="bg-success-light text-success-text">Listing live — you remain a Creator</Badge>
           ) : (

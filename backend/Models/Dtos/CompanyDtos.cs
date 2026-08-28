@@ -941,6 +941,8 @@ public class InvestorPipelineColumnsDto
     public List<OpportunityCardResponse> NdaSigned { get; set; } = new();
     public List<OpportunityCardResponse> DataRoom { get; set; } = new();
     public List<OpportunityCardResponse> Negotiation { get; set; } = new();
+    public List<OpportunityCardResponse> Won { get; set; } = new();
+    public List<OpportunityCardResponse> Lost { get; set; } = new();
 }
 
 public class InvestorPipelineResponse

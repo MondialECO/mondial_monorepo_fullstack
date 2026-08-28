@@ -8,7 +8,7 @@ import type { OpportunityCard } from "@/types/investor/opportunities";
 
 interface KanbanColumnProps {
   title: string;
-  status?: "new" | "review" | "nda" | "dataroom" | "negotiation" | "closed";
+  status?: "new" | "review" | "nda" | "dataroom" | "negotiation" | "closed" | "won" | "lost";
   accent?: "default" | "primary";
   cards: OpportunityCard[];
   emptyLabel?: string;
@@ -20,6 +20,8 @@ const statusColors: Record<string, { bg: string; border: string }> = {
   nda: { bg: "bg-emerald-50 border-emerald-200", border: "border-l-4 border-l-emerald-500" },
   dataroom: { bg: "bg-teal-50 border-teal-200", border: "border-l-4 border-l-teal-500" },
   negotiation: { bg: "bg-orange-50 border-orange-200", border: "border-l-4 border-l-orange-500" },
+  won: { bg: "bg-emerald-50 border-emerald-200", border: "border-l-4 border-l-emerald-600" },
+  lost: { bg: "bg-red-50 border-red-200", border: "border-l-4 border-l-red-500" },
   closed: { bg: "bg-gray-50 border-gray-200", border: "border-l-4 border-l-gray-500" },
 };
 
