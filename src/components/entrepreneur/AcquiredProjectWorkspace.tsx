@@ -49,6 +49,7 @@ import marketplaceProjectsApi, {
   BuyoutSaleRecord,
   PrivateDocument
 } from "@/lib/api-marketplace-projects";
+import { useEntrepreneurProgress } from "@/providers/EntrepreneurProgressProvider";
 import {
   AreaChart,
   Area,
@@ -411,6 +412,25 @@ export const AcquiredProjectWorkspace: React.FC<AcquiredProjectWorkspaceProps> =
   backUrl = "/dashboard/entrepreneur/acquisitions",
   backLabel = "Back to My Acquisitions",
 }) => {
+  let companies: any[] = [];
+  let activeCompanyId: string | null = null;
+  let switchCompany: (id: string) => Promise<boolean> = async () => false;
+
+  try {
+    const ctx = useEntrepreneurProgress();
+    companies = ctx.companies || [];
+    activeCompanyId = ctx.activeCompanyId || null;
+    switchCompany = ctx.switchCompany || (async () => false);
+  } catch {
+    // Graceful fallback if rendered outside EntrepreneurProgressProvider
+  }
+
+  const linkedCompany = companies?.find(
+    (c) =>
+      (deal.ideaId && c.sourceBusinessIdeaId === deal.ideaId) ||
+      (deal.id && (c as any).sourceDealId === deal.id)
+  );
+
   const [projectData, setProjectData] = useState<PrivateMarketplaceProject | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -556,7 +576,36 @@ export const AcquiredProjectWorkspace: React.FC<AcquiredProjectWorkspaceProps> =
           </Link>
         </Button>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {linkedCompany ? (
+            <Button
+              asChild
+              size="sm"
+              className="gap-2 text-xs font-bold bg-primary text-primary-foreground shadow-xs"
+              onClick={async () => {
+                if (linkedCompany.id !== activeCompanyId) {
+                  await switchCompany(linkedCompany.id);
+                }
+              }}
+            >
+              <Link href="/dashboard/entrepreneur/phase-2">
+                <Building2 className="h-3.5 w-3.5" />
+                Open Company Workspace ({linkedCompany.companyName})
+              </Link>
+            </Button>
+          ) : (
+            <Button
+              asChild
+              size="sm"
+              className="gap-2 text-xs font-bold bg-primary text-primary-foreground shadow-xs hover:bg-primary/90"
+            >
+              <Link href={`/dashboard/entrepreneur/acquisitions/${deal.id}/build-company`}>
+                <Sparkles className="h-3.5 w-3.5" />
+                Build Company
+              </Link>
+            </Button>
+          )}
+
           <Button
             variant="outline"
             size="sm"

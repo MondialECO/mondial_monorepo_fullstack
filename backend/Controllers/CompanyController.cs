@@ -125,13 +125,13 @@ public class CompanyController : ControllerBase
     // ============ PHASE FLOW ============
 
     [HttpGet("current-phase")]
-    public async Task<ActionResult<CompanyProgressResponse>> GetCurrentPhase()
+    public async Task<ActionResult<CompanyProgressResponse>> GetCurrentPhase([FromQuery] string? companyId = null)
     {
         try
         {
             var userId = GetUserId();
             await EnsureUniversalPhase1CompleteAsync(userId);
-            var result = await _companyService.GetCurrentPhaseAsync(userId);
+            var result = await _companyService.GetCurrentPhaseAsync(userId, companyId);
             return Ok(result);
         }
         catch (UnauthorizedAccessException ex)
@@ -142,6 +142,59 @@ public class CompanyController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting current phase");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    // ============ MULTI-COMPANY OPERATIONAL CONTEXT ============
+
+    [HttpGet("my-companies")]
+    public async Task<ActionResult<List<CompanySummaryDto>>> GetMyCompanies()
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            var result = await _companyService.GetMyCompaniesAsync(userId);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching user companies");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpPost("active")]
+    public async Task<ActionResult<CompanySummaryDto>> SetActiveCompany([FromBody] SetActiveCompanyRequest request)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            if (string.IsNullOrWhiteSpace(request?.CompanyId))
+                return BadRequest(new { error = "CompanyId is required" });
+
+            var result = await _companyService.SetActiveCompanyAsync(userId, request.CompanyId);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error setting active company");
             return BadRequest(new { error = ex.Message });
         }
     }
@@ -215,6 +268,11 @@ public class CompanyController : ControllerBase
             _logger.LogWarning("Authorization failed: {Message}", ex.Message);
             return StatusCode(403, new { error = ex.Message });
         }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning("Create company rejected: {Message}", ex.Message);
+            return Conflict(new { error = ex.Message });
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating company");
@@ -253,6 +311,51 @@ public class CompanyController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating company from idea {IdeaId}", ideaId);
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpPost("acquisitions/{dealId}/build-company")]
+    [HttpPost("/api/entrepreneur/acquisitions/{dealId}/build-company")]
+    public async Task<ActionResult<BuildAcquisitionCompanyResponse>> BuildCompanyFromAcquisition(
+        string dealId,
+        [FromBody] BuildAcquisitionCompanyDto dto)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+
+            var (company, alreadyExisted) = await _companyService.BuildCompanyFromAcquisitionAsync(userId, dealId, dto);
+
+            return Ok(new BuildAcquisitionCompanyResponse
+            {
+                CompanyId = company.Id,
+                CompanyName = company.CompanyName,
+                SourceBusinessIdeaId = company.SourceBusinessIdeaId,
+                SourceDealId = company.SourceDealId ?? dealId,
+                CurrentPhase = company.CurrentPhase,
+                AlreadyExisted = alreadyExisted,
+                ActiveOperatingContext = company.Id
+            });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { error = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning("Build acquisition company rejected: {Message}", ex.Message);
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error building company from acquisition {DealId}", dealId);
             return BadRequest(new { error = ex.Message });
         }
     }

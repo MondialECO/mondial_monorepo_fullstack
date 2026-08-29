@@ -14,6 +14,8 @@ import { isPhase2ChromeRoute } from "@/lib/layout-config";
 import { AccountMenu, type AccountMenuItem } from "@/components/layout/AccountMenu";
 import { UserRole } from "@/lib/roles";
 
+import { CompanySwitcher } from "@/components/entrepreneur/CompanySwitcher";
+
 /**
  * Account destinations per role, verified against the routes that actually exist under
  * src/app/dashboard rather than assumed from the role list. Entrepreneur and Admin have no
@@ -29,7 +31,9 @@ const ROLE_MENU_ITEMS: Record<UserRole, AccountMenuItem[]> = {
   [UserRole.INVESTOR]: [
     { href: "/dashboard/investor/profile", icon: UserRound, label: "Profile" },
   ],
-  [UserRole.ENTREPRENEUR]: [],
+  [UserRole.ENTREPRENEUR]: [
+    { href: "/dashboard/entrepreneur/companies", icon: LayoutGrid, label: "My Companies" },
+  ],
   [UserRole.ADMIN]: [],
   // Service Provider never reaches this topbar — dashboard/layout.tsx routes SP to
   // SpDesktopTopbar/SpMobileHeader — but the map must be total for the Record type.
@@ -50,9 +54,10 @@ export default function Topbar() {
   const breadcrumbs = useBreadcrumb();
   const { user } = useAuth();
   const role = user?.role ?? UserRole.CREATOR;
+  const isEntrepreneurContext = role === UserRole.ENTREPRENEUR || pathname.startsWith("/dashboard/entrepreneur");
 
   if (isPhase2) {
-    // Reduced Phase 2 chrome: logo tile, breadcrumb, avatar only
+    // Reduced Phase 2 chrome: logo tile, breadcrumb, switcher, avatar
     return (
       <header className="sticky top-0 z-40 w-full border-b flex-shrink-0" style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}>
         <div className="flex h-[72px] items-center justify-between px-6 sm:px-6">
@@ -101,9 +106,12 @@ export default function Topbar() {
             </nav>
           </div>
 
-          {/* RIGHT: Avatar only */}
-          <div className="h-9 w-9 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold" style={{ backgroundColor: "var(--muted)", color: "var(--foreground)" }}>
-            {user?.name?.charAt(0).toUpperCase() || "U"}
+          {/* RIGHT: Switcher + Avatar */}
+          <div className="flex items-center gap-3">
+            {isEntrepreneurContext && <CompanySwitcher />}
+            <div className="h-9 w-9 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold" style={{ backgroundColor: "var(--muted)", color: "var(--foreground)" }}>
+              {user?.name?.charAt(0).toUpperCase() || "U"}
+            </div>
           </div>
 
         </div>
@@ -156,7 +164,8 @@ export default function Topbar() {
         </div>
 
         {/* RIGHT */}
-        <div className="flex items-center gap-4 lg:gap-6">
+        <div className="flex items-center gap-2.5 sm:gap-3 lg:gap-5">
+          {isEntrepreneurContext && <CompanySwitcher />}
           <MessageIcon />
           <NotificationBell />
           <ThemeToggle />

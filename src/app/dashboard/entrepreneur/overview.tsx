@@ -44,6 +44,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAuth } from '@/app/_providers/AuthProvider';
+import { useEntrepreneurProgress } from '@/providers/EntrepreneurProgressProvider';
 import {
   entrepreneurApi,
   type CompanyProgressResponse,
@@ -150,6 +152,8 @@ function ProgressRing({ percent, label, sublabel }: { percent: number; label: st
 
 // ---- main -------------------------------------------------------------------
 export default function EntrepreneurOverview() {
+  const { user } = useAuth();
+  const { activeCompanyId, isSwitching, isLoading: isProgressLoading } = useEntrepreneurProgress();
   const [loading, setLoading] = useState(true);
   const [noCompany, setNoCompany] = useState(false);
   const [progress, setProgress] = useState<CompanyProgressResponse | null>(null);
@@ -162,16 +166,32 @@ export default function EntrepreneurOverview() {
 
   useEffect(() => {
     let active = true;
+
+    // Reset previous company data to prevent stale flash
+    setLoading(true);
+    setProgress(null);
+    setFinancial(null);
+    setFunding(null);
+    setMatches(null);
+    setDeals([]);
+    setRecs([]);
+    setActivity([]);
+    setNoCompany(false);
+
     (async () => {
-      setLoading(true);
       let prog: CompanyProgressResponse;
       try {
-        prog = await entrepreneurApi.getCurrentPhase();
+        prog = await entrepreneurApi.getCurrentPhase(activeCompanyId || undefined);
       } catch {
         if (active) { setNoCompany(true); setLoading(false); }
         return;
       }
       if (!active) return;
+      if (!prog?.companyId) {
+        setNoCompany(true);
+        setLoading(false);
+        return;
+      }
       setProgress(prog);
       const id = prog.companyId;
 
@@ -189,8 +209,11 @@ export default function EntrepreneurOverview() {
       ]);
       if (active) setLoading(false);
     })();
+
     return () => { active = false; };
-  }, []);
+  }, [activeCompanyId]);
+
+  const isViewLoading = loading || isSwitching || isProgressLoading;
 
   // ---- derived (real data only) ----
   const committed = deals.reduce(
@@ -201,20 +224,34 @@ export default function EntrepreneurOverview() {
   const fundingPct = target > 0 ? Math.min(100, Math.round((committed / target) * 100)) : 0;
   const activePhase = PHASES.find((p) => p.phase === progress?.currentPhase) ?? PHASES[0];
 
-  // ---- no-company state ----
+  // ---- no-company / onboarding state ----
   if (noCompany) {
+    const isUniversalVerified = (user?.onboardingPhase ?? 0) >= 1;
+
     return (
       <div className="mx-auto w-full max-w-7xl">
         <Card className="border-primary/20 bg-primary/5">
           <CardHeader className="gap-2">
-            <CardTitle className="text-2xl">Start your entrepreneur journey</CardTitle>
+            <CardTitle className="text-2xl">
+              {isUniversalVerified ? 'Continue your entrepreneur journey' : 'Start your entrepreneur journey'}
+            </CardTitle>
             <CardDescription>
-              Complete Phase 1 verification to create your company profile and unlock the dashboard.
+              {isUniversalVerified
+                ? 'Complete your company verification to continue building your business.'
+                : 'Complete your identity verification to continue.'}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Button asChild>
-              <Link href="/dashboard/entrepreneur/phase-1">Begin verification <ArrowRight className="h-4 w-4" /></Link>
+              {isUniversalVerified ? (
+                <Link href="/dashboard/entrepreneur/phase-2">
+                  Continue Company Verification <ArrowRight className="h-4 w-4" />
+                </Link>
+              ) : (
+                <Link href="/dashboard/entrepreneur/phase-1">
+                  Begin Verification <ArrowRight className="h-4 w-4" />
+                </Link>
+              )}
             </Button>
           </CardContent>
         </Card>
@@ -300,7 +337,7 @@ export default function EntrepreneurOverview() {
 
       {/* ── STEP 2: KPI card row ─────────────────────────────────────── */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {loading ? (
+        {isViewLoading ? (
           Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 w-full rounded-xl" />)
         ) : (
           <>
@@ -340,7 +377,7 @@ export default function EntrepreneurOverview() {
             <CardDescription>Committed capital against your current funding ask.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {loading ? (
+            {isViewLoading ? (
               <Skeleton className="h-16 w-full" />
             ) : target > 0 ? (
               <>
@@ -363,7 +400,7 @@ export default function EntrepreneurOverview() {
             <CardDescription>How the requested funds are planned to be used.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {loading ? (
+            {isViewLoading ? (
               <Skeleton className="h-24 w-full" />
             ) : funding && funding.capitalAllocation.length > 0 ? (
               funding.capitalAllocation.map((a) => (
@@ -390,7 +427,7 @@ export default function EntrepreneurOverview() {
             <CardDescription>Planned roles from your funding ask.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
-            {loading ? (
+            {isViewLoading ? (
               <Skeleton className="h-24 w-full" />
             ) : funding?.resourceMap?.hiringPlan && funding.resourceMap.hiringPlan.length > 0 ? (
               funding.resourceMap.hiringPlan.map((h, i) => (
@@ -414,7 +451,7 @@ export default function EntrepreneurOverview() {
             <CardDescription>Tools and service providers in your plan.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {loading ? (
+            {isViewLoading ? (
               <Skeleton className="h-24 w-full" />
             ) : funding?.resourceMap && (funding.resourceMap.techTools.length > 0 || funding.resourceMap.serviceProviders.length > 0) ? (
               <>
@@ -467,7 +504,7 @@ export default function EntrepreneurOverview() {
             <CardDescription>Actions that raise your investor-readiness score.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {loading ? (
+            {isViewLoading ? (
               <Skeleton className="h-24 w-full" />
             ) : recs.length > 0 ? (
               recs.map((r, i) => (
@@ -496,7 +533,7 @@ export default function EntrepreneurOverview() {
             <CardDescription>Latest investor engagement on your data room.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
-            {loading ? (
+            {isViewLoading ? (
               <Skeleton className="h-24 w-full" />
             ) : activity.length > 0 ? (
               activity.slice(0, 8).map((ev) => (

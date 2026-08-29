@@ -214,11 +214,23 @@ namespace WebApp.Tests.Unit
                 It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new UpdateResult.Acknowledged(1, 1, null));
 
+            // Setup Phase3Concepts mock collection
+            var conceptsCollectionMock = new Mock<IMongoCollection<Phase3Concept>>();
+            var conceptsCursor = new Mock<IAsyncCursor<Phase3Concept>>();
+            conceptsCursor.Setup(c => c.Current).Returns(new List<Phase3Concept>());
+            conceptsCursor.SetupSequence(c => c.MoveNext(It.IsAny<CancellationToken>())).Returns(true).Returns(false);
+            conceptsCursor.SetupSequence(c => c.MoveNextAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true).ReturnsAsync(false);
+            conceptsCollectionMock.Setup(c => c.FindAsync(It.IsAny<FilterDefinition<Phase3Concept>>(), It.IsAny<FindOptions<Phase3Concept, Phase3Concept>>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(conceptsCursor.Object);
+            conceptsCollectionMock.Setup(c => c.FindAsync(It.IsAny<IClientSessionHandle>(), It.IsAny<FilterDefinition<Phase3Concept>>(), It.IsAny<FindOptions<Phase3Concept, Phase3Concept>>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(conceptsCursor.Object);
+
             _dbMock.Setup(d => d.GetCollection<DealExecution>("DealExecutions", null)).Returns(dealsCollectionMock.Object);
             _dbMock.Setup(d => d.GetCollection<Companies>("Companies", null)).Returns(companiesCollectionMock.Object);
             _dbMock.Setup(d => d.GetCollection<EntrepreneurProfileRecord>("EntrepreneurProfiles", null)).Returns(profilesCollectionMock.Object);
             _dbMock.Setup(d => d.GetCollection<CreatorJourney>("CreatorJourneys", null)).Returns(journeysCollectionMock.Object);
             _dbMock.Setup(d => d.GetCollection<ApplicationUser>("applicationUsers", null)).Returns(usersCollectionMock.Object);
+            _dbMock.Setup(d => d.GetCollection<Phase3Concept>("Phase3Concepts", null)).Returns(conceptsCollectionMock.Object);
 
             _context = new MongoDbContext(_dbMock.Object);
 
@@ -803,7 +815,7 @@ namespace WebApp.Tests.Unit
                 }
             });
             _usersDb.Add(new ApplicationUser { Id = Guid.NewGuid(), User = userId, Onboarding = new OnboardingState { Phase = 1 } });
-            _companyServiceMock.Setup(c => c.EnsureLevelUpCompanyAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<double?>(), It.IsAny<IClientSessionHandle>()))
+            _companyServiceMock.Setup(c => c.EnsureLevelUpCompanyAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<double?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<IClientSessionHandle>()))
                 .ReturnsAsync(new Companies { Id = "comp-build-o", OwnerId = userId, CompanyName = "Build Company" });
 
             var controller = CreateController(userId);

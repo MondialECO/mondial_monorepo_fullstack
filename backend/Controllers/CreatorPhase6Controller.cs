@@ -493,7 +493,7 @@ namespace WebApp.Controllers
                     }
                     else
                     {
-                        // Build path: EnsureLevelUpCompanyAsync creates/reuses company where OwnerId = userId
+                        // Build path: EnsureLevelUpCompanyAsync creates/reuses company where OwnerId = userId and SourceBusinessIdeaId = sourceLink
                         var formation = p5.PathB?.CompanyFormation;
                         var seed = p5.PathB?.SeedFunding;
                         var sourceLink = !string.IsNullOrEmpty(journey.BusinessIdeaId) ? journey.BusinessIdeaId
@@ -501,7 +501,11 @@ namespace WebApp.Controllers
                         double? fundingAsk = seed?.TotalAsk > 0 ? (double?)(double)seed.TotalAsk : null;
 
                         var company = await _companies.EnsureLevelUpCompanyAsync(
-                            userId, sourceLink, formation?.SelectedType, fundingAsk, session);
+                            userId, sourceLink, formation?.SelectedType, fundingAsk,
+                            companyName: journey.Project?.Name,
+                            industry: journey.Project?.Sector,
+                            tagline: journey.Project?.Tagline,
+                            session: session);
                         companyId = company.Id;
                         profile.CompanyId = companyId;
 
@@ -509,6 +513,51 @@ namespace WebApp.Controllers
                         {
                             if (session is null) await _context.EntrepreneurProfiles.InsertOneAsync(profile);
                             else await _context.EntrepreneurProfiles.InsertOneAsync(session, profile);
+                        }
+                        else
+                        {
+                            var profileUpd = Builders<EntrepreneurProfileRecord>.Update.Set(p => p.CompanyId, companyId);
+                            if (session is null) await _context.EntrepreneurProfiles.UpdateOneAsync(p => p.Id == existingProfile.Id, profileUpd);
+                            else await _context.EntrepreneurProfiles.UpdateOneAsync(session, p => p.Id == existingProfile.Id, profileUpd);
+                        }
+
+                        // Prefill Phase3Concept if not already initialized
+                        var existingConcept = session is null
+                            ? await _context.Phase3Concepts.Find(c => c.CompanyId == companyId).FirstOrDefaultAsync()
+                            : await _context.Phase3Concepts.Find(session, c => c.CompanyId == companyId).FirstOrDefaultAsync();
+
+                        if (existingConcept == null)
+                        {
+                            var concept = new Phase3Concept
+                            {
+                                CompanyId = companyId,
+                                OneLiner = journey.Project?.Tagline ?? string.Empty,
+                                ProblemStatement = journey.Project?.Problem ?? string.Empty,
+                                SolutionDescription = journey.Project?.Solution ?? string.Empty,
+                                BusinessModel = journey.Phase4Data?.PricingModel ?? journey.Project?.Category ?? "SaaS_Subscription",
+                                SectorTags = !string.IsNullOrEmpty(journey.Project?.Sector) ? new List<string> { journey.Project.Sector } : new List<string>(),
+                                KeywordTags = journey.Project?.Tags ?? new List<string>(),
+                                ClarityScore = (int)Math.Round(journey.Project?.ClarityScore ?? 0),
+                                Stage = "idea",
+                                RecordedAt = DateTime.UtcNow
+                            };
+                            if (session is null) await _context.Phase3Concepts.InsertOneAsync(concept);
+                            else await _context.Phase3Concepts.InsertOneAsync(session, concept);
+                        }
+
+                        // Prefill CapitalAllocation from Path B SeedFunding UseOfFunds
+                        if ((seed?.UseOfFunds?.Count ?? 0) > 0)
+                        {
+                            var capitalAlloc = seed.UseOfFunds.Select(u => new CapitalAllocationDto
+                            {
+                                Category = u.Category,
+                                Percent = u.Percent,
+                                Amount = fundingAsk.HasValue ? Math.Round(fundingAsk.Value * (u.Percent / 100.0), 2) : 0
+                            }).ToList();
+
+                            var updAlloc = Builders<Companies>.Update.Set(c => c.CapitalAllocation, capitalAlloc);
+                            if (session is null) await _context.Companies.UpdateOneAsync(c => c.Id == companyId, updAlloc);
+                            else await _context.Companies.UpdateOneAsync(session, c => c.Id == companyId, updAlloc);
                         }
                     }
 
