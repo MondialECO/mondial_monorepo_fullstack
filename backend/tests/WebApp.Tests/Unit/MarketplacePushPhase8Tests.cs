@@ -529,7 +529,7 @@ namespace WebApp.Tests.Unit
         }
 
         [Fact]
-        public async Task Test_E_CaseB_LinksCorrectExistingCompany()
+        public async Task Test_E_ExistingCompanyNotReused_CreatesNewDedicatedCompany()
         {
             var existingCompany = new Companies
             {
@@ -547,8 +547,7 @@ namespace WebApp.Tests.Unit
 
             var deal = SeedFullySignedDealForActivation(
                 dealId: "deal-case-b",
-                companyContext: "CASE_B_EXISTING_COMPANY",
-                companyId: "company-existing-1"
+                companyContext: "CASE_A_PRE_INCORPORATION"
             );
 
             var controller = CreateController("ent-1", "Entrepreneur");
@@ -557,34 +556,44 @@ namespace WebApp.Tests.Unit
             var ok = res.Should().BeOfType<OkObjectResult>().Subject;
             var resp = ok.Value.Should().BeOfType<ApiResponse>().Subject;
             var data = resp.Data.Should().BeOfType<PartnershipActivationDto>().Subject;
-            data.CompanyId.Should().Be("company-existing-1");
+            data.CompanyId.Should().NotBeNullOrEmpty();
+            data.CompanyId.Should().NotBe("company-existing-1");
             data.Status.Should().Be("READY_TO_ACTIVATE");
 
-            existingCompany.SourceDealId.Should().Be("deal-case-b");
-            existingCompany.EquityStructure.Should().Contain(e => e.StakeholderName == "Dr. Alice Creator");
+            // Existing company must remain untouched
+            existingCompany.SourceDealId.Should().BeNull();
+            existingCompany.EquityStructure.Should().NotContain(e => e.StakeholderName == "Dr. Alice Creator");
+
+            // New company has deal and creator shareholder
+            var newCompany = _companiesDb.FirstOrDefault(c => c.SourceDealId == "deal-case-b");
+            newCompany.Should().NotBeNull();
+            newCompany!.EquityStructure.Should().Contain(e => e.StakeholderName == "Dr. Alice Creator");
         }
 
         [Fact]
-        public async Task Test_F_WrongCompanyRejected()
+        public async Task Test_F_MultipleExistingCompanies_CreatesAdditionalDedicatedCompany()
         {
-            var otherCompany = new Companies
-            {
-                Id = "company-other-owner",
-                OwnerId = "unrelated-user-999",
-                CompanyName = "Other Company"
-            };
-            _companiesDb.Add(otherCompany);
+            var companyA = new Companies { Id = "comp-A", OwnerId = "ent-1", CompanyName = "Company A" };
+            var companyB = new Companies { Id = "comp-B", OwnerId = "ent-1", CompanyName = "Company B" };
+            _companiesDb.Add(companyA);
+            _companiesDb.Add(companyB);
 
             var deal = SeedFullySignedDealForActivation(
-                dealId: "deal-wrong-company",
-                companyContext: "CASE_B_EXISTING_COMPANY",
-                companyId: "company-other-owner"
+                dealId: "deal-new-venture",
+                companyContext: "CASE_A_PRE_INCORPORATION"
             );
 
             var controller = CreateController("ent-1", "Entrepreneur");
-            var res = await controller.StartDealActivation("deal-wrong-company", new StartActivationRequest());
+            var res = await controller.StartDealActivation("deal-new-venture", new StartActivationRequest());
 
-            res.Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(403);
+            var ok = res.Should().BeOfType<OkObjectResult>().Subject;
+            var resp = ok.Value.Should().BeOfType<ApiResponse>().Subject;
+            var data = resp.Data.Should().BeOfType<PartnershipActivationDto>().Subject;
+            data.CompanyId.Should().NotBe("comp-A");
+            data.CompanyId.Should().NotBe("comp-B");
+
+            companyA.SourceDealId.Should().BeNull();
+            companyB.SourceDealId.Should().BeNull();
         }
 
         [Fact]
@@ -677,8 +686,7 @@ namespace WebApp.Tests.Unit
 
             var deal = SeedFullySignedDealForActivation(
                 dealId: "deal-preserved",
-                companyContext: "CASE_B_EXISTING_COMPANY",
-                companyId: "company-preserved"
+                companyContext: "CASE_A_PRE_INCORPORATION"
             );
 
             var controller = CreateController("ent-1", "Entrepreneur");

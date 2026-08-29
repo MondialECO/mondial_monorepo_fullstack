@@ -1059,3 +1059,64 @@ public class UploadDocumentRequest
     public string DocumentType { get; set; }
     public string StorageUrl { get; set; }
 }
+
+public class CompanySummaryDto
+{
+    public string Id { get; set; }
+    public string CompanyName { get; set; }
+    public string? LegalName { get; set; }
+    public string? Industry { get; set; }
+    public string? Tagline { get; set; }
+    public string? Logo { get; set; }
+    public string? LegalStructure { get; set; }
+    public int CurrentPhase { get; set; }
+    public List<int> CompletedPhases { get; set; } = new();
+    public string? SourceBusinessIdeaId { get; set; }
+    public bool IsInvestorReady { get; set; }
+    public bool IsActive { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+}
+
+public class SetActiveCompanyRequest
+{
+    public string CompanyId { get; set; }
+}
+
+public class BuildAcquisitionCompanyDto
+{
+    public string? CompanyName { get; set; }
+    public string? Industry { get; set; }
+    public string? Tagline { get; set; }
+    public string? LegalStructure { get; set; }
+    public List<OwnershipEntryDto>? Ownership { get; set; }
+    public double? TotalAsk { get; set; }
+    public List<UseOfFundsDto>? UseOfFunds { get; set; }
+    public List<string>? InvestorTypesTargeted { get; set; }
+}
+
+public class OwnershipEntryDto
+{
+    public string Holder { get; set; } = string.Empty;
+    public double Percent { get; set; }
+    public bool IsFounder { get; set; }
+    public bool IsEsop { get; set; }
+}
+
+public class UseOfFundsDto
+{
+    public string Category { get; set; } = string.Empty;
+    public double Percent { get; set; }
+    public double? Amount { get; set; }
+}
+
+public class BuildAcquisitionCompanyResponse
+{
+    public string CompanyId { get; set; } = string.Empty;
+    public string CompanyName { get; set; } = string.Empty;
+    public string SourceBusinessIdeaId { get; set; } = string.Empty;
+    public string SourceDealId { get; set; } = string.Empty;
+    public int CurrentPhase { get; set; } = 2;
+    public bool AlreadyExisted { get; set; }
+    public string ActiveOperatingContext { get; set; } = string.Empty;
+}
+

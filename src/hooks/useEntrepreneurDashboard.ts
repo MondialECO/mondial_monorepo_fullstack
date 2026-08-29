@@ -2,21 +2,24 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
-import entrepreneurApi, { CompanyProgressResponse } from "@/lib/api-entrepreneur";
+import entrepreneurApi from "@/lib/api-entrepreneur";
+import { useEntrepreneurProgress } from "@/providers/EntrepreneurProgressProvider";
 import { AxiosError } from "axios";
 
-export function useEntrepreneurDashboard() {
+export function useEntrepreneurDashboard(explicitCompanyId?: string) {
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
+  const progressContext = useEntrepreneurProgress();
+  const activeCompanyId = explicitCompanyId || progressContext.activeCompanyId || undefined;
 
-  // Fetch current phase and progress
+  // Fetch current phase and progress scoped to activeCompanyId
   const {
     data: phaseProgress,
     isLoading: isPhaseLoading,
     error: phaseError,
   } = useQuery({
-    queryKey: ["entrepreneur", "phase-progress"],
-    queryFn: entrepreneurApi.getCurrentPhase,
+    queryKey: ["entrepreneur", "phase-progress", activeCompanyId ?? "active"],
+    queryFn: () => entrepreneurApi.getCurrentPhase(activeCompanyId),
     staleTime: 30000, // Cache for 30 seconds
   });
 
@@ -33,8 +36,10 @@ export function useEntrepreneurDashboard() {
         payload.data
       );
     },
-    onSuccess: () => {
-      // Invalidate and refetch
+    onSuccess: (_, variables) => {
+      // Invalidate and refetch company-specific queries
+      queryClient.invalidateQueries({ queryKey: ["entrepreneur", "phase-progress", variables.companyId] });
+      queryClient.invalidateQueries({ queryKey: ["entrepreneur", "phase-progress", "active"] });
       queryClient.invalidateQueries({ queryKey: ["entrepreneur"] });
       setError(null);
     },

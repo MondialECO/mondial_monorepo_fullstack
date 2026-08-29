@@ -44,9 +44,25 @@ public class CompanyService : ICompanyService
 
     // ============ PHASE FLOW ============
 
-    public async Task<CompanyProgressResponse> GetCurrentPhaseAsync(string userId)
+    public Task<CompanyProgressResponse> GetCurrentPhaseAsync(string userId)
     {
-        var company = await GetCompanyByUserIdAsync(userId);
+        return GetCurrentPhaseAsync(userId, null);
+    }
+
+    public async Task<CompanyProgressResponse> GetCurrentPhaseAsync(string userId, string? companyId)
+    {
+        Companies? company;
+        if (!string.IsNullOrWhiteSpace(companyId))
+        {
+            company = await GetCompanyAsync(companyId);
+            if (!string.Equals(company.OwnerId, userId, StringComparison.Ordinal))
+                throw new UnauthorizedAccessException("You are not allowed to access this company.");
+        }
+        else
+        {
+            company = await GetCompanyByUserIdAsync(userId);
+        }
+
         if (company == null)
             // Universal Phase 1 is already complete; no company yet means not started Entrepreneur Phase 2.
             return new CompanyProgressResponse
@@ -131,28 +147,17 @@ public class CompanyService : ICompanyService
 
     public async Task<Companies> CreateCompanyAsync(string userId, CreateCompanyDto dto)
     {
-        // Check if user already has a company
-        var existingCompany = await _dbContext.Companies
+        // Enforce canonical first-company rule: POST /api/companies creates the FIRST company only.
+        var hasExistingCompany = await _dbContext.Companies
             .Find(c => c.OwnerId == userId)
-            .FirstOrDefaultAsync();
+            .AnyAsync();
 
-        if (existingCompany != null)
+        if (hasExistingCompany)
         {
-            // Update existing company
-            existingCompany.CompanyName = dto.CompanyName;
-            existingCompany.Industry = dto.Industry;
-            existingCompany.Website = dto.Website;
-            existingCompany.Tagline = dto.Tagline;
-            existingCompany.UpdatedAt = DateTime.UtcNow;
-
-            await _dbContext.Companies.ReplaceOneAsync(
-                c => c.Id == existingCompany.Id,
-                existingCompany
-            );
-            return existingCompany;
+            throw new InvalidOperationException("You already have a company. Use your active company workspace or an approved company creation flow.");
         }
 
-        // Create new company if doesn't exist
+        // Create new first company
         var company = new Companies
         {
             Id = ObjectId.GenerateNewId().ToString(),
@@ -165,11 +170,30 @@ public class CompanyService : ICompanyService
             CompletedPhases = new List<int>(),
             TrustScore = 0,
             IsInvestorReady = false,
+            SourceBusinessIdeaId = null,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
 
         await _dbContext.Companies.InsertOneAsync(company);
+
+        // Immediately bind as active operating company pointer
+        Guid.TryParse(userId, out var userGuid);
+        var userFilter = Builders<ApplicationUser>.Filter.Where(u =>
+            (userGuid != Guid.Empty && u.Id == userGuid) || u.User == userId || u.UserName == userId);
+
+        var updatePointer = Builders<ApplicationUser>.Update
+            .Set(u => u.EntrepreneurProfile.CompanyId, company.Id);
+
+        try
+        {
+            await _dbContext.ApplicationUsers.UpdateOneAsync(userFilter, updatePointer);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to immediately set active CompanyId for user {UserId}", userId);
+        }
+
         return company;
     }
 
@@ -231,17 +255,47 @@ public class CompanyService : ICompanyService
         return "Other";
     }
 
-    public async Task<Companies> EnsureLevelUpCompanyAsync(
+    public Task<Companies> EnsureLevelUpCompanyAsync(
         string userId, string sourceLink, string legalStructure, double? fundingAsk,
         IClientSessionHandle session = null)
     {
-        // Idempotent by OwnerId — the Entrepreneur resolver (GetCompanyByUserIdAsync)
-        // keys on OwnerId, so we converge on a single doc. Reuse an existing company
-        // rather than creating a second (single-active-company assumption).
-        // Every driver call takes the session when present so it joins the Level Up txn.
-        var existing = session is null
-            ? await _dbContext.Companies.Find(c => c.OwnerId == userId).FirstOrDefaultAsync()
-            : await _dbContext.Companies.Find(session, c => c.OwnerId == userId).FirstOrDefaultAsync();
+        return EnsureLevelUpCompanyAsync(userId, sourceLink, legalStructure, fundingAsk, null, null, null, session);
+    }
+
+    public async Task<Companies> EnsureLevelUpCompanyAsync(
+        string userId, string sourceLink, string legalStructure, double? fundingAsk,
+        string? companyName, string? industry, string? tagline,
+        IClientSessionHandle session = null)
+    {
+        // Multi-Idea safe idempotency:
+        // Match by OwnerId + SourceBusinessIdeaId so Idea A and Idea B create/bind distinct Companies.
+        // For backwards-compatibility with legacy companies, if no match is found by SourceBusinessIdeaId,
+        // we check for a legacy unassociated company (SourceBusinessIdeaId is empty).
+        Companies existing = null;
+        if (!string.IsNullOrWhiteSpace(sourceLink))
+        {
+            existing = session is null
+                ? await _dbContext.Companies.Find(c => c.OwnerId == userId && c.SourceBusinessIdeaId == sourceLink).FirstOrDefaultAsync()
+                : await _dbContext.Companies.Find(session, c => c.OwnerId == userId && c.SourceBusinessIdeaId == sourceLink).FirstOrDefaultAsync();
+
+            if (existing == null)
+            {
+                var legacy = session is null
+                    ? await _dbContext.Companies.Find(c => c.OwnerId == userId && (c.SourceBusinessIdeaId == null || c.SourceBusinessIdeaId == "")).FirstOrDefaultAsync()
+                    : await _dbContext.Companies.Find(session, c => c.OwnerId == userId && (c.SourceBusinessIdeaId == null || c.SourceBusinessIdeaId == "")).FirstOrDefaultAsync();
+
+                if (legacy != null)
+                {
+                    existing = legacy;
+                }
+            }
+        }
+        else
+        {
+            existing = session is null
+                ? await _dbContext.Companies.Find(c => c.OwnerId == userId).FirstOrDefaultAsync()
+                : await _dbContext.Companies.Find(session, c => c.OwnerId == userId).FirstOrDefaultAsync();
+        }
 
         if (existing != null)
         {
@@ -250,6 +304,12 @@ public class CompanyService : ICompanyService
             var changed = false;
             if (string.IsNullOrWhiteSpace(existing.SourceBusinessIdeaId) && !string.IsNullOrWhiteSpace(sourceLink))
             { existing.SourceBusinessIdeaId = sourceLink; changed = true; }
+            if (string.IsNullOrWhiteSpace(existing.CompanyName) && !string.IsNullOrWhiteSpace(companyName))
+            { existing.CompanyName = companyName; changed = true; }
+            if (string.IsNullOrWhiteSpace(existing.Industry) && !string.IsNullOrWhiteSpace(industry))
+            { existing.Industry = industry; changed = true; }
+            if (string.IsNullOrWhiteSpace(existing.Tagline) && !string.IsNullOrWhiteSpace(tagline))
+            { existing.Tagline = tagline; changed = true; }
             if (string.IsNullOrWhiteSpace(existing.LegalStructure) && !string.IsNullOrWhiteSpace(legalStructure))
             { existing.LegalStructure = legalStructure; changed = true; }
             if (existing.FundingAskAmount == null && fundingAsk.HasValue)
@@ -266,12 +326,15 @@ public class CompanyService : ICompanyService
         }
 
         // Create following Entrepreneur conventions exactly (stored-status model).
-        // PLAN pre-fills LegalStructure + FundingAskAmount; PROOF fields stay empty.
+        // PLAN pre-fills CompanyName, Industry, Tagline, LegalStructure + FundingAskAmount; PROOF fields stay empty.
         var company = new Companies
         {
             Id = ObjectId.GenerateNewId().ToString(),
             OwnerId = userId,
             SourceBusinessIdeaId = sourceLink,   // provenance: businessIdeaId, else journey id
+            CompanyName = companyName ?? string.Empty,
+            Industry = industry ?? string.Empty,
+            Tagline = tagline ?? string.Empty,
             CurrentPhase = 2,                    // universal Phase 1 already complete
             CompletedPhases = new List<int>(),
             LegalStructure = legalStructure,     // plan (creator confirms in Phase 2)
@@ -288,15 +351,313 @@ public class CompanyService : ICompanyService
         return company;
     }
 
+    public async Task<(Companies Company, bool AlreadyExisted)> BuildCompanyFromAcquisitionAsync(
+        string userId, string dealId, BuildAcquisitionCompanyDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dealId))
+            throw new ArgumentException("dealId is required", nameof(dealId));
+
+        var deal = await _dbContext.DealExecutions.Find(d => d.Id == dealId).FirstOrDefaultAsync()
+            ?? throw new KeyNotFoundException($"Acquisition deal {dealId} not found");
+
+        // 1. Authorization: authenticated user must be the legal buyer.
+        // When BuyoutSaleRecord exists (canonical completed record), BuyerUserId is strictly authoritative.
+        var isBuyer = deal.BuyoutSaleRecord != null
+            ? string.Equals(deal.BuyoutSaleRecord.BuyerUserId, userId, StringComparison.Ordinal)
+            : string.Equals(deal.EntrepreneurId, userId, StringComparison.Ordinal);
+        if (!isBuyer)
+            throw new UnauthorizedAccessException("You are not authorized to build a company from this acquisition.");
+
+        // 2. Deal Type: must be FULL_BUYOUT
+        if (!string.Equals(deal.DealType, "FULL_BUYOUT", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("Only completed Full Buyout acquisitions can be built into a company.");
+
+        // 3. Stage: must be completed (SOLD / BUYOUT_COMPLETED / BuyoutSaleRecord exists)
+        var isCompleted = string.Equals(deal.DealStage, "SOLD", StringComparison.OrdinalIgnoreCase) ||
+                          string.Equals(deal.DealStage, "BUYOUT_COMPLETED", StringComparison.OrdinalIgnoreCase) ||
+                          deal.BuyoutSaleRecord != null ||
+                          string.Equals(deal.Status, "completed", StringComparison.OrdinalIgnoreCase);
+        if (!isCompleted)
+            throw new InvalidOperationException("This acquisition has not reached completed status.");
+
+        var ideaId = deal.IdeaId ?? string.Empty;
+
+        // 4. Idempotency: check if company already created for this Buyer + Idea
+        if (!string.IsNullOrWhiteSpace(ideaId))
+        {
+            var existing = await _dbContext.Companies
+                .Find(c => c.OwnerId == userId && (c.SourceBusinessIdeaId == ideaId || c.SourceDealId == dealId))
+                .FirstOrDefaultAsync();
+
+            if (existing != null)
+            {
+                // Ensure active pointer is set
+                await SetActiveCompanyPointerAsync(userId, existing.Id);
+                return (existing, true);
+            }
+        }
+
+        // Fetch acquired idea details if available for prefill
+        BusinessIdeas? idea = null;
+        if (!string.IsNullOrWhiteSpace(ideaId))
+        {
+            idea = await _dbContext.BusinessIdeas.Find(i => i.Id == ideaId).FirstOrDefaultAsync();
+        }
+
+        var companyName = !string.IsNullOrWhiteSpace(dto.CompanyName)
+            ? dto.CompanyName.Trim()
+            : (idea?.Name ?? "Acquired Company");
+
+        var industry = !string.IsNullOrWhiteSpace(dto.Industry)
+            ? dto.Industry.Trim()
+            : (!string.IsNullOrWhiteSpace(idea?.Market?.PrimaryCustomer) ? idea.Market.PrimaryCustomer : "Technology");
+
+        var tagline = !string.IsNullOrWhiteSpace(dto.Tagline)
+            ? dto.Tagline.Trim()
+            : (idea?.Solution?.Description ?? idea?.Solution?.Vision ?? string.Empty);
+
+        var legalStructure = !string.IsNullOrWhiteSpace(dto.LegalStructure)
+            ? dto.LegalStructure.Trim()
+            : "SAS";
+
+        var allocations = new List<CapitalAllocationDto>();
+        if (dto.UseOfFunds != null && dto.UseOfFunds.Count > 0)
+        {
+            foreach (var u in dto.UseOfFunds)
+            {
+                allocations.Add(new CapitalAllocationDto
+                {
+                    Category = u.Category,
+                    Percent = u.Percent,
+                    Amount = u.Amount ?? (dto.TotalAsk.HasValue ? Math.Round(u.Percent / 100.0 * dto.TotalAsk.Value, 2) : 0)
+                });
+            }
+        }
+
+        var company = new Companies
+        {
+            Id = ObjectId.GenerateNewId().ToString(),
+            OwnerId = userId,
+            SourceBusinessIdeaId = ideaId,
+            SourceDealId = dealId,
+            CompanyName = companyName,
+            Industry = industry,
+            Tagline = tagline,
+            LegalStructure = legalStructure,
+            FundingAskAmount = dto.TotalAsk > 0 ? dto.TotalAsk : null,
+            CapitalAllocation = allocations,
+            CurrentPhase = 2,
+            CompletedPhases = new List<int>(),
+            TrustScore = 0,
+            IsInvestorReady = false,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        await _dbContext.Companies.InsertOneAsync(company);
+
+        // 5. Seed Cap Table: default to Buyer 100% if empty
+        var ownership = dto.Ownership != null && dto.Ownership.Count > 0
+            ? dto.Ownership
+            : new List<OwnershipEntryDto>
+            {
+                new() { Holder = "Buyer", Percent = 100, IsFounder = true, IsEsop = false }
+            };
+
+        try
+        {
+            await SeedCapTableFromOwnershipAsync(company.Id, ownership);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to seed cap table for acquisition company {CompanyId}", company.Id);
+        }
+
+        // 6. Set active company pointer immediately
+        await SetActiveCompanyPointerAsync(userId, company.Id);
+
+        return (company, false);
+    }
+
+    private async Task SetActiveCompanyPointerAsync(string userId, string companyId)
+    {
+        Guid.TryParse(userId, out var userGuid);
+        var userFilter = Builders<ApplicationUser>.Filter.Where(u =>
+            (userGuid != Guid.Empty && u.Id == userGuid) || u.User == userId || u.UserName == userId);
+        var updatePointer = Builders<ApplicationUser>.Update
+            .Set(u => u.EntrepreneurProfile.CompanyId, companyId);
+        try
+        {
+            await _dbContext.ApplicationUsers.UpdateOneAsync(userFilter, updatePointer);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to set active CompanyId for user {UserId}", userId);
+        }
+    }
+
+    public async Task SeedCapTableFromOwnershipAsync(string companyId, List<OwnershipEntryDto> ownership)
+    {
+        const int totalShares = 1_000_000;
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var grants = new List<EquityGrantDto>();
+        int i = 0;
+        foreach (var o in ownership)
+        {
+            i++;
+            if (o.Percent <= 0) continue;
+            var name = string.IsNullOrWhiteSpace(o.Holder) ? $"Holder {i}" : o.Holder.Trim();
+            while (!seen.Add($"{name.ToLowerInvariant()}::common")) name = $"{name} {i}";
+            grants.Add(new EquityGrantDto
+            {
+                StakeholderName = name,
+                StakeholderType = o.IsFounder ? "founder" : o.IsEsop ? "esop" : "investor",
+                ShareClass = "common",
+                SharesGranted = Math.Max(1, (int)Math.Round(o.Percent / 100.0 * totalShares)),
+            });
+        }
+        if (grants.Count == 0) return;
+
+        var esopPct = ownership.Where(o => o.IsEsop).Sum(o => o.Percent);
+        var request = new SubmitCapTableRequest
+        {
+            TotalShares = totalShares,
+            EsopPoolPercent = esopPct,
+            EsopVestingMonths = esopPct > 0 ? 48 : 0,
+            Grants = grants,
+        };
+        await SubmitCapTableAsync(companyId, request);
+    }
+
     public async Task<Companies> GetCompanyAsync(string companyId)
     {
         return await _dbContext.Companies.Find(c => c.Id == companyId).FirstOrDefaultAsync()
             ?? throw new KeyNotFoundException($"Company {companyId} not found");
     }
 
-    public async Task<Companies> GetCompanyByUserIdAsync(string userId)
+    public Task<Companies> GetCompanyByUserIdAsync(string userId)
     {
-        return await _dbContext.Companies.Find(c => c.OwnerId == userId).FirstOrDefaultAsync();
+        return GetCompanyByUserIdAsync(userId, null);
+    }
+
+    public async Task<Companies> GetCompanyByUserIdAsync(string userId, string? companyId)
+    {
+        if (!string.IsNullOrWhiteSpace(companyId))
+    {
+            return await _dbContext.Companies.Find(c => c.Id == companyId && c.OwnerId == userId).FirstOrDefaultAsync();
+        }
+
+        Guid.TryParse(userId, out var userGuid);
+        var user = await _dbContext.ApplicationUsers
+            .Find(u => (userGuid != Guid.Empty && u.Id == userGuid) || u.User == userId || u.UserName == userId)
+            .FirstOrDefaultAsync();
+
+        if (!string.IsNullOrWhiteSpace(user?.EntrepreneurProfile?.CompanyId))
+        {
+            var activeCompany = await _dbContext.Companies
+                .Find(c => c.Id == user.EntrepreneurProfile.CompanyId && c.OwnerId == userId)
+                .FirstOrDefaultAsync();
+            if (activeCompany != null)
+                return activeCompany;
+        }
+
+        // Fallback to the latest updated company owned by this user
+        var fallbackCompany = await _dbContext.Companies
+            .Find(c => c.OwnerId == userId)
+            .SortByDescending(c => c.UpdatedAt)
+            .FirstOrDefaultAsync();
+
+        if (fallbackCompany != null && user != null && string.IsNullOrEmpty(user.EntrepreneurProfile?.CompanyId))
+        {
+            try
+            {
+                var upd = Builders<ApplicationUser>.Update.Set(u => u.EntrepreneurProfile.CompanyId, fallbackCompany.Id);
+                var filter = Builders<ApplicationUser>.Filter.Eq("_id", user.Id);
+                await _dbContext.ApplicationUsers.UpdateOneAsync(filter, upd);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to backfill active CompanyId for user {UserId}", userId);
+            }
+        }
+
+        return fallbackCompany;
+    }
+
+    public async Task<List<CompanySummaryDto>> GetMyCompaniesAsync(string userId)
+    {
+        var companies = await _dbContext.Companies
+            .Find(c => c.OwnerId == userId)
+            .SortByDescending(c => c.UpdatedAt)
+            .ToListAsync();
+
+        Guid.TryParse(userId, out var userGuid);
+        var user = await _dbContext.ApplicationUsers
+            .Find(u => (userGuid != Guid.Empty && u.Id == userGuid) || u.User == userId || u.UserName == userId)
+            .FirstOrDefaultAsync();
+
+        var activeCompanyId = user?.EntrepreneurProfile?.CompanyId ?? companies.FirstOrDefault()?.Id;
+
+        return companies.Select(c => new CompanySummaryDto
+        {
+            Id = c.Id,
+            CompanyName = c.CompanyName,
+            LegalName = c.LegalName,
+            Industry = c.Industry,
+            Tagline = c.Tagline,
+            Logo = null,
+            LegalStructure = c.LegalStructure,
+            CurrentPhase = c.CurrentPhase,
+            CompletedPhases = c.CompletedPhases ?? new List<int>(),
+            SourceBusinessIdeaId = c.SourceBusinessIdeaId,
+            IsInvestorReady = c.IsInvestorReady,
+            IsActive = !string.IsNullOrEmpty(activeCompanyId) && c.Id == activeCompanyId,
+            UpdatedAt = c.UpdatedAt
+        }).ToList();
+    }
+
+    public async Task<CompanySummaryDto> SetActiveCompanyAsync(string userId, string companyId)
+    {
+        if (string.IsNullOrWhiteSpace(companyId))
+            throw new ArgumentException("Company ID is required", nameof(companyId));
+
+        var company = await GetCompanyAsync(companyId);
+        if (!string.Equals(company.OwnerId, userId, StringComparison.Ordinal))
+            throw new UnauthorizedAccessException("You are not allowed to activate a company you do not own.");
+
+        Guid.TryParse(userId, out var userGuid);
+        var userFilter = Builders<ApplicationUser>.Filter.Where(u =>
+            (userGuid != Guid.Empty && u.Id == userGuid) || u.User == userId || u.UserName == userId);
+        var userUpdate = Builders<ApplicationUser>.Update.Set(u => u.EntrepreneurProfile.CompanyId, companyId);
+        await _dbContext.ApplicationUsers.UpdateOneAsync(userFilter, userUpdate);
+
+        // Also best-effort update EntrepreneurProfileRecord
+        try
+        {
+            var profileUpd = Builders<EntrepreneurProfileRecord>.Update.Set(p => p.CompanyId, companyId);
+            await _dbContext.EntrepreneurProfiles.UpdateOneAsync(p => p.UserId == userId, profileUpd);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to update EntrepreneurProfileRecord for user {UserId}", userId);
+        }
+
+        return new CompanySummaryDto
+        {
+            Id = company.Id,
+            CompanyName = company.CompanyName,
+            LegalName = company.LegalName,
+            Industry = company.Industry,
+            Tagline = company.Tagline,
+            Logo = null,
+            LegalStructure = company.LegalStructure,
+            CurrentPhase = company.CurrentPhase,
+            CompletedPhases = company.CompletedPhases ?? new List<int>(),
+            SourceBusinessIdeaId = company.SourceBusinessIdeaId,
+            IsInvestorReady = company.IsInvestorReady,
+            IsActive = true,
+            UpdatedAt = company.UpdatedAt
+        };
     }
 
     // ============ PHASE 2: LEGAL INFO & DOCUMENTS ============

@@ -21,8 +21,25 @@ export function RouteGuard({
   const router = useRouter();
   const pathname = usePathname();
   const { user } = useAuth();
-  const { progress, isLoading, backendFetchFailed } = useEntrepreneurProgress();
+  const {
+    progress,
+    isLoading,
+    backendFetchFailed,
+    activeCompanyId,
+    switchCompany,
+    isSwitching,
+  } = useEntrepreneurProgress();
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
+
+  // Check URL query param ?companyId=... for deep-link activation
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const urlParams = new URLSearchParams(window.location.search);
+    const targetCid = urlParams.get('companyId');
+    if (targetCid && targetCid !== activeCompanyId && !isSwitching) {
+      switchCompany(targetCid);
+    }
+  }, [pathname, activeCompanyId, isSwitching, switchCompany]);
 
   useEffect(() => {
     // UNIVERSAL PHASE 1 GATE: Block all phases 2+ if onboarding.phase < 1
@@ -37,6 +54,18 @@ export function RouteGuard({
       return;
     }
 
+    // Check if a specific company is requested via URL and we are still activating it
+    let urlTargetCompanyId: string | null = null;
+    if (typeof window !== 'undefined') {
+      const sp = new URLSearchParams(window.location.search);
+      urlTargetCompanyId = sp.get('companyId');
+    }
+
+    if (urlTargetCompanyId && urlTargetCompanyId !== activeCompanyId) {
+      setIsAuthorized(null);
+      return;
+    }
+
     // FAIL CLOSED: If backend fetch failed, do not unlock routes from cached progress
     if (!isLoading && backendFetchFailed) {
       setIsAuthorized(false);
@@ -45,7 +74,7 @@ export function RouteGuard({
       return;
     }
 
-    if (isLoading || !progress) {
+    if (isLoading || isSwitching || !progress) {
       setIsAuthorized(null);
       return;
     }

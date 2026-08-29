@@ -7,15 +7,23 @@ import {
   PhaseNumber,
   StepNumber,
 } from '@/types/entrepreneur';
-import { CompanyProgressResponse } from '@/lib/api-entrepreneur';
+import { CompanyProgressResponse, CompanySummaryDto } from '@/lib/api-entrepreneur';
 
-interface EntrepreneurProgressContextType {
+export interface EntrepreneurProgressContextType {
   progress: EntrepreneurProgress | null;
   isLoading: boolean;
   backendFetchFailed: boolean;
   currentPhase?: PhaseNumber;
   currentStep?: StepNumber;
   trustScore: number;
+
+  // Multi-Company Operating Context
+  companies: CompanySummaryDto[];
+  activeCompany: CompanySummaryDto | null;
+  activeCompanyId: string | null;
+  isSwitching: boolean;
+  switchCompany: (companyId: string) => Promise<boolean>;
+  refreshCompanies: () => Promise<void>;
 
   isStepComplete: (phase: PhaseNumber, step: StepNumber) => boolean;
   getPhaseProgress: (phase: PhaseNumber) => number;
@@ -30,7 +38,7 @@ interface EntrepreneurProgressContextType {
 
   // Backend authority
   applyBackendResponse: (serverProgress: CompanyProgressResponse) => void;
-  refreshFromBackend: () => Promise<boolean>;
+  refreshFromBackend: (explicitCompanyId?: string) => Promise<boolean>;
 }
 
 const EntrepreneurProgressContext = createContext<EntrepreneurProgressContextType | undefined>(undefined);

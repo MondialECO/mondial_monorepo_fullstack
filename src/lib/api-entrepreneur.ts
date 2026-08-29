@@ -13,6 +13,22 @@ export interface CompanyProgressResponse {
   lastUpdatedAt: string;
 }
 
+export interface CompanySummaryDto {
+  id: string;
+  companyName: string;
+  legalName?: string;
+  industry?: string;
+  tagline?: string;
+  logo?: string;
+  legalStructure?: string;
+  currentPhase: number;
+  completedPhases: number[];
+  sourceBusinessIdeaId?: string;
+  isInvestorReady: boolean;
+  isActive: boolean;
+  updatedAt?: string;
+}
+
 export interface CreateCompanyRequest {
   companyName: string;
   industry: string;
@@ -672,10 +688,26 @@ export interface JobStatus {
 
 export const entrepreneurApi = {
   // Phase Flow
-  getCurrentPhase: async (): Promise<CompanyProgressResponse> => {
-    const response = await api.get<CompanyProgressResponse>(
-      "/companies/current-phase"
-    );
+  getCurrentPhase: async (
+    companyId?: string
+  ): Promise<CompanyProgressResponse> => {
+    const url = companyId
+      ? `/companies/current-phase?companyId=${encodeURIComponent(companyId)}`
+      : "/companies/current-phase";
+    const response = await api.get<CompanyProgressResponse>(url);
+    return response.data;
+  },
+
+  // Multi-Company Context
+  getMyCompanies: async (): Promise<CompanySummaryDto[]> => {
+    const response = await api.get<CompanySummaryDto[]>("/companies/my-companies");
+    return response.data;
+  },
+
+  setActiveCompany: async (companyId: string): Promise<CompanySummaryDto> => {
+    const response = await api.post<CompanySummaryDto>("/companies/active", {
+      companyId,
+    });
     return response.data;
   },
 
@@ -1466,6 +1498,49 @@ export const entrepreneurApi = {
     const response = await api.get<JobStatus>(`/jobs/${jobId}`);
     return response.data;
   },
+
+  // ============ ACQUISITIONS -> BUILD COMPANY ============
+
+  buildCompanyFromAcquisition: async (
+    dealId: string,
+    data: BuildAcquisitionCompanyRequest
+  ): Promise<BuildAcquisitionCompanyResponse> => {
+    const response = await api.post<BuildAcquisitionCompanyResponse>(
+      `/entrepreneur/acquisitions/${dealId}/build-company`,
+      data
+    );
+    return response.data;
+  },
 };
+
+export interface BuildAcquisitionCompanyRequest {
+  companyName?: string;
+  industry?: string;
+  tagline?: string;
+  legalStructure?: string;
+  ownership?: Array<{
+    holder: string;
+    percent: number;
+    isFounder: boolean;
+    isEsop: boolean;
+  }>;
+  totalAsk?: number;
+  useOfFunds?: Array<{
+    category: string;
+    percent: number;
+    amount?: number;
+  }>;
+  investorTypesTargeted?: string[];
+}
+
+export interface BuildAcquisitionCompanyResponse {
+  companyId: string;
+  companyName: string;
+  sourceBusinessIdeaId: string;
+  sourceDealId: string;
+  currentPhase: number;
+  alreadyExisted: boolean;
+  activeOperatingContext: string;
+}
 
 export default entrepreneurApi;

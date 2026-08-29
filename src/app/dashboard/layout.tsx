@@ -10,6 +10,7 @@ import { SpDesktopTopbar } from "@/components/serviceprovider/SpDesktopTopbar";
 import { SpSandboxNotice } from "@/components/serviceprovider/SpSandboxNotice";
 import { isPhase2ChromeRoute } from "@/lib/layout-config";
 import { isServiceProviderRoute } from "@/lib/service-provider-navigation";
+import { EntrepreneurProgressProvider } from "@/providers/EntrepreneurProgressProvider";
 
 export default function DashboardLayout({
   children,
@@ -25,32 +26,34 @@ export default function DashboardLayout({
 
   return (
     <AuthGuard>
-      <SidebarProvider>
-        <div className={`flex min-h-screen w-full ${isServiceProvider ? "sp-workspace" : ""}`}>
+      <EntrepreneurProgressProvider>
+        <SidebarProvider>
+          <div className={`flex min-h-screen w-full ${isServiceProvider ? "sp-workspace" : ""}`}>
 
-          {/* LEFT: SIDEBAR (hidden for Phase 2) */}
-          {!isPhase2 && <AppSidebar />}
+            {/* LEFT: SIDEBAR (hidden for Phase 2) */}
+            {!isPhase2 && <AppSidebar />}
 
-          {/* RIGHT: TOPBAR + CONTENT */}
-          <div className="flex flex-1 flex-col">
+            {/* RIGHT: TOPBAR + CONTENT */}
+            <div className="flex flex-1 flex-col">
 
-            {/* Topbar (adapts content based on route) */}
-            {!isServiceProvider && <Topbar />}
-            {isServiceProvider && (
-              <>
-                <SpMobileHeader />
-                <SpDesktopTopbar />
-                <SpSandboxNotice />
-              </>
-            )}
+              {/* Topbar (adapts content based on route) */}
+              {!isServiceProvider && <Topbar />}
+              {isServiceProvider && (
+                <>
+                  <SpMobileHeader />
+                  <SpDesktopTopbar />
+                  <SpSandboxNotice />
+                </>
+              )}
 
-            {/* Content (padding suppressed for full-bleed Phase 2 design) */}
-            <main className={`flex-1 overflow-auto ${isServiceProvider ? "bg-[#F4F5F7] p-4 sm:p-6 lg:p-8" : `bg-background ${isPhase2 || isCreatorPhase3FullWidth ? "" : "pt-6 pr-6"}`}`}>
-              {children}
-            </main>
-           </div>
-        </div>
-      </SidebarProvider>
+              {/* Content (padding suppressed for full-bleed Phase 2 design) */}
+              <main className={`flex-1 overflow-auto ${isServiceProvider ? "bg-[#F4F5F7] p-4 sm:p-6 lg:p-8" : `bg-background ${isPhase2 || isCreatorPhase3FullWidth ? "" : "pt-6 pr-6"}`}`}>
+                {children}
+              </main>
+            </div>
+          </div>
+        </SidebarProvider>
+      </EntrepreneurProgressProvider>
     </AuthGuard>
   );
 }

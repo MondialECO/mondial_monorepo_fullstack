@@ -9,8 +9,14 @@ public interface ICompanyService
     // ============ PHASE FLOW ============
 
     Task<CompanyProgressResponse> GetCurrentPhaseAsync(string userId);
+    Task<CompanyProgressResponse> GetCurrentPhaseAsync(string userId, string? companyId);
     Task<CompanyProgressResponse> AdvancePhaseAsync(string companyId, int phaseNumber, object phaseData);
     Task<CompanyProgressResponse> GetPhaseProgressAsync(string companyId);
+
+    // ============ MULTI-COMPANY OPERATIONAL CONTEXT ============
+
+    Task<List<CompanySummaryDto>> GetMyCompaniesAsync(string userId);
+    Task<CompanySummaryDto> SetActiveCompanyAsync(string userId, string companyId);
 
     // ============ PHASE 1: IDENTITY & ONBOARDING (via Auth) ============
 
@@ -18,6 +24,7 @@ public interface ICompanyService
     Task<(Companies Company, bool AlreadyExisted)> CreateCompanyFromIdeaAsync(string userId, string ideaId);
     Task<Companies> GetCompanyAsync(string companyId);
     Task<Companies> GetCompanyByUserIdAsync(string userId);
+    Task<Companies> GetCompanyByUserIdAsync(string userId, string? companyId);
 
     /// <summary>
     /// Creator → Entrepreneur bridge (Path B Level Up). Idempotent by OwnerId:
@@ -33,6 +40,16 @@ public interface ICompanyService
     Task<Companies> EnsureLevelUpCompanyAsync(
         string userId, string sourceLink, string legalStructure, double? fundingAsk,
         IClientSessionHandle session = null);
+
+    Task<Companies> EnsureLevelUpCompanyAsync(
+        string userId, string sourceLink, string legalStructure, double? fundingAsk,
+        string? companyName, string? industry, string? tagline,
+        IClientSessionHandle session = null);
+
+    Task<(Companies Company, bool AlreadyExisted)> BuildCompanyFromAcquisitionAsync(
+        string userId, string dealId, BuildAcquisitionCompanyDto dto);
+
+    Task SeedCapTableFromOwnershipAsync(string companyId, List<OwnershipEntryDto> ownership);
 
     // ============ PHASE 2: LEGAL INFO & DOCUMENTS ============
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import {
   EntrepreneurProgress,
   PhaseNumber,
@@ -16,6 +16,7 @@ import {
 } from '@/lib/entrepreneur';
 import entrepreneurApi, {
   CompanyProgressResponse,
+  CompanySummaryDto,
 } from '@/lib/api-entrepreneur';
 
 const SAVE_DEBOUNCE_MS = 500;
@@ -58,6 +59,9 @@ export function useEntrepreneurProgressState() {
   }));
   const [isLoading, setIsLoading] = useState(true);
   const [backendFetchFailed, setBackendFetchFailed] = useState(false);
+  const [companies, setCompanies] = useState<CompanySummaryDto[]>([]);
+  const [activeCompanyId, setActiveCompanyId] = useState<string | null>(null);
+  const [isSwitching, setIsSwitching] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
 
@@ -65,9 +69,22 @@ export function useEntrepreneurProgressState() {
     setIsHydrated(true);
   }, []);
 
+  const activeCompany = useMemo(() => {
+    if (!companies.length) return null;
+    if (activeCompanyId) {
+      const found = companies.find((c) => c.id === activeCompanyId);
+      if (found) return found;
+    }
+    return companies.find((c) => c.isActive) || companies[0] || null;
+  }, [companies, activeCompanyId]);
+
   // Apply backend response as the authoritative source for phase progression.
   const applyBackendResponse = useCallback(
     (serverProgress: CompanyProgressResponse) => {
+      if (serverProgress.companyId) {
+        setActiveCompanyId(serverProgress.companyId);
+      }
+
       setProgress((prev) => {
         const currentPhase = Math.min(
           10,
@@ -106,25 +123,81 @@ export function useEntrepreneurProgressState() {
     []
   );
 
-  const refreshFromBackend = useCallback(async (): Promise<boolean> => {
+  const refreshCompanies = useCallback(async (): Promise<void> => {
     try {
-      const serverProgress = await entrepreneurApi.getCurrentPhase();
-      if (
-        !serverProgress ||
-        typeof serverProgress.currentPhase !== 'number'
-      ) {
+      const list = await entrepreneurApi.getMyCompanies();
+      setCompanies(list || []);
+      const active = list?.find((c) => c.isActive);
+      if (active) {
+        setActiveCompanyId(active.id);
+      }
+    } catch (error) {
+      console.warn('Failed to fetch user companies:', error);
+    }
+  }, []);
+
+  const refreshFromBackend = useCallback(
+    async (explicitCompanyId?: string): Promise<boolean> => {
+      try {
+        const targetId = explicitCompanyId || activeCompanyId || undefined;
+        const [serverProgress, myCompanies] = await Promise.all([
+          entrepreneurApi.getCurrentPhase(targetId),
+          entrepreneurApi.getMyCompanies().catch(() => [] as CompanySummaryDto[]),
+        ]);
+
+        if (myCompanies && myCompanies.length > 0) {
+          setCompanies(myCompanies);
+        }
+
+        if (!serverProgress || typeof serverProgress.currentPhase !== 'number') {
+          setBackendFetchFailed(true);
+          return false;
+        }
+
+        applyBackendResponse(serverProgress);
+        setBackendFetchFailed(false);
+        return true;
+      } catch (error) {
+        console.error('Failed to fetch entrepreneur progress from backend:', error);
         setBackendFetchFailed(true);
         return false;
       }
-      applyBackendResponse(serverProgress);
-      setBackendFetchFailed(false);
-      return true;
-    } catch (error) {
-      console.error('Failed to fetch entrepreneur progress from backend:', error);
-      setBackendFetchFailed(true);
-      return false;
-    }
-  }, [applyBackendResponse]);
+    },
+    [activeCompanyId, applyBackendResponse]
+  );
+
+  const switchCompany = useCallback(
+    async (targetCompanyId: string): Promise<boolean> => {
+      if (!targetCompanyId || targetCompanyId === activeCompanyId) return true;
+      setIsSwitching(true);
+      try {
+        const activated = await entrepreneurApi.setActiveCompany(targetCompanyId);
+        if (!activated || !activated.id) {
+          throw new Error('Failed to activate company on backend');
+        }
+
+        setActiveCompanyId(targetCompanyId);
+        setCompanies((prev) =>
+          prev.map((c) => ({
+            ...c,
+            isActive: c.id === targetCompanyId,
+          }))
+        );
+
+        // Fetch fresh progress for newly activated company
+        const newProgress = await entrepreneurApi.getCurrentPhase(targetCompanyId);
+        applyBackendResponse(newProgress);
+
+        return true;
+      } catch (error) {
+        console.error('Failed to switch company:', error);
+        return false;
+      } finally {
+        setIsSwitching(false);
+      }
+    },
+    [activeCompanyId, applyBackendResponse]
+  );
 
   // Initial backend sync + draft hydration.
   useEffect(() => {
@@ -160,14 +233,46 @@ export function useEntrepreneurProgressState() {
         return;
       }
 
-      await refreshFromBackend();
+      // Check URL query param ?companyId=... for initial deep-link activation
+      let urlTargetCompanyId: string | null = null;
+      if (typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search);
+        urlTargetCompanyId = urlParams.get('companyId');
+      }
+
+      if (urlTargetCompanyId) {
+        try {
+          const activated = await entrepreneurApi.setActiveCompany(urlTargetCompanyId);
+          if (activated && activated.id && !cancelled) {
+            setActiveCompanyId(urlTargetCompanyId);
+            const [serverProgress, myCompanies] = await Promise.all([
+              entrepreneurApi.getCurrentPhase(urlTargetCompanyId),
+              entrepreneurApi.getMyCompanies().catch(() => [] as CompanySummaryDto[]),
+            ]);
+            if (!cancelled) {
+              if (myCompanies && myCompanies.length > 0) {
+                setCompanies(myCompanies.map((c) => ({ ...c, isActive: c.id === urlTargetCompanyId })));
+              }
+              if (serverProgress && typeof serverProgress.currentPhase === 'number') {
+                applyBackendResponse(serverProgress);
+              }
+            }
+          } else {
+            await refreshFromBackend();
+          }
+        } catch {
+          await refreshFromBackend();
+        }
+      } else {
+        await refreshFromBackend();
+      }
       if (!cancelled) setIsLoading(false);
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [isHydrated, refreshFromBackend]);
+  }, [isHydrated, refreshFromBackend, applyBackendResponse]);
 
   // Persist drafts only (NOT backend authority fields) with debounce.
   useEffect(() => {
@@ -300,6 +405,14 @@ export function useEntrepreneurProgressState() {
     currentPhase: progress?.currentPhase,
     currentStep: progress?.currentStep,
     trustScore: progress?.trustScore ?? 0,
+
+    // Multi-company Context
+    companies,
+    activeCompany,
+    activeCompanyId: activeCompanyId || progress?.phaseData?.__companyId as string || null,
+    isSwitching,
+    switchCompany,
+    refreshCompanies,
 
     // Queries
     isStepComplete: (phase: PhaseNumber, step: StepNumber) =>

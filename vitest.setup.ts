@@ -53,15 +53,8 @@ vi.mock('next/image', () => ({
 // Mock next/link
 vi.mock('next/link', () => ({
   __esModule: true,
-  default: (props: any) => {
-    return {
-      $$typeof: Symbol.for('react.element'),
-      type: 'a',
-      props: { ...props },
-      key: null,
-      ref: null,
-    };
-  },
+  default: ({ children, href, ...rest }: any) =>
+    createElement('a', { href: typeof href === 'string' ? href : (href?.pathname ?? ''), ...rest }, children),
 }));
 
 // Global test utilities

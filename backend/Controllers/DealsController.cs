@@ -1838,20 +1838,6 @@ namespace WebApp.Controllers
             var idea = !string.IsNullOrEmpty(deal.IdeaId)
                 ? await _context.CreatorIdeas.Find(x => x.Id == deal.IdeaId).FirstOrDefaultAsync()
                 : null;
-
-            // Check if Entrepreneur has an existing Company
-            Companies? existingCompany = null;
-            try
-            {
-                if (!string.IsNullOrEmpty(deal.EntrepreneurId))
-                {
-                    existingCompany = await _context.Companies
-                        .Find(c => c.OwnerId == deal.EntrepreneurId)
-                        .FirstOrDefaultAsync();
-                }
-            }
-            catch { }
-
             var acceptedTerms = deal.EquityTerms ?? deal.Revisions?.LastOrDefault()?.EquityTerms ?? new EquityTerms();
             var draft = deal.CapTableDraft ?? new DealCapTableDraft();
 
@@ -1912,10 +1898,10 @@ namespace WebApp.Controllers
                 },
                 CompanyContext = new CapTableCompanyContextDto
                 {
-                    HasExistingCompany = existingCompany != null,
-                    CompanyId = existingCompany?.Id,
-                    CompanyName = existingCompany?.CompanyName ?? existingCompany?.LegalName,
-                    IncorporationStatus = existingCompany != null ? "INCORPORATED" : "NOT_INCORPORATED"
+                    HasExistingCompany = false,
+                    CompanyId = null,
+                    CompanyName = idea?.Project?.Name ?? deal.CompanyNameSnapshot ?? "New Venture Entity",
+                    IncorporationStatus = "NOT_INCORPORATED"
                 },
                 CreatedAt = draft.CreatedAt,
                 UpdatedAt = draft.UpdatedAt
@@ -2546,14 +2532,17 @@ namespace WebApp.Controllers
                 return false;
             }
 
-            // Check if Entrepreneur has an existing incorporated company
-            var existingCompany = await _context.Companies
-                .Find(c => c.OwnerId == deal.EntrepreneurId)
-                .FirstOrDefaultAsync();
+            var idea = !string.IsNullOrEmpty(deal.IdeaId)
+                ? await _context.CreatorIdeas.Find(i => i.Id == deal.IdeaId).FirstOrDefaultAsync()
+                : null;
 
-            string companyContext = existingCompany != null ? "CASE_B_EXISTING_COMPANY" : "CASE_A_PRE_INCORPORATION";
-            string? companyName = existingCompany?.CompanyName ?? existingCompany?.LegalName;
-            string? jurisdiction = existingCompany?.Country;
+            string companyContext = "CASE_A_PRE_INCORPORATION";
+            string? companyName = !string.IsNullOrWhiteSpace(deal.LegalPackage?.CompanyName)
+                ? deal.LegalPackage.CompanyName
+                : (!string.IsNullOrWhiteSpace(deal.CompanyNameSnapshot)
+                    ? deal.CompanyNameSnapshot
+                    : (idea?.Project?.Name ?? "Venture Entity"));
+            string? jurisdiction = deal.LegalPackage?.Jurisdiction ?? "France";
 
             var pkg = new LegalReviewPackage
             {
@@ -2561,7 +2550,7 @@ namespace WebApp.Controllers
                 IdeaId = deal.IdeaId ?? string.Empty,
                 Jurisdiction = jurisdiction,
                 CompanyContext = companyContext,
-                CompanyId = existingCompany?.Id,
+                CompanyId = null,
                 CompanyName = companyName,
                 Version = 1,
                 Status = "AWAITING_REVIEW",
@@ -6995,98 +6984,67 @@ namespace WebApp.Controllers
 
                 Companies? targetCompany = null;
 
-                if (act.CompanyCase == "CASE_A_PRE_INCORPORATION")
+                if (!string.IsNullOrEmpty(act.CompanyId))
                 {
-                    // Case A: Create or reuse deal company
-                    if (!string.IsNullOrEmpty(act.CompanyId))
+                    targetCompany = await _context.Companies.Find(c => c.Id == act.CompanyId && c.OwnerId == (deal.EntrepreneurId ?? userId)).FirstOrDefaultAsync();
+                }
+
+                if (targetCompany == null && !string.IsNullOrEmpty(deal.Id))
+                {
+                    targetCompany = await _context.Companies.Find(c => c.SourceDealId == deal.Id && c.OwnerId == (deal.EntrepreneurId ?? userId)).FirstOrDefaultAsync();
+                }
+
+                if (targetCompany == null)
+                {
+                    var companyName = !string.IsNullOrWhiteSpace(request?.CompanyName)
+                        ? request.CompanyName.Trim()
+                        : (!string.IsNullOrWhiteSpace(deal.LegalPackage?.CompanyName)
+                            ? deal.LegalPackage.CompanyName
+                            : (idea?.Project?.Name ?? "Venture Entity"));
+
+                    targetCompany = new Companies
                     {
-                        targetCompany = await _context.Companies.Find(c => c.Id == act.CompanyId).FirstOrDefaultAsync();
-                    }
+                        Id = MongoDB.Bson.ObjectId.GenerateNewId().ToString(),
+                        OwnerId = deal.EntrepreneurId ?? userId,
+                        SourceBusinessIdeaId = deal.IdeaId ?? "",
+                        SourceDealId = deal.Id,
+                        CompanyName = companyName,
+                        Industry = idea?.Project?.Category ?? "Technology",
+                        Tagline = idea?.Project?.Tagline ?? "",
+                        CurrentPhase = 2,
+                        CompletedPhases = new List<int>(),
+                        LegalName = companyName,
+                        Country = deal.LegalPackage?.Jurisdiction?.Contains("Delaware") == true ? "United States" : "France",
+                        LegalStructure = deal.LegalPackage?.Jurisdiction?.Contains("Delaware") == true ? "C-Corp" : "SAS",
+                        VerificationStatus = "pending",
+                        TotalShares = deal.CapTableDraft?.TotalShares ?? 10_000_000,
+                        EsopPoolPercent = deal.CapTableDraft?.EsopPoolPercent ?? 0,
+                        EsopVestingMonths = deal.CapTableDraft?.EsopVestingMonths ?? 48,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
 
-                    if (targetCompany == null && !string.IsNullOrEmpty(deal.Id))
-                    {
-                        targetCompany = await _context.Companies.Find(c => c.SourceDealId == deal.Id).FirstOrDefaultAsync();
-                    }
+                    // Populate equity structure
+                    ApplyCapTableToCompany(deal, targetCompany);
 
-                    if (targetCompany == null)
-                    {
-                        var companyName = !string.IsNullOrWhiteSpace(request?.CompanyName)
-                            ? request.CompanyName.Trim()
-                            : (!string.IsNullOrWhiteSpace(deal.LegalPackage?.CompanyName)
-                                ? deal.LegalPackage.CompanyName
-                                : (idea?.Project?.Name ?? "Venture Entity"));
+                    // Populate documents
+                    LinkDocumentsToCompany(deal, targetCompany);
 
-                        targetCompany = new Companies
-                        {
-                            Id = MongoDB.Bson.ObjectId.GenerateNewId().ToString(),
-                            OwnerId = deal.EntrepreneurId ?? userId,
-                            SourceBusinessIdeaId = deal.IdeaId ?? "",
-                            SourceDealId = deal.Id,
-                            CompanyName = companyName,
-                            Industry = idea?.Project?.Category ?? "Technology",
-                            Tagline = idea?.Project?.Tagline ?? "",
-                            CurrentPhase = 2,
-                            LegalName = companyName,
-                            Country = deal.LegalPackage?.Jurisdiction?.Contains("Delaware") == true ? "United States" : "France",
-                            LegalStructure = deal.LegalPackage?.Jurisdiction?.Contains("Delaware") == true ? "C-Corp" : "SAS",
-                            VerificationStatus = "pending",
-                            TotalShares = deal.CapTableDraft?.TotalShares ?? 10_000_000,
-                            EsopPoolPercent = deal.CapTableDraft?.EsopPoolPercent ?? 0,
-                            EsopVestingMonths = deal.CapTableDraft?.EsopVestingMonths ?? 48,
-                            CreatedAt = DateTime.UtcNow,
-                            UpdatedAt = DateTime.UtcNow
-                        };
-
-                        // Populate equity structure
-                        ApplyCapTableToCompany(deal, targetCompany);
-
-                        // Populate documents
-                        LinkDocumentsToCompany(deal, targetCompany);
-
-                        await _context.Companies.InsertOneAsync(targetCompany);
-                        await LogAuditAsync(deal.IdeaId ?? "", deal.Id, act.Version, userId, "company_created_for_deal");
-                    }
-                    else
-                    {
-                        // Existing company reused
-                        ApplyCapTableToCompany(deal, targetCompany);
-                        LinkDocumentsToCompany(deal, targetCompany);
-                        targetCompany.UpdatedAt = DateTime.UtcNow;
-                        await _context.Companies.ReplaceOneAsync(c => c.Id == targetCompany.Id, targetCompany);
-                    }
-
-                    act.CompanyId = targetCompany.Id;
-                    act.CompanyName = targetCompany.CompanyName;
-                    deal.CompanyId = targetCompany.Id;
+                    await _context.Companies.InsertOneAsync(targetCompany);
+                    await LogAuditAsync(deal.IdeaId ?? "", deal.Id, act.Version, userId, "company_created_for_deal");
                 }
                 else
                 {
-                    // Case B: Existing company
-                    var targetCompanyId = act.CompanyId ?? deal.LegalPackage?.CompanyId ?? deal.CompanyId;
-                    if (string.IsNullOrEmpty(targetCompanyId))
-                        return UnprocessableEntity(ApiResponse.Error("Case B requires an existing Company ID from the legal package."));
-
-                    targetCompany = await _context.Companies.Find(c => c.Id == targetCompanyId).FirstOrDefaultAsync();
-                    if (targetCompany == null)
-                        return NotFound(ApiResponse.Error("Existing company specified in the deal could not be found."));
-
-                    if (targetCompany.OwnerId != deal.EntrepreneurId)
-                        return StatusCode(403, ApiResponse.Error("The specified company is not owned by the entrepreneur in this deal."));
-
-                    targetCompany.SourceBusinessIdeaId = deal.IdeaId ?? targetCompany.SourceBusinessIdeaId;
-                    targetCompany.SourceDealId = deal.Id;
-
+                    // Existing company reused (idempotent re-run for THIS deal)
                     ApplyCapTableToCompany(deal, targetCompany);
                     LinkDocumentsToCompany(deal, targetCompany);
                     targetCompany.UpdatedAt = DateTime.UtcNow;
-
                     await _context.Companies.ReplaceOneAsync(c => c.Id == targetCompany.Id, targetCompany);
-                    await LogAuditAsync(deal.IdeaId ?? "", deal.Id, act.Version, userId, "existing_company_linked");
-
-                    act.CompanyId = targetCompany.Id;
-                    act.CompanyName = targetCompany.CompanyName;
-                    deal.CompanyId = targetCompany.Id;
                 }
+
+                act.CompanyId = targetCompany.Id;
+                act.CompanyName = targetCompany.CompanyName;
+                deal.CompanyId = targetCompany.Id;
 
                 // Update activation state
                 act.AppliedCapTableEntries = deal.CapTableDraft?.Entries ?? new List<DealCapTableEntry>();
@@ -7236,6 +7194,24 @@ namespace WebApp.Controllers
                             await _context.ProjectInterests.ReplaceOneAsync(pi => pi.Id == ci.Id, ci);
                             await LogAuditAsync(deal.IdeaId, deal.Id, act.Version, userId, "competing_interest_closed_after_cofounded");
                         }
+                    }
+                }
+
+                // Set new Company as active company for the Entrepreneur
+                if (!string.IsNullOrEmpty(deal.EntrepreneurId))
+                {
+                    Guid.TryParse(deal.EntrepreneurId, out var entGuidVal);
+                    var userFilter = Builders<ApplicationUser>.Filter.Where(u =>
+                        (entGuidVal != Guid.Empty && u.Id == entGuidVal) || u.User == deal.EntrepreneurId || u.UserName == deal.EntrepreneurId);
+                    var updatePointer = Builders<ApplicationUser>.Update
+                        .Set(u => u.EntrepreneurProfile.CompanyId, act.CompanyId);
+                    try
+                    {
+                        await _context.ApplicationUsers.UpdateOneAsync(userFilter, updatePointer);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to set active CompanyId on user {UserId} after partnership activation", deal.EntrepreneurId);
                     }
                 }
 
