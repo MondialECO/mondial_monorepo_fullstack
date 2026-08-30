@@ -139,7 +139,7 @@ export function Phase3FinancialDashboard({ companyId: companyIdProp }: { company
 
   // Verification-progress rail — step states derived from REAL data (no fabrication).
   const phase3Done = progress?.completedPhases?.includes(3) ?? false;
-  const s1 = phase3Done || quarters.length > 0 || (hasFin && financial!.totalRevenue > 0);
+  const s1 = phase3Done || quarters.length > 0 || (hasFin && typeof financial!.totalRevenue === 'number');
   const s2 = phase3Done || (hasFin && financial!.finalValuation > 0);
   const s3 = phase3Done || hasKpi;
   const s4 = phase3Done;
@@ -222,7 +222,13 @@ export function Phase3FinancialDashboard({ companyId: companyIdProp }: { company
           <div className="space-y-4">
             {/* Top metric cards */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <MetricCard label="Annual revenue" value={hasFin && financial!.totalRevenue > 0 ? eur(financial!.totalRevenue) : undefined} unavailable={hasFin && financial!.totalRevenue > 0 ? undefined : 'unavailable'} />
+              <MetricCard
+                label="Annual revenue"
+                value={hasFin && typeof financial!.totalRevenue === 'number' ? eur(financial!.totalRevenue) : undefined}
+                unavailable={hasFin && typeof financial!.totalRevenue === 'number' ? undefined : 'unavailable'}
+                chip={hasFin && financial!.totalRevenue === 0 ? 'Pre-Revenue' : undefined}
+                chipTone={hasFin && financial!.totalRevenue === 0 ? 'primary' : undefined}
+              />
               <MetricCard label="Average growth" value={growth != null ? `${growth > 0 ? '+' : ''}${num(growth)}%` : undefined} unavailable={growth != null ? undefined : 'unavailable'} chip="Per year" chipTone="muted" />
               <MetricCard label="Estimated valuation" tone="primary" value={hasFin && financial!.finalValuation > 0 ? eur(financial!.finalValuation) : undefined} unavailable={hasFin && financial!.finalValuation > 0 ? undefined : 'unavailable'} />
             </div>

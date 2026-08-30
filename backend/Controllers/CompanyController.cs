@@ -16,18 +16,21 @@ public class CompanyController : ControllerBase
     private readonly ICompanyService _companyService;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IPhaseNotificationService _phaseNotificationService;
+    private readonly IDiligenceService? _diligenceService;
     private readonly ILogger<CompanyController> _logger;
 
     public CompanyController(
         ICompanyService companyService,
         UserManager<ApplicationUser> userManager,
         IPhaseNotificationService phaseNotificationService,
-        ILogger<CompanyController> logger)
+        ILogger<CompanyController> logger,
+        IDiligenceService? diligenceService = null)
     {
         _companyService = companyService;
         _userManager = userManager;
         _phaseNotificationService = phaseNotificationService;
         _logger = logger;
+        _diligenceService = diligenceService;
     }
 
     private string GetUserId()
@@ -1255,6 +1258,61 @@ public class CompanyController : ControllerBase
         }
     }
 
+    [HttpDelete("{companyId}/dataroom/documents/{documentId}")]
+    public async Task<ActionResult<DataRoomStatusResponse>> DeleteDataRoomDocument(string companyId, string documentId)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureCompanyOwnershipAsync(companyId);
+            var result = await _companyService.DeleteDataRoomDocumentAsync(companyId, documentId);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting data room document");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpPost("{companyId}/dataroom/documents/{documentId}/replace")]
+    public async Task<ActionResult<DataRoomDocumentResponse>> ReplaceDataRoomDocument(
+        string companyId, string documentId, [FromForm] UploadDataRoomDocumentRequest request)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureCompanyOwnershipAsync(companyId);
+            var doc = await _companyService.ReplaceDataRoomDocumentAsync(companyId, documentId, request, userId);
+            return Ok(doc);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error replacing data room document");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
     [HttpGet("{companyId}/dataroom")]
     public async Task<ActionResult<DataRoomStatusResponse>> GetDataRoom(string companyId)
     {
@@ -1570,6 +1628,71 @@ public class CompanyController : ControllerBase
         }
     }
 
+    [HttpGet("{companyId}/dataroom/questions")]
+    public async Task<ActionResult<List<DiligenceQuestionDto>>> GetDataRoomQuestions(string companyId)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureCompanyOwnershipAsync(companyId);
+            if (_diligenceService == null)
+            {
+                return Ok(new List<DiligenceQuestionDto>());
+            }
+            var questions = await _diligenceService.GetDiligenceQuestionsAsync(userId, companyId, isFounder: true);
+            return Ok(questions);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting data room questions for company {CompanyId}", companyId);
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpPost("{companyId}/dataroom/questions/{questionId}/answer")]
+    public async Task<ActionResult<DiligenceQuestionDto>> AnswerDataRoomQuestion(
+        string companyId,
+        string questionId,
+        [FromBody] AnswerDiligenceQuestionRequest request)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureCompanyOwnershipAsync(companyId);
+            if (_diligenceService == null)
+            {
+                return BadRequest(new { error = "Diligence service not configured" });
+            }
+            var result = await _diligenceService.AnswerFounderQuestionAsync(companyId, questionId, request.Response, userId);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { error = ex.Message });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error answering data room question {QuestionId}", questionId);
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
     // ============ PHASE 7: AI REVIEW ============
 
     [HttpPost("{companyId}/ai-review")]
@@ -1642,15 +1765,15 @@ public class CompanyController : ControllerBase
     }
 
     [HttpPost("{companyId}/investor-ready")]
-    public async Task<ActionResult> AwardInvestorReadyBadge(string companyId)
+    public async Task<ActionResult<AwardInvestorReadyBadgeResponse>> AwardInvestorReadyBadge(string companyId)
     {
         try
         {
             var userId = GetUserId();
             await EnsureUniversalPhase1CompleteAsync(userId);
             await EnsureCompanyOwnershipAsync(companyId);
-            await _companyService.AwardInvestorReadyBadgeAsync(companyId);
-            return Ok();
+            var result = await _companyService.AwardInvestorReadyBadgeAsync(companyId);
+            return Ok(result);
         }
         catch (UnauthorizedAccessException ex)
         {
@@ -1792,6 +1915,19 @@ public class CompanyController : ControllerBase
             await EnsureCompanyOwnershipAsync(companyId);
             var result = await _companyService.UpdateMatchStatusAsync(
                 companyId, matchId, request?.Status ?? string.Empty);
+
+            if (result != null)
+            {
+                if (string.Equals(result.Status, "accepted", StringComparison.OrdinalIgnoreCase) && result.HandshakeConfirmedAt.HasValue)
+                {
+                    await _phaseNotificationService.NotifyMutualHandshakeAsync(companyId, result.InvestorId);
+                }
+                else if (string.Equals(result.EntrepreneurInterest, "interested", StringComparison.OrdinalIgnoreCase))
+                {
+                    await _phaseNotificationService.NotifyEntrepreneurInterestAsync(companyId, result.InvestorId);
+                }
+            }
+
             return Ok(result);
         }
         catch (UnauthorizedAccessException ex)
@@ -1802,6 +1938,68 @@ public class CompanyController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error updating match status");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpPost("{companyId}/investor-matches/{matchId}/schedule-meeting")]
+    public async Task<ActionResult<InvestorMatchResponse>> ScheduleMeeting(
+        string companyId, string matchId, [FromBody] ScheduleMeetingDto dto)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureCompanyOwnershipAsync(companyId);
+            var result = await _companyService.ScheduleMeetingAsync(companyId, matchId, dto);
+
+            if (result?.ScheduledMeeting != null)
+            {
+                await _phaseNotificationService.NotifyMeetingScheduledAsync(
+                    companyId, result.InvestorId, result.ScheduledMeeting, "entrepreneur");
+            }
+
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error scheduling meeting");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpPost("{companyId}/investor-matches/{matchId}/meeting-status")]
+    public async Task<ActionResult<InvestorMatchResponse>> UpdateMeetingStatus(
+        string companyId, string matchId, [FromBody] UpdateMeetingStatusDto dto)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureCompanyOwnershipAsync(companyId);
+            var result = await _companyService.UpdateMeetingStatusAsync(companyId, matchId, dto);
+
+            if (result?.ScheduledMeeting != null)
+            {
+                await _phaseNotificationService.NotifyMeetingStatusChangedAsync(
+                    companyId, result.InvestorId, result.ScheduledMeeting, result.ScheduledMeeting.Status, "entrepreneur");
+            }
+
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Authorization failed: {Message}", ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating meeting status");
             return BadRequest(new { error = ex.Message });
         }
     }

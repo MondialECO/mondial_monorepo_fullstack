@@ -263,6 +263,12 @@ namespace WebApp.DbContext
         public virtual IMongoCollection<InvestorMatch> InvestorMatches => _database.GetCollection<InvestorMatch>("InvestorMatches");
         public virtual IMongoCollection<DealExecution> DealExecutions => _database.GetCollection<DealExecution>("DealExecutions");
         public virtual IMongoCollection<Investor> Investors => _database.GetCollection<Investor>("Investors");
+        public virtual IMongoCollection<InvestorFinanceVerification> InvestorFinanceVerifications => _database.GetCollection<InvestorFinanceVerification>("InvestorFinanceVerifications");
+        public virtual IMongoCollection<CompanyPortfolioHolding> CompanyPortfolioHoldings => _database.GetCollection<CompanyPortfolioHolding>("CompanyPortfolioHoldings");
+        public virtual IMongoCollection<InvestorDiligenceSession> InvestorDiligenceSessions => _database.GetCollection<InvestorDiligenceSession>("InvestorDiligenceSessions");
+        public virtual IMongoCollection<InvestorDiligenceReview> InvestorDiligenceReviews => _database.GetCollection<InvestorDiligenceReview>("InvestorDiligenceReviews");
+        public virtual IMongoCollection<InvestorDiligenceNote> InvestorDiligenceNotes => _database.GetCollection<InvestorDiligenceNote>("InvestorDiligenceNotes");
+        public virtual IMongoCollection<InvestorDiligenceQuestion> InvestorDiligenceQuestions => _database.GetCollection<InvestorDiligenceQuestion>("InvestorDiligenceQuestions");
         public virtual IMongoCollection<ProjectInterest> ProjectInterests => _database.GetCollection<ProjectInterest>("ProjectInterests");
         public virtual IMongoCollection<MarketplaceProjectAccessGrant> MarketplaceProjectAccessGrants => _database.GetCollection<MarketplaceProjectAccessGrant>("MarketplaceProjectAccessGrants");
         public virtual IMongoCollection<MarketplaceProjectAccessLog> MarketplaceProjectAccessLogs => _database.GetCollection<MarketplaceProjectAccessLog>("MarketplaceProjectAccessLogs");

@@ -16,7 +16,6 @@ NC='\033[0m' # No Color
 # =======================
 echo -e "${BLUE}📦 Frontend Tests${NC}"
 echo "===================="
-cd frontend
 
 echo "📥 Installing dependencies..."
 npm install > /dev/null 2>&1
@@ -42,8 +41,6 @@ fi
 echo ""
 echo "📊 Generating coverage report..."
 npm run test:coverage -- --passWithNoTests 2>&1 | grep -E "Coverage|Statements|Branches|Functions|Lines" || echo -e "${YELLOW}⚠️  Coverage report skipped${NC}"
-
-cd ..
 
 # =======================
 # BACKEND TESTS
@@ -89,7 +86,7 @@ echo "  - TEST_COVERAGE.md - Test structure and coverage report"
 echo "  - TESTING_GUIDE.md - Full testing guide with manual flows"
 echo ""
 echo "🚀 Next Steps:"
-echo "  1. Run 'npm run test' from frontend/ directory"
+echo "  1. Run 'npm run test' from the repository root"
 echo "  2. Run 'dotnet test' from backend/ directory"
 echo "  3. Run 'npm run build' to verify no build errors"
 echo "  4. Run 'dotnet build -c Release' for backend"

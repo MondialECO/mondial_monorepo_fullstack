@@ -122,6 +122,8 @@ public class Companies
     // Set when the first investor signs the NDA. Once set, NDA enforcement can
     // no longer be disabled (an investor has relied on it). null = still editable.
     public DateTime? DataRoomNdaLockedAt { get; set; }
+    public DateTime? DataRoomLastMaterialChangeAt { get; set; }
+    public DateTime? InvestorReadinessInputsLastMaterialChangeAt { get; set; }
     public List<DataRoomDocumentResponse> DataRoomDocuments { get; set; } = new();
     public List<DataRoomAccessRecord> DataRoomAccessRecords { get; set; } = new();
 

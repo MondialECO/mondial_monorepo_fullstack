@@ -147,7 +147,9 @@ public class Phase9StateMachineTests
     public void RequiredTerminalStatesForCompletion_excludes_rejected_and_withdrawn()
     {
         Phase9Requirements.RequiredTerminalStatesForCompletion
-            .Should().BeEquivalentTo(new[] { "signed", "completed" });
+            .Should().BeEquivalentTo(new[] { "completed" });
+        Phase9Requirements.RequiredTerminalStatesForCompletion
+            .Should().NotContain("signed");
         Phase9Requirements.RequiredTerminalStatesForCompletion
             .Should().NotContain("rejected");
         Phase9Requirements.RequiredTerminalStatesForCompletion

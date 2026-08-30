@@ -17,7 +17,18 @@ public class InvestorMatch
 
     public int MatchScore { get; set; } // 0-100
 
-    public string Status { get; set; } = "new"; // new | viewed | interested | reviewing | matched | rejected | passed
+    public string Status { get; set; } = "new"; // new | viewed | interested | reviewing | matched | accepted | rejected | passed
+
+    // ----- Bilateral True Double Opt-In -----
+    public string EntrepreneurInterest { get; set; } = "new"; // new | viewed | interested | passed
+    public string InvestorInterest { get; set; } = "new"; // new | interested | passed
+    public DateTime? HandshakeConfirmedAt { get; set; }
+
+    // ----- Meeting Scheduling -----
+    public InvestorMeetingRecord? ScheduledMeeting { get; set; }
+
+    // ----- Phase 7 Intelligence Snapshot -----
+    public Phase7MatchingIntelligence? Phase7IntelligenceSnapshot { get; set; }
 
     public InvestorPreferences InvestorPreferences { get; set; } = new();
 
@@ -120,3 +131,18 @@ public class InteractionRecord
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
     public string InitiatedBy { get; set; } // company | investor
 }
+
+public class InvestorMeetingRecord
+{
+    public string MeetingId { get; set; } = ObjectId.GenerateNewId().ToString();
+    public DateTime StartsAt { get; set; }
+    public int DurationMinutes { get; set; } = 30;
+    public string Timezone { get; set; } = "UTC";
+    public string MeetingType { get; set; } = "video"; // video | call | in_person
+    public string Note { get; set; } = string.Empty;
+    public string Status { get; set; } = "confirmed"; // proposed | confirmed | cancelled
+    public string CreatedBy { get; set; } = "entrepreneur"; // entrepreneur | investor
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+}
+

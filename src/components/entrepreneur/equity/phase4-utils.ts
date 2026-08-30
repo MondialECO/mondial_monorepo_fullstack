@@ -23,23 +23,34 @@ export interface CapTableDerived {
   investorCount: number;
 }
 
+export const isEquityShareClass = (sc?: string): boolean => {
+  const c = (sc ?? '').trim().toLowerCase();
+  return c === 'common' || c === 'preferred';
+};
+
 export function deriveCapTable(snapshot: CapTableSnapshotResponse | null): CapTableDerived {
   const grants: EquityGrantDto[] = snapshot?.grants ?? [];
   const totalShares = snapshot?.totalShares ?? 0;
-  const totalIssued = grants.reduce((s, g) => s + (g.sharesGranted ?? 0), 0);
+  
+  // Non-equity instruments (e.g. SAFE, Note) do not count toward issued equity
+  const equityGrants = grants.filter((g) => isEquityShareClass(g.shareClass));
+  const totalIssued = equityGrants.reduce((s, g) => s + (g.sharesGranted ?? 0), 0);
   const denom = totalIssued > 0 ? totalIssued : 1;
 
-  const holders: DerivedHolder[] = grants.map((g) => ({
-    name: g.stakeholderName,
-    type: g.stakeholderType,
-    shareClass: g.shareClass,
-    shares: g.sharesGranted,
-    investment: g.investmentAmount,
-    ownershipPct: (g.sharesGranted / denom) * 100,
-  }));
+  const holders: DerivedHolder[] = grants.map((g) => {
+    const isEq = isEquityShareClass(g.shareClass);
+    return {
+      name: g.stakeholderName,
+      type: g.stakeholderType,
+      shareClass: g.shareClass,
+      shares: g.sharesGranted,
+      investment: g.investmentAmount,
+      ownershipPct: isEq ? (g.sharesGranted / denom) * 100 : 0,
+    };
+  });
 
   const sumBy = (t: StakeType) =>
-    holders.filter((h) => h.type === t).reduce((s, h) => s + h.ownershipPct, 0);
+    holders.filter((h) => h.type === t && isEquityShareClass(h.shareClass)).reduce((s, h) => s + h.ownershipPct, 0);
 
   return {
     totalShares,
@@ -49,8 +60,8 @@ export function deriveCapTable(snapshot: CapTableSnapshotResponse | null): CapTa
     investorPct: sumBy('investor'),
     advisorPct: sumBy('advisor'),
     esopPct: sumBy('esop'),
-    founderCount: holders.filter((h) => h.type === 'founder').length,
-    investorCount: holders.filter((h) => h.type === 'investor').length,
+    founderCount: holders.filter((h) => h.type === 'founder' && isEquityShareClass(h.shareClass)).length,
+    investorCount: holders.filter((h) => h.type === 'investor' && isEquityShareClass(h.shareClass)).length,
   };
 }
 

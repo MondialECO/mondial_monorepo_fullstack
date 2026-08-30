@@ -90,12 +90,18 @@ public class InvestorMatcher : IInvestorMatcher
 
                 var (score, components, rationale) = ScoreAndExplain(company, investor);
 
-                if (score < Phase8Requirements.MinScoreToCount)
-                    continue;
-
                 var investmentRangeSnapshot = investor.MaxCheckSize > 0
                     ? $"EUR {investor.MinCheckSize:N0}-{investor.MaxCheckSize:N0}"
                     : "EUR (range unset)";
+
+                var matchingIntel = new Phase7MatchingIntelligence
+                {
+                    ValidatedSectorTags = !string.IsNullOrWhiteSpace(company.Industry) ? new List<string> { company.Industry } : new List<string>(),
+                    RiskBand = company.AiReview?.OverallScore >= 75 ? "Low" : company.AiReview?.OverallScore >= 50 ? "Moderate" : "Elevated",
+                    FundingFitSignals = new List<string> { company.FundingRoundType ?? "seed", $"Ask: EUR {company.FundingAskAmount ?? 0:N0}" },
+                    RecommendedInvestorTypes = new List<string> { "Venture Capital", "Angel Syndicate", "Strategic Fund" },
+                    QualitativeStrengthTags = company.AiReview?.Strengths?.Take(2).ToList() ?? new List<string>()
+                };
 
                 var match = new InvestorMatch
                 {
@@ -107,6 +113,9 @@ public class InvestorMatcher : IInvestorMatcher
                     ScoreComponents = components,
                     EngineVersion = EngineVersion,
                     Status = "new",
+                    EntrepreneurInterest = "new",
+                    InvestorInterest = "new",
+                    Phase7IntelligenceSnapshot = matchingIntel,
                     InvestorPreferences = new InvestorPreferences
                     {
                         PreferredSectors = investor.PreferredSectors,

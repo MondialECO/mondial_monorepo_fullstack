@@ -28,6 +28,7 @@ public static class ServiceCollectionExtensions
 
         // Register CompanyService (depends on all the above)
         services.AddScoped<ICompanyService, CompanyService>();
+        services.AddScoped<IDiligenceService, DiligenceService>();
 
         // Register notification and background job services
         services.AddScoped<IPhaseNotificationService, PhaseNotificationService>();

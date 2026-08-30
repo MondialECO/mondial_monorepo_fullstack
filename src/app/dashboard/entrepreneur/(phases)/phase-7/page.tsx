@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AlertCircle, RefreshCcw, ShieldCheck, TrendingUp, FileText, Zap, Trophy } from 'lucide-react';
+import { AlertCircle, AlertTriangle, RefreshCcw, ShieldCheck, TrendingUp, FileText, Zap, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useEntrepreneurProgress } from '@/hooks/useEntrepreneurProgress';
 import { RouteGuard } from '@/components/entrepreneur/RouteGuard';
@@ -37,13 +37,14 @@ function KPICard({ title, value, subtext, badge, badgeColor }: { title: string; 
   );
 }
 
-function Phase7Content() {
+export function Phase7Content() {
   const router = useRouter();
   const { savePhaseData, moveToNextStep, getPhaseData, applyBackendResponse, currentPhase } = useEntrepreneurProgress();
 
   const [review, setReview] = useState<AiReviewResponse | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isClaiming, setIsClaiming] = useState(false);
   const [error, setError] = useState('');
 
   async function resolveCompanyId(): Promise<string> {
@@ -86,6 +87,20 @@ function Phase7Content() {
     }
   };
 
+  const handleClaimBadge = async () => {
+    setError('');
+    setIsClaiming(true);
+    try {
+      const companyId = await resolveCompanyId();
+      await entrepreneurApi.awardInvestorReadyBadge(companyId);
+      await reload();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to claim badge');
+    } finally {
+      setIsClaiming(false);
+    }
+  };
+
   const handleSubmit = async () => {
     setError('');
     setIsSubmitting(true);
@@ -109,8 +124,27 @@ function Phase7Content() {
 
   const overallScore = review?.overallScore ?? 0;
   const badge = review?.investorReadyBadge ?? false;
+  const isClaimed = review?.isInvestorReady ?? false;
   const meetsThreshold = overallScore >= 70;
   const actionCount = review?.recommendations?.length ?? 0;
+
+  const isFresh = review?.isFresh ?? true;
+  const isStale = Boolean(review && (!isFresh || (review.isCurrentlyInvestorReady === false && isClaimed)));
+  const inputsChangedStale = Boolean(
+    review?.investorReadinessInputsLastMaterialChangeAt &&
+    review?.reviewedAt &&
+    new Date(review.investorReadinessInputsLastMaterialChangeAt).getTime() > new Date(review.reviewedAt).getTime()
+  );
+  const dataRoomChangedStale = Boolean(
+    review?.dataRoomLastMaterialChangeAt &&
+    review?.reviewedAt &&
+    new Date(review.dataRoomLastMaterialChangeAt).getTime() > new Date(review.reviewedAt).getTime()
+  );
+  const ageStale = Boolean(
+    review?.reviewedAt &&
+    Date.now() - new Date(review.reviewedAt).getTime() > 30 * 24 * 60 * 60 * 1000
+  );
+  const showMaterialChangeStale = inputsChangedStale || dataRoomChangedStale || (isStale && !ageStale);
 
   return (
     <div className="space-y-6">
@@ -122,8 +156,46 @@ function Phase7Content() {
         <KPICard title="Pitch Deck Grade" value={review?.pitchDeckAnalysis?.grade ?? '—'} badge={review?.pitchDeckAnalysis ? 'Analyzed' : 'Not available'} badgeColor={review?.pitchDeckAnalysis?.grade && ['A+', 'A'].includes(review.pitchDeckAnalysis.grade) ? 'green' : 'blue'} />
       </div>
 
+      {/* Proactive Stale Banners */}
+      {showMaterialChangeStale && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <h4 className="text-sm font-bold text-amber-800 dark:text-amber-300">Your company information has changed since this Investor Readiness Review.</h4>
+              <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">Run a new review to refresh your Investor Ready status.</p>
+            </div>
+          </div>
+          <Button onClick={handleRunReview} disabled={isRunning} size="sm" className="gap-1.5 flex-shrink-0">
+            <RefreshCcw className="w-3.5 h-3.5" />
+            {isRunning ? 'Running…' : 'Re-run Review'}
+          </Button>
+        </div>
+      )}
+
+      {ageStale && !showMaterialChangeStale && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <h4 className="text-sm font-bold text-amber-800 dark:text-amber-300">This Investor Readiness Review has expired.</h4>
+              <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">Run a new review before continuing with new investor matching.</p>
+            </div>
+          </div>
+          <Button onClick={handleRunReview} disabled={isRunning} size="sm" className="gap-1.5 flex-shrink-0">
+            <RefreshCcw className="w-3.5 h-3.5" />
+            {isRunning ? 'Running…' : 'Re-run Review'}
+          </Button>
+        </div>
+      )}
+
       {/* Investor-Ready Profile + Visuals */}
-      <Phase7ReviewVisuals review={review} />
+      <Phase7ReviewVisuals
+        review={review}
+        companyId={review ? 'current' : undefined}
+        isClaiming={isClaiming}
+        onClaimBadge={handleClaimBadge}
+      />
 
       {/* Run Review */}
       {!review && (
@@ -161,7 +233,7 @@ function Phase7Content() {
       <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 flex gap-3">
         <ShieldCheck className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
         <p className="text-sm text-primary">
-          Phase 7 requires: fresh review (&lt; 30 days), score ≥ 70, investor-ready badge. All 3 gates must pass to advance to Phase 8.
+          Phase 7 requires: fresh review (&lt; 30 days), score ≥ 70, investor-ready badge claimed. All gates must pass to advance to Phase 8.
         </p>
       </div>
 
@@ -173,7 +245,14 @@ function Phase7Content() {
       )}
 
       {currentPhase! <= 7 && (
-        <StepFooter backUrl="/dashboard/entrepreneur/phase-6" onNextClick={handleSubmit} isLoading={isSubmitting} nextLabel="Submit & Complete Phase 7" nextValidationError={error} isNextDisabled={!review || !meetsThreshold || !badge} />
+        <StepFooter
+          backUrl="/dashboard/entrepreneur/phase-6"
+          onNextClick={handleSubmit}
+          isLoading={isSubmitting}
+          nextLabel="Submit & Complete Phase 7"
+          nextValidationError={error}
+          isNextDisabled={!review || !meetsThreshold || !badge || !isClaimed || isStale}
+        />
       )}
     </div>
   );

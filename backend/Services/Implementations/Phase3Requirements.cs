@@ -65,10 +65,6 @@ public static class Phase3Requirements
             errors.Add("KPI: churn percent must be between 0 and 100");
         if (kpi.ActiveAccounts < 0) errors.Add("KPI: active accounts must be non-negative");
 
-        // Baseline must show *some* signal — at least one of Mrr/Arr/ActiveAccounts > 0.
-        if (kpi.Mrr <= 0 && kpi.Arr <= 0 && kpi.ActiveAccounts <= 0)
-            errors.Add("KPI baseline must include at least one of MRR, ARR, or active accounts");
-
         return errors;
     }
 }

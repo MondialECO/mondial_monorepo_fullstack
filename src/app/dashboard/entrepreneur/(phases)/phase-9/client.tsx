@@ -1,8 +1,17 @@
 'use client';
 
 import { useEffect, useRef, useMemo, useState } from 'react';
-import { Info, RefreshCcw } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Info, RefreshCcw, CheckCircle2, ArrowRight, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { useEntrepreneurProgress } from '@/hooks/useEntrepreneurProgress';
 import { Phase9PipelineVisuals } from '@/components/entrepreneur/deals/Phase9PipelineVisuals';
 import { MatchmakingTimeline } from '@/components/entrepreneur/deals/MatchmakingTimeline';
@@ -60,6 +69,7 @@ function getErrorMessage(err: unknown): string {
 }
 
 export default function Phase9Client() {
+  const router = useRouter();
   const { savePhaseData, getPhaseData } =
     useEntrepreneurProgress();
 
@@ -73,6 +83,9 @@ export default function Phase9Client() {
   const [isLoading, setIsLoading] = useState(true);
   const [isMutating, setIsMutating] = useState(false);
   const [error, setError] = useState('');
+  const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
+  const [isCompletingPhase, setIsCompletingPhase] = useState(false);
+  const [completionError, setCompletionError] = useState('');
 
   // Due-diligence form
   const [ddItemName, setDdItemName] = useState('');
@@ -336,17 +349,37 @@ export default function Phase9Client() {
     }
   };
 
-  const handleCloseDeal = async () => {
+  const handleConfirmCloseDeal = async () => {
     if (!selectedDealId || isMutating) return;
     setIsMutating(true);
     setError('');
     try {
       await entrepreneurApi.closeDeal(selectedDealId);
+      setIsCloseModalOpen(false);
       await reload();
     } catch (e) {
       setError(getErrorMessage(e));
     } finally {
       setIsMutating(false);
+    }
+  };
+
+  const handleCompleteFundingJourney = async () => {
+    if (isCompletingPhase) return;
+    setIsCompletingPhase(true);
+    setCompletionError('');
+    try {
+      const companyId = await resolveCompanyId();
+      const response = await entrepreneurApi.advancePhase(companyId, 9, {});
+      if (response?.currentPhase === 10) {
+        router.push('/dashboard/entrepreneur/phase-10');
+      } else {
+        await reload();
+      }
+    } catch (e) {
+      setCompletionError(getErrorMessage(e));
+    } finally {
+      setIsCompletingPhase(false);
     }
   };
 
@@ -437,14 +470,20 @@ export default function Phase9Client() {
           </div>
 
           <div className="flex justify-end">
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={selectedDeal.status !== 'signed' || isMutating}
-              onClick={handleCloseDeal}
-            >
-              {isMutating ? 'Closing…' : 'Close deal (signed → completed)'}
-            </Button>
+            {selectedDeal.status === 'completed' ? (
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-success-text/10 text-success-text text-xs font-semibold">
+                <Check className="w-4 h-4" /> Deal Closed & Recorded
+              </div>
+            ) : (
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={selectedDeal.status !== 'signed' || isMutating}
+                onClick={() => setIsCloseModalOpen(true)}
+              >
+                {isMutating ? 'Closing…' : 'Close deal (signed → completed)'}
+              </Button>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -716,10 +755,101 @@ export default function Phase9Client() {
         </div>
       )}
 
-      {/* Info footer - Phase 9 auto-completes when Phase 8 completes */}
+      {/* Close Deal Confirmation Dialog */}
+      <Dialog open={isCloseModalOpen} onOpenChange={setIsCloseModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirm Deal Closing</DialogTitle>
+            <DialogDescription>
+              Both parties have signed. Closing this deal will record the investment in the investor portfolio and, for equity investments, update the company cap table.
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedDeal && (
+            <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Investor:</span>
+                <span className="font-semibold text-foreground">{selectedDeal.investors[0]?.investorName || 'Investor'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Investment Amount:</span>
+                <span className="font-semibold text-foreground">EUR {selectedDeal.termSheet.totalRaiseAmount.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Post-Money Valuation:</span>
+                <span className="font-semibold text-foreground">EUR {selectedDeal.termSheet.postMoneyValuation.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Instrument:</span>
+                <span className="font-semibold text-foreground capitalize">{selectedDeal.termSheet.equityType || 'Equity'}</span>
+              </div>
+              {selectedDeal.termSheet.investorEquityPercent > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Equity Percentage:</span>
+                  <span className="font-semibold text-foreground">{selectedDeal.termSheet.investorEquityPercent}%</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter className="flex gap-2 sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isMutating}
+              onClick={() => setIsCloseModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              disabled={isMutating}
+              onClick={handleConfirmCloseDeal}
+            >
+              {isMutating ? 'Closing Deal…' : 'Close Deal'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Complete Funding Journey CTA — enabled strictly when >= 1 deal is completed */}
+      {deals.some((d) => d.status === 'completed') && (
+        <div className="rounded-2xl border-2 border-primary/40 bg-primary/5 p-6 space-y-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
+                <CheckCircle2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-foreground">Complete Funding Journey</h3>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Your investment deal is closed and recorded. Complete this phase to finish your Founder-to-Funding journey.
+                </p>
+              </div>
+            </div>
+            <Button
+              size="lg"
+              className="w-full sm:w-auto gap-2 bg-primary text-primary-foreground hover:bg-primary/90 shadow-md font-semibold"
+              disabled={isCompletingPhase}
+              onClick={handleCompleteFundingJourney}
+            >
+              {isCompletingPhase ? 'Completing Journey…' : 'Complete Funding Journey'}
+              <ArrowRight className="w-4 h-4" />
+            </Button>
+          </div>
+
+          {completionError && (
+            <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+              {completionError}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Info footer */}
       <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-input">
         <p className="text-xs text-muted-foreground">
-          Phase 9 auto-completes when Phase 8 is completed. View your deal pipeline below.
+          Phase 9 requires at least one completed investment deal to finalize the funding journey.
         </p>
       </div>
     </div>

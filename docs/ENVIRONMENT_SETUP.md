@@ -11,13 +11,13 @@ Complete this checklist to get Mondial running locally with all external service
 ## 1. FRONTEND SETUP
 
 ```bash
-cd frontend
+# Run from the repository root; src/app is the canonical Next.js app.
 npm install
 ```
 
 Create `.env.local`:
 ```
-NEXT_PUBLIC_API_BASE_URL=http://localhost:5000
+NEXT_PUBLIC_API_BASE_URL=http://localhost:5093/api
 NEXT_PUBLIC_ENVIRONMENT=development
 NEXT_PUBLIC_API_TIMEOUT=30000
 ```
@@ -49,7 +49,7 @@ AWS__SecretKey=your-aws-secret-key
 Run:
 ```bash
 dotnet run
-# Listens on http://localhost:5000
+# Listens on http://localhost:5093
 ```
 
 ## 3. DATABASE
@@ -73,7 +73,7 @@ mongosh < ../scripts/01-init-database.mongodb
 ## 5. VERIFY
 
 1. Frontend: http://localhost:3000 → signup/login
-2. Backend: http://localhost:5000/health → 200 OK
+2. Backend: http://localhost:5093/health → 200 OK
 3. Create company and navigate phases
 
 Done!

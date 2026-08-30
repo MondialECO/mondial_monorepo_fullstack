@@ -30,9 +30,8 @@ if ! command -v mongosh &> /dev/null; then
 fi
 echo ""
 
-# Setup Frontend
+# Setup the canonical frontend (the Next.js app lives at repository root).
 echo "📦 Setting up Frontend..."
-cd frontend
 npm install > /dev/null 2>&1
 if [ $? -eq 0 ]; then
     echo -e "${GREEN}✅ Frontend dependencies installed${NC}"
@@ -50,8 +49,6 @@ else
     echo -e "${RED}❌ Frontend build failed${NC}"
     exit 1
 fi
-
-cd ..
 
 # Setup Backend
 echo "📦 Setting up Backend..."
@@ -78,7 +75,7 @@ fi
 echo ""
 echo "🧪 Running Tests..."
 echo "Frontend tests..."
-cd ../frontend
+cd ..
 npm run test -- --passWithNoTests 2>&1 | tail -5
 echo ""
 
@@ -91,7 +88,7 @@ echo -e "${GREEN}✅ All checks passed!${NC}"
 echo ""
 echo "📖 Next steps:"
 echo "1. Start Backend:  cd backend && dotnet run"
-echo "2. Start Frontend: cd frontend && npm run dev"
+echo "2. Start Frontend from the repository root: npm run dev"
 echo "3. Open http://localhost:3000"
 echo "4. Login or sign up to test the app"
 echo ""

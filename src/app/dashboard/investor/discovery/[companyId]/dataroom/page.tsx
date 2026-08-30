@@ -1,30 +1,47 @@
 "use client";
 
-import { use } from "react";
+import { use, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import ErrorState from "@/components/shared/ErrorState";
 import {
-  useDiligenceProgress,
   useInvestorSession,
   useOpportunity,
   useOpportunityDocuments,
 } from "@/hooks/queries/investor-opportunities";
+import { useDiligenceSummary } from "@/hooks/queries/investor-diligence";
 import DataRoomHeader from "./_components/DataRoomHeader";
 import DocumentsSection from "./_components/DocumentsSection";
 import SessionActivityCard from "./_components/SessionActivityCard";
-import DiligenceProgressCard from "./_components/DiligenceProgressCard";
+import DiligenceChecklistCard from "./_components/DiligenceChecklistCard";
+import PrivateNoteModal from "./_components/PrivateNoteModal";
+import AskFounderModal from "./_components/AskFounderModal";
+import DiligenceQuestionsDrawer from "./_components/DiligenceQuestionsDrawer";
+import IncompleteDiligenceWarningModal from "./_components/IncompleteDiligenceWarningModal";
 import NDALockedScreen from "./_components/NDALockedScreen";
 import DataRoomSkeleton from "./_components/DataRoomSkeleton";
 
 interface PageProps {
-  params: Promise<{ companyId: string }>;
+  params: Promise<{ companyId: string }> | { companyId: string };
 }
 
 export default function DataRoomPage({ params }: PageProps) {
-  const { companyId } = use(params);
+  const resolvedParams =
+    typeof (params as any)?.then === "function"
+      ? use(params as Promise<{ companyId: string }>)
+      : (params as { companyId: string });
+  const companyId = resolvedParams.companyId;
+  const router = useRouter();
 
-  // Opportunity drives the entire NDA-gate decision; everything else is
-  // either rendered when NDA is signed or shown as a locked screen.
+  // Modal / Drawer state
+  const [noteModalOpen, setNoteModalOpen] = useState(false);
+  const [askModalOpen, setAskModalOpen] = useState(false);
+  const [questionsDrawerOpen, setQuestionsDrawerOpen] = useState(false);
+  const [warningModalOpen, setWarningModalOpen] = useState(false);
+  const [activeDocId, setActiveDocId] = useState<string | null>(null);
+  const [activeDocTitle, setActiveDocTitle] = useState<string | null>(null);
+
+  // Opportunity drives the entire NDA-gate decision
   const {
     data: detail,
     isLoading: detailLoading,
@@ -32,9 +49,6 @@ export default function DataRoomPage({ params }: PageProps) {
     refetch: refetchDetail,
   } = useOpportunity(companyId);
 
-  // These three queries fire in parallel only when NDA is accepted. Until
-  // then the hooks are still invoked (avoids a hook-order trap on re-render)
-  // but the `enabled` flag prevents the actual HTTP requests.
   const ndaOk = !!detail && (!detail.ndaRequired || detail.ndaAccepted);
   const enabledCompanyId = ndaOk ? companyId : null;
 
@@ -51,10 +65,34 @@ export default function DataRoomPage({ params }: PageProps) {
   } = useInvestorSession(enabledCompanyId);
 
   const {
-    data: diligence,
+    data: diligenceSummary,
     isLoading: diligenceLoading,
     isError: diligenceError,
-  } = useDiligenceProgress(enabledCompanyId);
+  } = useDiligenceSummary(enabledCompanyId);
+
+  function handleOpenNote(docId: string, title: string) {
+    setActiveDocId(docId);
+    setActiveDocTitle(title);
+    setNoteModalOpen(true);
+  }
+
+  function handleOpenAskFounder(docId?: string, title?: string) {
+    setActiveDocId(docId || null);
+    setActiveDocTitle(title || null);
+    setAskModalOpen(true);
+  }
+
+  function handleMakeOfferClick() {
+    if (diligenceSummary && diligenceSummary.status !== "completed") {
+      setWarningModalOpen(true);
+    } else {
+      router.push(`/dashboard/investor/pipeline`);
+    }
+  }
+
+  function handleProceedToOffer() {
+    router.push(`/dashboard/investor/pipeline`);
+  }
 
   if (detailLoading) {
     return <DataRoomSkeleton />;
@@ -85,13 +123,16 @@ export default function DataRoomPage({ params }: PageProps) {
     );
   }
 
-  // NDA path: render the 2-column data room. Sub-section loading is
-  // independent so the page can stream in piece-by-piece.
   return (
     <div className="w-full max-w-[1280px] mx-auto space-y-6 pb-8">
-      <DataRoomHeader detail={detail} />
+      <DataRoomHeader
+        detail={detail}
+        diligenceSummary={diligenceSummary}
+        onOpenQuestions={() => setQuestionsDrawerOpen(true)}
+        onMakeOfferClick={handleMakeOfferClick}
+      />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_340px]">
         <div className="min-w-0 space-y-4">
           {docsLoading ? (
             <DataRoomSkeleton />
@@ -101,11 +142,31 @@ export default function DataRoomPage({ params }: PageProps) {
               message="The document list didn't respond. Try refreshing the page."
             />
           ) : (
-            <DocumentsSection companyId={detail.companyId} items={docs.items} />
+            <DocumentsSection
+              companyId={detail.companyId}
+              items={docs.items}
+              reviews={diligenceSummary?.reviews}
+              onAddNote={handleOpenNote}
+              onAskFounder={(docId, title) => handleOpenAskFounder(docId, title)}
+            />
           )}
         </div>
 
         <aside className="space-y-4 lg:sticky lg:top-6 lg:self-start">
+          {diligenceLoading ? (
+            <div className="h-64 rounded-2xl border border-border bg-muted/30 animate-pulse" />
+          ) : diligenceError || !diligenceSummary ? (
+            <div className="rounded-2xl border border-border bg-card p-4 text-xs text-muted-foreground">
+              Couldn&apos;t load due diligence checklist.
+            </div>
+          ) : (
+            <DiligenceChecklistCard
+              summary={diligenceSummary}
+              companyId={detail.companyId}
+              onOpenQuestions={() => setQuestionsDrawerOpen(true)}
+            />
+          )}
+
           {sessionLoading ? (
             <div className="h-48 rounded-2xl border border-border bg-muted/30" />
           ) : sessionError || !session ? (
@@ -115,18 +176,41 @@ export default function DataRoomPage({ params }: PageProps) {
           ) : (
             <SessionActivityCard session={session} />
           )}
-
-          {diligenceLoading ? (
-            <div className="h-44 rounded-2xl border border-border bg-muted/30" />
-          ) : diligenceError || !diligence ? (
-            <div className="rounded-2xl border border-border bg-card p-4 text-xs text-muted-foreground">
-              Couldn&apos;t load diligence progress.
-            </div>
-          ) : (
-            <DiligenceProgressCard progress={diligence} />
-          )}
         </aside>
       </div>
+
+      {/* Modals and Drawers */}
+      <PrivateNoteModal
+        isOpen={noteModalOpen}
+        onClose={() => setNoteModalOpen(false)}
+        companyId={detail.companyId}
+        documentId={activeDocId}
+        documentTitle={activeDocTitle}
+      />
+
+      <AskFounderModal
+        isOpen={askModalOpen}
+        onClose={() => setAskModalOpen(false)}
+        companyId={detail.companyId}
+        documentId={activeDocId}
+        documentTitle={activeDocTitle}
+      />
+
+      {diligenceSummary && (
+        <DiligenceQuestionsDrawer
+          isOpen={questionsDrawerOpen}
+          onClose={() => setQuestionsDrawerOpen(false)}
+          questions={diligenceSummary.questions}
+          onOpenAskModal={() => handleOpenAskFounder()}
+        />
+      )}
+
+      <IncompleteDiligenceWarningModal
+        isOpen={warningModalOpen}
+        onClose={() => setWarningModalOpen(false)}
+        onProceed={handleProceedToOffer}
+        blockedReason={diligenceSummary?.blockedReason}
+      />
     </div>
   );
 }

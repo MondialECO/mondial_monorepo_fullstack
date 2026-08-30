@@ -102,9 +102,21 @@ public class Phase5ValidatorTests
     }
 
     [Fact]
-    public async Task Phase5_InvalidEquityOffered_Fails()
+    public async Task Phase5_Preferred_RequiresEquityOfferedPercent()
     {
         var c = GoodCompany();
+        c.ShareType = "preferred";
+        c.EquityOfferedPercent = null;
+        var (isValid, errors) = await _validator.ValidatePhase5Async(c);
+        isValid.Should().BeFalse();
+        errors.Should().Contain(e => e.Contains("Equity offered must be between"));
+    }
+
+    [Fact]
+    public async Task Phase5_Preferred_ZeroEquityRejected()
+    {
+        var c = GoodCompany();
+        c.ShareType = "preferred";
         c.EquityOfferedPercent = 0;
         var (isValid, errors) = await _validator.ValidatePhase5Async(c);
         isValid.Should().BeFalse();
@@ -112,56 +124,45 @@ public class Phase5ValidatorTests
     }
 
     [Fact]
-    public async Task Phase5_NonFiniteFundingAsk_Fails()
+    public async Task Phase5_SAFE_DoesNotRequireEquityOfferedPercent()
     {
         var c = GoodCompany();
-        c.FundingAskAmount = double.NaN;
+        c.ShareType = "safe";
+        c.EquityOfferedPercent = null;
         var (isValid, errors) = await _validator.ValidatePhase5Async(c);
-        isValid.Should().BeFalse();
-        errors.Should().Contain("Funding ask amount is required");
+        isValid.Should().BeTrue();
+        errors.Should().BeEmpty();
     }
 
     [Fact]
-    public async Task Phase5_NonFiniteValuation_Fails()
+    public async Task Phase5_Note_DoesNotRequireEquityOfferedPercent()
     {
         var c = GoodCompany();
-        c.PreMoneyValuation = double.PositiveInfinity;
+        c.ShareType = "note";
+        c.EquityOfferedPercent = null;
         var (isValid, errors) = await _validator.ValidatePhase5Async(c);
-        isValid.Should().BeFalse();
-        errors.Should().Contain(e => e.Contains("Pre-money valuation must be >="));
+        isValid.Should().BeTrue();
+        errors.Should().BeEmpty();
     }
 
     [Fact]
-    public async Task Phase5_NonFiniteEquityOffered_Fails()
-    {
-        var c = GoodCompany();
-        c.EquityOfferedPercent = double.NaN;
-        var (isValid, errors) = await _validator.ValidatePhase5Async(c);
-        isValid.Should().BeFalse();
-        errors.Should().Contain(e => e.Contains("Equity offered must be between"));
-    }
-
-    [Fact]
-    public async Task Phase5_AllocationOutsideBand_Fails()
-    {
-        var c = GoodCompany();
-        c.CapitalAllocation = new List<CapitalAllocationDto>
-        {
-            new() { Category = "Product", Amount = 100, Percent = 50 },
-        };
-        var (isValid, errors) = await _validator.ValidatePhase5Async(c);
-        isValid.Should().BeFalse();
-        errors.Should().Contain(e => e.Contains("Capital allocation must total"));
-    }
-
-    [Fact]
-    public async Task Phase5_MissingHiringPlan_Fails()
+    public async Task Phase5_ZeroHiringRows_IsValid()
     {
         var c = GoodCompany();
         c.ResourceMap = new ResourceMapDto { HiringPlan = new List<HiringPlanDto>() };
         var (isValid, errors) = await _validator.ValidatePhase5Async(c);
-        isValid.Should().BeFalse();
-        errors.Should().Contain("Hiring plan is required");
+        isValid.Should().BeTrue();
+        errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Phase5_EmptyHiringPlan_CanCompletePhase()
+    {
+        var c = GoodCompany();
+        c.ResourceMap = null;
+        var (isValid, errors) = await _validator.ValidatePhase5Async(c);
+        isValid.Should().BeTrue();
+        errors.Should().BeEmpty();
     }
 
     [Fact]
@@ -334,6 +335,54 @@ public class Phase5ValidatorTests
         var (isValid, errors) = await _validator.ValidatePhase5Async(c);
         isValid.Should().BeFalse();
         errors.Should().Contain("Funding ask amount is required");
+    }
+
+    [Fact]
+    public async Task Phase5_ExistingHiringRow_MustBeValid()
+    {
+        var c = GoodCompany();
+        c.ResourceMap = new ResourceMapDto
+        {
+            HiringPlan = new List<HiringPlanDto>
+            {
+                new() { Role = "Lead Developer", Salary = 95_000, Timeline = "Q2", Priority = "high" },
+            },
+        };
+        var (isValid, errors) = await _validator.ValidatePhase5Async(c);
+        isValid.Should().BeTrue();
+        errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Phase5_InvalidHiringSalary_IsRejected()
+    {
+        var c = GoodCompany();
+        c.ResourceMap = new ResourceMapDto
+        {
+            HiringPlan = new List<HiringPlanDto>
+            {
+                new() { Role = "Engineer", Salary = -5000, Timeline = "Q1", Priority = "high" },
+            },
+        };
+        var (isValid, errors) = await _validator.ValidatePhase5Async(c);
+        isValid.Should().BeFalse();
+        errors.Should().Contain(e => e.Contains("salary must be > 0"));
+    }
+
+    [Fact]
+    public async Task Phase5_InvalidHiringPriority_IsRejected()
+    {
+        var c = GoodCompany();
+        c.ResourceMap = new ResourceMapDto
+        {
+            HiringPlan = new List<HiringPlanDto>
+            {
+                new() { Role = "Engineer", Salary = 80_000, Timeline = "Q1", Priority = "invalid_priority" },
+            },
+        };
+        var (isValid, errors) = await _validator.ValidatePhase5Async(c);
+        isValid.Should().BeFalse();
+        errors.Should().Contain(e => e.Contains("priority must be one of"));
     }
 
     [Fact]

@@ -146,6 +146,8 @@ export default function Phase5Client() {
     0,
   );
 
+  const [isSavingStep, setIsSavingStep] = useState(false);
+
   // Step 1 validation
   const validateStep1 = (): boolean => {
     setValidationError('');
@@ -169,14 +171,13 @@ export default function Phase5Client() {
     return true;
   };
 
-  // Step 2 validation
+  // Step 2 validation - Hiring plan is optional
   const validateStep2 = (): boolean => {
     setValidationError('');
-    if (hiring.length === 0) {
-      setValidationError('At least one hiring plan entry is required');
-      return false;
-    }
     for (const h of hiring) {
+      if (!h.role.trim() && !h.salary.trim() && !h.timeline.trim()) {
+        continue;
+      }
       if (!h.role.trim() || !h.timeline.trim()) {
         setValidationError('Hiring plan rows need a role and timeline');
         return false;
@@ -205,10 +206,16 @@ export default function Phase5Client() {
       setValidationError('Pre-money valuation unavailable — complete your Phase 3 valuation first.');
       return false;
     }
-    const equity = parseFloat(equityOfferedPercent);
-    if (!Number.isFinite(equity) || equity <= 0 || equity > 100) {
-      setValidationError('Equity offered must be between 0 and 100');
+    if (preMoney < raise) {
+      setValidationError('Pre-money valuation must be greater than or equal to raise amount.');
       return false;
+    }
+    if (shareType === 'preferred') {
+      const equity = parseFloat(equityOfferedPercent);
+      if (!Number.isFinite(equity) || equity <= 0 || equity > 100) {
+        setValidationError('Equity offered must be between 0 and 100%');
+        return false;
+      }
     }
     const minTicket = minimumTicket.trim() ? parseFloat(minimumTicket) : undefined;
     if (minTicket !== undefined && (!Number.isFinite(minTicket) || minTicket < 0)) {
@@ -234,11 +241,78 @@ export default function Phase5Client() {
     return true;
   };
 
-  const handleNextStep = () => {
-    if (currentStep === 1 && validateStep1()) {
-      setCurrentStep(2);
-    } else if (currentStep === 2 && validateStep2()) {
-      setCurrentStep(3);
+  const handleNextStep = async () => {
+    setValidationError('');
+    if (currentStep === 1) {
+      if (!validateStep1()) return;
+      setIsSavingStep(true);
+      try {
+        const raise = parseFloat(raiseAmount) || 0;
+        const preMoney = parseFloat(preMoneyValuation) || 0;
+        await entrepreneurApi.saveFundingAsk(companyId, {
+          raiseAmount: raise,
+          roundType,
+          preMoneyValuation: preMoney,
+          shareType,
+          capitalAllocation: allocations.map((a) => ({
+            category: a.category.trim(),
+            percent: parseFloat(a.percent) || 0,
+            amount: raise > 0 ? (raise * (parseFloat(a.percent) || 0)) / 100 : 0,
+          })),
+          resourceMap: {
+            hiringPlan: hiring
+              .filter((h) => h.role.trim())
+              .map((h) => ({
+                role: h.role.trim(),
+                salary: parseFloat(h.salary) || 0,
+                timeline: h.timeline.trim(),
+                priority: h.priority,
+              })),
+            serviceProviders: [],
+            techTools: [],
+          },
+        });
+        setCurrentStep(2);
+      } catch (error) {
+        setValidationError(error instanceof Error ? error.message : 'Failed to save capital allocation');
+      } finally {
+        setIsSavingStep(false);
+      }
+    } else if (currentStep === 2) {
+      if (!validateStep2()) return;
+      setIsSavingStep(true);
+      try {
+        const raise = parseFloat(raiseAmount) || 0;
+        const preMoney = parseFloat(preMoneyValuation) || 0;
+        await entrepreneurApi.saveFundingAsk(companyId, {
+          raiseAmount: raise,
+          roundType,
+          preMoneyValuation: preMoney,
+          shareType,
+          capitalAllocation: allocations.map((a) => ({
+            category: a.category.trim(),
+            percent: parseFloat(a.percent) || 0,
+            amount: raise > 0 ? (raise * (parseFloat(a.percent) || 0)) / 100 : 0,
+          })),
+          resourceMap: {
+            hiringPlan: hiring
+              .filter((h) => h.role.trim())
+              .map((h) => ({
+                role: h.role.trim(),
+                salary: parseFloat(h.salary) || 0,
+                timeline: h.timeline.trim(),
+                priority: h.priority,
+              })),
+            serviceProviders: [],
+            techTools: [],
+          },
+        });
+        setCurrentStep(3);
+      } catch (error) {
+        setValidationError(error instanceof Error ? error.message : 'Failed to save resource plan');
+      } finally {
+        setIsSavingStep(false);
+      }
     }
   };
 
@@ -282,21 +356,23 @@ export default function Phase5Client() {
           raiseAmount: raise,
           roundType,
           preMoneyValuation: preMoney,
-          equityOfferedPercent: equity,
+          equityOfferedPercent: shareType === 'preferred' && Number.isFinite(equity) ? equity : undefined,
           shareType,
           minimumTicketEur: minTicket,
           capitalAllocation: allocations.map((a) => ({
             category: a.category.trim(),
-            percent: parseFloat(a.percent),
-            amount: (raise * parseFloat(a.percent)) / 100,
+            percent: parseFloat(a.percent) || 0,
+            amount: (raise * (parseFloat(a.percent) || 0)) / 100,
           })),
           resourceMap: {
-            hiringPlan: hiring.map((h) => ({
-              role: h.role.trim(),
-              salary: parseFloat(h.salary),
-              timeline: h.timeline.trim(),
-              priority: h.priority,
-            })),
+            hiringPlan: hiring
+              .filter((h) => h.role.trim())
+              .map((h) => ({
+                role: h.role.trim(),
+                salary: parseFloat(h.salary) || 0,
+                timeline: h.timeline.trim(),
+                priority: h.priority,
+              })),
             serviceProviders: [],
             techTools: [],
           },
@@ -429,59 +505,70 @@ export default function Phase5Client() {
       {currentStep === 2 && (
         <div className="bg-card border-2 border-border rounded-2xl p-4 sm:p-6 space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-bold text-foreground">Hiring plan</h3>
-            <Button size="sm" onClick={addHiring} className="gap-2">
+            <div>
+              <h3 className="text-lg font-bold text-foreground">Hiring plan</h3>
+              <p className="text-xs text-muted-foreground">
+                Optional hiring plan — add roles you plan to hire with this funding. Leave this section empty if the round does not include immediate hiring.
+              </p>
+            </div>
+            <Button size="sm" onClick={addHiring} className="gap-2 shrink-0">
               <Plus className="w-4 h-4" /> Add role
             </Button>
           </div>
           <div className="space-y-2">
-            {hiring.map((h, idx) => (
-              <div key={idx} className="grid grid-cols-1 sm:grid-cols-12 gap-2 sm:items-end">
-                <Input
-                  type="text"
-                  value={h.role}
-                  onChange={(e) => updateHiring(idx, { role: e.target.value })}
-                  placeholder="Role"
-                  className="sm:col-span-3 h-9 bg-background border-input"
-                />
-                <Input
-                  type="number"
-                  min={0}
-                  value={h.salary}
-                  onChange={(e) => updateHiring(idx, { salary: e.target.value })}
-                  placeholder="Salary (€)"
-                  className="sm:col-span-3 h-9 bg-background border-input"
-                />
-                <Input
-                  type="text"
-                  value={h.timeline}
-                  onChange={(e) => updateHiring(idx, { timeline: e.target.value })}
-                  placeholder="Timeline"
-                  className="sm:col-span-3 h-9 bg-background border-input"
-                />
-                <div className="flex gap-2 sm:contents">
-                  <select
-                    value={h.priority}
-                    onChange={(e) => updateHiring(idx, { priority: e.target.value })}
-                    aria-label={`Hiring row ${idx + 1} priority`}
-                    className="flex-1 sm:col-span-2 h-9 rounded-md border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    <option value="high">high</option>
-                    <option value="medium">medium</option>
-                    <option value="low">low</option>
-                  </select>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="sm:col-span-1"
-                    onClick={() => removeHiring(idx)}
-                    aria-label="Remove"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+            {hiring.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 italic">
+                No hiring planned for this funding round. Click &quot;Add role&quot; above if you wish to include planned team additions.
+              </p>
+            ) : (
+              hiring.map((h, idx) => (
+                <div key={idx} className="grid grid-cols-1 sm:grid-cols-12 gap-2 sm:items-end">
+                  <Input
+                    type="text"
+                    value={h.role}
+                    onChange={(e) => updateHiring(idx, { role: e.target.value })}
+                    placeholder="Role"
+                    className="sm:col-span-3 h-9 bg-background border-input"
+                  />
+                  <Input
+                    type="number"
+                    min={0}
+                    value={h.salary}
+                    onChange={(e) => updateHiring(idx, { salary: e.target.value })}
+                    placeholder="Salary (€)"
+                    className="sm:col-span-3 h-9 bg-background border-input"
+                  />
+                  <Input
+                    type="text"
+                    value={h.timeline}
+                    onChange={(e) => updateHiring(idx, { timeline: e.target.value })}
+                    placeholder="Timeline"
+                    className="sm:col-span-3 h-9 bg-background border-input"
+                  />
+                  <div className="flex gap-2 sm:contents">
+                    <select
+                      value={h.priority}
+                      onChange={(e) => updateHiring(idx, { priority: e.target.value })}
+                      aria-label={`Hiring row ${idx + 1} priority`}
+                      className="flex-1 sm:col-span-2 h-9 rounded-md border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <option value="high">high</option>
+                      <option value="medium">medium</option>
+                      <option value="low">low</option>
+                    </select>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="sm:col-span-1"
+                      onClick={() => removeHiring(idx)}
+                      aria-label="Remove"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       )}
@@ -528,15 +615,32 @@ export default function Phase5Client() {
                 <label htmlFor="p5-equity" className="block text-sm font-semibold text-foreground mb-2">
                   Equity offered (%)
                 </label>
-                <Input
-                  id="p5-equity"
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={equityOfferedPercent}
-                  onChange={(e) => setEquityOfferedPercent(e.target.value)}
-                  className="h-10 bg-background border-input"
-                />
+                {shareType === 'preferred' ? (
+                  <Input
+                    id="p5-equity"
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={equityOfferedPercent}
+                    onChange={(e) => setEquityOfferedPercent(e.target.value)}
+                    className="h-10 bg-background border-input"
+                  />
+                ) : (
+                  <>
+                    <Input
+                      id="p5-equity"
+                      type="text"
+                      value="Not applicable"
+                      disabled
+                      readOnly
+                      aria-readonly
+                      className="h-10 bg-muted border-input text-muted-foreground cursor-not-allowed"
+                    />
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Non-equity instrument: equity conversion terms are defined during Phase 9 deal execution.
+                    </p>
+                  </>
+                )}
               </div>
               <div>
                 <label htmlFor="p5-round" className="block text-sm font-semibold text-foreground mb-2">
@@ -555,7 +659,7 @@ export default function Phase5Client() {
               </div>
               <div>
                 <label htmlFor="p5-share" className="block text-sm font-semibold text-foreground mb-2">
-                  Share type
+                  Funding instrument
                 </label>
                 <select
                   id="p5-share"
@@ -563,9 +667,9 @@ export default function Phase5Client() {
                   onChange={(e) => setShareType(e.target.value as ShareType)}
                   className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  <option value="preferred">preferred</option>
-                  <option value="safe">safe</option>
-                  <option value="note">note</option>
+                  <option value="preferred">Preferred Equity</option>
+                  <option value="safe">SAFE</option>
+                  <option value="note">Convertible Note</option>
                 </select>
               </div>
               <div>

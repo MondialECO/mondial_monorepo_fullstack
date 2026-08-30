@@ -27,6 +27,7 @@ import {
   Lock,
   Layers,
   CheckCircle2,
+  UserCheck,
 } from "lucide-react";
 
 export type MenuItem = {
@@ -197,6 +198,11 @@ export const menu: Record<UserRole, MenuSection[]> = {
       title: "Investment & Deals",
       items: [
         {
+          label: "Incoming Matches",
+          href: "/dashboard/investor/incoming-matches",
+          icon: UserCheck,
+        },
+        {
           label: "Pipeline",
           href: "/dashboard/investor/pipeline",
           icon: LayoutGrid,
@@ -231,6 +237,11 @@ export const menu: Record<UserRole, MenuSection[]> = {
     {
       title: "Profile & Communication",
       items: [
+        {
+          label: "Finance Verification",
+          href: "/dashboard/investor/phase-2",
+          icon: ShieldCheck,
+        },
         {
           label: "Public Profile",
           href: "/dashboard/investor/profile",

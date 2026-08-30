@@ -64,6 +64,7 @@ export function usePhase2Step1Form({
   });
 
   const isInitializedRef = useRef(false);
+  const isSubmittingRef = useRef(false);
   const savedFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // No resolver / no validation — just a typed data container.
@@ -130,13 +131,46 @@ export function usePhase2Step1Form({
     initializeForm();
   }, [progress, initialData, form, getPhaseData, savePhaseData]);
 
-  // Autosave disabled - only save on explicit button clicks
-  // (Save Draft or Next button)
-
   const handleSaveDraft = useCallback(async () => {
+    if (isSubmittingRef.current || formState.status === 'saving' || formState.status === 'navigating') return;
+    isSubmittingRef.current = true;
     setFormState({ status: 'saving', error: null });
     try {
-      savePhaseData(2, form.getValues());
+      const formData = form.getValues();
+      let companyId: string | undefined =
+        typeof progress?.phaseData?.__companyId === 'string'
+          ? progress.phaseData.__companyId
+          : undefined;
+
+      if (!companyId) {
+        const existingData: any = getPhaseData(2) ?? {};
+        if (typeof existingData?.__companyId === 'string') {
+          companyId = existingData.__companyId;
+        }
+      }
+      if (!companyId) {
+        const phaseProgress = await entrepreneurApi.getCurrentPhase().catch(() => null);
+        if (typeof phaseProgress?.companyId === 'string') {
+          companyId = phaseProgress.companyId;
+        }
+      }
+
+      if (companyId) {
+        await entrepreneurApi.updateLegalInfo(companyId, {
+          legalName: formData.companyName || 'Unnamed Company',
+          registrationNumber: formData.registrationNumber || '',
+          legalStructure: formData.legalForm || '',
+          incorporationDate: formData.incorporationDate || '',
+          registeredAddress: formData.registeredAddress || '',
+          country: formData.countryOfRegistration || '',
+          nafCode: formData.industryCode || '',
+        });
+      }
+
+      savePhaseData(2, {
+        ...formData,
+        ...(companyId ? { __companyId: companyId } : {}),
+      });
       setFormState({ status: 'idle', error: null });
       setAutosave({ status: 'saved', lastSavedAt: Date.now() });
       if (savedFlashTimerRef.current) clearTimeout(savedFlashTimerRef.current);
@@ -147,78 +181,98 @@ export function usePhase2Step1Form({
       const message =
         error instanceof Error ? error.message : 'Failed to save draft';
       setFormState({ status: 'idle', error: message });
+    } finally {
+      isSubmittingRef.current = false;
     }
-  }, [form, savePhaseData]);
+  }, [form, formState.status, progress, getPhaseData, savePhaseData]);
 
   const handleNextClick = useCallback(async () => {
+    if (isSubmittingRef.current || formState.status === 'saving' || formState.status === 'navigating') return;
+    isSubmittingRef.current = true;
     setFormState({ status: 'navigating', error: null });
 
     try {
       const formData = form.getValues();
 
-      // CRITICAL: If company doesn't exist, create it now with Phase 2 legal data
-      if (!progress?.phaseData?.__companyId) {
-        try {
-          // Step 1: Create company with Phase 1 basic fields
-          const createResponse = await entrepreneurApi.createCompany({
-            companyName: formData.companyName || 'Unnamed Company',
-            industry: 'Technology', // Placeholder - Phase 1 field
-            website: 'https://example.com', // Placeholder - Phase 1 field
-            tagline: 'Company created during Phase 2 verification',
-          });
+      let companyId: string | undefined =
+        typeof progress?.phaseData?.__companyId === 'string'
+          ? progress.phaseData.__companyId
+          : undefined;
 
-          // API returns company object — handle both 'id' and 'companyId' field names
-          const companyId = (createResponse as any)?.companyId || (createResponse as any)?.id;
-          if (!companyId) {
-            throw new Error('No company ID returned from creation');
-          }
-
-          // Step 2: Immediately update with Phase 2 legal identity data
-          await entrepreneurApi.updateLegalInfo(companyId, {
-            legalName: formData.companyName || 'Unnamed Company',
-            registrationNumber: formData.registrationNumber || '',
-            legalStructure: formData.legalForm || '',
-            incorporationDate: formData.incorporationDate || '',
-            registeredAddress: formData.registeredAddress || '',
-            country: formData.countryOfRegistration || '',
-            nafCode: formData.industryCode || '',
-          });
-
-          // Step 3: Verify company exists in backend by fetching current phase
-          const phaseProgress = await entrepreneurApi.getCurrentPhase();
-          if (phaseProgress?.companyId !== companyId) {
-            throw new Error('Company verification failed - company not found in backend');
-          }
-
-          // Save to local state with companyId
-          savePhaseData(2, {
-            ...formData,
-            __companyId: companyId,
-          });
-        } catch (createError) {
-          const msg = createError instanceof Error ? createError.message : 'Failed to create company';
-          throw new Error(`Could not create company: ${msg}`);
+      if (!companyId) {
+        const existingData: any = getPhaseData(2) ?? {};
+        if (typeof existingData?.__companyId === 'string') {
+          companyId = existingData.__companyId;
         }
-      } else {
-        // Company exists, just save the phase 2 data
-        savePhaseData(2, formData);
+      }
+      if (!companyId) {
+        const phaseProgress = await entrepreneurApi.getCurrentPhase().catch(() => null);
+        if (typeof phaseProgress?.companyId === 'string') {
+          companyId = phaseProgress.companyId;
+        }
       }
 
-      // Mark step 2-1 complete and advance currentStep -> 2
+      // 1. If company doesn't exist, create it first (Zero-Company Direct Entrepreneur path)
+      if (!companyId) {
+        const createResponse = await entrepreneurApi.createCompany({
+          companyName: formData.companyName || 'Unnamed Company',
+          industry: 'Technology', // Placeholder - Phase 1 field
+          website: 'https://example.com', // Placeholder - Phase 1 field
+          tagline: 'Company created during Phase 2 verification',
+        });
+
+        companyId = (createResponse as any)?.companyId || (createResponse as any)?.id;
+        if (!companyId || typeof companyId !== 'string') {
+          throw new Error('No company ID returned from creation');
+        }
+
+        // Verify company is active in backend
+        const phaseProgress = await entrepreneurApi.getCurrentPhase();
+        if (phaseProgress?.companyId !== companyId) {
+          throw new Error('Company verification failed - company not found in backend');
+        }
+      }
+
+      // 2. Persist legal identity data via authoritative updateLegalInfo endpoint
+      await entrepreneurApi.updateLegalInfo(companyId, {
+        legalName: formData.companyName || 'Unnamed Company',
+        registrationNumber: formData.registrationNumber || '',
+        legalStructure: formData.legalForm || '',
+        incorporationDate: formData.incorporationDate || '',
+        registeredAddress: formData.registeredAddress || '',
+        country: formData.countryOfRegistration || '',
+        nafCode: formData.industryCode || '',
+      });
+
+      // 3. Update local phase data with authoritative companyId
+      savePhaseData(2, {
+        ...formData,
+        __companyId: companyId,
+      });
+
+      // 4. Mark step 2-1 complete and advance currentStep -> 2
       moveToNextStep(2, 1);
 
       // Allow moveToNextStep to flush through React state batching
-      // 500ms ensures the progress state (currentStep, completedSteps) is fully updated
-      // before router.push() is called, so step-2's RouteGuard sees the new state
-      await new Promise<void>((resolve) => setTimeout(resolve, 500));
+      await new Promise<void>((resolve) => setTimeout(resolve, 300));
 
       await router.push('/dashboard/entrepreneur/phase-2/step-2');
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'An error occurred';
+      let message = 'An error occurred';
+      if (error instanceof Error) {
+        message = error.message;
+      }
+      const anyErr = error as any;
+      if (anyErr?.response?.data?.error) {
+        message = anyErr.response.data.error;
+      } else if (anyErr?.response?.data?.message) {
+        message = anyErr.response.data.message;
+      }
       setFormState({ status: 'idle', error: message });
+    } finally {
+      isSubmittingRef.current = false;
     }
-  }, [form, progress, savePhaseData, moveToNextStep, router]);
+  }, [form, formState.status, progress, getPhaseData, savePhaseData, moveToNextStep, router]);
 
   return {
     form,

@@ -256,4 +256,46 @@ public class Phase6AccessPolicyTests
         (await act.Should().ThrowAsync<UnauthorizedAccessException>())
             .Which.Message.Should().Contain("NDA acceptance is required");
     }
+
+    [Fact]
+    public async Task Phase6_ExpiredGrant_StillBlocksInvestorAccess()
+    {
+        var c = CompanyWithGrant("download");
+        c.DataRoomAccessRecords[0].ExpiresAt = DateTime.UtcNow.AddDays(-2);
+        SetupCompanyLookup(c);
+
+        var act = async () => await _service.DownloadDataRoomDocumentAsync(
+            "comp-1", "doc-1", "inv-1", callerIsOwner: false);
+
+        (await act.Should().ThrowAsync<UnauthorizedAccessException>())
+            .Which.Message.Should().Contain("expired");
+    }
+
+    [Fact]
+    public async Task Phase6_ValidGrant_AllowsConfiguredAccess()
+    {
+        var c = CompanyWithGrant("download");
+        c.DataRoomAccessRecords[0].ExpiresAt = DateTime.UtcNow.AddDays(10);
+        SetupCompanyLookup(c);
+
+        // When valid grant exists, tracking download succeeds
+        var res = await _service.TrackDataRoomEventAsync(
+            "comp-1", "doc-1", "inv-1", callerIsOwner: false, "download", "127.0.0.1");
+
+        res.EventType.Should().Be("download");
+        res.InvestorId.Should().Be("inv-1");
+    }
+
+    [Fact]
+    public async Task Phase6_NdaToggle_DoesNotInvalidateScoreUnlessScored()
+    {
+        var c = CompanyWithGrant("download");
+        c.DataRoomLastMaterialChangeAt = null;
+        SetupCompanyLookup(c);
+
+        await _service.UpdateNdaRequirementAsync("comp-1", required: true);
+
+        // Operational change like NDA toggle does not touch DataRoomLastMaterialChangeAt
+        c.DataRoomLastMaterialChangeAt.Should().BeNull();
+    }
 }

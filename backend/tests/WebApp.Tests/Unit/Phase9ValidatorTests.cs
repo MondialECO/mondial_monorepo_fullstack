@@ -84,12 +84,13 @@ public class Phase9ValidatorTests
     }
 
     [Fact]
-    public async Task Phase9_OneSigned_Passes()
+    public async Task Phase9_OneSigned_Fails()
     {
+        // Signed alone is NOT yet economically closed — requires 'completed' via CloseDealAsync.
         SetupDeals(new[] { Deal("signed") });
         var (isValid, errors) = await _validator.ValidatePhase9Async(new Companies { Id = "comp-1" });
-        isValid.Should().BeTrue();
-        errors.Should().BeEmpty();
+        isValid.Should().BeFalse();
+        errors.Should().Contain(e => e.Contains("terminal success state"));
     }
 
     [Fact]

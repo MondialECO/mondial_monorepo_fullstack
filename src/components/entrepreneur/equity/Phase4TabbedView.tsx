@@ -91,14 +91,12 @@ export function Phase4TabbedView() {
     }
     setCompleting(true);
     try {
-      // Gate prerequisites: dilution history reviewed + exit waterfall reviewed.
-      if (history.length === 0) {
-        setCompletionError('Review the Dilution Sim first — add at least one round.');
-        setActive('dilution');
-        setCompleting(false);
-        return;
+      // Best-effort convenience: mark exit waterfall reviewed if endpoint is active
+      try {
+        await entrepreneurApi.markExitReviewed(companyId);
+      } catch {
+        // optional non-blocking
       }
-      await entrepreneurApi.markExitReviewed(companyId);
       const advance = await entrepreneurApi.advancePhase(companyId, 4, {});
       if (advance?.currentPhase !== 5) {
         throw new Error(`Expected currentPhase=5, got ${advance?.currentPhase}`);

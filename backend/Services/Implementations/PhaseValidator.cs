@@ -46,7 +46,7 @@ public class PhaseValidator : IPhaseValidator
                 errors.Add("Legal name is required");
 
             if (string.IsNullOrWhiteSpace(company.RegistrationNumber))
-                errors.Add("Registration number (SIRET) is required");
+                errors.Add("Company registration number is required");
 
             if (string.IsNullOrWhiteSpace(company.LegalStructure))
                 errors.Add("Legal structure is required");
@@ -102,9 +102,13 @@ public class PhaseValidator : IPhaseValidator
         var errors = new List<string>();
 
         // Revenue ----------------------------------------------------------
+        // Revenue may legitimately be 0 (Pre-Revenue). Negative revenue is rejected.
+        if ((company.Q1Revenue ?? 0) < 0 || (company.Q2Revenue ?? 0) < 0 || (company.Q3Revenue ?? 0) < 0 || (company.Q4Revenue ?? 0) < 0)
+            errors.Add("Quarterly revenue cannot be negative");
+
         var totalRevenue = (company.Q1Revenue ?? 0) + (company.Q2Revenue ?? 0) + (company.Q3Revenue ?? 0) + (company.Q4Revenue ?? 0);
-        if (totalRevenue <= 0)
-            errors.Add("Must have positive quarterly revenue data");
+        if (totalRevenue < 0)
+            errors.Add("Total revenue cannot be negative");
 
         // Valuation --------------------------------------------------------
         if (company.Valuation == null || company.Valuation <= 0)
@@ -164,8 +168,11 @@ public class PhaseValidator : IPhaseValidator
         if (capTable.Grants.Any(g => g.SharesGranted < 0))
             errors.Add("Cap table contains negative share grants");
 
-        // Issued shares <= total, and reconcile to ~100% of total.
-        var issued = capTable.Grants.Sum(g => g.SharesGranted);
+        // Issued equity shares <= total, and reconcile to ~100% of total.
+        // Non-equity instruments (e.g. SAFE, Note) do not count toward issued equity.
+        var issued = capTable.Grants
+            .Where(g => ShareClasses.IsEquityClass(g.ShareClass))
+            .Sum(g => g.SharesGranted);
         if (issued > capTable.TotalShares)
             errors.Add($"Issued shares ({issued}) exceed total authorised shares ({capTable.TotalShares})");
 
@@ -179,16 +186,17 @@ public class PhaseValidator : IPhaseValidator
             issuedPercent > Phase4Requirements.OwnershipReconciledMax)
             errors.Add($"Cap table must reconcile to ~100% of total shares (currently {issuedPercent:F2}%)");
 
-        // Founder presence.
+        // Founder presence (must hold an equity share class).
         if (!capTable.Grants.Any(g =>
-                string.Equals(g.StakeholderType, "founder", StringComparison.OrdinalIgnoreCase)))
+                string.Equals(g.StakeholderType, "founder", StringComparison.OrdinalIgnoreCase) &&
+                ShareClasses.IsEquityClass(g.ShareClass)))
             errors.Add("At least one founder grant is required");
 
-        // Valid share class on every grant.
+        // Valid equity share class on every grant.
         foreach (var g in capTable.Grants)
         {
-            if (!ShareClasses.IsValid(g.ShareClass))
-                errors.Add($"Grant '{g.StakeholderName}': invalid share class '{g.ShareClass}'");
+            if (!ShareClasses.IsEquityClass(g.ShareClass))
+                errors.Add($"Grant '{g.StakeholderName}': invalid equity share class '{g.ShareClass}'");
         }
 
         // Duplicate share-class rows for the same stakeholder.
@@ -223,17 +231,8 @@ public class PhaseValidator : IPhaseValidator
                 v.CliffMonths, v.TotalVestMonths, $"vesting for {v.StakeholderName}"));
         }
 
-        // Dilution simulation must be reviewed: at least one ownership-history
-        // record (a recorded dilution event) is required before completion.
-        var ownershipHistory = await _dbContext.Phase4OwnershipHistories
-            .Find(h => h.CompanyId == company.Id)
-            .ToListAsync();
-        if (ownershipHistory.Count == 0)
-            errors.Add("Dilution simulation must be reviewed before completing Phase 4");
-
-        // Exit waterfall must be reviewed on the latest snapshot.
-        if (!capTable.ExitWaterfallReviewed)
-            errors.Add("Exit waterfall must be reviewed before completing Phase 4");
+        // Note: Dilution simulation and Exit waterfall reviews are optional planning/scenario
+        // tools and do not block Phase 4 advancement if the cap table is valid.
 
         return (errors.Count == 0, errors);
     }
@@ -266,11 +265,15 @@ public class PhaseValidator : IPhaseValidator
                 company.PreMoneyValuation.Value < company.FundingAskAmount.Value)
                 errors.Add("Pre-money valuation must be >= the raise amount");
 
-            if (company.EquityOfferedPercent == null ||
-                !double.IsFinite(company.EquityOfferedPercent.Value) ||
-                company.EquityOfferedPercent <= Phase5Requirements.EquityOfferedMin ||
-                company.EquityOfferedPercent > Phase5Requirements.EquityOfferedMax)
-                errors.Add($"Equity offered must be between {Phase5Requirements.EquityOfferedMin} and {Phase5Requirements.EquityOfferedMax}%");
+            var isEquity = string.Equals(company.ShareType, "preferred", StringComparison.OrdinalIgnoreCase);
+            if (isEquity)
+            {
+                if (company.EquityOfferedPercent == null ||
+                    !double.IsFinite(company.EquityOfferedPercent.Value) ||
+                    company.EquityOfferedPercent <= Phase5Requirements.EquityOfferedMin ||
+                    company.EquityOfferedPercent > Phase5Requirements.EquityOfferedMax)
+                    errors.Add($"Equity offered must be between {Phase5Requirements.EquityOfferedMin} and {Phase5Requirements.EquityOfferedMax}%");
+            }
 
             if (!Phase5Requirements.IsValidShareType(company.ShareType))
                 errors.Add($"Share type must be one of: {string.Join(", ", Phase5Requirements.ShareTypeWhitelist)}");
@@ -292,11 +295,8 @@ public class PhaseValidator : IPhaseValidator
                     errors.Add($"Capital allocation must total 100% (currently {allocationTotal:F2}%)");
             }
 
-            if (company.ResourceMap?.HiringPlan == null || company.ResourceMap.HiringPlan.Count == 0)
-            {
-                errors.Add("Hiring plan is required");
-            }
-            else
+            // Hiring plan is optional; if rows are provided, each row must be valid.
+            if (company.ResourceMap?.HiringPlan != null && company.ResourceMap.HiringPlan.Count > 0)
             {
                 errors.AddRange(Phase5Requirements.ValidateHiringPlanRows(company.ResourceMap.HiringPlan));
             }
@@ -361,20 +361,17 @@ public class PhaseValidator : IPhaseValidator
             if (missingCategories.Count > 0)
                 errors.Add($"Missing required document categories: {string.Join(", ", missingCategories)}");
 
-            // Access record shape: every record must have an investorId + access level
-            // + non-past expiresAt. Phase 6 does not require any grants to exist (grants
-            // can be added post-phase), but malformed grants must not persist.
+            // Access records: grants are optional. Malformed records must not persist.
+            // Expired grants do NOT block Phase 6 completion (expired investors are blocked at runtime).
             var grants = company.DataRoomAccessRecords ?? new List<DataRoomAccessRecord>();
             for (var i = 0; i < grants.Count; i++)
             {
                 var g = grants[i];
-                if (g == null) { errors.Add($"Access grant #{i + 1} is null"); continue; }
+                if (g == null) continue;
                 if (string.IsNullOrWhiteSpace(g.InvestorId))
                     errors.Add($"Access grant #{i + 1}: investorId is missing");
                 if (string.IsNullOrWhiteSpace(g.AccessLevel))
                     errors.Add($"Access grant for investor '{g.InvestorId}': accessLevel is missing");
-                if (g.ExpiresAt != default && g.ExpiresAt < DateTime.UtcNow)
-                    errors.Add($"Access grant for investor '{g.InvestorId}': expired at {g.ExpiresAt:o}");
             }
 
             return (errors.Count == 0, errors);
@@ -399,11 +396,15 @@ public class PhaseValidator : IPhaseValidator
             if (!company.AiReview.InvestorReadyBadge)
                 errors.Add("Latest review did not award the investor-ready badge");
 
-            // Freshness — review must reflect the current company state.
+            if (!company.IsInvestorReady)
+                errors.Add("Investor-ready badge has not been claimed/awarded");
+
+            // Freshness — review must reflect the current company state and not predate recent material readiness input changes.
             var reviewedAt = company.LastAiReviewAt ?? company.AiReview.ReviewedAt;
-            if (!Phase7Requirements.IsFreshEnough(reviewedAt))
+            var lastChange = Phase7Requirements.GetReadinessInputsLastMaterialChangeAt(company);
+            if (!Phase7Requirements.IsFreshEnough(reviewedAt, lastChange, now: null))
                 errors.Add(
-                    $"Review is stale (run at {reviewedAt:o}, max age {Phase7Requirements.MaxReviewAgeForAdvance.TotalDays:F0} days) — rerun before advancing");
+                    $"Review is stale (run at {reviewedAt:o}, max age {Phase7Requirements.MaxReviewAgeForAdvance.TotalDays:F0} days or material readiness input change at {lastChange:o}) — rerun before advancing");
 
             return (errors.Count == 0, errors);
         });
@@ -424,9 +425,16 @@ public class PhaseValidator : IPhaseValidator
             return (false, errors);
         }
 
-        if (!matches.Any(m => m.MatchScore >= Phase8Requirements.MinScoreToCount))
-            errors.Add(
-                $"At least one match must score >= {Phase8Requirements.MinScoreToCount}");
+        var hasMutualHandshake = matches.Any(m =>
+            string.Equals(m.Status, "accepted", StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(m.EntrepreneurInterest, "interested", StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(m.InvestorInterest, "interested", StringComparison.OrdinalIgnoreCase) &&
+            m.HandshakeConfirmedAt.HasValue);
+
+        if (!hasMutualHandshake)
+        {
+            errors.Add("Phase 8 requires at least one confirmed mutual investor handshake before advancing to Phase 9.");
+        }
 
         foreach (var m in matches)
         {

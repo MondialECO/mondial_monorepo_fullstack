@@ -8,6 +8,18 @@ import {
   ChevronDown,
   Lock,
   RefreshCcw,
+  Clock,
+  Video,
+  X,
+  CheckCircle2,
+  MessageSquare,
+  Building2,
+  ExternalLink,
+  Globe,
+  Award,
+  DollarSign,
+  TrendingUp,
+  UserCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useEntrepreneurProgress } from '@/hooks/useEntrepreneurProgress';
@@ -15,7 +27,9 @@ import { StepFooter } from '@/components/entrepreneur/StepFooter';
 import entrepreneurApi, {
   InvestorMatchResponse,
   MatchingInsightsResponse,
+  PublicInvestorProfile,
   type FundingProfileResponse,
+  type AiReviewResponse,
 } from '@/lib/api-entrepreneur';
 import { Phase8Data } from '@/types/entrepreneur';
 
@@ -27,6 +41,7 @@ export default function Phase8Client() {
   const [matches, setMatches] = useState<InvestorMatchResponse[]>([]);
   const [insights, setInsights] = useState<MatchingInsightsResponse | null>(null);
   const [funding, setFunding] = useState<FundingProfileResponse | null>(null);
+  const [review, setReview] = useState<AiReviewResponse | null>(null);
   const [investorReady, setInvestorReady] = useState<boolean | null>(null);
   const [activeTab, setActiveTab] = useState('all');
   const [filterStage, setFilterStage] = useState('');
@@ -36,6 +51,23 @@ export default function Phase8Client() {
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+
+  // Meeting Scheduling State
+  const [schedulingMatch, setSchedulingMatch] = useState<InvestorMatchResponse | null>(null);
+  const [meetingDate, setMeetingDate] = useState('');
+  const [meetingTime, setMeetingTime] = useState('14:00');
+  const [meetingDuration, setMeetingDuration] = useState(30);
+  const [meetingType, setMeetingType] = useState('video');
+  const [meetingNote, setMeetingNote] = useState('');
+  const [isScheduling, setIsScheduling] = useState(false);
+
+  // Meeting Cancellation State
+  const [cancellingMatch, setCancellingMatch] = useState<InvestorMatchResponse | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
+
+  // View Investor Profile Modal State
+  const [viewingProfile, setViewingProfile] = useState<PublicInvestorProfile | null>(null);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
 
   async function resolveCompanyId(): Promise<string> {
     const existing: Phase8Data = getPhaseData<Phase8Data>(8) ?? {};
@@ -51,14 +83,16 @@ export default function Phase8Client() {
       const companyId = (getPhaseData<Phase8Data>(8) ?? {}).__companyId ?? prog.companyId;
       setInvestorReady(prog.isInvestorReady);
       if (!companyId) return;
-      const [m, i, f] = await Promise.all([
+      const [m, i, f, rev] = await Promise.all([
         entrepreneurApi.getInvestorMatches(companyId),
         entrepreneurApi.getMatchingInsights(companyId).catch(() => null),
         entrepreneurApi.getFundingProfile(companyId).catch(() => null),
+        entrepreneurApi.getAiReview(companyId).catch(() => null),
       ]);
       setMatches(m);
       setInsights(i);
       setFunding(f);
+      setReview(rev);
       const existing: Phase8Data = getPhaseData<Phase8Data>(8) ?? {};
       savePhaseData(8, {
         ...existing,
@@ -102,17 +136,79 @@ export default function Phase8Client() {
     }
   };
 
-  const handleInteraction = async (matchId: string, kind: string) => {
+  const handleScheduleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!schedulingMatch || !meetingDate) return;
     setError('');
+    setIsScheduling(true);
     try {
       const companyId = await resolveCompanyId();
-      await entrepreneurApi.recordInvestorInteraction(companyId, matchId, kind, '');
-      const existing: Phase8Data = getPhaseData<Phase8Data>(8) ?? {};
-      savePhaseData(8, { ...existing, lastInteractionAt: new Date().toISOString() });
-      await reload();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Interaction failed');
+      const startsAt = new Date(`${meetingDate}T${meetingTime}:00Z`).toISOString();
+      const updated = await entrepreneurApi.scheduleMeeting(companyId, schedulingMatch.matchId, {
+        startsAt,
+        durationMinutes: Number(meetingDuration),
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+        meetingType,
+        note: meetingNote,
+      });
+      setMatches((prev) => prev.map((m) => (m.matchId === schedulingMatch.matchId ? updated : m)));
+      setSchedulingMatch(null);
+      setMeetingNote('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to schedule meeting');
+    } finally {
+      setIsScheduling(false);
     }
+  };
+
+  const handleCancelMeetingConfirm = async () => {
+    if (!cancellingMatch) return;
+    setError('');
+    setIsCancelling(true);
+    try {
+      const companyId = await resolveCompanyId();
+      const updated = await entrepreneurApi.updateMeetingStatus(
+        companyId,
+        cancellingMatch.matchId,
+        'cancelled'
+      );
+      setMatches((prev) => prev.map((m) => (m.matchId === cancellingMatch.matchId ? updated : m)));
+      setCancellingMatch(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to cancel meeting');
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
+  const handleOpenInvestorProfile = async (investorId: string) => {
+    setIsLoadingProfile(true);
+    try {
+      const profile = await entrepreneurApi.getPublicInvestorProfile(investorId);
+      setViewingProfile(profile);
+    } catch {
+      // Fallback preview from match snapshot
+      const match = matches.find((m) => m.investorId === investorId);
+      if (match) {
+        setViewingProfile({
+          id: match.investorId,
+          name: match.investorName ?? match.investorId,
+          type: match.investorType ?? 'Investor',
+          preferredSectors: match.preferredSectors ?? [],
+          preferredStages: match.preferredRound ? [match.preferredRound] : [],
+          minCheckSize: 0,
+          maxCheckSize: 0,
+          preferredGeographies: ['European Union'],
+          thesisStatement: match.matchRationale,
+        });
+      }
+    } finally {
+      setIsLoadingProfile(false);
+    }
+  };
+
+  const handleMessageInvestor = (investorId: string, investorName?: string) => {
+    router.push(`/dashboard/entrepreneur/messages?investorId=${investorId}&name=${encodeURIComponent(investorName || '')}`);
   };
 
   const handleSubmit = async () => {
@@ -120,18 +216,16 @@ export default function Phase8Client() {
     setIsSubmitting(true);
     try {
       const companyId = await resolveCompanyId();
-      const advanceResponse = await entrepreneurApi.advancePhase(companyId, 8, {});
-      if (advanceResponse?.currentPhase !== 10) {
+      const advanceResponse = await entrepreneurApi.advancePhase(companyId, 8, {
+        matchesReviewed: matches.length,
+        hasCompletedHandshake: acceptedCount > 0,
+      });
+      if (advanceResponse?.currentPhase !== 9)
         throw new Error(
-          `Phase advancement failed - expected currentPhase=10, got ${advanceResponse?.currentPhase}`,
+          `Phase advancement failed - expected currentPhase=9, got ${advanceResponse?.currentPhase}`
         );
-      }
-      if (!advanceResponse?.completedPhases?.includes(8)) {
+      if (!advanceResponse?.completedPhases?.includes(8))
         throw new Error('Phase 8 not marked as completed in backend response');
-      }
-      if (!advanceResponse?.completedPhases?.includes(9)) {
-        throw new Error('Phase 9 not auto-completed in backend response');
-      }
       applyBackendResponse(advanceResponse);
       const existing: Phase8Data = getPhaseData<Phase8Data>(8) ?? {};
       savePhaseData(8, {
@@ -149,45 +243,46 @@ export default function Phase8Client() {
     }
   };
 
-  const canAdvance = matches.some((m) => m.matchScore >= 40);
+  // Canonical Phase 8 completion gate: requires at least one confirmed mutual handshake
+  const canAdvance = matches.some(
+    (m) =>
+      (m.status || '').toLowerCase() === 'accepted' &&
+      (m.entrepreneurInterest === 'interested' || m.status === 'accepted') &&
+      (m.investorInterest === 'interested' || m.status === 'accepted') &&
+      !!m.handshakeConfirmedAt
+  );
 
-  const interestedCount = matches.filter((m) => (m.status || '').toLowerCase() === 'interested').length;
+  const interestedCount = matches.filter(
+    (m) => (m.entrepreneurInterest || '').toLowerCase() === 'interested' && (m.status || '').toLowerCase() !== 'accepted'
+  ).length;
   const acceptedCount = matches.filter((m) => (m.status || '').toLowerCase() === 'accepted').length;
 
   // Extract unique filter values
   const stages = Array.from(new Set(matches.map((m) => m.preferredRound).filter(Boolean))) as string[];
   const types = Array.from(new Set(matches.map((m) => m.investorType).filter(Boolean))) as string[];
-  const locations = Array.from(new Set(matches.map((m) => m.investmentRange).filter(Boolean))) as string[];
+  const locations = ['France', 'United Kingdom', 'Germany', 'United States', 'European Union', 'Global'];
   const ticketSizes = Array.from(new Set(matches.map((m) => m.investmentRange).filter(Boolean))) as string[];
 
   // Apply all filters
   const visible = matches.filter((m) => {
-    // Tab filter
-    if (activeTab === 'all') {
-      // pass
-    } else if (activeTab === 'interested') {
-      if ((m.status || '').toLowerCase() !== 'interested') return false;
+    if (activeTab === 'interested') {
+      if ((m.entrepreneurInterest || '').toLowerCase() !== 'interested') return false;
     } else if (activeTab === 'accepted') {
       if ((m.status || '').toLowerCase() !== 'accepted') return false;
     }
 
-    // Stage filter
     if (filterStage && m.preferredRound !== filterStage) return false;
-
-    // Type filter
     if (filterType && m.investorType !== filterType) return false;
-
-    // Location filter (stub for now - can be enhanced with country data)
-    if (filterLocation && m.investmentRange !== filterLocation) return false;
-
-    // Ticket Size filter
+    if (filterLocation && !m.matchRationale?.toLowerCase().includes(filterLocation.toLowerCase())) return false;
     if (filterTicketSize && m.investmentRange !== filterTicketSize) return false;
 
     return true;
   });
 
+  const isStale = Boolean(review && (!review.isFresh || (review.isCurrentlyInvestorReady === false && (investorReady ?? false))));
+
   return (
-    <div className="flex-1 overflow-y-auto flex flex-col" style={{ backgroundColor: 'var(--dr-bg-page)' }}>
+    <div className="flex-1 overflow-y-auto flex flex-col gap-6" style={{ backgroundColor: 'var(--dr-bg-page)' }}>
       {/* Page Header */}
       <div className="flex items-start justify-between gap-6">
         <div className="flex flex-col gap-2">
@@ -195,67 +290,99 @@ export default function Phase8Client() {
             Investor Matching — Phase 8
           </h1>
           <p className="text-sm" style={{ color: 'var(--dr-text-secondary)' }}>
-            AI has matched your company with {insights?.totalMatches ?? 0} compatible investors.
-            Express interest to begin a conversation.
+            AI has matched your company with {insights?.totalMatches ?? matches.length} compatible investors based on verified Phase 7 readiness.
+            Express interest to initiate bilateral investor handshakes.
           </p>
         </div>
-        <span className="flex items-center gap-1.5 border border-black/8 px-3 py-1 rounded-full text-sm font-semibold shrink-0" style={{ backgroundColor: 'var(--dr-bg-green)', color: 'var(--p8-green)' }}>
-          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--p8-green)' }} />
-          AI MATCHING LIVE
-        </span>
+        <div className="flex items-center gap-3 shrink-0">
+          <Button
+            type="button"
+            onClick={handleRegenerate}
+            disabled={isRegenerating || isStale}
+            variant="outline"
+            className="gap-2 text-xs font-semibold"
+            title={isStale ? 'Re-run Phase 7 review before regenerating matches' : undefined}
+          >
+            <RefreshCcw className={`w-3.5 h-3.5 ${isRegenerating ? 'animate-spin' : ''}`} />
+            {isRegenerating ? 'Refreshing Matches…' : 'Refresh Matches'}
+          </Button>
+          <span className="flex items-center gap-1.5 border border-black/8 px-3 py-1 rounded-full text-sm font-semibold" style={{ backgroundColor: 'var(--dr-bg-green)', color: 'var(--p8-green)' }}>
+            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--p8-green)' }} />
+            AI MATCHING LIVE
+          </span>
+        </div>
       </div>
+
+      {/* Stale Readiness Warning Banner */}
+      {isStale && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <h4 className="text-sm font-bold text-amber-800 dark:text-amber-300">Investor Readiness needs refresh</h4>
+              <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                Your company information or review status has changed. Run a new AI Review before generating new matches.
+              </p>
+            </div>
+          </div>
+          <Button
+            type="button"
+            onClick={() => router.push('/dashboard/entrepreneur/phase-7')}
+            size="sm"
+            variant="outline"
+            className="border-amber-500/40 text-amber-800 dark:text-amber-300 hover:bg-amber-500/10 flex-shrink-0"
+          >
+            Refresh Investor Readiness
+          </Button>
+        </div>
+      )}
 
       {/* 4 Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* AI Matches */}
         <div className="border border-white rounded-xl px-4 py-3 flex flex-col gap-2 drop-shadow-sm" style={{ backgroundColor: 'var(--dr-bg-card)' }}>
           <span className="text-[11px] font-medium uppercase tracking-wide" style={{ color: 'var(--dr-text-muted)' }}>AI Matches</span>
           <span className="text-[24px] font-semibold leading-[32px]" style={{ color: 'var(--dr-text-primary)' }}>
-            {insights?.totalMatches ?? 0}
+            {insights?.totalMatches ?? matches.length}
           </span>
           <span className="text-[11px]" style={{ color: 'var(--dr-text-muted)' }}>Compatible investors</span>
         </div>
 
-        {/* Expressions of Interest */}
         <div className="border border-white rounded-xl px-4 py-3 flex flex-col gap-2 drop-shadow-sm" style={{ backgroundColor: 'var(--dr-bg-card)' }}>
           <span className="text-[11px] font-medium uppercase tracking-wide" style={{ color: 'var(--dr-text-muted)' }}>Expressions</span>
           <span className="text-[24px] font-semibold leading-[32px]" style={{ color: 'var(--dr-yellow)' }}>
-            {insights?.highScoreMatches ?? 0}
+            {interestedCount}
           </span>
-          <span className="text-[11px]" style={{ color: 'var(--dr-text-muted)' }}>Investors interested</span>
+          <span className="text-[11px]" style={{ color: 'var(--dr-text-muted)' }}>Pending response</span>
         </div>
 
-        {/* Handshakes Confirmed */}
         <div className="border border-white rounded-xl px-4 py-3 flex flex-col gap-2 drop-shadow-sm" style={{ backgroundColor: 'var(--dr-bg-card)' }}>
           <span className="text-[11px] font-medium uppercase tracking-wide" style={{ color: 'var(--dr-text-muted)' }}>Handshakes</span>
           <span className="text-[24px] font-semibold leading-[32px]" style={{ color: 'var(--p8-green)' }}>
             {acceptedCount}
           </span>
-          <span className="text-[11px]" style={{ color: 'var(--dr-text-muted)' }}>Meeting scheduled</span>
+          <span className="text-[11px]" style={{ color: 'var(--dr-text-muted)' }}>Bilateral agreement</span>
         </div>
 
-        {/* Profile Views */}
         <div className="border border-white rounded-xl px-4 py-3 flex flex-col gap-2 drop-shadow-sm" style={{ backgroundColor: 'var(--dr-bg-card)' }}>
           <span className="text-[11px] font-medium uppercase tracking-wide" style={{ color: 'var(--dr-text-muted)' }}>Profile Views</span>
           <span className="text-[24px] font-semibold leading-[32px]" style={{ color: 'var(--dr-primary)' }}>
             {insights?.interactionsCount ?? 0}
           </span>
-          <span className="text-[11px]" style={{ color: 'var(--dr-text-muted)' }}>Meeting scheduled</span>
+          <span className="text-[11px]" style={{ color: 'var(--dr-text-muted)' }}>Recorded touches</span>
         </div>
       </div>
 
       {/* Funding Ask Info Bar */}
       <div className="border border-white rounded-lg px-4 py-3.5 flex justify-between items-center" style={{ backgroundColor: 'var(--dr-bg-card)' }}>
-        <div className="flex items-center gap-3 h-full">
+        <div className="flex items-center gap-3 h-full flex-wrap">
           <span className="text-xs font-semibold" style={{ color: 'var(--p8-green)' }}>Your funding ask is live</span>
           <div className="w-px h-full bg-black/8" />
-          <span className="text-xs font-medium" style={{ color: 'var(--dr-text-primary)' }}>{funding?.fundingRoundType ?? '—'}</span>
+          <span className="text-xs font-medium" style={{ color: 'var(--dr-text-primary)' }}>{funding?.fundingRoundType ?? 'Seed'}</span>
           <div className="w-px h-full bg-black/8" />
-          <span className="text-xs font-medium" style={{ color: 'var(--dr-text-primary)' }}>${funding?.fundingAskAmount?.toLocaleString() ?? '—'}</span>
+          <span className="text-xs font-medium" style={{ color: 'var(--dr-text-primary)' }}>EUR {funding?.fundingAskAmount?.toLocaleString() ?? '—'}</span>
           <div className="w-px h-full bg-black/8" />
           <span className="text-xs font-medium" style={{ color: 'var(--dr-text-primary)' }}>
-            {funding?.equityOfferedPercent ?? '—'}%{' '}
-            <span className="text-[11px]" style={{ color: 'var(--dr-text-secondary)' }}>equity</span>
+            {funding?.equityOfferedPercent ?? '—'}% <span className="text-[11px]" style={{ color: 'var(--dr-text-secondary)' }}>equity</span>
           </span>
           {investorReady && (
             <>
@@ -268,7 +395,8 @@ export default function Phase8Client() {
         </div>
         <button
           onClick={() => router.push('/dashboard/entrepreneur/phase-5')}
-          className="bg-white border border-black/8 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors" style={{ color: 'var(--dr-text-secondary)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--dr-bg-card)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+          className="bg-white border border-black/8 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-muted"
+          style={{ color: 'var(--dr-text-secondary)' }}
         >
           Edit Ask
         </button>
@@ -278,7 +406,7 @@ export default function Phase8Client() {
       <div className="border-b-2 border-black/8 flex gap-6 overflow-x-auto" role="tablist">
         {[
           { key: 'all', label: `All Matches (${matches.length})` },
-          { key: 'interested', label: `Interested in you (${interestedCount})` },
+          { key: 'interested', label: `Expressed Interest (${interestedCount})` },
           { key: 'accepted', label: `Handshakes (${acceptedCount})` },
         ].map((tab) => (
           <button
@@ -291,8 +419,6 @@ export default function Phase8Client() {
               borderColor: activeTab === tab.key ? 'var(--dr-primary)' : 'transparent',
               color: activeTab === tab.key ? 'var(--dr-primary)' : 'var(--dr-text-muted)',
             }}
-            onMouseEnter={(e) => { if (activeTab !== tab.key) e.currentTarget.style.color = 'var(--dr-primary)'; }}
-            onMouseLeave={(e) => { if (activeTab !== tab.key) e.currentTarget.style.color = 'var(--dr-text-muted)'; }}
           >
             {tab.label}
           </button>
@@ -300,143 +426,74 @@ export default function Phase8Client() {
       </div>
 
       {/* Filter Dropdowns */}
-      <div className="flex gap-3 flex-wrap">
+      <div className="flex gap-3 flex-wrap items-center">
         {/* Stage Filter */}
         <div className="relative group">
-          <button className="bg-white border border-black/8 px-4 py-2.5 rounded-full text-sm font-medium flex items-center gap-2 hover:border-black/12 transition-colors" style={{ color: 'var(--dr-text-secondary)' }}>
-            Stage
-            <ChevronDown className="w-4 h-4" />
+          <button className="bg-white border border-black/8 px-4 py-2 rounded-full text-xs font-medium flex items-center gap-2 hover:border-black/12 transition-colors" style={{ color: 'var(--dr-text-secondary)' }}>
+            Stage {filterStage ? `: ${filterStage}` : ''}
+            <ChevronDown className="w-3.5 h-3.5" />
           </button>
           <div className="absolute top-full left-0 mt-2 w-48 bg-white border border-black/8 rounded-lg shadow-lg p-2 z-10 hidden group-hover:block">
-            <button
-              onClick={() => setFilterStage('')}
-              style={{
-                backgroundColor: filterStage === '' ? 'var(--dr-bg-blue)' : 'transparent',
-                color: filterStage === '' ? 'var(--dr-primary)' : 'var(--dr-text-primary)',
-                fontWeight: filterStage === '' ? '500' : 'normal',
-                cursor: 'pointer',
-              }}
-              onMouseEnter={(e) => { if (filterStage !== '') e.currentTarget.style.backgroundColor = 'var(--dr-bg-card)'; }}
-              onMouseLeave={(e) => { if (filterStage !== '') e.currentTarget.style.backgroundColor = 'transparent'; }}
-              className="block w-full text-left px-3 py-2 text-sm rounded-md transition-colors"
-            >
-              All Stages
-            </button>
-            {stages.map((stage) => (
-              <button
-                key={stage}
-                onClick={() => setFilterStage(stage)}
-                style={{
-                  backgroundColor: filterStage === stage ? 'var(--dr-bg-blue)' : 'transparent',
-                  color: filterStage === stage ? 'var(--dr-primary)' : 'var(--dr-text-primary)',
-                  fontWeight: filterStage === stage ? '500' : 'normal',
-                  cursor: 'pointer',
-                }}
-                onMouseEnter={(e) => { if (filterStage !== stage) e.currentTarget.style.backgroundColor = 'var(--dr-bg-card)'; }}
-                onMouseLeave={(e) => { if (filterStage !== stage) e.currentTarget.style.backgroundColor = 'transparent'; }}
-                className="block w-full text-left px-3 py-2 text-sm rounded-md transition-colors"
-              >
-                {stage}
-              </button>
+            <button onClick={() => setFilterStage('')} className="block w-full text-left px-3 py-1.5 text-xs rounded hover:bg-muted">All Stages</button>
+            {stages.map((st) => (
+              <button key={st} onClick={() => setFilterStage(st)} className="block w-full text-left px-3 py-1.5 text-xs rounded hover:bg-muted">{st}</button>
             ))}
           </div>
         </div>
 
         {/* Investor Type Filter */}
         <div className="relative group">
-          <button className="bg-white border border-black/8 px-4 py-2.5 rounded-full text-sm font-medium flex items-center gap-2 hover:border-black/12 transition-colors" style={{ color: 'var(--dr-text-secondary)' }}>
-            VC/Angel
-            <ChevronDown className="w-4 h-4" />
+          <button className="bg-white border border-black/8 px-4 py-2 rounded-full text-xs font-medium flex items-center gap-2 hover:border-black/12 transition-colors" style={{ color: 'var(--dr-text-secondary)' }}>
+            Type {filterType ? `: ${filterType}` : ''}
+            <ChevronDown className="w-3.5 h-3.5" />
           </button>
           <div className="absolute top-full left-0 mt-2 w-48 bg-white border border-black/8 rounded-lg shadow-lg p-2 z-10 hidden group-hover:block">
-            <button
-              onClick={() => setFilterType('')}
-              style={{
-                backgroundColor: filterType === '' ? 'var(--dr-bg-blue)' : 'transparent',
-                color: filterType === '' ? 'var(--dr-primary)' : 'var(--dr-text-primary)',
-                fontWeight: filterType === '' ? '500' : 'normal',
-                cursor: 'pointer',
-              }}
-              onMouseEnter={(e) => { if (filterType !== '') e.currentTarget.style.backgroundColor = 'var(--dr-bg-card)'; }}
-              onMouseLeave={(e) => { if (filterType !== '') e.currentTarget.style.backgroundColor = 'transparent'; }}
-              className="block w-full text-left px-3 py-2 text-sm rounded-md transition-colors"
-            >
-              All Types
-            </button>
-            {types.map((type) => (
-              <button
-                key={type}
-                onClick={() => setFilterType(type)}
-                style={{
-                  backgroundColor: filterType === type ? 'var(--dr-bg-blue)' : 'transparent',
-                  color: filterType === type ? 'var(--dr-primary)' : 'var(--dr-text-primary)',
-                  fontWeight: filterType === type ? '500' : 'normal',
-                  cursor: 'pointer',
-                }}
-                onMouseEnter={(e) => { if (filterType !== type) e.currentTarget.style.backgroundColor = 'var(--dr-bg-card)'; }}
-                onMouseLeave={(e) => { if (filterType !== type) e.currentTarget.style.backgroundColor = 'transparent'; }}
-                className="block w-full text-left px-3 py-2 text-sm rounded-md transition-colors"
-              >
-                {type}
-              </button>
+            <button onClick={() => setFilterType('')} className="block w-full text-left px-3 py-1.5 text-xs rounded hover:bg-muted">All Types</button>
+            {types.map((tp) => (
+              <button key={tp} onClick={() => setFilterType(tp)} className="block w-full text-left px-3 py-1.5 text-xs rounded hover:bg-muted">{tp}</button>
             ))}
           </div>
         </div>
 
-        {/* Location Filter (Stub) */}
+        {/* Location Filter */}
         <div className="relative group">
-          <button className="bg-white border border-black/8 px-4 py-2.5 rounded-full text-sm font-medium flex items-center gap-2 hover:border-black/12 transition-colors" style={{ color: 'var(--dr-text-secondary)' }}>
-            Location
-            <ChevronDown className="w-4 h-4" />
+          <button className="bg-white border border-black/8 px-4 py-2 rounded-full text-xs font-medium flex items-center gap-2 hover:border-black/12 transition-colors" style={{ color: 'var(--dr-text-secondary)' }}>
+            Location {filterLocation ? `: ${filterLocation}` : ''}
+            <ChevronDown className="w-3.5 h-3.5" />
           </button>
           <div className="absolute top-full left-0 mt-2 w-48 bg-white border border-black/8 rounded-lg shadow-lg p-2 z-10 hidden group-hover:block">
-            <div className="px-3 py-2 text-xs" style={{ color: 'var(--dr-text-secondary)' }}>Coming soon</div>
+            <button onClick={() => setFilterLocation('')} className="block w-full text-left px-3 py-1.5 text-xs rounded hover:bg-muted">All Locations</button>
+            {locations.map((loc) => (
+              <button key={loc} onClick={() => setFilterLocation(loc)} className="block w-full text-left px-3 py-1.5 text-xs rounded hover:bg-muted">{loc}</button>
+            ))}
           </div>
         </div>
 
         {/* Ticket Size Filter */}
         <div className="relative group">
-          <button className="bg-white border border-black/8 px-4 py-2.5 rounded-full text-sm font-medium flex items-center gap-2 hover:border-black/12 transition-colors" style={{ color: 'var(--dr-text-secondary)' }}>
-            Ticket Size
-            <ChevronDown className="w-4 h-4" />
+          <button className="bg-white border border-black/8 px-4 py-2 rounded-full text-xs font-medium flex items-center gap-2 hover:border-black/12 transition-colors" style={{ color: 'var(--dr-text-secondary)' }}>
+            Ticket Size {filterTicketSize ? `: ${filterTicketSize}` : ''}
+            <ChevronDown className="w-3.5 h-3.5" />
           </button>
           <div className="absolute top-full left-0 mt-2 w-48 bg-white border border-black/8 rounded-lg shadow-lg p-2 z-10 hidden group-hover:block">
-            <button
-              onClick={() => setFilterTicketSize('')}
-              style={{
-                backgroundColor: filterTicketSize === '' ? 'var(--dr-bg-blue)' : 'transparent',
-                color: filterTicketSize === '' ? 'var(--dr-primary)' : 'var(--dr-text-primary)',
-                fontWeight: filterTicketSize === '' ? '500' : 'normal',
-                cursor: 'pointer',
-              }}
-              onMouseEnter={(e) => { if (filterTicketSize !== '') e.currentTarget.style.backgroundColor = 'var(--dr-bg-card)'; }}
-              onMouseLeave={(e) => { if (filterTicketSize !== '') e.currentTarget.style.backgroundColor = 'transparent'; }}
-              className="block w-full text-left px-3 py-2 text-sm rounded-md transition-colors"
-            >
-              All Sizes
-            </button>
-            {ticketSizes.map((size) => (
-              <button
-                key={size}
-                onClick={() => setFilterTicketSize(size)}
-                style={{
-                  backgroundColor: filterTicketSize === size ? 'var(--dr-bg-blue)' : 'transparent',
-                  color: filterTicketSize === size ? 'var(--dr-primary)' : 'var(--dr-text-primary)',
-                  fontWeight: filterTicketSize === size ? '500' : 'normal',
-                  cursor: 'pointer',
-                }}
-                onMouseEnter={(e) => { if (filterTicketSize !== size) e.currentTarget.style.backgroundColor = 'var(--dr-bg-card)'; }}
-                onMouseLeave={(e) => { if (filterTicketSize !== size) e.currentTarget.style.backgroundColor = 'transparent'; }}
-                className="block w-full text-left px-3 py-2 text-sm rounded-md transition-colors"
-              >
-                {size}
-              </button>
+            <button onClick={() => setFilterTicketSize('')} className="block w-full text-left px-3 py-1.5 text-xs rounded hover:bg-muted">All Sizes</button>
+            {ticketSizes.map((sz) => (
+              <button key={sz} onClick={() => setFilterTicketSize(sz)} className="block w-full text-left px-3 py-1.5 text-xs rounded hover:bg-muted">{sz}</button>
             ))}
           </div>
         </div>
+
+        {(filterStage || filterType || filterLocation || filterTicketSize) && (
+          <button
+            onClick={() => { setFilterStage(''); setFilterType(''); setFilterLocation(''); setFilterTicketSize(''); }}
+            className="text-xs text-muted-foreground hover:underline ml-2"
+          >
+            Clear Filters
+          </button>
+        )}
       </div>
 
-      {/* Match Cards Grid (Responsive) */}
+      {/* Match Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {matches.length === 0 ? (
           <div className="col-span-2 border border-dashed border-black/8 rounded-2xl bg-white p-12 text-sm text-center" style={{ color: 'var(--dr-text-secondary)' }}>
@@ -448,85 +505,243 @@ export default function Phase8Client() {
           </div>
         ) : visible.length === 0 ? (
           <div className="col-span-2 text-sm text-center py-8" style={{ color: 'var(--dr-text-secondary)' }}>
-            No matches in this view.
+            No matches matching the selected filters.
           </div>
         ) : (
           visible.map((m) => {
-            const isHandshake = m.status === 'accepted';
+            const isHandshake = (m.status || '').toLowerCase() === 'accepted';
+            const isMeetingActive = m.scheduledMeeting && m.scheduledMeeting.status !== 'cancelled';
+            const isMeetingCancelled = m.scheduledMeeting && m.scheduledMeeting.status === 'cancelled';
+            const isEntrepreneurInterestedOnly = !isHandshake && (m.entrepreneurInterest || '').toLowerCase() === 'interested';
+            const isInvestorInterestedFirst = !isHandshake && (m.investorInterest || '').toLowerCase() === 'interested' && (m.entrepreneurInterest || '').toLowerCase() !== 'interested';
+
             return (
               <div
                 key={m.matchId}
-                className="relative border border-white rounded-[20px] p-5 flex flex-col gap-6 overflow-hidden shadow-[−2px_−1px_17px_rgba(0,0,0,0.02),1px_2px_3px_rgba(0,0,0,0.04)]" style={{ backgroundColor: 'var(--dr-bg-card)' }}
+                data-testid={`match-card-${m.matchId}`}
+                className="relative border border-white rounded-[20px] p-5 flex flex-col gap-5 overflow-hidden shadow-sm"
+                style={{ backgroundColor: 'var(--dr-bg-card)' }}
               >
                 {/* Status Badge */}
                 <span
                   className="absolute top-0 right-0 rounded-bl-2xl px-3 py-1 text-[11px] font-medium border border-black/8"
                   style={{
-                    backgroundColor: isHandshake ? 'var(--dr-bg-green)' : 'var(--dr-bg-blue)',
-                    color: isHandshake ? 'var(--p8-green)' : 'var(--dr-primary)',
+                    backgroundColor: isHandshake
+                      ? 'var(--dr-bg-green)'
+                      : isInvestorInterestedFirst
+                      ? 'rgba(124, 58, 237, 0.1)'
+                      : isEntrepreneurInterestedOnly
+                      ? 'var(--dr-bg-yellow)'
+                      : 'var(--dr-bg-blue)',
+                    color: isHandshake
+                      ? 'var(--p8-green)'
+                      : isInvestorInterestedFirst
+                      ? '#7c3aed'
+                      : isEntrepreneurInterestedOnly
+                      ? 'var(--dr-yellow)'
+                      : 'var(--dr-primary)',
                   }}
                 >
-                  {isHandshake ? 'HANDSHAKE CONFIRM' : 'ACTION REQUIRED'}
+                  {isHandshake
+                    ? 'MUTUAL HANDSHAKE'
+                    : isInvestorInterestedFirst
+                    ? 'INVESTOR INTERESTED'
+                    : isEntrepreneurInterestedOnly
+                    ? 'EXPRESSED INTEREST'
+                    : 'ACTION REQUIRED'}
                 </span>
 
                 {/* Card Header */}
                 <div className="flex items-center justify-between pt-1">
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold" style={{ color: 'var(--dr-text-primary)' }}>{m.investorName ?? m.investorId}</p>
+                    <p className="text-sm font-semibold" style={{ color: 'var(--dr-text-primary)' }}>
+                      {m.investorName ?? m.investorId}
+                    </p>
                     <p className="text-xs mt-0.5" style={{ color: 'var(--dr-text-secondary)' }}>
                       {m.investorType ?? '—'}
                       {m.preferredRound ? ` · ${m.preferredRound}` : ''}
+                      {m.investmentRange ? ` · ${m.investmentRange}` : ''}
                     </p>
                   </div>
                   <div className="text-right shrink-0 ml-4">
                     <span className="text-[20px] font-semibold" style={{ color: isHandshake ? 'var(--p8-green)' : 'var(--dr-primary)' }}>
                       {m.matchScore}%
                     </span>
-                    <span className="text-xs font-medium ml-1" style={{ color: 'var(--dr-text-secondary)' }}>Match</span>
+                    <span className="text-xs font-medium ml-1" style={{ color: 'var(--dr-text-secondary)' }}>Fit</span>
                   </div>
                 </div>
 
-                {/* Description */}
-                <div className="border-b border-black/8 pb-6 flex flex-col gap-3">
-                  <p className="text-sm leading-5" style={{ color: 'var(--dr-text-secondary)' }}>{m.matchRationale || 'Match rationale'}</p>
+                {/* Description & Sectors */}
+                <div className="border-b border-black/8 pb-4 flex flex-col gap-3">
+                  <p className="text-xs leading-5 text-muted-foreground">
+                    {m.matchRationale || 'Qualified investor match based on industry and stage parameters.'}
+                  </p>
                   <div className="flex gap-2 flex-wrap">
-                    {m.preferredSectors.slice(0, 2).map((s) => (
-                      <span key={s} className="bg-white border border-black/8 px-3 py-1 rounded-lg text-xs" style={{ color: 'var(--dr-text-primary)' }}>
+                    {m.preferredSectors.slice(0, 3).map((s) => (
+                      <span key={s} className="bg-white border border-black/8 px-2.5 py-1 rounded-lg text-xs" style={{ color: 'var(--dr-text-primary)' }}>
                         {s}
                       </span>
                     ))}
                   </div>
                 </div>
 
-                {/* Footer */}
-                {isHandshake ? (
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
-                      <Calendar className="w-4 h-4" style={{ color: 'var(--p8-green)' }} />
-                      <span className="text-xs font-medium" style={{ color: 'var(--p8-green)' }}>
-                        Meeting {m.acceptedAt ? new Date(m.acceptedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) + ', 14:00 CET' : 'Scheduled'}
-                      </span>
+                {/* Incoming Interest Banner (State 3) */}
+                {isInvestorInterestedFirst && (
+                  <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-3 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <UserCheck className="w-4 h-4 text-purple-600" />
+                      <p className="text-xs font-medium text-purple-800 dark:text-purple-300">
+                        {m.investorName ?? 'Investor'} is interested in connecting with you.
+                      </p>
                     </div>
-                    <button className="text-white text-xs px-4 py-2 rounded-full font-medium transition-colors" style={{ backgroundColor: 'var(--p8-green)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--p8-green-dark)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--p8-green)'}>
-                      Prepare
+                  </div>
+                )}
+
+                {/* Footer Actions / Meeting Card */}
+                {isHandshake ? (
+                  <div className="space-y-3">
+                    {isMeetingActive ? (
+                      <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Video className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                          <div className="text-xs">
+                            <p className="font-bold text-emerald-800 dark:text-emerald-300">
+                              Meeting Confirmed: {new Date(m.scheduledMeeting!.startsAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} ({m.scheduledMeeting!.durationMinutes} min)
+                            </p>
+                            <p className="text-[11px] text-emerald-700/80 dark:text-emerald-400/80">
+                              Format: {m.scheduledMeeting!.meetingType}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleMessageInvestor(m.investorId, m.investorName)}
+                            className="text-xs font-semibold text-primary underline hover:no-underline flex items-center gap-1"
+                          >
+                            <MessageSquare className="w-3.5 h-3.5" />
+                            Message
+                          </button>
+                          <button
+                            onClick={() => {
+                              setMeetingDate(m.scheduledMeeting!.startsAt.slice(0, 10));
+                              setMeetingTime(m.scheduledMeeting!.startsAt.slice(11, 16) || '14:00');
+                              setMeetingDuration(m.scheduledMeeting!.durationMinutes || 30);
+                              setMeetingType(m.scheduledMeeting!.meetingType || 'video');
+                              setMeetingNote(m.scheduledMeeting!.note || '');
+                              setSchedulingMatch(m);
+                            }}
+                            className="text-xs font-semibold text-emerald-700 underline hover:no-underline"
+                          >
+                            Reschedule
+                          </button>
+                          <button
+                            onClick={() => setCancellingMatch(m)}
+                            className="text-xs font-semibold text-destructive underline hover:no-underline ml-1"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : isMeetingCancelled ? (
+                      <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 flex items-center justify-between">
+                        <div className="text-xs">
+                          <p className="font-bold text-amber-800 dark:text-amber-300">Meeting Cancelled</p>
+                          <p className="text-[11px] text-amber-700/80">Handshake remains active</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleMessageInvestor(m.investorId, m.investorName)}
+                            className="border text-xs px-3 py-1.5 rounded-full font-medium transition-colors flex items-center gap-1.5"
+                            style={{ borderColor: 'var(--dr-primary)', color: 'var(--dr-primary)' }}
+                          >
+                            <MessageSquare className="w-3.5 h-3.5" />
+                            Message Investor
+                          </button>
+                          <button
+                            onClick={() => {
+                              setMeetingDate('');
+                              setMeetingTime('14:00');
+                              setMeetingDuration(30);
+                              setMeetingType('video');
+                              setMeetingNote('');
+                              setSchedulingMatch(m);
+                            }}
+                            className="text-white text-xs px-3 py-1.5 rounded-full font-medium transition-colors shadow-sm flex items-center gap-1.5"
+                            style={{ backgroundColor: 'var(--p8-green)' }}
+                          >
+                            <Calendar className="w-3.5 h-3.5" />
+                            Schedule New Meeting
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <div className="flex items-center gap-1.5">
+                          <CheckCircle2 className="w-4 h-4" style={{ color: 'var(--p8-green)' }} />
+                          <span className="text-xs font-medium" style={{ color: 'var(--p8-green)' }}>
+                            Handshake Confirmed
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleMessageInvestor(m.investorId, m.investorName)}
+                            className="border text-xs px-3.5 py-1.5 rounded-full font-medium transition-colors flex items-center gap-1.5"
+                            style={{ borderColor: 'var(--dr-primary)', color: 'var(--dr-primary)' }}
+                          >
+                            <MessageSquare className="w-3.5 h-3.5" />
+                            Message Investor
+                          </button>
+                          <button
+                            onClick={() => {
+                              setMeetingDate('');
+                              setMeetingTime('14:00');
+                              setMeetingDuration(30);
+                              setMeetingType('video');
+                              setMeetingNote('');
+                              setSchedulingMatch(m);
+                            }}
+                            className="text-white text-xs px-4 py-2 rounded-full font-medium transition-colors flex items-center gap-1.5 shadow-sm"
+                            style={{ backgroundColor: 'var(--p8-green)' }}
+                          >
+                            <Calendar className="w-3.5 h-3.5" />
+                            Schedule Meeting
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : isEntrepreneurInterestedOnly ? (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-3.5 h-3.5 text-amber-600" />
+                      <span className="text-xs font-medium text-amber-700 dark:text-amber-300">Waiting for investor response</span>
+                    </div>
+                    <button
+                      onClick={() => handleOpenInvestorProfile(m.investorId)}
+                      className="border text-xs px-3.5 py-1.5 rounded-full font-medium transition-colors"
+                      style={{ borderColor: 'var(--dr-primary)', color: 'var(--dr-primary)' }}
+                    >
+                      View Investor
                     </button>
                   </div>
                 ) : (
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Lock className="w-4 h-4" style={{ color: 'var(--dr-primary)' }} />
-                      <span className="text-xs font-medium" style={{ color: 'var(--dr-primary)' }}>Data Room Access</span>
+                    <div className="flex items-center gap-2">
+                      <Lock className="w-3.5 h-3.5 text-muted-foreground" />
+                      <span className="text-xs font-medium text-muted-foreground">Standard Access</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => handleStatusUpdate(m.matchId, 'viewed')}
-                        className="border text-xs px-4 py-2 rounded-full font-medium transition-colors" style={{ borderColor: 'var(--dr-primary)', color: 'var(--dr-primary)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--dr-bg-blue)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        onClick={() => handleOpenInvestorProfile(m.investorId)}
+                        className="border text-xs px-3.5 py-1.5 rounded-full font-medium transition-colors"
+                        style={{ borderColor: 'var(--dr-primary)', color: 'var(--dr-primary)' }}
                       >
-                        View Profile
+                        View Investor
                       </button>
                       <button
                         onClick={() => handleStatusUpdate(m.matchId, 'interested')}
-                        className="text-white text-xs px-4 py-2 rounded-full font-medium transition-colors" style={{ backgroundColor: 'var(--dr-primary)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--p8-blue-dark)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--dr-primary)'}
+                        className="text-white text-xs px-4 py-1.5 rounded-full font-medium transition-colors shadow-sm"
+                        style={{ backgroundColor: 'var(--dr-primary)' }}
                       >
                         Express Interest
                       </button>
@@ -539,8 +754,205 @@ export default function Phase8Client() {
         )}
       </div>
 
+      {/* Scheduling Modal */}
+      {schedulingMatch && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md shadow-xl space-y-4">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div>
+                <h3 className="text-base font-bold text-foreground">Schedule Investor Meeting</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">{schedulingMatch.investorName ?? schedulingMatch.investorId}</p>
+              </div>
+              <button onClick={() => setSchedulingMatch(null)} className="text-muted-foreground hover:text-foreground">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleScheduleSubmit} className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label htmlFor="meeting-date" className="text-xs font-semibold text-foreground">Date</label>
+                  <input
+                    id="meeting-date"
+                    type="date"
+                    required
+                    value={meetingDate}
+                    onChange={(e) => setMeetingDate(e.target.value)}
+                    className="w-full text-xs p-2 rounded-lg border border-border bg-background"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label htmlFor="meeting-time" className="text-xs font-semibold text-foreground">Time</label>
+                  <input
+                    id="meeting-time"
+                    type="time"
+                    required
+                    value={meetingTime}
+                    onChange={(e) => setMeetingTime(e.target.value)}
+                    className="w-full text-xs p-2 rounded-lg border border-border bg-background"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label htmlFor="meeting-duration" className="text-xs font-semibold text-foreground">Duration</label>
+                  <select
+                    id="meeting-duration"
+                    value={meetingDuration}
+                    onChange={(e) => setMeetingDuration(Number(e.target.value))}
+                    className="w-full text-xs p-2 rounded-lg border border-border bg-background"
+                  >
+                    <option value={30}>30 minutes</option>
+                    <option value={45}>45 minutes</option>
+                    <option value={60}>60 minutes</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label htmlFor="meeting-type" className="text-xs font-semibold text-foreground">Meeting Format</label>
+                  <select
+                    id="meeting-type"
+                    value={meetingType}
+                    onChange={(e) => setMeetingType(e.target.value)}
+                    className="w-full text-xs p-2 rounded-lg border border-border bg-background"
+                  >
+                    <option value="video">Video Call (Google Meet)</option>
+                    <option value="call">Phone Call</option>
+                    <option value="in_person">In Person</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label htmlFor="meeting-note" className="text-xs font-semibold text-foreground">Agenda / Notes</label>
+                <textarea
+                  id="meeting-note"
+                  rows={3}
+                  value={meetingNote}
+                  onChange={(e) => setMeetingNote(e.target.value)}
+                  placeholder="Share discussion topics (e.g. Q3 traction, funding round tranches)..."
+                  className="w-full text-xs p-2 rounded-lg border border-border bg-background"
+                />
+              </div>
+
+              <div className="flex gap-2 justify-end pt-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => setSchedulingMatch(null)}>
+                  Cancel
+                </Button>
+                <Button type="submit" size="sm" disabled={isScheduling}>
+                  {isScheduling ? 'Scheduling...' : 'Confirm Meeting'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Cancel Meeting Confirmation Dialog */}
+      {cancellingMatch && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-sm shadow-xl space-y-4 text-center">
+            <div className="w-12 h-12 rounded-full bg-destructive/10 text-destructive flex items-center justify-center mx-auto">
+              <AlertCircle className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-foreground">Cancel Meeting?</h3>
+              <p className="text-xs text-muted-foreground mt-1">
+                This meeting with {cancellingMatch.investorName ?? 'the investor'} will be marked as cancelled for both participants. Your mutual handshake will remain active.
+              </p>
+            </div>
+            <div className="flex gap-2 justify-center pt-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => setCancellingMatch(null)}>
+                Keep Meeting
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                disabled={isCancelling}
+                onClick={handleCancelMeetingConfirm}
+              >
+                {isCancelling ? 'Cancelling...' : 'Cancel Meeting'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Public Investor Profile Modal */}
+      {viewingProfile && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-lg shadow-xl space-y-5 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-start justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold text-sm">
+                  {viewingProfile.name.slice(0, 2).toUpperCase()}
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-foreground">{viewingProfile.name}</h3>
+                  <p className="text-xs text-muted-foreground">{viewingProfile.type} · {viewingProfile.preferredGeographies?.join(', ') || 'Global'}</p>
+                </div>
+              </div>
+              <button onClick={() => setViewingProfile(null)} className="text-muted-foreground hover:text-foreground">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {viewingProfile.headline && (
+              <p className="text-xs italic text-muted-foreground font-medium">{viewingProfile.headline}</p>
+            )}
+
+            {viewingProfile.thesisStatement && (
+              <div className="bg-muted/50 rounded-xl p-3 space-y-1">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Investment Thesis</span>
+                <p className="text-xs text-foreground leading-relaxed">{viewingProfile.thesisStatement}</p>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div className="border border-border rounded-xl p-3 space-y-1">
+                <span className="text-[11px] text-muted-foreground">Preferred Stages</span>
+                <p className="font-semibold text-foreground">{viewingProfile.preferredStages?.join(', ') || 'All stages'}</p>
+              </div>
+              <div className="border border-border rounded-xl p-3 space-y-1">
+                <span className="text-[11px] text-muted-foreground">Target Check Size</span>
+                <p className="font-semibold text-foreground">
+                  {viewingProfile.maxCheckSize > 0
+                    ? `EUR ${viewingProfile.minCheckSize.toLocaleString()} - ${viewingProfile.maxCheckSize.toLocaleString()}`
+                    : 'Flexible'}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Focus Sectors</span>
+              <div className="flex flex-wrap gap-1.5">
+                {viewingProfile.preferredSectors?.map((s) => (
+                  <span key={s} className="bg-muted text-foreground text-xs px-2.5 py-1 rounded-lg">
+                    {s}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {viewingProfile.bio && (
+              <div className="space-y-1">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">About</span>
+                <p className="text-xs text-muted-foreground leading-relaxed">{viewingProfile.bio}</p>
+              </div>
+            )}
+
+            <div className="flex justify-end pt-2">
+              <Button type="button" size="sm" onClick={() => setViewingProfile(null)}>
+                Close Profile
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {error && (
-        <div className="border rounded-xl p-4 flex gap-3 items-start text-sm" style={{ backgroundColor: 'rgb(254, 226, 226)', borderColor: 'rgb(252, 165, 165)', color: 'rgb(220, 38, 38)' }} role="alert">
+        <div className="border rounded-xl p-4 flex gap-3 items-start text-sm bg-destructive/10 border-destructive/30 text-destructive" role="alert">
           <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" aria-hidden="true" />
           {error}
         </div>
@@ -552,7 +964,7 @@ export default function Phase8Client() {
           onNextClick={handleSubmit}
           isLoading={isSubmitting}
           nextLabel="Submit &amp; Complete Phase 8"
-          nextValidationError={error}
+          nextValidationError={error || (canAdvance ? undefined : 'Complete a mutual investor handshake before continuing to Investor Deals.')}
           isNextDisabled={!canAdvance}
         />
       )}

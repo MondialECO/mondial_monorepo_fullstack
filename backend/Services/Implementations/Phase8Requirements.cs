@@ -16,11 +16,10 @@ public static class Phase8Requirements
     public const int MinPersistedMatches = 1;
 
     /// <summary>
-    /// Threshold a match score must clear to be persisted as a match candidate
-    /// (filter at the matcher write path) AND to count toward the validator's
-    /// "at least one high-quality match" requirement.
+    /// Advisory benchmark used only for reporting high-fit matches in analytics/insights.
+    /// Does NOT gate match persistence, candidate availability, double opt-in, or phase progression.
     /// </summary>
-    public const int MinScoreToCount = 40;
+    public const int AdvisoryHighFitThreshold = 70;
 
     public static readonly IReadOnlyList<string> AllowedInteractionTypes = new[]
     {

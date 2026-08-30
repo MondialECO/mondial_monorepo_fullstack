@@ -1,3 +1,5 @@
+using WebApp.Models.DatabaseModels;
+
 namespace WebApp.Models.Dtos;
 
 // ============ PHASE 1: IDENTITY & ONBOARDING ============
@@ -310,9 +312,33 @@ public class AiReviewResponse
     public int OverallScore { get; set; }
     public ScoreBreakdownDto ScoreBreakdown { get; set; }
     public bool InvestorReadyBadge { get; set; }
-    public List<RecommendationDto> Recommendations { get; set; }
+    public bool IsInvestorReady { get; set; }
+    public DateTime? InvestorReadyBadgeAwardedAt { get; set; }
+    public List<RecommendationDto> Recommendations { get; set; } = new();
     public PitchDeckAnalysisDto PitchDeckAnalysis { get; set; }
     public DateTime ReviewedAt { get; set; }
+
+    // Qualitative intelligence layer
+    public string ExecutiveSummary { get; set; } = string.Empty;
+    public List<string> Strengths { get; set; } = new();
+    public List<string> Weaknesses { get; set; } = new();
+    public List<ExpertRiskItem> Risks { get; set; } = new();
+    public List<CrossModuleInconsistency> Inconsistencies { get; set; } = new();
+    public List<MissingItemGap> MissingItems { get; set; } = new();
+    public List<PitchRefinementItem> PitchRecommendations { get; set; } = new();
+    public List<ActionRemediationItem> ActionItems { get; set; } = new();
+    public bool PitchDeckContentAvailable { get; set; }
+    public bool IsFresh { get; set; } = true;
+    public bool IsCurrentlyInvestorReady { get; set; }
+    public DateTime? DataRoomLastMaterialChangeAt { get; set; }
+    public DateTime? InvestorReadinessInputsLastMaterialChangeAt { get; set; }
+}
+
+public class AwardInvestorReadyBadgeResponse
+{
+    public bool IsInvestorReady { get; set; }
+    public bool BadgeAwarded { get; set; }
+    public DateTime? IssuedAt { get; set; }
 }
 
 public class ScoreBreakdownDto
@@ -356,6 +382,10 @@ public class InvestorMatchResponse
     public string InvestmentRange { get; set; }
     public List<string> PreferredSectors { get; set; } = new();
     public string Status { get; set; }
+    public string EntrepreneurInterest { get; set; } = "new";
+    public string InvestorInterest { get; set; } = "new";
+    public DateTime? HandshakeConfirmedAt { get; set; }
+    public InvestorMeetingRecord? ScheduledMeeting { get; set; }
     public string MatchRationale { get; set; }
     public string EngineVersion { get; set; }
     public DateTime? MatchedAt { get; set; }
@@ -376,6 +406,21 @@ public class UpdateMatchStatusRequest
     public string Status { get; set; } // saved | accepted | rejected | viewed | new | passed | interested | reviewing | matched
 }
 
+public class ScheduleMeetingDto
+{
+    public DateTime StartsAt { get; set; }
+    public int DurationMinutes { get; set; } = 30;
+    public string Timezone { get; set; } = "UTC";
+    public string MeetingType { get; set; } = "video"; // video | call | in_person
+    public string Note { get; set; } = string.Empty;
+}
+
+public class UpdateMeetingStatusDto
+{
+    public string Status { get; set; } // confirmed | cancelled | rescheduled
+}
+
+
 public class MatchingInsightsResponse
 {
     public int TotalMatches { get; set; }
@@ -383,6 +428,34 @@ public class MatchingInsightsResponse
     public int InteractionsCount { get; set; }
     public double AverageScore { get; set; }
     public DateTime? LastMatchedAt { get; set; }
+}
+
+public class InvestorIncomingMatchResponse
+{
+    public string MatchId { get; set; }
+    public string CompanyId { get; set; }
+    public string CompanyName { get; set; }
+    public string Industry { get; set; }
+    public string FundingRoundType { get; set; }
+    public double FundingAskAmount { get; set; }
+    public string Country { get; set; }
+    public string Tagline { get; set; }
+    public string ElevatorPitch { get; set; }
+    public int MatchScore { get; set; }
+    public string MatchRationale { get; set; }
+    public string EntrepreneurInterest { get; set; } = "new";
+    public string InvestorInterest { get; set; } = "new";
+    public string Status { get; set; } = "new";
+    public DateTime? HandshakeConfirmedAt { get; set; }
+    public InvestorMeetingRecord? ScheduledMeeting { get; set; }
+    public Phase7MatchingIntelligence? Phase7IntelligenceSnapshot { get; set; }
+    public ScoreComponents ScoreComponents { get; set; } = new();
+    public DateTime? MatchedAt { get; set; }
+}
+
+public class RespondToMatchRequest
+{
+    public string Action { get; set; } // "interested" | "passed"
 }
 
 // ============ PHASE 9: DEAL EXECUTION ============
@@ -676,6 +749,10 @@ public class EquityGrantDto
     // ASP.NET's implicit non-nullable-reference-type "required" model validation
     // doesn't 400 new-grant submissions before the service can assign an id.
     public string? GrantId { get; set; }
+    public string? InvestorId { get; set; }
+    public string? DealExecutionId { get; set; }
+    public string? MatchId { get; set; }
+    public string? Source { get; set; }
     public string StakeholderName { get; set; }
     public string StakeholderType { get; set; } // founder | investor | advisor | esop
     public string ShareClass { get; set; }       // common | preferred | safe | note
@@ -743,6 +820,8 @@ public class SaveOwnershipHistoryRequest
 
 public class OwnershipHistoryEntryDto
 {
+    public string? DealExecutionId { get; set; }
+    public string? InvestorId { get; set; }
     public string RoundName { get; set; }
     public DateTime? EventDate { get; set; }
     public double FounderOwnershipBefore { get; set; }
@@ -755,6 +834,8 @@ public class OwnershipHistoryEntryDto
 
 public class OwnershipHistoryResponse
 {
+    public string? DealExecutionId { get; set; }
+    public string? InvestorId { get; set; }
     public string RoundName { get; set; }
     public DateTime EventDate { get; set; }
     public double FounderOwnershipBefore { get; set; }
@@ -768,6 +849,9 @@ public class OwnershipHistoryResponse
 
 public class RecordShareIssuanceRequest
 {
+    public string? InvestorId { get; set; }
+    public string? DealExecutionId { get; set; }
+    public string? MatchId { get; set; }
     public string IssuedTo { get; set; }
     public string ShareClass { get; set; }
     public int SharesIssued { get; set; }
@@ -788,6 +872,9 @@ public class RecordShareIssuanceRequest
 public class ShareIssuanceResponse
 {
     public string IssuanceId { get; set; }
+    public string? InvestorId { get; set; }
+    public string? DealExecutionId { get; set; }
+    public string? MatchId { get; set; }
     public string IssuedTo { get; set; }
     public string ShareClass { get; set; }
     public int SharesIssued { get; set; }

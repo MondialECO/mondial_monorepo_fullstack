@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using MongoDB.Driver;
+using WebApp.DbContext;
 using WebApp.Models.DatabaseModels;
+using WebApp.Models.Dtos;
 using WebApp.Services;
 
 namespace WebApp.Controllers;
@@ -11,22 +14,28 @@ namespace WebApp.Controllers;
 public class InvestorController : ControllerBase
 {
     private readonly IInvestorService _investorService;
+    private readonly MongoDbContext _dbContext;
     private readonly ILogger<InvestorController> _logger;
 
-    public InvestorController(IInvestorService investorService, ILogger<InvestorController> logger)
+    public InvestorController(
+        IInvestorService investorService,
+        MongoDbContext dbContext,
+        ILogger<InvestorController> logger)
     {
         _investorService = investorService;
+        _dbContext = dbContext;
         _logger = logger;
     }
 
     [HttpPost]
     [Authorize(Roles = "Admin")]
-    public async Task<ActionResult<Investor>> CreateInvestor([FromBody] Investor investor)
+    public async Task<ActionResult<AdminInvestorDto>> CreateInvestor([FromBody] Investor investor)
     {
         try
         {
             var result = await _investorService.CreateInvestorAsync(investor);
-            return CreatedAtAction(nameof(GetInvestor), new { investorId = result.Id }, result);
+            var dto = AdminInvestorDto.FromInvestor(result);
+            return CreatedAtAction(nameof(GetInvestor), new { investorId = result.Id }, dto);
         }
         catch (Exception ex)
         {
@@ -36,12 +45,24 @@ public class InvestorController : ControllerBase
     }
 
     [HttpGet("{investorId}")]
-    public async Task<ActionResult<Investor>> GetInvestor(string investorId)
+    public async Task<ActionResult<PublicInvestorProfileDto>> GetInvestor(string investorId)
     {
         try
         {
             var investor = await _investorService.GetInvestorAsync(investorId);
-            return Ok(investor);
+            bool isVerified = false;
+            if (!string.IsNullOrWhiteSpace(investor.LinkedUserId))
+            {
+                var user = await _dbContext.ApplicationUsers
+                    .Find(u => u.Id.ToString() == investor.LinkedUserId)
+                    .FirstOrDefaultAsync();
+                isVerified = user?.InvestorProfile?.FinanceVerified == true;
+            }
+            return Ok(PublicInvestorProfileDto.FromInvestor(investor, isVerified));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { error = ex.Message });
         }
         catch (Exception ex)
         {
@@ -50,13 +71,41 @@ public class InvestorController : ControllerBase
         }
     }
 
+    [HttpGet("admin/{investorId}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<ActionResult<AdminInvestorDto>> GetAdminInvestor(string investorId)
+    {
+        try
+        {
+            var investor = await _investorService.GetInvestorAsync(investorId);
+            bool isVerified = false;
+            if (!string.IsNullOrWhiteSpace(investor.LinkedUserId))
+            {
+                var user = await _dbContext.ApplicationUsers
+                    .Find(u => u.Id.ToString() == investor.LinkedUserId)
+                    .FirstOrDefaultAsync();
+                isVerified = user?.InvestorProfile?.FinanceVerified == true;
+            }
+            return Ok(AdminInvestorDto.FromInvestor(investor, isVerified));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting admin investor");
+            return NotFound(new { error = ex.Message });
+        }
+    }
+
     [HttpGet]
-    public async Task<ActionResult<List<Investor>>> GetAllInvestors()
+    public async Task<ActionResult<List<PublicInvestorProfileDto>>> GetAllInvestors()
     {
         try
         {
             var investors = await _investorService.GetAllActiveInvestorsAsync();
-            return Ok(investors);
+            return Ok(investors.Select(i => PublicInvestorProfileDto.FromInvestor(i)).ToList());
         }
         catch (Exception ex)
         {
@@ -66,7 +115,7 @@ public class InvestorController : ControllerBase
     }
 
     [HttpPost("search")]
-    public async Task<ActionResult<List<Investor>>> FindInvestors(
+    public async Task<ActionResult<List<PublicInvestorProfileDto>>> FindInvestors(
         [FromQuery] string sectors,
         [FromQuery] string stages,
         [FromQuery] double minCheckSize = 0,
@@ -86,7 +135,7 @@ public class InvestorController : ControllerBase
                 geography
             );
 
-            return Ok(investors);
+            return Ok(investors.Select(i => PublicInvestorProfileDto.FromInvestor(i)).ToList());
         }
         catch (Exception ex)
         {
@@ -97,13 +146,13 @@ public class InvestorController : ControllerBase
 
     [HttpPut("{investorId}")]
     [Authorize(Roles = "Admin")]
-    public async Task<ActionResult<Investor>> UpdateInvestor(string investorId, [FromBody] Investor investor)
+    public async Task<ActionResult<AdminInvestorDto>> UpdateInvestor(string investorId, [FromBody] Investor investor)
     {
         try
         {
             investor.Id = investorId;
             var result = await _investorService.UpdateInvestorAsync(investorId, investor);
-            return Ok(result);
+            return Ok(AdminInvestorDto.FromInvestor(result));
         }
         catch (Exception ex)
         {

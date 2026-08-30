@@ -35,29 +35,35 @@ public class Phase8ValidatorTests
     private void SetupMatches(IEnumerable<InvestorMatch> matches)
     {
         var list = matches.ToList();
-        var cursor = new Mock<IAsyncCursor<InvestorMatch>>();
-        cursor.Setup(c => c.Current).Returns(list);
-        cursor.SetupSequence(c => c.MoveNextAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(list.Count > 0).ReturnsAsync(false);
         _matchesColl.Setup(c => c.FindAsync(
                 It.IsAny<FilterDefinition<InvestorMatch>>(),
                 It.IsAny<FindOptions<InvestorMatch, InvestorMatch>>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(cursor.Object);
+            .Returns(() =>
+            {
+                var cursor = new Mock<IAsyncCursor<InvestorMatch>>();
+                cursor.Setup(c => c.Current).Returns(list);
+                cursor.SetupSequence(c => c.MoveNextAsync(It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(list.Count > 0).ReturnsAsync(false);
+                return Task.FromResult(cursor.Object);
+            });
     }
 
     private void SetupInvestorExists(bool exists)
     {
         var list = exists ? new List<Investor> { new() { Id = "inv-1" } } : new List<Investor>();
-        var cursor = new Mock<IAsyncCursor<Investor>>();
-        cursor.Setup(c => c.Current).Returns(list);
-        cursor.SetupSequence(c => c.MoveNextAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(list.Count > 0).ReturnsAsync(false);
         _investorsColl.Setup(c => c.FindAsync(
                 It.IsAny<FilterDefinition<Investor>>(),
                 It.IsAny<FindOptions<Investor, Investor>>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(cursor.Object);
+            .Returns(() =>
+            {
+                var cursor = new Mock<IAsyncCursor<Investor>>();
+                cursor.Setup(c => c.Current).Returns(list);
+                cursor.SetupSequence(c => c.MoveNextAsync(It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(list.Count > 0).ReturnsAsync(false);
+                return Task.FromResult(cursor.Object);
+            });
     }
 
     private static InvestorMatch ProperMatch(int score = 80, string id = "m-1", string investorId = "inv-1") => new()
@@ -66,7 +72,10 @@ public class Phase8ValidatorTests
         CompanyId = "comp-1",
         InvestorId = investorId,
         MatchScore = score,
-        Status = "new",
+        Status = "accepted",
+        EntrepreneurInterest = "interested",
+        InvestorInterest = "interested",
+        HandshakeConfirmedAt = DateTime.UtcNow,
         MatchRationale = "Hits: sector match (saas); stage match (seed) | Misses: -",
         EngineVersion = InvestorMatcher.EngineVersion,
         MatchedAt = DateTime.UtcNow,
@@ -89,14 +98,114 @@ public class Phase8ValidatorTests
     }
 
     [Fact]
-    public async Task Phase8_LowScoreOnly_Fails()
+    public async Task Phase8_70_NoHandshake_Blocked()
     {
-        var m = ProperMatch(score: 20);
+        var m = ProperMatch(score: 70);
+        m.Status = "new";
+        m.EntrepreneurInterest = "new";
+        m.InvestorInterest = "new";
+        m.HandshakeConfirmedAt = null;
+
         SetupMatches(new[] { m });
         SetupInvestorExists(true);
         var (isValid, errors) = await _validator.ValidatePhase8Async(new Companies { Id = "comp-1" });
         isValid.Should().BeFalse();
-        errors.Should().Contain(e => e.Contains($"score >= {Phase8Requirements.MinScoreToCount}"));
+        errors.Should().Contain(e => e.Contains("confirmed mutual investor handshake"));
+    }
+
+    [Fact]
+    public async Task Phase8_70_WithHandshake_Allowed()
+    {
+        var m = ProperMatch(score: 70);
+        SetupMatches(new[] { m });
+        SetupInvestorExists(true);
+        var (isValid, errors) = await _validator.ValidatePhase8Async(new Companies { Id = "comp-1" });
+        isValid.Should().BeTrue();
+        errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Phase8_45_WithHandshake_Allowed()
+    {
+        // Score 45 (below old 50 threshold) is ALLOWED because mutual handshake is confirmed
+        var m = ProperMatch(score: 45);
+        SetupMatches(new[] { m });
+        SetupInvestorExists(true);
+        var (isValid, errors) = await _validator.ValidatePhase8Async(new Companies { Id = "comp-1" });
+        isValid.Should().BeTrue();
+        errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Phase8_20_WithHandshake_Allowed()
+    {
+        // Score 20 is ALLOWED because mutual handshake is confirmed — score is advisory only
+        var m = ProperMatch(score: 20);
+        SetupMatches(new[] { m });
+        SetupInvestorExists(true);
+        var (isValid, errors) = await _validator.ValidatePhase8Async(new Companies { Id = "comp-1" });
+        isValid.Should().BeTrue();
+        errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Phase8_95_OneSidedInterest_Blocked()
+    {
+        // Score 95 but only one side interested -> BLOCKED
+        var m = ProperMatch(score: 95);
+        m.Status = "interested";
+        m.EntrepreneurInterest = "interested";
+        m.InvestorInterest = "new";
+        m.HandshakeConfirmedAt = null;
+
+        SetupMatches(new[] { m });
+        SetupInvestorExists(true);
+        var (isValid, errors) = await _validator.ValidatePhase8Async(new Companies { Id = "comp-1" });
+        isValid.Should().BeFalse();
+        errors.Should().Contain(e => e.Contains("confirmed mutual investor handshake"));
+    }
+
+    [Fact]
+    public async Task Phase8_MeetingOptional()
+    {
+        // No interaction records for meeting / calls, handshake confirmed -> PASSES
+        var m = ProperMatch(score: 60);
+        m.Interactions = new List<InteractionRecord>(); // zero meetings scheduled
+        SetupMatches(new[] { m });
+        SetupInvestorExists(true);
+
+        var (isValid, errors) = await _validator.ValidatePhase8Async(new Companies { Id = "comp-1" });
+        isValid.Should().BeTrue();
+        errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Phase8_HandshakeIdempotent()
+    {
+        var m = ProperMatch(score: 75);
+        m.HandshakeConfirmedAt = DateTime.UtcNow.AddDays(-2);
+        SetupMatches(new[] { m });
+        SetupInvestorExists(true);
+
+        var (isValid1, _) = await _validator.ValidatePhase8Async(new Companies { Id = "comp-1" });
+        var (isValid2, _) = await _validator.ValidatePhase8Async(new Companies { Id = "comp-1" });
+
+        isValid1.Should().BeTrue();
+        isValid2.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Phase8_MatchScoreStillReturned()
+    {
+        var m = ProperMatch(score: 42);
+        m.MatchScore.Should().Be(42);
+    }
+
+    [Fact]
+    public async Task Phase8_RationaleStillReturned()
+    {
+        var m = ProperMatch(score: 42);
+        m.MatchRationale.Should().NotBeNullOrWhiteSpace();
     }
 
     [Fact]
@@ -209,5 +318,41 @@ public class Phase8ValidatorTests
         var (isValid, errors) = await _validator.ValidatePhase8Async(new Companies { Id = "comp-1" });
         isValid.Should().BeFalse();
         errors.Should().Contain(e => e.Contains("investorPreferences snapshot is empty"));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(20)]
+    [InlineData(39)]
+    [InlineData(40)]
+    [InlineData(100)]
+    public async Task Phase8_AdvisoryScoreBoundaries_CanCompletePhase8(int score)
+    {
+        var m = ProperMatch(score);
+        SetupMatches(new[] { m });
+        SetupInvestorExists(true);
+
+        var (isValid, errors) = await _validator.ValidatePhase8Async(new Companies { Id = "comp-1" });
+        isValid.Should().BeTrue();
+        errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Phase8_MatchScoreBelow40_CanReachMutualHandshakeAndComplete()
+    {
+        // Score = 25 (low fit), but both parties express interest -> handshake confirmed
+        var m = ProperMatch(25);
+        m.EntrepreneurInterest = "interested";
+        m.InvestorInterest = "interested";
+        m.Status = "accepted";
+        m.HandshakeConfirmedAt = DateTime.UtcNow;
+
+        SetupMatches(new[] { m });
+        SetupInvestorExists(true);
+
+        var (isValid, errors) = await _validator.ValidatePhase8Async(new Companies { Id = "comp-1" });
+        isValid.Should().BeTrue();
+        errors.Should().BeEmpty();
     }
 }

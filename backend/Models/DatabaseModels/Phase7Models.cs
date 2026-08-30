@@ -30,12 +30,75 @@ public class Phase7ReviewSnapshot
     public List<RecommendationDto> Recommendations { get; set; } = new();
     public PitchDeckAnalysisDto PitchDeckAnalysis { get; set; }
 
+    // Qualitative intelligence layer
+    public string ExecutiveSummary { get; set; } = string.Empty;
+    public List<string> Strengths { get; set; } = new();
+    public List<string> Weaknesses { get; set; } = new();
+    public List<ExpertRiskItem> Risks { get; set; } = new();
+    public List<CrossModuleInconsistency> Inconsistencies { get; set; } = new();
+    public List<MissingItemGap> MissingItems { get; set; } = new();
+    public List<PitchRefinementItem> PitchRecommendations { get; set; } = new();
+    public List<ActionRemediationItem> ActionItems { get; set; } = new();
+    public Phase7MatchingIntelligence MatchingIntelligence { get; set; } = new();
+
     public DateTime ReviewedAt { get; set; } = DateTime.UtcNow;
 
     /// <summary>
-    /// "rule_based_v1" today. When an LLM is wired in, this becomes the
-    /// OpenRouter model id (e.g. "openai/gpt-oss-20b:free") so callers can tell
-    /// which engine produced the snapshot.
+    /// Engine provenance version. e.g. "expert_intelligence_v1" or OpenRouter model ID.
     /// </summary>
-    public string EngineVersion { get; set; } = "rule_based_v1";
+    public string EngineVersion { get; set; } = "expert_intelligence_v1";
 }
+
+public class ExpertRiskItem
+{
+    public string Category { get; set; } = "General"; // Financial | Governance | Market | Legal | Product
+    public string Severity { get; set; } = "MEDIUM"; // LOW | MEDIUM | HIGH | CRITICAL
+    public string Title { get; set; } = string.Empty;
+    public string Explanation { get; set; } = string.Empty;
+    public string Evidence { get; set; } = string.Empty;
+    public string RecommendedAction { get; set; } = string.Empty;
+}
+
+public class CrossModuleInconsistency
+{
+    public string ModuleA { get; set; } = string.Empty;
+    public string ModuleB { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string Evidence { get; set; } = string.Empty;
+    public string Severity { get; set; } = "MEDIUM";
+}
+
+public class MissingItemGap
+{
+    public string Category { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string RequiredBy { get; set; } = string.Empty;
+}
+
+public class PitchRefinementItem
+{
+    public string Section { get; set; } = string.Empty;
+    public string Problem { get; set; } = string.Empty;
+    public string Recommendation { get; set; } = string.Empty;
+    public string Priority { get; set; } = "medium";
+}
+
+public class ActionRemediationItem
+{
+    public int PhaseNumber { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string Priority { get; set; } = "medium";
+    public int PotentialPointGain { get; set; }
+}
+
+public class Phase7MatchingIntelligence
+{
+    public List<string> ValidatedSectorTags { get; set; } = new();
+    public List<string> BusinessModelTags { get; set; } = new();
+    public string RiskBand { get; set; } = "Moderate";
+    public List<string> FundingFitSignals { get; set; } = new();
+    public List<string> RecommendedInvestorTypes { get; set; } = new();
+    public List<string> QualitativeStrengthTags { get; set; } = new();
+}
+

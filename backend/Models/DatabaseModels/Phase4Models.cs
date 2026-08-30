@@ -14,7 +14,12 @@ public static class ShareClasses
     public const string Safe = "safe";
     public const string Note = "note";
 
+    public static readonly IReadOnlyList<string> EquityClasses = new[] { Common, Preferred };
+    public static readonly IReadOnlyList<string> FinancingInstruments = new[] { Safe, Note };
     public static readonly IReadOnlyList<string> All = new[] { Common, Preferred, Safe, Note };
+
+    public static bool IsEquityClass(string s)
+        => !string.IsNullOrWhiteSpace(s) && EquityClasses.Any(x => string.Equals(x, s, StringComparison.OrdinalIgnoreCase));
 
     public static bool IsValid(string s)
         => !string.IsNullOrWhiteSpace(s) && All.Any(x => string.Equals(x, s, StringComparison.OrdinalIgnoreCase));
@@ -28,6 +33,11 @@ public static class ShareClasses
 public class EquityGrant
 {
     public string GrantId { get; set; } = ObjectId.GenerateNewId().ToString();
+
+    public string? InvestorId { get; set; }
+    public string? DealExecutionId { get; set; }
+    public string? MatchId { get; set; }
+    public string? Source { get; set; }
 
     public string StakeholderName { get; set; }
     public string StakeholderType { get; set; } // founder | investor | advisor | esop
@@ -106,6 +116,8 @@ public class Phase4OwnershipHistory
     public string Id { get; set; } = ObjectId.GenerateNewId().ToString();
 
     public string CompanyId { get; set; }
+    public string? DealExecutionId { get; set; }
+    public string? InvestorId { get; set; }
     public string RoundName { get; set; }      // e.g. "Pre-seed", "Seed", "Series A"
     public DateTime EventDate { get; set; } = DateTime.UtcNow;
 
@@ -130,6 +142,9 @@ public class Phase4ShareIssuance
     public string Id { get; set; } = ObjectId.GenerateNewId().ToString();
 
     public string CompanyId { get; set; }
+    public string? InvestorId { get; set; }
+    public string? DealExecutionId { get; set; }
+    public string? MatchId { get; set; }
     public string IssuedTo { get; set; }
     public string ShareClass { get; set; }
     public int SharesIssued { get; set; }

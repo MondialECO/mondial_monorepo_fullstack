@@ -1,4 +1,4 @@
-import Phase5Client from './client';
+import { redirect } from 'next/navigation';
 
 export const metadata = {
   title: 'Deal Discovery | Mondial',
@@ -6,5 +6,5 @@ export const metadata = {
 };
 
 export default function Phase5Page() {
-  return <Phase5Client />;
+  redirect('/dashboard/investor/discovery');
 }

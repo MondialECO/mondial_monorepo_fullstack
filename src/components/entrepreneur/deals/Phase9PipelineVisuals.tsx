@@ -24,7 +24,8 @@ const TABS: Array<{ key: string; label: string; match: string[] }> = [
   { key: 'interested', label: 'Interested', match: ['initiated', 'contacted', 'interested'] },
   { key: 'discussion', label: 'In Discussion', match: ['meeting_scheduled', 'negotiating', 'due_diligence'] },
   { key: 'term_sheet', label: 'Term Sheet', match: ['term_sheet', 'agreement_sent'] },
-  { key: 'closed', label: 'Closed', match: ['signed', 'completed'] },
+  { key: 'ready_to_close', label: 'Ready to Close', match: ['signed'] },
+  { key: 'closed', label: 'Closed', match: ['completed'] },
 ];
 
 const tabForStatus = (status: string) =>
@@ -33,7 +34,8 @@ const tabForStatus = (status: string) =>
 // Human one-liner derived from real deal state (no fabricated data).
 function activityLine(d: DealStatusResponse): string {
   const ts = d.termSheet;
-  if (d.status === 'signed' || d.status === 'completed') return 'Deal closed — funds committed.';
+  if (d.status === 'completed') return 'Deal closed — funds committed.';
+  if (d.status === 'signed') return 'Signed — Ready to Close. Both parties have signed. Complete the closing step to record the investment.';
   if (d.status === 'agreement_sent') return 'Agreement sent for signature.';
   if (d.status === 'term_sheet') return `Term sheet ${humanize(ts?.status || 'issued')}.`;
   if (d.status === 'negotiating') return 'Negotiating terms.';
@@ -100,11 +102,10 @@ export function Phase9PipelineVisuals({
   const progress = Math.min(100, summary?.percentFilled ?? 0);
 
   const counts = TABS.map((t) => {
-    if (t.key === 'interested') return { ...t, count: summary?.interestedCount ?? 0 };
-    if (t.key === 'discussion') return { ...t, count: summary?.inDiscussionCount ?? 0 };
-    if (t.key === 'term_sheet') return { ...t, count: summary?.termSheetCount ?? 0 };
-    if (t.key === 'closed') return { ...t, count: summary?.closedCount ?? 0 };
-    return { ...t, count: 0 };
+    return {
+      ...t,
+      count: deals.filter((d) => t.match.includes((d.status || '').toLowerCase())).length,
+    };
   });
   const visibleDeals = deals.filter((d) =>
     (TABS.find((t) => t.key === activeTab)?.match ?? []).includes((d.status || '').toLowerCase()),
@@ -114,6 +115,10 @@ export function Phase9PipelineVisuals({
   const ts = termSheet;
   const tsActionable = selected?.status === 'term_sheet';
   const selectedTimeline = selectedId && timeline.filter((t) => (t as any).dealId === selectedId) || [];
+
+  const revs = selected?.revisions || [];
+  const latestRev = revs.length > 0 ? revs[revs.length - 1] : null;
+  const prevRev = revs.length >= 2 ? revs[revs.length - 2] : null;
 
   const handleAddDeal = async () => {
     setError('');
@@ -160,7 +165,7 @@ export function Phase9PipelineVisuals({
 
       {/* Stat cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <MetricCard label="Total deals" value={String(summary?.totalDeals ?? 0)} chip="Active pipeline" chipTone="muted" />
+        <MetricCard label="Total deals" value={String(summary?.totalDeals ?? deals.length)} chip="Active pipeline" chipTone="muted" />
         <MetricCard label="Committed" value={committed > 0 ? eur(committed) : undefined} unavailable={committed > 0 ? undefined : 'unavailable'} chip={target > 0 ? `${pct(progress)} of target` : undefined} chipTone="success" />
         <MetricCard label="Round target" value={target > 0 ? eur(target) : undefined} unavailable={target > 0 ? undefined : 'unavailable'} />
         <MetricCard label="Remaining" value={target > 0 ? eur(remaining) : undefined} unavailable={target > 0 ? undefined : 'unavailable'} chip={target > 0 ? 'To close' : undefined} chipTone="warning" />
@@ -290,6 +295,15 @@ export function Phase9PipelineVisuals({
                     {investorType}
                   </span>
                 ) : null;
+                const isSigned = d.status === 'signed';
+                const isCompleted = d.status === 'completed';
+                const statusBadgeLabel = isSigned
+                  ? 'Signed — Ready to Close'
+                  : isCompleted
+                  ? 'Deal Closed'
+                  : humanize(d.status);
+                const statusToneVal = isSigned ? 'warning' : isCompleted ? 'success' : statusTone(d.status);
+
                 return (
                   <button
                     key={d.dealId}
@@ -300,7 +314,7 @@ export function Phase9PipelineVisuals({
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="truncate text-sm font-semibold text-foreground">{inv?.investorName || `Deal ${d.dealId.slice(-6)}`}</span>
-                      <Chip tone={statusTone(d.status)}>{humanize(d.status)}</Chip>
+                      <Chip tone={statusToneVal}>{statusBadgeLabel}</Chip>
                     </div>
                     {investorTypeChip && <div className="mt-2">{investorTypeChip}</div>}
                     <p className={`${investorTypeChip ? 'mt-1' : 'mt-2'} text-sm text-muted-foreground`}>{activityLine(d)}</p>
@@ -327,7 +341,7 @@ export function Phase9PipelineVisuals({
           <SectionCard
             title="Term sheet"
             subtitle={selected.investors?.[0]?.investorName}
-            headerRight={ts ? <Chip tone={statusTone(ts.status)}>{humanize(ts.status)}</Chip> : undefined}
+            headerRight={ts ? <Chip tone={selected.status === 'signed' ? 'warning' : selected.status === 'completed' ? 'success' : statusTone(ts.status)}>{selected.status === 'signed' ? 'Signed — Ready to Close' : selected.status === 'completed' ? 'Deal Closed' : humanize(ts.status)}</Chip> : undefined}
           >
             {!ts ? (
               <div className="flex h-24 items-center justify-center rounded-xl border border-dashed border-border bg-muted/20">
@@ -340,6 +354,56 @@ export function Phase9PipelineVisuals({
                   <MetricCard label="Post-money" value={ts.postMoneyValuation > 0 ? eur(ts.postMoneyValuation) : undefined} unavailable={ts.postMoneyValuation > 0 ? undefined : 'unavailable'} />
                   <MetricCard label="Raise" value={ts.totalRaiseAmount > 0 ? eur(ts.totalRaiseAmount) : undefined} unavailable={ts.totalRaiseAmount > 0 ? undefined : 'unavailable'} />
                 </div>
+
+                {/* Counter-Offer Term Diff */}
+                {prevRev && latestRev && (
+                  <div className="mt-3 rounded-xl border border-primary/30 bg-primary/5 p-3 space-y-2">
+                    <div className="flex items-center justify-between text-xs font-semibold text-primary">
+                      <span>Counter-Offer Term Changes (Rev #{latestRev.revisionNumber})</span>
+                      <span className="capitalize text-muted-foreground font-normal">Proposed by {latestRev.proposedByRole}</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                      {prevRev.terms?.totalRaiseAmount !== latestRev.terms?.totalRaiseAmount && (
+                        <div className="flex items-center justify-between bg-background/80 px-2.5 py-1.5 rounded-md border border-border">
+                          <span className="text-muted-foreground">Investment:</span>
+                          <span className="font-medium text-foreground">
+                            {eur(prevRev.terms.totalRaiseAmount)} <span className="text-primary font-bold">→</span> {eur(latestRev.terms.totalRaiseAmount)}
+                          </span>
+                        </div>
+                      )}
+                      {prevRev.terms?.postMoneyValuation !== latestRev.terms?.postMoneyValuation && (
+                        <div className="flex items-center justify-between bg-background/80 px-2.5 py-1.5 rounded-md border border-border">
+                          <span className="text-muted-foreground">Valuation:</span>
+                          <span className="font-medium text-foreground">
+                            {eur(prevRev.terms.postMoneyValuation)} <span className="text-primary font-bold">→</span> {eur(latestRev.terms.postMoneyValuation)}
+                          </span>
+                        </div>
+                      )}
+                      {prevRev.terms?.investorEquityPercent !== latestRev.terms?.investorEquityPercent && (
+                        <div className="flex items-center justify-between bg-background/80 px-2.5 py-1.5 rounded-md border border-border">
+                          <span className="text-muted-foreground">Equity:</span>
+                          <span className="font-medium text-foreground">
+                            {prevRev.terms.investorEquityPercent}% <span className="text-primary font-bold">→</span> {latestRev.terms.investorEquityPercent}%
+                          </span>
+                        </div>
+                      )}
+                      {prevRev.terms?.equityType !== latestRev.terms?.equityType && (
+                        <div className="flex items-center justify-between bg-background/80 px-2.5 py-1.5 rounded-md border border-border">
+                          <span className="text-muted-foreground">Instrument:</span>
+                          <span className="font-medium text-foreground">
+                            {prevRev.terms.equityType} <span className="text-primary font-bold">→</span> {latestRev.terms.equityType}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    {latestRev.note && (
+                      <p className="text-xs text-muted-foreground italic pt-1 border-t border-border/40">
+                        Note: &ldquo;{latestRev.note}&rdquo;
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 <div className="mt-3">
                   <RealRow label="Equity type" value={ts.equityType || '—'} />
                   <RealRow label="Pro-rata rights" value={ts.proRataRights ? 'Yes' : 'No'} />
