@@ -91,9 +91,14 @@ export function Phase4DilutionTab({ ctx }: { ctx: Phase4Context }) {
     <div className="space-y-4 sm:space-y-6">
       <div className="bg-card border border-border rounded-2xl p-6 space-y-4 sm:space-y-6">
         <div className="flex items-center justify-between gap-3 flex-wrap">
-          <h3 className="font-bold text-foreground">Dilution Sim</h3>
+          <div>
+            <h3 className="font-bold text-foreground">Dilution Sim</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Optional planning tool — model how future funding rounds could affect ownership.
+            </p>
+          </div>
           <span className="text-xs font-semibold text-primary bg-primary/10 rounded-lg px-3 py-1">
-            Adjust values below
+            Optional planning tool
           </span>
         </div>
 

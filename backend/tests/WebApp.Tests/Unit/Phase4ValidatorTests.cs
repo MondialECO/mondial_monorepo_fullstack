@@ -153,7 +153,7 @@ public class Phase4ValidatorTests
     }
 
     [Fact]
-    public async Task Phase4_MissingOwnershipHistory_Fails()
+    public async Task Phase4_ValidCapTable_CompletesWithoutDilutionSimulation()
     {
         SetupCapTable(GoodCapTable());
         SetupVesting(Enumerable.Empty<Phase4VestingSchedule>());
@@ -161,12 +161,12 @@ public class Phase4ValidatorTests
 
         var (isValid, errors) = await _validator.ValidatePhase4Async(CompanyWithId());
 
-        isValid.Should().BeFalse();
-        errors.Should().Contain("Dilution simulation must be reviewed before completing Phase 4");
+        isValid.Should().BeTrue();
+        errors.Should().BeEmpty();
     }
 
     [Fact]
-    public async Task Phase4_ExitWaterfallNotReviewed_Fails()
+    public async Task Phase4_ValidCapTable_CompletesWithoutExitWaterfall()
     {
         var ct = GoodCapTable();
         ct.ExitWaterfallReviewed = false;
@@ -175,8 +175,93 @@ public class Phase4ValidatorTests
 
         var (isValid, errors) = await _validator.ValidatePhase4Async(CompanyWithId());
 
+        isValid.Should().BeTrue();
+        errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Phase4_ValidCapTable_CompletesWithoutEitherOptionalTool()
+    {
+        var ct = GoodCapTable();
+        ct.ExitWaterfallReviewed = false;
+        SetupCapTable(ct);
+        SetupVesting(Enumerable.Empty<Phase4VestingSchedule>());
+        SetupOwnershipHistory(Enumerable.Empty<Phase4OwnershipHistory>());
+
+        var (isValid, errors) = await _validator.ValidatePhase4Async(CompanyWithId());
+
+        isValid.Should().BeTrue();
+        errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Phase4_SAFE_DoesNotCountTowardIssuedOwnership()
+    {
+        var ct = GoodCapTable();
+        ct.Grants[1].ShareClass = "safe"; // Non-equity instrument
+        SetupCapTable(ct);
+        SetupVesting(Enumerable.Empty<Phase4VestingSchedule>());
+
+        var (isValid, errors) = await _validator.ValidatePhase4Async(CompanyWithId());
+
         isValid.Should().BeFalse();
-        errors.Should().Contain("Exit waterfall must be reviewed before completing Phase 4");
+        errors.Should().Contain(e => e.Contains("invalid equity share class 'safe'"));
+    }
+
+    [Fact]
+    public async Task Phase4_Note_DoesNotCountTowardIssuedOwnership()
+    {
+        var ct = GoodCapTable();
+        ct.Grants[1].ShareClass = "note"; // Non-equity instrument
+        SetupCapTable(ct);
+        SetupVesting(Enumerable.Empty<Phase4VestingSchedule>());
+
+        var (isValid, errors) = await _validator.ValidatePhase4Async(CompanyWithId());
+
+        isValid.Should().BeFalse();
+        errors.Should().Contain(e => e.Contains("invalid equity share class 'note'"));
+    }
+
+    [Fact]
+    public async Task Phase4_SAFE_DoesNotSatisfyFounderGrantRequirement()
+    {
+        var ct = GoodCapTable();
+        ct.Grants[0].ShareClass = "safe"; // Founder holds SAFE instead of equity
+        SetupCapTable(ct);
+        SetupVesting(Enumerable.Empty<Phase4VestingSchedule>());
+
+        var (isValid, errors) = await _validator.ValidatePhase4Async(CompanyWithId());
+
+        isValid.Should().BeFalse();
+        errors.Should().Contain("At least one founder grant is required");
+    }
+
+    [Fact]
+    public async Task Phase4_EquityCommon_CountsTowardOwnership()
+    {
+        var ct = GoodCapTable();
+        ct.Grants[0].ShareClass = "common";
+        SetupCapTable(ct);
+        SetupVesting(Enumerable.Empty<Phase4VestingSchedule>());
+
+        var (isValid, errors) = await _validator.ValidatePhase4Async(CompanyWithId());
+
+        isValid.Should().BeTrue();
+        errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Phase4_EquityPreferred_CountsTowardOwnership()
+    {
+        var ct = GoodCapTable();
+        ct.Grants[1].ShareClass = "preferred";
+        SetupCapTable(ct);
+        SetupVesting(Enumerable.Empty<Phase4VestingSchedule>());
+
+        var (isValid, errors) = await _validator.ValidatePhase4Async(CompanyWithId());
+
+        isValid.Should().BeTrue();
+        errors.Should().BeEmpty();
     }
 
     [Fact]
@@ -264,7 +349,7 @@ public class Phase4ValidatorTests
         var (isValid, errors) = await _validator.ValidatePhase4Async(CompanyWithId());
 
         isValid.Should().BeFalse();
-        errors.Should().Contain(e => e.Contains("invalid share class 'weird-class'"));
+        errors.Should().Contain(e => e.Contains("invalid equity share class 'weird-class'"));
     }
 
     [Fact]

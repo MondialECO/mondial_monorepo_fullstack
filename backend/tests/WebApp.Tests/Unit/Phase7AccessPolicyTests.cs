@@ -134,9 +134,12 @@ public class Phase7AccessPolicyTests
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ReplaceOneResult.Acknowledged(1, 1, null));
 
-        var act = async () => await _service.AwardInvestorReadyBadgeAsync("comp-1");
+        var result = await _service.AwardInvestorReadyBadgeAsync("comp-1");
 
-        await act.Should().NotThrowAsync();
+        result.Should().NotBeNull();
+        result.IsInvestorReady.Should().BeTrue();
+        result.BadgeAwarded.Should().BeTrue();
+        result.IssuedAt.Should().NotBeNull();
     }
 
     [Fact]
@@ -162,5 +165,108 @@ public class Phase7AccessPolicyTests
 
         (await act.Should().ThrowAsync<InvalidOperationException>())
             .Which.Message.Should().Contain("stale");
+    }
+
+    [Fact]
+    public async Task Phase7_ClaimSetsCompanyInvestorReady()
+    {
+        var fresh = DateTime.UtcNow;
+        var company = new Companies
+        {
+            Id = "comp-1",
+            OwnerId = "owner-1",
+            LastAiReviewAt = fresh,
+            IsInvestorReady = false,
+            AiReview = new AiReviewResponse
+            {
+                OverallScore = 85,
+                InvestorReadyBadge = true,
+                ReviewedAt = fresh,
+            },
+        };
+        SetupCompanyLookup(company);
+        _companies.Setup(c => c.ReplaceOneAsync(
+                It.IsAny<FilterDefinition<Companies>>(),
+                It.IsAny<Companies>(),
+                It.IsAny<ReplaceOptions>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ReplaceOneResult.Acknowledged(1, 1, null));
+
+        var result = await _service.AwardInvestorReadyBadgeAsync("comp-1");
+        result.IsInvestorReady.Should().BeTrue();
+        company.IsInvestorReady.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Phase7_ClaimRequiresScore70()
+    {
+        SetupCompanyLookup(new Companies
+        {
+            Id = "comp-1",
+            OwnerId = "owner-1",
+            AiReview = new AiReviewResponse { OverallScore = 69, InvestorReadyBadge = false },
+        });
+
+        var act = async () => await _service.AwardInvestorReadyBadgeAsync("comp-1");
+        (await act.Should().ThrowAsync<InvalidOperationException>())
+            .Which.Message.Should().Contain("below");
+    }
+
+    [Fact]
+    public async Task Phase7_ClaimRequiresFreshReview()
+    {
+        var stale = DateTime.UtcNow.AddDays(-31);
+        SetupCompanyLookup(new Companies
+        {
+            Id = "comp-1",
+            OwnerId = "owner-1",
+            LastAiReviewAt = stale,
+            AiReview = new AiReviewResponse { OverallScore = 90, InvestorReadyBadge = true, ReviewedAt = stale },
+        });
+
+        var act = async () => await _service.AwardInvestorReadyBadgeAsync("comp-1");
+        (await act.Should().ThrowAsync<InvalidOperationException>())
+            .Which.Message.Should().Contain("stale");
+    }
+
+    [Fact]
+    public async Task AiReviewEngine_TractionScore6_GeneratesTractionWeakness()
+    {
+        var engine = new AiReviewEngine();
+        var company = new Companies
+        {
+            Id = "comp-traction",
+            CompanyName = "Traction Co",
+            LegalName = "Traction Co SAS",
+            RegistrationNumber = "123456",
+            Country = "France",
+            Q1Revenue = 0,
+            Q2Revenue = 0,
+            Q3Revenue = 0,
+            Q4Revenue = 0,
+            Valuation = 2000000,
+            PreMoneyValuation = 2000000,
+            FundingAskAmount = 500000,
+            FundingNarrative = new string('A', 300),
+            CapitalAllocation = new List<CapitalAllocationDto>
+            {
+                new() { Category = "Engineering", Amount = 250000, Percent = 50 },
+                new() { Category = "Sales", Amount = 250000, Percent = 50 }
+            },
+            DataRoomDocuments = new List<DataRoomDocumentResponse>
+            {
+                new() { DocumentId = "d1", Title = "Doc 1", Category = "financial" },
+                new() { DocumentId = "d2", Title = "Doc 2", Category = "legal" },
+                new() { DocumentId = "d3", Title = "Doc 3", Category = "business" }
+            },
+            PitchDeckFileName = "pitch.pdf"
+        };
+
+        var review = await engine.RunReviewAsync(company);
+
+        review.Should().NotBeNull();
+        review.Weaknesses.Should().NotBeNull();
+        // Since revenue is 0 and TractionMetrics is <= 6, weaknesses must include traction gap
+        review.Weaknesses.Should().Contain(w => w.Contains("Traction") || w.Contains("revenue"));
     }
 }

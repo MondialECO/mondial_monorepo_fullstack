@@ -480,13 +480,72 @@ export interface PitchDeckAnalysis {
   teamPedigree: number;
 }
 
+export interface ExpertRiskItem {
+  category: string;
+  severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+  title: string;
+  explanation: string;
+  evidence: string;
+  recommendedAction: string;
+}
+
+export interface CrossModuleInconsistency {
+  moduleA: string;
+  moduleB: string;
+  description: string;
+  evidence: string;
+  severity: string;
+}
+
+export interface MissingItemGap {
+  category: string;
+  description: string;
+  requiredBy: string;
+}
+
+export interface PitchRefinementItem {
+  section: string;
+  problem: string;
+  recommendation: string;
+  priority: string;
+}
+
+export interface ActionRemediationItem {
+  phaseNumber: number;
+  title: string;
+  description: string;
+  priority: string;
+  potentialPointGain: number;
+}
+
 export interface AiReviewResponse {
   overallScore: number;
   scoreBreakdown: ScoreBreakdownDto;
   investorReadyBadge: boolean;
+  isInvestorReady?: boolean;
+  investorReadyBadgeAwardedAt?: string;
   recommendations: RecommendationDto[];
   pitchDeckAnalysis: PitchDeckAnalysis;
   reviewedAt: string;
+  executiveSummary?: string;
+  strengths?: string[];
+  weaknesses?: string[];
+  risks?: ExpertRiskItem[];
+  inconsistencies?: CrossModuleInconsistency[];
+  missingItems?: MissingItemGap[];
+  pitchRecommendations?: PitchRefinementItem[];
+  actionItems?: ActionRemediationItem[];
+  pitchDeckContentAvailable?: boolean;
+  isFresh?: boolean;
+  isCurrentlyInvestorReady?: boolean;
+  dataRoomLastMaterialChangeAt?: string | null;
+  investorReadinessInputsLastMaterialChangeAt?: string | null;
+}
+
+export interface AwardInvestorReadyBadgeResponse {
+  isInvestorReady: boolean;
+  badgeAwarded: boolean;
+  issuedAt?: string;
 }
 
 export interface AiReviewHistoryEntry {
@@ -499,9 +558,38 @@ export interface AiReviewHistoryEntry {
   pitchDeckAnalysis: PitchDeckAnalysis;
   reviewedAt: string;
   engineVersion: string;
+  executiveSummary?: string;
+  strengths?: string[];
+  weaknesses?: string[];
+  risks?: ExpertRiskItem[];
+  inconsistencies?: CrossModuleInconsistency[];
+  missingItems?: MissingItemGap[];
+  pitchRecommendations?: PitchRefinementItem[];
+  actionItems?: ActionRemediationItem[];
 }
 
 // Phase 8
+export interface InvestorMeetingRecord {
+  meetingId: string;
+  startsAt: string;
+  durationMinutes: number;
+  timezone: string;
+  meetingType: string;
+  note: string;
+  status: "proposed" | "confirmed" | "cancelled";
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ScheduleMeetingRequest {
+  startsAt: string;
+  durationMinutes?: number;
+  timezone?: string;
+  meetingType?: string;
+  note?: string;
+}
+
 export interface InvestorMatchResponse {
   matchId: string;
   investorId: string;
@@ -512,12 +600,74 @@ export interface InvestorMatchResponse {
   investmentRange?: string;
   preferredSectors: string[];
   status: string;
+  entrepreneurInterest?: string;
+  investorInterest?: string;
+  handshakeConfirmedAt?: string;
+  scheduledMeeting?: InvestorMeetingRecord;
   matchRationale?: string;
   engineVersion?: string;
   matchedAt?: string;
   savedAt?: string;
   acceptedAt?: string;
   rejectedAt?: string;
+}
+
+export interface InvestorIncomingMatchResponse {
+  matchId: string;
+  companyId: string;
+  companyName: string;
+  industry: string;
+  fundingRoundType: string;
+  fundingAskAmount: number;
+  country: string;
+  tagline?: string;
+  elevatorPitch?: string;
+  matchScore: number;
+  matchRationale?: string;
+  entrepreneurInterest: string;
+  investorInterest: string;
+  status: string;
+  handshakeConfirmedAt?: string;
+  scheduledMeeting?: InvestorMeetingRecord;
+  phase7IntelligenceSnapshot?: {
+    validatedSectorTags?: string[];
+    riskBand?: string;
+    fundingFitSignals?: string[];
+    recommendedInvestorTypes?: string[];
+    qualitativeStrengthTags?: string[];
+  };
+  matchedAt?: string;
+}
+
+export interface PublicInvestorProfile {
+  id: string;
+  name: string;
+  type: string;
+  headline?: string;
+  bio?: string;
+  website?: string;
+  logoUrl?: string;
+  coverImageUrl?: string;
+  socialLinks?: Record<string, string>;
+  isPublic?: boolean;
+  preferredSectors: string[];
+  preferredStages: string[];
+  minCheckSize: number;
+  maxCheckSize: number;
+  preferredGeographies: string[];
+  requiresProRataRights?: boolean;
+  requiresBoardSeat?: boolean;
+  preferredEquityTypes?: string[];
+  thesisStatement?: string;
+  targetReturnMultiple?: string;
+  followOnPolicy?: string;
+  preferredRole?: string;
+  boardParticipationLevel?: string;
+  successfulExits?: number;
+  averageCheckSize?: number;
+  completedDeals?: number;
+  activeInvestments?: number;
+  profileScore?: number;
 }
 
 export interface MatchingInsightsResponse {
@@ -652,6 +802,33 @@ export interface DealStatusResponse {
     committedAmount: number;
     status: ParticipantStatus | string;
   }>;
+  currentTurn?: string;
+  revisions?: Array<{
+    revisionNumber: number;
+    proposedByRole: string;
+    status: string;
+    note?: string | null;
+    createdAt: string;
+    viewedAt?: string | null;
+    respondedAt?: string | null;
+    terms: {
+      totalRaiseAmount: number;
+      postMoneyValuation: number;
+      equityType: string;
+      investorEquityPercent: number;
+      proRataRights: boolean;
+      status: string;
+      signedAt?: string;
+    };
+  }>;
+  founderSignature?: {
+    signedAt?: string | null;
+    signedBy?: string | null;
+  } | null;
+  investorSignature?: {
+    signedAt?: string | null;
+    signedBy?: string | null;
+  } | null;
 }
 
 export interface DealDocumentResponse {
@@ -1102,6 +1279,29 @@ export const entrepreneurApi = {
     return response.data;
   },
 
+  deleteDataRoomDocument: async (
+    companyId: string,
+    documentId: string
+  ): Promise<DataRoomStatusResponse> => {
+    const response = await api.delete<DataRoomStatusResponse>(
+      `/companies/${companyId}/dataroom/documents/${documentId}`
+    );
+    return response.data;
+  },
+
+  replaceDataRoomDocument: async (
+    companyId: string,
+    documentId: string,
+    formData: FormData
+  ): Promise<DataRoomDocumentResponse> => {
+    const response = await api.post<DataRoomDocumentResponse>(
+      `/companies/${companyId}/dataroom/documents/${documentId}/replace`,
+      formData,
+      { headers: { "Content-Type": "multipart/form-data" } }
+    );
+    return response.data;
+  },
+
   getDataRoom: async (
     companyId: string
   ): Promise<DataRoomStatusResponse> => {
@@ -1244,8 +1444,10 @@ export const entrepreneurApi = {
     return response.data;
   },
 
-  awardInvestorReadyBadge: async (companyId: string) => {
-    const response = await api.post(
+  awardInvestorReadyBadge: async (
+    companyId: string
+  ): Promise<AwardInvestorReadyBadgeResponse> => {
+    const response = await api.post<AwardInvestorReadyBadgeResponse>(
       `/companies/${companyId}/investor-ready`
     );
     return response.data;
@@ -1310,6 +1512,57 @@ export const entrepreneurApi = {
     const response = await api.post<InvestorMatchResponse>(
       `/companies/${companyId}/investor-matches/${matchId}/status`,
       { status }
+    );
+    return response.data;
+  },
+
+  scheduleMeeting: async (
+    companyId: string,
+    matchId: string,
+    data: ScheduleMeetingRequest
+  ): Promise<InvestorMatchResponse> => {
+    const response = await api.post<InvestorMatchResponse>(
+      `/companies/${companyId}/investor-matches/${matchId}/schedule-meeting`,
+      data
+    );
+    return response.data;
+  },
+
+  updateMeetingStatus: async (
+    companyId: string,
+    matchId: string,
+    status: string
+  ): Promise<InvestorMatchResponse> => {
+    const response = await api.post<InvestorMatchResponse>(
+      `/companies/${companyId}/investor-matches/${matchId}/meeting-status`,
+      { status }
+    );
+    return response.data;
+  },
+
+  getPublicInvestorProfile: async (
+    investorId: string
+  ): Promise<PublicInvestorProfile> => {
+    const response = await api.get<PublicInvestorProfile>(
+      `/investors/${investorId}`
+    );
+    return response.data;
+  },
+
+  getInvestorIncomingMatches: async (): Promise<InvestorIncomingMatchResponse[]> => {
+    const response = await api.get<InvestorIncomingMatchResponse[]>(
+      `/investor/incoming-matches`
+    );
+    return response.data;
+  },
+
+  respondToInvestorMatch: async (
+    matchId: string,
+    action: 'interested' | 'passed'
+  ): Promise<InvestorIncomingMatchResponse> => {
+    const response = await api.post<InvestorIncomingMatchResponse>(
+      `/investor/matches/${matchId}/respond`,
+      { action }
     );
     return response.data;
   },

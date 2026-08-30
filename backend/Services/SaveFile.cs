@@ -1,4 +1,4 @@
-﻿namespace WebApp.Services
+namespace WebApp.Services
 {
     public class SaveFile
     {
@@ -13,6 +13,12 @@
             {
                 "documents", new(
                     new[] { ".pdf", ".doc", ".docx", ".ppt", ".pptx", ".jpg", ".jpeg", ".png", ".webp", ".gif" },
+                    20 * 1024 * 1024
+                )
+            },
+            {
+                "investor/finance", new(
+                    new[] { ".pdf", ".jpg", ".jpeg", ".png" },
                     20 * 1024 * 1024
                 )
             },

@@ -56,10 +56,10 @@ public static class Phase9Requirements
     /// <summary>
     /// Terminal states that count toward Phase 9 advancement. A "rejected" or
     /// "withdrawn" deal is terminal but does NOT advance the company.
+    /// Only an economically closed ("completed") deal advances the company.
     /// </summary>
     public static readonly IReadOnlyList<string> RequiredTerminalStatesForCompletion = new[]
     {
-        DealStatusSigned,
         DealStatusCompleted,
     };
 

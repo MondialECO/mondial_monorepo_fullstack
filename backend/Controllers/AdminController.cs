@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Identity;
 using System.Threading.Tasks;
@@ -20,15 +20,21 @@ namespace WebApp.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly RoleManager<ApplicationRole> _roleManager;
         private readonly MongoDbContext _context;
-        public AdminController(UserManager<ApplicationUser> userManager,
-            RoleManager<ApplicationRole> roleManager,
-             MongoDbContext context
+        private readonly WebApp.Services.IPhaseNotificationService _phaseNotificationService;
+        private readonly WebApp.Services.IInvestorService _investorService;
 
-            )
+        public AdminController(
+            UserManager<ApplicationUser> userManager,
+            RoleManager<ApplicationRole> roleManager,
+            MongoDbContext context,
+            WebApp.Services.IPhaseNotificationService phaseNotificationService,
+            WebApp.Services.IInvestorService investorService)
         {
             _userManager = userManager;
             _roleManager = roleManager;
             _context = context;
+            _phaseNotificationService = phaseNotificationService;
+            _investorService = investorService;
         }
 
         // GET: api/admin/users
@@ -185,20 +191,154 @@ namespace WebApp.Controllers
             return BadRequest(new { Message = $"Failed to enable login for user '{user.UserName}'." });
         }
 
-        //// Get: api/admin/contact
-        //[HttpGet("contact")]
-        //public async Task<IActionResult> Contact()
-        //{
-        //    string id = "cb7a4b9e-d238-456e-882b-734fc21db4f0";
-        //    var info = await _infoRepository.GetContactByIdAsync(id);
-        //    if (info == null)
-        //    {
-        //        return NotFound(new { Message = "Contact info not found." });
-        //    }
-        //    return Ok(info);
-        //}
+        // ============ INVESTOR FINANCE VERIFICATION REVIEW ============
 
+        [HttpGet("investor-finance-verifications")]
+        public async Task<IActionResult> GetInvestorFinanceVerifications()
+        {
+            var list = await _context.InvestorFinanceVerifications
+                .Find(_ => true)
+                .SortByDescending(v => v.UpdatedAt)
+                .ToListAsync();
 
+            var userIds = list.Select(v => v.UserId).Distinct().ToList();
+            var users = await _context.ApplicationUsers
+                .Find(Builders<ApplicationUser>.Filter.In(u => u.Id, userIds.Select(System.Guid.Parse)))
+                .ToListAsync();
+            var userMap = users.ToDictionary(u => u.Id.ToString());
+
+            var items = list.Select(v =>
+            {
+                userMap.TryGetValue(v.UserId, out var u);
+                return new WebApp.Models.Dtos.AdminFinanceVerificationListItem
+                {
+                    Id = v.Id,
+                    UserId = v.UserId,
+                    InvestorId = v.InvestorId,
+                    InvestorName = u?.Name ?? "Investor",
+                    InvestorEmail = u?.Email ?? string.Empty,
+                    InvestorType = v.InvestorType,
+                    DeclaredAvailableCapital = v.DeclaredAvailableCapital,
+                    MinTicket = v.MinTicket,
+                    MaxTicket = v.MaxTicket,
+                    Currency = v.Currency,
+                    Status = v.Status,
+                    DocumentCount = v.Documents?.Count ?? 0,
+                    SubmittedAt = v.SubmittedAt,
+                    ReviewedAt = v.ReviewedAt,
+                    ReviewedByUserId = v.ReviewedByUserId,
+                    DecisionReason = v.DecisionReason
+                };
+            }).ToList();
+
+            return Ok(items);
+        }
+
+        [HttpGet("investor-finance-verifications/{id}")]
+        public async Task<IActionResult> GetInvestorFinanceVerificationById(string id)
+        {
+            var record = await _context.InvestorFinanceVerifications
+                .Find(v => v.Id == id)
+                .FirstOrDefaultAsync();
+
+            if (record == null)
+                return NotFound(new { error = "Finance verification submission not found." });
+
+            return Ok(record);
+        }
+
+        [HttpPost("investor-finance-verifications/{id}/decision")]
+        public async Task<IActionResult> DecideInvestorFinanceVerification(
+            string id, [FromBody] WebApp.Models.Dtos.AdminFinanceDecisionRequest request)
+        {
+            if (request == null || string.IsNullOrWhiteSpace(request.Action))
+                return BadRequest(new { error = "Action ('verify', 'needs_update', 'reject') is required." });
+
+            var record = await _context.InvestorFinanceVerifications
+                .Find(v => v.Id == id)
+                .FirstOrDefaultAsync();
+
+            if (record == null)
+                return NotFound(new { error = "Finance verification submission not found." });
+
+            var adminUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "admin";
+            var action = request.Action.Trim().ToLowerInvariant();
+
+            var user = await _userManager.FindByIdAsync(record.UserId);
+
+            if (action == "verify")
+            {
+                record.Status = "verified";
+                record.ReviewedAt = System.DateTime.UtcNow;
+                record.ReviewedByUserId = adminUserId;
+                record.DecisionReason = request.DecisionReason;
+                record.UpdatedAt = System.DateTime.UtcNow;
+
+                if (user != null)
+                {
+                    user.InvestorProfile ??= new InvestorProfile();
+                    user.InvestorProfile.FinanceVerified = true;
+                    await _userManager.UpdateAsync(user);
+                }
+
+                await _phaseNotificationService.NotifyFinanceVerificationApprovedAsync(record.UserId, record.InvestorId);
+            }
+            else if (action == "needs_update")
+            {
+                if (string.IsNullOrWhiteSpace(request.DecisionReason))
+                    return BadRequest(new { error = "Decision reason is required when requesting an update." });
+
+                record.Status = "needs_update";
+                record.ReviewedAt = System.DateTime.UtcNow;
+                record.ReviewedByUserId = adminUserId;
+                record.DecisionReason = request.DecisionReason;
+                record.UpdatedAt = System.DateTime.UtcNow;
+
+                if (user != null)
+                {
+                    user.InvestorProfile ??= new InvestorProfile();
+                    user.InvestorProfile.FinanceVerified = false;
+                    await _userManager.UpdateAsync(user);
+                }
+
+                await _phaseNotificationService.NotifyFinanceVerificationNeedsUpdateAsync(record.UserId, record.InvestorId, request.DecisionReason);
+            }
+            else if (action == "reject")
+            {
+                if (string.IsNullOrWhiteSpace(request.DecisionReason))
+                    return BadRequest(new { error = "Decision reason is required when rejecting verification." });
+
+                record.Status = "rejected";
+                record.ReviewedAt = System.DateTime.UtcNow;
+                record.ReviewedByUserId = adminUserId;
+                record.DecisionReason = request.DecisionReason;
+                record.UpdatedAt = System.DateTime.UtcNow;
+
+                if (user != null)
+                {
+                    user.InvestorProfile ??= new InvestorProfile();
+                    user.InvestorProfile.FinanceVerified = false;
+                    await _userManager.UpdateAsync(user);
+                }
+
+                await _phaseNotificationService.NotifyFinanceVerificationRejectedAsync(record.UserId, record.InvestorId, request.DecisionReason);
+            }
+            else
+            {
+                return BadRequest(new { error = "Invalid action. Allowed values: 'verify', 'needs_update', 'reject'." });
+            }
+
+            await _context.InvestorFinanceVerifications.ReplaceOneAsync(v => v.Id == record.Id, record);
+
+            return Ok(new
+            {
+                success = true,
+                id = record.Id,
+                status = record.Status,
+                decisionReason = record.DecisionReason,
+                reviewedAt = record.ReviewedAt
+            });
+        }
     }
 
 }

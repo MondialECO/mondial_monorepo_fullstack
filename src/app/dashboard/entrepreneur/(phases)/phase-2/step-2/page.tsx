@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Upload,
@@ -20,36 +20,73 @@ import { RouteGuard } from '@/components/entrepreneur/RouteGuard';
 import { Button } from '@/components/ui/button';
 import { Phase2Data } from '@/types/entrepreneur';
 
-const requiredDocuments = [
-  {
-    id: 'kbis',
-    name: 'KBIS / Extrait Kbis',
-    description: 'Official company registration extract from the French national trade registry (Registre du Commerce)',
-    mandatory: true,
-    icon: FileText,
-  },
-  {
-    id: 'rib',
-    name: "Bank RIB / Relevé d'Identité Bancaire",
-    description: 'Your company bank account details for payment verification and fund transfers',
-    mandatory: true,
-    icon: Building2,
-  },
-  {
-    id: 'tax',
-    name: 'Tax Certificate / Attestation Fiscale',
-    description: 'Certificate of tax compliance issued by the Direction Générale des Finances Publiques',
-    mandatory: true,
-    icon: Receipt,
-  },
-  {
-    id: 'insurance',
-    name: 'Professional Insurance / Attestation RC Pro',
-    description: 'Valid professional liability insurance certificate covering your current business activities',
-    mandatory: true,
-    icon: ShieldCheck,
-  },
-];
+function getRequiredDocuments(country?: string) {
+  const isFrance = (country || '').trim().toLowerCase() === 'france';
+
+  if (isFrance) {
+    return [
+      {
+        id: 'kbis',
+        name: 'KBIS / Company Registry Extract',
+        description: 'Official company registration extract from the French national trade registry (Registre du Commerce)',
+        mandatory: true,
+        icon: FileText,
+      },
+      {
+        id: 'rib',
+        name: 'Bank RIB / Bank Account Certificate',
+        description: 'Your company bank account details for payment verification and fund transfers',
+        mandatory: true,
+        icon: Building2,
+      },
+      {
+        id: 'tax',
+        name: 'Tax Certificate / Attestation Fiscale',
+        description: 'Certificate of tax compliance issued by the Direction Générale des Finances Publiques',
+        mandatory: true,
+        icon: Receipt,
+      },
+      {
+        id: 'insurance',
+        name: 'Professional Insurance / RC Pro',
+        description: 'Valid professional liability insurance certificate covering your current business activities',
+        mandatory: true,
+        icon: ShieldCheck,
+      },
+    ];
+  }
+
+  return [
+    {
+      id: 'kbis',
+      name: 'Company Registry Extract / Certificate of Incorporation',
+      description: 'Official company registration extract or certificate of incorporation from your national commercial registry',
+      mandatory: true,
+      icon: FileText,
+    },
+    {
+      id: 'rib',
+      name: 'Business Bank Account Certificate',
+      description: 'Official bank statement header or account certificate showing IBAN/account details in the company name',
+      mandatory: true,
+      icon: Building2,
+    },
+    {
+      id: 'tax',
+      name: 'Company Tax Registration / Tax Certificate',
+      description: 'Certificate of tax compliance or VAT/tax registration certificate issued by your national tax authority',
+      mandatory: true,
+      icon: Receipt,
+    },
+    {
+      id: 'insurance',
+      name: 'Professional / Business Liability Insurance',
+      description: 'Valid commercial liability or professional indemnity insurance certificate covering your business',
+      mandatory: true,
+      icon: ShieldCheck,
+    },
+  ];
+}
 
 function Phase2Step2PageContent() {
   const router = useRouter();
@@ -58,16 +95,23 @@ function Phase2Step2PageContent() {
   const [validationError, setValidationError] = useState<string>('');
   const [uploadingDocs, setUploadingDocs] = useState<Set<string>>(new Set());
   const [uploadedDocs, setUploadedDocs] = useState<Set<string>>(new Set());
+  const [companyCountry, setCompanyCountry] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const { progress, savePhaseData, moveToNextStep, getPhaseData } = useEntrepreneurProgress();
 
-  // Fetch existing documents on mount
+  const requiredDocuments = useMemo(() => getRequiredDocuments(companyCountry), [companyCountry]);
+
+  // Fetch existing documents and company country on mount
   useEffect(() => {
     const fetchDocuments = async () => {
       try {
         setIsLoading(true);
-        const existingData: Phase2Data = getPhaseData<Phase2Data>(2) ?? {};
+        const existingData: any = getPhaseData<Phase2Data>(2) ?? {};
         let companyId = existingData.__companyId;
+        const localCountry = existingData.countryOfRegistration || existingData.country || '';
+        if (localCountry) {
+          setCompanyCountry(localCountry);
+        }
 
         if (!companyId) {
           const phaseProgress = await entrepreneurApi.getCurrentPhase();
@@ -75,7 +119,13 @@ function Phase2Step2PageContent() {
         }
 
         if (companyId) {
-          const documents = await entrepreneurApi.getDocuments(companyId);
+          const [company, documents] = await Promise.all([
+            entrepreneurApi.getCompany(companyId).catch(() => null),
+            entrepreneurApi.getDocuments(companyId).catch(() => []),
+          ]);
+          if (company?.country) {
+            setCompanyCountry(company.country);
+          }
           if (documents && documents.length > 0) {
             const docIds = new Set<string>();
             documents.forEach((doc: any) => {
@@ -199,6 +249,11 @@ function Phase2Step2PageContent() {
             <h1 className="text-2xl sm:text-3xl font-medium text-foreground leading-tight">Document Submission</h1>
             <p className="text-sm text-muted-foreground">
               Please provide the following legal documents to certify your company&apos;s existence and compliance. Only PDF, JPG, or PNG formats are accepted.
+            </p>
+            <p className="text-xs font-medium text-primary">
+              {companyCountry.trim().toLowerCase() === 'france'
+                ? 'Upload the French equivalent shown above.'
+                : 'Upload the equivalent official document issued in your country.'}
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-[18px]">

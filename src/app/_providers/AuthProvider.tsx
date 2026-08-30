@@ -4,11 +4,11 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/axios';
 import {
-  parseStrictUserRole,
   resolvePrimaryRole,
   ROLE_DASHBOARD_ROUTES,
   UserRole,
 } from '@/lib/roles';
+import { readOnboardingPhase } from '@/lib/auth-contract';
 
 type User = {
   id: string;
@@ -109,7 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           id: authData.id,
           name: authData.name,
           role: resolvedRole,
-          onboardingPhase: authData.onboarding?.phase ?? 0,
+          onboardingPhase: readOnboardingPhase(authData),
         };
 
         if (isCancelled) return;
@@ -166,8 +166,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error(`Login failed: unknown role "${JSON.stringify(apiRoles)}". Please contact support.`);
     }
 
-    // Capture onboarding phase from login response (backend includes it at apiUser.Onboarding.phase)
-    const onboardingPhase = apiUser.Onboarding?.phase ?? 0;
+    const onboardingPhase = readOnboardingPhase(apiUser);
 
     const user: User = {
       id: apiUser.id,
@@ -222,7 +221,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         id: authData.id,
         name: authData.name,
         role: resolvedRole,
-        onboardingPhase: authData.onboarding?.phase ?? 0,
+        onboardingPhase: readOnboardingPhase(authData),
       };
       localStorage.setItem('user', JSON.stringify(updatedUser));
       setUser(updatedUser);

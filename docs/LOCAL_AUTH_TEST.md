@@ -10,21 +10,21 @@
 
 ### Terminal 1: Start Backend
 ```bash
-cd C:\devs\Mondial\backend
+cd <repository-root>\backend
 dotnet watch run
-# Wait for: "Now listening on: http://localhost:5000"
+# Wait for: "Now listening on: http://localhost:5093"
 ```
 
 ### Terminal 2: Start Frontend
 ```bash
-cd C:\devs\Mondial\frontend
+# Run from <repository-root>; src/app is the canonical Next.js app.
 npm run dev
 # Wait for: "▲ Next.js 16.1.7 - Local: http://localhost:3000"
 ```
 
 ### Environment Check
 The following are now configured:
-- ✅ Frontend API URL: `http://localhost:5000/api` (from env)
+- ✅ Frontend API URL: `http://localhost:5093/api` (from env)
 - ✅ Backend Base URL: `http://localhost:3000` (for confirmation links)
 - ✅ CORS: Enabled for localhost:3000
 - ✅ JWT Secret: Configured in backend
@@ -159,12 +159,12 @@ WHERE Email = 'test1@example.com'
 TOKEN="<paste-jwt-token-here>"
 
 # Test 1: Request WITHOUT token (should fail)
-curl -X GET http://localhost:5000/api/auth/me
+curl -X GET http://localhost:5093/api/auth/me
 
 # Should return: 401 Unauthorized
 
 # Test 2: Request WITH token (should succeed)
-curl -X GET http://localhost:5000/api/auth/me \
+curl -X GET http://localhost:5093/api/auth/me \
   -H "Authorization: Bearer $TOKEN"
 
 # Should return: 200 OK with user data
@@ -209,8 +209,8 @@ curl -X GET http://localhost:5000/api/auth/me \
 
 ### Backend won't start
 ```bash
-# Check port 5000 available
-netstat -ano | findstr :5000
+# Check port 5093 available
+netstat -ano | findstr :5093
 
 # Check SQL Server running
 sqlcmd -S localhost,1433 -U sa -P YourPassword
@@ -222,7 +222,7 @@ dotnet --version
 ### Frontend won't load
 ```bash
 # Clear cache
-rm -rf frontend/.next
+rm -rf .next
 npm run dev
 
 # Check Node version

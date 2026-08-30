@@ -142,8 +142,8 @@ public static class Phase4Requirements
                 errors.Add($"{label}: shares granted ({g.SharesGranted}) exceed total shares ({totalShares})");
             if (g.InvestmentAmount.HasValue && g.InvestmentAmount.Value < 0)
                 errors.Add($"{label}: investment amount must be >= 0");
-            if (!ShareClasses.IsValid(g.ShareClass))
-                errors.Add($"{label}: invalid share class '{g.ShareClass}' (allowed: {string.Join(", ", ShareClasses.All)})");
+            if (!ShareClasses.IsEquityClass(g.ShareClass))
+                errors.Add($"{label}: invalid equity share class '{g.ShareClass}' (allowed: {string.Join(", ", ShareClasses.EquityClasses)})");
             errors.AddRange(ValidateVesting(g.CliffMonths, g.TotalVestMonths, label));
         }
 

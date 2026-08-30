@@ -283,6 +283,351 @@ They now have NDA-gated access to your data room. Review their engagement in you
         }
     }
 
+    public async Task NotifyEntrepreneurInterestAsync(string companyId, string investorId)
+    {
+        try
+        {
+            var company = await _companyService.GetCompanyAsync(companyId);
+            var investorUser = await FindInvestorUserAsync(investorId);
+
+            var subject = $"💼 New Investor Match Interest from {company?.CompanyName}";
+            var body = $@"
+{company?.CompanyName} expressed interest in connecting with you on Mondial Eco.
+
+Company: {company?.CompanyName}
+Industry: {company?.Industry}
+Funding Ask: EUR {company?.FundingAskAmount ?? 0:N0}
+
+Review this opportunity in your incoming investor matches:
+/dashboard/investor/incoming-matches
+";
+            if (investorUser != null)
+                await SendToUserAsync(investorUser, companyId, subject, body);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sending entrepreneur interest notification for company {CompanyId}", companyId);
+        }
+    }
+
+    public async Task NotifyInvestorInterestAsync(string companyId, string investorId)
+    {
+        try
+        {
+            var company = await _companyService.GetCompanyAsync(companyId);
+            var user = await GetUserAsync(company?.OwnerId);
+            var investorUser = await FindInvestorUserAsync(investorId);
+            var investorName = investorUser?.Name ?? "Investor";
+
+            var subject = $"⭐ {investorName} is interested in your company!";
+            var body = $@"
+Great news! {investorName} has expressed interest in {company?.CompanyName}.
+
+Open your Phase 8 dashboard to express mutual interest and confirm the handshake:
+/dashboard/entrepreneur/phase-8
+";
+            await SendToUserAsync(user, companyId, subject, body);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sending investor interest notification for company {CompanyId}", companyId);
+        }
+    }
+
+    public async Task NotifyMutualHandshakeAsync(string companyId, string investorId)
+    {
+        try
+        {
+            var company = await _companyService.GetCompanyAsync(companyId);
+            var founder = await GetUserAsync(company?.OwnerId);
+            var investorUser = await FindInvestorUserAsync(investorId);
+            var investorName = investorUser?.Name ?? "Investor";
+
+            var subject = $"🤝 It's a Match! Handshake Confirmed with {company?.CompanyName} & {investorName}";
+            var body = $@"
+Congratulations! Both sides have expressed mutual interest.
+
+Company: {company?.CompanyName}
+Investor: {investorName}
+
+You can now message each other or schedule an investor pitch meeting directly from your dashboard.
+";
+            await SendToUserAsync(founder, companyId, subject, body);
+            if (investorUser != null)
+                await SendToUserAsync(investorUser, companyId, subject, body);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sending mutual handshake notification for company {CompanyId}", companyId);
+        }
+    }
+
+    public async Task NotifyMeetingScheduledAsync(string companyId, string investorId, Models.DatabaseModels.InvestorMeetingRecord meeting, string initiatedBy)
+    {
+        try
+        {
+            var company = await _companyService.GetCompanyAsync(companyId);
+            var founder = await GetUserAsync(company?.OwnerId);
+            var investorUser = await FindInvestorUserAsync(investorId);
+            var investorName = investorUser?.Name ?? "Investor";
+
+            var subject = $"📅 Investor Meeting Confirmed: {company?.CompanyName} & {investorName}";
+            var body = $@"
+A meeting has been scheduled:
+Date & Time: {meeting.StartsAt:yyyy-MM-dd HH:mm} {meeting.Timezone}
+Duration: {meeting.DurationMinutes} minutes
+Format: {meeting.MeetingType}
+Note/Agenda: {(string.IsNullOrWhiteSpace(meeting.Note) ? "None specified" : meeting.Note)}
+
+Please check your dashboard for details.
+";
+            if (string.Equals(initiatedBy, "entrepreneur", StringComparison.OrdinalIgnoreCase))
+            {
+                if (investorUser != null)
+                    await SendToUserAsync(investorUser, companyId, subject, body);
+            }
+            else
+            {
+                await SendToUserAsync(founder, companyId, subject, body);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sending meeting scheduled notification for company {CompanyId}", companyId);
+        }
+    }
+
+    public async Task NotifyMeetingStatusChangedAsync(string companyId, string investorId, Models.DatabaseModels.InvestorMeetingRecord meeting, string newStatus, string initiatedBy)
+    {
+        try
+        {
+            var company = await _companyService.GetCompanyAsync(companyId);
+            var founder = await GetUserAsync(company?.OwnerId);
+            var investorUser = await FindInvestorUserAsync(investorId);
+            var investorName = investorUser?.Name ?? "Investor";
+
+            var isCancelled = string.Equals(newStatus, "cancelled", StringComparison.OrdinalIgnoreCase);
+            var subject = isCancelled
+                ? $"❌ Meeting Cancelled: {company?.CompanyName} & {investorName}"
+                : $"🔄 Meeting Updated: {company?.CompanyName} & {investorName}";
+            var body = $@"
+The meeting status has been updated to: {newStatus}.
+
+Date & Time: {meeting.StartsAt:yyyy-MM-dd HH:mm} {meeting.Timezone}
+Format: {meeting.MeetingType}
+
+Review your dashboard for next steps.
+";
+            if (string.Equals(initiatedBy, "entrepreneur", StringComparison.OrdinalIgnoreCase))
+            {
+                if (investorUser != null)
+                    await SendToUserAsync(investorUser, companyId, subject, body);
+            }
+            else
+            {
+                await SendToUserAsync(founder, companyId, subject, body);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sending meeting status change notification for company {CompanyId}", companyId);
+        }
+    }
+
+    public async Task NotifyFinanceVerificationSubmittedAsync(string userId, string investorId)
+    {
+        try
+        {
+            var user = await GetUserAsync(userId) ?? await FindInvestorUserAsync(investorId);
+            if (user == null) return;
+
+            var subject = "📋 Finance Verification Submitted — Mondial";
+            var body = $@"Hello {user.Name ?? "Investor"},
+
+Your Finance Verification has been submitted for compliance review. You will receive an update once reviewed.
+
+View your submission status:
+/dashboard/investor/phase-2
+
+Best regards,
+Mondial Team";
+            await SendToUserAsync(user, investorId, subject, body);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sending finance verification submitted notification for investor {InvestorId}", investorId);
+        }
+    }
+
+    public async Task NotifyFinanceVerificationApprovedAsync(string userId, string investorId)
+    {
+        try
+        {
+            var user = await GetUserAsync(userId) ?? await FindInvestorUserAsync(investorId);
+            if (user == null) return;
+
+            var subject = "✅ Finance Verification Approved — Finance Verified Badge Awarded";
+            var body = $@"Hello {user.Name ?? "Investor"},
+
+Congratulations! Your investment capacity has been verified. You have been awarded the Finance Verified Badge and can now submit investment offers on Mondial.
+
+View your verified status:
+/dashboard/investor/phase-2
+
+Best regards,
+Mondial Team";
+            await SendToUserAsync(user, investorId, subject, body);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sending finance verification approved notification for investor {InvestorId}", investorId);
+        }
+    }
+
+    public async Task NotifyFinanceVerificationNeedsUpdateAsync(string userId, string investorId, string reason)
+    {
+        try
+        {
+            var user = await GetUserAsync(userId) ?? await FindInvestorUserAsync(investorId);
+            if (user == null) return;
+
+            var subject = "⚠️ Action Required: Finance Verification Update Needed — Mondial";
+            var body = $@"Hello {user.Name ?? "Investor"},
+
+Our verification team requested an update to your Finance Verification:
+""{reason}""
+
+Please visit your Finance Verification page to upload updated documents and resubmit:
+/dashboard/investor/phase-2
+
+Best regards,
+Mondial Team";
+            await SendToUserAsync(user, investorId, subject, body);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sending finance verification update requested notification for investor {InvestorId}", investorId);
+        }
+    }
+
+    public async Task NotifyFinanceVerificationRejectedAsync(string userId, string investorId, string reason)
+    {
+        try
+        {
+            var user = await GetUserAsync(userId) ?? await FindInvestorUserAsync(investorId);
+            if (user == null) return;
+
+            var subject = "Finance Verification Decision — Mondial";
+            var body = $@"Hello {user.Name ?? "Investor"},
+
+Your Finance Verification could not be verified at this time:
+""{reason}""
+
+View your verification details:
+/dashboard/investor/phase-2
+
+Best regards,
+Mondial Team";
+            await SendToUserAsync(user, investorId, subject, body);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sending finance verification rejected notification for investor {InvestorId}", investorId);
+        }
+    }
+
+    public async Task NotifyInvestmentAddedToPortfolioAsync(string userId, string investorId, string companyName, double amount, string currency)
+    {
+        try
+        {
+            var user = await GetUserAsync(userId) ?? await FindInvestorUserAsync(investorId);
+            if (user == null) return;
+
+            var subject = $"Investment Added to Portfolio: {companyName} — Mondial";
+            var body = $@"Hello {user.Name ?? "Investor"},
+
+Congratulations! Your investment of {currency} {amount:N0} in {companyName} has successfully closed and is now active in your portfolio.
+
+View your portfolio:
+/dashboard/investor
+
+Best regards,
+Mondial Team";
+            await SendToUserAsync(user, investorId, subject, body);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sending portfolio investment added notification for investor {InvestorId} in company {CompanyName}", investorId, companyName);
+        }
+    }
+
+    public async Task NotifyDiligenceQuestionAskedAsync(string companyId, string investorName, string documentTitle, string question)
+    {
+        try
+        {
+            var company = await _companyService.GetCompanyAsync(companyId);
+            if (company == null) return;
+
+            var user = await GetUserAsync(company.OwnerId);
+            var subject = $"❓ Due Diligence Question: {investorName} asked about {documentTitle}";
+            var body = $@"
+Hi {user?.Name ?? "Founder"},
+
+{investorName} has asked a question during Due Diligence for {company.CompanyName}:
+
+Related Document: {documentTitle}
+Question:
+""{question}""
+
+Please review and answer in your Data Room dashboard:
+/dashboard/entrepreneur/phase-6
+
+Best regards,
+Mondial Team";
+
+            await SendToUserAsync(user, companyId, subject, body);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sending diligence question notification for company {CompanyId}", companyId);
+        }
+    }
+
+    public async Task NotifyDiligenceQuestionAnsweredAsync(string investorId, string companyName, string documentTitle, string response)
+    {
+        try
+        {
+            var user = await FindInvestorUserAsync(investorId);
+            var subject = $"💬 Founder Responded: Due Diligence question for {companyName}";
+            var body = $@"
+Hi {user?.Name ?? "Investor"},
+
+The founder of {companyName} has responded to your due diligence question regarding {documentTitle}:
+
+Response:
+""{response}""
+
+Review the full due diligence workspace:
+/dashboard/investor
+
+Best regards,
+Mondial Team";
+
+            await SendToUserAsync(user, investorId, subject, body);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sending diligence question answered notification for investor {InvestorId}", investorId);
+        }
+    }
+
+    private async Task<ApplicationUser?> FindInvestorUserAsync(string investorId)
+    {
+        if (string.IsNullOrWhiteSpace(investorId)) return null;
+        var users = await _userManager.GetUsersInRoleAsync("Investor");
+        return users.FirstOrDefault(u => u.InvestorProfile?.InvestorId == investorId);
+    }
+
     // Resolve a real ApplicationUser by id. Returns null only when the id is
     // missing or no matching user exists — callers must handle that explicitly
     // (see SendToUserAsync) rather than emailing an empty recipient.

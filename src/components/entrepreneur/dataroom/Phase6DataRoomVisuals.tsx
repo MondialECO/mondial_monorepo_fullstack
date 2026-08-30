@@ -29,6 +29,7 @@ function Skeleton() {
 
 export function Phase6DataRoomVisuals() {
   const [loading, setLoading] = useState(true);
+  const [companyId, setCompanyId] = useState<string | null>(null);
   const [status, setStatus] = useState<DataRoomStatusResponse | null>(null);
   const [analytics, setAnalytics] = useState<DataRoomAnalyticsResponse | null>(null);
   const [error, setError] = useState('');
@@ -43,6 +44,7 @@ export function Phase6DataRoomVisuals() {
           if (!cancelled) setLoading(false);
           return;
         }
+        if (!cancelled) setCompanyId(id);
         const [st, an] = await Promise.allSettled([
           entrepreneurApi.getDataRoom(id),
           entrepreneurApi.getDataRoomAnalytics(id),
@@ -181,7 +183,179 @@ export function Phase6DataRoomVisuals() {
           </div>
         )}
       </SectionCard>
+
+      {/* Investor Due Diligence Questions */}
+      <FounderDiligenceQuestionsSection companyId={companyId || undefined} />
     </div>
+  );
+}
+
+function FounderDiligenceQuestionsSection({ companyId }: { companyId?: string }) {
+  const [questions, setQuestions] = useState<import('@/lib/api-investor-diligence').DiligenceQuestion[]>([]);
+  const [answeringId, setAnsweringId] = useState<string | null>(null);
+  const [responseText, setResponseText] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  const loadQuestions = async () => {
+    if (!companyId) return;
+    try {
+      const { getFounderDataRoomQuestions } = await import('@/lib/api-investor-diligence');
+      const data = await getFounderDataRoomQuestions(companyId);
+      setQuestions(data);
+    } catch {
+      // Non-blocking
+    }
+  };
+
+  useEffect(() => {
+    loadQuestions();
+  }, [companyId]);
+
+  const handleAnswer = async (questionId: string) => {
+    if (!companyId || !responseText.trim()) return;
+    setSubmitting(true);
+    setError('');
+    try {
+      const { answerFounderDataRoomQuestion } = await import('@/lib/api-investor-diligence');
+      await answerFounderDataRoomQuestion(companyId, questionId, responseText.trim());
+      setAnsweringId(null);
+      setResponseText('');
+      await loadQuestions();
+    } catch {
+      setError('Could not submit response. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const openCount = questions.filter((q) => q.status === 'open').length;
+
+  return (
+    <SectionCard
+      title="Investor Due Diligence Questions"
+      subtitle="Answer questions asked by verified investors reviewing your data room"
+      headerRight={
+        <span className="inline-flex items-center gap-1.5 text-xs">
+          <span className="font-semibold text-primary">{openCount}</span>
+          <span className="text-muted-foreground">open</span>
+        </span>
+      }
+    >
+      {error && (
+        <div role="alert" className="mb-3 rounded-lg border border-destructive/30 bg-destructive/10 p-2 text-xs text-destructive">
+          {error}
+        </div>
+      )}
+
+      {questions.length === 0 ? (
+        <div className="flex h-24 items-center justify-center rounded-xl border border-dashed border-border bg-muted/20">
+          <span className="text-sm italic text-muted-foreground">No due diligence questions from investors yet.</span>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {questions.map((q) => {
+            const isAnswering = answeringId === q.id;
+            const isAnswered = q.status === 'answered' || q.status === 'closed';
+
+            return (
+              <div
+                key={q.id}
+                className={`rounded-xl border p-4 space-y-3 transition-colors ${
+                  isAnswered
+                    ? 'border-border/70 bg-background'
+                    : 'border-amber-500/30 bg-amber-500/5'
+                }`}
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-sm text-foreground">
+                      {q.investorName || 'Investor'}
+                    </span>
+                    {q.documentTitle && (
+                      <span className="text-xs text-muted-foreground font-medium">
+                        · on <span className="text-foreground">{q.documentTitle}</span>
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">{dateFmt(q.askedAt)}</span>
+                    <Chip tone={isAnswered ? 'success' : 'primary'}>
+                      {isAnswered ? 'Answered' : 'Open'}
+                    </Chip>
+                  </div>
+                </div>
+
+                <p className="text-sm text-foreground bg-muted/30 p-3 rounded-lg border border-border/50">
+                  {q.question}
+                </p>
+
+                {q.founderResponse && (
+                  <div className="rounded-lg bg-emerald-500/5 border border-emerald-500/20 p-3 space-y-1">
+                    <div className="flex items-center justify-between text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+                      <span>Your Response</span>
+                      {q.respondedAt && (
+                        <span className="font-normal opacity-80">{dateFmt(q.respondedAt)}</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-foreground whitespace-pre-wrap">{q.founderResponse}</p>
+                  </div>
+                )}
+
+                {!isAnswered && (
+                  <div>
+                    {isAnswering ? (
+                      <div className="space-y-2 pt-1">
+                        <textarea
+                          placeholder="Type your response to the investor..."
+                          value={responseText}
+                          onChange={(e) => setResponseText(e.target.value)}
+                          rows={3}
+                          className="w-full rounded-lg border border-border bg-background p-2.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                        />
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAnsweringId(null);
+                              setResponseText('');
+                            }}
+                            className="px-3 py-1.5 text-xs font-medium rounded-lg border border-border hover:bg-muted"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleAnswer(q.id)}
+                            disabled={!responseText.trim() || submitting}
+                            className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                          >
+                            {submitting ? 'Sending…' : 'Submit Response'}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAnsweringId(q.id);
+                            setResponseText('');
+                          }}
+                          className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:opacity-90"
+                        >
+                          Answer Question
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </SectionCard>
   );
 }
 

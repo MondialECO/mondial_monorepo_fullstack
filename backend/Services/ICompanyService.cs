@@ -104,6 +104,8 @@ public interface ICompanyService
     // ============ PHASE 6: DATA ROOM ============
 
     Task<DataRoomDocumentResponse> UploadDataRoomDocumentAsync(string companyId, UploadDataRoomDocumentRequest request, string uploadedByUserId);
+    Task<DataRoomStatusResponse> DeleteDataRoomDocumentAsync(string companyId, string documentId);
+    Task<DataRoomDocumentResponse> ReplaceDataRoomDocumentAsync(string companyId, string documentId, UploadDataRoomDocumentRequest request, string uploadedByUserId);
     Task<DataRoomStatusResponse> GetDataRoomStatusAsync(string companyId);
     Task<DataRoomStatusResponse> GrantDataRoomAccessAsync(string companyId, DataRoomAccessRequest request);
     Task RevokeDataRoomAccessAsync(string companyId, string investorId);
@@ -121,7 +123,7 @@ public interface ICompanyService
     Task<AiReviewResponse> GetAiReviewScoreAsync(string companyId);
     Task<List<RecommendationDto>> GetRecommendationsAsync(string companyId);
     Task<List<Phase7ReviewSnapshot>> GetAiReviewHistoryAsync(string companyId);
-    Task AwardInvestorReadyBadgeAsync(string companyId);
+    Task<AwardInvestorReadyBadgeResponse> AwardInvestorReadyBadgeAsync(string companyId);
 
     // ============ PHASE 8: INVESTOR MATCHING ============
 
@@ -129,6 +131,8 @@ public interface ICompanyService
     Task<List<InvestorMatchResponse>> RegenerateInvestorMatchesAsync(string companyId);
     Task RecordInvestorInteractionAsync(string companyId, RecordInteractionRequest request);
     Task<InvestorMatchResponse> UpdateMatchStatusAsync(string companyId, string matchId, string status);
+    Task<InvestorMatchResponse> ScheduleMeetingAsync(string companyId, string matchId, ScheduleMeetingDto dto);
+    Task<InvestorMatchResponse> UpdateMeetingStatusAsync(string companyId, string matchId, UpdateMeetingStatusDto dto);
     Task<MatchingInsightsResponse> GetMatchingInsightsAsync(string companyId);
 
     // ============ PHASE 9: DEAL EXECUTION ============
@@ -190,6 +194,11 @@ public interface ICompanyService
     Task<DiligenceProgressResponse> GetDiligenceProgressAsync(string investorId, string companyId);
 
     Task<RoundSummaryResponse> GetRoundSummaryAsync(string companyId);
+
+    Task CreateCompanyPortfolioHoldingsForDealAsync(DealExecution deal, string actorUserId);
+    Task<int> ReconcileClosedDealPortfolioHoldingsAsync(string? specificInvestorId = null);
+    Task ApplyEquityDealToCapTableAsync(DealExecution deal, string actorUserId);
+    Task<int> ReconcileClosedDealCapTablesAsync(string? specificCompanyId = null);
 
     Task<TermSheetResponse> GetActiveTermSheetAsync(string companyId);
 

@@ -95,8 +95,8 @@ export function Phase3RevenueInputClient() {
   async function persistAndCalculate(navigate: boolean) {
     setValidationError('');
     setRecalcError('');
-    if (totalRevenue <= 0) {
-      const err = 'Enter quarterly revenue totalling more than 0';
+    if (qNum(q1) < 0 || qNum(q2) < 0 || qNum(q3) < 0 || qNum(q4) < 0) {
+      const err = 'Quarterly revenue amounts cannot be negative';
       if (navigate) setValidationError(err);
       else setRecalcError(err);
       return;
@@ -205,6 +205,12 @@ export function Phase3RevenueInputClient() {
                 </div>
               ))}
             </div>
+            {totalRevenue === 0 && (
+              <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs text-muted-foreground">
+                <span className="font-semibold text-primary block mb-0.5">Pre-Revenue Company</span>
+                Revenue has not started yet. You can still complete your financial baseline and valuation readiness.
+              </div>
+            )}
             {recalcError && (
               <div className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg p-3">
                 {recalcError}
@@ -224,7 +230,14 @@ export function Phase3RevenueInputClient() {
           <div className="flex flex-col gap-4">
             {/* Chart */}
             <Surface className="p-6 lg:p-8 flex-1 bg-popover">
-              <h2 className="text-lg font-semibold text-foreground mb-6">Revenue Growth Report Card</h2>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-semibold text-foreground">Revenue Growth Report Card</h2>
+                {totalRevenue === 0 && (
+                  <span className="text-xs px-2.5 py-1 rounded-full bg-muted font-medium text-muted-foreground">
+                    Pre-Revenue Baseline
+                  </span>
+                )}
+              </div>
               <RevenueBars data={chartData} />
             </Surface>
 

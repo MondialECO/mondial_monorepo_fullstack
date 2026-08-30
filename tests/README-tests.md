@@ -22,7 +22,7 @@ Both backend and frontend must be running locally:
 cd backend && dotnet run
 
 # Terminal 2 — frontend
-cd frontend && npm run dev
+npm run dev  # from the repository root; src/app is canonical
 ```
 
 OpenRouter API key must be set:

@@ -125,7 +125,17 @@ public class Phase6ValidatorTests
     }
 
     [Fact]
-    public async Task Phase6_ExpiredAccessGrant_Fails()
+    public async Task Phase6_NoAccessGrants_CanComplete()
+    {
+        var c = GoodCompany();
+        c.DataRoomAccessRecords = new List<DataRoomAccessRecord>();
+        var (isValid, errors) = await _validator.ValidatePhase6Async(c);
+        isValid.Should().BeTrue();
+        errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Phase6_ExpiredGrant_DoesNotBlockCompletion()
     {
         var c = GoodCompany();
         c.DataRoomAccessRecords = new List<DataRoomAccessRecord>
@@ -135,8 +145,18 @@ public class Phase6ValidatorTests
                     ExpiresAt = DateTime.UtcNow.AddDays(-1) },
         };
         var (isValid, errors) = await _validator.ValidatePhase6Async(c);
-        isValid.Should().BeFalse();
-        errors.Should().Contain(e => e.Contains("expired at"));
+        isValid.Should().BeTrue();
+        errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Phase6_RevokedGrant_DoesNotBlockCompletion()
+    {
+        var c = GoodCompany();
+        c.DataRoomAccessRecords = new List<DataRoomAccessRecord>();
+        var (isValid, errors) = await _validator.ValidatePhase6Async(c);
+        isValid.Should().BeTrue();
+        errors.Should().BeEmpty();
     }
 
     [Fact]
@@ -152,5 +172,16 @@ public class Phase6ValidatorTests
         var (isValid, errors) = await _validator.ValidatePhase6Async(c);
         isValid.Should().BeFalse();
         errors.Should().Contain(e => e.Contains("investorId is missing"));
+    }
+
+    [Fact]
+    public async Task Phase6_ReplacedDocumentCountsOnceForValidator()
+    {
+        var c = GoodCompany();
+        // 3 documents: 1 legal, 1 financial, 1 business
+        c.DataRoomDocuments[0] = GoodDoc("legal", "Updated Articles");
+        var (isValid, errors) = await _validator.ValidatePhase6Async(c);
+        isValid.Should().BeTrue();
+        errors.Should().BeEmpty();
     }
 }

@@ -12,6 +12,7 @@ import {
   ChevronDown,
   ChevronUp,
   Download,
+  Trash2,
   Upload,
 } from 'lucide-react';
 import { useEntrepreneurProgress } from '@/hooks/useEntrepreneurProgress';
@@ -19,6 +20,7 @@ import { RouteGuard } from '@/components/entrepreneur/RouteGuard';
 import { StepFooter } from '@/components/entrepreneur/StepFooter';
 import entrepreneurApi, {
   DataRoomAccessGrant,
+  DataRoomDocumentResponse,
   DataRoomStatusResponse,
 } from '@/lib/api-entrepreneur';
 import { Phase6Data } from '@/types/entrepreneur';
@@ -173,7 +175,13 @@ function Phase6Content() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
+  const [deleteModalDoc, setDeleteModalDoc] = useState<DataRoomDocumentResponse | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [replaceDoc, setReplaceDoc] = useState<DataRoomDocumentResponse | null>(null);
+  const [isReplacing, setIsReplacing] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const replaceInputRef = useRef<HTMLInputElement | null>(null);
   const pendingCategory = useRef<Category>('legal');
 
   async function resolveCompanyId(): Promise<string> {
@@ -229,6 +237,12 @@ function Phase6Content() {
     fileInputRef.current?.click();
   };
 
+  const triggerReplace = (doc: DataRoomDocumentResponse) => {
+    setReplaceDoc(doc);
+    setUploadError('');
+    replaceInputRef.current?.click();
+  };
+
   const handleFileSelected = async (file: File | null) => {
     if (!file) return;
     setUploadError('');
@@ -248,6 +262,46 @@ function Phase6Content() {
       setUploadError(e instanceof Error ? e.message : 'Upload failed');
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleReplaceFileSelected = async (file: File | null) => {
+    if (!file || !replaceDoc) return;
+    setUploadError('');
+    const msg = validateFile(file);
+    if (msg) { setUploadError(msg); return; }
+    setIsReplacing(true);
+    try {
+      const companyId = await resolveCompanyId();
+      const title = file.name.replace(/\.[^.]+$/, '');
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('title', title);
+      fd.append('category', replaceDoc.category);
+      await entrepreneurApi.replaceDataRoomDocument(companyId, replaceDoc.documentId, fd);
+      setReplaceDoc(null);
+      await reload();
+    } catch (e) {
+      setUploadError(e instanceof Error ? e.message : 'Replace failed');
+    } finally {
+      setIsReplacing(false);
+      if (replaceInputRef.current) replaceInputRef.current.value = '';
+    }
+  };
+
+  const handleDeleteConfirmed = async () => {
+    if (!deleteModalDoc) return;
+    setIsDeleting(true);
+    setError('');
+    try {
+      const companyId = await resolveCompanyId();
+      await entrepreneurApi.deleteDataRoomDocument(companyId, deleteModalDoc.documentId);
+      setDeleteModalDoc(null);
+      await reload();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Delete failed');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -616,31 +670,41 @@ function Phase6Content() {
                                     </span>
                                   </div>
                                 </div>
-                                {isPublished ? (
-                                  <span
-                                    className="shrink-0 rounded"
-                                    style={{ backgroundColor: C.bgGreen, border: `1px solid ${C.border}`, padding: '4px 12px', fontSize: 11, fontWeight: 500, color: C.green }}
-                                  >
-                                    PUBLISHED
-                                  </span>
-                                ) : (
-                                  <div className="flex shrink-0 items-center gap-2">
+                                <div className="flex shrink-0 items-center gap-2">
+                                  {isPublished ? (
+                                    <span
+                                      className="shrink-0 rounded"
+                                      style={{ backgroundColor: C.bgGreen, border: `1px solid ${C.border}`, padding: '4px 10px', fontSize: 11, fontWeight: 500, color: C.green }}
+                                    >
+                                      PUBLISHED
+                                    </span>
+                                  ) : (
                                     <span
                                       className="inline-flex items-center gap-1 rounded-full"
-                                      style={{ backgroundColor: C.yellow, padding: '4px 12px', fontSize: 11, fontWeight: 500, color: '#f7f7f7' }}
+                                      style={{ backgroundColor: C.yellow, padding: '4px 10px', fontSize: 11, fontWeight: 500, color: '#f7f7f7' }}
                                     >
                                       <AlertTriangle size={12} /> DRAFT
                                     </span>
-                                    <button
-                                      type="button"
-                                      onClick={() => triggerUpload(category)}
-                                      className="rounded-full"
-                                      style={{ backgroundColor: C.primary, padding: '4px 12px', fontSize: 11, fontWeight: 500, color: '#f7f7f7' }}
-                                    >
-                                      Re-upload
-                                    </button>
-                                  </div>
-                                )}
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => triggerReplace(d)}
+                                    disabled={isReplacing || isDeleting}
+                                    className="rounded-full font-medium transition-colors hover:opacity-90 disabled:opacity-50"
+                                    style={{ backgroundColor: C.primary, padding: '4px 12px', fontSize: 11, color: '#f7f7f7' }}
+                                  >
+                                    Replace
+                                  </button>
+                                  <button
+                                    type="button"
+                                    aria-label={`Delete ${d.fileName}`}
+                                    onClick={() => setDeleteModalDoc(d)}
+                                    disabled={isReplacing || isDeleting}
+                                    className="flex items-center justify-center rounded-full p-1.5 transition-colors hover:bg-red-500/10 text-red-500 disabled:opacity-50"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
                               </div>
                             );
                           })}
@@ -853,6 +917,63 @@ function Phase6Content() {
         <div className="flex items-start gap-3 rounded-xl p-4" style={{ backgroundColor: 'rgba(220,38,38,0.1)', border: '2px solid rgba(220,38,38,0.3)' }}>
           <AlertCircle size={20} style={{ color: '#dc2626', marginTop: 2 }} />
           <p style={{ fontSize: 14, fontWeight: 600, color: '#dc2626' }}>{error}</p>
+        </div>
+      )}
+
+      {/* Hidden file input for Replace */}
+      <input
+        ref={replaceInputRef}
+        type="file"
+        accept=".pdf,.pptx,.docx,.xlsx"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0] || null;
+          void handleReplaceFileSelected(file);
+        }}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      {deleteModalDoc && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div
+            className="w-full max-w-md rounded-xl p-6 shadow-xl"
+            style={{ backgroundColor: C.bgCard, border: `1px solid ${C.border}` }}
+          >
+            <div className="flex items-center gap-3 text-red-500">
+              <AlertCircle size={24} />
+              <h3 className="text-lg font-bold" style={{ color: C.textPrimary }}>Delete document?</h3>
+            </div>
+            <p className="mt-3 text-sm" style={{ color: C.textSecondary }}>
+              This document will be removed from the investor data room.
+            </p>
+            <div className="mt-4 rounded-lg p-3" style={{ backgroundColor: C.bgIcon, border: `1px solid ${C.border}` }}>
+              <p className="truncate font-semibold text-sm" style={{ color: C.textPrimary }}>
+                {deleteModalDoc.fileName}
+              </p>
+              <p className="text-xs capitalize" style={{ color: C.textMuted }}>
+                Category: {CATEGORY_LABELS[deleteModalDoc.category] || deleteModalDoc.category}
+              </p>
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setDeleteModalDoc(null)}
+                className="rounded-lg px-4 py-2 text-sm font-medium transition-colors hover:bg-black/5 disabled:opacity-50"
+                style={{ color: C.textSecondary, border: `1px solid ${C.border}` }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={handleDeleteConfirmed}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+              >
+                {isDeleting ? 'Deleting...' : 'Delete Document'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

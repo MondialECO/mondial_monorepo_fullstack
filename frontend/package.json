@@ -3,13 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "dev": "npm --prefix .. run dev",
+    "build": "npm --prefix .. run build",
+    "start": "npm --prefix .. run start",
+    "lint": "npm --prefix .. run lint",
+    "test": "npm --prefix .. run test",
+    "test:watch": "npm --prefix .. run test:watch",
+    "test:coverage": "npm --prefix .. run test:coverage"
   },
   "dependencies": {
     "@fontsource/inter": "^5.2.8",

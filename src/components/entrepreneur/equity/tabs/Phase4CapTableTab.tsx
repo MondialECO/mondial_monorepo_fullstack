@@ -24,13 +24,11 @@ import { Phase4Context } from '../Phase4TabbedView';
 import { fmtNum, TYPE_LABEL, StakeType as UtilStakeType } from '../phase4-utils';
 
 type StakeType = 'founder' | 'investor' | 'advisor' | 'esop';
-type ShareClass = 'common' | 'preferred' | 'safe' | 'note';
+type ShareClass = 'common' | 'preferred';
 
 const CLASS_LABEL: Record<ShareClass, string> = {
   common: 'Common',
   preferred: 'Preferred',
-  safe: 'SAFE',
-  note: 'Note',
 };
 
 interface Row {
@@ -64,10 +62,12 @@ const yearsToMonths = (y: number) => Math.round(y * 12);
 const fmtYears = (m: number) => `${monthsToYears(m)}y`;
 
 function rowFrom(g: EquityGrantDto): Row {
+  const sc = (g.shareClass ?? '').toLowerCase();
+  const validSc: ShareClass = sc === 'preferred' ? 'preferred' : 'common';
   return {
     stakeholderName: g.stakeholderName,
-    stakeholderType: g.stakeholderType,
-    shareClass: g.shareClass,
+    stakeholderType: (g.stakeholderType ?? 'investor') as StakeType,
+    shareClass: validSc,
     sharesGranted: String(g.sharesGranted),
     investmentAmount: g.investmentAmount != null ? String(g.investmentAmount) : '',
     cliffMonths: String(g.cliffMonths ?? 0),
@@ -389,8 +389,6 @@ export function Phase4CapTableTab({ ctx }: { ctx: Phase4Context }) {
                   <SelectContent>
                     <SelectItem value="common">Common</SelectItem>
                     <SelectItem value="preferred">Preferred</SelectItem>
-                    <SelectItem value="safe">SAFE</SelectItem>
-                    <SelectItem value="note">Note</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

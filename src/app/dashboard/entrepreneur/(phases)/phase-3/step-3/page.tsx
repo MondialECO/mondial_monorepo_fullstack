@@ -107,16 +107,32 @@ function Phase3KpiTrackerClient() {
   const handleNext = async () => {
     setValidationError('');
     const mrrN = num(mrr), burnN = num(monthlyBurn), cacN = num(cac), ltvN = num(ltv), churnN = num(churn), npsN = num(nps);
-    if (
-      mrrN == null || mrrN < 0 || burnN == null || burnN < 0 ||
-      cacN == null || cacN <= 0 || ltvN == null || ltvN < 0 ||
-      churnN == null || churnN < 0 || churnN > 100 || npsN == null || npsN < 0 || npsN > 100
-    ) {
-      setValidationError('Fill every KPI field with a valid number (CAC > 0, churn 0–100%, NPS 0–100)');
+    if (mrrN == null || burnN == null || cacN == null || ltvN == null || churnN == null || npsN == null) {
+      setValidationError('Fill every KPI field with a valid number (use 0 for pre-revenue metrics)');
       return;
     }
-    if (mrrN <= 0) {
-      setValidationError('Monthly Recurring Revenue must be greater than 0');
+    if (mrrN < 0) {
+      setValidationError('Monthly Recurring Revenue cannot be negative');
+      return;
+    }
+    if (burnN < 0) {
+      setValidationError('Monthly burn rate cannot be negative');
+      return;
+    }
+    if (cacN < 0) {
+      setValidationError('Customer Acquisition Cost cannot be negative');
+      return;
+    }
+    if (ltvN < 0) {
+      setValidationError('Lifetime Value cannot be negative');
+      return;
+    }
+    if (churnN < 0 || churnN > 100) {
+      setValidationError('Monthly churn rate must be between 0% and 100%');
+      return;
+    }
+    if (npsN < 0 || npsN > 100) {
+      setValidationError('Net Promoter Score must be between 0 and 100');
       return;
     }
 
