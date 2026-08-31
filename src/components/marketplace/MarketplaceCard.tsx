@@ -34,11 +34,11 @@ export function MarketplaceCard({ card }: { card: MarketplaceListingCard }) {
   const cover = card.coverImageUrl ? resolveProviderMediaUrl(card.coverImageUrl) : null;
 
   return (
-    <Link
-      href={`/marketplace/services/${card.id}`}
-      className="group overflow-hidden rounded-xl border border-border transition-all duration-200 hover:shadow-md focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-    >
-      <div className="relative aspect-video overflow-hidden bg-muted">
+    <div className="group overflow-hidden rounded-xl border border-border transition-all duration-200 hover:shadow-md">
+      <Link
+        href={`/marketplace/services/${card.id}`}
+        className="block relative aspect-video overflow-hidden bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      >
         {cover ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -51,25 +51,45 @@ export function MarketplaceCard({ card }: { card: MarketplaceListingCard }) {
             <Package className="size-8 text-muted-foreground" />
           </div>
         )}
-      </div>
+      </Link>
 
       <div className="space-y-2.5 p-4">
         {/* Tooltip suppresses itself on touch devices, so no separate mobile path. */}
         <Tooltip delayDuration={300}>
           <TooltipTrigger asChild>
-            <div className="flex w-fit items-center gap-2">
-              <Avatar
-                url={card.provider.profileImageUrl}
-                name={card.provider.displayName}
-                className="size-6 text-xs"
-              />
-              <span className="truncate text-xs font-medium text-foreground">
-                {card.provider.displayName}
-              </span>
-              {card.provider.verified && (
-                <span className="shrink-0 text-xs text-success-text">Verified</span>
-              )}
-            </div>
+            {card.provider.publicSlug ? (
+              <Link
+                href={`/profile/${card.provider.publicSlug}`}
+                className="flex w-fit items-center gap-2 transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-sm"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Avatar
+                  url={card.provider.profileImageUrl}
+                  name={card.provider.displayName}
+                  className="size-6 text-xs"
+                />
+                <span className="truncate text-xs font-medium text-foreground hover:underline">
+                  {card.provider.displayName}
+                </span>
+                {card.provider.verified && (
+                  <span className="shrink-0 text-xs text-success-text">Verified</span>
+                )}
+              </Link>
+            ) : (
+              <div className="flex w-fit items-center gap-2">
+                <Avatar
+                  url={card.provider.profileImageUrl}
+                  name={card.provider.displayName}
+                  className="size-6 text-xs"
+                />
+                <span className="truncate text-xs font-medium text-foreground">
+                  {card.provider.displayName}
+                </span>
+                {card.provider.verified && (
+                  <span className="shrink-0 text-xs text-success-text">Verified</span>
+                )}
+              </div>
+            )}
           </TooltipTrigger>
           <TooltipContent side="top" align="start" className="w-56">
             <div className="flex items-center gap-3">
@@ -85,40 +105,47 @@ export function MarketplaceCard({ card }: { card: MarketplaceListingCard }) {
                 )}
               </div>
             </div>
-            <p className="mt-2 text-xs text-muted-foreground">View services</p>
+            <p className="mt-2 text-xs text-muted-foreground">
+              {card.provider.publicSlug ? 'View profile' : 'View services'}
+            </p>
           </TooltipContent>
         </Tooltip>
 
-        <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-foreground transition-colors group-hover:text-primary">
-          {card.title}
-        </h3>
+        <Link
+          href={`/marketplace/services/${card.id}`}
+          className="block space-y-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-sm"
+        >
+          <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-foreground transition-colors group-hover:text-primary">
+            {card.title}
+          </h3>
 
-        <div className="flex items-center justify-between gap-2">
-          {card.rating != null ? (
-            <span className="flex items-center gap-1">
-              <Star className="size-3 fill-rating text-rating" />
-              <span className="text-xs font-medium text-foreground">{card.rating.toFixed(1)}</span>
-              {card.reviewCount != null && (
-                <span className="text-xs text-muted-foreground">({card.reviewCount})</span>
-              )}
-            </span>
-          ) : (
-            <span />
-          )}
-          <span className="truncate text-xs text-muted-foreground">{card.category}</span>
-        </div>
+          <div className="flex items-center justify-between gap-2">
+            {card.rating != null ? (
+              <span className="flex items-center gap-1">
+                <Star className="size-3 fill-rating text-rating" />
+                <span className="text-xs font-medium text-foreground">{card.rating.toFixed(1)}</span>
+                {card.reviewCount != null && (
+                  <span className="text-xs text-muted-foreground">({card.reviewCount})</span>
+                )}
+              </span>
+            ) : (
+              <span />
+            )}
+            <span className="truncate text-xs text-muted-foreground">{card.category}</span>
+          </div>
 
-        <div className="flex items-baseline justify-between gap-2 pt-1">
-          <span className="text-xs text-muted-foreground">From</span>
-          <span className="text-xs text-muted-foreground">
-            <span className="text-base font-bold text-foreground">
-              {formatPrice(card.startingPrice, card.currency)}
+          <div className="flex items-baseline justify-between gap-2 pt-1">
+            <span className="text-xs text-muted-foreground">From</span>
+            <span className="text-xs text-muted-foreground">
+              <span className="text-base font-bold text-foreground">
+                {formatPrice(card.startingPrice, card.currency)}
+              </span>
+              {' · '}
+              {card.deliveryTimeValue} {card.deliveryTimeUnit}
             </span>
-            {' · '}
-            {card.deliveryTimeValue} {card.deliveryTimeUnit}
-          </span>
-        </div>
+          </div>
+        </Link>
       </div>
-    </Link>
+    </div>
   );
 }

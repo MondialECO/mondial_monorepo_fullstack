@@ -14,8 +14,8 @@ const LISTINGS_KEY = ['serviceCatalog', 'listings'] as const;
 const CAPACITY_KEY = ['serviceCatalog', 'capacity'] as const;
 const listingKey = (id: string) => ['serviceCatalog', 'listing', id] as const;
 
-export const useServiceListings = () =>
-  useQuery<ServiceListing[]>({ queryKey: LISTINGS_KEY, queryFn: api.getListings });
+export const useServiceListings = (enabled = true) =>
+  useQuery<ServiceListing[]>({ queryKey: LISTINGS_KEY, queryFn: api.getListings, enabled });
 
 export const useServiceListing = (id: string | null) =>
   useQuery<ServiceListingDetail>({
@@ -63,8 +63,8 @@ export const useReorderFaqs = () =>
   useCatalogMutation((listingId: string, payload: Parameters<typeof api.reorderFaqs>[1]) => api.reorderFaqs(listingId, payload));
 
 // Capacity
-export const useCapacity = () =>
-  useQuery<ProviderCapacity>({ queryKey: CAPACITY_KEY, queryFn: api.getCapacity });
+export const useCapacity = (enabled = true) =>
+  useQuery<ProviderCapacity>({ queryKey: CAPACITY_KEY, queryFn: api.getCapacity, enabled });
 export const useUpdateCapacity = () => {
   const qc = useQueryClient();
   return useMutation({

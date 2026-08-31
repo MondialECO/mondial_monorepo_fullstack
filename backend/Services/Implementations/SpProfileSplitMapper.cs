@@ -21,6 +21,7 @@ public static class SpProfileSplitMapper
         return new ProfessionalProfileRecord
         {
             UserId = user.Id.ToString(),
+            PublicSlug = ProfileSlugGenerator.GenerateSlug(user.UserName ?? user.Name, user.Id.ToString()),
             Headline = p.Headline ?? "",
             Bio = p.Bio ?? "",
             ProfessionalOverview = p.ProfessionalOverview ?? new ProfessionalOverviewContent(),

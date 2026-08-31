@@ -13,6 +13,8 @@ public interface IProfessionalProfileStore
 {
     Task<ProfessionalProfileRecord?> GetByUserIdAsync(string userId, CancellationToken cancellationToken = default);
 
+    Task<ProfessionalProfileRecord?> GetByPublicSlugAsync(string slug, CancellationToken cancellationToken = default);
+
     /// <summary>Bulk lookup for ranking flows (e.g. matching reads Industries).</summary>
     Task<Dictionary<string, ProfessionalProfileRecord>> GetByUserIdsAsync(
         IEnumerable<string> userIds, CancellationToken cancellationToken = default);

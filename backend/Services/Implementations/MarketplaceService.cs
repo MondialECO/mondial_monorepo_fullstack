@@ -1,4 +1,4 @@
-﻿using MongoDB.Bson;
+using MongoDB.Bson;
 using MongoDB.Driver;
 using Microsoft.AspNetCore.Identity;
 using WebApp.DbContext;
@@ -294,7 +294,8 @@ namespace WebApp.Services.Implementations
                     ProviderId = listing.ProviderId,
                     DisplayName = provider?.Name ?? "Unknown",
                     ProfileImageUrl = ResolveMediaUrl(professional?.ProfileImage?.PublicUrl),
-                    Verified = provider?.ServiceProviderProfile?.VerificationStatus == ServiceProviderVerificationStatus.Verified
+                    Verified = provider?.ServiceProviderProfile?.VerificationStatus == ServiceProviderVerificationStatus.Verified,
+                    PublicSlug = professional?.PublicSlug ?? (provider != null ? ProfileSlugGenerator.GenerateSlug(provider.Name ?? provider.UserName, listing.ProviderId) : null)
                 },
                 StartingPrice = basicPackage?.Price ?? 0,
                 Currency = basicPackage?.Currency ?? "EUR",
@@ -376,7 +377,8 @@ namespace WebApp.Services.Implementations
                 // UI reads null as "unknown" and hides the row entirely — so a brand-new
                 // provider shows nothing rather than an unflattering "0 completed".
                 CompletedOrders = completedOrders > 0 ? completedOrders : null,
-                MedianResponseTime = medianResponseTime
+                MedianResponseTime = medianResponseTime,
+                PublicSlug = professional?.PublicSlug ?? ProfileSlugGenerator.GenerateSlug(provider.Name ?? provider.UserName, provider.Id.ToString())
             };
         }
 

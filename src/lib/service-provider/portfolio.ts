@@ -8,8 +8,8 @@ import type { PortfolioItem } from "@/types/service-provider";
  */
 export const MAX_PORTFOLIO_ITEMS = 20;
 
-export function isPortfolioFull(items: PortfolioItem[]) {
-  return items.length >= MAX_PORTFOLIO_ITEMS;
+export function isPortfolioFull(items?: PortfolioItem[] | null) {
+  return (items ?? []).length >= MAX_PORTFOLIO_ITEMS;
 }
 
 /**
@@ -20,10 +20,12 @@ export function isPortfolioFull(items: PortfolioItem[]) {
  * item. Callers surface a retry instead of silently mis-filing the upload.
  */
 export function findAddedPortfolioItem(
-  before: PortfolioItem[],
-  after: PortfolioItem[]
+  before: PortfolioItem[] = [],
+  after: PortfolioItem[] = []
 ): PortfolioItem | null {
-  const existing = new Set(before.map((item) => item.id).filter(Boolean));
-  const added = after.filter((item) => item.id && !existing.has(item.id));
+  const safeBefore = before ?? [];
+  const safeAfter = after ?? [];
+  const existing = new Set(safeBefore.map((item) => item.id).filter(Boolean));
+  const added = safeAfter.filter((item) => item.id && !existing.has(item.id));
   return added.length === 1 ? added[0] : null;
 }

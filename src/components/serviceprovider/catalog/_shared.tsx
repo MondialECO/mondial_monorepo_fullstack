@@ -3,7 +3,7 @@
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 
-// CSV helpers (same pattern as ProfileWorkspace) for string-list fields.
+// CSV helpers for string-list fields.
 export const csv = (list: string[]) => list.join(', ');
 export const parseCsv = (value: string) =>
   Array.from(new Set(value.split(',').map((v) => v.trim()).filter(Boolean)));

@@ -168,6 +168,11 @@ export const menu: Record<UserRole, MenuSection[]> = {
           icon: Folder,
         },
         {
+          label: "Profile",
+          href: "/dashboard/profile",
+          icon: User,
+        },
+        {
           label: "Settings",
           href: "/dashboard/creator/settings",
           icon: Settings,
@@ -243,8 +248,8 @@ export const menu: Record<UserRole, MenuSection[]> = {
           icon: ShieldCheck,
         },
         {
-          label: "Public Profile",
-          href: "/dashboard/investor/profile",
+          label: "Profile",
+          href: "/dashboard/profile",
           icon: User,
         },
         {
@@ -362,6 +367,11 @@ export const menu: Record<UserRole, MenuSection[]> = {
           href: "/dashboard/entrepreneur/notifications",
           icon: Bell,
         },
+        {
+          label: "Profile",
+          href: "/dashboard/profile",
+          icon: User,
+        },
       ],
     },
   ],
@@ -386,9 +396,9 @@ export const menu: Record<UserRole, MenuSection[]> = {
           icon: Handshake,
         },
         {
-          label: "Profile & Trust",
-          href: "/dashboard/serviceprovider/profile",
-          icon: BadgeCheck,
+          label: "Profile",
+          href: "/dashboard/profile",
+          icon: User,
         },
         {
           label: "Client Briefs",

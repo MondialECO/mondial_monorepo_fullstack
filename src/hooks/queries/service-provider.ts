@@ -24,7 +24,6 @@ import {
   uploadPortfolioImage,
   uploadProfileImage,
   upsertCredential,
-  upsertProfile,
 } from '@/lib/api-service-provider';
 import type {
   ProfileDraftResponse,
@@ -45,21 +44,12 @@ export const serviceProviderKeys = {
   editorDraft: EDITOR_DRAFT_KEY,
 } as const;
 
-export const useServiceProviderProfile = () =>
+export const useServiceProviderProfile = (enabled = true) =>
   useQuery<ServiceProviderProfile>({
     queryKey: PROFILE_KEY,
     queryFn: getProfile,
+    enabled,
   });
-
-// Profile + portfolio writes all return the full refreshed profile, so we seed
-// the cache directly instead of triggering a refetch.
-export const useUpsertProfile = () => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: upsertProfile,
-    onSuccess: (profile) => qc.setQueryData(PROFILE_KEY, profile),
-  });
-};
 
 export const useAddPortfolioItem = () => {
   const qc = useQueryClient();

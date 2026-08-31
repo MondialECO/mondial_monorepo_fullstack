@@ -13,9 +13,10 @@ export const useProviderAnalytics = (filters: AnalyticsFilters) => useQuery({
   queryFn: () => api.getAnalytics(filters),
 });
 
-export const useProviderOverview = (currency = 'EUR') => useQuery({
+export const useProviderOverview = (currency = 'EUR', enabled = true) => useQuery({
   queryKey: [...OVERVIEW, currency],
   queryFn: () => api.getProviderOverview(currency),
+  enabled,
 });
 
 export const useGrowthTasks = () => useQuery({ queryKey: TASKS, queryFn: api.getGrowthTasks });

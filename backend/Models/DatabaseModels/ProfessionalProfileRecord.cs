@@ -17,10 +17,13 @@ namespace WebApp.Models.DatabaseModels
     public class ProfessionalProfileRecord
     {
         [BsonId]
-        public ObjectId Id { get; set; }
+        public ObjectId Id { get; set; } = ObjectId.GenerateNewId();
 
         /// <summary>Owning ApplicationUser id (unique index). The only join key.</summary>
         public string UserId { get; set; } = "";
+
+        /// <summary>Permanent, URL-safe public profile slug (unique index). Created once and never changed on name/headline/role updates.</summary>
+        public string PublicSlug { get; set; } = "";
 
         public string Headline { get; set; } = "";
         public string Bio { get; set; } = "";

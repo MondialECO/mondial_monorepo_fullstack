@@ -16,7 +16,6 @@ import type {
   TrustBreakdown,
   UpdatePortfolioItemRequest,
   UpsertCredentialRequest,
-  UpsertProfileRequest,
   VerificationStatusResponse,
 } from "@/types/service-provider";
 import type { GalleryImage, PreviewVideo, ServiceListing } from "@/types/service-catalog";
@@ -48,16 +47,6 @@ function progress(handler?: UploadProgressHandler) {
 export async function getProfile(): Promise<ServiceProviderProfile> {
   const res = await api.get<ApiEnvelope<ServiceProviderProfile>>(
     "/service-provider/profile"
-  );
-  return unwrap(res.data);
-}
-
-export async function upsertProfile(
-  payload: UpsertProfileRequest
-): Promise<ServiceProviderProfile> {
-  const res = await api.put<ApiEnvelope<ServiceProviderProfile>>(
-    "/service-provider/profile",
-    payload
   );
   return unwrap(res.data);
 }

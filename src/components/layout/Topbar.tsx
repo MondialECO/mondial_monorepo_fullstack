@@ -25,13 +25,14 @@ import { CompanySwitcher } from "@/components/entrepreneur/CompanySwitcher";
  */
 const ROLE_MENU_ITEMS: Record<UserRole, AccountMenuItem[]> = {
   [UserRole.CREATOR]: [
-    { href: "/dashboard/creator/profile", icon: UserRound, label: "Profile" },
+    { href: "/dashboard/profile", icon: UserRound, label: "Profile" },
     { href: "/dashboard/creator/settings", icon: Settings, label: "Settings" },
   ],
   [UserRole.INVESTOR]: [
-    { href: "/dashboard/investor/profile", icon: UserRound, label: "Profile" },
+    { href: "/dashboard/profile", icon: UserRound, label: "Profile" },
   ],
   [UserRole.ENTREPRENEUR]: [
+    { href: "/dashboard/profile", icon: UserRound, label: "Profile" },
     { href: "/dashboard/entrepreneur/companies", icon: LayoutGrid, label: "My Companies" },
   ],
   [UserRole.ADMIN]: [],

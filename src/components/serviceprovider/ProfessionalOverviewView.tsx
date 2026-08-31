@@ -2,9 +2,13 @@ import type { CSSProperties, ReactNode } from "react";
 import { professionalOverviewPlainText, sanitizeProfessionalOverview } from "@/lib/service-provider/professional-overview";
 import type { ProfessionalOverviewContent, TiptapJson } from "@/types/service-provider";
 
-export function ProfessionalOverviewView({ content }: { content?: ProfessionalOverviewContent | null }) {
-  const document = sanitizeProfessionalOverview(content?.document);
-  const plainText = content?.plainText?.trim() || professionalOverviewPlainText(document);
+export function ProfessionalOverviewView({ content }: { content?: ProfessionalOverviewContent | any | null }) {
+  const docRaw = content && typeof content === "object" && "document" in content ? content.document : content;
+  const document = sanitizeProfessionalOverview(docRaw);
+  const plainText =
+    (content && typeof content === "object" && "plainText" in content && typeof content.plainText === "string"
+      ? content.plainText.trim()
+      : "") || professionalOverviewPlainText(document);
   if (!plainText) return null;
   const rendered = <div className="professional-overview text-sm leading-7 text-[#4B5563]">{renderNodes(document.content)}</div>;
 

@@ -6,6 +6,7 @@ import type {
   ProviderEducation,
   ProviderExperience,
   ProviderLanguage,
+  ProviderSocialLink,
   ServiceProviderProfile,
   TiptapJson,
 } from "@/types/service-provider";
@@ -24,6 +25,7 @@ export const EDITOR_LIMITS = {
   industryLength: 100,
   languages: 20,
   languageLength: 50,
+  socialLinks: 10,
   experiences: 20,
   educationRecords: 10,
   credentials: 20,
@@ -61,12 +63,19 @@ export interface EditorDraftModel {
   experiences: ProviderExperience[];
   education: ProviderEducation[];
   languages: ProviderLanguage[];
+  socialLinks: ProviderSocialLink[];
 }
 
 const maxEducationYear = () => new Date().getFullYear() + 10;
 
 /** Client-side id for a not-yet-persisted child record. */
 export const localId = () => `local-${Math.random().toString(36).slice(2, 10)}`;
+
+export const newSocialLink = (): ProviderSocialLink => ({
+  id: localId(),
+  platform: "LinkedIn",
+  url: "",
+});
 
 /**
  * Builds the editable model from the server's editor response. A stored draft
@@ -83,13 +92,14 @@ export function draftModelFromResponse(
     headline: draft.headline ?? "",
     bio: draft.bio ?? "",
     professionalOverview: draft.professionalOverview?.document ?? EMPTY_PROFESSIONAL_OVERVIEW,
-    primaryCategory: draft.serviceCategories[0] ?? null,
-    skills: [...draft.skills],
-    industries: [...draft.industries],
-    pricingModels: [...draft.pricingModels],
-    experiences: draft.experiences.map((item) => ({ ...item })),
-    education: draft.education.map((item) => ({ ...item })),
-    languages: draft.languageProficiencies.map((item) => ({ ...item })),
+    primaryCategory: draft.serviceCategories?.[0] ?? null,
+    skills: [...(draft.skills ?? [])],
+    industries: [...(draft.industries ?? [])],
+    pricingModels: [...(draft.pricingModels ?? [])],
+    experiences: (draft.experiences ?? []).map((item) => ({ ...item })),
+    education: (draft.education ?? []).map((item) => ({ ...item })),
+    languages: (draft.languageProficiencies ?? []).map((item) => ({ ...item })),
+    socialLinks: (draft.socialLinks ?? []).map((item) => ({ ...item })),
   };
 }
 
@@ -122,6 +132,12 @@ export function draftRequestFromModel(model: EditorDraftModel): ProfileDraftRequ
       ...rest,
       id: id.startsWith("local-") ? null : id,
     })),
+    socialLinks: (model.socialLinks ?? [])
+      .filter((s) => s.url.trim().length > 0)
+      .map(({ id, ...rest }) => ({
+        ...rest,
+        id: id.startsWith("local-") ? null : id,
+      })),
   };
 }
 
@@ -165,10 +181,6 @@ export function validateStep1(model: EditorDraftModel): FieldError[] {
       message: `Short bio must be ${EDITOR_LIMITS.bio} characters or fewer.`,
       step: 1,
     });
-  }
-
-  if (!model.primaryCategory) {
-    errors.push({ field: "category", message: "Select your primary expertise category.", step: 1 });
   }
 
   if (professionalOverviewPlainText(model.professionalOverview).length > EDITOR_LIMITS.overviewPlainText) {

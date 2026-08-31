@@ -12,8 +12,8 @@ import {
 
 describe("service provider profile navigation", () => {
   it("keeps Profile View and the editor on separate routes", () => {
-    expect(PROFILE_VIEW_ROUTE).toBe("/dashboard/serviceprovider/profile");
-    expect(PROFILE_EDITOR_ROUTE).toBe("/dashboard/serviceprovider/profile/edit");
+    expect(PROFILE_VIEW_ROUTE).toBe("/dashboard/profile");
+    expect(PROFILE_EDITOR_ROUTE).toBe("/dashboard/profile/edit");
     expect(PROFILE_EDITOR_ROUTE.startsWith(PROFILE_VIEW_ROUTE)).toBe(true);
   });
 

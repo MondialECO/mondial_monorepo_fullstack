@@ -531,6 +531,9 @@ namespace WebApp.DbContext
                         Builders<ProfessionalProfileRecord>.IndexKeys.Ascending(x => x.UserId),
                         new CreateIndexOptions { Unique = true, Background = true }),
                     new CreateIndexModel<ProfessionalProfileRecord>(
+                        Builders<ProfessionalProfileRecord>.IndexKeys.Ascending(x => x.PublicSlug),
+                        new CreateIndexOptions { Background = true, Sparse = true }),
+                    new CreateIndexModel<ProfessionalProfileRecord>(
                         Builders<ProfessionalProfileRecord>.IndexKeys.Descending(x => x.UpdatedAt),
                         new CreateIndexOptions { Background = true }),
                 });

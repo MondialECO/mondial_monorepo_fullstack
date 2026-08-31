@@ -20,6 +20,9 @@ public sealed class InMemoryProfessionalProfileStore : IProfessionalProfileStore
     public Task<ProfessionalProfileRecord?> GetByUserIdAsync(string userId, CancellationToken cancellationToken = default) =>
         Task.FromResult(Records.TryGetValue(userId, out var record) ? record : null);
 
+    public Task<ProfessionalProfileRecord?> GetByPublicSlugAsync(string slug, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Records.Values.FirstOrDefault(r => string.Equals(r.PublicSlug, slug, StringComparison.OrdinalIgnoreCase)));
+
     public Task<Dictionary<string, ProfessionalProfileRecord>> GetByUserIdsAsync(
         IEnumerable<string> userIds, CancellationToken cancellationToken = default) =>
         Task.FromResult(userIds.Distinct().Where(Records.ContainsKey).ToDictionary(id => id, id => Records[id]));

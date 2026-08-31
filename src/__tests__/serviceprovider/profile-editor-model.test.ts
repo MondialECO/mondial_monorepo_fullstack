@@ -91,11 +91,9 @@ describe("profile editor draft model", () => {
 });
 
 describe("step 1 validation", () => {
-  it("requires a headline and a primary category", () => {
-    const errors = validateStep1(model({ headline: "  ", primaryCategory: null }));
-    expect(errors.map((error) => error.field)).toEqual(
-      expect.arrayContaining(["headline", "category"])
-    );
+  it("requires a headline", () => {
+    const errors = validateStep1(model({ headline: "  " }));
+    expect(errors.map((error) => error.field)).toEqual(["headline"]);
   });
 
   it("enforces the 70-character headline limit", () => {

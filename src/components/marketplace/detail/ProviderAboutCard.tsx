@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { BadgeCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -31,15 +32,37 @@ export function ProviderAboutCard({
       <h2 className="mb-4 text-lg font-semibold text-foreground">About the provider</h2>
 
       <div className="flex gap-4">
-        <ProviderAvatar
-          url={provider.profileImageUrl}
-          name={provider.displayName}
-          className="size-16 shrink-0 text-lg"
-        />
+        {provider.publicSlug ? (
+          <Link
+            href={`/profile/${provider.publicSlug}`}
+            className="size-16 shrink-0 transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-full"
+          >
+            <ProviderAvatar
+              url={provider.profileImageUrl}
+              name={provider.displayName}
+              className="size-16 text-lg"
+            />
+          </Link>
+        ) : (
+          <ProviderAvatar
+            url={provider.profileImageUrl}
+            name={provider.displayName}
+            className="size-16 shrink-0 text-lg"
+          />
+        )}
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-semibold text-foreground">{provider.displayName}</h3>
+            {provider.publicSlug ? (
+              <Link
+                href={`/profile/${provider.publicSlug}`}
+                className="hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-sm"
+              >
+                <h3 className="font-semibold text-foreground">{provider.displayName}</h3>
+              </Link>
+            ) : (
+              <h3 className="font-semibold text-foreground">{provider.displayName}</h3>
+            )}
             {provider.verified && (
               <Badge variant="success">
                 <BadgeCheck />
@@ -69,9 +92,21 @@ export function ProviderAboutCard({
         </div>
       </div>
 
-      <Button onClick={onMessage} disabled={messagePending} variant="outline" className="mt-5 w-full">
-        Contact provider
-      </Button>
+      <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+        {provider.publicSlug && (
+          <Button asChild variant="outline" className="flex-1">
+            <Link href={`/profile/${provider.publicSlug}`}>View Profile</Link>
+          </Button>
+        )}
+        <Button
+          onClick={onMessage}
+          disabled={messagePending}
+          variant={provider.publicSlug ? 'outline' : 'outline'}
+          className="flex-1"
+        >
+          Contact provider
+        </Button>
+      </div>
     </section>
   );
 }

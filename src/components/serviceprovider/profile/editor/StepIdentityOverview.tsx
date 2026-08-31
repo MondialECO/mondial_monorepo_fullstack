@@ -21,19 +21,20 @@ const readableCategory = (value: string) => value.replace(/([a-z])([A-Z])/g, "$1
 
 /**
  * Step 1 — profile/cover media, locked registration identity, headline,
- * primary category, short bio and the Professional Overview. Media and the
- * Tiptap overview reuse the already-shipped components unchanged.
+ * role-gated service category (Service Providers only), short bio and the Professional Overview.
  */
 export function StepIdentityOverview({
   profile,
   model,
   errors,
   onChange,
+  isServiceProvider,
 }: {
   profile: ServiceProviderProfile;
   model: EditorDraftModel;
   errors: FieldError[];
   onChange: (patch: Partial<EditorDraftModel>) => void;
+  isServiceProvider?: boolean;
 }) {
   const { user } = useAuth();
   const overviewCharacters = professionalOverviewPlainText(model.professionalOverview).length;
@@ -82,47 +83,49 @@ export function StepIdentityOverview({
         </div>
       </SpCard>
 
-      <SpCard>
-        <SpSectionHeader
-          title="Expertise domain"
-          description="Select the primary category clients will find you under."
-        />
-        <fieldset className="mt-6">
-          <legend className="sr-only">Select primary expertise category</legend>
-          <div
-            id="category"
-            className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
-            role="radiogroup"
-            aria-label="Primary expertise category"
-            aria-invalid={!!errorFor(errors, "category") || undefined}
-          >
-            {SERVICE_CATEGORIES.map((category) => {
-              const selected = model.primaryCategory === category;
-              return (
-                <button
-                  key={category}
-                  type="button"
-                  role="radio"
-                  aria-checked={selected}
-                  onClick={() => onChange({ primaryCategory: category })}
-                  className={cn(
-                    "flex min-h-11 items-center justify-between gap-2 rounded-xl border px-4 py-3 text-left text-sm transition",
-                    selected
-                      ? "border-[#3C61DD] bg-[#EEF2FF] font-semibold text-[#1E3A8A]"
-                      : "border-[#E5E7EB] bg-white text-[#374151] hover:border-[#C7D2FE]"
-                  )}
-                >
-                  <span>{readableCategory(category)}</span>
-                  {selected && <span className="sr-only">Selected</span>}
-                </button>
-              );
-            })}
-          </div>
-          {errorFor(errors, "category") && (
-            <p className="mt-2 text-xs font-medium text-[#B42318]">{errorFor(errors, "category")}</p>
-          )}
-        </fieldset>
-      </SpCard>
+      {isServiceProvider && (
+        <SpCard>
+          <SpSectionHeader
+            title="Service category"
+            description="Select the primary category clients will find you under."
+          />
+          <fieldset className="mt-6">
+            <legend className="sr-only">Select primary service category</legend>
+            <div
+              id="category"
+              className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
+              role="radiogroup"
+              aria-label="Primary service category"
+              aria-invalid={!!errorFor(errors, "category") || undefined}
+            >
+              {SERVICE_CATEGORIES.map((category) => {
+                const selected = model.primaryCategory === category;
+                return (
+                  <button
+                    key={category}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    onClick={() => onChange({ primaryCategory: category })}
+                    className={cn(
+                      "flex min-h-11 items-center justify-between gap-2 rounded-xl border px-4 py-3 text-left text-sm transition",
+                      selected
+                        ? "border-[#3C61DD] bg-[#EEF2FF] font-semibold text-[#1E3A8A]"
+                        : "border-[#E5E7EB] bg-white text-[#374151] hover:border-[#C7D2FE]"
+                    )}
+                  >
+                    <span>{readableCategory(category)}</span>
+                    {selected && <span className="sr-only">Selected</span>}
+                  </button>
+                );
+              })}
+            </div>
+            {errorFor(errors, "category") && (
+              <p className="mt-2 text-xs font-medium text-[#B42318]">{errorFor(errors, "category")}</p>
+            )}
+          </fieldset>
+        </SpCard>
+      )}
 
       <SpCard>
         <SpSectionHeader
