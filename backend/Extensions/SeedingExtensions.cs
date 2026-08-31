@@ -31,7 +31,8 @@ public static class SeedingExtensions
     private const string DemoInvestorEmail = "demo.investor@mondial.local";
     private const string DemoEntrepreneurEmail = "demo.entrepreneur@mondial.local";
     private const string DemoServiceProviderEmail = "demo.provider@mondial.local";
-    private const string DemoAdminEmail = "demo.admin@mondial.local";
+    private const string DemoAdminEmail = "mondial@mondial.admin";
+    private const string DemoAdminPassword = "Superadmin011.local_ht6gb3nce@mondial.admin";
     private const string DemoPassword = "DemoP@ss1";
     private const string DemoNdaText = "This is a demo NDA — do not use in production.";
 
@@ -212,7 +213,8 @@ public static class SeedingExtensions
         RoleManager<ApplicationRole> roleManager,
         string email,
         string name,
-        string role)
+        string role,
+        string? password = null)
     {
         var existing = await userManager.FindByEmailAsync(email);
         if (existing != null)
@@ -250,7 +252,7 @@ public static class SeedingExtensions
             }
         };
 
-        var createResult = await userManager.CreateAsync(user, DemoPassword);
+        var createResult = await userManager.CreateAsync(user, password ?? DemoPassword);
         if (!createResult.Succeeded)
         {
             var errors = string.Join("; ", createResult.Errors.Select(e => e.Description));
@@ -861,8 +863,9 @@ public static class SeedingExtensions
         return await GetOrCreateDemoUserAsync(
             userManager, roleManager,
             email: DemoAdminEmail,
-            name: "Demo Admin",
-            role: "Admin");
+            name: "Mondial Admin",
+            role: "Admin",
+            password: DemoAdminPassword);
     }
 
     // ---- 12) Demo service provider (counterpart for entrepreneur↔provider chat) ----
