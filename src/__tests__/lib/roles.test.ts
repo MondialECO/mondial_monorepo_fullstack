@@ -102,4 +102,26 @@ describe('UserRole Enum', () => {
 
     expect(hasAccess).toBe(true);
   });
+
+  describe('getMessageRouteForRole and getNotificationRouteForRole', () => {
+    it('resolves message route from pathname dashboard context first', async () => {
+      const { getMessageRouteForRole } = await import('@/lib/roles');
+      expect(getMessageRouteForRole(UserRole.ENTREPRENEUR, '/dashboard/serviceprovider/workroom'))
+        .toBe('/dashboard/serviceprovider/messages');
+      expect(getMessageRouteForRole(UserRole.CREATOR, '/dashboard/investor/pipeline'))
+        .toBe('/dashboard/investor/messages');
+      expect(getMessageRouteForRole(UserRole.INVESTOR, '/dashboard/entrepreneur/phase-3'))
+        .toBe('/dashboard/entrepreneur/messages');
+      expect(getMessageRouteForRole(UserRole.SERVICE_PROVIDER, '/dashboard/creator/myideas'))
+        .toBe('/dashboard/creator/messages');
+    });
+
+    it('falls back to role default when pathname has no dashboard context', async () => {
+      const { getMessageRouteForRole } = await import('@/lib/roles');
+      expect(getMessageRouteForRole(UserRole.ENTREPRENEUR, '/dashboard/profile'))
+        .toBe('/dashboard/entrepreneur/messages');
+      expect(getMessageRouteForRole(UserRole.SERVICE_PROVIDER, '/dashboard/profile'))
+        .toBe('/dashboard/serviceprovider/messages');
+    });
+  });
 });

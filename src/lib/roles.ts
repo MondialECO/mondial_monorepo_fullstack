@@ -80,3 +80,16 @@ export function getNotificationRouteForRole(role?: unknown, pathname?: string): 
   return `${base}/notifications`;
 }
 
+export function getMessageRouteForRole(role?: unknown, pathname?: string): string {
+  // If active pathname provides a clear dashboard context, use it
+  if (pathname?.startsWith("/dashboard/creator")) return "/dashboard/creator/messages";
+  if (pathname?.startsWith("/dashboard/entrepreneur")) return "/dashboard/entrepreneur/messages";
+  if (pathname?.startsWith("/dashboard/investor")) return "/dashboard/investor/messages";
+  if (pathname?.startsWith("/dashboard/serviceprovider")) return "/dashboard/serviceprovider/messages";
+  if (pathname?.startsWith("/dashboard/admin")) return "/dashboard/admin/messages";
+
+  const normRole = normalizeUserRole(role);
+  const base = ROLE_DASHBOARD_ROUTES[normRole] || "/dashboard/creator";
+  return `${base}/messages`;
+}
+
