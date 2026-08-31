@@ -1,4 +1,4 @@
-﻿using Amazon.Runtime.Internal.Util;
+using Amazon.Runtime.Internal.Util;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
@@ -156,9 +156,9 @@ namespace WebApp.Controllers
                     return UnauthorizedResponse("Your account is locked. Please try again later.");
 
                 var roles = await _userManager.GetRolesAsync(user);
-                var role = roles.Count > 0 ? roles[0] : "User";
+                var primaryRole = roles.Count > 0 ? roles[0] : "User";
 
-                var token = JwtTokenHelper.GenerateToken(user.Id.ToString(), role, _configuration["JwtSettings:Key"], _configuration["JwtSettings:Issuer"], _configuration["JwtSettings:Audience"]);
+                var token = JwtTokenHelper.GenerateToken(user.Id.ToString(), roles, _configuration["JwtSettings:Key"], _configuration["JwtSettings:Issuer"], _configuration["JwtSettings:Audience"]);
                 _logger.LogInformation($"User {user.Email} successfully logged in.");
 
                 var refreshToken = JwtTokenHelper.GenerateRefreshToken();
@@ -180,7 +180,7 @@ namespace WebApp.Controllers
                     // still return tokens to user, but log warning
                 }
 
-                _audit.Record("login", user.Email ?? model.Email, true, new { role });
+                _audit.Record("login", user.Email ?? model.Email, true, new { role = primaryRole });
 
                 return Success("Logged in successfully", new
                 {
@@ -263,11 +263,10 @@ namespace WebApp.Controllers
                 }
 
                 var roles = await _userManager.GetRolesAsync(user);
-                var role = roles.Count > 0 ? roles[0] : "User";
 
                 var newToken = JwtTokenHelper.GenerateToken(
                     user.Id.ToString(),
-                    role,
+                    roles,
                     _configuration["JwtSettings:Key"],
                     _configuration["JwtSettings:Issuer"],
                     _configuration["JwtSettings:Audience"]);

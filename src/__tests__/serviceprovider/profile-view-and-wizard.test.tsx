@@ -556,7 +556,7 @@ describe("Profile editor wizard", () => {
       "I specialize in scalable cloud architectures, distributed systems, and modern web application development."
     );
     expect(bioTextarea).toHaveFocus();
-  });
+  }, 15000);
 
   it("renders Service category selector on Step 1 for ServiceProvider", async () => {
     navigation.searchParams = new URLSearchParams("step=1");

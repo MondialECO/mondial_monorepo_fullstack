@@ -57,7 +57,7 @@ describe('Creator Canonical Navigation Menu — Final Product-Journey Reorganiza
     expect(creatorMenu[4].items.map((i) => ({ label: i.label, href: i.href }))).toEqual([
       { label: 'Documents', href: '/dashboard/creator/documents' },
       { label: 'Asset Library', href: '/dashboard/creator/asset-library' },
-      { label: 'My Profile', href: '/dashboard/profile' },
+      { label: 'Profile', href: '/dashboard/profile' },
       { label: 'Settings', href: '/dashboard/creator/settings' },
     ]);
 

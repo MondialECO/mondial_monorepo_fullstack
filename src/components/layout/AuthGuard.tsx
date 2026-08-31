@@ -88,8 +88,8 @@ export default function AuthGuard({
       return;
     }
 
-    // Phase 1 complete, enforce role-based access control
-    const userDashboard = ROLE_DASHBOARD_ROUTES[userRole];
+    const userRoles = user.roles && user.roles.length > 0 ? user.roles : [user.role];
+    const userDashboard = ROLE_DASHBOARD_ROUTES[user.role] || "/dashboard/creator";
     const normalizedRouteRole = pathRole?.toLowerCase();
     const routeRoleMap: Record<string, UserRole> = {
       admin: UserRole.ADMIN,
@@ -102,16 +102,16 @@ export default function AuthGuard({
     };
 
     // Admin can access admin routes and settings
-    if (userRole === UserRole.ADMIN && normalizedRouteRole && ['admin', 'settings'].includes(normalizedRouteRole)) {
+    if (userRoles.includes(UserRole.ADMIN) && normalizedRouteRole && ['admin', 'settings'].includes(normalizedRouteRole)) {
       return;
     }
 
     const mappedRouteRole = normalizedRouteRole ? routeRoleMap[normalizedRouteRole] : null;
 
-    if (!mappedRouteRole) return; // Unknown route, let it pass
-    if (mappedRouteRole === userRole) return; // Correct role, allow
+    if (!mappedRouteRole) return; // Unknown or role-neutral route (e.g. /dashboard/profile), let it pass
+    if (userRoles.includes(mappedRouteRole)) return; // User possesses this role, allow!
 
-    // Wrong role, redirect to user's dashboard
+    // Wrong role, redirect to user's default dashboard
     router.push(userDashboard);
   }, [user, isLoading, isBackendVerified, router, pathname]);
 
