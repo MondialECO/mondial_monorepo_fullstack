@@ -1,4 +1,4 @@
-﻿using Microsoft.IdentityModel.Tokens;
+using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -10,7 +10,7 @@ namespace WebApp.Middleware
     {
         public static string GenerateToken(
             string userId,
-            string role,
+            IEnumerable<string> roles,
             string secretKey,
             string issuer,
             string audience,
@@ -20,9 +20,24 @@ namespace WebApp.Middleware
             {
                 new Claim(JwtRegisteredClaimNames.Sub, userId),
                 new Claim(ClaimTypes.NameIdentifier, userId),
-                new Claim(ClaimTypes.Role, role),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
+
+            var roleList = roles?.ToList() ?? new List<string>();
+            if (roleList.Count == 0)
+            {
+                claims.Add(new Claim(ClaimTypes.Role, "User"));
+            }
+            else
+            {
+                foreach (var role in roleList)
+                {
+                    if (!string.IsNullOrWhiteSpace(role))
+                    {
+                        claims.Add(new Claim(ClaimTypes.Role, role));
+                    }
+                }
+            }
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -36,6 +51,18 @@ namespace WebApp.Middleware
             );
 
             return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+
+        public static string GenerateToken(
+            string userId,
+            string role,
+            string secretKey,
+            string issuer,
+            string audience,
+            int expiryHours = 8)
+        {
+            var roles = string.IsNullOrWhiteSpace(role) ? Array.Empty<string>() : new[] { role };
+            return GenerateToken(userId, roles, secretKey, issuer, audience, expiryHours);
         }
 
         public static string GenerateRefreshToken()

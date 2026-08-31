@@ -4,16 +4,18 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/axios';
 import {
+  parseStrictUserRole,
   resolvePrimaryRole,
   ROLE_DASHBOARD_ROUTES,
   UserRole,
 } from '@/lib/roles';
 import { readOnboardingPhase } from '@/lib/auth-contract';
 
-type User = {
+export type User = {
   id: string;
   name: string;
-  role: UserRole;
+  role: UserRole; // Primary role for UI defaults / landing
+  roles: UserRole[]; // Authoritative complete list of possessed roles
   onboardingPhase?: number; // Universal Phase 1 gate (0 = not started, 1 = complete)
 };
 
@@ -27,6 +29,12 @@ type AuthContextType = {
   logout: () => void;
   refreshAuthMe: () => Promise<void>;
 };
+
+function parseAuthorizedRoles(apiRoles: unknown): UserRole[] {
+  if (!apiRoles) return [];
+  const list = Array.isArray(apiRoles) ? apiRoles : [apiRoles];
+  return list.map((r) => parseStrictUserRole(r)).filter((r): r is UserRole => r !== null);
+}
 
 const AuthContext = createContext<AuthContextType>(null!);
 export const useAuth = () => {
@@ -96,19 +104,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         const apiRoles = authData.roles ?? authData.Roles ?? [];
-        if (!apiRoles || apiRoles.length === 0) {
+        const parsedRoles = parseAuthorizedRoles(apiRoles);
+        if (parsedRoles.length === 0) {
           throw new Error('Backend user has no roles; cannot authorize session');
         }
 
-        const resolvedRole = resolvePrimaryRole(apiRoles);
-        if (!resolvedRole) {
-          throw new Error(`Unknown role from backend: "${JSON.stringify(apiRoles)}". Cannot authorize session.`);
-        }
+        const resolvedRole = resolvePrimaryRole(apiRoles) ?? parsedRoles[0];
 
         const updatedUser: User = {
           id: authData.id,
           name: authData.name,
           role: resolvedRole,
+          roles: parsedRoles,
           onboardingPhase: readOnboardingPhase(authData),
         };
 
@@ -154,17 +161,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const apiRoles = apiUser.roles ?? apiUser.Roles ?? [];
+    const parsedRoles = parseAuthorizedRoles(apiRoles);
 
     // FAIL CLOSED: Reject login if roles are missing
-    if (!apiRoles || apiRoles.length === 0) {
-      throw new Error('Login failed: user has no role assigned. Please contact support.');
+    if (parsedRoles.length === 0) {
+      throw new Error('Login failed: user has no valid role assigned. Please contact support.');
     }
 
     // Use strict role validation; reject unknown roles
-    const resolvedRole = resolvePrimaryRole(apiRoles);
-    if (!resolvedRole) {
-      throw new Error(`Login failed: unknown role "${JSON.stringify(apiRoles)}". Please contact support.`);
-    }
+    const resolvedRole = resolvePrimaryRole(apiRoles) ?? parsedRoles[0];
 
     const onboardingPhase = readOnboardingPhase(apiUser);
 
@@ -172,6 +177,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       id: apiUser.id,
       name: apiUser.name,
       role: resolvedRole,
+      roles: parsedRoles,
       onboardingPhase,
     };
 
@@ -208,19 +214,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const apiRoles = authData.roles ?? authData.Roles ?? [];
-      if (!apiRoles || apiRoles.length === 0) {
-        throw new Error('Backend user has no roles');
+      const parsedRoles = parseAuthorizedRoles(apiRoles);
+      if (parsedRoles.length === 0) {
+        throw new Error('Backend user has no valid roles');
       }
 
-      const resolvedRole = resolvePrimaryRole(apiRoles);
-      if (!resolvedRole) {
-        throw new Error(`Unknown role: "${JSON.stringify(apiRoles)}"`);
-      }
+      const resolvedRole = resolvePrimaryRole(apiRoles) ?? parsedRoles[0];
 
       const updatedUser: User = {
         id: authData.id,
         name: authData.name,
         role: resolvedRole,
+        roles: parsedRoles,
         onboardingPhase: readOnboardingPhase(authData),
       };
       localStorage.setItem('user', JSON.stringify(updatedUser));

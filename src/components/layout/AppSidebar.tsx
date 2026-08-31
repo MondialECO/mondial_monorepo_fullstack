@@ -167,9 +167,8 @@ function StandardRoleSidebar({
                             </span>
                           </div>
                           <ChevronDown
-                            className={`size-4 text-muted-foreground transition-transform duration-200 group-data-[collapsible=icon]:hidden ${
-                              isExpanded ? "rotate-180" : ""
-                            }`}
+                            className={`size-4 text-muted-foreground transition-transform duration-200 group-data-[collapsible=icon]:hidden ${isExpanded ? "rotate-180" : ""
+                              }`}
                           />
                         </SidebarMenuButton>
                       ) : (
@@ -334,14 +333,12 @@ function ServiceProviderSidebar({
               {availability.pending ? "Updating…" : "Available Now"}
             </span>
             <span
-              className={`relative h-5 w-9 rounded-full transition-colors ${
-                available ? "bg-[#0D9488]" : "bg-[#D1D5DB]"
-              }`}
+              className={`relative h-5 w-9 rounded-full transition-colors ${available ? "bg-[#0D9488]" : "bg-[#D1D5DB]"
+                }`}
             >
               <span
-                className={`absolute top-0.5 size-4 rounded-full bg-white shadow-sm transition-transform ${
-                  available ? "translate-x-[18px]" : "translate-x-0.5"
-                }`}
+                className={`absolute top-0.5 size-4 rounded-full bg-white shadow-sm transition-transform ${available ? "translate-x-[18px]" : "translate-x-0.5"
+                  }`}
               />
             </span>
           </span>
@@ -352,11 +349,10 @@ function ServiceProviderSidebar({
         {availability.feedback && (
           <p
             role={availability.feedback.status === "error" ? "alert" : "status"}
-            className={`mt-2 px-1 text-xs leading-4 ${
-              availability.feedback.status === "error"
+            className={`mt-2 px-1 text-xs leading-4 ${availability.feedback.status === "error"
                 ? "text-[#B42318]"
                 : "text-[#157A55]"
-            }`}
+              }`}
           >
             {availability.feedback.message}
           </p>
@@ -384,8 +380,8 @@ function ServiceProviderSidebar({
                     item.label === "Client Briefs"
                       ? unreadLeads
                       : item.label === "Active Projects"
-                      ? activeProjects
-                      : 0;
+                        ? activeProjects
+                        : 0;
 
                   return (
                     <SidebarMenuItem key={item.href}>
@@ -397,9 +393,8 @@ function ServiceProviderSidebar({
                           onClick={() => toggleExpand(item.label, isExpanded)}
                           aria-expanded={isExpanded}
                           aria-controls={submenuId}
-                          className={`h-11 w-full justify-between rounded-lg px-3 text-[#4B5563] cursor-pointer data-[active=true]:bg-[#EEF2FF] data-[active=true]:text-[#3C61DD] ${
-                            active ? "font-semibold text-[#1F3FAF]" : ""
-                          }`}
+                          className={`h-11 w-full justify-between rounded-lg px-3 text-[#4B5563] cursor-pointer data-[active=true]:bg-[#EEF2FF] data-[active=true]:text-[#3C61DD] ${active ? "font-semibold text-[#1F3FAF]" : ""
+                            }`}
                         >
                           <div className="flex items-center gap-3 min-w-0">
                             {Icon && <Icon className="size-4.5 shrink-0" />}
@@ -418,9 +413,8 @@ function ServiceProviderSidebar({
                               </span>
                             )}
                             <ChevronDown
-                              className={`size-4 text-[#6B7280] transition-transform duration-200 ${
-                                isExpanded ? "rotate-180" : ""
-                              }`}
+                              className={`size-4 text-[#6B7280] transition-transform duration-200 ${isExpanded ? "rotate-180" : ""
+                                }`}
                             />
                           </div>
                         </SidebarMenuButton>
@@ -500,13 +494,12 @@ function ServiceProviderSidebar({
             </p>
             <div className="mt-1.5 flex items-center gap-1.5">
               <span
-                className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                  provider?.verificationStatus === "Verified"
+                className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${provider?.verificationStatus === "Verified"
                     ? "bg-[#DCFCE7] text-[#047857]"
                     : provider?.verificationStatus === "Rejected"
-                    ? "bg-[#FDE8E8] text-[#C24141]"
-                    : "bg-[#F3F4F6] text-[#6B7280]"
-                }`}
+                      ? "bg-[#FDE8E8] text-[#C24141]"
+                      : "bg-[#F3F4F6] text-[#6B7280]"
+                  }`}
               >
                 {provider?.verificationStatus ?? "Pending"}
               </span>
