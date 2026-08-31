@@ -10,7 +10,7 @@ import { AccountMenu, type AccountMenuItem } from "@/components/layout/AccountMe
  * do not each repeat them.
  */
 const SP_ITEMS: AccountMenuItem[] = [
-  { href: "/dashboard/serviceprovider/profile", icon: BadgeCheck, label: "Profile & Trust" },
+  { href: "/dashboard/profile", icon: BadgeCheck, label: "Profile & Trust" },
   { href: "/dashboard/serviceprovider/phase-1", icon: ShieldCheck, label: "Identity & Account Verification" },
 ];
 

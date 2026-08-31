@@ -1,16 +1,17 @@
 "use client";
 
 import { MessageCircle } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/app/_providers/AuthProvider";
-import { ROLE_DASHBOARD_ROUTES } from "@/lib/roles";
+import { getMessageRouteForRole } from "@/lib/roles";
 import { useConversations } from "@/hooks/queries/chat";
 
 export default function MessageIcon() {
   // Total unread = sum of per-conversation unread counts from the live
   // conversations list (kept current by the chat realtime cache mutators).
   const router = useRouter();
+  const pathname = usePathname();
   const { user } = useAuth();
   const { data: conversations } = useConversations();
   const unreadCount = (conversations ?? []).reduce(
@@ -18,11 +19,15 @@ export default function MessageIcon() {
     0
   );
 
-  // The icon renders only inside authenticated dashboard chrome, so user is
-  // present in practice; the fallback covers the render before auth resolves.
+  // Resolves destination from current dashboard context first (e.g. /dashboard/serviceprovider -> /dashboard/serviceprovider/messages),
+  // falling back to the user's primary role or /login if not authenticated.
   const openMessages = () => {
-    const base = user ? ROLE_DASHBOARD_ROUTES[user.role] : "/login";
-    router.push(`${base}/messages`);
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+    const targetRoute = getMessageRouteForRole(user.role, pathname);
+    router.push(targetRoute);
   };
 
   return (

@@ -126,7 +126,7 @@ describe("Service Provider desktop top bar", () => {
     await user.click(trigger);
     expect(screen.getByRole("menuitem", { name: "Profile & Trust" })).toHaveAttribute(
       "href",
-      "/dashboard/serviceprovider/profile",
+      "/dashboard/profile",
     );
     expect(
       screen.getByRole("menuitem", { name: "Identity & Account Verification" }),
