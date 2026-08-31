@@ -1,11 +1,13 @@
 import { SERVICE_PROVIDER_ROOT } from "@/lib/service-provider-navigation";
 
-// Single source of truth for Service Provider profile routing. Profile View and
+// Canonical source of truth for Universal Profile routing. Profile View and
 // the four-step editor are separate routes; every link, redirect and focus
 // target is built here so no component hardcodes a path.
 
-export const PROFILE_VIEW_ROUTE = `${SERVICE_PROVIDER_ROOT}/profile`;
-export const PROFILE_EDITOR_ROUTE = `${SERVICE_PROVIDER_ROOT}/profile/edit`;
+export const PROFILE_VIEW_ROUTE = "/dashboard/profile";
+export const PROFILE_EDITOR_ROUTE = "/dashboard/profile/edit";
+export const LEGACY_SP_PROFILE_VIEW_ROUTE = `${SERVICE_PROVIDER_ROOT}/profile`;
+export const LEGACY_SP_PROFILE_EDITOR_ROUTE = `${SERVICE_PROVIDER_ROOT}/profile/edit`;
 export const PORTFOLIO_MANAGER_ROUTE = `${PROFILE_VIEW_ROUTE}?section=portfolio`;
 export const SERVICE_CATALOG_ROUTE = `${SERVICE_PROVIDER_ROOT}/services`;
 

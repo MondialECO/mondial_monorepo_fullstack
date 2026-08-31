@@ -34,7 +34,8 @@ export interface ProfessionalOverviewContent {
 
 export interface ProviderMedia {
   id?: string;
-  url: string;
+  url?: string;
+  publicUrl?: string;
   contentType: string;
   width: number;
   height: number;
@@ -136,6 +137,12 @@ export interface ProviderLanguage {
   proficiency: LanguageProficiency;
 }
 
+export interface ProviderSocialLink {
+  id: string;
+  platform: string;
+  url: string;
+}
+
 /** Owner-scoped credential. Public projections omit the private fields. */
 export interface ProviderCredential {
   id: string;
@@ -181,6 +188,7 @@ export interface ProfileDraftRequest {
   experiences: Array<Omit<ProviderExperience, "id"> & { id?: string | null }>;
   education: Array<Omit<ProviderEducation, "id"> & { id?: string | null }>;
   languageProficiencies: Array<Omit<ProviderLanguage, "id"> & { id?: string | null }>;
+  socialLinks?: Array<Omit<ProviderSocialLink, "id"> & { id?: string | null }>;
 }
 
 export interface ProfileDraftResponse {
@@ -200,6 +208,7 @@ export interface ProfileDraftResponse {
   experiences: ProviderExperience[];
   education: ProviderEducation[];
   languageProficiencies: ProviderLanguage[];
+  socialLinks?: ProviderSocialLink[];
   updatedAt: string;
 }
 
@@ -252,6 +261,7 @@ export interface ServiceProviderProfile {
   experiences: ProviderExperience[];
   education: ProviderEducation[];
   languageProficiencies: ProviderLanguage[];
+  socialLinks?: ProviderSocialLink[];
   /** Owner-scoped; empty on public projections. */
   credentials: ProviderCredential[];
   /** Optimistic-concurrency token echoed back on the next submit. */
@@ -259,6 +269,8 @@ export interface ServiceProviderProfile {
 
   completionPercent: number;
   profileComplete: boolean;
+
+  roles?: string[];
 
   createdAt: string;
   updatedAt: string;

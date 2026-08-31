@@ -11,21 +11,27 @@ import {
   useRemoveProfileImage,
   useUploadCoverImage,
   useUploadProfileImage,
-} from "@/hooks/queries/service-provider";
+} from "@/hooks/queries/universal-profile";
 import { resolveProviderMediaUrl } from "@/lib/service-provider/provider-media";
 import type { ServiceProviderProfile } from "@/types/service-provider";
 import { ProviderImageUploader } from "./ProviderImageUploader";
 
 export function ProfileMediaManager({ profile }: { profile: ServiceProviderProfile }) {
   const { user } = useAuth();
-  const providerName = user?.name || "Service Provider";
-  const overview = useProviderOverview("EUR");
-  const capacity = useCapacity();
-  const tierLabel = overview.data?.provider.tierLabel;
-  const available = capacity.data?.newOrderAvailability ?? overview.data?.provider.availableNow;
-  const profileImageUrl = resolveProviderMediaUrl(profile.profileImage?.url);
-  const coverImageUrl = resolveProviderMediaUrl(profile.coverImage?.url);
-  const initials = providerName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "SP";
+  const providerName = user?.name || "Member";
+
+  const isExplicitNonSp =
+    Boolean(user?.role && user.role !== "ServiceProvider") &&
+    (!profile?.roles || !profile.roles.some((r) => r.toLowerCase() === "serviceprovider"));
+  const isServiceProvider = !isExplicitNonSp;
+
+  const overview = useProviderOverview("EUR", isServiceProvider);
+  const capacity = useCapacity(isServiceProvider);
+  const tierLabel = isServiceProvider ? overview.data?.provider.tierLabel : undefined;
+  const available = isServiceProvider ? (capacity.data?.newOrderAvailability ?? overview.data?.provider.availableNow) : undefined;
+  const profileImageUrl = resolveProviderMediaUrl(profile.profileImage?.publicUrl ?? (profile.profileImage as any)?.url);
+  const coverImageUrl = resolveProviderMediaUrl(profile.coverImage?.publicUrl ?? (profile.coverImage as any)?.url);
+  const initials = providerName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "M";
   const uploadProfile = useUploadProfileImage();
   const removeProfile = useRemoveProfileImage();
   const uploadCover = useUploadCoverImage();
@@ -46,9 +52,18 @@ export function ProfileMediaManager({ profile }: { profile: ServiceProviderProfi
           <h2 className="font-heading text-xl font-semibold text-[#171717] sm:text-2xl">{providerName}</h2>
           <p className="mt-1 text-sm text-[#4B5563]">{profile.headline?.trim() || "Add a professional headline"}</p>
           <div className="mt-3 flex flex-wrap gap-2">
-            <SpStatusBadge tone={profile.verificationStatus === "Verified" ? "positive" : "neutral"}>{profile.verificationStatus === "UnderReview" ? "Under review" : profile.verificationStatus}</SpStatusBadge>
-            {tierLabel && <SpStatusBadge title="Affects match priority, not pricing.">{tierLabel}</SpStatusBadge>}
-            {available !== undefined && <SpStatusBadge tone={available ? "positive" : "neutral"}>{available ? "Available now" : "Not accepting new work"}</SpStatusBadge>}
+            {profile.roles?.map((role) => (
+              <SpStatusBadge key={role} tone="neutral">
+                {role}
+              </SpStatusBadge>
+            ))}
+            {isServiceProvider && profile.verificationStatus && (
+              <SpStatusBadge tone={profile.verificationStatus === "Verified" ? "positive" : "neutral"}>
+                {profile.verificationStatus === "UnderReview" ? "Under review" : profile.verificationStatus}
+              </SpStatusBadge>
+            )}
+            {isServiceProvider && tierLabel && <SpStatusBadge title="Affects match priority, not pricing.">{tierLabel}</SpStatusBadge>}
+            {isServiceProvider && available !== undefined && <SpStatusBadge tone={available ? "positive" : "neutral"}>{available ? "Available now" : "Not accepting new work"}</SpStatusBadge>}
           </div>
         </div>
       </div>
@@ -59,7 +74,7 @@ export function ProfileMediaManager({ profile }: { profile: ServiceProviderProfi
         <ProviderImageUploader
           kind="profile"
           label="Profile image"
-          currentUrl={resolveProviderMediaUrl(profile.profileImage?.url)}
+          currentUrl={profileImageUrl}
           currentAlt={`${providerName} profile image`}
           onUpload={(file, onProgress) => uploadProfile.mutateAsync({ file, onProgress }).then(() => undefined)}
           onRemove={() => removeProfile.mutateAsync(undefined).then(() => undefined)}
@@ -67,7 +82,7 @@ export function ProfileMediaManager({ profile }: { profile: ServiceProviderProfi
         <ProviderImageUploader
           kind="cover"
           label="Cover image"
-          currentUrl={resolveProviderMediaUrl(profile.coverImage?.url)}
+          currentUrl={coverImageUrl}
           onUpload={(file, onProgress) => uploadCover.mutateAsync({ file, onProgress }).then(() => undefined)}
           onRemove={() => removeCover.mutateAsync(undefined).then(() => undefined)}
         />

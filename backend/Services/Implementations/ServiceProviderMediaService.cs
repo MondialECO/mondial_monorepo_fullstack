@@ -81,7 +81,20 @@ public sealed class ServiceProviderMediaService(
     {
         var user = await userManager.FindByIdAsync(userId);
         if (user is null) return NotFound();
-        var (professional, sp) = await migrator.EnsureMigratedAsync(user, cancellationToken);
+
+        var isSp = await userManager.IsInRoleAsync(user, "ServiceProvider");
+        ProfessionalProfileRecord professional;
+        ServiceProviderProfileRecord? sp = null;
+        if (isSp)
+        {
+            var (prof, serviceProvider) = await migrator.EnsureMigratedAsync(user, cancellationToken);
+            professional = prof;
+            sp = serviceProvider;
+        }
+        else
+        {
+            professional = await migrator.EnsureProfessionalProfileAsync(user, cancellationToken);
+        }
 
         var previous = kind == ProviderProfileMediaKind.ProfileImage ? professional.ProfileImage : professional.CoverImage;
         if (previous is null)
@@ -199,7 +212,20 @@ public sealed class ServiceProviderMediaService(
     {
         var user = await userManager.FindByIdAsync(userId);
         if (user is null) return NotFound();
-        var (professional, sp) = await migrator.EnsureMigratedAsync(user, cancellationToken);
+
+        var isSp = await userManager.IsInRoleAsync(user, "ServiceProvider");
+        ProfessionalProfileRecord professional;
+        ServiceProviderProfileRecord? sp = null;
+        if (isSp)
+        {
+            var (prof, serviceProvider) = await migrator.EnsureMigratedAsync(user, cancellationToken);
+            professional = prof;
+            sp = serviceProvider;
+        }
+        else
+        {
+            professional = await migrator.EnsureProfessionalProfileAsync(user, cancellationToken);
+        }
 
         var maximum = kind == ProviderProfileMediaKind.ProfileImage ? ProfileMaximumBytes : CoverMaximumBytes;
         var processed = await Process(file, maximum, cancellationToken);
@@ -274,10 +300,18 @@ public sealed class ServiceProviderMediaService(
 
     private async Task<ServiceProviderProfileResponse> ComposeAsync(
         ProfessionalProfileRecord professional,
-        ServiceProviderProfileRecord sp,
+        ServiceProviderProfileRecord? sp,
         string userId,
         CancellationToken cancellationToken)
     {
+        if (sp is null)
+        {
+            var appUser = await userManager.FindByIdAsync(userId);
+            var memorySp = appUser is not null
+                ? SpProfileSplitMapper.ToServiceProviderRecord(appUser)
+                : new ServiceProviderProfileRecord { UserId = userId, ProviderId = userId };
+            return SpProfileSplitMapper.ToCompositeView(professional, memorySp, []).ToResponse();
+        }
         var credentials = await credentialStore.GetByUserIdAsync(userId, cancellationToken);
         return SpProfileSplitMapper.ToCompositeView(professional, sp, credentials).ToResponse();
     }

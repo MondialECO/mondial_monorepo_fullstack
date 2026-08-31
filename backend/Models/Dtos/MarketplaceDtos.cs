@@ -22,6 +22,7 @@ namespace WebApp.Models.Dtos
         public string DisplayName { get; set; } = string.Empty;
         public string? ProfileImageUrl { get; set; }
         public bool Verified { get; set; }
+        public string? PublicSlug { get; set; }
     }
 
     // Grid list response (paginated)
@@ -62,6 +63,7 @@ namespace WebApp.Models.Dtos
         public decimal? TrustScore { get; set; }
         public int? CompletedOrders { get; set; }
         public string? MedianResponseTime { get; set; }
+        public string? PublicSlug { get; set; }
     }
 
     public class MarketplacePackage

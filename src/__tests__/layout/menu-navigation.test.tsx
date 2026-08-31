@@ -416,5 +416,48 @@ describe("Menu Navigation & Submenu Interaction Suite", () => {
       const payoutsItem = screen.getByText("Payouts");
       expect(payoutsItem).toBeDefined();
     });
+
+    it("renders canonical Profile (/dashboard/profile) sidebar link for all roles", () => {
+      const roles = [
+        UserRole.CREATOR,
+        UserRole.ENTREPRENEUR,
+        UserRole.INVESTOR,
+        UserRole.SERVICE_PROVIDER,
+      ];
+
+      for (const role of roles) {
+        const sections = menu[role];
+        const allItems = sections.flatMap((s) => s.items);
+        const profileItem = allItems.find((item) => item.label === "Profile");
+        expect(profileItem, `Profile item should exist in ${role} sidebar`).toBeDefined();
+        expect(profileItem?.href).toBe("/dashboard/profile");
+      }
+    });
+
+    it("marks Profile sidebar item active on /dashboard/profile and /dashboard/profile/edit", () => {
+      const roles = [
+        UserRole.CREATOR,
+        UserRole.ENTREPRENEUR,
+        UserRole.INVESTOR,
+        UserRole.SERVICE_PROVIDER,
+      ];
+
+      for (const role of roles) {
+        const allHrefs = getAllMenuHrefs(menu[role]);
+        const profileHref = "/dashboard/profile";
+
+        // Active on /dashboard/profile
+        expect(isMenuHrefActive(profileHref, "/dashboard/profile", new URLSearchParams(), allHrefs)).toBe(true);
+
+        // Active on /dashboard/profile/edit
+        expect(isMenuHrefActive(profileHref, "/dashboard/profile/edit", new URLSearchParams(), allHrefs)).toBe(true);
+
+        // Active on /dashboard/profile/edit?step=1
+        expect(isMenuHrefActive(profileHref, "/dashboard/profile/edit", new URLSearchParams("step=1"), allHrefs)).toBe(true);
+
+        // Inactive on other routes
+        expect(isMenuHrefActive(profileHref, "/dashboard/creator", new URLSearchParams(), allHrefs)).toBe(false);
+      }
+    });
   });
 });

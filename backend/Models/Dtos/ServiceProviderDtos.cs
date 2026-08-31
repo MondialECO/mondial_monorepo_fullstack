@@ -184,6 +184,7 @@ public class ProfileDraftRequest
     public List<ProviderExperienceRequest> Experiences { get; set; } = new();
     public List<ProviderEducationRequest> Education { get; set; } = new();
     public List<ProviderLanguageRequest> LanguageProficiencies { get; set; } = new();
+    public List<ProfessionalSocialLinkDto> SocialLinks { get; set; } = new();
 }
 
 public class ProfileDraftResponse
@@ -207,6 +208,7 @@ public class ProfileDraftResponse
     public List<ProviderExperienceResponse> Experiences { get; set; } = new();
     public List<ProviderEducationResponse> Education { get; set; } = new();
     public List<ProviderLanguageResponse> LanguageProficiencies { get; set; } = new();
+    public List<ProfessionalSocialLinkDto> SocialLinks { get; set; } = new();
     public DateTime UpdatedAt { get; set; }
 }
 
@@ -706,6 +708,12 @@ public static class ServiceProviderMapping
         Experiences = draft.Experiences.Select(e => e.ToResponse()).ToList(),
         Education = draft.Education.Select(e => e.ToResponse()).ToList(),
         LanguageProficiencies = draft.LanguageProficiencies.Select(l => l.ToResponse()).ToList(),
+        SocialLinks = (draft.SocialLinks ?? new()).Select(s => new ProfessionalSocialLinkDto
+        {
+            Id = s.Id,
+            Platform = s.Platform,
+            Url = s.Url
+        }).ToList(),
         UpdatedAt = draft.UpdatedAt,
     };
 

@@ -1,4 +1,4 @@
-﻿using AspNetCore.Identity.MongoDbCore.Models;
+using AspNetCore.Identity.MongoDbCore.Models;
 using Microsoft.AspNetCore.Identity;
 using System.Text.Json.Serialization;
 using MongoDB.Bson;
@@ -571,6 +571,7 @@ namespace WebApp.Models.DatabaseModels
         public List<ProfessionalExperience> Experiences { get; set; } = new();
         public List<ProfessionalEducation> Education { get; set; } = new();
         public List<ProfessionalLanguage> LanguageProficiencies { get; set; } = new();
+        public List<ProfessionalSocialLink> SocialLinks { get; set; } = new();
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

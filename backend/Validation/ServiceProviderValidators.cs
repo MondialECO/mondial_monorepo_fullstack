@@ -562,9 +562,6 @@ public class SubmitProfileEditorRequestValidator : AbstractValidator<SubmitProfi
             RuleFor(x => x.Draft.Headline)
                 .NotEmpty().WithMessage("Professional headline is required.");
 
-            RuleFor(x => x.Draft.ServiceCategories)
-                .NotEmpty().WithMessage("Select your primary expertise category.");
-
             RuleFor(x => x.Draft.Skills)
                 .NotEmpty().WithMessage("Add at least one skill.");
         });

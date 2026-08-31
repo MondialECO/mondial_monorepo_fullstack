@@ -98,6 +98,7 @@ public class ProfileEditorTransactionIntegrationTests : IClassFixture<ReplicaSet
     {
         private readonly ProfessionalProfileStore _inner = new(db);
         public Task<ProfessionalProfileRecord?> GetByUserIdAsync(string userId, CancellationToken ct = default) => _inner.GetByUserIdAsync(userId, ct);
+        public Task<ProfessionalProfileRecord?> GetByPublicSlugAsync(string slug, CancellationToken ct = default) => _inner.GetByPublicSlugAsync(slug, ct);
         public Task<Dictionary<string, ProfessionalProfileRecord>> GetByUserIdsAsync(IEnumerable<string> ids, CancellationToken ct = default) => _inner.GetByUserIdsAsync(ids, ct);
         public Task<bool> UpsertAsync(ProfessionalProfileRecord record, IClientSessionHandle? session = null, CancellationToken ct = default) => _inner.UpsertAsync(record, session, ct);
         public Task<bool> SetEditorDraftAsync(string userId, ProfessionalProfileDraft? draft, CancellationToken ct = default) => _inner.SetEditorDraftAsync(userId, draft, ct);

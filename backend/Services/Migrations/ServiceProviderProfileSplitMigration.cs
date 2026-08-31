@@ -55,6 +55,12 @@ namespace WebApp.Services.Migrations
         Task<(ProfessionalProfileRecord Professional, ServiceProviderProfileRecord Sp)> EnsureMigratedAsync(
             ApplicationUser user, CancellationToken cancellationToken = default);
 
+        /// <summary>
+        /// Ensures a ProfessionalProfileRecord exists for any authenticated user, regardless of roles.
+        /// </summary>
+        Task<ProfessionalProfileRecord> EnsureProfessionalProfileAsync(
+            ApplicationUser user, CancellationToken cancellationToken = default);
+
         /// <summary>Sweep every user carrying an embedded SP profile.</summary>
         Task<SpSplitMigrationSummary> MigrateAllAsync(CancellationToken cancellationToken = default);
 
@@ -79,6 +85,12 @@ namespace WebApp.Services.Migrations
             if (professional is null)
             {
                 professional = SpProfileSplitMapper.ToProfessionalRecord(user);
+                await EnsureUniqueSlugAsync(professional, user, cancellationToken);
+                await professionalStore.UpsertAsync(professional, cancellationToken: cancellationToken);
+            }
+            else if (string.IsNullOrWhiteSpace(professional.PublicSlug))
+            {
+                await EnsureUniqueSlugAsync(professional, user, cancellationToken);
                 await professionalStore.UpsertAsync(professional, cancellationToken: cancellationToken);
             }
 
@@ -101,6 +113,45 @@ namespace WebApp.Services.Migrations
             }
 
             return (professional, sp);
+        }
+
+        public async Task<ProfessionalProfileRecord> EnsureProfessionalProfileAsync(
+            ApplicationUser user, CancellationToken cancellationToken = default)
+        {
+            var userId = user.Id.ToString();
+            var professional = await professionalStore.GetByUserIdAsync(userId, cancellationToken);
+            if (professional is null)
+            {
+                professional = SpProfileSplitMapper.ToProfessionalRecord(user);
+                await EnsureUniqueSlugAsync(professional, user, cancellationToken);
+                await professionalStore.UpsertAsync(professional, cancellationToken: cancellationToken);
+            }
+            else if (string.IsNullOrWhiteSpace(professional.PublicSlug))
+            {
+                await EnsureUniqueSlugAsync(professional, user, cancellationToken);
+                await professionalStore.UpsertAsync(professional, cancellationToken: cancellationToken);
+            }
+            return professional;
+        }
+
+        private async Task EnsureUniqueSlugAsync(
+            ProfessionalProfileRecord professional,
+            ApplicationUser user,
+            CancellationToken cancellationToken)
+        {
+            var baseSlug = ProfileSlugGenerator.GenerateSlug(user.UserName ?? user.Name, user.Id.ToString());
+            var candidate = baseSlug;
+            var suffix = 2;
+            while (true)
+            {
+                var existing = await professionalStore.GetByPublicSlugAsync(candidate, cancellationToken);
+                if (existing is null || existing.UserId == professional.UserId)
+                {
+                    professional.PublicSlug = candidate;
+                    break;
+                }
+                candidate = $"{baseSlug}-{suffix++}";
+            }
         }
 
         public async Task<SpSplitMigrationSummary> MigrateAllAsync(CancellationToken cancellationToken = default)

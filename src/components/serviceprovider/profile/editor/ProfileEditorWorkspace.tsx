@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
+import { useAuth } from "@/app/_providers/AuthProvider";
 import { Button } from "@/components/ui/button";
 import {
   SpCard,
@@ -11,14 +12,17 @@ import {
   SpPage,
   SpStatusBadge,
 } from "@/components/serviceprovider/ui";
+import { useQueryClient } from "@tanstack/react-query";
 import { useSpDirtyFormGuard } from "@/hooks/useSpDirtyFormGuard";
 import {
+  PROFILE_KEY,
+  PROFILE_EDITOR_DRAFT_KEY,
+  useProfile,
   useProfileEditorDraft,
   useSaveProfileDraft,
-  useServiceProviderProfile,
-  useServiceProviderTrust,
   useSubmitProfileEditor,
-} from "@/hooks/queries/service-provider";
+} from "@/hooks/queries/universal-profile";
+import { useServiceProviderTrust } from "@/hooks/queries/service-provider";
 import {
   draftModelFromResponse,
   draftRequestFromModel,
@@ -60,14 +64,23 @@ type SubmitResult = {
 export function ProfileEditorWorkspace() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { user } = useAuth();
 
   const step = normalizeStep(searchParams.get("step"));
   const focusParam = searchParams.get("focus");
   const showingResult = searchParams.get("state") === "result";
 
-  const profileQuery = useServiceProviderProfile();
+  const profileQuery = useProfile();
   const draftQuery = useProfileEditorDraft();
-  const trustQuery = useServiceProviderTrust();
+  const rawProfile = profileQuery.data;
+
+  const isExplicitNonSp =
+    Boolean(user?.role && user.role !== "ServiceProvider") &&
+    (!rawProfile?.roles || !rawProfile.roles.some((r) => r.toLowerCase() === "serviceprovider"));
+  const isServiceProvider = !isExplicitNonSp;
+
+  const queryClient = useQueryClient();
+  const trustQuery = useServiceProviderTrust(isServiceProvider && rawProfile?.verificationStatus === "Verified");
   const saveDraft = useSaveProfileDraft();
   const submitEditor = useSubmitProfileEditor();
 
@@ -94,20 +107,28 @@ export function ProfileEditorWorkspace() {
   const dirtyGuard = useSpDirtyFormGuard(model, { enabled: !!model && !result });
   const { markClean } = dirtyGuard;
 
-  // Focus the step heading on every step change so keyboard users land in place.
+  const lastFocusedStepRef = useRef<ProfileEditorStep | null>(null);
+  const handledFocusParamRef = useRef<string | null>(null);
+
+  // Focus the step heading on step change so keyboard users land in place.
   useEffect(() => {
     if (!model || showingResult) return;
-    headingRef.current?.focus();
-  }, [step, model, showingResult]);
+    if (lastFocusedStepRef.current !== null && lastFocusedStepRef.current !== step) {
+      headingRef.current?.focus();
+    }
+    lastFocusedStepRef.current = step;
+  }, [step, showingResult, !!model]);
 
   // A section-level Edit action can request a specific field.
   useEffect(() => {
     if (!model || !isValidFocus(focusParam)) return;
+    if (handledFocusParamRef.current === `${step}-${focusParam}`) return;
+    handledFocusParamRef.current = `${step}-${focusParam}`;
     const target = document.getElementById(focusElementId(focusParam));
     if (!target) return;
     target.scrollIntoView({ behavior: "smooth", block: "start" });
     (target as HTMLElement).focus?.();
-  }, [focusParam, model, step]);
+  }, [focusParam, step, !!model]);
 
   const goToStep = (next: ProfileEditorStep) => {
     setFurthest((current) => (next > current ? next : current));
@@ -178,7 +199,9 @@ export function ProfileEditorWorkspace() {
       });
       markClean(model);
       setResult(response);
-      router.push(editorHref({ result: true }));
+      await queryClient.invalidateQueries({ queryKey: PROFILE_KEY });
+      await queryClient.invalidateQueries({ queryKey: PROFILE_EDITOR_DRAFT_KEY });
+      router.push(PROFILE_VIEW_ROUTE);
     } catch (error) {
       const status = (error as { response?: { status?: number } })?.response?.status;
       if (status === 409) {
@@ -307,13 +330,32 @@ export function ProfileEditorWorkspace() {
         </h1>
 
         {step === 1 && (
-          <StepIdentityOverview profile={profile} model={model} errors={errors} onChange={patch} />
+          <StepIdentityOverview
+            profile={profile}
+            model={model}
+            errors={errors}
+            onChange={patch}
+            isServiceProvider={isServiceProvider}
+          />
         )}
         {step === 2 && (
           <StepExperienceEducation model={model} errors={errors} onChange={patch} />
         )}
         {step === 3 && <StepSkillsLanguages model={model} errors={errors} onChange={patch} />}
-        {step === 4 && <StepCredentials credentials={profile.credentials ?? []} />}
+        {step === 4 && (
+          isServiceProvider ? (
+            <StepCredentials credentials={profile.credentials ?? []} />
+          ) : (
+            <SpCard>
+              <h2 className="font-heading text-lg font-semibold text-[#171717]">
+                Review &amp; Publish
+              </h2>
+              <p className="mt-2 text-sm text-[#4B5563]">
+                Your profile information is ready to publish. Click &quot;Submit Profile&quot; below to make your changes visible.
+              </p>
+            </SpCard>
+          )
+        )}
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#E5E7EB] pt-5">
           <div className="flex items-center gap-2">
@@ -364,8 +406,9 @@ export function ProfileEditorWorkspace() {
 
         {step === LAST_STEP && (
           <p className="text-center text-xs text-[#6B7280]">
-            Submitting publishes your profile and sends any new credentials for review. Your tier and
-            verification status are decided by Mondial.eco.
+            {isServiceProvider
+              ? "Submitting publishes your profile and sends any new credentials for review. Your tier and verification status are decided by Mondial.eco."
+              : "Submitting publishes your universal profile across Mondial.eco."}
           </p>
         )}
 

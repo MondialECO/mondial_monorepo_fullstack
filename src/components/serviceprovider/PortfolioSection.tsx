@@ -47,7 +47,7 @@ const emptyDraft: Draft = { title: "", description: "", url: "", imageCaption: "
 const ADD_MODE = "__add__";
 
 type Props = {
-  items: PortfolioItem[];
+  items?: PortfolioItem[] | null;
   /**
    * Every mutation here is scoped server-side to the *authenticated* provider,
    * not to the profile being viewed. Showing these controls to a visitor would
@@ -57,7 +57,8 @@ type Props = {
   isOwner: boolean;
 };
 
-export function PortfolioSection({ items, isOwner }: Props) {
+export function PortfolioSection({ items = [], isOwner }: Props) {
+  const safeItems = items ?? [];
   const add = useAddPortfolioItem();
   const update = useUpdatePortfolioItem();
   const remove = useDeletePortfolioItem();
@@ -73,7 +74,7 @@ export function PortfolioSection({ items, isOwner }: Props) {
   const guardState = { ...draft, pendingImageKey: pendingImage ? `${pendingImage.name}:${pendingImage.size}:${pendingImage.lastModified}` : "" };
   const dirtyGuard = useSpDirtyFormGuard(guardState, { enabled: isOwner && editId !== null });
   const urlError = validateOptionalHttpUrl(draft.url);
-  const isFull = isPortfolioFull(items);
+  const isFull = isPortfolioFull(safeItems);
 
   useEffect(() => () => {
     if (pendingImageUrl) URL.revokeObjectURL(pendingImageUrl);
@@ -135,7 +136,7 @@ export function PortfolioSection({ items, isOwner }: Props) {
         const savedProfile = await add.mutateAsync(payload);
         // Match the new item by id diff. When that is ambiguous we do not guess:
         // attaching the image to the wrong item is worse than asking for a retry.
-        const addedItem = findAddedPortfolioItem(items, savedProfile.portfolioItems);
+        const addedItem = findAddedPortfolioItem(safeItems, savedProfile?.portfolioItems ?? []);
         if (pendingImage && addedItem) {
           try {
             await uploadImage.mutateAsync({ portfolioItemId: addedItem.id, file: pendingImage, caption: payload.imageCaption });
@@ -180,8 +181,8 @@ export function PortfolioSection({ items, isOwner }: Props) {
         title="Portfolio"
         description={
           isOwner
-            ? `${items.length} of ${MAX_PORTFOLIO_ITEMS} items. Upload one primary project image per item; external project URLs remain optional.`
-            : `${items.length} ${items.length === 1 ? "item" : "items"}.`
+            ? `${safeItems.length} of ${MAX_PORTFOLIO_ITEMS} items. Upload one primary project image per item; external project URLs remain optional.`
+            : `${safeItems.length} ${safeItems.length === 1 ? "item" : "items"}.`
         }
         action={
           isOwner ? (
@@ -204,7 +205,7 @@ export function PortfolioSection({ items, isOwner }: Props) {
         </SpMutationFeedback>
       )}
 
-      {items.length === 0 ? (
+      {safeItems.length === 0 ? (
         <SpEmptyState
           className="mt-5 min-h-52"
           icon={FolderOpen}
@@ -222,7 +223,7 @@ export function PortfolioSection({ items, isOwner }: Props) {
         />
       ) : (
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
-          {items.map((item) => {
+          {safeItems.map((item) => {
             const imageUrl = resolveProviderMediaUrl(item.primaryImage?.url ?? item.imagePath);
             return (
               <article key={item.id} className="flex flex-col overflow-hidden rounded-xl border border-border bg-card">
@@ -287,7 +288,7 @@ export function PortfolioSection({ items, isOwner }: Props) {
                   <Input maxLength={300} value={draft.imageCaption} onChange={(event) => setDraft({ ...draft, imageCaption: event.target.value })} />
                 </SpFormField>
                 {editId !== null && (() => {
-                  const currentItem = editId === ADD_MODE ? undefined : items.find((item) => item.id === editId);
+                  const currentItem = editId === ADD_MODE ? undefined : safeItems.find((item) => item.id === editId);
                   const currentUrl = pendingImageUrl ?? resolveProviderMediaUrl(currentItem?.primaryImage?.url ?? currentItem?.imagePath);
                   return (
                     <ProviderImageUploader

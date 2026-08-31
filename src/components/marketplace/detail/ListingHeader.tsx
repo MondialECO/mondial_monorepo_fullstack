@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { BadgeCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -38,12 +39,28 @@ export function ListingHeader({ listing }: { listing: MarketplaceListingDetail }
           <Tooltip delayDuration={300}>
             <TooltipTrigger asChild>
               <div className="mt-4 flex w-fit flex-wrap items-center gap-x-2 gap-y-1">
-                <ProviderAvatar
-                  url={p.profileImageUrl}
-                  name={p.displayName}
-                  className="size-8 text-sm"
-                />
-                <span className="font-medium text-foreground">{p.displayName}</span>
+                {p.publicSlug ? (
+                  <Link
+                    href={`/profile/${p.publicSlug}`}
+                    className="flex items-center gap-2 hover:opacity-80 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-sm"
+                  >
+                    <ProviderAvatar
+                      url={p.profileImageUrl}
+                      name={p.displayName}
+                      className="size-8 text-sm"
+                    />
+                    <span className="font-medium text-foreground hover:underline">{p.displayName}</span>
+                  </Link>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <ProviderAvatar
+                      url={p.profileImageUrl}
+                      name={p.displayName}
+                      className="size-8 text-sm"
+                    />
+                    <span className="font-medium text-foreground">{p.displayName}</span>
+                  </div>
+                )}
                 {p.verified && (
                   <Badge variant="success">
                     <BadgeCheck />
@@ -67,6 +84,9 @@ export function ListingHeader({ listing }: { listing: MarketplaceListingDetail }
                   <p className="mt-1 text-xs text-muted-foreground">
                     Typically responds in {p.medianResponseTime}
                   </p>
+                )}
+                {p.publicSlug && (
+                  <p className="mt-2 text-xs font-medium text-primary">Click to view public profile</p>
                 )}
               </TooltipContent>
             )}

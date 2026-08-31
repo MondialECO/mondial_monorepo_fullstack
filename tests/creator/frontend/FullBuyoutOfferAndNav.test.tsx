@@ -57,6 +57,7 @@ describe('Creator Canonical Navigation Menu — Final Product-Journey Reorganiza
     expect(creatorMenu[4].items.map((i) => ({ label: i.label, href: i.href }))).toEqual([
       { label: 'Documents', href: '/dashboard/creator/documents' },
       { label: 'Asset Library', href: '/dashboard/creator/asset-library' },
+      { label: 'My Profile', href: '/dashboard/profile' },
       { label: 'Settings', href: '/dashboard/creator/settings' },
     ]);
 
@@ -65,8 +66,8 @@ describe('Creator Canonical Navigation Menu — Final Product-Journey Reorganiza
     const hrefs = allItems.map((i) => i.href);
     const labels = allItems.map((i) => i.label);
 
-    // Verify exactly 15 items
-    expect(allItems.length).toBe(15);
+    // Verify exactly 16 items
+    expect(allItems.length).toBe(16);
 
     // Verify obsolete dead stubs or unapproved menus are NOT present
     expect(hrefs).not.toContain('/dashboard/creator/marketplace');

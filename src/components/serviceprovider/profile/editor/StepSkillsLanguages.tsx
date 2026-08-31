@@ -174,22 +174,106 @@ export function StepSkillsLanguages({
 
       <SpCard>
         <SpSectionHeader
-          title="Industries"
-          description="The sectors you work in. Used to match you with relevant client briefs."
+          title="Expertise domains"
+          description="The sectors and industry domains you specialize in (e.g. Technology, E-commerce, FinTech, Healthcare, Education)."
         />
         <div className="mt-6">
           <SpTagInput
             id="industries"
-            label="Industries"
+            label="Expertise domains"
             value={model.industries}
             onChange={(industries) => onChange({ industries })}
             maxItems={EDITOR_LIMITS.industries}
             maxItemLength={EDITOR_LIMITS.industryLength}
-            itemLengthError={`Each industry must be ${EDITOR_LIMITS.industryLength} characters or fewer.`}
-            description={`Press Enter to add. Maximum ${EDITOR_LIMITS.industries} industries.`}
-            placeholder="e.g. Fintech"
+            itemLengthError={`Each domain must be ${EDITOR_LIMITS.industryLength} characters or fewer.`}
+            description={`Press Enter to add. Maximum ${EDITOR_LIMITS.industries} domains.`}
+            placeholder="e.g. Technology, FinTech, E-commerce, Healthcare"
             error={errorFor(errors, "industries")}
           />
+        </div>
+      </SpCard>
+
+      <SpCard>
+        <SpSectionHeader
+          title="Social & Web links"
+          description="Add your professional profiles, GitHub, portfolio, or website."
+        />
+        <div className="mt-6 space-y-4">
+          {(model.socialLinks ?? []).length === 0 && (
+            <p className="text-sm text-[#6B7280]">No links added yet.</p>
+          )}
+
+          {(model.socialLinks ?? []).map((link, index) => (
+            <div key={link.id} className="grid gap-3 sm:grid-cols-[140px_1fr_auto] sm:items-start">
+              <SpFormField id={`social-${link.id}-platform`} label={`Platform ${index + 1}`}>
+                <Select
+                  value={link.platform}
+                  onValueChange={(platform) =>
+                    onChange({
+                      socialLinks: model.socialLinks.map((s) =>
+                        s.id === link.id ? { ...s, platform } : s
+                      ),
+                    })
+                  }
+                >
+                  <SelectTrigger aria-label={`Platform for link ${index + 1}`}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="LinkedIn">LinkedIn</SelectItem>
+                    <SelectItem value="GitHub">GitHub</SelectItem>
+                    <SelectItem value="Website">Website</SelectItem>
+                    <SelectItem value="Twitter">Twitter / X</SelectItem>
+                    <SelectItem value="Dribbble">Dribbble</SelectItem>
+                    <SelectItem value="Medium">Medium</SelectItem>
+                  </SelectContent>
+                </Select>
+              </SpFormField>
+
+              <SpFormField id={`social-${link.id}-url`} label="URL">
+                <Input
+                  value={link.url}
+                  onChange={(event) =>
+                    onChange({
+                      socialLinks: model.socialLinks.map((s) =>
+                        s.id === link.id ? { ...s, url: event.target.value } : s
+                      ),
+                    })
+                  }
+                  placeholder="https://..."
+                />
+              </SpFormField>
+
+              <Button
+                type="button"
+                variant="outline"
+                className="min-h-11 min-w-11 sm:mt-8"
+                onClick={() =>
+                  onChange({
+                    socialLinks: model.socialLinks.filter((s) => s.id !== link.id),
+                  })
+                }
+              >
+                <Trash2 className="size-4 text-[#B42318]" aria-hidden="true" />
+                <span className="sr-only">{`Remove link ${link.platform}`}</span>
+              </Button>
+            </div>
+          ))}
+
+          <Button
+            type="button"
+            variant="outline"
+            className="min-h-11"
+            disabled={(model.socialLinks ?? []).length >= EDITOR_LIMITS.socialLinks}
+            onClick={() =>
+              onChange({
+                socialLinks: [...(model.socialLinks ?? []), { id: `local-${Math.random().toString(36).slice(2, 10)}`, platform: "LinkedIn", url: "" }],
+              })
+            }
+          >
+            <Plus className="size-4" aria-hidden="true" />
+            Add link
+          </Button>
         </div>
       </SpCard>
     </div>

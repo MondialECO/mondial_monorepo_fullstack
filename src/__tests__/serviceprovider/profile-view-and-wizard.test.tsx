@@ -59,11 +59,40 @@ vi.mock("next/link", async () => {
   };
 });
 
+let mockUser: { id: string; name: string; role?: string; roles?: string[] } = {
+  id: "provider-1",
+  name: "Maya Rahman",
+  role: "ServiceProvider",
+  roles: ["ServiceProvider"],
+};
+
 vi.mock("@/app/_providers/AuthProvider", () => ({
-  useAuth: () => ({ user: { id: "provider-1", name: "Maya Rahman" } }),
+  useAuth: () => ({ user: mockUser }),
 }));
 
 vi.mock("@/lib/api-service-provider", () => api);
+
+vi.mock("@/lib/axios", () => ({
+  default: {
+    get: vi.fn(async (url: string) => {
+      if (url === "/profile/me") return { data: { success: true, data: await api.getProfile() } };
+      if (url === "/profile/editor/draft") return { data: { success: true, data: await api.getProfileDraft() } };
+      return { data: {} };
+    }),
+    put: vi.fn(async (url: string, payload: any) => {
+      if (url === "/profile/editor/draft") return { data: { success: true, data: await api.saveProfileDraft(payload) } };
+      return { data: {} };
+    }),
+    post: vi.fn(async (url: string, payload: any) => {
+      if (url === "/profile/editor/submit") return { data: { success: true, data: await api.submitProfileEditor(payload) } };
+      return { data: {} };
+    }),
+    delete: vi.fn(async (url: string) => {
+      if (url === "/profile/editor/draft") return { data: { success: true, data: await api.discardProfileDraft() } };
+      return { data: {} };
+    }),
+  },
+}));
 
 vi.mock("@/hooks/queries/analytics", () => ({
   useProviderOverview: () => ({
@@ -175,6 +204,12 @@ function renderWith(ui: ReactElement) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockUser = {
+    id: "provider-1",
+    name: "Maya Rahman",
+    role: "ServiceProvider",
+    roles: ["ServiceProvider"],
+  };
   navigation.searchParams = new URLSearchParams();
   api.getProfile.mockResolvedValue(baseProfile);
   api.getTrust.mockResolvedValue({
@@ -439,6 +474,7 @@ describe("Profile editor wizard", () => {
     expect(payload.draft).not.toHaveProperty("providerTier");
     expect(payload.draft).not.toHaveProperty("verificationStatus");
     expect(payload.draft).not.toHaveProperty("trustScore");
+    await waitFor(() => expect(navigation.push).toHaveBeenCalledWith("/dashboard/profile"));
   });
 
   it("surfaces a stale-version conflict without discarding the draft", async () => {
@@ -457,8 +493,8 @@ describe("Profile editor wizard", () => {
     expect(screen.getByRole("button", { name: /Keep my current draft/i })).toBeVisible();
     // Still on step 4 with the draft intact — nothing was cleared.
     expect(screen.getByRole("heading", { name: "Credentials", level: 1 })).toBeVisible();
+    expect(navigation.push).not.toHaveBeenCalledWith("/dashboard/profile");
   });
-
   it("keeps the draft and shows a retryable error when submit fails", async () => {
     const user = userEvent.setup();
     navigation.searchParams = new URLSearchParams("step=4");
@@ -470,6 +506,7 @@ describe("Profile editor wizard", () => {
 
     expect(await screen.findByText(/could not be submitted/i)).toBeVisible();
     expect(screen.getByRole("button", { name: /Submit Profile/i })).toBeEnabled();
+    expect(navigation.push).not.toHaveBeenCalledWith("/dashboard/profile");
   });
 
   it("keeps the scanner disclosure visible on the credentials step", async () => {
@@ -494,5 +531,57 @@ describe("Profile editor wizard", () => {
     const progress = screen.getByRole("navigation", { name: /Profile editor progress/i });
     expect(progress).toHaveTextContent(/Step 1 of 4: Identity & Overview\. Completed\./);
     expect(progress).toHaveTextContent(/Step 2 of 4: Experience & Education\. Current step\./);
+  });
+
+  it("maintains input focus and stable state during continuous typing in bio and headline", async () => {
+    const user = userEvent.setup();
+    navigation.searchParams = new URLSearchParams("step=1");
+    renderWith(<ProfileEditorWorkspace />);
+
+    await screen.findByRole("heading", { name: "Identity & Overview", level: 1 });
+
+    const headlineInput = screen.getByLabelText(/Professional headline/i);
+    await user.clear(headlineInput);
+    await user.type(headlineInput, "Principal Architect & Lead Engineer");
+    expect(headlineInput).toHaveValue("Principal Architect & Lead Engineer");
+    expect(headlineInput).toHaveFocus();
+
+    const bioTextarea = screen.getByLabelText(/Short bio/i);
+    await user.clear(bioTextarea);
+    await user.type(
+      bioTextarea,
+      "I specialize in scalable cloud architectures, distributed systems, and modern web application development."
+    );
+    expect(bioTextarea).toHaveValue(
+      "I specialize in scalable cloud architectures, distributed systems, and modern web application development."
+    );
+    expect(bioTextarea).toHaveFocus();
+  });
+
+  it("renders Service category selector on Step 1 for ServiceProvider", async () => {
+    navigation.searchParams = new URLSearchParams("step=1");
+    renderWith(<ProfileEditorWorkspace />);
+
+    await screen.findByRole("heading", { name: "Identity & Overview", level: 1 });
+    expect(screen.getByRole("heading", { name: "Service category" })).toBeVisible();
+    expect(screen.getByText("Select the primary category clients will find you under.")).toBeVisible();
+  });
+
+  it("hides Service category selector for non-ServiceProvider roles (Creator, Entrepreneur, Investor)", async () => {
+    mockUser = {
+      id: "user-creator",
+      name: "Alice Creator",
+      role: "Creator",
+      roles: ["Creator"],
+    };
+    api.getProfile.mockResolvedValue({
+      ...baseProfile,
+      roles: ["Creator"],
+    });
+    navigation.searchParams = new URLSearchParams("step=1");
+    renderWith(<ProfileEditorWorkspace />);
+
+    await screen.findByRole("heading", { name: "Identity & Overview", level: 1 });
+    expect(screen.queryByRole("heading", { name: "Service category" })).not.toBeInTheDocument();
   });
 });

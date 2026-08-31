@@ -38,6 +38,15 @@ public sealed class ProfileEditorService(
 
     private bool TransactionsEnabled => configuration.GetValue("Mongo:TransactionsEnabled", true);
 
+    private async Task<bool> IsServiceProviderAsync(ApplicationUser user)
+    {
+        if (await userManager.IsInRoleAsync(user, "ServiceProvider"))
+            return true;
+        if (!string.IsNullOrEmpty(user.ServiceProviderProfile?.ProviderId))
+            return true;
+        return false;
+    }
+
     public async Task<ServiceProviderResult<ProfileDraftResponse>> GetDraftAsync(
         string userId,
         CancellationToken cancellationToken = default)
@@ -45,12 +54,20 @@ public sealed class ProfileEditorService(
         var user = await userManager.FindByIdAsync(userId);
         if (user is null) return NotFoundDraft();
 
-        // Pure read: split records when migrated, otherwise an in-memory
-        // projection of the embedded profile. Opening the editor never writes.
+        var isSp = await IsServiceProviderAsync(user);
         var professional = await professionalStore.GetByUserIdAsync(userId, cancellationToken)
             ?? SpProfileSplitMapper.ToProfessionalRecord(user);
-        var sp = await spStore.GetByUserIdAsync(userId, cancellationToken)
-            ?? SpProfileSplitMapper.ToServiceProviderRecord(user);
+        
+        ServiceProviderProfileRecord sp;
+        if (isSp)
+        {
+            sp = await spStore.GetByUserIdAsync(userId, cancellationToken)
+                ?? SpProfileSplitMapper.ToServiceProviderRecord(user);
+        }
+        else
+        {
+            sp = new ServiceProviderProfileRecord { UserId = userId };
+        }
 
         if (professional.EditorDraft is null)
         {
@@ -73,8 +90,17 @@ public sealed class ProfileEditorService(
         var user = await userManager.FindByIdAsync(userId);
         if (user is null) return NotFoundDraft();
 
-        // Write path: make sure the split records exist (migrate-on-write).
-        var (professional, _) = await migrator.EnsureMigratedAsync(user, cancellationToken);
+        var isSp = await IsServiceProviderAsync(user);
+        ProfessionalProfileRecord professional;
+        if (isSp)
+        {
+            var (prof, _) = await migrator.EnsureMigratedAsync(user, cancellationToken);
+            professional = prof;
+        }
+        else
+        {
+            professional = await migrator.EnsureProfessionalProfileAsync(user, cancellationToken);
+        }
 
         var draft = BuildDraft(request, professional.EditorDraft);
         if (draft.Error is not null)
@@ -97,9 +123,18 @@ public sealed class ProfileEditorService(
         var user = await userManager.FindByIdAsync(userId);
         if (user is null) return NotFoundDraft();
 
+        var isSp = await IsServiceProviderAsync(user);
         var professional = await professionalStore.GetByUserIdAsync(userId, cancellationToken);
-        var sp = await spStore.GetByUserIdAsync(userId, cancellationToken)
-            ?? SpProfileSplitMapper.ToServiceProviderRecord(user);
+        ServiceProviderProfileRecord sp;
+        if (isSp)
+        {
+            sp = await spStore.GetByUserIdAsync(userId, cancellationToken)
+                ?? SpProfileSplitMapper.ToServiceProviderRecord(user);
+        }
+        else
+        {
+            sp = new ServiceProviderProfileRecord { UserId = userId };
+        }
 
         if (professional?.EditorDraft is null)
         {
@@ -126,9 +161,22 @@ public sealed class ProfileEditorService(
     {
         var user = await userManager.FindByIdAsync(userId);
         if (user is null)
-            return ServiceProviderResult<ProfileEditorSubmitResponse>.NotFound("Service provider profile not found.");
+            return ServiceProviderResult<ProfileEditorSubmitResponse>.NotFound("User profile not found.");
 
-        var (professional, sp) = await migrator.EnsureMigratedAsync(user, cancellationToken);
+        var isSp = await IsServiceProviderAsync(user);
+        ProfessionalProfileRecord professional;
+        ServiceProviderProfileRecord? sp = null;
+
+        if (isSp)
+        {
+            var (prof, spRec) = await migrator.EnsureMigratedAsync(user, cancellationToken);
+            professional = prof;
+            sp = spRec;
+        }
+        else
+        {
+            professional = await migrator.EnsureProfessionalProfileAsync(user, cancellationToken);
+        }
 
         // Fast-path concurrency check; the authoritative check is the
         // version-conditional replace inside the write itself.
@@ -140,16 +188,19 @@ public sealed class ProfileEditorService(
             return ServiceProviderResult<ProfileEditorSubmitResponse>.Invalid(built.Error);
         var draft = built.Value!;
 
+        if (isSp && (draft.ServiceCategories == null || draft.ServiceCategories.Count == 0))
+            return ServiceProviderResult<ProfileEditorSubmitResponse>.Invalid("Select your primary expertise category.");
+
         var now = DateTime.UtcNow;
 
         // Build the post-publish records without mutating the loaded ones, so a
         // failed write leaves nothing half-applied in memory or storage.
         var newProfessional = BuildPublishedProfessional(professional, draft, now);
-        var newSp = BuildPublishedSp(sp, draft, now);
+        var newSp = isSp && sp is not null ? BuildPublishedSp(sp, draft, now) : null;
 
         // Credentials eligible for review: Draft or ResubmissionRequired WITH a
         // document. Verified credentials are never touched by a profile submit.
-        var ownedCredentials = await credentialStore.GetByUserIdAsync(userId, cancellationToken);
+        var ownedCredentials = isSp ? await credentialStore.GetByUserIdAsync(userId, cancellationToken) : new List<UserCredentialRecord>();
         var promoted = ownedCredentials
             .Where(c => c.Status is CredentialStatus.Draft or CredentialStatus.ResubmissionRequired
                         && c.Document is not null)
@@ -163,12 +214,15 @@ public sealed class ProfileEditorService(
             session.StartTransaction();
             try
             {
-                foreach (var credential in promoted)
-                    if (!await credentialStore.UpsertAsync(credential, session, cancellationToken))
-                        throw new MongoException("Credential write was not acknowledged.");
+                if (isSp)
+                {
+                    foreach (var credential in promoted)
+                        if (!await credentialStore.UpsertAsync(credential, session, cancellationToken))
+                            throw new MongoException("Credential write was not acknowledged.");
 
-                if (!await spStore.UpsertAsync(newSp, session, cancellationToken))
-                    throw new MongoException("Service provider profile write was not acknowledged.");
+                    if (newSp is not null && !await spStore.UpsertAsync(newSp, session, cancellationToken))
+                        throw new MongoException("Service provider profile write was not acknowledged.");
+                }
 
                 published = await professionalStore.ReplacePublishedIfVersionAsync(
                     newProfessional, request.BasedOnVersion, session, cancellationToken);
@@ -196,14 +250,17 @@ public sealed class ProfileEditorService(
             // increment LAST as the commit point. A retry converges — credential
             // promotions and the SP upsert are idempotent, and nothing reads the
             // new state until the version-conditional publish lands.
-            foreach (var credential in promoted)
-                if (!await credentialStore.UpsertAsync(credential, cancellationToken: cancellationToken))
+            if (isSp)
+            {
+                foreach (var credential in promoted)
+                    if (!await credentialStore.UpsertAsync(credential, cancellationToken: cancellationToken))
+                        return ServiceProviderResult<ProfileEditorSubmitResponse>.Conflict(
+                            "Your profile could not be saved. Your draft has been kept — try again.");
+
+                if (newSp is not null && !await spStore.UpsertAsync(newSp, cancellationToken: cancellationToken))
                     return ServiceProviderResult<ProfileEditorSubmitResponse>.Conflict(
                         "Your profile could not be saved. Your draft has been kept — try again.");
-
-            if (!await spStore.UpsertAsync(newSp, cancellationToken: cancellationToken))
-                return ServiceProviderResult<ProfileEditorSubmitResponse>.Conflict(
-                    "Your profile could not be saved. Your draft has been kept — try again.");
+            }
 
             published = await professionalStore.ReplacePublishedIfVersionAsync(
                 newProfessional, request.BasedOnVersion, cancellationToken: cancellationToken);
@@ -216,15 +273,33 @@ public sealed class ProfileEditorService(
             credentialsPendingReview = promoted.Count,
         });
 
-        var view = SpProfileSplitMapper.ToCompositeView(
-            newProfessional, newSp, await credentialStore.GetByUserIdAsync(userId, cancellationToken));
+        var userRoles = await userManager.GetRolesAsync(user);
 
-        return ServiceProviderResult<ProfileEditorSubmitResponse>.Ok(new ProfileEditorSubmitResponse
+        if (isSp && newSp is not null)
         {
-            Outcome = DetermineOutcome(newSp, promoted.Count),
-            Profile = view.ToResponse(),
-            CredentialsPendingReview = promoted.Count,
-        }, "Profile submitted.");
+            var view = SpProfileSplitMapper.ToCompositeView(
+                newProfessional, newSp, await credentialStore.GetByUserIdAsync(userId, cancellationToken));
+
+            return ServiceProviderResult<ProfileEditorSubmitResponse>.Ok(new ProfileEditorSubmitResponse
+            {
+                Outcome = DetermineOutcome(newSp, promoted.Count),
+                Profile = view.ToResponse(),
+                CredentialsPendingReview = promoted.Count,
+            }, "Profile submitted.");
+        }
+        else
+        {
+            var nonSp = new ServiceProviderProfileRecord { UserId = userId };
+            var view = SpProfileSplitMapper.ToCompositeView(
+                newProfessional, nonSp, new List<UserCredentialRecord>());
+
+            return ServiceProviderResult<ProfileEditorSubmitResponse>.Ok(new ProfileEditorSubmitResponse
+            {
+                Outcome = "Published",
+                Profile = view.ToResponse(),
+                CredentialsPendingReview = 0,
+            }, "Profile submitted.");
+        }
     }
 
     // ---------------- Publish builders ----------------
@@ -248,7 +323,7 @@ public sealed class ProfileEditorService(
         // Legacy mirror stays in step for existing readers until Phase 6.
         Languages = draft.LanguageProficiencies.Select(l => l.Language).ToList(),
         Industries = new List<string>(draft.Industries),
-        SocialLinks = current.SocialLinks,
+        SocialLinks = (draft.SocialLinks ?? new()).Count > 0 ? draft.SocialLinks : current.SocialLinks,
         AvailabilityDisplay = current.AvailabilityDisplay,
         ProfileVersion = current.ProfileVersion + 1,
         EditorDraft = null,
@@ -474,6 +549,12 @@ public sealed class ProfileEditorService(
             ServiceCategories = ServiceProviderService.NormalizeCategories(request.ServiceCategories),
             Industries = ServiceProviderService.NormalizeStrings(request.Industries),
             PricingModels = ServiceProviderService.NormalizePricingModels(request.PricingModels),
+            SocialLinks = (request.SocialLinks ?? new()).Where(s => !string.IsNullOrWhiteSpace(s.Url)).Select(s => new ProfessionalSocialLink
+            {
+                Id = StableId(s.Id),
+                Platform = (s.Platform ?? "").Trim(),
+                Url = (s.Url ?? "").Trim()
+            }).ToList(),
             CreatedAt = existing?.CreatedAt ?? DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
         };
@@ -581,6 +662,7 @@ public sealed class ProfileEditorService(
             PricingModels = new List<PricingModel>(sp.PricingModels),
             Experiences = new List<ProfessionalExperience>(professional.Experiences),
             Education = new List<ProfessionalEducation>(professional.Education),
+            SocialLinks = new List<ProfessionalSocialLink>(professional.SocialLinks ?? new()),
         };
 
         // Prefer structured languages; fall back to the legacy name-only mirror.

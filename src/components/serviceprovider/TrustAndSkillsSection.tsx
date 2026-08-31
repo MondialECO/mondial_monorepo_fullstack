@@ -40,10 +40,16 @@ const formatCategory = (value: string) =>
 
 export function TrustAndSkillsSection({
   profile,
+  verificationStatus,
 }: {
-  profile: ServiceProviderProfile;
+  profile?: any;
+  verificationStatus?: string;
 }) {
-  if (profile.verificationStatus !== 'Verified') {
+  const isVerified =
+    verificationStatus === 'Verified' ||
+    profile?.verificationStatus === 'Verified';
+
+  if (!isVerified) {
     return (
       <SpEmptyState
         icon={ShieldCheck}
@@ -51,7 +57,7 @@ export function TrustAndSkillsSection({
         description="Trust signals and optional skills tests become available after profile verification. Rejected profiles return to moderation review when resubmitted."
         action={
           <Button asChild variant="outline">
-            <Link href="/dashboard/serviceprovider/profile?view=edit">
+            <Link href="/dashboard/profile/edit">
               Review profile requirements
             </Link>
           </Button>

@@ -11,6 +11,9 @@ public sealed class ProfessionalProfileStore(MongoDbContext context) : IProfessi
     public Task<ProfessionalProfileRecord?> GetByUserIdAsync(string userId, CancellationToken cancellationToken = default) =>
         context.ProfessionalProfiles.Find(x => x.UserId == userId).FirstOrDefaultAsync(cancellationToken)!;
 
+    public Task<ProfessionalProfileRecord?> GetByPublicSlugAsync(string slug, CancellationToken cancellationToken = default) =>
+        context.ProfessionalProfiles.Find(x => x.PublicSlug == slug).FirstOrDefaultAsync(cancellationToken)!;
+
     public async Task<Dictionary<string, ProfessionalProfileRecord>> GetByUserIdsAsync(
         IEnumerable<string> userIds, CancellationToken cancellationToken = default)
     {

@@ -15,6 +15,7 @@ export interface MarketplaceListingCard {
     displayName: string;
     profileImageUrl: string | null;
     verified: boolean;
+    publicSlug?: string | null;
   };
   startingPrice: number;
   currency: string;
@@ -48,6 +49,7 @@ export interface MarketplaceListingDetail {
     trustScore: number | null;
     completedOrders: number | null;
     medianResponseTime: string | null;
+    publicSlug?: string | null;
   };
   packages: MarketplacePackage[];
   gallery: { id: string; url: string; displayOrder: number }[];
