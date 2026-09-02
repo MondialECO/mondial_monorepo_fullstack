@@ -5550,8 +5550,14 @@ public class CompanyService : ICompanyService
                 card.Stage = "review";
                 columns.InReview.Add(card);
             }
-            // 6. Lost: explicitly rejected or passed deal/match (and NO active holding, active deal, or active dataroom grant)
-            else if ((companyDeal != null && (companyDeal.Status is "rejected" or "lost" || companyDeal.DealStage is "LOST" or "REJECTED")) || match?.Status is "rejected" or "passed" or "lost")
+            // 6. Lost: explicitly rejected or passed deal/match — BUT only if there is
+            //    no active non-terminal InvestorMatch that would otherwise surface the
+            //    company as a new engagement opportunity. A historical rejected Deal must
+            //    not permanently mask a genuinely new/active InvestorMatch.
+            else if (match?.Status is "rejected" or "passed" or "lost"
+                     || (companyDeal != null
+                         && (companyDeal.Status is "rejected" or "lost" || companyDeal.DealStage is "LOST" or "REJECTED")
+                         && (match == null || match.Status is "rejected" or "passed" or "lost")))
             {
                 card.Stage = "lost";
                 columns.Lost.Add(card);
