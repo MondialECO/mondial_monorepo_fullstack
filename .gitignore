@@ -14,6 +14,8 @@
 /coverage
 /playwright-report/
 /test-results/
+[Tt]est[Rr]esults/
+*.trx
 /tests/creator/e2e/.auth/
 /backend/test-bin/
 

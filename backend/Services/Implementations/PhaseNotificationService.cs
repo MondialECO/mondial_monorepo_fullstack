@@ -553,7 +553,7 @@ Mondial Team";
 Congratulations! Your investment of {currency} {amount:N0} in {companyName} has successfully closed and is now active in your portfolio.
 
 View your portfolio:
-/dashboard/investor
+/dashboard/investor/portfolio
 
 Best regards,
 Mondial Team";

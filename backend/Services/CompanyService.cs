@@ -3744,6 +3744,13 @@ public class CompanyService : ICompanyService
         await CreateCompanyPortfolioHoldingsForDealAsync(deal, actorUserId);
         await ApplyEquityDealToCapTableAsync(deal, actorUserId);
 
+        var company = await _dbContext.Companies.Find(c => c.Id == deal.CompanyId).FirstOrDefaultAsync();
+        var notifService = GetNotificationService();
+        if (notifService != null && company != null)
+        {
+            await notifService.NotifyDealStatusChangeAsync(deal.Id, company.CompanyName, "closed");
+        }
+
         return MapDealToResponse(deal);
     }
 
@@ -3893,9 +3900,26 @@ public class CompanyService : ICompanyService
                         entryValuation = deal.TermSheet.PreMoneyValuation;
                 }
 
-                var matchRecord = await _dbContext.InvestorMatches
-                    .Find(m => m.CompanyId == deal.CompanyId && (m.InvestorId == investorId || m.InvestorId == investorUserId))
-                    .FirstOrDefaultAsync();
+                var matchCandidates = new List<string>();
+                if (!string.IsNullOrWhiteSpace(investorId) && !Guid.TryParse(investorId, out _))
+                    matchCandidates.Add(investorId);
+                if (!string.IsNullOrWhiteSpace(investorUserId) && ObjectId.TryParse(investorUserId, out _))
+                    matchCandidates.Add(investorUserId);
+
+                InvestorMatch? matchRecord = null;
+                if (matchCandidates.Count > 0)
+                {
+                    try
+                    {
+                        matchRecord = await _dbContext.InvestorMatches
+                            .Find(m => m.CompanyId == deal.CompanyId && matchCandidates.Contains(m.InvestorId))
+                            .FirstOrDefaultAsync();
+                    }
+                    catch
+                    {
+                        // Fallback if schema rejects string
+                    }
+                }
 
                 var holding = new CompanyPortfolioHolding
                 {
@@ -3985,6 +4009,25 @@ public class CompanyService : ICompanyService
             var company = await _dbContext.Companies.Find(c => c.Id == deal.CompanyId).FirstOrDefaultAsync();
             if (company == null)
                 return;
+
+            // Always recalculate company.AmountRaised and Phase 9 completion from all completed deals
+            var allDealsForComp = await _dbContext.DealExecutions
+                .Find(d => d.CompanyId == deal.CompanyId && d.Status == Phase9Requirements.DealStatusCompleted)
+                .ToListAsync();
+            double totalRaised = allDealsForComp.Sum(d =>
+            {
+                var invSum = d.Investors != null && d.Investors.Count > 0 ? d.Investors.Sum(i => i.CommittedAmount) : 0;
+                return invSum > 0 ? invSum : (d.TermSheet?.TotalRaiseAmount ?? 0);
+            });
+            if (company.AmountRaised != totalRaised || company.CompletedPhases == null || !company.CompletedPhases.Contains(9))
+            {
+                company.AmountRaised = totalRaised;
+                if (company.CompletedPhases == null) company.CompletedPhases = new List<int>();
+                if (!company.CompletedPhases.Contains(9)) company.CompletedPhases.Add(9);
+                if (company.CurrentPhase == 9) company.CurrentPhase = 10;
+                company.UpdatedAt = DateTime.UtcNow;
+                await _dbContext.Companies.ReplaceOneAsync(Builders<Companies>.Filter.Eq(c => c.Id, company.Id), company);
+            }
 
             var latestCapTable = await _dbContext.Phase4CapTables
                 .Find(c => c.CompanyId == deal.CompanyId)
@@ -4117,10 +4160,26 @@ public class CompanyService : ICompanyService
                     .Find(u => (u.InvestorProfile != null && u.InvestorProfile.InvestorId == investorId) || (invGuid != Guid.Empty && u.Id == invGuid))
                     .FirstOrDefaultAsync();
                 var investorUserId = investorUser?.Id.ToString() ?? string.Empty;
+                var matchCandidates = new List<string>();
+                if (!string.IsNullOrWhiteSpace(investorId) && !Guid.TryParse(investorId, out _))
+                    matchCandidates.Add(investorId);
+                if (!string.IsNullOrWhiteSpace(investorUserId) && ObjectId.TryParse(investorUserId, out _))
+                    matchCandidates.Add(investorUserId);
 
-                var matchRecord = await _dbContext.InvestorMatches
-                    .Find(m => m.CompanyId == deal.CompanyId && (m.InvestorId == investorId || m.InvestorId == investorUserId))
-                    .FirstOrDefaultAsync();
+                InvestorMatch? matchRecord = null;
+                if (matchCandidates.Count > 0)
+                {
+                    try
+                    {
+                        matchRecord = await _dbContext.InvestorMatches
+                            .Find(m => m.CompanyId == deal.CompanyId && matchCandidates.Contains(m.InvestorId))
+                            .FirstOrDefaultAsync();
+                    }
+                    catch
+                    {
+                        // Fallback if schema rejects string
+                    }
+                }
 
                 pendingAllocations.Add((participant, investorId, investorName, investorEquityPercent, alreadyInCapTable, alreadyIssued, investorUserId, matchRecord?.Id));
             }
@@ -4231,6 +4290,18 @@ public class CompanyService : ICompanyService
                     VestingMonths = g.TotalVestMonths,
                     InvestmentAmount = g.InvestmentAmount
                 }).ToList();
+
+                var allCompletedDeals = await _dbContext.DealExecutions
+                    .Find(d => d.CompanyId == deal.CompanyId && d.Status == Phase9Requirements.DealStatusCompleted)
+                    .ToListAsync();
+                company.AmountRaised = allCompletedDeals.Sum(d =>
+                    d.Investors != null && d.Investors.Count > 0
+                        ? d.Investors.Sum(i => i.CommittedAmount)
+                        : (d.TermSheet?.TotalRaiseAmount ?? 0));
+                if (company.CompletedPhases == null) company.CompletedPhases = new List<int>();
+                if (!company.CompletedPhases.Contains(9)) company.CompletedPhases.Add(9);
+                if (company.CurrentPhase == 9) company.CurrentPhase = 10;
+
                 company.InvestorReadinessInputsLastMaterialChangeAt = DateTime.UtcNow;
                 company.UpdatedAt = DateTime.UtcNow;
                 await _dbContext.Companies.ReplaceOneAsync(Builders<Companies>.Filter.Eq(c => c.Id, company.Id), company);
@@ -5448,7 +5519,7 @@ public class CompanyService : ICompanyService
                 .Find(i => i.InvestorId == callerGuid)
                 .ToListAsync();
         }
-        var capitalCommitted = investments.Sum(i => (double)i.Amount);
+        var capitalCommitted = holdings.Sum(h => h.InvestmentAmount) + investments.Sum(i => (double)i.Amount);
         var activeDeals = columns.NewMatches.Count + columns.InReview.Count + columns.NdaSigned.Count
                           + columns.DataRoom.Count + columns.Negotiation.Count;
         var scoredMatches = matches.Where(m => m.MatchScore > 0).ToList();
