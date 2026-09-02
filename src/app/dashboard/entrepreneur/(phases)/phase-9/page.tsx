@@ -1,23 +1,22 @@
-import { EntrepreneurLayout } from '@/components/entrepreneur/EntrepreneurLayout';
-import { PhaseHeader } from '@/components/entrepreneur/PhaseHeader';
-import { RouteGuard } from '@/components/entrepreneur/RouteGuard';
-import Phase9Client from './client';
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function Phase9Page() {
+  const router = useRouter();
+
+  useEffect(() => {
+    if (router?.replace) {
+      router.replace('/dashboard/entrepreneur/deals');
+    } else if (router?.push) {
+      router.push('/dashboard/entrepreneur/deals');
+    }
+  }, [router]);
+
   return (
-    <RouteGuard requiredPhase={9}>
-      {/* <EntrepreneurLayout sidebar={<div />}> */}
-        <div className="space-y-6 md:space-y-8">
-          <PhaseHeader
-            title="Deal Execution"
-            subtitle="Deterministic deal pipeline. Status transitions, term sheets, due diligence, and documents are backend-authoritative; the timeline is derived from the activity log."
-            progressLabel="PROGRESS"
-            progressValue="Phase 9 of 10"
-            progressPercentage={90}
-          />
-          <Phase9Client />
-        </div>
-      {/* </EntrepreneurLayout> */}
-    </RouteGuard>
+    <div className="flex items-center justify-center p-12 text-sm text-muted-foreground">
+      Redirecting to Deals &amp; Term Sheets...
+    </div>
   );
 }

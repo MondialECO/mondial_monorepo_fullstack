@@ -118,7 +118,7 @@ describe("Entrepreneur Acquisitions & Navigation Audit", () => {
 
     const fundingItems = entrepreneurMenu.find((g) => g.title === "Funding & Matching")?.items || [];
     const investorDealsItem = fundingItems.find((i) => i.label === "Investor Deals");
-    expect(investorDealsItem?.href).toBe("/dashboard/entrepreneur/phase-9");
+    expect(investorDealsItem?.href).toBe("/dashboard/entrepreneur/deals");
   });
 
   it("renders My Acquisitions page with real completed buyout records and action link", async () => {

@@ -236,7 +236,7 @@ export default function Phase8Client() {
       });
       moveToNextStep(8, 1);
       await new Promise((r) => setTimeout(r, 300));
-      router.push('/dashboard/entrepreneur/phase-9');
+      router.push('/dashboard/entrepreneur/deals');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Submit failed');
     } finally {

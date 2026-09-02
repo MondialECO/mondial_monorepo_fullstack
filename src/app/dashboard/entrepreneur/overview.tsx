@@ -69,7 +69,7 @@ const PHASES: PhaseDef[] = [
   { phase: 6, title: 'Data Room', description: 'Secure document vault', icon: FolderOpen, href: '/dashboard/entrepreneur/phase-6' },
   { phase: 7, title: 'AI Expert Review', description: 'Investor-readiness review', icon: Sparkles, href: '/dashboard/entrepreneur/phase-7' },
   { phase: 8, title: 'Investor Matching', description: 'Matches and outreach', icon: Handshake, href: '/dashboard/entrepreneur/phase-8' },
-  { phase: 9, title: 'Deal Execution', description: 'Term sheets and close', icon: Users, href: '/dashboard/entrepreneur/phase-9' },
+  { phase: 9, title: 'Deal Execution', description: 'Term sheets and close', icon: Users, href: '/dashboard/entrepreneur/deals' },
 ];
 
 const TOTAL_PHASES = PHASES.length;

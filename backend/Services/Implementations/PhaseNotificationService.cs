@@ -302,8 +302,8 @@ Company: {company?.CompanyName}
 Industry: {company?.Industry}
 Funding Ask: EUR {company?.FundingAskAmount ?? 0:N0}
 
-Review this opportunity in your incoming investor matches:
-/dashboard/investor/incoming-matches
+Review this opportunity in your discovery feed:
+/dashboard/investor/discovery
 ";
             if (investorUser != null)
                 await SendToUserAsync(investorUser, companyId, subject, body);

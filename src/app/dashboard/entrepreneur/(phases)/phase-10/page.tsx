@@ -33,7 +33,7 @@ export default function Phase10Page() {
             </p>
             <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
               <Button asChild variant="outline">
-                <Link href="/dashboard/entrepreneur/phase-9">Review deal execution</Link>
+                <Link href="/dashboard/entrepreneur/deals">Review deal execution</Link>
               </Button>
               <Button asChild>
                 <Link href="/dashboard/entrepreneur">Dashboard home</Link>
