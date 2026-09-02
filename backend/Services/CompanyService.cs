@@ -3634,6 +3634,23 @@ public class CompanyService : ICompanyService
         deal.TermSheet.LiquidationPreference = request.LiquidationPreference;
         deal.TermSheet.BoardSeats = request.BoardSeats;
         deal.TermSheet.ProposedClosingDate = request.ProposedClosingDate;
+        if (request.PostMoneyValuation > 0)
+        {
+            deal.TermSheet.InvestorEquityPercent = Math.Round((request.TotalRaiseAmount / request.PostMoneyValuation) * 100, 4);
+        }
+
+        if (deal.Investors != null)
+        {
+            foreach (var inv in deal.Investors)
+            {
+                if (inv.InvestorId == ctx.PrincipalId || deal.Investors.Count == 1)
+                {
+                    inv.EquityPercentage = deal.TermSheet.InvestorEquityPercent;
+                    inv.CommittedAmount = deal.TermSheet.TotalRaiseAmount;
+                }
+            }
+        }
+
         deal.TermSheet.Status = toTsStatus;
         deal.UpdatedAt = DateTime.UtcNow;
 
@@ -3878,16 +3895,16 @@ public class CompanyService : ICompanyService
                     .FirstOrDefaultAsync();
                 var investorUserId = investorUser?.Id.ToString() ?? string.Empty;
 
-                var amount = participant.CommittedAmount > 0
-                    ? participant.CommittedAmount
-                    : (deal.TermSheet?.TotalRaiseAmount > 0 ? deal.TermSheet.TotalRaiseAmount : 0);
+                var amount = (deal.TermSheet != null && deal.TermSheet.TotalRaiseAmount > 0)
+                    ? deal.TermSheet.TotalRaiseAmount
+                    : (participant.CommittedAmount > 0 ? participant.CommittedAmount : 0);
 
                 double? equityPercent = null;
                 if (instrumentType == "equity")
                 {
-                    var rawEquity = participant.EquityPercentage > 0
-                        ? participant.EquityPercentage
-                        : (deal.TermSheet?.InvestorEquityPercent > 0 ? deal.TermSheet.InvestorEquityPercent : 0);
+                    var rawEquity = (deal.TermSheet != null && deal.TermSheet.InvestorEquityPercent > 0)
+                        ? deal.TermSheet.InvestorEquityPercent
+                        : (participant.EquityPercentage > 0 ? participant.EquityPercentage : 0);
                     if (rawEquity > 0) equityPercent = rawEquity;
                 }
 
@@ -4138,9 +4155,9 @@ public class CompanyService : ICompanyService
                     ? participant.InvestorName
                     : (!string.IsNullOrWhiteSpace(deal.InvestorNameSnapshot) ? deal.InvestorNameSnapshot : "Investor");
 
-                var investorEquityPercent = participant.EquityPercentage > 0
-                    ? participant.EquityPercentage
-                    : (deal.TermSheet?.InvestorEquityPercent ?? 0);
+                var investorEquityPercent = (deal.TermSheet != null && deal.TermSheet.InvestorEquityPercent > 0)
+                    ? deal.TermSheet.InvestorEquityPercent
+                    : (participant.EquityPercentage > 0 ? participant.EquityPercentage : 0);
 
                 if (investorEquityPercent <= 0 || investorEquityPercent >= 100)
                     continue;
@@ -4253,7 +4270,9 @@ public class CompanyService : ICompanyService
                         StakeholderType = "investor",
                         ShareClass = shareClass,
                         SharesGranted = allocatedShares,
-                        InvestmentAmount = item.participant.CommittedAmount > 0 ? item.participant.CommittedAmount : deal.TermSheet?.TotalRaiseAmount,
+                        InvestmentAmount = (deal.TermSheet != null && deal.TermSheet.TotalRaiseAmount > 0)
+                            ? deal.TermSheet.TotalRaiseAmount
+                            : (item.participant.CommittedAmount > 0 ? item.participant.CommittedAmount : null),
                         GrantDate = deal.ClosedAt ?? DateTime.UtcNow,
                         CliffMonths = 0,
                         TotalVestMonths = 0,
@@ -4892,6 +4911,20 @@ public class CompanyService : ICompanyService
         deal.TermSheet = CloneTerms(latest.Terms);
         deal.TermSheet.Status = Phase9Requirements.TermSheetStatusAgreed;
         deal.CurrentTurn = "";
+
+        // Synchronize participant snapshot with agreed terms
+        if (deal.Investors != null)
+        {
+            foreach (var inv in deal.Investors)
+            {
+                if (inv.InvestorId == latest.ProposedByPrincipalId || deal.Investors.Count == 1)
+                {
+                    inv.EquityPercentage = deal.TermSheet.InvestorEquityPercent;
+                    inv.CommittedAmount = deal.TermSheet.TotalRaiseAmount;
+                }
+            }
+        }
+
         EnsureAcceptedAgreementStatus(deal, "accept offer");
         deal.UpdatedAt = DateTime.UtcNow;
 
