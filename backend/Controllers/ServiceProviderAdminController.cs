@@ -19,7 +19,7 @@ namespace WebApp.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/admin/service-provider")]
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "Admin,SuperAdmin")]
 public class ServiceProviderAdminController : ControllerBase
 {
     private readonly IServiceProviderService _service;

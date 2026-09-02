@@ -1,7 +1,7 @@
 'use client';
 
 import { ReactNode } from 'react';
-import { Plus, TrendingUp, ArrowUpRight } from 'lucide-react';
+import { Plus, TrendingUp, ArrowUpRight, AlertCircle } from 'lucide-react';
 import { Phase4Context } from '../Phase4TabbedView';
 import { Phase4Tab } from '../Phase4Tabs';
 import {
@@ -207,12 +207,21 @@ export function Phase4OverviewTab({
 
   return (
     <div className="space-y-4 sm:space-y-6">
+      {d.totalIssued > d.totalShares && d.totalShares > 0 && (
+        <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-3 flex gap-2 items-center text-destructive text-sm font-medium">
+          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          <span>
+            Allocated shares ({fmtNum(d.totalIssued)}) exceed authorized shares ({fmtNum(d.totalShares)}) — Cap Table allocation is {fmtPct((d.totalIssued / d.totalShares) * 100, 1)}.
+          </span>
+        </div>
+      )}
+
       {/* Stat row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StatCard
           label="Total Shares Issued"
           value={fmtNum(d.totalIssued)}
-          sub={`of ${fmtNum(d.totalShares)} authorised`}
+          sub={`of ${fmtNum(d.totalShares)} authorised (${fmtPct((d.totalIssued / (d.totalShares || 1)) * 100, 1)})`}
         />
         <StatCard
           label="Pre-Money Valuation"

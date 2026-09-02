@@ -129,17 +129,22 @@ export function RouteGuard({
         return;
       }
 
-      // For steps in current phase: allow current step and completed steps only
-      // Do NOT allow unrestricted navigation based on localStorage mutations
-      if (pathPhase === progress.currentPhase) {
-        const isStepCompleted = progress.completedSteps.has(`${pathPhase}-${pathStep}`);
-        const isCurrent = pathStep === progress.currentStep;
+      // For steps in current phase or accessible Phase 2 / completed phase: allow current step and completed steps only
+      if (pathPhase === progress.currentPhase || isPhase2Available || isPhaseCompleted) {
+        const isStepCompleted = !!progress.completedSteps?.has(`${pathPhase}-${pathStep}`);
+        const isCurrent =
+          pathStep === progress.currentStep ||
+          (pathStep === 1 && !progress.completedSteps?.has(`${pathPhase}-1`));
 
         if (!isStepCompleted && !isCurrent) {
-          // Trying to access a locked step - redirect to current step
+          // Trying to access a locked step - redirect to current step or step 1
+          const fallbackStep =
+            pathPhase === progress.currentPhase
+              ? progress.currentStep
+              : 1;
           setIsAuthorized(false);
           router.replace(
-            `/dashboard/entrepreneur/phase-${pathPhase}/step-${progress.currentStep}`
+            `/dashboard/entrepreneur/phase-${pathPhase}/step-${fallbackStep}`
           );
           return;
         }

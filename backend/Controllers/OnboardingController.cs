@@ -453,6 +453,13 @@ namespace WebApp.Controllers
                 user.Onboarding.IdentityDocumentUploadedAt = DateTime.UtcNow;
                 user.Onboarding.IdentityDocumentVerified = true;
 
+                user.Kyc ??= new KycVerification();
+                user.Kyc.Identity ??= new IdentityVerification();
+                user.Kyc.Identity.DocumentType = docType;
+                user.Kyc.Identity.FrontImage = frontPath;
+                user.Kyc.Identity.BackImage = backPath;
+                user.Kyc.Identity.SubmittedAt = DateTime.UtcNow;
+
                 await _userManager.UpdateAsync(user);
                 // Don't promote here; promotion happens via the /complete endpoint
 

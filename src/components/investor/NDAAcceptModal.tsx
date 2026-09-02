@@ -72,7 +72,15 @@ export default function NDAAcceptModal({
     mutate(
       { companyId, ndaText: DEMO_NDA_TEXT },
       {
-        onSuccess: () => setStep("success"),
+        onSuccess: async () => {
+          try {
+            const { default: entrepreneurApi } = await import("@/lib/api-entrepreneur");
+            await entrepreneurApi.requestDataRoomAccess(companyId, "view_and_download");
+          } catch {
+            // Non-blocking fallback
+          }
+          setStep("success");
+        },
       }
     );
   }
@@ -182,11 +190,10 @@ export default function NDAAcceptModal({
             <DialogHeader>
               <div className="flex items-center gap-2">
                 <ShieldCheck className="h-5 w-5 text-primary" aria-hidden />
-                <DialogTitle>You now have access</DialogTitle>
+                <DialogTitle>NDA Signed &amp; Access Requested</DialogTitle>
               </div>
               <DialogDescription>
-                The NDA for {companyName} is on file. Cap table, team, and data-room
-                documents are unlocked.
+                The NDA for {companyName} is signed on file. Your request for Data Room access has been submitted and is pending founder approval.
               </DialogDescription>
             </DialogHeader>
 
@@ -198,7 +205,7 @@ export default function NDAAcceptModal({
 
             <DialogFooter>
               <Button onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
-                Continue
+                Got it
               </Button>
             </DialogFooter>
           </>
@@ -206,4 +213,5 @@ export default function NDAAcceptModal({
       </DialogContent>
     </Dialog>
   );
+
 }

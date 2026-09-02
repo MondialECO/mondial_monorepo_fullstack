@@ -19,7 +19,7 @@ namespace WebApp.Models.DatabaseModels
     public class ServiceProviderProfileRecord
     {
         [BsonId]
-        public ObjectId Id { get; set; }
+        public ObjectId Id { get; set; } = ObjectId.GenerateNewId();
 
         /// <summary>Owning ApplicationUser id (unique index). The only join key.</summary>
         public string UserId { get; set; } = "";

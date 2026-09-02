@@ -42,7 +42,12 @@ public static class Phase6Requirements
     {
         "download",
         "full_access",
+        "view_and_download",
+        "view_download",
+        "admin",
+        "owner",
     };
+
 
     public static bool AccessLevelPermitsDownload(string accessLevel)
         => !string.IsNullOrWhiteSpace(accessLevel)

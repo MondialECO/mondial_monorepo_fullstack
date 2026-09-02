@@ -35,7 +35,7 @@ import { Phase8Data } from '@/types/entrepreneur';
 
 export default function Phase8Client() {
   const router = useRouter();
-  const { savePhaseData, moveToNextStep, getPhaseData, applyBackendResponse, currentPhase } =
+  const { activeCompanyId, savePhaseData, moveToNextStep, getPhaseData, applyBackendResponse, currentPhase } =
     useEntrepreneurProgress();
 
   const [matches, setMatches] = useState<InvestorMatchResponse[]>([]);
@@ -70,17 +70,18 @@ export default function Phase8Client() {
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
 
   async function resolveCompanyId(): Promise<string> {
+    if (activeCompanyId) return activeCompanyId;
+    const fromServer = await entrepreneurApi.getCurrentPhase(activeCompanyId || undefined);
+    if (fromServer?.companyId) return fromServer.companyId;
     const existing: Phase8Data = getPhaseData<Phase8Data>(8) ?? {};
     if (existing.__companyId) return existing.__companyId;
-    const fromServer = await entrepreneurApi.getCurrentPhase();
-    if (!fromServer?.companyId) throw new Error('No company found in backend');
-    return fromServer.companyId;
+    throw new Error('No company found in backend');
   }
 
   const reload = async () => {
     try {
-      const prog = await entrepreneurApi.getCurrentPhase();
-      const companyId = (getPhaseData<Phase8Data>(8) ?? {}).__companyId ?? prog.companyId;
+      const prog = await entrepreneurApi.getCurrentPhase(activeCompanyId || undefined);
+      const companyId = activeCompanyId || prog.companyId || (getPhaseData<Phase8Data>(8) ?? {}).__companyId;
       setInvestorReady(prog.isInvestorReady);
       if (!companyId) return;
       const [m, i, f, rev] = await Promise.all([

@@ -18,6 +18,7 @@ const mockSavePhaseData = vi.fn();
 const mockMoveToNextStep = vi.fn();
 const mockApplyBackendResponse = vi.fn();
 let mockPhaseData: Record<string, any> = { __companyId: 'comp-test-123' };
+let mockActiveCompanyId: string | null = 'comp-test-123';
 
 vi.mock('@/hooks/useEntrepreneurProgress', () => ({
   useEntrepreneurProgress: () => ({
@@ -29,6 +30,7 @@ vi.mock('@/hooks/useEntrepreneurProgress', () => ({
       overallProgressPercent: 25,
       isInvestorReady: false,
     },
+    activeCompanyId: mockActiveCompanyId,
     savePhaseData: mockSavePhaseData,
     moveToNextStep: mockMoveToNextStep,
     getPhaseData: () => mockPhaseData,
@@ -49,6 +51,7 @@ vi.mock('@/lib/api-entrepreneur', () => ({
     getKpiBaseline: vi.fn(),
     saveKpiBaseline: vi.fn(),
     saveConcept: vi.fn(),
+    getConcept: vi.fn(),
     advancePhase: vi.fn(),
     getMonthlyRevenue: vi.fn(),
   },
@@ -304,7 +307,46 @@ describe('Entrepreneur Phase 3 — Pre-Revenue Frontend Remediation', () => {
     await waitFor(() => {
       expect(entrepreneurApi.saveConcept).toHaveBeenCalledWith('comp-test-123', expect.objectContaining({
         oneLiner: 'AI co-pilot for pre-revenue startups',
-        businessModel: 'B2B SaaS',
+        businessModel: 'B2B_SaaS',
+      }));
+      expect(entrepreneurApi.advancePhase).toHaveBeenCalledWith('comp-test-123', 3, {});
+      expect(mockApplyBackendResponse).toHaveBeenCalled();
+    });
+  });
+
+  it('Phase3_Step4_LongElevatorPitch_SucceedsWithout160CharLimit: saves and completes when pitch exceeds 160 characters', async () => {
+    render(<Phase3Step4Page />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Elevator Pitch/i)).toBeDefined();
+    });
+
+    const pitch = screen.getByLabelText(/Elevator Pitch/i);
+    const problem = screen.getByLabelText(/Problem Statement/i);
+    const solution = screen.getByLabelText(/Solution/i);
+    const market = screen.getByLabelText(/Target Market/i);
+    const modelSelect = screen.getByLabelText(/Business Model/i);
+
+    const longPitch = 'Our innovative deep-tech intelligence platform connects early-stage visionary founders with verified institutional investors through automated scorecard valuation algorithms, predictive cap table modelling, and continuous data continuity throughout the startup lifecycle.';
+    expect(longPitch.length).toBeGreaterThan(160);
+
+    fireEvent.change(pitch, { target: { value: longPitch } });
+    fireEvent.change(problem, { target: { value: 'Founders lack institutional readiness' } });
+    fireEvent.change(solution, { target: { value: 'Automated deal rooms and scorecard valuations' } });
+    fireEvent.change(market, { target: { value: 'Early stage startups globally' } });
+    fireEvent.change(modelSelect, { target: { value: 'B2B SaaS' } });
+
+    // Assert that character counter shows long length without error
+    expect(screen.getByText(new RegExp(`${longPitch.length} characters`))).toBeDefined();
+    expect(screen.queryByText(/160 characters or fewer/i)).toBeNull();
+
+    const completeBtn = screen.getByRole('button', { name: /complete phase 3/i });
+    fireEvent.click(completeBtn);
+
+    await waitFor(() => {
+      expect(entrepreneurApi.saveConcept).toHaveBeenCalledWith('comp-test-123', expect.objectContaining({
+        oneLiner: longPitch,
+        businessModel: 'B2B_SaaS',
       }));
       expect(entrepreneurApi.advancePhase).toHaveBeenCalledWith('comp-test-123', 3, {});
       expect(mockApplyBackendResponse).toHaveBeenCalled();
@@ -324,6 +366,100 @@ describe('Entrepreneur Phase 3 — Pre-Revenue Frontend Remediation', () => {
 
     await waitFor(() => {
       expect(screen.getAllByText(/€1\.3M/i).length).toBeGreaterThan(0);
+    });
+  });
+
+  it('Phase3_Step1_DirectHydration: populates saved Q1-Q4 inputs on direct page mount', async () => {
+    (entrepreneurApi.getQuarterlyRevenue as any).mockResolvedValue([
+      { quarter: 'Q1', revenue: 11111 },
+      { quarter: 'Q2', revenue: 22222 },
+      { quarter: 'Q3', revenue: 33333 },
+      { quarter: 'Q4', revenue: 44444 },
+    ]);
+
+    render(<Phase3RevenueInputClient />);
+
+    await waitFor(() => {
+      const inputs = screen.getAllByRole('spinbutton') as HTMLInputElement[];
+      expect(inputs[0].value).toBe('11111');
+      expect(inputs[1].value).toBe('22222');
+      expect(inputs[2].value).toBe('33333');
+      expect(inputs[3].value).toBe('44444');
+    });
+  });
+
+  it('Phase3_Step3_DirectHydration: populates saved KPI inputs on direct page mount', async () => {
+    (entrepreneurApi.getKpiBaseline as any).mockResolvedValue({
+      mrr: 12000,
+      arr: 144000,
+      cac: 125,
+      ltv: 1000,
+      churnPercent: 4,
+      burnRate: 5000,
+      nps: 65,
+    });
+
+    render(<Phase3Step3Page />);
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('12000')).toBeDefined();
+      expect(screen.getByDisplayValue('5000')).toBeDefined();
+      expect(screen.getByDisplayValue('125')).toBeDefined();
+      expect(screen.getByDisplayValue('1000')).toBeDefined();
+      expect(screen.getByDisplayValue('4')).toBeDefined();
+      expect(screen.getByDisplayValue('65')).toBeDefined();
+    });
+  });
+
+  it('Phase3_Step4_DirectHydration: populates saved concept inputs on direct page mount', async () => {
+    (entrepreneurApi.getConcept as any).mockResolvedValue({
+      oneLiner: 'Entrepreneur edited runtime pitch',
+      problemStatement: 'Entrepreneur runtime problem',
+      solutionDescription: 'Entrepreneur runtime solution',
+      sectorTags: ['FinTech', 'SaaS'],
+      businessModel: 'B2B SaaS',
+      stage: 'growth',
+    });
+
+    render(<Phase3Step4Page />);
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Entrepreneur edited runtime pitch')).toBeDefined();
+      expect(screen.getByDisplayValue('Entrepreneur runtime problem')).toBeDefined();
+      expect(screen.getByDisplayValue('Entrepreneur runtime solution')).toBeDefined();
+    });
+  });
+
+  it('Phase3_Step1_ActiveCompanyPrecedence: uses activeCompanyId over stale localStorage __companyId', async () => {
+    mockActiveCompanyId = '6a925d2b24449c0d08da4ab7';
+    mockPhaseData = { __companyId: '6a92584724449c0d08da4a17' }; // stale old company id
+
+    (entrepreneurApi.getCurrentPhase as any).mockResolvedValue({
+      companyId: '6a925d2b24449c0d08da4ab7',
+      currentPhase: 3,
+      currentStep: 1,
+      completedPhases: [],
+      completedSteps: [],
+      isInvestorReady: false,
+    });
+
+    (entrepreneurApi.saveRevenue as any).mockResolvedValue({} as any);
+    (entrepreneurApi.calculateValuation as any).mockResolvedValue({} as any);
+
+    render(<Phase3RevenueInputClient />);
+
+    const nextBtn = screen.getByRole('button', { name: /Save & Continue/i });
+    fireEvent.click(nextBtn);
+
+    await waitFor(() => {
+      expect(entrepreneurApi.saveRevenue).toHaveBeenCalledWith(
+        '6a925d2b24449c0d08da4ab7',
+        expect.anything()
+      );
+      expect(entrepreneurApi.saveRevenue).not.toHaveBeenCalledWith(
+        '6a92584724449c0d08da4a17',
+        expect.anything()
+      );
     });
   });
 });

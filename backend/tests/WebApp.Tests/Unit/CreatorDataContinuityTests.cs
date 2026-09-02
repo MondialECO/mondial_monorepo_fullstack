@@ -143,10 +143,21 @@ namespace WebApp.Tests.Unit
             dealsCollectionMock.Setup(c => c.FindAsync(It.IsAny<IClientSessionHandle>(), It.IsAny<FilterDefinition<DealExecution>>(), It.IsAny<FindOptions<DealExecution, DealExecution>>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(dealsCursor.Object);
 
+            var capTablesCollectionMock = new Mock<IMongoCollection<Phase4CapTable>>();
+            var capTablesCursor = new Mock<IAsyncCursor<Phase4CapTable>>();
+            capTablesCursor.Setup(c => c.Current).Returns(new List<Phase4CapTable>());
+            capTablesCursor.SetupSequence(c => c.MoveNext(It.IsAny<CancellationToken>())).Returns(true).Returns(false);
+            capTablesCursor.SetupSequence(c => c.MoveNextAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true).ReturnsAsync(false);
+            capTablesCollectionMock.Setup(c => c.FindAsync(It.IsAny<FilterDefinition<Phase4CapTable>>(), It.IsAny<FindOptions<Phase4CapTable, Phase4CapTable>>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(capTablesCursor.Object);
+            capTablesCollectionMock.Setup(c => c.FindAsync(It.IsAny<IClientSessionHandle>(), It.IsAny<FilterDefinition<Phase4CapTable>>(), It.IsAny<FindOptions<Phase4CapTable, Phase4CapTable>>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(capTablesCursor.Object);
+
             _dbMock.Setup(d => d.GetCollection<DealExecution>("DealExecutions", null)).Returns(dealsCollectionMock.Object);
             _dbMock.Setup(d => d.GetCollection<Companies>("Companies", null)).Returns(companiesCollectionMock.Object);
             _dbMock.Setup(d => d.GetCollection<EntrepreneurProfileRecord>("EntrepreneurProfiles", null)).Returns(profilesCollectionMock.Object);
             _dbMock.Setup(d => d.GetCollection<Phase3Concept>("Phase3Concepts", null)).Returns(conceptsCollectionMock.Object);
+            _dbMock.Setup(d => d.GetCollection<Phase4CapTable>("Phase4CapTables", null)).Returns(capTablesCollectionMock.Object);
             _dbMock.Setup(d => d.GetCollection<CreatorJourney>("CreatorJourneys", null)).Returns(journeysCollectionMock.Object);
             _dbMock.Setup(d => d.GetCollection<ApplicationUser>("applicationUsers", null)).Returns(usersCollectionMock.Object);
 
@@ -413,6 +424,291 @@ namespace WebApp.Tests.Unit
                 userId, ideaA, "SAS", 100000, "Project A", "Tech", "Tagline A");
 
             compARetry.Id.Should().Be(compA.Id);
+        }
+
+        [Fact]
+        public async Task CofounderEquityDeal_CompanyFormation_BootstrapsPhase3Concept()
+        {
+            var compCollectionMock = new Mock<IMongoCollection<Companies>>();
+            var ideasCollectionMock = new Mock<IMongoCollection<CreatorIdea>>();
+            var conceptsCollectionMock = new Mock<IMongoCollection<Phase3Concept>>();
+
+            var companiesDb = new List<Companies>();
+            var ideasDb = new List<CreatorIdea>();
+            var conceptsDb = new List<Phase3Concept>();
+
+            compCollectionMock.Setup(c => c.InsertOneAsync(It.IsAny<Companies>(), null, default))
+                .Callback<Companies, InsertOneOptions, CancellationToken>((comp, opt, ct) => companiesDb.Add(comp))
+                .Returns(Task.CompletedTask);
+
+            conceptsCollectionMock.Setup(c => c.InsertOneAsync(It.IsAny<Phase3Concept>(), null, default))
+                .Callback<Phase3Concept, InsertOneOptions, CancellationToken>((concept, opt, ct) => conceptsDb.Add(concept))
+                .Returns(Task.CompletedTask);
+
+            var dbMock = new Mock<IMongoDatabase>();
+            dbMock.Setup(d => d.GetCollection<Companies>("Companies", null)).Returns(compCollectionMock.Object);
+            dbMock.Setup(d => d.GetCollection<CreatorIdea>("CreatorIdeas", null)).Returns(ideasCollectionMock.Object);
+            dbMock.Setup(d => d.GetCollection<Phase3Concept>("Phase3Concepts", null)).Returns(conceptsCollectionMock.Object);
+
+            var ideaId = "idea-cofounder-123";
+            var companyId = "comp-cofounder-456";
+
+            var creatorIdea = new CreatorIdea
+            {
+                Id = ideaId,
+                Project = new CreatorJourneyProject
+                {
+                    Name = "CoFounder Tech",
+                    Tagline = "Next Gen AI Collaboration",
+                    Problem = "Founders struggle to find aligned technical cofounders.",
+                    Solution = "Verified matchmaking and equity vesting workflows.",
+                    Sector = "FinTech",
+                    Category = "B2B_SaaS",
+                    Tags = new List<string> { "AI", "Startup", "Equity" },
+                    ClarityScore = 92
+                },
+                Phase4Data = new CreatorPhase4Data
+                {
+                    PricingModel = "subscription"
+                }
+            };
+            ideasDb.Add(creatorIdea);
+
+            var company = new Companies
+            {
+                Id = companyId,
+                OwnerId = "entrepreneur-user-1",
+                SourceBusinessIdeaId = ideaId,
+                SourceDealId = "deal-cofounder-789",
+                CompanyName = "CoFounder Tech SAS",
+                CurrentPhase = 2
+            };
+            companiesDb.Add(company);
+
+            // Setup FindAsync mocks for mongo collections
+            compCollectionMock.Setup(c => c.FindAsync(It.IsAny<FilterDefinition<Companies>>(), It.IsAny<FindOptions<Companies, Companies>>(), default))
+                .ReturnsAsync(() => {
+                    var cursor = new Mock<IAsyncCursor<Companies>>();
+                    cursor.Setup(c => c.Current).Returns(companiesDb);
+                    cursor.SetupSequence(c => c.MoveNext(It.IsAny<CancellationToken>())).Returns(true).Returns(false);
+                    cursor.SetupSequence(c => c.MoveNextAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true).ReturnsAsync(false);
+                    return cursor.Object;
+                });
+
+            ideasCollectionMock.Setup(c => c.FindAsync(It.IsAny<FilterDefinition<CreatorIdea>>(), It.IsAny<FindOptions<CreatorIdea, CreatorIdea>>(), default))
+                .ReturnsAsync(() => {
+                    var cursor = new Mock<IAsyncCursor<CreatorIdea>>();
+                    cursor.Setup(c => c.Current).Returns(ideasDb);
+                    cursor.SetupSequence(c => c.MoveNext(It.IsAny<CancellationToken>())).Returns(true).Returns(false);
+                    cursor.SetupSequence(c => c.MoveNextAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true).ReturnsAsync(false);
+                    return cursor.Object;
+                });
+
+            conceptsCollectionMock.Setup(c => c.FindAsync(It.IsAny<FilterDefinition<Phase3Concept>>(), It.IsAny<FindOptions<Phase3Concept, Phase3Concept>>(), default))
+                .ReturnsAsync(() => {
+                    var cursor = new Mock<IAsyncCursor<Phase3Concept>>();
+                    cursor.Setup(c => c.Current).Returns(conceptsDb);
+                    cursor.SetupSequence(c => c.MoveNext(It.IsAny<CancellationToken>())).Returns(true).Returns(false);
+                    cursor.SetupSequence(c => c.MoveNextAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true).ReturnsAsync(false);
+                    return cursor.Object;
+                });
+
+            var context = new MongoDbContext(dbMock.Object);
+            var companyService = new CompanyService(
+                context,
+                new Mock<IValuationEngine>().Object,
+                new Mock<ICapTableCalculator>().Object,
+                new Mock<IInvestorMatcher>().Object,
+                new Mock<IAiReviewEngine>().Object,
+                new Mock<IDocumentManager>().Object,
+                new Mock<IPhaseValidator>().Object,
+                new Mock<IDealEventPublisher>().Object,
+                NullLogger<CompanyService>.Instance);
+
+            // Act: bootstrap company
+            var success = await companyService.BootstrapCompanyFromCreatorProjectAsync(companyId, ideaId, "deal-cofounder-789", false);
+
+            // Assert
+            success.Should().BeTrue();
+            conceptsDb.Should().HaveCount(1);
+
+            var seededConcept = conceptsDb.First();
+            seededConcept.CompanyId.Should().Be(companyId);
+            seededConcept.OneLiner.Should().Be("Next Gen AI Collaboration");
+            seededConcept.ProblemStatement.Should().Be("Founders struggle to find aligned technical cofounders.");
+            seededConcept.SolutionDescription.Should().Be("Verified matchmaking and equity vesting workflows.");
+            seededConcept.SectorTags.Should().Contain("FinTech");
+            seededConcept.KeywordTags.Should().Contain("AI");
+            seededConcept.BusinessModel.Should().Be("subscription");
+        }
+
+        [Fact]
+        public async Task SaveConceptAsync_ElevatorPitchExceeding160Characters_SucceedsWithoutError()
+        {
+            var compCollectionMock = new Mock<IMongoCollection<Companies>>();
+            var conceptsCollectionMock = new Mock<IMongoCollection<Phase3Concept>>();
+
+            var companiesDb = new List<Companies>();
+            var conceptsDb = new List<Phase3Concept>();
+
+            var companyId = "comp-long-pitch-123";
+            var company = new Companies
+            {
+                Id = companyId,
+                OwnerId = "user-1",
+                CompanyName = "Deep Tech SAS",
+                CurrentPhase = 3
+            };
+            companiesDb.Add(company);
+
+            compCollectionMock.Setup(c => c.FindAsync(It.IsAny<FilterDefinition<Companies>>(), It.IsAny<FindOptions<Companies, Companies>>(), default))
+                .ReturnsAsync(() => {
+                    var cursor = new Mock<IAsyncCursor<Companies>>();
+                    cursor.Setup(c => c.Current).Returns(companiesDb);
+                    cursor.SetupSequence(c => c.MoveNext(It.IsAny<CancellationToken>())).Returns(true).Returns(false);
+                    cursor.SetupSequence(c => c.MoveNextAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true).ReturnsAsync(false);
+                    return cursor.Object;
+                });
+
+            conceptsCollectionMock.Setup(c => c.FindOneAndUpdateAsync(
+                It.IsAny<FilterDefinition<Phase3Concept>>(),
+                It.IsAny<UpdateDefinition<Phase3Concept>>(),
+                It.IsAny<FindOneAndUpdateOptions<Phase3Concept, Phase3Concept>>(),
+                default))
+                .ReturnsAsync(new Phase3Concept
+                {
+                    CompanyId = companyId,
+                    OneLiner = "long pitch",
+                    ProblemStatement = "problem",
+                    SolutionDescription = "solution",
+                    Stage = "idea",
+                    BusinessModel = "SaaS_Subscription",
+                    SectorTags = new List<string> { "AI" },
+                    KeywordTags = new List<string> { "AI" },
+                    ClarityScore = 100,
+                    RecordedAt = DateTime.UtcNow
+                });
+
+            var dbMock = new Mock<IMongoDatabase>();
+            dbMock.Setup(d => d.GetCollection<Companies>("Companies", null)).Returns(compCollectionMock.Object);
+            dbMock.Setup(d => d.GetCollection<Phase3Concept>("Phase3Concepts", null)).Returns(conceptsCollectionMock.Object);
+
+            var context = new MongoDbContext(dbMock.Object);
+            var companyService = new CompanyService(
+                context,
+                new Mock<IValuationEngine>().Object,
+                new Mock<ICapTableCalculator>().Object,
+                new Mock<IInvestorMatcher>().Object,
+                new Mock<IAiReviewEngine>().Object,
+                new Mock<IDocumentManager>().Object,
+                new Mock<IPhaseValidator>().Object,
+                new Mock<IDealEventPublisher>().Object,
+                NullLogger<CompanyService>.Instance);
+
+            var longPitch = "Our comprehensive end-to-end platform automates startup financial readiness, scorecard valuations, and cap table modelling for founders and investors across global markets.";
+            longPitch.Length.Should().BeGreaterThan(160);
+
+            var req = new SaveConceptRequest
+            {
+                OneLiner = longPitch,
+                ProblemStatement = "Founders struggle with investor data readiness.",
+                SolutionDescription = "Automated AI-assisted valuation and diligence pipeline.",
+                Stage = "idea",
+                BusinessModel = "SaaS_Subscription",
+                SectorTags = new List<string> { "FinTech", "AI" },
+                KeywordTags = new List<string> { "SaaS" }
+            };
+
+            // Act: saving concept with pitch > 160 characters
+            var resp = await companyService.SaveConceptAsync(companyId, req);
+
+            // Assert
+            resp.Should().NotBeNull();
+            resp.OneLiner.Should().Be(longPitch);
+            resp.ClarityScore.Should().Be(100);
+        }
+
+        [Fact]
+        public async Task EquityPartnership_CapTableWithEsopAndInvestorReserve_DoesNotDuplicatePoolsAndEquals100Percent()
+        {
+            // Arrange
+            var idea = new CreatorIdea
+            {
+                Id = "idea-cap-clean",
+                Project = new CreatorProject { Name = "Clean Venture", Category = "AI" }
+            };
+            _ideasDb.Add(idea);
+
+            var deal = new DealExecution
+            {
+                Id = "deal-cap-clean",
+                IdeaId = "idea-cap-clean",
+                DealType = "EQUITY_PARTNERSHIP",
+                DealStage = "ACTIVATION_PENDING",
+                CreatorId = "creator-user",
+                EntrepreneurId = "ent-user",
+                EquityTerms = new EquityTerms { EquityPercentage = 30.0, VestingMonths = 48, CliffMonths = 12 },
+                SigningPackage = new SigningPackage
+                {
+                    Status = "AGREEMENT_SIGNED",
+                    CreatorSignature = new SignatureInfo { SignedAt = DateTime.UtcNow, SignerName = "Creator" },
+                    EntrepreneurSignature = new SignatureInfo { SignedAt = DateTime.UtcNow, SignerName = "Entrepreneur" }
+                },
+                CapTableDraft = new DealCapTableDraft
+                {
+                    DealId = "deal-cap-clean",
+                    TotalShares = 10_000_000,
+                    EsopPoolPercent = 5.0,
+                    InvestorReservePercent = 5.0,
+                    EsopVestingMonths = 48,
+                    Entries = new List<DealCapTableEntry>
+                    {
+                        new() { DisplayName = "Creator", IsCreator = true, SharesGranted = 3_000_000, EquityPercent = 30.0 },
+                        new() { DisplayName = "Entrepreneur", IsFounder = true, SharesGranted = 6_000_000, EquityPercent = 60.0 },
+                        new() { DisplayName = "Employee Option Pool (ESOP)", IsEsop = true, StakeholderType = "esop", SharesGranted = 500_000, EquityPercent = 5.0 },
+                        new() { DisplayName = "Future Investor Reserve", IsInvestorReserve = true, StakeholderType = "investor_reserve", SharesGranted = 500_000, EquityPercent = 5.0 }
+                    }
+                }
+            };
+
+            var dealsCollectionMock = new Mock<IMongoCollection<DealExecution>>();
+            dealsCollectionMock.Setup(d => d.FindAsync(It.IsAny<FilterDefinition<DealExecution>>(), It.IsAny<FindOptions<DealExecution, DealExecution>>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(() =>
+                {
+                    var cursor = new Mock<IAsyncCursor<DealExecution>>();
+                    cursor.Setup(c => c.Current).Returns(new List<DealExecution> { deal });
+                    cursor.SetupSequence(c => c.MoveNext(It.IsAny<CancellationToken>())).Returns(true).Returns(false);
+                    cursor.SetupSequence(c => c.MoveNextAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true).ReturnsAsync(false);
+                    return cursor.Object;
+                });
+            dealsCollectionMock.Setup(d => d.ReplaceOneAsync(It.IsAny<FilterDefinition<DealExecution>>(), It.IsAny<DealExecution>(), It.IsAny<ReplaceOptions>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ReplaceOneResult.Acknowledged(1, 1, null));
+
+            _dbMock.Setup(d => d.GetCollection<DealExecution>("DealExecutions", null)).Returns(dealsCollectionMock.Object);
+
+            var context = CreateContext();
+            var controller = CreateController(context, "ent-user");
+
+            // Act 1: First activation
+            var res1 = await controller.StartDealActivation("deal-cap-clean", new StartActivationRequest());
+            var ok1 = res1.Should().BeOfType<OkObjectResult>().Subject;
+            var data1 = ((ApiResponse)ok1.Value!).Data as PartnershipActivationDto;
+
+            var company = _companiesDb.First(c => c.Id == data1!.CompanyId);
+
+            // Assert 1: Exactly 4 entries, no duplicate ESOP/Reserve, total = 10,000,000 (100%)
+            company.EquityStructure.Should().HaveCount(4);
+            company.EquityStructure.Sum(e => e.SharesOwned).Should().Be(10_000_000);
+            company.EquityStructure.Count(e => e.Type == "esop" || e.StakeholderName.Contains("ESOP")).Should().Be(1);
+            company.EquityStructure.Count(e => e.StakeholderName.Contains("Investor Reserve")).Should().Be(1);
+
+            // Act 2: Second activation (idempotency check)
+            var res2 = await controller.StartDealActivation("deal-cap-clean", new StartActivationRequest());
+            res2.Should().BeOfType<OkObjectResult>();
+
+            // Assert 2: Still exactly 4 entries, total remains 10,000,000 (100%)
+            company.EquityStructure.Should().HaveCount(4);
+            company.EquityStructure.Sum(e => e.SharesOwned).Should().Be(10_000_000);
         }
     }
 }

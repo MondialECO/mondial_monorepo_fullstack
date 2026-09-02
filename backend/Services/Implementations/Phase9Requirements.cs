@@ -81,7 +81,9 @@ public static class Phase9Requirements
         {
             [DealStatusInitiated] = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
-                DealStatusContacted, DealStatusWithdrawn,
+                // A deal created by the offer workflow starts negotiation immediately;
+                // CRM-driven deals may still progress through contacted/interested first.
+                DealStatusContacted, DealStatusNegotiating, DealStatusWithdrawn,
             },
             [DealStatusContacted] = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
@@ -101,7 +103,8 @@ public static class Phase9Requirements
             },
             [DealStatusNegotiating] = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
-                DealStatusTermSheet, DealStatusRejected, DealStatusWithdrawn,
+                // Accepting the live revision establishes the agreement awaiting signatures.
+                DealStatusTermSheet, DealStatusAgreementSent, DealStatusRejected, DealStatusWithdrawn,
             },
             [DealStatusTermSheet] = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {

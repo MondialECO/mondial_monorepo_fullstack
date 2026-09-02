@@ -18,7 +18,7 @@ import { Phase3Data } from '@/types/entrepreneur';
 
 function Phase3KpiTrackerClient() {
   const router = useRouter();
-  const { progress, savePhaseData, moveToNextStep, getPhaseData } = useEntrepreneurProgress();
+  const { progress, activeCompanyId, savePhaseData, moveToNextStep, getPhaseData } = useEntrepreneurProgress();
 
   const [mrr, setMrr] = useState('');
   const [monthlyBurn, setMonthlyBurn] = useState('');
@@ -36,9 +36,8 @@ function Phase3KpiTrackerClient() {
     let cancelled = false;
     (async () => {
       try {
-        const existing: Phase3Data = getPhaseData<Phase3Data>(3) ?? {};
-        const prog = await entrepreneurApi.getCurrentPhase();
-        const companyId = existing.__companyId ?? prog.companyId;
+        const prog = await entrepreneurApi.getCurrentPhase(activeCompanyId || undefined);
+        const companyId = activeCompanyId || prog.companyId;
         if (!companyId) return;
         const [fin, kpi] = await Promise.allSettled([
           entrepreneurApi.getFinancialSummary(companyId),
@@ -65,7 +64,7 @@ function Phase3KpiTrackerClient() {
     return () => {
       cancelled = true;
     };
-  }, [getPhaseData]);
+  }, [activeCompanyId]);
 
   if (!progress) {
     return (
@@ -97,11 +96,12 @@ function Phase3KpiTrackerClient() {
       : null;
 
   async function resolveCompanyId(): Promise<string> {
+    if (activeCompanyId) return activeCompanyId;
+    const fromServer = await entrepreneurApi.getCurrentPhase();
+    if (fromServer?.companyId) return fromServer.companyId;
     const existing: Phase3Data = getPhaseData<Phase3Data>(3) ?? {};
     if (existing.__companyId) return existing.__companyId;
-    const fromServer = await entrepreneurApi.getCurrentPhase();
-    if (!fromServer?.companyId) throw new Error('No company found in backend');
-    return fromServer.companyId;
+    throw new Error('No company found in backend');
   }
 
   const handleNext = async () => {

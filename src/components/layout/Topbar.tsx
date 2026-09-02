@@ -35,6 +35,7 @@ const ROLE_MENU_ITEMS: Record<UserRole, AccountMenuItem[]> = {
     { href: "/dashboard/profile", icon: UserRound, label: "Profile" },
     { href: "/dashboard/entrepreneur/companies", icon: LayoutGrid, label: "My Companies" },
   ],
+  [UserRole.SUPERADMIN]: [],
   [UserRole.ADMIN]: [],
   // Service Provider never reaches this topbar — dashboard/layout.tsx routes SP to
   // SpDesktopTopbar/SpMobileHeader — but the map must be total for the Record type.
@@ -42,10 +43,11 @@ const ROLE_MENU_ITEMS: Record<UserRole, AccountMenuItem[]> = {
 };
 
 const ROLE_LABELS: Record<UserRole, string> = {
+  [UserRole.SUPERADMIN]: "SuperAdmin",
+  [UserRole.ADMIN]: "Admin",
   [UserRole.CREATOR]: "Creator",
   [UserRole.INVESTOR]: "Investor",
   [UserRole.ENTREPRENEUR]: "Entrepreneur",
-  [UserRole.ADMIN]: "Admin",
   [UserRole.SERVICE_PROVIDER]: "Service Provider",
 };
 
@@ -55,6 +57,9 @@ export default function Topbar() {
   const breadcrumbs = useBreadcrumb();
   const { user } = useAuth();
   const role = user?.role ?? UserRole.CREATOR;
+  const roleLabel = ROLE_LABELS[role] || "User";
+  const roleItems = ROLE_MENU_ITEMS[role] || [];
+  const initialsFallback = roleLabel.charAt(0) || "U";
   const isEntrepreneurContext = role === UserRole.ENTREPRENEUR || pathname.startsWith("/dashboard/entrepreneur");
 
   if (isPhase2) {
@@ -169,14 +174,24 @@ export default function Topbar() {
           {isEntrepreneurContext && <CompanySwitcher />}
           <MessageIcon />
           <NotificationBell />
-          <ThemeToggle />
+          {(role === UserRole.SUPERADMIN || role === UserRole.ADMIN) && (
+            <span
+              className={`hidden sm:inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border ${
+                role === UserRole.SUPERADMIN
+                  ? "bg-primary/10 text-primary border-primary/25"
+                  : "bg-muted text-muted-foreground border-border/80"
+              }`}
+            >
+              {role === UserRole.SUPERADMIN ? "SuperAdmin" : "Admin"}
+            </span>
+          )}
           {/* Replaces a bare Logout button. Sign-out is still here, now inside the menu
               alongside the role's own destinations, so the control does the old job plus
               the identity display SP already had. */}
           <AccountMenu
-            roleLabel={ROLE_LABELS[role]}
-            initialsFallback={ROLE_LABELS[role].charAt(0)}
-            items={ROLE_MENU_ITEMS[role]}
+            roleLabel={roleLabel}
+            initialsFallback={initialsFallback}
+            items={roleItems}
           />
         </div>
 

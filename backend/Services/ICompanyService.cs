@@ -49,6 +49,9 @@ public interface ICompanyService
     Task<(Companies Company, bool AlreadyExisted)> BuildCompanyFromAcquisitionAsync(
         string userId, string dealId, BuildAcquisitionCompanyDto dto);
 
+    Task<bool> BootstrapCompanyFromCreatorProjectAsync(
+        string companyId, string sourceIdeaId, string sourceDealId, bool isBuyout = false);
+
     Task SeedCapTableFromOwnershipAsync(string companyId, List<OwnershipEntryDto> ownership);
 
     // ============ PHASE 2: LEGAL INFO & DOCUMENTS ============
@@ -111,11 +114,18 @@ public interface ICompanyService
     Task RevokeDataRoomAccessAsync(string companyId, string investorId);
     Task UpdateNdaRequirementAsync(string companyId, bool required);
     Task<DataRoomStatusResponse> PublishDataRoomAsync(string companyId);
-    Task<(byte[] Content, DataRoomDocumentResponse Document)> DownloadDataRoomDocumentAsync(string companyId, string documentId, string callerUserId, bool callerIsOwner);
+    Task<(byte[] Content, DataRoomDocumentResponse Document)> DownloadDataRoomDocumentAsync(
+        string companyId, string documentId, string callerUserId, bool callerIsOwner, bool requireDownloadPermission = true);
     Task<Phase6AccessLogResponse> TrackDataRoomEventAsync(string companyId, string documentId, string investorId, bool callerIsOwner, string eventType, string ipHash);
+
     Task<DataRoomAnalyticsResponse> GetDataRoomAnalyticsAsync(string companyId);
     Task<List<Phase6AccessLogResponse>> GetDataRoomActivityTimelineAsync(string companyId);
     Task<NdaAcceptanceResponse> AcceptDataRoomNdaAsync(string companyId, string investorId, string ndaText, string ipHash);
+    Task<DataRoomAccessStatusResponse> GetInvestorDataRoomAccessStatusAsync(string companyId, string userId, string investorId);
+    Task<Phase6DataRoomAccessRequest> CreateDataRoomAccessRequestAsync(string companyId, string userId, string investorId, string requestedLevel);
+    Task<List<Phase6DataRoomAccessRequest>> GetCompanyDataRoomAccessRequestsAsync(string companyId);
+    Task<DataRoomStatusResponse> ApproveDataRoomAccessRequestAsync(string companyId, string requestId, string reviewerUserId, DataRoomAccessApprovalDto dto);
+    Task<Phase6DataRoomAccessRequest> DeclineDataRoomAccessRequestAsync(string companyId, string requestId, string reviewerUserId, string? note);
 
     // ============ PHASE 7: AI REVIEW ============
 

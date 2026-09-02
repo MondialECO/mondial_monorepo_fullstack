@@ -61,8 +61,8 @@ export default function NegotiationWorkspace() {
         </div>
       </div>
 
-      <div className="grid h-[calc(100vh-260px)] min-h-[480px] grid-cols-1 overflow-hidden rounded-2xl border border-border bg-card shadow-sm md:grid-cols-[340px_1fr]">
-        <div className={cn("min-h-0 border-border md:border-r", activeId ? "hidden md:block" : "block")}>
+      <div className="grid h-[560px] md:h-[calc(100dvh-220px)] md:min-h-[560px] grid-cols-1 overflow-hidden rounded-2xl border border-border bg-card shadow-sm md:grid-cols-[340px_1fr]">
+        <div className={cn("min-h-0 overflow-hidden border-border md:border-r", activeId ? "hidden md:block" : "block")}>
           <DealInbox
             deals={deals}
             isLoading={isLoading}
@@ -73,7 +73,7 @@ export default function NegotiationWorkspace() {
           />
         </div>
 
-        <div className={cn("min-h-0", activeId ? "block" : "hidden md:block")}>
+        <div className={cn("min-h-0 overflow-hidden", activeId ? "block" : "hidden md:block")}>
           {activeId ? (
             <DealDetailPanel
               key={activeId}

@@ -379,4 +379,28 @@ describe('Phase 5 — Funding Ask & Instrument Remediation', () => {
       expect(screen.getByText('Resource Mapping')).toBeInTheDocument();
     });
   });
+
+  it('Phase5_ActiveCompanyPrecedence_UsesActiveCompanyOverStaleCache', async () => {
+    // Stale cached company ID in phaseData
+    const staleGetPhaseData = vi.fn().mockReturnValue({ __companyId: 'stale-comp-999' });
+    vi.spyOn(providerModule, 'useEntrepreneurProgress').mockReturnValue({
+      ...mockProgressContext,
+      activeCompanyId: 'comp-555',
+      getPhaseData: staleGetPhaseData,
+    });
+
+    vi.spyOn(entrepreneurApi, 'saveFundingAsk').mockResolvedValueOnce({} as any);
+
+    render(<Phase5Client />);
+    await waitFor(() => expect(screen.getByText('Capital Allocation')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: /Next/i }));
+
+    await waitFor(() => {
+      expect(entrepreneurApi.saveFundingAsk).toHaveBeenCalledWith(
+        'comp-555', // must be the active company, NOT stale-comp-999
+        expect.any(Object)
+      );
+    });
+  });
 });

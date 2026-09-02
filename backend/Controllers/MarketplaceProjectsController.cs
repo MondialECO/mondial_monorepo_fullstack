@@ -101,7 +101,8 @@ namespace WebApp.Controllers
             {
                 var filter = Builders<CreatorIdea>.Filter.And(
                     Builders<CreatorIdea>.Filter.In("Phase5Data.PathA.MarketplaceListing.Status", new[] { "live", "available" }),
-                    Builders<CreatorIdea>.Filter.Eq("Phase5Data.PathA.MarketplaceListing.Audience", "public")
+                    Builders<CreatorIdea>.Filter.Eq("Phase5Data.PathA.MarketplaceListing.Audience", "public"),
+                    Builders<CreatorIdea>.Filter.Ne("Phase5Data.PathA.MarketplaceListing.IsModerationHidden", true)
                 );
 
                 var ideas = await _context.CreatorIdeas
@@ -115,7 +116,7 @@ namespace WebApp.Controllers
                 foreach (var idea in ideas)
                 {
                     var listing = idea.Phase5Data?.PathA?.MarketplaceListing;
-                    if (listing == null) continue;
+                    if (listing == null || listing.IsModerationHidden) continue;
 
                     var p = idea.Project ?? new CreatorJourneyProject();
 
@@ -169,7 +170,7 @@ namespace WebApp.Controllers
 
                 bool isOwner = !string.IsNullOrEmpty(userId) && idea.UserId == userId;
                 bool isAcquirer = !string.IsNullOrEmpty(userId) && !string.IsNullOrEmpty(idea.AcquiredByUserId) && idea.AcquiredByUserId == userId;
-                bool isPublic = listing.Audience == "public" && (listing.Status == "live" || listing.Status == "available");
+                bool isPublic = listing.Audience == "public" && (listing.Status == "live" || listing.Status == "available") && !listing.IsModerationHidden;
 
                 bool canView = isPublic || isOwner || isAcquirer || User.IsInRole("Admin");
                 if (!canView && !string.IsNullOrEmpty(userId))

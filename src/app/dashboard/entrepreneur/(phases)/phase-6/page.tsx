@@ -163,10 +163,14 @@ function Phase6LoadingState() {
 
 function Phase6Content() {
   const router = useRouter();
-  const { savePhaseData, moveToNextStep, getPhaseData, applyBackendResponse, currentPhase } =
+  const { activeCompanyId, savePhaseData, moveToNextStep, getPhaseData, applyBackendResponse, currentPhase } =
     useEntrepreneurProgress();
 
   const [status, setStatus] = useState<DataRoomStatusResponse | null>(null);
+  const [requests, setRequests] = useState<any[]>([]);
+  const [questions, setQuestions] = useState<any[]>([]);
+  const [answeringState, setAnsweringState] = useState<Record<string, string>>({});
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({ legal: true });
   const [emailAlerts, setEmailAlerts] = useState(true);
   const [uploadCategory, setUploadCategory] = useState<Category>('legal');
@@ -185,11 +189,12 @@ function Phase6Content() {
   const pendingCategory = useRef<Category>('legal');
 
   async function resolveCompanyId(): Promise<string> {
+    if (activeCompanyId) return activeCompanyId;
+    const fromServer = await entrepreneurApi.getCurrentPhase(activeCompanyId || undefined);
+    if (fromServer?.companyId) return fromServer.companyId;
     const existing: Phase6Data = getPhaseData<Phase6Data>(6) ?? {};
     if (existing.__companyId) return existing.__companyId;
-    const fromServer = await entrepreneurApi.getCurrentPhase();
-    if (!fromServer?.companyId) throw new Error('No company found in backend');
-    return fromServer.companyId;
+    throw new Error('No company found in backend');
   }
 
   const reload = async () => {
@@ -197,8 +202,14 @@ function Phase6Content() {
       setError('');
       setIsLoading(true);
       const companyId = await resolveCompanyId();
-      const s = await entrepreneurApi.getDataRoom(companyId);
+      const [s, reqs, qs] = await Promise.all([
+        entrepreneurApi.getDataRoom(companyId),
+        entrepreneurApi.getCompanyDataRoomAccessRequests(companyId).catch(() => []),
+        entrepreneurApi.getDataRoomQuestions(companyId).catch(() => []),
+      ]);
       setStatus(s);
+      setRequests(reqs || []);
+      setQuestions(qs || []);
       const existing: Phase6Data = getPhaseData<Phase6Data>(6) ?? {};
       savePhaseData(6, {
         ...existing,
@@ -219,6 +230,65 @@ function Phase6Content() {
     void reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const handleApprove = async (requestId: string) => {
+    try {
+      setActionLoading(requestId);
+      const companyId = await resolveCompanyId();
+      await entrepreneurApi.approveDataRoomAccessRequest(companyId, requestId, {
+        accessLevel: 'view_and_download',
+        daysValid: 30,
+      });
+      await reload();
+    } catch (e: any) {
+      setError(e?.message || 'Failed to approve request');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleDecline = async (requestId: string) => {
+    try {
+      setActionLoading(requestId);
+      const companyId = await resolveCompanyId();
+      await entrepreneurApi.declineDataRoomAccessRequest(companyId, requestId, 'Request declined by founder.');
+      await reload();
+    } catch (e: any) {
+      setError(e?.message || 'Failed to decline request');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleRevokeGrant = async (investorId: string) => {
+    try {
+      setActionLoading(investorId);
+      const companyId = await resolveCompanyId();
+      await entrepreneurApi.revokeDataRoomAccess(companyId, investorId);
+      await reload();
+    } catch (e: any) {
+      setError(e?.message || 'Failed to revoke access');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleAnswerQuestion = async (questionId: string) => {
+    const text = answeringState[questionId]?.trim();
+    if (!text) return;
+    try {
+      setActionLoading(questionId);
+      const companyId = await resolveCompanyId();
+      await entrepreneurApi.answerDataRoomQuestion(companyId, questionId, text);
+      setAnsweringState(prev => ({ ...prev, [questionId]: '' }));
+      await reload();
+    } catch (e: any) {
+      setError(e?.message || 'Failed to answer question');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
 
   const validateFile = (file: File): string => {
     if (file.size > MAX_FILE_SIZE) {
@@ -362,6 +432,7 @@ function Phase6Content() {
 
   const docs = status?.documents ?? [];
   const grants = status?.accessGrants ?? [];
+  const pendingRequests = requests.filter((r: any) => r.status === 'pending');
   const uploadedCategories = new Set(docs.map((d) => d.category?.toLowerCase()));
   const completedCategories = REQUIRED_CATEGORIES.filter((c) => uploadedCategories.has(c));
   const missingRequired = REQUIRED_CATEGORIES.filter((c) => !uploadedCategories.has(c));
@@ -369,6 +440,7 @@ function Phase6Content() {
   const readinessPercent = Math.round((completedCategories.length / REQUIRED_CATEGORIES.length) * 100);
   const isLive = status?.isLive ?? false;
   const ndaActive = status?.ndaRequired ?? false;
+
   const ndaLocked = !!status?.ndaLockedAt;
   const totalBytes = docs.reduce((sum, d) => sum + (d.fileSize ?? 0), 0);
   const totalSizeMb = (totalBytes / 1048576).toFixed(1);
@@ -536,6 +608,79 @@ function Phase6Content() {
             ))}
           </div>
 
+          {/* 3A.2 — PENDING ACCESS REQUESTS */}
+          {pendingRequests.length > 0 && (
+            <div
+              className="flex flex-col gap-4 rounded-2xl p-5"
+              style={{ backgroundColor: C.bgCard, border: `2px solid ${C.primary}`, boxShadow: SHADOW_BLUR }}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-500/10 text-amber-500 text-sm font-bold">
+                    📥
+                  </span>
+                  <h3 className="font-semibold text-base" style={{ color: C.textPrimary }}>
+                    Pending Access Requests ({pendingRequests.length})
+                  </h3>
+                </div>
+                <span className="rounded-full bg-amber-500/15 px-3 py-1 text-xs font-semibold text-amber-500">
+                  Action Required
+                </span>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                {pendingRequests.map((req: any) => (
+                  <div
+                    key={req.id}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl p-4"
+                    style={{ backgroundColor: C.bgWhite, border: `1px solid ${C.borderLight}` }}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className="flex shrink-0 items-center justify-center rounded-full font-bold text-sm text-white"
+                        style={{ width: 42, height: 42, background: `linear-gradient(135deg, ${C.primary}, ${C.primaryToggle})` }}
+                      >
+                        {req.investorName?.slice(0, 2).toUpperCase() || 'IN'}
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <span className="truncate font-semibold text-sm" style={{ color: C.textPrimary }}>
+                          {req.investorName}
+                        </span>
+                        <span className="truncate text-xs" style={{ color: C.textSecondary }}>
+                          {req.investorEmail} · Requested {new Date(req.requestedAt).toLocaleDateString()}
+                        </span>
+                        <span className="text-[11px] font-medium" style={{ color: C.textMuted }}>
+                          Requested: {req.requestedAccessLevel === 'view_and_download' ? 'View & Download' : 'View Only'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        disabled={actionLoading === req.id}
+                        onClick={() => handleApprove(req.id)}
+                        className="rounded-lg px-4 py-2 text-xs font-semibold text-white shadow-sm transition-all hover:opacity-90 disabled:opacity-50"
+                        style={{ backgroundColor: C.green }}
+                      >
+                        {actionLoading === req.id ? 'Approving...' : '✓ Approve'}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={actionLoading === req.id}
+                        onClick={() => handleDecline(req.id)}
+                        className="rounded-lg px-3 py-2 text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
+                        style={{ border: `1px solid ${C.border}` }}
+                      >
+                        Decline
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* 3B — DOCUMENTS MAIN CONTAINER */}
           <div
             className="flex flex-col gap-5 rounded-2xl"
@@ -545,6 +690,7 @@ function Phase6Content() {
               <span style={{ fontSize: 18, color: C.textPrimary }}>
                 <span className="font-bold">📄</span> ALL DOCUMENTS
               </span>
+
               <span
                 className="rounded-lg font-semibold"
                 style={{ backgroundColor: C.bgBlue, border: `1px solid ${C.border}`, padding: '4px 12px', fontSize: 14, color: C.primary }}
@@ -726,9 +872,97 @@ function Phase6Content() {
               </div>
             )}
           </div>
+
+          {/* 3B.2 — FOUNDER DILIGENCE Q&A */}
+          {questions.length > 0 && (
+            <div
+              className="flex flex-col gap-4 rounded-2xl p-5"
+              style={{ backgroundColor: C.bgCard, border: `2px solid ${C.bgWhite}`, boxShadow: SHADOW_BLUR }}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-lg">💬</span>
+                  <h3 className="font-semibold text-base" style={{ color: C.textPrimary }}>
+                    Investor Diligence Q&amp;A ({questions.length})
+                  </h3>
+                </div>
+                <span className="rounded-full bg-blue-500/10 px-3 py-1 text-xs font-semibold text-primary">
+                  {questions.filter((q: any) => !q.founderResponse && !q.response && q.status !== 'answered').length} Unanswered
+                </span>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                {questions.map((q: any) => {
+                  const answerText = q.founderResponse || q.response;
+                  const isAnswered = !!answerText || q.status === 'answered';
+
+                  return (
+                    <div
+                      key={q.id}
+                      className="flex flex-col gap-2.5 rounded-xl p-4"
+                      style={{ backgroundColor: C.bgWhite, border: `1px solid ${C.borderLight}` }}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex flex-col gap-0.5">
+                          <p className="text-sm font-semibold" style={{ color: C.textPrimary }}>
+                            &ldquo;{q.question}&rdquo;
+                          </p>
+                          <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                            {q.investorName && <span>From: {q.investorName}</span>}
+                            {q.documentTitle && (
+                              <span>· Document: <strong className="font-medium text-foreground">{q.documentTitle}</strong></span>
+                            )}
+                          </div>
+                        </div>
+                        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${isAnswered ? 'bg-emerald-500/10 text-emerald-600' : 'bg-amber-500/10 text-amber-600'}`}>
+                          {isAnswered ? 'Answered' : 'Pending Answer'}
+                        </span>
+                      </div>
+
+                      {isAnswered ? (
+                        <div className="flex flex-col gap-1 rounded-lg p-3 bg-muted/40 text-xs">
+                          <span className="font-semibold text-foreground">Founder Response:</span>
+                          <p className="whitespace-pre-wrap" style={{ color: C.textSecondary }}>{answerText}</p>
+                          {q.respondedAt && (
+                            <span className="text-[10px] text-muted-foreground mt-1">
+                              Answered on {new Date(q.respondedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="flex flex-col gap-2 mt-1">
+                          <textarea
+                            placeholder="Type your response to the investor..."
+                            rows={2}
+                            value={answeringState[q.id] || ''}
+                            onChange={(e) => setAnsweringState(prev => ({ ...prev, [q.id]: e.target.value }))}
+                            className="w-full rounded-lg border p-2 text-xs"
+                            style={{ borderColor: C.border }}
+                          />
+                          <div className="flex justify-end">
+                            <button
+                              type="button"
+                              disabled={actionLoading === q.id || !answeringState[q.id]?.trim()}
+                              onClick={() => handleAnswerQuestion(q.id)}
+                              className="rounded-lg px-3 py-1.5 text-xs font-medium text-white disabled:opacity-40"
+                              style={{ backgroundColor: C.primary }}
+                            >
+                              {actionLoading === q.id ? 'Submitting...' : 'Submit Answer'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
         </div>
 
         {/* RIGHT COLUMN */}
+
         <div className="flex flex-col gap-6 lg:w-[360px] lg:shrink-0">
           {/* 3C — ACCESS CONTROL */}
           <div
@@ -899,15 +1133,25 @@ function Phase6Content() {
                       </div>
                       {/* TODO: show "NDA Signed" badge when grant.ndaSigned === true */}
                       {/* Backend DataRoomAccessGrant does not yet carry this field. */}
-                      <div className="flex shrink-0 items-center">
+                      <div className="flex shrink-0 items-center gap-2">
                         <span className="rounded-2xl" style={{ backgroundColor: 'rgba(0,0,0,0.06)', padding: '2px 8px', fontSize: 11, fontWeight: 500, color: C.textSecondary }}>
                           {g.accessLevel}
                         </span>
+                        <button
+                          type="button"
+                          disabled={actionLoading === g.investorId}
+                          onClick={() => handleRevokeGrant(g.investorId)}
+                          className="rounded px-2 py-1 text-[11px] font-medium text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
+                          title="Revoke access for this investor"
+                        >
+                          {actionLoading === g.investorId ? '...' : 'Revoke'}
+                        </button>
                       </div>
                     </div>
                   );
                 })
               )}
+
             </div>
           </div>
         </div>

@@ -39,7 +39,7 @@ function KPICard({ title, value, subtext, badge, badgeColor }: { title: string; 
 
 export function Phase7Content() {
   const router = useRouter();
-  const { savePhaseData, moveToNextStep, getPhaseData, applyBackendResponse, currentPhase } = useEntrepreneurProgress();
+  const { activeCompanyId, savePhaseData, moveToNextStep, getPhaseData, applyBackendResponse, currentPhase } = useEntrepreneurProgress();
 
   const [review, setReview] = useState<AiReviewResponse | null>(null);
   const [isRunning, setIsRunning] = useState(false);
@@ -48,11 +48,12 @@ export function Phase7Content() {
   const [error, setError] = useState('');
 
   async function resolveCompanyId(): Promise<string> {
+    if (activeCompanyId) return activeCompanyId;
+    const fromServer = await entrepreneurApi.getCurrentPhase(activeCompanyId || undefined);
+    if (fromServer?.companyId) return fromServer.companyId;
     const existing: Phase7Data = getPhaseData<Phase7Data>(7) ?? {};
     if (existing.__companyId) return existing.__companyId;
-    const fromServer = await entrepreneurApi.getCurrentPhase();
-    if (!fromServer?.companyId) throw new Error('No company found in backend');
-    return fromServer.companyId;
+    throw new Error('No company found in backend');
   }
 
   const reload = async () => {

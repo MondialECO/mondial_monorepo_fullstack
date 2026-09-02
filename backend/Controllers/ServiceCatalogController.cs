@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using WebApp.Models;
@@ -26,11 +26,16 @@ public class ServiceCatalogController : ControllerBase
 {
     private readonly IServiceCatalogService _service;
     private readonly ILogger<ServiceCatalogController> _logger;
+    private readonly WebApp.Services.Interface.IPlatformSettingsService? _settingsService;
 
-    public ServiceCatalogController(IServiceCatalogService service, ILogger<ServiceCatalogController> logger)
+    public ServiceCatalogController(
+        IServiceCatalogService service,
+        ILogger<ServiceCatalogController> logger,
+        WebApp.Services.Interface.IPlatformSettingsService? settingsService = null)
     {
         _service = service;
         _logger = logger;
+        _settingsService = settingsService;
     }
 
     private string CurrentUserId =>
@@ -48,16 +53,26 @@ public class ServiceCatalogController : ControllerBase
         Map(await _service.GetListingAsync(CurrentUserId, id));
 
     [HttpPost("listings")]
-    public async Task<IActionResult> CreateListing([FromBody] UpsertServiceListingRequest request) =>
-        Map(await _service.CreateListingAsync(CurrentUserId, request));
+    public async Task<IActionResult> CreateListing([FromBody] UpsertServiceListingRequest request)
+    {
+        if (_settingsService != null && !await _settingsService.IsMarketplacePublishingEnabledAsync())
+            return StatusCode(503, ApiResponse.Error("Marketplace service publishing is temporarily disabled for system maintenance.", HttpContext.TraceIdentifier));
+
+        return Map(await _service.CreateListingAsync(CurrentUserId, request));
+    }
 
     [HttpPut("listings/{id}")]
     public async Task<IActionResult> UpdateListing(string id, [FromBody] UpsertServiceListingRequest request) =>
         Map(await _service.UpdateListingAsync(CurrentUserId, id, request));
 
     [HttpPost("listings/{id}/publish")]
-    public async Task<IActionResult> PublishListing(string id) =>
-        Map(await _service.PublishListingAsync(CurrentUserId, id));
+    public async Task<IActionResult> PublishListing(string id)
+    {
+        if (_settingsService != null && !await _settingsService.IsMarketplacePublishingEnabledAsync())
+            return StatusCode(503, ApiResponse.Error("Marketplace service publishing is temporarily disabled for system maintenance.", HttpContext.TraceIdentifier));
+
+        return Map(await _service.PublishListingAsync(CurrentUserId, id));
+    }
 
     [HttpPost("listings/{id}/unpublish")]
     public async Task<IActionResult> UnpublishListing(string id) =>

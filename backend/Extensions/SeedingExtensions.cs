@@ -32,6 +32,7 @@ public static class SeedingExtensions
     private const string DemoEntrepreneurEmail = "demo.entrepreneur@mondial.local";
     private const string DemoServiceProviderEmail = "demo.provider@mondial.local";
     private const string DemoAdminEmail = "demo.admin@mondial.local";
+    private const string DemoSuperAdminEmail = "demo.superadmin@mondial.local";
     private const string DemoPassword = "DemoP@ss1";
     private const string DemoNdaText = "This is a demo NDA — do not use in production.";
 
@@ -66,11 +67,10 @@ public static class SeedingExtensions
             await SeedAccessLogsAsync(services, investor, companies);
             await SeedDealExecutionAsync(services, investor, companies);
 
-            // Demo-readiness seed pipeline (P0 for the 2026-06-10 demo): a
-            // service-provider user so entrepreneur↔provider chat exists, AI
-            // credits so the Creator AI Studio runs, and realistic inbox
-            // conversations. Each step is independently idempotent.
-            await SeedDemoAdminAsync(services);
+            // Demo-readiness seed pipeline (P0 for the 2026-06-10 demo): separate
+            // superadmin and normal admin accounts, service-provider user, AI
+            // credits, and realistic inbox conversations.
+            await SeedRolesAndAdminsAsync(services, config);
             var serviceProvider = await SeedDemoServiceProviderAsync(services);
             await SeedDemoAiCreditsAsync(services, creator, investor, entrepreneur);
             await SeedDemoConversationsAsync(services, creator, investor, entrepreneur, serviceProvider);
@@ -847,22 +847,176 @@ public static class SeedingExtensions
         Log.Information("Seeded demo deal execution for company {Name}", rousseau.CompanyName);
     }
 
-    // ---- 11b) Demo admin (login + admin-route access for the demo) ----
+    // ---- 11) Roles, SuperAdmin, and Admin Seeding (Centralized Authority) ----
 
-    // Creates the demo Admin account. GetOrCreateDemoUserAsync already sets
-    // EmailConfirmed=true, a completed universal Phase-1 onboarding state, and
-    // the DemoP@ss1 password, so the account can log in and reach admin routes
-    // immediately. No dashboard features are seeded — account creation only.
-    private static async Task<ApplicationUser> SeedDemoAdminAsync(IServiceProvider services)
+    public static async Task SeedRolesAndAdminsAsync(this IServiceProvider services, IConfiguration? config = null)
+    {
+        await SeedRolesAsync(services);
+        await SeedDemoSuperAdminAsync(services, config);
+        await SeedDemoAdminAsync(services, config);
+        await CleanupTransientTestSuperAdminsAsync(services, config);
+    }
+
+    public static async Task SeedRolesAsync(IServiceProvider services)
+    {
+        var roleManager = services.GetRequiredService<RoleManager<ApplicationRole>>();
+        string[] roles = { "SuperAdmin", "Admin", "Entrepreneur", "Creator", "Investor", "ServiceProvider" };
+        foreach (var roleName in roles)
+        {
+            if (!await roleManager.RoleExistsAsync(roleName))
+            {
+                await roleManager.CreateAsync(new ApplicationRole
+                {
+                    Name = roleName,
+                    Description = $"{roleName} role"
+                });
+                Log.Information("Seeding: Created role {Role}", roleName);
+            }
+        }
+    }
+
+    private static async Task<ApplicationUser> SeedDemoSuperAdminAsync(IServiceProvider services, IConfiguration? config = null)
     {
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
         var roleManager = services.GetRequiredService<RoleManager<ApplicationRole>>();
 
-        return await GetOrCreateDemoUserAsync(
-            userManager, roleManager,
-            email: DemoAdminEmail,
-            name: "Demo Admin",
-            role: "Admin");
+        var superAdminEmail = config?["BootstrapSuperAdminEmail"] ?? DemoSuperAdminEmail;
+        var superAdminPassword = config?["BootstrapSuperAdminPassword"] ?? config?["BootstrapAdminPassword"] ?? DemoPassword;
+
+        // Ensure SuperAdmin role exists
+        if (!await roleManager.RoleExistsAsync("SuperAdmin"))
+        {
+            await roleManager.CreateAsync(new ApplicationRole
+            {
+                Name = "SuperAdmin",
+                Description = "SuperAdmin role"
+            });
+        }
+
+        var superAdmin = await userManager.FindByEmailAsync(superAdminEmail);
+        if (superAdmin == null)
+        {
+            superAdmin = new ApplicationUser
+            {
+                UserName = superAdminEmail,
+                Email = superAdminEmail,
+                Name = "Demo SuperAdmin",
+                User = "SuperAdmin",
+                EmailConfirmed = true,
+                CreatedAt = DateTime.UtcNow,
+                Onboarding = new OnboardingState
+                {
+                    Phase = 1,
+                    EmailOtpVerified = true,
+                    PhoneVerified = true,
+                    IdentityDocumentVerified = true,
+                    FaceVerified = true,
+                    CompletedAt = DateTime.UtcNow
+                }
+            };
+
+            var createRes = await userManager.CreateAsync(superAdmin, superAdminPassword);
+            if (!createRes.Succeeded)
+            {
+                var errors = string.Join("; ", createRes.Errors.Select(e => e.Description));
+                throw new InvalidOperationException($"Failed to create SuperAdmin user {superAdminEmail}: {errors}");
+            }
+            Log.Information("Seeding: Created SuperAdmin user {Email}", superAdminEmail);
+        }
+
+        if (!await userManager.IsInRoleAsync(superAdmin, "SuperAdmin"))
+        {
+            await userManager.AddToRoleAsync(superAdmin, "SuperAdmin");
+            Log.Information("Seeding: Assigned SuperAdmin role to {Email}", superAdminEmail);
+        }
+
+        // SuperAdmin does not need Admin role
+        if (await userManager.IsInRoleAsync(superAdmin, "Admin"))
+        {
+            await userManager.RemoveFromRoleAsync(superAdmin, "Admin");
+            Log.Information("Seeding: Removed redundant Admin role from {Email}", superAdminEmail);
+        }
+
+        return superAdmin;
+    }
+
+    private static async Task<ApplicationUser> SeedDemoAdminAsync(IServiceProvider services, IConfiguration? config = null)
+    {
+        var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+        var roleManager = services.GetRequiredService<RoleManager<ApplicationRole>>();
+
+        var adminEmail = config?["BootstrapAdminEmail"] ?? DemoAdminEmail;
+        var adminPassword = config?["BootstrapAdminPassword"] ?? DemoPassword;
+        var superAdminEmail = config?["BootstrapSuperAdminEmail"] ?? DemoSuperAdminEmail;
+
+        var admin = await userManager.FindByEmailAsync(adminEmail);
+        if (admin == null)
+        {
+            admin = new ApplicationUser
+            {
+                UserName = adminEmail,
+                Email = adminEmail,
+                Name = "Demo Admin",
+                User = "Admin",
+                EmailConfirmed = true,
+                CreatedAt = DateTime.UtcNow,
+                Onboarding = new OnboardingState
+                {
+                    Phase = 1,
+                    EmailOtpVerified = true,
+                    PhoneVerified = true,
+                    IdentityDocumentVerified = true,
+                    FaceVerified = true,
+                    CompletedAt = DateTime.UtcNow
+                }
+            };
+
+            var createRes = await userManager.CreateAsync(admin, adminPassword);
+            if (!createRes.Succeeded)
+            {
+                var errors = string.Join("; ", createRes.Errors.Select(e => e.Description));
+                throw new InvalidOperationException($"Failed to create Admin user {adminEmail}: {errors}");
+            }
+            Log.Information("Seeding: Created Admin user {Email}", adminEmail);
+        }
+
+        if (!await userManager.IsInRoleAsync(admin, "Admin"))
+        {
+            await userManager.AddToRoleAsync(admin, "Admin");
+            Log.Information("Seeding: Assigned Admin role to {Email}", adminEmail);
+        }
+
+        if (await userManager.IsInRoleAsync(admin, "Creator"))
+        {
+            await userManager.RemoveFromRoleAsync(admin, "Creator");
+            Log.Information("Seeding: Removed extraneous Creator role from {Email}", adminEmail);
+        }
+
+        // Failure safety & safe ordering: remove SuperAdmin from admin ONLY AFTER confirming SuperAdmin exists
+        var superAdmins = await userManager.GetUsersInRoleAsync("SuperAdmin");
+        if (superAdmins.Any(sa => sa.Email == superAdminEmail) && await userManager.IsInRoleAsync(admin, "SuperAdmin"))
+        {
+            await userManager.RemoveFromRoleAsync(admin, "SuperAdmin");
+            Log.Information("Seeding: Removed SuperAdmin role from normal admin {Email}", adminEmail);
+        }
+
+        return admin;
+    }
+
+    private static async Task CleanupTransientTestSuperAdminsAsync(IServiceProvider services, IConfiguration? config = null)
+    {
+        var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+        var superAdminEmail = config?["BootstrapSuperAdminEmail"] ?? DemoSuperAdminEmail;
+
+        var allSuperAdmins = await userManager.GetUsersInRoleAsync("SuperAdmin");
+        foreach (var sa in allSuperAdmins)
+        {
+            if (sa.Email != null && (sa.Email.StartsWith("test.") || sa.Email.StartsWith("third.")) && sa.Email != superAdminEmail)
+            {
+                await userManager.RemoveFromRoleAsync(sa, "SuperAdmin");
+                Log.Information("Seeding: Cleaned up transient test SuperAdmin role from {Email}", sa.Email);
+            }
+        }
     }
 
     // ---- 12) Demo service provider (counterpart for entrepreneur↔provider chat) ----

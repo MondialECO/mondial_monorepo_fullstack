@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import ErrorState from "@/components/shared/ErrorState";
@@ -10,6 +10,7 @@ import {
   useOpportunityDocuments,
 } from "@/hooks/queries/investor-opportunities";
 import { useDiligenceSummary } from "@/hooks/queries/investor-diligence";
+import entrepreneurApi, { DataRoomAccessStatusResponse } from "@/lib/api-entrepreneur";
 import DataRoomHeader from "./_components/DataRoomHeader";
 import DocumentsSection from "./_components/DocumentsSection";
 import SessionActivityCard from "./_components/SessionActivityCard";
@@ -41,7 +42,7 @@ export default function DataRoomPage({ params }: PageProps) {
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
   const [activeDocTitle, setActiveDocTitle] = useState<string | null>(null);
 
-  // Opportunity drives the entire NDA-gate decision
+  // Opportunity drives high-level metadata
   const {
     data: detail,
     isLoading: detailLoading,
@@ -49,8 +50,30 @@ export default function DataRoomPage({ params }: PageProps) {
     refetch: refetchDetail,
   } = useOpportunity(companyId);
 
-  const ndaOk = !!detail && (!detail.ndaRequired || detail.ndaAccepted);
-  const enabledCompanyId = ndaOk ? companyId : null;
+  // Fetch verified canonical Data Room Access Status
+  const [accessStatus, setAccessStatus] = useState<DataRoomAccessStatusResponse | null>(null);
+  const [accessLoading, setAccessLoading] = useState(false);
+
+  const fetchAccessStatus = async () => {
+    try {
+      const res = await entrepreneurApi.getDataRoomAccessStatus(companyId);
+      if (res) {
+        setAccessStatus(res);
+      }
+    } catch {
+      // Non-blocking fallback
+    }
+  };
+
+  useEffect(() => {
+    if (companyId) {
+      void fetchAccessStatus();
+    }
+  }, [companyId]);
+
+  const accessOk = accessStatus ? accessStatus.accessGranted : (detail ? (!detail.ndaRequired || detail.ndaAccepted) : false);
+
+  const enabledCompanyId = accessOk ? companyId : null;
 
   const {
     data: docs,
@@ -94,7 +117,7 @@ export default function DataRoomPage({ params }: PageProps) {
     router.push(`/dashboard/investor/pipeline`);
   }
 
-  if (detailLoading) {
+  if (detailLoading || accessLoading) {
     return <DataRoomSkeleton />;
   }
 
@@ -106,7 +129,7 @@ export default function DataRoomPage({ params }: PageProps) {
           message="Either the opportunity doesn't exist, you're not matched to it, or the API is unreachable."
         />
         <div className="flex justify-center">
-          <Button variant="outline" onClick={() => refetchDetail()}>
+          <Button variant="outline" onClick={() => { refetchDetail(); fetchAccessStatus(); }}>
             Retry
           </Button>
         </div>
@@ -114,14 +137,23 @@ export default function DataRoomPage({ params }: PageProps) {
     );
   }
 
-  if (detail.ndaRequired && !detail.ndaAccepted) {
+  if (!accessOk) {
     return (
       <div className="w-full max-w-[1280px] mx-auto space-y-6 pb-8">
         <DataRoomHeader detail={detail} />
-        <NDALockedScreen companyId={detail.companyId} companyName={detail.companyName} />
+        <NDALockedScreen
+          companyId={detail.companyId}
+          companyName={detail.companyName}
+          accessStatus={accessStatus}
+          onRefresh={() => {
+            refetchDetail();
+            fetchAccessStatus();
+          }}
+        />
       </div>
     );
   }
+
 
   return (
     <div className="w-full max-w-[1280px] mx-auto space-y-6 pb-8">
@@ -146,9 +178,11 @@ export default function DataRoomPage({ params }: PageProps) {
               companyId={detail.companyId}
               items={docs.items}
               reviews={diligenceSummary?.reviews}
+              canDownload={accessStatus ? accessStatus.accessLevel !== "view_only" : true}
               onAddNote={handleOpenNote}
               onAskFounder={(docId, title) => handleOpenAskFounder(docId, title)}
             />
+
           )}
         </div>
 

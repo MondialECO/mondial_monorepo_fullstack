@@ -25,7 +25,7 @@ const eur = (n: number) =>
 
 function Phase3ValuationClient() {
   const router = useRouter();
-  const { progress, savePhaseData, moveToNextStep, getPhaseData } = useEntrepreneurProgress();
+  const { progress, activeCompanyId, savePhaseData, moveToNextStep, getPhaseData } = useEntrepreneurProgress();
 
   const [financial, setFinancial] = useState<FinancialSummaryResponse | null>(null);
   const [investorReady, setInvestorReady] = useState<boolean | null>(null);
@@ -41,9 +41,8 @@ function Phase3ValuationClient() {
     let cancelled = false;
     (async () => {
       try {
-        const existing: Phase3Data = getPhaseData<Phase3Data>(3) ?? {};
-        const prog = await entrepreneurApi.getCurrentPhase();
-        const companyId = existing.__companyId ?? prog.companyId;
+        const prog = await entrepreneurApi.getCurrentPhase(activeCompanyId || undefined);
+        const companyId = activeCompanyId || prog.companyId;
         if (cancelled) return;
         setInvestorReady(prog.isInvestorReady);
         if (!companyId) return;
@@ -63,7 +62,7 @@ function Phase3ValuationClient() {
     return () => {
       cancelled = true;
     };
-  }, [getPhaseData]);
+  }, [activeCompanyId]);
 
   if (!progress) {
     return (
@@ -88,7 +87,7 @@ function Phase3ValuationClient() {
     try {
       const existing: Phase3Data = getPhaseData<Phase3Data>(3) ?? {};
       const companyId =
-        existing.__companyId ?? (await entrepreneurApi.getCurrentPhase())?.companyId;
+        activeCompanyId || (await entrepreneurApi.getCurrentPhase())?.companyId || existing.__companyId;
       savePhaseData(3, { ...existing, __companyId: companyId, valuationReviewedAt: new Date().toISOString() });
       moveToNextStep(3, 2);
       router.push('/dashboard/entrepreneur/phase-3/step-3');

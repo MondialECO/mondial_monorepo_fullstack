@@ -7,6 +7,9 @@ import { readOnboardingPhase } from "@/lib/auth-contract";
 import {
   parseStrictUserRole,
   resolvePrimaryRole,
+  getRoleDashboardRoute,
+  resolvePostLoginRedirect,
+  isValidDashboardRouteForUser,
   ROLE_DASHBOARD_ROUTES,
   UserRole,
 } from "@/lib/roles";
@@ -114,6 +117,108 @@ describe("authenticated dashboard route contract", () => {
     const paths = [...new Set(hrefs.map((href) => href.split("?")[0]))];
     const missing = paths.filter((href) => !routes.has(href));
     expect(missing).toEqual([]);
+  });
+
+  it("PostLoginRedirect_ResolvesCanonicalDashboardForEveryRole", () => {
+    // 1. Creator
+    expect(getRoleDashboardRoute(UserRole.CREATOR)).toBe("/dashboard/creator");
+    expect(getRoleDashboardRoute("Creator")).toBe("/dashboard/creator");
+    expect(resolvePostLoginRedirect({ role: UserRole.CREATOR, roles: [UserRole.CREATOR], onboardingPhase: 1 })).toBe("/dashboard/creator");
+    expectRoute("/dashboard/creator");
+
+    // 2. Entrepreneur
+    expect(getRoleDashboardRoute(UserRole.ENTREPRENEUR)).toBe("/dashboard/entrepreneur");
+    expect(getRoleDashboardRoute("Entrepreneur")).toBe("/dashboard/entrepreneur");
+    expect(resolvePostLoginRedirect({ role: UserRole.ENTREPRENEUR, roles: [UserRole.ENTREPRENEUR], onboardingPhase: 1 })).toBe("/dashboard/entrepreneur");
+    expectRoute("/dashboard/entrepreneur");
+
+    // 3. Investor
+    expect(getRoleDashboardRoute(UserRole.INVESTOR)).toBe("/dashboard/investor");
+    expect(getRoleDashboardRoute("Investor")).toBe("/dashboard/investor");
+    expect(resolvePostLoginRedirect({ role: UserRole.INVESTOR, roles: [UserRole.INVESTOR], onboardingPhase: 1 })).toBe("/dashboard/investor");
+    expectRoute("/dashboard/investor");
+
+    // 4. Service Provider
+    expect(getRoleDashboardRoute(UserRole.SERVICE_PROVIDER)).toBe("/dashboard/serviceprovider");
+    expect(getRoleDashboardRoute("ServiceProvider")).toBe("/dashboard/serviceprovider");
+    expect(getRoleDashboardRoute("Service Provider")).toBe("/dashboard/serviceprovider");
+    expect(resolvePostLoginRedirect({ role: UserRole.SERVICE_PROVIDER, roles: [UserRole.SERVICE_PROVIDER], onboardingPhase: 1 })).toBe("/dashboard/serviceprovider");
+    expectRoute("/dashboard/serviceprovider");
+
+    // 5. Admin
+    expect(getRoleDashboardRoute(UserRole.ADMIN)).toBe("/dashboard/admin");
+    expect(getRoleDashboardRoute("Admin")).toBe("/dashboard/admin");
+    expect(resolvePostLoginRedirect({ role: UserRole.ADMIN, roles: [UserRole.ADMIN], onboardingPhase: 1 })).toBe("/dashboard/admin");
+    expectRoute("/dashboard/admin");
+
+    // 6. SuperAdmin
+    expect(getRoleDashboardRoute(UserRole.SUPERADMIN)).toBe("/dashboard/admin");
+    expect(getRoleDashboardRoute("SuperAdmin")).toBe("/dashboard/admin");
+    expect(resolvePostLoginRedirect({ role: UserRole.SUPERADMIN, roles: [UserRole.SUPERADMIN], onboardingPhase: 1 })).toBe("/dashboard/admin");
+
+    // Multi-role priority resolution
+    const multiUser = {
+      role: UserRole.CREATOR,
+      roles: [UserRole.CREATOR, UserRole.ENTREPRENEUR],
+      onboardingPhase: 1,
+    };
+    expect(getRoleDashboardRoute(multiUser)).toBe("/dashboard/entrepreneur");
+    expect(resolvePostLoginRedirect(multiUser)).toBe("/dashboard/entrepreneur");
+
+    // Unknown role fallback
+    expect(getRoleDashboardRoute("NonExistentRole")).toBe("/dashboard/creator");
+    expect(resolvePostLoginRedirect({ role: "NonExistentRole" as any, roles: [], onboardingPhase: 1 })).toBe("/dashboard/creator");
+
+    // Onboarding Phase 0 gate
+    expect(resolvePostLoginRedirect({ role: UserRole.CREATOR, roles: [UserRole.CREATOR], onboardingPhase: 0 })).toBe("/onboarding");
+
+    // Valid callback preservation
+    expect(
+      resolvePostLoginRedirect(
+        { role: UserRole.INVESTOR, roles: [UserRole.INVESTOR], onboardingPhase: 1 },
+        "/dashboard/investor/discovery"
+      )
+    ).toBe("/dashboard/investor/discovery");
+
+    // Invalid callback fallback
+    expect(
+      resolvePostLoginRedirect(
+        { role: UserRole.CREATOR, roles: [UserRole.CREATOR], onboardingPhase: 1 },
+        "https://malicious.site/phishing"
+      )
+    ).toBe("/dashboard/creator");
+
+    // Unauthorized callback fallback (e.g. Creator accessing SuperAdmin security route)
+    expect(
+      resolvePostLoginRedirect(
+        { role: UserRole.CREATOR, roles: [UserRole.CREATOR], onboardingPhase: 1 },
+        "/dashboard/admin/security"
+      )
+    ).toBe("/dashboard/creator");
+
+    // Route validation checks
+    expect(isValidDashboardRouteForUser({ role: UserRole.CREATOR, roles: [UserRole.CREATOR] }, "/dashboard/creator/messages")).toBe(true);
+    expect(isValidDashboardRouteForUser({ role: UserRole.CREATOR, roles: [UserRole.CREATOR] }, "/dashboard/admin/users")).toBe(false);
+    expect(isValidDashboardRouteForUser({ role: UserRole.ADMIN, roles: [UserRole.ADMIN] }, "/dashboard/admin/users")).toBe(true);
+    expect(isValidDashboardRouteForUser({ role: UserRole.ADMIN, roles: [UserRole.ADMIN] }, "/dashboard/admin/security")).toBe(false);
+    expect(isValidDashboardRouteForUser({ role: UserRole.SUPERADMIN, roles: [UserRole.SUPERADMIN] }, "/dashboard/admin/security")).toBe(true);
+    expect(isValidDashboardRouteForUser({ role: UserRole.CREATOR, roles: [UserRole.CREATOR] }, "/dashboard/nonexistent")).toBe(false);
+    expect(isValidDashboardRouteForUser({ role: UserRole.CREATOR, roles: [UserRole.CREATOR] }, "/login")).toBe(false);
+
+    // Stale/alias callback normalization
+    expect(
+      resolvePostLoginRedirect(
+        { role: UserRole.SUPERADMIN, roles: [UserRole.SUPERADMIN], onboardingPhase: 1 },
+        "/dashboard/superadmin"
+      )
+    ).toBe("/dashboard/admin");
+
+    expect(
+      resolvePostLoginRedirect(
+        { role: UserRole.SERVICE_PROVIDER, roles: [UserRole.SERVICE_PROVIDER], onboardingPhase: 1 },
+        "/dashboard/service-provider/services"
+      )
+    ).toBe("/dashboard/serviceprovider/services");
   });
 
   it("legacy frontend entry point delegates to the canonical app", () => {

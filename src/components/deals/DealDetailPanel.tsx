@@ -103,8 +103,8 @@ export default function DealDetailPanel({ dealId, myRole, onBack }: DealDetailPa
 
   return (
     <div className="flex h-full flex-col">
-      {/* Header */}
-      <div className="flex items-center gap-3 border-b border-border bg-card px-4 py-3">
+      {/* Header — pinned at top, never compressed */}
+      <div className="shrink-0 flex items-center gap-3 border-b border-border bg-card px-4 py-3">
         <Button variant="ghost" size="icon" onClick={onBack} className="md:hidden" aria-label="Back">
           <ArrowLeft className="h-4 w-4" />
         </Button>
@@ -127,8 +127,8 @@ export default function DealDetailPanel({ dealId, myRole, onBack }: DealDetailPa
         ) : null}
       </div>
 
-      <ScrollArea className="flex-1">
-        <div className="space-y-5 p-4 sm:p-6">
+      <ScrollArea className="flex-1 min-h-0">
+        <div className="space-y-5 p-4 sm:p-6 pb-10">
           {myTurn && open ? (
             <DealCardBase className="border-l-4 border-l-primary bg-primary/5">
               <p className="text-sm font-medium text-primary">Next action: Your move</p>

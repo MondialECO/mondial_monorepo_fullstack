@@ -31,7 +31,7 @@ export interface OpportunityCard {
   fundingRoundType: string | null;
   fundingAskAmount: number | null;
   valuation: number | null;
-  matchScore: number;
+  matchScore?: number | null;
   matchStatus: MatchStatus | string;
   isInvestorReady: boolean;
   lastUpdatedAt: string;
@@ -87,10 +87,10 @@ export interface OpportunityDetail {
   valuation: number | null;
   trustScore: number;
   isInvestorReady: boolean;
-  matchScore: number;
+  matchScore?: number | null;
   matchStatus: MatchStatus | string;
   matchRationale: string | null;
-  scoreBreakdown: OpportunityScoreBreakdown;
+  scoreBreakdown?: OpportunityScoreBreakdown | null;
   ndaRequired: boolean;
   ndaAccepted: boolean;
   ndaAcceptedAt: string | null;

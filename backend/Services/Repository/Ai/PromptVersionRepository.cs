@@ -8,7 +8,14 @@ namespace WebApp.Services.Repository.Ai
     {
         public PromptVersionRepository(IMongoDatabase database) : base(database, "PromptVersions")
         {
-            CreateIndexesAsync().GetAwaiter().GetResult();
+            try
+            {
+                CreateIndexesAsync().GetAwaiter().GetResult();
+            }
+            catch
+            {
+                // Non-fatal if index creation fails during startup/offline
+            }
         }
 
         private async Task CreateIndexesAsync()

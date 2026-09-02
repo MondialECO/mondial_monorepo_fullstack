@@ -6,6 +6,8 @@ import api from '@/lib/axios';
 import {
   parseStrictUserRole,
   resolvePrimaryRole,
+  getRoleDashboardRoute,
+  resolvePostLoginRedirect,
   ROLE_DASHBOARD_ROUTES,
   UserRole,
 } from '@/lib/roles';
@@ -189,7 +191,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsBackendVerified(true);
     setIsVerifyingBackend(false);
 
-    router.push(ROLE_DASHBOARD_ROUTES[user.role]);
+    router.push(resolvePostLoginRedirect(user));
   };
 
   const logout = () => {

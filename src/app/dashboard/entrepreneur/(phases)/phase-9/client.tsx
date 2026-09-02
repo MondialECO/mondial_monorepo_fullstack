@@ -70,7 +70,7 @@ function getErrorMessage(err: unknown): string {
 
 export default function Phase9Client() {
   const router = useRouter();
-  const { savePhaseData, getPhaseData } =
+  const { activeCompanyId, savePhaseData, getPhaseData } =
     useEntrepreneurProgress();
 
   const [matches, setMatches] = useState<InvestorMatchResponse[]>([]);
@@ -99,11 +99,12 @@ export default function Phase9Client() {
   const detailPanelRef = useRef<HTMLDivElement>(null);
 
   async function resolveCompanyId(): Promise<string> {
+    if (activeCompanyId) return activeCompanyId;
+    const fromServer = await entrepreneurApi.getCurrentPhase(activeCompanyId || undefined);
+    if (fromServer?.companyId) return fromServer.companyId;
     const existing: Phase9Data = getPhaseData<Phase9Data>(9) ?? {};
     if (existing.__companyId) return existing.__companyId;
-    const fromServer = await entrepreneurApi.getCurrentPhase();
-    if (!fromServer?.companyId) throw new Error('No company found in backend');
-    return fromServer.companyId;
+    throw new Error('No company found in backend');
   }
 
   const reload = async () => {
@@ -397,7 +398,7 @@ export default function Phase9Client() {
   const timelineItems: any[] = selectedDealId ? buildTimeline(selectedDealId) : [];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-16">
       {/* Figma P9 — pipeline visuals (real data + honest shells) */}
       <Phase9PipelineVisuals
         deals={deals}

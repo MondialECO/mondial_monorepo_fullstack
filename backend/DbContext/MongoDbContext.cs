@@ -22,6 +22,8 @@ namespace WebApp.DbContext
             EnsureWorkroomIndexes();
             EnsureAnalyticsIndexes();
             EnsureProfileSplitIndexes();
+            EnsureApplicationUserIndexes();
+            EnsureReportsAndAuditIndexes();
         }
 
         public MongoDbContext(IMongoDatabase database)
@@ -37,6 +39,8 @@ namespace WebApp.DbContext
             EnsureWorkroomIndexes();
             EnsureAnalyticsIndexes();
             EnsureProfileSplitIndexes();
+            EnsureApplicationUserIndexes();
+            EnsureReportsAndAuditIndexes();
         }
 
         // Smart Matchmaking outbox indexes: Status (consumer polling), CompanyId
@@ -292,6 +296,7 @@ namespace WebApp.DbContext
         // Phase 6 sub-collections
         public virtual IMongoCollection<Phase6AccessLog> Phase6AccessLogs => _database.GetCollection<Phase6AccessLog>("Phase6AccessLogs");
         public virtual IMongoCollection<Phase6NdaAcceptance> Phase6NdaAcceptances => _database.GetCollection<Phase6NdaAcceptance>("Phase6NdaAcceptances");
+        public virtual IMongoCollection<Phase6DataRoomAccessRequest> Phase6DataRoomAccessRequests => _database.GetCollection<Phase6DataRoomAccessRequest>("Phase6DataRoomAccessRequests");
 
         // Phase 7 sub-collections
         public virtual IMongoCollection<Phase7ReviewSnapshot> Phase7ReviewSnapshots => _database.GetCollection<Phase7ReviewSnapshot>("Phase7ReviewSnapshots");
@@ -344,6 +349,14 @@ namespace WebApp.DbContext
         // Module 5 — metrics are read-time only; manual provider tasks are the
         // module's single stateful collection.
         public virtual IMongoCollection<GrowthTask> GrowthTasks => _database.GetCollection<GrowthTask>("GrowthTasks");
+        public virtual IMongoCollection<ContentReport> ContentReports => _database.GetCollection<ContentReport>("ContentReports");
+        public virtual IMongoCollection<AdminAuditLog> AdminAuditLogs => _database.GetCollection<AdminAuditLog>("AdminAuditLogs");
+        public virtual IMongoCollection<PlatformSettings> PlatformSettings => _database.GetCollection<PlatformSettings>("PlatformSettings");
+
+        // Phase 7 — Security, Compliance, Privacy & Data Governance collections
+        public virtual IMongoCollection<PrivacyRequest> PrivacyRequests => _database.GetCollection<PrivacyRequest>("PrivacyRequests");
+        public virtual IMongoCollection<ComplianceCase> ComplianceCases => _database.GetCollection<ComplianceCase>("ComplianceCases");
+        public virtual IMongoCollection<DataRetentionPolicy> DataRetentionPolicies => _database.GetCollection<DataRetentionPolicy>("DataRetentionPolicies");
 
         // Module 5 Phase A — analytics tracking: daily impression/click/inquiry buckets
         // and session dedup records (TTL).
@@ -577,6 +590,73 @@ namespace WebApp.DbContext
                     new CreateIndexModel<ServiceProviderProfileRecord>(
                         Builders<ServiceProviderProfileRecord>.IndexKeys.Descending(x => x.UpdatedAt),
                         new CreateIndexOptions { Background = true }),
+                });
+            }
+            catch
+            {
+                // Best-effort; never block or fail context construction.
+            }
+        }
+
+        private void EnsureApplicationUserIndexes()
+        {
+            try
+            {
+                ApplicationUsers.Indexes.CreateMany(new[]
+                {
+                    new CreateIndexModel<ApplicationUser>(
+                        Builders<ApplicationUser>.IndexKeys
+                            .Ascending(x => x.Kyc.Status)
+                            .Ascending(x => x.Kyc.Identity.SubmittedAt),
+                        new CreateIndexOptions { Background = true, Name = "IX_ApplicationUsers_KycStatus_SubmittedAt" }),
+                    new CreateIndexModel<ApplicationUser>(
+                        Builders<ApplicationUser>.IndexKeys
+                            .Ascending(x => x.Kyc.Status)
+                            .Ascending(x => x.Kyc.Identity.FrontImage),
+                        new CreateIndexOptions { Background = true, Name = "IX_ApplicationUsers_KycStatus_FrontImage" })
+                });
+            }
+            catch
+            {
+                // Best-effort; never block or fail context construction.
+            }
+        }
+
+        private void EnsureReportsAndAuditIndexes()
+        {
+            try
+            {
+                ContentReports.Indexes.CreateMany(new[]
+                {
+                    new CreateIndexModel<ContentReport>(
+                        Builders<ContentReport>.IndexKeys
+                            .Ascending(x => x.TargetType)
+                            .Ascending(x => x.TargetId)
+                            .Ascending(x => x.ReporterUserId)
+                            .Ascending(x => x.Status),
+                        new CreateIndexOptions { Background = true, Name = "IX_ContentReports_Target_Reporter_Status" }),
+                    new CreateIndexModel<ContentReport>(
+                        Builders<ContentReport>.IndexKeys
+                            .Ascending(x => x.Status)
+                            .Descending(x => x.CreatedAt),
+                        new CreateIndexOptions { Background = true, Name = "IX_ContentReports_Status_CreatedAt" })
+                });
+
+                AdminAuditLogs.Indexes.CreateMany(new[]
+                {
+                    new CreateIndexModel<AdminAuditLog>(
+                        Builders<AdminAuditLog>.IndexKeys.Descending(x => x.Timestamp),
+                        new CreateIndexOptions { Background = true, Name = "IX_AdminAuditLogs_Timestamp" }),
+                    new CreateIndexModel<AdminAuditLog>(
+                        Builders<AdminAuditLog>.IndexKeys
+                            .Ascending(x => x.Action)
+                            .Descending(x => x.Timestamp),
+                        new CreateIndexOptions { Background = true, Name = "IX_AdminAuditLogs_Action_Timestamp" }),
+                    new CreateIndexModel<AdminAuditLog>(
+                        Builders<AdminAuditLog>.IndexKeys
+                            .Ascending(x => x.Actor)
+                            .Descending(x => x.Timestamp),
+                        new CreateIndexOptions { Background = true, Name = "IX_AdminAuditLogs_Actor_Timestamp" })
                 });
             }
             catch

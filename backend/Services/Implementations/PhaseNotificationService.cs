@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using WebApp.Models.DatabaseModels;
 using WebApp.Services.Email;
+using WebApp.Services.Interface;
 
 namespace WebApp.Services.Implementations;
 
@@ -9,17 +10,20 @@ public class PhaseNotificationService : IPhaseNotificationService
     private readonly EmailService _emailService;
     private readonly ICompanyService _companyService;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly INotificationService _notificationService;
     private readonly ILogger<PhaseNotificationService> _logger;
 
     public PhaseNotificationService(
         EmailService emailService,
         ICompanyService companyService,
         UserManager<ApplicationUser> userManager,
+        INotificationService notificationService,
         ILogger<PhaseNotificationService> logger)
     {
         _emailService = emailService;
         _companyService = companyService;
         _userManager = userManager;
+        _notificationService = notificationService;
         _logger = logger;
     }
 
@@ -570,22 +574,10 @@ Mondial Team";
 
             var user = await GetUserAsync(company.OwnerId);
             var subject = $"❓ Due Diligence Question: {investorName} asked about {documentTitle}";
-            var body = $@"
-Hi {user?.Name ?? "Founder"},
+            var body = $"{investorName} has asked a question during Due Diligence for {company.CompanyName} on document '{documentTitle}':\n\"{question}\"";
+            var link = "/dashboard/entrepreneur/phase-6";
 
-{investorName} has asked a question during Due Diligence for {company.CompanyName}:
-
-Related Document: {documentTitle}
-Question:
-""{question}""
-
-Please review and answer in your Data Room dashboard:
-/dashboard/entrepreneur/phase-6
-
-Best regards,
-Mondial Team";
-
-            await SendToUserAsync(user, companyId, subject, body);
+            await SendToUserAsync(user, companyId, subject, body, link, "diligence_question");
         }
         catch (Exception ex)
         {
@@ -599,25 +591,89 @@ Mondial Team";
         {
             var user = await FindInvestorUserAsync(investorId);
             var subject = $"💬 Founder Responded: Due Diligence question for {companyName}";
-            var body = $@"
-Hi {user?.Name ?? "Investor"},
+            var body = $"The founder of {companyName} has responded to your question regarding {documentTitle}:\n\"{response}\"";
+            var link = "/dashboard/investor";
 
-The founder of {companyName} has responded to your due diligence question regarding {documentTitle}:
-
-Response:
-""{response}""
-
-Review the full due diligence workspace:
-/dashboard/investor
-
-Best regards,
-Mondial Team";
-
-            await SendToUserAsync(user, investorId, subject, body);
+            await SendToUserAsync(user, investorId, subject, body, link, "diligence_answer");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error sending diligence question answered notification for investor {InvestorId}", investorId);
+        }
+    }
+
+    public async Task NotifyDataRoomAccessRequestedAsync(string companyId, string investorId, string requestId, string investorName)
+    {
+        try
+        {
+            var company = await _companyService.GetCompanyAsync(companyId);
+            if (company == null) return;
+
+            var user = await GetUserAsync(company.OwnerId);
+            var subject = $"📥 New Data Room Access Request for {company.CompanyName}";
+            var body = $"{investorName} has signed the NDA and requested access to {company.CompanyName}'s Data Room.";
+            var link = "/dashboard/entrepreneur/phase-6?view=requests";
+
+            await SendToUserAsync(user, companyId, subject, body, link, "data_room_access_request");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sending data room access requested notification for company {CompanyId}", companyId);
+        }
+    }
+
+    public async Task NotifyDataRoomAccessApprovedAsync(string investorUserId, string companyId, string companyName)
+    {
+        try
+        {
+            var user = await GetUserAsync(investorUserId);
+            var subject = $"✅ Data Room Access Approved: {companyName}";
+            var body = $"Your access request for {companyName} has been approved by the founder. You can now view the data room.";
+            var link = $"/dashboard/investor/discovery/{companyId}/dataroom";
+
+            await SendToUserAsync(user, companyId, subject, body, link, "data_room_access_approved");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sending data room access approved notification to user {UserId}", investorUserId);
+        }
+    }
+
+    public async Task NotifyDataRoomAccessDeclinedAsync(string investorUserId, string companyId, string companyName, string? note)
+    {
+        try
+        {
+            var user = await GetUserAsync(investorUserId);
+            var subject = $"📋 Data Room Access Request Update: {companyName}";
+            var body = $"Your access request for {companyName} was not approved at this time.";
+            if (!string.IsNullOrWhiteSpace(note))
+            {
+                body += $"\nNote: {note}";
+            }
+            var link = $"/dashboard/investor/discovery/{companyId}/dataroom";
+
+            await SendToUserAsync(user, companyId, subject, body, link, "data_room_access_declined");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sending data room access declined notification to user {UserId}", investorUserId);
+        }
+    }
+
+    public async Task NotifyDataRoomAccessRevokedAsync(string investorUserId, string companyId, string companyName)
+    {
+        try
+        {
+            var user = await GetUserAsync(investorUserId);
+            var subject = $"⚠️ Data Room Access Revoked: {companyName}";
+            var body = $"Your Data Room access for {companyName} has been revoked by the company.";
+            var link = $"/dashboard/investor/discovery/{companyId}/dataroom";
+
+            await SendToUserAsync(user, companyId, subject, body, link, "data_room_access_revoked");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sending data room access revoked notification to user {UserId}", investorUserId);
         }
     }
 
@@ -628,9 +684,6 @@ Mondial Team";
         return users.FirstOrDefault(u => u.InvestorProfile?.InvestorId == investorId);
     }
 
-    // Resolve a real ApplicationUser by id. Returns null only when the id is
-    // missing or no matching user exists — callers must handle that explicitly
-    // (see SendToUserAsync) rather than emailing an empty recipient.
     private async Task<ApplicationUser?> GetUserAsync(string? userId)
     {
         if (string.IsNullOrWhiteSpace(userId))
@@ -639,11 +692,16 @@ Mondial Team";
         return await _userManager.FindByIdAsync(userId);
     }
 
-    // Single send path with explicit recipient guarding. If the owner/email
-    // can't be resolved we log and skip — never dispatch to an empty address.
-    private async Task SendToUserAsync(ApplicationUser? user, string contextId, string subject, string body)
+    private async Task SendToUserAsync(
+        ApplicationUser? user,
+        string contextId,
+        string subject,
+        string body,
+        string? link = null,
+        string? type = null,
+        MongoDB.Bson.ObjectId? referenceId = null)
     {
-        if (user is null || string.IsNullOrWhiteSpace(user.Email))
+        if (user is null)
         {
             _logger.LogWarning(
                 "Notification not sent — unresolved recipient for {ContextId} (subject: {Subject})",
@@ -651,6 +709,29 @@ Mondial Team";
             return;
         }
 
-        await _emailService.SendEmailAsync(user.Email, subject, body);
+        // 1. In-app notification & SignalR
+        try
+        {
+            await _notificationService.CreateNotification(user.Id, subject, body, link, type, referenceId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to persist in-app notification for user {UserId}", user.Id);
+        }
+
+
+        // 2. Email notification
+        if (!string.IsNullOrWhiteSpace(user.Email))
+        {
+            try
+            {
+                await _emailService.SendEmailAsync(user.Email, subject, body);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Email delivery failed for user {Email}", user.Email);
+            }
+        }
     }
 }
+

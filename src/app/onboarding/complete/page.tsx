@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/_providers/AuthProvider';
-import { ROLE_DASHBOARD_ROUTES } from '@/lib/roles';
+import { getRoleDashboardRoute, ROLE_DASHBOARD_ROUTES } from '@/lib/roles';
 import { CheckCircle2, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -15,8 +15,8 @@ export default function CompletePage() {
   // If already Phase 1, redirect to dashboard (prevent race conditions)
   useEffect(() => {
     if (user && (user.onboardingPhase ?? 0) >= 1) {
-      const dashboardRoute = ROLE_DASHBOARD_ROUTES[user.role];
-      router.replace(dashboardRoute || "/");
+      const dashboardRoute = getRoleDashboardRoute(user);
+      router.replace(dashboardRoute || "/dashboard/creator");
     }
   }, [user, router]);
 
@@ -48,7 +48,7 @@ export default function CompletePage() {
 
           {/* CTA Button */}
           <Button asChild size="lg" className="w-full">
-            <Link href={user?.role ? (ROLE_DASHBOARD_ROUTES[user.role] ?? '/') : '/'}>
+            <Link href={user ? getRoleDashboardRoute(user) : '/'}>
               Go to Dashboard
             </Link>
           </Button>

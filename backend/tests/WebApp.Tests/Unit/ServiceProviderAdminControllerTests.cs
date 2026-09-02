@@ -49,7 +49,7 @@ public class ServiceProviderAdminControllerTests
     {
         var attr = typeof(ServiceProviderAdminController).GetCustomAttribute<AuthorizeAttribute>();
         attr.Should().NotBeNull();
-        attr!.Roles.Should().Be("Admin");
+        attr!.Roles.Should().Be("Admin,SuperAdmin");
     }
 
     [Fact]

@@ -37,7 +37,10 @@ namespace WebApp.Services.Implementations
         {
             try
             {
-                var filter = Builders<ServiceListing>.Filter.Eq(x => x.Status, CatalogStatus.Published);
+                var filter = Builders<ServiceListing>.Filter.And(
+                    Builders<ServiceListing>.Filter.Eq(x => x.Status, CatalogStatus.Published),
+                    Builders<ServiceListing>.Filter.Ne(x => x.IsModerationHidden, true)
+                );
 
                 if (!string.IsNullOrWhiteSpace(query.Search))
                 {
@@ -194,7 +197,7 @@ namespace WebApp.Services.Implementations
                     .Find(x => x.Id == listingId)
                     .FirstOrDefaultAsync(ct);
 
-                if (listing == null || listing.Status != CatalogStatus.Published)
+                if (listing == null || listing.Status != CatalogStatus.Published || listing.IsModerationHidden)
                 {
                     return ServiceProviderResult<MarketplaceListingDetailResponse>.NotFound("Listing not found.");
                 }
@@ -333,7 +336,8 @@ namespace WebApp.Services.Implementations
             var reviews = await _db.Reviews
                 .Find(x => providerIds.Contains(x.ProviderId)
                            && x.Visibility == ReviewVisibility.Public
-                           && x.VerificationStatus == ReviewVerificationStatus.Verified)
+                           && x.VerificationStatus == ReviewVerificationStatus.Verified
+                           && !x.IsModerationHidden)
                 .ToListAsync(ct);
 
             return reviews

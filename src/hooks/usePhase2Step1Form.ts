@@ -34,6 +34,22 @@ const EMPTY_FORM_DATA: LegalIdentityFormData = {
 };
 
 
+function buildLegalPayload(formData: LegalIdentityFormData) {
+  const rawCompanyName = (formData.companyName || '').trim();
+  const rawReg = (formData.registrationNumber || '').trim();
+  const normalizedReg = rawReg ? rawReg.replace(/[\s.-]/g, '') : '';
+
+  return {
+    legalName: rawCompanyName || 'Unnamed Company',
+    registrationNumber: normalizedReg,
+    legalStructure: (formData.legalForm || '').trim(),
+    incorporationDate: (formData.incorporationDate || '').trim(),
+    registeredAddress: (formData.registeredAddress || '').trim(),
+    country: (formData.countryOfRegistration || '').trim(),
+    nafCode: (formData.industryCode || '').trim(),
+  };
+}
+
 /**
  * Phase 2 / Step 1 form hook.
  *
@@ -51,8 +67,14 @@ export function usePhase2Step1Form({
   initialData,
 }: UsePhase2Step1FormProps = {}) {
   const router = useRouter();
-  const { progress, getPhaseData, savePhaseData, moveToNextStep } =
-    useEntrepreneurProgress();
+  const {
+    progress,
+    activeCompanyId,
+    isLoading: isProgressLoading,
+    getPhaseData,
+    savePhaseData,
+    moveToNextStep,
+  } = useEntrepreneurProgress();
 
   const [formState, setFormState] = useState<FormState>({
     status: 'idle',
@@ -62,74 +84,123 @@ export function usePhase2Step1Form({
     status: 'idle',
     lastSavedAt: null,
   });
+  const [isLoadingData, setIsLoadingData] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  const isInitializedRef = useRef(false);
   const isSubmittingRef = useRef(false);
   const savedFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const loadedCompanyIdRef = useRef<string | null>(null);
+  const hasHydratedRef = useRef(false);
+
+  const getPhaseDataRef = useRef(getPhaseData);
+  getPhaseDataRef.current = getPhaseData;
+  const savePhaseDataRef = useRef(savePhaseData);
+  savePhaseDataRef.current = savePhaseData;
+  const progressRef = useRef(progress);
+  progressRef.current = progress;
 
   // No resolver / no validation — just a typed data container.
   const form = useForm<LegalIdentityFormData>({
-    defaultValues: EMPTY_FORM_DATA,
+    defaultValues: initialData ? { ...EMPTY_FORM_DATA, ...initialData } : EMPTY_FORM_DATA,
   });
 
-  // Hydrate the form ONCE from saved progress or database.
-  useEffect(() => {
-    if (!progress || isInitializedRef.current) return;
-    isInitializedRef.current = true;
+  const loadData = useCallback(async () => {
+    // If progress is still loading from backend, wait
+    if (isProgressLoading) return;
+    if (hasHydratedRef.current) return;
 
-    const initializeForm = async () => {
-      try {
-        // 1. Check for local saved data first
-        let savedData =
-          (initialData as LegalIdentityFormData | undefined) ||
-          (getPhaseData(2) as LegalIdentityFormData | undefined);
+    try {
+      setIsLoadingData(true);
+      setLoadError(null);
 
-        // 2. If no local data, try to load from database
-        if (!savedData || !savedData.companyName) {
-          const phaseData = getPhaseData(2) as any;
-          let companyId = phaseData?.__companyId;
-
-          // 3. If no companyId in local state, fetch from backend
-          if (!companyId) {
-            const phaseProgress = await entrepreneurApi.getCurrentPhase();
-            companyId = phaseProgress?.companyId;
-          }
-
-          // 4. Fetch company data from database
-          if (companyId) {
-            const company = await entrepreneurApi.getCompany(companyId);
-            if (company) {
-              savedData = {
-                companyName: company.legalName || company.companyName || '',
-                registrationNumber: company.registrationNumber || '',
-                legalForm: company.legalStructure || '',
-                incorporationDate: company.incorporationDate || '',
-                countryOfRegistration: company.country || '',
-                registeredAddress: company.registeredAddress || '',
-                industryCode: company.nafCode || '',
-              };
-              // Save companyId to local state for future use
-              const existingData = getPhaseData(2) as any;
-              if (existingData && !existingData.__companyId) {
-                savePhaseData(2, { ...existingData, __companyId: companyId });
-              }
-            }
-          }
-        }
-
-        // 5. Reset form with data (local or database)
-        if (savedData) {
-          form.reset({ ...EMPTY_FORM_DATA, ...savedData });
-        }
-      } catch (error) {
-        console.warn('Failed to load company data:', error);
-        // Fall back to empty form
-        form.reset(EMPTY_FORM_DATA);
+      // If initialData was explicitly provided (e.g. in tests/storybook), use it
+      if (initialData && Object.keys(initialData).length > 0) {
+        form.reset({ ...EMPTY_FORM_DATA, ...initialData });
+        hasHydratedRef.current = true;
+        setIsLoadingData(false);
+        return;
       }
-    };
 
-    initializeForm();
-  }, [progress, initialData, form, getPhaseData, savePhaseData]);
+      // Step 1: Resolve company ID
+      let companyId: string | undefined = activeCompanyId || undefined;
+
+      if (!companyId) {
+        const localPhase2: any = getPhaseDataRef.current(2);
+        if (typeof localPhase2?.__companyId === 'string') {
+          companyId = localPhase2.__companyId;
+        }
+      }
+
+      if (!companyId && typeof progressRef.current?.phaseData?.__companyId === 'string') {
+        companyId = progressRef.current.phaseData.__companyId;
+      }
+
+      if (!companyId) {
+        // Query backend for active/current company
+        const phaseProgress = await entrepreneurApi.getCurrentPhase().catch(() => null);
+        if (typeof phaseProgress?.companyId === 'string') {
+          companyId = phaseProgress.companyId;
+        }
+      }
+
+      if (!companyId) {
+        const myCompanies = await entrepreneurApi.getMyCompanies().catch(() => []);
+        const active = myCompanies.find((c) => c.isActive) || myCompanies[0];
+        if (active?.id) {
+          companyId = active.id;
+        }
+      }
+
+      // Step 2: If company exists, fetch authoritative data from GET /api/companies/{companyId}
+      if (companyId) {
+        loadedCompanyIdRef.current = companyId;
+        const company = await entrepreneurApi.getCompany(companyId);
+        if (company) {
+          const hydratedData: LegalIdentityFormData = {
+            companyName: company.companyName || company.legalName || '',
+            registrationNumber: company.registrationNumber || '',
+            legalForm: company.legalStructure || '',
+            incorporationDate: company.incorporationDate || '',
+            countryOfRegistration: company.country || '',
+            registeredAddress: company.registeredAddress || '',
+            industryCode: company.nafCode || '',
+          };
+
+          form.reset(hydratedData);
+          savePhaseDataRef.current(2, {
+            ...hydratedData,
+            __companyId: companyId,
+          });
+        }
+      } else {
+        // Step 3: Zero-company fresh state: check if there is unsaved local draft
+        const localDraft: any = getPhaseDataRef.current(2);
+        if (localDraft?.companyName) {
+          form.reset({ ...EMPTY_FORM_DATA, ...localDraft });
+        } else {
+          form.reset(EMPTY_FORM_DATA);
+        }
+      }
+
+      hasHydratedRef.current = true;
+    } catch (error) {
+      console.warn('Failed to load company data:', error);
+      let errorMsg = 'Failed to load company details. Please check your connection and retry.';
+      if (error instanceof Error) errorMsg = error.message;
+      setLoadError(errorMsg);
+    } finally {
+      setIsLoadingData(false);
+    }
+  }, [isProgressLoading, activeCompanyId, initialData, form]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const retryLoad = useCallback(() => {
+    hasHydratedRef.current = false;
+    return loadData();
+  }, [loadData]);
 
   const handleSaveDraft = useCallback(async () => {
     if (isSubmittingRef.current || formState.status === 'saving' || formState.status === 'navigating') return;
@@ -137,6 +208,8 @@ export function usePhase2Step1Form({
     setFormState({ status: 'saving', error: null });
     try {
       const formData = form.getValues();
+      const payload = buildLegalPayload(formData);
+
       let companyId: string | undefined =
         typeof progress?.phaseData?.__companyId === 'string'
           ? progress.phaseData.__companyId
@@ -155,21 +228,26 @@ export function usePhase2Step1Form({
         }
       }
 
-      if (companyId) {
-        await entrepreneurApi.updateLegalInfo(companyId, {
-          legalName: formData.companyName || 'Unnamed Company',
-          registrationNumber: formData.registrationNumber || '',
-          legalStructure: formData.legalForm || '',
-          incorporationDate: formData.incorporationDate || '',
-          registeredAddress: formData.registeredAddress || '',
-          country: formData.countryOfRegistration || '',
-          nafCode: formData.industryCode || '',
+      if (!companyId) {
+        const createResponse = await entrepreneurApi.createCompany({
+          companyName: payload.legalName || 'Unnamed Company',
+          industry: 'Technology',
+          website: 'https://example.com',
+          tagline: 'Company draft created during Phase 2 verification',
         });
+
+        companyId = (createResponse as any)?.companyId || (createResponse as any)?.id;
+        if (!companyId || typeof companyId !== 'string') {
+          throw new Error('No company ID returned from creation');
+        }
       }
+
+      await entrepreneurApi.updateLegalInfo(companyId, payload);
 
       savePhaseData(2, {
         ...formData,
-        ...(companyId ? { __companyId: companyId } : {}),
+        registrationNumber: payload.registrationNumber,
+        __companyId: companyId,
       });
       setFormState({ status: 'idle', error: null });
       setAutosave({ status: 'saved', lastSavedAt: Date.now() });
@@ -188,12 +266,72 @@ export function usePhase2Step1Form({
 
   const handleNextClick = useCallback(async () => {
     if (isSubmittingRef.current || formState.status === 'saving' || formState.status === 'navigating') return;
+
+    const formData = form.getValues();
+    const payload = buildLegalPayload(formData);
+    const rawCompanyName = payload.legalName;
+    const normalizedRegNumber = payload.registrationNumber;
+
+    if (!formData.companyName?.trim()) {
+      setFormState({
+        status: 'idle',
+        error: 'Official Company Name is required.',
+      });
+      return;
+    }
+
+    if (!normalizedRegNumber) {
+      setFormState({
+        status: 'idle',
+        error: 'Company registration number (SIREN/SIRET) is required.',
+      });
+      return;
+    }
+
+    const isFrance = (formData.countryOfRegistration || '').trim().toLowerCase() === 'france';
+    if (isFrance && /^\d+$/.test(normalizedRegNumber)) {
+      if (normalizedRegNumber.length !== 9 && normalizedRegNumber.length !== 14) {
+        setFormState({
+          status: 'idle',
+          error: 'Enter a 9-digit SIREN or 14-digit SIRET.',
+        });
+        return;
+      }
+    }
+
+    if (!formData.legalForm?.trim()) {
+      setFormState({
+        status: 'idle',
+        error: 'Legal form is required.',
+      });
+      return;
+    }
+    if (!formData.incorporationDate?.trim()) {
+      setFormState({
+        status: 'idle',
+        error: 'Incorporation date is required.',
+      });
+      return;
+    }
+    if (!formData.countryOfRegistration?.trim()) {
+      setFormState({
+        status: 'idle',
+        error: 'Country of registration is required.',
+      });
+      return;
+    }
+    if (!formData.registeredAddress?.trim()) {
+      setFormState({
+        status: 'idle',
+        error: 'Registered address is required.',
+      });
+      return;
+    }
+
     isSubmittingRef.current = true;
     setFormState({ status: 'navigating', error: null });
 
     try {
-      const formData = form.getValues();
-
       let companyId: string | undefined =
         typeof progress?.phaseData?.__companyId === 'string'
           ? progress.phaseData.__companyId
@@ -215,7 +353,7 @@ export function usePhase2Step1Form({
       // 1. If company doesn't exist, create it first (Zero-Company Direct Entrepreneur path)
       if (!companyId) {
         const createResponse = await entrepreneurApi.createCompany({
-          companyName: formData.companyName || 'Unnamed Company',
+          companyName: rawCompanyName,
           industry: 'Technology', // Placeholder - Phase 1 field
           website: 'https://example.com', // Placeholder - Phase 1 field
           tagline: 'Company created during Phase 2 verification',
@@ -225,28 +363,15 @@ export function usePhase2Step1Form({
         if (!companyId || typeof companyId !== 'string') {
           throw new Error('No company ID returned from creation');
         }
-
-        // Verify company is active in backend
-        const phaseProgress = await entrepreneurApi.getCurrentPhase();
-        if (phaseProgress?.companyId !== companyId) {
-          throw new Error('Company verification failed - company not found in backend');
-        }
       }
 
       // 2. Persist legal identity data via authoritative updateLegalInfo endpoint
-      await entrepreneurApi.updateLegalInfo(companyId, {
-        legalName: formData.companyName || 'Unnamed Company',
-        registrationNumber: formData.registrationNumber || '',
-        legalStructure: formData.legalForm || '',
-        incorporationDate: formData.incorporationDate || '',
-        registeredAddress: formData.registeredAddress || '',
-        country: formData.countryOfRegistration || '',
-        nafCode: formData.industryCode || '',
-      });
+      await entrepreneurApi.updateLegalInfo(companyId, payload);
 
       // 3. Update local phase data with authoritative companyId
       savePhaseData(2, {
         ...formData,
+        registrationNumber: normalizedRegNumber,
         __companyId: companyId,
       });
 
@@ -274,12 +399,20 @@ export function usePhase2Step1Form({
     }
   }, [form, formState.status, progress, getPhaseData, savePhaseData, moveToNextStep, router]);
 
+  const clearError = useCallback(() => {
+    setFormState((prev) => (prev.error ? { ...prev, error: null } : prev));
+  }, []);
+
   return {
     form,
     formState,
     autosave,
+    isLoadingData,
+    loadError,
+    retryLoad,
     handleSaveDraft,
     handleNextClick,
+    clearError,
     isDirty: form.formState.isDirty,
   };
 }

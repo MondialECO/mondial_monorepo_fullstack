@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { z } from "zod";
 import { useAuth } from "@/app/_providers/AuthProvider";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
-import { ROLE_DASHBOARD_ROUTES } from "@/lib/roles";
+import { resolvePostLoginRedirect } from "@/lib/roles";
 
 const loginSchema = z.object({
   email: z
@@ -21,9 +21,17 @@ const loginSchema = z.object({
     .min(8, "Password must be at least 8 characters"),
 });
 
-export default function LoginPage() {
-  const { login, isLoading: authLoading, user, logout } = useAuth();
+function LoginForm() {
+  const { login, isLoading: authLoading, user } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const rawTarget =
+    searchParams?.get("callbackUrl") ||
+    searchParams?.get("returnUrl") ||
+    searchParams?.get("redirectTo") ||
+    searchParams?.get("next") ||
+    searchParams?.get("from");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -31,19 +39,13 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Redirect logged-in users based on phase
+  // Redirect logged-in users based on phase and destination
   useEffect(() => {
     if (user && !authLoading) {
-      // If Phase < 1, redirect to onboarding (universal phase 1 gate)
-      if ((user.onboardingPhase ?? 0) < 1) {
-        router.replace("/onboarding");
-      } else {
-        // Phase >= 1, redirect to role dashboard
-        const dashboardRoute = ROLE_DASHBOARD_ROUTES[user.role];
-        router.replace(dashboardRoute);
-      }
+      const destination = resolvePostLoginRedirect(user, rawTarget);
+      router.replace(destination);
     }
-  }, [user, authLoading, router]);
+  }, [user, authLoading, router, rawTarget]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -198,5 +200,19 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-background px-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   );
 }

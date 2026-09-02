@@ -1,6 +1,6 @@
 import DealCardBase from "@/components/investor/DealCardBase";
 import DealStatusBadge from "./DealStatusBadge";
-import { formatCurrency } from "@/lib/deal-utils";
+import { formatCurrency, formatInstrument } from "@/lib/deal-utils";
 import type { TermSheetView } from "@/types/deals";
 
 interface OfferTermsCardProps {
@@ -25,18 +25,19 @@ export default function OfferTermsCard({ terms, title = "Current Terms" }: Offer
         <DealStatusBadge status={terms.status} />
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Stat label="Raise" value={formatCurrency(terms.totalRaiseAmount)} prominent />
-        <Stat label="Post-Money" value={formatCurrency(terms.postMoneyValuation)} prominent />
+        <Stat label="Investment" value={formatCurrency(terms.totalRaiseAmount)} prominent />
+        <Stat label="Post-Money Valuation" value={formatCurrency(terms.postMoneyValuation)} prominent />
         <Stat
           label="Equity"
           value={terms.investorEquityPercent ? `${terms.investorEquityPercent.toFixed(2)}%` : "—"}
           prominent
         />
-        <Stat label="Type" value={terms.equityType || "—"} />
+        <Stat label="Instrument" value={formatInstrument(terms.equityType)} />
       </div>
       {terms.proRataRights ? (
-        <p className="mt-3 text-xs text-muted-foreground">Includes pro-rata rights.</p>
+        <p className="mt-3 text-xs text-muted-foreground">Pro-rata rights included.</p>
       ) : null}
     </DealCardBase>
   );
 }
+

@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   Lightbulb,
   Lock,
+  ArrowRight,
 } from 'lucide-react';
 import { useEntrepreneurProgress } from '@/hooks/useEntrepreneurProgress';
 import entrepreneurApi from '@/lib/api-entrepreneur';
@@ -200,15 +201,15 @@ function Phase2Step2PageContent() {
 
   const handleNextClick = async () => {
     setValidationError('');
+
+    if (!allDocsUploaded) {
+      setValidationError(`Please upload all required documents (${uploadedDocs.size}/${requiredDocuments.length} uploaded).`);
+      return;
+    }
+
     setIsValidating(true);
 
     try {
-      if (!allDocsUploaded) {
-        setValidationError('Please upload all required documents');
-        setIsValidating(false);
-        return;
-      }
-
       const existingData: Phase2Data = getPhaseData<Phase2Data>(2) ?? {};
       let companyId = existingData.__companyId;
 
@@ -237,10 +238,22 @@ function Phase2Step2PageContent() {
     }
   };
 
-  if (!progress || isLoading) return null;
+  if (!progress || isLoading) {
+    return (
+      <div className="mx-auto w-full max-w-[1072px] space-y-6">
+        <div className="flex flex-col gap-8 bg-card border-2 border-background rounded-[20px] shadow-sm p-12 items-center justify-center min-h-[400px]">
+          <div className="flex flex-col items-center gap-3 text-center">
+            <Loader className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-base font-medium text-foreground">Loading documents...</p>
+            <p className="text-sm text-muted-foreground">Fetching uploaded files and verification requirements.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="w-full  space-y-6">
+    <div className="mx-auto w-full max-w-[1072px] space-y-6">
       {/* Main Card */}
       <div className="flex flex-col gap-8 bg-card border-2 border-background rounded-[20px] shadow-sm">
         {/* Header Section */}
@@ -263,8 +276,8 @@ function Phase2Step2PageContent() {
                 {uploadedDocs.size} of {requiredDocuments.length} Required
               </p>
             </div>
-            <div className="flex size-12 items-center justify-center rounded-full bg-primary">
-              <FileText className="size-6 text-primary-foreground" />
+            <div className="flex size-12 items-center justify-center rounded-full border border-border bg-secondary">
+              <FileText className="size-6 text-primary" />
             </div>
           </div>
         </div>
@@ -338,30 +351,41 @@ function Phase2Step2PageContent() {
         </div>
 
         {validationError && (
-          <div className="mx-6 flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
-            <AlertCircle className="h-4 w-4 flex-shrink-0" />
-            {validationError}
+          <div className="px-6">
+            <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
+              <AlertCircle className="h-4 w-4 flex-shrink-0" />
+              {validationError}
+            </div>
           </div>
         )}
 
         {/* Footer */}
         <div className="flex items-center justify-between border-t-2 border-background p-6">
-          <button
-            onClick={handleSaveForLater}
-            className="text-sm font-medium text-muted-foreground transition hover:text-foreground"
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => router.push('/dashboard/entrepreneur/phase-2/step-1')}
+            className="border-border px-6 py-3 font-medium text-foreground hover:bg-muted"
           >
-            Save For Later
-          </button>
-          <div className="flex gap-3">
+            Back
+          </Button>
+          <div className="flex items-center gap-3">
             <Button
+              type="button"
               variant="outline"
-              onClick={() => router.push('/dashboard/entrepreneur/phase-2/step-1')}
-              className="px-6"
+              onClick={handleSaveForLater}
+              className="border-primary px-6 py-3 font-medium text-primary hover:bg-primary/5"
             >
-              Cancel
+              Save Draft
             </Button>
-            <Button onClick={handleNextClick} disabled={!allDocsUploaded || isValidating} className="gap-2 px-6">
-              Next
+            <Button
+              type="button"
+              onClick={handleNextClick}
+              disabled={isValidating}
+              className="gap-2 px-6 py-3"
+            >
+              {isValidating ? 'Validating…' : 'Next'}
+              {!isValidating && <ArrowRight className="h-5 w-5" />}
             </Button>
           </div>
         </div>

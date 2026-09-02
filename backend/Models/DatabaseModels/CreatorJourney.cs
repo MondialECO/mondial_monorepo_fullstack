@@ -446,6 +446,10 @@ namespace WebApp.Models.DatabaseModels
         public bool OpenToEquityPartnership { get; set; }
         public bool OpenToLicense { get; set; }
         public string Audience { get; set; } // public | matched | private
+        public bool IsModerationHidden { get; set; }
+        public string? ModerationReason { get; set; }
+        public string? ModeratedByAdminId { get; set; }
+        public DateTime? ModeratedAt { get; set; }
         public DateTime? PublishedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
     }

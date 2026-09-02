@@ -28,7 +28,7 @@ public class InvestorController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,SuperAdmin")]
     public async Task<ActionResult<AdminInvestorDto>> CreateInvestor([FromBody] Investor investor)
     {
         try
@@ -72,7 +72,7 @@ public class InvestorController : ControllerBase
     }
 
     [HttpGet("admin/{investorId}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,SuperAdmin")]
     public async Task<ActionResult<AdminInvestorDto>> GetAdminInvestor(string investorId)
     {
         try
@@ -145,7 +145,7 @@ public class InvestorController : ControllerBase
     }
 
     [HttpPut("{investorId}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,SuperAdmin")]
     public async Task<ActionResult<AdminInvestorDto>> UpdateInvestor(string investorId, [FromBody] Investor investor)
     {
         try
@@ -162,7 +162,7 @@ public class InvestorController : ControllerBase
     }
 
     [HttpDelete("{investorId}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,SuperAdmin")]
     public async Task<ActionResult> DeleteInvestor(string investorId)
     {
         try
@@ -178,7 +178,7 @@ public class InvestorController : ControllerBase
     }
 
     [HttpGet("{investorId}/match-count")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,SuperAdmin")]
     public async Task<ActionResult<object>> GetInvestorMatchCount(string investorId)
     {
         try

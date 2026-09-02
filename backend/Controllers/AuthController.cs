@@ -41,6 +41,7 @@ namespace WebApp.Controllers
         private readonly WebApp.Services.Audit.IAuditLogger _audit;
         private readonly IWebHostEnvironment _env;
         private readonly IInvestorService _investorService;
+        private readonly WebApp.Services.Interface.IPlatformSettingsService? _settingsService;
 
         public AuthController(
             UserManager<ApplicationUser> userManager,
@@ -54,7 +55,8 @@ namespace WebApp.Controllers
             TwilioService twilioService,
             WebApp.Services.Audit.IAuditLogger audit,
             IWebHostEnvironment env,
-            IInvestorService investorService
+            IInvestorService investorService,
+            WebApp.Services.Interface.IPlatformSettingsService? settingsService = null
             )
         {
             _userManager = userManager;
@@ -69,6 +71,7 @@ namespace WebApp.Controllers
             _audit = audit;
             _env = env;
             _investorService = investorService;
+            _settingsService = settingsService;
         }
 
         #region Helper Methods
@@ -341,6 +344,15 @@ namespace WebApp.Controllers
         [EnableRateLimiting("auth")]
         public async Task<IActionResult> Register(RegisterModel model)
         {
+            if (_settingsService != null && !await _settingsService.IsRegistrationEnabledAsync())
+            {
+                return StatusCode(503, new
+                {
+                    success = false,
+                    message = "User registration is temporarily disabled for system maintenance."
+                });
+            }
+
             if (!ModelState.IsValid)
                 return Fail("Invalid request data");
 

@@ -6,12 +6,27 @@ import type {
   TermSheetRevisionView,
 } from "@/types/deals";
 
-// Map the authenticated user's platform role to their deal role.
-export function dealRoleForUser(role: UserRole | undefined): DealRole | null {
-  if (role === UserRole.INVESTOR) return "investor";
-  if (role === UserRole.ENTREPRENEUR) return "founder";
+// Map the authenticated user or platform role to their deal role (founder or investor).
+export function dealRoleForUser(userOrRole?: unknown): DealRole | null {
+  if (!userOrRole) return null;
+
+  if (typeof userOrRole === "object" && userOrRole !== null) {
+    const u = userOrRole as { role?: unknown; roles?: unknown };
+    const list = Array.isArray(u.roles) && u.roles.length > 0 ? u.roles : u.role ? [u.role] : [];
+    for (const r of list) {
+      const normalized = String(r ?? "").trim().toLowerCase().replace(/[\s_-]/g, "");
+      if (normalized === "founder" || normalized === "entrepreneur") return "founder";
+      if (normalized === "investor") return "investor";
+    }
+    return null;
+  }
+
+  const raw = String(userOrRole).trim().toLowerCase().replace(/[\s_-]/g, "");
+  if (raw === "founder" || raw === "entrepreneur") return "founder";
+  if (raw === "investor") return "investor";
   return null;
 }
+
 
 export function counterpartyRole(role: DealRole): DealRole {
   return role === "founder" ? "investor" : "founder";
@@ -43,8 +58,12 @@ export const OFFER_STATUS_LABEL: Record<string, string> = {
   sent: "Sent",
   viewed: "Viewed",
   countered: "Countered",
-  accepted: "Accepted",
+  accepted: "Terms accepted",
+  agreed: "Terms agreed",
+  negotiating: "Negotiating",
   rejected: "Rejected",
+  signed: "Signed",
+  completed: "Completed",
 };
 
 // Maps an offer/term-sheet status to a canonical Badge variant.
@@ -53,6 +72,7 @@ export function offerStatusBadge(
 ): "default" | "secondary" | "success" | "warning" | "info" | "destructive" {
   switch (status) {
     case "accepted":
+    case "agreed":
       return "success";
     case "rejected":
       return "destructive";
@@ -66,6 +86,17 @@ export function offerStatusBadge(
       return "secondary";
   }
 }
+
+export function formatInstrument(type?: string): string {
+  if (!type) return "—";
+  const lower = type.toLowerCase();
+  if (lower === "preferred") return "Preferred Equity";
+  if (lower === "common") return "Common Equity";
+  if (lower === "safe") return "SAFE";
+  if (lower === "note" || lower === "convertible_note") return "Convertible Note";
+  return type.charAt(0).toUpperCase() + type.slice(1);
+}
+
 
 export function formatCurrency(n: number | null | undefined): string {
   if (n == null) return "—";
@@ -99,16 +130,19 @@ export interface SignatureState {
   bothSigned: boolean;
 }
 
-// Per-slot signature state. The deal payload doesn't expose individual slots,
-// so derive them: termSheet.status === "signed" means BOTH signed; otherwise
-// read the term_sheet_signed activity notes ("signed by founder|investor|both").
+// Per-slot signature state. Reads both direct DTO signatures (founderSignature / investorSignature)
+// and term_sheet_signed activity notes.
 export function deriveSignatures(
   deal: DealStatus,
   activity: DealActivityEntry[]
 ): SignatureState {
-  const bothSigned = deal.termSheet.status === "signed";
-  let founderSigned = bothSigned;
-  let investorSigned = bothSigned;
+  const isSignedStatus = deal.termSheet.status === "signed" || deal.status === "signed" || deal.status === "completed";
+  const directFounderSigned = Boolean(deal.founderSignature?.signedAt);
+  const directInvestorSigned = Boolean(deal.investorSignature?.signedAt);
+
+  let founderSigned = isSignedStatus || directFounderSigned;
+  let investorSigned = isSignedStatus || directInvestorSigned;
+  let bothSigned = (founderSigned && investorSigned) || isSignedStatus;
 
   for (const e of activity ?? []) {
     if (e.eventType !== "term_sheet_signed") continue;
@@ -116,14 +150,21 @@ export function deriveSignatures(
     if (note.includes("both")) {
       founderSigned = true;
       investorSigned = true;
+      bothSigned = true;
     } else if (note.includes("by founder")) {
       founderSigned = true;
     } else if (note.includes("by investor")) {
       investorSigned = true;
     }
   }
+
+  if (founderSigned && investorSigned) {
+    bothSigned = true;
+  }
+
   return { founderSigned, investorSigned, bothSigned };
 }
+
 
 // The deal is at the signature stage once terms are agreed (offer accepted).
 export function isReadyForSignatures(deal: DealStatus): boolean {
@@ -134,12 +175,20 @@ export function isClosed(deal: DealStatus): boolean {
   return deal.status === "completed";
 }
 
-// Founder-only close, allowed once both parties have signed and not yet closed.
+// Founder-only close. Mirror every backend precondition so a stale term-sheet
+// axis can never expose an action the top-level lifecycle will reject.
 export function canCloseDeal(deal: DealStatus, myRole: DealRole | null): boolean {
+  const bothPersistedSignatures = Boolean(
+    deal.founderSignature?.signedAt && deal.investorSignature?.signedAt
+  );
+  const terminal = ["completed", "rejected", "withdrawn"].includes(deal.status);
+
   return (
     myRole === "founder" &&
+    bothPersistedSignatures &&
     deal.termSheet.status === "signed" &&
-    deal.status !== "completed"
+    deal.status === "signed" &&
+    !terminal
   );
 }
 
