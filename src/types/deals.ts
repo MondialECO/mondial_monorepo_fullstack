@@ -67,6 +67,7 @@ export interface SignatureRecord {
 
 export interface DealStatus {
   dealId: string;
+  companyId?: string;
   status: string;
   /** Counterparty company name (snapshot). "" for legacy deals. */
   companyName: string;

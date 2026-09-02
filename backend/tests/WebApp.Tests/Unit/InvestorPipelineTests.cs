@@ -124,6 +124,63 @@ public class InvestorPipelineTests
         Assert.False(isGuidObjectId, "Guid string should not be parsed as ObjectId");
         Assert.True(isRealObjectId, "24-hex string should be parsed as ObjectId");
     }
+
+    [Fact]
+    public void OpportunityCardResponse_Carries_Enriched_Lifecycle_Fields()
+    {
+        var card = new OpportunityCardResponse
+        {
+            CompanyId = "co-123",
+            CompanyName = "Idealy",
+            HoldingId = "hold-abc",
+            DealId = "deal-xyz",
+            DealStatus = "completed",
+            InvestmentAmount = 20000,
+            EquityPercentage = 5.0,
+            InstrumentType = "equity",
+            ClosedAt = new DateTime(2026, 9, 1, 12, 0, 0, DateTimeKind.Utc),
+            Stage = "won",
+            CurrentTurn = "investor"
+        };
+
+        Assert.Equal("hold-abc", card.HoldingId);
+        Assert.Equal("deal-xyz", card.DealId);
+        Assert.Equal("completed", card.DealStatus);
+        Assert.Equal(20000, card.InvestmentAmount);
+        Assert.Equal(5.0, card.EquityPercentage);
+        Assert.Equal("equity", card.InstrumentType);
+        Assert.Equal("won", card.Stage);
+        Assert.Equal("investor", card.CurrentTurn);
+    }
+
+    [Fact]
+    public void Deal_Lifecycle_Weight_Prioritizes_Completed_Over_Active_Over_Rejected()
+    {
+        var deals = new List<DealExecution>
+        {
+            new DealExecution { Id = "deal-rej", CompanyId = "co-1", Status = "rejected" },
+            new DealExecution { Id = "deal-active", CompanyId = "co-1", Status = "term_sheet" },
+            new DealExecution { Id = "deal-comp", CompanyId = "co-1", Status = "completed" }
+        };
+
+        var bestDeal = deals
+            .OrderByDescending(d => d.Status is "completed" ? 3 : (d.Status is "rejected" or "lost" ? 1 : 2))
+            .First();
+
+        Assert.Equal("deal-comp", bestDeal.Id);
+
+        var activeOrRejected = new List<DealExecution>
+        {
+            new DealExecution { Id = "deal-rej", CompanyId = "co-2", Status = "rejected" },
+            new DealExecution { Id = "deal-active", CompanyId = "co-2", Status = "term_sheet" }
+        };
+
+        var bestActive = activeOrRejected
+            .OrderByDescending(d => d.Status is "completed" ? 3 : (d.Status is "rejected" or "lost" ? 1 : 2))
+            .First();
+
+        Assert.Equal("deal-active", bestActive.Id);
+    }
 }
 
 

@@ -597,7 +597,8 @@ public class DiligenceService : IDiligenceService
                 question.InvestorId,
                 company.CompanyName,
                 question.DocumentTitle ?? "Data Room Document",
-                question.FounderResponse);
+                question.FounderResponse,
+                company.Id);
         }
 
         return new DiligenceQuestionDto

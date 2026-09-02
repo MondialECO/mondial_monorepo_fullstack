@@ -522,6 +522,7 @@ public class TermSheetRequest
 public class DealStatusResponse
 {
     public string DealId { get; set; }
+    public string CompanyId { get; set; } = "";
     public string Status { get; set; }
     public string CompanyName { get; set; } = "";
     public double ProgressPercent { get; set; }
@@ -982,6 +983,17 @@ public class OpportunityCardResponse
     public string MatchStatus { get; set; }
     public bool IsInvestorReady { get; set; }
     public DateTime LastUpdatedAt { get; set; }
+
+    // Lifecycle enrichment fields (Pipeline / Portfolio / Deals integration)
+    public string? DealId { get; set; }
+    public string? DealStatus { get; set; }
+    public string? CurrentTurn { get; set; }
+    public string? HoldingId { get; set; }
+    public double? InvestmentAmount { get; set; }
+    public double? EquityPercentage { get; set; }
+    public string? InstrumentType { get; set; }
+    public DateTime? ClosedAt { get; set; }
+    public string? Stage { get; set; }
 }
 
 public class OpportunityFeedResponse
