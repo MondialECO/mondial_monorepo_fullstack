@@ -1,3 +1,5 @@
+import { UserCheck } from 'lucide-react';
+import { AdminPageHeader } from '@/components/admin/shared';
 import { PendingVerificationQueue } from '@/components/admin/serviceprovider/PendingVerificationQueue';
 
 export const metadata = {
@@ -8,15 +10,14 @@ export const metadata = {
 export default function AdminServiceProvidersPage() {
   return (
     <div className="mx-auto w-full max-w-5xl space-y-6 pb-8">
-      <div className="space-y-1">
-        <h1 className="text-3xl font-semibold text-foreground">
-          Provider Verifications
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Review remediated profiles after an admin rejection. Complete first
-          submissions are verified automatically.
-        </p>
-      </div>
+      <AdminPageHeader
+        title="Provider Verifications"
+        description="Review remediated profiles after an admin rejection. Complete first submissions are verified automatically."
+        badge="PROVIDERS"
+        icon={UserCheck}
+        backHref="/dashboard/admin/verifications"
+        backLabel="Back to Verification Hub"
+      />
       <PendingVerificationQueue />
     </div>
   );

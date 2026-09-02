@@ -135,7 +135,7 @@ function CircularGauge({ percentage }: { percentage: number }) {
 
 function Phase3KpiTrackerClient() {
   const router = useRouter();
-  const { progress, getPhaseData } = useEntrepreneurProgress();
+  const { progress, activeCompanyId, getPhaseData } = useEntrepreneurProgress();
   const [financial, setFinancial] = useState<FinancialSummaryResponse | null>(null);
   const [kpi, setKpi] = useState<KpiBaselineResponse | null>(null);
   const [quarterly, setQuarterly] = useState<QuarterlyRevenueResponse[]>([]);
@@ -146,9 +146,8 @@ function Phase3KpiTrackerClient() {
     let cancelled = false;
     (async () => {
       try {
-        const existing = phase3Data ?? {};
-        const prog = await entrepreneurApi.getCurrentPhase();
-        const companyId = (existing as any).__companyId ?? prog.companyId;
+        const prog = await entrepreneurApi.getCurrentPhase(activeCompanyId || undefined);
+        const companyId = activeCompanyId || prog.companyId || (phase3Data as any)?.__companyId;
         if (cancelled || !companyId) return;
 
         const [fin, kpiRes, qtr] = await Promise.allSettled([
@@ -166,14 +165,13 @@ function Phase3KpiTrackerClient() {
     return () => {
       cancelled = true;
     };
-  }, [phase3Data]);
+  }, [activeCompanyId, phase3Data]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
-      const existing = phase3Data ?? {};
-      const prog = await entrepreneurApi.getCurrentPhase();
-      const companyId = (existing as any).__companyId ?? prog.companyId;
+      const prog = await entrepreneurApi.getCurrentPhase(activeCompanyId || undefined);
+      const companyId = activeCompanyId || prog.companyId || (phase3Data as any)?.__companyId;
       if (!companyId) return;
 
       const [fin, kpiRes, qtr] = await Promise.allSettled([

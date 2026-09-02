@@ -1429,7 +1429,8 @@ public class CompanyController : ControllerBase
     }
 
     [HttpGet("{companyId}/dataroom/documents/{documentId}")]
-    public async Task<IActionResult> DownloadDataRoomDocument(string companyId, string documentId)
+    public async Task<IActionResult> DownloadDataRoomDocument(
+        string companyId, string documentId, [FromQuery] bool inline = false, [FromQuery] bool preview = false)
     {
         try
         {
@@ -1442,11 +1443,21 @@ public class CompanyController : ControllerBase
             var company = await _companyService.GetCompanyAsync(companyId);
             var callerIsOwner = string.Equals(company.OwnerId, userId, StringComparison.Ordinal);
 
+            var isPreview = inline || preview;
             var (bytes, doc) = await _companyService.DownloadDataRoomDocumentAsync(
-                companyId, documentId, userId, callerIsOwner);
+                companyId, documentId, userId, callerIsOwner, requireDownloadPermission: !isPreview);
 
-            return File(bytes, doc.MimeType ?? "application/octet-stream", doc.FileName);
+            var mime = !string.IsNullOrWhiteSpace(doc.MimeType) ? doc.MimeType : "application/octet-stream";
+
+            if (isPreview)
+            {
+                Response.Headers.Append("Content-Disposition", $"inline; filename=\"{doc.FileName}\"");
+                return File(bytes, mime);
+            }
+
+            return File(bytes, mime, doc.FileName);
         }
+
         catch (UnauthorizedAccessException ex)
         {
             _logger.LogWarning("Authorization failed: {Message}", ex.Message);
@@ -1628,7 +1639,146 @@ public class CompanyController : ControllerBase
         }
     }
 
+    [HttpGet("{companyId}/dataroom/access-status")]
+    public async Task<ActionResult<DataRoomAccessStatusResponse>> GetDataRoomAccessStatus(string companyId)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            var investorId = await EnsureInvestorIdentityAsync(userId);
+            var result = await _companyService.GetInvestorDataRoomAccessStatusAsync(companyId, userId, investorId);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching data room access status");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpPost("{companyId}/dataroom/access-requests")]
+    public async Task<ActionResult<Phase6DataRoomAccessRequest>> CreateDataRoomAccessRequest(
+        string companyId, [FromBody] DataRoomAccessRequestCreateDto dto)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            var investorId = await EnsureInvestorIdentityAsync(userId);
+            var result = await _companyService.CreateDataRoomAccessRequestAsync(
+                companyId, userId, investorId, dto?.RequestedAccessLevel ?? "view_only");
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating data room access request");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpGet("{companyId}/dataroom/access-requests")]
+    public async Task<ActionResult<List<Phase6DataRoomAccessRequest>>> GetCompanyDataRoomAccessRequests(string companyId)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureCompanyOwnershipAsync(companyId);
+            var result = await _companyService.GetCompanyDataRoomAccessRequestsAsync(companyId);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching company data room access requests");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpPost("{companyId}/dataroom/access-requests/{requestId}/approve")]
+    public async Task<ActionResult<DataRoomStatusResponse>> ApproveDataRoomAccessRequest(
+        string companyId, string requestId, [FromBody] DataRoomAccessApprovalDto dto)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureCompanyOwnershipAsync(companyId);
+            var result = await _companyService.ApproveDataRoomAccessRequestAsync(companyId, requestId, userId, dto ?? new DataRoomAccessApprovalDto());
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error approving data room access request");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpPost("{companyId}/dataroom/access-requests/{requestId}/decline")]
+    public async Task<ActionResult<Phase6DataRoomAccessRequest>> DeclineDataRoomAccessRequest(
+        string companyId, string requestId, [FromBody] DataRoomAccessDeclineDto? dto)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await EnsureUniversalPhase1CompleteAsync(userId);
+            await EnsureCompanyOwnershipAsync(companyId);
+            var result = await _companyService.DeclineDataRoomAccessRequestAsync(companyId, requestId, userId, dto?.DecisionNote);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error declining data room access request");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
     [HttpGet("{companyId}/dataroom/questions")]
+
     public async Task<ActionResult<List<DiligenceQuestionDto>>> GetDataRoomQuestions(string companyId)
     {
         try

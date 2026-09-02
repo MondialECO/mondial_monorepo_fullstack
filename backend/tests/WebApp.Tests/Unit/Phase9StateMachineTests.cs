@@ -26,11 +26,13 @@ public class Phase9StateMachineTests
 
     [Theory]
     [InlineData("initiated", "contacted")]
+    [InlineData("initiated", "negotiating")]
     [InlineData("contacted", "interested")]
     [InlineData("interested", "meeting_scheduled")]
     [InlineData("meeting_scheduled", "due_diligence")]
     [InlineData("due_diligence", "negotiating")]
     [InlineData("negotiating", "term_sheet")]
+    [InlineData("negotiating", "agreement_sent")]
     [InlineData("term_sheet", "agreement_sent")]
     [InlineData("agreement_sent", "signed")]
     [InlineData("signed", "completed")]

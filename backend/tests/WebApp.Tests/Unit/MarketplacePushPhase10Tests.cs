@@ -821,7 +821,8 @@ namespace WebApp.Tests.Unit
             var controller = CreateController(userId);
             var result = await controller.LevelUp(ideaId);
 
-            result.Should().BeOfType<OkObjectResult>();
+            var obj = result.Should().BeAssignableTo<ObjectResult>().Subject;
+            (obj.StatusCode ?? 200).Should().Be(200);
         }
 
         [Fact]

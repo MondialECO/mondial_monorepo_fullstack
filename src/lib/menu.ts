@@ -13,6 +13,7 @@ import {
   Handshake,
   Gavel,
   ShieldCheck,
+  ShieldAlert,
   Sparkles,
   BarChart3,
   PieChart,
@@ -56,14 +57,269 @@ export const menu: Record<UserRole, MenuSection[]> = {
           icon: LayoutDashboard,
         },
         {
-          label: "Provider Verifications",
-          href: "/dashboard/admin/serviceproviders",
+          label: "Users",
+          href: "/dashboard/admin/users",
+          icon: Users,
+        },
+        {
+          label: "Verifications",
+          href: "/dashboard/admin/verifications",
+          icon: ShieldCheck,
+          children: [
+            {
+              label: "Hub Overview",
+              href: "/dashboard/admin/verifications",
+            },
+            {
+              label: "Identity / KYC",
+              href: "/dashboard/admin/verifications/kyc",
+            },
+            {
+              label: "Service Providers",
+              href: "/dashboard/admin/verifications/service-providers",
+            },
+            {
+              label: "Investor Finance",
+              href: "/dashboard/admin/verifications/investors",
+            },
+          ],
+        },
+        {
+          label: "Commerce & Finance",
+          href: "/dashboard/admin/commerce",
+          icon: DollarSign,
+          children: [
+            {
+              label: "Commerce Overview",
+              href: "/dashboard/admin/commerce",
+            },
+            {
+              label: "Engagements",
+              href: "/dashboard/admin/engagements",
+            },
+            {
+              label: "Disputes",
+              href: "/dashboard/admin/disputes",
+            },
+            {
+              label: "Transactions Ledger",
+              href: "/dashboard/admin/transactions",
+            },
+            {
+              label: "Payout Requests",
+              href: "/dashboard/admin/payouts",
+            },
+          ],
+        },
+        {
+          label: "Marketplace & Content",
+          href: "/dashboard/admin/marketplace",
+          icon: Store,
+          children: [
+            {
+              label: "Overview",
+              href: "/dashboard/admin/marketplace",
+            },
+            {
+              label: "Services",
+              href: "/dashboard/admin/marketplace/services",
+            },
+            {
+              label: "Creator Offers",
+              href: "/dashboard/admin/marketplace/creator-offers",
+            },
+            {
+              label: "Reviews",
+              href: "/dashboard/admin/reviews",
+            },
+          ],
+        },
+        {
+          label: "Reports & Abuse",
+          href: "/dashboard/admin/reports",
+          icon: ShieldAlert,
+        },
+        {
+          label: "Audit Logs",
+          href: "/dashboard/admin/audit",
+          icon: FileText,
+        },
+        {
+          label: "Governance",
+          href: "/dashboard/admin/governance",
+          icon: ShieldCheck,
+        },
+      ],
+    },
+  ],
+
+  [UserRole.SUPERADMIN]: [
+    {
+      title: "Dashboard",
+      items: [
+        {
+          label: "Admin Overview",
+          href: "/dashboard/admin",
+          icon: LayoutDashboard,
+        },
+        {
+          label: "Users",
+          href: "/dashboard/admin/users",
+          icon: Users,
+        },
+        {
+          label: "Verifications",
+          href: "/dashboard/admin/verifications",
+          icon: ShieldCheck,
+          children: [
+            {
+              label: "Hub Overview",
+              href: "/dashboard/admin/verifications",
+            },
+            {
+              label: "Identity / KYC",
+              href: "/dashboard/admin/verifications/kyc",
+            },
+            {
+              label: "Service Providers",
+              href: "/dashboard/admin/verifications/service-providers",
+            },
+            {
+              label: "Investor Finance",
+              href: "/dashboard/admin/verifications/investors",
+            },
+          ],
+        },
+        {
+          label: "Commerce & Finance",
+          href: "/dashboard/admin/commerce",
+          icon: DollarSign,
+          children: [
+            {
+              label: "Summary",
+              href: "/dashboard/admin/commerce",
+            },
+            {
+              label: "Escrows & Milestones",
+              href: "/dashboard/admin/escrows",
+            },
+            {
+              label: "Disputes Hub",
+              href: "/dashboard/admin/disputes",
+            },
+            {
+              label: "Transactions Ledger",
+              href: "/dashboard/admin/transactions",
+            },
+            {
+              label: "Payout Requests",
+              href: "/dashboard/admin/payouts",
+            },
+            {
+              label: "Commission & Tiers",
+              href: "/dashboard/admin/commission",
+            },
+            {
+              label: "Engagements & Orders",
+              href: "/dashboard/admin/engagements",
+            },
+          ],
+        },
+        {
+          label: "Marketplace Moderation",
+          href: "/dashboard/admin/marketplace",
+          icon: Store,
+          children: [
+            {
+              label: "Moderation Summary",
+              href: "/dashboard/admin/marketplace",
+            },
+            {
+              label: "Services",
+              href: "/dashboard/admin/marketplace/services",
+            },
+            {
+              label: "Creator Offers",
+              href: "/dashboard/admin/marketplace/creator-offers",
+            },
+            {
+              label: "Reviews",
+              href: "/dashboard/admin/reviews",
+            },
+          ],
+        },
+        {
+          label: "Reports & Abuse",
+          href: "/dashboard/admin/reports",
+          icon: ShieldAlert,
+        },
+        {
+          label: "Audit Logs",
+          href: "/dashboard/admin/audit",
+          icon: FileText,
+        },
+        {
+          label: "Governance",
+          href: "/dashboard/admin/governance",
           icon: ShieldCheck,
         },
         {
-          label: "Dispute Resolution",
-          href: "/dashboard/admin/disputes",
-          icon: Gavel,
+          label: "Security & Compliance",
+          href: "/dashboard/admin/security",
+          icon: Lock,
+          children: [
+            {
+              label: "Security Overview",
+              href: "/dashboard/admin/security",
+            },
+            {
+              label: "Security Events",
+              href: "/dashboard/admin/security/events",
+            },
+            {
+              label: "Privacy Requests",
+              href: "/dashboard/admin/privacy/requests",
+            },
+            {
+              label: "Compliance Cases",
+              href: "/dashboard/admin/compliance",
+            },
+            {
+              label: "Data Governance",
+              href: "/dashboard/admin/data-governance",
+            },
+          ],
+        },
+        {
+          label: "System & Operations",
+          href: "/dashboard/admin/system",
+          icon: Settings,
+          children: [
+            {
+              label: "Overview",
+              href: "/dashboard/admin/system",
+            },
+            {
+              label: "Health",
+              href: "/dashboard/admin/system/health",
+            },
+            {
+              label: "Jobs",
+              href: "/dashboard/admin/system/jobs",
+            },
+            {
+              label: "Notifications",
+              href: "/dashboard/admin/system/notifications",
+            },
+            {
+              label: "Queues",
+              href: "/dashboard/admin/system/queues",
+            },
+            {
+              label: "Platform Controls",
+              href: "/dashboard/admin/system/controls",
+            },
+          ],
         },
       ],
     },

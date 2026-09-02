@@ -35,7 +35,7 @@ export function deriveCapTable(snapshot: CapTableSnapshotResponse | null): CapTa
   // Non-equity instruments (e.g. SAFE, Note) do not count toward issued equity
   const equityGrants = grants.filter((g) => isEquityShareClass(g.shareClass));
   const totalIssued = equityGrants.reduce((s, g) => s + (g.sharesGranted ?? 0), 0);
-  const denom = totalIssued > 0 ? totalIssued : 1;
+  const denom = totalShares > 0 ? totalShares : (totalIssued > 0 ? totalIssued : 1);
 
   const holders: DerivedHolder[] = grants.map((g) => {
     const isEq = isEquityShareClass(g.shareClass);

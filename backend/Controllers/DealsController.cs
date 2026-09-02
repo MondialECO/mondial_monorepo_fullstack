@@ -7042,6 +7042,9 @@ namespace WebApp.Controllers
                     await _context.Companies.ReplaceOneAsync(c => c.Id == targetCompany.Id, targetCompany);
                 }
 
+                // Bootstrap creator project package into company Phase 3 concept & active pointer
+                await _companyService.BootstrapCompanyFromCreatorProjectAsync(targetCompany.Id, deal.IdeaId ?? "", deal.Id, false);
+
                 act.CompanyId = targetCompany.Id;
                 act.CompanyName = targetCompany.CompanyName;
                 deal.CompanyId = targetCompany.Id;
@@ -7399,20 +7402,39 @@ namespace WebApp.Controllers
             company.EsopVestingMonths = capTable.EsopVestingMonths;
 
             var entries = new List<EquityEntryDto>();
+            bool hasEsopEntry = false;
+            bool hasInvestorReserveEntry = false;
 
             foreach (var entry in capTable.Entries)
             {
+                string entryType = "investor";
+                if (entry.IsCreator || entry.IsFounder)
+                {
+                    entryType = "founder";
+                }
+                else if (entry.IsEsop || string.Equals(entry.StakeholderType, "esop", StringComparison.OrdinalIgnoreCase) || entry.DisplayName?.IndexOf("ESOP", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    entryType = "esop";
+                    hasEsopEntry = true;
+                }
+                else if (entry.IsInvestorReserve || string.Equals(entry.StakeholderType, "investor_reserve", StringComparison.OrdinalIgnoreCase) || entry.DisplayName?.IndexOf("Investor Reserve", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    entryType = "investor";
+                    hasInvestorReserveEntry = true;
+                }
+
                 entries.Add(new EquityEntryDto
                 {
                     StakeholderName = entry.DisplayName,
-                    Type = entry.IsCreator || entry.IsFounder ? "founder" : "investor",
+                    Type = entryType,
                     SharesOwned = entry.SharesGranted,
-                    VestingMonths = entry.IsCreator ? (deal.EquityTerms?.VestingMonths ?? 48) : null,
+                    VestingMonths = entry.IsCreator ? (deal.EquityTerms?.VestingMonths ?? 48) : (entry.VestingMonths > 0 ? entry.VestingMonths : null),
                     InvestmentAmount = null
                 });
             }
 
-            if (capTable.EsopPoolPercent > 0)
+            // Only append fallback ESOP row if the draft has an ESOP percent but no explicit ESOP entry in Entries
+            if (capTable.EsopPoolPercent > 0 && !hasEsopEntry)
             {
                 entries.Add(new EquityEntryDto
                 {
@@ -7423,7 +7445,8 @@ namespace WebApp.Controllers
                 });
             }
 
-            if (capTable.InvestorReservePercent > 0)
+            // Only append fallback Investor Reserve row if the draft has a Reserve percent but no explicit Reserve entry in Entries
+            if (capTable.InvestorReservePercent > 0 && !hasInvestorReserveEntry)
             {
                 entries.Add(new EquityEntryDto
                 {

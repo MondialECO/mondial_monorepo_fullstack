@@ -233,6 +233,12 @@ export function useEntrepreneurProgressState() {
         return;
       }
 
+      // Only perform automatic backend sync when in entrepreneur dashboard context
+      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/dashboard/entrepreneur')) {
+        if (!cancelled) setIsLoading(false);
+        return;
+      }
+
       // Check URL query param ?companyId=... for initial deep-link activation
       let urlTargetCompanyId: string | null = null;
       if (typeof window !== 'undefined') {
@@ -344,6 +350,7 @@ export function useEntrepreneurProgressState() {
         advanced = true;
         return {
           ...prev,
+          currentPhase: Math.max(prev.currentPhase, targetPhase) as PhaseNumber,
           completedSteps: newSteps,
           currentStep: nextStep,
         };

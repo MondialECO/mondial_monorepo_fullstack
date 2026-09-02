@@ -1,7 +1,7 @@
 'use client';
 
 import { useAuth } from '@/app/_providers/AuthProvider';
-import { ROLE_DASHBOARD_ROUTES, UserRole } from '@/lib/roles';
+import { getRoleDashboardRoute, ROLE_DASHBOARD_ROUTES, UserRole } from '@/lib/roles';
 import { useRouter } from 'next/navigation';
 import { ChevronDown } from 'lucide-react';
 import { useState } from 'react';
@@ -36,7 +36,7 @@ export default function RoleSwitcher() {
     setIsOpen(false);
 
     // Redirect to the new role's dashboard
-    router.push(ROLE_DASHBOARD_ROUTES[newRole]);
+    router.push(getRoleDashboardRoute(newRole));
 
     // Refresh the page to update auth context
     window.location.reload();

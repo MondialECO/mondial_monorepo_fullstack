@@ -34,6 +34,7 @@ export default function DealCompletionPanel({
 
   const closed = isClosed(deal);
   const { bothSigned } = deriveSignatures(deal, activity);
+  const lifecycleDesynced = bothSigned && deal.status !== "signed" && !closed;
 
   // Nothing to show until both parties have signed (signatures panel covers
   // the earlier stages).
@@ -55,6 +56,22 @@ export default function DealCompletionPanel({
               {closedAt ? ` Completed ${formatDateTime(closedAt)}.` : ""}
             </p>
           </div>
+        </div>
+      </DealCardBase>
+    );
+  }
+
+  if (lifecycleDesynced) {
+    return (
+      <DealCardBase>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">Deal completion</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Finalizing signature status… Close will become available when the signed deal status is confirmed.
+            </p>
+          </div>
+          <Badge variant="warning">Finalizing</Badge>
         </div>
       </DealCardBase>
     );

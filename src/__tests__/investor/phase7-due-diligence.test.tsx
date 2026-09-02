@@ -351,4 +351,20 @@ describe("Investor Due Diligence Workflow (Phase 7)", () => {
     expect(screen.getByText(/Proceed to Offer/i)).toBeInTheDocument();
     expect(screen.getByText(/Continue Reviewing/i)).toBeInTheDocument();
   });
+
+  it("updateDocumentReviewStatus and getDiligenceSummary use correct relative paths without duplicate /api", async () => {
+    vi.restoreAllMocks();
+    const axiosInstance = (await import("@/lib/axios")).default;
+    const putSpy = vi.spyOn(axiosInstance, "put").mockResolvedValueOnce({ data: { documentId: "doc-1", status: "reviewed" } });
+    const getSpy = vi.spyOn(axiosInstance, "get").mockResolvedValueOnce({ data: { companyId: "comp-123" } });
+
+    await diligenceApi.updateDocumentReviewStatus("comp-123", "doc-1", "reviewed");
+    expect(putSpy).toHaveBeenCalledWith(
+      "/investor/companies/comp-123/diligence/documents/doc-1/review",
+      { status: "reviewed" }
+    );
+
+    await diligenceApi.getDiligenceSummary("comp-123");
+    expect(getSpy).toHaveBeenCalledWith("/investor/companies/comp-123/diligence");
+  });
 });

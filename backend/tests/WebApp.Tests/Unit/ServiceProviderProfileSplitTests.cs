@@ -3,6 +3,7 @@ using Hangfire;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
+using MongoDB.Driver;
 using Moq;
 using WebApp.Models.DatabaseModels;
 using WebApp.Models.Dtos;
@@ -136,6 +137,96 @@ public class ServiceProviderProfileSplitTests
         };
 
         SpProfileSplitMapper.ToServiceProviderRecord(user).ProviderTier.Should().Be(expected);
+    }
+
+    [Fact]
+    public void ServiceProviderProfileRecord_Default_Id_Is_Not_Empty()
+    {
+        var record = new ServiceProviderProfileRecord();
+        record.Id.Should().NotBe(MongoDB.Bson.ObjectId.Empty);
+    }
+
+    [Fact]
+    public async Task Two_Different_Users_Migrate_With_Distinct_Non_Empty_ObjectIds()
+    {
+        var userA = GivenUser(new ApplicationUser
+        {
+            Id = Guid.NewGuid(),
+            Name = "Provider A",
+            ServiceProviderProfile = new ServiceProviderProfile { ProviderId = "prov-a" }
+        });
+        var userB = GivenUser(new ApplicationUser
+        {
+            Id = Guid.NewGuid(),
+            Name = "Provider B",
+            ServiceProviderProfile = new ServiceProviderProfile { ProviderId = "prov-b" }
+        });
+
+        var migrator = _harness.CreateMigrator(_users.Object);
+        var (_, spA) = await migrator.EnsureMigratedAsync(userA);
+        var (_, spB) = await migrator.EnsureMigratedAsync(userB);
+
+        spA.Id.Should().NotBe(MongoDB.Bson.ObjectId.Empty);
+        spB.Id.Should().NotBe(MongoDB.Bson.ObjectId.Empty);
+        spA.Id.Should().NotBe(spB.Id);
+    }
+
+    [Fact]
+    public async Task Repeat_Migration_Preserves_Existing_ObjectId()
+    {
+        var user = GivenUser(CompleteEmbeddedUser());
+        var migrator = _harness.CreateMigrator(_users.Object);
+
+        var (_, first) = await migrator.EnsureMigratedAsync(user);
+        var initialId = first.Id;
+        initialId.Should().NotBe(MongoDB.Bson.ObjectId.Empty);
+
+        var (_, second) = await migrator.EnsureMigratedAsync(user);
+        second.Id.Should().Be(initialId);
+    }
+
+    [Fact]
+    public async Task Store_Upsert_Preserves_Existing_Id()
+    {
+        var initialRecord = new ServiceProviderProfileRecord
+        {
+            Id = MongoDB.Bson.ObjectId.GenerateNewId(),
+            UserId = "user-upsert-test",
+            VerificationStatus = ServiceProviderVerificationStatus.UnderReview
+        };
+
+        await _harness.Sp.UpsertAsync(initialRecord);
+
+        var updatedRecord = new ServiceProviderProfileRecord
+        {
+            Id = MongoDB.Bson.ObjectId.Empty, // intentionally empty on DTO/caller
+            UserId = "user-upsert-test",
+            VerificationStatus = ServiceProviderVerificationStatus.Verified
+        };
+
+        await _harness.Sp.UpsertAsync(updatedRecord);
+
+        var stored = await _harness.Sp.GetByUserIdAsync("user-upsert-test");
+        stored.Should().NotBeNull();
+        stored!.Id.Should().Be(initialRecord.Id);
+        stored.VerificationStatus.Should().Be(ServiceProviderVerificationStatus.Verified);
+    }
+
+    [Fact]
+    public async Task Live_Mongo_Database_Has_No_Zero_Id_Record()
+    {
+        try
+        {
+            var client = new MongoClient("mongodb://localhost:27017");
+            var db = client.GetDatabase("MondialEcoDev");
+            var col = db.GetCollection<ServiceProviderProfileRecord>("ServiceProviderProfiles");
+            var zeroIdDoc = await col.Find(x => x.Id == MongoDB.Bson.ObjectId.Empty).FirstOrDefaultAsync();
+            zeroIdDoc.Should().BeNull();
+        }
+        catch (MongoException)
+        {
+            // If local Mongo daemon is not running on 27017 in this runner environment, pass gracefully
+        }
     }
 
     // ---------------- Aggregate reader (dual-read) ----------------

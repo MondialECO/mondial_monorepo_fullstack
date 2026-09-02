@@ -4,7 +4,8 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/_providers/AuthProvider';
 import {
-  ROLE_DASHBOARD_ROUTES,
+  getRoleDashboardRoute,
+  resolvePostLoginRedirect,
 } from '@/lib/roles';
 
 export default function DashboardPage() {
@@ -19,13 +20,8 @@ export default function DashboardPage() {
       return;
     }
 
-    const dashboardRoute = ROLE_DASHBOARD_ROUTES[user.role];
-    if (!dashboardRoute) {
-      router.replace('/');
-      return;
-    }
-
-    router.replace(dashboardRoute);
+    const targetRoute = resolvePostLoginRedirect(user);
+    router.replace(targetRoute);
   }, [isLoading, user, router]);
 
   return (

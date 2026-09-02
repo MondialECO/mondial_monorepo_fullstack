@@ -305,6 +305,41 @@ public class DataRoomAccessRecord
     public DateTime ExpiresAt { get; set; }
 }
 
+public class DataRoomAccessStatusResponse
+{
+    public bool NdaRequired { get; set; }
+    public bool NdaAccepted { get; set; }
+    public DateTime? NdaAcceptedAt { get; set; }
+    public string RequestStatus { get; set; } = "none";
+    public string? RequestId { get; set; }
+    public bool AccessGranted { get; set; }
+    public string? AccessLevel { get; set; }
+    public DateTime? ExpiresAt { get; set; }
+    public bool IsRevoked { get; set; }
+    public bool IsExpired { get; set; }
+    public bool IsDirectInvite { get; set; }
+    public int TotalDocuments { get; set; }
+    public List<DataRoomDocumentResponse> Documents { get; set; } = new();
+}
+
+public class DataRoomAccessRequestCreateDto
+{
+    public string? RequestedAccessLevel { get; set; } = "view_only";
+}
+
+public class DataRoomAccessApprovalDto
+{
+    public string AccessLevel { get; set; } = "view_only";
+    public int DaysValid { get; set; } = 30;
+    public string? DecisionNote { get; set; }
+}
+
+public class DataRoomAccessDeclineDto
+{
+    public string? DecisionNote { get; set; }
+}
+
+
 // ============ PHASE 7: AI REVIEW ============
 
 public class AiReviewResponse
@@ -943,7 +978,7 @@ public class OpportunityCardResponse
     public string FundingRoundType { get; set; }
     public double? FundingAskAmount { get; set; }
     public double? Valuation { get; set; }
-    public int MatchScore { get; set; }
+    public int? MatchScore { get; set; }
     public string MatchStatus { get; set; }
     public bool IsInvestorReady { get; set; }
     public DateTime LastUpdatedAt { get; set; }
@@ -996,10 +1031,10 @@ public class OpportunityDetailResponse
     public double? Valuation { get; set; }
     public int TrustScore { get; set; }
     public bool IsInvestorReady { get; set; }
-    public int MatchScore { get; set; }
+    public int? MatchScore { get; set; }
     public string MatchStatus { get; set; }
-    public string MatchRationale { get; set; }
-    public OpportunityScoreBreakdownDto ScoreBreakdown { get; set; }
+    public string? MatchRationale { get; set; }
+    public OpportunityScoreBreakdownDto? ScoreBreakdown { get; set; }
     public bool NdaRequired { get; set; }
     public bool NdaAccepted { get; set; }
     public DateTime? NdaAcceptedAt { get; set; }

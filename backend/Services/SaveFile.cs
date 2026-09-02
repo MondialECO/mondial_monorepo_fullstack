@@ -113,6 +113,19 @@ namespace WebApp.Services
 
             // Unique file name
             var uniqueFileName = $"{Guid.NewGuid()}{extension}";
+            
+            // Sensitive KYC documents are routed to private storage outside wwwroot
+            if (string.Equals(folderName, "identity/documents", StringComparison.OrdinalIgnoreCase))
+            {
+                var privatePath = Path.Combine("storage", "private", "kyc", uniqueFileName);
+                Directory.CreateDirectory(Path.GetDirectoryName(privatePath)!);
+                using (var stream = new FileStream(privatePath, FileMode.Create))
+                {
+                    await file.CopyToAsync(stream);
+                }
+                return $"/storage/private/kyc/{uniqueFileName}";
+            }
+
             var uploadPath = Path.Combine("wwwroot", "uploads", folderName, uniqueFileName);
 
             // Ensure directory exists

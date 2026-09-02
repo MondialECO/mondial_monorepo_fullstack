@@ -1,4 +1,4 @@
-﻿using System.Text.Json.Serialization;
+using System.Text.Json.Serialization;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
@@ -208,6 +208,19 @@ public class ServiceListing
     public List<GalleryImage> GalleryImages { get; set; } = new();
 
     public CatalogStatus Status { get; set; } = CatalogStatus.Draft;
+
+    [BsonIgnoreIfNull]
+    public bool IsModerationHidden { get; set; }
+
+    [BsonIgnoreIfNull]
+    public string? ModerationReason { get; set; }
+
+    [BsonIgnoreIfNull]
+    public string? ModeratedByAdminId { get; set; }
+
+    [BsonIgnoreIfNull]
+    public DateTime? ModeratedAt { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }

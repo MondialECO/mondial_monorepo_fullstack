@@ -121,4 +121,63 @@ describe('Phase 4 — Equity & Cap Table Domain Remediation', () => {
     expect(noteHolder).toBeDefined();
     expect(noteHolder?.ownershipPct).toBe(0);
   });
+
+  it('Phase4_11MAllocationsAgainst10MTotalShares_Displays110PercentWithoutMasking', () => {
+    const snapshotWithOverflow: CapTableSnapshotResponse = {
+      companyId: 'comp-overflow',
+      version: 1,
+      totalShares: 10_000_000,
+      esopPoolPercent: 5,
+      esopVestingMonths: 48,
+      exitWaterfallReviewed: false,
+      recordedAt: new Date().toISOString(),
+      grants: [
+        { stakeholderName: 'Creator', stakeholderType: 'founder', shareClass: 'common', sharesGranted: 3_000_000 },
+        { stakeholderName: 'Co founder', stakeholderType: 'founder', shareClass: 'common', sharesGranted: 6_000_000 },
+        { stakeholderName: 'Employee Option Pool (ESOP)', stakeholderType: 'esop', shareClass: 'common', sharesGranted: 500_000 },
+        { stakeholderName: 'Future Investor Reserve', stakeholderType: 'investor', shareClass: 'preferred', sharesGranted: 500_000 },
+        { stakeholderName: 'ESOP Pool', stakeholderType: 'esop', shareClass: 'common', sharesGranted: 500_000 },
+        { stakeholderName: 'Investor Reserve', stakeholderType: 'investor', shareClass: 'preferred', sharesGranted: 500_000 },
+      ],
+    };
+
+    const derived = deriveCapTable(snapshotWithOverflow);
+    expect(derived.totalIssued).toBe(11_000_000);
+    expect(derived.totalShares).toBe(10_000_000);
+
+    const totalPct = derived.founderPct + derived.esopPct + derived.investorPct;
+    expect(totalPct).toBe(110);
+    expect(derived.founderPct).toBe(90);
+    expect(derived.esopPct).toBe(10);
+    expect(derived.investorPct).toBe(10);
+  });
+
+  it('Phase4_CoFounderFormation_10MAllocationsAgainst10M_ReconcilesToExact100Percent', () => {
+    const snapshotReconciled: CapTableSnapshotResponse = {
+      companyId: 'comp-reconciled',
+      version: 2,
+      totalShares: 10_000_000,
+      esopPoolPercent: 5,
+      esopVestingMonths: 48,
+      exitWaterfallReviewed: true,
+      recordedAt: new Date().toISOString(),
+      grants: [
+        { stakeholderName: 'Creator', stakeholderType: 'founder', shareClass: 'common', sharesGranted: 3_000_000 },
+        { stakeholderName: 'Co founder', stakeholderType: 'founder', shareClass: 'common', sharesGranted: 6_000_000 },
+        { stakeholderName: 'Employee Option Pool (ESOP)', stakeholderType: 'esop', shareClass: 'common', sharesGranted: 500_000 },
+        { stakeholderName: 'Future Investor Reserve', stakeholderType: 'investor', shareClass: 'preferred', sharesGranted: 500_000 },
+      ],
+    };
+
+    const derived = deriveCapTable(snapshotReconciled);
+    expect(derived.totalIssued).toBe(10_000_000);
+    expect(derived.totalShares).toBe(10_000_000);
+
+    expect(derived.founderPct).toBe(90); // 30% creator + 60% co-founder
+    expect(derived.esopPct).toBe(5);
+    expect(derived.investorPct).toBe(5);
+
+    const totalPct = derived.founderPct + derived.esopPct + derived.investorPct;
+    expect(totalPct).toBe(100);
+  });
 });

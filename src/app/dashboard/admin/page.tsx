@@ -14,14 +14,14 @@ export default function AdminDashboard() {
       ]}
       quickActions={[
         {
-          label: "User and role governance",
-          description: "Review role assignments, permissions, and suspicious activity logs.",
-          href: "/dashboard/admin",
+          label: "User & Multi-Role Governance",
+          description: "Review user directory, multi-role configurations, and account security.",
+          href: "/dashboard/admin/users",
         },
         {
-          label: "Compliance and trust queue",
-          description: "Process verification escalations and keep marketplace trust healthy.",
-          href: "/dashboard/admin",
+          label: "Unified Verification Hub",
+          description: "Process pending KYC, Service Provider remediations, and Investor Finance queues.",
+          href: "/dashboard/admin/verifications",
         },
       ]}
       checklist={[

@@ -98,12 +98,21 @@ export async function downloadDataRoomDocument(
 }
 
 /**
- * Records a download engagement event for a data-room document. The backend
- * binds the investor identity from the auth token (never the body — IDOR-safe)
- * and applies the same access policy as the real download, so this can only
- * succeed for a document the caller could actually download. Fire-and-forget
- * from the caller's perspective: a tracking failure must never break the
- * download UX. Feeds the entrepreneur's data-room analytics.
+ * Fetches a data-room document for inline preview/viewing.
+ */
+export async function viewDataRoomDocument(
+  companyId: string,
+  documentId: string
+): Promise<Blob> {
+  const res = await api.get<Blob>(
+    `/companies/${companyId}/dataroom/documents/${documentId}?preview=true`,
+    { responseType: "blob" }
+  );
+  return res.data;
+}
+
+/**
+ * Records a download engagement event for a data-room document.
  */
 export async function trackDocumentDownload(
   companyId: string,
@@ -114,3 +123,17 @@ export async function trackDocumentDownload(
     { documentId }
   );
 }
+
+/**
+ * Records a view/preview engagement event for a data-room document.
+ */
+export async function trackDocumentView(
+  companyId: string,
+  documentId: string
+): Promise<void> {
+  await api.post(
+    `/companies/${companyId}/dataroom/track-view`,
+    { documentId }
+  );
+}
+

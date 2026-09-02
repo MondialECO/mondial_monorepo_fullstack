@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Users, Shield, Lock, CheckCircle, Plus, Trash2, Zap, ArrowLeft, ArrowRight, UserCircle2 } from 'lucide-react';
+import { Users, Shield, Lock, CheckCircle, Plus, Trash2, Zap, ArrowLeft, ArrowRight, UserCircle2, Lightbulb, Loader2 } from 'lucide-react';
 import { useEntrepreneurProgress } from '@/hooks/useEntrepreneurProgress';
 import entrepreneurApi from '@/lib/api-entrepreneur';
 import { RouteGuard } from '@/components/entrepreneur/RouteGuard';
@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Phase2Data } from '@/types/entrepreneur';
 
 const labelClass = 'block text-sm font-medium text-foreground uppercase tracking-wide mb-2';
-const inputClass = 'h-auto bg-popover border-border rounded-lg px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground';
+const inputClass = 'h-auto bg-popover border-border rounded-lg px-4 py-3.5 text-sm text-foreground placeholder:text-muted-foreground';
 
 const NATIONALITIES = ['United States', 'Canada', 'United Kingdom', 'France', 'Germany', 'Spain', 'Italy', 'Netherlands', 'Switzerland', 'Other'];
 const ROLES = ['CEO', 'CFO', 'COO', 'CMO', 'CTO', 'Founder', 'General Manager', 'Director', 'Manager', 'Shareholder'];
@@ -153,28 +153,52 @@ function Phase2Step3PageContent() {
     }
   };
 
-  if (!progress || isLoading) return null;
+  if (!progress || isLoading) {
+    return (
+      <div className="mx-auto w-full max-w-[1072px] space-y-6">
+        <div className="flex flex-col gap-8 bg-card border-2 border-background rounded-[20px] shadow-sm p-12 items-center justify-center min-h-[400px]">
+          <div className="flex flex-col items-center gap-3 text-center">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-base font-medium text-foreground">Loading ownership records...</p>
+            <p className="text-sm text-muted-foreground">Fetching beneficial owners and identity checks.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="w-full  space-y-6">
-      {/* Card 1: Ownership */}
+    <div className="mx-auto w-full max-w-[1072px] space-y-6">
+      {/* Main Card */}
       <div className="flex flex-col gap-8 bg-card border-2 border-background rounded-[20px] shadow-sm">
-        {/* Header */}
-        <div className="border-b border-border p-6">
-          <h1 className="text-2xl sm:text-3xl font-medium text-foreground leading-tight">Ownership &amp; KYC</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Identify significant owners and verify key representatives to comply with international regulations.
-          </p>
+        {/* Header Section */}
+        <div className="flex flex-col gap-4 border-b border-border p-6 md:flex-row md:items-end md:gap-8">
+          <div className="min-w-0 flex-1 space-y-2">
+            <h1 className="text-2xl sm:text-3xl font-medium text-foreground leading-tight">Ownership &amp; KYC</h1>
+            <p className="text-sm text-muted-foreground">
+              Identify significant owners and verify key representatives to comply with international regulations.
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-[18px]">
+            <div className="flex flex-col items-end gap-1 text-right">
+              <p className="text-[13px] text-muted-foreground">PROGRESS</p>
+              <p className="text-base font-medium text-foreground">
+                {validOwners().length} Owner{validOwners().length !== 1 ? 's' : ''} Added
+              </p>
+            </div>
+            <div className="flex size-12 items-center justify-center rounded-full border border-border bg-secondary">
+              <Users className="size-6 text-primary" />
+            </div>
+          </div>
         </div>
 
-        {/* Beneficial Ownership */}
-        <div className="px-6 pb-2">
-          <div className="mb-6 flex items-start justify-between gap-4">
+        {/* Beneficial Ownership Section */}
+        <div className="px-6 space-y-6">
+          <div className="flex items-start justify-between gap-4">
             <div>
               <h3 className="text-lg font-semibold text-foreground">Beneficial Ownership</h3>
               <p className="text-sm text-muted-foreground">Identify beneficial owners and complete biometric identity verification.</p>
             </div>
-            <Users className="h-5 w-5 flex-shrink-0 text-primary" />
           </div>
 
           {/* Owner rows */}
@@ -231,7 +255,7 @@ function Phase2Step3PageContent() {
                 <button
                   onClick={() => handleRemoveOwner(index)}
                   aria-label="Remove owner"
-                  className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg border border-border text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
+                  className="flex h-[46px] w-12 flex-shrink-0 items-center justify-center rounded-lg border border-border text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
                 >
                   <Trash2 className="h-5 w-5" />
                 </button>
@@ -242,113 +266,147 @@ function Phase2Step3PageContent() {
           <Button
             onClick={handleAddShareholder}
             variant="outline"
-            className="mt-4 gap-2 border-primary text-primary hover:bg-primary/5"
+            className="gap-2 border-primary text-primary hover:bg-primary/5"
           >
             <Plus className="h-4 w-4" />
             Add Shareholder
           </Button>
         </div>
-      </div>
 
-      {/* Card 2: KYC + Security */}
-      <div className="grid grid-cols-1 gap-6 rounded-[20px] border-2 border-background bg-card p-6 shadow-sm md:grid-cols-2">
-        {/* Representative KYC */}
-        <div className="space-y-4">
-          <div>
-            <h3 className="text-lg font-semibold text-foreground">Representative KYC</h3>
-            <p className="text-sm text-muted-foreground">Verify owners and conduct biometric checks for KYC.</p>
+        {/* Representative KYC & Security Subgrid */}
+        <div className="grid grid-cols-1 gap-6 px-6 md:grid-cols-2">
+          {/* Representative KYC */}
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-base font-semibold text-foreground">Representative KYC</h3>
+              <p className="text-xs text-muted-foreground">Verify owners and conduct biometric checks for KYC.</p>
+            </div>
+            <div className="space-y-4 rounded-2xl border border-border bg-popover p-6">
+              <div className="flex items-center gap-3 border-b border-border pb-4">
+                <div className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-primary bg-primary/10">
+                  <UserCircle2 className="h-6 w-6 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-foreground">Primary Applicant</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {validOwners()[0]?.name || 'Company Representative'}
+                  </p>
+                </div>
+                <div className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1">
+                  <p className="text-xs font-semibold text-primary">NOT STARTED</p>
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Complete the biometric identity verification using your mobile device or webcam.
+              </p>
+              <Button className="w-full gap-2">
+                <Zap className="h-4 w-4" />
+                Start Identity Verification
+              </Button>
+            </div>
           </div>
-          <div className="space-y-4 rounded-2xl border border-border bg-popover p-6">
-            <div className="flex items-center gap-3 border-b border-border pb-4">
-              <div className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-primary bg-primary/10">
-                <UserCircle2 className="h-6 w-6 text-primary" />
+
+          {/* Security & Privacy */}
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-base font-semibold text-foreground">Security &amp; Privacy</h3>
+              <p className="text-xs text-muted-foreground">Verify ownership and complete KYC for better security.</p>
+            </div>
+            <div className="space-y-4 rounded-2xl border border-border bg-popover p-6">
+              <div className="flex items-center gap-3 border-b border-border pb-4">
+                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10">
+                  <Shield className="h-6 w-6 text-primary" />
+                </div>
+                <p className="text-sm font-semibold text-foreground">Regular Compliance</p>
               </div>
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-foreground">Primary Applicant</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  {validOwners()[0]?.name || 'Company Representative'}
-                </p>
-              </div>
-              <div className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1">
-                <p className="text-xs font-semibold text-primary">NOT STARTED</p>
+              <p className="text-sm text-muted-foreground">
+                Your personal data is encrypted and handled by our certified KYC partner to ensure strict regulatory compliance (AML/CFT).
+              </p>
+              <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+                <div className="flex items-center gap-1.5">
+                  <Lock className="h-4 w-4" />
+                  ISO 27001
+                </div>
+                <div className="h-4 w-px bg-border" />
+                <div className="flex items-center gap-1.5">
+                  <Shield className="h-4 w-4" />
+                  GDPR
+                </div>
+                <div className="h-4 w-px bg-border" />
+                <div className="flex items-center gap-1.5">
+                  <CheckCircle className="h-4 w-4" />
+                  SOC2
+                </div>
               </div>
             </div>
-            <p className="text-sm text-muted-foreground">
-              Complete the biometric identity verification using your mobile device or webcam.
-            </p>
-            <Button className="w-full gap-2">
-              <Zap className="h-4 w-4" />
-              Start Identity Verification
+          </div>
+        </div>
+
+        {validationError && (
+          <div className="px-6">
+            <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
+              <ArrowRight className="h-4 w-4 flex-shrink-0" />
+              {validationError}
+            </div>
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="flex items-center justify-between border-t-2 border-background p-6">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => router.push('/dashboard/entrepreneur/phase-2/step-2')}
+            className="border-border px-6 py-3 font-medium text-foreground hover:bg-muted"
+          >
+            Back
+          </Button>
+          <div className="flex items-center gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleSaveDraftClick}
+              disabled={isSaving}
+              className="border-primary px-6 py-3 font-medium text-primary hover:bg-primary/5"
+            >
+              {isSaving ? 'Saving…' : 'Save Draft'}
+            </Button>
+            <Button
+              type="button"
+              onClick={handleNextClick}
+              disabled={isValidating}
+              className="gap-2 px-6 py-3"
+            >
+              {isValidating ? 'Validating…' : 'Next'}
+              {!isValidating && <ArrowRight className="h-5 w-5" />}
             </Button>
           </div>
         </div>
+      </div>
 
-        {/* Security & Privacy */}
-        <div className="space-y-4">
-          <div>
-            <h3 className="text-lg font-semibold text-foreground">Security &amp; Privacy</h3>
-            <p className="text-sm text-muted-foreground">Verify ownership and complete KYC for better security.</p>
-          </div>
-          <div className="space-y-4 rounded-2xl border border-border bg-popover p-6">
-            <div className="flex items-center gap-3 border-b border-border pb-4">
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10">
-                <Shield className="h-6 w-6 text-primary" />
-              </div>
-              <p className="text-sm font-semibold text-foreground">Regular Compliance</p>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Your personal data is encrypted and handled by our certified KYC partner to ensure strict regulatory compliance (AML/CFT).
-            </p>
-            <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-              <div className="flex items-center gap-1.5">
-                <Lock className="h-4 w-4" />
-                ISO 27001
-              </div>
-              <div className="h-4 w-px bg-border" />
-              <div className="flex items-center gap-1.5">
-                <Shield className="h-4 w-4" />
-                GDPR
-              </div>
-              <div className="h-4 w-px bg-border" />
-              <div className="flex items-center gap-1.5">
-                <CheckCircle className="h-4 w-4" />
-                SOC2
-              </div>
-            </div>
-          </div>
+      {/* Info Panel */}
+      <div className="flex gap-4 rounded-2xl border border-border bg-secondary p-6">
+        <Lightbulb className="h-6 w-6 flex-shrink-0 text-primary" />
+        <div className="space-y-1">
+          <p className="font-semibold text-foreground">Why need this information</p>
+          <p className="text-sm text-muted-foreground">
+            Beneficial ownership and identity verification are mandatory under international anti-money laundering (AML) and counter-terrorist financing (CTF) standards.
+          </p>
         </div>
       </div>
 
-      {validationError && (
-        <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
-          <ArrowRight className="h-4 w-4 flex-shrink-0" />
-          {validationError}
-        </div>
-      )}
-
-      {/* Footer */}
-      <div className="flex items-center justify-between border-t border-border pt-6">
-        <Button
-          variant="outline"
-          onClick={() => router.push('/dashboard/entrepreneur/phase-2/step-2')}
-          className="gap-2"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Document
-        </Button>
+      {/* Next Step Preview (locked) */}
+      <div className="flex items-center justify-between rounded-2xl border border-border bg-card p-6 opacity-60">
         <div className="flex items-center gap-4">
-          <button
-            onClick={handleSaveDraftClick}
-            disabled={isSaving}
-            className="text-sm font-medium text-muted-foreground transition hover:text-foreground"
-          >
-            {isSaving ? 'Saving…' : 'Save draft'}
-          </button>
-          <Button onClick={handleNextClick} disabled={isValidating} className="gap-2 px-6">
-            Continue
-            <ArrowRight className="h-4 w-4" />
-          </Button>
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted text-sm font-semibold text-muted-foreground">
+            4
+          </div>
+          <div>
+            <p className="font-semibold text-foreground">Compliance Review &amp; Certification</p>
+            <p className="text-sm text-muted-foreground">Final automated verification and certificate generation</p>
+          </div>
         </div>
+        <Lock className="h-5 w-5 text-muted-foreground" />
       </div>
     </div>
   );

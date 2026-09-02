@@ -177,14 +177,12 @@ namespace WebApp.Models.DatabaseModels
     {
         public VerificationStatus Status { get; set; } = VerificationStatus.Pending;
 
-        //public string SelfieImage { get; set; }
-
-        //public double? MatchScore { get; set; } // AI ready
+        public string? SelfieImage { get; set; }
 
         public DateTime? SubmittedAt { get; set; }
         public DateTime? VerifiedAt { get; set; }
 
-        public string RejectionReason { get; set; }
+        public string? RejectionReason { get; set; }
     }
 
     public enum VerificationStatus

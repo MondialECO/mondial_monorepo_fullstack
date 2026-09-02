@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -61,7 +61,7 @@ namespace WebApp.Controllers
         }
 
         [HttpGet("pending")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin,SuperAdmin")]
         public async Task<IActionResult> GetPendingIdeas()
         {
             var ideas = await _service.GetPendingIdeasAsync();
@@ -70,7 +70,7 @@ namespace WebApp.Controllers
 
 
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin,SuperAdmin")]
         public async Task<IActionResult> Delete(string id)
         {
             await _service.DeleteIdeaAsync(id);

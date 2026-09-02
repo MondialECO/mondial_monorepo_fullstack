@@ -260,10 +260,6 @@ public class PhaseValidator : IPhaseValidator
                 !double.IsFinite(company.PreMoneyValuation.Value) ||
                 company.PreMoneyValuation < Phase5Requirements.ValuationMin)
                 errors.Add($"Pre-money valuation must be >= {Phase5Requirements.ValuationMin}");
-            else if (company.FundingAskAmount.HasValue &&
-                double.IsFinite(company.FundingAskAmount.Value) &&
-                company.PreMoneyValuation.Value < company.FundingAskAmount.Value)
-                errors.Add("Pre-money valuation must be >= the raise amount");
 
             var isEquity = string.Equals(company.ShareType, "preferred", StringComparison.OrdinalIgnoreCase);
             if (isEquity)

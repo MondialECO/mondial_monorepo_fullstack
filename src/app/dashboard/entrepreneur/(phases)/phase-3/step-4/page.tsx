@@ -3,11 +3,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Bold,
-  Underline,
-  Italic,
-  List,
-  Quote,
   ChevronDown,
   Eye,
   HelpCircle,
@@ -31,32 +26,43 @@ import { Phase3Data } from '@/types/entrepreneur';
 const STAGES = ['Idea', 'MVP', 'Revenue', 'Growth'] as const;
 const BUSINESS_MODELS = ['B2B SaaS', 'B2C', 'Marketplace', 'Subscription', 'Transactional', 'Freemium', 'Other'];
 
-const ONE_LINER_MAX = 160;
-
 /**
  * Keyword-matched sector tags from the pitch + target market (mirrors the
  * backend's expectation of 1–3 tags). Falls back to the business model so the
  * backend's "min 1" rule is always satisfied.
  */
-function generateSectorTags(text: string, businessModel: string): string[] {
-  const t = text.toLowerCase();
+function generateSectorTags(text: string, businessModel: string, targetMarket?: string): string[] {
   const tags: string[] = [];
   const add = (tag: string) => {
-    if (!tags.includes(tag)) tags.push(tag);
+    const clean = tag.trim();
+    if (clean && !tags.some((t) => t.toLowerCase() === clean.toLowerCase())) {
+      tags.push(clean);
+    }
   };
+
+  if (targetMarket) {
+    const custom = targetMarket.split(/[,;\n]+/).map((s) => s.trim()).filter(Boolean);
+    for (const c of custom) {
+      if (c.length <= 40) add(c);
+    }
+  }
+
+  const t = text.toLowerCase();
   if (/fintech|finance|payment|banking/.test(t)) add('FinTech');
   if (/saas|software|platform/.test(t)) add('SaaS');
   if (/b2b|business|enterprise/.test(t)) add('B2B');
   if (/\bai\b|machine learning|ml\b/.test(t)) add('AI');
   if (/marketplace/.test(t)) add('Marketplace');
-  if (tags.length === 0 && businessModel) add(businessModel);
-  if (tags.length === 0) add('Other');
+
+  if (tags.length === 0 && businessModel) add(businessModel.replace(/_/g, ' '));
+  if (tags.length === 0) add('General');
+
   return tags.slice(0, 3);
 }
 
 function Phase3ConceptOverviewClient() {
   const router = useRouter();
-  const { progress, savePhaseData, moveToNextStep, getPhaseData, applyBackendResponse, currentPhase } =
+  const { progress, activeCompanyId, savePhaseData, moveToNextStep, getPhaseData, applyBackendResponse, currentPhase } =
     useEntrepreneurProgress();
 
   const [elevatorPitch, setElevatorPitch] = useState('');
@@ -70,19 +76,48 @@ function Phase3ConceptOverviewClient() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [completed, setCompleted] = useState(false);
 
-  // Hydrate any previously saved concept draft.
+  // Hydrate any previously saved concept from backend (or local fallback).
   useEffect(() => {
-    const existing: Phase3Data = getPhaseData<Phase3Data>(3) ?? {};
-    const c = existing.conceptOverview;
-    if (c) {
-      setElevatorPitch(c.elevatorPitch ?? '');
-      setProblemStatement(c.problemStatement ?? '');
-      setSolution(c.solution ?? '');
-      setTargetMarket(c.targetMarket ?? '');
-      setBusinessModel(c.businessModel ?? '');
-      setStage(c.stage ?? 'Idea');
-    }
-  }, [getPhaseData]);
+    let cancelled = false;
+    (async () => {
+      try {
+        const prog = await entrepreneurApi.getCurrentPhase(activeCompanyId || undefined);
+        const companyId = activeCompanyId || prog.companyId;
+        if (!companyId) return;
+        const concept = await entrepreneurApi.getConcept(companyId);
+        if (cancelled) return;
+        if (concept) {
+          if (concept.oneLiner) setElevatorPitch(concept.oneLiner);
+          if (concept.problemStatement) setProblemStatement(concept.problemStatement);
+          if (concept.solutionDescription) setSolution(concept.solutionDescription);
+          if (concept.sectorTags && concept.sectorTags.length > 0) setTargetMarket(concept.sectorTags.join(', '));
+          if (concept.businessModel) {
+            const match = BUSINESS_MODELS.find(
+              (m) => m.toLowerCase().replace(/[\s_]+/g, '') === concept.businessModel.toLowerCase().replace(/[\s_]+/g, '')
+            );
+            setBusinessModel(match || concept.businessModel.replace(/_/g, ' '));
+          }
+          if (concept.stage) {
+            const matchedStage = STAGES.find((s) => s.toLowerCase() === concept.stage?.toLowerCase()) || 'Idea';
+            setStage(matchedStage);
+          }
+        } else if (getPhaseData<Phase3Data>(3)?.conceptOverview) {
+          const c = getPhaseData<Phase3Data>(3)!.conceptOverview!;
+          setElevatorPitch(c.elevatorPitch ?? '');
+          setProblemStatement(c.problemStatement ?? '');
+          setSolution(c.solution ?? '');
+          setTargetMarket(c.targetMarket ?? '');
+          setBusinessModel(c.businessModel ?? '');
+          setStage(c.stage ?? 'Idea');
+        }
+      } catch {
+        // Fallback to local draft
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeCompanyId, getPhaseData]);
 
   if (!progress) {
     return (
@@ -93,11 +128,12 @@ function Phase3ConceptOverviewClient() {
   }
 
   async function resolveCompanyId(): Promise<string> {
+    if (activeCompanyId) return activeCompanyId;
+    const fromServer = await entrepreneurApi.getCurrentPhase();
+    if (fromServer?.companyId) return fromServer.companyId;
     const existing: Phase3Data = getPhaseData<Phase3Data>(3) ?? {};
     if (existing.__companyId) return existing.__companyId;
-    const fromServer = await entrepreneurApi.getCurrentPhase();
-    if (!fromServer?.companyId) throw new Error('No company found in backend');
-    return fromServer.companyId;
+    throw new Error('No company found in backend');
   }
 
   const conceptPayload = () => ({
@@ -117,8 +153,6 @@ function Phase3ConceptOverviewClient() {
   const handleComplete = async () => {
     setValidationError('');
     if (!elevatorPitch.trim()) return setValidationError('Add an elevator pitch describing your business');
-    if (elevatorPitch.trim().length > ONE_LINER_MAX)
-      return setValidationError(`Elevator pitch must be ${ONE_LINER_MAX} characters or fewer`);
     if (!problemStatement.trim()) return setValidationError('Describe the problem you address');
     if (!solution.trim()) return setValidationError('Describe how your solution works');
     if (!targetMarket.trim()) return setValidationError('Add your target market');
@@ -140,14 +174,15 @@ function Phase3ConceptOverviewClient() {
       // Persist the concept to the backend FIRST — Phase 3 completion now
       // requires a Phase3Concept document (ValidatePhase3Async). Also keep a
       // local copy so the form rehydrates on reload.
+      const tags = generateSectorTags(`${elevatorPitch} ${targetMarket}`, businessModel, targetMarket);
       await entrepreneurApi.saveConcept(companyId, {
         oneLiner: elevatorPitch.trim(),
         problemStatement: problemStatement.trim(),
         solutionDescription: solution.trim(),
         stage: stage.toLowerCase(),
-        businessModel,
-        sectorTags: generateSectorTags(`${elevatorPitch} ${targetMarket}`, businessModel),
-        keywordTags: [],
+        businessModel: businessModel.replace(/\s+/g, '_'),
+        sectorTags: tags,
+        keywordTags: tags,
       });
 
       const existing: Phase3Data = getPhaseData<Phase3Data>(3) ?? {};
@@ -219,7 +254,6 @@ function Phase3ConceptOverviewClient() {
               value={elevatorPitch}
               onChange={setElevatorPitch}
               placeholder="Describe your business in 2–3 sentences"
-              maxLength={ONE_LINER_MAX}
             />
             <RichTextArea
               id="problem"
@@ -268,6 +302,9 @@ function Phase3ConceptOverviewClient() {
                       {m}
                     </option>
                   ))}
+                  {businessModel && !BUSINESS_MODELS.includes(businessModel) && (
+                    <option value={businessModel}>{businessModel}</option>
+                  )}
                 </select>
                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" aria-hidden />
               </div>
@@ -388,7 +425,7 @@ function Phase3ConceptOverviewClient() {
   );
 }
 
-/* ---- Rich-text-styled textarea (toolbar is presentational) -------------- */
+/* ---- Clean styled Textarea with character counter ------------------------ */
 
 function RichTextArea({
   id,
@@ -407,35 +444,28 @@ function RichTextArea({
 }) {
   return (
     <div>
-      <label htmlFor={`concept-${id}`} className="block text-sm font-medium text-foreground mb-2">
-        {label}
-      </label>
-      <div className="rounded-md border border-input overflow-hidden focus-within:ring-2 focus-within:ring-ring">
-        <div className="flex items-center gap-1 border-b border-border bg-muted/50 px-2 py-1.5" aria-hidden>
-          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground px-2 py-1 rounded hover:bg-accent">
-            Regular <ChevronDown className="w-3 h-3" />
-          </span>
-          <span className="w-px h-4 bg-border mx-1" />
-          {[Bold, Underline, Italic, List, Quote].map((Icon, i) => (
-            <span key={i} className="grid place-items-center size-7 rounded text-muted-foreground hover:bg-accent">
-              <Icon className="w-3.5 h-3.5" />
-            </span>
-          ))}
-        </div>
-        <Textarea
-          id={`concept-${id}`}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          maxLength={maxLength}
-          className="min-h-[96px] resize-none border-0 rounded-none focus-visible:ring-0 bg-popover"
-        />
+      <div className="flex items-center justify-between mb-2">
+        <label htmlFor={`concept-${id}`} className="block text-sm font-medium text-foreground">
+          {label}
+        </label>
         {maxLength ? (
-          <div className="px-3 pb-2 text-right text-xs text-muted-foreground tabular-nums">
+          <span className="text-xs text-muted-foreground tabular-nums">
             {value.length}/{maxLength}
-          </div>
-        ) : null}
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground tabular-nums">
+            {value.length} characters
+          </span>
+        )}
       </div>
+      <Textarea
+        id={`concept-${id}`}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        maxLength={maxLength}
+        className="min-h-[100px] resize-none rounded-lg border-border bg-popover text-sm placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
+      />
     </div>
   );
 }

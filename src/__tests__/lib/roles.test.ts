@@ -3,6 +3,7 @@ import { UserRole } from '@/lib/roles';
 
 describe('UserRole Enum', () => {
   it('should have all required roles', () => {
+    expect(UserRole.SUPERADMIN).toBe('SuperAdmin');
     expect(UserRole.ADMIN).toBe('Admin');
     expect(UserRole.CREATOR).toBe('Creator');
     expect(UserRole.INVESTOR).toBe('Investor');
@@ -10,12 +11,13 @@ describe('UserRole Enum', () => {
     expect(UserRole.SERVICE_PROVIDER).toBe('ServiceProvider');
   });
 
-  it('should define 5 distinct roles', () => {
+  it('should define 6 distinct roles', () => {
     const roles = Object.values(UserRole);
-    expect(roles).toHaveLength(5);
+    expect(roles).toHaveLength(6);
   });
 
   it('should have correct role values', () => {
+    expect(UserRole.SUPERADMIN).toBe('SuperAdmin');
     expect(UserRole.ADMIN).toBe('Admin');
     expect(UserRole.CREATOR).toBe('Creator');
     expect(UserRole.INVESTOR).toBe('Investor');
@@ -122,6 +124,49 @@ describe('UserRole Enum', () => {
         .toBe('/dashboard/entrepreneur/messages');
       expect(getMessageRouteForRole(UserRole.SERVICE_PROVIDER, '/dashboard/profile'))
         .toBe('/dashboard/serviceprovider/messages');
+    });
+  });
+
+  describe('getRoleDashboardRoute and resolvePostLoginRedirect', () => {
+    it('returns canonical dashboard for each enum and string role', async () => {
+      const { getRoleDashboardRoute, UserRole } = await import('@/lib/roles');
+      expect(getRoleDashboardRoute(UserRole.CREATOR)).toBe('/dashboard/creator');
+      expect(getRoleDashboardRoute(UserRole.ENTREPRENEUR)).toBe('/dashboard/entrepreneur');
+      expect(getRoleDashboardRoute(UserRole.INVESTOR)).toBe('/dashboard/investor');
+      expect(getRoleDashboardRoute(UserRole.SERVICE_PROVIDER)).toBe('/dashboard/serviceprovider');
+      expect(getRoleDashboardRoute(UserRole.ADMIN)).toBe('/dashboard/admin');
+      expect(getRoleDashboardRoute(UserRole.SUPERADMIN)).toBe('/dashboard/admin');
+
+      expect(getRoleDashboardRoute('Creator')).toBe('/dashboard/creator');
+      expect(getRoleDashboardRoute('creator')).toBe('/dashboard/creator');
+      expect(getRoleDashboardRoute('Entrepreneur')).toBe('/dashboard/entrepreneur');
+      expect(getRoleDashboardRoute('Investor')).toBe('/dashboard/investor');
+      expect(getRoleDashboardRoute('Service Provider')).toBe('/dashboard/serviceprovider');
+      expect(getRoleDashboardRoute('service-provider')).toBe('/dashboard/serviceprovider');
+      expect(getRoleDashboardRoute('Admin')).toBe('/dashboard/admin');
+      expect(getRoleDashboardRoute('SuperAdmin')).toBe('/dashboard/admin');
+    });
+
+    it('resolves post login redirect based on onboarding and roles', async () => {
+      const { resolvePostLoginRedirect, UserRole } = await import('@/lib/roles');
+      expect(resolvePostLoginRedirect(null)).toBe('/login');
+      expect(resolvePostLoginRedirect({ role: UserRole.CREATOR, onboardingPhase: 0 })).toBe('/onboarding');
+      expect(resolvePostLoginRedirect({ role: UserRole.CREATOR, onboardingPhase: 1 })).toBe('/dashboard/creator');
+      expect(resolvePostLoginRedirect({ role: UserRole.ADMIN, onboardingPhase: 1 })).toBe('/dashboard/admin');
+    });
+
+    it('handles callback URLs with validation and fallback', async () => {
+      const { resolvePostLoginRedirect, UserRole } = await import('@/lib/roles');
+      const user = { role: UserRole.INVESTOR, roles: [UserRole.INVESTOR], onboardingPhase: 1 };
+      
+      // Valid callback preserved
+      expect(resolvePostLoginRedirect(user, '/dashboard/investor/deals')).toBe('/dashboard/investor/deals');
+      
+      // External URL rejected
+      expect(resolvePostLoginRedirect(user, 'https://external-domain.com/phishing')).toBe('/dashboard/investor');
+      
+      // Unauthorized admin route rejected for non-admin
+      expect(resolvePostLoginRedirect(user, '/dashboard/admin/users')).toBe('/dashboard/investor');
     });
   });
 });

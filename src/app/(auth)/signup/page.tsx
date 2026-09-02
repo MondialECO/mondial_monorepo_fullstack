@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { registerApi } from "@/lib/api-auth";
 import { useAuth } from "@/app/_providers/AuthProvider";
-import { ROLE_DASHBOARD_ROUTES } from "@/lib/roles";
+import { resolvePostLoginRedirect, ROLE_DASHBOARD_ROUTES } from "@/lib/roles";
 import {
   SIGNUP_ROLE_STORAGE_KEY,
   formatRoleLabel,
@@ -29,8 +29,8 @@ export default function Signup() {
   // Redirect logged-in users to their dashboard
   useEffect(() => {
     if (user && !authLoading) {
-      const dashboardRoute = ROLE_DASHBOARD_ROUTES[user.role];
-      router.replace(dashboardRoute);
+      const destination = resolvePostLoginRedirect(user);
+      router.replace(destination);
     }
   }, [user, authLoading, router]);
 
@@ -112,7 +112,7 @@ export default function Signup() {
           </div>
           <div className="space-y-3">
             <Button
-              onClick={() => router.replace(ROLE_DASHBOARD_ROUTES[user.role])}
+              onClick={() => router.replace(resolvePostLoginRedirect(user))}
               className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
               size="lg"
             >

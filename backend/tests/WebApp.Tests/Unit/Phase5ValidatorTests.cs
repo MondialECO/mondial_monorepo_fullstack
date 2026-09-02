@@ -276,13 +276,13 @@ public class Phase5ValidatorTests
     }
 
     [Fact]
-    public async Task Phase5_PreMoneyLessThanRaise_Fails()
+    public async Task Phase5_PreMoneyLessThanRaise_Passes()
     {
         var c = GoodCompany();
         c.FundingAskAmount = 6_000_000; // exceeds the 5M pre-money valuation
         var (isValid, errors) = await _validator.ValidatePhase5Async(c);
-        isValid.Should().BeFalse();
-        errors.Should().Contain(e => e.Contains("Pre-money valuation must be >= the raise amount"));
+        isValid.Should().BeTrue();
+        errors.Should().BeEmpty();
     }
 
     [Fact]
@@ -398,5 +398,110 @@ public class Phase5ValidatorTests
 
         isValid.Should().BeTrue();
         errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Phase5_Step1_DraftSave_WithHydratedPreMoneyValuation_PassesWithoutRaiseAmount()
+    {
+        var company = new Companies
+        {
+            Id = "comp-draft-1",
+            OwnerId = "ent-user",
+            CompanyName = "Draft Co",
+            PreMoneyValuation = 1_250_000,
+        };
+
+        var compCollectionMock = new Mock<IMongoCollection<Companies>>();
+        compCollectionMock.Setup(c => c.FindAsync(It.IsAny<FilterDefinition<Companies>>(), It.IsAny<FindOptions<Companies, Companies>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() =>
+            {
+                var cursor = new Mock<IAsyncCursor<Companies>>();
+                cursor.Setup(c => c.Current).Returns(new List<Companies> { company });
+                cursor.SetupSequence(c => c.MoveNext(It.IsAny<CancellationToken>())).Returns(true).Returns(false);
+                cursor.SetupSequence(c => c.MoveNextAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true).ReturnsAsync(false);
+                return cursor.Object;
+            });
+        compCollectionMock.Setup(c => c.ReplaceOneAsync(It.IsAny<FilterDefinition<Companies>>(), It.IsAny<Companies>(), It.IsAny<ReplaceOptions>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ReplaceOneResult.Acknowledged(1, 1, null));
+
+        var dbMock = new Mock<IMongoDatabase>();
+        dbMock.Setup(d => d.GetCollection<Companies>("Companies", null)).Returns(compCollectionMock.Object);
+
+        var context = new MongoDbContext(dbMock.Object);
+        var service = new CompanyService(
+            context,
+            new Mock<IValuationEngine>().Object,
+            new Mock<ICapTableCalculator>().Object,
+            new Mock<IInvestorMatcher>().Object,
+            new Mock<IAiReviewEngine>().Object,
+            new Mock<IDocumentManager>().Object,
+            _validator,
+            new Mock<IDealEventPublisher>().Object,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<CompanyService>.Instance);
+
+        var req = new SaveFundingAskRequest
+        {
+            RaiseAmount = 0,
+            PreMoneyValuation = 1_250_000,
+            CapitalAllocation = new List<CapitalAllocationDto>
+            {
+                new() { Category = "Product", Percent = 60, Amount = 0 },
+                new() { Category = "Operations", Percent = 40, Amount = 0 }
+            }
+        };
+
+        var updated = await service.SaveFundingAskAsync("comp-draft-1", req);
+        updated.Should().NotBeNull();
+        updated.CapitalAllocation.Should().HaveCount(2);
+        updated.PreMoneyValuation.Should().Be(1_250_000);
+    }
+
+    [Fact]
+    public async Task Phase5_Step3_FullValidation_RequiresRaiseAmountGreaterThanZero()
+    {
+        var company = new Companies
+        {
+            Id = "comp-draft-2",
+            OwnerId = "ent-user",
+            CompanyName = "Draft Co",
+            PreMoneyValuation = 1_250_000,
+        };
+
+        var compCollectionMock = new Mock<IMongoCollection<Companies>>();
+        compCollectionMock.Setup(c => c.FindAsync(It.IsAny<FilterDefinition<Companies>>(), It.IsAny<FindOptions<Companies, Companies>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() =>
+            {
+                var cursor = new Mock<IAsyncCursor<Companies>>();
+                cursor.Setup(c => c.Current).Returns(new List<Companies> { company });
+                cursor.SetupSequence(c => c.MoveNext(It.IsAny<CancellationToken>())).Returns(true).Returns(false);
+                cursor.SetupSequence(c => c.MoveNextAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true).ReturnsAsync(false);
+                return cursor.Object;
+            });
+
+        var dbMock = new Mock<IMongoDatabase>();
+        dbMock.Setup(d => d.GetCollection<Companies>("Companies", null)).Returns(compCollectionMock.Object);
+
+        var context = new MongoDbContext(dbMock.Object);
+        var service = new CompanyService(
+            context,
+            new Mock<IValuationEngine>().Object,
+            new Mock<ICapTableCalculator>().Object,
+            new Mock<IInvestorMatcher>().Object,
+            new Mock<IAiReviewEngine>().Object,
+            new Mock<IDocumentManager>().Object,
+            _validator,
+            new Mock<IDealEventPublisher>().Object,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<CompanyService>.Instance);
+
+        var req = new SaveFundingAskRequest
+        {
+            RaiseAmount = 2_000_000,
+            PreMoneyValuation = 1_000_000, // PreMoney < RaiseAmount is now permitted
+        };
+
+        var comp = await service.SaveFundingAskAsync("comp-draft-2", req);
+        comp.Should().NotBeNull();
+        comp.FundingAskAmount.Should().Be(2_000_000);
+        comp.PreMoneyValuation.Should().Be(1_000_000);
     }
 }

@@ -30,6 +30,14 @@ public sealed class InMemoryProfessionalProfileStore : IProfessionalProfileStore
     public Task<bool> UpsertAsync(ProfessionalProfileRecord record, IClientSessionHandle? session = null, CancellationToken cancellationToken = default)
     {
         if (FailNextWrite) { FailNextWrite = false; return Task.FromResult(false); }
+        if (Records.TryGetValue(record.UserId, out var existing) && existing.Id != MongoDB.Bson.ObjectId.Empty)
+        {
+            record.Id = existing.Id;
+        }
+        else if (record.Id == MongoDB.Bson.ObjectId.Empty)
+        {
+            record.Id = MongoDB.Bson.ObjectId.GenerateNewId();
+        }
         Records[record.UserId] = record;
         return Task.FromResult(true);
     }
@@ -63,6 +71,14 @@ public sealed class InMemoryServiceProviderProfileStore : IServiceProviderProfil
     public Task<bool> UpsertAsync(ServiceProviderProfileRecord record, IClientSessionHandle? session = null, CancellationToken cancellationToken = default)
     {
         if (FailNextWrite) { FailNextWrite = false; return Task.FromResult(false); }
+        if (Records.TryGetValue(record.UserId, out var existing) && existing.Id != MongoDB.Bson.ObjectId.Empty)
+        {
+            record.Id = existing.Id;
+        }
+        else if (record.Id == MongoDB.Bson.ObjectId.Empty)
+        {
+            record.Id = MongoDB.Bson.ObjectId.GenerateNewId();
+        }
         Records[record.UserId] = record;
         return Task.FromResult(true);
     }

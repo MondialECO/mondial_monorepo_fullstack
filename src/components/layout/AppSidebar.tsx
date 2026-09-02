@@ -6,7 +6,7 @@ import Link from "next/link";
 import { ChevronDown } from "lucide-react";
 import { useAuth } from "@/app/_providers/AuthProvider";
 import { menu, type MenuSection, type MenuItem } from "@/lib/menu";
-import { UserRole } from "@/lib/roles";
+import { UserRole, isSuperAdmin, getRoleDashboardRoute } from "@/lib/roles";
 import { useProviderOverview } from "@/hooks/queries/analytics";
 import { useProviderAvailabilityControl } from "@/hooks/useProviderAvailabilityControl";
 import {
@@ -44,9 +44,14 @@ export default function AppSidebar() {
 
   if (!user) return null;
 
-  const sections = menu[user.role] || [];
+  const userRole = user.role || UserRole.CREATOR;
+  const activeRole = isSuperAdmin(user) && (userRole === UserRole.ADMIN || userRole === UserRole.SUPERADMIN)
+    ? UserRole.SUPERADMIN
+    : userRole;
 
-  if (user.role === UserRole.SERVICE_PROVIDER) {
+  const sections = menu[activeRole] || menu[userRole] || [];
+
+  if (userRole === UserRole.SERVICE_PROVIDER) {
     return (
       <ServiceProviderSidebar
         sections={sections}
@@ -58,7 +63,7 @@ export default function AppSidebar() {
 
   return (
     <StandardRoleSidebar
-      role={user.role}
+      role={userRole}
       userName={user.name}
       sections={sections}
       pathname={pathname}
@@ -108,7 +113,7 @@ function StandardRoleSidebar({
       <SidebarHeader className="h-18 justify-center border-b border-sidebar-border mb-2">
         <div className="flex items-center justify-between px-4">
           <Link
-            href={`/dashboard/${role.toLowerCase()}`}
+            href={getRoleDashboardRoute(role)}
             onClick={handleLinkClick}
             className="flex items-center gap-2"
           >

@@ -72,7 +72,7 @@ export interface DiligenceSummary {
 
 export async function getDiligenceSummary(companyId: string): Promise<DiligenceSummary> {
   const { data } = await axiosInstance.get<DiligenceSummary>(
-    `/api/investor/companies/${companyId}/diligence`
+    `/investor/companies/${companyId}/diligence`
   );
   return data;
 }
@@ -83,7 +83,7 @@ export async function updateDocumentReviewStatus(
   status: "not_reviewed" | "reviewed" | "needs_attention"
 ): Promise<DiligenceReview> {
   const { data } = await axiosInstance.put<DiligenceReview>(
-    `/api/investor/companies/${companyId}/diligence/documents/${documentId}/review`,
+    `/investor/companies/${companyId}/diligence/documents/${documentId}/review`,
     { status }
   );
   return data;
@@ -94,7 +94,7 @@ export async function getPrivateNotes(
   documentId?: string
 ): Promise<DiligenceNote[]> {
   const { data } = await axiosInstance.get<DiligenceNote[]>(
-    `/api/investor/companies/${companyId}/diligence/notes`,
+    `/investor/companies/${companyId}/diligence/notes`,
     { params: documentId ? { documentId } : undefined }
   );
   return data;
@@ -106,14 +106,14 @@ export async function createPrivateNote(
   content: string
 ): Promise<DiligenceNote> {
   const { data } = await axiosInstance.post<DiligenceNote>(
-    `/api/investor/companies/${companyId}/diligence/notes`,
+    `/investor/companies/${companyId}/diligence/notes`,
     { documentId, content }
   );
   return data;
 }
 
 export async function deletePrivateNote(companyId: string, noteId: string): Promise<void> {
-  await axiosInstance.delete(`/api/investor/companies/${companyId}/diligence/notes/${noteId}`);
+  await axiosInstance.delete(`/investor/companies/${companyId}/diligence/notes/${noteId}`);
 }
 
 export async function getDiligenceQuestions(
@@ -121,7 +121,7 @@ export async function getDiligenceQuestions(
   documentId?: string
 ): Promise<DiligenceQuestion[]> {
   const { data } = await axiosInstance.get<DiligenceQuestion[]>(
-    `/api/investor/companies/${companyId}/diligence/questions`,
+    `/investor/companies/${companyId}/diligence/questions`,
     { params: documentId ? { documentId } : undefined }
   );
   return data;
@@ -134,7 +134,7 @@ export async function askFounderQuestion(
   question: string
 ): Promise<DiligenceQuestion> {
   const { data } = await axiosInstance.post<DiligenceQuestion>(
-    `/api/investor/companies/${companyId}/diligence/questions`,
+    `/investor/companies/${companyId}/diligence/questions`,
     { documentId, documentTitle, question }
   );
   return data;
@@ -142,14 +142,14 @@ export async function askFounderQuestion(
 
 export async function completeDiligence(companyId: string): Promise<DiligenceSummary> {
   const { data } = await axiosInstance.post<DiligenceSummary>(
-    `/api/investor/companies/${companyId}/diligence/complete`
+    `/investor/companies/${companyId}/diligence/complete`
   );
   return data;
 }
 
 export async function reopenDiligence(companyId: string): Promise<DiligenceSummary> {
   const { data } = await axiosInstance.post<DiligenceSummary>(
-    `/api/investor/companies/${companyId}/diligence/reopen`
+    `/investor/companies/${companyId}/diligence/reopen`
   );
   return data;
 }
@@ -160,7 +160,7 @@ export async function updateChecklistOverride(
   status: "not_started" | "in_review" | "complete" | "needs_attention"
 ): Promise<DiligenceSummary> {
   const { data } = await axiosInstance.put<DiligenceSummary>(
-    `/api/investor/companies/${companyId}/diligence/checklist/${categoryKey}`,
+    `/investor/companies/${companyId}/diligence/checklist/${categoryKey}`,
     { status }
   );
   return data;
@@ -169,7 +169,7 @@ export async function updateChecklistOverride(
 // Founder endpoints
 export async function getFounderDataRoomQuestions(companyId: string): Promise<DiligenceQuestion[]> {
   const { data } = await axiosInstance.get<DiligenceQuestion[]>(
-    `/api/companies/${companyId}/dataroom/questions`
+    `/companies/${companyId}/dataroom/questions`
   );
   return data;
 }
@@ -180,7 +180,7 @@ export async function answerFounderDataRoomQuestion(
   response: string
 ): Promise<DiligenceQuestion> {
   const { data } = await axiosInstance.post<DiligenceQuestion>(
-    `/api/companies/${companyId}/dataroom/questions/${questionId}/answer`,
+    `/companies/${companyId}/dataroom/questions/${questionId}/answer`,
     { response }
   );
   return data;

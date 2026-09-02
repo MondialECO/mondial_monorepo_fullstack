@@ -275,6 +275,14 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("AdminAccess", policy =>
+        policy.RequireRole("Admin", "SuperAdmin"));
+    options.AddPolicy("SuperAdminOnly", policy =>
+        policy.RequireRole("SuperAdmin"));
+});
+
 // SignalR with a Redis backplane so connections/messages are shared
 // across all replicas (a client connected to replica A still receives
 // messages published from replica B).
@@ -314,6 +322,8 @@ builder.Services.AddScoped<WebApp.Services.Migrations.ICreatorIdeaBackfill,
     WebApp.Services.Migrations.CreatorIdeaBackfillMigration>();
 builder.Services.AddScoped<WebApp.Services.Migrations.ICreatorIdeaSnapshotsBackfill,
     WebApp.Services.Migrations.CreatorIdeaSnapshotsBackfillMigration>();
+builder.Services.AddScoped<WebApp.Services.Migrations.IDealLifecycleReconciliation,
+    WebApp.Services.Migrations.DealLifecycleReconciliation>();
 
 // Investments
 builder.Services.AddScoped<IInvestmentsService, InvestmentsService>();
@@ -407,12 +417,15 @@ builder.AddObservability();
 // Audit trail for security-sensitive operations.
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddSingleton<IAuditLogger, AuditLogger>();
+builder.Services.AddScoped<WebApp.Services.Interface.IPlatformSettingsService, WebApp.Services.Implementations.PlatformSettingsService>();
 
 // Email: queue (singleton) + background sender; EmailService now enqueues.
 builder.Services.AddSingleton<IEmailQueue, EmailQueue>();
 builder.Services.AddHostedService<EmailBackgroundService>();
 builder.Services.AddScoped<EmailService>();
 builder.Services.AddScoped<SaveFile>();
+builder.Services.AddScoped<WebApp.Services.IKycStorageService, WebApp.Services.Implementations.KycStorageService>();
+builder.Services.AddScoped<WebApp.Services.Implementations.KycStorageService>();
 builder.Services.AddScoped<TwilioService>();
 builder.Services.AddHttpClient<SumsubService>();
 
@@ -451,12 +464,14 @@ builder.Services.AddValidatorsFromAssemblyContaining<LoginRequestModelValidator>
 // The disposable browser harness creates a distinct authenticated user per
 // scenario from one Docker IP. It may raise this one limit in E2E only; every
 // other environment retains the production five-attempt policy.
-var authPermitLimit = builder.Environment.IsEnvironment("E2E")
-    ? builder.Configuration.GetValue("E2E:AuthRateLimitPermitLimit", 5)
-    : 5;
-var globalPermitLimit = builder.Environment.IsEnvironment("E2E")
-    ? builder.Configuration.GetValue("E2E:GlobalRateLimitPermitLimit", 100)
-    : 100;
+var authPermitLimit = builder.Configuration.GetValue<int?>("RateLimiting:AuthPermitLimit")
+    ?? (builder.Environment.IsEnvironment("E2E")
+        ? builder.Configuration.GetValue("E2E:AuthRateLimitPermitLimit", 5)
+        : (builder.Environment.IsDevelopment() ? 200 : 5));
+var globalPermitLimit = builder.Configuration.GetValue<int?>("RateLimiting:GlobalPermitLimit")
+    ?? (builder.Environment.IsEnvironment("E2E")
+        ? builder.Configuration.GetValue("E2E:GlobalRateLimitPermitLimit", 100)
+        : (builder.Environment.IsDevelopment() ? 500 : 100));
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -711,7 +726,9 @@ app.UseHttpsRedirection();
 // migration of existing files, filed rather than done here.
 app.Use(async (context, next) =>
 {
-    if (context.Request.Path.StartsWithSegments("/uploads/documents", StringComparison.OrdinalIgnoreCase))
+    if (context.Request.Path.StartsWithSegments("/uploads/documents", StringComparison.OrdinalIgnoreCase) ||
+        context.Request.Path.StartsWithSegments("/uploads/identity", StringComparison.OrdinalIgnoreCase) ||
+        context.Request.Path.StartsWithSegments("/uploads/Identity", StringComparison.OrdinalIgnoreCase))
     {
         context.Response.StatusCode = StatusCodes.Status404NotFound;
         return;
@@ -748,20 +765,27 @@ app.UseHangfireDashboard("/hangfire", new Hangfire.DashboardOptions
     DisplayStorageConnectionString = false,
 });
 
-RecurringJob.AddOrUpdate<ClientBriefExpirationJob>(
-    "module3-expire-client-briefs",
-    job => job.RunAsync(),
-    Cron.Minutely);
+try
+{
+    RecurringJob.AddOrUpdate<ClientBriefExpirationJob>(
+        "module3-expire-client-briefs",
+        job => job.RunAsync(),
+        Cron.Minutely);
 
-RecurringJob.AddOrUpdate<WorkroomConversionJob>(
-    "module4-convert-accepted-proposals",
-    job => job.SweepAsync(),
-    Cron.Minutely);
+    RecurringJob.AddOrUpdate<WorkroomConversionJob>(
+        "module4-convert-accepted-proposals",
+        job => job.SweepAsync(),
+        Cron.Minutely);
 
-RecurringJob.AddOrUpdate<WorkroomTimedRulesJob>(
-    "module4-workroom-timed-rules",
-    job => job.RunAsync(),
-    Cron.Minutely);
+    RecurringJob.AddOrUpdate<WorkroomTimedRulesJob>(
+        "module4-workroom-timed-rules",
+        job => job.RunAsync(),
+        Cron.Minutely);
+}
+catch (Exception ex)
+{
+    Log.Warning(ex, "Hangfire recurring job registration skipped or deferred (non-fatal)");
+}
 
 // SignalR Hubs: long-lived connections must opt out of the request
 // timeout or they would be killed after 30s.
@@ -811,23 +835,10 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions
     Predicate = check => check.Tags.Contains("ready")
 });
 
-// Seed Identity roles so first-run registration doesn't fail with
-// "Failed to create default role". Idempotent — RoleExistsAsync gate.
+// Seed Identity roles and bootstrap Admin / SuperAdmin accounts via centralized SeedingExtensions
 using (var scope = app.Services.CreateScope())
 {
-    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<ApplicationRole>>();
-    string[] roles = { "Admin", "Entrepreneur", "Creator", "Investor", "ServiceProvider" };
-    foreach (var roleName in roles)
-    {
-        if (!await roleManager.RoleExistsAsync(roleName))
-        {
-            await roleManager.CreateAsync(new ApplicationRole
-            {
-                Name = roleName,
-                Description = $"{roleName} role"
-            });
-        }
-    }
+    await scope.ServiceProvider.SeedRolesAndAdminsAsync(app.Configuration);
 
     // One-time migration: legacy users (pre-Phase-1-onboarding) have no
     // Onboarding sub-doc, so they'd be considered "Phase 1 complete" by
@@ -936,6 +947,23 @@ using (var scope = app.Services.CreateScope())
     // Demo seeding (Investor catalogue + demo data). Double-gated on
     // Development/Demo environment and config flag SeedDemoData. Idempotent.
     await scope.ServiceProvider.SeedDemoDataAsync(app.Environment, app.Configuration);
+
+    // KYC Evidence Storage Hardening: Idempotent migration of legacy public KYC files
+    // to private storage outside wwwroot.
+    try
+    {
+        var kycStorage = scope.ServiceProvider.GetRequiredService<WebApp.Services.IKycStorageService>();
+        var migrationResult = await kycStorage.MigrateLegacyFilesAsync();
+        if (migrationResult.MigratedCount > 0 || migrationResult.AlreadyMigratedCount > 0)
+        {
+            Log.Information("KYC Evidence migration: {Migrated} migrated, {Already} verified/skipped, {Failed} failed out of {Total}",
+                migrationResult.MigratedCount, migrationResult.AlreadyMigratedCount, migrationResult.FailedCount, migrationResult.TotalFound);
+        }
+    }
+    catch (Exception ex)
+    {
+        Log.Warning(ex, "KYC Evidence migration skipped (non-fatal)");
+    }
 }
 
 try

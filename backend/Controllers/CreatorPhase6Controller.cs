@@ -559,6 +559,28 @@ namespace WebApp.Controllers
                             if (session is null) await _context.Companies.UpdateOneAsync(c => c.Id == companyId, updAlloc);
                             else await _context.Companies.UpdateOneAsync(session, c => c.Id == companyId, updAlloc);
                         }
+
+                        // Prefill Phase4CapTable if not already initialized
+                        var existingCapTable = session is null
+                            ? await _context.Phase4CapTables.Find(c => c.CompanyId == companyId).FirstOrDefaultAsync()
+                            : await _context.Phase4CapTables.Find(session, c => c.CompanyId == companyId).FirstOrDefaultAsync();
+
+                        if (existingCapTable == null)
+                        {
+                            var ownershipList = (formation?.Ownership != null && formation.Ownership.Count > 0)
+                                ? formation.Ownership.Select(o => new OwnershipEntryDto
+                                {
+                                    Holder = o.Holder,
+                                    Percent = o.Percent,
+                                    IsFounder = o.IsFounder,
+                                    IsEsop = o.IsEsop
+                                }).ToList()
+                                : new List<OwnershipEntryDto>
+                                {
+                                    new() { Holder = "Founder", Percent = 100, IsFounder = true }
+                                };
+                            await _companies.SeedCapTableFromOwnershipAsync(companyId, ownershipList);
+                        }
                     }
 
                     journey.CompanyId = companyId;

@@ -6,8 +6,9 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, CheckCircle2, FileText, ArrowRight, Lightbulb, Lock } from 'lucide-react';
+import { AlertCircle, CheckCircle2, FileText, ArrowRight, Lightbulb, Lock, Loader2 } from 'lucide-react';
 import { useWatch } from 'react-hook-form';
+import { useEffect } from 'react';
 
 const labelClass = 'block text-sm font-medium text-foreground uppercase tracking-wide mb-2';
 const inputClass =
@@ -15,17 +16,54 @@ const inputClass =
 
 export default function Phase2Step1Client() {
   const { progress } = useEntrepreneurProgress();
-  const { form, formState, autosave, handleSaveDraft, handleNextClick } = usePhase2Step1Form();
+  const {
+    form,
+    formState,
+    autosave,
+    isLoadingData,
+    loadError,
+    retryLoad,
+    handleSaveDraft,
+    handleNextClick,
+    clearError,
+  } = usePhase2Step1Form();
 
   const { register } = form;
   const formValues = useWatch({ control: form.control });
   const isFormFilled = !!(formValues?.companyName?.trim() && formValues?.registrationNumber?.trim());
 
-  if (!progress) {
+  useEffect(() => {
+    if (formState.error) {
+      clearError();
+    }
+  }, [formValues, clearError]);
+
+  if (!progress || isLoadingData) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <div className="text-center">
-          <p className="text-muted-foreground text-sm">Loading...</p>
+      <div className="mx-auto w-full max-w-[1072px] space-y-6">
+        <div className="flex flex-col gap-8 bg-card border-2 border-background rounded-[20px] shadow-sm p-12 items-center justify-center min-h-[400px]">
+          <div className="flex flex-col items-center gap-3 text-center">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-base font-medium text-foreground">Loading company details...</p>
+            <p className="text-sm text-muted-foreground">Fetching authoritative records from database.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="mx-auto w-full max-w-[1072px] space-y-6">
+        <div className="flex flex-col gap-6 bg-card border-2 border-background rounded-[20px] shadow-sm p-8 items-center justify-center min-h-[300px]">
+          <AlertCircle className="h-10 w-10 text-destructive" />
+          <div className="text-center space-y-1">
+            <p className="text-lg font-semibold text-foreground">Failed to Load Company Data</p>
+            <p className="text-sm text-muted-foreground">{loadError}</p>
+          </div>
+          <Button onClick={retryLoad} variant="outline" className="gap-2">
+            Retry
+          </Button>
         </div>
       </div>
     );
@@ -73,7 +111,7 @@ export default function Phase2Step1Client() {
               <Input
                 {...register('registrationNumber')}
                 placeholder="e.g., 987 876 5684"
-                maxLength={14}
+                maxLength={20}
                 className={`${inputClass} font-mono`}
               />
             </div>
@@ -179,7 +217,7 @@ export default function Phase2Step1Client() {
           <Button
             type="button"
             onClick={handleNextClick}
-            disabled={!isFormFilled || formState.status === 'navigating'}
+            disabled={formState.status === 'navigating'}
             className="gap-2 px-6 py-3"
           >
             {formState.status === 'navigating' ? 'Processing…' : 'Next'}

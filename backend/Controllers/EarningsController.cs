@@ -9,7 +9,7 @@ namespace WebApp.Controllers;
 
 [ApiController, Authorize(Roles = "ServiceProvider")]
 [Route("api/earnings")]
-public class EarningsController(IWorkroomService service) : ControllerBase
+public class EarningsController(IWorkroomService service, IPlatformSettingsService? settingsService = null) : ControllerBase
 {
     private string CurrentUserId => User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? throw new UnauthorizedAccessException();
     [HttpGet] public async Task<IActionResult> Summary([FromQuery] string? currency = null) => Map(await service.GetFinancialSummaryAsync(CurrentUserId, currency));
@@ -18,7 +18,13 @@ public class EarningsController(IWorkroomService service) : ControllerBase
     [HttpPut("payout-methods/{methodId}/default")] public async Task<IActionResult> DefaultMethod(string methodId) => Map(await service.SetDefaultPayoutMethodAsync(CurrentUserId, methodId));
     [HttpDelete("payout-methods/{methodId}")] public async Task<IActionResult> RemoveMethod(string methodId) => Map(await service.RemovePayoutMethodAsync(CurrentUserId, methodId));
     [HttpPut("tax-settings")] public async Task<IActionResult> Tax(UpdateTaxSettingsRequest r) => Map(await service.UpdateTaxSettingsAsync(CurrentUserId, r));
-    [HttpPost("payouts")] public async Task<IActionResult> Payout(CreatePayoutRequest r) => Map(await service.RequestPayoutAsync(CurrentUserId, r));
+    [HttpPost("payouts")] public async Task<IActionResult> Payout(CreatePayoutRequest r)
+    {
+        if (settingsService != null && !await settingsService.IsPayoutRequestsEnabledAsync())
+            return StatusCode(503, ApiResponse.Error("Payout requests are temporarily disabled for system maintenance.", HttpContext.TraceIdentifier));
+
+        return Map(await service.RequestPayoutAsync(CurrentUserId, r));
+    }
     private IActionResult Map<T>(ServiceProviderResult<T> result) => result.Outcome switch
     {
         ServiceProviderOutcome.Ok => Ok(ApiResponse.Ok(result.Message, result.Value)),

@@ -41,15 +41,26 @@ function getNotificationIcon(type: NotificationType | string) {
     case "Message":
       return <MessageSquare className="h-4 w-4" />;
     case "Investment":
+    case "term_sheet":
+    case "deal_counter":
+    case "deal_closed":
       return <DollarSign className="h-4 w-4" />;
     case "Security":
+    case "data_room_access_request":
+    case "data_room_access_approved":
+    case "data_room_access_declined":
+    case "data_room_access_revoked":
       return <ShieldCheck className="h-4 w-4" />;
+    case "diligence_question":
+    case "diligence_answer":
+      return <MessageSquare className="h-4 w-4" />;
     case "System":
       return <Sparkles className="h-4 w-4" />;
     default:
       return <Bell className="h-4 w-4" />;
   }
 }
+
 
 /**
  * `triggerClassName` styles the BELL BUTTON only.
@@ -68,7 +79,7 @@ export default function NotificationBell({ triggerClassName }: { triggerClassNam
   useNotificationRealtime(!!token);
 
   // Exact latest 10 items to display
-  const latestTen = notifications.slice(0, 10);
+  const latestTen = (notifications ?? []).slice(0, 10);
   const notificationsRoute = getNotificationRouteForRole(user?.role, pathname);
 
   const handleNotificationClick = (n: AppNotification) => {

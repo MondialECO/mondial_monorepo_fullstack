@@ -419,6 +419,38 @@ export interface DataRoomStatusResponse {
   accessGrants: DataRoomAccessGrant[];
 }
 
+export interface Phase6DataRoomAccessRequestResponse {
+  id: string;
+  companyId: string;
+  investorId: string;
+  investorUserId: string;
+  investorName: string;
+  investorEmail: string;
+  requestedAccessLevel: 'view_only' | 'view_and_download';
+  status: 'pending' | 'approved' | 'declined' | 'cancelled';
+  requestedAt: string;
+  reviewedAt?: string | null;
+  reviewedByUserId?: string | null;
+  decisionNote?: string | null;
+}
+
+export interface DataRoomAccessStatusResponse {
+  ndaRequired: boolean;
+  ndaAccepted: boolean;
+  ndaAcceptedAt?: string | null;
+  requestStatus: 'none' | 'pending' | 'approved' | 'declined' | 'cancelled';
+  requestId?: string | null;
+  accessGranted: boolean;
+  accessLevel?: string | null;
+  expiresAt?: string | null;
+  isRevoked: boolean;
+  isExpired: boolean;
+  isDirectInvite: boolean;
+  totalDocuments: number;
+  documents: DataRoomDocumentResponse[];
+}
+
+
 export interface Phase6AccessLogResponse {
   id: string;
   documentId: string;
@@ -1331,7 +1363,61 @@ export const entrepreneurApi = {
     return response.data;
   },
 
+  getDataRoomAccessStatus: async (
+    companyId: string
+  ): Promise<DataRoomAccessStatusResponse> => {
+    const response = await api.get<DataRoomAccessStatusResponse>(
+      `/companies/${companyId}/dataroom/access-status`
+    );
+    return response.data;
+  },
+
+  requestDataRoomAccess: async (
+    companyId: string,
+    requestedAccessLevel: string = 'view_only'
+  ): Promise<Phase6DataRoomAccessRequestResponse> => {
+    const response = await api.post<Phase6DataRoomAccessRequestResponse>(
+      `/companies/${companyId}/dataroom/access-requests`,
+      { requestedAccessLevel }
+    );
+    return response.data;
+  },
+
+  getCompanyDataRoomAccessRequests: async (
+    companyId: string
+  ): Promise<Phase6DataRoomAccessRequestResponse[]> => {
+    const response = await api.get<Phase6DataRoomAccessRequestResponse[]>(
+      `/companies/${companyId}/dataroom/access-requests`
+    );
+    return response.data;
+  },
+
+  approveDataRoomAccessRequest: async (
+    companyId: string,
+    requestId: string,
+    data: { accessLevel?: string; daysValid?: number; decisionNote?: string }
+  ): Promise<DataRoomStatusResponse> => {
+    const response = await api.post<DataRoomStatusResponse>(
+      `/companies/${companyId}/dataroom/access-requests/${requestId}/approve`,
+      data
+    );
+    return response.data;
+  },
+
+  declineDataRoomAccessRequest: async (
+    companyId: string,
+    requestId: string,
+    decisionNote?: string
+  ): Promise<Phase6DataRoomAccessRequestResponse> => {
+    const response = await api.post<Phase6DataRoomAccessRequestResponse>(
+      `/companies/${companyId}/dataroom/access-requests/${requestId}/decline`,
+      { decisionNote }
+    );
+    return response.data;
+  },
+
   updateNdaRequirement: async (companyId: string, required: boolean) => {
+
     // Backend binds [FromBody] bool, which requires a raw JSON literal (true/false).
     // Axios only serializes a primitive boolean when the JSON content type is set
     // explicitly; without this header the body is unparseable and the API returns 400.
@@ -1339,6 +1425,27 @@ export const entrepreneurApi = {
       `/companies/${companyId}/dataroom/nda`,
       required,
       { headers: { "Content-Type": "application/json" } }
+    );
+    return response.data;
+  },
+
+  getDataRoomQuestions: async (
+    companyId: string
+  ): Promise<any[]> => {
+    const response = await api.get<any[]>(
+      `/companies/${companyId}/dataroom/questions`
+    );
+    return response.data;
+  },
+
+  answerDataRoomQuestion: async (
+    companyId: string,
+    questionId: string,
+    responseContent: string
+  ): Promise<any> => {
+    const response = await api.post<any>(
+      `/companies/${companyId}/dataroom/questions/${questionId}/answer`,
+      { response: responseContent }
     );
     return response.data;
   },
@@ -1351,6 +1458,7 @@ export const entrepreneurApi = {
     );
     return response.data;
   },
+
 
   downloadDataRoomDocument: async (
     companyId: string,

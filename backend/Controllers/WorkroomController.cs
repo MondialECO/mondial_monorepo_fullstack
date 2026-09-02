@@ -27,7 +27,7 @@ public class WorkroomController(IWorkroomService service) : ControllerBase
     [HttpPost("milestones/{id}/extension")] public async Task<IActionResult> Extension(string id, ExtensionRequest r) => Map(await service.RequestExtensionAsync(CurrentUserId, id, r.Days, r.Reason));
     [HttpPost("milestones/{id}/extension-decision")] public async Task<IActionResult> ExtensionDecision(string id, ExtensionDecisionRequest r) => Map(await service.DecideExtensionAsync(CurrentUserId, id, r.Approve, r.Days, r.Reason));
     [HttpPost("revisions/{id}/start")] public async Task<IActionResult> StartRevision(string id) => Map(await service.StartRevisionAsync(CurrentUserId, id));
-    [HttpPost("milestones/{id}/resolve-dispute"), Authorize(Roles = "Admin")] public async Task<IActionResult> ResolveDispute(string id, ResolveDisputeRequest r) => Map(await service.ResolveDisputeAsync(CurrentUserId, id, r.Outcome, r.Reason));
+    [HttpPost("milestones/{id}/resolve-dispute"), Authorize(Roles = "Admin,SuperAdmin")] public async Task<IActionResult> ResolveDispute(string id, ResolveDisputeRequest r) => Map(await service.ResolveDisputeAsync(CurrentUserId, id, r.Outcome, r.Reason));
     [HttpPost("engagements/{id}/complete")] public async Task<IActionResult> Complete(string id) => Map(await service.CompleteEngagementAsync(CurrentUserId, id));
     [HttpPost("engagements/{id}/reviews")] public async Task<IActionResult> Review(string id, CreateReviewRequest r) => Map(await service.SubmitReviewAsync(CurrentUserId, id, r));
     [HttpPost("reviews/{id}/response")] public async Task<IActionResult> ReviewResponse(string id, ProviderReviewResponseRequest r) => Map(await service.RespondToReviewAsync(CurrentUserId, id, r.Response));

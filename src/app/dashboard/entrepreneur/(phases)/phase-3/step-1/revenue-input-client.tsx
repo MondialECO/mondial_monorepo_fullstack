@@ -21,7 +21,7 @@ const QUARTERS = [
 
 export function Phase3RevenueInputClient() {
   const router = useRouter();
-  const { progress, savePhaseData, moveToNextStep, getPhaseData } = useEntrepreneurProgress();
+  const { progress, activeCompanyId, savePhaseData, moveToNextStep, getPhaseData } = useEntrepreneurProgress();
 
   const [q1, setQ1] = useState('');
   const [q2, setQ2] = useState('');
@@ -40,14 +40,28 @@ export function Phase3RevenueInputClient() {
     let cancelled = false;
     (async () => {
       try {
-        const existing: Phase3Data = getPhaseData<Phase3Data>(3) ?? {};
-        const prog = await entrepreneurApi.getCurrentPhase();
-        const companyId = existing.__companyId ?? prog.companyId;
+        const prog = await entrepreneurApi.getCurrentPhase(activeCompanyId || undefined);
+        const companyId = activeCompanyId || prog.companyId;
         if (cancelled) return;
         setInvestorReady(prog.isInvestorReady);
         if (!companyId) return;
-        const fin = await entrepreneurApi.getFinancialSummary(companyId);
-        if (!cancelled) setFinancial(fin);
+
+        const [fin, qtr] = await Promise.allSettled([
+          entrepreneurApi.getFinancialSummary(companyId),
+          entrepreneurApi.getQuarterlyRevenue(companyId),
+        ]);
+        if (cancelled) return;
+        if (fin.status === 'fulfilled') setFinancial(fin.value);
+        if (qtr.status === 'fulfilled' && Array.isArray(qtr.value)) {
+          const q1Doc = qtr.value.find((q) => q.quarter === 'Q1');
+          const q2Doc = qtr.value.find((q) => q.quarter === 'Q2');
+          const q3Doc = qtr.value.find((q) => q.quarter === 'Q3');
+          const q4Doc = qtr.value.find((q) => q.quarter === 'Q4');
+          if (q1Doc?.revenue != null && q1Doc.revenue > 0) setQ1(String(q1Doc.revenue));
+          if (q2Doc?.revenue != null && q2Doc.revenue > 0) setQ2(String(q2Doc.revenue));
+          if (q3Doc?.revenue != null && q3Doc.revenue > 0) setQ3(String(q3Doc.revenue));
+          if (q4Doc?.revenue != null && q4Doc.revenue > 0) setQ4(String(q4Doc.revenue));
+        }
       } catch {
         // Silent — empty form is a fine fallback.
       }
@@ -55,7 +69,7 @@ export function Phase3RevenueInputClient() {
     return () => {
       cancelled = true;
     };
-  }, [getPhaseData]);
+  }, [activeCompanyId]);
 
   if (!progress) {
     return (
@@ -85,11 +99,12 @@ export function Phase3RevenueInputClient() {
   ];
 
   async function resolveCompanyId(): Promise<string> {
+    if (activeCompanyId) return activeCompanyId;
+    const fromServer = await entrepreneurApi.getCurrentPhase();
+    if (fromServer?.companyId) return fromServer.companyId;
     const existing: Phase3Data = getPhaseData<Phase3Data>(3) ?? {};
     if (existing.__companyId) return existing.__companyId;
-    const fromServer = await entrepreneurApi.getCurrentPhase();
-    if (!fromServer?.companyId) throw new Error('No company found in backend');
-    return fromServer.companyId;
+    throw new Error('No company found in backend');
   }
 
   async function persistAndCalculate(navigate: boolean) {

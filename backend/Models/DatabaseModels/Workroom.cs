@@ -1,4 +1,4 @@
-﻿using System.Text.Json.Serialization;
+using System.Text.Json.Serialization;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
@@ -238,6 +238,18 @@ public class Review
     public ReviewVisibility Visibility { get; set; } = ReviewVisibility.Public;
     public DateTime SubmittedAt { get; set; } = DateTime.UtcNow;
     public ReviewVerificationStatus VerificationStatus { get; set; } = ReviewVerificationStatus.Verified;
+
+    [BsonIgnoreIfNull]
+    public bool IsModerationHidden { get; set; }
+
+    [BsonIgnoreIfNull]
+    public string? ModerationReason { get; set; }
+
+    [BsonIgnoreIfNull]
+    public string? ModeratedByAdminId { get; set; }
+
+    [BsonIgnoreIfNull]
+    public DateTime? ModeratedAt { get; set; }
 }
 
 public class WorkroomTask

@@ -193,8 +193,8 @@ export function Phase6DataRoomVisuals() {
 function FounderDiligenceQuestionsSection({ companyId }: { companyId?: string }) {
   const [questions, setQuestions] = useState<import('@/lib/api-investor-diligence').DiligenceQuestion[]>([]);
   const [answeringId, setAnsweringId] = useState<string | null>(null);
-  const [responseText, setResponseText] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+  const [responses, setResponses] = useState<Record<string, string>>({});
+  const [submittingId, setSubmittingId] = useState<string | null>(null);
   const [error, setError] = useState('');
 
   const loadQuestions = async () => {
@@ -213,21 +213,23 @@ function FounderDiligenceQuestionsSection({ companyId }: { companyId?: string })
   }, [companyId]);
 
   const handleAnswer = async (questionId: string) => {
-    if (!companyId || !responseText.trim()) return;
-    setSubmitting(true);
+    const text = responses[questionId]?.trim();
+    if (!companyId || !text) return;
+    setSubmittingId(questionId);
     setError('');
     try {
       const { answerFounderDataRoomQuestion } = await import('@/lib/api-investor-diligence');
-      await answerFounderDataRoomQuestion(companyId, questionId, responseText.trim());
+      await answerFounderDataRoomQuestion(companyId, questionId, text);
       setAnsweringId(null);
-      setResponseText('');
+      setResponses((prev) => ({ ...prev, [questionId]: '' }));
       await loadQuestions();
     } catch {
       setError('Could not submit response. Please try again.');
     } finally {
-      setSubmitting(false);
+      setSubmittingId(null);
     }
   };
+
 
   const openCount = questions.filter((q) => q.status === 'open').length;
 
@@ -308,8 +310,8 @@ function FounderDiligenceQuestionsSection({ companyId }: { companyId?: string })
                       <div className="space-y-2 pt-1">
                         <textarea
                           placeholder="Type your response to the investor..."
-                          value={responseText}
-                          onChange={(e) => setResponseText(e.target.value)}
+                          value={responses[q.id] || ''}
+                          onChange={(e) => setResponses((prev) => ({ ...prev, [q.id]: e.target.value }))}
                           rows={3}
                           className="w-full rounded-lg border border-border bg-background p-2.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                         />
@@ -318,7 +320,7 @@ function FounderDiligenceQuestionsSection({ companyId }: { companyId?: string })
                             type="button"
                             onClick={() => {
                               setAnsweringId(null);
-                              setResponseText('');
+                              setResponses((prev) => ({ ...prev, [q.id]: '' }));
                             }}
                             className="px-3 py-1.5 text-xs font-medium rounded-lg border border-border hover:bg-muted"
                           >
@@ -327,10 +329,10 @@ function FounderDiligenceQuestionsSection({ companyId }: { companyId?: string })
                           <button
                             type="button"
                             onClick={() => handleAnswer(q.id)}
-                            disabled={!responseText.trim() || submitting}
+                            disabled={!responses[q.id]?.trim() || submittingId === q.id}
                             className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50"
                           >
-                            {submitting ? 'Sending…' : 'Submit Response'}
+                            {submittingId === q.id ? 'Sending…' : 'Submit Response'}
                           </button>
                         </div>
                       </div>
@@ -340,7 +342,6 @@ function FounderDiligenceQuestionsSection({ companyId }: { companyId?: string })
                           type="button"
                           onClick={() => {
                             setAnsweringId(q.id);
-                            setResponseText('');
                           }}
                           className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:opacity-90"
                         >
@@ -348,6 +349,7 @@ function FounderDiligenceQuestionsSection({ companyId }: { companyId?: string })
                         </button>
                       </div>
                     )}
+
                   </div>
                 )}
               </div>

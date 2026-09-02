@@ -4,8 +4,11 @@ import { useAuth } from "@/app/_providers/AuthProvider";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
 import {
+  getRoleDashboardRoute,
   ROLE_DASHBOARD_ROUTES,
   UserRole,
+  parseStrictUserRole,
+  normalizeUserRole,
 } from "@/lib/roles";
 
 function normalizePathRole(pathname: string): string | null {
@@ -88,8 +91,11 @@ export default function AuthGuard({
       return;
     }
 
-    const userRoles = user.roles && user.roles.length > 0 ? user.roles : [user.role];
-    const userDashboard = ROLE_DASHBOARD_ROUTES[user.role] || "/dashboard/creator";
+    const userRolesRaw = user.roles && user.roles.length > 0 ? user.roles : [user.role];
+    const parsedUserRoles = userRolesRaw
+      .map((r) => parseStrictUserRole(r) ?? normalizeUserRole(r))
+      .filter((r): r is UserRole => Boolean(r));
+    const userDashboard = getRoleDashboardRoute(user);
     const normalizedRouteRole = pathRole?.toLowerCase();
     const routeRoleMap: Record<string, UserRole> = {
       admin: UserRole.ADMIN,
@@ -101,15 +107,15 @@ export default function AuthGuard({
       service_provider: UserRole.SERVICE_PROVIDER,
     };
 
-    // Admin can access admin routes and settings
-    if (userRoles.includes(UserRole.ADMIN) && normalizedRouteRole && ['admin', 'settings'].includes(normalizedRouteRole)) {
+    // Admin or SuperAdmin can access admin routes and settings
+    if ((parsedUserRoles.includes(UserRole.ADMIN) || parsedUserRoles.includes(UserRole.SUPERADMIN)) && normalizedRouteRole && ['admin', 'settings'].includes(normalizedRouteRole)) {
       return;
     }
 
     const mappedRouteRole = normalizedRouteRole ? routeRoleMap[normalizedRouteRole] : null;
 
     if (!mappedRouteRole) return; // Unknown or role-neutral route (e.g. /dashboard/profile), let it pass
-    if (userRoles.includes(mappedRouteRole)) return; // User possesses this role, allow!
+    if (parsedUserRoles.includes(mappedRouteRole)) return; // User possesses this role, allow!
 
     // Wrong role, redirect to user's default dashboard
     router.push(userDashboard);

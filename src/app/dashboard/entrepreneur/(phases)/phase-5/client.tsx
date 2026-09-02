@@ -32,7 +32,7 @@ const NARRATIVE_MAX_LENGTH = 5000;
 
 export default function Phase5Client() {
   const router = useRouter();
-  const { savePhaseData, getPhaseData, applyBackendResponse, currentPhase } =
+  const { activeCompanyId, savePhaseData, getPhaseData, applyBackendResponse, currentPhase } =
     useEntrepreneurProgress();
 
   // Step management
@@ -74,9 +74,8 @@ export default function Phase5Client() {
     let cancelled = false;
     (async () => {
       try {
-        const existing: Phase5Data = getPhaseData<Phase5Data>(5) ?? {};
-        const id =
-          existing.__companyId ?? (await entrepreneurApi.getCurrentPhase()).companyId;
+        const prog = await entrepreneurApi.getCurrentPhase(activeCompanyId || undefined);
+        const id = activeCompanyId || prog.companyId || (getPhaseData<Phase5Data>(5) ?? {}).__companyId;
         if (!id || cancelled) return;
         setCompanyId(id);
 
@@ -139,7 +138,7 @@ export default function Phase5Client() {
     return () => {
       cancelled = true;
     };
-  }, [getPhaseData]);
+  }, [activeCompanyId, getPhaseData]);
 
   const allocationTotal = allocations.reduce(
     (s, a) => s + (parseFloat(a.percent) || 0),
@@ -206,10 +205,6 @@ export default function Phase5Client() {
       setValidationError('Pre-money valuation unavailable — complete your Phase 3 valuation first.');
       return false;
     }
-    if (preMoney < raise) {
-      setValidationError('Pre-money valuation must be greater than or equal to raise amount.');
-      return false;
-    }
     if (shareType === 'preferred') {
       const equity = parseFloat(equityOfferedPercent);
       if (!Number.isFinite(equity) || equity <= 0 || equity > 100) {
@@ -243,13 +238,18 @@ export default function Phase5Client() {
 
   const handleNextStep = async () => {
     setValidationError('');
+    const targetCompanyId = activeCompanyId || companyId;
+    if (!targetCompanyId) {
+      setValidationError('No active company found. Please refresh the page.');
+      return;
+    }
     if (currentStep === 1) {
       if (!validateStep1()) return;
       setIsSavingStep(true);
       try {
         const raise = parseFloat(raiseAmount) || 0;
         const preMoney = parseFloat(preMoneyValuation) || 0;
-        await entrepreneurApi.saveFundingAsk(companyId, {
+        await entrepreneurApi.saveFundingAsk(targetCompanyId, {
           raiseAmount: raise,
           roundType,
           preMoneyValuation: preMoney,
@@ -284,7 +284,7 @@ export default function Phase5Client() {
       try {
         const raise = parseFloat(raiseAmount) || 0;
         const preMoney = parseFloat(preMoneyValuation) || 0;
-        await entrepreneurApi.saveFundingAsk(companyId, {
+        await entrepreneurApi.saveFundingAsk(targetCompanyId, {
           raiseAmount: raise,
           roundType,
           preMoneyValuation: preMoney,
@@ -325,11 +325,16 @@ export default function Phase5Client() {
 
   const handlePitchUpload = async (file: File) => {
     setValidationError('');
+    const targetCompanyId = activeCompanyId || companyId;
+    if (!targetCompanyId) {
+      setValidationError('No active company found. Please refresh the page.');
+      return;
+    }
     setPitchDeckUploading(true);
     try {
       const fd = new FormData();
       fd.append('file', file);
-      const uploaded = await entrepreneurApi.uploadPitchDeck(companyId, fd);
+      const uploaded = await entrepreneurApi.uploadPitchDeck(targetCompanyId, fd);
       setPitchDeck(uploaded);
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Failed to upload pitch deck';
@@ -341,6 +346,11 @@ export default function Phase5Client() {
 
   const handleSubmit = async () => {
     if (!validateStep3()) return;
+    const targetCompanyId = activeCompanyId || companyId;
+    if (!targetCompanyId) {
+      setValidationError('No active company found. Please refresh the page.');
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -352,7 +362,7 @@ export default function Phase5Client() {
       // Save funding ask and narrative in parallel, then advance phase.
       // If either fails, the entire submission fails (no partial state).
       await Promise.all([
-        entrepreneurApi.saveFundingAsk(companyId, {
+        entrepreneurApi.saveFundingAsk(targetCompanyId, {
           raiseAmount: raise,
           roundType,
           preMoneyValuation: preMoney,
@@ -377,13 +387,13 @@ export default function Phase5Client() {
             techTools: [],
           },
         }),
-        entrepreneurApi.saveFundingNarrative(companyId, {
+        entrepreneurApi.saveFundingNarrative(targetCompanyId, {
           narrative: narrative.trim(),
         }),
       ]);
 
       // Both save calls succeeded; now advance phase.
-      const advanceResponse = await entrepreneurApi.advancePhase(companyId, 5, {});
+      const advanceResponse = await entrepreneurApi.advancePhase(targetCompanyId, 5, {});
       if (advanceResponse?.currentPhase !== 6) {
         throw new Error(
           `Phase advancement failed - expected currentPhase=6, got ${advanceResponse?.currentPhase}`,
@@ -392,7 +402,7 @@ export default function Phase5Client() {
 
       applyBackendResponse(advanceResponse);
       savePhaseData(5, {
-        __companyId: companyId,
+        __companyId: targetCompanyId,
         submittedAt: new Date().toISOString(),
       });
 

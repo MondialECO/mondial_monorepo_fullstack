@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { formatDistanceToNowStrict } from 'date-fns';
 import {
   Check,
@@ -10,6 +11,8 @@ import {
   Star,
   UserCheck,
   X,
+  ExternalLink,
+  Award,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -33,7 +36,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
-import EmptyState from '@/components/ui/empty-state';
+import { AdminEmptyState, AdminErrorState } from '@/components/admin/shared';
 import {
   useApproveProvider,
   usePendingProviders,
@@ -61,9 +64,20 @@ export function PendingVerificationQueue() {
 
   if (isLoading) {
     return (
-      <div className="space-y-3">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <Skeleton key={i} className="h-24 w-full rounded-xl" />
+      <div className="space-y-4">
+        {[1, 2, 3].map((i) => (
+          <Card key={i}>
+            <CardContent className="space-y-3 p-5">
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-10 w-10 rounded-full" />
+                <div className="space-y-1.5">
+                  <Skeleton className="h-4 w-40" />
+                  <Skeleton className="h-3 w-60" />
+                </div>
+              </div>
+              <Skeleton className="h-3 w-full" />
+            </CardContent>
+          </Card>
         ))}
       </div>
     );
@@ -71,87 +85,82 @@ export function PendingVerificationQueue() {
 
   if (isError) {
     return (
-      <EmptyState
-        icon={UserCheck}
-        title="Could not load the verification queue"
-        description="Refresh the page or try again in a moment."
+      <AdminErrorState
+        title="Could not load the queue"
+        message="There was a problem reaching the server. Please try refreshing."
       />
     );
   }
 
-  const list = providers ?? [];
-
-  if (list.length === 0) {
+  if (!providers || providers.length === 0) {
     return (
-      <EmptyState
-        icon={UserCheck}
-        title="No moderation reviews pending"
-        description="Providers who remediate an admin rejection and resubmit will appear here."
+      <AdminEmptyState
+        title="No service provider credentials are awaiting review."
+        description="The moderation queue is clear. Submitted provider profiles and credentials will appear here."
       />
     );
   }
 
   return (
     <>
-      <div className="space-y-3">
-        {list.map((p) => (
-          <Card key={p.userId}>
-            <CardContent className="flex flex-col gap-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="min-w-0 space-y-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="font-semibold text-foreground">
-                    {p.name?.trim() || 'Unnamed provider'}
-                  </p>
-                  <Badge variant="warning">Under review</Badge>
+      <div className="space-y-4">
+        {providers.map((p) => (
+          <Card key={p.userId} className="overflow-hidden">
+            <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-4">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-semibold">
+                  {p.name?.trim().charAt(0).toUpperCase() || 'P'}
                 </div>
-                {p.profile.headline && (
-                  <p className="text-sm text-muted-foreground line-clamp-1">
-                    {p.profile.headline}
-                  </p>
-                )}
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                  <span className="inline-flex items-center gap-1">
+                <div className="space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="font-semibold text-foreground">
+                      {p.name?.trim() || 'Unnamed provider'}
+                    </h3>
+                    <Badge variant="outline" className="text-xs">
+                      Trust {p.profile.trustScore.toFixed(1)}
+                    </Badge>
+                    <Badge variant="secondary" className="text-xs">
+                      {p.profile.completionPercent}% complete
+                    </Badge>
+                  </div>
+                  <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <Mail className="h-3.5 w-3.5" />
                     {p.email || '—'}
-                  </span>
-                  <span className="inline-flex items-center gap-1">
-                    <Sparkles className="h-3.5 w-3.5" />
-                    {p.profile.skills.length} skills
-                  </span>
-                  <span className="inline-flex items-center gap-1">
-                    <FolderOpen className="h-3.5 w-3.5" />
-                    {p.profile.portfolioItems.length} portfolio
-                  </span>
-                  <span>Submitted {submittedLabel(p.profile.verificationSubmittedAt)}</span>
+                  </p>
+                  {p.profile.headline && (
+                    <p className="text-sm text-muted-foreground line-clamp-1">
+                      {p.profile.headline}
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Submitted {submittedLabel(p.profile.verificationSubmittedAt)}
+                  </p>
                 </div>
-                {p.profile.serviceCategories.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 pt-1">
-                    {p.profile.serviceCategories.map((c) => (
-                      <Badge key={c} variant="secondary">
-                        {c}
-                      </Badge>
-                    ))}
-                  </div>
-                )}
               </div>
 
-              <div className="flex shrink-0 flex-wrap gap-2">
-                <Button variant="outline" size="sm" onClick={() => setSelected(p)}>
-                  View
+              <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelected(p)}
+                >
+                  <FolderOpen className="h-4 w-4 mr-1" />
+                  Inspect Profile
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setConfirm({ mode: 'reject', provider: p })}
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-4 w-4 mr-1 text-rose-500" />
                   Reject
                 </Button>
                 <Button
                   size="sm"
                   onClick={() => setConfirm({ mode: 'approve', provider: p })}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
                 >
-                  <Check className="h-4 w-4" />
+                  <Check className="h-4 w-4 mr-1" />
                   Approve
                 </Button>
               </div>
@@ -178,17 +187,18 @@ export function PendingVerificationQueue() {
   );
 }
 
-function DetailList({ label, items }: { label: string; items: string[] }) {
+function DetailList({ label, items = [] }: { label: string; items?: string[] }) {
+  const safeItems = items ?? [];
   return (
     <div className="space-y-1.5">
       <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         {label}
       </p>
-      {items.length === 0 ? (
+      {safeItems.length === 0 ? (
         <p className="text-sm text-muted-foreground">—</p>
       ) : (
         <div className="flex flex-wrap gap-1.5">
-          {items.map((i) => (
+          {safeItems.map((i) => (
             <Badge key={i} variant="secondary">
               {i}
             </Badge>
@@ -221,6 +231,17 @@ function ProviderDetailDrawer({
             </SheetHeader>
 
             <div className="space-y-5 px-4 pb-4">
+              <div className="p-2.5 bg-muted/40 rounded-md flex items-center justify-between text-xs border border-border">
+                <span className="text-muted-foreground">Unified Profile:</span>
+                <Link
+                  href={`/dashboard/admin/users/${provider.userId}`}
+                  target="_blank"
+                  className="text-primary hover:underline font-semibold flex items-center gap-1"
+                >
+                  Inspect User Account <ExternalLink className="w-3 h-3" />
+                </Link>
+              </div>
+
               <div className="flex flex-wrap gap-4">
                 <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
                   <Star className="h-4 w-4" /> Trust {provider.profile.trustScore.toFixed(1)}
@@ -261,10 +282,24 @@ function ProviderDetailDrawer({
               <Separator />
 
               <div className="space-y-2">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Portfolio ({provider.profile.portfolioItems.length})
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Credentials & Licenses (Read Only)
+                  </p>
+                  <Badge variant="outline" className="text-[10px]">Decision API Pending</Badge>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Official credential verification state machine is monitored in audit log.
                 </p>
-                {provider.profile.portfolioItems.length === 0 ? (
+              </div>
+
+              <Separator />
+
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Portfolio ({provider.profile.portfolioItems?.length ?? 0})
+                </p>
+                {(!provider.profile.portfolioItems || provider.profile.portfolioItems.length === 0) ? (
                   <p className="text-sm text-muted-foreground">No portfolio items.</p>
                 ) : (
                   <div className="space-y-2">
@@ -298,11 +333,14 @@ function ProviderDetailDrawer({
                   className="flex-1"
                   onClick={() => onReject(provider)}
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-4 w-4 mr-1 text-rose-500" />
                   Reject
                 </Button>
-                <Button className="flex-1" onClick={() => onApprove(provider)}>
-                  <Check className="h-4 w-4" />
+                <Button
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+                  onClick={() => onApprove(provider)}
+                >
+                  <Check className="h-4 w-4 mr-1" />
                   Approve
                 </Button>
               </div>
@@ -326,7 +364,6 @@ function ConfirmDialog({
   const [reason, setReason] = useState('');
   const [reasonError, setReasonError] = useState(false);
 
-  // Reset the reason whenever a new confirmation opens.
   const mode = state?.mode;
   const provider = state?.provider;
 
@@ -407,6 +444,7 @@ function ConfirmDialog({
             variant={mode === 'reject' ? 'destructive' : 'default'}
             onClick={submit}
             disabled={pending}
+            className={mode === 'approve' ? 'bg-emerald-600 hover:bg-emerald-700 text-white font-semibold' : ''}
           >
             {pending
               ? 'Working…'

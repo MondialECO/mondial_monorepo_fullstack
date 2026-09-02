@@ -48,3 +48,32 @@ public class Phase6NdaAcceptance
     public string NdaTextHash { get; set; }
     public string IpHash { get; set; }
 }
+
+/// <summary>
+/// Records an explicit investor request to access a company's data room,
+/// requiring founder review and approval/decline.
+/// </summary>
+public class Phase6DataRoomAccessRequest
+{
+    [BsonId]
+    [BsonRepresentation(BsonType.ObjectId)]
+    public string Id { get; set; } = ObjectId.GenerateNewId().ToString();
+
+    public string CompanyId { get; set; }
+    public string InvestorId { get; set; }
+    public string InvestorUserId { get; set; }
+    public string InvestorName { get; set; }
+    public string InvestorEmail { get; set; }
+
+    /// <summary>view_only | view_and_download</summary>
+    public string RequestedAccessLevel { get; set; } = "view_only";
+
+    /// <summary>pending | approved | declined | cancelled</summary>
+    public string Status { get; set; } = "pending";
+
+    public DateTime RequestedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? ReviewedAt { get; set; }
+    public string? ReviewedByUserId { get; set; }
+    public string? DecisionNote { get; set; }
+}
+

@@ -1,7 +1,8 @@
 import { cn } from "@/lib/utils";
 
 interface MatchScoreBadgeProps {
-  score: number;
+  score?: number | null;
+  status?: string;
   className?: string;
 }
 
@@ -27,7 +28,21 @@ function tier(score: number): { label: string; tone: string } {
   };
 }
 
-export default function MatchScoreBadge({ score, className }: MatchScoreBadgeProps) {
+export default function MatchScoreBadge({ score, status, className }: MatchScoreBadgeProps) {
+  if (score == null || status === "direct_discovery") {
+    return (
+      <div
+        className={cn(
+          "inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/60 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground",
+          className
+        )}
+        aria-label="Direct discovery: Not yet scored"
+      >
+        <span>Direct Discovery</span>
+      </div>
+    );
+  }
+
   const { label, tone } = tier(score);
   const pct = Math.max(0, Math.min(100, Math.round(score)));
   return (
@@ -44,3 +59,4 @@ export default function MatchScoreBadge({ score, className }: MatchScoreBadgePro
     </div>
   );
 }
+
