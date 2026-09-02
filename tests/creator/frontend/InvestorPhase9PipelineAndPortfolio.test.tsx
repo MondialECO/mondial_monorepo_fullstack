@@ -86,13 +86,14 @@ describe("Investor Phase 9 — Pipeline Lifecycle & Terminal States", () => {
     expect(investorMenu).toBeDefined();
 
     const titles = investorMenu.map((g) => g.title);
-    expect(titles).toContain("Main");
-    expect(titles).toContain("Investment & Deals");
+    expect(titles).toContain("Dashboard");
+    expect(titles).toContain("Dealmaking & Pipeline");
     expect(titles).toContain("Services & Network");
-    expect(titles).toContain("Profile & Communication");
+    expect(titles).toContain("Communication & Account");
 
-    const investmentGroup = investorMenu.find((g) => g.title === "Investment & Deals");
-    const hrefs = investmentGroup?.items.map((i) => i.href);
+    const dealmakingGroup = investorMenu.find((g) => g.title === "Dealmaking & Pipeline");
+    const hrefs = dealmakingGroup?.items.map((i) => i.href);
+    expect(hrefs).toContain("/dashboard/investor/discovery");
     expect(hrefs).toContain("/dashboard/investor/pipeline");
     expect(hrefs).toContain("/dashboard/investor/deals");
     expect(hrefs).toContain("/dashboard/investor/thesis");

@@ -15,64 +15,59 @@ vi.mock('next/link', () => ({
 }));
 
 describe('Creator Canonical Navigation Menu — Final Product-Journey Reorganization', () => {
-  it('contains the canonical 5 menu sections with exact items and routes in product-journey order', () => {
+  it('contains the canonical menu sections with exact items and routes in product-journey order', () => {
     const creatorMenu = menu[UserRole.CREATOR];
     expect(creatorMenu).toBeDefined();
-    expect(creatorMenu.length).toBe(5);
+    expect(creatorMenu.length).toBe(6);
 
-    // 1. MAIN
-    expect(creatorMenu[0].title).toBe('Main');
+    // 1. DASHBOARD
+    expect(creatorMenu[0].title).toBe('Dashboard');
     expect(creatorMenu[0].items.map((i) => ({ label: i.label, href: i.href }))).toEqual([
-      { label: 'Dashboard', href: '/dashboard/creator' },
+      { label: 'Overview', href: '/dashboard/creator' },
       { label: 'My Ideas', href: '/dashboard/creator/myideas' },
     ]);
 
-    // 2. BUILD YOUR PROJECT
-    expect(creatorMenu[1].title).toBe('Build Your Project');
+    // 2. PROJECT BUILDER
+    expect(creatorMenu[1].title).toBe('Project Builder');
     expect(creatorMenu[1].items.map((i) => ({ label: i.label, href: i.href }))).toEqual([
       { label: 'Project Studio', href: '/dashboard/creator/project-studio' },
-      { label: 'Offer & Pricing', href: '/dashboard/creator/offer-pricing' },
-      { label: 'Marketplace Push', href: '/dashboard/creator/crossroads' },
+      { label: 'Pricing & Equity', href: '/dashboard/creator/offer-pricing' },
       { label: 'Growth & Readiness', href: '/dashboard/creator/investors' },
     ]);
 
-    // 3. DEALS & NETWORK
-    expect(creatorMenu[2].title).toBe('Deals & Network');
+    // 3. PROJECT MARKETPLACE
+    expect(creatorMenu[2].title).toBe('Project Marketplace');
     expect(creatorMenu[2].items.map((i) => ({ label: i.label, href: i.href }))).toEqual([
-      { label: 'My Partnerships', href: '/dashboard/creator/partnerships' },
-      { label: 'My Sales', href: '/dashboard/creator/sales' },
-      { label: 'Services Marketplace', href: '/marketplace/services' },
-      { label: 'My Engagements', href: '/dashboard/creator/engagements' },
+      { label: 'Project Marketplace', href: '/dashboard/creator/marketplace' },
+      { label: 'Launch to Market', href: '/dashboard/creator/crossroads' },
+      { label: 'Partnerships', href: '/dashboard/creator/partnerships' },
+      { label: 'Project Sales', href: '/dashboard/creator/sales' },
     ]);
 
-    // 4. COMMUNICATION
-    expect(creatorMenu[3].title).toBe('Communication');
+    // 4. ASSETS & IP
+    expect(creatorMenu[3].title).toBe('Assets & IP');
     expect(creatorMenu[3].items.map((i) => ({ label: i.label, href: i.href }))).toEqual([
-      { label: 'Messages', href: '/dashboard/creator/messages' },
-      { label: 'Notifications', href: '/dashboard/creator/notifications' },
-    ]);
-
-    // 5. ASSETS & SETTINGS
-    expect(creatorMenu[4].title).toBe('Assets & Settings');
-    expect(creatorMenu[4].items.map((i) => ({ label: i.label, href: i.href }))).toEqual([
       { label: 'Documents', href: '/dashboard/creator/documents' },
       { label: 'Asset Library', href: '/dashboard/creator/asset-library' },
+      { label: 'IP Vault', href: '/dashboard/creator/ip-vault' },
+    ]);
+
+    // 5. SERVICES & NETWORK
+    expect(creatorMenu[4].title).toBe('Services & Network');
+    expect(creatorMenu[4].items.map((i) => ({ label: i.label, href: i.href }))).toEqual([
+      { label: 'Hire Services', href: '/marketplace/services' },
+      { label: 'Active Engagements', href: '/dashboard/creator/engagements' },
+    ]);
+
+    // 6. COMMUNICATION & ACCOUNT
+    expect(creatorMenu[5].title).toBe('Communication & Account');
+    expect(creatorMenu[5].items.map((i) => ({ label: i.label, href: i.href }))).toEqual([
+      { label: 'Messages', href: '/dashboard/creator/messages' },
+      { label: 'Notifications', href: '/dashboard/creator/notifications' },
       { label: 'Profile', href: '/dashboard/profile' },
       { label: 'Settings', href: '/dashboard/creator/settings' },
     ]);
-
-    // Flatten all items
-    const allItems = creatorMenu.flatMap((s) => s.items);
-    const hrefs = allItems.map((i) => i.href);
-    const labels = allItems.map((i) => i.label);
-
-    // Verify exactly 16 items
-    expect(allItems.length).toBe(16);
-
-    // Verify obsolete dead stubs or unapproved menus are NOT present
-    expect(hrefs).not.toContain('/dashboard/creator/marketplace');
-    expect(hrefs).not.toContain('/dashboard/creator/hire-providers');
-    expect(hrefs).not.toContain('/dashboard/creator/ip-vault');
+    const labels = creatorMenu.flatMap((s) => s.items).map((i) => i.label);
     expect(labels).not.toContain('Sold Projects');
     expect(labels).not.toContain('The Crossroads');
     expect(labels).not.toContain('Sell Idea');

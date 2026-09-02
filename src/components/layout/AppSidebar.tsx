@@ -382,7 +382,7 @@ function ServiceProviderSidebar({
                   );
                   const submenuId = `submenu-${item.label.toLowerCase().replace(/\s+/g, "-")}`;
                   const badge =
-                    item.label === "Client Briefs"
+                    item.label === "Client Briefs" || item.label === "Client Briefs & Leads"
                       ? unreadLeads
                       : item.label === "Active Projects"
                         ? activeProjects

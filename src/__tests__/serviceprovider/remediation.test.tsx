@@ -145,7 +145,7 @@ describe('availability mutation feedback', () => {
 
 describe('navigation and compliance regressions', () => {
   it('selects exactly one Earnings child while leaving the parent as the workspace context', () => {
-    const earnings = menu[UserRole.SERVICE_PROVIDER][0].items.find((item) => item.label === 'Earnings & Payouts')!;
+    const earnings = menu[UserRole.SERVICE_PROVIDER].flatMap((s) => s.items).find((item) => item.label === 'Earnings & Payouts')!;
     const params = new URLSearchParams('tab=payouts');
     expect(isMenuHrefActive(earnings.href, '/dashboard/serviceprovider/earnings', params)).toBe(false);
     expect(earnings.children!.filter((child) => isMenuHrefActive(child.href, '/dashboard/serviceprovider/earnings', params)).map((child) => child.label)).toEqual(['Payouts']);
