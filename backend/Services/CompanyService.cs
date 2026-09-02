@@ -3411,6 +3411,17 @@ public class CompanyService : ICompanyService
             throw new ArgumentException(
                 $"Investor '{request.InvestorId}' does not exist or is no longer active.");
 
+        // Idempotency: check if an active (non-terminal) deal already exists for this (company, investor) pair.
+        var existingDeal = await _dbContext.DealExecutions
+            .Find(d => d.CompanyId == companyId &&
+                       d.Investors.Any(i => i.InvestorId == request.InvestorId) &&
+                       !Phase9Requirements.DealTerminalStates.Contains(d.Status))
+            .FirstOrDefaultAsync();
+        if (existingDeal != null)
+        {
+            return MapDealToResponse(existingDeal);
+        }
+
         var dealId = ObjectId.GenerateNewId().ToString();
         var deal = new DealExecution
         {
@@ -4676,10 +4687,12 @@ public class CompanyService : ICompanyService
             .FirstOrDefaultAsync()
             ?? throw new ArgumentException($"investorId '{investorId}' does not match any investor");
 
-        // One offer thread per (company, investor). Reuse an existing deal;
+        // One offer thread per (company, investor). Reuse an existing active deal;
         // once a thread is open, callers must counter instead of re-creating.
         var deal = await _dbContext.DealExecutions
-            .Find(d => d.CompanyId == companyId && d.Investors.Any(i => i.InvestorId == investorId))
+            .Find(d => d.CompanyId == companyId &&
+                       d.Investors.Any(i => i.InvestorId == investorId) &&
+                       !Phase9Requirements.DealTerminalStates.Contains(d.Status))
             .FirstOrDefaultAsync();
 
         if (deal != null && deal.Revisions.Any())

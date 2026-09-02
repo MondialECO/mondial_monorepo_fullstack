@@ -459,11 +459,6 @@ export const menu: Record<UserRole, MenuSection[]> = {
       title: "Investment & Deals",
       items: [
         {
-          label: "Incoming Matches",
-          href: "/dashboard/investor/incoming-matches",
-          icon: UserCheck,
-        },
-        {
           label: "Pipeline",
           href: "/dashboard/investor/pipeline",
           icon: LayoutGrid,
@@ -605,7 +600,7 @@ export const menu: Record<UserRole, MenuSection[]> = {
         },
         {
           label: "Investor Deals",
-          href: "/dashboard/entrepreneur/phase-9",
+          href: "/dashboard/entrepreneur/deals",
           icon: Users,
         },
       ],

@@ -11,8 +11,9 @@ import entrepreneurApi, {
 
 // Mock dependencies
 const mockPush = vi.fn();
+const mockReplace = vi.fn();
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: mockPush }),
+  useRouter: () => ({ push: mockPush, replace: mockReplace }),
   usePathname: () => '/dashboard/entrepreneur/phase-8',
   useSearchParams: () => new URLSearchParams(),
 }));
@@ -251,7 +252,7 @@ describe('Phase 8 — Entrepreneur Investor Matching & Double Opt-In Suite', () 
 
     await waitFor(() => {
       expect(entrepreneurApi.advancePhase).toHaveBeenCalledWith('comp-101', 8, expect.any(Object));
-      expect(mockPush).toHaveBeenCalledWith('/dashboard/entrepreneur/phase-9');
+      expect(mockPush).toHaveBeenCalledWith('/dashboard/entrepreneur/deals');
     });
   });
 
@@ -398,52 +399,10 @@ describe('Phase 8 — Investor Dashboard Incoming Matches UI Suite', () => {
     vi.clearAllMocks();
   });
 
-  it('15. Investor sees entrepreneur incoming interest with Interested & Pass actions', async () => {
-    vi.spyOn(entrepreneurApi, 'getInvestorIncomingMatches').mockResolvedValue([incomingMatch]);
-
+  it('15. InvestorIncomingMatchesPage redirects to /dashboard/investor/discovery', async () => {
     render(<InvestorIncomingMatchesPage />);
 
-    expect(await screen.findByText('NexHealth AI')).toBeInTheDocument();
-    expect(screen.getByText('NEW COMPANY INTEREST')).toBeInTheDocument();
-    expect(screen.getByText('EUR 750,000')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^interested$/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^pass$/i })).toBeInTheDocument();
-  });
-
-  it('16. Investor clicking Interested updates status and creates confirmed handshake', async () => {
-    vi.spyOn(entrepreneurApi, 'getInvestorIncomingMatches').mockResolvedValue([incomingMatch]);
-    vi.spyOn(entrepreneurApi, 'respondToInvestorMatch').mockResolvedValue({
-      ...incomingMatch,
-      investorInterest: 'interested',
-      status: 'accepted',
-      handshakeConfirmedAt: '2026-08-29T14:00:00Z',
-    });
-
-    render(<InvestorIncomingMatchesPage />);
-
-    const interestedBtn = await screen.findByRole('button', { name: /^interested$/i });
-    fireEvent.click(interestedBtn);
-
-    expect(await screen.findByText('MUTUAL HANDSHAKE')).toBeInTheDocument();
-    expect(screen.getByText('Handshake Confirmed')).toBeInTheDocument();
-    expect(screen.getByTestId('message-founder-comp-202')).toBeInTheDocument();
-  });
-
-  it('17. Investor Pass sets status to passed without creating handshake', async () => {
-    vi.spyOn(entrepreneurApi, 'getInvestorIncomingMatches').mockResolvedValue([incomingMatch]);
-    vi.spyOn(entrepreneurApi, 'respondToInvestorMatch').mockResolvedValue({
-      ...incomingMatch,
-      investorInterest: 'passed',
-      status: 'passed',
-    });
-
-    render(<InvestorIncomingMatchesPage />);
-
-    const passBtn = await screen.findByRole('button', { name: /^pass$/i });
-    fireEvent.click(passBtn);
-
-    expect(await screen.findByText('PASSED')).toBeInTheDocument();
-    expect(screen.queryByText('Handshake Confirmed')).not.toBeInTheDocument();
+    expect(screen.getByText(/redirecting to discover opportunities/i)).toBeInTheDocument();
   });
 
   it('Phase8_StaleReadiness_ShowsWarning: shows warning when readiness is stale', async () => {

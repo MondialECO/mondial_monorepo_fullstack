@@ -4,6 +4,7 @@ using Moq;
 using WebApp.DbContext;
 using WebApp.Models.DatabaseModels;
 using WebApp.Models.Dtos;
+using WebApp.Services;
 using WebApp.Services.Implementations;
 using Xunit;
 

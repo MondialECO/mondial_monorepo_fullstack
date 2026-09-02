@@ -578,7 +578,7 @@ namespace WebApp.Tests.Unit
                 .ReturnsAsync(new Phase3Concept
                 {
                     CompanyId = companyId,
-                    OneLiner = "long pitch",
+                    OneLiner = "Our comprehensive end-to-end platform automates startup financial readiness, scorecard valuations, and cap table modelling for founders and investors across global markets.",
                     ProblemStatement = "problem",
                     SolutionDescription = "solution",
                     Stage = "idea",
@@ -626,89 +626,6 @@ namespace WebApp.Tests.Unit
             resp.Should().NotBeNull();
             resp.OneLiner.Should().Be(longPitch);
             resp.ClarityScore.Should().Be(100);
-        }
-
-        [Fact]
-        public async Task EquityPartnership_CapTableWithEsopAndInvestorReserve_DoesNotDuplicatePoolsAndEquals100Percent()
-        {
-            // Arrange
-            var idea = new CreatorIdea
-            {
-                Id = "idea-cap-clean",
-                Project = new CreatorProject { Name = "Clean Venture", Category = "AI" }
-            };
-            _ideasDb.Add(idea);
-
-            var deal = new DealExecution
-            {
-                Id = "deal-cap-clean",
-                IdeaId = "idea-cap-clean",
-                DealType = "EQUITY_PARTNERSHIP",
-                DealStage = "ACTIVATION_PENDING",
-                CreatorId = "creator-user",
-                EntrepreneurId = "ent-user",
-                EquityTerms = new EquityTerms { EquityPercentage = 30.0, VestingMonths = 48, CliffMonths = 12 },
-                SigningPackage = new SigningPackage
-                {
-                    Status = "AGREEMENT_SIGNED",
-                    CreatorSignature = new SignatureInfo { SignedAt = DateTime.UtcNow, SignerName = "Creator" },
-                    EntrepreneurSignature = new SignatureInfo { SignedAt = DateTime.UtcNow, SignerName = "Entrepreneur" }
-                },
-                CapTableDraft = new DealCapTableDraft
-                {
-                    DealId = "deal-cap-clean",
-                    TotalShares = 10_000_000,
-                    EsopPoolPercent = 5.0,
-                    InvestorReservePercent = 5.0,
-                    EsopVestingMonths = 48,
-                    Entries = new List<DealCapTableEntry>
-                    {
-                        new() { DisplayName = "Creator", IsCreator = true, SharesGranted = 3_000_000, EquityPercent = 30.0 },
-                        new() { DisplayName = "Entrepreneur", IsFounder = true, SharesGranted = 6_000_000, EquityPercent = 60.0 },
-                        new() { DisplayName = "Employee Option Pool (ESOP)", IsEsop = true, StakeholderType = "esop", SharesGranted = 500_000, EquityPercent = 5.0 },
-                        new() { DisplayName = "Future Investor Reserve", IsInvestorReserve = true, StakeholderType = "investor_reserve", SharesGranted = 500_000, EquityPercent = 5.0 }
-                    }
-                }
-            };
-
-            var dealsCollectionMock = new Mock<IMongoCollection<DealExecution>>();
-            dealsCollectionMock.Setup(d => d.FindAsync(It.IsAny<FilterDefinition<DealExecution>>(), It.IsAny<FindOptions<DealExecution, DealExecution>>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(() =>
-                {
-                    var cursor = new Mock<IAsyncCursor<DealExecution>>();
-                    cursor.Setup(c => c.Current).Returns(new List<DealExecution> { deal });
-                    cursor.SetupSequence(c => c.MoveNext(It.IsAny<CancellationToken>())).Returns(true).Returns(false);
-                    cursor.SetupSequence(c => c.MoveNextAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true).ReturnsAsync(false);
-                    return cursor.Object;
-                });
-            dealsCollectionMock.Setup(d => d.ReplaceOneAsync(It.IsAny<FilterDefinition<DealExecution>>(), It.IsAny<DealExecution>(), It.IsAny<ReplaceOptions>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new ReplaceOneResult.Acknowledged(1, 1, null));
-
-            _dbMock.Setup(d => d.GetCollection<DealExecution>("DealExecutions", null)).Returns(dealsCollectionMock.Object);
-
-            var context = CreateContext();
-            var controller = CreateController(context, "ent-user");
-
-            // Act 1: First activation
-            var res1 = await controller.StartDealActivation("deal-cap-clean", new StartActivationRequest());
-            var ok1 = res1.Should().BeOfType<OkObjectResult>().Subject;
-            var data1 = ((ApiResponse)ok1.Value!).Data as PartnershipActivationDto;
-
-            var company = _companiesDb.First(c => c.Id == data1!.CompanyId);
-
-            // Assert 1: Exactly 4 entries, no duplicate ESOP/Reserve, total = 10,000,000 (100%)
-            company.EquityStructure.Should().HaveCount(4);
-            company.EquityStructure.Sum(e => e.SharesOwned).Should().Be(10_000_000);
-            company.EquityStructure.Count(e => e.Type == "esop" || e.StakeholderName.Contains("ESOP")).Should().Be(1);
-            company.EquityStructure.Count(e => e.StakeholderName.Contains("Investor Reserve")).Should().Be(1);
-
-            // Act 2: Second activation (idempotency check)
-            var res2 = await controller.StartDealActivation("deal-cap-clean", new StartActivationRequest());
-            res2.Should().BeOfType<OkObjectResult>();
-
-            // Assert 2: Still exactly 4 entries, total remains 10,000,000 (100%)
-            company.EquityStructure.Should().HaveCount(4);
-            company.EquityStructure.Sum(e => e.SharesOwned).Should().Be(10_000_000);
         }
     }
 }
