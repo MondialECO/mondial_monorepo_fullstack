@@ -99,26 +99,24 @@ describe("Entrepreneur Acquisitions & Navigation Audit", () => {
     mockApi.getMyActiveAcquisitions.mockResolvedValue([]);
   });
 
-  it("renders Entrepreneur menu with 4 distinct sections and canonical routes", () => {
+  it("renders Entrepreneur menu with distinct sections and canonical routes", () => {
     const entrepreneurMenu = menu[UserRole.ENTREPRENEUR];
     expect(entrepreneurMenu).toBeDefined();
 
     const titles = entrepreneurMenu.map((group) => group.title);
-    expect(titles).toContain("Main");
-    expect(titles).toContain("Operations");
-    expect(titles).toContain("Funding & Matching");
-    expect(titles).toContain("Communication");
+    expect(titles).toContain("Dashboard");
+    expect(titles).toContain("Venture Operations");
+    expect(titles).toContain("Fundraising & Deals");
+    expect(titles).toContain("Opportunity Market");
 
-    const mainItems = entrepreneurMenu.find((g) => g.title === "Main")?.items || [];
-    const mainHrefs = mainItems.map((i) => i.href);
-    expect(mainHrefs).toContain("/dashboard/entrepreneur");
-    expect(mainHrefs).toContain("/dashboard/entrepreneur/discover");
-    expect(mainHrefs).toContain("/dashboard/entrepreneur/deals");
-    expect(mainHrefs).toContain("/dashboard/entrepreneur/acquisitions");
+    const marketItems = entrepreneurMenu.find((g) => g.title === "Opportunity Market")?.items || [];
+    const marketHrefs = marketItems.map((i) => i.href);
+    expect(marketHrefs).toContain("/dashboard/entrepreneur/discover");
+    expect(marketHrefs).toContain("/dashboard/entrepreneur/acquisitions");
 
-    const fundingItems = entrepreneurMenu.find((g) => g.title === "Funding & Matching")?.items || [];
-    const investorDealsItem = fundingItems.find((i) => i.label === "Investor Deals");
-    expect(investorDealsItem?.href).toBe("/dashboard/entrepreneur/deals");
+    const fundraisingItems = entrepreneurMenu.find((g) => g.title === "Fundraising & Deals")?.items || [];
+    const dealsItem = fundraisingItems.find((i) => i.label === "Deals & Term Sheets");
+    expect(dealsItem?.href).toBe("/dashboard/entrepreneur/deals");
   });
 
   it("renders My Acquisitions page with real completed buyout records and action link", async () => {

@@ -53,7 +53,7 @@ export default function DocumentPreviewModal({
         const blob = await viewDataRoomDocument(companyId, doc.documentId);
         if (!isMounted) return;
 
-        const mime = doc.MimeType || blob.type || "";
+        const mime = doc.mimeType || blob.type || "";
         const fileName = (doc.fileName || doc.title || "").toLowerCase();
 
         if (
@@ -92,7 +92,7 @@ export default function DocumentPreviewModal({
   if (!doc) return null;
 
   const fileName = (doc.fileName || doc.title || "").toLowerCase();
-  const mime = (doc.MimeType || "").toLowerCase();
+  const mime = (doc.mimeType || "").toLowerCase();
   const isPdf = mime.includes("pdf") || fileName.endsWith(".pdf");
   const isImage =
     mime.startsWith("image/") ||

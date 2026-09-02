@@ -81,7 +81,7 @@ export default function OpportunityCardListItem({ card }: OpportunityCardListIte
           <div className="flex flex-col items-end gap-1">
             <MatchScoreBadge score={card.matchScore} />
             <div className="text-[10px] text-muted-foreground">
-              {card.matchScore >= 80 ? "Excellent" : card.matchScore >= 60 ? "Good" : "Fair"} match
+              {(card.matchScore ?? 0) >= 80 ? "Excellent" : (card.matchScore ?? 0) >= 60 ? "Good" : "Fair"} match
             </div>
           </div>
           <div className="flex items-baseline gap-3 text-xs">

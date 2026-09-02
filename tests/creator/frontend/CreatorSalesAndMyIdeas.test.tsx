@@ -199,20 +199,20 @@ describe("Creator Sales & My Ideas SOLD Integration", () => {
     mockApi.getMyBuyoutSales.mockResolvedValue([]);
   });
 
-  it("1. Creator Menu includes My Sales under Deals & Network in correct order", () => {
+  it("1. Creator Menu includes Project Sales under Project Marketplace in correct order", () => {
     const creatorSections = menu[UserRole.CREATOR];
-    const dealsSection = creatorSections.find((s) => s.title === "Deals & Network");
-    expect(dealsSection).toBeDefined();
+    const marketplaceSection = creatorSections.find((s) => s.title === "Project Marketplace");
+    expect(marketplaceSection).toBeDefined();
 
-    const itemLabels = dealsSection!.items.map((i) => i.label);
+    const itemLabels = marketplaceSection!.items.map((i) => i.label);
     expect(itemLabels).toEqual([
-      "My Partnerships",
-      "My Sales",
-      "Services Marketplace",
-      "My Engagements",
+      "Project Marketplace",
+      "Launch to Market",
+      "Partnerships",
+      "Project Sales",
     ]);
 
-    const salesItem = dealsSection!.items.find((i) => i.label === "My Sales");
+    const salesItem = marketplaceSection!.items.find((i) => i.label === "Project Sales");
     expect(salesItem?.href).toBe("/dashboard/creator/sales");
   });
 

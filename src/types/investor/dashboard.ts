@@ -2,6 +2,7 @@ export type InvestmentInstrumentType = 'equity' | 'safe' | 'convertible_note' | 
 
 export type CompanyPortfolioHolding = {
   id: string;
+  holdingId?: string | null;
   companyId: string;
   companyName: string;
   industry?: string | null;
