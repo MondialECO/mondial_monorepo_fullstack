@@ -23,7 +23,7 @@ export default function NegotiationWorkspace() {
   const params = useSearchParams();
 
   const myRole = dealRoleForUser(user?.role);
-  const activeId = params.get("d");
+  const activeId = params.get("deal") || params.get("d");
 
   const { data: deals = [], isLoading, isError } = useDeals();
   // Deal events ride the per-user notifications hub; gate on token (like

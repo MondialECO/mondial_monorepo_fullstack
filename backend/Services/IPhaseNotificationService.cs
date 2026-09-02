@@ -35,6 +35,7 @@ public interface IPhaseNotificationService
     // Investor Phase 7 Diligence Q&A Notifications
     Task NotifyDiligenceQuestionAskedAsync(string companyId, string investorName, string documentTitle, string question);
     Task NotifyDiligenceQuestionAnsweredAsync(string investorId, string companyName, string documentTitle, string response);
+    Task NotifyDiligenceQuestionAnsweredAsync(string investorId, string companyName, string documentTitle, string response, string? companyId);
 
     // Data Room Access Request Notifications
     Task NotifyDataRoomAccessRequestedAsync(string companyId, string investorId, string requestId, string investorName);

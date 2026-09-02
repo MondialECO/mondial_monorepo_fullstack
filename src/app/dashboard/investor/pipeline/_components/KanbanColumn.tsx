@@ -46,7 +46,7 @@ export default function KanbanColumn({ title, status = "new", accent = "default"
         <ScrollArea className="flex-1 max-h-[560px] pr-1">
           <div className="space-y-2">
             {cards.map((c) => (
-              <DealCardCompact key={c.companyId} card={c} />
+              <DealCardCompact key={c.companyId} card={c} columnStatus={status} />
             ))}
           </div>
         </ScrollArea>

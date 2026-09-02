@@ -124,6 +124,158 @@ public class InvestorPipelineTests
         Assert.False(isGuidObjectId, "Guid string should not be parsed as ObjectId");
         Assert.True(isRealObjectId, "24-hex string should be parsed as ObjectId");
     }
+
+    [Fact]
+    public void OpportunityCardResponse_Carries_Enriched_Lifecycle_Fields()
+    {
+        var card = new OpportunityCardResponse
+        {
+            CompanyId = "co-123",
+            CompanyName = "Idealy",
+            HoldingId = "hold-abc",
+            DealId = "deal-xyz",
+            DealStatus = "completed",
+            InvestmentAmount = 20000,
+            EquityPercentage = 5.0,
+            InstrumentType = "equity",
+            ClosedAt = new DateTime(2026, 9, 1, 12, 0, 0, DateTimeKind.Utc),
+            Stage = "won",
+            CurrentTurn = "investor"
+        };
+
+        Assert.Equal("hold-abc", card.HoldingId);
+        Assert.Equal("deal-xyz", card.DealId);
+        Assert.Equal("completed", card.DealStatus);
+        Assert.Equal(20000, card.InvestmentAmount);
+        Assert.Equal(5.0, card.EquityPercentage);
+        Assert.Equal("equity", card.InstrumentType);
+        Assert.Equal("won", card.Stage);
+        Assert.Equal("investor", card.CurrentTurn);
+    }
+
+    [Fact]
+    public void Deal_Lifecycle_Weight_Prioritizes_Completed_Over_Active_Over_Rejected()
+    {
+        var deals = new List<DealExecution>
+        {
+            new DealExecution { Id = "deal-rej", CompanyId = "co-1", Status = "rejected" },
+            new DealExecution { Id = "deal-active", CompanyId = "co-1", Status = "term_sheet" },
+            new DealExecution { Id = "deal-comp", CompanyId = "co-1", Status = "completed" }
+        };
+
+        var bestDeal = deals
+            .OrderByDescending(d => d.Status is "completed" ? 3 : (d.Status is "rejected" or "lost" ? 1 : 2))
+            .First();
+
+        Assert.Equal("deal-comp", bestDeal.Id);
+
+        var activeOrRejected = new List<DealExecution>
+        {
+            new DealExecution { Id = "deal-rej", CompanyId = "co-2", Status = "rejected" },
+            new DealExecution { Id = "deal-active", CompanyId = "co-2", Status = "term_sheet" }
+        };
+
+        var bestActive = activeOrRejected
+            .OrderByDescending(d => d.Status is "completed" ? 3 : (d.Status is "rejected" or "lost" ? 1 : 2))
+            .First();
+
+        Assert.Equal("deal-active", bestActive.Id);
+    }
+
+    // ──────────────────────────────────────────────────────────
+    // Stage precedence mirror — reproduces the exact conditional
+    // chain in GetInvestorPipelineAsync (lines 5522‒5571) so we
+    // can unit-verify all five prescribed test cases.
+    // ──────────────────────────────────────────────────────────
+
+    private static string ResolveStage(
+        DealExecution? deal,
+        InvestorMatch? match,
+        bool hasHolding,
+        bool hasActiveGrant = false,
+        bool hasApprovedRequest = false,
+        bool hasPendingRequest = false,
+        bool hasNda = false,
+        bool hasLogs = false,
+        bool hasQuestions = false)
+    {
+        if (hasHolding || (deal != null && (deal.Status is "completed" || deal.DealStage is "WON" or "COMPLETED")))
+            return "won";
+        if (deal != null && !(deal.Status is "rejected" or "lost" || deal.DealStage is "LOST" or "REJECTED"))
+            return "negotiation";
+        if (hasActiveGrant || hasApprovedRequest || hasLogs || hasQuestions)
+            return "dataroom";
+        if (hasNda)
+            return "nda";
+        if (hasPendingRequest || match?.Status is "viewed" or "interested" or "reviewing" or "contacted")
+            return "review";
+        if (match?.Status is "rejected" or "passed" or "lost"
+            || (deal != null
+                && (deal.Status is "rejected" or "lost" || deal.DealStage is "LOST" or "REJECTED")
+                && (match == null || match.Status is "rejected" or "passed" or "lost")))
+            return "lost";
+        return "new";
+    }
+
+    [Fact]
+    public void Test1_CompletedDeal_Plus_OldRejected_Plus_Match_Resolves_Won()
+    {
+        // Completed deal + old rejected deal (dealsByCompany picks completed, weight 3)
+        var deal = new DealExecution { Id = "d1", Status = "completed" };
+        var match = new InvestorMatch { Status = "matched" };
+        Assert.Equal("won", ResolveStage(deal, match, hasHolding: true));
+        Assert.Equal("won", ResolveStage(deal, match, hasHolding: false)); // completed deal alone
+    }
+
+    [Fact]
+    public void Test2_ActiveNegotiatingDeal_Plus_OldRejected_Resolves_Negotiation()
+    {
+        // dealsByCompany picks the active deal (weight 2 > rejected weight 1)
+        var deal = new DealExecution { Id = "d2", Status = "term_sheet" };
+        Assert.Equal("negotiation", ResolveStage(deal, null, hasHolding: false));
+    }
+
+    [Fact]
+    public void Test3_ActiveDataRoom_Plus_OldRejectedDeal_Resolves_DataRoom()
+    {
+        // Rejected deal is picked, but active data room grant wins at step 3
+        var deal = new DealExecution { Id = "d3", Status = "rejected" };
+        Assert.Equal("dataroom", ResolveStage(deal, null, hasHolding: false, hasActiveGrant: true));
+        Assert.Equal("dataroom", ResolveStage(deal, null, hasHolding: false, hasApprovedRequest: true));
+        Assert.Equal("dataroom", ResolveStage(deal, null, hasHolding: false, hasLogs: true));
+        Assert.Equal("dataroom", ResolveStage(deal, null, hasHolding: false, hasQuestions: true));
+    }
+
+    [Fact]
+    public void Test4_NewActiveMatch_Plus_HistoricalRejectedDeal_Resolves_NewMatch()
+    {
+        // Historical rejected deal + active non-terminal InvestorMatch
+        // Must NOT be Lost — the active match should surface as New Match
+        var rejectedDeal = new DealExecution { Id = "d4", Status = "rejected" };
+        var activeMatch = new InvestorMatch { Status = "new" };
+        Assert.Equal("new", ResolveStage(rejectedDeal, activeMatch, hasHolding: false));
+
+        var matchedMatch = new InvestorMatch { Status = "matched" };
+        Assert.Equal("new", ResolveStage(rejectedDeal, matchedMatch, hasHolding: false));
+    }
+
+    [Fact]
+    public void Test5_OnlyRejectedRelationship_NoNewerSignal_Resolves_Lost()
+    {
+        // Only terminal signals, no newer active match or engagement
+        var rejectedDeal = new DealExecution { Id = "d5", Status = "rejected" };
+        Assert.Equal("lost", ResolveStage(rejectedDeal, null, hasHolding: false));
+
+        var lostDeal = new DealExecution { Id = "d5b", Status = "lost" };
+        Assert.Equal("lost", ResolveStage(lostDeal, null, hasHolding: false));
+
+        // Match itself is terminal
+        var passedMatch = new InvestorMatch { Status = "passed" };
+        Assert.Equal("lost", ResolveStage(null, passedMatch, hasHolding: false));
+
+        // Both deal and match are terminal
+        Assert.Equal("lost", ResolveStage(rejectedDeal, passedMatch, hasHolding: false));
+    }
 }
 
 

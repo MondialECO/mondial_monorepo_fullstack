@@ -84,6 +84,7 @@ public class Companies
 
     // Phase 5: Funding Ask
     public double? FundingAskAmount { get; set; }
+    public double? AmountRaised { get; set; }
     public string FundingRoundType { get; set; }
     // Set true by Phase5CompletionEvents when the funding submission completes.
     public bool? FundingAskLive { get; set; }

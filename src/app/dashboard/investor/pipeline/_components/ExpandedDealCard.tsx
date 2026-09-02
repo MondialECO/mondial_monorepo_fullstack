@@ -155,7 +155,7 @@ export default function ExpandedDealCard({ card }: ExpandedDealCardProps) {
             Edit Terms
           </Button>
           <Link
-            href={`/dashboard/investor/discovery/${card.companyId}`}
+            href={card.dealId ? `/dashboard/investor/deals?d=${card.dealId}` : "/dashboard/investor/deals"}
             className="ml-auto inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
           >
             Open deal

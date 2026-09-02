@@ -295,8 +295,10 @@ export default function InvestorDashboard() {
                   const isNote = holding.instrumentType === 'convertible_note';
                   const isDebt = holding.instrumentType === 'debt';
 
+                  const holdingKey = holding.holdingId || holding.id || holding.companyId;
+
                   return (
-                    <Card key={holding.id} className="overflow-hidden hover:border-primary/40 transition-all duration-200" data-testid={`holding-card-${holding.id}`}>
+                    <Card key={holdingKey} className="overflow-hidden hover:border-primary/40 transition-all duration-200" data-testid={`holding-card-${holdingKey}`}>
                       <CardContent className="p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                         <div className="space-y-1.5 min-w-[240px]">
                           <div className="flex items-center gap-2.5 flex-wrap">
@@ -384,6 +386,22 @@ export default function InvestorDashboard() {
                                 {new Date(holding.maturityDate).toLocaleDateString()}
                               </div>
                             </div>
+                          )}
+                        </div>
+
+                        {/* Action buttons */}
+                        <div className="flex items-center gap-2 pt-2 border-t md:border-t-0 md:pt-0 w-full md:w-auto justify-end shrink-0">
+                          <Button size="sm" variant="outline" className="h-8 text-xs" asChild>
+                            <Link href={`/dashboard/investor/discovery/${holding.companyId}`}>
+                              View Company
+                            </Link>
+                          </Button>
+                          {holding.dealExecutionId && (
+                            <Button size="sm" variant="ghost" className="h-8 text-xs" asChild>
+                              <Link href={`/dashboard/investor/deals?d=${holding.dealExecutionId}`}>
+                                View Deal
+                              </Link>
+                            </Button>
                           )}
                         </div>
                       </CardContent>

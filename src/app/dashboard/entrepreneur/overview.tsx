@@ -216,10 +216,12 @@ export default function EntrepreneurOverview() {
   const isViewLoading = loading || isSwitching || isProgressLoading;
 
   // ---- derived (real data only) ----
-  const committed = deals.reduce(
-    (sum, d) => sum + (d.investors?.reduce((s, i) => s + (i.committedAmount || 0), 0) ?? 0),
-    0,
-  );
+  const committed = deals
+    .filter((d) => d.status === 'completed')
+    .reduce((sum, d) => {
+      const invSum = d.investors?.reduce((s, i) => s + (i.committedAmount || 0), 0) ?? 0;
+      return sum + (invSum > 0 ? invSum : (d.termSheet?.totalRaiseAmount || 0));
+    }, 0);
   const target = funding?.fundingAskAmount ?? 0;
   const fundingPct = target > 0 ? Math.min(100, Math.round((committed / target) * 100)) : 0;
   const activePhase = PHASES.find((p) => p.phase === progress?.currentPhase) ?? PHASES[0];

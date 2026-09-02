@@ -1,10 +1,13 @@
+"use client";
+
 import Link from "next/link";
-import { ArrowLeft, MapPin, Share2, Bookmark } from "lucide-react";
+import { ArrowLeft, ArrowRight, MapPin, Share2, Bookmark, Briefcase } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import NDAStatusChip from "@/components/investor/NDAStatusChip";
 import MessageFounderButton from "@/components/messaging/MessageFounderButton";
 import MakeOfferButton from "@/components/deals/MakeOfferButton";
+import { useDeals } from "@/hooks/queries/deals";
 import type { OpportunityDetail } from "@/types/investor/opportunities";
 
 interface OpportunityHeaderProps {
@@ -29,6 +32,14 @@ function initials(name: string): string {
 }
 
 export default function OpportunityHeader({ detail }: OpportunityHeaderProps) {
+  const { data: deals = [] } = useDeals();
+  const companyDeal = deals.find((d) => d.companyId === detail.companyId);
+  const isCompleted = companyDeal?.status === "completed";
+  const isNegotiating =
+    companyDeal &&
+    !isCompleted &&
+    !["rejected", "lost"].includes(companyDeal.status);
+
   const stage = detail.fundingRoundType
     ? STAGE_LABEL[detail.fundingRoundType] ?? detail.fundingRoundType
     : null;
@@ -86,7 +97,23 @@ export default function OpportunityHeader({ detail }: OpportunityHeaderProps) {
           </div>
 
           <div className="flex flex-col gap-2 shrink-0 sm:flex-row">
-            <MakeOfferButton companyId={detail.companyId} />
+            {isCompleted ? (
+              <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1" asChild>
+                <Link href="/dashboard/investor/portfolio">
+                  <Briefcase className="h-3.5 w-3.5" aria-hidden />
+                  View Investment
+                </Link>
+              </Button>
+            ) : isNegotiating ? (
+              <Button size="sm" className="gap-1" asChild>
+                <Link href={`/dashboard/investor/deals?d=${companyDeal.dealId}`}>
+                  Open Deal
+                  <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+                </Link>
+              </Button>
+            ) : (
+              <MakeOfferButton companyId={detail.companyId} />
+            )}
             <MessageFounderButton
               companyId={detail.companyId}
               label="Contact Founder"

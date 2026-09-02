@@ -35,6 +35,16 @@ export interface OpportunityCard {
   matchStatus: MatchStatus | string;
   isInvestorReady: boolean;
   lastUpdatedAt: string;
+  // Lifecycle enrichment fields
+  dealId?: string | null;
+  dealStatus?: string | null;
+  currentTurn?: string | null;
+  holdingId?: string | null;
+  investmentAmount?: number | null;
+  equityPercentage?: number | null;
+  instrumentType?: string | null;
+  closedAt?: string | null;
+  stage?: PipelineColumnKey | string | null;
 }
 
 export interface OpportunityFeed {

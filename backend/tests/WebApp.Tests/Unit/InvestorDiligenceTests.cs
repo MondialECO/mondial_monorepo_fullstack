@@ -352,7 +352,7 @@ public class InvestorDiligenceTests
         Assert.Equal("We project 5M EUR ARR in 2027.", answered.FounderResponse);
 
         _mockNotificationService.Verify(n => n.NotifyDiligenceQuestionAnsweredAsync(
-            invA, company.CompanyName, "Pitch Deck", "We project 5M EUR ARR in 2027."), Times.Once);
+            invA, company.CompanyName, "Pitch Deck", "We project 5M EUR ARR in 2027.", company.Id), Times.Once);
     }
 
     [Fact]

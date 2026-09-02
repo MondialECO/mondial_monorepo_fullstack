@@ -553,7 +553,7 @@ Mondial Team";
 Congratulations! Your investment of {currency} {amount:N0} in {companyName} has successfully closed and is now active in your portfolio.
 
 View your portfolio:
-/dashboard/investor
+/dashboard/investor/portfolio
 
 Best regards,
 Mondial Team";
@@ -585,14 +585,19 @@ Mondial Team";
         }
     }
 
-    public async Task NotifyDiligenceQuestionAnsweredAsync(string investorId, string companyName, string documentTitle, string response)
+    public Task NotifyDiligenceQuestionAnsweredAsync(string investorId, string companyName, string documentTitle, string response)
+        => NotifyDiligenceQuestionAnsweredAsync(investorId, companyName, documentTitle, response, null);
+
+    public async Task NotifyDiligenceQuestionAnsweredAsync(string investorId, string companyName, string documentTitle, string response, string? companyId)
     {
         try
         {
             var user = await FindInvestorUserAsync(investorId);
             var subject = $"💬 Founder Responded: Due Diligence question for {companyName}";
             var body = $"The founder of {companyName} has responded to your question regarding {documentTitle}:\n\"{response}\"";
-            var link = "/dashboard/investor";
+            var link = !string.IsNullOrWhiteSpace(companyId)
+                ? $"/dashboard/investor/discovery/{companyId}/dataroom"
+                : "/dashboard/investor/discovery";
 
             await SendToUserAsync(user, investorId, subject, body, link, "diligence_answer");
         }
