@@ -1,0 +1,428 @@
+
+=================== deep_56877_114550.json (38 texts) ===================
+  [01 PROFILE]: 01 PROFILE
+  [02 MATCH]: 02 MATCH
+  [03 DILIGENCE]: 03 DILIGENCE
+  [04 PIPELINE & PORTFOLIO]: 04 PIPELINE & PORTFOLIO
+  [INVESTORS — PIPELINE & PORTFOLIO]: INVESTORS — PIPELINE & PORTFOLIO
+  [Track the decision. Stay connected after it.]: Track the decision. Stay connected after it.
+  [Mondial connects active investment opportunities with the ownership, updates and company context that continue after a deal closes.]: Mondial connects active investment opportunities with the ownership, updates and company context that continue after a deal closes.
+  [Explore Pipeline & Portfolio]: Explore Pipeline & Portfolio
+  [See Complete Journey]: See Complete Journey
+  [WHAT AM I STILL DECIDING?]: WHAT AM I STILL DECIDING?
+  [WHAT AM I ALREADY CONNECTED TO?]: WHAT AM I ALREADY CONNECTED TO?
+  [Nova Space SAS]: Nova Space SAS
+  [ACTIVE OPPORTUNITY]: ACTIVE OPPORTUNITY
+  [IN REVIEW]: IN REVIEW
+  [NDA]: NDA
+  [DATA ROOM]: DATA ROOM
+  [TERM SHEET]: TERM SHEET
+  [NEGOTIATION]: NEGOTIATION
+  [PATH A (NOT INVESTED)]: PATH A (NOT INVESTED)
+  [CLOSED OPPORTUNITY]: CLOSED OPPORTUNITY
+  [DECISION HISTORY RETAINED]: DECISION HISTORY RETAINED
+  [PATH B (INVESTED)]: PATH B (INVESTED)
+  [OWNERSHIP]: OWNERSHIP
+  [PORTFOLIO COMPANY]: PORTFOLIO COMPANY
+  [COMPANY UPDATES]: COMPANY UPDATES
+  [METRICS]: METRICS
+  [FOUNDER RELATIONSHIP]: FOUNDER RELATIONSHIP
+  [FOLLOW-ON CONTEXT]: FOLLOW-ON CONTEXT
+  [DECISION]: DECISION
+  [PIPELINE]: PIPELINE
+  [DECISION]: DECISION
+  [PORTFOLIO]: PORTFOLIO
+  [DISCOVER]: DISCOVER
+  [REVIEW]: REVIEW
+  [DECIDE]: DECIDE
+  [INVEST]: INVEST
+  [FOLLOW]: FOLLOW
+  [UNDERSTAND]: UNDERSTAND
+
+=================== deep_56877_114734.json (29 texts) ===================
+  [ACTIVE DEAL CONTEXT]: ACTIVE DEAL CONTEXT
+  [A deal should not become a collection of forgotten conversations.]: A deal should not become a collection of forgotten conversations.
+  [The Investor Pipeline keeps the current stage and decision context of active opportunities connected from first match through final outcome.]: The Investor Pipeline keeps the current stage and decision context of active opportunities connected from first match through final outcome.
+  [Company & Founder]: Company & Founder
+  [Initial semantic alignment and founder profile verified.]: Initial semantic alignment and founder profile verified.
+  [NEW MATCH]: NEW MATCH
+  [Investment Thesis Fit]: Investment Thesis Fit
+  [Evaluating market size, traction, and strategic alignment.]: Evaluating market size, traction, and strategic alignment.
+  [IN REVIEW]: IN REVIEW
+  [Meeting & Access History]: Meeting & Access History
+  [Confidentiality conditions established for deeper access.]: Confidentiality conditions established for deeper access.
+  [NDA SIGNED]: NDA SIGNED
+  [Diligence Questions & Docs]: Diligence Questions & Docs
+  [Financials, cap table, and technical architecture under review.]: Financials, cap table, and technical architecture under review.
+  [DATA ROOM]: DATA ROOM
+  [Term Context]: Term Context
+  [Valuation, governance, and economics proposed.]: Valuation, governance, and economics proposed.
+  [TERM SHEET]: TERM SHEET
+  [NEGOTIATION]: NEGOTIATION
+  [DECISION]: DECISION
+  [INVESTED]: INVESTED
+  [NOT INVESTED]: NOT INVESTED
+  [Decision Notes]: Decision Notes
+  [Final outcome rationale recorded for institutional memory.]: Final outcome rationale recorded for institutional memory.
+  [THE STAGE IS ONLY USEFUL IF THE CONTEXT MOVES WITH IT.]: THE STAGE IS ONLY USEFUL IF THE CONTEXT MOVES WITH IT.
+  [OPPORTUNITY]: OPPORTUNITY
+  [HISTORY]: HISTORY
+  [CURRENT STAGE]: CURRENT STAGE
+  [INVESTMENT CONTEXT]: INVESTMENT CONTEXT
+
+=================== deep_56877_114838.json (31 texts) ===================
+  [DECISION IS THE OUTCOME]: DECISION IS THE OUTCOME
+  [A disciplined “no” can be as important as a confident “yes.”]: A disciplined “no” can be as important as a confident “yes.”
+  [The purpose of the investment process is not to push every matched opportunity toward funding. It is to create enough understanding to make a clearer decision.]: The purpose of the investment process is not to push every matched opportunity toward funding. It is to create enough understanding to make a clearer decision.
+  [RELEVANT MATCH]: RELEVANT MATCH
+  [DISCOVERY]: DISCOVERY
+  [FOUNDER MEETING]: FOUNDER MEETING
+  [DILIGENCE]: DILIGENCE
+  [TERMS DISCUSSION]: TERMS DISCUSSION
+  [DECISION]: DECISION
+  [DO NOT INVEST]: DO NOT INVEST
+  [REASONS INCLUDE:]: REASONS INCLUDE:
+  [Thesis changed]: Thesis changed
+  [Evidence insufficient]: Evidence insufficient
+  [Terms did not align]: Terms did not align
+  [Round no longer fits]: Round no longer fits
+  [Timing changed]: Timing changed
+  [Founder and Investor chose not to proceed]: Founder and Investor chose not to proceed
+  [CLOSED OPPORTUNITY]: CLOSED OPPORTUNITY
+  [INVEST]: INVEST
+  [REASONING SUPPORTED BY:]: REASONING SUPPORTED BY:
+  [Thesis Alignment]: Thesis Alignment
+  [Evidence Reviewed]: Evidence Reviewed
+  [Terms Agreed]: Terms Agreed
+  [Investment Decision]: Investment Decision
+  [PORTFOLIO COMPANY]: PORTFOLIO COMPANY
+  [THE GOAL OF A PIPELINE IS NOT TO MAXIMIZE THE NUMBER OF CLOSED DEALS. IT IS TO IMPROVE THE QUALITY OF DECISIONS.]: THE GOAL OF A PIPELINE IS NOT TO MAXIMIZE THE NUMBER OF CLOSED DEALS. IT IS TO IMPROVE THE QUALITY OF DECISIONS.
+  [INSTITUTIONAL MEMORY]: INSTITUTIONAL MEMORY
+  [Closed without investment still retains critical organizational intelligence.]: Closed without investment still retains critical organizational intelligence.
+  [Decision History]: Decision History
+  [Relevant Notes]: Relevant Notes
+  [Relationship Context]: Relationship Context
+
+=================== deep_56877_114988.json (32 texts) ===================
+  [FROM PROSPECT TO OWNERSHIP]: FROM PROSPECT TO OWNERSHIP
+  [Closing the investment changes the questions.]: Closing the investment changes the questions.
+  [Before investment, the Investor asks whether to participate. After investment, the Investor needs to understand ownership, company progress and what changes over time.]: Before investment, the Investor asks whether to participate. After investment, the Investor needs to understand ownership, company progress and what changes over time.
+  [SHOULD WE INVEST?]: SHOULD WE INVEST?
+  [Company Context]: Company Context
+  [Funding Need]: Funding Need
+  [Evidence & Traction]: Evidence & Traction
+  [Diligence]: Diligence
+  [Proposed Terms]: Proposed Terms
+  [WHAT DO WE OWN AND HOW IS THE COMPANY EVOLVING?]: WHAT DO WE OWN AND HOW IS THE COMPANY EVOLVING?
+  [Investment Amount]: Investment Amount
+  [Ownership]: Ownership
+  [Security / Share Context]: Security / Share Context
+  [Entry Valuation Context]: Entry Valuation Context
+  [Current Company Updates]: Current Company Updates
+  [Operating Metrics]: Operating Metrics
+  [Documents & Founder Reports]: Documents & Founder Reports
+  [INVESTMENT COMPLETED]: INVESTMENT COMPLETED
+  [PHASE 1]: PHASE 1
+  [Deal Record]: Deal Record
+  [PHASE 2]: PHASE 2
+  [Investment Record]: Investment Record
+  [PHASE 3]: PHASE 3
+  [Ongoing Relationship]: Ongoing Relationship
+  [THE INVESTMENT DATE SHOULD NOT RESET THE COMPANY CONTEXT.]: THE INVESTMENT DATE SHOULD NOT RESET THE COMPANY CONTEXT.
+  [An institutional record maintains the narrative thread. What was learned during diligence forms the baseline for evaluating future performance.]: An institutional record maintains the narrative thread. What was learned during diligence forms the baseline for evaluating future performance.
+  [Opportunity Match]: Opportunity Match
+  [Diligence Findings]: Diligence Findings
+  [Agreed Terms]: Agreed Terms
+  [Invested Capital]: Invested Capital
+  [Resulting Ownership]: Resulting Ownership
+  [Closing ends the transaction process. It starts the ownership relationship.]: Closing ends the transaction process. It starts the ownership relationship.
+
+=================== deep_56877_115155.json (34 texts) ===================
+  [UNDERSTAND THE STAKE]: UNDERSTAND THE STAKE
+  [Ownership is not just one percentage forever.]: Ownership is not just one percentage forever.
+  [A portfolio view should connect the original investment with the ownership context that results and how later company events may change that context.]: A portfolio view should connect the original investment with the ownership context that results and how later company events may change that context.
+  [NOVA SPACE SAS]: NOVA SPACE SAS
+  [ILLUSTRATIVE SCENARIO ONLY]: ILLUSTRATIVE SCENARIO ONLY
+  [ENTRY]: ENTRY
+  [Before Investment]: Before Investment
+  [Initial state prior to capital injection.]: Initial state prior to capital injection.
+  [Investor ownership:]: Investor ownership:
+  [0%]: 0%
+  [OWNERSHIP]: OWNERSHIP
+  [Seed Investment]: Seed Investment
+  [Horizon Capital invests €500K.]: Horizon Capital invests €500K.
+  [Illustrative ownership:]: Illustrative ownership:
+  [8.0%]: 8.0%
+  [COMPANY EVENT]: COMPANY EVENT
+  [Later Financing]: Later Financing
+  [New capital enters the company, altering the cap table structure.]: New capital enters the company, altering the cap table structure.
+  [UPDATED CONTEXT]: UPDATED CONTEXT
+  [Updated Context]: Updated Context
+  [Resulting ownership post-financing event.]: Resulting ownership post-financing event.
+  [Diluted ownership:]: Diluted ownership:
+  [6.9%]: 6.9%
+  [Ownership should be understood as of a point in time.]: Ownership should be understood as of a point in time.
+  [DISTINCTION 01]: DISTINCTION 01
+  [Investment Amount ≠ Current Ownership Value]: Investment Amount ≠ Current Ownership Value
+  [DISTINCTION 02]: DISTINCTION 02
+  [Original Ownership ≠ Permanent Ownership]: Original Ownership ≠ Permanent Ownership
+  [Factors that change ownership context]: Factors that change ownership context
+  [New Financing]: New Financing
+  [Option Pool Changes]: Option Pool Changes
+  [Security Conversion]: Security Conversion
+  [Secondary Transactions]: Secondary Transactions
+  [Other Equity Events]: Other Equity Events
+
+=================== deep_56877_115301.json (38 texts) ===================
+  [AFTER THE INVESTMENT]: AFTER THE INVESTMENT
+  [The company keeps changing. The Investor context should too.]: The company keeps changing. The Investor context should too.
+  [Portfolio relationships become more useful when company updates reconnect current progress with the original investment case.]: Portfolio relationships become more useful when company updates reconnect current progress with the original investment case.
+  [ILLUSTRATIVE COMPANY JOURNEY]: ILLUSTRATIVE COMPANY JOURNEY
+  [INVESTMENT MOMENT (T=0)]: INVESTMENT MOMENT (T=0)
+  [Original Thesis]: Original Thesis
+  [Marketplace demand exists.]: Marketplace demand exists.
+  [Capital Purpose]: Capital Purpose
+  [Build product, Launch pilot, Acquire early customers.]: Build product, Launch pilot, Acquire early customers.
+  [UPDATE 01]: UPDATE 01
+  [PRODUCT]: PRODUCT
+  [Booking workflow launched.]: Booking workflow launched.
+  [UPDATE 02]: UPDATE 02
+  [MARKET]: MARKET
+  [First pilot companies onboarded.]: First pilot companies onboarded.
+  [UPDATE 03]: UPDATE 03
+  [REVENUE]: REVENUE
+  [Initial commercial signal appears.]: Initial commercial signal appears.
+  [UPDATE 04]: UPDATE 04
+  [TEAM]: TEAM
+  [Technical team expanded.]: Technical team expanded.
+  [UPDATE 05]: UPDATE 05
+  [FUNDING]: FUNDING
+  [Next capital decision approaching.]: Next capital decision approaching.
+  [T=0]: T=0
+  [Original Investment]: Original Investment
+  [Case]: Case
+  [T=NOW]: T=NOW
+  [Current Company]: Current Company
+  [Reality]: Reality
+  [Strategic Investor Inquiry]: Strategic Investor Inquiry
+  [What changed?]: What changed?
+  [What worked?]: What worked?
+  [What did not?]: What did not?
+  [Which assumptions changed?]: Which assumptions changed?
+  [What is the next major risk?]: What is the next major risk?
+  [What does the company need now?]: What does the company need now?
+  ["AN INVESTOR UPDATE SHOULD NOT ONLY SAY 'WHAT HAPPENED.' IT SHOULD HELP EXPLAIN 'WHAT CHANGED ABOUT THE INVESTMENT CASE.'"]: "AN INVESTOR UPDATE SHOULD NOT ONLY SAY 'WHAT HAPPENED.' IT SHOULD HELP EXPLAIN 'WHAT CHANGED ABOUT THE INVESTMENT CASE.'"
+
+=================== deep_56877_115424.json (54 texts) ===================
+  [PORTFOLIO PERFORMANCE CONTEXT]: PORTFOLIO PERFORMANCE CONTEXT
+  [The important metric depends on the company.]: The important metric depends on the company.
+  [Portfolio monitoring should connect company metrics to the business model, stage and investment thesis rather than forcing every company into one universal scorecard.]: Portfolio monitoring should connect company metrics to the business model, stage and investment thesis rather than forcing every company into one universal scorecard.
+  [COMPANY MODEL]: COMPANY MODEL
+  [B2B SaaS]: B2B SaaS
+  [Focus on recurring revenue efficiency and customer retention.]: Focus on recurring revenue efficiency and customer retention.
+  [RELEVANT SIGNALS]: RELEVANT SIGNALS
+  [ARR / MRR]: ARR / MRR
+  [Retention]: Retention
+  [Customer Growth]: Customer Growth
+  [Gross Margin]: Gross Margin
+  [OBSERVED TREND]: OBSERVED TREND
+  [ARR]: ARR
+  [|]: |
+  [Gross Margin]: Gross Margin
+  [INVESTOR QUESTION]: INVESTOR QUESTION
+  ["Is growth scaling efficiently?"]: "Is growth scaling efficiently?"
+  [COMPANY MODEL]: COMPANY MODEL
+  [Marketplace]: Marketplace
+  [Focus on network liquidity and transaction velocity.]: Focus on network liquidity and transaction velocity.
+  [RELEVANT SIGNALS]: RELEVANT SIGNALS
+  [Active Buyers]: Active Buyers
+  [Active Providers]: Active Providers
+  [Transaction Volume]: Transaction Volume
+  [Take Rate]: Take Rate
+  [Repeat Usage]: Repeat Usage
+  [OBSERVED TREND]: OBSERVED TREND
+  [Transaction Volume]: Transaction Volume
+  [|]: |
+  [Repeat Usage]: Repeat Usage
+  [INVESTOR QUESTION]: INVESTOR QUESTION
+  ["Is activity growing without stronger retention?"]: "Is activity growing without stronger retention?"
+  [COMPANY MODEL]: COMPANY MODEL
+  [Early Product]: Early Product
+  [Focus on validation, usage, and path to commercialization.]: Focus on validation, usage, and path to commercialization.
+  [RELEVANT SIGNALS]: RELEVANT SIGNALS
+  [Product Completion]: Product Completion
+  [Pilot Adoption]: Pilot Adoption
+  [User Activation]: User Activation
+  [Commercial Validation]: Commercial Validation
+  [OBSERVED TREND]: OBSERVED TREND
+  [Product Completion]: Product Completion
+  [90%]: 90%
+  [|]: |
+  [Pilot Adoption]: Pilot Adoption
+  [15%]: 15%
+  [INVESTOR QUESTION]: INVESTOR QUESTION
+  ["Is the product meeting real market needs?"]: "Is the product meeting real market needs?"
+  [A METRIC WITHOUT BUSINESS CONTEXT CAN CREATE FALSE CONFIDENCE.]: A METRIC WITHOUT BUSINESS CONTEXT CAN CREATE FALSE CONFIDENCE.
+  [METRIC]: METRIC
+  [TREND]: TREND
+  [BUSINESS MODEL]: BUSINESS MODEL
+  [COMPANY STAGE]: COMPANY STAGE
+  [USEFUL CONTEXT]: USEFUL CONTEXT
+
+=================== deep_56877_115612.json (39 texts) ===================
+  [THE NEXT CAPITAL DECISION]: THE NEXT CAPITAL DECISION
+  [Investing once does not answer what to do next.]: Investing once does not answer what to do next.
+  [When a portfolio company raises again, the Investor can compare current company evidence with the original thesis and investment context before considering another decision.]: When a portfolio company raises again, the Investor can compare current company evidence with the original thesis and investment context before considering another decision.
+  [01]: 01
+  [THESIS]: THESIS
+  ["Does the company still fit why we originally invested?"]: "Does the company still fit why we originally invested?"
+  [02]: 02
+  [PROGRESS]: PROGRESS
+  ["What changed since the last round?"]: "What changed since the last round?"
+  [03]: 03
+  [OWNERSHIP]: OWNERSHIP
+  ["How could another financing change our stake?"]: "How could another financing change our stake?"
+  [04]: 04
+  [CAPITAL]: CAPITAL
+  ["Does additional investment fit current strategy and capacity?"]: "Does additional investment fit current strategy and capacity?"
+  [The Evaluation Cycle]: The Evaluation Cycle
+  [01]: 01
+  [ORIGINAL THESIS]: ORIGINAL THESIS
+  [02]: 02
+  [INITIAL INVESTMENT]: INITIAL INVESTMENT
+  [03]: 03
+  [COMPANY EXECUTION]: COMPANY EXECUTION
+  [04]: 04
+  [PORTFOLIO UPDATES]: PORTFOLIO UPDATES
+  [05]: 05
+  [NEW FINANCING NEED]: NEW FINANCING NEED
+  [06]: 06
+  [FOLLOW-ON REVIEW]: FOLLOW-ON REVIEW
+  [FOLLOW ON]: FOLLOW ON
+  [DO NOT FOLLOW ON]: DO NOT FOLLOW ON
+  [OR]: OR
+  [PAST INVESTMENT]: PAST INVESTMENT 
+  [≠]: ≠
+  [FUTURE INVESTMENT]:  FUTURE INVESTMENT
+  [NEW INFORMATION]: NEW INFORMATION
+  [CURRENT THESIS]: CURRENT THESIS
+  [PORTFOLIO CONTEXT]: PORTFOLIO CONTEXT
+  [NEW DECISION]: NEW DECISION
+  [FOLLOW-ON CAPITAL SHOULD BE A NEW DECISION. NOT AN AUTOMATIC HABIT.]: FOLLOW-ON CAPITAL SHOULD BE A NEW DECISION. NOT AN AUTOMATIC HABIT.
+
+=================== deep_56877_115782.json (40 texts) ===================
+  [BEYOND OWNERSHIP]: BEYOND OWNERSHIP
+  [The Investor owns a stake. The relationship still needs context.]: The Investor owns a stake. The relationship still needs context.
+  [Mondial can keep ownership, company information, founder updates and relevant requests connected throughout the investment relationship.]: Mondial can keep ownership, company information, founder updates and relevant requests connected throughout the investment relationship.
+  [Ownership]: Ownership
+  [What stake does the Investor hold?]: What stake does the Investor hold?
+  [Company Performance]: Company Performance
+  [What has changed operationally?]: What has changed operationally?
+  [Founder Communication]: Founder Communication
+  [What is the Founder reporting?]: What is the Founder reporting?
+  [Documents]: Documents
+  [What new information has been shared?]: What new information has been shared?
+  [PORTFOLIO COMPANY]: PORTFOLIO COMPANY
+  [NOVA SPACE SAS]: NOVA SPACE SAS
+  [AEROSPACE]: AEROSPACE
+  [SERIES A]: SERIES A
+  [DEPENDS ON THE INVESTOR RELATIONSHIP]: DEPENDS ON THE INVESTOR RELATIONSHIP
+  [Investor Support Context]: Investor Support Context
+  [Potential contextual contribution beyond capital.]: Potential contextual contribution beyond capital.
+  [Introductions]: Introductions
+  [Strategic Perspective]: Strategic Perspective
+  [Hiring Network]: Hiring Network
+  [Future Funding Context]: Future Funding Context
+  [Board / Governance Participation (where applicable)]: Board / Governance Participation (where applicable)
+  [The Contextual Loop]: The Contextual Loop
+  [FOUNDER]: FOUNDER
+  [UPDATE]: UPDATE
+  [INVESTOR]: INVESTOR
+  [UNDERSTANDING]: UNDERSTANDING
+  [QUESTION /]: QUESTION /
+  [SUPPORT]: SUPPORT
+  [COMPANY]: COMPANY
+  [CONTEXT]: CONTEXT
+  [NEXT]: NEXT
+  [UPDATE]: UPDATE
+  [PORTFOLIO MANAGEMENT IS NOT ONLY TRACKING NUMBERS.]: PORTFOLIO MANAGEMENT IS NOT ONLY TRACKING NUMBERS.
+  [IT IS MAINTAINING THE CONTEXT AROUND OWNERSHIP.]: IT IS MAINTAINING THE CONTEXT AROUND OWNERSHIP.
+  [RIGHT INVESTOR]: RIGHT INVESTOR
+  [RIGHT COMPANY]: RIGHT COMPANY
+  [RIGHT INFORMATION]: RIGHT INFORMATION
+  [RIGHT ACCESS]: RIGHT ACCESS
+
+=================== deep_56877_115923.json (42 texts) ===================
+  [PIPELINE & PORTFOLIO]: PIPELINE & PORTFOLIO
+  [Every investment has a before and an after.]: Every investment has a before and an after.
+  [DECISION HISTORY]: DECISION HISTORY
+  [OWNERSHIP]: OWNERSHIP
+  [COMPANY DATA]: COMPANY DATA
+  [ONGOING UPDATES]: ONGOING UPDATES
+  [CONNECTED INVESTMENT CONTEXT]: CONNECTED INVESTMENT CONTEXT
+  [PHASE 1: BEFORE]: PHASE 1: BEFORE
+  [01]: 01
+  [NEW MATCH]: NEW MATCH
+  [02]: 02
+  [REVIEW]: REVIEW
+  [03]: 03
+  [FOUNDER]: FOUNDER
+  [04]: 04
+  [NDA]: NDA
+  [05]: 05
+  [DATA ROOM]: DATA ROOM
+  [06]: 06
+  [DILIGENCE]: DILIGENCE
+  [07]: 07
+  [TERM SHEET]: TERM SHEET
+  [08]: 08
+  [NEGOTIATION]: NEGOTIATION
+  [09]: 09
+  [DECISION]: DECISION
+  [INVESTMENT COMPLETED]: INVESTMENT COMPLETED
+  [PHASE 2: AFTER]: PHASE 2: AFTER
+  [10]: 10
+  [OWNERSHIP]: OWNERSHIP
+  [11]: 11
+  [COMPANY UPDATES]: COMPANY UPDATES
+  [12]: 12
+  [METRICS]: METRICS
+  [13]: 13
+  [FOUNDER REPORTING]: FOUNDER REPORTING
+  [14]: 14
+  [NEW COMPANY EVENTS]: NEW COMPANY EVENTS
+  [15]: 15
+  [FOLLOW-ON CONTEXT]: FOLLOW-ON CONTEXT
+  [16]: 16
+  [ONGOING PORTFOLIO RELATIONSHIP]: ONGOING PORTFOLIO RELATIONSHIP
+
+=================== deep_56877_116071.json (19 texts) ===================
+  [THE MONDIAL INVESTOR PATH]: THE MONDIAL INVESTOR PATH
+  [From investment logic to long-term context.]: From investment logic to long-term context.
+  [1]: 1
+  [INVESTOR PROFILE & THESIS]: INVESTOR PROFILE & THESIS
+  [Verify identity and financial context. Define how you invest.]: Verify identity and financial context. Define how you invest.
+  [2]: 2
+  [DISCOVER & MATCH]: DISCOVER & MATCH
+  [Find relevant companies. Understand why they may fit.]: Find relevant companies. Understand why they may fit.
+  [3]: 3
+  [DILIGENCE & INVEST]: DILIGENCE & INVEST
+  [Review the evidence. Structure the terms. Make the decision.]: Review the evidence. Structure the terms. Make the decision.
+  [4]: 4
+  [PIPELINE & PORTFOLIO]: PIPELINE & PORTFOLIO
+  [Track active opportunities. Stay connected after investment.]: Track active opportunities. Stay connected after investment.
+  [DEFINE WHAT YOU BACK. UNDERSTAND WHY IT FITS. TEST THE EVIDENCE. MAKE THE DECISION. STAY CONNECTED AFTER IT.]: DEFINE WHAT YOU BACK. UNDERSTAND WHY IT FITS. TEST THE EVIDENCE. MAKE THE DECISION. STAY CONNECTED AFTER IT.
+  [Start as an Investor]: Start as an Investor
+  [Explore Investor Profile & Thesis]: Explore Investor Profile & Thesis
+  [Investor Page 04 — Pipeline & Portfolio]: Investor Page 04 — Pipeline & Portfolio
+  [INVESTOR JOURNEY 01 → 02 → 03 → 04 COMPLETE]: INVESTOR JOURNEY 01 → 02 → 03 → 04 COMPLETE
+
+=================== deep_56877_116117.json (8 texts) ===================
+  [FAQ Kicker]: ABOUT PIPELINE & PORTFOLIO
+  [FAQ Headline]: What Investors should understand after diligence.
+  [01.]: 01.
+  [How long does it take to complete a landing page?]: What is the Investor Pipeline?
+  [We offer both!]: The pipeline keeps active investment opportunities connected to their current stage and decision history from initial match through final outcome.
+  [01.]: 02.
+  [How long does it take to complete a landing page?]: Does the Investor relationship end after funding?
+  [We offer both!]: No. completed investment can lead to an ongoing relationship around ownership, company updates, reporting, future decisions and appropriate investor involvement.

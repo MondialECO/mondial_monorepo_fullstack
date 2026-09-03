@@ -1,0 +1,7 @@
+[FRAME] "Bottom Context" (id: 56877:107587, w: 1440, h: 90, y: 30890) (color: rgb(250, 248, 255))
+  [FRAME] "Container" (id: 56877:107588, w: 327, h: 12, y: 30929)
+    [TEXT] "SERVICE PROVIDER PAGE 03 — PROJECTS & DELIVERY" (id: 56877:107589, w: 327, h: 12, y: 30929) (color: rgb(68, 70, 84)) -> "SERVICE PROVIDER PAGE 03 — PROJECTS & DELIVERY" (font: DM Sans, size: 12, weight: 400) (color: rgb(68, 70, 84))
+  [FRAME] "Link" (id: 56877:107590, w: 275, h: 26, y: 30922)
+    [TEXT] "NEXT EARNINGS & GROWTH" (id: 56877:107591, w: 251, h: 26, y: 30922) (color: rgb(26, 71, 195)) -> "NEXT EARNINGS & GROWTH" (font: Inter, size: 18, weight: 700) (color: rgb(26, 71, 195))
+    [FRAME] "Container" (id: 56877:107592, w: 16, h: 16, y: 30932)
+      [VECTOR] "Icon" (id: 56877:107593, w: 16, h: 16, y: 30932) (color: rgb(26, 71, 195))

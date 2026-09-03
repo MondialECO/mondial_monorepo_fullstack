@@ -1,0 +1,567 @@
+
+=================== deep_56781_3777.json (24 texts) ===================
+  [0][MONDIAL ECO — MARKETPLACE]: MONDIAL ECO — MARKETPLACE
+  [1][Where structured needs meet structured opportunities.]: Where structured \n needs meet \n structured \n opportunities.
+  [2][Discover projects, companies, professional services and verified ecosystem profiles — with the business context needed to understand why a connection may matter.]: Discover projects, companies, professional services and verified \n ecosystem profiles — with the business context needed to \n understand why a connection may matter.
+  [3][Text]: Explore the Marketplace
+  [4][Text]: See How Discovery Works
+  [5][CREATOR]: CREATOR
+  [6][Text]: STRUCTURED PROJECT
+  [7][ENTREPRENEUR]: ENTREPRENEUR
+  [8][COMPANY CONTEXT]: COMPANY CONTEXT
+  [9][SERVICE PROVIDER]: SERVICE PROVIDER
+  [10][Text]: PROFESSIONAL
+  [11][INVESTOR]: INVESTOR
+  [12][Text]: CAPITAL CONTEXT
+  [13][MONDIAL MARKETPLACE]: MONDIAL \n MARKETPLACE
+  [14][Text]: STRUCTURE
+  [15][→]: →
+  [16][Text]: DISCOVER
+  [17][→]: →
+  [18][Text]: UNDERSTAND
+  [19][→]: →
+  [20][Text]: CONNECT
+  [21][→]: →
+  [22][Text]: MOVE FORWARD
+  [23][THE MARKETPLACE IS NOT THE END OF A JOURNEY. IT IS WHERE DIFFERENT JOURNEYS MEET.]: THE MARKETPLACE IS NOT THE END OF A JOURNEY. \n IT IS WHERE DIFFERENT JOURNEYS MEET.
+
+=================== deep_56784_3844.json (58 texts) ===================
+  [0][ONE MARKETPLACE. DIFFERENT TYPES OF VALUE.]: ONE MARKETPLACE. DIFFERENT TYPES OF VALUE.
+  [1][You are not always looking for the same thing.]: You are not always looking for the same thing.
+  [2][Mondial brings several types of structured ecosystem opportunities into one discovery layer without pretending that a project, company, service and professional profile are interchangeable.]: Mondial brings several types of structured ecosystem opportunities into one \n discovery layer without pretending that a project, company, service and \n professional profile are interchangeable.
+  [3][01 / PROJECTS]: 01 / PROJECTS
+  [4][CREATED BY: CREATORS]: CREATED BY: CREATORS
+  [5][Structured business concepts.]: Structured business \n concepts.
+  [6][Project intelligence]: Project intelligence
+  [7][Resource needs]: Resource needs
+  [8][Marketplace opportunity]: Marketplace opportunity
+  [9][MVP PATHWAYS]: MVP PATHWAYS
+  [10][FULL BUYOUT]: FULL BUYOUT
+  [11][CO-FOUNDER / EQUITY]: CO-FOUNDER / EQUITY
+  [12][Project Echo]: Project Echo
+  [13][PHASE: DISCOVERY]: PHASE: DISCOVERY
+  [14][02 / COMPANIES]: 02 / COMPANIES
+  [15][Funding & execution progress.]: Funding & execution \n progress.
+  [16][Verified context, traction, funding need, and investor readiness.]: Verified context, traction, funding need, and \n investor readiness.
+  [17][TRACTION]: TRACTION
+  [18][+124%]: +124%
+  [19][SEED]: SEED
+  [20][READY]: READY
+  [21][03 / SERVICES]: 03 / SERVICES
+  [22][Professional expertise, structured.]: Professional expertise, structured.
+  [23][Scope, pricing model, packages, availability, and professional trust.]: Scope, pricing model, packages, availability, and professional trust.
+  [24][FIXED SCOPE]: FIXED SCOPE
+  [25][Go-to-Market Strategy]: Go-to-Market Strategy
+  [26][€4.5k]: €4.5k
+  [27][3 WEEKS]: 3 WEEKS
+  [28][TRUST TIER 1]: TRUST TIER 1
+  [29][04 / PROFILES]: 04 / PROFILES
+  [30][Understand who is behind an opportunity.]: Understand who is behind \n an opportunity.
+  [31][Creators, Entrepreneurs, Service Providers, and Investors.]: Creators, Entrepreneurs, Service Providers, and \n Investors.
+  [32][Alexandre Dubois]: Alexandre Dubois
+  [33][ENTREPRENEUR · PARIS]: ENTREPRENEUR · PARIS
+  [34][FINTECH]: FINTECH
+  [35][2 EXITS]: 2 EXITS
+  [36][RELATIONSHIP ARCHITECTURE]: RELATIONSHIP ARCHITECTURE
+  [37][MARKETPLACE OBJECT]: MARKETPLACE OBJECT
+  [38][HAS A TYPE]:  HAS A TYPE
+  [39][HAS A PURPOSE]:  HAS A PURPOSE
+  [40][HAS RELEVANT ACTIONS]:  HAS RELEVANT ACTIONS
+  [41][PROJECT]: PROJECT
+  [42][Business Concept]: Business Concept
+  [43][Validation & Resources]: Validation & Resources
+  [44][Explore / Express Interest]: Explore / Express Interest
+  [45][SERVICE]: SERVICE
+  [46][Professional Package]: Professional Package
+  [47][Execution Support]: Execution Support
+  [48][Understand / Request Proposal]: Understand / Request Proposal
+  [49][COMPANY]: COMPANY
+  [50][Entity]: Entity
+  [51][Funding & Growth]: Funding & Growth
+  [52][Review / Investor Interest]: Review / Investor Interest
+  [53][PROFILE]: PROFILE
+  [54][Individual]: Individual
+  [55][Identity & Trust]: Identity & Trust
+  [56][Understand / Connect]: Understand / Connect
+  [57][ONE DISCOVERY LAYER DOES NOT MEAN ONE GENERIC CARD FOR EVERYTHING.]: ONE DISCOVERY LAYER DOES NOT \n MEAN ONE GENERIC CARD FOR \n EVERYTHING.
+
+=================== deep_56788_78191.json (67 texts) ===================
+  [0][CREATOR PROJECT OPPORTUNITIES]: CREATOR PROJECT OPPORTUNITIES
+  [1][A structured idea can become something another person can act on.]: A structured idea can become \n something another person can act on.
+  [2][When a Creator chooses to bring a project into the Marketplace, the public opportunity should communicate enough context for relevant Entrepreneurs to understand what kind of relationship is being offered.]: When a Creator chooses to bring a project into the Marketplace, the public opportunity \n should communicate enough context for relevant Entrepreneurs to understand what kind of \n relationship is being offered.
+  [3][Text]: STRUCTURED PROJECT
+  [4][NOVA SPACE]: NOVA SPACE
+  [5][Context]: Context
+  [6][Problem]: Problem
+  [7][Text]: Fragmented satellite data
+  [8][Text]: access
+  [9][Solution]: Solution
+  [10][Text]: Unified API for orbital
+  [11][Text]: intelligence
+  [12][Market]: Market
+  [13][Target Market]: Target Market
+  [14][Text]: AgTech, Logistics, Defense
+  [15][Business Model]: Business Model
+  [16][Text]: Usage-based API
+  [17][Status]: Status
+  [18][Readiness]: Readiness
+  [19][Text]: Phase 03 Complete
+  [20][Resource Context]: Resource Context
+  [21][Text]: Backend complete, Needs
+  [22][Text]: Growth support
+  [23][Intelligence]: Intelligence
+  [24][85%]: 85%
+  [25][CONFIDENCE SCORE]: CONFIDENCE SCORE
+  [26][Creator Context]: Creator Context
+  [27][Text]: Maya Rahman (Expert \n Consultant)
+  [28][MVP Paths]: MVP Paths
+  [29][Text]: PATH 01
+  [30][FULL BUYOUT]: FULL BUYOUT
+  [31][Text]: (ACQUISITION / OWNERSHIP TRANSFER)
+  [32][The Creator is open to selling the project / IP through an ownership- transfer transaction.]: The Creator is open to selling the project / IP through an ownership- \n transfer transaction.
+  [33][TRANSACTION FLOW]: TRANSACTION FLOW
+  [34][Text]: PROJECT
+  [35][Text]: arrow_forward
+  [36][Text]: ENTREPRENEUR INTEREST
+  [37][Text]: arrow_forward
+  [38][Text]: CONTROLLED REVIEW
+  [39][Text]: arrow_forward
+  [40][Text]: NEGOTIATION
+  [41][Text]: arrow_forward
+  [42][Text]: AGREEMENT
+  [43][Text]: arrow_forward
+  [44][Text]: OWNERSHIP TRANSFER
+  [45][Text]: PATH 02
+  [46][CO-FOUNDER / EQUITY]: CO-FOUNDER / EQUITY
+  [47][Text]: (COLLABORATIVE GROWTH)
+  [48][The Creator wants to continue building with another person through an agreed contribution and equity relationship.]: The Creator wants to continue building with another person through \n an agreed contribution and equity relationship.
+  [49][COLLABORATION FLOW]: COLLABORATION FLOW
+  [50][Text]: PROJECT
+  [51][Text]: arrow_forward
+  [52][Text]: CO-FOUNDER INTEREST
+  [53][Text]: arrow_forward
+  [54][Text]: ROLE ALIGNMENT
+  [55][Text]: arrow_forward
+  [56][Text]: CONTRIBUTION
+  [57][Text]: arrow_forward
+  [58][Text]: EQUITY DISCUSSION
+  [59][Text]: arrow_forward
+  [60][Text]: AGREEMENT
+  [61][Text]: arrow_forward
+  [62][Text]: BUILD TOGETHER
+  [63][THE PROJECT MAY BE THE SAME. THE RELATIONSHIP BEING OFFERED CAN BE COMPLETELY DIFFERENT.]: THE PROJECT MAY BE THE SAME. THE \n RELATIONSHIP BEING OFFERED CAN BE \n COMPLETELY DIFFERENT.
+  [64][Text]: PROJECT CONTEXT
+  [65][Text]: OFFER TYPE
+  [66][Text]: UNDERSTANDABLE OPPORTUNITY
+
+=================== deep_56788_78371.json (39 texts) ===================
+  [0][Text]: PROFESSIONAL SERVICES
+  [1][Find expertise in the shape the work actually needs.]: Find expertise in the shape the work actually needs.
+  [2][Service Provider Marketplace entries should explain more than a job title — they should communicate a real service, professional context, scope and commercial model.]: Service Provider Marketplace entries should explain more than a job title — they \n should communicate a real service, professional context, scope and commercial \n model.
+  [3][Text]: Professional
+  [4][Maya Rahman]: Maya Rahman
+  [5][Text]: Backend Engineer
+  [6][Expertise]: Expertise
+  [7][API Architecture, Database Systems, Payments]: API Architecture, \n Database Systems, \n Payments
+  [8][Structured Service]: Structured Service
+  [9][Backend Integration for Marketplace MVPs]: Backend Integration for \n Marketplace MVPs
+  [10][Client Understands]: Client Understands
+  [11][Scope, Deliverables, Pricing Model, Timeline, Requirements, Availability, Verified Context.]: Scope, Deliverables, \n Pricing Model, Timeline, \n Requirements, Availability, \n Verified Context.
+  [12][BUILDER SERVICE]: BUILDER SERVICE
+  [13][Startup Brand Identity]: Startup Brand Identity
+  [14][Text]: Verified Context
+  [15][Text]: Delivered 12+ pre-seed brands in SaaS and \n Fintech.
+  [16][Text]: Fixed Scope
+  [17][Text]: 2-4 Weeks
+  [18][STRUCTURAL SERVICE]: STRUCTURAL SERVICE
+  [19][Company Formation Review]: Company Formation \n Review
+  [20][Text]: Verified Context
+  [21][Text]: Legal infrastructure audit for C-Corps.
+  [22][Text]: Audit & Report
+  [23][Text]: Retainer
+  [24][DEAL SERVICE]: DEAL SERVICE
+  [25][Investor-Side Due Diligence Support]: Investor-Side Due \n Diligence Support
+  [26][Text]: Verified Context
+  [27][Text]: Technical DD for Series A/B software \n investments.
+  [28][Text]: Custom Scope
+  [29][Text]: Time & Materials
+  [30][Demand Paths]: Demand Paths
+  [31][Text]: Path A
+  [32][Text]: CLIENT BROWSES MARKETPLACE
+  [33][Text]: Discovers Service
+  [34][Text]: Path B
+  [35][Text]: MONDIAL IDENTIFIES ECOSYSTEM NEED
+  [36][Text]: Surfaces Provider
+  [37][Relevant Professional Opportunity]: Relevant Professional Opportunity
+  [38][A SERVICE SHOULD BE DISCOVERABLE BY SEARCH. AND RELEVANT WHEN THE NEED APPEARS.]: A SERVICE SHOULD BE \n DISCOVERABLE BY SEARCH. \n AND RELEVANT WHEN THE \n NEED APPEARS.
+
+=================== deep_56788_78509.json (48 texts) ===================
+  [0][ENTREPRENEUR OPPORTUNITIES]: ENTREPRENEUR OPPORTUNITIES
+  [1][A funding need should arrive with company context.]: A funding need should arrive with company context.
+  [2][Entrepreneurs can bring structured company and funding context into the ecosystem so relevant Investors can understand the opportunity before deeper review begins.]: Entrepreneurs can bring structured company and funding context into the ecosystem so \n relevant Investors can understand the opportunity before deeper review begins.
+  [3][Funding Ask]: Funding Ask
+  [4][€700K]: €700K
+  [5][For Series A Readiness]: For Series A Readiness
+  [6][USE OF FUNDS]: USE OF FUNDS
+  [7][Product Scale]: Product Scale
+  [8][40%]: 40%
+  [9][Team]: Team
+  [10][30%]: 30%
+  [11][GTM]: GTM
+  [12][30%]: 30%
+  [13][VERIFIED COMPANY]: VERIFIED COMPANY
+  [14][NOVA SPACE SAS]: NOVA SPACE SAS
+  [15][Seed]: Seed
+  [16][France]: France
+  [17][B2B Marketplace]: B2B Marketplace
+  [18][€700K Funding Need]: €700K Funding Need
+  [19][COMPANY PURPOSE]: COMPANY PURPOSE
+  [20][Orbital intelligence for marketplace logistics.]: Orbital intelligence for marketplace logistics.
+  [21][HIGH-LEVEL TRACTION]: HIGH-LEVEL TRACTION
+  [22][+124% QonQ Growth]: +124% QonQ Growth
+  [23][BUSINESS MODEL]: BUSINESS MODEL
+  [24][Transaction-based SaaS.]: Transaction-based SaaS.
+  [25][EXECUTION PROGRESS]: EXECUTION PROGRESS
+  [26][Phase 03 Complete.]: Phase 03 Complete.
+  [27][FOUNDER CONTEXT]: FOUNDER CONTEXT
+  [28][AD]: AD
+  [29][Alexandre Dubois]: Alexandre Dubois
+  [30][Serial Entrepreneur]: Serial Entrepreneur
+  [31][READINESS CONTEXT]: READINESS CONTEXT
+  [32][Data Room Prepared]: Data Room Prepared
+  [33][Verified Identity]: Verified Identity
+  [34][Convergence of Fit]: Convergence of Fit
+  [35][ENTREPRENEUR]: ENTREPRENEUR
+  [36][Structured Funding Context]: Structured Funding Context
+  [37][POTENTIAL FIT]: POTENTIAL FIT
+  [38][INVESTOR]: INVESTOR
+  [39][Sector, Stage, Geo, Ticket Fit]: Sector, Stage, Geo, Ticket Fit
+  [40][ENGAGEMENT FLOW]: ENGAGEMENT FLOW
+  [41][DISCOVER]: DISCOVER
+  [42][UNDERSTAND]: UNDERSTAND
+  [43][SHOW INTEREST]: SHOW INTEREST
+  [44][CONNECTION]: CONNECTION
+  [45][SECURE ACCESS]: SECURE ACCESS
+  [46][THE MARKETPLACE CAN CREATE INTEREST. DILIGENCE CREATES UNDERSTANDING.]: THE MARKETPLACE CAN CREATE INTEREST. \n DILIGENCE CREATES UNDERSTANDING.
+  [47][MATCH ≠ INVESTMENT RECOMMENDATION.]: MATCH ≠ INVESTMENT RECOMMENDATION.
+
+=================== deep_56788_78694.json (37 texts) ===================
+  [0][KNOW WHO IS BEHIND THE OPPORTUNITY]: KNOW WHO IS BEHIND THE OPPORTUNITY
+  [1][The opportunity matters. So does the person or organization behind it.]: The opportunity matters. So \n does the person or organization behind it.
+  [2][Public ecosystem profiles help users understand relevant identity, role, professional context and trust signals before starting a relationship.]: Public ecosystem profiles help users understand relevant identity, role, professional context and trust signals before starting a relationship.
+  [3][Alex Chen]: Alex Chen
+  [4][CREATOR]: CREATOR
+  [5][Status: Chapter II Validate]: Status: Chapter II Validate
+  [6][Focus: Sustainable Urban Agriculture]: Focus: Sustainable Urban Agriculture
+  [7][Project: Nova Space]: Project: Nova Space
+  [8][Sarah Jenkins]: Sarah Jenkins
+  [9][ENTREPRENEUR]: ENTREPRENEUR
+  [10][Role: CEO, Nexus Logistics]: Role: CEO, Nexus Logistics
+  [11][Text]: Verified Company
+  [12][Context: Series A Supply Chain SaaS]: Context: Series A Supply Chain SaaS
+  [13][Marcus Thorne]: Marcus Thorne
+  [14][SERVICE PROVIDER]: SERVICE PROVIDER
+  [15][Category: Legal & Compliance]: Category: Legal & Compliance
+  [16][Service: Due Diligence Support]: Service: Due Diligence Support
+  [17][Availability: Accepting Clients]: Availability: Accepting Clients
+  [18][Verification: Tier 1]: Verification: Tier 1
+  [19][Elena Rostova]: Elena Rostova
+  [20][INVESTOR]: INVESTOR
+  [21][Type: Early-Stage Venture]: Type: Early-Stage Venture
+  [22][Thesis: Climate Tech / Pre-Seed]: Thesis: Climate Tech / Pre-Seed
+  [23][Typical Ticket: €250K - €1M]: Typical Ticket: €250K - €1M
+  [24][PRIVATE CONTEXT]: PRIVATE CONTEXT
+  [25][Identity Documents]: Identity Documents
+  [26][Sensitive Financial Evidence]: Sensitive Financial Evidence
+  [27][Private Company Documents]: Private Company Documents
+  [28][Controlled Verification Records]: Controlled Verification Records
+  [29][Text]: PRIVATE VERIFICATION \n ↓ \n PUBLIC TRUST SIGNAL
+  [30][PUBLIC CONTEXT]: PUBLIC CONTEXT
+  [31][Verified Identity]: Verified Identity
+  [32][Verified Capacity]: Verified Capacity
+  [33][Trust Signals]: Trust Signals
+  [34][WITHOUT PUBLIC DOCUMENT EXPOSURE]: WITHOUT PUBLIC DOCUMENT EXPOSURE
+  [35][TRUST DOES NOT REQUIRE MAKING EVERYTHING PUBLIC.]: TRUST DOES NOT REQUIRE \n MAKING EVERYTHING PUBLIC.
+  [36][Text]: RIGHT PERSON + RIGHT CONTEXT + RIGHT VISIBILITY = BETTER CONNECTION
+
+=================== deep_56788_78816.json (35 texts) ===================
+  [0][Text]: TWO WAYS TO DISCOVER
+  [1][Sometimes you search. Sometimes the opportunity should find you.]: Sometimes you search. \n Sometimes the opportunity should find you.
+  [2][Text]: Mondial combines deliberate browsing with context-driven matching so discovery can \n begin from either human intent or an existing ecosystem need.
+  [3][ACTIVE DISCOVERY]: ACTIVE DISCOVERY
+  [4][THE USER STARTS.]: THE USER STARTS.
+  [5][Search Answers: "What am I looking for?"]: Search Answers: "What am I looking for?"
+  [6][Text]: ENTREPRENEUR INTENT
+  [7]["Backend Development"]: "Backend Development"
+  [8][Text]: Category
+  [9][Text]: Location
+  [10][Text]: Availability
+  [11][Text]: RELEVANT PROVIDERS
+  [12][Text]: INVESTOR INTENT
+  [13]["Seed B2B SaaS"]: "Seed B2B SaaS"
+  [14][Text]: France / EU
+  [15][Text]: €250K–€1M
+  [16][Text]: RELEVANT COMPANIES
+  [17][CONTEXT-DRIVEN MATCHING]: CONTEXT-DRIVEN MATCHING
+  [18][THE NEED ALREADY EXISTS.]: THE NEED ALREADY EXISTS.
+  [19][Matching Answers: "What does this situation need?"]: Matching Answers: "What does this situation need?"
+  [20][Text]: PROJECT CONTEXT
+  [21][Legal/IP Gap Detected]: Legal/IP Gap Detected
+  [22][Text]: MONDIAL RECOGNIZES NEED
+  [23][Text]: RELEVANT LEGAL PROVIDERS
+  [24][Text]: ECOSYSTEM SIGNAL
+  [25][Funding Ask]: Funding Ask
+  [26][Investor Thesis]: Investor Thesis
+  [27][Text]: MONDIAL MATCHES CRITERIA
+  [28][Text]: RELEVANT INVESTOR CONNECTION
+  [29][DISCOVERY WITH CONTEXT]: DISCOVERY WITH CONTEXT
+  [30][BROWSE]: BROWSE 
+  [31][+]: +
+  [32][MATCHING]:  MATCHING 
+  [33][=]: =
+  [34][MORE RELEVANT DISCOVERY]:  MORE RELEVANT DISCOVERY
+
+=================== deep_56788_78957.json (68 texts) ===================
+  [0][PROGRESSIVE ACCESS]: PROGRESSIVE ACCESS
+  [1][Be discoverable without giving away everything.]: Be discoverable without giving away everything.
+  [2][Marketplace visibility should create enough understanding for someone to express interest while allowing sensitive project, company and personal information to remain controlled.]: Marketplace visibility should create enough understanding for someone to express interest while allowing sensitive project, company and personal information to remain controlled.
+  [3][The Layered Reveal]: The Layered Reveal
+  [4][A structured approach to information disclosure, ensuring control at every step of the connection process.]: A structured approach to information disclosure, \n ensuring control at every step of the connection \n process.
+  [5][Text]: LEVEL 01
+  [6][PUBLIC DISCOVERY]: PUBLIC DISCOVERY
+  [7][Text]: Opportunity Type
+  [8][Text]: Summary
+  [9][Text]: Sector / Category
+  [10][Text]: Stage
+  [11][Text]: High-Level Need
+  [12][Text]: LEVEL 02
+  [13][INTEREST]: INTEREST
+  [14][Text]: User communicates why they are interested and what relationship they want to explore.
+  [15][Text]: LEVEL 03
+  [16][OWNER DECISION]: OWNER DECISION
+  [17][Text]: Creator / Entrepreneur / Provider or owner can:
+  [18][Text]: CONTINUE
+  [19][Text]: DECLINE
+  [20][Text]: LEVEL 04
+  [21][CONTROLLED ACCESS]: CONTROLLED ACCESS
+  [22][Text]: NDA
+  [23][Text]: Permissions
+  [24][Text]: Private Documents
+  [25][Text]: Deeper Business Context
+  [26][Text]: Data Room
+  [27][PUBLIC DISCOVERY]: PUBLIC DISCOVERY
+  [28][≠]: ≠
+  [29][PRIVATE ACCESS]: PRIVATE ACCESS
+  [30][Text]: DISCOVERY
+  [31][Text]: INTEREST
+  [32][Text]: PERMISSION
+  [33][Text]: DEEPER CONTEXT
+  [34][Architectural Implementation]: Architectural Implementation
+  [35][Creator Example]: Creator Example
+  [36][Text]: PUBLIC
+  [37][Text]: Project concept
+  [38][Text]:  
+  [39][Text]: Market context
+  [40][Text]:  
+  [41][Text]: Offer type
+  [42][Text]:  
+  [43][Text]: PRIVATE
+  [44][Text]: Full business plan
+  [45][Text]:  
+  [46][Text]: Sensitive IP detail
+  [47][Text]:  
+  [48][Text]: Detailed documents
+  [49][Text]:  
+  [50][Company Example]: Company Example
+  [51][Text]: PUBLIC
+  [52][Text]: Business summary
+  [53][Text]:  
+  [54][Text]: Stage
+  [55][Text]:  
+  [56][Text]: Funding ask
+  [57][Text]:  
+  [58][Text]: PRIVATE
+  [59][Text]: Financials
+  [60][Text]:  
+  [61][Text]: Cap table
+  [62][Text]:  
+  [63][Text]: Contracts
+  [64][Text]:  
+  [65][Text]: Legal documents
+  [66][Text]:  
+  [67][THE MARKETPLACE SHOULD CREATE ENOUGH CURIOSITY TO CONNECT. NOT ENOUGH EXPOSURE TO LOSE CONTROL.]: THE MARKETPLACE SHOULD CREATE ENOUGH CURIOSITY TO CONNECT. NOT ENOUGH EXPOSURE TO LOSE CONTROL.
+
+=================== deep_56788_79161.json (40 texts) ===================
+  [0][Text]: DISCOVERY IS ONLY THE FIRST MOVE
+  [1][Every opportunity type needs a different next step.]: Every opportunity type needs \n a different next step.
+  [2][Text]: Mondial Marketplace should route a relevant discovery into the workflow that \n matches the relationship being explored.
+  [3][Text]: INTO THE CORRECT MONDIAL JOURNEY
+  [4][MARKETPLACE]: MARKETPLACE
+  [5][Text]: ROUTES THE CONNECTION
+  [6][Creator Project]: Creator Project
+  [7][Text]: IP & COLLABORATION
+  [8][Text]: DISCOVER
+  [9][Text]: EXPRESS INTEREST
+  [10][Text]: CONVERSATION
+  [11][Text]: FULL BUYOUT
+  [12][Text]: OR CO-FOUNDER / EQUITY
+  [13][Service]: Service
+  [14][Text]: B2B VENDORS
+  [15][Text]: DISCOVER
+  [16][Text]: REQUEST PROPOSAL
+  [17][Text]: AGREEMENT
+  [18][Text]: CONTRACT / ESCROW
+  [19][Text]: DELIVERY
+  [20][Company / Funding]: Company / \n Funding
+  [21][Text]: CAPITAL ALLOCATION
+  [22][Text]: DISCOVER
+  [23][Text]: INVESTOR INTEREST
+  [24][Text]: FOUNDER MEETING
+  [25][Text]: ACCESS
+  [26][Text]: DILIGENCE
+  [27][Text]: INVESTMENT PROCESS
+  [28][Profile]: Profile
+  [29][Text]: NETWORK TALENT
+  [30][Text]: DISCOVER
+  [31][Text]: UNDERSTAND CONTEXT
+  [32][Text]: CONNECT
+  [33][Text]: RELEVANT ROLE WORKFLOW
+  [34][Text]: Ambient communication layer connects relationships post-interest
+  [35][MONDIAL DOES NOT TRY TO COMPLETE EVERY RELATIONSHIP INSIDE A LISTING. THE MARKETPLACE STARTS THE RIGHT JOURNEY.]: MONDIAL DOES NOT TRY TO COMPLETE EVERY \n RELATIONSHIP INSIDE A LISTING. \n THE MARKETPLACE STARTS THE RIGHT JOURNEY.
+  [36][DISCOVERY]: DISCOVERY
+  [37][RELATIONSHIP]: RELATIONSHIP
+  [38][STRUCTURED PROCESS]: STRUCTURED PROCESS
+  [39][OUTCOME]: OUTCOME
+
+=================== deep_56788_79734.json (89 texts) ===================
+  [0][Text]: MONDIAL MARKETPLACE
+  [1][Discover what the ecosystem can become together.]: Discover what the ecosystem can become together.
+  [2][Text]: 01
+  [3][STRUCTURE]: STRUCTURE
+  [4][Text]: Each role builds meaningful context.
+  [5][Text]: 02
+  [6][PUBLISH]: PUBLISH
+  [7][Text]: The appropriate opportunity becomes discoverable.
+  [8][Text]: 03
+  [9][DISCOVER]: DISCOVER
+  [10][Text]: Browse or receive relevant matches.
+  [11][Text]: 04
+  [12][UNDERSTAND]: UNDERSTAND
+  [13][Text]: See what the opportunity represents.
+  [14][Text]: 05
+  [15][CONNECT]: CONNECT
+  [16][Text]: Express appropriate interest.
+  [17][Text]: 06
+  [18][CONTROL ACCESS]: CONTROL ACCESS
+  [19][Text]: Share deeper information where relevant.
+  [20][Text]: 07
+  [21][MOVE FORWARD]: MOVE FORWARD
+  [22][Text]: Enter the correct Mondial workflow.
+  [23][STRUCTURED OPPORTUNITY]: STRUCTURED OPPORTUNITY
+  [24][TRUSTED PROFILE CONTEXT]: TRUSTED PROFILE CONTEXT
+  [25][RELEVANT DISCOVERY]: RELEVANT DISCOVERY
+  [26][CONTROLLED ACCESS]: CONTROLLED ACCESS
+  [27][MEANINGFUL CONNECTION]: MEANINGFUL CONNECTION
+  [28][Text]: ABOUT THE MARKETPLACE
+  [29][What the ecosystem should understand before connecting.]: What the ecosystem should understand before connecting.
+  [30][01.]: 01.
+  [31][How long does it take to complete a landing page?]: What can I discover in the Mondial Marketplace?
+  [32][We offer both!]: The Marketplace can surface structured Creator projects, Entrepreneur company and funding opportunities, Service Provider services and relevant ecosystem profiles.
+  [33][01.]: 02.
+  [34][How long does it take to complete a landing page?]: Is the Marketplace only for buying projects?
+  [35][We offer both!]: No. Project acquisition is one possible Creator pathway. The Marketplace also supports co-founder discovery, professional-service discovery, company and funding opportunity discovery, and relevant profile connections.
+  [36][01.]: 03.
+  [37][How long does it take to complete a landing page?]: What Creator offers are available in the current MVP?
+  [38][We offer both!]: The current Creator Marketplace MVP supports Full Buyout and Co-founder / Equity opportunities.
+  [39][01.]: 04.
+  [40][How long does it take to complete a landing page?]: Does Full Buyout mean licensing?
+  [41][We offer both!]: No. Full Buyout represents an acquisition and ownership-transfer pathway, subject to the applicable agreement.
+  [42][01.]: 05.
+  [43][How long does it take to complete a landing page?]: Can I find Service Providers through the Marketplace?
+  [44][We offer both!]: Yes. Providers can publish structured services, while relevant professional needs can also generate matching opportunities across the ecosystem.
+  [45][01.]: 06.
+  [46][How long does it take to complete a landing page?]: Can Investors find companies here?
+  [47][We offer both!]: Yes. Relevant company and funding context can support Investor discovery, with deeper review moving into the dedicated Investor access and diligence journey.
+  [48][01.]: 07.
+  [49][How long does it take to complete a landing page?]: Does a match mean the other person must connect with me?
+  [50][We offer both!]: No. Matching indicates potential relevance. The appropriate parties still decide whether to continue.
+  [51][01.]: 08.
+  [52][How long does it take to complete a landing page?]: Can everyone see every project or company document?
+  [53][We offer both!]: No. Public discovery and controlled information access are separate. Sensitive information can require permission, confidentiality steps or another appropriate access process.
+  [54][01.]: 09.
+  [55][How long does it take to complete a landing page?]: Is Marketplace the same as Messenger?
+  [56][We offer both!]: No. Marketplace supports discovery. Messenger supports communication and related actions once an appropriate relationship begins.
+  [57][01.]: 10.
+  [58][How long does it take to complete a landing page?]: What happens after I find something relevant?
+  [59][We offer both!]: Mondial routes the connection into the appropriate project, provider, entrepreneur or investor workflow rather than treating discovery as the final outcome.
+  [60][Text]: ENTER THE ECOSYSTEM
+  [61][What are you bringing to the Marketplace?]: What are you bringing to the Marketplace?
+  [62][CREATOR]: CREATOR
+  [63][I have a project → Structure it → Bring it to market.]: I have a project → Structure \n it → Bring it to market.
+  [64][Text]: EXPLORE CREATORS
+  [65][ENTREPRENEUR]: ENTREPRENEUR
+  [66][I am building a company → Find projects, people, providers, capital.]: I am building a company → \n Find projects, people, \n providers, capital.
+  [67][Text]: EXPLORE ENTREPRENEURS
+  [68][SERVICE PROVIDER]: SERVICE \n PROVIDER
+  [69][I bring professional expertise → Publish services → Meet relevant demand.]: I bring professional expertise \n → Publish services → Meet \n relevant demand.
+  [70][Text]: EXPLORE SERVICE PROVIDERS
+  [71][INVESTOR]: INVESTOR
+  [72][I bring investment capital → Define thesis → Discover relevant companies.]: I bring investment capital → \n Define thesis → Discover \n relevant companies.
+  [73][Text]: EXPLORE INVESTORS
+  [74][Text]: CREATOR
+  [75][Text]: ENTREPRENEUR
+  [76][Text]: SERVICE PROVIDER
+  [77][Text]: INVESTOR
+  [78][MONDIAL MARKETPLACE]: MONDIAL MARKETPLACE
+  [79][Text]: as central discovery layer
+  [80][FOUR ROLES. DIFFERENT NEEDS. ONE STRUCTURED PLACE TO CONNECT.]: FOUR ROLES. DIFFERENT NEEDS. ONE \n STRUCTURED PLACE TO CONNECT.
+  [81][Text]: EXPLORE THE MARKETPLACE
+  [82][Text]: CHOOSE YOUR ROLE
+  [83][Text]: MONDIAL ECO
+  [84][Text]: |
+  [85][Text]: STRUCTURE
+  [86][Text]: DISCOVER
+  [87][Text]: CONNECT
+  [88][Text]: BUILD
+
+=================== 10 FAQS ===================
+--- FAQ 56791:80463 ---
+  [01.]: 01.
+  [How long does it take to complete a landing page?]: What can I discover in the Mondial Marketplace?
+  [We offer both!]: The Marketplace can surface structured Creator projects, Entrepreneur company and funding opportunities, Service Provider services and relevant ecosystem profiles.
+--- FAQ 56791:80464 ---
+  [01.]: 02.
+  [How long does it take to complete a landing page?]: Is the Marketplace only for buying projects?
+  [We offer both!]: No. Project acquisition is one possible Creator pathway. The Marketplace also supports co-founder discovery, professional-service discovery, company and funding opportunity discovery, and relevant profile connections.
+--- FAQ 56791:80465 ---
+  [01.]: 03.
+  [How long does it take to complete a landing page?]: What Creator offers are available in the current MVP?
+  [We offer both!]: The current Creator Marketplace MVP supports Full Buyout and Co-founder / Equity opportunities.
+--- FAQ 56791:80466 ---
+  [01.]: 04.
+  [How long does it take to complete a landing page?]: Does Full Buyout mean licensing?
+  [We offer both!]: No. Full Buyout represents an acquisition and ownership-transfer pathway, subject to the applicable agreement.
+--- FAQ 56791:80467 ---
+  [01.]: 05.
+  [How long does it take to complete a landing page?]: Can I find Service Providers through the Marketplace?
+  [We offer both!]: Yes. Providers can publish structured services, while relevant professional needs can also generate matching opportunities across the ecosystem.
+--- FAQ 56791:80468 ---
+  [01.]: 06.
+  [How long does it take to complete a landing page?]: Can Investors find companies here?
+  [We offer both!]: Yes. Relevant company and funding context can support Investor discovery, with deeper review moving into the dedicated Investor access and diligence journey.
+--- FAQ 56791:80469 ---
+  [01.]: 07.
+  [How long does it take to complete a landing page?]: Does a match mean the other person must connect with me?
+  [We offer both!]: No. Matching indicates potential relevance. The appropriate parties still decide whether to continue.
+--- FAQ 56791:80470 ---
+  [01.]: 08.
+  [How long does it take to complete a landing page?]: Can everyone see every project or company document?
+  [We offer both!]: No. Public discovery and controlled information access are separate. Sensitive information can require permission, confidentiality steps or another appropriate access process.
+--- FAQ 56795:80573 ---
+  [01.]: 09.
+  [How long does it take to complete a landing page?]: Is Marketplace the same as Messenger?
+  [We offer both!]: No. Marketplace supports discovery. Messenger supports communication and related actions once an appropriate relationship begins.
+--- FAQ 56795:80586 ---
+  [01.]: 10.
+  [How long does it take to complete a landing page?]: What happens after I find something relevant?
+  [We offer both!]: Mondial routes the connection into the appropriate project, provider, entrepreneur or investor workflow rather than treating discovery as the final outcome.

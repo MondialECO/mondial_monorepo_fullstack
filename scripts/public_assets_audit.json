@@ -1,0 +1,588 @@
+{
+  "kept": [
+    {
+      "file": "public/brand-logo-footer.png",
+      "filename": "brand-logo-footer.png",
+      "refCount": 2,
+      "matches": [
+        "src\\components\\shared\\Footer.tsx",
+        "src\\components\\shared\\PublicHeader.tsx"
+      ]
+    },
+    {
+      "file": "public/dashboard-mockup.png",
+      "filename": "dashboard-mockup.png",
+      "refCount": 1,
+      "matches": [
+        "src\\components\\homepage\\HeroSection.tsx"
+      ]
+    },
+    {
+      "file": "public/figma/offer-pricing/add.svg",
+      "filename": "add.svg",
+      "refCount": 1,
+      "matches": [
+        "src\\components\\creator\\phase4\\Phase4Pricing.tsx"
+      ]
+    },
+    {
+      "file": "public/figma/offer-pricing/arrow-right.svg",
+      "filename": "arrow-right.svg",
+      "refCount": 2,
+      "matches": [
+        "src\\app\\dashboard\\creator\\phase-2\\page.tsx",
+        "src\\components\\creator\\phase4\\Phase4Pricing.tsx"
+      ]
+    },
+    {
+      "file": "public/figma/offer-pricing/calendar.svg",
+      "filename": "calendar.svg",
+      "refCount": 1,
+      "matches": [
+        "src\\components\\creator\\phase4\\Phase4Pricing.tsx"
+      ]
+    },
+    {
+      "file": "public/figma/offer-pricing/chart.svg",
+      "filename": "chart.svg",
+      "refCount": 1,
+      "matches": [
+        "src\\components\\creator\\phase4\\Phase4Pricing.tsx"
+      ]
+    },
+    {
+      "file": "public/figma/offer-pricing/clock.svg",
+      "filename": "clock.svg",
+      "refCount": 1,
+      "matches": [
+        "src\\components\\creator\\phase4\\Phase4Pricing.tsx"
+      ]
+    },
+    {
+      "file": "public/figma/offer-pricing/feature-check.svg",
+      "filename": "feature-check.svg",
+      "refCount": 1,
+      "matches": [
+        "src\\components\\creator\\phase4\\Phase4Pricing.tsx"
+      ]
+    },
+    {
+      "file": "public/figma/offer-pricing/gift.svg",
+      "filename": "gift.svg",
+      "refCount": 1,
+      "matches": [
+        "src\\components\\creator\\phase4\\Phase4Pricing.tsx"
+      ]
+    },
+    {
+      "file": "public/figma/offer-pricing/graph.svg",
+      "filename": "graph.svg",
+      "refCount": 1,
+      "matches": [
+        "src\\components\\creator\\phase4\\Phase4Pricing.tsx"
+      ]
+    },
+    {
+      "file": "public/figma/offer-pricing/selected.svg",
+      "filename": "selected.svg",
+      "refCount": 1,
+      "matches": [
+        "src\\components\\creator\\phase4\\Phase4Pricing.tsx"
+      ]
+    },
+    {
+      "file": "public/icons/phase2/arrow-right-dark.svg",
+      "filename": "arrow-right-dark.svg",
+      "refCount": 1,
+      "matches": [
+        "src\\app\\dashboard\\creator\\phase-2\\page.tsx"
+      ]
+    },
+    {
+      "file": "public/icons/phase2/arrow-right.svg",
+      "filename": "arrow-right.svg",
+      "refCount": 2,
+      "matches": [
+        "src\\app\\dashboard\\creator\\phase-2\\page.tsx",
+        "src\\components\\creator\\phase4\\Phase4Pricing.tsx"
+      ]
+    },
+    {
+      "file": "public/icons/phase2/digital-ai-green.png",
+      "filename": "digital-ai-green.png",
+      "refCount": 1,
+      "matches": [
+        "src\\app\\dashboard\\creator\\phase-2\\ai-processing\\page.tsx"
+      ]
+    },
+    {
+      "file": "public/icons/phase2/discover.svg",
+      "filename": "discover.svg",
+      "refCount": 1,
+      "matches": [
+        "src\\app\\dashboard\\creator\\phase-2\\page.tsx"
+      ]
+    },
+    {
+      "file": "public/icons/phase2/lamp-charge.svg",
+      "filename": "lamp-charge.svg",
+      "refCount": 1,
+      "matches": [
+        "src\\app\\dashboard\\creator\\phase-2\\page.tsx"
+      ]
+    },
+    {
+      "file": "public/icons/phase2/logo.png",
+      "filename": "logo.png",
+      "refCount": 4,
+      "matches": [
+        "src\\app\\dashboard\\investor\\profile\\edit\\page.tsx",
+        "src\\app\\layout.tsx",
+        "src\\components\\layout\\Topbar.tsx",
+        "src\\lib\\api-creator-journey.ts"
+      ]
+    },
+    {
+      "file": "public/icons/phase2/robot.png",
+      "filename": "robot.png",
+      "refCount": 1,
+      "matches": [
+        "src\\app\\dashboard\\creator\\phase-2\\clarifier\\page.tsx"
+      ]
+    },
+    {
+      "file": "public/icons/phase2/tick-circle.svg",
+      "filename": "tick-circle.svg",
+      "refCount": 1,
+      "matches": [
+        "src\\app\\dashboard\\creator\\phase-2\\page.tsx"
+      ]
+    },
+    {
+      "file": "public/images/profile.png",
+      "filename": "profile.png",
+      "refCount": 2,
+      "matches": [
+        "src\\components\\homepage\\Pricing.tsx",
+        "src\\__tests__\\serviceprovider\\provider-image-uploader.test.tsx"
+      ]
+    },
+    {
+      "file": "public/images/t1.png",
+      "filename": "t1.png",
+      "refCount": 1,
+      "matches": [
+        "src\\components\\homepage\\ImpactSection.tsx"
+      ]
+    },
+    {
+      "file": "public/images/t2.png",
+      "filename": "t2.png",
+      "refCount": 1,
+      "matches": [
+        "src\\components\\homepage\\ImpactSection.tsx"
+      ]
+    },
+    {
+      "file": "public/images/t3.png",
+      "filename": "t3.png",
+      "refCount": 1,
+      "matches": [
+        "src\\components\\homepage\\ImpactSection.tsx"
+      ]
+    },
+    {
+      "file": "public/landing/idea_card.svg",
+      "filename": "idea_card.svg",
+      "refCount": 1,
+      "matches": [
+        "src\\components\\homepage\\FeaturesSection2.tsx"
+      ]
+    },
+    {
+      "file": "public/landing/investorList_card.svg",
+      "filename": "investorList_card.svg",
+      "refCount": 1,
+      "matches": [
+        "src\\components\\homepage\\FeaturesSection2.tsx"
+      ]
+    },
+    {
+      "file": "public/landing/task.svg",
+      "filename": "task.svg",
+      "refCount": 1,
+      "matches": [
+        "src\\components\\homepage\\FeaturesSection2.tsx"
+      ]
+    },
+    {
+      "file": "public/landing/user_profile_card.svg",
+      "filename": "user_profile_card.svg",
+      "refCount": 1,
+      "matches": [
+        "src\\components\\homepage\\FeaturesSection2.tsx"
+      ]
+    },
+    {
+      "file": "public/logos/amplitude.svg",
+      "filename": "amplitude.svg",
+      "refCount": 1,
+      "matches": [
+        "src\\components\\homepage\\TrustedPartners.tsx"
+      ]
+    },
+    {
+      "file": "public/logos/avail.svg",
+      "filename": "avail.svg",
+      "refCount": 1,
+      "matches": [
+        "src\\components\\homepage\\TrustedPartners.tsx"
+      ]
+    },
+    {
+      "file": "public/logos/bancor.svg",
+      "filename": "bancor.svg",
+      "refCount": 1,
+      "matches": [
+        "src\\components\\homepage\\TrustedPartners.tsx"
+      ]
+    },
+    {
+      "file": "public/logos/bitcoin.svg",
+      "filename": "bitcoin.svg",
+      "refCount": 1,
+      "matches": [
+        "src\\components\\homepage\\TrustedPartners.tsx"
+      ]
+    },
+    {
+      "file": "public/logos/dao-ipci.svg",
+      "filename": "dao-ipci.svg",
+      "refCount": 1,
+      "matches": [
+        "src\\components\\homepage\\TrustedPartners.tsx"
+      ]
+    },
+    {
+      "file": "public/logos/darwinia.svg",
+      "filename": "darwinia.svg",
+      "refCount": 1,
+      "matches": [
+        "src\\components\\homepage\\TrustedPartners.tsx"
+      ]
+    },
+    {
+      "file": "public/logos/digibyte.svg",
+      "filename": "digibyte.svg",
+      "refCount": 1,
+      "matches": [
+        "src\\components\\homepage\\TrustedPartners.tsx"
+      ]
+    },
+    {
+      "file": "public/logos/edgeware.svg",
+      "filename": "edgeware.svg",
+      "refCount": 1,
+      "matches": [
+        "src\\components\\homepage\\TrustedPartners.tsx"
+      ]
+    },
+    {
+      "file": "public/logos/fantom.svg",
+      "filename": "fantom.svg",
+      "refCount": 1,
+      "matches": [
+        "src\\components\\homepage\\TrustedPartners.tsx"
+      ]
+    },
+    {
+      "file": "public/logos/fusotao.svg",
+      "filename": "fusotao.svg",
+      "refCount": 1,
+      "matches": [
+        "src\\components\\homepage\\TrustedPartners.tsx"
+      ]
+    },
+    {
+      "file": "public/logos/hive.svg",
+      "filename": "hive.svg",
+      "refCount": 1,
+      "matches": [
+        "src\\components\\homepage\\TrustedPartners.tsx"
+      ]
+    },
+    {
+      "file": "public/logos/kintsugi.svg",
+      "filename": "kintsugi.svg",
+      "refCount": 1,
+      "matches": [
+        "src\\components\\homepage\\TrustedPartners.tsx"
+      ]
+    },
+    {
+      "file": "public/logos/loom.svg",
+      "filename": "loom.svg",
+      "refCount": 1,
+      "matches": [
+        "src\\components\\homepage\\TrustedPartners.tsx"
+      ]
+    },
+    {
+      "file": "public/logos/polkadex.svg",
+      "filename": "polkadex.svg",
+      "refCount": 1,
+      "matches": [
+        "src\\components\\homepage\\TrustedPartners.tsx"
+      ]
+    },
+    {
+      "file": "public/logos/polkadot.svg",
+      "filename": "polkadot.svg",
+      "refCount": 1,
+      "matches": [
+        "src\\components\\homepage\\TrustedPartners.tsx"
+      ]
+    },
+    {
+      "file": "public/profiles/creator.png",
+      "filename": "creator.png",
+      "refCount": 5,
+      "matches": [
+        "src\\components\\auth\\signup\\RoleCard.tsx",
+        "src\\components\\auth\\signup\\roles.data.ts",
+        "src\\components\\homepage\\AllProfileSection.tsx",
+        "src\\components\\homepage\\FigmaServiceProviders.tsx",
+        "src\\components\\homepage\\rolesSection.tsx"
+      ]
+    },
+    {
+      "file": "public/profiles/entrepreneur.png",
+      "filename": "entrepreneur.png",
+      "refCount": 4,
+      "matches": [
+        "src\\components\\auth\\signup\\roles.data.ts",
+        "src\\components\\homepage\\AllProfileSection.tsx",
+        "src\\components\\homepage\\FigmaServiceProviders.tsx",
+        "src\\components\\homepage\\rolesSection.tsx"
+      ]
+    },
+    {
+      "file": "public/profiles/investor.png",
+      "filename": "investor.png",
+      "refCount": 4,
+      "matches": [
+        "src\\components\\auth\\signup\\roles.data.ts",
+        "src\\components\\homepage\\AllProfileSection.tsx",
+        "src\\components\\homepage\\FigmaServiceProviders.tsx",
+        "src\\components\\homepage\\rolesSection.tsx"
+      ]
+    },
+    {
+      "file": "public/profiles/service.png",
+      "filename": "service.png",
+      "refCount": 4,
+      "matches": [
+        "src\\components\\auth\\signup\\roles.data.ts",
+        "src\\components\\homepage\\AllProfileSection.tsx",
+        "src\\components\\homepage\\FigmaServiceProviders.tsx",
+        "src\\components\\homepage\\rolesSection.tsx"
+      ]
+    },
+    {
+      "file": "public/sw.js",
+      "filename": "sw.js",
+      "refCount": 1,
+      "matches": [
+        "src\\components\\shared\\PWAInstall.tsx"
+      ]
+    }
+  ],
+  "unref": [
+    {
+      "file": "public/blob-left.png",
+      "filename": "blob-left.png",
+      "refCount": 0,
+      "matches": []
+    },
+    {
+      "file": "public/blob-right.png",
+      "filename": "blob-right.png",
+      "refCount": 0,
+      "matches": []
+    },
+    {
+      "file": "public/favicon.svg",
+      "filename": "favicon.svg",
+      "refCount": 0,
+      "matches": []
+    },
+    {
+      "file": "public/figma_creator_preview.png",
+      "filename": "figma_creator_preview.png",
+      "refCount": 0,
+      "matches": []
+    },
+    {
+      "file": "public/figma_footer_preview.png",
+      "filename": "figma_footer_preview.png",
+      "refCount": 0,
+      "matches": []
+    },
+    {
+      "file": "public/figma_header/header_56877_89047.png",
+      "filename": "header_56877_89047.png",
+      "refCount": 0,
+      "matches": []
+    },
+    {
+      "file": "public/figma_header/header_56885_117176.png",
+      "filename": "header_56885_117176.png",
+      "refCount": 0,
+      "matches": []
+    },
+    {
+      "file": "public/figma_header/header_56885_117338.png",
+      "filename": "header_56885_117338.png",
+      "refCount": 0,
+      "matches": []
+    },
+    {
+      "file": "public/figma_header/header_56885_117939.png",
+      "filename": "header_56885_117939.png",
+      "refCount": 0,
+      "matches": []
+    },
+    {
+      "file": "public/figma_header/header_56885_118356.png",
+      "filename": "header_56885_118356.png",
+      "refCount": 0,
+      "matches": []
+    },
+    {
+      "file": "public/figma_header/header_56885_118618.png",
+      "filename": "header_56885_118618.png",
+      "refCount": 0,
+      "matches": []
+    },
+    {
+      "file": "public/figma_homepage_preview.png",
+      "filename": "figma_homepage_preview.png",
+      "refCount": 0,
+      "matches": []
+    },
+    {
+      "file": "public/figma_sections/sec_1_Frame_106.png",
+      "filename": "sec_1_Frame_106.png",
+      "refCount": 0,
+      "matches": []
+    },
+    {
+      "file": "public/figma_sections/sec_2_Frame_145.png",
+      "filename": "sec_2_Frame_145.png",
+      "refCount": 0,
+      "matches": []
+    },
+    {
+      "file": "public/figma_sections/sec_3_Frame_115.png",
+      "filename": "sec_3_Frame_115.png",
+      "refCount": 0,
+      "matches": []
+    },
+    {
+      "file": "public/figma_sections/sec_4_Frame_148.png",
+      "filename": "sec_4_Frame_148.png",
+      "refCount": 0,
+      "matches": []
+    },
+    {
+      "file": "public/figma_sections/sec_5_What_it_actually_looks_like_.png",
+      "filename": "sec_5_What_it_actually_looks_like_.png",
+      "refCount": 0,
+      "matches": []
+    },
+    {
+      "file": "public/figma_sections/sec_6_Service_Providers.png",
+      "filename": "sec_6_Service_Providers.png",
+      "refCount": 0,
+      "matches": []
+    },
+    {
+      "file": "public/hero-section.png",
+      "filename": "hero-section.png",
+      "refCount": 0,
+      "matches": []
+    },
+    {
+      "file": "public/images/checkmark-badge-02.svg",
+      "filename": "checkmark-badge-02.svg",
+      "refCount": 0,
+      "matches": []
+    },
+    {
+      "file": "public/images/crown.svg",
+      "filename": "crown.svg",
+      "refCount": 0,
+      "matches": []
+    },
+    {
+      "file": "public/images/ellipse-3.svg",
+      "filename": "ellipse-3.svg",
+      "refCount": 0,
+      "matches": []
+    },
+    {
+      "file": "public/images/ellipse-4.svg",
+      "filename": "ellipse-4.svg",
+      "refCount": 0,
+      "matches": []
+    },
+    {
+      "file": "public/logo-row.png",
+      "filename": "logo-row.png",
+      "refCount": 0,
+      "matches": []
+    },
+    {
+      "file": "public/logo-row@3x.png",
+      "filename": "logo-row@3x.png",
+      "refCount": 0,
+      "matches": []
+    },
+    {
+      "file": "public/manifest.json",
+      "filename": "manifest.json",
+      "refCount": 0,
+      "matches": []
+    },
+    {
+      "file": "public/meta.json",
+      "filename": "meta.json",
+      "refCount": 0,
+      "matches": []
+    },
+    {
+      "file": "public/opengraph.jpg",
+      "filename": "opengraph.jpg",
+      "refCount": 0,
+      "matches": []
+    },
+    {
+      "file": "public/partners-section.png",
+      "filename": "partners-section.png",
+      "refCount": 0,
+      "matches": []
+    },
+    {
+      "file": "public/robots.txt",
+      "filename": "robots.txt",
+      "refCount": 0,
+      "matches": []
+    },
+    {
+      "file": "public/sitemap.xml",
+      "filename": "sitemap.xml",
+      "refCount": 0,
+      "matches": []
+    }
+  ]
+}

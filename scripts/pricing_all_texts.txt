@@ -1,0 +1,166 @@
+
+=================== deep_56939_79254.json (62 texts, 0 images) ===================
+[0] [MONDIAL ECO — PRICING] (56939:79263): MONDIAL ECO — PRICING
+[1] [Start building for free. Pay when professional value begins.] (56939:79265): Start building for free. Pay \n when professional value \n begins.
+[2] [Mondial pricing follows your role in the ecosystem — free access for project and company building, with simple professional access for Providers and Investors.] (56939:79267): Mondial pricing follows your role in the ecosystem — free access for project and \n company building, with simple professional access for Providers and Investors.
+[3] [CHOOSE YOUR ROLE] (56939:79270): CHOOSE YOUR ROLE
+[4] [SEE WHAT'S INCLUDED] (56939:79272): SEE WHAT'S INCLUDED
+[5] [Text] (56939:79279): BUILDING
+[6] [Text] (56939:79284): Creator
+[7] [Turn an idea into a structured project.] (56939:79286): Turn an idea into a structured project.
+[8] [€0] (56939:79289): €0
+[9] [/ month] (56939:79290): / month
+[10] [ACCESS INCLUDES] (56939:79293): ACCESS INCLUDES
+[11] [Project Identity] (56939:79296): Project Identity
+[12] [Project Intelligence] (56939:79298): Project Intelligence
+[13] [Business Planning] (56939:79300): Business Planning
+[14] [Resource Needs] (56939:79302): Resource Needs
+[15] [Marketplace Preparation] (56939:79304): Marketplace Preparation
+[16] [Full Buyout] (56939:79306): Full Buyout
+[17] [Co-founder / Equity] (56939:79308): Co-founder / Equity
+[18] [Build Yourself] (56939:79310): Build Yourself
+[19] [START AS CREATOR] (56939:79312): START AS CREATOR
+[20] [Text] (56939:79319): Entrepreneur
+[21] [Structure, build and prepare your company.] (56939:79321): Structure, build and prepare your company.
+[22] [€0] (56939:79324): €0
+[23] [/ month] (56939:79325): / month
+[24] [ACCESS INCLUDES] (56939:79328): ACCESS INCLUDES
+[25] [Company Context] (56939:79331): Company Context
+[26] [Build & Execute] (56939:79333): Build & Execute
+[27] [Provider Discovery] (56939:79335): Provider Discovery
+[28] [Ownership Context] (56939:79337): Ownership Context
+[29] [Funding Readiness] (56939:79339): Funding Readiness
+[30] [Investor Discovery] (56939:79341): Investor Discovery
+[31] [START AS ENTREPRENEUR] (56939:79343): START AS ENTREPRENEUR
+[32] [Text] (56939:79350): PROFESSIONAL ECOSYSTEM ACCESS
+[33] [Text] (56939:79355): Service Provider
+[34] [Turn professional expertise into opportunities.] (56939:79357): Turn professional expertise into opportunities.
+[35] [€9.99] (56939:79360): €9.99
+[36] [/ month] (56939:79361): / month
+[37] [TIER-BASED COMMISSION ON ELIGIBLE PAID WORK] (56939:79366): TIER-BASED COMMISSION ON ELIGIBLE PAID WORK
+[38] [ACCESS INCLUDES] (56939:79369): ACCESS INCLUDES
+[39] [Professional Profile] (56939:79372): Professional Profile
+[40] [Service Publishing] (56939:79374): Service Publishing
+[41] [Marketplace Visibility] (56939:79376): Marketplace Visibility
+[42] [Qualified Opportunities] (56939:79378): Qualified Opportunities
+[43] [Proposals] (56939:79380): Proposals
+[44] [Projects] (56939:79382): Projects
+[45] [Earnings] (56939:79384): Earnings
+[46] [Reputation] (56939:79386): Reputation
+[47] [JOIN AS PROVIDER] (56939:79388): JOIN AS PROVIDER
+[48] [Text] (56939:79395): Investor
+[49] [Discover and review structured investment opportunities.] (56939:79397): Discover and review structured investment \n opportunities.
+[50] [€9.99] (56939:79400): €9.99
+[51] [/ month] (56939:79401): / month
+[52] [ACCESS INCLUDES] (56939:79404): ACCESS INCLUDES
+[53] [Investor Profile] (56939:79407): Investor Profile
+[54] [Investment Thesis] (56939:79409): Investment Thesis
+[55] [Discover & Match] (56939:79411): Discover & Match
+[56] [Controlled Diligence] (56939:79413): Controlled Diligence
+[57] [Pipeline] (56939:79415): Pipeline
+[58] [Portfolio Context] (56939:79417): Portfolio Context
+[59] [JOIN AS INVESTOR] (56939:79419): JOIN AS INVESTOR
+[60] [Text] (56939:79425): Four roles. One simple pricing logic.
+[61] [Small note: Applicable taxes, transaction costs or external professional costs may apply depending on the activity and jurisdiction.] (56939:79427): Small note: Applicable taxes, transaction costs or external professional costs may apply depending on the \n activity and jurisdiction.
+
+=================== deep_56939_79428.json (100 texts, 0 images) ===================
+[0] [COMPARE BY ROLE] (56939:79434): COMPARE BY ROLE
+[1] [Different roles. Different economics.] (56939:79436): Different roles. Different economics.
+[2] [Features] (56939:79441): Features
+[3] [CREATOR] (56939:79443): CREATOR
+[4] [ENTREPRENEUR] (56939:79445): ENTREPRENEUR
+[5] [SERVICE PROVIDER] (56939:79447): SERVICE PROVIDER
+[6] [INVESTOR] (56939:79449): INVESTOR
+[7] [MONTHLY PRICE] (56939:79453): MONTHLY PRICE
+[8] [€0] (56939:79455): €0
+[9] [€0] (56939:79457): €0
+[10] [€9.99] (56939:79459): €9.99
+[11] [€9.99] (56939:79461): €9.99
+[12] [BEST FOR] (56939:79464): BEST FOR
+[13] [Ideas & Projects] (56939:79466): Ideas & Projects
+[14] [Companies & Execution] (56939:79468): Companies & Execution
+[15] [Professional Services] (56939:79470): Professional Services
+[16] [Investment Opportunities] (56939:79472): Investment \n Opportunities
+[17] [MARKETPLACE ROLE] (56939:79475): MARKETPLACE ROLE
+[18] [Publish Project Opportunity] (56939:79477): Publish Project \n Opportunity
+[19] [Find Projects, Providers & Capital] (56939:79479): Find Projects, Providers \n & Capital
+[20] [Publish Services] (56939:79481): Publish Services
+[21] [Discover Companies] (56939:79483): Discover Companies
+[22] [VERIFICATION] (56939:79486): VERIFICATION
+[23] [Required where relevant] (56939:79488): Required where relevant
+[24] [Required where relevant] (56939:79490): Required where relevant
+[25] [Professional verification] (56939:79492): Professional verification
+[26] [Identity + relevant financial context] (56939:79494): Identity + relevant \n financial context
+[27] [TRANSACTION COMMISSION] (56939:79497): TRANSACTION \n COMMISSION
+[28] [—] (56939:79499): —
+[29] [—] (56939:79501): —
+[30] [Tier-based] (56939:79503): Tier-based
+[31] [—] (56939:79505): —
+[32] [PROVIDER COMMISSION] (56939:79510): PROVIDER COMMISSION
+[33] [More verified trust. Lower platform commission.] (56939:79512): More verified trust. Lower platform commission.
+[34] [Commission rates decrease as providers build trust through verification and platform history.] (56939:79514): Commission rates decrease as providers build trust through verification and platform \n history.
+[35] [TIER 1: IDENTITY] (56939:79520): TIER 1: IDENTITY
+[36] [No paid work access] (56939:79522): No paid work access
+[37] [TIER 2: BASIC VERIFIED] (56939:79528): TIER 2: BASIC VERIFIED
+[38] [Standard entry level] (56939:79530): Standard entry level
+[39] [12%] (56939:79532): 12%
+[40] [TIER 3: VERIFIED PROFESSIONAL] (56939:79536): TIER 3: VERIFIED PROFESSIONAL
+[41] [Established track record] (56939:79538): Established track record
+[42] [8%] (56939:79540): 8%
+[43] [TIER 4: VETTED] (56939:79544): TIER 4: VETTED
+[44] [Highest trust level] (56939:79546): Highest trust level
+[45] [5%] (56939:79548): 5%
+[46] [Illustrative €1,000 Project] (56939:79553): Illustrative €1,000 Project
+[47] [Platform commission taken based on tier.] (56939:79555): Platform commission taken based on tier.
+[48] [Tier 2 Commission] (56939:79559): Tier 2 Commission
+[49] [€120] (56939:79561): €120
+[50] [Tier 3 Commission] (56939:79564): Tier 3 Commission
+[51] [€80] (56939:79566): €80
+[52] [Tier 4 Commission] (56939:79569): Tier 4 Commission
+[53] [€50] (56939:79571): €50
+[54] [Important Clarification] (56939:79576): Important Clarification
+[55] [FREE MONDIAL ACCESS does NOT automatically mean EVERY REAL-WORLD BUSINESS COST IS FREE.] (56939:79578): FREE MONDIAL ACCESS does NOT automatically mean EVERY REAL-WORLD BUSINESS COST IS FREE.
+[56] [MONDIAL PLATFORM PRICE] (56939:79584): MONDIAL PLATFORM PRICE
+[57] [Creator] (56939:79588): Creator
+[58] [€0] (56939:79590): €0
+[59] [Entrepreneur] (56939:79593): Entrepreneur
+[60] [€0] (56939:79595): €0
+[61] [Provider] (56939:79598): Provider
+[62] [€9.99/mo] (56939:79600): €9.99/mo
+[63] [Investor] (56939:79603): Investor
+[64] [€9.99/mo] (56939:79605): €9.99/mo
+[65] [POSSIBLE EXTERNAL COSTS] (56939:79610): POSSIBLE EXTERNAL COSTS
+[66] [Professional services] (56939:79614): Professional services
+[67] [Company registration] (56939:79618): Company registration
+[68] [Legal advice] (56939:79622): Legal advice
+[69] [Accounting] (56939:79626): Accounting
+[70] [Banking] (56939:79630): Banking
+[71] [Taxes] (56939:79634): Taxes
+[72] [Payment processing] (56939:79638): Payment processing
+[73] [Other third-party costs] (56939:79642): Other third-party costs
+[74] [CHOOSE YOUR ROLE] (56939:79646): CHOOSE YOUR ROLE
+[75] [What are you bringing to Mondial?] (56939:79648): What are you bringing to Mondial?
+[76] [I HAVE AN IDEA] (56939:79654): I HAVE AN IDEA
+[77] [CREATOR] (56939:79656): CREATOR
+[78] [(FREE)] (56939:79658): (FREE)
+[79] [Start as Creator] (56939:79660): Start as Creator
+[80] [I AM BUILDING A COMPANY] (56939:79666): I AM BUILDING A \n COMPANY
+[81] [ENTREPRENEUR] (56939:79668): ENTREPRENEUR
+[82] [(FREE)] (56939:79670): (FREE)
+[83] [Start as Entrepreneur] (56939:79672): Start as \n Entrepreneur
+[84] [I OFFER EXPERTISE] (56939:79679): I OFFER EXPERTISE
+[85] [SERVICE PROVIDER] (56939:79681): SERVICE PROVIDER
+[86] [(€9.99/mo)] (56939:79683): (€9.99/mo)
+[87] [Join as Provider] (56939:79685): Join as Provider
+[88] [I WANT TO INVEST] (56939:79692): I WANT TO INVEST
+[89] [INVESTOR] (56939:79694): INVESTOR
+[90] [(€9.99/mo)] (56939:79696): (€9.99/mo)
+[91] [Join as Investor] (56939:79698): Join as Investor
+[92] [Text] (56939:79703): CREATOR €0 
+[93] [|] (56939:79705): |
+[94] [Text] (56939:79706): ENTREPRENEUR €0 
+[95] [|] (56939:79708): |
+[96] [SERVICE PROVIDER €9.99/MO] (56939:79709):  SERVICE PROVIDER €9.99/MO 
+[97] [|] (56939:79711): |
+[98] [INVESTOR €9.99/MO] (56939:79712):  INVESTOR €9.99/MO
+[99] [SIMPLE. ROLE-BASED. TRANSPARENT.] (56939:79714): SIMPLE. ROLE-BASED. TRANSPARENT.
