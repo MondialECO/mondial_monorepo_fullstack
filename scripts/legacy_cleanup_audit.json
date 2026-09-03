@@ -1,0 +1,203 @@
+[
+  {
+    "candidate": "HeroSection",
+    "refCount": 3,
+    "references": [
+      "frontend\\src\\app\\page.tsx",
+      "frontend\\src\\components\\homepage\\HeroSection.tsx",
+      "src\\components\\homepage\\HeroSection.tsx"
+    ]
+  },
+  {
+    "candidate": "AllProfileSection",
+    "refCount": 3,
+    "references": [
+      "frontend\\src\\app\\page.tsx",
+      "frontend\\src\\components\\homepage\\AllProfileSection.tsx",
+      "src\\components\\homepage\\AllProfileSection.tsx"
+    ]
+  },
+  {
+    "candidate": "TrustedPartners",
+    "refCount": 3,
+    "references": [
+      "frontend\\src\\app\\page.tsx",
+      "frontend\\src\\components\\homepage\\TrustedPartners.tsx",
+      "src\\components\\homepage\\TrustedPartners.tsx"
+    ]
+  },
+  {
+    "candidate": "rolesSection",
+    "refCount": 1,
+    "references": [
+      "frontend\\src\\app\\page.tsx"
+    ]
+  },
+  {
+    "candidate": "RolesSection",
+    "refCount": 3,
+    "references": [
+      "frontend\\src\\app\\page.tsx",
+      "frontend\\src\\components\\homepage\\rolesSection.tsx",
+      "src\\components\\homepage\\rolesSection.tsx"
+    ]
+  },
+  {
+    "candidate": "FeaturesSection",
+    "refCount": 3,
+    "references": [
+      "frontend\\src\\app\\page.tsx",
+      "frontend\\src\\components\\homepage\\FeaturesSection.tsx",
+      "src\\components\\homepage\\FeaturesSection.tsx"
+    ]
+  },
+  {
+    "candidate": "FeaturesSection2",
+    "refCount": 3,
+    "references": [
+      "frontend\\src\\app\\page.tsx",
+      "frontend\\src\\components\\homepage\\FeaturesSection2.tsx",
+      "src\\components\\homepage\\FeaturesSection2.tsx"
+    ]
+  },
+  {
+    "candidate": "Pricing",
+    "refCount": 67,
+    "references": [
+      ".tmp\\formation-build\\Configuration\\SeedData\\business-ideas.json",
+      "backend\\bin\\Debug\\net8.0\\Configuration\\SeedData\\business-ideas.json",
+      "backend\\bin\\Debug\\net8.0\\test-bin\\Configuration\\SeedData\\business-ideas.json",
+      "backend\\bin\\Release\\net8.0\\Configuration\\SeedData\\business-ideas.json",
+      "backend\\bin\\Release\\net8.0\\test-bin\\Configuration\\SeedData\\business-ideas.json",
+      "backend\\bin\\test\\Configuration\\SeedData\\business-ideas.json",
+      "backend\\bin\\test\\test-bin\\Configuration\\SeedData\\business-ideas.json",
+      "backend\\bin\\TestBuild\\Configuration\\SeedData\\business-ideas.json",
+      "backend\\bin\\TestBuild\\net8.0\\Configuration\\SeedData\\business-ideas.json",
+      "backend\\bin\\TestBuild\\net8.0\\test-bin\\Configuration\\SeedData\\business-ideas.json",
+      "backend\\bin\\TestBuild\\test-bin\\Configuration\\SeedData\\business-ideas.json",
+      "backend\\bin\\TestOut\\Configuration\\SeedData\\business-ideas.json",
+      "backend\\Configuration\\SeedData\\business-ideas.json",
+      "backend\\obj\\build_check\\Configuration\\SeedData\\business-ideas.json",
+      "backend\\test-bin\\Configuration\\SeedData\\business-ideas.json",
+      "backend\\tests\\WebApp.E2eSupport\\bin\\Debug\\net8.0\\Configuration\\SeedData\\business-ideas.json",
+      "backend\\tests\\WebApp.E2eSupport\\bin\\Debug\\net8.0\\test-bin\\Configuration\\SeedData\\business-ideas.json",
+      "backend\\tests\\WebApp.E2eSupport\\bin\\test\\Configuration\\SeedData\\business-ideas.json",
+      "backend\\tests\\WebApp.E2eSupport\\bin\\test\\test-bin\\Configuration\\SeedData\\business-ideas.json",
+      "backend\\tests\\WebApp.E2eSupport\\bin\\TestBuild\\Configuration\\SeedData\\business-ideas.json",
+      "backend\\tests\\WebApp.E2eSupport\\bin\\TestBuild\\net8.0\\Configuration\\SeedData\\business-ideas.json",
+      "backend\\tests\\WebApp.E2eSupport\\bin\\TestBuild\\net8.0\\test-bin\\Configuration\\SeedData\\business-ideas.json",
+      "backend\\tests\\WebApp.E2eSupport\\bin\\TestBuild\\test-bin\\Configuration\\SeedData\\business-ideas.json",
+      "backend\\tests\\WebApp.Tests\\bin\\Debug\\net8.0\\Configuration\\SeedData\\business-ideas.json",
+      "backend\\tests\\WebApp.Tests\\bin\\Debug\\net8.0\\test-bin\\Configuration\\SeedData\\business-ideas.json",
+      "backend\\tests\\WebApp.Tests\\bin\\Release\\net8.0\\Configuration\\SeedData\\business-ideas.json",
+      "backend\\tests\\WebApp.Tests\\bin\\test\\Configuration\\SeedData\\business-ideas.json",
+      "backend\\tests\\WebApp.Tests\\bin\\test\\test-bin\\Configuration\\SeedData\\business-ideas.json",
+      "backend\\tests\\WebApp.Tests\\bin\\TestBuild\\Configuration\\SeedData\\business-ideas.json",
+      "backend\\tests\\WebApp.Tests\\bin\\TestBuild\\net8.0\\Configuration\\SeedData\\business-ideas.json",
+      "backend\\tests\\WebApp.Tests\\bin\\TestBuild\\net8.0\\test-bin\\Configuration\\SeedData\\business-ideas.json",
+      "backend\\tests\\WebApp.Tests\\bin\\TestBuild\\test-bin\\Configuration\\SeedData\\business-ideas.json",
+      "backend\\tests\\WebApp.Tests\\bin\\TestRunBin\\Configuration\\SeedData\\business-ideas.json",
+      "backend\\tests\\WebApp.Tests\\bin\\test_out\\Configuration\\SeedData\\business-ideas.json",
+      "frontend\\src\\app\\create-project\\page.tsx",
+      "frontend\\src\\app\\page.tsx",
+      "frontend\\src\\components\\shared\\Navbar.tsx",
+      "src\\app\\create-project\\page.tsx",
+      "src\\app\\dashboard\\admin\\engagements\\[id]\\page.tsx",
+      "src\\app\\dashboard\\creator\\offer-pricing\\page.tsx",
+      "src\\app\\dashboard\\creator\\page.tsx",
+      "src\\app\\dashboard\\creator\\phase-3\\business-plan\\page.tsx",
+      "src\\app\\dashboard\\entrepreneur\\discover\\[ideaId]\\page.tsx",
+      "src\\components\\admin\\serviceprovider\\PendingVerificationQueue.tsx",
+      "src\\components\\creator\\ai\\BusinessPlanView.tsx",
+      "src\\components\\creator\\phase4\\Phase4Complete.tsx",
+      "src\\components\\creator\\phase4\\Phase4Pricing.tsx",
+      "src\\components\\creator\\PlanForecastPrintView.tsx",
+      "src\\components\\entrepreneur\\AcquiredProjectWorkspace.tsx",
+      "src\\components\\marketplace\\BuyoutOfferForm.tsx",
+      "src\\components\\marketplace\\workroom\\ContractPanel.tsx",
+      "src\\components\\public\\creator-path\\ProjectIntelligenceSection.tsx",
+      "src\\components\\public\\positioning-branding\\ProjectPresentationSection.tsx",
+      "src\\components\\serviceprovider\\catalog\\PackageEditor.tsx",
+      "src\\components\\serviceprovider\\catalog\\wizard\\WizardStep1Overview.tsx",
+      "src\\components\\serviceprovider\\catalog\\wizard\\WizardStep2Pricing.tsx",
+      "src\\components\\serviceprovider\\leads\\BriefDetail.tsx",
+      "src\\components\\serviceprovider\\leads\\BriefInbox.tsx",
+      "src\\components\\serviceprovider\\leads\\ProposalEditor.tsx",
+      "src\\components\\serviceprovider\\workroom\\ContractPanel.tsx",
+      "src\\components\\shared\\PublicHeader.tsx",
+      "src\\hooks\\queries\\service-catalog.ts",
+      "src\\lib\\api-service-catalog.ts",
+      "src\\lib\\creator-state-resolver.ts",
+      "src\\lib\\menu.ts",
+      "tests\\creator\\frontend\\EntrepreneurAcquiredProjectWorkspace.test.tsx",
+      "tests\\creator\\frontend\\FullBuyoutOfferAndNav.test.tsx"
+    ]
+  },
+  {
+    "candidate": "ImpactSection",
+    "refCount": 3,
+    "references": [
+      "frontend\\src\\app\\page.tsx",
+      "frontend\\src\\components\\homepage\\ImpactSection.tsx",
+      "src\\components\\homepage\\ImpactSection.tsx"
+    ]
+  },
+  {
+    "candidate": "FAQ",
+    "refCount": 18,
+    "references": [
+      "backend\\obj\\project.assets.json",
+      "backend\\tests\\WebApp.E2eSupport\\obj\\project.assets.json",
+      "backend\\tests\\WebApp.Tests\\obj\\project.assets.json",
+      "frontend\\src\\app\\page.tsx",
+      "frontend\\src\\components\\homepage\\FAQ.tsx",
+      "frontend\\src\\components\\homepage\\Pricing.tsx",
+      "frontend\\src\\components\\shared\\Navbar.tsx",
+      "src\\app\\dashboard\\admin\\marketplace\\services\\page.tsx",
+      "src\\app\\for-creators\\identity-verification\\page.tsx",
+      "src\\app\\for-creators\\page.tsx",
+      "src\\app\\for-creators\\project-identity-concept\\page.tsx",
+      "src\\components\\homepage\\FAQ.tsx",
+      "src\\components\\homepage\\Pricing.tsx",
+      "src\\components\\public\\creator-path\\ResourceSetupSection.tsx",
+      "src\\components\\serviceprovider\\catalog\\FaqBuilder.tsx",
+      "src\\components\\serviceprovider\\catalog\\ServiceCatalogWizard.tsx",
+      "src\\components\\serviceprovider\\catalog\\wizard\\WizardStep2Pricing.tsx",
+      "src\\components\\shared\\Footer.tsx"
+    ]
+  },
+  {
+    "candidate": "profiles",
+    "refCount": 23,
+    "references": [
+      "backend\\Properties\\launchSettings.json",
+      "frontend\\src\\components\\auth\\signup\\RoleCard.tsx",
+      "frontend\\src\\components\\auth\\signup\\roles.data.ts",
+      "frontend\\src\\components\\homepage\\AllProfileSection.tsx",
+      "frontend\\src\\components\\homepage\\HeroSection.tsx",
+      "frontend\\src\\components\\homepage\\rolesSection.tsx",
+      "next.config.ts",
+      "src\\app\\dashboard\\admin\\serviceproviders\\page.tsx",
+      "src\\app\\dashboard\\admin\\system\\queues\\page.tsx",
+      "src\\app\\dashboard\\admin\\users\\[id]\\page.tsx",
+      "src\\app\\dashboard\\admin\\verifications\\service-providers\\page.tsx",
+      "src\\components\\admin\\serviceprovider\\PendingVerificationQueue.tsx",
+      "src\\components\\auth\\signup\\RoleCard.tsx",
+      "src\\components\\auth\\signup\\roles.data.ts",
+      "src\\components\\homepage\\AllProfileSection.tsx",
+      "src\\components\\homepage\\FigmaBeforeAfter.tsx",
+      "src\\components\\homepage\\FigmaServiceProviders.tsx",
+      "src\\components\\homepage\\HeroSection.tsx",
+      "src\\components\\homepage\\rolesSection.tsx",
+      "src\\components\\public\\creator-identity\\IdentityCompletionSection.tsx",
+      "src\\components\\serviceprovider\\profile\\editor\\StepSkillsLanguages.tsx",
+      "src\\components\\serviceprovider\\TrustAndSkillsSection.tsx",
+      "src\\__tests__\\universal-profile.test.tsx"
+    ]
+  },
+  {
+    "candidate": "profileCard",
+    "refCount": 0,
+    "references": []
+  }
+]

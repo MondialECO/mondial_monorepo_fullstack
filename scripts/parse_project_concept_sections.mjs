@@ -1,0 +1,35 @@
+import fs from 'fs';
+import path from 'path';
+
+const data = JSON.parse(fs.readFileSync('scripts/figma_project_concept_node.json', 'utf8'));
+const outDir = 'scripts/project_concept_sections';
+if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
+
+function inspectNode(node, depth = 0) {
+  const indent = '  '.repeat(depth);
+  let lines = [];
+
+  const textVal = node.characters ? ` -> "${node.characters.replace(/\n/g, '\\n')}"` : '';
+  const font = node.style ? ` (font: ${node.style.fontFamily}, size: ${node.style.fontSize}, weight: ${node.style.fontWeight})` : '';
+  const fills = node.fills && node.fills.length > 0 && node.fills[0].color ? ` (color: rgb(${Math.round(node.fills[0].color.r*255)}, ${Math.round(node.fills[0].color.g*255)}, ${Math.round(node.fills[0].color.b*255)}))` : '';
+
+  lines.push(`${indent}[${node.type}] "${node.name}" (id: ${node.id}, w: ${Math.round(node.absoluteBoundingBox?.width || 0)}, h: ${Math.round(node.absoluteBoundingBox?.height || 0)})${textVal}${font}${fills}`);
+
+  if (node.children) {
+    for (const child of node.children) {
+      lines = lines.concat(inspectNode(child, depth + 1));
+    }
+  }
+
+  return lines;
+}
+
+const mainDoc = data.nodes['56877:91083']?.document;
+if (mainDoc && mainDoc.children) {
+  mainDoc.children.forEach((c) => {
+    const lines = inspectNode(c);
+    const filename = `node_${c.id.replace(':', '_')}_${c.name.replace(/[^a-zA-Z0-9]/g, '_')}.txt`;
+    fs.writeFileSync(path.join(outDir, filename), lines.join('\n'));
+    console.log(`Saved ${filename} (${lines.length} lines)`);
+  });
+}

@@ -1,0 +1,60 @@
+{
+  "HeroSection.tsx": {
+    "name": "HeroSection",
+    "refCount": 0,
+    "refs": []
+  },
+  "AllProfileSection.tsx": {
+    "name": "AllProfileSection",
+    "refCount": 0,
+    "refs": []
+  },
+  "TrustedPartners.tsx": {
+    "name": "TrustedPartners",
+    "refCount": 0,
+    "refs": []
+  },
+  "rolesSection.tsx": {
+    "name": "rolesSection",
+    "refCount": 0,
+    "refs": []
+  },
+  "FeaturesSection.tsx": {
+    "name": "FeaturesSection",
+    "refCount": 0,
+    "refs": []
+  },
+  "FeaturesSection2.tsx": {
+    "name": "FeaturesSection2",
+    "refCount": 0,
+    "refs": []
+  },
+  "Pricing.tsx": {
+    "name": "Pricing",
+    "refCount": 0,
+    "refs": []
+  },
+  "ImpactSection.tsx": {
+    "name": "ImpactSection",
+    "refCount": 0,
+    "refs": []
+  },
+  "FAQ.tsx": {
+    "name": "FAQ",
+    "refCount": 0,
+    "refs": []
+  },
+  "profiles.tsx": {
+    "name": "profiles",
+    "refCount": 0,
+    "refs": []
+  },
+  "profileCard/": {
+    "name": "profileCard",
+    "files": [
+      "ProfileCard.tsx"
+    ],
+    "refCount": 0,
+    "refs": []
+  }
+}
