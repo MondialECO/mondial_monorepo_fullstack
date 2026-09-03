@@ -1,61 +1,60 @@
-import dynamic from "next/dynamic";
 import Navbar from "@/components/shared/Navbar";
-import HeroSection from "@/components/homepage/HeroSection";
-import AllProfileSection from "@/components/homepage/AllProfileSection";
-
-// Lazy load below-fold sections
-const TrustedPartners = dynamic(() => import("@/components/homepage/TrustedPartners"), {
-  loading: () => <div className="h-64 bg-muted animate-pulse" />,
-});
-
-const RolesSection = dynamic(() => import("@/components/homepage/rolesSection"), {
-  loading: () => <div className="h-96 bg-muted animate-pulse" />,
-});
-
-const FeaturesSection2 = dynamic(() => import("@/components/homepage/FeaturesSection2"), {
-  loading: () => <div className="h-96 bg-muted animate-pulse" />,
-});
-
-const PricingPage = dynamic(() => import("@/components/homepage/Pricing"), {
-  loading: () => <div className="h-96 bg-muted animate-pulse" />,
-});
-
-const ImpactSection = dynamic(() => import("@/components/homepage/ImpactSection"), {
-  loading: () => <div className="h-64 bg-muted animate-pulse" />,
-});
-
-const FAQPage = dynamic(() => import("@/components/homepage/FAQ"), {
-  loading: () => <div className="h-96 bg-muted animate-pulse" />,
-});
+import Footer from "@/components/shared/Footer";
+import FigmaHero from "@/components/homepage/FigmaHero";
+import FigmaMetrics from "@/components/homepage/FigmaMetrics";
+import FigmaProblem from "@/components/homepage/FigmaProblem";
+import FigmaBeforeAfter from "@/components/homepage/FigmaBeforeAfter";
+import FigmaProductShowcase from "@/components/homepage/FigmaProductShowcase";
+import FigmaServiceProviders from "@/components/homepage/FigmaServiceProviders";
+import FigmaWhyMondial from "@/components/homepage/FigmaWhyMondial";
+import FigmaLegalRoadmap from "@/components/homepage/FigmaLegalRoadmap";
+import FigmaAlphaRoadmap from "@/components/homepage/FigmaAlphaRoadmap";
+import FigmaRoleGateway from "@/components/homepage/FigmaRoleGateway";
+import FigmaNewsletter from "@/components/homepage/FigmaNewsletter";
 
 export default function Home() {
   return (
-    <div className="w-full">
+    <div className="w-full min-h-screen bg-background text-foreground flex flex-col">
+      {/* 1. Global Public Header */}
       <Navbar />
-      <main id="concept">
-        <HeroSection />
+
+      <main className="w-full flex flex-col flex-1">
+        {/* 2. Hero Section */}
+        <FigmaHero />
+
+        {/* 3. System in Numbers / Closed Alpha Transparency */}
+        <FigmaMetrics />
+
+        {/* 4. The Problem / Pain Points */}
+        <FigmaProblem />
+
+        {/* 5. Before & After Interactive Comparison */}
+        <FigmaBeforeAfter />
+
+        {/* 6. Inside the Product (Dark Showcase) */}
+        <FigmaProductShowcase />
+
+        {/* 7. Service Providers */}
+        <FigmaServiceProviders />
+
+        {/* 8. Why Mondial (4 Pillars) */}
+        <FigmaWhyMondial />
+
+        {/* 9. Legal Wired Into Every Phase */}
+        <FigmaLegalRoadmap />
+
+        {/* 10. Closed Alpha Roadmap & Founder Transparency */}
+        <FigmaAlphaRoadmap />
+
+        {/* 11. Role Gateway & Get Started Call to Action */}
+        <FigmaRoleGateway />
+
+        {/* 12. The Mondial Brief Newsletter */}
+        <FigmaNewsletter />
       </main>
-      <section id="profiles">
-        <AllProfileSection />
-      </section>
-      <section id="partners">
-        <TrustedPartners />
-      </section>
-      <section id="roles">
-        <RolesSection />
-      </section>
-      <section id="features">
-        <FeaturesSection2 />
-      </section>
-      <section id="pricing">
-        <PricingPage />
-      </section>
-      <section id="impact">
-        <ImpactSection />
-      </section>
-      <section id="faq">
-        <FAQPage />
-      </section>
+
+      {/* 13. Approved Global Public Footer (Locked) */}
+      <Footer />
     </div>
   );
 }

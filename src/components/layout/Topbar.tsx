@@ -12,7 +12,7 @@ import MessageIcon from "@/components/messages/MessageIcon";
 import { useAuth } from "@/app/_providers/AuthProvider";
 import { isPhase2ChromeRoute } from "@/lib/layout-config";
 import { AccountMenu, type AccountMenuItem } from "@/components/layout/AccountMenu";
-import { UserRole } from "@/lib/roles";
+import { UserRole, getRoleDashboardRoute } from "@/lib/roles";
 
 import { CompanySwitcher } from "@/components/entrepreneur/CompanySwitcher";
 
@@ -135,10 +135,20 @@ export default function Topbar() {
           {/* Sidebar trigger */}
           <SidebarTrigger />
 
-          {/* App icon */}
-          <div className="hidden sm:flex h-8 w-8 items-center justify-center rounded-lg border">
-            <LayoutGrid className="h-5 w-5 text-muted-foreground" />
-          </div>
+          {/* Mondial Logo */}
+          <Link
+            href={getRoleDashboardRoute(role)}
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-sidebar-border bg-card shadow-xs overflow-hidden shrink-0 hover:opacity-90 transition-opacity"
+            title="Dashboard Home"
+          >
+            <Image
+              src="/brand-logo-footer.png"
+              alt="Mondial"
+              width={22}
+              height={22}
+              className="object-contain"
+            />
+          </Link>
 
           {/* Breadcrumb (desktop only) */}
           <nav className="hidden lg:flex items-center text-sm min-w-0">
