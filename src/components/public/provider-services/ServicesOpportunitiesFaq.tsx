@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 
+
 export default function ServicesOpportunitiesFaq() {
   const [openIdx, setOpenIdx] = useState<number | null>(0);
 
@@ -101,9 +102,8 @@ export default function ServicesOpportunitiesFaq() {
                   </div>
                   <ChevronDown
                     size={20}
-                    className={`text-[#747685] shrink-0 transition-transform duration-200 ${
-                      isOpen ? 'rotate-180 text-[#3C61DD]' : ''
-                    }`}
+                    className={`text-[#747685] shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180 text-[#3C61DD]' : ''
+                      }`}
                   />
                 </button>
 

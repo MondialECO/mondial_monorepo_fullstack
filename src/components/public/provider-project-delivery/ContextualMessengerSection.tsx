@@ -18,6 +18,7 @@ export default function ContextualMessengerSection() {
     <section className="w-full py-16 sm:py-24 px-4 sm:px-6 lg:px-8 bg-[#FAF8FF] border-b border-[rgba(0,0,0,0.06)] flex justify-center">
       <div className="w-full max-w-[1240px] flex flex-col gap-12 sm:gap-16">
         {/* Header */}
+
         <div className="flex flex-col gap-3 max-w-[840px]">
           <span className="text-[12px] font-bold text-[#3C61DD] uppercase tracking-wider">
             CONVERSATION WITH CONTEXT
@@ -51,6 +52,7 @@ export default function ContextualMessengerSection() {
             MESSENGER IS NOT ANOTHER INBOX. IT IS THE COMMUNICATION LAYER AROUND THE WORK.
           </p>
         </div>
+
 
         {/* 8-Stage Communication Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
