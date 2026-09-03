@@ -4,22 +4,23 @@ import { RootProviders } from "./_providers/RootProviders";
 import { inter, dmSans, syne } from "@/lib/fonts";
 
 const baseUrl = "https://mondialbusiness.eu";
-const title = "Mondial | Social Credit Creation Platform";
+const title = "Mondial.eco | Europe's Guided Path from Raw Idea to Funded Company";
 const description =
-  "The first social credit creation platform connecting creators, investors, entrepreneurs, and service providers through Project Intelligence.";
+  "One platform connecting creators, entrepreneurs, service providers and investors through six structured phases, AI-generated business plans, and verifiable investor readiness.";
 
 export const metadata: Metadata = {
   title,
   description,
   keywords: [
     "startup ecosystem",
-    "investment platform",
+    "founder funding",
     "creator economy",
-    "social credit",
+    "venture capital",
     "entrepreneurship",
-    "founder network",
-    "investor matching",
-    "fundraising platform",
+    "cap table",
+    "deal pipeline",
+    "data room",
+    "europe startups",
   ],
   authors: [{ name: "Mondial", url: baseUrl }],
   creator: "Mondial",
@@ -28,7 +29,7 @@ export const metadata: Metadata = {
     title,
     description,
     url: baseUrl,
-    siteName: "Mondial",
+    siteName: "Mondial.eco",
     type: "website",
     locale: "en_US",
     images: [
@@ -36,7 +37,7 @@ export const metadata: Metadata = {
         url: `${baseUrl}/og-image.png`,
         width: 1200,
         height: 630,
-        alt: "Mondial - Social Credit Creation Platform",
+        alt: "Mondial.eco - Europe's Guided Path from Raw Idea to Funded Company",
       },
     ],
   },
@@ -79,7 +80,7 @@ export default function RootLayout({
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    name: "Mondial",
+    name: "Mondial.eco",
     description,
     url: baseUrl,
     potentialAction: {
@@ -95,7 +96,7 @@ export default function RootLayout({
   const organizationSchema = {
     "@context": "https://schema.org",
     "@type": "Organization",
-    name: "Mondial",
+    name: "Mondial.eco",
     url: baseUrl,
     logo: `${baseUrl}/logo.png`,
     description,

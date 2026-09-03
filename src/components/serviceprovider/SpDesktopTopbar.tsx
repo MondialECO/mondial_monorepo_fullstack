@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { ChevronRight } from "lucide-react";
 import { usePathname, useSearchParams } from "next/navigation";
 import MessageIcon from "@/components/messages/MessageIcon";
@@ -20,6 +21,19 @@ export function SpDesktopTopbar() {
       <div className="flex w-full min-w-0 items-center justify-between gap-6">
         <div className="flex min-w-0 items-center gap-3">
           <SidebarTrigger className="size-11 shrink-0 rounded-lg text-[#4B5563] hover:bg-[#F4F5F7] focus-visible:ring-2 focus-visible:ring-[#3C61DD]" />
+          <Link
+            href={SERVICE_PROVIDER_ROOT}
+            className="flex size-9 items-center justify-center rounded-lg border border-[#E5E7EB] bg-white shadow-xs overflow-hidden shrink-0 hover:opacity-90 transition-opacity"
+            title="Dashboard Home"
+          >
+            <Image
+              src="/brand-logo-footer.png"
+              alt="Mondial"
+              width={22}
+              height={22}
+              className="object-contain"
+            />
+          </Link>
           <nav aria-label="Service Provider breadcrumb" className="flex min-w-0 items-center text-sm">
             {!isDashboard && (
               <>

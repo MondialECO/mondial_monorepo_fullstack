@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { ChevronDown } from "lucide-react";
 import { useAuth } from "@/app/_providers/AuthProvider";
 import { menu, type MenuSection, type MenuItem } from "@/lib/menu";
@@ -115,12 +116,21 @@ function StandardRoleSidebar({
           <Link
             href={getRoleDashboardRoute(role)}
             onClick={handleLinkClick}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2.5"
           >
-            <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-white font-bold text-xl">M</span>
+            <div className="relative h-8 w-8 rounded-lg bg-white border border-sidebar-border shadow-xs flex items-center justify-center overflow-hidden shrink-0">
+              <Image
+                src="/brand-logo-footer.png"
+                alt="Mondial"
+                width={24}
+                height={24}
+                className="object-contain"
+                priority
+              />
             </div>
-            <span className="text-xl font-bold tracking-tight">Mondial</span>
+            <span className="text-xl font-bold tracking-tight font-heading group-data-[collapsible=icon]:hidden">
+              Mondial
+            </span>
           </Link>
           <SidebarTrigger className="shrink-0 text-muted-foreground group-data-[collapsible=icon]:hidden" />
         </div>
@@ -313,8 +323,15 @@ function ServiceProviderSidebar({
             onClick={handleLinkClick}
             className="flex min-w-0 items-center gap-2.5"
           >
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#171717] text-sm font-semibold text-white">
-              M
+            <div className="relative flex size-8 shrink-0 items-center justify-center rounded-lg bg-white border border-[#E5E7EB] shadow-xs overflow-hidden">
+              <Image
+                src="/brand-logo-footer.png"
+                alt="Mondial"
+                width={24}
+                height={24}
+                className="object-contain"
+                priority
+              />
             </div>
             <span className="truncate font-heading text-xl font-semibold tracking-tight group-data-[collapsible=icon]:hidden">
               mondial.eco
