@@ -118,7 +118,7 @@ namespace WebApp.Controllers
                 return NotFound(ApiResponse.Error("Session not found.", HttpContext.TraceIdentifier));
 
             var session = await _sessions.GetByIdAsync(sessionId, cancellationToken);
-            if (session == null)
+            if (session == null || session.OwnerUserId != CurrentUserId)
                 return NotFound(ApiResponse.Error("Session not found.", HttpContext.TraceIdentifier));
 
             var dto = new IdeaGenerationSessionDto

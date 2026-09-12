@@ -13,6 +13,7 @@ using WebApp.Services.Ai;
 using WebApp.Services.Ai.Jobs;
 using WebApp.Services.Audit;
 using WebApp.Services.Repository.Ai;
+using WebApp.Services.Repository;
 
 namespace WebApp.Controllers
 {
@@ -34,6 +35,7 @@ namespace WebApp.Controllers
     {
         private readonly IForecastSessionStore _sessions;
         private readonly IBusinessPlanSessionStore _businessPlans;
+        private readonly ICreatorIdeaStore _creatorIdeas;
         private readonly IAiJobService _jobService;
         private readonly IAiCreditService _creditService;
         private readonly IAuditLogger _audit;
@@ -48,6 +50,7 @@ namespace WebApp.Controllers
         public ForecastController(
             IForecastSessionStore sessions,
             IBusinessPlanSessionStore businessPlans,
+            ICreatorIdeaStore creatorIdeas,
             IAiJobService jobService,
             IAiCreditService creditService,
             IAuditLogger audit,
@@ -56,6 +59,7 @@ namespace WebApp.Controllers
         {
             _sessions = sessions;
             _businessPlans = businessPlans;
+            _creatorIdeas = creatorIdeas;
             _jobService = jobService;
             _creditService = creditService;
             _audit = audit;
@@ -111,6 +115,12 @@ namespace WebApp.Controllers
             var businessIdeaId = !string.IsNullOrWhiteSpace(plan.BusinessIdeaId)
                 ? plan.BusinessIdeaId
                 : (string.IsNullOrWhiteSpace(request.BusinessIdeaId) ? null : request.BusinessIdeaId);
+
+            if (!string.IsNullOrWhiteSpace(businessIdeaId))
+            {
+                if (!ObjectId.TryParse(businessIdeaId, out _) || await _creatorIdeas.GetOwnedAsync(businessIdeaId, owner) == null)
+                    return NotFound(ApiResponse.Error("Idea not found.", HttpContext.TraceIdentifier));
+            }
 
             // Create the session first so it owns the lifecycle (source of truth).
             var session = new ForecastSession

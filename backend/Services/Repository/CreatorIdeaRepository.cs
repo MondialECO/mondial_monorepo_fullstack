@@ -76,7 +76,11 @@ namespace WebApp.Services.Repository
         }
 
         public async Task<CreatorIdea?> GetOwnedAsync(string ideaId, string ownerUserId)
-            => await _collection.Find(x => x.Id == ideaId && x.UserId == ownerUserId).FirstOrDefaultAsync();
+        {
+            if (string.IsNullOrWhiteSpace(ideaId) || !MongoDB.Bson.ObjectId.TryParse(ideaId, out _))
+                return null;
+            return await _collection.Find(x => x.Id == ideaId && x.UserId == ownerUserId).FirstOrDefaultAsync();
+        }
 
         public async Task<List<CreatorIdea>> ListByUserAsync(string ownerUserId)
             => await _collection.Find(x => x.UserId == ownerUserId)
