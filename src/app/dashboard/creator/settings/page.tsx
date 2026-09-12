@@ -1,194 +1,284 @@
 "use client";
 
+import { useState, useEffect } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Mail, Phone, Lock, User, ChevronRight, Globe, Search, ChevronDown } from "lucide-react";
-import { useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Mail, Lock, User, ExternalLink, CheckCircle2, AlertCircle, Shield } from "lucide-react";
+import { useAuth } from "@/app/_providers/AuthProvider";
+import api from "@/lib/axios";
+
+interface AccountDetails {
+  id?: string;
+  name?: string;
+  email?: string;
+  phoneNumber?: string;
+  user?: string;
+  createdAt?: string;
+}
 
 export default function SettingsPage() {
-    const [activeTab, setActiveTab] = useState("account");
+  const { user } = useAuth();
+  const [accountDetails, setAccountDetails] = useState<AccountDetails | null>(null);
+  const [isLoadingAccount, setIsLoadingAccount] = useState(false);
 
-    return (
-        <div className="w-full max-w-[1136px] mx-auto pb-8 md:pb-12 px-4 md:px-0">
-            <div className="bg-muted rounded-2xl shadow-[1px_2px_3px_0px_rgba(0,0,0,0.04)] shadow-[-2px_-1px_17px_0px_rgba(0,0,0,0.02)] outline outline-2 outline-offset-[-2px] outline-border overflow-hidden">
-                <div className="px-4 py-6 md:px-8 md:py-8 flex flex-col gap-6 md:gap-8">
-                    {/* Header Section */}
-                    <div className="space-y-1">
-                        <h1 className="text-foreground text-xl md:text-3xl font-medium leading-tight md:leading-10">
-                            Setting
-                        </h1>
-                        <p className="text-muted-foreground text-xs md:text-sm font-normal leading-5">
-                            Maintain command over your productivity system.
-                        </p>
-                    </div>
+  // Password state
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  const [passwordStatus, setPasswordStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
-                    {/* Navigation Tabs */}
-                    <div className="border-b border-border/10 pb-3 overflow-x-auto no-scrollbar">
-                        <div className="flex gap-4 md:gap-6 min-w-max">
-                            <button
-                                onClick={() => setActiveTab("account")}
-                                className={`text-xs md:text-sm leading-5 transition-colors relative whitespace-nowrap ${activeTab === "account"
-                                    ? "text-primary font-semibold"
-                                    : "text-muted-foreground font-medium hover:text-foreground"
-                                    }`}
-                            >
-                                Account setting
-                            </button>
-                            <button
-                                onClick={() => setActiveTab("preferences")}
-                                className={`text-xs md:text-sm leading-5 transition-colors relative whitespace-nowrap ${activeTab === "preferences"
-                                    ? "text-primary font-semibold"
-                                    : "text-muted-foreground font-medium hover:text-foreground"
-                                    }`}
-                            >
-                                Creator Preferences
-                            </button>
-                        </div>
-                    </div>
+  useEffect(() => {
+    let isMounted = true;
+    const fetchAccount = async () => {
+      setIsLoadingAccount(true);
+      try {
+        const res = await api.get("/auth/account");
+        if (isMounted && res.data?.data) {
+          setAccountDetails(res.data.data);
+        }
+      } catch {
+        // Fallback gracefully to AuthProvider user
+      } finally {
+        if (isMounted) setIsLoadingAccount(false);
+      }
+    };
+    fetchAccount();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
-                    {/* Shared Info Header */}
-                    <div className="pb-4 md:pb-6 border-b border-border/10">
-                        <div className="flex flex-col gap-1">
-                            <h2 className="text-foreground text-base md:text-lg font-semibold leading-7">
-                                Personal info
-                            </h2>
-                            <p className="text-muted-foreground text-xs md:text-sm font-normal leading-5 line-clamp-1">
-                                Update your photo and personal details here.
-                            </p>
-                        </div>
-                    </div>
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordStatus(null);
 
-                    {/* Tab Content */}
-                    <div className="flex flex-col gap-4 md:gap-6">
-                        {activeTab === "account" ? (
-                            <>
-                                {/* Full Name */}
-                                <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-8 pb-4 md:pb-6 border-b border-border/5">
-                                    <Label className="w-full md:w-72 text-foreground text-sm font-semibold leading-5">
-                                        Full Name
-                                    </Label>
-                                    <Input
-                                        className="flex-1 max-w-full md:max-w-[512px] h-10 md:h-11 bg-muted border-border/20 text-muted-foreground cursor-not-allowed text-sm"
-                                        placeholder="Mathen Jefer"
-                                        disabled
-                                    />
-                                </div>
+    if (!currentPassword) {
+      setPasswordStatus({ type: "error", message: "Please enter your current password." });
+      return;
+    }
 
-                                {/* Email Address */}
-                                <div className="flex flex-col md:flex-row gap-2 md:gap-8 pb-4 md:pb-6 border-b border-border/5">
-                                    <div className="w-full md:w-72 flex flex-col gap-0.5 md:gap-1">
-                                        <Label className="text-foreground text-sm font-semibold leading-5">
-                                            Email Address
-                                        </Label>
-                                        <p className="text-muted-foreground text-[10px] md:text-xs font-normal leading-4 md:leading-5 w-full md:w-48">
-                                            Primary email is fixed. Add a secondary for safety.
-                                        </p>
-                                    </div>
-                                    <div className="w-full md:w-[512px] flex flex-col gap-3 md:gap-4">
-                                        <div className="relative">
-                                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                            <Input
-                                                className="pl-10 h-10 md:h-11 bg-muted border-border/20 text-muted-foreground cursor-not-allowed text-sm"
-                                                placeholder="mathenjefr@gmail.com"
-                                                disabled
-                                            />
-                                        </div>
-                                        <Input
-                                            className="h-10 md:h-11 bg-card border-border/50 focus:border-primary transition-colors text-sm"
-                                            placeholder="Secondary Email"
-                                        />
-                                    </div>
-                                </div>
+    if (!newPassword || newPassword.length < 6) {
+      setPasswordStatus({ type: "error", message: "New password must be at least 6 characters." });
+      return;
+    }
 
-                                {/* Phone */}
-                                <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-8 pb-4 md:pb-6 border-b border-border/5">
-                                    <Label className="w-full md:w-72 text-foreground text-sm font-semibold leading-5">
-                                        Phone
-                                    </Label>
-                                    <Input
-                                        className="flex-1 max-w-full md:max-w-[512px] h-10 md:h-11 bg-card border-border/20 text-foreground text-sm"
-                                        placeholder="phone number"
-                                    />
-                                </div>
+    if (newPassword !== confirmPassword) {
+      setPasswordStatus({ type: "error", message: "New passwords do not match." });
+      return;
+    }
 
-                                {/* Password */}
-                                <div className="flex flex-col md:flex-row gap-2 md:gap-8 pb-4 md:pb-0">
-                                    <Label className="w-full md:w-72 text-foreground text-sm font-medium leading-5">
-                                        Password
-                                    </Label>
-                                    <div className="flex-1 flex flex-col md:flex-row gap-3 md:gap-4 flex-wrap items-end">
-                                        <Input
-                                            type="password"
-                                            className="w-full md:w-[calc(50%-8px)] lg:w-[calc(33.33%-11px)] h-10 md:h-11 bg-card border-border/50 focus:border-primary transition-colors text-sm"
-                                            placeholder="Type Old password"
-                                        />
-                                        <Input
-                                            type="password"
-                                            className="w-full md:w-[calc(50%-8px)] lg:w-[calc(33.33%-11px)] h-10 md:h-11 bg-card border-border/50 focus:border-primary transition-colors text-sm"
-                                            placeholder="Type Password here"
-                                        />
-                                        <Input
-                                            type="password"
-                                            className="w-full md:w-[calc(50%-8px)] lg:w-[calc(33.33%-11px)] h-10 md:h-11 bg-card border-border/50 focus:border-primary transition-colors text-sm"
-                                            placeholder="Re type new password"
-                                        />
-                                    </div>
-                                </div>
-                            </>
-                        ) : (
-                            <>
-                                {/* Preferred Role */}
-                                <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-8 pb-4 md:pb-6 border-b border-border/5">
-                                    <Label className="w-full md:w-72 text-foreground text-sm font-semibold leading-5">
-                                        Preferred Role
-                                    </Label>
-                                    <Input
-                                        className="flex-1 max-w-full md:max-w-[512px] h-10 md:h-11 bg-muted border-border/20 text-muted-foreground cursor-not-allowed text-sm"
-                                        placeholder="Advisor"
-                                        disabled
-                                    />
-                                </div>
+    setIsUpdatingPassword(true);
+    try {
+      const res = await api.post("/auth/change-password", {
+        currentPassword,
+        newPassword,
+      });
 
-                                {/* Weekly Time Commitment */}
-                                <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-8 pb-4 md:pb-6 border-b border-border/5">
-                                    <Label className="w-full md:w-72 text-foreground text-sm font-semibold leading-5">
-                                        Weekly Time Commitment
-                                    </Label>
-                                    <div className="flex-1 w-full md:max-w-[512px] relative">
-                                        <Input
-                                            className="h-10 md:h-11 w-full bg-card border-border/50 focus:border-primary transition-colors pr-10 text-sm"
-                                            placeholder="12-20 Hours"
-                                        />
-                                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                    </div>
-                                </div>
+      if (res.data?.success) {
+        setPasswordStatus({ type: "success", message: "Password updated successfully." });
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
+      } else {
+        setPasswordStatus({ type: "error", message: res.data?.message || "Failed to change password." });
+      }
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { message?: string } } };
+      setPasswordStatus({
+        type: "error",
+        message: axiosErr.response?.data?.message || "Incorrect current password or server error.",
+      });
+    } finally {
+      setIsUpdatingPassword(false);
+    }
+  };
 
-                                {/* Geography focus */}
-                                <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-8 pb-4 md:pb-0">
-                                    <Label className="w-full md:w-72 text-foreground text-sm font-medium leading-5">
-                                        Geography focus
-                                    </Label>
-                                    <div className="flex-1 w-full md:max-w-[512px] relative">
-                                        <Input
-                                            className="h-10 md:h-11 w-full bg-card border-border/50 focus:border-primary transition-colors pr-10 text-sm"
-                                            placeholder="USA"
-                                        />
-                                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                    </div>
-                                </div>
-                            </>
-                        )}
-                    </div>
+  const displayName = accountDetails?.name || user?.name || "Creator";
+  const displayEmail = accountDetails?.email || "";
+  const displayRole = user?.role || "Creator";
+  const memberSince = accountDetails?.createdAt
+    ? new Date(accountDetails.createdAt).toLocaleDateString("en-US", { month: "long", year: "numeric" })
+    : null;
 
-                    {/* Footer Action */}
-                    <div className="pt-4 flex justify-start">
-                        <Button size="lg" className="w-full md:w-auto bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl px-8 h-12 shadow-sm text-sm font-semibold">
-                            Save Changes
-                        </Button>
-                    </div>
-                </div>
+  return (
+    <div className="w-full max-w-[1136px] mx-auto pb-8 md:pb-12 px-4 md:px-0 font-sans">
+      <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+        <div className="px-4 py-6 md:px-8 md:py-8 flex flex-col gap-6 md:gap-8">
+          {/* Header Section */}
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <h1 className="text-foreground text-xl md:text-3xl font-extrabold tracking-tight">
+                Account & Security Settings
+              </h1>
+              <Badge variant="outline" className="text-xs bg-muted text-muted-foreground border-border">
+                {displayRole}
+              </Badge>
             </div>
+            <p className="text-muted-foreground text-xs md:text-sm font-normal">
+              Manage your verified credentials, security, and profile access.
+            </p>
+          </div>
+
+          {/* Section 1: Canonical Profile & Identity */}
+          <div className="space-y-4 pt-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-border/70">
+              <div>
+                <h2 className="text-foreground text-base md:text-lg font-bold">
+                  Profile & Identity
+                </h2>
+                <p className="text-muted-foreground text-xs md:text-sm font-normal">
+                  Your public bio, experiences, skills, and credentials are governed by the Universal Profile system.
+                </p>
+              </div>
+              <Button asChild variant="outline" size="sm" className="rounded-xl flex items-center gap-1.5 self-start sm:self-center border-border">
+                <Link href="/dashboard/profile/edit">
+                  <User className="h-4 w-4" />
+                  Edit Universal Profile
+                  <ExternalLink className="h-3 w-3 ml-0.5 opacity-60" />
+                </Link>
+              </Button>
+            </div>
+
+            {/* Read-Only Account Details */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+              <div className="bg-muted/30 border border-border/60 rounded-xl p-4 space-y-1">
+                <Label className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">
+                  Full Name
+                </Label>
+                <p className="text-sm font-semibold text-foreground">
+                  {displayName}
+                </p>
+              </div>
+
+              <div className="bg-muted/30 border border-border/60 rounded-xl p-4 space-y-1">
+                <Label className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">
+                  Account Email
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Mail className="h-4 w-4 text-muted-foreground" />
+                  <p className="text-sm font-semibold text-foreground truncate">
+                    {displayEmail || "Verified Account Email"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-muted/30 border border-border/60 rounded-xl p-4 space-y-1">
+                <Label className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">
+                  System Role
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-primary" />
+                  <p className="text-sm font-semibold text-foreground">
+                    {displayRole} Account
+                  </p>
+                </div>
+              </div>
+
+              {memberSince && (
+                <div className="bg-muted/30 border border-border/60 rounded-xl p-4 space-y-1">
+                  <Label className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">
+                    Member Since
+                  </Label>
+                  <p className="text-sm font-semibold text-foreground">
+                    {memberSince}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Section 2: Security & Password */}
+          <div className="space-y-4 pt-4 border-t border-border/70">
+            <div>
+              <h2 className="text-foreground text-base md:text-lg font-bold flex items-center gap-2">
+                <Lock className="h-4 w-4 text-primary" />
+                Change Password
+              </h2>
+              <p className="text-muted-foreground text-xs md:text-sm font-normal">
+                Update your account password securely.
+              </p>
+            </div>
+
+            {passwordStatus && (
+              <div
+                className={`p-3 rounded-xl border text-sm flex items-center gap-2 ${
+                  passwordStatus.type === "success"
+                    ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400"
+                    : "bg-destructive/10 border-destructive/30 text-destructive"
+                }`}
+              >
+                {passwordStatus.type === "success" ? (
+                  <CheckCircle2 className="h-4 w-4 shrink-0" />
+                ) : (
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                )}
+                <span>{passwordStatus.message}</span>
+              </div>
+            )}
+
+            <form onSubmit={handlePasswordChange} className="space-y-4 max-w-xl">
+              <div className="space-y-1.5">
+                <Label htmlFor="current-password" className="text-xs font-semibold text-foreground">
+                  Current Password
+                </Label>
+                <Input
+                  id="current-password"
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="Enter current password"
+                  className="h-10 bg-muted/40 border-border/70 text-sm focus:border-primary"
+                  autoComplete="current-password"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="new-password" className="text-xs font-semibold text-foreground">
+                    New Password
+                  </Label>
+                  <Input
+                    id="new-password"
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="At least 6 characters"
+                    className="h-10 bg-muted/40 border-border/70 text-sm focus:border-primary"
+                    autoComplete="new-password"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="confirm-password" className="text-xs font-semibold text-foreground">
+                    Confirm New Password
+                  </Label>
+                  <Input
+                    id="confirm-password"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Repeat new password"
+                    className="h-10 bg-muted/40 border-border/70 text-sm focus:border-primary"
+                    autoComplete="new-password"
+                  />
+                </div>
+              </div>
+
+              <Button
+                type="submit"
+                disabled={isUpdatingPassword}
+                className="bg-primary hover:bg-primary/95 text-primary-foreground font-semibold rounded-xl px-6 h-10 text-sm"
+              >
+                {isUpdatingPassword ? "Updating Password..." : "Update Password"}
+              </Button>
+            </form>
+          </div>
         </div>
-    );
+      </div>
+    </div>
+  );
 }

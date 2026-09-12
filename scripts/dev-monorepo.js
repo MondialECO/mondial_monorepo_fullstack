@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
-const { spawn } = require("child_process");
+const { spawn, execSync } = require("child_process");
 const path = require("path");
 const net = require("net");
 const os = require("os");
@@ -102,7 +102,15 @@ async function main() {
 
     for (const child of [frontend, backend]) {
       if (child && !child.killed) {
-        child.kill("SIGTERM");
+        if (process.platform === "win32" && child.pid) {
+          try {
+            execSync(`taskkill /pid ${child.pid} /T /F`, { stdio: "ignore" });
+          } catch {
+            child.kill("SIGTERM");
+          }
+        } else {
+          child.kill("SIGTERM");
+        }
       }
     }
 
