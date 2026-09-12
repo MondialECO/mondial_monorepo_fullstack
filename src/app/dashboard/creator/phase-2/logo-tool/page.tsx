@@ -20,7 +20,7 @@ export default function AILogoToolPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const projectName = state.project.name || "AutoInvoice";
+  const projectName = state.project.name || "Your Project";
 
   const palettes = [
     { id: "blue", name: "Brand Blue", colors: ["#3C61DD", "#070707", "#F9F9FA", "#965F11"] },

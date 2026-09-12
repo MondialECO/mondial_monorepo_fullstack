@@ -85,7 +85,7 @@ export default function CreatorDashboard() {
   const router = useRouter();
   const { user } = useAuth();
   const {
-    state, resetJourney, advancePhase, setCrossroadsPath,
+    state, advancePhase, setCrossroadsPath,
     isLoading: journeyLoading, error: journeyError, refetch: refetchJourney,
   } = useCreatorProgress();
   const { journeyState, project } = state;
@@ -194,11 +194,6 @@ export default function CreatorDashboard() {
             <span className="text-foreground">Dashboard</span>
           </div>
         </div>
-
-        {/* Reset / Developer Control */}
-        <Button variant="ghost" size="sm" className="text-xs text-muted-foreground hover:text-destructive" onClick={resetJourney}>
-          Reset Progress
-        </Button>
       </div>
 
       {/* Row 1: Welcome Header */}
@@ -213,7 +208,7 @@ export default function CreatorDashboard() {
             {dashboardState === 'C' && 'Project concept defined successfully. Continue setup to model financials.'}
             {dashboardState === 'D' && 'Project intelligence is fully modeled. Complete pricing options to proceed.'}
             {dashboardState === 'E' && 'Checklists complete! Proceed to the Crossroads decision board.'}
-            {dashboardState === 'F' && `${project.name || 'AutoInvoice'} is gaining traction. Phase 5/6 reached!`}
+            {dashboardState === 'F' && `${project.name || 'Your project'} is gaining traction. Phase 5/6 reached!`}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -396,12 +391,12 @@ export default function CreatorDashboard() {
             ) : (
               <div className="flex gap-4 items-start p-4 bg-muted/10 border border-border/50 rounded-xl relative">
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-primary to-warning flex items-center justify-center font-black text-xl text-white shrink-0">
-                  {project.name ? project.name.charAt(0).toUpperCase() : 'A'}
+                  {project.name ? project.name.charAt(0).toUpperCase() : 'P'}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-bold text-foreground text-base truncate">{project.name || 'AutoInvoice'}</h4>
+                  <h4 className="font-bold text-foreground text-base truncate">{project.name || 'Untitled Project'}</h4>
                   <p className="text-xs text-muted-foreground mt-1 leading-relaxed line-clamp-2">
-                    {project.concept || 'We help freelancers recover unpaid invoices by automating follow-up sequences.'}
+                    {project.concept || 'Your defined project concept statement.'}
                   </p>
                   <div className="flex flex-wrap gap-1.5 mt-3">
                     <Badge variant="outline" className="text-[10px] font-semibold px-2 py-0.5 bg-warning/5 text-warning border-warning/10">

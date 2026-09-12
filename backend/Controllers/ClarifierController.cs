@@ -66,7 +66,7 @@ namespace WebApp.Controllers
 
             if (string.IsNullOrWhiteSpace(request?.BusinessIdeaId))
                 return BadRequest(ApiResponse.Error("businessIdeaId is required.", HttpContext.TraceIdentifier));
-            if (await _creatorIdeas.GetOwnedAsync(request.BusinessIdeaId, owner) == null)
+            if (!ObjectId.TryParse(request.BusinessIdeaId, out _) || await _creatorIdeas.GetOwnedAsync(request.BusinessIdeaId, owner) == null)
                 return NotFound(ApiResponse.Error("Idea not found.", HttpContext.TraceIdentifier));
 
             if (!_settings.Enabled)
@@ -130,6 +130,12 @@ namespace WebApp.Controllers
             skip = Math.Max(0, skip);
             limit = Math.Clamp(limit, 1, 100);
             var owner = CurrentUserId;
+
+            if (!string.IsNullOrWhiteSpace(businessIdeaId))
+            {
+                if (!ObjectId.TryParse(businessIdeaId, out _) || await _creatorIdeas.GetOwnedAsync(businessIdeaId, owner) == null)
+                    return NotFound(ApiResponse.Error("Idea not found.", HttpContext.TraceIdentifier));
+            }
 
             var sessions = string.IsNullOrWhiteSpace(businessIdeaId)
                 ? await _sessions.ListByOwnerAsync(owner, skip, limit)

@@ -1,9 +1,5 @@
-"use client"
+import { redirect } from 'next/navigation';
 
-import Profile from "@/components/founder/profile/profile";
-
-export default function ProfilePage() {
-    return (
-        <Profile Id="1" />
-    );
+export default function CreatorProfileRedirect() {
+  redirect('/dashboard/profile');
 }

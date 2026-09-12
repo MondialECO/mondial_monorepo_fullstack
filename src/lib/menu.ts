@@ -366,8 +366,8 @@ export const menu: Record<UserRole, MenuSection[]> = {
       title: "Project Marketplace",
       items: [
         {
-          label: "Project Marketplace",
-          href: "/dashboard/creator/marketplace",
+          label: "Marketplace",
+          href: "/marketplace/projects",
           icon: Store,
         },
         {
@@ -381,7 +381,7 @@ export const menu: Record<UserRole, MenuSection[]> = {
           icon: Handshake,
         },
         {
-          label: "Project Sales",
+          label: "Sales & Buyouts",
           href: "/dashboard/creator/sales",
           icon: DollarSign,
         },
@@ -391,19 +391,14 @@ export const menu: Record<UserRole, MenuSection[]> = {
       title: "Assets & IP",
       items: [
         {
-          label: "Documents",
+          label: "IP Vault & Legal",
           href: "/dashboard/creator/documents",
-          icon: FileText,
+          icon: ShieldCheck,
         },
         {
           label: "Asset Library",
           href: "/dashboard/creator/asset-library",
           icon: Folder,
-        },
-        {
-          label: "IP Vault",
-          href: "/dashboard/creator/ip-vault",
-          icon: ShieldCheck,
         },
       ],
     },
@@ -411,7 +406,7 @@ export const menu: Record<UserRole, MenuSection[]> = {
       title: "Services & Network",
       items: [
         {
-          label: "Hire Services",
+          label: "Hire Providers",
           href: "/marketplace/services",
           icon: Store,
         },

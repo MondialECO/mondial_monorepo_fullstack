@@ -26,6 +26,7 @@ public class BusinessPlanControllerTests
 {
     private readonly Mock<IBusinessPlanSessionStore> _sessions = new();
     private readonly Mock<IClarifierSessionStore> _clarifiers = new();
+    private readonly Mock<WebApp.Services.Repository.ICreatorIdeaStore> _creatorIdeas = new();
     private readonly Mock<IAiJobService> _jobs = new();
     private readonly Mock<IAiCreditService> _credits = new();
     private readonly Mock<IAuditLogger> _audit = new();
@@ -45,6 +46,7 @@ public class BusinessPlanControllerTests
         var controller = new BusinessPlanController(
             _sessions.Object,
             _clarifiers.Object,
+            _creatorIdeas.Object,
             _jobs.Object,
             _credits.Object,
             _audit.Object,

@@ -13,6 +13,7 @@ using WebApp.Services.Ai;
 using WebApp.Services.Ai.Jobs;
 using WebApp.Services.Audit;
 using WebApp.Services.Repository.Ai;
+using WebApp.Services.Repository;
 
 namespace WebApp.Controllers
 {
@@ -33,6 +34,7 @@ namespace WebApp.Controllers
     {
         private readonly IBusinessPlanSessionStore _sessions;
         private readonly IClarifierSessionStore _clarifiers;
+        private readonly ICreatorIdeaStore _creatorIdeas;
         private readonly IAiJobService _jobService;
         private readonly IAiCreditService _creditService;
         private readonly IAuditLogger _audit;
@@ -49,6 +51,7 @@ namespace WebApp.Controllers
         public BusinessPlanController(
             IBusinessPlanSessionStore sessions,
             IClarifierSessionStore clarifiers,
+            ICreatorIdeaStore creatorIdeas,
             IAiJobService jobService,
             IAiCreditService creditService,
             IAuditLogger audit,
@@ -58,6 +61,7 @@ namespace WebApp.Controllers
         {
             _sessions = sessions;
             _clarifiers = clarifiers;
+            _creatorIdeas = creatorIdeas;
             _jobService = jobService;
             _creditService = creditService;
             _audit = audit;
@@ -97,6 +101,12 @@ namespace WebApp.Controllers
             var businessIdeaId = !string.IsNullOrWhiteSpace(clarifier.BusinessIdeaId)
                 ? clarifier.BusinessIdeaId
                 : (string.IsNullOrWhiteSpace(request.BusinessIdeaId) ? null : request.BusinessIdeaId);
+
+            if (!string.IsNullOrWhiteSpace(businessIdeaId))
+            {
+                if (!ObjectId.TryParse(businessIdeaId, out _) || await _creatorIdeas.GetOwnedAsync(businessIdeaId, owner) == null)
+                    return NotFound(ApiResponse.Error("Idea not found.", HttpContext.TraceIdentifier));
+            }
 
             // Pre-allocate the session ID so it serves as the stable idempotency key for debit and compensation
             var sessionId = ObjectId.GenerateNewId().ToString();
@@ -195,6 +205,17 @@ namespace WebApp.Controllers
             skip = Math.Max(0, skip);
             limit = Math.Clamp(limit, 1, 100);
             var owner = CurrentUserId;
+
+            if (!string.IsNullOrWhiteSpace(clarifierSessionId))
+            {
+                if (!ObjectId.TryParse(clarifierSessionId, out _) || await _clarifiers.GetOwnedAsync(clarifierSessionId, owner) == null)
+                    return NotFound(ApiResponse.Error("Clarifier session not found.", HttpContext.TraceIdentifier));
+            }
+            if (!string.IsNullOrWhiteSpace(businessIdeaId))
+            {
+                if (!ObjectId.TryParse(businessIdeaId, out _) || await _creatorIdeas.GetOwnedAsync(businessIdeaId, owner) == null)
+                    return NotFound(ApiResponse.Error("Idea not found.", HttpContext.TraceIdentifier));
+            }
 
             List<BusinessPlanSession> sessions;
             if (!string.IsNullOrWhiteSpace(clarifierSessionId))

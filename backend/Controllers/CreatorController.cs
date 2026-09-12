@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
@@ -70,13 +70,16 @@ namespace WebApp.Controllers
                 var userId = GetUserId();
                 await EnsureUniversalPhase1CompleteAsync(userId);
 
-            // 1️ Get Creator Ideas
-            var ideas = (await _serviceIdea.GetByCreatorAsync(userId)).ToList();
+            // 1️ Get Canonical Creator Ideas (scoped to authenticated user)
+            var ideas = await _context.CreatorIdeas
+                .Find(x => x.UserId == userId)
+                .SortByDescending(x => x.LastActiveAt)
+                .ToListAsync();
             var ideaIds = ideas.Select(i => i.Id).ToList();
 
             var totalIdeas = ideas.Count;
 
-            // 2️ Click Analytics (Last 14 Days)
+            // 2️ Click Analytics (Last 14 Days) across canonical ideas
             var last14Days = DateTime.UtcNow.AddDays(-14);
 
             var totalClicksLast14Days = ideaIds.Any()
@@ -85,82 +88,106 @@ namespace WebApp.Controllers
                     x.ClickedAt >= last14Days)
                 : 0;
 
-            // 3️ Investments
-            var investments = ideaIds.Any()
-                ? (await _investmentsService.GetByIdeaIdsAsync(ideaIds)).ToList()
-                : new List<Investments>();
+            // 3️ Deals & Proceeds (canonical DealExecutions where CreatorId == userId)
+            var deals = await _context.DealExecutions
+                .Find(x => x.CreatorId == userId)
+                .ToListAsync();
 
-            var totalFundRaised = investments.Sum(i => i.Amount);
-            var totalRequired = ideas.Sum(i => i.FundingRequired);
-            var totalEquity = ideas.Sum(i => i.EquityOffered);
+            var completedBuyoutDeals = deals.Where(d =>
+                string.Equals(d.DealType, "FULL_BUYOUT", StringComparison.OrdinalIgnoreCase) &&
+                (string.Equals(d.DealStage, "ACTIVE", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(d.Status, "completed", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(d.Status, "closed", StringComparison.OrdinalIgnoreCase))).ToList();
 
-            var activeInvestors = investments
-                .Select(i => i.InvestorId)
+            // Total acquisition proceeds from completed buyouts and sold ideas
+            var dealSaleProceeds = completedBuyoutDeals.Sum(d => d.BuyoutTerms?.PurchasePrice ?? 0m);
+            var soldIdeasProceeds = ideas.Where(i => string.Equals(i.ProjectOutcome, "SOLD", StringComparison.OrdinalIgnoreCase))
+                .Sum(i => i.SalePrice ?? 0m);
+            var totalFundRaised = dealSaleProceeds + soldIdeasProceeds;
+
+            var totalRequired = ideas.Sum(i => i.Phase5Data?.PathB?.SeedFunding?.TotalAsk ?? 0m);
+            var totalEquity = 0.0; // In canonical creator model, equity is negotiated per partnership
+
+            // Active counterparty investors across active deals (excluding rejected/withdrawn)
+            var activeInvestors = deals
+                .Where(d => !string.Equals(d.DealStage, "REJECTED", StringComparison.OrdinalIgnoreCase) &&
+                            !string.Equals(d.DealStage, "WITHDRAWN", StringComparison.OrdinalIgnoreCase) &&
+                            !string.IsNullOrWhiteSpace(d.EntrepreneurId))
+                .Select(d => d.EntrepreneurId!)
                 .Distinct()
                 .Count();
 
-            // 4️ Investor Info
-            var investorIds = investments
-                .Select(i => i.InvestorId)
+            // Counterparties info
+            var counterpartyGuids = deals
+                .Where(d => !string.IsNullOrWhiteSpace(d.EntrepreneurId) && Guid.TryParse(d.EntrepreneurId, out _))
+                .Select(d => Guid.Parse(d.EntrepreneurId!))
                 .Distinct()
                 .ToList();
 
-            var investors = investorIds.Any()
+            var counterparties = counterpartyGuids.Any()
                 ? await _context.ApplicationUsers
-                    .Find(x => investorIds.Contains(x.Id))
+                    .Find(x => counterpartyGuids.Contains(x.Id))
                     .ToListAsync()
                 : new List<ApplicationUser>();
 
-            var investorDictionary = investors
-                .ToDictionary(x => x.Id);
+            var counterpartyDictionary = counterparties.ToDictionary(x => x.Id.ToString());
 
-            // 5️ Optimize Investment Grouping 
-            var investmentGrouped = investments
-                .GroupBy(x => x.IdeaId)
+            var dealsByIdea = deals
+                .Where(d => !string.IsNullOrWhiteSpace(d.IdeaId))
+                .GroupBy(d => d.IdeaId!)
                 .ToDictionary(g => g.Key, g => g.ToList());
 
-            // 6️ Idea Wise Summary
+            // 6️ Canonical Idea Wise Summary
             var ideaSummaries = ideas.Select(idea =>
             {
-                var ideaInvestments = investmentGrouped.ContainsKey(idea.Id)
-                    ? investmentGrouped[idea.Id]
-                    : new List<Investments>();
+                var ideaDeals = dealsByIdea.ContainsKey(idea.Id)
+                    ? dealsByIdea[idea.Id]
+                    : new List<DealExecution>();
+
+                var ideaCompletedBuyouts = ideaDeals.Where(d =>
+                    string.Equals(d.DealType, "FULL_BUYOUT", StringComparison.OrdinalIgnoreCase) &&
+                    (string.Equals(d.DealStage, "ACTIVE", StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(d.Status, "completed", StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(d.Status, "closed", StringComparison.OrdinalIgnoreCase))).ToList();
+
+                var ideaRaised = ideaCompletedBuyouts.Sum(d => d.BuyoutTerms?.PurchasePrice ?? 0m)
+                    + (string.Equals(idea.ProjectOutcome, "SOLD", StringComparison.OrdinalIgnoreCase) ? (idea.SalePrice ?? 0m) : 0m);
+
+                var fundingRequired = idea.Phase5Data?.PathB?.SeedFunding?.TotalAsk ?? 0m;
+                var equityOffered = (decimal)(idea.Phase5Data?.PathB?.CompanyFormation?.Ownership?.Where(o => !o.IsFounder).Sum(o => o.Percent) ?? 0.0);
 
                 return new
                 {
                     id = idea.Id,
-                    name = idea.Name,
+                    name = idea.Project?.Name ?? string.Empty,
                     status = idea.Status,
-                    stageLabel = idea.Solution?.StageLabel,
-                    isPublished = idea.IsPublished,
+                    stageLabel = !string.IsNullOrWhiteSpace(idea.ProjectOutcome) ? idea.ProjectOutcome : "Idea",
+                    isPublished = !string.IsNullOrWhiteSpace(idea.ProjectOutcome),
                     createdAt = idea.CreatedAt,
 
-                    fundingRequired = idea.FundingRequired,
-                    equityOffered = idea.EquityOffered,
+                    fundingRequired = (double)fundingRequired,
+                    equityOffered = (double)equityOffered,
 
-                    totalRaised = ideaInvestments.Sum(inv => inv.Amount),
+                    totalRaised = (double)ideaRaised,
 
-                    fundingProgress = idea.FundingRequired > 0
-                        ? Math.Round((ideaInvestments.Sum(inv => inv.Amount) / idea.FundingRequired) * 100, 2)
+                    fundingProgress = fundingRequired > 0
+                        ? Math.Round((double)(ideaRaised / fundingRequired) * 100, 2)
                         : 0,
 
-                    investors = ideaInvestments
-                        .Select(inv =>
+                    investors = ideaDeals
+                        .Where(d => !string.IsNullOrWhiteSpace(d.EntrepreneurId) && counterpartyDictionary.ContainsKey(d.EntrepreneurId!))
+                        .Select(d =>
                         {
-                            var user = investorDictionary.ContainsKey(inv.InvestorId)
-                                ? investorDictionary[inv.InvestorId]
-                                : null;
-
-                            return user == null ? null : new
+                            var user = counterpartyDictionary[d.EntrepreneurId!];
+                            return new
                             {
-                                investorId = user.Id,
+                                investorId = user.Id.ToString(),
                                 name = user.Name,
                                 imageUrl = user.ImagePath,
-                                ideaName = inv.ideaName,
-                                investedAmount = inv.Amount
+                                ideaName = idea.Project?.Name ?? string.Empty,
+                                investedAmount = (double)(d.BuyoutTerms?.PurchasePrice ?? 0m)
                             };
                         })
-                        .Where(x => x != null)
                         .ToList()
                 };
             }).ToList();
@@ -169,13 +196,13 @@ namespace WebApp.Controllers
             var journey = await _journeys.GetOrCreateComposedAsync(userId); // STEP 4: idea-sourced
             var investorReadinessScore = journey.Phase3Data?.InvestorReadinessScore;
 
-            // 8️ Final Response
+            // 8️ Final Response (preserving exact DTO contract)
             var response = new
             {
                 totalIdeas,
                 totalClicksLast14Days,
-                totalFundRaised,
-                totalRequired,
+                totalFundRaised = (double)totalFundRaised,
+                totalRequired = (double)totalRequired,
                 totalEquity,
                 activeInvestors,
                 investorReadinessScore,

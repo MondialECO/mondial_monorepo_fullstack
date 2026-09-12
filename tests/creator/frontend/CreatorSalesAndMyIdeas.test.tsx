@@ -206,13 +206,13 @@ describe("Creator Sales & My Ideas SOLD Integration", () => {
 
     const itemLabels = marketplaceSection!.items.map((i) => i.label);
     expect(itemLabels).toEqual([
-      "Project Marketplace",
+      "Marketplace",
       "Launch to Market",
       "Partnerships",
-      "Project Sales",
+      "Sales & Buyouts",
     ]);
 
-    const salesItem = marketplaceSection!.items.find((i) => i.label === "Project Sales");
+    const salesItem = marketplaceSection!.items.find((i) => i.label === "Sales & Buyouts" || i.label === "Project Sales");
     expect(salesItem?.href).toBe("/dashboard/creator/sales");
   });
 

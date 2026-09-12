@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Rocket,
@@ -14,7 +13,6 @@ import {
   Clock,
   ExternalLink,
   PlusCircle,
-  Plus
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -24,32 +22,26 @@ import { getNextCreatorAction } from '@/lib/creator-state-resolver';
 
 export default function ProjectStudioPage() {
   const router = useRouter();
-  const { state, updateProject } = useCreatorProgress();
+  const { state } = useCreatorProgress();
   const { project, journeyState } = state;
   const branding = project.branding;
   const action = getNextCreatorAction(journeyState);
 
-  const [versions, setVersions] = useState<Array<{ version: number; date: string; note: string; active: boolean }>>([
-    { version: project.currentVersion || 1, date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }), note: 'Current active workspace', active: true },
-    { version: (project.currentVersion || 1) - 0.5, date: 'June 10, 2026', note: 'Initial concept draft generated', active: false }
-  ]);
-
-  const handleCreateVersion = () => {
-    const nextVer = (project.currentVersion || 1) + 1;
-    updateProject({ currentVersion: nextVer });
-    setVersions([
-      { version: nextVer, date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }), note: `Version ${nextVer} snapshot`, active: true },
-      ...versions.map(v => ({ ...v, active: false }))
-    ]);
-  };
-
-  const handleRestoreVersion = (verNum: number) => {
-    updateProject({ currentVersion: verNum });
-    setVersions(versions.map(v => ({
-      ...v,
-      active: v.version === verNum
-    })));
-  };
+  // Derive canonical snapshot records from real journey outputs
+  const realVersions = [
+    ...(state.outputs.businessPlanVersions || []).map((v, i) => ({
+      id: `bp-${v.id || i}`,
+      label: `Business Plan v${(v.version as number) || i + 1}`,
+      date: v.createdAt ? new Date(v.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Saved snapshot',
+      note: 'Business plan output snapshot',
+    })),
+    ...(state.outputs.financialForecastVersions || []).map((v, i) => ({
+      id: `ff-${v.id || i}`,
+      label: `Financial Forecast v${(v.version as number) || i + 1}`,
+      date: v.createdAt ? new Date(v.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Saved snapshot',
+      note: 'Financial model output snapshot',
+    })),
+  ];
 
   if (!project.exists) {
     return (
@@ -230,55 +222,40 @@ export default function ProjectStudioPage() {
           {/* Version Control Panel */}
           <Card className="rounded-2xl border-border bg-card shadow-sm">
             <CardHeader className="border-b border-border/60">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-bold flex items-center gap-1.5">
-                  <History className="w-4 h-4 text-primary" /> Version Control
-                </CardTitle>
-                <Button size="icon" variant="ghost" onClick={handleCreateVersion} title="Create snapshot snapshot">
-                  <Plus className="w-4 h-4" />
-                </Button>
-              </div>
-              <CardDescription className="text-xs">Version backups & restore point control.</CardDescription>
+              <CardTitle className="text-sm font-bold flex items-center gap-1.5">
+                <History className="w-4 h-4 text-primary" /> Version Control
+              </CardTitle>
+              <CardDescription className="text-xs">Saved snapshots and generated milestone outputs.</CardDescription>
             </CardHeader>
             <CardContent className="p-4">
-              <div className="space-y-3">
-                {versions.map((ver, idx) => (
-                  <div
-                    key={idx}
-                    className={`p-3 rounded-xl border flex items-center justify-between transition-colors ${
-                      ver.active
-                        ? 'border-primary/30 bg-primary/5'
-                        : 'border-border bg-card hover:bg-muted/30'
-                    }`}
-                  >
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-bold text-xs text-foreground">v{ver.version.toFixed(1)}</span>
-                        {ver.active && (
-                          <Badge className="bg-green-500/10 text-green-600 border-0 hover:bg-green-500/25 text-[8px] font-bold py-0 px-1">
-                            active
-                          </Badge>
-                        )}
+              {realVersions.length > 0 ? (
+                <div className="space-y-3">
+                  {realVersions.map((ver) => (
+                    <div
+                      key={ver.id}
+                      className="p-3 rounded-xl border border-border bg-card hover:bg-muted/30 flex items-center justify-between transition-colors"
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-xs text-foreground">{ver.label}</span>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground">{ver.note}</p>
+                        <span className="text-[8px] text-muted-foreground flex items-center gap-1">
+                          <Clock className="w-3 h-3" /> {ver.date}
+                        </span>
                       </div>
-                      <p className="text-[10px] text-muted-foreground">{ver.note}</p>
-                      <span className="text-[8px] text-muted-foreground flex items-center gap-1">
-                        <Clock className="w-3 h-3" /> {ver.date}
-                      </span>
                     </div>
-
-                    {!ver.active && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleRestoreVersion(ver.version)}
-                        className="text-[10px] font-bold text-primary hover:text-primary-foreground hover:bg-primary h-7 py-1 px-2 rounded-lg"
-                      >
-                        Restore
-                      </Button>
-                    )}
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6 px-4 space-y-1.5">
+                  <Clock className="w-7 h-7 text-muted-foreground/30 mx-auto" />
+                  <p className="text-xs font-semibold text-foreground">No saved versions yet.</p>
+                  <p className="text-[11px] text-muted-foreground leading-normal">
+                    Milestone plans and financial forecasts will record snapshots here automatically.
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
 

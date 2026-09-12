@@ -38,24 +38,23 @@ describe('Creator Canonical Navigation Menu — Final Product-Journey Reorganiza
     // 3. PROJECT MARKETPLACE
     expect(creatorMenu[2].title).toBe('Project Marketplace');
     expect(creatorMenu[2].items.map((i) => ({ label: i.label, href: i.href }))).toEqual([
-      { label: 'Project Marketplace', href: '/dashboard/creator/marketplace' },
+      { label: 'Marketplace', href: '/marketplace/projects' },
       { label: 'Launch to Market', href: '/dashboard/creator/crossroads' },
       { label: 'Partnerships', href: '/dashboard/creator/partnerships' },
-      { label: 'Project Sales', href: '/dashboard/creator/sales' },
+      { label: 'Sales & Buyouts', href: '/dashboard/creator/sales' },
     ]);
 
     // 4. ASSETS & IP
     expect(creatorMenu[3].title).toBe('Assets & IP');
     expect(creatorMenu[3].items.map((i) => ({ label: i.label, href: i.href }))).toEqual([
-      { label: 'Documents', href: '/dashboard/creator/documents' },
+      { label: 'IP Vault & Legal', href: '/dashboard/creator/documents' },
       { label: 'Asset Library', href: '/dashboard/creator/asset-library' },
-      { label: 'IP Vault', href: '/dashboard/creator/ip-vault' },
     ]);
 
     // 5. SERVICES & NETWORK
     expect(creatorMenu[4].title).toBe('Services & Network');
     expect(creatorMenu[4].items.map((i) => ({ label: i.label, href: i.href }))).toEqual([
-      { label: 'Hire Services', href: '/marketplace/services' },
+      { label: 'Hire Providers', href: '/marketplace/services' },
       { label: 'Active Engagements', href: '/dashboard/creator/engagements' },
     ]);
 
