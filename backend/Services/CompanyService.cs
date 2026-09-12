@@ -3895,16 +3895,16 @@ public class CompanyService : ICompanyService
                     .FirstOrDefaultAsync();
                 var investorUserId = investorUser?.Id.ToString() ?? string.Empty;
 
-                var amount = (deal.TermSheet != null && deal.TermSheet.TotalRaiseAmount > 0)
-                    ? deal.TermSheet.TotalRaiseAmount
-                    : (participant.CommittedAmount > 0 ? participant.CommittedAmount : 0);
+                var amount = participant.CommittedAmount > 0
+                    ? participant.CommittedAmount
+                    : ((deal.TermSheet != null && deal.TermSheet.TotalRaiseAmount > 0) ? deal.TermSheet.TotalRaiseAmount : 0);
 
                 double? equityPercent = null;
                 if (instrumentType == "equity")
                 {
-                    var rawEquity = (deal.TermSheet != null && deal.TermSheet.InvestorEquityPercent > 0)
-                        ? deal.TermSheet.InvestorEquityPercent
-                        : (participant.EquityPercentage > 0 ? participant.EquityPercentage : 0);
+                    var rawEquity = participant.EquityPercentage > 0
+                        ? participant.EquityPercentage
+                        : ((deal.TermSheet != null && deal.TermSheet.InvestorEquityPercent > 0) ? deal.TermSheet.InvestorEquityPercent : 0);
                     if (rawEquity > 0) equityPercent = rawEquity;
                 }
 
@@ -4155,9 +4155,9 @@ public class CompanyService : ICompanyService
                     ? participant.InvestorName
                     : (!string.IsNullOrWhiteSpace(deal.InvestorNameSnapshot) ? deal.InvestorNameSnapshot : "Investor");
 
-                var investorEquityPercent = (deal.TermSheet != null && deal.TermSheet.InvestorEquityPercent > 0)
-                    ? deal.TermSheet.InvestorEquityPercent
-                    : (participant.EquityPercentage > 0 ? participant.EquityPercentage : 0);
+                var investorEquityPercent = participant.EquityPercentage > 0
+                    ? participant.EquityPercentage
+                    : ((deal.TermSheet != null && deal.TermSheet.InvestorEquityPercent > 0) ? deal.TermSheet.InvestorEquityPercent : 0);
 
                 if (investorEquityPercent <= 0 || investorEquityPercent >= 100)
                     continue;

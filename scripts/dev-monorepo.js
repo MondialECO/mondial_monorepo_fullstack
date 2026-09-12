@@ -2,11 +2,31 @@
 const { spawn } = require("child_process");
 const path = require("path");
 const net = require("net");
+const os = require("os");
+const fs = require("fs");
 
 const rootDir = path.resolve(__dirname, "..");
 const backendDir = path.join(rootDir, "backend");
 const FRONTEND_PORT = 3000;
 const BACKEND_PORT = 5093;
+
+// Ensure standard dotnet directories are present in process.env.PATH
+const userDotnetDir = path.join(os.homedir(), ".dotnet");
+const possibleDotnetDirs = [
+  userDotnetDir,
+  "C:\\Program Files\\dotnet",
+  process.env.LOCALAPPDATA ? path.join(process.env.LOCALAPPDATA, "Microsoft", "dotnet") : null,
+].filter(Boolean);
+
+const currentPath = process.env.PATH || "";
+const missingDirs = possibleDotnetDirs.filter(
+  (dir) => fs.existsSync(dir) && !currentPath.includes(dir)
+);
+
+if (missingDirs.length > 0) {
+  process.env.PATH = `${missingDirs.join(path.delimiter)}${path.delimiter}${currentPath}`;
+}
+
 
 function isPortFree(port) {
   return new Promise((resolve) => {

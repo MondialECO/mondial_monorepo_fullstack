@@ -195,8 +195,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+    } catch {
+      // Storage access safety fallback
+    }
     setUser(null);
     setToken(null);
     setIsBackendVerified(false);

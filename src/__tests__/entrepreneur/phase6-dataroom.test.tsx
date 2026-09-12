@@ -130,6 +130,8 @@ describe('Phase 6 — Founder Data Room Lifecycle & Remediation', () => {
       companyId: 'comp-666',
     } as any);
     vi.spyOn(entrepreneurApi, 'getDataRoom').mockResolvedValue(initialStatus);
+    vi.spyOn(entrepreneurApi, 'getCompanyDataRoomAccessRequests').mockResolvedValue([]);
+    vi.spyOn(entrepreneurApi, 'getDataRoomQuestions').mockResolvedValue([]);
     vi.spyOn(entrepreneurApi, 'uploadDataRoomDocument').mockResolvedValue({
       documentId: 'doc-new-1',
       title: 'New Doc',

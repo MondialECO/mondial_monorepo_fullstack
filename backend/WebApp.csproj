@@ -57,11 +57,11 @@
        direct references at the patched versions (same major/minor line as
        resolved, so parent packages stay compatible). -->
   <ItemGroup>
-    <PackageReference Include="MessagePack" Version="2.5.187" />
+    <PackageReference Include="MessagePack" Version="2.5.192" />
     <PackageReference Include="Microsoft.Bcl.Memory" Version="9.0.14" />
     <PackageReference Include="SharpCompress" Version="0.49.0" />
     <PackageReference Include="Snappier" Version="1.3.1" />
-    <PackageReference Include="System.Security.Cryptography.Xml" Version="8.0.3" />
+    <PackageReference Include="System.Security.Cryptography.Xml" Version="8.0.4" />
   </ItemGroup>
 
   <ItemGroup>
