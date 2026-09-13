@@ -98,35 +98,7 @@ Authorization: Bearer {jwt_token}
 
 ---
 
-### 2. Confirm Face Verification
-
-**Request:**
-```
-POST /api/onboarding/face/verify-sumsub
-Authorization: Bearer {jwt_token}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "message": "Face verification complete"
-}
-```
-
-**What it does:**
-- Checks current verification status with Sumsub API
-- Verifies face verification is approved
-- Updates user record if approved
-- Triggers phase promotion if complete
-
-**Error Cases:**
-- Face not yet approved → 400 "Face verification not approved yet"
-- Status check failed → 500 "Unable to verify status"
-
----
-
-### 3. Webhook Handler (Sumsub → Backend)
+### 2. Webhook Handler (Sumsub → Backend)
 
 **Endpoint:**
 ```
@@ -149,16 +121,16 @@ Content-Type: application/json
 ```
 
 **Review Status Values:**
-- `APPROVED` - All verifications passed
-- `REJECTED` - Verification failed
+- `APPROVED` - All document verifications passed
+- `REJECTED` - Document verification failed
 - `PENDING` - Still under review
 
 **Webhook Behavior:**
 
 | Status | Action |
 |--------|--------|
-| APPROVED | Mark both identity & face as verified, promote phase |
-| REJECTED | Mark both as unverified |
+| APPROVED | Mark identity document as verified, promote phase |
+| REJECTED | Mark identity document as unverified |
 | PENDING | Log event, no state change |
 
 ---
@@ -191,8 +163,8 @@ const sdk = SumsubWebSdk.init({
 
 // Listen for completion
 sdk.on('idensic:completed', () => {
-  // Call POST /onboarding/face/verify-sumsub
-  // Then redirect to dashboard
+  // Document verification submitted
+  // Redirect to dashboard or onboarding hub
 });
 
 sdk.on('idensic:failed', () => {

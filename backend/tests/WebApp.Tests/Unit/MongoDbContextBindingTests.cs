@@ -67,4 +67,42 @@ public class MongoDbContextBindingTests
             "no collection by that name has ever existed; GetCollection would silently "
             + "return an empty one");
     }
+
+    [Fact]
+    public async Task AiCreditSeeder_binds_to_canonical_applicationUsers_collection()
+    {
+        var database = new Mock<IMongoDatabase>();
+        string? requestedName = null;
+        var usersColMock = new Mock<IMongoCollection<ApplicationUser>>();
+        var cursorMock = new Mock<IAsyncCursor<Guid>>();
+        cursorMock.SetupSequence(c => c.MoveNext(It.IsAny<CancellationToken>()))
+            .Returns(false);
+        cursorMock.SetupSequence(c => c.MoveNextAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        usersColMock.Setup(c => c.FindAsync(
+            It.IsAny<FilterDefinition<ApplicationUser>>(),
+            It.IsAny<FindOptions<ApplicationUser, Guid>>(),
+            It.IsAny<CancellationToken>()))
+            .ReturnsAsync(cursorMock.Object);
+
+        database
+            .Setup(d => d.GetCollection<ApplicationUser>(
+                It.IsAny<string>(), It.IsAny<MongoCollectionSettings>()))
+            .Callback<string, MongoCollectionSettings>((name, _) => requestedName = name)
+            .Returns(usersColMock.Object);
+
+        database
+            .Setup(d => d.GetCollection<WebApp.Models.DatabaseModels.Ai.AiCreditLedger>(
+                It.IsAny<string>(), It.IsAny<MongoCollectionSettings>()))
+            .Returns(new Mock<IMongoCollection<WebApp.Models.DatabaseModels.Ai.AiCreditLedger>>().Object);
+
+        var ledgerRepo = new WebApp.Services.Repository.Ai.AiCreditLedgerRepository(database.Object);
+        var seeder = new WebApp.Services.Ai.AiCreditSeeder(database.Object, ledgerRepo);
+
+        await seeder.GrantStarterCreditsAsync(200);
+
+        requestedName.Should().Be("applicationUsers", "Seeder must query the canonical applicationUsers collection");
+        requestedName.Should().NotBe("users", "Ghost collection binding 'users' must never be queried");
+    }
 }

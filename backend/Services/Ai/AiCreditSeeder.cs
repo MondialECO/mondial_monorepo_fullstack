@@ -32,7 +32,7 @@ namespace WebApp.Services.Ai
             if (amount <= 0)
                 return 0;
 
-            var users = _database.GetCollection<ApplicationUser>("users");
+            var users = _database.GetCollection<ApplicationUser>("applicationUsers");
             var ids = await users.Find(FilterDefinition<ApplicationUser>.Empty)
                 .Project(u => u.Id)
                 .ToListAsync();

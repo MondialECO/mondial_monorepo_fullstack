@@ -24,6 +24,7 @@ namespace WebApp.DbContext
             EnsureProfileSplitIndexes();
             EnsureApplicationUserIndexes();
             EnsureReportsAndAuditIndexes();
+            EnsureUniversalIdentityVerificationIndexes();
         }
 
         public MongoDbContext(IMongoDatabase database)
@@ -41,6 +42,7 @@ namespace WebApp.DbContext
             EnsureProfileSplitIndexes();
             EnsureApplicationUserIndexes();
             EnsureReportsAndAuditIndexes();
+            EnsureUniversalIdentityVerificationIndexes();
         }
 
         // Smart Matchmaking outbox indexes: Status (consumer polling), CompanyId
@@ -227,6 +229,75 @@ namespace WebApp.DbContext
                 // Best-effort; never block or fail context construction.
             }
         }
+
+        // Authoritative Universal Identity Verifications & Separated Audit Logging.
+        // Partial unique index { UserId: 1, IsCurrent: 1 } where IsCurrent == true ensures
+        // only one active verification attempt per user, while preserving full audit history
+        // of previous attempts (IsCurrent == false).
+        private void EnsureUniversalIdentityVerificationIndexes()
+        {
+            try
+            {
+                var filter = Builders<UniversalIdentityVerification>.Filter.Eq(x => x.IsCurrent, true);
+                var partialModel = new CreateIndexModel<UniversalIdentityVerification>(
+                    Builders<UniversalIdentityVerification>.IndexKeys
+                        .Ascending(x => x.UserId)
+                        .Ascending(x => x.IsCurrent),
+                    new CreateIndexOptions<UniversalIdentityVerification>
+                    {
+                        Unique = true,
+                        PartialFilterExpression = filter,
+                        Background = true
+                    });
+                UniversalIdentityVerifications.Indexes.CreateOne(partialModel);
+
+                // Sparse unique index on provider applicant ID to enforce ownership and detect collisions
+                var applicantFilter = Builders<UniversalIdentityVerification>.Filter.Ne(x => x.ProviderApplicantId, null);
+                var applicantIndex = new CreateIndexModel<UniversalIdentityVerification>(
+                    Builders<UniversalIdentityVerification>.IndexKeys
+                        .Ascending(x => x.Provider)
+                        .Ascending(x => x.ProviderApplicantId),
+                    new CreateIndexOptions<UniversalIdentityVerification>
+                    {
+                        Unique = true,
+                        Sparse = true,
+                        Background = true
+                    });
+                UniversalIdentityVerifications.Indexes.CreateOne(applicantIndex);
+
+                // Operational Webhook Delivery Log indexes: EventId lookup + TTL/retention
+                IdentityWebhookDeliveryLogs.Indexes.CreateMany(new[]
+                {
+                    new CreateIndexModel<IdentityWebhookDeliveryLog>(
+                        Builders<IdentityWebhookDeliveryLog>.IndexKeys.Ascending(x => x.EventId),
+                        new CreateIndexOptions { Background = true, Sparse = true }),
+                    new CreateIndexModel<IdentityWebhookDeliveryLog>(
+                        Builders<IdentityWebhookDeliveryLog>.IndexKeys.Descending(x => x.ReceivedAt),
+                        new CreateIndexOptions { Background = true })
+                });
+
+                // Durable Decision History indexes: UserId query + VerificationId lookup
+                IdentityDecisionAuditLogs.Indexes.CreateMany(new[]
+                {
+                    new CreateIndexModel<IdentityDecisionAuditLog>(
+                        Builders<IdentityDecisionAuditLog>.IndexKeys
+                            .Ascending(x => x.UserId)
+                            .Descending(x => x.Timestamp),
+                        new CreateIndexOptions { Background = true }),
+                    new CreateIndexModel<IdentityDecisionAuditLog>(
+                        Builders<IdentityDecisionAuditLog>.IndexKeys.Ascending(x => x.VerificationId),
+                        new CreateIndexOptions { Background = true })
+                });
+            }
+            catch
+            {
+                // Best-effort; never block or fail context construction.
+            }
+        }
+
+        public virtual IMongoCollection<UniversalIdentityVerification> UniversalIdentityVerifications => _database.GetCollection<UniversalIdentityVerification>("UniversalIdentityVerifications");
+        public virtual IMongoCollection<IdentityWebhookDeliveryLog> IdentityWebhookDeliveryLogs => _database.GetCollection<IdentityWebhookDeliveryLog>("IdentityWebhookDeliveryLogs");
+        public virtual IMongoCollection<IdentityDecisionAuditLog> IdentityDecisionAuditLogs => _database.GetCollection<IdentityDecisionAuditLog>("IdentityDecisionAuditLogs");
 
         // "applicationUsers", not "ApplicationUsers": Identity owns this collection and
         // AspNetCore.Identity.MongoDbCore derives the name through MongoDbGenericRepository's

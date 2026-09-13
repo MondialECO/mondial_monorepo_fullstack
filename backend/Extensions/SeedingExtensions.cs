@@ -245,7 +245,6 @@ public static class SeedingExtensions
                 EmailOtpVerified = true,
                 PhoneVerified = true,
                 IdentityDocumentVerified = true,
-                FaceVerified = true,
                 CompletedAt = DateTime.UtcNow
             }
         };
@@ -910,7 +909,6 @@ public static class SeedingExtensions
                     EmailOtpVerified = true,
                     PhoneVerified = true,
                     IdentityDocumentVerified = true,
-                    FaceVerified = true,
                     CompletedAt = DateTime.UtcNow
                 }
             };
@@ -966,7 +964,6 @@ public static class SeedingExtensions
                     EmailOtpVerified = true,
                     PhoneVerified = true,
                     IdentityDocumentVerified = true,
-                    FaceVerified = true,
                     CompletedAt = DateTime.UtcNow
                 }
             };

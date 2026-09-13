@@ -41,10 +41,9 @@ export default function CreatorPhase1Client() {
   // Get verification items statuses
   const isRoleSelected = true; // Creator is selected
   const isIdentityDone = !!status.items.identity?.verified;
-  const isFaceDone = !!status.items.face?.verified;
   const isPhoneDone = !!status.items.phone?.verified;
   const isEmailDone = !!status.items.email?.verified;
-  const isFinalApprovalDone = isIdentityDone && isFaceDone && isPhoneDone && isEmailDone;
+  const isFinalApprovalDone = isIdentityDone && isPhoneDone && isEmailDone;
 
   const totalPhases = 6;
   const currentPhase = 1;
@@ -109,7 +108,7 @@ export default function CreatorPhase1Client() {
           <div className="relative z-10 bg-background/50 backdrop-blur-md rounded-2xl p-4 border border-border shadow-sm flex items-center gap-3">
             <ShieldCheck className="w-5 h-5 text-green-500 shrink-0" />
             <span className="text-xs text-muted-foreground font-medium">
-              Enterprise-grade encryption protecting your personal and biometric assets.
+              Enterprise-grade encryption protecting your personal data and identity documents.
             </span>
           </div>
         </div>
@@ -216,18 +215,6 @@ export default function CreatorPhase1Client() {
                           )}
                           <span className="text-xs sm:text-sm font-medium text-foreground">
                             Identity Document
-                          </span>
-                        </div>
-
-                        {/* Step 3: Facial Verification */}
-                        <div className="flex items-center gap-3 p-3 rounded-xl bg-background border border-border/80">
-                          {isFaceDone ? (
-                            <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0" />
-                          ) : (
-                            <Circle className="w-5 h-5 text-muted-foreground/30 shrink-0" />
-                          )}
-                          <span className="text-xs sm:text-sm font-medium text-foreground">
-                            Facial verification
                           </span>
                         </div>
 

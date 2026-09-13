@@ -316,10 +316,10 @@ namespace WebApp.Tests.Unit
             var controller = CreateController(userId);
             var result = await controller.LevelUp(ideaId);
 
-            if (result is UnprocessableEntityObjectResult unproc)
+            if (result is ObjectResult obj && !(result is OkObjectResult))
             {
-                var val = System.Text.Json.JsonSerializer.Serialize(unproc.Value);
-                throw new Exception("LevelUp returned 422: " + val);
+                var val = System.Text.Json.JsonSerializer.Serialize(obj.Value);
+                throw new Exception($"LevelUp returned {obj.StatusCode} ({obj.GetType().Name}): {val}");
             }
 
             result.Should().BeOfType<OkObjectResult>();

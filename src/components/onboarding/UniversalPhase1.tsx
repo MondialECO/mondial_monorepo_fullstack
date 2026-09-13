@@ -24,6 +24,9 @@ interface OnboardingItem {
   key: string;
   verified: boolean;
   required: boolean;
+  status?: string;
+  reviewReason?: string;
+  documentType?: string;
 }
 
 interface OnboardingStatus {
@@ -33,7 +36,6 @@ interface OnboardingStatus {
   email: string;
   items: {
     identity: OnboardingItem;
-    face: OnboardingItem;
     phone: OnboardingItem;
     email: OnboardingItem;
     residence?: OnboardingItem;
@@ -43,12 +45,11 @@ interface OnboardingStatus {
   };
 }
 
-type CoreItemKey = 'identity' | 'face' | 'phone' | 'email';
-const CORE_ITEM_KEYS: CoreItemKey[] = ['identity', 'face', 'phone', 'email'];
+type CoreItemKey = 'identity' | 'phone' | 'email';
+const ALL_CORE_ITEM_KEYS: CoreItemKey[] = ['identity', 'phone', 'email'];
 
 const MANDATORY_ITEMS = {
   identity: { label: 'Identity Document', description: 'Upload Passport or Government ID', icon: FileText },
-  face: { label: 'Facial verification', description: 'Quick face scan for bio-matching', icon: Shield },
   phone: { label: 'Phone Verification', description: 'Verify your mobile number via SMS', icon: Phone },
   email: { label: 'Email Verification', description: 'Confirm your secure primary email', icon: Mail },
 };
@@ -103,7 +104,7 @@ export default function UniversalPhase1() {
     const item = status?.items[itemKey];
     if (!item || item.verified) return;
 
-    if (itemKey === 'identity' || itemKey === 'face') {
+    if (itemKey === 'identity') {
       router.push('/onboarding/identity');
       return;
     }
@@ -142,7 +143,12 @@ export default function UniversalPhase1() {
     );
   }
 
-  const completedCount = CORE_ITEM_KEYS.filter((key) => status?.items[key]?.verified).length;
+  // Active mandatory steps derived dynamically from backend status
+  const activeCoreKeys = ALL_CORE_ITEM_KEYS.filter((key) =>
+    status ? status.items[key]?.required : true
+  );
+
+  const completedCount = activeCoreKeys.filter((key) => status?.items[key]?.verified).length;
 
   return (
     <div className="min-h-screen bg-background">
@@ -186,17 +192,19 @@ export default function UniversalPhase1() {
                   Required
                 </span>
               </div>
-              <p className="text-sm text-muted-foreground">{completedCount} of 4 Completed</p>
+              <p className="text-sm text-muted-foreground">{completedCount} of {activeCoreKeys.length} Completed</p>
             </div>
 
             <div className="space-y-3">
-              {CORE_ITEM_KEYS.map((key) => {
+              {activeCoreKeys.map((key) => {
                 const item = status.items[key];
                 const config = MANDATORY_ITEMS[key];
                 if (!item) return null;
 
                 const Icon = config.icon;
                 const isCompleted = item.verified;
+                const isPendingReview = item.status === 'submitted' || item.status === 'processing' || item.status === 'manual_review';
+                const isActionRequired = item.status === 'rejected' || item.status === 'retry_required';
 
                 return (
                   <button
@@ -207,12 +215,20 @@ export default function UniversalPhase1() {
                       'w-full p-4 rounded-lg border border-border bg-background flex items-center justify-between',
                       'transition-all duration-200 text-left',
                       isCompleted && 'opacity-60 cursor-not-allowed',
-                      !isCompleted && 'hover:border-primary hover:bg-accent cursor-pointer active:scale-[0.98]'
+                      isActionRequired && 'border-destructive/40 bg-destructive/5 hover:border-destructive/60',
+                      isPendingReview && 'border-amber-500/40 bg-amber-500/5 hover:border-amber-500/60',
+                      !isCompleted && !isActionRequired && !isPendingReview && 'hover:border-primary hover:bg-accent cursor-pointer active:scale-[0.98]'
                     )}
                   >
                     <div className="flex items-center gap-4 flex-1">
-                      <div className="bg-primary/10 rounded-lg p-3 flex-shrink-0">
-                        <Icon className="w-6 h-6 text-primary" />
+                      <div className={cn(
+                        "rounded-lg p-3 flex-shrink-0",
+                        isCompleted ? "bg-green-600/10" : isActionRequired ? "bg-destructive/10" : isPendingReview ? "bg-amber-500/10" : "bg-primary/10"
+                      )}>
+                        <Icon className={cn(
+                          "w-6 h-6",
+                          isCompleted ? "text-green-600 dark:text-green-400" : isActionRequired ? "text-destructive" : isPendingReview ? "text-amber-600 dark:text-amber-400" : "text-primary"
+                        )} />
                       </div>
                       <div>
                         <p className="font-semibold text-foreground text-sm">{config.label}</p>
@@ -220,14 +236,19 @@ export default function UniversalPhase1() {
                       </div>
                     </div>
 
-                    <div className="flex-shrink-0 ml-4">
+                    <div className="flex-shrink-0 ml-4 flex items-center gap-2">
                       {verifying === key ? (
                         <Loader2 className="text-muted-foreground animate-spin" size={20} />
                       ) : isCompleted ? (
-                        // success-text, not the unmapped bare `success` this used to
-                        // carry, which emitted nothing and left the tick inheriting the
-                        // row's colour.
                         <CheckCircle2 className="text-success-text" size={20} />
+                      ) : isActionRequired ? (
+                        <span className="text-xs font-semibold text-destructive uppercase tracking-wide">
+                          Action Required
+                        </span>
+                      ) : isPendingReview ? (
+                        <span className="text-xs font-medium text-amber-600 dark:text-amber-400 uppercase tracking-wide">
+                          Under Review
+                        </span>
                       ) : (
                         <ChevronRight className="text-muted-foreground" size={20} />
                       )}

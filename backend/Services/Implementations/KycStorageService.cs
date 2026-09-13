@@ -63,32 +63,15 @@ namespace WebApp.Services.Implementations
             if (File.Exists(privatePath))
                 return privatePath;
 
-            // 2. Check private face / selfie storage locations
-            var privateFacePath = Path.Combine(Directory.GetCurrentDirectory(), "storage", "private", "face", fileName);
-            if (File.Exists(privateFacePath))
-                return privateFacePath;
-
-            var privateSelfiePath = Path.Combine(Directory.GetCurrentDirectory(), "storage", "private", "selfie", fileName);
-            if (File.Exists(privateSelfiePath))
-                return privateSelfiePath;
-
-            // 3. Check legacy storage path as fallback
+            // 2. Check legacy storage path as fallback
             var legacyPath = Path.Combine(_legacyStorageRoot, fileName);
             if (File.Exists(legacyPath))
                 return legacyPath;
 
-            // 4. Check legacy capitalized / alternative folder fallbacks
+            // 3. Check legacy capitalized / alternative folder fallbacks
             var legacyCapPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "Identity", fileName);
             if (File.Exists(legacyCapPath))
                 return legacyCapPath;
-
-            var legacyFacePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "face", fileName);
-            if (File.Exists(legacyFacePath))
-                return legacyFacePath;
-
-            var legacySelfiePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "selfie", fileName);
-            if (File.Exists(legacySelfiePath))
-                return legacySelfiePath;
 
             return null;
         }

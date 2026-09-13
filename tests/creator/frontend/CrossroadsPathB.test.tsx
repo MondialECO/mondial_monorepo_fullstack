@@ -113,11 +113,11 @@ describe("CrossroadsPathB", () => {
   });
 
   it("handles Level Up confirmation flow safely and prevents double submission", async () => {
-    let resolveLevelUp: (value: { companyId: string; redirectTo: string; roles: string[] }) => void;
-    const levelUpPromise = new Promise<{ companyId: string; redirectTo: string; roles: string[] }>((resolve) => {
+    let resolveLevelUp: (value: any) => void;
+    const levelUpPromise = new Promise<any>((resolve) => {
       resolveLevelUp = resolve;
     });
-    vi.mocked(creatorJourneyApi.levelUp).mockReturnValue(levelUpPromise);
+    vi.mocked(creatorJourneyApi.levelUp).mockReturnValue(levelUpPromise as any);
 
     render(
       <CrossroadsPathB

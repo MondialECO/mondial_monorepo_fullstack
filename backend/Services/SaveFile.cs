@@ -29,12 +29,6 @@ namespace WebApp.Services
                 )
             },
             {
-                "Face", new(
-                    new[] { ".mp4", ".webm", ".mov" },
-                    20 * 1024 * 1024
-                )
-            },
-            {
                 "profile", new(
                     new[] { ".jpg", ".jpeg", ".png", ".webp", ".gif" },
                     20 * 1024 * 1024

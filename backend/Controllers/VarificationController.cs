@@ -15,6 +15,7 @@ using WebApp.Models.Dtos;
 using WebApp.Services;
 using WebApp.Services.Audit;
 using WebApp.Services.Implementations;
+using WebApp.Services.Interface;
 
 namespace WebApp.Controllers
 {
@@ -26,17 +27,20 @@ namespace WebApp.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly MongoDbContext _context;
         private readonly IKycStorageService _kycStorage;
+        private readonly IIdentityVerificationService? _identityService;
         private readonly IAuditLogger? _audit;
 
         public VarificationController(
             UserManager<ApplicationUser> userManager,
             MongoDbContext context,
             IKycStorageService? kycStorage = null,
+            IIdentityVerificationService? identityService = null,
             IAuditLogger? audit = null)
         {
             _userManager = userManager;
             _context = context;
             _kycStorage = kycStorage ?? new KycStorageService();
+            _identityService = identityService;
             _audit = audit;
         }
 
@@ -129,7 +133,6 @@ namespace WebApp.Controllers
             {
                 var kyc = u.Kyc;
                 var ident = kyc?.Identity;
-                var face = kyc?.Face;
                 var addr = u.Address;
 
                 var userRoles = u.Roles?.Select(r => r.ToString()).ToList() ?? new List<string>();
@@ -140,9 +143,8 @@ namespace WebApp.Controllers
 
                 var front = ident?.FrontImage ?? u.Onboarding?.IdentityFrontImagePath;
                 var docType = ident?.DocumentType ?? u.Onboarding?.IdentityDocumentType;
-                var submittedAt = ident?.SubmittedAt ?? u.Onboarding?.IdentityDocumentUploadedAt ?? face?.SubmittedAt;
+                var submittedAt = ident?.SubmittedAt ?? u.Onboarding?.IdentityDocumentUploadedAt;
                 var docUploaded = !string.IsNullOrWhiteSpace(front);
-                var faceSubmitted = face != null && (face.Status != VerificationStatus.Pending || face.SubmittedAt != null || u.Onboarding?.FaceVerified == true);
 
                 return new PendingKycUserDto
                 {
@@ -167,19 +169,12 @@ namespace WebApp.Controllers
                         SubmittedAt = submittedAt,
                         DocumentType = docType,
                         DocumentUploaded = docUploaded,
-                        FaceSubmitted = faceSubmitted,
                         Identity = ident != null ? new PendingKycIdentityDto
                         {
                             DocumentType = docType,
                             DocumentUploaded = docUploaded,
                             Status = (int)ident.Status,
                             RejectionReason = ident.RejectionReason
-                        } : null,
-                        Face = face != null ? new PendingKycFaceDto
-                        {
-                            FaceSubmitted = faceSubmitted,
-                            Status = (int)face.Status,
-                            RejectionReason = face.RejectionReason
                         } : null
                     } : null
                 };
@@ -209,7 +204,6 @@ namespace WebApp.Controllers
 
             var kyc = user.Kyc;
             var ident = kyc?.Identity;
-            var face = kyc?.Face;
             var addr = user.Address;
 
             var userRoles = user.Roles?.Select(r => r.ToString()).ToList() ?? new List<string>();
@@ -222,14 +216,11 @@ namespace WebApp.Controllers
             var back = ident?.BackImage ?? user.Onboarding?.IdentityBackImagePath;
             var docType = ident?.DocumentType ?? user.Onboarding?.IdentityDocumentType;
             var docNum = ident?.DocumentNumber;
-            var submittedAt = ident?.SubmittedAt ?? user.Onboarding?.IdentityDocumentUploadedAt ?? face?.SubmittedAt;
+            var submittedAt = ident?.SubmittedAt ?? user.Onboarding?.IdentityDocumentUploadedAt;
 
             // Generate protected evidence endpoints instead of exposing physical/storage paths
             var frontProtectedUrl = !string.IsNullOrWhiteSpace(front) ? $"/api/varification/{user.Id}/evidence/front" : null;
             var backProtectedUrl = !string.IsNullOrWhiteSpace(back) ? $"/api/varification/{user.Id}/evidence/back" : null;
-
-            var selfie = user.Kyc?.Face?.SelfieImage;
-            var selfieProtectedUrl = !string.IsNullOrWhiteSpace(selfie) ? $"/api/varification/{user.Id}/evidence/selfie" : null;
 
             var dto = new AdminKycReviewDto
             {
@@ -264,14 +255,6 @@ namespace WebApp.Controllers
                         RejectionReason = ident.RejectionReason,
                         SubmittedAt = ident.SubmittedAt ?? user.Onboarding?.IdentityDocumentUploadedAt,
                         VerifiedAt = ident.VerifiedAt
-                    } : null,
-                    Face = face != null ? new AdminKycReviewFaceDto
-                    {
-                        SelfieImagePath = selfieProtectedUrl,
-                        Status = (int)face.Status,
-                        RejectionReason = face.RejectionReason,
-                        SubmittedAt = face.SubmittedAt,
-                        VerifiedAt = face.VerifiedAt
                     } : null
                 } : null
             };
@@ -296,9 +279,9 @@ namespace WebApp.Controllers
             }
 
             var normalizedType = type?.Trim().ToLowerInvariant();
-            if (normalizedType is not ("front" or "back" or "selfie"))
+            if (normalizedType is not ("front" or "back"))
             {
-                return BadRequest(new { success = false, message = "Invalid evidence type. Allowed types: front, back, selfie" });
+                return BadRequest(new { success = false, message = "Invalid evidence type. Allowed types: front, back" });
             }
 
             var user = await _userManager.FindByIdAsync(userId.ToString());
@@ -311,7 +294,6 @@ namespace WebApp.Controllers
             {
                 "front" => user.Kyc?.Identity?.FrontImage ?? user.Onboarding?.IdentityFrontImagePath,
                 "back" => user.Kyc?.Identity?.BackImage ?? user.Onboarding?.IdentityBackImagePath,
-                "selfie" => user.Kyc?.Face?.SelfieImage,
                 _ => null
             };
 
@@ -343,18 +325,23 @@ namespace WebApp.Controllers
         [HttpPost("approve/{userId}")]
         public async Task<IActionResult> ApproveKyc(Guid userId)
         {
-            var filter = Builders<ApplicationUser>.Filter.And(
-                Builders<ApplicationUser>.Filter.Eq(u => u.Id, userId),
-                Builders<ApplicationUser>.Filter.Eq(u => u.Kyc.Status, VerificationStatus.Pending)
-            );
+            var callerId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue(ClaimTypes.Email) ?? "admin";
 
+            if (_identityService != null)
+            {
+                var success = await _identityService.RecordAdminDecisionAsync(userId.ToString(), callerId, true);
+                if (!success)
+                    return NotFoundResponse("User not found");
+                return Success("KYC Approved");
+            }
+
+            // Fallback: update user state without ever setting FaceVerified
+            var filter = Builders<ApplicationUser>.Filter.Eq(u => u.Id, userId);
             var update = Builders<ApplicationUser>.Update
                 .Set(u => u.Kyc.Status, VerificationStatus.Verified)
                 .Set(u => u.Kyc.Identity.Status, VerificationStatus.Verified)
-                .Set(u => u.Kyc.Face.Status, VerificationStatus.Verified)
                 .Set(u => u.Kyc.VerifiedAt, DateTime.UtcNow)
-                .Set(u => u.Onboarding.IdentityDocumentVerified, true)
-                .Set(u => u.Onboarding.FaceVerified, true);
+                .Set(u => u.Onboarding.IdentityDocumentVerified, true);
 
             var updatedUser = await _context.ApplicationUsers.FindOneAndUpdateAsync(
                 filter,
@@ -365,24 +352,14 @@ namespace WebApp.Controllers
             if (updatedUser == null)
             {
                 var existingUser = await _userManager.FindByIdAsync(userId.ToString());
-                if (existingUser == null)
-                    return NotFoundResponse("User not found");
-
-                return StatusCode(StatusCodes.Status409Conflict, new
+                if (existingUser != null && (existingUser.Kyc?.Status == VerificationStatus.Verified || existingUser.Kyc?.Status == VerificationStatus.Rejected))
                 {
-                    success = false,
-                    message = "This KYC submission has already been processed."
-                });
+                    return StatusCode(StatusCodes.Status409Conflict, new { success = false, message = "User KYC has already been processed" });
+                }
+                return NotFoundResponse("User not found");
             }
 
-            // Bridge to the universal Phase-1 gate. Admin approval of identity + face
-            // is the concierge KYC path for the closed alpha (SUMSUB is not wired), so
-            // it must flip the Onboarding flags the derived Phase-1 gate reads —
-            // otherwise Onboarding.Phase never reaches 1 and the Creator journey stays
-            // locked. Promotion itself stays derived: we only set the item flags and
-            // let the shared gate decide (it still requires email + phone OTP too).
-            await OnboardingGate.PromoteIfCompleteAsync(updatedUser, _userManager);
-
+            await OnboardingGate.PromoteIfCompleteAsync(updatedUser, _userManager, _audit);
             return Success("KYC Approved");
         }
 
@@ -398,15 +375,22 @@ namespace WebApp.Controllers
             if (string.IsNullOrWhiteSpace(dto?.Reason))
                 return Fail("Rejection reason is required");
 
-            var filter = Builders<ApplicationUser>.Filter.And(
-                Builders<ApplicationUser>.Filter.Eq(u => u.Id, userId),
-                Builders<ApplicationUser>.Filter.Eq(u => u.Kyc.Status, VerificationStatus.Pending)
-            );
+            var callerId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue(ClaimTypes.Email) ?? "admin";
 
+            if (_identityService != null)
+            {
+                var success = await _identityService.RecordAdminDecisionAsync(userId.ToString(), callerId, false, dto.Reason);
+                if (!success)
+                    return NotFoundResponse("User not found");
+                return Success("KYC Rejected");
+            }
+
+            var filter = Builders<ApplicationUser>.Filter.Eq(u => u.Id, userId);
             var update = Builders<ApplicationUser>.Update
                 .Set(u => u.Kyc.Status, VerificationStatus.Rejected)
                 .Set(u => u.Kyc.Identity.Status, VerificationStatus.Rejected)
-                .Set(u => u.Kyc.Identity.RejectionReason, dto.Reason);
+                .Set(u => u.Kyc.Identity.RejectionReason, dto.Reason)
+                .Set(u => u.Onboarding.IdentityDocumentVerified, false);
 
             var updatedUser = await _context.ApplicationUsers.FindOneAndUpdateAsync(
                 filter,
@@ -417,14 +401,11 @@ namespace WebApp.Controllers
             if (updatedUser == null)
             {
                 var existingUser = await _userManager.FindByIdAsync(userId.ToString());
-                if (existingUser == null)
-                    return NotFoundResponse("User not found");
-
-                return StatusCode(StatusCodes.Status409Conflict, new
+                if (existingUser != null && (existingUser.Kyc?.Status == VerificationStatus.Verified || existingUser.Kyc?.Status == VerificationStatus.Rejected))
                 {
-                    success = false,
-                    message = "This KYC submission has already been processed."
-                });
+                    return StatusCode(StatusCodes.Status409Conflict, new { success = false, message = "User KYC has already been processed" });
+                }
+                return NotFoundResponse("User not found");
             }
 
             return Success("KYC Rejected");

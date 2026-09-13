@@ -9,8 +9,8 @@ export default function PrivacyControlSection() {
       desc: 'Uploaded passports or ID cards are encrypted and hidden.',
     },
     {
-      title: 'Liveness Result',
-      desc: 'Biometric video scan signatures are parsed and deleted.',
+      title: 'Document Metadata',
+      desc: 'Official document numbers and security markers are encrypted.',
     },
     {
       title: 'Verification Status',

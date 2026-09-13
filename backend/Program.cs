@@ -369,6 +369,9 @@ else
 // need removed after using dashboard
 builder.Services.AddScoped<ISubmmitdata, SubmmitdataRepository>();
 
+// Authoritative Universal Identity Verification Service (Document-Only KYC, No Face)
+builder.Services.AddScoped<WebApp.Services.Interface.IIdentityVerificationService, WebApp.Services.Implementations.IdentityVerificationService>();
+
 // D-1 Service Provider (Stage 1: Verification & Onboarding) — embedded profile.
 builder.Services.AddScoped<IServiceProviderService, ServiceProviderService>();
 builder.Services.AddScoped<IServiceProviderMediaService, ServiceProviderMediaService>();
@@ -428,6 +431,41 @@ builder.Services.AddScoped<WebApp.Services.IKycStorageService, WebApp.Services.I
 builder.Services.AddScoped<WebApp.Services.Implementations.KycStorageService>();
 builder.Services.AddScoped<TwilioService>();
 builder.Services.AddHttpClient<SumsubService>();
+
+// Startup validation: if IdentityV2 is enabled, validate Sumsub secrets are configured.
+// Production must never launch a partially configured identity flow.
+var identityV2Enabled = builder.Configuration.GetValue<bool>("FeatureFlags:IdentityV2Enabled", false);
+if (identityV2Enabled)
+{
+    var sumsubAppToken = builder.Configuration["Sumsub:AppToken"];
+    var sumsubWebhookSecret = builder.Configuration["Sumsub:WebhookSecret"];
+    var sumsubBaseUrl = builder.Configuration["Sumsub:BaseUrl"];
+
+    var missingSecrets = new List<string>();
+    if (string.IsNullOrWhiteSpace(sumsubAppToken) || sumsubAppToken.StartsWith("<"))
+        missingSecrets.Add("Sumsub:AppToken");
+    if (string.IsNullOrWhiteSpace(sumsubWebhookSecret) || sumsubWebhookSecret.StartsWith("<"))
+        missingSecrets.Add("Sumsub:WebhookSecret");
+    if (string.IsNullOrWhiteSpace(sumsubBaseUrl))
+        missingSecrets.Add("Sumsub:BaseUrl");
+
+    if (missingSecrets.Count > 0 && builder.Environment.IsProduction())
+    {
+        var msg = $"FATAL: IdentityV2Enabled=true but required Sumsub configuration is missing or contains placeholder values: {string.Join(", ", missingSecrets)}. " +
+                  "Production cannot launch a partially configured identity verification flow.";
+        Log.Fatal(msg);
+        throw new InvalidOperationException(msg);
+    }
+    else if (missingSecrets.Count > 0)
+    {
+        Log.Warning("IdentityV2Enabled=true but Sumsub configuration missing/placeholder: {MissingSecrets}. Allowed in non-production only.",
+            string.Join(", ", missingSecrets));
+    }
+    else
+    {
+        Log.Information("IdentityV2 enabled with valid Sumsub configuration. BaseUrl={BaseUrl}", sumsubBaseUrl);
+    }
+}
 
 // Company Services: 9-phase entrepreneur onboarding system
 builder.Services.AddCompanyServices(builder.Configuration);
@@ -847,7 +885,7 @@ using (var scope = app.Services.CreateScope())
     try
     {
         var db = scope.ServiceProvider.GetRequiredService<MongoDB.Driver.IMongoDatabase>();
-        var users = db.GetCollection<ApplicationUser>("users");
+        var users = db.GetCollection<ApplicationUser>("applicationUsers");
         var filter = MongoDB.Driver.Builders<ApplicationUser>.Filter.Eq("Onboarding", MongoDB.Bson.BsonNull.Value);
         var update = MongoDB.Driver.Builders<ApplicationUser>.Update.Set(u => u.Onboarding, new OnboardingState { Phase = 0 });
         var result = await users.UpdateManyAsync(filter, update);

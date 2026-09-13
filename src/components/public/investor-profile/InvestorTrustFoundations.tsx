@@ -6,7 +6,6 @@ export default function InvestorTrustFoundations() {
   const identitySteps = [
     'Identity Document',
     'Email / Phone Verification',
-    'Face / Identity Check',
     'Address Context (when required)',
   ];
 
