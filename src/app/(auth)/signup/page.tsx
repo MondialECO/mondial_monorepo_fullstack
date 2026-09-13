@@ -36,13 +36,13 @@ export default function Signup() {
 
   useEffect(() => {
     const roleId = localStorage.getItem(SIGNUP_ROLE_STORAGE_KEY);
+    const resolvedRole = roleId || "creator";
+    setSelectedRoleId(resolvedRole);
     if (!roleId) {
-      router.replace("/signup/role");
-      return;
+      localStorage.setItem(SIGNUP_ROLE_STORAGE_KEY, resolvedRole);
     }
-    setSelectedRoleId(roleId);
     setRoleHydrated(true);
-  }, [router]);
+  }, []);
 
   const roleLabel = useMemo(
     () => formatRoleLabel(selectedRoleId ?? "creator"),
@@ -98,38 +98,9 @@ export default function Signup() {
     );
   }
 
-  // Show "Already logged in" message with redirect and logout options
+  // If already logged in, redirect silently (useEffect handles it)
   if (user) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center px-4 py-8">
-        <div className="w-full max-w-md bg-card rounded-2xl shadow-2xl p-8 space-y-6">
-          <div className="text-center space-y-2">
-            <h1 className="text-3xl font-bold text-foreground">
-              Already logged in
-            </h1>
-            <p className="text-muted-foreground">
-              Welcome back, {user.name}!
-            </p>
-          </div>
-          <div className="space-y-3">
-            <Button
-              onClick={() => router.replace(resolvePostLoginRedirect(user))}
-              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
-              size="lg"
-            >
-              Go to Dashboard
-            </Button>
-            <Button
-              onClick={logout}
-              className="w-full bg-gray-200 hover:bg-gray-300 text-gray-900 font-semibold dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-100"
-              size="lg"
-            >
-              Logout
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   if (!roleHydrated) {
