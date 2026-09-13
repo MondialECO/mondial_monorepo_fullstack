@@ -429,32 +429,52 @@ namespace WebApp.Controllers
             // the OnboardingGuard then forces the OTP step before any
             // /dashboard/* route opens up.
             user.EmailConfirmed = true;
+
+            var roles = new[] { canonicalRole };
+            var token = JwtTokenHelper.GenerateToken(
+                user.Id.ToString(),
+                roles,
+                _configuration["JwtSettings:Key"],
+                _configuration["JwtSettings:Issuer"],
+                _configuration["JwtSettings:Audience"]
+            );
+
+            var refreshToken = JwtTokenHelper.GenerateRefreshToken();
+            var refreshTokenEntity = new RefreshToken
+            {
+                Token = refreshToken,
+                ExpiresAt = DateTime.UtcNow.AddDays(7),
+                CreatedByIp = HttpContext.Connection.RemoteIpAddress?.ToString() ?? ""
+            };
+
+            user.RefreshToken = refreshTokenEntity;
+            user.LastLogin = DateTime.UtcNow;
             await _userManager.UpdateAsync(user);
 
             _audit.Record("register", user.Email!, true, new { role = canonicalRole });
 
-            // Generate short-lived onboarding token (15 min) for secure post-signup flow
-            var onboardingToken = JwtTokenHelper.GenerateOnboardingToken(
-                user.Id.ToString(),
-                user.Email,
-                canonicalRole,
-                _configuration["JwtSettings:Key"] ?? "fallback-secret",
-                _configuration["JwtSettings:Issuer"] ?? "mondial",
-                _configuration["JwtSettings:Audience"] ?? "mondial-app",
-                expiryMinutes: 15
-            );
-
             return StatusCode(201, new
             {
                 success = true,
-                message = "User registered. Continue with Phase 1 verification.",
-                data = new { user.Id, user.Email, onboardingToken }
+                message = "User registered successfully.",
+                data = new
+                {
+                    token,
+                    user = new
+                    {
+                        Id = user.Id,
+                        Name = user.Name,
+                        Roles = roles,
+                        Onboarding = new { phase = 0 }
+                    }
+                }
             });
         }
 
         // POST: api/auth/validate-onboarding-token
-        // Public endpoint to validate the short-lived onboarding token returned from /register.
-        // Used by the post-signup confirmation page to securely display email + role.
+        // Legacy endpoint to validate the short-lived onboarding token.
+        // Retained for backward compatibility; new registration flows issue canonical session tokens directly to /onboarding.
+        [Obsolete("Legacy endpoint. New registration flow issues canonical session tokens directly to /onboarding.")]
         [HttpPost("validate-onboarding-token")]
         [AllowAnonymous]
         [EnableRateLimiting("auth")]

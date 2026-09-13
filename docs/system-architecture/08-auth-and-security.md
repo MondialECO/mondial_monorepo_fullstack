@@ -4,8 +4,18 @@ This document specifies the end-to-end authentication, session persistence, role
 
 ---
 
-## 1. Authentication Lifecycle
+## 1. Authentication & Registration Lifecycle
 
+### A. User Registration (`POST /api/auth/register`)
+1. User selects role at `/signup/role` and enters credentials at `/signup`.
+2. Backend creates `ApplicationUser`, sets `EmailConfirmed = true`, assigns role claim.
+3. Backend generates canonical 8-hour access JWT (`token`) and 7-day `refreshToken` (identical to login).
+4. Returns HTTP 201 with `{ token, user = { id, name, roles, onboarding: { phase: 0 } } }`.
+5. Frontend `AuthProvider` establishes session (`establishSession`), sets `isBackendVerified = true`, and stores token in `localStorage`.
+6. Frontend executes `router.replace("/onboarding")` — zero JWT or tokens in query strings.
+7. `<AuthGuard>` validates authenticated session and permits access to universal Phase 1 onboarding hub.
+
+### B. User Login (`POST /api/auth/login`)
 ```
 [ User Browser ]
        │

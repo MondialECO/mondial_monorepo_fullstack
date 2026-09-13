@@ -70,6 +70,7 @@ namespace WebApp.Middleware
             return Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
         }
 
+        [Obsolete("Legacy onboarding token generation. Registration now issues canonical session tokens directly.")]
         public static string GenerateOnboardingToken(
             string userId,
             string email,
@@ -102,6 +103,7 @@ namespace WebApp.Middleware
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
 
+        [Obsolete("Legacy onboarding token validation. Registration now issues canonical session tokens directly.")]
         public static ClaimsPrincipal ValidateOnboardingToken(
             string token,
             string secretKey,
@@ -131,7 +133,7 @@ namespace WebApp.Middleware
                 );
                 return principal;
             }
-            catch (SecurityTokenException)
+            catch (Exception)
             {
                 return null;
             }

@@ -30,6 +30,7 @@ type AuthContextType = {
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   refreshAuthMe: () => Promise<void>;
+  establishSession: (payload: { token: string; user: any }) => Promise<User>;
 };
 
 function parseAuthorizedRoles(apiRoles: unknown): UserRole[] {
@@ -242,6 +243,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const establishSession = async (payload: { token: string; user: any }): Promise<User> => {
+    const { token, user: apiUser } = payload ?? {};
+
+    if (!token || !apiUser) {
+      throw new Error('Invalid authentication payload');
+    }
+
+    const apiRoles = apiUser.roles ?? apiUser.Roles ?? [];
+    const parsedRoles = parseAuthorizedRoles(apiRoles);
+
+    // FAIL CLOSED: Reject session if roles are missing
+    if (parsedRoles.length === 0) {
+      throw new Error('User has no valid role assigned. Please contact support.');
+    }
+
+    // Use strict role validation; reject unknown roles
+    const resolvedRole = resolvePrimaryRole(apiRoles) ?? parsedRoles[0];
+    const onboardingPhase = readOnboardingPhase(apiUser);
+
+    const sessionUser: User = {
+      id: apiUser.id ?? apiUser.Id,
+      name: apiUser.name ?? apiUser.Name,
+      role: resolvedRole,
+      roles: parsedRoles,
+      onboardingPhase,
+    };
+
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(sessionUser));
+
+    setUser(sessionUser);
+    setToken(token);
+    setIsBackendVerified(true);
+    setIsVerifyingBackend(false);
+
+    return sessionUser;
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -253,6 +292,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         login,
         logout,
         refreshAuthMe,
+        establishSession,
       }}
     >
       {children}
