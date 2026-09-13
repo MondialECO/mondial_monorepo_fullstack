@@ -1,0 +1,140 @@
+# Mondial ECO — Comprehensive API Map & Endpoint Inventory
+
+The Mondial ECO backend exposes 579 API endpoints managed across 51 controllers. Every endpoint follows standard REST conventions and returns a standardized response envelope (`ApiResponse<T>` or `ApiResponse`).
+
+---
+
+## 1. API Domain Overview
+
+| Domain Module | Primary Controllers | Total Endpoints | Primary Role / Access Gate |
+|---|---|---|---|
+| **Authentication & Onboarding** | `AuthController`, `OnboardingController` | 28 | Anonymous / Authenticated User |
+| **Universal Profile & Verification** | `ProfileController`, `VarificationController`, `PrivacyController` | 19 | Authenticated User |
+| **Creator Incubation & Phases 2–6** | `Creator*Controller`, `CreatorIdeas*`, `CreatorJourney*`, `BusinessIdea*` | 68 | Creator Role |
+| **Entrepreneur & Company Building** | `CompanyController` (Phases 2–10) | 105 | Entrepreneur / Founder Role |
+| **Investor Discovery & Diligence** | `Investor*Controller`, `InvestorDiligence*`, `InvestorPhase*` | 35 | Investor Role |
+| **Service Provider Platform** | `ServiceProvider*`, `ServiceCatalog*`, `Leads*`, `Workroom*`, `Earnings*` | 100 | Service Provider / Client |
+| **Marketplace (Projects & Services)**| `MarketplaceController`, `MarketplaceProjectsController` | 16 | Public Browse / Private Buyer |
+| **Deals, Buyouts & Cap Tables** | `DealsController`, `TransactionController` | 83 | Creator, Founder, Investor |
+| **Messaging & Notifications** | `ChatController`, `NotificationController` | 10 | Authenticated User |
+| **AI Intelligence & Sessions** | `AiController`, `Clarifier*`, `BusinessPlan*`, `Forecast*`, `IdeaGenerator*`| 22 | Authenticated User (Creator focus) |
+| **Admin & Governance** | `Admin*Controllers`, `BackgroundJob*`, `Platform*`, `Analytics*` | 93 | Admin / SuperAdmin Role |
+| **TOTAL** | **51 Controllers** | **579** | — |
+
+---
+
+## 2. API Domain Breakdown & Detailed Endpoints
+
+### A. Authentication & Onboarding (28 Endpoints)
+- **`AuthController`** (`/api/auth`):
+  - `POST /api/auth/register`: Public user registration with default role assignment.
+  - `POST /api/auth/login`: Issue JWT access token (HMAC-SHA256, 8-hour expiry). Rate limited to 5 req/min per IP.
+  - `GET /api/auth/me`: Universal session validator, returns user ID, canonical roles, and onboarding phase.
+  - `POST /api/auth/refresh-token`: Exchange valid bearer token for a refreshed session token.
+  - `POST /api/auth/logout`: Server-side notification of logout; client wipes localStorage.
+  - `POST /api/auth/forgot-password`, `POST /api/auth/reset-password`: Token-based credential recovery.
+  - `GET /api/auth/confirm-email`, `POST /api/auth/resend-confirmation-email`: Email verification.
+  - `GET /api/auth/roles`: Returns all valid roles in the platform ecosystem.
+- **`OnboardingController`** (`/api/onboarding`):
+  - `GET /api/onboarding/status`: Current Phase 1 gate status (0 = Incomplete, 1 = Certified).
+  - `POST /api/onboarding/step`: Save incremental onboarding step data.
+  - `POST /api/onboarding/upload-document`: Upload address, tax, or professional license document.
+  - `POST /api/onboarding/upload-identity-documents`: Multipart identity upload (front/back photos) routed to `KycStorageService`.
+  - `POST /api/onboarding/complete`: Finalize Phase 1, updating `ApplicationUser.Onboarding.Phase = 1`.
+
+### B. Creator System & Phases 2–6 (68 Endpoints)
+- **`CreatorIdeasController` & `CreatorJourneyController`** (`/api/creator/ideas`, `/api/creator/journey`):
+  - `GET /api/creator/ideas`: List all created ideas owned by the authenticated Creator.
+  - `POST /api/creator/ideas`: Create a new multi-idea entry with active journey anchoring.
+  - `GET /api/creator/ideas/{id}`: Detailed idea entity including output snapshots.
+  - `GET /api/creator/journey`: Derived-status engine returning active phase completion state.
+- **`CreatorPhase2Controller`** (`/api/creator/phase-2`):
+  - `GET /api/creator/phase-2/concept-name`: Query generated concept names.
+  - `POST /api/creator/phase-2/branding`: Save color palette, typography, and visual tone.
+  - `POST /api/creator/phase-2/logo`: Upload and attach brand logo asset.
+  - `GET /api/creator/phase-2/hire-designer`: Find matched Service Providers for design work.
+- **`CreatorPhase3Controller`** (`/api/creator/phase-3`):
+  - `POST /api/creator/phase-3/business-plan`: Save finalized multi-section business plan.
+  - `POST /api/creator/phase-3/forecast`: Persist financial model (revenue, opex, margins).
+  - `POST /api/creator/phase-3/compliance`: Store legal and regulatory checklist answers.
+- **`CreatorPhase4Controller`** (`/api/creator/phase-4`):
+  - `GET /api/creator/phase-4/offer-pricing`: Calculate recommended asset valuation using market benchmarks.
+- **`CreatorPhase5Controller`** (`/api/creator/phase-5`):
+  - `POST /api/creator/phase-5/crossroads`: Submit decision path (`FULL_BUYOUT`, `EQUITY_PARTNERSHIP`, `BUILD_YOURSELF`).
+- **`CreatorPhase6Controller`** (`/api/creator/phase-6`):
+  - `POST /api/creator/phase-6/level-up`: Transition idea into an Entrepreneur profile and initialize Company record.
+
+### C. Entrepreneur & Company Building System (105 Endpoints)
+- **`CompanyController`** (`/api/company`):
+  - `GET /api/company/my-company`: Get company entity owned by the calling founder.
+  - `POST /api/company`: Register new legal company entity.
+  - `PUT /api/company/{id}/phase`: Advance entrepreneur phase (Phases 1 through 10).
+  - `GET /api/company/{id}/traction`: Read traction metrics (ARR, MRR, user growth).
+  - `POST /api/company/{id}/traction`: Record monthly financial and operational traction.
+  - `GET /api/company/{id}/cap-table`: Retrieve latest version of shareholder Cap Table (`Phase4CapTable`).
+  - `POST /api/company/{id}/cap-table/grant`: Create new ESOP grant or advisor equity.
+  - `GET /api/company/{id}/valuation`: Execute algorithmic valuation (`ValuationEngine`).
+  - `POST /api/company/{id}/data-room/document`: Upload diligence document to data room.
+  - `GET /api/company/{id}/investor-matches`: Read algorithmic matches from `InvestorMatcher`.
+
+### D. Investor Operations & Diligence (35 Endpoints)
+- **`InvestorController` & `InvestorPhaseController`** (`/api/investor`):
+  - `GET /api/investor/profile`: Investor thesis, check size, and preferred sectors.
+  - `POST /api/investor/profile`: Save and update investment parameters.
+  - `GET /api/investor/matches`: Incoming company opportunities sorted by compatibility score.
+  - `GET /api/investor/pipeline`: Active deals grouped by deal pipeline stage.
+  - `GET /api/investor/portfolio`: Confirmed investment holdings (`CompanyPortfolioHolding`).
+- **`InvestorDiligenceController`** (`/api/investor/diligence`):
+  - `POST /api/investor/diligence/{companyId}/nda`: Accept digital NDA for data room access.
+  - `GET /api/investor/diligence/{companyId}/dataroom`: Read diligence documents after NDA verification.
+  - `POST /api/investor/diligence/{companyId}/question`: Submit diligence inquiry to founder.
+
+### E. Service Provider Platform (100 Endpoints)
+- **`ServiceProviderController`** (`/api/serviceprovider`):
+  - `POST /api/serviceprovider/verification`: Submit professional credentials and identity proof.
+  - `GET /api/serviceprovider/profile`: Read split profile (`ServiceProviderProfileRecord`).
+- **`ServiceCatalogController`** (`/api/services`):
+  - `GET /api/services`: Public catalog search with category, tier, and price filters.
+  - `POST /api/services`: Create new service listing with tiered packages (Basic, Standard, Premium).
+- **`LeadsController`** (`/api/leads`):
+  - `POST /api/leads/briefs`: Client posts request for proposal.
+  - `POST /api/leads/proposals`: Provider submits custom offer to client brief.
+- **`WorkroomController`** (`/api/workroom`):
+  - `GET /api/workroom/{id}`: Workroom engagement state machine, milestones, and contracts.
+  - `POST /api/workroom/{id}/milestones/{milestoneId}/deliver`: Submit work for review.
+  - `POST /api/workroom/{id}/milestones/{milestoneId}/accept`: Client approves deliverable (releases escrow).
+  - `POST /api/workroom/{id}/upload`: Upload project assets with provider-private access flag.
+- **`EarningsController`** (`/api/serviceprovider/earnings`):
+  - `GET /api/serviceprovider/earnings/summary`: Total earned, in-escrow balance, and available payouts.
+  - `POST /api/serviceprovider/earnings/payout`: Request withdrawal to connected account.
+
+### F. Deals, Negotiations & Buyouts (83 Endpoints)
+- **`DealsController`** (`/api/deals`):
+  - `POST /api/deals/buyout/initiate`: Entrepreneur submits Full Buyout offer on Creator idea.
+  - `POST /api/deals/equity/initiate`: Initiate Co-founder equity negotiation.
+  - `POST /api/deals/{id}/revision`: Submit term sheet counter-offer (swapping `CurrentTurn`).
+  - `POST /api/deals/{id}/accept-terms`: Counterparty accepts live term sheet revision.
+  - `POST /api/deals/{id}/sign`: Sign agreement (tracks bilateral `CreatorSigned` / `InvestorSigned`).
+  - `POST /api/deals/{id}/close`: Founder closes deal upon payment confirmation.
+  - `POST /api/deals/{id}/handover`: Final asset handover from Creator to Entrepreneur.
+  - `POST /api/deals/{id}/build-company`: Automatically initialize a new Company from acquired IP.
+
+### G. AI Subsystem (22 Endpoints)
+- **`AiController`** (`/api/ai`):
+  - `GET /api/ai/usage`: Query consumed AI credits and historical model invocations.
+- **`ClarifierController`** (`/api/ai/clarifier`):
+  - `POST /api/ai/clarifier/start`: Enqueue asynchronous Idea Clarifier job on Hangfire `ai` queue.
+  - `GET /api/ai/clarifier/{sessionId}`: Read session status and structured clarity dimensions.
+- **`BusinessPlanController`** (`/api/ai/business-plan`):
+  - `POST /api/ai/business-plan/start`: Enqueue multi-section business plan generation.
+  - `GET /api/ai/business-plan/{sessionId}`: Read generated executive summary, market analysis, and GTM.
+- **`ForecastController`** (`/api/ai/forecast`):
+  - `POST /api/ai/forecast/start`: Enqueue financial projection generation.
+
+### H. Platform Administration & Governance (93 Endpoints)
+- **`AdminController` & Sub-Controllers** (`/api/admin/*`):
+  - `GET /api/admin/users`: Search, view, and assign roles to platform accounts.
+  - `POST /api/admin/verifications/{id}/approve`: Approve KYC or Service Provider Tier certification.
+  - `GET /api/admin/marketplace`: Review pending project listings and service packages.
+  - `GET /api/admin/audit`: Query tamper-evident `AdminAuditLogs`.
+  - `GET /api/admin/system/queues`: Monitor Hangfire queue depth and failed job states.

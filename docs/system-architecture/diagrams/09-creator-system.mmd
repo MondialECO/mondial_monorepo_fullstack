@@ -1,0 +1,120 @@
+graph TD
+    %% Creator Complete Architecture System Diagram
+
+    subgraph INGRESS["Creator Entry & Session"]
+        LOGIN["/login & /onboarding"]
+        DASH["/dashboard/creator<br/>Active Ideas Hub"]
+    end
+
+    subgraph PHASE1["Phase 1: Verification & Identity"]
+        P1_GATE["Universal Onboarding Gate<br/>Sumsub KYC & ID Verification"]
+        P1_USER[("MongoDB: applicationUsers<br/>Onboarding.Phase = 1")]
+    end
+
+    subgraph PHASE2["Phase 2: Idea Discovery & Concept Refining"]
+        P2_START["/dashboard/creator/phase-2"]
+        P2_AI_CLAR["AI Clarifier Assistant<br/>Clarity Score & Dimensions"]
+        P2_NAME["Concept Name Generator"]
+        P2_BRAND["Branding Studio & Palette"]
+        P2_LOGO["Logo Tool & Asset Upload"]
+        P2_DESIGNER["Hire Designer Matching<br/>(SP Match Engine)"]
+        
+        SESS_CLAR[("ClarifierSessions Collection<br/>Target: CreatorIdea anchor")]
+    end
+
+    subgraph PHASE3["Phase 3: Business Planning & Financial Projections"]
+        P3_START["/dashboard/creator/phase-3"]
+        P3_PLAN["AI Business Plan Generator<br/>Executive Summary, TAM/SAM, GTM"]
+        P3_FORECAST["AI Financial Forecast Engine<br/>5-Year Revenue, OPEX, Margins"]
+        P3_COMPLY["Compliance & Regulatory Checklist"]
+        P3_FORM["Formation Readiness"]
+
+        SESS_PLAN[("BusinessPlanSessions Collection")]
+        SESS_FCST[("ForecastSessions Collection")]
+    end
+
+    subgraph PHASE4["Phase 4: Valuation & Offer Pricing"]
+        P4_PRICE["/dashboard/creator/offer-pricing"]
+        P4_ENGINE["Valuation Engine & Benchmarks<br/>Market Multiples (Phase4Requirements)"]
+        P4_VAULT["IP Vault & Document Storage<br/>/dashboard/creator/ip-vault"]
+
+        DB_VAL[("IpValuations Collection")]
+        DB_BENCH[("MarketBenchmarks Collection")]
+    end
+
+    subgraph PHASE5["Phase 5: The Crossroads Decision"]
+        P5_CROSS["/dashboard/creator/crossroads"]
+        subgraph PATH_A_GROUP["Path A: Marketplace Listing (Sell / Partner)"]
+            OFFER_BUYOUT["Offer: Full Buyout<br/>(100% IP Sale for Cash)"]
+            OFFER_EQUITY["Offer: Co-Founder / Equity<br/>(10–49% Retained Equity)"]
+            MKT_RULE["*Marketplace Offer Types: ONLY Buyout & Equity*"]
+        end
+        subgraph PATH_B_GROUP["Path B: Build Yourself (Private Venture Spinout)"]
+            BUILD_VENTURE["Venture Formation & Seed Target<br/>*(NOT a Marketplace Offer)*"]
+        end
+    end
+
+    subgraph PHASE6["Phase 6: Level Up & Market Execution"]
+        P6_MKT["Push to Project Marketplace<br/>(Published to CreatorIdeas)"]
+        P6_SALES["Buyout Negotiation Room<br/>/dashboard/creator/sales/[dealId]"]
+        P6_PART["Co-Founder Negotiation Room<br/>/dashboard/creator/partnerships/[dealId]"]
+        P6_SPINOUT["Level Up Spinout<br/>Initialize Company Record"]
+
+        DB_DEALS[("DealExecutions Collection<br/>DealType: FULL_BUYOUT or EQUITY_PARTNERSHIP")]
+        DB_COMPANY[("Companies Collection")]
+    end
+
+    subgraph CANONICAL_STORES["Core Canonical State"]
+        IDEA_STORE[("CreatorIdeas Collection<br/>Title, Sector, OutputSnapshots, Version")]
+        JOURNEY_STORE[("CreatorJourneys Collection<br/>UserId, ActiveIdeaId, Derived Phase Status")]
+    end
+
+    %% Flow connections
+    LOGIN --> P1_GATE
+    P1_GATE --> P1_USER
+    P1_USER --> DASH
+
+    DASH --> P2_START
+    P2_START --> P2_AI_CLAR
+    P2_AI_CLAR --> SESS_CLAR
+    SESS_CLAR --> IDEA_STORE
+    P2_START --> P2_NAME
+    P2_START --> P2_BRAND
+    P2_START --> P2_LOGO
+    P2_START --> P2_DESIGNER
+
+    P2_START --> P3_START
+    P3_START --> P3_PLAN
+    P3_PLAN --> SESS_PLAN
+    P3_START --> P3_FORECAST
+    P3_FORECAST --> SESS_FCST
+    P3_START --> P3_COMPLY
+    P3_START --> P3_FORM
+    SESS_PLAN --> IDEA_STORE
+    SESS_FCST --> IDEA_STORE
+
+    P3_START --> P4_PRICE
+    P4_PRICE --> P4_ENGINE
+    P4_ENGINE --> DB_BENCH
+    P4_PRICE --> DB_VAL
+    P4_PRICE --> P4_VAULT
+
+    P4_PRICE --> P5_CROSS
+    P5_CROSS --> PATH_A
+    P5_CROSS --> PATH_B
+    P5_CROSS --> PATH_C
+
+    PATH_A --> P6_MKT
+    PATH_B --> P6_MKT
+    P6_MKT --> P6_SALES
+    P6_MKT --> P6_PART
+
+    P6_SALES --> DB_DEALS
+    P6_PART --> DB_DEALS
+
+    PATH_C --> P6_SPINOUT
+    P6_PART -->|Partnership Activated| P6_SPINOUT
+    P6_SPINOUT --> DB_COMPANY
+
+    JOURNEY_STORE -.->|Tracks Progress| DASH
+    JOURNEY_STORE -.->|Points to Active| IDEA_STORE

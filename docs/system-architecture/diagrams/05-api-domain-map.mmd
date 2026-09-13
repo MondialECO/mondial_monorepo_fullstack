@@ -1,0 +1,86 @@
+graph TD
+    %% API Endpoints Grouped by Functional Domains (51 Controllers, 579 Endpoints)
+
+    API_ROOT["Mondial ECO API Gateway<br/>Base: /api (579 Endpoints)"]
+
+    subgraph DOM_AUTH["Auth & Identity Domain (28 Endpoints)"]
+        C_AUTH["AuthController (/api/auth)<br/>15 Endpoints: login, register, me, refresh, password"]
+        C_ONB["OnboardingController (/api/onboarding)<br/>13 Endpoints: kyc, documents, steps, complete"]
+    end
+
+    subgraph DOM_CREATOR["Creator System Domain (68 Endpoints)"]
+        C_CR_IDEAS["CreatorIdeasController (/api/creator/ideas)<br/>3 Endpoints: list, create, get"]
+        C_CR_JRNY["CreatorJourneyController (/api/creator/journey)<br/>5 Endpoints: progress, phase states"]
+        C_CR_P2["CreatorPhase2Controller (/api/creator/phase-2)<br/>11 Endpoints: name, branding, logo, hire designer"]
+        C_CR_P3["CreatorPhase3Controller (/api/creator/phase-3)<br/>9 Endpoints: business plan, forecast, compliance"]
+        C_CR_P4["CreatorPhase4Controller (/api/creator/phase-4)<br/>6 Endpoints: offer pricing, resources"]
+        C_CR_P5["CreatorPhase5Controller (/api/creator/phase-5)<br/>8 Endpoints: crossroads, path selection"]
+        C_CR_P6["CreatorPhase6Controller (/api/creator/phase-6)<br/>4 Endpoints: level up, spin out"]
+        C_CR_CORE["CreatorController & Documents<br/>17 Endpoints: asset uploads, project studio"]
+        C_BIZ_IDEA["BusinessIdeaController (Legacy)<br/>5 Endpoints: backward compatibility"]
+    end
+
+    subgraph DOM_ENTREPRENEUR["Entrepreneur & Company Domain (105 Endpoints)"]
+        C_COMPANY["CompanyController (/api/company)<br/>105 Endpoints: setup, traction, financials, Cap Table, valuation, data room, pitch deck"]
+    end
+
+    subgraph DOM_INVESTOR["Investor Domain (35 Endpoints)"]
+        C_INV_CORE["InvestorController (/api/investor)<br/>8 Endpoints: thesis, portfolio, incoming matches"]
+        C_INV_PHASE["InvestorPhaseController (/api/investor/phase)<br/>17 Endpoints: pipeline stages, KYC"]
+        C_INV_DLG["InvestorDiligenceController (/api/investor/diligence)<br/>10 Endpoints: NDA, data room questions"]
+    end
+
+    subgraph DOM_PROVIDER["Service Provider Platform (100 Endpoints)"]
+        C_SP_CORE["ServiceProviderController (/api/serviceprovider)<br/>27 Endpoints: verification, profile, media"]
+        C_SP_CAT["ServiceCatalogController (/api/services)<br/>21 Endpoints: listings, packages, FAQs"]
+        C_SP_LEADS["LeadsController (/api/leads)<br/>23 Endpoints: client briefs, proposals"]
+        C_SP_WORK["WorkroomController (/api/workroom)<br/>22 Endpoints: milestones, deliverables, escrow"]
+        C_SP_EARN["EarningsController (/api/serviceprovider/earnings)<br/>7 Endpoints: invoices, balances, payouts"]
+    end
+
+    subgraph DOM_DEALS["Deals & Transactions Domain (83 Endpoints)"]
+        C_DEALS["DealsController (/api/deals)<br/>79 Endpoints: Buyout, Equity Partnership, Funding, Revisions, Signing, Handover"]
+        C_TX["TransactionController (/api/transactions)<br/>4 Endpoints: transaction ledgers"]
+    end
+
+    subgraph DOM_MARKETPLACE["Marketplace Domain (16 Endpoints)"]
+        C_MKT_PRJ["MarketplaceProjectsController (/api/marketplace/projects)<br/>14 Endpoints: public project feed, interest"]
+        C_MKT_PUB["MarketplaceController (/api/marketplace)<br/>2 Endpoints: category aggregates"]
+    end
+
+    subgraph DOM_AI["AI Intelligence Domain (22 Endpoints)"]
+        C_AI_CORE["AiController (/api/ai)<br/>5 Endpoints: credit balances, usage logs"]
+        C_AI_CLAR["ClarifierController (/api/ai/clarifier)<br/>3 Endpoints: start, get session"]
+        C_AI_PLAN["BusinessPlanController (/api/ai/business-plan)<br/>7 Endpoints: start, edit, rewrite"]
+        C_AI_FCST["ForecastController (/api/ai/forecast)<br/>5 Endpoints: start, customize"]
+        C_AI_GEN["IdeaGeneratorController (/api/ai/idea-generator)<br/>2 Endpoints: generate initial ideas"]
+    end
+
+    subgraph DOM_REALTIME["Messaging & Notifications (10 Endpoints)"]
+        C_CHAT["ChatController (/api/chat)<br/>6 Endpoints: conversations, messages"]
+        C_NOTIF["NotificationController (/api/notifications)<br/>4 Endpoints: get unread, mark read"]
+    end
+
+    subgraph DOM_ADMIN["Admin & Platform Governance (93 Endpoints)"]
+        C_ADM_CORE["AdminController (/api/admin)<br/>12 Endpoints: user management, stats"]
+        C_ADM_COMM["AdminCommerceController (/api/admin/commerce)<br/>16 Endpoints: billing, platform fees"]
+        C_ADM_VER["VarificationController & SP Admin<br/>8 Endpoints: verification queues"]
+        C_ADM_AUD["AdminAuditController & Compliance<br/>7 Endpoints: audit logs, cases"]
+        C_ADM_SYS["AdminSystemController & Jobs<br/>17 Endpoints: Hangfire, health, system settings"]
+        C_ADM_MKT["AdminMarketplaceController<br/>9 Endpoints: listing moderation"]
+        C_ADM_PRIV["AdminPrivacyController & DataGov<br/>8 Endpoints: GDPR data requests"]
+        C_ANL["AnalyticsController & Recording<br/>10 Endpoints: impressions, CTR, analytics"]
+        C_REPORTS["AdminReportsController & Platform<br/>6 Endpoints: metric aggregation"]
+    end
+
+    %% Routing connections
+    API_ROOT --> DOM_AUTH
+    API_ROOT --> DOM_CREATOR
+    API_ROOT --> DOM_ENTREPRENEUR
+    API_ROOT --> DOM_INVESTOR
+    API_ROOT --> DOM_PROVIDER
+    API_ROOT --> DOM_DEALS
+    API_ROOT --> DOM_MARKETPLACE
+    API_ROOT --> DOM_AI
+    API_ROOT --> DOM_REALTIME
+    API_ROOT --> DOM_ADMIN

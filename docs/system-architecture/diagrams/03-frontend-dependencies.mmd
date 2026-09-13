@@ -1,0 +1,87 @@
+graph TD
+    %% Frontend Component & Architecture Dependency Map
+
+    subgraph ROUTE_TIER["1. Route & Page Entry Tier (src/app)"]
+        PAGE_CREATOR["Creator Route Pages<br/>src/app/dashboard/creator/*"]
+        PAGE_ENTREPRENEUR["Entrepreneur Route Pages<br/>src/app/dashboard/entrepreneur/*"]
+        PAGE_INVESTOR["Investor Route Pages<br/>src/app/dashboard/investor/*"]
+        PAGE_PROVIDER["Service Provider Route Pages<br/>src/app/dashboard/serviceprovider/*"]
+        PAGE_MARKETPLACE["Marketplace Route Pages<br/>src/app/marketplace/*"]
+        PAGE_ONBOARDING["Universal Onboarding Pages<br/>src/app/onboarding/*"]
+    end
+
+    subgraph FEATURE_TIER["2. Domain Feature Component Tier (src/components)"]
+        FC_CREATOR["Creator Feature Modules<br/>ClarifierModal, BrandingStudio, BusinessPlanDoc, CrossroadsPicker"]
+        FC_ENTREPRENEUR["Entrepreneur Feature Modules<br/>CapTableGrid, EsopCalculator, KpiTrackerTable, DiligenceVault"]
+        FC_INVESTOR["Investor Feature Modules<br/>TermSheetBuilder, PipelineKanban, DiligenceReviewer, PortfolioCard"]
+        FC_SP_DESIGN["Service Provider Custom System<br/>SpCard, SpMetricCard, SpPage, SpStatusBadge, WorkroomTimeline"]
+        FC_MARKET["Marketplace Components<br/>ProjectListingCard, ServiceListingCard, FilterDrawer, DealOfferModal"]
+        FC_SHARED["Shared Shell Components<br/>AppSidebar, Topbar, NotificationBell, ChatDrawer"]
+    end
+
+    subgraph PRIMITIVE_TIER["3. Base Primitives & UI Foundation"]
+        UI_SHADCN["shadcn/ui Primitives (src/components/ui)<br/>Button, Dialog, Input, DropdownMenu, Tabs, Tooltip, Table"]
+        TAILWIND_TOKENS["Tailwind 4 Design Tokens (src/styles/globals.css)<br/>Color HSL Variables, Dark Mode Class, Typography"]
+    end
+
+    subgraph HOOKS_STATE_TIER["4. Client State & Custom Hooks Tier"]
+        HOOKS_NAV["Navigation & Layout Hooks<br/>useBreadcrumb, use-mobile, use-toast"]
+        HOOKS_NOTIF["Real-time Hooks<br/>use-notifications, use-chat"]
+        HOOKS_QUERY["TanStack React Query Hooks<br/>useQuery, useMutation, queryClient cache"]
+        STORE_ZUSTAND["Zustand Local Stores<br/>Active project selection, draft edits"]
+    end
+
+    subgraph CLIENT_CONTRACT_TIER["5. API Transport & Contract Abstraction"]
+        LIB_AXIOS["Axios Interceptor Instance (src/lib/axios.ts)<br/>Bearer Token Injection & 401 Queue/Retry"]
+        LIB_ROLES["Role Enforcement Logic (src/lib/roles.ts)<br/>parseStrictUserRole, resolvePrimaryRole, normalizeUserRole"]
+        LIB_CONFIG["API Base Configuration (src/lib/api-config.ts)<br/>NEXT_PUBLIC_API_BASE_URL resolution"]
+        LIB_SIGNALR["SignalR Hub Connections<br/>NotificationHub & ChatHub client listeners"]
+        LIB_DEALS["Deal & Math Utilities (src/lib/deal-utils.ts)<br/>Term sheet derivation & currency formatters"]
+    end
+
+    subgraph AUTH_TIER["6. Global Authority & Context Tier"]
+        AUTH_PROVIDER["AuthProvider (src/app/_providers/AuthProvider.tsx)<br/>Universal Authority: User, Token, Roles, Phase 1 Gate"]
+        AUTH_GUARD["AuthGuard (src/components/layout/AuthGuard.tsx)<br/>Intercepts Route Transitions & Enforces Role Access"]
+    end
+
+    %% Dependencies Flow
+    PAGE_CREATOR --> FC_CREATOR
+    PAGE_ENTREPRENEUR --> FC_ENTREPRENEUR
+    PAGE_INVESTOR --> FC_INVESTOR
+    PAGE_PROVIDER --> FC_SP_DESIGN
+    PAGE_MARKETPLACE --> FC_MARKET
+    PAGE_ONBOARDING --> FC_SHARED
+
+    FC_CREATOR --> UI_SHADCN
+    FC_ENTREPRENEUR --> UI_SHADCN
+    FC_INVESTOR --> UI_SHADCN
+    FC_SP_DESIGN --> UI_SHADCN
+    FC_MARKET --> UI_SHADCN
+    FC_SHARED --> UI_SHADCN
+
+    UI_SHADCN --> TAILWIND_TOKENS
+
+    FC_CREATOR --> HOOKS_QUERY
+    FC_ENTREPRENEUR --> HOOKS_QUERY
+    FC_INVESTOR --> HOOKS_QUERY
+    FC_SP_DESIGN --> HOOKS_QUERY
+    FC_MARKET --> HOOKS_QUERY
+    FC_SHARED --> HOOKS_NOTIF
+
+    HOOKS_QUERY --> LIB_AXIOS
+    HOOKS_NOTIF --> LIB_SIGNALR
+
+    LIB_AXIOS --> LIB_CONFIG
+    LIB_AXIOS --> AUTH_PROVIDER
+    PAGE_CREATOR --> AUTH_GUARD
+    PAGE_ENTREPRENEUR --> AUTH_GUARD
+    PAGE_INVESTOR --> AUTH_GUARD
+    PAGE_PROVIDER --> AUTH_GUARD
+
+    AUTH_GUARD --> AUTH_PROVIDER
+    AUTH_GUARD --> LIB_ROLES
+    AUTH_PROVIDER --> LIB_AXIOS
+
+    %% Architectural flags
+    classDef isolated fill:#ffeaa7,stroke:#fdcb6e,stroke-width:2px,color:#2d3436;
+    class FC_SP_DESIGN isolated;

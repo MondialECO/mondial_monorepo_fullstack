@@ -1,0 +1,38 @@
+graph TD
+    %% Comprehensive Cross-Role Interaction Matrix
+
+    CREATOR["Creator Persona"]
+    ENTREPRENEUR["Entrepreneur Persona"]
+    INVESTOR["Investor Persona"]
+    PROVIDER["Service Provider Persona"]
+
+    subgraph MKT_EXCHANGE["Marketplace & Deal Exchange"]
+        BUYOUT_EX["Full Buyout Exchange<br/>(100% IP & Asset Acquisition)"]
+        EQUITY_EX["Co-Founder Equity Exchange<br/>(10-49% Common Shareholder Split)"]
+        FUNDING_EX["Venture Capital Round<br/>(Preferred Equity & SAFEs)"]
+        SERVICE_EX["Professional Workroom<br/>(Milestone Escrow Delivery)"]
+    end
+
+    %% Creator <-> Entrepreneur
+    CREATOR <-->|1. Full Buyout Acquisition| BUYOUT_EX
+    BUYOUT_EX <-->|Transfers IP to New Venture| ENTREPRENEUR
+
+    CREATOR <-->|2. Co-Founder Partnership| EQUITY_EX
+    EQUITY_EX <-->|Builds Cap Table Together| ENTREPRENEUR
+
+    %% Entrepreneur <-> Investor
+    ENTREPRENEUR <-->|3. Venture Capital Funding| FUNDING_EX
+    FUNDING_EX <-->|Capital Infusion & Equity Mark| INVESTOR
+
+    %% Entrepreneur <-> Service Provider
+    ENTREPRENEUR <-->|4. Legal / Dev / Growth Gigs| SERVICE_EX
+    SERVICE_EX <-->|Milestone Execution & Payment| PROVIDER
+
+    %% Creator <-> Service Provider
+    CREATOR <-->|5. Phase 2 Designer Hiring| SERVICE_EX
+
+    %% Real-time communication across all
+    CREATOR <-->|Direct Chat & Alerts| ENTREPRENEUR
+    ENTREPRENEUR <-->|Diligence Q&A & Messaging| INVESTOR
+    ENTREPRENEUR <-->|Workroom Messaging & Feedback| PROVIDER
+    CREATOR <-->|Design Brief Chat| PROVIDER

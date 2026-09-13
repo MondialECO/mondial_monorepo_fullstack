@@ -1,0 +1,54 @@
+sequenceDiagram
+    %% Entrepreneur Investment Round & Funding Lifecycle Sequence Diagram
+
+    autonumber
+    actor Founder as Entrepreneur (Founder)
+    actor Investor as Investor (Angel/VC)
+    participant CompanyAPI as CompanyController (/api/company)
+    participant InvestorAPI as InvestorController (/api/investor)
+    participant DealsAPI as DealsController (/api/deals)
+    participant Mongo as MongoDB
+    participant CapTableEngine as CapTableCalculator
+
+    %% 1. Company Setup & Funding Ask
+    Founder->>CompanyAPI: PUT /api/company/{id}/phase (Complete Phase 4 Cap Table)
+    Founder->>CompanyAPI: POST /api/company/{id}/funding-ask (Set €500k at €4.5M pre-money)
+    CompanyAPI->>Mongo: Update Companies.Status -> "fundraising"
+
+    %% 2. Investor Discovery & Match
+    Investor->>InvestorAPI: GET /api/investor/matches
+    InvestorAPI->>Mongo: Query InvestorMatches where MatchScore >= 70
+    InvestorAPI-->>Investor: Return Ranked Company Matches
+
+    %% 3. NDA & Data Room Diligence
+    Investor->>CompanyAPI: POST /api/investor/diligence/{companyId}/nda
+    CompanyAPI->>Mongo: Insert Phase6NdaAcceptance
+    Founder->>CompanyAPI: POST /api/company/{id}/data-room/approve-access
+    CompanyAPI->>Mongo: Insert Phase6AccessLog (Access Granted)
+    Investor->>CompanyAPI: GET /api/investor/diligence/{companyId}/dataroom
+    Investor-->>Investor: Audit Financial Model, ESOP, and Traction
+
+    %% 4. Term Sheet & Negotiation
+    Investor->>InvestorAPI: POST /api/investor/discovery/{companyId}/term-sheet/build
+    InvestorAPI->>DealsAPI: POST /api/deals/funding/initiate
+    DealsAPI->>Mongo: Insert DealExecution (DealType: "INVESTMENT_ROUND", Status: "initiated")
+    Founder->>DealsAPI: POST /api/deals/{id}/status (Status -> "negotiating")
+    Investor->>DealsAPI: POST /api/deals/{id}/revision (Adjust liquidation preference & board seat)
+    Founder->>DealsAPI: POST /api/deals/{id}/accept-terms (Status -> "agreement_sent")
+
+    %% 5. Bilateral Signatures
+    Investor->>DealsAPI: POST /api/deals/{id}/sign (Sign Investment Agreement)
+    Founder->>DealsAPI: POST /api/deals/{id}/sign (Countersign Investment Agreement)
+    DealsAPI->>Mongo: DealExecution.Status -> "signed" (BothSigned = true)
+
+    %% 6. Founder Close & Post-Deal Side Effects
+    Founder->>DealsAPI: POST /api/deals/{id}/close
+    DealsAPI->>Mongo: Transition DealExecution.Status -> "completed", ClosedAt = UtcNow
+    DealsAPI->>Mongo: Update InvestorMatches.Status -> "deal_won"
+    
+    %% 7. Post-Deal State Effects
+    DealsAPI->>Mongo: Insert CompanyPortfolioHolding (InvestorId, Amount, Equity%, Status: "active")
+    DealsAPI->>CapTableEngine: ApplyEquityDealToCapTableAsync
+    CapTableEngine->>Mongo: Issue New Preferred Shares -> Append Phase4CapTables (Version N+1)
+    CapTableEngine->>Mongo: Insert Phase4ShareIssuances & Phase4OwnershipHistories
+    DealsAPI->>Mongo: Recalculate Company.AmountRaised & Advance Company to Phase 10

@@ -1,0 +1,48 @@
+graph TD
+    %% Background Jobs & Asynchronous Schedulers Architecture
+
+    subgraph SCHEDULERS["Job Schedulers & Sinks"]
+        CRON_TIMER["Hangfire Cron Engine (Minutely Triggers)"]
+        API_TRIGGER["API Controller Enqueue Events (POST requests)"]
+        EMAIL_DISPATCH["EmailQueue Event Producer (IEmailQueue)"]
+    end
+
+    subgraph STORAGE_QUEUES["Job Stores & Queues (MongoDB)"]
+        QUEUE_DEFAULT[("Hangfire 'default' Queue<br/>Collections: hangfire.job, hangfire.state")]
+        QUEUE_AI[("Hangfire 'ai' Queue<br/>Dedicated worker queue for LLM jobs")]
+        QUEUE_EMAIL[("In-Memory Channel Queue<br/>EmailQueue.cs Singleton")]
+    end
+
+    subgraph WORKER_HOSTS["Execution Hosts & Workers"]
+        subgraph HANGFIRE_HOST["Hangfire Server (Program.cs lines 135-140)"]
+            WORKER_POOL["Worker Pool (WorkerCount = 4)<br/>Processes 'default' and 'ai' concurrently"]
+        end
+
+        subgraph HOSTED_SVC["ASP.NET Core IHostedService"]
+            EMAIL_WORKER["EmailBackgroundService.cs<br/>Continuous background loop"]
+        end
+    end
+
+    subgraph JOB_HANDLERS["Concrete Job Processors"]
+        JOB_BRIEF["ClientBriefExpirationJob.cs<br/>Checks ClientBriefs where ExpiresAt <= UtcNow<br/>Transitions Status -> 'expired'"]
+        JOB_WORKROOM["WorkroomConversionJob.cs<br/>Checks Proposals where Status == 'accepted'<br/>Instantiates WorkroomEngagement & Contracts"]
+        JOB_TIMED_RULES["WorkroomTimedRulesJob.cs<br/>Checks Deliverables past review deadline<br/>Auto-approves & releases escrow"]
+        JOB_AI_RUNNER["AiJobRunner.cs<br/>Executes IdeaClarifier, BusinessPlan, Forecast<br/>Calls OpenRouter & writes to CreatorIdeas"]
+        JOB_EMAIL_SENDER["EmailService.cs<br/>Dispatches SMTP via Zoho Mail (Port 587 TLS)"]
+    end
+
+    %% Wiring
+    CRON_TIMER -->|Trigger Every 60s| QUEUE_DEFAULT
+    API_TRIGGER -->|Enqueue Clarifier / Plan| QUEUE_AI
+    EMAIL_DISPATCH -->|Enqueue Outbound Mail| QUEUE_EMAIL
+
+    QUEUE_DEFAULT --> WORKER_POOL
+    QUEUE_AI --> WORKER_POOL
+    QUEUE_EMAIL --> EMAIL_WORKER
+
+    WORKER_POOL --> JOB_BRIEF
+    WORKER_POOL --> JOB_WORKROOM
+    WORKER_POOL --> JOB_TIMED_RULES
+    WORKER_POOL --> JOB_AI_RUNNER
+
+    EMAIL_WORKER --> JOB_EMAIL_SENDER

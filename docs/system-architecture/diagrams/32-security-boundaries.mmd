@@ -1,0 +1,56 @@
+graph TD
+    %% Security Boundaries & Multi-Tier Enforcement Map
+
+    subgraph BOUNDARY_LEVELS["Security Boundary Levels"]
+        B_PUB["1. Public Boundary<br/>Anonymous Visitors"]
+        B_AUTH["2. Authenticated Boundary<br/>Valid JWT Bearer Required"]
+        B_ROLE["3. Role-Authorized Boundary<br/>Specific Role in Roles[] Required"]
+        B_OWNER["4. Owner-Authorized Boundary<br/>Caller Must Own Resource"]
+        B_NDA["5. NDA-Gated Boundary<br/>Persisted Phase6NdaAcceptance Required"]
+        B_FOUNDER["6. Founder-Approved Boundary<br/>Explicit Access Permission by Founder"]
+        B_ADMIN["7. Admin-Only Boundary<br/>Policy: AdminAccess / SuperAdminOnly"]
+    end
+
+    subgraph FRONTEND_ENFORCEMENT["Frontend Enforcement (UI Gating Only)"]
+        FE_AUTH["AuthGuard.tsx: Redirects unauthenticated to /login"]
+        FE_GATE["AuthGuard.tsx: Redirects Phase 0 to /onboarding"]
+        FE_ROLE["AuthGuard.tsx: Redirects mismatched URL role to primary dashboard"]
+        FE_ADMIN["menu.ts: Hides Admin routes from non-admins"]
+    end
+
+    subgraph BACKEND_ENFORCEMENT["Backend Enforcement (Authoritative / Immutable)"]
+        MW_JWT["Kestrel JwtBearer Handler: Verifies signature & clock skew"]
+        ATTR_AUTH["[Authorize] & [Authorize(Roles = '...')] Attributes"]
+        ATTR_ADMIN["[Authorize(Policy = 'AdminAccess')]"]
+        SVC_OWNER["Service Ownership Check: AssertAccess(entity.OwnerId == CurrentUserId)"]
+        SVC_NDA["DiligenceService.AssertNdaAcceptedAsync(companyId, investorId)"]
+        SVC_FOUNDER["DiligenceService.AssertDataRoomAccessGrantedAsync(companyId, investorId)"]
+        MW_STATIC["Upload Deny Middleware: Blocks /uploads/documents & /uploads/identity"]
+    end
+
+    %% Mappings from boundaries to enforcement
+    B_PUB --> FE_AUTH
+    
+    B_AUTH --> FE_AUTH
+    B_AUTH --> MW_JWT
+    
+    B_ROLE --> FE_ROLE
+    B_ROLE --> ATTR_AUTH
+    
+    B_OWNER --> SVC_OWNER
+    
+    B_NDA --> SVC_NDA
+    
+    B_FOUNDER --> SVC_FOUNDER
+    
+    B_ADMIN --> FE_ADMIN
+    B_ADMIN --> ATTR_ADMIN
+    
+    B_OWNER --> MW_STATIC
+
+    %% Visual styling classes
+    classDef uiGate fill:#ffeaa7,stroke:#fdcb6e,stroke-width:2px,color:#2d3436;
+    classDef beGate fill:#ff7675,stroke:#d63031,stroke-width:2px,color:#fff;
+
+    class FE_AUTH,FE_GATE,FE_ROLE,FE_ADMIN uiGate;
+    class MW_JWT,ATTR_AUTH,ATTR_ADMIN,SVC_OWNER,SVC_NDA,SVC_FOUNDER,MW_STATIC beGate;

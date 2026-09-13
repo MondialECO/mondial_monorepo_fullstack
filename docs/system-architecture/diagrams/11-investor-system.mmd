@@ -1,0 +1,92 @@
+graph TD
+    %% Investor Complete Capital Deployment System Architecture
+
+    subgraph ONBOARDING_KYC["1. Identity & Finance Verification"]
+        I_LOGIN["Investor Login"]
+        I_KYC["Accredited Investor Verification"]
+        I_FIN["Finance & Net Worth Attestation"]
+
+        DB_USER[("MongoDB: applicationUsers<br/>Roles: ['Investor']")]
+        DB_VERIF[("InvestorFinanceVerifications Collection")]
+    end
+
+    subgraph THESIS_DISCOVERY["2. Investment Thesis & Opportunity Matching"]
+        I_DASH["/dashboard/investor"]
+        I_THESIS["/dashboard/investor/thesis<br/>Sectors, Stages, Ticket Sizes (€50k-€2M)"]
+        I_MATCH["/dashboard/investor/incoming-matches<br/>Ranked Matches from MatchmakingQueue"]
+        I_DISC["/dashboard/investor/discovery<br/>Company Marketplace & Search"]
+
+        DB_PROFILE[("Investors Collection / InvestorProfile")]
+        DB_MATCHES[("InvestorMatches Collection<br/>Status: 'matched'")]
+    end
+
+    subgraph DILIGENCE_DATAROOM["3. NDA & Diligence Execution"]
+        I_ROOM["/dashboard/investor/discovery/[companyId]/dataroom"]
+        I_NDA["Digital NDA Signature Gate"]
+        I_DOCS["Review Financials, Pitch Deck & Cap Table"]
+        I_QA["Diligence Q&A Thread with Founder"]
+
+        DB_NDA[("Phase6NdaAcceptances Collection<br/>Unique {CompanyId, InvestorId}")]
+        DB_LOG[("Phase6AccessLogs Collection")]
+        DB_DLG_SESS[("InvestorDiligenceSessions Collection")]
+        DB_DLG_QA[("InvestorDiligenceQuestions Collection")]
+    end
+
+    subgraph DEAL_TERMSHEET["4. Term Sheet & Offer Negotiation"]
+        I_BUILD_TERM["/dashboard/investor/discovery/[companyId]/term-sheet/build"]
+        I_SEND_OFFER["Submit Investment Round Offer"]
+        I_REVISE["Negotiate Valuations & Protective Clauses"]
+        I_SIGN["Digital Term Sheet Signature"]
+
+        DB_DEALS[("DealExecutions Collection<br/>DealType: 'INVESTMENT_ROUND'")]
+    end
+
+    subgraph PIPELINE_MANAGEMENT["5. Active Deal Pipeline"]
+        I_PIPE["/dashboard/investor/pipeline<br/>Kanban Board: Due Diligence -> Term Sheet -> Signed"]
+    end
+
+    subgraph PORTFOLIO_MONITORING["6. Post-Deal Portfolio & Holdings"]
+        I_PORT["/dashboard/investor/portfolio<br/>Valuation Marks, Ownership %, Returns"]
+
+        DB_HOLDINGS[("CompanyPortfolioHoldings Collection<br/>InvestorId, CompanyId, InvestmentAmount, Equity%")]
+        DB_COMPANIES[("Companies Collection<br/>AmountRaised Updated")]
+        DB_CAPTABLE[("Phase4CapTables Collection<br/>Investor Added as Shareholder")]
+    end
+
+    %% Wiring
+    I_LOGIN --> I_KYC
+    I_KYC --> I_FIN
+    I_FIN --> DB_VERIF
+    DB_VERIF --> DB_USER
+    DB_USER --> I_DASH
+
+    I_DASH --> I_THESIS
+    I_THESIS --> DB_PROFILE
+    DB_PROFILE --> I_MATCH
+    DB_MATCHES --> I_MATCH
+    I_DASH --> I_DISC
+
+    I_DISC --> I_ROOM
+    I_MATCH --> I_ROOM
+    I_ROOM --> I_NDA
+    I_NDA --> DB_NDA
+    DB_NDA --> I_DOCS
+    I_DOCS --> DB_LOG
+    I_DOCS --> I_QA
+    I_QA --> DB_DLG_SESS
+    I_QA --> DB_DLG_QA
+
+    I_DOCS --> I_BUILD_TERM
+    I_BUILD_TERM --> I_SEND_OFFER
+    I_SEND_OFFER --> DB_DEALS
+    DB_DEALS --> I_PIPE
+    I_PIPE --> I_REVISE
+    I_REVISE --> I_SIGN
+    I_SIGN --> DB_DEALS
+
+    %% Post deal effects
+    DB_DEALS -->|Founder Closes Deal| DB_HOLDINGS
+    DB_HOLDINGS --> I_PORT
+    DB_DEALS -->|Updates Raised Capital| DB_COMPANIES
+    DB_DEALS -->|Issues Shares| DB_CAPTABLE
+    DB_HOLDINGS -.->|Links to Company| DB_COMPANIES

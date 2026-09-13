@@ -1,0 +1,120 @@
+graph TD
+    %% Comprehensive AI Subsystem Architecture (LLM & Deterministic Engines)
+
+    subgraph FRONTEND_GENERATORS["Frontend Generators (src/components/creator/*)"]
+        UI_CLAR["Idea Clarifier Modal (/clarifier)"]
+        UI_PLAN["Business Plan Studio (/phase-3/business-plan)"]
+        UI_FCST["Financial Forecast Studio (/phase-3/forecast)"]
+        UI_NAME["Concept Name Generator (/phase-2/concept-name)"]
+        UI_VAL["IP Valuation Calculator (/offer-pricing)"]
+    end
+
+    subgraph API_INGRESS["API Controllers & Security"]
+        CTRL_CLAR["ClarifierController (/api/ai/clarifier)"]
+        CTRL_PLAN["BusinessPlanController (/api/ai/business-plan)"]
+        CTRL_FCST["ForecastController (/api/ai/forecast)"]
+        CTRL_GEN["IdeaGeneratorController (/api/ai/idea-generator)"]
+        CTRL_VAL["CreatorPhase4Controller (/api/creator/phase-4)"]
+        
+        OWNER_GUARD["Ownership & Multi-Idea Anchor Check<br/>(CurrentUserId == Idea.CreatorId)"]
+        RATE_LIMIT_AI["RateLimiter Policy 'ai'<br/>(Max 20 req/min per User)"]
+    end
+
+    subgraph ASYNC_DISPATCH["Hangfire Asynchronous Dispatch"]
+        HANGFIRE_QUEUE[("Hangfire Queue: 'ai'<br/>Job Enqueued with Idempotency Key")]
+        AI_RUNNER["AiJobRunner.cs<br/>Executes Task Handler in Fresh Scope"]
+    end
+
+    subgraph TASK_HANDLERS["AI Task Handlers (IAiTaskHandler)"]
+        H_CLAR["IdeaClarifierHandler<br/>Analyzes target market, uniqueness, risks"]
+        H_PLAN["BusinessPlanHandler<br/>Generates 7-section institutional plan"]
+        H_FCST_AI["ForecastHandler (AI Narrative)<br/>Market assumptions & growth thesis"]
+        H_NAME["IdeaGeneratorHandler<br/>Generates names & positioning hooks"]
+    end
+
+    subgraph DETERMINISTIC_ENGINES["Deterministic Mathematical Engines (Non-LLM)"]
+        DET_VAL["ValuationEngine.cs<br/>Discounted Cash Flow (DCF), Multiple Matrix"]
+        DET_BENCH["MarketBenchmarkResolver.cs<br/>Seed Benchmarks (ARR Multiples, Margin Baselines)"]
+        DET_FCST["DeliverySchedule & Revenue Calculator<br/>Compound Annual Growth (CAGR), Unit Economics"]
+    end
+
+    subgraph LLM_INTEGRATION["Prompt & OpenRouter LLM Gateway"]
+        PROMPT_STORE["PromptVersionStore.cs<br/>PromptVersions Collection (Seeded on startup)"]
+        PROMPT_BLD["PromptBuilder.cs<br/>Hydrates System & User Prompts with Session Context"]
+        MODEL_ROUTER["ModelRouter.cs<br/>Routes Task -> Configured Model (e.g. gpt-oss-20b:free)"]
+        OPENROUTER_CLI["OpenRouterClient.cs (Typed HttpClient)<br/>Polly Resilience: Retries on 429/5xx, Bearer Auth"]
+        OPENROUTER_GATEWAY["OpenRouter Cloud Gateway (https://openrouter.ai/api/v1)"]
+    end
+
+    subgraph PERSISTENCE_RESULTS["AI Persistence & Target Project Ingress"]
+        DB_SESS_CLAR[("ClarifierSessions Collection")]
+        DB_SESS_PLAN[("BusinessPlanSessions Collection")]
+        DB_SESS_FCST[("ForecastSessions Collection")]
+        DB_USAGE[("ModelUsage & AICredits Collections")]
+        
+        TARGET_IDEA[("CreatorIdeas Collection<br/>OutputSnapshots Updated:<br/>- ClarifierData<br/>- BusinessPlan<br/>- FinancialForecast")]
+        TARGET_VAL[("IpValuations Collection")]
+    end
+
+    subgraph REALTIME_COMPLETION["Completion Notification"]
+        COMPLETION_HDL["AiJobCompletionHandler.cs"]
+        AI_EVENT_PUB["AiEventPublisher.cs"]
+        NOTIF_HUB["NotificationHub (/hubs/notifications)<br/>Event: 'AiGenerationCompleted'"]
+    end
+
+    %% UI to API
+    UI_CLAR --> RATE_LIMIT_AI
+    UI_PLAN --> RATE_LIMIT_AI
+    UI_FCST --> RATE_LIMIT_AI
+    UI_NAME --> RATE_LIMIT_AI
+    UI_VAL --> CTRL_VAL
+
+    RATE_LIMIT_AI --> OWNER_GUARD
+    OWNER_GUARD --> CTRL_CLAR
+    OWNER_GUARD --> CTRL_PLAN
+    OWNER_GUARD --> CTRL_FCST
+    OWNER_GUARD --> CTRL_GEN
+
+    %% LLM Execution Pipeline
+    CTRL_CLAR --> HANGFIRE_QUEUE
+    CTRL_PLAN --> HANGFIRE_QUEUE
+    CTRL_FCST --> HANGFIRE_QUEUE
+    CTRL_GEN --> HANGFIRE_QUEUE
+
+    HANGFIRE_QUEUE --> AI_RUNNER
+    AI_RUNNER --> H_CLAR
+    AI_RUNNER --> H_PLAN
+    AI_RUNNER --> H_FCST_AI
+    AI_RUNNER --> H_NAME
+
+    H_CLAR --> PROMPT_BLD
+    H_PLAN --> PROMPT_BLD
+    H_FCST_AI --> PROMPT_BLD
+    H_NAME --> PROMPT_BLD
+
+    PROMPT_STORE --> PROMPT_BLD
+    PROMPT_BLD --> MODEL_ROUTER
+    MODEL_ROUTER --> OPENROUTER_CLI
+    OPENROUTER_CLI --> OPENROUTER_GATEWAY
+
+    %% Deterministic Execution Pipeline
+    CTRL_VAL --> DET_VAL
+    DET_VAL --> DET_BENCH
+    CTRL_FCST --> DET_FCST
+
+    %% Output Persistence
+    OPENROUTER_GATEWAY -->|Structured Output Payload| AI_RUNNER
+    AI_RUNNER --> DB_SESS_CLAR
+    AI_RUNNER --> DB_SESS_PLAN
+    AI_RUNNER --> DB_SESS_FCST
+    AI_RUNNER --> DB_USAGE
+    AI_RUNNER --> TARGET_IDEA
+    DET_VAL --> TARGET_VAL
+
+    %% Realtime Push
+    AI_RUNNER --> COMPLETION_HDL
+    COMPLETION_HDL --> AI_EVENT_PUB
+    AI_EVENT_PUB --> NOTIF_HUB
+    NOTIF_HUB --> UI_CLAR
+    NOTIF_HUB --> UI_PLAN
+    NOTIF_HUB --> UI_FCST

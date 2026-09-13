@@ -1,0 +1,46 @@
+stateDiagram-v2
+    %% Canonical Deal State Machine from Phase9Requirements.cs
+
+    [*] --> initiated
+
+    initiated --> contacted : CRM Outreach
+    initiated --> negotiating : Direct Offer Received
+    initiated --> withdrawn : Proposer Retracts
+
+    contacted --> interested : Counterparty Responds
+    contacted --> rejected : Not a Fit
+    contacted --> withdrawn : Retracted
+
+    interested --> meeting_scheduled : Pitch / Meeting Booked
+    interested --> due_diligence : Direct Room Request
+    interested --> rejected : Evaluated & Declined
+    interested --> withdrawn : Retracted
+
+    meeting_scheduled --> due_diligence : Meeting Held / Diligence Starts
+    meeting_scheduled --> negotiating : Immediate Term Discussion
+    meeting_scheduled --> rejected : Declined Post-Meeting
+    meeting_scheduled --> withdrawn : Retracted
+
+    due_diligence --> negotiating : Data Room Audit Passed
+    due_diligence --> rejected : Diligence Red Flag
+    due_diligence --> withdrawn : Retracted
+
+    negotiating --> term_sheet : Live Term Sheet Drafted
+    negotiating --> agreement_sent : Terms Accepted Directly
+    negotiating --> rejected : Negotiation Breaks Down
+    negotiating --> withdrawn : Walkaway
+
+    term_sheet --> agreement_sent : Terms Formally Accepted
+    term_sheet --> negotiating : Counter-Offer Submitted
+    term_sheet --> rejected : Offer Expired/Rejected
+    term_sheet --> withdrawn : Walkaway
+
+    agreement_sent --> signed : Both Signatures Persisted
+    agreement_sent --> rejected : Signature Refused
+    agreement_sent --> withdrawn : Walkaway
+
+    signed --> completed : Founder Closes Deal (Payment / Funds Confirmed)
+
+    completed --> [*] : Terminal (Advances Company Phase & Creates Holdings)
+    rejected --> [*] : Terminal (Deal Abandoned)
+    withdrawn --> [*] : Terminal (Offer Rescinded)

@@ -1,0 +1,55 @@
+sequenceDiagram
+    %% End-to-End Request Lifecycle from Browser Click to UI Render
+
+    autonumber
+    actor User as User Browser
+    participant ReactComp as React Component (e.g. CapTablePage)
+    participant QueryHook as useQuery (React Query)
+    participant Axios as Axios Client (src/lib/axios.ts)
+    participant Traefik as Traefik Ingress (:443)
+    participant Kestrel as Kestrel / ASP.NET Pipeline
+    participant Controller as CompanyController (/api/company)
+    participant Service as CompanyService.cs
+    participant Repo as Phase4CapTables Store
+    participant Mongo as MongoDB Atlas
+
+    %% 1. Client Action
+    User->>ReactComp: Click "View Cap Table" tab
+    ReactComp->>QueryHook: Trigger useQuery(['cap-table', companyId])
+    QueryHook->>Axios: api.get(`/company/${companyId}/cap-table`)
+
+    %% 2. Client Transport & Interceptor
+    Axios->>Axios: Interceptor: Read token from localStorage
+    Axios->>Axios: Inject Header "Authorization: Bearer <jwt>"
+    Axios->>Traefik: Send HTTPS GET /api/company/{id}/cap-table
+
+    %% 3. Ingress & Pipeline
+    Traefik->>Traefik: Terminate TLS (Let's Encrypt)
+    Traefik->>Kestrel: Forward to healthy API replica (:8080)
+    Kestrel->>Kestrel: ForwardedHeaders: Resolve real client IP
+    Kestrel->>Kestrel: CorrelationIdMiddleware: Assign X-Correlation-ID
+    Kestrel->>Kestrel: RateLimiter: Evaluate IP & Global fixed window
+    Kestrel->>Kestrel: JwtBearerMiddleware: Validate token & map sub -> NameIdentifier
+    Kestrel->>Controller: Route to GetCapTable(companyId)
+
+    %% 4. Controller & Domain Logic
+    Controller->>Service: GetCapTableAsync(companyId, currentUserId)
+    Service->>Service: Ownership Assertion: AssertAccess(company.UserId == currentUserId)
+    Service->>Repo: Find latest Phase4CapTable by CompanyId & Version desc
+    Repo->>Mongo: Execute BSON query against Phase4CapTables collection
+    Mongo-->>Repo: Return BSON Document
+    Repo-->>Service: Hydrate Phase4CapTable model
+    Service->>Service: Map to CapTableDto (calculate dilution percentages)
+    Service-->>Controller: Return CapTableDto
+    Controller-->>Kestrel: Return Ok(ApiResponse.Ok(dto))
+
+    %% 5. Ingress & Response Compression
+    Kestrel->>Kestrel: ResponseCompression: Compress body with Brotli
+    Kestrel->>Traefik: HTTP 200 OK + Brotli payload
+    Traefik-->>Axios: HTTP 200 OK
+
+    %% 6. React Query & State Re-render
+    Axios-->>QueryHook: Return response.data.data
+    QueryHook->>QueryHook: Populate queryClient cache & set status = 'success'
+    QueryHook-->>ReactComp: Trigger component re-render with fresh DTO
+    ReactComp-->>User: Render Cap Table Grid & Stakeholder Shares
