@@ -17,7 +17,7 @@ import {
 
 export default function Signup() {
   const router = useRouter();
-  const { user, isLoading: authLoading, logout } = useAuth();
+  const { user, isLoading: authLoading, logout, establishSession } = useAuth();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -69,16 +69,17 @@ export default function Signup() {
       };
 
       const response = await registerApi(model);
-      const onboardingToken = response.data?.onboardingToken;
+      const token = response.data?.token ?? response.token;
+      const authUser = response.data?.user ?? response.user;
 
-      if (!onboardingToken) {
-        setErrorMsg("Registration succeeded but token generation failed. Please try again.");
+      if (!token || !authUser) {
+        setErrorMsg("Registration succeeded but session initialization failed. Please log in.");
+        router.replace("/login");
         return;
       }
 
-      router.push(
-        `/signup/onboarding?token=${encodeURIComponent(onboardingToken)}`
-      );
+      await establishSession({ token, user: authUser });
+      router.replace("/onboarding");
     } catch (err: unknown) {
       console.error(err);
       const axiosErr = err as Record<string, any>;

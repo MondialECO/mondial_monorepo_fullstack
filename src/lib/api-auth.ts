@@ -30,6 +30,8 @@ export interface RegisterResponse {
   data?: {
     id?: string;
     email?: string;
+    token?: string;
+    user?: AuthUser & { Onboarding?: { phase?: number }; onboarding?: { phase?: number } };
     onboardingToken?: string;
   };
 }
