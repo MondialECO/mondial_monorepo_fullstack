@@ -1,127 +1,186 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Rocket, CheckCircle2, Loader2, AlertCircle } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { creatorJourneyApi, type OwnershipEntry, type UseOfFunds } from "@/lib/api-creator-journey";
-import { CompanyPlanningCard } from "@/components/company-formation/CompanyPlanningCard";
-import { FundingPreparationCard } from "@/components/company-formation/FundingPreparationCard";
+import { Button } from "@/components/ui/button";
+import { creatorJourneyApi, type OwnershipEntry } from "@/lib/api-creator-journey";
+import { useAuth } from "@/app/_providers/AuthProvider";
 
 type BuildState = {
   companyFormation?: { selectedType?: string; ownership?: OwnershipEntry[] } | null;
-  seedFunding?: { totalAsk?: number; useOfFunds?: UseOfFunds[]; investorTypesTargeted?: string[] } | null;
+  seedFunding?: { totalAsk?: number } | null;
 };
 
 type FormationContext = {
   selectedType?: string;
-  youNeed?: Array<{ skill?: string }>;
-  cofounderDraft?: { roleNeeded?: string; equityRange?: string; locationPreference?: string } | null;
+  recommendedType?: string;
 };
 
 export function CrossroadsPathB({
   ideaId,
+  projectName,
   initial,
   formationContext,
+  isLeveledUp = false,
+  onBack,
   onChanged,
 }: {
-  ideaId: string | null;
+  ideaId?: string | null;
+  projectName?: string;
   initial?: Record<string, unknown>;
   formationContext?: Record<string, unknown>;
-  onChanged: () => void;
+  isLeveledUp?: boolean;
+  onBack?: () => void;
+  onChanged?: () => void;
 }) {
+  const router = useRouter();
+  const { refreshAuthMe } = useAuth();
+
   const saved = initial as BuildState | undefined;
   const formation = formationContext as FormationContext | undefined;
-  const [type, setType] = useState(saved?.companyFormation?.selectedType ?? formation?.selectedType ?? "");
-  const [ownership, setOwnership] = useState<OwnershipEntry[]>(
-    saved?.companyFormation?.ownership?.length
-      ? saved.companyFormation.ownership
-      : [{ holder: "", percent: 0, isFounder: true, isEsop: false }]
-  );
-  const [formSaved, setFormSaved] = useState(Boolean(saved?.companyFormation));
-  const [formWarn, setFormWarn] = useState<string[]>([]);
-  const [formErr, setFormErr] = useState<string | null>(null);
-  const [savingForm, setSavingForm] = useState(false);
 
-  const [totalAsk, setTotalAsk] = useState(saved?.seedFunding?.totalAsk ?? 0);
-  const [use, setUse] = useState<UseOfFunds[]>(saved?.seedFunding?.useOfFunds ?? []);
-  const [investorTypes, setInvestorTypes] = useState<string[]>(saved?.seedFunding?.investorTypesTargeted ?? []);
-  const [seedSaved, setSeedSaved] = useState(Boolean(saved?.seedFunding));
-  const [seedErr, setSeedErr] = useState<string | null>(null);
-  const [savingSeed, setSavingSeed] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const saveFormation = async () => {
-    setSavingForm(true);
-    setFormErr(null);
+  // Formation direction: Phase 3 selected / recommended, then historical Path B, fallback SAS
+  const formationDirection =
+    formation?.selectedType ||
+    formation?.recommendedType ||
+    saved?.companyFormation?.selectedType ||
+    "SAS";
+
+  // Initial ownership: historical Path B ownership if present, otherwise Founder 100%
+  const historicalOwnership = saved?.companyFormation?.ownership;
+  const ownershipText =
+    historicalOwnership && historicalOwnership.length > 0
+      ? historicalOwnership.map((o) => `${o.holder || (o.isFounder ? "Founder" : "Partner")}: ${o.percent}%`).join(", ")
+      : "100% Founder";
+
+  const handleConfirmLevelUp = async () => {
+    if (submitting) return;
+    setSubmitting(true);
+    setError(null);
+
     try {
-      const res = await creatorJourneyApi.companyFormation({ selectedType: type, ownership }, ideaId);
-      setFormWarn(res.warnings);
-      setFormSaved(true);
-      onChanged();
+      const res = await creatorJourneyApi.levelUp(ideaId ?? undefined);
+      await refreshAuthMe();
+      setSuccess(true);
+      onChanged?.();
+      setTimeout(() => {
+        router.push(res.redirectTo || "/dashboard/entrepreneur");
+      }, 1200);
     } catch (e) {
       const err = e as { response?: { data?: { message?: string } } };
-      setFormErr(err.response?.data?.message ?? (e instanceof Error ? e.message : "Couldn't save company planning."));
-    } finally {
-      setSavingForm(false);
+      setError(err.response?.data?.message ?? (e instanceof Error ? e.message : "Failed to level up to Entrepreneur."));
+      setSubmitting(false);
     }
   };
 
-  const saveSeed = async () => {
-    setSavingSeed(true);
-    setSeedErr(null);
-    try {
-      await creatorJourneyApi.seedFunding({ totalAsk, useOfFunds: use, investorTypesTargeted: investorTypes }, ideaId);
-      setSeedSaved(true);
-      onChanged();
-    } catch (e) {
-      const err = e as { response?: { data?: { message?: string } } };
-      setSeedErr(err.response?.data?.message ?? (e instanceof Error ? e.message : "Couldn't save funding preparation."));
-    } finally {
-      setSavingSeed(false);
-    }
-  };
+  if (isLeveledUp || success) {
+    return (
+      <Card className="rounded-2xl border border-primary/30 bg-primary/5 p-6 space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <CheckCircle2 className="h-5 w-5" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-foreground">
+              {success ? "Welcome, Entrepreneur!" : "Project already moved to Entrepreneur journey"}
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              {success
+                ? "Your company workspace has been created. Redirecting to your Entrepreneur dashboard…"
+                : "Your company workspace is active. You can continue building this venture in the Entrepreneur dashboard."}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 pt-2">
+          <Button
+            onClick={() => router.push("/dashboard/entrepreneur")}
+            className="gap-2"
+          >
+            <Rocket className="h-4 w-4" /> Open Entrepreneur Dashboard
+          </Button>
+          {onBack && !success && (
+            <Button variant="outline" onClick={onBack}>
+              Back to options
+            </Button>
+          )}
+        </div>
+      </Card>
+    );
+  }
 
   return (
-    <div className="space-y-4">
-      {formation && (
-        <Card className="rounded-2xl border border-border bg-card p-5 space-y-1">
-          <div className="text-sm font-bold">Formation context</div>
-          <p className="text-xs text-muted-foreground">Phase 3 company/team decisions are reused here; they are not recreated.</p>
-          {formation.cofounderDraft && (
-            <p className="text-xs">
-              Co-founder opportunity: {formation.cofounderDraft.roleNeeded ?? "Not specified"} · {formation.cofounderDraft.equityRange ?? "Equity to be decided"} · {formation.cofounderDraft.locationPreference ?? "Location flexible"}
-            </p>
-          )}
-          {formation.youNeed?.length ? (
-            <p className="text-xs text-muted-foreground">
-              Team gaps: {formation.youNeed.map((item) => item.skill).filter(Boolean).join(", ")}
-            </p>
-          ) : null}
-        </Card>
+    <Card className="rounded-2xl border border-border bg-card p-6 space-y-6 shadow-sm">
+      <div className="space-y-2">
+        <h2 className="text-xl font-bold text-foreground">Build this project yourself</h2>
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          You are choosing to continue this project as the entrepreneur.
+          Your Creator project and history will remain available.
+          Mondial will create or connect the company workspace and unlock
+          the Entrepreneur journey.
+        </p>
+      </div>
+
+      <div className="rounded-xl border border-border bg-muted/40 p-4 divide-y divide-border text-sm">
+        <div className="flex items-center justify-between py-2.5">
+          <span className="text-muted-foreground font-medium">Project</span>
+          <span className="font-semibold text-foreground">{projectName || "Active Project"}</span>
+        </div>
+        <div className="flex items-center justify-between py-2.5">
+          <span className="text-muted-foreground font-medium">Formation direction</span>
+          <span className="font-semibold text-foreground">{formationDirection}</span>
+        </div>
+        <div className="flex items-center justify-between py-2.5">
+          <span className="text-muted-foreground font-medium">Initial ownership</span>
+          <span className="font-semibold text-foreground">{ownershipText}</span>
+        </div>
+        <div className="flex items-center justify-between py-2.5">
+          <span className="text-muted-foreground font-medium">Funding</span>
+          <span className="text-muted-foreground font-medium">Set later in Entrepreneur Funding phase</span>
+        </div>
+      </div>
+
+      {error && (
+        <div role="alert" className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg p-3">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span>{error}</span>
+        </div>
       )}
 
-      <CompanyPlanningCard
-        type={type}
-        onTypeChange={setType}
-        ownership={ownership}
-        onOwnershipChange={setOwnership}
-        onSave={saveFormation}
-        isSaving={savingForm}
-        isSaved={formSaved}
-        error={formErr}
-        warnings={formWarn}
-      />
-
-      <FundingPreparationCard
-        totalAsk={totalAsk}
-        onTotalAskChange={setTotalAsk}
-        useOfFunds={use}
-        onUseOfFundsChange={setUse}
-        investorTypes={investorTypes}
-        onInvestorTypesChange={setInvestorTypes}
-        onSave={saveSeed}
-        isSaving={savingSeed}
-        isSaved={seedSaved}
-        error={seedErr}
-      />
-    </div>
+      <div className="flex flex-wrap items-center gap-3 pt-2">
+        <Button
+          onClick={handleConfirmLevelUp}
+          disabled={submitting}
+          className="gap-2 font-semibold"
+        >
+          {submitting ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>Moving to Entrepreneur workspace…</span>
+            </>
+          ) : (
+            <>
+              <Rocket className="h-4 w-4" />
+              <span>Continue as Entrepreneur</span>
+            </>
+          )}
+        </Button>
+        {onBack && (
+          <Button
+            variant="outline"
+            onClick={onBack}
+            disabled={submitting}
+          >
+            Back to options
+          </Button>
+        )}
+      </div>
+    </Card>
   );
 }

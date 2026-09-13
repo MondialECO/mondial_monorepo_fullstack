@@ -327,11 +327,12 @@ namespace WebApp.Services.Implementations
             // ---- Phase 5 ----
             var p5 = j.Phase5Data ?? new CreatorPhase5Data();
             bool chosen = !string.IsNullOrEmpty(p5.ChosenPath);
+            bool isBuild = p5.ChosenPath == "build";
             bool listingLive = p5.PathA?.MarketplaceListing?.Status == "live";
             bool seedPresent = p5.PathB?.SeedFunding != null;
 
             if (!p4Done) s.Phase5.Status = "locked";
-            else if (chosen && (listingLive || seedPresent)) s.Phase5.Status = "completed";
+            else if (chosen && (listingLive || seedPresent || isBuild)) s.Phase5.Status = "completed";
             else if (chosen) s.Phase5.Status = "in_progress";
             else s.Phase5.Status = "available";
 
@@ -339,7 +340,6 @@ namespace WebApp.Services.Implementations
 
             // ---- Phase 6 (Two Valid Routes: BUILD or CO_FOUNDED; SOLD / Full Buyout locked) ----
             var p6 = j.Phase6Data ?? new CreatorPhase6Data();
-            bool isBuild = p5.ChosenPath == "build";
             bool isCofounded = string.Equals(j.ProjectOutcome, "CO_FOUNDED", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(j.ActivePartnershipDealId);
             bool isSoldOrBuyout = string.Equals(j.ProjectOutcome, "SOLD", StringComparison.OrdinalIgnoreCase);
 

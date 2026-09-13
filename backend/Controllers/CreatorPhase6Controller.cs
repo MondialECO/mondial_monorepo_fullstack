@@ -173,8 +173,8 @@ namespace WebApp.Controllers
                 new() { Key = "business_planning", Label = "Complete your business plan", Route = "/dashboard/creator/phase-3/business-plan", Complete = computed.Phase3.Status == "completed", Required = true, Blocking = true, Status = computed.Phase3.Status == "completed" ? "COMPLETE" : "PENDING" },
                 new() { Key = "commercial_preparation", Label = "Prepare your commercial offer", Route = "/dashboard/creator/offer-pricing", Complete = computed.Phase4.Status == "completed", Required = true, Blocking = true, Status = computed.Phase4.Status == "completed" ? "COMPLETE" : "PENDING" },
                 new() { Key = "direction", Label = "Choose your direction", Route = "/dashboard/creator/crossroads", Complete = !string.IsNullOrWhiteSpace(p5.ChosenPath), Required = true, Blocking = true, Status = !string.IsNullOrWhiteSpace(p5.ChosenPath) ? "COMPLETE" : "PENDING" },
-                new() { Key = "company_setup", Label = "Complete company planning", Route = "/dashboard/creator/crossroads", Complete = isBuild && p5.PathB?.CompanyFormation != null, Required = isBuild, Blocking = true, Status = isBuild && p5.PathB?.CompanyFormation != null ? "COMPLETE" : "PENDING" },
-                new() { Key = "funding_preparation", Label = "Set your funding target", Route = "/dashboard/creator/crossroads", Complete = isBuild && p5.PathB?.SeedFunding != null, Required = isBuild, Blocking = true, Status = isBuild && p5.PathB?.SeedFunding != null ? "COMPLETE" : "PENDING" },
+                new() { Key = "company_setup", Label = "Complete company planning", Route = "/dashboard/creator/crossroads", Complete = p5.PathB?.CompanyFormation != null || isBuild, Required = false, Blocking = false, Status = p5.PathB?.CompanyFormation != null ? "COMPLETE" : (isBuild ? "CONFIRMED" : "PENDING") },
+                new() { Key = "funding_preparation", Label = "Set your funding target", Route = "/dashboard/creator/crossroads", Complete = p5.PathB?.SeedFunding != null || isBuild, Required = false, Blocking = false, Status = p5.PathB?.SeedFunding != null ? "COMPLETE" : (isBuild ? "DEFERRED_TO_ENTREPRENEUR" : "PENDING") },
             };
 
             var buildMissing = requirements.Where(x => x.Required && !x.Complete).Select(x => x.Key).ToList();
@@ -500,8 +500,16 @@ namespace WebApp.Controllers
                             : !string.IsNullOrEmpty(levelUpIdeaId) ? levelUpIdeaId : journey.Id;
                         double? fundingAsk = seed?.TotalAsk > 0 ? (double?)(double)seed.TotalAsk : null;
 
+                        var legalStructure = !string.IsNullOrWhiteSpace(formation?.SelectedType)
+                            ? formation.SelectedType
+                            : !string.IsNullOrWhiteSpace(journey.Phase3Data?.FormationGenerator?.SelectedType)
+                                ? journey.Phase3Data.FormationGenerator.SelectedType
+                                : !string.IsNullOrWhiteSpace(journey.Phase3Data?.FormationGenerator?.RecommendedType)
+                                    ? journey.Phase3Data.FormationGenerator.RecommendedType
+                                    : "SAS";
+
                         var company = await _companies.EnsureLevelUpCompanyAsync(
-                            userId, sourceLink, formation?.SelectedType, fundingAsk,
+                            userId, sourceLink, legalStructure, fundingAsk,
                             companyName: journey.Project?.Name,
                             industry: journey.Project?.Sector,
                             tagline: journey.Project?.Tagline,
