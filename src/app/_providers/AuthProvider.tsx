@@ -29,7 +29,8 @@ type AuthContextType = {
   isBackendVerified: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
-  refreshAuthMe: () => Promise<void>;
+  refreshAuthMe: () => Promise<User | null>;
+  refreshCurrentUser: () => Promise<User | null>;
   establishSession: (payload: { token: string; user: any }) => Promise<User>;
 };
 
@@ -209,8 +210,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.replace('/login');
   };
 
-  const refreshAuthMe = async () => {
-    if (!token) return;
+  const refreshAuthMe = async (): Promise<User | null> => {
+    if (!token) return null;
 
     try {
       const response = await api.get('/auth/me');
@@ -237,9 +238,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
       localStorage.setItem('user', JSON.stringify(updatedUser));
       setUser(updatedUser);
-    } catch (error) {
+      setIsBackendVerified(true);
+      return updatedUser;
+    } catch (error: any) {
       console.error('Failed to refresh auth:', error);
-      logout();
+      if (error?.response?.status === 401) {
+        logout();
+      }
+      return null;
     }
   };
 
@@ -292,6 +298,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         login,
         logout,
         refreshAuthMe,
+        refreshCurrentUser: refreshAuthMe,
         establishSession,
       }}
     >

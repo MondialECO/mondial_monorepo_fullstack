@@ -2,7 +2,7 @@
 
 import { useAuth } from "@/app/_providers/AuthProvider";
 import { useRouter, usePathname } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   getRoleDashboardRoute,
   ROLE_DASHBOARD_ROUTES,
@@ -43,12 +43,13 @@ export default function AuthGuard({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, isLoading, isBackendVerified } = useAuth();
+  const { user, isLoading, isBackendVerified, refreshAuthMe } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const [isVerifyingPhase, setIsVerifyingPhase] = useState(false);
 
   useEffect(() => {
-    if (isLoading) return;
+    if (isLoading || isVerifyingPhase) return;
 
     if (!isBackendVerified || !user) {
       router.push("/login");
@@ -78,7 +79,9 @@ export default function AuthGuard({
     const userRole = user.role;
     const onboardingPhase = user.onboardingPhase ?? 0;
 
-    // UNIVERSAL PHASE 1 GATE: incomplete users go to the universal onboarding hub.
+    // UNIVERSAL PHASE 1 GATE:
+    // If client thinks Phase 0, do NOT blindly redirect immediately to avoid stale cache loop.
+    // Instead, verify with authoritative backend first.
     if (onboardingPhase === 0) {
       // Legacy role-specific phase-1 pages still resolve (kept for back-compat;
       // not deleted in this phase).
@@ -86,8 +89,23 @@ export default function AuthGuard({
         return;
       }
 
-      // Redirect incomplete users to the universal onboarding hub.
-      router.push("/onboarding");
+      if (typeof refreshAuthMe === "function") {
+        setIsVerifyingPhase(true);
+        void refreshAuthMe()
+          .then((freshUser) => {
+            setIsVerifyingPhase(false);
+            const freshPhase = freshUser?.onboardingPhase ?? 0;
+            if (freshPhase < 1) {
+              router.replace("/onboarding");
+            }
+          })
+          .catch(() => {
+            setIsVerifyingPhase(false);
+            router.replace("/onboarding");
+          });
+      } else {
+        router.push("/onboarding");
+      }
       return;
     }
 
@@ -119,9 +137,9 @@ export default function AuthGuard({
 
     // Wrong role, redirect to user's default dashboard
     router.push(userDashboard);
-  }, [user, isLoading, isBackendVerified, router, pathname]);
+  }, [user, isLoading, isBackendVerified, isVerifyingPhase, router, pathname, refreshAuthMe]);
 
-  if (isLoading || !isBackendVerified) {
+  if (isLoading || !isBackendVerified || isVerifyingPhase) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background dark:bg-background">
         <div className="flex flex-col items-center gap-4">

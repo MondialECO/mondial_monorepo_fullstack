@@ -191,4 +191,27 @@ FeatureFlags__AllowLegacyIdentityUpload=false
 * **LEGACY SUMSUB WEBHOOK**: **REMOVED**
 * **UNIVERSAL IDENTITY PRODUCTION STATUS**: **PRODUCTION READY** / **FROZEN**
 
+---
+
+## MVP Launch Policy: Deferred, Not Removed
+
+### A. Deferred Status in Universal Onboarding
+For the MVP launch, identity verification is **deferred, not removed**:
+- Controlled by feature flag: `FeatureFlags:RequireIdentityVerificationInUniversalOnboarding` (defaults to `false`).
+- All Sumsub code, endpoints, webhook receivers, SDK token generation, and database collections remain fully deployed, hardened, and operational.
+- Users achieve `Onboarding.Phase = 1` and gain dashboard access via **Email Verification + Phone Verification**.
+
+### B. Semantic Separation from KYC
+- **Universal Onboarding Phase 1**: Indicates baseline platform access (Email + Phone verified).
+- **KYC Verified**: Indicates approved Sumsub identity document verification (`Onboarding.IdentityDocumentVerified = true`).
+- Under the current MVP baseline:
+  ```text
+  Onboarding.Phase = 1
+  KycStatus = NotStarted / null
+  Kyc.Status = null
+  Kyc.VerifiedAt = null
+  ```
+- `Phase 1` must never be conflated with `KYC Verified`. When the feature flag is enabled in the future, identity document verification will naturally gate Phase 1 without architectural changes.
+
+
 

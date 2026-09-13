@@ -402,3 +402,196 @@ erDiagram
    - Development origin: `http://localhost:3000`
    - Wildcard origin access: **Disabled**.
 
+---
+
+## 12. Semantic Separation: Universal Onboarding Complete vs Identity/KYC Verified
+
+A critical platform invariant is the strict semantic decoupling between **Universal Onboarding Completion** and **Identity / KYC Verification**:
+
+### A. Universal Onboarding Complete
+- **Definition**: The user has successfully completed all baseline platform access gates.
+- **Current MVP Requirement**: `EmailOtpVerified == true` && `PhoneVerified == true` (with `FeatureFlags:RequireIdentityVerificationInUniversalOnboarding = false`).
+- **State Impact**:
+  - `Onboarding.Phase = 1`
+  - `Onboarding.CompletedAt = UtcNow`
+  - Domain dashboards are unlocked across all roles (`/dashboard/creator`, `/dashboard/entrepreneur`, `/dashboard/investor`, `/dashboard/serviceprovider`).
+
+### B. Identity / KYC Verified
+- **Definition**: Automated provider document KYC has been verified and confirmed.
+- **Requirement**: `Onboarding.IdentityDocumentVerified == true` via Sumsub webhook approval (`GREEN`).
+- **State Impact**:
+  - `KycStatus = "VERIFIED"`
+  - `Kyc.Status = VerificationStatus.Verified`
+  - `Kyc.VerifiedAt = UtcNow`
+
+### C. Critical Rule: Never Equate Phase 1 with KYC Verified
+Under the active MVP policy (where identity verification is deferred):
+```text
+Onboarding.Phase = 1
+KycStatus = NotStarted / null
+Kyc.Status = null
+Kyc.VerifiedAt = null
+```
+`Phase 1` unlocks dashboard workrooms and primary platform navigation; it does **not** grant or assert `KYC Verified` standing until identity document review has actually completed.
+
+---
+
+## 13. Auth Context Synchronization & Single Routing Authority
+
+### A. Root Cause of Previous Redirect Ping-Pong
+Prior to this remediation, an infinite redirect loop occurred between `/onboarding` and `/dashboard/*`:
+1. User registered with initial state `onboardingPhase: 0`.
+2. Frontend `AuthContext` and browser `localStorage` cached the user object with `onboardingPhase: 0`.
+3. After completing Email and Phone OTP verification, backend promoted the database user to `Onboarding.Phase = 1`.
+4. However, the frontend verification pages failed to refresh the authenticated user session, leaving `AuthContext` stale (`onboardingPhase: 0`).
+5. When the user landed on `/dashboard/*`, `<AuthGuard>` detected `onboardingPhase === 0` and pushed the user back to `/onboarding`.
+6. At `/onboarding`, the page queried `GET /api/onboarding/status`, observed `phase === 1`, and redirected back to `/dashboard/*`.
+7. This produced an infinite redirect ping-pong loop.
+
+### B. Single Source of Truth & Synchronized Architecture
+The architecture is now frozen to a single authoritative chain:
+```text
+Backend persisted onboarding state
+       │
+       ▼ GET /api/auth/me
+refreshAuthMe() / refreshCurrentUser()
+       │
+       ├─ Synchronizes AuthContext state
+       └─ Synchronizes localStorage cached user
+       │
+       ▼
+AuthGuard final routing decision
+```
+
+1. **Immediate Post-Verification Sync**: Both `src/app/onboarding/email/page.tsx` and `src/app/onboarding/phone/page.tsx` invoke `await refreshAuthMe()` immediately after OTP verification. If backend returns `onboardingPhase >= 1`, the page initiates a single `router.replace(roleDashboard)` directly.
+2. **AuthGuard Authoritative Refresh**: When mounted on any `/dashboard/*` route, if cached user indicates `onboardingPhase === 0`, `<AuthGuard>` renders a brief loading spinner while calling `await refreshAuthMe()`. If the backend reports `onboardingPhase >= 1`, the user remains on the dashboard (`0` redirects). If genuinely `0`, `<AuthGuard>` executes exactly one `router.replace("/onboarding")`.
+3. **Direct `/onboarding` Access for Phase 1 Users**: If a Phase 1 user manually navigates to `/onboarding`, `src/app/onboarding/page.tsx` synchronizes `refreshAuthMe()` and executes exactly one `router.replace(roleDashboard)` (0 ping-pong redirects).
+
+---
+
+## 14. Role-Based Dashboard Routing Parity
+
+Upon reaching `Onboarding.Phase = 1` via Email + Phone verification, all four platform user archetypes seamlessly unlock their designated dashboards without requiring identity verification:
+
+- **Creator**: `/onboarding` $\to$ `/dashboard/creator`
+- **Entrepreneur**: `/onboarding` $\to$ `/dashboard/entrepreneur`
+- **Investor**: `/onboarding` $\to$ `/dashboard/investor`
+- **Service Provider**: `/onboarding` $\to$ `/dashboard/serviceprovider`
+
+Identity document verification remains deferred across all four universal entry journeys.
+
+---
+
+## 15. SignalR Token Redaction & Secure WebSocket Pipeline
+
+To prevent sensitive JWT access tokens from leaking into development or production logs while preserving full authenticated SignalR capabilities, the ASP.NET Core middleware pipeline implements query-string redaction:
+
+### A. Pipeline Order in `backend/Program.cs`
+```text
+1.  CorrelationIdMiddleware
+2.  ExceptionHandlingMiddleware (non-development)
+3.  SecurityHeadersMiddleware
+4.  QueryStringRedactionMiddleware   <-- Stashes token, redacts query
+5.  UseSerilogRequestLogging()         <-- Sees only redacted query
+6.  UseResponseCompression()
+7.  UseCors("AllowAll")
+8.  UseHttpsRedirection()
+9.  UseStaticFiles()
+10. UseRequestTimeouts()
+11. UseRateLimiter()
+12. UseAuthentication()                <-- Ingests stashed token
+13. UseAuthorization()                 <-- Authorizes hub connection
+14. MapHub<NotificationHub>("/hubs/notifications")
+15. MapControllers()
+```
+
+### B. Redaction Mechanism (`QueryStringRedactionMiddleware.cs`)
+1. Checks for inbound `context.Request.Query["access_token"]`.
+2. Stashes raw token into `context.Items["access_token"]`.
+3. Rewrites `context.Request.QueryString` so that `access_token=[REDACTED]`.
+4. Downstream logging (`UseSerilogRequestLogging`, Kestrel console, exception handlers) never encounters the raw token.
+
+### C. Token Ingestion (`JwtBearerEvents.OnMessageReceived`)
+In `backend/Program.cs`:
+```csharp
+options.Events = new JwtBearerEvents
+{
+    OnMessageReceived = context =>
+    {
+        var accessToken = (context.HttpContext.Items[QueryStringRedactionMiddleware.AccessTokenItemKey] as string)
+            ?? context.Request.Query["access_token"].ToString();
+        var path = context.HttpContext.Request.Path;
+
+        if (!string.IsNullOrEmpty(accessToken) &&
+            !accessToken.Equals(QueryStringRedactionMiddleware.RedactedPlaceholder, StringComparison.OrdinalIgnoreCase) &&
+            path.StartsWithSegments("/hubs"))
+        {
+            context.Token = accessToken;
+        }
+
+        return Task.CompletedTask;
+    },
+    OnTokenValidated = context =>
+    {
+        // Maps JWT "sub" claim to ClaimTypes.NameIdentifier for hub caller resolution
+        var subClaim = context.Principal?.FindFirst(JwtRegisteredClaimNames.Sub)
+            ?? context.Principal?.FindFirst("sub");
+        if (subClaim != null && context.Principal?.Identity is ClaimsIdentity identity)
+        {
+            if (!identity.HasClaim(c => c.Type == ClaimTypes.NameIdentifier))
+            {
+                identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, subClaim.Value));
+            }
+        }
+        return Task.CompletedTask;
+    }
+};
+```
+
+### D. Validated SignalR Assertions
+- `POST /hubs/notifications/negotiate?negotiateVersion=1` $\to$ `200 OK`
+- `GET /hubs/notifications?id=...&access_token=...` $\to$ `101 Switching Protocols`
+- Authenticated user identity resolved via `ClaimTypes.NameIdentifier` (`NotificationHub` is `[Authorize]`).
+- WebSocket handshake protocol completed successfully (`"{}\u001e"`).
+- Reconnect and re-negotiation verified.
+- Logs strictly display `access_token=[REDACTED]`; zero raw JWTs, secret keys, or SDK tokens are logged.
+
+---
+
+## 16. Registration Password Policy Alignment
+
+The frontend signup form (`src/app/(auth)/signup/page.tsx`) matches the authoritative backend ASP.NET Identity password configuration:
+- **Minimum Length**: 6 characters (`RequireLength: 6`)
+- **Uppercase**: At least one uppercase letter (`RequireUppercase: true`)
+- **Lowercase**: At least one lowercase letter (`RequireLowercase: true`)
+- **Digit**: At least one numeric digit (`RequireDigit: true`)
+- **Special Character**: Not required (`RequireNonAlphanumeric: false`)
+- **Unique Characters**: Default (`RequiredUniqueChars: 1`)
+
+The frontend validates all rules client-side prior to submission with explicit UI indicators, while backend validation remains fully authoritative. Any field-level validation errors returned by the backend (`data.Password[]`) are surfaced directly under the password input.
+
+---
+
+## 17. Creator Journey Exception & 404 Status Semantics
+
+In `backend/Controllers/CreatorJourneyController.cs`, domain exceptions raised during journey lookup (`CreatorJourneyException`) preserve their intended HTTP status codes rather than falling into the generic 500 handler:
+- When an idea is not found, `CreatorJourneyException(404, "Idea not found.")` returns `HTTP 404 Not Found` with `{ success: false, message: "Idea not found." }`.
+- Valid journey requests continue to return `HTTP 200 OK`.
+- Failures or non-existent ideas in the Creator Journey do not interfere with Universal Onboarding redirects.
+
+---
+
+## 18. Current MVP Baseline — September 2026
+
+| Component | Architecture & Baseline Status |
+| :--- | :--- |
+| **Universal Onboarding** | **Email Verification + Phone Verification** (Phase 0 $\to$ Phase 1). |
+| **Identity Verification** | **Deferred** (`FeatureFlags:RequireIdentityVerificationInUniversalOnboarding = false`). Code, SDK, Webhooks, and Sumsub config remain intact and production-ready for future activation. |
+| **Biometrics / Face** | Permanently excluded from platform runtime (no selfie, liveness, or video). |
+| **Routing Authority** | Backend persisted onboarding state $\to$ `refreshAuthMe()` $\to$ `AuthContext` / `localStorage` $\to$ `<AuthGuard>` decision. Zero ping-pong loops. |
+| **SignalR Security** | `QueryStringRedactionMiddleware` redacts query tokens before Serilog logging while passing token to `JwtBearerEvents` via `HttpContext.Items`. Hub is `[Authorize]`. |
+| **Creator Journey** | Preserves `HTTP 404` status semantics on `CreatorJourneyException`; does not affect onboarding redirects. |
+| **Password Policy** | Synchronized frontend client validation with authoritative backend policy (min 6, uppercase, lowercase, digit). |
+| **Database** | Zero database modifications, migrations, or schema updates. |
+
+

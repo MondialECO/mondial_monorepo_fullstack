@@ -5,11 +5,14 @@ import { useRouter } from "next/navigation";
 import { Loader2, AlertCircle } from "lucide-react";
 import api from "@/lib/axios";
 import { useOnboarding } from "@/providers/OnboardingProvider";
+import { useAuth } from "@/app/_providers/AuthProvider";
+import { getRoleDashboardRoute } from "@/lib/roles";
 import { Button } from "@/components/ui/button";
 
 export default function OnboardingEmailPage() {
   const router = useRouter();
   const { refresh, status } = useOnboarding();
+  const { user, refreshAuthMe } = useAuth();
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -34,9 +37,15 @@ export default function OnboardingEmailPage() {
     try {
       await api.post("/onboarding/verify-email-otp", { code });
       await refresh();
-      // Redirect to hub, NOT to completion
-      // Hub will show "Complete" button for manual promotion
-      router.push("/onboarding");
+      // Synchronize auth context immediately after verification
+      const freshUser = await refreshAuthMe();
+      const targetUser = freshUser || user;
+      if (targetUser && (targetUser.onboardingPhase ?? 0) >= 1) {
+        const dashboard = getRoleDashboardRoute(targetUser);
+        router.replace(dashboard || "/dashboard/creator");
+        return;
+      }
+      router.replace("/onboarding");
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       setError(msg ?? "Invalid code.");

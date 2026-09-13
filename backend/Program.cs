@@ -242,10 +242,12 @@ builder.Services.AddAuthentication(options =>
     {
         OnMessageReceived = context =>
         {
-            var accessToken = context.Request.Query["access_token"];
+            var accessToken = (context.HttpContext.Items[QueryStringRedactionMiddleware.AccessTokenItemKey] as string)
+                ?? context.Request.Query["access_token"].ToString();
             var path = context.HttpContext.Request.Path;
 
             if (!string.IsNullOrEmpty(accessToken) &&
+                !accessToken.Equals(QueryStringRedactionMiddleware.RedactedPlaceholder, StringComparison.OrdinalIgnoreCase) &&
                 path.StartsWithSegments("/hubs"))
             {
                 context.Token = accessToken;
@@ -729,6 +731,7 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseMiddleware<SecurityHeadersMiddleware>();
+app.UseMiddleware<QueryStringRedactionMiddleware>();
 app.UseSerilogRequestLogging();
 app.UseResponseCompression();
 

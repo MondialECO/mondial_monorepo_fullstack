@@ -91,6 +91,10 @@ Gating is strict: no skipping steps; user can always go back one step; completed
 
 ## 3. Phase 1 — KYC + role select
 
+> [!NOTE]
+> **Historical / Superseded Architecture Note (September 2026 Baseline)**:
+> The canonical Universal Onboarding Gate (Phase 0 $\to$ Phase 1) is documented in [09-universal-identity-and-onboarding.md](file:///d:/mondial.eco/9-12-2026/mondial_monorepo_fullstack/docs/system-architecture/09-universal-identity-and-onboarding.md). For the current production MVP, Universal Onboarding requires **Email OTP + Phone OTP**; Identity Document Verification is automated via Sumsub WebSDK and deferred (`FeatureFlags:RequireIdentityVerificationInUniversalOnboarding = false`); face/biometrics has been permanently removed.
+
 **Purpose:** verify identity and lock in the Creator role before any dashboard access.
 
 **Steps:** email OTP, phone OTP, identity document upload, face verification, role selection.

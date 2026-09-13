@@ -142,7 +142,7 @@ When a founder hires a Service Provider (e.g. for branding or legal incorporatio
 ## 5. Security & Trust Architecture
 
 1. **Universal Phase 1 Verification**:
-   - Every user across all roles must verify their identity via passport/ID inspection and facial liveness verification before interacting with marketplace deals.
+   - Universal Phase 1 platform onboarding requires Email OTP and Phone OTP verification. Identity Document KYC (Sumsub) is document-only (facial/liveness biometrics permanently removed) and deferred for MVP (`FeatureFlags:RequireIdentityVerificationInUniversalOnboarding = false`). Marketplace deals and sensitive workflows enforce ownership and NDA verification.
 2. **Data Room Secrecy**:
    - Sensitive pitch decks, Cap Tables, and contracts are shielded behind cryptographic checks. Static direct downloads are denied by default; files can only be accessed through authenticated endpoints validating active NDA signatures.
 3. **Audit Trail & Governance**:
