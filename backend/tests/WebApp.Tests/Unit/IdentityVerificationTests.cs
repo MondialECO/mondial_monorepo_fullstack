@@ -59,6 +59,7 @@ namespace WebApp.Tests.Unit
                 ["Sumsub:AppToken"] = "test-token",
                 ["Sumsub:BaseUrl"] = "https://api.test.sumsub.com",
                 ["Sumsub:WebhookSecret"] = "test-secret",
+                ["Sumsub:LevelName"] = "id-document-only",
                 ["FeatureFlags:IdentityV2Enabled"] = "true"
             };
             _configuration = new ConfigurationBuilder().AddInMemoryCollection(configDict).Build();
@@ -667,6 +668,194 @@ namespace WebApp.Tests.Unit
 
             Assert.False(result);
             Assert.Contains(_inMemoryWebhookLogs, l => l.ProcessingResult == "invalid_signature");
+        }
+
+        // ======================================================================
+        // TEST 13: SumsubService Fails Closed When LevelName Is Missing
+        // ======================================================================
+        [Fact]
+        public async Task SumsubService_FailsClosed_WhenLevelNameMissing()
+        {
+            var emptyLevelConfig = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Sumsub:AppToken"] = "test-token",
+                ["Sumsub:BaseUrl"] = "https://api.test.sumsub.com",
+                ["Sumsub:WebhookSecret"] = "test-secret"
+                // Missing Sumsub:LevelName
+            }).Build();
+
+            var service = new SumsubService(new HttpClient(), emptyLevelConfig, new Mock<ILogger<SumsubService>>().Object);
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => service.GenerateAccessTokenAsync("user-123", "user@test.com"));
+            Assert.Contains("LevelName not configured", ex.Message);
+        }
+
+        // ======================================================================
+        // TEST 14: SumsubService Fails Closed When AppToken Is Missing
+        // ======================================================================
+        [Fact]
+        public async Task SumsubService_FailsClosed_WhenAppTokenMissing()
+        {
+            var emptyTokenConfig = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Sumsub:LevelName"] = "id-document-only",
+                ["Sumsub:BaseUrl"] = "https://api.test.sumsub.com",
+                ["Sumsub:WebhookSecret"] = "test-secret"
+                // Missing Sumsub:AppToken
+            }).Build();
+
+            var service = new SumsubService(new HttpClient(), emptyTokenConfig, new Mock<ILogger<SumsubService>>().Object);
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => service.GenerateAccessTokenAsync("user-123", "user@test.com"));
+            Assert.Contains("AppToken not configured", ex.Message);
+        }
+
+        // ======================================================================
+        // TEST 15: SumsubService Uses POST /resources/accessTokens/sdk Contract
+        // ======================================================================
+        [Fact]
+        public async Task SumsubService_UsesSdkTokenEndpoint_AndBindsLevelInJsonBody()
+        {
+            HttpRequestMessage? capturedRequest = null;
+            var testHandler = new TestHttpMessageHandler(req =>
+            {
+                capturedRequest = req;
+                var responseContent = JsonSerializer.Serialize(new { token = "test-access-token-xyz" });
+                return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                {
+                    Content = new StringContent(responseContent, Encoding.UTF8, "application/json")
+                };
+            });
+
+            var httpClient = new HttpClient(testHandler);
+            var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Sumsub:AppToken"] = "test-token",
+                ["Sumsub:BaseUrl"] = "https://api.test.sumsub.com",
+                ["Sumsub:WebhookSecret"] = "test-secret",
+                ["Sumsub:LevelName"] = "id-document-only"
+            }).Build();
+
+            var service = new SumsubService(httpClient, config, new Mock<ILogger<SumsubService>>().Object);
+            var token = await service.GenerateAccessTokenAsync("test-user-456", "user@test.com");
+
+            Assert.Equal("test-access-token-xyz", token);
+            Assert.NotNull(capturedRequest);
+            Assert.Equal(HttpMethod.Post, capturedRequest!.Method);
+            Assert.Equal("/resources/accessTokens/sdk", capturedRequest.RequestUri!.AbsolutePath);
+
+            // Query string must NOT contain levelName
+            Assert.DoesNotContain("levelName", capturedRequest.RequestUri.Query);
+
+            var bodyJson = await capturedRequest.Content!.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(bodyJson);
+            Assert.Equal("test-user-456", doc.RootElement.GetProperty("userId").GetString());
+            Assert.Equal("id-document-only", doc.RootElement.GetProperty("levelName").GetString());
+            Assert.Equal(900, doc.RootElement.GetProperty("ttlInSecs").GetInt32());
+        }
+
+        // ======================================================================
+        // TEST 16: CreateOrGetSessionAsync Uses Explicit Level And Returns Token
+        // ======================================================================
+        [Fact]
+        public async Task CreateOrGetSessionAsync_UsesConfiguredLevel_AndGeneratesSession()
+        {
+            var user = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                Email = "session-test@mondial.test",
+                User = "Creator",
+                Onboarding = new OnboardingState { Phase = 0 }
+            };
+
+            var service = CreateService(user);
+
+            var session = await service.CreateOrGetSessionAsync(
+                user.Id.ToString(),
+                "FR",
+                "national_id",
+                "FR",
+                "FR"
+            );
+
+            Assert.NotNull(session);
+            Assert.Equal("national_id", session.DocumentType);
+            Assert.Equal("submitted", session.Status);
+            Assert.NotEmpty(session.AccessToken);
+        }
+
+        // ======================================================================
+        // TEST 17: Deterministic HMAC-SHA256 Request Signing Verification
+        // ======================================================================
+        [Fact]
+        public void SumsubService_GenerateSignature_MatchesOfficialSumsubContract()
+        {
+            var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Sumsub:AppToken"] = "sbx:test-app-token",
+                ["Sumsub:SecretKey"] = "test-secret-key-12345",
+                ["Sumsub:LevelName"] = "id-document-only"
+            }).Build();
+
+            var service = new SumsubService(new HttpClient(), config, new Mock<ILogger<SumsubService>>().Object);
+
+            long timestamp = 1710000000;
+            string method = "POST";
+            string url = "https://api.sumsub.com/resources/accessTokens/sdk";
+            string jsonBody = "{\"userId\":\"user-123\",\"levelName\":\"id-document-only\",\"ttlInSecs\":900}";
+            byte[] bodyBytes = Encoding.UTF8.GetBytes(jsonBody);
+
+            // Official Sumsub contract: timestamp + METHOD + pathAndQuery + exactBody
+            string rawToSign = $"{timestamp}{method}/resources/accessTokens/sdk{jsonBody}";
+            using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes("test-secret-key-12345"));
+            string expectedHex = Convert.ToHexString(hmac.ComputeHash(Encoding.UTF8.GetBytes(rawToSign))).ToLowerInvariant();
+
+            string actualSignature = service.GenerateSignature(method, url, timestamp, bodyBytes);
+
+            Assert.Equal(expectedHex, actualSignature);
+        }
+
+        // ======================================================================
+        // TEST 18: Deterministic HMAC Signing With Query Parameters (Applicant Creation)
+        // ======================================================================
+        [Fact]
+        public void SumsubService_GenerateSignature_IncludesQueryParametersCorrectly()
+        {
+            var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Sumsub:AppToken"] = "sbx:test-app-token",
+                ["Sumsub:SecretKey"] = "test-secret-key-12345",
+                ["Sumsub:LevelName"] = "id-document-only"
+            }).Build();
+
+            var service = new SumsubService(new HttpClient(), config, new Mock<ILogger<SumsubService>>().Object);
+
+            long timestamp = 1710000000;
+            string method = "POST";
+            string url = "https://api.sumsub.com/resources/applicants?levelName=id-document-only";
+            string jsonBody = "{\"externalUserId\":\"user-999\",\"email\":\"test@mondial.eco\"}";
+            byte[] bodyBytes = Encoding.UTF8.GetBytes(jsonBody);
+
+            string rawToSign = $"{timestamp}{method}/resources/applicants?levelName=id-document-only{jsonBody}";
+            using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes("test-secret-key-12345"));
+            string expectedHex = Convert.ToHexString(hmac.ComputeHash(Encoding.UTF8.GetBytes(rawToSign))).ToLowerInvariant();
+
+            string actualSignature = service.GenerateSignature(method, url, timestamp, bodyBytes);
+
+            Assert.Equal(expectedHex, actualSignature);
+        }
+    }
+
+    public class TestHttpMessageHandler : HttpMessageHandler
+    {
+        private readonly Func<HttpRequestMessage, HttpResponseMessage> _handler;
+
+        public TestHttpMessageHandler(Func<HttpRequestMessage, HttpResponseMessage> handler)
+        {
+            _handler = handler;
+        }
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(_handler(request));
         }
     }
 }

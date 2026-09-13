@@ -1,353 +1,179 @@
-# Sumsub API Integration Guide
+# Sumsub Identity Verification Integration Guide
 
 ## Overview
 
-Complete Sumsub integration for face verification and KYC in the Mondial identity verification flow.
+Mondial ECO integrates with **Sumsub** strictly for **Automated Identity Document Verification (KYC)**. 
+Facial verification, selfie comparison, liveness detection, and video identification are permanently excluded from this integration.
 
-### Features Implemented
+### Canonical Architecture Features
 
-- ✅ Token generation for Sumsub SDK
-- ✅ Applicant creation and management
-- ✅ Verification status checks
-- ✅ Webhook handling for completion notifications
-- ✅ Secure signature verification
-- ✅ Audit logging for all verification events
+- ✅ **Document-Only Verification**: Passport, National ID (CNI), Residence Permit (Titre de séjour).
+- ✅ **Secure Token Minting**: Short-lived (15-minute) WebSDK tokens via `POST /api/identity/session`.
+- ✅ **Automated Webhook Ingress**: Real-time webhook processing via `POST /api/identity/webhook/sumsub`.
+- ✅ **HMAC-SHA256 Signature Verification**: Cryptographic validation against raw incoming request bodies.
+- ✅ **Idempotent Delivery Tracking**: Deduplication via `ProcessedEventIds` and `IdentityWebhookDeliveryLogs`.
+- ✅ **Durable Audit Trail**: Transition logging in `IdentityDecisionAuditLogs`.
+- ✅ **Universal Phase 1 Promotion Gate**: Automated promotion to `Onboarding.Phase = 1` upon document verification + email OTP + phone verification.
 
 ---
 
-## Setup Instructions
+## Configuration & Environment Variables
 
-### 1. Create Sumsub Account
-
-1. Visit [Sumsub](https://sumsub.com/)
-2. Sign up for a Sumsub account
-3. Set up your application in the dashboard
-
-### 2. Get Credentials
-
-From Sumsub Dashboard → Settings → API:
-
-- **App Token**: Your API authentication token (keep secret!)
-- **Base URL**: `https://api.staging.sumsub.com` (staging) or `https://api.sumsub.com` (production)
-- **Webhook Secret**: Generate in Webhooks section
-
-### 3. Configure Environment
-
-Update `appsettings.json` or set environment variables:
+Sumsub credentials are read by `SumsubService.cs` and validated at startup in `Program.cs`:
 
 ```json
 {
   "Sumsub": {
-    "AppToken": "YOUR_APP_TOKEN_HERE",
-    "BaseUrl": "https://api.staging.sumsub.com",
-    "WebhookSecret": "YOUR_WEBHOOK_SECRET"
+    "AppToken": "<your-sumsub-app-token>",
+    "BaseUrl": "https://api.sumsub.com",
+    "WebhookSecret": "<your-sumsub-webhook-signing-secret>",
+    "LevelName": "id-document-only"
+  },
+  "FeatureFlags": {
+    "IdentityV2Enabled": true,
+    "AllowLegacyIdentityUpload": false
   }
 }
 ```
 
-**Or use environment variables:**
+### Environment Variable Format
+
 ```bash
-export Sumsub__AppToken=YOUR_APP_TOKEN
-export Sumsub__BaseUrl=https://api.staging.sumsub.com
-export Sumsub__WebhookSecret=YOUR_WEBHOOK_SECRET
+Sumsub__AppToken="<app-token>"
+Sumsub__BaseUrl="https://api.sumsub.com"
+Sumsub__WebhookSecret="<webhook-secret>"
+Sumsub__LevelName="id-document-only"
+FeatureFlags__IdentityV2Enabled=true
+FeatureFlags__AllowLegacyIdentityUpload=false
 ```
-
-### 4. Set Up Webhook
-
-Configure in Sumsub Dashboard → Webhooks:
-
-**Endpoint URL:**
-```
-https://yourdomain.com/api/onboarding/sumsub/webhook
-```
-
-**Events to subscribe to:**
-- Applicant Review (all statuses)
-
-**Authentication:**
-- Sumsub will send `X-Sumsub-Signature` header with HMAC-SHA256 signature
-- Server verifies using configured WebhookSecret
 
 ---
 
 ## API Endpoints
 
-### 1. Get Sumsub Access Token
+### 1. Document Configuration (`GET /api/identity/config`)
+* **Access**: Public / Anonymous
+* **Parameters**: `?country=FR`
+* **Response**: Returns supported document types for the country (e.g. `national_id`, `passport`, `residence_permit` for France).
 
-**Request:**
-```
-GET /api/onboarding/sumsub/token
-Authorization: Bearer {jwt_token}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "message": "Access token generated",
-  "data": {
-    "accessToken": "exampleAccessToken123..."
+### 2. Start / Resume Verification Session (`POST /api/identity/session`)
+* **Access**: Authenticated (`Authorization: Bearer <jwt>`)
+* **Request Body**:
+  ```json
+  {
+    "documentType": "national_id",
+    "countryCode": "FR",
+    "issuingCountry": "FR",
+    "nationality": "FR"
   }
-}
-```
+  ```
+* **Response**:
+  ```json
+  {
+    "success": true,
+    "data": {
+      "accessToken": "<short_lived_sumsub_websdk_token>",
+      "applicantId": "<sumsub_applicant_id>",
+      "status": "pending",
+      "verificationId": "<universal_verification_id>"
+    }
+  }
+  ```
 
-**What it does:**
-- Creates/retrieves Sumsub applicant for the user
-- Generates short-lived (15 min) access token
-- Returns token for frontend SDK initialization
+### 3. Verification Status Query (`GET /api/identity/status`)
+* **Access**: Authenticated (`Authorization: Bearer <jwt>`)
+* **Response**:
+  ```json
+  {
+    "success": true,
+    "data": {
+      "status": "Verified",
+      "documentType": "national_id",
+      "isCurrent": true,
+      "reviewReason": null,
+      "canRetry": false
+    }
+  }
+  ```
 
----
+### 4. Retry Verification (`POST /api/identity/retry`)
+* **Access**: Authenticated (`Authorization: Bearer <jwt>`)
+* **Response**: Archives current attempt (`IsCurrent = false`) and enables the user to start a fresh attempt.
 
-### 2. Webhook Handler (Sumsub → Backend)
+### 5. Canonical Webhook Ingress (`POST /api/identity/webhook/sumsub`)
+* **Access**: Public (Authenticated by HMAC-SHA256 signature header)
+* **Headers**:
+  * `X-Payload-Digest`: Hex-encoded HMAC-SHA256 signature of the raw body using `Sumsub:WebhookSecret`.
+  * `X-Sumsub-Event-Id`: Unique provider event identifier.
+* **Payload**: Sumsub applicant review status notification.
+* **Processing Actions**:
+  1. Validates signature against raw body bytes.
+  2. Records operational log in `IdentityWebhookDeliveryLogs`.
+  3. Updates `UniversalIdentityVerifications` record with new state (`Verified`, `Rejected`, `ManualReview`).
+  4. Records transition in `IdentityDecisionAuditLogs`.
+  5. Updates `ApplicationUser.Onboarding.IdentityDocumentVerified = true` upon approval (`GREEN`).
+  6. Evaluates `OnboardingGate.PromoteIfCompleteAsync`.
 
-**Endpoint:**
-```
-POST /api/onboarding/sumsub/webhook
-X-Sumsub-Signature: {hmac_signature}
-Content-Type: application/json
-```
-
-**Payload:**
-```json
-{
-  "applicantId": "620a0aa234d6e1001e4a4e3a",
-  "externalUserId": "user-mongodb-id",
-  "reviewStatus": "APPROVED",
-  "createdAt": 1234567890,
-  "clientId": "xxx",
-  "inspectionId": "xxx",
-  "applicantEmail": "user@example.com"
-}
-```
-
-**Review Status Values:**
-- `APPROVED` - All document verifications passed
-- `REJECTED` - Document verification failed
-- `PENDING` - Still under review
-
-**Webhook Behavior:**
-
-| Status | Action |
-|--------|--------|
-| APPROVED | Mark identity document as verified, promote phase |
-| REJECTED | Mark identity document as unverified |
-| PENDING | Log event, no state change |
-
----
-
-## Frontend Integration
-
-### Loading Sumsub SDK
-
-```javascript
-// In IdentityVerification.tsx
-const response = await api.get('/onboarding/sumsub/token');
-const { accessToken } = response.data?.data;
-
-// Load SDK
-const script = document.createElement('script');
-script.src = 'https://sdk.sumsub.com/idensic.min.js';
-script.onload = () => initSumsubWidget(accessToken);
-```
-
-### Initializing Widget
-
-```javascript
-const sdk = SumsubWebSdk.init({
-  accessToken,                  // From /sumsub/token endpoint
-  applicantEmail: userEmail,
-  containerId: 'sumsub-container',
-  onMessage: (msg) => console.log(msg),
-  onError: (error) => handleError(error),
-});
-
-// Listen for completion
-sdk.on('idensic:completed', () => {
-  // Document verification submitted
-  // Redirect to dashboard or onboarding hub
-});
-
-sdk.on('idensic:failed', () => {
-  // Handle failure
-});
-```
+### 6. Legacy Webhook Forwarder (`POST /api/onboarding/sumsub/webhook`)
+* **Status**: `[Obsolete]` Compatibility forwarder.
+* **Behavior**: Receives webhook and delegates directly into `IIdentityVerificationService.ProcessProviderWebhookAsync`. Preserved until external provider dashboard routing is operationally confirmed.
 
 ---
 
-## Service Architecture
+## Data Models & Collections
 
-### SumsubService (backend/Services/SumsubService.cs)
-
-**Public Methods:**
-
-1. **GenerateAccessTokenAsync(userId, email)**
-   - Creates/retrieves applicant
-   - Generates 15-minute access token
-   - Returns token for SDK
-
-2. **GetVerificationStatusAsync(externalUserId)**
-   - Queries Sumsub API for current status
-   - Parses identity, face, phone, email verification states
-   - Returns SumsubVerificationStatus object
-
-3. **VerifyWebhookSignature(body, signature)**
-   - Validates HMAC-SHA256 signature
-   - Returns true if valid, false otherwise
-
-**Private Methods:**
-
-- EnsureApplicantAsync(): Creates applicant if not exists
-- CreateApplicantAsync(): Calls Sumsub API to create new applicant
-- GetVerificationState(): Extracts verification state for specific check type
-- AddAuthHeaders(): Adds X-App-Token and signature headers
-- GenerateSignature(): Creates HMAC-SHA256 signature for requests
+| Collection Name | Entity Model | Purpose |
+| :--- | :--- | :--- |
+| `UniversalIdentityVerifications` | `UniversalIdentityVerification` | Authoritative domain record for identity attempts and provider applicant mappings. |
+| `IdentityWebhookDeliveryLogs` | `IdentityWebhookDeliveryLog` | Ingress delivery audit log (contains payload SHA256 digest; zero raw PII). |
+| `IdentityDecisionAuditLogs` | `IdentityDecisionAuditLog` | State machine transition history (`PreviousState` $\to$ `NewState`). |
+| `applicationUsers` | `ApplicationUser` | User document holding `Onboarding.IdentityDocumentVerified` projection and gate status. |
 
 ---
 
-## Security
+## Explicit Verification Level Binding & Fail-Closed Policy
 
-### Authentication
-
-**API Calls:**
-- Header: `X-App-Token: {AppToken}`
-- POST/PUT/DELETE also include HMAC signature
-- Signature: `HMAC-SHA256(AppToken, "METHOD|path|timestamp")`
-
-**Webhooks:**
-- Sumsub sends HMAC-SHA256 signature in `X-Sumsub-Signature` header
-- Server verifies using WebhookSecret
-- Invalid signatures rejected with 401 Unauthorized
-
-### Data Protection
-
-- AppToken stored in secure configuration (environment variables)
-- Face photos stored in Sumsub (not in Mondial database)
-- Webhook secret stored securely
-- HTTPS enforced for all API calls
-- Short-lived tokens (15 minutes)
-- Audit logging for all verification events
-
----
-
-## Testing
-
-### Development/Staging
-
-1. **Use Sumsub Staging Environment:**
-   ```
-   BaseUrl: https://api.staging.sumsub.com
-   ```
-
-2. **Test with Demo Documents:**
-   - Sumsub provides test images on their dashboard
-   - Use for testing without real documents
-
-3. **Webhook Testing:**
-   - Use Sumsub's webhook test/replay feature in dashboard
-   - Or trigger manually via their API
-
-### Production
-
-1. **Switch to Production URLs:**
-   ```
-   BaseUrl: https://api.sumsub.com
-   ```
-
-2. **Real Documents Only:**
-   - Production only accepts real government IDs
-
-3. **Monitor Webhook Delivery:**
-   - Check Sumsub dashboard for webhook logs
-   - Verify user records update correctly
+* **Configured Level**: `Sumsub:LevelName = "id-document-only"`
+* **SDK Token Endpoint**: `POST /resources/accessTokens/sdk`
+  - **Request Headers**: `X-App-Token`, `X-App-Access-Ts`, `X-App-Access-Sig`
+  - **JSON Body**:
+    ```json
+    {
+      "userId": "<user_id>",
+      "levelName": "id-document-only",
+      "ttlInSecs": 900
+    }
+    ```
+* **Applicant Creation Endpoint**: `POST /resources/applicants?levelName=id-document-only`
+  - **JSON Body**:
+    ```json
+    {
+      "externalUserId": "<user_id>",
+      "email": "<email>"
+    }
+    ```
+* **Cryptographic Request Signing (Outbound)**:
+  - Format: `HMAC-SHA256(SecretKey, timestamp + HTTP_METHOD + URI_WITH_QUERY + EXACT_SERIALIZED_BODY)`
+  - Exact body bytes are used for both signature computation and HTTP transmission to prevent whitespace/encoding drift.
+* **Fail-Closed Protection**: If `Sumsub:LevelName` is missing, blank, or unconfigured, token generation and applicant creation throw an `InvalidOperationException` immediately.
+* **Zero Account Default Fallback**: The system strictly refuses to rely on the Sumsub Account Default Level, guaranteeing that dashboard default changes cannot silently activate biometric steps.
 
 ---
 
-## Error Handling
+## France MVP Document Rules
 
-### Common Errors and Solutions
+| Document Type Code | Name | Front Photo Required | Back Photo Required |
+| :--- | :--- | :--- | :--- |
+| `national_id` | Carte Nationale d'Identité (CNI) | **Yes** | **Yes** |
+| `passport` | Passeport | **Yes** | **No** |
+| `residence_permit` | Titre de séjour | **Yes** | **Yes** |
 
-| Error | Cause | Solution |
-|-------|-------|----------|
-| "AppToken not configured" | Missing Sumsub:AppToken | Set in appsettings.json or env var |
-| "Invalid signature" | Webhook signature mismatch | Verify WebhookSecret is correct |
-| "User not found" | Invalid userId | Ensure user exists before calling endpoint |
-| "Face verification not approved" | Sumsub still reviewing | User must complete verification in widget |
-| 500 - Status check failed | Sumsub API unreachable | Check network, Sumsub status page |
-
-### Retry Logic
-
-**Frontend:**
-- Automatic retry on 500 errors
-- User can retry manually on 400 errors
-- Max 3 attempts before showing error
-
-**Webhook:**
-- Sumsub retries webhook if server returns 500
-- Returns 200 OK immediately to prevent retries
-- Processes asynchronously in background
+*Driver's license is strictly excluded from France KYC.*
 
 ---
 
-## Audit Logging
+## Verification Status & Audit Clarifications
 
-All verification events are logged for compliance:
+* **WEBHOOK CODE-PATH TEST RESULT**: **PASS** (18 automated unit and integration tests executing HMAC-SHA256 signature verification, idempotency deduplication, out-of-order protection, deterministic signing, and Phase 1 gate promotion).
+* **REAL PROVIDER WEBHOOK**: **PENDING** (Awaiting live applicant review event delivery by Sumsub cloud servers in sandbox/production).
 
-```csharp
-_audit.Record("face_sumsub_verify", user.Email, true);
-_audit.Record("sumsub_webhook_approved", user.Email, true);
-_audit.Record("sumsub_webhook_rejected", user.Email, false);
-```
-
-Logged information:
-- User email
-- Event type
-- Success/failure
-- Timestamp
-- Any additional context
-
----
-
-## Troubleshooting
-
-### Token Generation Fails
-
-1. Check AppToken in config
-2. Verify user record exists
-3. Check Sumsub API status page
-4. Review application logs for specific error
-
-### Webhook Not Received
-
-1. Verify webhook URL is accessible
-2. Check webhook configuration in Sumsub dashboard
-3. Verify WebhookSecret matches
-4. Test webhook delivery in Sumsub dashboard
-5. Check firewall/security groups allow inbound
-
-### Verification Status Wrong
-
-1. Check Sumsub applicant status in dashboard
-2. Verify user email matches applicant
-3. Ensure user completed all required steps
-4. Check audit logs for webhook receipt
-
----
-
-## Next Steps
-
-1. **Get Sumsub Account**: [sumsub.com](https://sumsub.com/)
-2. **Configure Credentials**: Set AppToken, BaseUrl, WebhookSecret
-3. **Set Up Webhook**: Configure in Sumsub dashboard
-4. **Test Staging**: Verify flow works end-to-end
-5. **Switch to Production**: When ready to go live
-
----
-
-## References
-
-- [Sumsub API Docs](https://docs.sumsub.com/api-reference)
-- [Sumsub Web SDK](https://docs.sumsub.com/docs/web-sdk)
-- [Sumsub Webhook Events](https://docs.sumsub.com/webhooks)
-- Integration Code: `backend/Services/SumsubService.cs`
-- Controller: `backend/Controllers/OnboardingController.cs`
-- Frontend: `src/components/onboarding/IdentityVerification.tsx`

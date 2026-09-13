@@ -25,6 +25,7 @@ namespace WebApp.Services
         private string AppToken => _configuration["Sumsub:AppToken"] ?? "";
         private string BaseUrl => _configuration["Sumsub:BaseUrl"] ?? "https://api.sumsub.com";
         private string WebhookSecret => _configuration["Sumsub:WebhookSecret"] ?? "";
+        private string LevelName => _configuration["Sumsub:LevelName"] ?? "";
 
         public SumsubService(HttpClient httpClient, IConfiguration configuration, ILogger<SumsubService> logger)
         {
@@ -34,36 +35,45 @@ namespace WebApp.Services
         }
 
         /// <summary>
-        /// Generate or get access token for a Sumsub applicant.
-        /// Creates new applicant if doesn't exist.
+        /// Generate or get access token for a Sumsub applicant using the WebSDK endpoint.
+        /// Target Endpoint: POST /resources/accessTokens/sdk
+        /// Explicitly binds to the configured verification level (e.g. "id-document-only") in the JSON body.
+        /// Fails closed if LevelName or AppToken is missing/unconfigured.
         /// </summary>
-        public async Task<string> GenerateAccessTokenAsync(string userId, string email)
+        public async Task<string> GenerateAccessTokenAsync(string userId, string email, string? levelName = null)
         {
+            var effectiveLevel = !string.IsNullOrWhiteSpace(levelName) ? levelName : LevelName;
+            if (string.IsNullOrWhiteSpace(effectiveLevel))
+            {
+                _logger.LogError("Sumsub LevelName is not configured. Failing closed to prevent default level fallback.");
+                throw new InvalidOperationException("Sumsub LevelName not configured. Failing closed to prevent default level fallback.");
+            }
+
             if (string.IsNullOrWhiteSpace(AppToken))
                 throw new InvalidOperationException("Sumsub AppToken not configured");
 
             try
             {
-                // Create or get applicant
-                var applicantId = await EnsureApplicantAsync(userId, email);
+                // Create or get applicant bound to the specified level
+                var applicantId = await EnsureApplicantAsync(userId, email, effectiveLevel);
 
-                // Generate access token with 15 minute expiry
-                var expiresAt = DateTimeOffset.UtcNow.AddMinutes(15).ToUnixTimeSeconds();
-                var body = new
+                // SDK token payload: userId, levelName, ttlInSecs (900s)
+                var payload = new
                 {
-                    externalUserId = userId,
+                    userId = userId,
+                    levelName = effectiveLevel,
                     ttlInSecs = 900 // 15 minutes
                 };
 
-                var url = $"{BaseUrl}/resources/accessTokens?externalUserId={Uri.EscapeDataString(userId)}";
-                var request = new HttpRequestMessage(HttpMethod.Post, url);
-                request.Content = new StringContent(
-                    JsonSerializer.Serialize(body),
-                    Encoding.UTF8,
-                    "application/json"
-                );
+                var bodyJson = JsonSerializer.Serialize(payload);
+                var bodyBytes = Encoding.UTF8.GetBytes(bodyJson);
 
-                AddAuthHeaders(request, "POST", url);
+                var url = $"{BaseUrl}/resources/accessTokens/sdk";
+                var request = new HttpRequestMessage(HttpMethod.Post, url);
+                request.Content = new ByteArrayContent(bodyBytes);
+                request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
+
+                AddAuthHeaders(request, "POST", url, bodyBytes);
 
                 var response = await _httpClient.SendAsync(request);
                 var content = await response.Content.ReadAsStringAsync();
@@ -77,12 +87,12 @@ namespace WebApp.Services
                 var jsonDoc = JsonDocument.Parse(content);
                 var token = jsonDoc.RootElement.GetProperty("token").GetString();
 
-                _logger.LogInformation($"Generated Sumsub token for user {userId}");
+                _logger.LogInformation($"Generated Sumsub WebSDK token for user {userId} with level {effectiveLevel}");
                 return token ?? throw new Exception("No token in response");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error generating Sumsub token for user {userId}");
+                _logger.LogError(ex, $"Error generating Sumsub token for user {userId} with level {effectiveLevel}");
                 throw;
             }
         }
@@ -90,14 +100,14 @@ namespace WebApp.Services
         /// <summary>
         /// Ensure applicant exists in Sumsub, create if not.
         /// </summary>
-        private async Task<string> EnsureApplicantAsync(string userId, string email)
+        private async Task<string> EnsureApplicantAsync(string userId, string email, string? levelName = null)
         {
             try
             {
                 // Check if applicant exists
                 var url = $"{BaseUrl}/resources/applicants?externalUserId={Uri.EscapeDataString(userId)}";
                 var request = new HttpRequestMessage(HttpMethod.Get, url);
-                AddAuthHeaders(request, "GET", url);
+                AddAuthHeaders(request, "GET", url, null);
 
                 var response = await _httpClient.SendAsync(request);
 
@@ -112,7 +122,7 @@ namespace WebApp.Services
                 }
 
                 // Create new applicant if not found
-                return await CreateApplicantAsync(userId, email);
+                return await CreateApplicantAsync(userId, email, levelName);
             }
             catch (Exception ex)
             {
@@ -123,45 +133,53 @@ namespace WebApp.Services
 
         /// <summary>
         /// Create new applicant in Sumsub.
+        /// Target Endpoint: POST /resources/applicants?levelName={levelName}
         /// </summary>
-        private async Task<string> CreateApplicantAsync(string userId, string email)
+        private async Task<string> CreateApplicantAsync(string userId, string email, string? levelName = null)
         {
             try
             {
-                var body = new
+                var effectiveLevel = !string.IsNullOrWhiteSpace(levelName) ? levelName : LevelName;
+                if (string.IsNullOrWhiteSpace(effectiveLevel))
+                {
+                    _logger.LogError("Sumsub LevelName is not configured for applicant creation. Failing closed.");
+                    throw new InvalidOperationException("Sumsub LevelName not configured. Failing closed to prevent default level fallback.");
+                }
+
+                var payload = new
                 {
                     externalUserId = userId,
-                    email = email,
-                    phone = "+1000000000" // Placeholder
+                    email = email
                 };
 
-                var url = $"{BaseUrl}/resources/applicants";
-                var request = new HttpRequestMessage(HttpMethod.Post, url);
-                request.Content = new StringContent(
-                    JsonSerializer.Serialize(body),
-                    Encoding.UTF8,
-                    "application/json"
-                );
+                var bodyJson = JsonSerializer.Serialize(payload);
+                var bodyBytes = Encoding.UTF8.GetBytes(bodyJson);
 
-                AddAuthHeaders(request, "POST", url);
+                var url = $"{BaseUrl}/resources/applicants?levelName={Uri.EscapeDataString(effectiveLevel)}";
+
+                var request = new HttpRequestMessage(HttpMethod.Post, url);
+                request.Content = new ByteArrayContent(bodyBytes);
+                request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
+
+                AddAuthHeaders(request, "POST", url, bodyBytes);
 
                 var response = await _httpClient.SendAsync(request);
                 var content = await response.Content.ReadAsStringAsync();
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    _logger.LogWarning($"Failed to create Sumsub applicant: {response.StatusCode}");
+                    _logger.LogWarning($"Failed to create Sumsub applicant: {response.StatusCode} - {content}");
                     return userId; // Fallback
                 }
 
                 var jsonDoc = JsonDocument.Parse(content);
                 var id = jsonDoc.RootElement.GetProperty("id").GetString();
-                _logger.LogInformation($"Created Sumsub applicant {id} for user {userId}");
+                _logger.LogInformation($"Created Sumsub applicant {id} for user {userId} with level {effectiveLevel}");
                 return id ?? userId;
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, $"Error creating Sumsub applicant");
+                _logger.LogWarning(ex, $"Error creating Sumsub applicant for user {userId}");
                 return userId;
             }
         }
@@ -176,7 +194,7 @@ namespace WebApp.Services
             {
                 var url = $"{BaseUrl}/resources/applicants?externalUserId={Uri.EscapeDataString(externalUserId)}";
                 var request = new HttpRequestMessage(HttpMethod.Get, url);
-                AddAuthHeaders(request, "GET", url);
+                AddAuthHeaders(request, "GET", url, null);
 
                 var response = await _httpClient.SendAsync(request);
                 var content = await response.Content.ReadAsStringAsync();
@@ -265,38 +283,48 @@ namespace WebApp.Services
 
         /// <summary>
         /// Add Sumsub authentication headers to request.
-        /// Uses X-App-Token and custom signature for POST/PUT/DELETE.
+        /// Header: X-App-Token, X-App-Access-Ts, X-App-Access-Sig
+        /// Signature = HMAC-SHA256(SecretKey, timestamp + METHOD + URI_WITH_QUERY + EXACT_BODY)
         /// </summary>
-        private void AddAuthHeaders(HttpRequestMessage request, string method, string url)
+        private void AddAuthHeaders(HttpRequestMessage request, string method, string url, byte[]? bodyBytes = null)
         {
             request.Headers.Add("X-App-Token", AppToken);
 
-            // Only sign POST, PUT, DELETE requests
-            if (method == "POST" || method == "PUT" || method == "DELETE")
-            {
-                var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-                var signature = GenerateSignature(method, url, timestamp);
-                request.Headers.Add("X-App-Access-Ts", timestamp.ToString());
-                request.Headers.Add("X-App-Access-Sig", signature);
-            }
+            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            var signature = GenerateSignature(method, url, timestamp, bodyBytes);
+            request.Headers.Add("X-App-Access-Ts", timestamp.ToString());
+            request.Headers.Add("X-App-Access-Sig", signature);
         }
 
         /// <summary>
         /// Generate signature for Sumsub API authentication.
-        /// Signature = HMAC-SHA256(AppToken, "method|path|timestamp")
+        /// Signature format: HMAC-SHA256(SecretKey, timestamp + HTTP_METHOD + URI_WITH_QUERY + EXACT_REQUEST_BODY)
         /// </summary>
-        private string GenerateSignature(string method, string url, long timestamp)
+        public string GenerateSignature(string method, string url, long timestamp, byte[]? bodyBytes = null)
         {
-            // Extract path from full URL
+            // Extract path and query from full URL
             var uri = new Uri(url);
-            var path = uri.PathAndQuery;
+            var pathAndQuery = uri.PathAndQuery;
 
-            var signatureBase = $"{method.ToUpper()}|{path}|{timestamp}";
-            var key = Encoding.UTF8.GetBytes(AppToken);
+            var prefixString = $"{timestamp}{method.ToUpperInvariant()}{pathAndQuery}";
+            var prefixBytes = Encoding.UTF8.GetBytes(prefixString);
+            var bodyPart = bodyBytes != null && bodyBytes.Length > 0 ? bodyBytes : Array.Empty<byte>();
 
-            using var hmac = new HMACSHA256(key);
-            var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(signatureBase));
-            return Convert.ToHexString(hash).ToLower();
+            var dataToSign = new byte[prefixBytes.Length + bodyPart.Length];
+            Buffer.BlockCopy(prefixBytes, 0, dataToSign, 0, prefixBytes.Length);
+            if (bodyPart.Length > 0)
+            {
+                Buffer.BlockCopy(bodyPart, 0, dataToSign, prefixBytes.Length, bodyPart.Length);
+            }
+
+            var signingKey = !string.IsNullOrWhiteSpace(_configuration["Sumsub:SecretKey"])
+                ? _configuration["Sumsub:SecretKey"]!
+                : AppToken;
+
+            var keyBytes = Encoding.UTF8.GetBytes(signingKey);
+            using var hmac = new HMACSHA256(keyBytes);
+            var hash = hmac.ComputeHash(dataToSign);
+            return Convert.ToHexString(hash).ToLowerInvariant();
         }
     }
 
