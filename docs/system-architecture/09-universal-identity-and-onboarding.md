@@ -12,13 +12,17 @@ Mondial ECO enforces a **Universal Phase 0 Onboarding Gate** across all user arc
 * **Investor**: Locked out of `/dashboard/investor` and Deal Flow Pipelines until Phase 1.
 * **Service Provider**: Locked out of `/dashboard/serviceprovider` and Marketplace Listings until Phase 1.
 
-Every user undergoes an identical, standardized, 3-step verification sequence:
-1. **Email Verification** (HMAC-SHA256 6-digit OTP via SMTP)
-2. **Phone Verification** (HMAC-SHA256 6-digit OTP via Twilio SMS)
-3. **Identity Document Verification** (Automated document KYC via Sumsub WebSDK)
+Every user undergoes the standardized verification sequence:
+1. **Email Verification** (HMAC-SHA256 6-digit OTP via SMTP) — **Required**
+2. **Phone Verification** (HMAC-SHA256 6-digit OTP via Twilio SMS) — **Required**
+3. **Identity Document Verification** (Automated document KYC via Sumsub WebSDK) — **Fully Implemented & Deferred for MVP Launch**
 
 > [!IMPORTANT]
-> **Facial verification, selfie photos, liveness detection, and video identification are strictly and permanently removed** from active runtime business logic. The universal gate requires ONLY Email + Phone + Government Identity Document.
+> **MVP Launch Gate Policy & Reversible Feature Flag**:
+> - Required Universal Onboarding Steps: **Email Verification** + **Phone Verification**.
+> - Identity Document Verification is fully implemented and preserved in place, but temporarily deferred from blocking Universal Phase 1 onboarding.
+> - Policy is governed by `FeatureFlags:RequireIdentityVerificationInUniversalOnboarding` (defaults to `false`).
+> - **Facial verification, selfie photos, liveness detection, and video identification are permanently removed** from active runtime business logic.
 
 ---
 
@@ -170,21 +174,26 @@ The promotion gate is centralized in `backend/Services/OnboardingGate.cs`.
 
 ### Gate Condition
 ```csharp
+var requireIdentity = config.GetValue<bool>(
+    "FeatureFlags:RequireIdentityVerificationInUniversalOnboarding", false);
+
 var complete = user.Onboarding.EmailOtpVerified &&
                user.Onboarding.PhoneVerified &&
-               user.Onboarding.IdentityDocumentVerified;
+               (!requireIdentity || user.Onboarding.IdentityDocumentVerified);
 ```
 
 ### Side Effects upon Promotion
 When `complete == true` and `user.Onboarding.Phase < 1`:
 1. `user.Onboarding.Phase = 1`
 2. `user.Onboarding.CompletedAt = DateTime.UtcNow`
-3. `user.KycStatus = "VERIFIED"` (backward compatibility projection)
-4. `user.Kyc.Status = VerificationStatus.Verified`
-5. `user.Kyc.VerifiedAt = DateTime.UtcNow`
-6. `user.Tier_level = Math.Max(user.Tier_level, 1)`
-7. Persisted via `UserManager.UpdateAsync(user)`
-8. Emits structured audit log event `"onboarding_complete"`.
+3. `user.Tier_level = Math.Max(user.Tier_level, 1)`
+4. If `user.Onboarding.IdentityDocumentVerified == true`:
+   - `user.KycStatus = "VERIFIED"`
+   - `user.Kyc.Status = VerificationStatus.Verified`
+   - `user.Kyc.VerifiedAt = DateTime.UtcNow`
+   *(When identity is deferred and unverified, `KycStatus` remains unverified / pending, preventing misleading claims).*
+5. Persisted via `UserManager.UpdateAsync(user)`
+6. Emits structured audit log event `"onboarding_complete"`.
 
 ### Role Redirection
 After `Onboarding.Phase >= 1`, the frontend router resolver (`resolvePostLoginRedirect` / `getRoleDashboardRoute` in `src/lib/roles.ts`) automatically routes the user to their respective primary dashboard:

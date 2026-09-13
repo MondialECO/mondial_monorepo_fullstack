@@ -33,9 +33,114 @@ public class OnboardingGateTests
     }
 
     [Fact]
-    public async Task Gate_Passes_With_Core_Three_Requirements_When_Face_Is_Historical_False()
+    public async Task CaseA_Gate_Fails_When_All_False()
     {
-        // Arrange: Email, Phone, Identity verified; FaceVerified remains historical FALSE
+        // Arrange: Email=F, Phone=F, Identity=F
+        var user = new ApplicationUser
+        {
+            Id = Guid.NewGuid(),
+            Email = "test@example.com",
+            User = "Creator",
+            Onboarding = new OnboardingState
+            {
+                Phase = 0,
+                EmailOtpVerified = false,
+                PhoneVerified = false,
+                IdentityDocumentVerified = false,
+            }
+        };
+
+        // Act
+        await OnboardingGate.PromoteIfCompleteAsync(user, _userManagerMock.Object);
+
+        // Assert: Must remain Phase 0
+        Assert.Equal(0, user.Onboarding.Phase);
+        Assert.Null(user.Onboarding.CompletedAt);
+    }
+
+    [Fact]
+    public async Task CaseB_Gate_Fails_When_Email_Only()
+    {
+        // Arrange: Email=T, Phone=F, Identity=F
+        var user = new ApplicationUser
+        {
+            Id = Guid.NewGuid(),
+            Email = "test@example.com",
+            User = "Creator",
+            Onboarding = new OnboardingState
+            {
+                Phase = 0,
+                EmailOtpVerified = true,
+                PhoneVerified = false,
+                IdentityDocumentVerified = false,
+            }
+        };
+
+        // Act
+        await OnboardingGate.PromoteIfCompleteAsync(user, _userManagerMock.Object);
+
+        // Assert: Must remain Phase 0
+        Assert.Equal(0, user.Onboarding.Phase);
+        Assert.Null(user.Onboarding.CompletedAt);
+    }
+
+    [Fact]
+    public async Task CaseC_Gate_Fails_When_Phone_Only()
+    {
+        // Arrange: Email=F, Phone=T, Identity=F
+        var user = new ApplicationUser
+        {
+            Id = Guid.NewGuid(),
+            Email = "test@example.com",
+            User = "Creator",
+            Onboarding = new OnboardingState
+            {
+                Phase = 0,
+                EmailOtpVerified = false,
+                PhoneVerified = true,
+                IdentityDocumentVerified = false,
+            }
+        };
+
+        // Act
+        await OnboardingGate.PromoteIfCompleteAsync(user, _userManagerMock.Object);
+
+        // Assert: Must remain Phase 0
+        Assert.Equal(0, user.Onboarding.Phase);
+        Assert.Null(user.Onboarding.CompletedAt);
+    }
+
+    [Fact]
+    public async Task CaseD_Gate_Passes_When_Email_And_Phone_True_With_Identity_Deferred()
+    {
+        // Arrange: Email=T, Phone=T, Identity=F (MVP default: identity deferred)
+        var user = new ApplicationUser
+        {
+            Id = Guid.NewGuid(),
+            Email = "test@example.com",
+            User = "Creator",
+            Onboarding = new OnboardingState
+            {
+                Phase = 0,
+                EmailOtpVerified = true,
+                PhoneVerified = true,
+                IdentityDocumentVerified = false,
+            }
+        };
+
+        // Act
+        await OnboardingGate.PromoteIfCompleteAsync(user, _userManagerMock.Object);
+
+        // Assert: User promoted to Phase 1, but KycStatus is NOT verified because identity document is not verified
+        Assert.Equal(1, user.Onboarding.Phase);
+        Assert.NotNull(user.Onboarding.CompletedAt);
+        Assert.NotEqual("VERIFIED", user.KycStatus);
+    }
+
+    [Fact]
+    public async Task CaseE_Gate_Passes_And_Sets_KycVerified_When_Identity_Is_Also_Verified()
+    {
+        // Arrange: Email=T, Phone=T, Identity=T
         var user = new ApplicationUser
         {
             Id = Guid.NewGuid(),
@@ -47,26 +152,29 @@ public class OnboardingGateTests
                 EmailOtpVerified = true,
                 PhoneVerified = true,
                 IdentityDocumentVerified = true,
-                FaceVerified = false,
             }
         };
 
         // Act
-        await OnboardingGate.PromoteIfCompleteAsync(user, _userManagerMock.Object, null);
+        await OnboardingGate.PromoteIfCompleteAsync(user, _userManagerMock.Object);
 
-        // Assert: User must be promoted to Phase 1 based strictly on the 3 core requirements
+        // Assert: User promoted to Phase 1 and KycStatus IS set to VERIFIED
         Assert.Equal(1, user.Onboarding.Phase);
         Assert.NotNull(user.Onboarding.CompletedAt);
         Assert.Equal("VERIFIED", user.KycStatus);
+        Assert.NotNull(user.Kyc);
         Assert.Equal(VerificationStatus.Verified, user.Kyc.Status);
-        Assert.False(user.Onboarding.FaceVerified, "FaceVerified is untouched and remains historical false");
     }
 
     [Fact]
-    public async Task Gate_Fails_When_Identity_Missing()
+    public async Task FeatureFlag_When_Enabled_Requires_Identity_For_Phase1()
     {
-        // Arrange: Email & Phone verified, Identity = false
-        var user = new ApplicationUser
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["FeatureFlags:RequireIdentityVerificationInUniversalOnboarding"] = "true"
+        }).Build();
+
+        var userWithoutIdentity = new ApplicationUser
         {
             Id = Guid.NewGuid(),
             Email = "test@example.com",
@@ -77,70 +185,34 @@ public class OnboardingGateTests
                 EmailOtpVerified = true,
                 PhoneVerified = true,
                 IdentityDocumentVerified = false,
-                FaceVerified = false,
             }
         };
 
-        // Act
-        await OnboardingGate.PromoteIfCompleteAsync(user, _userManagerMock.Object, null);
-
-        // Assert: Must remain Phase 0
-        Assert.Equal(0, user.Onboarding.Phase);
-        Assert.Null(user.Onboarding.CompletedAt);
-    }
-
-    [Fact]
-    public async Task Gate_Fails_When_Phone_Missing()
-    {
-        // Arrange: Email & Identity verified, Phone = false
-        var user = new ApplicationUser
+        var userWithIdentity = new ApplicationUser
         {
             Id = Guid.NewGuid(),
-            Email = "test@example.com",
-            User = "Investor",
+            Email = "test2@example.com",
+            User = "Entrepreneur",
             Onboarding = new OnboardingState
             {
                 Phase = 0,
                 EmailOtpVerified = true,
-                PhoneVerified = false,
-                IdentityDocumentVerified = true,
-                FaceVerified = false,
-            }
-        };
-
-        // Act
-        await OnboardingGate.PromoteIfCompleteAsync(user, _userManagerMock.Object, null);
-
-        // Assert: Must remain Phase 0
-        Assert.Equal(0, user.Onboarding.Phase);
-        Assert.Null(user.Onboarding.CompletedAt);
-    }
-
-    [Fact]
-    public async Task Gate_Fails_When_Email_Missing()
-    {
-        // Arrange: Phone & Identity verified, Email = false
-        var user = new ApplicationUser
-        {
-            Id = Guid.NewGuid(),
-            Email = "test@example.com",
-            User = "ServiceProvider",
-            Onboarding = new OnboardingState
-            {
-                Phase = 0,
-                EmailOtpVerified = false,
                 PhoneVerified = true,
                 IdentityDocumentVerified = true,
-                FaceVerified = false,
             }
         };
 
-        // Act
-        await OnboardingGate.PromoteIfCompleteAsync(user, _userManagerMock.Object, null);
+        // Act: Evaluate user without identity with flag=true
+        await OnboardingGate.PromoteIfCompleteAsync(userWithoutIdentity, _userManagerMock.Object, config);
+        // Assert: Must remain Phase 0 when flag is true and identity is missing
+        Assert.Equal(0, userWithoutIdentity.Onboarding.Phase);
+        Assert.Null(userWithoutIdentity.Onboarding.CompletedAt);
 
-        // Assert: Must remain Phase 0
-        Assert.Equal(0, user.Onboarding.Phase);
-        Assert.Null(user.Onboarding.CompletedAt);
+        // Act: Evaluate user with identity with flag=true
+        await OnboardingGate.PromoteIfCompleteAsync(userWithIdentity, _userManagerMock.Object, config);
+        // Assert: Must promote to Phase 1
+        Assert.Equal(1, userWithIdentity.Onboarding.Phase);
+        Assert.NotNull(userWithIdentity.Onboarding.CompletedAt);
     }
 
     [Theory]
@@ -148,17 +220,53 @@ public class OnboardingGateTests
     [InlineData("Entrepreneur")]
     [InlineData("Investor")]
     [InlineData("ServiceProvider")]
-    public void RequiredItemsFor_Returns_Only_Active_Three_Core_Items(string role)
+    public async Task Role_Parity_All_Roles_Reach_Phase1_Without_Identity_Under_Default_MVP(string role)
     {
-        // Act
-        var items = OnboardingGate.RequiredItemsFor(role);
+        var user = new ApplicationUser
+        {
+            Id = Guid.NewGuid(),
+            Email = $"{role.ToLower()}@example.com",
+            User = role,
+            Onboarding = new OnboardingState
+            {
+                Phase = 0,
+                EmailOtpVerified = true,
+                PhoneVerified = true,
+                IdentityDocumentVerified = false,
+            }
+        };
 
-        // Assert: Only 3 core items exist (identity, phone, email). Face is eliminated.
-        Assert.Equal(3, items.Count);
-        Assert.Contains("identity", items);
-        Assert.Contains("phone", items);
-        Assert.Contains("email", items);
-        Assert.DoesNotContain("face", items);
+        await OnboardingGate.PromoteIfCompleteAsync(user, _userManagerMock.Object);
+
+        Assert.Equal(1, user.Onboarding.Phase);
+        Assert.NotNull(user.Onboarding.CompletedAt);
+    }
+
+    [Theory]
+    [InlineData("Creator")]
+    [InlineData("Entrepreneur")]
+    [InlineData("Investor")]
+    [InlineData("ServiceProvider")]
+    public void RequiredItemsFor_Returns_Two_Items_By_Default_And_Three_When_Flag_Enabled(string role)
+    {
+        // Default (Identity deferred): 2 items
+        var defaultItems = OnboardingGate.RequiredItemsFor(role);
+        Assert.Equal(2, defaultItems.Count);
+        Assert.Contains("phone", defaultItems);
+        Assert.Contains("email", defaultItems);
+        Assert.DoesNotContain("identity", defaultItems);
+
+        // Flag enabled (Identity required): 3 items
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["FeatureFlags:RequireIdentityVerificationInUniversalOnboarding"] = "true"
+        }).Build();
+
+        var flagItems = OnboardingGate.RequiredItemsFor(role, config);
+        Assert.Equal(3, flagItems.Count);
+        Assert.Contains("identity", flagItems);
+        Assert.Contains("phone", flagItems);
+        Assert.Contains("email", flagItems);
     }
 
     private OnboardingController CreateController(
@@ -170,6 +278,7 @@ public class OnboardingGateTests
         var initialData = new Dictionary<string, string?>
         {
             ["FeatureFlags:EnableAlphaBypassEndpoints"] = "false",
+            ["FeatureFlags:RequireIdentityVerificationInUniversalOnboarding"] = "false",
             ["JwtSettings:Key"] = "SuperSecretKeyForTestingAtLeast32BytesLong!",
             ["Twilio:Enabled"] = "false",
         };
@@ -225,9 +334,9 @@ public class OnboardingGateTests
     }
 
     [Fact]
-    public async Task CompleteOnboarding_Passes_Without_Face_Verification()
+    public async Task CompleteOnboarding_Passes_With_Email_And_Phone_When_Identity_Deferred()
     {
-        // Arrange: Production user with Email=true, Phone=true, Identity=true, Face=false
+        // Arrange: Email=true, Phone=true, Identity=false
         var user = new ApplicationUser
         {
             Id = Guid.NewGuid(),
@@ -238,8 +347,7 @@ public class OnboardingGateTests
                 Phase = 0,
                 EmailOtpVerified = true,
                 PhoneVerified = true,
-                IdentityDocumentVerified = true,
-                FaceVerified = false // Face is NOT verified
+                IdentityDocumentVerified = false
             }
         };
 
@@ -248,9 +356,38 @@ public class OnboardingGateTests
         // Act
         var result = await controller.CompleteOnboarding();
 
-        // Assert: Successfully completes onboarding and promotes to Phase 1 without face requirement
+        // Assert: Successfully completes onboarding and promotes to Phase 1 without identity document requirement
         Assert.IsType<OkObjectResult>(result);
         Assert.Equal(1, user.Onboarding.Phase);
-        Assert.False(user.Onboarding.FaceVerified, "FaceVerified remains historical false without active modification");
+        Assert.False(user.Onboarding.IdentityDocumentVerified, "IdentityDocumentVerified remains false as deferred");
+    }
+
+    [Fact]
+    public async Task StatusEndpoint_Naturally_Promotes_Existing_Phase0_User_With_Email_And_Phone()
+    {
+        // Arrange: Existing user with Email=true, Phone=true, Phase=0, Identity=false
+        var user = new ApplicationUser
+        {
+            Id = Guid.NewGuid(),
+            Email = "phase0-user@example.com",
+            User = "Entrepreneur",
+            Onboarding = new OnboardingState
+            {
+                Phase = 0,
+                EmailOtpVerified = true,
+                PhoneVerified = true,
+                IdentityDocumentVerified = false
+            }
+        };
+
+        var controller = CreateController(user, environment: "Production");
+
+        // Act
+        var result = await controller.Status();
+
+        // Assert: Naturally promoted to Phase 1 upon status check
+        Assert.IsType<OkObjectResult>(result);
+        Assert.Equal(1, user.Onboarding.Phase);
     }
 }
+
