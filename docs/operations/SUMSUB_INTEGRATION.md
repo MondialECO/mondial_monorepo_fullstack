@@ -105,7 +105,7 @@ FeatureFlags__AllowLegacyIdentityUpload=false
 * **Headers**:
   * `X-Payload-Digest`: Hex-encoded HMAC-SHA256 signature of the raw body using `Sumsub:WebhookSecret`.
   * `X-Sumsub-Event-Id`: Unique provider event identifier.
-* **Payload**: Sumsub applicant review status notification.
+* **Payload**: Sumsub applicant review status notification (`applicantReviewed`).
 * **Processing Actions**:
   1. Validates signature against raw body bytes.
   2. Records operational log in `IdentityWebhookDeliveryLogs`.
@@ -114,9 +114,7 @@ FeatureFlags__AllowLegacyIdentityUpload=false
   5. Updates `ApplicationUser.Onboarding.IdentityDocumentVerified = true` upon approval (`GREEN`).
   6. Evaluates `OnboardingGate.PromoteIfCompleteAsync`.
 
-### 6. Legacy Webhook Forwarder (`POST /api/onboarding/sumsub/webhook`)
-* **Status**: `[Obsolete]` Compatibility forwarder.
-* **Behavior**: Receives webhook and delegates directly into `IIdentityVerificationService.ProcessProviderWebhookAsync`. Preserved until external provider dashboard routing is operationally confirmed.
+*Note: Legacy forwarder `POST /api/onboarding/sumsub/webhook` has been completely removed.*
 
 ---
 
@@ -172,8 +170,23 @@ FeatureFlags__AllowLegacyIdentityUpload=false
 
 ---
 
-## Verification Status & Audit Clarifications
+## Architectural Limitation (Document-Only KYC)
 
-* **WEBHOOK CODE-PATH TEST RESULT**: **PASS** (18 automated unit and integration tests executing HMAC-SHA256 signature verification, idempotency deduplication, out-of-order protection, deterministic signing, and Phase 1 gate promotion).
-* **REAL PROVIDER WEBHOOK**: **PENDING** (Awaiting live applicant review event delivery by Sumsub cloud servers in sandbox/production).
+* MBC uses **document-only** identity verification.
+* It validates provider-approved document authenticity and identity-document validity state.
+* It does **NOT** perform biometric owner matching because:
+  - **Selfie** is disabled
+  - **Liveness** is disabled
+  - **Face Match** is disabled
+* The system does not purport to prove physical document ownership beyond provider-side document inspection and live capture enforcement.
+
+---
+
+## Verification Status & Operational Status
+
+* **WEBHOOK CODE-PATH TEST RESULT**: **PASS** (20 automated unit and integration tests executing HMAC-SHA256 signature verification, idempotency deduplication, out-of-order protection, deterministic signing, route regressions, and Phase 1 gate promotion).
+* **REAL CANONICAL WEBHOOK DELIVERY**: **VERIFIED** (Confirmed delivery of provider-generated `applicantReviewed` event to `https://mondialbusiness.eu/api/identity/webhook/sumsub` with `200 OK`).
+* **LEGACY SUMSUB WEBHOOK**: **REMOVED**
+* **UNIVERSAL IDENTITY PRODUCTION STATUS**: **PRODUCTION READY** / **FROZEN**
+
 

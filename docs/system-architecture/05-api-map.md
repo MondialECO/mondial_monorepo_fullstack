@@ -43,7 +43,6 @@ The Mondial ECO backend exposes 579 API endpoints managed across 51 controllers.
   - `POST /api/onboarding/verify-otp`: Verify 6-digit SMS code and update `Onboarding.PhoneVerified = true`.
   - `POST /api/onboarding/documents/{type}`: Upload supplementary documents (`residence`, `income`, `tax`, `license`).
   - `POST /api/onboarding/complete`: Finalize Universal Phase, updating `ApplicationUser.Onboarding.Phase = 1`.
-  - `POST /api/onboarding/sumsub/webhook`: Deprecated legacy webhook forwarder delegating to `IdentityVerificationService`.
 - **`IdentityController`** (`/api/identity`):
   - `GET /api/identity/config`: Returns supported identity document types for a country (e.g., `national_id`, `passport`, `residence_permit` for France).
   - `POST /api/identity/session`: Start or resume Sumsub WebSDK KYC session and mint 15-minute access token.

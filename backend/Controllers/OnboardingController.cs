@@ -33,7 +33,6 @@ namespace WebApp.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly TwilioService _twilio;
         private readonly EmailService _emailService;
-        private readonly SumsubService? _sumsub;
         private readonly IConfiguration _configuration;
         private readonly IWebHostEnvironment _env;
         private readonly ILogger<OnboardingController> _logger;
@@ -47,7 +46,7 @@ namespace WebApp.Controllers
             EmailService emailService,
             IConfiguration configuration,
             IWebHostEnvironment env,
-            SumsubService sumsub,
+            SumsubService? sumsub,
             ILogger<OnboardingController> logger,
             SaveFile fileService,
             WebApp.Services.Audit.IAuditLogger audit,
@@ -60,7 +59,6 @@ namespace WebApp.Controllers
             _env = env;
             _logger = logger;
             _fileService = fileService;
-            _sumsub = sumsub;
             _audit = audit;
             _identityService = identityService;
         }
@@ -490,54 +488,6 @@ namespace WebApp.Controllers
             catch (ArgumentException ex)
             {
                 return Fail(ex.Message);
-            }
-        }
-
-        /// <summary>
-        /// DEPRECATED: Legacy Sumsub webhook endpoint.
-        /// All new webhook processing routes through POST /api/identity/webhook/sumsub.
-        /// This endpoint delegates to the canonical IdentityVerificationService for backward compatibility.
-        /// </summary>
-        [HttpPost("sumsub/webhook")]
-        [AllowAnonymous]
-        [Obsolete("Use POST /api/identity/webhook/sumsub as the canonical webhook endpoint.")]
-        public async Task<IActionResult> HandleSumsubWebhook()
-        {
-            _logger.LogWarning("Deprecated webhook endpoint /api/onboarding/sumsub/webhook invoked. Configure provider to use /api/identity/webhook/sumsub instead.");
-
-            try
-            {
-                Request.EnableBuffering();
-                var requestBody = await new StreamReader(Request.Body, Encoding.UTF8, detectEncodingFromByteOrderMarks: false, leaveOpen: true).ReadToEndAsync();
-                Request.Body.Position = 0;
-
-                if (string.IsNullOrEmpty(requestBody))
-                    return BadRequest("Empty body");
-
-                var signature = Request.Headers["X-Payload-Digest"].ToString();
-                if (string.IsNullOrEmpty(signature))
-                    signature = Request.Headers["X-Sumsub-Signature"].ToString();
-
-                if (string.IsNullOrWhiteSpace(signature))
-                    return Unauthorized("Missing signature header");
-
-                if (_identityService != null)
-                {
-                    var eventId = Request.Headers["X-Sumsub-Event-Id"].ToString();
-                    var processed = await _identityService.ProcessProviderWebhookAsync(requestBody, signature, eventId);
-                    if (!processed)
-                        return Unauthorized("Invalid webhook signature or unprocessable payload");
-                    return Ok();
-                }
-
-                // If identity service is unavailable, reject — no legacy standalone fallback in production
-                _logger.LogError("Identity service not available for legacy webhook processing");
-                return StatusCode(503, "Identity verification service unavailable");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error processing legacy Sumsub webhook");
-                return StatusCode(500);
             }
         }
     }

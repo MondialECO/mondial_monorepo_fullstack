@@ -100,9 +100,9 @@ flowchart TD
 * **Session Endpoint**: `POST /api/identity/session` (`{ "documentType": "national_id", "countryCode": "FR" }`)
 * **Status Endpoint**: `GET /api/identity/status`
 * **Retry Endpoint**: `POST /api/identity/retry`
-* **Webhook Ingress**: `POST /api/identity/webhook/sumsub`
-* **Legacy Webhook Forwarder**: `POST /api/onboarding/sumsub/webhook` (delegates to `IdentityVerificationService`)
+* **Webhook Ingress**: `POST /api/identity/webhook/sumsub` (Canonical HMAC-SHA256 signed endpoint)
 * **Authoritative State**: `UniversalIdentityVerifications` (`Status = "Verified"`) projected into `applicationUsers.Onboarding.IdentityDocumentVerified = true`.
+*(Note: Legacy forwarder `POST /api/onboarding/sumsub/webhook` has been removed).*
 
 ---
 
@@ -352,8 +352,18 @@ erDiagram
    - Biometric steps (Selfie, Liveness, Face Match, Video Identification): Strictly **Disabled / Absent**.
    - Capture Mode: **Live Capture** with **Fallback to file upload = Not available**.
 3. **Webhook Verification Status Distinction**:
-   - **WEBHOOK CODE-PATH TEST RESULT**: **PASS** (18 automated unit & integration tests validate HMAC-SHA256 signature verification, idempotency, out-of-order protection, deterministic signing, and Phase 1 gate promotion).
-   - **REAL PROVIDER WEBHOOK**: **PENDING** (Awaiting live applicant event delivery by Sumsub cloud servers in sandbox/production).
+   - **WEBHOOK CODE-PATH TEST RESULT**: **PASS** (20 automated unit & integration tests validate HMAC-SHA256 signature verification, idempotency, out-of-order protection, deterministic signing, route regressions, and Phase 1 gate promotion).
+   - **REAL CANONICAL WEBHOOK DELIVERY**: **VERIFIED** (Confirmed delivery of provider-generated `applicantReviewed` event to `https://mondialbusiness.eu/api/identity/webhook/sumsub` with `200 OK`).
+   - **LEGACY SUMSUB WEBHOOK**: **REMOVED**
+   - **UNIVERSAL IDENTITY PRODUCTION STATUS**: **PRODUCTION READY** / **FROZEN**
 4. **Webhook Endpoint Routing**:
-   - Canonical webhook URL: `https://mondialbusiness.eu/api/identity/webhook/sumsub`
-   - Legacy webhook URL: `https://mondialbusiness.eu/api/onboarding/sumsub/webhook` (active compatibility forwarder).
+   - Canonical webhook URL: `https://mondialbusiness.eu/api/identity/webhook/sumsub` (Sole authoritative provider destination).
+   - Legacy webhook URL: Removed.
+5. **Architectural Limitation (Document-Only KYC)**:
+   - MBC uses **document-only** identity verification.
+   - It validates provider-approved document authenticity and identity-document validity state.
+   - It does **NOT** perform biometric owner matching because:
+     - **Selfie** is disabled
+     - **Liveness** is disabled
+     - **Face Match** is disabled
+   - The platform does not purport to prove physical document ownership beyond provider-side document inspection and live capture enforcement.

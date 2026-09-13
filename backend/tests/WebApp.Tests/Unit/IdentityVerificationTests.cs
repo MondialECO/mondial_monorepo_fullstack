@@ -7,6 +7,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -841,6 +842,53 @@ namespace WebApp.Tests.Unit
             string actualSignature = service.GenerateSignature(method, url, timestamp, bodyBytes);
 
             Assert.Equal(expectedHex, actualSignature);
+        }
+
+        // ======================================================================
+        // TEST 19: Route Regression - Canonical Webhook Route Exists On IdentityController
+        // ======================================================================
+        [Fact]
+        public void IdentityRoutes_CanonicalWebhook_ExistsAndAllowsAnonymous()
+        {
+            var controllerType = typeof(WebApp.Controllers.IdentityController);
+            var routeAttr = controllerType.GetCustomAttributes(typeof(RouteAttribute), false)
+                .Cast<RouteAttribute>().FirstOrDefault();
+            Assert.NotNull(routeAttr);
+            Assert.Equal("api/[controller]", routeAttr!.Template);
+
+            var webhookMethod = controllerType.GetMethod("HandleSumsubWebhook");
+            Assert.NotNull(webhookMethod);
+
+            var httpPostAttr = webhookMethod!.GetCustomAttributes(typeof(HttpPostAttribute), false)
+                .Cast<HttpPostAttribute>().FirstOrDefault();
+            Assert.NotNull(httpPostAttr);
+            Assert.Equal("webhook/sumsub", httpPostAttr!.Template);
+
+            var allowAnon = webhookMethod.GetCustomAttributes(typeof(AllowAnonymousAttribute), false);
+            Assert.NotEmpty(allowAnon);
+        }
+
+        // ======================================================================
+        // TEST 20: Route Regression - Legacy Webhook Route Removed From OnboardingController
+        // ======================================================================
+        [Fact]
+        public void OnboardingRoutes_LegacyWebhook_IsRemoved()
+        {
+            var onboardingControllerType = typeof(WebApp.Controllers.OnboardingController);
+            var legacyMethod = onboardingControllerType.GetMethod("HandleSumsubWebhook");
+            Assert.Null(legacyMethod);
+
+            // Ensure no other method in OnboardingController routes to sumsub/webhook
+            var allMethods = onboardingControllerType.GetMethods();
+            foreach (var method in allMethods)
+            {
+                var httpPostAttrs = method.GetCustomAttributes(typeof(HttpPostAttribute), false)
+                    .Cast<HttpPostAttribute>();
+                foreach (var attr in httpPostAttrs)
+                {
+                    Assert.DoesNotContain("sumsub", attr.Template ?? "", StringComparison.OrdinalIgnoreCase);
+                }
+            }
         }
     }
 
