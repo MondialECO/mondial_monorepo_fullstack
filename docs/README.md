@@ -1,59 +1,96 @@
-# Documentation Index
+# Mondial ECO — Platform Documentation
 
-Essential guides for Mondial development and testing.
+Welcome to the canonical documentation for **Mondial ECO**, the premier platform connecting Creators, Entrepreneurs, Investors, and Service Providers.
 
-## 🚀 Quick Start
+This documentation repository is structured into four core pillars, governed by the [Documentation Authority Matrix](DOCUMENTATION-AUTHORITY.md).
 
-1. **[archive/SETUP.md](archive/SETUP.md)** — Environment setup (5 minutes)
-2. **[CONFIGURATION.md](CONFIGURATION.md)** — Config settings (read first)
-3. **[LOCAL_AUTH_TEST.md](LOCAL_AUTH_TEST.md)** — Run auth test (30 minutes)
-4. **[../README.md](../README.md)** — Project overview
+---
 
-## ⚙️ Configuration
-
-- **[CONFIGURATION.md](CONFIGURATION.md)** — All settings reference
-  - MongoDB, JWT, Email SMTP, Redis, CORS
-  - Environment variables & validation
-  - Production deployment checklist
-
-## 🔐 Authentication
-
-- **[LOCAL_AUTH_TEST.md](LOCAL_AUTH_TEST.md)** — Complete 30-min testing guide
-  - Register, login, email confirmation, protected routes, logout
-  - Includes troubleshooting & success criteria
-
-## 📁 Backend Documentation
-
-- **[../backend/README.md](../backend/README.md)** — API endpoints & architecture
-- **[../backend/DEPLOYMENT.md](../backend/DEPLOYMENT.md)** — Deployment guide
-- **[../backend/OPERATIONS.md](../backend/OPERATIONS.md)** — Monitoring & ops
-
-## 🖥️ Frontend Documentation
-
-- **[../frontend/CLAUDE.md](../frontend/CLAUDE.md)** — Code conventions & patterns
-
-## 📊 Structure
+## Documentation Navigation
 
 ```
-Mondial/
-├── frontend/              Next.js 16 + React 19
-├── backend/               ASP.NET Core 8
-├── docs/                  This directory (SETUP.md now under docs/archive/)
-└── README.md              Monorepo overview
+docs/
+├── README.md                      # Documentation Master Entry Point (this file)
+├── DOCUMENTATION-AUTHORITY.md     # Single Source of Truth Matrix across all domains
+│
+├── system-architecture/           # AS-IS Canonical System Architecture (v1 Locked)
+│   ├── MONDIAL-ECO-SYSTEM-DESIGN.md
+│   ├── MONDIAL-ECO-TECHNICAL-ARCHITECTURE.md
+│   ├── MONDIAL-ECO-GITDIAGRAM.md
+│   ├── 01-repository-map.md
+│   ├── 07-source-of-truth.md
+│   ├── ...
+│   └── diagrams/                  # 33 Validated Mermaid architecture diagrams (.mmd)
+│
+├── product/                       # Product Strategy & Domain Canons
+│   ├── creator-flow-canon.md      # Creator journey canon (P1–P6, multi-idea, Level Up)
+│   ├── service-provider-flow-canon.md # Service Provider canon (flat dashboard, 4 tiers)
+│   ├── buyer-journey-reference.md # Investor & Buyer discovery & deal journey
+│   └── blueprints/                # Target Enterprise v2.0 product specifications (.docx & .txt)
+│
+├── operations/                    # Runbooks, Developer Setup & Infrastructure Guides
+│   ├── DEVELOPER_SETUP.md         # Monorepo local development & container setup
+│   ├── RUNBOOK.md                 # Production deployment, Traefik, & health verification
+│   ├── C-1_AI_Operations.md       # OpenRouter AI inference operations & limits
+│   ├── C-1_AI_Infrastructure_Plan.md # AI infrastructure engineering guide
+│   ├── CREATOR_STABILITY_TESTING.md  # Verification & automated test procedures
+│   ├── LOCAL_AUTH_TEST.md         # Local authentication test procedures
+│   ├── SUMSUB_INTEGRATION.md      # Sumsub identity verification architecture
+│   ├── tech-debt-mongodbcontext-casing.md # MongoDbContext casing debt ledger
+│   ├── USER_GUIDE.md              # High-level platform user guide
+│   └── issues/                    # Active architectural issue analyses
+│
+└── archive/                       # Historical Reference & Pre-Consolidation Audits
+    ├── README.md                  # Historical disclaimer & archive catalog
+    └── ...                        # Preserved legacy audits and implementation logs
 ```
 
-## ✅ Pre-Launch Checklist
+---
 
-- [ ] .NET 8 SDK installed
-- [ ] Environment variables configured
-- [ ] Backend starts: `dotnet watch run`
-- [ ] Frontend starts: `npm run dev`
-- [ ] Complete LOCAL_AUTH_TEST.md
-- [ ] All tests pass
-- [ ] No console errors (F12)
+## 1. System Architecture (AS-IS Codebase Authority)
 
-## 🎯 Timeline
+The [system-architecture/](system-architecture/) directory contains the complete, verified AS-IS engineering architecture of the current repository:
 
-- **May 20:** Infrastructure ready ✅
-- **May 21:** Final testing
-- **May 22:** MVP Launch 🚀
+- **[System Design](system-architecture/MONDIAL-ECO-SYSTEM-DESIGN.md):** Executive technical summary, actor models, core flows, and system boundaries.
+- **[Technical Architecture](system-architecture/MONDIAL-ECO-TECHNICAL-ARCHITECTURE.md):** Deep technical specifications covering backend architecture, frontend routing, data access, and infrastructure.
+- **[GitDiagram Application Map](system-architecture/MONDIAL-ECO-GITDIAGRAM.md):** Complete component-level mapping of every directory, controller, service, component, and database collection.
+- **[Source of Truth](system-architecture/07-source-of-truth.md):** Strict catalog of canonical MongoDB collections, entities, and projection boundaries.
+- **[Auth and Security](system-architecture/08-auth-and-security.md):** JWT authentication, OTP hashing, role claims, and authorization rules.
+- **[Architecture Health](system-architecture/37-architecture-health.md):** Codebase health, linting status, test coverage, and stability metrics.
+- **[Architecture Diagrams](system-architecture/diagrams/):** 33 validated Mermaid diagrams representing the complete platform state machine, sequences, and domain interactions.
+
+---
+
+## 2. Product Design & Domain Canons
+
+The [product/](product/) directory contains the functional specifications and domain rules:
+
+- **[Creator Flow Canon](product/creator-flow-canon.md):** Definitive guide to Creator Phases P1–P6, multi-idea architecture, AI Clarifier/Discovery, business plan generation, Marketplace listings (Full Buyout and Co-Founder / Equity), and the Level Up transition to Entrepreneur.
+- **[Service Provider Flow Canon](product/service-provider-flow-canon.md):** Complete specification of the Service Provider flat dashboard (no sequential wizard), 4 provider tiers, flat 12% platform commission, and split profile data architecture (`ProfessionalProfiles`, `UserCredentials`, `ServiceProviderProfiles`).
+- **[Buyer Journey Reference](product/buyer-journey-reference.md):** Operational reference for buyers and investors discovering projects and transacting on the marketplace.
+- **[Target Product Blueprints](product/blueprints/):** Product roadmap specifications for future Enterprise v2.0 capabilities (non-normative for current AS-IS code).
+
+---
+
+## 3. Operations & Engineering Runbooks
+
+The [operations/](operations/) directory provides hands-on engineering runbooks:
+
+- **[Developer Setup](operations/DEVELOPER_SETUP.md):** Complete instructions for spinning up the full monorepo locally via native servers or Docker Compose.
+- **[Production Runbook](operations/RUNBOOK.md):** Deployment checklist, Traefik reverse proxy configuration, health probes (`/health/ready`, `/health/live`), and rollback procedures.
+- **[AI Operations](operations/C-1_AI_Operations.md):** Guidelines for managing OpenRouter AI integrations, rate limits, timeouts, and fallback policies.
+- **[Technical Debt Ledger](operations/tech-debt-mongodbcontext-casing.md):** Analysis and migration strategy for legacy database casing nuances.
+
+---
+
+## 4. Historical Archive
+
+The [archive/](archive/) directory preserves point-in-time implementation reports, early codebase audits, and scratch files. All archived documents are clearly marked as non-normative. See [archive/README.md](archive/README.md) for the catalog.
+
+---
+
+## Documentation Governance Rules
+
+1. **One Topic, One Authority:** Consult [DOCUMENTATION-AUTHORITY.md](DOCUMENTATION-AUTHORITY.md) before writing or updating documentation to avoid duplication.
+2. **Code is Ground Truth:** Technical documentation must strictly reflect working repository code. Future product ideas belong in `docs/product/blueprints/`.
+3. **Keep Docs Clean:** Never commit temporary audit reports, raw model scratchpads, or duplicate extracts to the active documentation trees.

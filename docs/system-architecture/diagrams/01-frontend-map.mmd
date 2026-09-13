@@ -1,0 +1,108 @@
+graph TD
+    %% Frontend Navigation & Layout Map for Mondial ECO
+
+    subgraph ROOT_LAYOUT["Root Application Shell (src/app/layout.tsx)"]
+        PROVIDERS["RootProviders<br/>AuthProvider + ReactQueryProvider + TooltipProvider"]
+    end
+
+    subgraph PUBLIC_SURFACES["Public Website & Marketing"]
+        HOME["/ (Homepage)"]
+        PRICING["/pricing"]
+        FOR_CREATORS["/for-creators<br/>Concept, Branding, Verification"]
+        FOR_ENTREPRENEURS["/for-entrepreneurs<br/>Build, Equity Readiness, Funding"]
+        FOR_INVESTORS["/for-investors<br/>Discover, Diligence, Portfolio"]
+        FOR_PROVIDERS["/for-service-providers<br/>Opportunities, Delivery, Earnings"]
+        PUBLIC_PROFILE["/profile/[slug]<br/>Universal Public Profile"]
+    end
+
+    subgraph AUTH_FLOW["Authentication Shell (src/app/(auth)/layout.tsx)"]
+        LOGIN["/login"]
+        REGISTER["/register"]
+        FORGOT["/forgot-password"]
+        RESET["/reset-password"]
+    end
+
+    subgraph ONBOARDING_HUB["Universal Phase 1 Gate (src/app/onboarding/layout.tsx)"]
+        ONB_ROOT["/onboarding<br/>Status Evaluator & Stepper"]
+        ONB_ID["/onboarding/identity<br/>Sumsub KYC Integration"]
+        ONB_DOCS["/onboarding/documents/*<br/>Income, License, Residence, Tax"]
+        ONB_FACE["/onboarding/face-verification"]
+        ONB_DONE["/onboarding/complete"]
+    end
+
+    subgraph DASHBOARD_SHELL["Authenticated Dashboard Shell (src/app/dashboard/layout.tsx)"]
+        GUARD["AuthGuard Engine<br/>Token Check, /auth/me & Role Normalizer"]
+        SIDEBAR["AppSidebar<br/>Dynamic Menu by Role"]
+        TOPBAR["Topbar<br/>Role Switcher, Notifications & Profile"]
+
+        subgraph CREATOR_DASH["Creator Dashboard (/dashboard/creator)"]
+            C_ROOT["/dashboard/creator<br/>Ideas Hub & Action Board"]
+            C_P2["/phase-2/*<br/>Discovery, Name, Branding, Clarifier AI"]
+            C_P3["/phase-3/*<br/>Business Plan AI, Forecast AI, Compliance"]
+            C_CROSS["/crossroads<br/>Path Selection: Buyout / Equity / Build"]
+            C_OFFER["/offer-pricing & /ip-vault"]
+            C_DEALS["/sales & /partnerships"]
+        end
+
+        subgraph ENTREPRENEUR_DASH["Entrepreneur Dashboard (/dashboard/entrepreneur)"]
+            E_ROOT["/dashboard/entrepreneur<br/>Traction & Company Overview"]
+            E_PHASES["/phase-2..10/*<br/>Setup, KPIs, ESOP, Data Room, Diligence"]
+            E_DISCOVER["/discover<br/>Creator Project Discovery & Interests"]
+            E_ACQ["/acquisitions/*<br/>Buyouts & Build-Company Handoff"]
+            E_DEALS["/deals<br/>Co-founder Equity & Term Sheets"]
+            E_ENGAGE["/engagements<br/>Service Provider Workrooms"]
+        end
+
+        subgraph INVESTOR_DASH["Investor Dashboard (/dashboard/investor)"]
+            I_ROOT["/dashboard/investor<br/>Capital Deployment & Metrics"]
+            I_DISC["/discovery<br/>Company Discovery & Matching"]
+            I_ROOM["/discovery/[companyId]/dataroom<br/>NDA & Diligence Room"]
+            I_SHEET["/discovery/[companyId]/term-sheet/build"]
+            I_PIPE["/pipeline<br/>Active Deals Kanban"]
+            I_PORT["/portfolio<br/>Holdings & Performance"]
+        end
+
+        subgraph PROVIDER_DASH["Service Provider Dashboard (/dashboard/serviceprovider)"]
+            P_ROOT["/dashboard/serviceprovider<br/>Active Orders & Revenue"]
+            P_SERVICES["/services<br/>Catalog, Packages & FAQs"]
+            P_LEADS["/leads<br/>Client Briefs & Custom Proposals"]
+            P_WORK["/workroom<br/>Milestones, Deliverables & Revisions"]
+            P_EARN["/earnings<br/>Invoices, Escrow & Payouts"]
+        end
+
+        subgraph ADMIN_DASH["Admin Dashboard (/dashboard/admin)"]
+            A_ROOT["/dashboard/admin<br/>System Health & KPI Gauges"]
+            A_USERS["/users<br/>User Accounts & Role Management"]
+            A_VERIF["/verifications<br/>KYC, Investors & SP Credentials"]
+            A_MARKET["/marketplace<br/>Listings & Content Moderation"]
+            A_COMM["/commerce & /transactions"]
+            A_SYS["/system & /system/queues<br/>Background Jobs & Outbox"]
+        end
+    end
+
+    subgraph MARKETPLACE_SURFACE["Marketplace Portal (/marketplace)"]
+        M_PROJECTS["/marketplace/projects<br/>Creator IP & Buyout Opportunities"]
+        M_SERVICES["/marketplace/services<br/>Verified Service Provider Listings"]
+        M_ORDER["/marketplace/services/[listingId]/order"]
+    end
+
+    %% Hierarchy edges
+    PROVIDERS --> PUBLIC_SURFACES
+    PROVIDERS --> AUTH_FLOW
+    PROVIDERS --> ONBOARDING_HUB
+    PROVIDERS --> DASHBOARD_SHELL
+
+    AUTH_FLOW -->|Successful Login| GUARD
+    GUARD -->|Phase 0 Incomplete| ONB_ROOT
+    ONB_DONE -->|Phase 1 Certified| GUARD
+
+    GUARD --> CREATOR_DASH
+    GUARD --> ENTREPRENEUR_DASH
+    GUARD --> INVESTOR_DASH
+    GUARD --> PROVIDER_DASH
+    GUARD --> ADMIN_DASH
+
+    CREATOR_DASH -.->|Publish Listing| M_PROJECTS
+    PROVIDER_DASH -.->|Publish Listing| M_SERVICES
+    ENTREPRENEUR_DASH -.->|Browse Opportunities| M_PROJECTS
+    ENTREPRENEUR_DASH -.->|Hire Provider| M_ORDER

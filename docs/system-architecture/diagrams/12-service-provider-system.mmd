@@ -1,0 +1,126 @@
+graph TD
+    %% Service Provider Complete Platform Architecture
+
+    subgraph ONBOARDING_TIERING["1. Onboarding, Credentials & Tier Certification"]
+        SP_REGISTER["SP Registration"]
+        SP_CREDS["Submit Credentials & Certifications<br/>(Degrees, Licenses, Proof of Work)"]
+        SP_TIER["Admin Tier Certification<br/>(Tier 1: Standard, Tier 2: Verified, Tier 3: Pro, Tier 4: Elite)<br/>*Flat 12% Platform Commission Across All Tiers*"]
+
+        DB_PROF[("ProfessionalProfiles Collection<br/>UserId, PublicSlug")]
+        DB_CREDS[("UserCredentials Collection<br/>UserId, Status, SubmittedAt")]
+        DB_SP_PROF[("ServiceProviderProfiles Collection<br/>ProviderTier (1-4), VerificationStatus")]
+    end
+
+    subgraph CATALOG_PACKAGES["2. Service Catalog & Package Publishing"]
+        SP_DASH["/dashboard/serviceprovider"]
+        SP_CAT_PAGE["/dashboard/serviceprovider/services"]
+        SP_LISTING["Create Service Listing<br/>(Category, Title, Overview)"]
+        SP_PACKAGES["Configure Tiered Packages<br/>(Basic, Standard, Premium Pricing)"]
+        SP_FAQS["Define FAQs & Requirements"]
+
+        DB_LISTINGS[("ServiceListings Collection<br/>ProviderId, Category, Status: 'published'")]
+        DB_PACKAGES[("ServicePackages Collection<br/>ServiceId, Tier, Price, Revisions")]
+        DB_FAQS[("ServiceFAQs Collection")]
+    end
+
+    subgraph MARKETPLACE_EXPOSURE["3. Client Marketplace & Discovery"]
+        PUB_MARKET["/marketplace/services<br/>Category Filters, Search, Provider Tiers"]
+        CLIENT_HIRE["Client Selects Package & Checks Out"]
+    end
+
+    subgraph LEADS_PROPOSALS["4. Client Briefs & Custom Proposals"]
+        SP_LEADS_PAGE["/dashboard/serviceprovider/leads"]
+        CLIENT_BRIEF["Client Posts Custom Brief (/leads/briefs)"]
+        SP_PROPOSAL["Provider Submits Proposal (/leads/proposals)"]
+        CLIENT_ACCEPT["Client Accepts Proposal"]
+
+        DB_BRIEFS[("ClientBriefs Collection<br/>ExpiresAt, Budget, Category")]
+        DB_PROPOSALS[("Proposals Collection<br/>Status: 'accepted'")]
+    end
+
+    subgraph WORKROOM_DELIVERY["5. Workroom Milestone Execution & Delivery"]
+        SP_WORK_PAGE["/dashboard/serviceprovider/workroom"]
+        SP_ENGAGE_PAGE["/dashboard/serviceprovider/engagements/[id]"]
+        WR_CONTRACT["Legally Binding Contract Formation"]
+        WR_ESCROW["Escrow Funding by Client"]
+        WR_MILESTONES["Milestone Tracker & Deadlines"]
+        WR_DELIVERY["Submit Deliverable Asset"]
+        WR_REVISION["Client Revision Requests (Bounded)"]
+        WR_APPROVE["Milestone Acceptance & Escrow Release"]
+
+        DB_ENGAGE[("WorkroomEngagements Collection<br/>ProviderId, ClientId, Status: 'in_progress'")]
+        DB_CONTRACT[("Contracts Collection")]
+        DB_MILESTONES[("WorkroomMilestones Collection")]
+        DB_DELIV[("Deliverables Collection")]
+        DB_REVISIONS[("RevisionRequests Collection")]
+        DB_FILES[("WorkroomFiles Collection<br/>(Private/Protected)")]
+    end
+
+    subgraph EARNINGS_PAYOUTS["6. Earnings, Invoices & Payouts"]
+        SP_EARN_PAGE["/dashboard/serviceprovider/earnings"]
+        TX_ESCROW["Funds Released to Available Balance"]
+        TX_INVOICE["Automated PDF Invoice Generation"]
+        TX_PAYOUT["Payout Request to Bank Account"]
+        SP_REVIEWS["Client Leaves Rating & Review"]
+
+        DB_TX[("FinancialTransactions Collection")]
+        DB_INVOICES[("Invoices Collection")]
+        DB_PAYOUTS[("PayoutRequests Collection")]
+        DB_REVIEWS[("Reviews Collection<br/>Calculates Provider Rating")]
+    end
+
+    %% Flow connections
+    SP_REGISTER --> SP_CREDS
+    SP_CREDS --> DB_CREDS
+    SP_CREDS --> DB_PROF
+    SP_CREDS --> DB_SP_PROF
+    SP_CREDS --> SP_TIER
+    SP_TIER --> SP_DASH
+
+    SP_DASH --> SP_CAT_PAGE
+    SP_CAT_PAGE --> SP_LISTING
+    SP_LISTING --> DB_LISTINGS
+    SP_CAT_PAGE --> SP_PACKAGES
+    SP_PACKAGES --> DB_PACKAGES
+    SP_CAT_PAGE --> SP_FAQS
+    SP_FAQS --> DB_FAQS
+
+    DB_LISTINGS --> PUB_MARKET
+    PUB_MARKET --> CLIENT_HIRE
+    CLIENT_HIRE --> WR_CONTRACT
+
+    SP_DASH --> SP_LEADS_PAGE
+    CLIENT_BRIEF --> DB_BRIEFS
+    DB_BRIEFS --> SP_LEADS_PAGE
+    SP_LEADS_PAGE --> SP_PROPOSAL
+    SP_PROPOSAL --> DB_PROPOSALS
+    DB_PROPOSALS --> CLIENT_ACCEPT
+    CLIENT_ACCEPT --> WR_CONTRACT
+
+    WR_CONTRACT --> DB_CONTRACT
+    WR_CONTRACT --> DB_ENGAGE
+    DB_ENGAGE --> SP_WORK_PAGE
+    SP_WORK_PAGE --> SP_ENGAGE_PAGE
+
+    SP_ENGAGE_PAGE --> WR_ESCROW
+    WR_ESCROW --> WR_MILESTONES
+    WR_MILESTONES --> DB_MILESTONES
+    WR_MILESTONES --> WR_DELIVERY
+    WR_DELIVERY --> DB_DELIV
+    WR_DELIVERY --> DB_FILES
+
+    WR_DELIVERY --> WR_REVISION
+    WR_REVISION --> DB_REVISIONS
+    WR_DELIVERY --> WR_APPROVE
+
+    WR_APPROVE --> TX_ESCROW
+    TX_ESCROW --> DB_TX
+    TX_ESCROW --> TX_INVOICE
+    TX_INVOICE --> DB_INVOICES
+    TX_ESCROW --> SP_EARN_PAGE
+    SP_EARN_PAGE --> TX_PAYOUT
+    TX_PAYOUT --> DB_PAYOUTS
+
+    WR_APPROVE --> SP_REVIEWS
+    SP_REVIEWS --> DB_REVIEWS
+    DB_REVIEWS --> DB_SP_PROF

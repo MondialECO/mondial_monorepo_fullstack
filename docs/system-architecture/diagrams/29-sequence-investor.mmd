@@ -1,0 +1,34 @@
+sequenceDiagram
+    %% Investor Complete Journey from Login to Business Outcome
+
+    autonumber
+    actor Investor as Investor
+    participant Auth as Auth & Onboarding (/onboarding)
+    participant Dash as Investor Dashboard (/dashboard/investor)
+    participant Match as Matching Queue (/api/investor/matches)
+    actor Founder as Entrepreneur
+    participant Diligence as Data Room Diligence
+    participant Deals as DealsController (/api/deals)
+    participant Portfolio as CompanyPortfolioHoldings
+
+    %% Login & Thesis
+    Investor->>Auth: Log in & Complete Accredited Investor Attestation
+    Auth-->>Dash: Redirect to /dashboard/investor
+    Investor->>Dash: Define Investment Thesis (B2B SaaS, €100k-€500k Ticket, Seed)
+
+    %% Discovery & Diligence
+    Dash->>Match: Receive Ranked Matches from MatchmakingQueue
+    Investor->>Diligence: Select Top Match & Accept Digital NDA
+    Diligence-->>Investor: Grant Full Access to Audited Data Room
+    Investor->>Founder: Post Diligence Inquiries -> Founder Responds
+
+    %% Deal Execution
+    Investor->>Deals: Draft Term Sheet (€250,000 for 5% Preferred Equity)
+    Founder->>Deals: Accept Term Sheet
+    Investor->>Deals: Sign Agreement Package
+    Founder->>Deals: Countersign & Close Deal
+
+    %% Outcome
+    Deals->>Portfolio: Insert CompanyPortfolioHolding (Status: 'active', €250k Mark)
+    Deals->>Dash: Update Pipeline Kanban: Deal Moved to 'Won / Closed'
+    Deals-->>Investor: Business Outcome: Verified Shareholding & Long-Term Capital Equity Asset

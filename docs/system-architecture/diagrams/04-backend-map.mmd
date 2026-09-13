@@ -1,0 +1,135 @@
+graph TD
+    %% Backend Architecture & Data Flow Map
+
+    subgraph CLIENT_REQUEST["HTTP / WebSocket Request"]
+        REQ_IN["Inbound HTTP Request / Bearer Token"]
+        WS_IN["SignalR WebSocket Connection"]
+    end
+
+    subgraph MIDDLEWARE_PIPELINE["ASP.NET Core Middleware Pipeline"]
+        FWD_HDRS["ForwardedHeaders (RFC1918 CIDRs)"]
+        CORR_ID["CorrelationIdMiddleware (X-Correlation-ID)"]
+        ERR_HDL["ExceptionHandlingMiddleware (Global Error Envelope)"]
+        SEC_HDRS["SecurityHeadersMiddleware (HSTS, CSP, Sniff)"]
+        SERILOG["SerilogRequestLogging (Correlation & Context)"]
+        COMPRESS["ResponseCompression (Brotli & Gzip)"]
+        CORS_SEC["CORS Policy (Origin Verification)"]
+        DENY_RULE["UploadPathSecurityDeny (/documents & /identity 404 Deny)"]
+        STATIC_FILES["UseStaticFiles (/uploads/branding & /media)"]
+        RATE_LIMITER["RateLimiter (Auth: 5/min, AI: 20/min, Global: 100/min)"]
+        AUTH_MW["UseAuthentication & UseAuthorization (JWT Validation)"]
+    end
+
+    subgraph CONTROLLER_LAYER["API Controller Layer (51 Controllers, 579 Endpoints)"]
+        AUTH_CTRL["AuthController & OnboardingController"]
+        CREATOR_CTRL["Creator*, CreatorIdeas*, CreatorJourney* Controllers"]
+        COMPANY_CTRL["CompanyController (Phases 2-9 Onboarding)"]
+        DEALS_CTRL["DealsController (Buyout, Equity, Funding)"]
+        INVESTOR_CTRL["Investor*, InvestorDiligence*, InvestorPhase* Controllers"]
+        PROVIDER_CTRL["ServiceProvider*, ServiceCatalog*, Leads*, Workroom* Controllers"]
+        ADMIN_CTRL["Admin* Controllers (Audit, Commerce, Security, System)"]
+        AI_CTRL["AiController, ClarifierController, BusinessPlanController, ForecastController"]
+    end
+
+    subgraph SERVICE_LAYER["Domain Services & Algorithmic Engines"]
+        SVC_COMPANY["CompanyService & DiligenceService"]
+        SVC_CREATOR["CreatorIdeaService & CreatorJourneyService"]
+        SVC_DEALS["DealActionPolicy & DealEventPublisher"]
+        SVC_PROVIDER["ServiceProviderService & WorkroomService"]
+        SVC_LEADS["LeadsService & ServiceCatalogService"]
+        
+        subgraph ENGINES["Core Computational Engines"]
+            ENG_VAL["ValuationEngine (Market Multiples & DCF)"]
+            ENG_CAP["CapTableCalculator (ESOP, Vesting, Dilution)"]
+            ENG_MATCH["InvestorMatcher & SpMatchingService"]
+            ENG_REV["AiReviewEngine (Readiness & Audit)"]
+        end
+
+        subgraph AI_SUBSYSTEM["AI Infrastructure & Runner"]
+            AI_RUNNER["AiJobRunner (Hangfire Task Dispatcher)"]
+            AI_ROUTER["ModelRouter (Routing to Target Models)"]
+            PROMPT_BLD["PromptBuilder (Dynamic Template Hydration)"]
+            OPENROUTER_CLI["OpenRouterClient (Typed HttpClient with Polly Resilience)"]
+        end
+    end
+
+    subgraph REPOSITORY_LAYER["Data Access & Store Abstractions"]
+        REPO_GENERIC["MongoRepository<T>"]
+        REPO_CREATOR["CreatorIdeaRepository & CreatorJourneyStore"]
+        REPO_COMPANY["CompanyRepository & DiligenceStores"]
+        REPO_AI["AI Session Stores (Clarifier, BusinessPlan, Forecast)"]
+        REPO_PROVIDER["Split Stores (ProfessionalProfile, ServiceProviderProfile, UserCredentials)"]
+    end
+
+    subgraph STATE_PERSISTENCE["Databases & Infrastructure"]
+        MONGO_DB[("MongoDB Atlas (91 Collections)<br/>ACID Transactions Enabled")]
+        REDIS[("Redis 7<br/>SignalR Backplane, Distributed Cache, DataProtection")]
+        UPLOADS_VOL[("Docker Persistent Volume<br/>/app/wwwroot/uploads")]
+        HANGFIRE_DB[("Hangfire Queue Storage<br/>Collections: hangfire.job, hangfire.state")]
+    end
+
+    subgraph EXTERNAL_APIS["External Gateways"]
+        EXT_OPENROUTER["OpenRouter AI Gateway (API v1)"]
+        EXT_SUMSUB["Sumsub KYC & Identity Verification"]
+        EXT_ZOHO["Zoho SMTP (Port 587)"]
+        EXT_TWILIO["Twilio SMS API"]
+    end
+
+    %% Pipeline flow
+    REQ_IN --> FWD_HDRS
+    FWD_HDRS --> CORR_ID
+    CORR_ID --> ERR_HDL
+    ERR_HDL --> SEC_HDRS
+    SEC_HDRS --> SERILOG
+    SERILOG --> COMPRESS
+    COMPRESS --> CORS_SEC
+    CORS_SEC --> DENY_RULE
+    DENY_RULE --> STATIC_FILES
+    STATIC_FILES --> RATE_LIMITER
+    RATE_LIMITER --> AUTH_MW
+
+    AUTH_MW --> CONTROLLER_LAYER
+
+    %% Controllers to Services
+    AUTH_CTRL --> SVC_COMPANY
+    CREATOR_CTRL --> SVC_CREATOR
+    COMPANY_CTRL --> SVC_COMPANY
+    DEALS_CTRL --> SVC_DEALS
+    INVESTOR_CTRL --> SVC_COMPANY
+    PROVIDER_CTRL --> SVC_PROVIDER
+    PROVIDER_CTRL --> SVC_LEADS
+    AI_CTRL --> AI_RUNNER
+
+    %% Services to Engines
+    SVC_COMPANY --> ENG_VAL
+    SVC_COMPANY --> ENG_CAP
+    SVC_COMPANY --> ENG_MATCH
+    SVC_COMPANY --> ENG_REV
+    SVC_CREATOR --> ENG_MATCH
+
+    %% AI flow
+    AI_RUNNER --> AI_ROUTER
+    AI_ROUTER --> PROMPT_BLD
+    PROMPT_BLD --> OPENROUTER_CLI
+    OPENROUTER_CLI -->|HTTPS| EXT_OPENROUTER
+
+    %% Services to Repositories
+    SVC_COMPANY --> REPO_COMPANY
+    SVC_CREATOR --> REPO_CREATOR
+    SVC_PROVIDER --> REPO_PROVIDER
+    AI_RUNNER --> REPO_AI
+
+    %% Repositories to DB
+    REPO_GENERIC --> MONGO_DB
+    REPO_CREATOR --> MONGO_DB
+    REPO_COMPANY --> MONGO_DB
+    REPO_AI --> MONGO_DB
+    REPO_PROVIDER --> MONGO_DB
+
+    %% State & Infra links
+    WS_IN -->|SignalR PubSub| REDIS
+    AUTH_MW -->|DataProtection Keys| REDIS
+    CONTROLLER_LAYER -->|File Uploads| UPLOADS_VOL
+    AI_RUNNER -->|Queue Jobs| HANGFIRE_DB
+    SVC_COMPANY -->|KYC Checks| EXT_SUMSUB
+    AUTH_CTRL -->|Send Confirmation| EXT_ZOHO

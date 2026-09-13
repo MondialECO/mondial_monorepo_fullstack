@@ -1,0 +1,55 @@
+sequenceDiagram
+    %% Complete Full Buyout Lifecycle Sequence Diagram (DealType: FULL_BUYOUT)
+
+    autonumber
+    actor Creator as Creator (IP Owner)
+    actor Entrepreneur as Entrepreneur (Buyer)
+    participant Mkt as Marketplace (/marketplace/projects)
+    participant DealsAPI as DealsController (/api/deals)
+    participant Mongo as MongoDB
+    participant Storage as File Storage (/uploads)
+
+    %% 1. Discovery & Interest
+    Creator->>Mkt: Publish Creator Project (Status: 'PUBLISHED')
+    Entrepreneur->>Mkt: Browse Projects -> Click 'Acquire IP'
+    Entrepreneur->>DealsAPI: POST /api/deals/buyout/initiate
+    DealsAPI->>Mongo: Create DealExecution (DealType: "FULL_BUYOUT", DealStage: "OFFER_NEGOTIATION", Status: "initiated")
+    DealsAPI-->>Entrepreneur: Return Deal Details (CurrentTurn: "creator")
+
+    %% 2. Offer & Negotiation
+    Creator->>DealsAPI: Review Offer in /dashboard/creator/sales/[dealId]
+    Creator->>DealsAPI: POST /api/deals/{id}/revision (Counter-Offer Buyout Price)
+    DealsAPI->>Mongo: Append TermSheetRevision -> Swap CurrentTurn to "entrepreneur"
+    Entrepreneur->>DealsAPI: POST /api/deals/{id}/accept-terms
+    DealsAPI->>Mongo: Update DealStage -> "BUYOUT_TERMS_ACCEPTED"
+
+    %% 3. Legal Review & Terms Drafting
+    Entrepreneur->>DealsAPI: POST /api/deals/{id}/legal-review/request
+    DealsAPI->>Mongo: Update DealStage -> "BUYOUT_LEGAL_REVIEW"
+    Creator->>DealsAPI: POST /api/deals/{id}/legal-review/approve
+    DealsAPI->>Mongo: Update DealStage -> "BUYOUT_SIGNATURE_PENDING"
+
+    %% 4. Bilateral Digital Signing
+    Entrepreneur->>DealsAPI: POST /api/deals/{id}/sign (Sign Buyout Agreement)
+    DealsAPI->>Mongo: Record EntrepreneurSignature
+    Creator->>DealsAPI: POST /api/deals/{id}/sign (Sign Buyout Agreement)
+    DealsAPI->>Mongo: Record CreatorSignature -> DealSignatures.BothSigned = true
+    DealsAPI->>Mongo: Update DealStage -> "BUYOUT_CLOSING_PENDING"
+
+    %% 5. Payment & Escrow Confirmation
+    Entrepreneur->>DealsAPI: Submit Escrow Payment Proof
+    Creator->>DealsAPI: POST /api/deals/{id}/closing/confirm-payment
+    DealsAPI->>Mongo: Update PaymentStatus -> "PAYMENT_CONFIRMED"
+    DealsAPI->>Mongo: Update DealStage -> "BUYOUT_HANDOVER_PENDING"
+
+    %% 6. Asset Handover & Completion
+    Creator->>DealsAPI: POST /api/deals/{id}/handover (Upload final IP archive, keys, domains)
+    DealsAPI->>Storage: Store IP Handover Package
+    Entrepreneur->>DealsAPI: POST /api/deals/{id}/handover/accept
+    DealsAPI->>Mongo: Update DealStage -> "SOLD" & Status -> "completed"
+    DealsAPI->>Mongo: Update CreatorIdeas.Status -> "SOLD"
+
+    %% 7. Company Build Out
+    Entrepreneur->>DealsAPI: POST /api/deals/{id}/build-company
+    DealsAPI->>Mongo: Create new Companies document populated with acquired IP
+    DealsAPI-->>Entrepreneur: Return newly instantiated CompanyId

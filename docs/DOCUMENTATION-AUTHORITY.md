@@ -1,0 +1,43 @@
+# Mondial ECO — Documentation Authority Matrix
+
+This document establishes the single source of truth for every major architectural, product, and operational topic across the Mondial ECO ecosystem.
+
+When any question or discrepancy arises, the document identified in the **Canonical Authority** column wins. No secondary or historical document may override it.
+
+---
+
+## Authority Matrix
+
+| Topic | Canonical Authority Document | Secondary / Supporting Documents | Status | Authority Scope & Rules |
+|---|---|---|---|---|
+| **System Architecture** | [MONDIAL-ECO-SYSTEM-DESIGN.md](system-architecture/MONDIAL-ECO-SYSTEM-DESIGN.md) | [MONDIAL-ECO-TECHNICAL-ARCHITECTURE.md](system-architecture/MONDIAL-ECO-TECHNICAL-ARCHITECTURE.md), [MONDIAL-ECO-GITDIAGRAM.md](system-architecture/MONDIAL-ECO-GITDIAGRAM.md) | **CANONICAL (LOCKED)** | High-level system topology, actor boundaries, core architecture patterns. |
+| **Repository Structure** | [01-repository-map.md](system-architecture/01-repository-map.md) | [38-important-files.md](system-architecture/38-important-files.md) | **CANONICAL** | Monorepo layout (`src/`, `backend/`, `docs/`), critical directories and key files. |
+| **Source of Truth** | [07-source-of-truth.md](system-architecture/07-source-of-truth.md) | [06-database-model.mmd](system-architecture/diagrams/06-database-model.mmd) | **CANONICAL (LOCKED)** | Canonical database collections, owner entities, and projection boundaries. |
+| **Creator Domain** | [creator-flow-canon.md](product/creator-flow-canon.md) | [09-creator-system.mmd](system-architecture/diagrams/09-creator-system.mmd), [27-sequence-creator.mmd](system-architecture/diagrams/27-sequence-creator.mmd) | **CANONICAL (LOCKED)** | Multi-idea architecture, P1–P6 phases, clarifier/discovery, business plan, and Level Up. |
+| **Entrepreneur Domain** | [10-entrepreneur-system.mmd](system-architecture/diagrams/10-entrepreneur-system.mmd) | [28-sequence-entrepreneur.mmd](system-architecture/diagrams/28-sequence-entrepreneur.mmd), [blueprints/03_Entrepreneur_Journey_v2.0_Enterprise.docx](product/blueprints/03_Entrepreneur_Journey_v2.0_Enterprise.docx) | **CANONICAL** | Phase 1–10 lifecycle (Phase 10 is terminal journey-complete), Company authority, Cap Table. |
+| **Investor Domain** | [11-investor-system.mmd](system-architecture/diagrams/11-investor-system.mmd) | [18-investor-pipeline.mmd](system-architecture/diagrams/18-investor-pipeline.mmd), [29-sequence-investor.mmd](system-architecture/diagrams/29-sequence-investor.mmd) | **CANONICAL** | Investor profile, thesis criteria, deal flow pipeline, syndicated investment. |
+| **Service Provider Domain** | [service-provider-flow-canon.md](product/service-provider-flow-canon.md) | [12-service-provider-system.mmd](system-architecture/diagrams/12-service-provider-system.mmd), [30-sequence-provider.mmd](system-architecture/diagrams/30-sequence-provider.mmd) | **CANONICAL (LOCKED)** | Flat dashboard (no wizard), 4 tiers, flat 12% commission, split profile collections. |
+| **Marketplace** | [13-marketplace-system.mmd](system-architecture/diagrams/13-marketplace-system.mmd) | [creator-flow-canon.md](product/creator-flow-canon.md), [buyer-journey-reference.md](product/buyer-journey-reference.md) | **CANONICAL** | Active offers: Full Buyout & Co-Founder / Equity. Embedded in `CreatorIdeas.Phase5Data.PathA`. |
+| **Funding & Rounds** | [16-funding-system.mmd](system-architecture/diagrams/16-funding-system.mmd) | [MONDIAL-ECO-TECHNICAL-ARCHITECTURE.md](system-architecture/MONDIAL-ECO-TECHNICAL-ARCHITECTURE.md) | **CANONICAL** | Funding rounds, allocations, investor commitments, equity mechanics. |
+| **Deals & Transactions** | [17-deal-state-machine.mmd](system-architecture/diagrams/17-deal-state-machine.mmd) | [14-full-buyout-flow.mmd](system-architecture/diagrams/14-full-buyout-flow.mmd), [15-cofounder-equity-flow.mmd](system-architecture/diagrams/15-cofounder-equity-flow.mmd), [19-post-deal-effects.mmd](system-architecture/diagrams/19-post-deal-effects.mmd) | **CANONICAL** | `DealExecution` state machine, escrow transitions, asset transfers. |
+| **Profile & Identity** | [08-role-ecosystem.mmd](system-architecture/diagrams/08-role-ecosystem.mmd) | [07-source-of-truth.md](system-architecture/07-source-of-truth.md), [service-provider-flow-canon.md](product/service-provider-flow-canon.md) | **CANONICAL** | `ProfessionalProfiles` is the universal public profile authority across all platform roles. |
+| **Authentication & Security** | [08-auth-and-security.md](system-architecture/08-auth-and-security.md) | [07-auth-flow.mmd](system-architecture/diagrams/07-auth-flow.mmd), [32-security-boundaries.mmd](system-architecture/diagrams/32-security-boundaries.mmd) | **CANONICAL** | JWT tokens, HMAC OTP verification, role claims, password hashing, and authorization. |
+| **AI Integration** | [22-ai-system.mmd](system-architecture/diagrams/22-ai-system.mmd) | [C-1_AI_Operations.md](operations/C-1_AI_Operations.md), [C-1_AI_Infrastructure_Plan.md](operations/C-1_AI_Infrastructure_Plan.md) | **CANONICAL** | Single OpenRouter provider (`openai/gpt-oss-20b:free`), Hangfire jobs, prompt architecture. |
+| **Messaging & Chat** | [20-messaging-system.mmd](system-architecture/diagrams/20-messaging-system.mmd) | [31-cross-role-interactions.mmd](system-architecture/diagrams/31-cross-role-interactions.mmd) | **CANONICAL** | Real-time conversations, direct messaging, deal negotiation channels. |
+| **Notifications** | [21-notification-system.mmd](system-architecture/diagrams/21-notification-system.mmd) | [05-api-map.md](system-architecture/05-api-map.md) | **CANONICAL** | In-app alerts, email dispatches, system events, delivery status. |
+| **Payments & Escrow** | [service-provider-flow-canon.md](product/service-provider-flow-canon.md) | [17-deal-state-machine.mmd](system-architecture/diagrams/17-deal-state-machine.mmd) | **CANONICAL** | AS-IS: `StubPaymentGatewayService`, simulated settlement, Mongo transactions. No live wire. |
+| **Deployment & Ops** | [RUNBOOK.md](operations/RUNBOOK.md) | [25-production-deployment.mmd](system-architecture/diagrams/25-production-deployment.mmd), [36-environment-map.md](system-architecture/36-environment-map.md) | **CANONICAL** | Production topology: Traefik, Next.js, ASP.NET API, Redis, MongoDB Atlas, health probes. |
+| **Local Development** | [DEVELOPER_SETUP.md](operations/DEVELOPER_SETUP.md) | [01-repository-map.md](system-architecture/01-repository-map.md) | **CANONICAL** | Local monorepo onboarding, native dev server startup, compose instructions, and testing. |
+| **Testing Architecture** | [34-test-map.md](system-architecture/34-test-map.md) | [CREATOR_STABILITY_TESTING.md](operations/CREATOR_STABILITY_TESTING.md), [LOCAL_AUTH_TEST.md](operations/LOCAL_AUTH_TEST.md) | **CANONICAL** | Unit tests, integration tests, E2E testing strategies, and coverage boundaries. |
+| **Environment Configuration** | [36-environment-map.md](system-architecture/36-environment-map.md) | [DEVELOPER_SETUP.md](operations/DEVELOPER_SETUP.md) | **CANONICAL** | Frontend and backend environment variables, required vs optional settings, secrets. |
+| **Legacy & Migration** | [33-legacy-map.md](system-architecture/33-legacy-map.md) | [tech-debt-mongodbcontext-casing.md](operations/tech-debt-mongodbcontext-casing.md) | **CANONICAL** | Deprecated models, transitional collections, technical debt ledger. |
+| **Historical Reference** | [archive/README.md](archive/README.md) | All files under `docs/archive/` | **HISTORICAL ONLY** | Pre-consolidation audit logs, scratch reports, and superseded design drafts. |
+
+---
+
+## Authority Conflict Resolution Rules
+
+1. **AS-IS Code Always Trumps Docs:** If any document contradicts current compiled backend or frontend code, the document is in drift and must be updated to match the code.
+2. **Canonical Documents Trump Supporting Docs:** In any disagreement between a Canonical Authority document and a supporting document, the Canonical Authority document governs.
+3. **Product Blueprints are Non-Normative for AS-IS:** Files in `docs/product/blueprints/` represent target future-state product roadmaps and MUST NOT be cited as evidence of current system behavior.
+4. **Archive is Strictly Non-Normative:** Files in `docs/archive/` carry zero authority and must not be used for current feature or architectural guidance.

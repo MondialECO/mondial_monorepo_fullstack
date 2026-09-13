@@ -1,0 +1,85 @@
+graph TD
+    %% Production Topology & Deployment Infrastructure Diagram
+
+    subgraph INTERNET_INGRESS["Public Internet & DNS"]
+        USER_TRAFFIC["Client Browsers (Mobile & Desktop)"]
+        DNS_RECORDS["DNS A/AAAA Records<br/>mondialbusiness.eu & api.mondialbusiness.eu"]
+    end
+
+    subgraph VPS_HOST["Single Host Production VPS (Linux Docker Engine)"]
+        
+        subgraph EDGE_PROXY["Traefik v2.11 Reverse Proxy Container (:80, :443)"]
+            ACME_TLS["Let's Encrypt TLS Resolver<br/>Volume: ./letsencrypt/acme.json"]
+            ROUTER_FE["Frontend Router<br/>Host: mondialbusiness.eu"]
+            ROUTER_API["API Router<br/>Host: ${APP_DOMAIN}"]
+            ROUTER_METRICS["Metrics Router (Private Range Protected)<br/>127.0.0.1/32, 10.0.0.0/8, 172.16.0.0/12"]
+            DYNAMIC_CONFIG["traefik-dynamic.yml<br/>Routes frontend to http://172.17.0.1:3000"]
+        end
+
+        subgraph FRONTEND_SERVICE["Frontend Runtime (Next.js 16 / React 19)"]
+            NEXT_APP["Next.js Production Server<br/>Node.js Port :3000 (Host Bridge: 172.17.0.1)"]
+        end
+
+        subgraph BACKEND_CLUSTER["Stateless API Service (ASP.NET Core 8)"]
+            API_1["api replica 1<br/>Port 8080 (Docker Network)"]
+            API_2["api replica 2<br/>Port 8080 (Docker Network)"]
+            API_N["api replica N<br/>Scalable: docker compose up --scale api=N"]
+            HEALTH_CHECK["Readiness Probe (/health/ready)<br/>Interval: 15s (Traefik Healthcheck)"]
+        end
+
+        subgraph CACHE_STATE["Redis 7 (Alpine) Container"]
+            REDIS_SVC["redis:7-alpine (:6379)<br/>--appendonly yes<br/>--requirepass ${REDIS_PASSWORD}"]
+            REDIS_VOL[("Volume: redis-data<br/>Path: /data")]
+        end
+
+        subgraph LOCAL_STORAGE["Host Filesystem & Persistent Volumes"]
+            UPLOADS_VOL[("Volume: uploads-data<br/>Mounted at: /app/wwwroot/uploads")]
+        end
+    end
+
+    subgraph CLOUD_DATABASE["External Managed Database (Cloud Atlas)"]
+        MONGO_ATLAS[("MongoDB Atlas Managed Replica Set<br/>MondialEcoDev Database<br/>Encrypted Connections (TLS)")]
+    end
+
+    subgraph EXTERNAL_INTEGRATIONS["External Cloud APIs"]
+        EXT_OPENROUTER["OpenRouter AI Gateway"]
+        EXT_SUMSUB["Sumsub KYC Verification"]
+        EXT_ZOHO["Zoho SMTP (Port 587 TLS)"]
+    end
+
+    %% Ingress connections
+    USER_TRAFFIC --> DNS_RECORDS
+    DNS_RECORDS -->|Port 80 (Auto-redirect)| EDGE_PROXY
+    DNS_RECORDS -->|Port 443 (HTTPS)| EDGE_PROXY
+    EDGE_PROXY --> ACME_TLS
+
+    %% Routing inside VPS
+    ROUTER_FE --> DYNAMIC_CONFIG
+    DYNAMIC_CONFIG --> NEXT_APP
+    ROUTER_API --> API_1
+    ROUTER_API --> API_2
+    ROUTER_API --> API_N
+    HEALTH_CHECK -.-> API_1
+    HEALTH_CHECK -.-> API_2
+    HEALTH_CHECK -.-> API_N
+
+    %% Frontend calls backend
+    NEXT_APP -->|In-browser REST/SignalR| USER_TRAFFIC
+
+    %% Backend dependencies
+    API_1 --> REDIS_SVC
+    API_2 --> REDIS_SVC
+    API_N --> REDIS_SVC
+    REDIS_SVC --> REDIS_VOL
+
+    API_1 --> UPLOADS_VOL
+    API_2 --> UPLOADS_VOL
+    API_N --> UPLOADS_VOL
+
+    API_1 -->|TLS Connection String| MONGO_ATLAS
+    API_2 -->|TLS Connection String| MONGO_ATLAS
+    API_N -->|TLS Connection String| MONGO_ATLAS
+
+    API_1 --> EXT_OPENROUTER
+    API_1 --> EXT_SUMSUB
+    API_1 --> EXT_ZOHO

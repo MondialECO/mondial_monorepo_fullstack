@@ -1,0 +1,154 @@
+graph TD
+    %% Entrepreneur Complete Venture Building System Architecture
+
+    subgraph ENTRY_IDENTITY["1. Entry & Identity Foundation"]
+        E_LOGIN["Entrepreneur Login / Verification"]
+        E_ONB["Universal Onboarding Gate<br/>Sumsub KYC & Identity Verification"]
+        DB_USER[("MongoDB: applicationUsers<br/>Roles: ['Entrepreneur']")]
+    end
+
+    subgraph PHASE2_SETUP["2. Phase 2: Company Entity Setup"]
+        P2_DASH["/dashboard/entrepreneur/phase-2"]
+        P2_STEP1["Step 1: Legal Incorporation & Country"]
+        P2_STEP2["Step 2: Team, Founders & Roles"]
+        P2_STEP3["Step 3: Industry & Value Proposition"]
+        P2_STEP4["Step 4: Product Stage & Initial Capital"]
+
+        DB_COMPANY[("Companies Collection<br/>UserId (Founder), Status, CurrentPhase")]
+    end
+
+    subgraph PHASE3_TRACTION["3. Phase 3: Traction & Operational KPIs"]
+        P3_DASH["/dashboard/entrepreneur/phase-3"]
+        P3_KPI["KPI Tracker & Dashboard"]
+        P3_REV["Monthly Revenue & Growth Rates"]
+        P3_FIN["Financial Report Attachments"]
+
+        DB_KPIS[("Phase3Kpis Collection")]
+        DB_REV[("Phase3MonthlyRevenues Collection")]
+    end
+
+    subgraph PHASE4_EQUITY["4. Phase 4: Cap Table & ESOP Engineering"]
+        P4_DASH["/dashboard/entrepreneur/phase-4"]
+        P4_CALC["CapTableCalculator Engine"]
+        P4_SHARE["Share Allocation & Ownership Split"]
+        P4_ESOP["ESOP Pool (Option Pool Reservation)"]
+        P4_VEST["Vesting Schedules & Cliff Setup"]
+
+        DB_CAP[("Phase4CapTables Collection<br/>Version, Shareholders, Grants")]
+        DB_VEST[("Phase4VestingSchedules Collection<br/>Unique {CompanyId, GrantId}")]
+        DB_HIST[("Phase4OwnershipHistories Collection")]
+    end
+
+    subgraph PHASE5_VALUATION["5. Phase 5: Valuation & Funding Ask"]
+        P5_DASH["/dashboard/entrepreneur/phase-5"]
+        P5_ENGINE["ValuationEngine (Multiples & DCF)"]
+        P5_ASK["Funding Target & Equity Dilution Budget"]
+    end
+
+    subgraph PHASE6_DATAROOM["6. Phase 6: Data Room & Diligence Readiness"]
+        P6_DASH["/dashboard/entrepreneur/phase-6"]
+        P6_VAULT["Secure Diligence Document Vault"]
+        P6_NDA["Automated NDA Gate Enforcement"]
+        P6_ACCESS["Access Requests & Permissions"]
+
+        DB_NDA[("Phase6NdaAcceptances Collection")]
+        DB_ACCESS[("Phase6AccessLogs Collection")]
+    end
+
+    subgraph PHASE7_REVIEW["7. Phase 7: Automated Readiness Review"]
+        P7_DASH["/dashboard/entrepreneur/phase-7"]
+        P7_AUDIT["Deterministic Rules Engine<br/>Evaluates Phases 2–6 Data<br/>Score ≥ 70 Unlocks Advance"]
+        DB_REVIEW[("Phase7Reviews Collection<br/>OverallScore, Breakdown, Badge")]
+    end
+
+    subgraph PHASE8_MATCHING["8. Phase 8: Smart Investor Matchmaking"]
+        P8_DASH["/dashboard/entrepreneur/phase-8"]
+        P8_MATCH["Matchmaking Engine<br/>Sector, Stage & Ticket Sizing"]
+        DB_QUEUE[("MatchmakingQueue Collection<br/>Durable Outbox Pattern")]
+        DB_MATCHES[("InvestorMatches Collection<br/>Compatibility Scores")]
+    end
+
+    subgraph PHASE9_DEAL["9. Phase 9: Deal Execution & Closing"]
+        P9_DASH["/dashboard/entrepreneur/phase-9"]
+        P9_TERM["Term Sheet Negotiation & Turn Tracking"]
+        P9_SIGN["Bilateral Digital Signatures"]
+        P9_CLOSE["Founder Deal Close & Round Finalization"]
+
+        DB_DEALS[("DealExecutions Collection<br/>Status: 'signed' -> 'completed'")]
+    end
+
+    subgraph PHASE10_COMPLETE["10. Phase 10: Journey Complete (Terminal State)"]
+        P10_DASH["/dashboard/entrepreneur/phase-10"]
+        P10_STATUS["Round Closed & Historical Archive<br/>Cap Table Synchronized & Governance Active"]
+    end
+
+    subgraph CREATOR_ACQUISITION["Acquisition Engine (Creator IP Ingestion)"]
+        ACQ_DISC["/dashboard/entrepreneur/discover"]
+        ACQ_DEAL["Acquisitions Negotiation (/acquisitions/[dealId])"]
+        ACQ_BUILD["Build-Company Handoff (/build-company)"]
+    end
+
+    %% Wiring
+    E_LOGIN --> E_ONB
+    E_ONB --> DB_USER
+    DB_USER --> P2_DASH
+
+    %% Acquisition to Company
+    ACQ_DISC --> ACQ_DEAL
+    ACQ_DEAL --> ACQ_BUILD
+    ACQ_BUILD -->|Instantiate New Company| DB_COMPANY
+
+    P2_DASH --> P2_STEP1
+    P2_STEP1 --> P2_STEP2
+    P2_STEP2 --> P2_STEP3
+    P2_STEP3 --> P2_STEP4
+    P2_STEP4 --> DB_COMPANY
+
+    DB_COMPANY --> P3_DASH
+    P3_DASH --> P3_KPI
+    P3_KPI --> DB_KPIS
+    P3_DASH --> P3_REV
+    P3_REV --> DB_REV
+
+    P3_DASH --> P4_DASH
+    P4_DASH --> P4_CALC
+    P4_CALC --> P4_SHARE
+    P4_CALC --> P4_ESOP
+    P4_CALC --> P4_VEST
+    P4_CALC --> DB_CAP
+    P4_CALC --> DB_VEST
+    P4_CALC --> DB_HIST
+
+    P4_DASH --> P5_DASH
+    P5_DASH --> P5_ENGINE
+    P5_ENGINE --> P5_ASK
+
+    P5_DASH --> P6_DASH
+    P6_DASH --> P6_VAULT
+    P6_DASH --> P6_NDA
+    P6_NDA --> DB_NDA
+    P6_DASH --> P6_ACCESS
+    P6_ACCESS --> DB_ACCESS
+
+    P6_DASH --> P7_DASH
+    P7_DASH --> P7_AUDIT
+    P7_AUDIT --> DB_REVIEW
+
+    P7_DASH --> P8_DASH
+    P8_DASH --> P8_MATCH
+    P8_MATCH --> DB_QUEUE
+    DB_QUEUE --> DB_MATCHES
+
+    DB_MATCHES --> P9_DASH
+    P9_DASH --> P9_TERM
+    P9_TERM --> P9_SIGN
+    P9_SIGN --> P9_CLOSE
+    P9_CLOSE --> DB_DEALS
+
+    %% Advance to terminal Phase 10
+    P9_CLOSE -->|advancePhase 9 to 10| P10_DASH
+    P10_DASH --> P10_STATUS
+
+    %% Post deal effects
+    DB_DEALS -->|Recompute AmountRaised| DB_COMPANY
+    DB_DEALS -->|Issue Shares to Investor| DB_CAP

@@ -1,0 +1,133 @@
+erDiagram
+    %% MongoDB Logical Entity-Relationship Model (Confirmed in MongoDbContext.cs & Code)
+
+    applicationUsers ||--o| ProfessionalProfiles : "UserId"
+    applicationUsers ||--o| ServiceProviderProfiles : "UserId"
+    applicationUsers ||--o{ UserCredentials : "UserId"
+    applicationUsers ||--o{ CreatorIdeas : "CreatorId"
+    applicationUsers ||--o| CreatorJourneys : "UserId"
+    applicationUsers ||--o{ Companies : "UserId (Founder)"
+    applicationUsers ||--o{ Notifications : "UserId"
+    applicationUsers ||--o{ Conversations : "ParticipantIds"
+
+    CreatorIdeas ||--o{ ClarifierSessions : "BusinessIdeaId"
+    CreatorIdeas ||--o{ BusinessPlanSessions : "BusinessIdeaId"
+    CreatorIdeas ||--o{ ForecastSessions : "BusinessIdeaId"
+    CreatorIdeas ||--o{ DealExecutions : "IdeaId"
+    CreatorIdeas ||--o| Companies : "Spinout / Converted"
+
+    Companies ||--o{ Phase3Kpis : "CompanyId"
+    Companies ||--o{ Phase4CapTables : "CompanyId"
+    Companies ||--o{ Phase4VestingSchedules : "CompanyId"
+    Companies ||--o{ Phase4ShareIssuances : "CompanyId"
+    Companies ||--o{ Phase4OwnershipHistories : "CompanyId"
+    Companies ||--o{ Phase6NdaAcceptances : "CompanyId"
+    Companies ||--o{ Phase6AccessLogs : "CompanyId"
+    Companies ||--o{ InvestorMatches : "CompanyId"
+    Companies ||--o{ DealExecutions : "CompanyId"
+
+    InvestorMatches ||--o| DealExecutions : "MatchId / CompanyId"
+    DealExecutions ||--o{ CompanyPortfolioHoldings : "DealExecutionId"
+    DealExecutions ||--o{ Phase9DealActivityLogs : "DealId"
+    DealExecutions ||--o{ Phase9DealTimelineEvents : "DealId"
+
+    applicationUsers ||--o{ ServiceListings : "ProviderId"
+    ServiceListings ||--o{ ServicePackages : "ServiceId"
+    ServiceListings ||--o{ ServiceFAQs : "ServiceId"
+    ServiceListings ||--o{ AnalyticsDailyBuckets : "ListingId"
+
+    ClientBriefs ||--o{ Proposals : "ClientBriefId"
+    Proposals ||--o| WorkroomEngagements : "ProposalId"
+    WorkroomEngagements ||--o| Contracts : "EngagementId"
+    WorkroomEngagements ||--o{ WorkroomMilestones : "EngagementId"
+    WorkroomMilestones ||--o{ Deliverables : "MilestoneId"
+    WorkroomMilestones ||--o{ RevisionRequests : "MilestoneId"
+    WorkroomEngagements ||--o{ FinancialTransactions : "EngagementId"
+    WorkroomEngagements ||--o| Reviews : "EngagementId"
+    WorkroomEngagements ||--o{ WorkroomFiles : "EngagementId"
+
+    Conversations ||--o{ ChatMessages : "ConversationId"
+
+    applicationUsers {
+        string Id PK
+        string Email
+        string[] Roles
+        object Kyc
+        object Onboarding
+        string PasswordHash
+    }
+
+    CreatorIdeas {
+        string Id PK
+        string CreatorId FK
+        string Title
+        string Sector
+        string Stage
+        object Summary
+        long Version
+        datetime CreatedAt
+    }
+
+    CreatorJourneys {
+        string Id PK
+        string UserId FK
+        string ActiveIdeaId FK
+        string CurrentPhase
+        object OutputSnapshots
+    }
+
+    Companies {
+        string Id PK
+        string UserId FK
+        string CompanyName
+        int CurrentPhase
+        int[] CompletedPhases
+        double AmountRaised
+        double Valuation
+        int TotalShares
+    }
+
+    DealExecutions {
+        string Id PK
+        string CompanyId FK
+        string IdeaId FK
+        string DealType
+        string Status
+        string DealStage
+        string CurrentTurn
+        object TermSheet
+        object Signatures
+        datetime ClosedAt
+    }
+
+    Phase4CapTables {
+        string Id PK
+        string CompanyId FK
+        int Version
+        int TotalAuthorizedShares
+        object[] Shareholders
+        datetime RecordedAt
+    }
+
+    CompanyPortfolioHoldings {
+        string Id PK
+        string InvestorId FK
+        string CompanyId FK
+        string DealExecutionId FK
+        double InvestmentAmount
+        string InstrumentType
+        double EquityPercentage
+        datetime ClosedAt
+        string Status
+    }
+
+    WorkroomEngagements {
+        string Id PK
+        string ProposalId FK
+        string ProviderId FK
+        string ClientId FK
+        string EngagementStatus
+        double TotalBudget
+        double EscrowBalance
+        datetime UpdatedAt
+    }

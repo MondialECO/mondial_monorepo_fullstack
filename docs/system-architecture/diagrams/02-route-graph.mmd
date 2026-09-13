@@ -1,0 +1,166 @@
+graph LR
+    %% Complete Route Graph for Mondial ECO Grouped by Domains
+
+    subgraph PUBLIC_ROUTES["Public & Marketing Routes"]
+        R_HOME["/"]
+        R_PRICING["/pricing"]
+        R_FOR_C["/for-creators"]
+        R_FOR_C_ID["/for-creators/identity-verification"]
+        R_FOR_C_BR["/for-creators/positioning-branding"]
+        R_FOR_C_CP["/for-creators/project-identity-concept"]
+        R_FOR_E["/for-entrepreneurs"]
+        R_FOR_E_BLD["/for-entrepreneurs/build-execute"]
+        R_FOR_E_EQ["/for-entrepreneurs/equity-readiness"]
+        R_FOR_E_FND["/for-entrepreneurs/funding-deals"]
+        R_FOR_I["/for-investors"]
+        R_FOR_I_DLG["/for-investors/diligence-invest"]
+        R_FOR_I_DSC["/for-investors/discover-match"]
+        R_FOR_I_PPL["/for-investors/pipeline-portfolio"]
+        R_FOR_SP["/for-service-providers"]
+        R_FOR_SP_ERN["/for-service-providers/earnings-growth"]
+        R_FOR_SP_DEL["/for-service-providers/project-delivery"]
+        R_FOR_SP_OPP["/for-service-providers/service-opportunities"]
+    end
+
+    subgraph AUTH_ROUTES["Auth & Session Routes"]
+        R_LOGIN["/login"]
+        R_REGISTER["/register"]
+        R_FORGOT["/forgot-password"]
+        R_RESET["/reset-password"]
+        R_ONB["/onboarding"]
+        R_ONB_ID["/onboarding/identity"]
+        R_ONB_EML["/onboarding/email"]
+        R_ONB_PHN["/onboarding/phone"]
+        R_ONB_DOCS["/onboarding/documents/*"]
+        R_ONB_CMP["/onboarding/complete"]
+    end
+
+    subgraph CREATOR_ROUTES["Creator Domain Routes"]
+        RC_DASH["/dashboard/creator"]
+        RC_AI["/dashboard/creator/ai"]
+        RC_CLAR["/dashboard/creator/clarifier"]
+        RC_MYIDEAS["/dashboard/creator/myideas"]
+        RC_STUDIO["/dashboard/creator/project-studio"]
+        RC_DOCS["/dashboard/creator/documents"]
+        RC_VAULT["/dashboard/creator/ip-vault"]
+        RC_PRICING["/dashboard/creator/offer-pricing"]
+        RC_CROSS["/dashboard/creator/crossroads"]
+        RC_P2["/dashboard/creator/phase-2"]
+        RC_P2_DSC["/dashboard/creator/phase-2/discovery"]
+        RC_P2_NAM["/dashboard/creator/phase-2/concept-name"]
+        RC_P2_BRN["/dashboard/creator/phase-2/branding"]
+        RC_P2_LOG["/dashboard/creator/phase-2/logo-tool"]
+        RC_P2_HIR["/dashboard/creator/phase-2/hire-designer"]
+        RC_P3["/dashboard/creator/phase-3"]
+        RC_P3_BP["/dashboard/creator/phase-3/business-plan"]
+        RC_P3_FC["/dashboard/creator/phase-3/forecast"]
+        RC_P3_CMP["/dashboard/creator/phase-3/compliance"]
+        RC_P3_FRM["/dashboard/creator/phase-3/formation"]
+        RC_SALES["/dashboard/creator/sales"]
+        RC_SALES_ID["/dashboard/creator/sales/[dealId]"]
+        RC_PART["/dashboard/creator/partnerships"]
+        RC_PART_ID["/dashboard/creator/partnerships/[dealId]"]
+        RC_ENG["/dashboard/creator/engagements"]
+    end
+
+    subgraph ENTREPRENEUR_ROUTES["Entrepreneur Domain Routes"]
+        RE_DASH["/dashboard/entrepreneur"]
+        RE_COMP["/dashboard/entrepreneur/companies"]
+        RE_P2["/dashboard/entrepreneur/phase-2"]
+        RE_P2_STP["/dashboard/entrepreneur/phase-2/step-1..4"]
+        RE_P3["/dashboard/entrepreneur/phase-3"]
+        RE_P3_KPI["/dashboard/entrepreneur/phase-3/kpi-tracker"]
+        RE_P4["/dashboard/entrepreneur/phase-4 (ESOP/Cap Table)"]
+        RE_P5["/dashboard/entrepreneur/phase-5 (Valuation)"]
+        RE_P6["/dashboard/entrepreneur/phase-6 (Data Room)"]
+        RE_P7["/dashboard/entrepreneur/phase-7 (Readiness Audit)"]
+        RE_P8["/dashboard/entrepreneur/phase-8 (Smart Matching)"]
+        RE_P9["/dashboard/entrepreneur/phase-9 (Deal Execution)"]
+        RE_P10["/dashboard/entrepreneur/phase-10 (Reporting)"]
+        RE_DISC["/dashboard/entrepreneur/discover"]
+        RE_DISC_PRJ["/dashboard/entrepreneur/discover/projects"]
+        RE_ACQ["/dashboard/entrepreneur/acquisitions"]
+        RE_ACQ_ID["/dashboard/entrepreneur/acquisitions/[dealId]"]
+        RE_ACQ_BLD["/dashboard/entrepreneur/acquisitions/[dealId]/build-company"]
+        RE_DEALS["/dashboard/entrepreneur/deals"]
+        RE_ENG["/dashboard/entrepreneur/engagements"]
+    end
+
+    subgraph INVESTOR_ROUTES["Investor Domain Routes"]
+        RI_DASH["/dashboard/investor"]
+        RI_THESIS["/dashboard/investor/thesis"]
+        RI_DISC["/dashboard/investor/discovery"]
+        RI_DISC_CO["/dashboard/investor/discovery/[companyId]"]
+        RI_ROOM["/dashboard/investor/discovery/[companyId]/dataroom"]
+        RI_TERM["/dashboard/investor/discovery/[companyId]/term-sheet/build"]
+        RI_MATCH["/dashboard/investor/incoming-matches"]
+        RI_PIPE["/dashboard/investor/pipeline"]
+        RI_PORT["/dashboard/investor/portfolio"]
+        RI_DEALS["/dashboard/investor/deals"]
+    end
+
+    subgraph PROVIDER_ROUTES["Service Provider Domain Routes"]
+        RP_DASH["/dashboard/serviceprovider"]
+        RP_SRV["/dashboard/serviceprovider/services"]
+        RP_LEADS["/dashboard/serviceprovider/leads"]
+        RP_WORK["/dashboard/serviceprovider/workroom"]
+        RP_ENG["/dashboard/serviceprovider/engagements/[engagementId]"]
+        RP_EARN["/dashboard/serviceprovider/earnings"]
+        RP_ANL["/dashboard/serviceprovider/analytics"]
+        RP_PROF["/dashboard/serviceprovider/profile"]
+    end
+
+    subgraph MARKETPLACE_ROUTES["Marketplace Routes"]
+        RM_PRJ["/marketplace/projects"]
+        RM_SRV["/marketplace/services"]
+        RM_SRV_ID["/marketplace/services/[listingId]"]
+        RM_ORDER["/marketplace/services/[listingId]/order"]
+        RM_ALL["/mondial-marketplace"]
+    end
+
+    subgraph ADMIN_ROUTES["Admin Domain Routes"]
+        RA_DASH["/dashboard/admin"]
+        RA_USERS["/dashboard/admin/users"]
+        RA_USERS_ID["/dashboard/admin/users/[id]"]
+        RA_VERIF["/dashboard/admin/verifications"]
+        RA_VERIF_KYC["/dashboard/admin/verifications/kyc"]
+        RA_VERIF_INV["/dashboard/admin/verifications/investors"]
+        RA_VERIF_SP["/dashboard/admin/verifications/service-providers"]
+        RA_MKT["/dashboard/admin/marketplace"]
+        RA_COMM["/dashboard/admin/commerce"]
+        RA_AUD["/dashboard/admin/audit"]
+        RA_COMP["/dashboard/admin/compliance"]
+        RA_PRIV["/dashboard/admin/privacy"]
+        RA_REP["/dashboard/admin/reports"]
+        RA_SYS["/dashboard/admin/system"]
+        RA_QUEUES["/dashboard/admin/system/queues"]
+    end
+
+    subgraph PROFILE_ROUTES["Profile & Settings Routes"]
+        RPUB_SLUG["/profile/[slug]"]
+        RPRV_PROF["/dashboard/profile"]
+        RPRV_EDIT["/dashboard/profile/edit"]
+        RPRV_PRIV["/dashboard/privacy"]
+    end
+
+    %% Key navigation / transition paths
+    R_LOGIN -->|Authenticate| R_ONB
+    R_ONB -->|Verify Identity| R_ONB_CMP
+    R_ONB_CMP -->|Launch Dashboard| RC_DASH
+    R_ONB_CMP -->|Launch Dashboard| RE_DASH
+    R_ONB_CMP -->|Launch Dashboard| RI_DASH
+    R_ONB_CMP -->|Launch Dashboard| RP_DASH
+
+    %% Creator to Marketplace / Deals
+    RC_CROSS -->|Path A: Buyout| RC_PRICING
+    RC_PRICING -->|Publish Listing| RM_PRJ
+    RM_PRJ -->|Entrepreneur Buys| RE_ACQ_ID
+    RE_ACQ_ID -->|Complete Acquisition| RE_ACQ_BLD
+    RE_ACQ_BLD -->|Spin Out Company| RE_P2
+
+    %% Entrepreneur to Investor
+    RE_P6 -->|Publish Data Room| RI_ROOM
+    RE_P8 -->|Smart Matching| RI_MATCH
+    RI_MATCH -->|Review Deck & Pitch| RI_TERM
+    RI_TERM -->|Submit Offer| RE_P9
+    RE_P9 -->|Countersign Deal| RI_PORT

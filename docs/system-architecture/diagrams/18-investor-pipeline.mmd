@@ -1,0 +1,60 @@
+graph LR
+    %% Investor Pipeline Kanban Stages & Driving APIs
+
+    subgraph STAGE_MATCH["Stage 1: Matched / Inbound"]
+        S1["Incoming Matches<br/>Ranked Match Score"]
+        API_MATCH["GET /api/investor/matches"]
+        PAGE_MATCH["Page: /dashboard/investor/incoming-matches"]
+    end
+
+    subgraph STAGE_DILIGENCE["Stage 2: Diligence"]
+        S2["Due Diligence Room<br/>Reviewing Financials & Traction"]
+        API_NDA["POST /api/investor/diligence/{id}/nda"]
+        PAGE_ROOM["Page: /dashboard/investor/discovery/[companyId]/dataroom"]
+    end
+
+    subgraph STAGE_TERM["Stage 3: Term Sheet & Negotiation"]
+        S3["Active Negotiation<br/>Valuation, Liquidation & Board Seats"]
+        API_TERMS["POST /api/investor/discovery/[companyId]/term-sheet/build<br/>POST /api/deals/{id}/revision"]
+        PAGE_TERMS["Page: /dashboard/investor/discovery/[companyId]/term-sheet/build"]
+    end
+
+    subgraph STAGE_SIGN["Stage 4: Agreement Signing"]
+        S4["Bilateral Signature Pending<br/>Investor & Founder Sign"]
+        API_SIGN["POST /api/deals/{id}/sign"]
+        PAGE_DEAL["Page: /dashboard/investor/deals"]
+    end
+
+    subgraph STAGE_WON["Stage 5: Closed & Won"]
+        S5["Portfolio Holding Active<br/>Shares Issued & Funds Deployed"]
+        API_CLOSE["POST /api/deals/{id}/close (Founder)"]
+        PAGE_PORT["Page: /dashboard/investor/portfolio"]
+    end
+
+    subgraph STAGE_LOST["Stage 6: Passed / Lost"]
+        S6["Terminal Deal Abandoned<br/>(Rejected / Withdrawn)"]
+        API_REJECT["POST /api/deals/{id}/status (status: 'rejected')"]
+    end
+
+    %% Transitions
+    S1 -->|Sign NDA & Enter Room| S2
+    S1 -.-> API_MATCH
+    S2 -.-> API_NDA
+
+    S2 -->|Submit Term Sheet| S3
+    S2 -.-> PAGE_ROOM
+    S3 -.-> API_TERMS
+
+    S3 -->|Terms Accepted| S4
+    S3 -.-> PAGE_TERMS
+    S4 -.-> API_SIGN
+
+    S4 -->|Founder Closes Deal| S5
+    S4 -.-> PAGE_DEAL
+    S5 -.-> PAGE_PORT
+
+    S1 -->|Decline Match| S6
+    S2 -->|Fail Diligence| S6
+    S3 -->|Terms Rejected| S6
+    S4 -->|Signing Withdrawn| S6
+    S6 -.-> API_REJECT

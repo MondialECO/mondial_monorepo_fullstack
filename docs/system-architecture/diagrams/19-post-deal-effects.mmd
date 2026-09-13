@@ -1,0 +1,81 @@
+graph TD
+    %% Post-Deal Side Effects Flow & Services Map
+
+    TRIGGER["Deal Execution Completed<br/>(POST /api/deals/{id}/close)<br/>Status -> 'completed' & ClosedAt = UtcNow"]
+
+    subgraph SVC_ORCHESTRATION["Orchestrator: CompanyService.cs"]
+        OP_FILTER["Check Bilateral Signatures<br/>(deal.Signatures.BothSigned == true)"]
+        OP_PORTFOLIO["CreateCompanyPortfolioHoldingsForDealAsync"]
+        OP_CAP["ApplyEquityDealToCapTableAsync"]
+        OP_RECALC["Recalculate Company Financials"]
+        OP_NOTIF["NotificationService Dispatch"]
+    end
+
+    subgraph EFFECT_HOLDINGS["1. Investor Portfolio Effect"]
+        HOLDING_REC["CompanyPortfolioHolding Record<br/>- Status: 'active'<br/>- InvestmentAmount: CommittedAmount<br/>- InstrumentType: equity / safe / note<br/>- EquityPercentage: TermSheet.InvestorEquityPercent<br/>- EntryValuation: PostMoneyValuation"]
+        DB_HOLDINGS[("CompanyPortfolioHoldings Collection")]
+        PAGE_INVESTOR["Investor Dashboard (/dashboard/investor/portfolio)<br/>Displays active investment & IRR mark"]
+    end
+
+    subgraph EFFECT_PIPELINE["2. Investor Pipeline Effect"]
+        MATCH_UPDATE["InvestorMatch Record<br/>- Status -> 'deal_won'<br/>- ClosedAt = UtcNow"]
+        DB_MATCHES[("InvestorMatches Collection")]
+        PAGE_PIPELINE["Investor Pipeline Kanban<br/>Deal moves to 'Won / Closed' column"]
+    end
+
+    subgraph EFFECT_COMPANY["3. Company Venture Effect"]
+        COMP_UPDATE["Companies Document<br/>- AmountRaised += InvestmentAmount<br/>- CompletedPhases += [9]<br/>- CurrentPhase -> 10 (Post-Funding Reporting)"]
+        DB_COMPANIES[("Companies Collection")]
+        PAGE_FOUNDER["Founder Dashboard (/dashboard/entrepreneur)<br/>Traction updated & Phase 10 unlocked"]
+    end
+
+    subgraph EFFECT_CAPTABLE["4. Cap Table & Dilution Effect"]
+        CALC_CAP["CapTableCalculator.cs"]
+        NEW_VERSION["Phase4CapTable (Version N+1)<br/>- Issue New Preferred/Common Shares<br/>- Dilute Existing Founders & Pool proportionally<br/>- Append Investor to Shareholders[]"]
+        SHARE_ISSUANCE["Phase4ShareIssuance Record"]
+        OWNERSHIP_HIST["Phase4OwnershipHistory Record"]
+        
+        DB_CAP[("Phase4CapTables Collection")]
+        DB_ISSUANCE[("Phase4ShareIssuances Collection")]
+        DB_HIST[("Phase4OwnershipHistories Collection")]
+    end
+
+    subgraph EFFECT_NOTIF["5. Real-Time Alert Effect"]
+        REALTIME_PUSH["SignalR NotificationHub<br/>- NotifyInvestmentAddedToPortfolioAsync<br/>- NotifyDealStatusChangeAsync ('closed')"]
+        USER_BELL["NotificationBell Badge Incremented"]
+    end
+
+    %% Trigger wiring
+    TRIGGER --> OP_FILTER
+    OP_FILTER --> OP_PORTFOLIO
+    OP_FILTER --> OP_CAP
+    OP_FILTER --> OP_RECALC
+    OP_FILTER --> OP_NOTIF
+
+    %% 1. Holdings
+    OP_PORTFOLIO --> HOLDING_REC
+    HOLDING_REC --> DB_HOLDINGS
+    DB_HOLDINGS --> PAGE_INVESTOR
+
+    %% 2. Pipeline
+    OP_PORTFOLIO --> MATCH_UPDATE
+    MATCH_UPDATE --> DB_MATCHES
+    DB_MATCHES --> PAGE_PIPELINE
+
+    %% 3. Company
+    OP_RECALC --> COMP_UPDATE
+    COMP_UPDATE --> DB_COMPANIES
+    DB_COMPANIES --> PAGE_FOUNDER
+
+    %% 4. Cap Table
+    OP_CAP --> CALC_CAP
+    CALC_CAP --> NEW_VERSION
+    CALC_CAP --> SHARE_ISSUANCE
+    CALC_CAP --> OWNERSHIP_HIST
+    NEW_VERSION --> DB_CAP
+    SHARE_ISSUANCE --> DB_ISSUANCE
+    OWNERSHIP_HIST --> DB_HIST
+
+    %% 5. Realtime
+    OP_NOTIF --> REALTIME_PUSH
+    REALTIME_PUSH --> USER_BELL

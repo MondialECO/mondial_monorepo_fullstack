@@ -1,0 +1,40 @@
+sequenceDiagram
+    %% Service Provider Complete Journey from Login to Business Outcome
+
+    autonumber
+    actor Provider as Service Provider
+    participant Auth as Auth & Credentialing
+    participant Dash as Provider Dashboard (/dashboard/serviceprovider)
+    participant Catalog as Service Catalog (/marketplace/services)
+    actor Client as Client (Founder/Creator)
+    participant Workroom as Workroom Engine (/api/workroom)
+    participant Earnings as Earnings & Payout Engine
+
+    %% Verification & Setup
+    Provider->>Auth: Register & Submit Professional Proof of Work
+    Auth->>Auth: Admin Certifies Provider as "Tier 2: Verified"
+    Auth-->>Dash: Redirect to /dashboard/serviceprovider
+
+    %% Catalog Publishing
+    Dash->>Catalog: Publish Service: "Institutional Pitch Deck & Financial Model"
+    Dash->>Catalog: Configure Tiered Packages (Basic €500, Pro €1,500, Enterprise €3,500)
+
+    %% Lead Ingress & Proposal
+    Client->>Catalog: Discover Listing & Order "Pro Package" (€1,500)
+    Client->>Workroom: Fund Escrow (€1,500 held securely)
+    Workroom->>Workroom: Form Contract & Generate 2 Milestones
+
+    %% Delivery & Revision
+    Provider->>Workroom: Upload Milestone 1 Deliverable (Financial Model)
+    Client->>Workroom: Request Minor Revision
+    Provider->>Workroom: Upload Revised Model
+    Client->>Workroom: Accept Milestone 1 (Release 50% Escrow: €750)
+    Provider->>Workroom: Upload Milestone 2 Deliverable (Pitch Deck)
+    Client->>Workroom: Accept Milestone 2 (Release remaining 50%: €750)
+
+    %% Earnings & Payout
+    Workroom->>Earnings: Transfer €1,500 to Available Balance
+    Earnings->>Earnings: Generate Official Tax Invoice PDF
+    Provider->>Earnings: Request Bank Payout (Logged to PayoutRequests)
+    Client->>Workroom: Submit 5-Star Rating & Written Testimonial
+    Earnings-->>Provider: Business Outcome: Application-Modeled Escrow Settlement & Platform Reputation Growth (Live Gateway via Adapter)

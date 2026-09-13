@@ -1,0 +1,39 @@
+sequenceDiagram
+    %% Entrepreneur Complete Journey from Login to Business Outcome
+
+    autonumber
+    actor Founder as Entrepreneur
+    participant Auth as Auth & Onboarding (/onboarding)
+    participant Dash as Entrepreneur Dashboard (/dashboard/entrepreneur)
+    participant CompSvc as CompanyService (/api/company)
+    participant Diligence as Diligence & Data Room
+    actor Investor as Accredited Investor
+    participant Deals as DealsController (/api/deals)
+    participant CapTable as Phase4CapTables
+
+    %% Login & Setup
+    Founder->>Auth: Log in & pass Phase 1 Verification
+    Auth-->>Dash: Redirect to /dashboard/entrepreneur
+    Founder->>CompSvc: POST /api/company (Create Venture Profile)
+
+    %% Venture Progression
+    Dash->>CompSvc: Complete Phase 3 (Upload Monthly Traction & KPIs)
+    Dash->>CompSvc: Complete Phase 4 (Structure ESOP & Initial Cap Table)
+    Dash->>CompSvc: Complete Phase 5 (Calculate €4.5M Valuation via ValuationEngine)
+    Dash->>Diligence: Complete Phase 6 (Populate Data Room & Enable Digital NDA)
+
+    %% Investor Diligence & Offer
+    Investor->>Diligence: Match with Company & Accept NDA
+    Investor->>Diligence: Audit Cap Table & Growth Metrics
+    Investor->>Deals: Submit €500,000 Term Sheet (10% Equity)
+
+    %% Negotiation & Close
+    Founder->>Deals: Review, Negotiate & Accept Term Sheet
+    Investor->>Deals: Sign Investment Agreement
+    Founder->>Deals: Countersign Investment Agreement
+    Founder->>Deals: POST /api/deals/{id}/close (Confirm Wire Ingress)
+
+    %% Outcome
+    Deals->>CompSvc: Update Company.AmountRaised = €500,000 & CurrentPhase = 10
+    Deals->>CapTable: Issue Preferred Shares (Append Phase4CapTable Version 2)
+    Deals-->>Founder: Business Outcome: Seed Round Closed, Capital Deployed, Venture Scale

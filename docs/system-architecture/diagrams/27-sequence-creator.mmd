@@ -1,0 +1,45 @@
+sequenceDiagram
+    %% Creator Complete Journey from Login to Business Outcome
+
+    autonumber
+    actor Creator as Creator
+    participant Auth as Auth & Onboarding (/onboarding)
+    participant Dash as Creator Dashboard (/dashboard/creator)
+    participant AI as AI Engine (OpenRouter)
+    participant Mkt as Project Marketplace (/marketplace/projects)
+    actor Buyer as Entrepreneur (Acquirer)
+    participant Deals as DealsController (/api/deals)
+    participant Mongo as MongoDB Atlas
+
+    %% Login & Onboarding
+    Creator->>Auth: Log in with credentials
+    Auth->>Auth: Verify Phase 1 KYC Certification
+    Auth-->>Dash: Redirect to /dashboard/creator
+
+    %% Idea Refinement
+    Dash->>AI: Trigger Idea Clarifier AI
+    AI-->>Dash: Return clarity score & market dimensions
+    Dash->>AI: Generate Institutional Business Plan & 5-Year Forecast
+    AI-->>Dash: Persist in CreatorIdeas.OutputSnapshots
+
+    %% Pricing & Crossroads
+    Dash->>Dash: Calculate Recommended Buyout Price (€75,000)
+    Dash->>Dash: Select Crossroads: Path A (Full Buyout)
+
+    %% Marketplace & Acquisition
+    Dash->>Mkt: Publish Project Listing
+    Buyer->>Mkt: Discover Project & Initiate Buyout
+    Buyer->>Deals: POST /api/deals/buyout/initiate
+    Deals->>Dash: Real-time notification: "New Buyout Offer"
+
+    %% Negotiation & Signatures
+    Creator->>Deals: Review & Accept Buyout Terms
+    Creator->>Deals: Sign Buyout Agreement (Digital Signature)
+    Buyer->>Deals: Sign Buyout Agreement (Digital Signature)
+
+    %% Escrow & Handover Outcome
+    Buyer->>Deals: Fund Escrow
+    Creator->>Deals: Confirm Payment & Upload IP Handover Package
+    Deals->>Mongo: Mark Deal Completed & CreatorIdea as SOLD
+    Buyer->>Deals: POST /api/deals/{id}/build-company
+    Deals-->>Creator: Business Outcome: 100% Cash Realization & Clean IP Exit

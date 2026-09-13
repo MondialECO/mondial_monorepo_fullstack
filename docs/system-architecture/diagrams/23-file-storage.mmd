@@ -1,0 +1,85 @@
+graph TD
+    %% File Storage & Upload Architecture
+
+    subgraph CLIENT_UPLOAD["Frontend Upload Points"]
+        UP_PROFILE["Avatar / Cover Upload (/dashboard/profile)"]
+        UP_BRANDING["Logo / Brand Assets (/phase-2/branding)"]
+        UP_WORKROOM["Workroom Deliverable / Attachment (/workroom)"]
+        UP_KYC["Identity Passport / ID (/onboarding/identity)"]
+    end
+
+    subgraph API_VALIDATION["Ingress & Kestrel Security Limits"]
+        KESTREL_LIMIT["Kestrel Limits: MaxRequestBodySize = 10MB<br/>(Configurable via Limits:MaxRequestBodyBytes)"]
+        
+        CTRL_PROFILE["ProfileController.cs (/api/profile/upload-image)"]
+        CTRL_CREATOR["CreatorPhase2Controller.cs (/api/creator/phase-2/logo)"]
+        CTRL_WORKROOM["WorkroomController.cs (/api/workroom/{id}/upload)"]
+        CTRL_ONB["OnboardingController.cs (/api/onboarding/upload-identity-documents)"]
+
+        SEC_SCAN["StubFileSecurityScanner.cs<br/>(MIME inspection & Extension whitelist)"]
+    end
+
+    subgraph STORAGE_PATHS["Physical Storage Topology"]
+        DOCKER_VOL[("Docker Persistent Named Volume<br/>uploads-data<br/>Mounted at: /app/wwwroot/uploads")]
+        
+        subgraph PUBLIC_PATHS["Public Upload Directories"]
+            DIR_MEDIA["/app/wwwroot/uploads/media/"]
+            DIR_BRANDING["/app/wwwroot/uploads/branding/"]
+            DIR_PROFILE["/app/wwwroot/uploads/profile/"]
+        end
+
+        subgraph PROTECTED_PATHS["Protected Upload Directories (Denied Static Serving)"]
+            DIR_DOCS["/app/wwwroot/uploads/documents/<br/>(Workroom Deliverables & Contracts)"]
+            DIR_IDENTITY["/app/storage/kyc/ & /uploads/identity/<br/>(Isolated KYC Passports & Licenses)"]
+        end
+    end
+
+    subgraph STATIC_MIDDLEWARE["Security Deny Middleware (Program.cs line 727)"]
+        DENY_CHECK{"Path starts with<br/>/uploads/documents or /uploads/identity?"}
+        RET_404["Return HTTP 404 Not Found<br/>(Indistinguishable from absent file)"]
+        ALLOW_STATIC["UseStaticFiles Middleware<br/>Serves Public Image / Asset"]
+    end
+
+    subgraph AUTHORIZED_DOWNLOAD["Authorized File Serving Gateway"]
+        DL_ENDPOINT["GET /api/workroom/files/{id}/download<br/>1. Validates JWT Caller<br/>2. Checks Workroom Participation<br/>3. Verifies ProviderPrivate Access Flag<br/>4. Streams File with Content-Disposition"]
+    end
+
+    subgraph METADATA_DB["Database Metadata Records"]
+        DB_WORKROOM_FILES[("WorkroomFiles Collection<br/>FileId, EngagementId, MilestoneId, ProviderPrivate")]
+        DB_USER_KYC[("applicationUsers.Kyc Collection")]
+        DB_CREATOR_IDEAS[("CreatorIdeas.BrandingAssets")]
+    end
+
+    %% Wiring
+    UP_PROFILE --> KESTREL_LIMIT
+    UP_BRANDING --> KESTREL_LIMIT
+    UP_WORKROOM --> KESTREL_LIMIT
+    UP_KYC --> KESTREL_LIMIT
+
+    KESTREL_LIMIT --> CTRL_PROFILE
+    KESTREL_LIMIT --> CTRL_CREATOR
+    KESTREL_LIMIT --> CTRL_WORKROOM
+    KESTREL_LIMIT --> CTRL_ONB
+
+    CTRL_WORKROOM --> SEC_SCAN
+    CTRL_PROFILE --> DIR_PROFILE
+    CTRL_CREATOR --> DIR_BRANDING
+    CTRL_WORKROOM --> DIR_DOCS
+    CTRL_ONB --> DIR_IDENTITY
+
+    DIR_PROFILE --> DOCKER_VOL
+    DIR_BRANDING --> DOCKER_VOL
+    DIR_DOCS --> DOCKER_VOL
+
+    CTRL_WORKROOM --> DB_WORKROOM_FILES
+    CTRL_ONB --> DB_USER_KYC
+    CTRL_CREATOR --> DB_CREATOR_IDEAS
+
+    %% Static protection
+    ALLOW_STATIC --> PUBLIC_PATHS
+    DENY_CHECK -->|Yes| RET_404
+    DENY_CHECK -->|No| ALLOW_STATIC
+
+    %% Authorized reading
+    DL_ENDPOINT --> DB_WORKROOM_FILES
+    DL_ENDPOINT --> DIR_DOCS

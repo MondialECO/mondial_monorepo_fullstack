@@ -1,0 +1,49 @@
+graph TD
+    %% Real-Time Messaging Architecture Diagram
+
+    subgraph CLIENTS["Frontend Messaging Clients"]
+        SENDER["Sender Client (Creator, Founder, SP, Investor)<br/>Active Chat UI"]
+        RECIPIENT["Recipient Client<br/>Listening on ChatHub & NotificationHub"]
+    end
+
+    subgraph INGRESS_ROUTING["Ingress & Transport"]
+        CHAT_REST["REST Ingress: ChatController (/api/chat)<br/>POST /api/chat/send-message"]
+        CHAT_HUB["SignalR Hub: ChatHub (/hubs/chat)<br/>SendMessage, JoinConversation, Typing"]
+    end
+
+    subgraph BACKEND_SERVICES["Processing & Presence Engine"]
+        SVC_CHAT["ChatService.cs<br/>Validates Participant Membership & Context"]
+        PRESENCE["RedisPresenceTracker.cs<br/>Tracks Online Connection IDs across Replicas"]
+        SVC_NOTIF["NotificationService.cs<br/>Triggers Unread Alert if Recipient is Offline"]
+    end
+
+    subgraph PERSISTENCE_DATA["State & Persistence Layer"]
+        DB_CONV[("Conversations Collection<br/>- Id: ObjectId<br/>- Participants: List<Guid><br/>- ContextType: 'IdeaId' | 'CompanyId' | 'DealId'<br/>- RelatedProjectId: ObjectId<br/>- LastMessage, LastMessageAt")]
+        DB_MSG[("ChatMessages Collection<br/>- Id, ConversationId, SenderId<br/>- Message, MessageType (Text/File)<br/>- ClientBriefId (Module 3 link)<br/>- IsRead: bool, CreatedAt")]
+        REDIS_BACKPLANE[("Redis SignalR Backplane<br/>MondialSignalR Channel")]
+    end
+
+    subgraph NOTIFICATION_DISPATCH["Real-Time Dispatch Layer"]
+        HUB_NOTIF["NotificationHub (/hubs/notifications)<br/>Pushes Unread Badge Count"]
+        BADGE_UI["NotificationBell & ChatBadge<br/>Displays Unread Count to Recipient"]
+    end
+
+    %% Wiring
+    SENDER -->|1a. WebSocket Call| CHAT_HUB
+    SENDER -->|1b. HTTP Fallback| CHAT_REST
+
+    CHAT_HUB --> SVC_CHAT
+    CHAT_REST --> SVC_CHAT
+
+    SVC_CHAT --> DB_CONV
+    SVC_CHAT --> DB_MSG
+    SVC_CHAT --> PRESENCE
+
+    %% Real-time broadcast
+    CHAT_HUB -->|PubSub| REDIS_BACKPLANE
+    REDIS_BACKPLANE -->|Broadcast 'ReceiveMessage'| RECIPIENT
+
+    %% Offline / Unread handling
+    PRESENCE -->|If Recipient Inactive| SVC_NOTIF
+    SVC_NOTIF --> HUB_NOTIF
+    HUB_NOTIF --> BADGE_UI

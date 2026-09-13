@@ -1,0 +1,74 @@
+graph TD
+    %% Mondial ECO Quad-Marketplace Architecture
+
+    subgraph MKT_PROJECTS["1. Creator Project Marketplace (/marketplace/projects)"]
+        PUB_PROJ["Public Project Discovery<br/>Teasers, Sector, Asking Price, Pitch Deck<br/>*(MarketplaceProjectDto Projection)*"]
+        GATE_PROJ["Private Transition Gate<br/>(Requires Login & Access Grant)"]
+        PRIV_PROJ["Private Project Room<br/>Full Business Plan, Financial Model, IP Documents"]
+        ACTION_BUYOUT["Initiate Full Buyout Offer (`full_buyout`)"]
+        ACTION_COFOUND["Initiate Co-Founder Partnership Offer (`equity_partnership`)"]
+        
+        DB_CREATOR_IDEAS[("CreatorIdeas Collection<br/>Phase5Data.PathA.MarketplaceListing<br/>Status: 'live' / 'available'")]
+        DB_PROJECT_GRANTS[("MarketplaceProjectAccessGrants Collection")]
+    end
+
+    subgraph MKT_COMPANIES["2. Entrepreneur Company Discovery (/dashboard/investor/discovery)"]
+        PUB_COMP["Company Discovery Portal<br/>Sectors, Traction KPIs, Amount Raising"]
+        GATE_NDA["Private Transition Gate<br/>(Digital NDA Acceptance Required)"]
+        PRIV_DATAROOM["Private Data Room (/discovery/[companyId]/dataroom)<br/>Audited Financials, Cap Table, IP Contracts"]
+        ACTION_TERM_SHEET["Build & Submit Investment Term Sheet"]
+
+        DB_COMPANIES[("Companies Collection<br/>Status: 'fundraising'")]
+        DB_NDA[("Phase6NdaAcceptances Collection")]
+        DB_ACCESS_LOGS[("Phase6AccessLogs Collection")]
+    end
+
+    subgraph MKT_SERVICES["3. Service Provider Marketplace (/marketplace/services)"]
+        PUB_SERV["Public Services Catalog<br/>Categories: Design, Dev, Legal, Marketing"]
+        DETAIL_SERV["Service Listing Detail (/marketplace/services/[listingId])<br/>Packages (Basic, Standard, Premium), FAQs, Reviews"]
+        ACTION_ORDER["Direct Order / Checkout Gate (/order)<br/>Converts to Workroom Engagement"]
+        ACTION_BRIEF["Post Client Brief for Custom Proposals (/leads/briefs)"]
+
+        DB_SERVICE_LISTINGS[("ServiceListings Collection<br/>Status: 'published'")]
+        DB_SERVICE_PACKAGES[("ServicePackages Collection")]
+        DB_WORKROOM[("WorkroomEngagements Collection")]
+    end
+
+    subgraph MKT_PROFILES["4. Universal Profile Discovery (/profile/[slug])"]
+        PUB_PROF["Universal Public Profile Page<br/>Verified Badges, Bio, Skills, Portfolio, Reputation"]
+        ROLES_DISPLAY["Role-Aware Sections<br/>Creator Ideas, Founder Ventures, Provider Gigs"]
+        ACTION_CONTACT["Direct Message Ingress (/dashboard/[role]/messages)"]
+
+        DB_PROF_RECORDS[("ProfessionalProfiles Collection<br/>Unique: PublicSlug")]
+        DB_CONVERSATIONS[("Conversations Collection")]
+    end
+
+    %% Project flow
+    PUB_PROJ -->|Click 'Express Interest'| GATE_PROJ
+    GATE_PROJ -->|Verified Authenticated Buyer| PRIV_PROJ
+    PRIV_PROJ --> ACTION_BUYOUT
+    PRIV_PROJ --> ACTION_COFOUND
+    PUB_PROJ -.-> DB_CREATOR_IDEAS
+    GATE_PROJ --> DB_PROJECT_INTERESTS
+
+    %% Company flow
+    PUB_COMP -->|Click 'Request Access'| GATE_NDA
+    GATE_NDA -->|Countersign NDA| PRIV_DATAROOM
+    PRIV_DATAROOM --> ACTION_TERM_SHEET
+    PUB_COMP -.-> DB_COMPANIES
+    GATE_NDA --> DB_NDA
+    PRIV_DATAROOM --> DB_ACCESS_LOGS
+
+    %% Service flow
+    PUB_SERV --> DETAIL_SERV
+    DETAIL_SERV --> ACTION_ORDER
+    DETAIL_SERV --> ACTION_BRIEF
+    PUB_SERV -.-> DB_SERVICE_LISTINGS
+    DETAIL_SERV -.-> DB_SERVICE_PACKAGES
+    ACTION_ORDER --> DB_WORKROOM
+
+    %% Profile flow
+    PUB_PROF --> ROLES_DISPLAY
+    ROLES_DISPLAY --> ACTION_CONTACT
+    PUB_PROF -.-> DB_PROF_RECORDS
+    ACTION_CONTACT --> DB_CONVERSATIONS

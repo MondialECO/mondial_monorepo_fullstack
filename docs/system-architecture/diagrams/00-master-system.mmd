@@ -1,0 +1,101 @@
+graph TD
+    %% Master System Architecture Diagram for Mondial ECO
+
+    subgraph CLIENT_LAYER["User Clients & Personas"]
+        U_CREATOR["Creator Persona<br/>Raw Idea & IP Discovery"]
+        U_ENTREPRENEUR["Entrepreneur Persona<br/>Company Building & Diligence"]
+        U_INVESTOR["Investor Persona<br/>Discovery, Pipeline & Portfolio"]
+        U_PROVIDER["Service Provider Persona<br/>Services, Briefs & Workrooms"]
+        U_ADMIN["Admin / SuperAdmin<br/>Platform Governance & Moderation"]
+    end
+
+    subgraph INGRESS_LAYER["Ingress & Edge Security (Traefik v2.11)"]
+        EDGE_ROUTER["Traefik Reverse Proxy<br/>Ports :80 (Redirect) & :443 (TLS)"]
+        LE_CERT["Let's Encrypt ACME<br/>Automatic TLS Certificates"]
+        IP_FILTER["IP Allowlist Middleware<br/>Protects /metrics (10.0.0.0/8, 172.16.0.0/12)"]
+    end
+
+    subgraph FRONTEND_LAYER["Frontend Application (Next.js 16 / React 19 / SSR + CSR)"]
+        FE_APP["Next.js App Router (198 Routes)<br/>Port :3000 (Internal Bridge)"]
+        AUTH_GUARD["AuthGuard & AuthProvider<br/>Token Hydration & Role Verification"]
+        AXIOS_CLIENT["Axios API Client (src/lib/axios.ts)<br/>Bearer Token & 401 Auto-Refresh"]
+        SIGNALR_CLIENT["@microsoft/signalr Client<br/>Real-time Chat & Notifications"]
+    end
+
+    subgraph BACKEND_LAYER["Stateless API Layer (ASP.NET Core 8 / Kestrel)"]
+        API_REPLICAS["ASP.NET Core API Replicas (1..N)<br/>Scalable via docker compose"]
+        
+        subgraph PIPELINE["HTTP Pipeline & Security"]
+            FWD_HDRS["Forwarded Headers & Correlation ID"]
+            RATE_LIMIT["Rate Limiter (FixedWindow)<br/>IP Auth (5/min), AI (20/min), Global (100/min)"]
+            JWT_AUTH["JWT Bearer Authentication<br/>HMAC-SHA256, 30s Clock Skew"]
+            STATIC_GUARD["Upload Path Deny Rule<br/>Blocks /uploads/documents & /uploads/identity"]
+        end
+
+        subgraph MODULES["Core Application Controllers & Engines"]
+            CTRL_CORE["51 API Controllers (579 Endpoints)<br/>Company, Deals, Creator, Provider, etc."]
+            VAL_ENGINE["ValuationEngine & CapTableCalculator"]
+            MATCH_ENGINE["InvestorMatcher & SpMatchingService"]
+            AI_RUNNER["AiJobRunner & Task Handlers<br/>Clarifier, Business Plan, Forecast"]
+        end
+
+        subgraph ASYNC_SERVICES["Background Processing"]
+            HANGFIRE["Hangfire Worker Server<br/>Queues: 'default', 'ai' (WorkerCount: 4)"]
+            RECURRING_JOBS["Recurring Background Jobs<br/>ClientBriefExpiration, WorkroomConversion"]
+            EMAIL_SVC["EmailBackgroundService<br/>In-Memory Queue Consumer"]
+        end
+    end
+
+    subgraph STATE_DATA_LAYER["Data & Persistence Infrastructure"]
+        MONGO_DB[("MongoDB Atlas Cluster<br/>91 Collections<br/>Replica-Set Transactions")]
+        REDIS_CACHE[("Redis 7 (Alpine)<br/>AOF Persistence (:6379)<br/>Backplane, Keys & Presence")]
+        UPLOAD_VOL[("Docker Named Volume<br/>uploads-data<br/>/app/wwwroot/uploads")]
+    end
+
+    subgraph EXTERNAL_SERVICES["Third-Party APIs & Gateways"]
+        EXT_AI["OpenRouter AI Gateway<br/>openai/gpt-oss-20b:free & Models"]
+        EXT_EMAIL["Zoho SMTP Relay<br/>Port 587 TLS"]
+        EXT_SUMSUB["Sumsub Identity Verification<br/>KYC OCR & Biometrics Webhooks"]
+        EXT_TWILIO["Twilio SMS Gateway<br/>Phone Verification (Optional)"]
+    end
+
+    %% Client traffic flow
+    CLIENT_LAYER -->|HTTPS :443| EDGE_ROUTER
+    EDGE_ROUTER -->|TLS Terminated| FE_APP
+    EDGE_ROUTER -->|/api/* Load Balanced| API_REPLICAS
+    EDGE_ROUTER -->|/metrics (Restricted)| IP_FILTER
+
+    %% Frontend to Backend
+    FE_APP --> AUTH_GUARD
+    AUTH_GUARD --> AXIOS_CLIENT
+    AXIOS_CLIENT -->|Bearer JWT HTTP Request| EDGE_ROUTER
+    SIGNALR_CLIENT -->|WebSocket /hubs/*| EDGE_ROUTER
+
+    %% Backend Pipeline
+    API_REPLICAS --> FWD_HDRS
+    FWD_HDRS --> RATE_LIMIT
+    RATE_LIMIT --> JWT_AUTH
+    JWT_AUTH --> STATIC_GUARD
+    STATIC_GUARD --> CTRL_CORE
+
+    %% Backend internal connections
+    CTRL_CORE --> VAL_ENGINE
+    CTRL_CORE --> MATCH_ENGINE
+    CTRL_CORE --> AI_RUNNER
+    AI_RUNNER --> HANGFIRE
+    HANGFIRE --> RECURRING_JOBS
+    CTRL_CORE --> EMAIL_SVC
+
+    %% Database connections
+    CTRL_CORE -->|Read/Write Queries & ACID Tx| MONGO_DB
+    HANGFIRE -->|Job State & Migrations| MONGO_DB
+    API_REPLICAS -->|SignalR Pub/Sub Backplane| REDIS_CACHE
+    API_REPLICAS -->|DataProtection Key Ring| REDIS_CACHE
+    API_REPLICAS -->|Distributed Cache & Presence| REDIS_CACHE
+    CTRL_CORE -->|Save/Read Files| UPLOAD_VOL
+
+    %% External Connections
+    AI_RUNNER -->|HTTPS REST API| EXT_AI
+    EMAIL_SVC -->|SMTP Port 587| EXT_EMAIL
+    CTRL_CORE -->|HTTPS REST & Webhooks| EXT_SUMSUB
+    CTRL_CORE -->|HTTPS REST| EXT_TWILIO

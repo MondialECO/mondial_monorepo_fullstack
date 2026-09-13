@@ -1,0 +1,62 @@
+graph TD
+    %% Comprehensive Notification Dispatch System Architecture
+
+    subgraph EVENT_PRODUCERS["Domain Event Producers"]
+        EVT_CHAT["Chat System<br/>New direct message received"]
+        EVT_DEAL["Deal Engine (DealsController)<br/>Offer, Counter-Offer, Terms Accepted, Signed, Closed"]
+        EVT_DILIGENCE["Diligence Engine<br/>NDA signed, Data room access granted, Q&A inquiry"]
+        EVT_PHASES["Phase Engine (PhaseNotificationService)<br/>Phases 1-9 completion, Readiness audit score"]
+        EVT_MATCH["Matching Engine<br/>High-compatibility Investor/Project match found"]
+        EVT_AI["AI Subsystem (AiJobCompletionHandler)<br/>Clarifier, Business plan or Forecast ready"]
+        EVT_WORKROOM["Workroom Engine<br/>Proposal accepted, Milestone delivered, Escrow released"]
+        EVT_KYC["Admin Verification<br/>KYC certified, SP Tier upgraded"]
+    end
+
+    subgraph DISPATCH_ROUTER["Notification Dispatch Core"]
+        NOTIF_SVC["NotificationService.cs<br/>Creates DB Record & Evaluates Channels"]
+        EMAIL_QUEUE["EmailQueue.cs (In-Memory Singleton)<br/>Enqueues outbound transactional mail"]
+        DEAL_PUB["DealEventPublisher.cs / AiEventPublisher.cs<br/>Per-user SignalR group routing"]
+    end
+
+    subgraph PERSISTENCE_CHANNELS["State & Delivery Channels"]
+        DB_NOTIF[("Notifications Collection<br/>- Id, UserId, Title, Body<br/>- Type: Message/Investment/System<br/>- ReferenceId, Link, IsRead")]
+        
+        HUB_NOTIF["NotificationHub (/hubs/notifications)<br/>WebSocket event: 'ReceiveNotification'"]
+        
+        BG_EMAIL["EmailBackgroundService<br/>Zoho SMTP (Port 587 TLS)"]
+        
+        WEB_PUSH["WebPushService (VAPID Keys)<br/>Browser ServiceWorker Push API"]
+    end
+
+    subgraph CLIENT_SURFACES["Frontend Notification Surfaces"]
+        BELL_UI["NotificationBell Component<br/>Unread badge counter & dropdown list"]
+        TOAST_UI["Sonner / Toast Alerts<br/>Real-time onscreen toast notification"]
+        EMAIL_INBOX["User Email Client<br/>Branded transactional notification"]
+        OS_PUSH["Operating System Native Push<br/>Delivered when browser tab is backgrounded"]
+    end
+
+    %% Event generation
+    EVT_CHAT --> NOTIF_SVC
+    EVT_DEAL --> NOTIF_SVC
+    EVT_DEAL --> DEAL_PUB
+    EVT_DILIGENCE --> NOTIF_SVC
+    EVT_PHASES --> NOTIF_SVC
+    EVT_MATCH --> NOTIF_SVC
+    EVT_AI --> NOTIF_SVC
+    EVT_WORKROOM --> NOTIF_SVC
+    EVT_KYC --> NOTIF_SVC
+
+    %% Dispatch routing
+    NOTIF_SVC --> DB_NOTIF
+    NOTIF_SVC --> HUB_NOTIF
+    NOTIF_SVC --> EMAIL_QUEUE
+    NOTIF_SVC --> WEB_PUSH
+    DEAL_PUB --> HUB_NOTIF
+
+    EMAIL_QUEUE --> BG_EMAIL
+
+    %% Delivery to client
+    HUB_NOTIF -->|SignalR PubSub| BELL_UI
+    HUB_NOTIF -->|SignalR Event| TOAST_UI
+    BG_EMAIL -->|SMTP Email| EMAIL_INBOX
+    WEB_PUSH -->|Web Push Protocol| OS_PUSH

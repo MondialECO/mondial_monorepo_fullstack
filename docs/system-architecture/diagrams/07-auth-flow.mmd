@@ -1,0 +1,47 @@
+sequenceDiagram
+    %% End-to-End Authentication & Authorization Flow
+
+    autonumber
+    actor User as User Browser
+    participant FE as Next.js (React 19)
+    participant Axios as Axios Interceptor (lib/axios.ts)
+    participant RateLimit as ASP.NET Rate Limiter
+    participant AuthAPI as AuthController (/api/auth)
+    participant Identity as ASP.NET Core Identity
+    participant Mongo as MongoDB (applicationUsers)
+    participant Svc as Domain Service (e.g. CompanyService)
+
+    %% Login Sequence
+    User->>FE: Fill Email & Password -> Click "Log In"
+    FE->>RateLimit: POST /api/auth/login
+    RateLimit->>RateLimit: Check IP fixed window (<= 5 / min)
+    RateLimit->>AuthAPI: Forward validated request
+    AuthAPI->>Identity: FindByNameAsync(email)
+    Identity->>Mongo: Find user by NormalizedEmail
+    Mongo-->>Identity: Return ApplicationUser document
+    Identity->>Identity: CheckPasswordSignInAsync(hash)
+    Identity-->>AuthAPI: Credentials Validated
+    AuthAPI->>AuthAPI: Mint JWT (sub, email, roles[], 8h exp)
+    AuthAPI-->>FE: HTTP 200 OK + JWT Token
+
+    %% Client Session Hydration
+    FE->>FE: localStorage.setItem("token", jwt)
+    FE->>FE: window.dispatchEvent(storage) [Sync all tabs]
+    FE->>Axios: Initialize Authorization: Bearer <jwt>
+
+    %% Authenticated API Invocation
+    User->>FE: Navigate to Dashboard / Trigger Operation
+    FE->>Axios: api.get("/api/company/my-company")
+    Axios->>Axios: Attach Header "Authorization: Bearer <jwt>"
+    Axios->>RateLimit: Forward Request
+    RateLimit->>AuthAPI: Process HTTP Pipeline
+    AuthAPI->>AuthAPI: JwtBearerHandler: Validate Signature & Expiry
+    AuthAPI->>AuthAPI: OnTokenValidated: Map 'sub' -> ClaimTypes.NameIdentifier
+    AuthAPI->>AuthAPI: AuthorizeAttribute: Verify Roles
+    AuthAPI->>Svc: Invoke GetMyCompanyAsync(userId)
+    Svc->>Svc: Ownership Assertion: AssertAccess(company.UserId == userId)
+    Svc->>Mongo: Query Companies where UserId == userId
+    Mongo-->>Svc: Return Company Document
+    Svc-->>AuthAPI: Return Company DTO
+    AuthAPI-->>FE: HTTP 200 OK (ApiResponse Envelope)
+    FE-->>User: Render Dashboard UI

@@ -1,0 +1,47 @@
+sequenceDiagram
+    %% Co-Founder Equity Partnership Flow Sequence Diagram (DealType: EQUITY_PARTNERSHIP)
+
+    autonumber
+    actor Creator as Creator (Idea Originator)
+    actor Entrepreneur as Entrepreneur (Operating Co-Founder)
+    participant DealsAPI as DealsController (/api/deals)
+    participant Mongo as MongoDB
+    participant CapTable as Phase4CapTables
+
+    %% 1. Initiation & Equity Terms
+    Entrepreneur->>DealsAPI: POST /api/deals/equity/initiate
+    Note over Entrepreneur,DealsAPI: Offer Co-Founder Split (e.g. 70% Builder / 30% Creator)
+    DealsAPI->>Mongo: Create DealExecution (DealType: "EQUITY_PARTNERSHIP", DealStage: "OFFER_NEGOTIATION")
+    
+    %% 2. Negotiation & Role Alignment
+    Creator->>DealsAPI: POST /api/deals/{id}/revision (Negotiate equity % & vesting cliff)
+    Entrepreneur->>DealsAPI: POST /api/deals/{id}/accept-terms
+    DealsAPI->>Mongo: Update DealStage -> "ROLES_PENDING"
+
+    %% 3. Role & Responsibility Agreement
+    Entrepreneur->>DealsAPI: POST /api/deals/{id}/roles (Assign CEO, CTO, Product Lead duties)
+    Creator->>DealsAPI: POST /api/deals/{id}/roles/confirm
+    DealsAPI->>Mongo: Update DealStage -> "CAP_TABLE_DRAFTING"
+
+    %% 4. Cap Table Draft & Legal Review
+    Entrepreneur->>DealsAPI: POST /api/deals/{id}/cap-table-draft (Define share allocations)
+    DealsAPI->>Mongo: Store DealCapTableDraft
+    Creator->>DealsAPI: POST /api/deals/{id}/legal-review/request
+    DealsAPI->>Mongo: Update DealStage -> "LEGAL_REVIEW_PENDING"
+    Entrepreneur->>DealsAPI: POST /api/deals/{id}/legal-review/approve
+    DealsAPI->>Mongo: Update DealStage -> "SIGNATURE_PENDING"
+
+    %% 5. Bilateral Agreement Signing
+    Creator->>DealsAPI: POST /api/deals/{id}/sign (Sign Partnership Agreement)
+    Entrepreneur->>DealsAPI: POST /api/deals/{id}/sign (Sign Partnership Agreement)
+    DealsAPI->>Mongo: Update DealSignatures -> BothSigned = true
+    DealsAPI->>Mongo: Update DealStage -> "ACTIVATION_PENDING"
+
+    %% 6. Partnership Activation & Incorporation
+    Entrepreneur->>DealsAPI: POST /api/deals/{id}/activate
+    DealsAPI->>Mongo: Update DealStage -> "PARTNERSHIP_ACTIVE" & Status -> "completed"
+    DealsAPI->>Mongo: Instantiate / Update Companies document with Co-Founders
+    DealsAPI->>CapTable: Create Phase4CapTable (Version 1)
+    Note over DealsAPI,CapTable: Shareholder 1: Entrepreneur (70%)<br/>Shareholder 2: Creator (30%)
+    DealsAPI-->>Entrepreneur: Partnership Active & Company Instantiated
+    DealsAPI-->>Creator: Partnership Active & Common Equity Confirmed

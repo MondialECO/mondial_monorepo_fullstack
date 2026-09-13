@@ -1,0 +1,79 @@
+graph TD
+    %% Mondial ECO Four-Role + Admin Ecosystem Interaction Diagram
+
+    subgraph CREATOR_ECOSYSTEM["1. Creator Role"]
+        C_IDEA["Raw Idea / Innovation"]
+        C_INCUBATE["AI Incubation<br/>Clarifier, Business Plan, Branding"]
+        C_VALUATE["IP Valuation & Pricing"]
+        C_CROSSROADS["Crossroads Decision"]
+    end
+
+    subgraph ENTREPRENEUR_ECOSYSTEM["2. Entrepreneur Role"]
+        E_ACQUIRE["Acquire Creator IP<br/>(Full Buyout or Co-Founder Equity)"]
+        E_COMPANY["Company Formation & Setup<br/>Phases 2..10 Platform System"]
+        E_TRACTION["Traction & Financials<br/>Revenue, KPI Tracker, Metrics"]
+        E_CAP["Cap Table & ESOP Structure<br/>Phase4CapTables & Vesting"]
+        E_DATAROOM["Data Room & Pitching"]
+    end
+
+    subgraph INVESTOR_ECOSYSTEM["3. Investor Role"]
+        I_THESIS["Investment Thesis & Criteria"]
+        I_DISCOVER["Matchmaking & Deal Discovery"]
+        I_DILIGENCE["Data Room Diligence & NDA"]
+        I_TERMS["Term Sheet & Negotiations"]
+        I_PORTFOLIO["Portfolio Holdings & Return Tracking"]
+    end
+
+    subgraph PROVIDER_ECOSYSTEM["4. Service Provider Role"]
+        SP_VERIF["Credential Verification & Tiers"]
+        SP_CATALOG["Service Catalog & Packages"]
+        SP_LEADS["Client Briefs & Custom Proposals"]
+        SP_WORKROOM["Milestone Execution & Deliverables"]
+        SP_ESCROW["Escrow Payouts & Earnings"]
+    end
+
+    subgraph PLATFORM_MARKETPLACE["Platform Marketplace & Exchange"]
+        MKT_PROJECTS["Project Marketplace<br/>(Creator Ideas & Opportunities)"]
+        MKT_SERVICES["Service Marketplace<br/>(Design, Dev, Legal, Marketing)"]
+        MKT_DEALS["Deal Negotiation Engine<br/>(Bilateral Terms, Signatures & Closing)"]
+    end
+
+    subgraph ADMIN_GOVERNANCE["Platform Admin Governance"]
+        ADM_KYC["Identity & KYC Approval"]
+        ADM_MOD["Marketplace Moderation"]
+        ADM_MONITOR["Queue & Job Health Monitoring"]
+    end
+
+    %% Interactions
+    C_IDEA --> C_INCUBATE
+    C_INCUBATE --> C_VALUATE
+    C_VALUATE --> C_CROSSROADS
+
+    C_CROSSROADS -->|Publish Listing| MKT_PROJECTS
+    E_ACQUIRE -->|Browse Opportunities| MKT_PROJECTS
+    MKT_PROJECTS -->|Initiate Buyout / Partnership| MKT_DEALS
+    MKT_DEALS -->|Complete Buyout -> Build Company| E_COMPANY
+    MKT_DEALS -->|Co-Founder Agreement -> Join Venture| E_CAP
+
+    %% Creator to Service Provider
+    C_INCUBATE -->|Hire Designer (Phase 2)| MKT_SERVICES
+    %% Entrepreneur to Service Provider
+    E_COMPANY -->|Hire Agency / Lawyer / CPA| MKT_SERVICES
+    MKT_SERVICES -->|Brief -> Proposal -> Contract| SP_WORKROOM
+    SP_WORKROOM -->|Deliverables Approved| SP_ESCROW
+
+    %% Entrepreneur to Investor
+    E_TRACTION --> E_CAP
+    E_CAP --> E_DATAROOM
+    E_DATAROOM -->|Smart Matching Queue| I_DISCOVER
+    I_DISCOVER -->|Sign NDA| I_DILIGENCE
+    I_DILIGENCE -->|Submit Term Sheet| MKT_DEALS
+    MKT_DEALS -->|Signed & Completed| I_PORTFOLIO
+    MKT_DEALS -->|Capital Infusion & Dilution| E_CAP
+
+    %% Admin Governance
+    ADM_KYC -.->|Certifies Users| CREATOR_ECOSYSTEM
+    ADM_KYC -.->|Certifies Founders| ENTREPRENEUR_ECOSYSTEM
+    ADM_KYC -.->|Certifies Accredited Investors| INVESTOR_ECOSYSTEM
+    ADM_KYC -.->|Certifies Tiers| PROVIDER_ECOSYSTEM
+    ADM_MOD -.->|Monitors Listings| PLATFORM_MARKETPLACE
