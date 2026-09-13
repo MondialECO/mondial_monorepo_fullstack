@@ -156,22 +156,10 @@ namespace WebApp.Services.Implementations
             }
 
             // Generate short-lived Sumsub token
-            string token = string.Empty;
-            try
+            var token = await _sumsub.GenerateAccessTokenAsync(userId, user.Email ?? $"{userId}@mondial.local");
+            if (string.IsNullOrWhiteSpace(token))
             {
-                token = await _sumsub.GenerateAccessTokenAsync(userId, user.Email ?? $"{userId}@mondial.local");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Sumsub token generation failed for user {UserId}. Using sandbox fallback token.", userId);
-                if (_env.IsDevelopment() || _env.IsEnvironment("Testing"))
-                {
-                    token = $"mock-sumsub-token-{Guid.NewGuid():N}";
-                }
-                else
-                {
-                    throw;
-                }
+                throw new InvalidOperationException("Sumsub provider failed to return an access token.");
             }
 
             if (currentAttempt == null)

@@ -19,14 +19,15 @@ Facial verification, selfie comparison, liveness detection, and video identifica
 
 ## Configuration & Environment Variables
 
-Sumsub credentials are read by `SumsubService.cs` and validated at startup in `Program.cs`:
+Sumsub credentials are read by `SumsubService.cs` and validated fail-closed:
 
 ```json
 {
   "Sumsub": {
-    "AppToken": "<your-sumsub-app-token>",
     "BaseUrl": "https://api.sumsub.com",
-    "WebhookSecret": "<your-sumsub-webhook-signing-secret>",
+    "AppToken": "<sumsub-app-token>",
+    "SecretKey": "<sumsub-secret-key>",
+    "WebhookSecret": "<sumsub-webhook-secret>",
     "LevelName": "id-document-only"
   },
   "FeatureFlags": {
@@ -36,11 +37,12 @@ Sumsub credentials are read by `SumsubService.cs` and validated at startup in `P
 }
 ```
 
-### Environment Variable Format
+### Environment Variable / User Secrets Format
 
 ```bash
-Sumsub__AppToken="<app-token>"
 Sumsub__BaseUrl="https://api.sumsub.com"
+Sumsub__AppToken="<app-token>"
+Sumsub__SecretKey="<secret-key>"
 Sumsub__WebhookSecret="<webhook-secret>"
 Sumsub__LevelName="id-document-only"
 FeatureFlags__IdentityV2Enabled=true

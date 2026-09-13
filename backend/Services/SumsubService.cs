@@ -22,16 +22,48 @@ namespace WebApp.Services
         private readonly IConfiguration _configuration;
         private readonly ILogger<SumsubService> _logger;
 
-        private string AppToken => _configuration["Sumsub:AppToken"] ?? "";
-        private string BaseUrl => _configuration["Sumsub:BaseUrl"] ?? "https://api.sumsub.com";
-        private string WebhookSecret => _configuration["Sumsub:WebhookSecret"] ?? "";
-        private string LevelName => _configuration["Sumsub:LevelName"] ?? "";
+        private string AppToken => (_configuration["Sumsub:AppToken"] ?? "").Trim();
+        private string SecretKey => (_configuration["Sumsub:SecretKey"] ?? "").Trim();
+        private string BaseUrl => (_configuration["Sumsub:BaseUrl"] ?? "https://api.sumsub.com").Trim().TrimEnd('/');
+        private string WebhookSecret => (_configuration["Sumsub:WebhookSecret"] ?? "").Trim();
+        private string LevelName => (_configuration["Sumsub:LevelName"] ?? "").Trim();
 
         public SumsubService(HttpClient httpClient, IConfiguration configuration, ILogger<SumsubService> logger)
         {
             _httpClient = httpClient;
             _configuration = configuration;
             _logger = logger;
+        }
+
+        private static bool IsPlaceholder(string? val)
+        {
+            if (string.IsNullOrWhiteSpace(val)) return true;
+            var trimmed = val.Trim();
+            return (trimmed.StartsWith("<") && trimmed.EndsWith(">")) ||
+                   trimmed.Equals("YOUR_REAL_APP_TOKEN", StringComparison.OrdinalIgnoreCase) ||
+                   trimmed.Equals("YOUR_REAL_SECRET_KEY", StringComparison.OrdinalIgnoreCase) ||
+                   trimmed.Equals("YOUR_REAL_WEBHOOK_SECRET", StringComparison.OrdinalIgnoreCase) ||
+                   trimmed.Equals("<sumsub-app-token>", StringComparison.OrdinalIgnoreCase) ||
+                   trimmed.Equals("<sumsub-secret-key>", StringComparison.OrdinalIgnoreCase) ||
+                   trimmed.Equals("<sumsub-webhook-secret>", StringComparison.OrdinalIgnoreCase);
+        }
+
+        public void ValidateConfiguration(bool requireWebhookSecret = false)
+        {
+            if (string.IsNullOrWhiteSpace(BaseUrl))
+                throw new InvalidOperationException("Sumsub BaseUrl is not configured. Failing closed.");
+
+            if (IsPlaceholder(AppToken))
+                throw new InvalidOperationException("Sumsub AppToken is not configured or contains placeholder. Failing closed.");
+
+            if (IsPlaceholder(SecretKey))
+                throw new InvalidOperationException("Sumsub SecretKey is not configured or contains placeholder. Failing closed.");
+
+            if (string.IsNullOrWhiteSpace(LevelName))
+                throw new InvalidOperationException("Sumsub LevelName is not configured. Failing closed.");
+
+            if (requireWebhookSecret && IsPlaceholder(WebhookSecret))
+                throw new InvalidOperationException("Sumsub WebhookSecret is not configured or contains placeholder. Failing closed.");
         }
 
         /// <summary>
@@ -42,15 +74,14 @@ namespace WebApp.Services
         /// </summary>
         public async Task<string> GenerateAccessTokenAsync(string userId, string email, string? levelName = null)
         {
-            var effectiveLevel = !string.IsNullOrWhiteSpace(levelName) ? levelName : LevelName;
+            var effectiveLevel = !string.IsNullOrWhiteSpace(levelName) ? levelName.Trim() : LevelName;
             if (string.IsNullOrWhiteSpace(effectiveLevel))
             {
                 _logger.LogError("Sumsub LevelName is not configured. Failing closed to prevent default level fallback.");
                 throw new InvalidOperationException("Sumsub LevelName not configured. Failing closed to prevent default level fallback.");
             }
 
-            if (string.IsNullOrWhiteSpace(AppToken))
-                throw new InvalidOperationException("Sumsub AppToken not configured");
+            ValidateConfiguration();
 
             try
             {
@@ -99,35 +130,41 @@ namespace WebApp.Services
 
         /// <summary>
         /// Ensure applicant exists in Sumsub, create if not.
+        /// Target Endpoint: GET /resources/applicants/-/byExternalUserId/{externalUserId}
         /// </summary>
         private async Task<string> EnsureApplicantAsync(string userId, string email, string? levelName = null)
         {
-            try
+            var encodedUserId = Uri.EscapeDataString(userId);
+            var url = $"{BaseUrl}/resources/applicants/-/byExternalUserId/{encodedUserId}";
+            var request = new HttpRequestMessage(HttpMethod.Get, url);
+            AddAuthHeaders(request, "GET", url, null);
+
+            var response = await _httpClient.SendAsync(request);
+
+            if (response.IsSuccessStatusCode)
             {
-                // Check if applicant exists
-                var url = $"{BaseUrl}/resources/applicants?externalUserId={Uri.EscapeDataString(userId)}";
-                var request = new HttpRequestMessage(HttpMethod.Get, url);
-                AddAuthHeaders(request, "GET", url, null);
-
-                var response = await _httpClient.SendAsync(request);
-
-                if (response.IsSuccessStatusCode)
+                var content = await response.Content.ReadAsStringAsync();
+                var jsonDoc = JsonDocument.Parse(content);
+                if (jsonDoc.RootElement.TryGetProperty("id", out var idElement))
                 {
-                    var content = await response.Content.ReadAsStringAsync();
-                    var jsonDoc = JsonDocument.Parse(content);
-                    if (jsonDoc.RootElement.TryGetProperty("id", out var idElement))
+                    var applicantId = idElement.GetString();
+                    if (!string.IsNullOrWhiteSpace(applicantId))
                     {
-                        return idElement.GetString() ?? userId;
+                        return applicantId;
                     }
                 }
-
-                // Create new applicant if not found
+                return userId;
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                // Applicant does not exist yet -> create
                 return await CreateApplicantAsync(userId, email, levelName);
             }
-            catch (Exception ex)
+            else
             {
-                _logger.LogWarning(ex, $"Error checking/creating Sumsub applicant for {userId}, proceeding");
-                return userId; // Fallback to userId as applicant ID
+                var errorContent = await response.Content.ReadAsStringAsync();
+                _logger.LogError("Failed to query Sumsub applicant for user {UserId}: {StatusCode} - {Content}", userId, response.StatusCode, errorContent);
+                throw new InvalidOperationException($"Failed to query Sumsub applicant: {response.StatusCode}");
             }
         }
 
@@ -137,51 +174,81 @@ namespace WebApp.Services
         /// </summary>
         private async Task<string> CreateApplicantAsync(string userId, string email, string? levelName = null)
         {
+            var effectiveLevel = !string.IsNullOrWhiteSpace(levelName) ? levelName : LevelName;
+            if (string.IsNullOrWhiteSpace(effectiveLevel))
+            {
+                _logger.LogError("Sumsub LevelName is not configured for applicant creation. Failing closed.");
+                throw new InvalidOperationException("Sumsub LevelName not configured. Failing closed to prevent default level fallback.");
+            }
+
+            var payload = new
+            {
+                externalUserId = userId,
+                email = email
+            };
+
+            var bodyJson = JsonSerializer.Serialize(payload);
+            var bodyBytes = Encoding.UTF8.GetBytes(bodyJson);
+
+            var url = $"{BaseUrl}/resources/applicants?levelName={Uri.EscapeDataString(effectiveLevel)}";
+
+            var request = new HttpRequestMessage(HttpMethod.Post, url);
+            request.Content = new ByteArrayContent(bodyBytes);
+            request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
+
+            AddAuthHeaders(request, "POST", url, bodyBytes);
+
+            var response = await _httpClient.SendAsync(request);
+            var content = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
+                {
+                    _logger.LogInformation("Sumsub applicant already exists for user {UserId}. Re-querying existing applicant ID.", userId);
+                    return await QueryExistingApplicantIdAsync(userId);
+                }
+
+                _logger.LogError("Failed to create Sumsub applicant for user {UserId}: {StatusCode} - {Content}", userId, response.StatusCode, content);
+                throw new InvalidOperationException($"Failed to create Sumsub applicant: {response.StatusCode}");
+            }
+
+            var jsonDoc = JsonDocument.Parse(content);
+            var id = jsonDoc.RootElement.GetProperty("id").GetString();
+            _logger.LogInformation("Created Sumsub applicant {ApplicantId} for user {UserId} with level {Level}", id, userId, effectiveLevel);
+            return id ?? userId;
+        }
+
+        private async Task<string> QueryExistingApplicantIdAsync(string userId)
+        {
             try
             {
-                var effectiveLevel = !string.IsNullOrWhiteSpace(levelName) ? levelName : LevelName;
-                if (string.IsNullOrWhiteSpace(effectiveLevel))
-                {
-                    _logger.LogError("Sumsub LevelName is not configured for applicant creation. Failing closed.");
-                    throw new InvalidOperationException("Sumsub LevelName not configured. Failing closed to prevent default level fallback.");
-                }
-
-                var payload = new
-                {
-                    externalUserId = userId,
-                    email = email
-                };
-
-                var bodyJson = JsonSerializer.Serialize(payload);
-                var bodyBytes = Encoding.UTF8.GetBytes(bodyJson);
-
-                var url = $"{BaseUrl}/resources/applicants?levelName={Uri.EscapeDataString(effectiveLevel)}";
-
-                var request = new HttpRequestMessage(HttpMethod.Post, url);
-                request.Content = new ByteArrayContent(bodyBytes);
-                request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
-
-                AddAuthHeaders(request, "POST", url, bodyBytes);
+                var encodedUserId = Uri.EscapeDataString(userId);
+                var url = $"{BaseUrl}/resources/applicants/-/byExternalUserId/{encodedUserId}";
+                var request = new HttpRequestMessage(HttpMethod.Get, url);
+                AddAuthHeaders(request, "GET", url, null);
 
                 var response = await _httpClient.SendAsync(request);
-                var content = await response.Content.ReadAsStringAsync();
-
-                if (!response.IsSuccessStatusCode)
+                if (response.IsSuccessStatusCode)
                 {
-                    _logger.LogWarning($"Failed to create Sumsub applicant: {response.StatusCode} - {content}");
-                    return userId; // Fallback
+                    var content = await response.Content.ReadAsStringAsync();
+                    var jsonDoc = JsonDocument.Parse(content);
+                    if (jsonDoc.RootElement.TryGetProperty("id", out var idElement))
+                    {
+                        var id = idElement.GetString();
+                        if (!string.IsNullOrWhiteSpace(id))
+                        {
+                            return id;
+                        }
+                    }
                 }
-
-                var jsonDoc = JsonDocument.Parse(content);
-                var id = jsonDoc.RootElement.GetProperty("id").GetString();
-                _logger.LogInformation($"Created Sumsub applicant {id} for user {userId} with level {effectiveLevel}");
-                return id ?? userId;
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, $"Error creating Sumsub applicant for user {userId}");
-                return userId;
+                _logger.LogWarning(ex, "Failed to re-query applicant ID for user {UserId}", userId);
             }
+
+            return userId;
         }
 
         /// <summary>
@@ -192,7 +259,8 @@ namespace WebApp.Services
         {
             try
             {
-                var url = $"{BaseUrl}/resources/applicants?externalUserId={Uri.EscapeDataString(externalUserId)}";
+                var encodedUserId = Uri.EscapeDataString(externalUserId);
+                var url = $"{BaseUrl}/resources/applicants/-/byExternalUserId/{encodedUserId}";
                 var request = new HttpRequestMessage(HttpMethod.Get, url);
                 AddAuthHeaders(request, "GET", url, null);
 
@@ -258,9 +326,9 @@ namespace WebApp.Services
         /// </summary>
         public bool VerifyWebhookSignature(string body, string signature)
         {
-            if (string.IsNullOrWhiteSpace(WebhookSecret))
+            if (IsPlaceholder(WebhookSecret))
             {
-                _logger.LogWarning("Sumsub webhook secret not configured");
+                _logger.LogWarning("Sumsub webhook secret not configured or is a placeholder");
                 return false;
             }
 
@@ -288,6 +356,12 @@ namespace WebApp.Services
         /// </summary>
         private void AddAuthHeaders(HttpRequestMessage request, string method, string url, byte[]? bodyBytes = null)
         {
+            if (IsPlaceholder(AppToken))
+            {
+                _logger.LogError("Sumsub AppToken is not configured or contains placeholder. Failing closed.");
+                throw new InvalidOperationException("Sumsub AppToken is not configured or contains placeholder. Failing closed.");
+            }
+
             request.Headers.Add("X-App-Token", AppToken);
 
             var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
@@ -299,9 +373,16 @@ namespace WebApp.Services
         /// <summary>
         /// Generate signature for Sumsub API authentication.
         /// Signature format: HMAC-SHA256(SecretKey, timestamp + HTTP_METHOD + URI_WITH_QUERY + EXACT_REQUEST_BODY)
+        /// Fails closed if SecretKey is missing or a placeholder. Never falls back to AppToken.
         /// </summary>
         public string GenerateSignature(string method, string url, long timestamp, byte[]? bodyBytes = null)
         {
+            if (IsPlaceholder(SecretKey))
+            {
+                _logger.LogError("Sumsub SecretKey is not configured or contains placeholder. Failing closed.");
+                throw new InvalidOperationException("Sumsub SecretKey is not configured or contains placeholder. Failing closed.");
+            }
+
             // Extract path and query from full URL
             var uri = new Uri(url);
             var pathAndQuery = uri.PathAndQuery;
@@ -317,11 +398,7 @@ namespace WebApp.Services
                 Buffer.BlockCopy(bodyPart, 0, dataToSign, prefixBytes.Length, bodyPart.Length);
             }
 
-            var signingKey = !string.IsNullOrWhiteSpace(_configuration["Sumsub:SecretKey"])
-                ? _configuration["Sumsub:SecretKey"]!
-                : AppToken;
-
-            var keyBytes = Encoding.UTF8.GetBytes(signingKey);
+            var keyBytes = Encoding.UTF8.GetBytes(SecretKey);
             using var hmac = new HMACSHA256(keyBytes);
             var hash = hmac.ComputeHash(dataToSign);
             return Convert.ToHexString(hash).ToLowerInvariant();
