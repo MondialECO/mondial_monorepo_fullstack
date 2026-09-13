@@ -25,7 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
-export function getBuyoutStageBadge(stage?: string): {
+function getBuyoutStageBadge(stage?: string): {
   label: string;
   badgeClass: string;
 } {

@@ -25,9 +25,9 @@ The Mondial ECO backend exposes 579 API endpoints managed across 51 controllers.
 
 ## 2. API Domain Breakdown & Detailed Endpoints
 
-### A. Authentication & Onboarding (28 Endpoints)
+### A. Authentication, Onboarding & Identity
 - **`AuthController`** (`/api/auth`):
-  - `POST /api/auth/register`: Public user registration with default role assignment.
+  - `POST /api/auth/register`: Canonical user registration issuing 8-hour access token and establishing authenticated session.
   - `POST /api/auth/login`: Issue JWT access token (HMAC-SHA256, 8-hour expiry). Rate limited to 5 req/min per IP.
   - `GET /api/auth/me`: Universal session validator, returns user ID, canonical roles, and onboarding phase.
   - `POST /api/auth/refresh-token`: Exchange valid bearer token for a refreshed session token.
@@ -36,11 +36,19 @@ The Mondial ECO backend exposes 579 API endpoints managed across 51 controllers.
   - `GET /api/auth/confirm-email`, `POST /api/auth/resend-confirmation-email`: Email verification.
   - `GET /api/auth/roles`: Returns all valid roles in the platform ecosystem.
 - **`OnboardingController`** (`/api/onboarding`):
-  - `GET /api/onboarding/status`: Current Phase 1 gate status (0 = Incomplete, 1 = Certified).
-  - `POST /api/onboarding/step`: Save incremental onboarding step data.
-  - `POST /api/onboarding/upload-document`: Upload address, tax, or professional license document.
-  - `POST /api/onboarding/upload-identity-documents`: Multipart identity upload (front/back photos) routed to `KycStorageService`.
-  - `POST /api/onboarding/complete`: Finalize Phase 1, updating `ApplicationUser.Onboarding.Phase = 1`.
+  - `GET /api/onboarding/status`: Hub status read returning completion state for Email, Phone, Identity, and supplementary documents.
+  - `POST /api/onboarding/send-email-otp`: Send 6-digit email OTP (HMAC-SHA256 hashed, 10-minute expiry).
+  - `POST /api/onboarding/verify-email-otp`: Verify 6-digit email code and update `Onboarding.EmailOtpVerified = true`.
+  - `POST /api/onboarding/send-otp`: Send 6-digit SMS OTP via Twilio (HMAC-SHA256 hashed, 60-second expiry).
+  - `POST /api/onboarding/verify-otp`: Verify 6-digit SMS code and update `Onboarding.PhoneVerified = true`.
+  - `POST /api/onboarding/documents/{type}`: Upload supplementary documents (`residence`, `income`, `tax`, `license`).
+  - `POST /api/onboarding/complete`: Finalize Universal Phase, updating `ApplicationUser.Onboarding.Phase = 1`.
+- **`IdentityController`** (`/api/identity`):
+  - `GET /api/identity/config`: Returns supported identity document types for a country (e.g., `national_id`, `passport`, `residence_permit` for France).
+  - `POST /api/identity/session`: Start or resume Sumsub WebSDK KYC session and mint 15-minute access token.
+  - `GET /api/identity/status`: Query authoritative verification status (`Pending`, `Verified`, `Rejected`).
+  - `POST /api/identity/retry`: Archive rejected attempt and initialize a fresh verification attempt.
+  - `POST /api/identity/webhook/sumsub`: Canonical HMAC-SHA256 signed webhook receiver for Sumsub review results.
 
 ### B. Creator System & Phases 2–6 (68 Endpoints)
 - **`CreatorIdeasController` & `CreatorJourneyController`** (`/api/creator/ideas`, `/api/creator/journey`):
