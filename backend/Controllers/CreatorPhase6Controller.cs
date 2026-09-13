@@ -165,11 +165,15 @@ namespace WebApp.Controllers
                 return response;
             }
 
-            // ROUTE A — BUILD / SOLO FOUNDER READINESS (Unchanged)
+            // ROUTE A — BUILD / SOLO FOUNDER READINESS
+            bool ideaCoreComplete = !string.IsNullOrWhiteSpace(project.Problem)
+                                 && !string.IsNullOrWhiteSpace(project.Solution)
+                                 && (computed.Phase2.Status == "completed" || !string.IsNullOrWhiteSpace(project.TargetUser));
+
             var requirements = new List<CreatorReadinessRequirement>
             {
                 new() { Key = "verification", Label = "Verify your identity", Route = "/dashboard/creator/phase-1", Complete = phase1Complete, Required = true, Blocking = true, Status = phase1Complete ? "COMPLETE" : "PENDING" },
-                new() { Key = "idea_core", Label = "Define your idea", Route = "/dashboard/creator/phase-2", Complete = !string.IsNullOrWhiteSpace(project.Problem) && !string.IsNullOrWhiteSpace(project.TargetUser) && !string.IsNullOrWhiteSpace(project.Solution), Required = true, Blocking = true, Status = !string.IsNullOrWhiteSpace(project.Problem) && !string.IsNullOrWhiteSpace(project.TargetUser) && !string.IsNullOrWhiteSpace(project.Solution) ? "COMPLETE" : "PENDING" },
+                new() { Key = "idea_core", Label = "Define your idea", Route = "/dashboard/creator/phase-2", Complete = ideaCoreComplete, Required = true, Blocking = true, Status = ideaCoreComplete ? "COMPLETE" : "PENDING" },
                 new() { Key = "business_planning", Label = "Complete your business plan", Route = "/dashboard/creator/phase-3/business-plan", Complete = computed.Phase3.Status == "completed", Required = true, Blocking = true, Status = computed.Phase3.Status == "completed" ? "COMPLETE" : "PENDING" },
                 new() { Key = "commercial_preparation", Label = "Prepare your commercial offer", Route = "/dashboard/creator/offer-pricing", Complete = computed.Phase4.Status == "completed", Required = true, Blocking = true, Status = computed.Phase4.Status == "completed" ? "COMPLETE" : "PENDING" },
                 new() { Key = "direction", Label = "Choose your direction", Route = "/dashboard/creator/crossroads", Complete = !string.IsNullOrWhiteSpace(p5.ChosenPath), Required = true, Blocking = true, Status = !string.IsNullOrWhiteSpace(p5.ChosenPath) ? "COMPLETE" : "PENDING" },
@@ -587,7 +591,7 @@ namespace WebApp.Controllers
                                 {
                                     new() { Holder = "Founder", Percent = 100, IsFounder = true }
                                 };
-                            await _companies.SeedCapTableFromOwnershipAsync(companyId, ownershipList);
+                            await _companies.SeedCapTableFromOwnershipAsync(companyId, ownershipList, session);
                         }
                     }
 
@@ -678,14 +682,18 @@ namespace WebApp.Controllers
                     }
                 }
 
-                // Cap table seeding for Build path only
+                // Cap table seeding for Build path only (fallback if not already seeded during core writes)
                 if (!isCofounded)
                 {
                     var formation = p5.PathB?.CompanyFormation;
                     if ((formation?.Ownership?.Count ?? 0) > 0)
                     {
-                        try { await SeedCapTableFromPlanAsync(companyId, formation.Ownership); }
-                        catch (Exception ex) { _logger.LogWarning(ex, "Cap-table seed failed post-Level-Up for {CompanyId}; re-enterable at Phase 4.", companyId); }
+                        var hasCapTable = await _context.Phase4CapTables.Find(c => c.CompanyId == companyId).AnyAsync();
+                        if (!hasCapTable)
+                        {
+                            try { await SeedCapTableFromPlanAsync(companyId, formation.Ownership); }
+                            catch (Exception ex) { _logger.LogWarning(ex, "Cap-table seed failed post-Level-Up for {CompanyId}; re-enterable at Phase 4.", companyId); }
+                        }
                     }
                 }
 
