@@ -122,3 +122,43 @@ Mondial ECO natively supports multi-role accounts (e.g. a user who is both a `Cr
          throw new UnauthorizedAccessException("Forbidden: caller does not own this resource.");
      ```
    - Deals use `DealAccessContext` to verify whether the caller is the founder, the investor, or the creator before granting access to terms or documents.
+
+---
+
+## 5. SignalR Hub Security & Query String Token Redaction
+
+SignalR WebSocket and Server-Sent Events connections pass credentials via URL query parameters (`?access_token=...`). To prevent token exposure in server logs while maintaining authenticated WebSocket connections:
+
+1. **`QueryStringRedactionMiddleware`**:
+   - Executes before `UseSerilogRequestLogging()`.
+   - Stashes the raw JWT access token into `HttpContext.Items["access_token"]`.
+   - Rewrites `HttpContext.Request.QueryString` to replace `access_token` with `[REDACTED]`.
+2. **`JwtBearerEvents.OnMessageReceived`**:
+   - Reads the token from `context.HttpContext.Items["access_token"]` (falling back to `Request.Query["access_token"]`).
+   - Assigns it to `context.Token` for all `/hubs/*` paths.
+3. **Hub Authorization**:
+   - Hubs (`NotificationHub`, `ChatHub`) are annotated with `[Authorize]`.
+   - `OnTokenValidated` maps the JWT `sub` claim to `ClaimTypes.NameIdentifier`, ensuring `Context.UserIdentifier` resolves correctly on the backend.
+   - Result: 100% authenticated SignalR connections with 0 JWTs appearing in server logs or Serilog events.
+
+---
+
+## 6. Auth Context Synchronization & Single Routing Authority
+
+To guarantee no redirect loops or stale authorization state between `/onboarding` and `/dashboard/*`:
+- The backend persisted onboarding state (`Onboarding.Phase`) is the single source of truth.
+- After completing OTP verifications (Email or Phone), the client calls `refreshAuthMe()` / `refreshCurrentUser()`, which requests `GET /api/auth/me` and updates `AuthContext` state and `localStorage`.
+- `<AuthGuard>` on `/dashboard/*` triggers a background `refreshAuthMe()` check before redirecting, eliminating race conditions.
+- Direct navigation to `/onboarding` by a Phase 1 user triggers exactly one `router.replace(roleDashboard)` with zero ping-pong redirects.
+
+---
+
+## 7. Registration Password Policy Alignment
+
+The frontend registration form (`src/app/(auth)/signup/page.tsx`) enforces the identical password rules configured in ASP.NET Identity:
+- **Minimum length**: 6 characters
+- **Uppercase**: At least 1 required
+- **Lowercase**: At least 1 required
+- **Digit**: At least 1 required
+- **Special character**: Not required
+- **Validation**: Client validates before submission; backend remains authoritative with `data.Password[]` errors surfaced directly in the UI.

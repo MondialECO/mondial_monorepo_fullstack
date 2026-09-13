@@ -29,10 +29,9 @@ src/app/layout.tsx (Root HTML, Fonts, Global Meta, Viewport)
             │
             ├── onboarding/ (Universal Phase 1 Onboarding & Verification Gate)
             │   ├── /onboarding (Onboarding Hub & State Router)
-            │   ├── /onboarding/identity (Sumsub KYC / ID Upload)
-            │   ├── /onboarding/documents/* (Income, License, Residence, Tax)
-            │   ├── /onboarding/email & /phone (Contact Verification)
-            │   ├── /onboarding/face-verification (Biometric Liveness)
+            │   ├── /onboarding/email & /phone (Required Contact Verification: Phase 1 Gate)
+            │   ├── /onboarding/identity (Sumsub Document KYC — Deferred in MVP)
+            │   ├── /onboarding/documents/* (Supplementary: Income, License, Residence, Tax)
             │   └── /onboarding/complete (Completion Handoff)
             │
             └── dashboard/layout.tsx (Role-Protected Dashboard Shell)

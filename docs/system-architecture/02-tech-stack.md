@@ -25,7 +25,7 @@ All versions and components documented below are verified from `package.json`, `
 | **HTTP Resilience** | Polly | `8.0.14` | Transient fault handling, retry on 429/5xx for upstream AI APIs |
 | **AI Integration Provider** | OpenRouter AI Gateway | API v1 | Typed `HttpClient<IAiProvider, OpenRouterClient>`, model router |
 | **Reverse Proxy & Ingress** | Traefik | `v2.11` | Automated Let's Encrypt TLS, HTTP->HTTPS redirect, `/metrics` IP allowlist |
-| **Identity Verification** | Sumsub | API Staging/Prod | KYC passport/ID OCR, face verification, webhook callbacks |
+| **Identity Verification** | Sumsub | API Staging/Prod | Document-only KYC passport/ID OCR (biometrics removed; deferred in MVP), webhook callbacks |
 | **Email Delivery** | MailKit / Zoho SMTP | `4.16.0` | In-memory `IEmailQueue` background processor, port 587 TLS |
 | **SMS Notifications** | Twilio | `7.14.3` | Optional SMS verification / phone alerts |
 | **Web Push Alerts** | WebPush | `1.0.12` | VAPID keys, browser push notifications via service worker |

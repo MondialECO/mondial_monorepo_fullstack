@@ -5,21 +5,27 @@ import { useRouter } from "next/navigation";
 import { AlertCircle, Loader2, ChevronDown } from "lucide-react";
 import api from "@/lib/axios";
 import { useOnboarding } from "@/providers/OnboardingProvider";
+import { useAuth } from "@/app/_providers/AuthProvider";
+import { getRoleDashboardRoute } from "@/lib/roles";
 import { Button } from "@/components/ui/button";
 
 export default function OnboardingPhonePage() {
   const router = useRouter();
-  const { refresh, status } = useOnboarding();
-
-  const [phone, setPhone] = useState(status?.phone ?? "");
+  const { refresh } = useOnboarding();
+  const { user, refreshAuthMe } = useAuth();
+  const [phone, setPhone] = useState("");
+  const [countryCode, setCountryCode] = useState("+1");
   const [code, setCode] = useState("");
   const [stage, setStage] = useState<"enter-phone" | "enter-code">("enter-phone");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [countryCode, setCountryCode] = useState("+1");
 
   async function sendCode(e: React.FormEvent) {
     e.preventDefault();
+    if (!phone.trim()) {
+      setError("Enter a valid phone number.");
+      return;
+    }
     setError(null);
     setBusy(true);
     try {
@@ -40,6 +46,14 @@ export default function OnboardingPhonePage() {
     try {
       await api.post("/onboarding/verify-otp", { code });
       await refresh();
+      // Synchronize auth context immediately after verification
+      const freshUser = await refreshAuthMe();
+      const targetUser = freshUser || user;
+      if (targetUser && (targetUser.onboardingPhase ?? 0) >= 1) {
+        const dashboard = getRoleDashboardRoute(targetUser);
+        router.replace(dashboard || "/dashboard/creator");
+        return;
+      }
       router.push("/onboarding/email");
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
@@ -55,6 +69,13 @@ export default function OnboardingPhonePage() {
     try {
       await api.post("/onboarding/phone/skip");
       await refresh();
+      const freshUser = await refreshAuthMe();
+      const targetUser = freshUser || user;
+      if (targetUser && (targetUser.onboardingPhase ?? 0) >= 1) {
+        const dashboard = getRoleDashboardRoute(targetUser);
+        router.replace(dashboard || "/dashboard/creator");
+        return;
+      }
       router.push("/onboarding/email");
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;

@@ -70,8 +70,8 @@ namespace WebApp.Controllers
             { "residence", "income", "tax", "license" };
 
         /// <summary>Required item set for universal Phase 1. Delegates to the shared gate.</summary>
-        private static HashSet<string> RequiredItemsFor(string role)
-            => OnboardingGate.RequiredItemsFor(role);
+        private HashSet<string> RequiredItemsFor(string role)
+            => OnboardingGate.RequiredItemsFor(role, _configuration);
 
         private async Task<ApplicationUser> CurrentUserAsync()
         {
@@ -99,19 +99,25 @@ namespace WebApp.Controllers
             => OnboardingGate.IsItemVerified(user, key);
 
         private Task PromotePhaseIfCompleteAsync(ApplicationUser user)
-            => OnboardingGate.PromoteIfCompleteAsync(user, _userManager, _audit);
+            => OnboardingGate.PromoteIfCompleteAsync(user, _userManager, _configuration, _audit);
 
         // ----- Status -----------------------------------------------------
 
         /// <summary>
         /// Hub-and-spoke status read. Returns one item object per verification,
-        /// with required-vs-optional based on the user's role.
+        /// with required-vs-optional based on the user's role and configuration policy.
         /// </summary>
         [HttpGet("status")]
         public async Task<IActionResult> Status()
         {
             var user = await CurrentUserAsync();
             if (user == null) return Fail("User not found", 404);
+
+            // Natural gate promotion for any Phase 0 user whose required verifications are already complete
+            if (user.Onboarding?.Phase < 1 && OnboardingGate.IsComplete(user, _configuration))
+            {
+                await PromotePhaseIfCompleteAsync(user);
+            }
 
             var required = RequiredItemsFor(user.User ?? "");
 
@@ -128,6 +134,7 @@ namespace WebApp.Controllers
                 key = "identity",
                 verified = identityVerified,
                 required = required.Contains("identity"),
+                deferred = !required.Contains("identity"),
                 status = identityDisplayStatus,
                 documentType = identityStatus?.DocumentType ?? user.Onboarding?.IdentityDocumentType,
                 reviewReason = identityStatus?.ReviewReason ?? user.Kyc?.Identity?.RejectionReason
@@ -294,7 +301,7 @@ namespace WebApp.Controllers
             }
 
             await _userManager.UpdateAsync(user);
-            // Don't promote here; promotion happens via the /complete endpoint
+            await PromotePhaseIfCompleteAsync(user);
 
             _audit.Record(auditEvent, user.Email!, true);
             return Ok(isEmail ? "Email verified" : "Phone verified");
@@ -381,7 +388,7 @@ namespace WebApp.Controllers
             user.Onboarding.PhoneVerified = true;
             user.PhoneNumberConfirmed = true;
             await _userManager.UpdateAsync(user);
-            // Don't promote here; promotion happens via the /complete endpoint
+            await PromotePhaseIfCompleteAsync(user);
 
             _audit.Record("phone_skipped", user.Email!, true);
             return Ok("Phone verification skipped");
@@ -395,12 +402,8 @@ namespace WebApp.Controllers
 
             try
             {
-                // Validate all core items are verified before promoting
-                var onboarding = user.Onboarding;
-                if (onboarding == null ||
-                    !onboarding.IdentityDocumentVerified ||
-                    !onboarding.PhoneVerified ||
-                    !onboarding.EmailOtpVerified)
+                // Validate required core items are verified before promoting per central policy
+                if (!OnboardingGate.IsComplete(user, _configuration))
                 {
                     _audit.Record("onboarding_manual_complete", user.Email!, false, new { reason = "incomplete" });
                     return Fail("Not all verification steps are complete. Please complete all required steps before finalizing.");

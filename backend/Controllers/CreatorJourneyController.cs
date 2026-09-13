@@ -59,6 +59,7 @@ namespace WebApp.Controllers
                 var journey = await _journeys.GetOrCreateComposedAsync(userId, ideaId);
                 return await OkJourneyAsync(userId, journey, "Journey loaded");
             }
+            catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
             catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
             catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
         }

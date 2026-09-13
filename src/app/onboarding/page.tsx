@@ -15,17 +15,21 @@ import api from "@/lib/axios";
 export default function OnboardingHubPage() {
   const router = useRouter();
   const { status, isLoading, isComplete, nextRequired, refresh } = useOnboarding();
-  const { refreshAuthMe } = useAuth();
+  const { user, refreshAuthMe } = useAuth();
   const [completing, setCompleting] = useState(false);
   const [completeError, setCompleteError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isLoading) return;
 
-    // If already Phase 1, redirect to dashboard immediately (prevent race conditions)
-    if (status && status.phase != null && status.phase >= 1 && status.role) {
-      const dashboardRoute = getRoleDashboardRoute(status.role);
-      router.replace(dashboardRoute || "/dashboard/creator");
+    // If already Phase 1, refresh auth context and redirect to dashboard immediately
+    if (status && status.phase != null && status.phase >= 1) {
+      void refreshAuthMe().then((freshUser) => {
+        const targetUser = freshUser || user;
+        const role = targetUser?.role || status.role || "creator";
+        const dashboardRoute = getRoleDashboardRoute(targetUser || role);
+        router.replace(dashboardRoute || "/dashboard/creator");
+      });
       return;
     }
 
@@ -33,7 +37,7 @@ export default function OnboardingHubPage() {
     if (isComplete) {
       router.replace("/onboarding/complete");
     }
-  }, [isLoading, isComplete, status, router]);
+  }, [isLoading, isComplete, status, router, refreshAuthMe, user]);
 
   // Mandatory core steps are derived dynamically from backend status
   const core = ONBOARDING_ITEMS.filter((i) => i.group === "core");
@@ -46,8 +50,11 @@ export default function OnboardingHubPage() {
     try {
       await api.post("/onboarding/complete");
       // Refresh both onboarding status AND auth context with Phase=1
-      await Promise.all([refresh(), refreshAuthMe()]);
-      router.push("/onboarding/complete");
+      const [, freshUser] = await Promise.all([refresh(), refreshAuthMe()]);
+      const targetUser = freshUser || user;
+      const role = targetUser?.role || status?.role || "creator";
+      const destination = getRoleDashboardRoute(targetUser || role);
+      router.replace(destination || "/dashboard/creator");
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       setCompleteError(msg ?? "Failed to complete verification. Please try again.");

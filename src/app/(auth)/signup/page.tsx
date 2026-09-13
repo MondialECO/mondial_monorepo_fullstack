@@ -15,12 +15,47 @@ import {
   mapSignupRoleToBackendRole,
 } from "@/lib/signup-role";
 
+interface PasswordRule {
+  id: string;
+  label: string;
+  errorMessage: string;
+  isValid: (pwd: string) => boolean;
+}
+
+const PASSWORD_RULES: PasswordRule[] = [
+  {
+    id: "minLength",
+    label: "At least 6 characters",
+    errorMessage: "Password must be at least 6 characters.",
+    isValid: (pwd) => pwd.length >= 6,
+  },
+  {
+    id: "uppercase",
+    label: "At least one uppercase letter",
+    errorMessage: "Password must contain an uppercase letter.",
+    isValid: (pwd) => /[A-Z]/.test(pwd),
+  },
+  {
+    id: "lowercase",
+    label: "At least one lowercase letter",
+    errorMessage: "Password must contain a lowercase letter.",
+    isValid: (pwd) => /[a-z]/.test(pwd),
+  },
+  {
+    id: "digit",
+    label: "At least one digit",
+    errorMessage: "Password must contain a digit.",
+    isValid: (pwd) => /[0-9]/.test(pwd),
+  },
+];
+
 export default function Signup() {
   const router = useRouter();
   const { user, isLoading: authLoading, logout, establishSession } = useAuth();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
@@ -57,8 +92,18 @@ export default function Signup() {
       return;
     }
 
+    // Pre-submit validation: verify each password rule matches backend policy
+    const unmet = PASSWORD_RULES.filter((rule) => !rule.isValid(password));
+    if (unmet.length > 0) {
+      const messages = unmet.map((r) => r.errorMessage);
+      setPasswordErrors(messages);
+      setErrorMsg(messages[0]);
+      return;
+    }
+
     setIsSubmitting(true);
     setErrorMsg("");
+    setPasswordErrors([]);
 
     try {
       const model = {
@@ -83,7 +128,17 @@ export default function Signup() {
     } catch (err: unknown) {
       console.error(err);
       const axiosErr = err as Record<string, any>;
-      setErrorMsg(axiosErr?.response?.data?.message || "Registration failed");
+      const resData = axiosErr?.response?.data;
+      const fieldErrors = resData?.data || resData?.errors;
+      const pwFieldErrors = fieldErrors?.Password || fieldErrors?.password;
+
+      if (Array.isArray(pwFieldErrors) && pwFieldErrors.length > 0) {
+        setPasswordErrors(pwFieldErrors);
+      } else if (typeof pwFieldErrors === "string") {
+        setPasswordErrors([pwFieldErrors]);
+      }
+
+      setErrorMsg(resData?.message || "Registration failed");
     } finally {
       setIsSubmitting(false);
     }
@@ -158,9 +213,50 @@ export default function Signup() {
               type="password"
               id="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                setPasswordErrors([]);
+              }}
               required
+              aria-invalid={passwordErrors.length > 0}
+              className={passwordErrors.length > 0 ? "border-red-500 focus-visible:ring-red-500" : ""}
             />
+
+            {/* Password Rules Checklist */}
+            <div className="mt-2 text-xs space-y-1 bg-muted/40 p-2.5 rounded-md border border-border">
+              <p className="font-medium text-foreground text-xs mb-1">Password requirements:</p>
+              <ul className="space-y-1">
+                {PASSWORD_RULES.map((rule) => {
+                  const isMet = rule.isValid(password);
+                  return (
+                    <li
+                      key={rule.id}
+                      className={`flex items-center gap-1.5 transition-colors ${
+                        isMet
+                          ? "text-emerald-600 dark:text-emerald-400 font-medium"
+                          : "text-muted-foreground"
+                      }`}
+                    >
+                      <span className="inline-block w-4 text-center font-bold">
+                        {isMet ? "✓" : "○"}
+                      </span>
+                      <span>{rule.label}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+
+            {/* Field-level Password Errors (mapped from frontend validation or backend data.Password[]) */}
+            {passwordErrors.length > 0 && (
+              <div className="mt-2 space-y-1 text-xs text-red-600 dark:text-red-400 font-medium" data-testid="password-errors">
+                {passwordErrors.map((err, idx) => (
+                  <p key={idx} className="flex items-center gap-1">
+                    <span>⚠</span> {err}
+                  </p>
+                ))}
+              </div>
+            )}
           </div>
 
           <Button

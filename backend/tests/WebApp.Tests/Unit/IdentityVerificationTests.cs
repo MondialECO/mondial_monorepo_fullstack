@@ -518,17 +518,28 @@ namespace WebApp.Tests.Unit
 
             _userManagerMock.Setup(u => u.FindByIdAsync(user.Id.ToString())).ReturnsAsync(user);
 
+            var reqIdentityConfig = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Sumsub:AppToken"] = "test-token",
+                ["Sumsub:SecretKey"] = "test-secret-key",
+                ["Sumsub:BaseUrl"] = "https://api.test.sumsub.com",
+                ["Sumsub:WebhookSecret"] = "test-secret",
+                ["Sumsub:LevelName"] = "id-document-only",
+                ["FeatureFlags:IdentityV2Enabled"] = "true",
+                ["FeatureFlags:RequireIdentityVerificationInUniversalOnboarding"] = "true"
+            }).Build();
+
             var queueMock = new Mock<IEmailQueue>();
             var emailService = new EmailService(queueMock.Object, new Mock<ILogger<EmailService>>().Object);
             var controllerLogger = new Mock<ILogger<OnboardingController>>();
-            var twilio = new TwilioService(_configuration, new Mock<ILogger<TwilioService>>().Object);
+            var twilio = new TwilioService(reqIdentityConfig, new Mock<ILogger<TwilioService>>().Object);
             var saveFile = new SaveFile();
 
             var controller = new OnboardingController(
                 _userManagerMock.Object,
                 twilio,
                 emailService,
-                _configuration,
+                reqIdentityConfig,
                 _envMock.Object,
                 _sumsubService,
                 controllerLogger.Object,

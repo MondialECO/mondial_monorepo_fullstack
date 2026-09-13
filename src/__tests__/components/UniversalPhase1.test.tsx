@@ -41,7 +41,7 @@ const onboardingStatusMvp = {
   phone: '',
   email: 'qa@example.com',
   items: {
-    identity: { key: 'identity', verified: false, required: true },
+    identity: { key: 'identity', verified: false, required: false, deferred: true },
     phone: { key: 'phone', verified: false, required: true },
     email: { key: 'email', verified: false, required: true },
   },
@@ -58,7 +58,15 @@ describe('UniversalPhase1 verification actions', () => {
     vi.mocked(api.post).mockResolvedValue({ data: { success: true } });
   });
 
-  it('routes identity-document verification to the connected identity flow', async () => {
+  it('routes identity-document verification to the connected identity flow when identity is required', async () => {
+    const statusWithRequiredIdentity = {
+      ...onboardingStatusMvp,
+      items: {
+        ...onboardingStatusMvp.items,
+        identity: { key: 'identity', verified: false, required: true },
+      },
+    };
+    vi.mocked(api.get).mockResolvedValue({ data: { data: statusWithRequiredIdentity } });
     const user = userEvent.setup();
     render(<UniversalPhase1 />);
 
@@ -70,15 +78,15 @@ describe('UniversalPhase1 verification actions', () => {
     expect(api.post).not.toHaveBeenCalled();
   });
 
-  it('never renders facial verification and always renders 0 of 3 Completed', async () => {
+  it('renders 0 of 2 Completed by default when identity is deferred', async () => {
     render(<UniversalPhase1 />);
 
-    await screen.findByRole('button', { name: /Identity Document/i });
+    await screen.findByRole('button', { name: /Phone Verification/i });
 
     expect(
       screen.queryByRole('button', { name: /Facial verification/i })
     ).not.toBeInTheDocument();
-    expect(screen.getByText('0 of 3 Completed')).toBeInTheDocument();
+    expect(screen.getByText('0 of 2 Completed')).toBeInTheDocument();
   });
 
   it('honestly reports that phone verification is not connected here', async () => {
@@ -109,7 +117,7 @@ describe('UniversalPhase1 verification actions', () => {
     ).toBeInTheDocument();
   });
 
-  it('renders Under Review badge when identity status is submitted/processing', async () => {
+  it('renders Under Review badge when identity status is submitted/processing and identity is required', async () => {
     const statusWithPendingIdentity = {
       ...onboardingStatusMvp,
       items: {
@@ -124,7 +132,7 @@ describe('UniversalPhase1 verification actions', () => {
     expect(screen.getByText('0 of 3 Completed')).toBeInTheDocument();
   });
 
-  it('renders Action Required badge when identity status is rejected', async () => {
+  it('renders Action Required badge when identity status is rejected and identity is required', async () => {
     const statusWithRejectedIdentity = {
       ...onboardingStatusMvp,
       items: {
