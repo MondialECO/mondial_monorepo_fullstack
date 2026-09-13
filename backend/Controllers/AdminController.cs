@@ -205,7 +205,6 @@ namespace WebApp.Controllers
 
                 KycStatus = user.Kyc?.Status.ToString() ?? "NotStarted",
                 KycIdentityVerified = user.Kyc?.Identity?.Status == VerificationStatus.Verified,
-                KycFaceVerified = user.Kyc?.Face?.Status == VerificationStatus.Verified,
                 KycVerifiedAt = user.Kyc?.VerifiedAt,
                 KycRejectionReason = user.Kyc?.Identity?.RejectionReason,
 

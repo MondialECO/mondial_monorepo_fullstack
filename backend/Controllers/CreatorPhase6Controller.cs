@@ -688,7 +688,7 @@ namespace WebApp.Controllers
                     var formation = p5.PathB?.CompanyFormation;
                     if ((formation?.Ownership?.Count ?? 0) > 0)
                     {
-                        var hasCapTable = await _context.Phase4CapTables.Find(c => c.CompanyId == companyId).AnyAsync();
+                        var hasCapTable = (await _context.Phase4CapTables.Find(c => c.CompanyId == companyId).FirstOrDefaultAsync()) != null;
                         if (!hasCapTable)
                         {
                             try { await SeedCapTableFromPlanAsync(companyId, formation.Ownership); }

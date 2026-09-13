@@ -6,7 +6,7 @@ export default function InvestorIdentitySection() {
   const steps = [
     { title: 'PERSON', desc: 'Authorized individual or entity representative' },
     { title: 'IDENTITY DOCUMENT', desc: 'Passport or National ID' },
-    { title: 'IDENTITY CHECK', desc: 'Face / Liveness verification' },
+    { title: 'DOCUMENT SECURITY', desc: 'Official government verification' },
     { title: 'CONTACT & ADDRESS', desc: 'Email, Phone & Address context where required' },
     { title: 'VERIFIED INVESTOR', desc: 'Account verified for platform participation' },
   ];

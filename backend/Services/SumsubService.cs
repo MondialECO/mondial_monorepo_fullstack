@@ -197,7 +197,6 @@ namespace WebApp.Services
                         ? createdAt.GetInt64()
                         : 0,
                     IdentityVerified = GetVerificationState(root, "IDENTITY") == "APPROVED",
-                    FaceVerified = GetVerificationState(root, "SELFIE") == "APPROVED",
                     PhoneVerified = GetVerificationState(root, "PHONE") == "APPROVED",
                     EmailVerified = GetVerificationState(root, "EMAIL") == "APPROVED",
                 };
@@ -309,12 +308,11 @@ namespace WebApp.Services
         public string ApplicantId { get; set; }
         public long CreatedAt { get; set; }
         public bool IdentityVerified { get; set; }
-        public bool FaceVerified { get; set; }
         public bool PhoneVerified { get; set; }
         public bool EmailVerified { get; set; }
         public bool IsError { get; set; }
 
-        public bool IsAllVerified => IdentityVerified && FaceVerified;
+        public bool IsAllVerified => IdentityVerified;
     }
 
     /// <summary>

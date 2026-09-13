@@ -63,7 +63,6 @@ interface AdminUserDetail {
 
   kycStatus: string;
   kycIdentityVerified: boolean;
-  kycFaceVerified: boolean;
   kycVerifiedAt: string | null;
   kycRejectionReason: string | null;
 
@@ -669,10 +668,6 @@ export default function AdminUserDetailPage() {
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Identity Doc:</span>
                   <span className="font-semibold text-foreground">{user.kycIdentityVerified ? "Verified" : "Unverified"}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Face/Selfie:</span>
-                  <span className="font-semibold text-foreground">{user.kycFaceVerified ? "Verified" : "Unverified"}</span>
                 </div>
                 {user.kycRejectionReason && (
                   <div className="p-2 bg-rose-50 text-rose-700 dark:bg-rose-950/30 rounded mt-2">

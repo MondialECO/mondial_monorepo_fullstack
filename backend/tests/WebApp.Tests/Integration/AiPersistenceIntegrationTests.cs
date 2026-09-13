@@ -161,7 +161,7 @@ public class AiPersistenceIntegrationTests : IClassFixture<AppFixture>
     public async Task Credit_seeder_grants_once_per_user()
     {
         Skip.IfNot(_fx.Available, _fx.SkipReason);
-        var users = Db.GetCollection<ApplicationUser>("users");
+        var users = Db.GetCollection<ApplicationUser>("applicationUsers");
         var u1 = new ApplicationUser { Id = Guid.NewGuid(), UserName = "seed1@test" };
         var u2 = new ApplicationUser { Id = Guid.NewGuid(), UserName = "seed2@test" };
         await users.InsertManyAsync(new[] { u1, u2 });

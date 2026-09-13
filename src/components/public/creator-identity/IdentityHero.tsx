@@ -1,6 +1,6 @@
 'use client';
 
-import { CheckCircle2, Clock, Lock, Camera } from 'lucide-react';
+import { CheckCircle2, Clock, Lock, ShieldCheck } from 'lucide-react';
 
 export default function IdentityHero() {
   const readinessItems = [
@@ -8,7 +8,6 @@ export default function IdentityHero() {
     { name: 'Email', status: 'VERIFIED', type: 'done' },
     { name: 'Phone', status: 'VERIFIED', type: 'done' },
     { name: 'Identity', status: '(IN REVIEW)', type: 'in-review' },
-    { name: 'Liveness', status: '(UPCOMING)', type: 'upcoming' },
   ];
 
   const sidebarModules = [
@@ -16,7 +15,6 @@ export default function IdentityHero() {
     { name: 'Email', status: 'VERIFIED', done: true },
     { name: 'Phone', status: 'VERIFIED', done: true },
     { name: 'Identity Document', status: 'IN REVIEW', done: false, active: true },
-    { name: 'Liveness Check', status: 'UPCOMING', done: false },
     { name: 'Profile', status: 'PARTIAL', done: false },
   ];
 
@@ -181,14 +179,14 @@ export default function IdentityHero() {
                 </div>
               </div>
 
-              {/* Next Step Camera Liveness Preview */}
+              {/* Certified Document Security Info */}
               <div className="p-3 rounded-[12px] bg-[#F1F5FF] border border-[#3C61DD]/20 flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-[#3C61DD] text-white flex items-center justify-center shrink-0">
-                  <Camera size={15} />
+                  <ShieldCheck size={16} />
                 </div>
                 <div className="text-[11px] leading-tight">
-                  <span className="font-bold text-[#3C61DD] block">Next: Complete Liveness Check</span>
-                  <span className="text-[#5E5E5E]">Quick 10-second facial biometric confirmation</span>
+                  <span className="font-bold text-[#3C61DD] block">Certified Security</span>
+                  <span className="text-[#5E5E5E]">Official government document encryption</span>
                 </div>
               </div>
             </div>

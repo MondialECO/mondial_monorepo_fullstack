@@ -41,7 +41,7 @@ export default function CompletePage() {
               <Shield className="w-5 h-5 text-primary flex-shrink-0 mt-1" />
               <div className="text-left text-sm">
                 <p className="font-semibold text-foreground">Enterprise-grade encryption</p>
-                <p className="text-muted-foreground">protecting your personal and biometric data.</p>
+                <p className="text-muted-foreground">protecting your personal data and identity documents.</p>
               </div>
             </div>
           </div>

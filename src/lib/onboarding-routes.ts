@@ -10,11 +10,10 @@
  * gives it.
  */
 
-import { LucideIcon, IdCard, Smile, Smartphone, Mail, Home, Wallet, Receipt, Car } from "lucide-react";
+import { LucideIcon, IdCard, Smartphone, Mail, Home, Wallet, Receipt, Car } from "lucide-react";
 
 export type OnboardingItemKey =
   | "identity"
-  | "face"
   | "phone"
   | "email"
   | "residence"
@@ -34,9 +33,9 @@ export type OnboardingItem = {
 };
 
 /**
- * Catalogue of all eight items, in the order they appear on the hub.
- * `required` is *not* in this catalogue — it comes from /status because it
- * depends on the user's role.
+ * Catalogue of all seven items.
+ * `required` is strictly driven by the backend at /api/onboarding/status.
+ * Frontend components derive active requirements dynamically from backend status.
  */
 export const ONBOARDING_ITEMS: OnboardingItem[] = [
   {
@@ -45,14 +44,6 @@ export const ONBOARDING_ITEMS: OnboardingItem[] = [
     title: "Identity Document",
     description: "Upload Passport or Government ID",
     icon: IdCard,
-    group: "core",
-  },
-  {
-    key: "face",
-    href: "/onboarding/face-verification",
-    title: "Facial verification",
-    description: "Quick face scan for bio-matching",
-    icon: Smile,
     group: "core",
   },
   {
@@ -105,11 +96,25 @@ export const ONBOARDING_ITEMS: OnboardingItem[] = [
   },
 ];
 
+export const ALL_ONBOARDING_ITEMS = ONBOARDING_ITEMS;
+
+/**
+ * Returns the active mandatory core items derived strictly from backend status.
+ */
+export function getMandatoryCoreItems(status: OnboardingStatus | null | undefined): OnboardingItem[] {
+  return ONBOARDING_ITEMS.filter(
+    (item) => item.group === "core" && (status ? status.items[item.key]?.required : true)
+  );
+}
+
 /** Shape returned by GET /api/onboarding/status (the data field of the envelope). */
 export type OnboardingItemStatus = {
   key: OnboardingItemKey;
   verified: boolean;
   required: boolean;
+  status?: string;
+  reviewReason?: string;
+  documentType?: string;
 };
 
 export type OnboardingStatus = {

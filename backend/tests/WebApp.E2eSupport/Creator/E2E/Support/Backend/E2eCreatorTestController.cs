@@ -88,7 +88,6 @@ public sealed class E2eCreatorTestController : ControllerBase
                 PhoneVerified = true,
                 EmailOtpVerified = true,
                 IdentityDocumentVerified = true,
-                FaceVerified = true,
                 CompletedAt = now,
             },
         };

@@ -1,3 +1,7 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Identity;
 using WebApp.Models.DatabaseModels;
 using WebApp.Services.Audit;
@@ -9,26 +13,32 @@ namespace WebApp.Services
     /// required, whether an item is verified, and the derived promotion to
     /// <c>Onboarding.Phase == 1</c>. Shared so the self-serve onboarding flow AND
     /// the concierge admin KYC-approval path evaluate the SAME rule — no second
-    /// copy of the gate. Promotion stays derived (never hand-set to a phase value
-    /// from the outside; callers only flip the item flags this evaluates).
+    /// copy of the gate.
+    /// 
+    /// Final Universal Requirements:
+    /// EMAIL + PHONE + VERIFIED IDENTITY DOCUMENT = PHASE 1.
+    /// Face verification is completely removed.
     /// </summary>
     public static class OnboardingGate
     {
-        /// <summary>The base 4 mandatory items every role must verify.</summary>
+        /// <summary>The final 3 mandatory universal items every role must verify.</summary>
         public static readonly string[] CoreRequired =
-            { "identity", "face", "phone", "email" };
+            { "identity", "phone", "email" };
 
-        /// <summary>Required item set for universal Phase 1. Every role completes the same core 4.</summary>
+        /// <summary>Required item set for universal Phase 1. Every role completes the same 3 core items.</summary>
         public static HashSet<string> RequiredItemsFor(string role)
-            => new(CoreRequired, StringComparer.OrdinalIgnoreCase);
+        {
+            return new(CoreRequired, StringComparer.OrdinalIgnoreCase);
+        }
 
         public static bool IsItemVerified(ApplicationUser user, string key)
         {
             var ob = user.Onboarding;
+            if (ob == null) return false;
+
             return key.ToLowerInvariant() switch
             {
                 "identity"  => ob.IdentityDocumentVerified,
-                "face"      => ob.FaceVerified,
                 "phone"     => ob.PhoneVerified,
                 "email"     => ob.EmailOtpVerified,
                 "residence" => ob.Residence?.Uploaded ?? false,
@@ -40,26 +50,30 @@ namespace WebApp.Services
         }
 
         /// <summary>
-        /// Derived promotion: when all core items are verified, promote onboarding
+        /// Derived promotion: when all core items are verified (Email + Phone + Identity), promote onboarding
         /// to Phase 1. Idempotent — never re-promotes (<c>Phase &lt; 1</c> guard) and
         /// never downgrades. Mirrors the legacy Kyc/KycStatus fields so older reads
-        /// keep working. <paramref name="audit"/> is optional so callers without an
-        /// audit sink (e.g. the admin approval controller) can still promote.
+        /// keep working.
         /// </summary>
         public static async Task PromoteIfCompleteAsync(
             ApplicationUser user,
             UserManager<ApplicationUser> userManager,
             IAuditLogger? audit = null)
         {
-            var required = RequiredItemsFor(user.User ?? "");
-            var allRequiredDone = required.All(key => IsItemVerified(user, key));
+            if (user.Onboarding == null) return;
 
-            if (allRequiredDone && user.Onboarding.Phase < 1)
+            var complete =
+                user.Onboarding.EmailOtpVerified &&
+                user.Onboarding.PhoneVerified &&
+                user.Onboarding.IdentityDocumentVerified;
+
+            if (complete && user.Onboarding.Phase < 1)
             {
                 user.Onboarding.Phase = 1;
                 user.Onboarding.CompletedAt = DateTime.UtcNow;
                 // Mirror the legacy KycStatus so older code keeps working.
                 user.KycStatus = "VERIFIED";
+                user.Kyc ??= new KycVerification();
                 user.Kyc.Status = VerificationStatus.Verified;
                 user.Kyc.VerifiedAt = DateTime.UtcNow;
                 if (user.Tier_level < 1) user.Tier_level = 1;

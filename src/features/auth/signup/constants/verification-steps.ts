@@ -12,11 +12,6 @@ export const VERIFICATION_STEPS: VerificationStep[] = [
     description: "Passport, Driver's License or ID card",
   },
   {
-    id: "facial-scan",
-    title: "Facial Scan",
-    description: "A short 3D biometric scan to match your ID",
-  },
-  {
     id: "proof-of-address",
     title: "Proof of Address",
     description: "Utility bill or bank statement (Optional)",

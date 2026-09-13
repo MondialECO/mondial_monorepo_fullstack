@@ -226,16 +226,10 @@ public class AdminVerificationHubTests
                 SubmittedAt = DateTime.UtcNow,
                 DocumentType = "Passport",
                 DocumentUploaded = true,
-                FaceSubmitted = true,
                 Identity = new PendingKycIdentityDto
                 {
                     DocumentType = "Passport",
                     DocumentUploaded = true,
-                    Status = 0
-                },
-                Face = new PendingKycFaceDto
-                {
-                    FaceSubmitted = true,
                     Status = 0
                 }
             }

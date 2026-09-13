@@ -15,7 +15,6 @@ import {
   Clock,
   Shield,
   FileText,
-  Camera,
   ExternalLink,
   RefreshCw,
   AlertTriangle,
@@ -52,15 +51,9 @@ interface KycPendingUserSummary {
     submittedAt?: string;
     documentType?: string;
     documentUploaded?: boolean;
-    faceSubmitted?: boolean;
     identity?: {
       documentType?: string;
       documentUploaded?: boolean;
-      status: number | string;
-      rejectionReason?: string;
-    };
-    face?: {
-      faceSubmitted?: boolean;
       status: number | string;
       rejectionReason?: string;
     };
@@ -94,13 +87,6 @@ interface AdminKycReviewDetail {
       documentNumber?: string;
       frontImagePath?: string;
       backImagePath?: string;
-      status: number | string;
-      rejectionReason?: string;
-      submittedAt?: string;
-      verifiedAt?: string;
-    };
-    face?: {
-      selfieImagePath?: string;
       status: number | string;
       rejectionReason?: string;
       submittedAt?: string;
@@ -223,7 +209,6 @@ export default function AdminKycQueuePage() {
   // Authenticated Evidence States
   const [frontEvidence, setFrontEvidence] = useState<EvidenceItemState>({ url: null, isPdf: false, status: "idle" });
   const [backEvidence, setBackEvidence] = useState<EvidenceItemState>({ url: null, isPdf: false, status: "idle" });
-  const [selfieEvidence, setSelfieEvidence] = useState<EvidenceItemState>({ url: null, isPdf: false, status: "idle" });
 
   // Store active Object URLs in ref to avoid async state cleanup race conditions
   const activeBlobUrlsRef = useRef<string[]>([]);
@@ -325,7 +310,6 @@ export default function AdminKycQueuePage() {
     revokeActiveBlobs();
     setFrontEvidence({ url: null, isPdf: false, status: "loading" });
     setBackEvidence({ url: null, isPdf: false, status: "loading" });
-    setSelfieEvidence({ url: null, isPdf: false, status: "loading" });
 
     setSelectedUserSummary(userSummary);
     setReviewDetail(null);
@@ -341,20 +325,17 @@ export default function AdminKycQueuePage() {
       const detailData: AdminKycReviewDetail = res.data && res.data.data ? res.data.data : res.data;
       setReviewDetail(detailData);
 
-      // Fetch front, back, and selfie in parallel
+      // Fetch front and back document evidence in parallel
       const frontPath = detailData?.kyc?.identity?.frontImagePath;
       const backPath = detailData?.kyc?.identity?.backImagePath;
-      const selfiePath = detailData?.kyc?.face?.selfieImagePath;
 
-      const [frontRes, backRes, selfieRes] = await Promise.all([
+      const [frontRes, backRes] = await Promise.all([
         fetchSingleEvidence(frontPath),
         fetchSingleEvidence(backPath),
-        fetchSingleEvidence(selfiePath),
       ]);
 
       setFrontEvidence(frontRes);
       setBackEvidence(backRes);
-      setSelfieEvidence(selfieRes);
     } catch (err: any) {
       console.error("Error loading KYC review detail:", err);
       setDetailError(err.response?.data?.message || "Failed to load KYC review details for selected user.");
@@ -367,7 +348,6 @@ export default function AdminKycQueuePage() {
     revokeActiveBlobs();
     setFrontEvidence({ url: null, isPdf: false, status: "idle" });
     setBackEvidence({ url: null, isPdf: false, status: "idle" });
-    setSelfieEvidence({ url: null, isPdf: false, status: "idle" });
     setIsReviewModalOpen(false);
     setSelectedUserSummary(null);
     setReviewDetail(null);
@@ -735,32 +715,6 @@ export default function AdminKycQueuePage() {
                     missingLabel="Back document not required / not uploaded"
                   />
                 </div>
-              </div>
-
-              {/* Face Authentication Evidence Card */}
-              <div className="p-3 bg-card border rounded-lg space-y-3">
-                <div className="font-semibold text-foreground uppercase tracking-wider text-[11px]">
-                  Face / Biometric Verification Evidence
-                </div>
-                
-                {selfieEvidence.status === "loaded" && selfieEvidence.url ? (
-                  <EvidenceBox
-                    title="Selfie Authentication Photo"
-                    evidence={selfieEvidence}
-                    icon={Camera}
-                    missingLabel="Selfie photo not uploaded"
-                  />
-                ) : (
-                  <div className="p-2.5 bg-muted/20 border rounded-md flex items-center justify-between">
-                    <span className="flex items-center gap-1.5 font-medium">
-                      <Camera className="w-4 h-4 text-indigo-500" />
-                      Biometric Session Verified
-                    </span>
-                    <Badge variant="outline" className="text-[10px] bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-200">
-                      Live Session Recorded
-                    </Badge>
-                  </div>
-                )}
               </div>
 
               {/* Reject Reason Form if Rejecting */}

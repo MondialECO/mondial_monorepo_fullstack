@@ -7,7 +7,6 @@ export default function TwoStageVerificationSection() {
     'Name',
     'Email / Phone',
     'Identity Document',
-    'Face / Liveness Check',
   ];
 
   const stage2Rows = [

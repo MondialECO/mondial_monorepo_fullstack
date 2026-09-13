@@ -14,11 +14,11 @@ import IdentityVerificationFaq from '@/components/public/creator-identity/Identi
 export const metadata: Metadata = {
   title: 'Identity & Verification for Creators | Mondial.eco',
   description:
-    'Learn how Mondial builds a verified Creator foundation through identity, contact verification, profile readiness, privacy controls and liveness verification before project structuring begins.',
+    'Learn how Mondial builds a verified Creator foundation through identity, contact verification, profile readiness, privacy controls and certified document verification before project structuring begins.',
   openGraph: {
     title: 'Identity & Verification for Creators | Mondial.eco',
     description:
-      'Learn how Mondial builds a verified Creator foundation through identity, contact verification, profile readiness, privacy controls and liveness verification before project structuring begins.',
+      'Learn how Mondial builds a verified Creator foundation through identity, contact verification, profile readiness, privacy controls and certified document verification before project structuring begins.',
     url: 'https://mondialbusiness.eu/for-creators/identity-verification',
     siteName: 'Mondial.eco',
     type: 'website',

@@ -12,6 +12,7 @@ using System.IdentityModel.Tokens.Jwt;
 using WebApp.Models;
 using WebApp.Models.DatabaseModels;
 using WebApp.Services;
+using WebApp.Services.Interface;
 
 namespace WebApp.Controllers
 {
@@ -32,12 +33,13 @@ namespace WebApp.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly TwilioService _twilio;
         private readonly EmailService _emailService;
-        private readonly SumsubService _sumsub;
+        private readonly SumsubService? _sumsub;
         private readonly IConfiguration _configuration;
         private readonly IWebHostEnvironment _env;
         private readonly ILogger<OnboardingController> _logger;
         private readonly SaveFile _fileService;
         private readonly WebApp.Services.Audit.IAuditLogger _audit;
+        private readonly IIdentityVerificationService? _identityService;
 
         public OnboardingController(
             UserManager<ApplicationUser> userManager,
@@ -48,7 +50,8 @@ namespace WebApp.Controllers
             SumsubService sumsub,
             ILogger<OnboardingController> logger,
             SaveFile fileService,
-            WebApp.Services.Audit.IAuditLogger audit)
+            WebApp.Services.Audit.IAuditLogger audit,
+            IIdentityVerificationService? identityService = null)
         {
             _userManager = userManager;
             _twilio = twilio;
@@ -59,6 +62,7 @@ namespace WebApp.Controllers
             _fileService = fileService;
             _sumsub = sumsub;
             _audit = audit;
+            _identityService = identityService;
         }
 
         // ----- Constants and helpers --------------------------------------
@@ -113,6 +117,24 @@ namespace WebApp.Controllers
 
             var required = RequiredItemsFor(user.User ?? "");
 
+            var identityStatus = _identityService != null
+                ? await _identityService.GetCurrentStatusAsync(user.Id.ToString())
+                : null;
+
+            var identityVerified = IsItemVerified(user, "identity");
+            var identityDisplayStatus = identityStatus?.Status
+                ?? (identityVerified ? "verified" : (string.IsNullOrEmpty(user.Onboarding?.IdentityFrontImagePath) ? "not_started" : "submitted"));
+
+            object IdentityItemView() => new
+            {
+                key = "identity",
+                verified = identityVerified,
+                required = required.Contains("identity"),
+                status = identityDisplayStatus,
+                documentType = identityStatus?.DocumentType ?? user.Onboarding?.IdentityDocumentType,
+                reviewReason = identityStatus?.ReviewReason ?? user.Kyc?.Identity?.RejectionReason
+            };
+
             object ItemView(string key) => new
             {
                 key,
@@ -128,8 +150,7 @@ namespace WebApp.Controllers
                 email = user.Email,
                 items = new
                 {
-                    identity  = ItemView("identity"),
-                    face      = ItemView("face"),
+                    identity  = IdentityItemView(),
                     phone     = ItemView("phone"),
                     email     = ItemView("email"),
                     residence = ItemView("residence"),
@@ -340,23 +361,22 @@ namespace WebApp.Controllers
 
         // ----- Skip verification (mark as verified) -----
 
-        [HttpPost("face/skip")]
-        public async Task<IActionResult> SkipFaceVerification()
-        {
-            var user = await CurrentUserAsync();
-            if (user == null) return Fail("User not found", 404);
-
-            user.Onboarding.FaceVerified = true;
-            await _userManager.UpdateAsync(user);
-            // Don't promote here; promotion happens via the /complete endpoint
-
-            _audit.Record("face_skipped", user.Email!, true);
-            return Ok("Face verification skipped");
-        }
-
         [HttpPost("phone/skip")]
         public async Task<IActionResult> SkipPhoneVerification()
         {
+            var isProduction = _env.IsProduction();
+            var allowAlphaBypass = _configuration.GetValue<bool>("FeatureFlags:EnableAlphaBypassEndpoints", false);
+            if (isProduction && !allowAlphaBypass)
+            {
+                var caller = (await CurrentUserAsync())?.Email ?? "unknown";
+                _audit.Record("phone_skip_rejected_production", caller, false);
+                return StatusCode(StatusCodes.Status403Forbidden, new
+                {
+                    success = false,
+                    message = "Phone verification skip endpoint is disabled in production environments."
+                });
+            }
+
             var user = await CurrentUserAsync();
             if (user == null) return Fail("User not found", 404);
 
@@ -377,11 +397,10 @@ namespace WebApp.Controllers
 
             try
             {
-                // Validate all 4 core items are verified before promoting
+                // Validate all core items are verified before promoting
                 var onboarding = user.Onboarding;
                 if (onboarding == null ||
                     !onboarding.IdentityDocumentVerified ||
-                    !onboarding.FaceVerified ||
                     !onboarding.PhoneVerified ||
                     !onboarding.EmailOtpVerified)
                 {
@@ -402,34 +421,31 @@ namespace WebApp.Controllers
             }
         }
 
-        [HttpGet("sumsub/token")]
-        public async Task<IActionResult> GetSumsubToken()
-        {
-            var user = await CurrentUserAsync();
-            if (user == null) return Fail("User not found", 404);
-            try
-            {
-                var token = await _sumsub.GenerateAccessTokenAsync(user.Id.ToString(), user.Email);
-                return Ok("Access token generated", new { accessToken = token });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to generate Sumsub token");
-                return Fail("Failed to initialize face verification", 500);
-            }
-        }
-
+        /// <summary>
+        /// Legacy direct file upload fallback. Only active when FeatureFlags:AllowLegacyIdentityUpload = true.
+        /// Upload does NOT verify identity. Verification requires provider webhook or manual admin approval.
+        /// </summary>
         [HttpPost("identity/upload")]
         [Consumes("multipart/form-data")]
         public async Task<IActionResult> UploadIdentityDocuments([FromForm] string documentType, [FromForm] IFormFile frontPhoto, [FromForm] IFormFile? backPhoto = null)
         {
+            var allowLegacy = _configuration.GetValue<bool>("FeatureFlags:AllowLegacyIdentityUpload", false);
+            if (!allowLegacy)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new
+                {
+                    success = false,
+                    message = "Direct document upload is disabled. Please use the secure identity verification flow."
+                });
+            }
+
             if (string.IsNullOrWhiteSpace(documentType))
-                return Fail("Document type is required (passport, national_id, drivers_license)");
+                return Fail("Document type is required (passport, national_id, residence_permit)");
             if (frontPhoto == null || frontPhoto.Length == 0)
                 return Fail("Front photo is required");
             
             var docType = documentType.ToLowerInvariant();
-            var validTypes = new[] { "passport", "national_id", "drivers_license" };
+            var validTypes = new[] { "passport", "national_id", "residence_permit" };
             if (!validTypes.Contains(docType))
                 return Fail($"Invalid document type. Expected one of: {string.Join(", ", validTypes)}");
             
@@ -446,12 +462,12 @@ namespace WebApp.Controllers
                     ? await _fileService.SaveFileAsync(backPhoto, "identity/documents")
                     : null;
 
-                // Save document paths and mark identity as verified
+                // Save document paths as submitted (UPLOADING DOES NOT VERIFY)
                 user.Onboarding.IdentityDocumentType = docType;
                 user.Onboarding.IdentityFrontImagePath = frontPath;
                 user.Onboarding.IdentityBackImagePath = backPath;
                 user.Onboarding.IdentityDocumentUploadedAt = DateTime.UtcNow;
-                user.Onboarding.IdentityDocumentVerified = true;
+                user.Onboarding.IdentityDocumentVerified = false;
 
                 user.Kyc ??= new KycVerification();
                 user.Kyc.Identity ??= new IdentityVerification();
@@ -459,12 +475,17 @@ namespace WebApp.Controllers
                 user.Kyc.Identity.FrontImage = frontPath;
                 user.Kyc.Identity.BackImage = backPath;
                 user.Kyc.Identity.SubmittedAt = DateTime.UtcNow;
+                user.Kyc.Identity.Status = VerificationStatus.Pending;
 
                 await _userManager.UpdateAsync(user);
-                // Don't promote here; promotion happens via the /complete endpoint
 
-                _audit.Record("identity_document_upload", user.Email!, true, new { documentType = docType });
-                return Ok("Identity documents uploaded", new { documentType = docType, frontPath, backPath });
+                if (_identityService != null)
+                {
+                    await _identityService.RecordManualUploadAsync(user.Id.ToString(), docType, frontPath, backPath);
+                }
+
+                _audit.Record("identity_document_upload_submitted", user.Email!, true, new { documentType = docType });
+                return Ok("Identity documents submitted for verification", new { documentType = docType, status = "submitted", frontPath, backPath });
             }
             catch (ArgumentException ex)
             {
@@ -472,83 +493,50 @@ namespace WebApp.Controllers
             }
         }
 
-        [HttpPost("face/verify-sumsub")]
-        public async Task<IActionResult> VerifySumsubFace()
-        {
-            var user = await CurrentUserAsync();
-            if (user == null) return Fail("User not found", 404);
-            try
-            {
-                var status = await _sumsub.GetVerificationStatusAsync(user.Id.ToString());
-                if (status.IsError)
-                    return Fail("Unable to verify status. Please try again.", 500);
-                if (!status.FaceVerified)
-                {
-                    _audit.Record("face_sumsub_verify", user.Email!, false, new { reason = "face_not_approved" });
-                    return Fail("Face verification not approved yet. Please try again or contact support.");
-                }
-                if (user.Onboarding == null)
-                    user.Onboarding = new OnboardingState();
-                user.Onboarding.FaceVerified = true;
-                await _userManager.UpdateAsync(user);
-                // Don't promote here; promotion happens via the /complete endpoint
-                _audit.Record("face_sumsub_verify", user.Email!, true);
-                return Ok("Face verification complete");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to confirm face verification");
-                return Fail("Failed to complete face verification", 500);
-            }
-        }
-
+        /// <summary>
+        /// DEPRECATED: Legacy Sumsub webhook endpoint.
+        /// All new webhook processing routes through POST /api/identity/webhook/sumsub.
+        /// This endpoint delegates to the canonical IdentityVerificationService for backward compatibility.
+        /// </summary>
         [HttpPost("sumsub/webhook")]
         [AllowAnonymous]
+        [Obsolete("Use POST /api/identity/webhook/sumsub as the canonical webhook endpoint.")]
         public async Task<IActionResult> HandleSumsubWebhook()
         {
+            _logger.LogWarning("Deprecated webhook endpoint /api/onboarding/sumsub/webhook invoked. Configure provider to use /api/identity/webhook/sumsub instead.");
+
             try
             {
-                var requestBody = await new StreamReader(Request.Body).ReadToEndAsync();
+                Request.EnableBuffering();
+                var requestBody = await new StreamReader(Request.Body, Encoding.UTF8, detectEncodingFromByteOrderMarks: false, leaveOpen: true).ReadToEndAsync();
+                Request.Body.Position = 0;
+
                 if (string.IsNullOrEmpty(requestBody))
                     return BadRequest("Empty body");
-                var signature = Request.Headers["X-Sumsub-Signature"].ToString();
-                if (!_sumsub.VerifyWebhookSignature(requestBody, signature))
+
+                var signature = Request.Headers["X-Payload-Digest"].ToString();
+                if (string.IsNullOrEmpty(signature))
+                    signature = Request.Headers["X-Sumsub-Signature"].ToString();
+
+                if (string.IsNullOrWhiteSpace(signature))
+                    return Unauthorized("Missing signature header");
+
+                if (_identityService != null)
                 {
-                    _logger.LogWarning("Invalid Sumsub webhook signature");
-                    return Unauthorized("Invalid signature");
-                }
-                var payload = System.Text.Json.JsonSerializer.Deserialize<SumsubWebhookPayload>(requestBody);
-                if (payload == null)
-                    return BadRequest("Invalid payload");
-                var user = await _userManager.FindByIdAsync(payload.ExternalUserId);
-                if (user == null)
+                    var eventId = Request.Headers["X-Sumsub-Event-Id"].ToString();
+                    var processed = await _identityService.ProcessProviderWebhookAsync(requestBody, signature, eventId);
+                    if (!processed)
+                        return Unauthorized("Invalid webhook signature or unprocessable payload");
                     return Ok();
-                if (user.Onboarding == null)
-                    user.Onboarding = new OnboardingState();
-                switch (payload.ReviewStatus)
-                {
-                    case "APPROVED":
-                        user.Onboarding.IdentityDocumentVerified = true;
-                        user.Onboarding.FaceVerified = true;
-                        await _userManager.UpdateAsync(user);
-                        // Don't promote here; promotion happens via the /complete endpoint
-                        _audit.Record("sumsub_webhook_approved", user.Email!, true);
-                        break;
-                    case "REJECTED":
-                        user.Onboarding.IdentityDocumentVerified = false;
-                        user.Onboarding.FaceVerified = false;
-                        await _userManager.UpdateAsync(user);
-                        _audit.Record("sumsub_webhook_rejected", user.Email!, false);
-                        break;
-                    case "PENDING":
-                        _audit.Record("sumsub_webhook_pending", user.Email!, true);
-                        break;
                 }
-                return Ok();
+
+                // If identity service is unavailable, reject — no legacy standalone fallback in production
+                _logger.LogError("Identity service not available for legacy webhook processing");
+                return StatusCode(503, "Identity verification service unavailable");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error processing Sumsub webhook");
+                _logger.LogError(ex, "Error processing legacy Sumsub webhook");
                 return StatusCode(500);
             }
         }

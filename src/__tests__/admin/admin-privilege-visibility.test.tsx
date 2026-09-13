@@ -291,7 +291,6 @@ describe('Admin Privilege Visibility — User Detail Page', () => {
           onboardingPhase: 0,
           kycStatus: 'NotStarted',
           kycIdentityVerified: false,
-          kycFaceVerified: false,
           kycVerifiedAt: null,
           kycRejectionReason: null,
           roleActivity: {
@@ -353,7 +352,6 @@ describe('Admin Privilege Visibility — User Detail Page', () => {
           onboardingPhase: 0,
           kycStatus: 'NotStarted',
           kycIdentityVerified: false,
-          kycFaceVerified: false,
           kycVerifiedAt: null,
           kycRejectionReason: null,
           roleActivity: {

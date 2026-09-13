@@ -35,14 +35,13 @@ vi.mock('next/link', () => ({
     React.createElement('a', { href, ...props }, children),
 }));
 
-const onboardingStatus = {
+const onboardingStatusMvp = {
   phase: 0,
   role: 'Creator',
   phone: '',
   email: 'qa@example.com',
   items: {
     identity: { key: 'identity', verified: false, required: true },
-    face: { key: 'face', verified: false, required: true },
     phone: { key: 'phone', verified: false, required: true },
     email: { key: 'email', verified: false, required: true },
   },
@@ -55,7 +54,7 @@ describe('UniversalPhase1 verification actions', () => {
     Element.prototype.setPointerCapture ??= vi.fn();
     Element.prototype.releasePointerCapture ??= vi.fn();
     Element.prototype.scrollIntoView ??= vi.fn();
-    vi.mocked(api.get).mockResolvedValue({ data: { data: onboardingStatus } });
+    vi.mocked(api.get).mockResolvedValue({ data: { data: onboardingStatusMvp } });
     vi.mocked(api.post).mockResolvedValue({ data: { success: true } });
   });
 
@@ -71,16 +70,15 @@ describe('UniversalPhase1 verification actions', () => {
     expect(api.post).not.toHaveBeenCalled();
   });
 
-  it('routes facial verification to the connected identity flow', async () => {
-    const user = userEvent.setup();
+  it('never renders facial verification and always renders 0 of 3 Completed', async () => {
     render(<UniversalPhase1 />);
 
-    await user.click(
-      await screen.findByRole('button', { name: /Facial verification/i })
-    );
+    await screen.findByRole('button', { name: /Identity Document/i });
 
-    expect(push).toHaveBeenCalledWith('/onboarding/identity');
-    expect(api.post).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole('button', { name: /Facial verification/i })
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('0 of 3 Completed')).toBeInTheDocument();
   });
 
   it('honestly reports that phone verification is not connected here', async () => {
@@ -110,6 +108,36 @@ describe('UniversalPhase1 verification actions', () => {
       screen.getByText('email verification coming soon')
     ).toBeInTheDocument();
   });
+
+  it('renders Under Review badge when identity status is submitted/processing', async () => {
+    const statusWithPendingIdentity = {
+      ...onboardingStatusMvp,
+      items: {
+        ...onboardingStatusMvp.items,
+        identity: { key: 'identity', verified: false, required: true, status: 'processing' },
+      },
+    };
+    vi.mocked(api.get).mockResolvedValue({ data: { data: statusWithPendingIdentity } });
+    render(<UniversalPhase1 />);
+
+    expect(await screen.findByText('Under Review')).toBeInTheDocument();
+    expect(screen.getByText('0 of 3 Completed')).toBeInTheDocument();
+  });
+
+  it('renders Action Required badge when identity status is rejected', async () => {
+    const statusWithRejectedIdentity = {
+      ...onboardingStatusMvp,
+      items: {
+        ...onboardingStatusMvp.items,
+        identity: { key: 'identity', verified: false, required: true, status: 'rejected' },
+      },
+    };
+    vi.mocked(api.get).mockResolvedValue({ data: { data: statusWithRejectedIdentity } });
+    render(<UniversalPhase1 />);
+
+    expect(await screen.findByText('Action Required')).toBeInTheDocument();
+    expect(screen.getByText('0 of 3 Completed')).toBeInTheDocument();
+  });
 });
 
 /**
@@ -132,9 +160,9 @@ describe('UniversalPhase1 success styling', () => {
     vi.mocked(api.get).mockResolvedValue({
       data: {
         data: {
-          ...onboardingStatus,
+          ...onboardingStatusMvp,
           items: {
-            ...onboardingStatus.items,
+            ...onboardingStatusMvp.items,
             email: { key: 'email', verified: true, required: true },
           },
         },

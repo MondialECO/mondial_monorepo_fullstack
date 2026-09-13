@@ -15,12 +15,12 @@ import api from '@/lib/axios';
 import { cn } from '@/lib/utils';
 
 type Step = 'type-select' | 'upload';
-type DocumentType = 'passport' | 'national_id' | 'drivers_license';
+type DocumentType = 'national_id' | 'passport' | 'residence_permit';
 
 const DOCUMENT_TYPES = [
+  { id: 'national_id' as DocumentType, label: 'National ID (CNI)', icon: '🆔' },
   { id: 'passport' as DocumentType, label: 'Passport', icon: '🛂' },
-  { id: 'national_id' as DocumentType, label: 'National ID', icon: '🆔' },
-  { id: 'drivers_license' as DocumentType, label: "Driver's License", icon: '🚗' },
+  { id: 'residence_permit' as DocumentType, label: 'Residence Permit (Titre de séjour)', icon: '📋' },
 ];
 
 const PHOTO_REQUIREMENTS = [
@@ -89,7 +89,7 @@ export default function IdentityVerification() {
       const response = await api.post('/onboarding/identity/upload', formData);
 
       if (response.data?.success) {
-        router.push('/onboarding/face-verification');
+        router.push('/onboarding');
       } else {
         setError(response.data?.message || 'Failed to upload documents');
       }
@@ -178,9 +178,9 @@ export default function IdentityVerification() {
                   <div>
                     <h3 className="font-semibold text-foreground text-sm">{doc.label}</h3>
                     <p className="text-xs text-muted-foreground mt-1">
+                      {doc.id === 'national_id' && 'Government ID card (CNI)'}
                       {doc.id === 'passport' && 'Full travel document'}
-                      {doc.id === 'national_id' && 'Government ID card'}
-                      {doc.id === 'drivers_license' && 'Standard state ID'}
+                      {doc.id === 'residence_permit' && 'French residence permit'}
                     </p>
                   </div>
                 </button>

@@ -35,9 +35,10 @@ export default function OnboardingHubPage() {
     }
   }, [isLoading, isComplete, status, router]);
 
-  // Calculate if all core items are verified
+  // Mandatory core steps are derived dynamically from backend status
   const core = ONBOARDING_ITEMS.filter((i) => i.group === "core");
-  const allCoreVerified = core.every((i) => status?.items[i.key]?.verified);
+  const mandatoryItems = core.filter((i) => status ? status.items[i.key]?.required : true);
+  const allMandatoryVerified = mandatoryItems.every((i) => status?.items[i.key]?.verified);
 
   async function handleComplete() {
     setCompleteError(null);
@@ -70,8 +71,8 @@ export default function OnboardingHubPage() {
   // ones (so a Creator who chose to upload Residence still sees that card).
   // The hub always shows all four supplementary cards so the user can opt in
   // even when they're not required.
-  const requiredCoreDone = core.filter((i) => status.items[i.key]?.verified).length;
-  const requiredCoreTotal = core.filter((i) => status.items[i.key]?.required).length;
+  const requiredCoreDone = mandatoryItems.filter((i) => status.items[i.key]?.verified).length;
+  const requiredCoreTotal = mandatoryItems.length;
 
   // Additional items the user's role requires (Investor: income+tax; SP: license)
   const extraRequired = supplementary.filter((i) => status.items[i.key]?.required);
@@ -102,12 +103,13 @@ export default function OnboardingHubPage() {
         </div>
 
         <ul className="space-y-3">
-          {core.map((item) => (
+          {mandatoryItems.map((item) => (
             <ItemRow
               key={item.key}
               item={item}
               verified={status.items[item.key]?.verified}
-              required={status.items[item.key]?.required}
+              status={status.items[item.key]?.status}
+              required={true}
             />
           ))}
         </ul>
@@ -152,7 +154,7 @@ export default function OnboardingHubPage() {
             Verification is mandatory for compliance with global AML/KYC regulations. Mondial.eco uses enterprise-grade encryption. Your private information is never shared with third parties.
           </p>
         </div>
-        {allCoreVerified ? (
+        {allMandatoryVerified ? (
           <Button
             onClick={handleComplete}
             disabled={completing}
@@ -182,26 +184,43 @@ export default function OnboardingHubPage() {
 function ItemRow({
   item,
   verified,
+  status,
   required,
 }: {
   item: OnboardingItem;
   verified?: boolean;
+  status?: string;
   required?: boolean;
 }) {
   const Icon = item.icon;
+  const isPendingReview = status === 'submitted' || status === 'processing' || status === 'manual_review';
+  const isActionRequired = status === 'rejected' || status === 'retry_required';
+
   return (
     <li>
       <Link
         href={item.href}
         className={cn(
           "flex items-center gap-4 rounded-2xl border bg-card px-4 py-4 transition",
-          verified ? "border-green-600/40 bg-green-600/5" : "border-border hover:border-primary/40",
+          verified
+            ? "border-green-600/40 bg-green-600/5"
+            : isActionRequired
+            ? "border-destructive/40 bg-destructive/5 hover:border-destructive/60"
+            : isPendingReview
+            ? "border-amber-500/40 bg-amber-500/5 hover:border-amber-500/60"
+            : "border-border hover:border-primary/40",
         )}
       >
         <span
           className={cn(
             "flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center",
-            verified ? "bg-green-600/15 text-green-700 dark:text-green-300" : "bg-primary/10 text-primary",
+            verified
+              ? "bg-green-600/15 text-green-700 dark:text-green-300"
+              : isActionRequired
+              ? "bg-destructive/15 text-destructive"
+              : isPendingReview
+              ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+              : "bg-primary/10 text-primary",
           )}
         >
           {verified ? <CheckCircle2 className="w-5 h-5" /> : <Icon className="w-5 h-5" />}
@@ -213,6 +232,14 @@ function ItemRow({
         {verified ? (
           <span className="text-xs font-medium text-green-700 dark:text-green-300 uppercase tracking-wide">
             Verified
+          </span>
+        ) : isActionRequired ? (
+          <span className="text-xs font-semibold text-destructive uppercase tracking-wide">
+            Action Required
+          </span>
+        ) : isPendingReview ? (
+          <span className="text-xs font-medium text-amber-600 dark:text-amber-400 uppercase tracking-wide">
+            Under Review
           </span>
         ) : (
           <ChevronRight className="w-5 h-5 text-muted-foreground" />

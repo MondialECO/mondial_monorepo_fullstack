@@ -471,54 +471,6 @@ namespace WebApp.Controllers
             });
         }
 
-        // POST: api/auth/validate-onboarding-token
-        // Legacy endpoint to validate the short-lived onboarding token.
-        // Retained for backward compatibility; new registration flows issue canonical session tokens directly to /onboarding.
-        [Obsolete("Legacy endpoint. New registration flow issues canonical session tokens directly to /onboarding.")]
-        [HttpPost("validate-onboarding-token")]
-        [AllowAnonymous]
-        [EnableRateLimiting("auth")]
-        public IActionResult ValidateOnboardingToken([FromBody] ValidateOnboardingTokenModel model)
-        {
-            if (string.IsNullOrWhiteSpace(model?.OnboardingToken))
-                return Fail("Token is required");
-
-            var principal = JwtTokenHelper.ValidateOnboardingToken(
-                model.OnboardingToken,
-                _configuration["JwtSettings:Key"] ?? "fallback-secret",
-                _configuration["JwtSettings:Issuer"] ?? "mondial",
-                _configuration["JwtSettings:Audience"] ?? "mondial-app"
-            );
-
-            if (principal == null)
-                return UnauthorizedResponse("Invalid or expired token");
-
-            // The local JwtSecurityTokenHandler instance inherits the
-            // process-wide DefaultMapInboundClaims = true, so the raw JWT
-            // claim names emitted by GenerateOnboardingToken are remapped to
-            // the long ClaimTypes.* URIs when the token is read back:
-            //   "sub"   -> ClaimTypes.NameIdentifier
-            //   "email" -> ClaimTypes.Email
-            // (The role claim is already written as ClaimTypes.Role, so it
-            //  survives unchanged.) Look up each value under BOTH the raw JWT
-            // name and the mapped type so validation is correct regardless of
-            // the inbound-claim-mapping setting. The previous code only read
-            // the raw "email" claim, which was null after mapping and caused a
-            // spurious 401 "Invalid token claims" for every new signup.
-            var userId = principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value
-                      ?? principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            var email = principal.FindFirst("email")?.Value
-                      ?? principal.FindFirst(ClaimTypes.Email)?.Value;
-            var role = principal.FindFirst(ClaimTypes.Role)?.Value
-                      ?? principal.FindFirst("role")?.Value;
-            var tokenType = principal.FindFirst("token_type")?.Value;
-
-            if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(email) || string.IsNullOrEmpty(role) || tokenType != "onboarding")
-                return UnauthorizedResponse("Invalid token claims");
-
-            return Success("Token validated", new { userId, email, role });
-        }
-
         // GET: api/auth/confirm-email?userId=&token=
         // Variant for the link in the confirmation email so users can hit it
         // directly from their inbox. The frontend page also calls the POST

@@ -60,24 +60,22 @@ public class RegistrationCanonicalAuthTests
     }
 
     [Fact]
-    public void LegacyOnboardingToken_CanStillBeValidated_ForBackwardCompatibility()
+    public void CanonicalRegistrationToken_DoesNotContainOnboardingTokenTypeClaim()
     {
         // Arrange
-        var userId = "legacy-user-id";
-        var email = "legacy@mondial.eco";
-        var role = "Creator";
+        var userId = "canonical-user-id";
+        var roles = new[] { "Creator" };
 
-#pragma warning disable CS0618 // Type or member is obsolete
-        var legacyToken = JwtTokenHelper.GenerateOnboardingToken(userId, email, role, TestKey, TestIssuer, TestAudience, expiryMinutes: 15);
-        var principal = JwtTokenHelper.ValidateOnboardingToken(legacyToken, TestKey, TestIssuer, TestAudience);
-#pragma warning restore CS0618 // Type or member is obsolete
+        // Act
+        var tokenString = JwtTokenHelper.GenerateToken(userId, roles, TestKey, TestIssuer, TestAudience);
+        var handler = new JwtSecurityTokenHandler();
+        var jwtToken = handler.ReadJwtToken(tokenString);
 
-        // Assert
-        Assert.NotNull(principal);
-        var sub = principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value ?? principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        var tokenType = principal.FindFirst("token_type")?.Value;
+        // Assert - Canonical tokens must NOT contain a token_type=onboarding claim
+        var tokenTypeClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "token_type")?.Value;
+        Assert.Null(tokenTypeClaim);
 
-        Assert.Equal(userId, sub);
-        Assert.Equal("onboarding", tokenType);
+        var subClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Sub || c.Type == ClaimTypes.NameIdentifier)?.Value;
+        Assert.Equal(userId, subClaim);
     }
 }

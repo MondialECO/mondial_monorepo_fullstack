@@ -72,7 +72,6 @@ namespace WebApp.Models.Dtos
         // Verification summary
         public string KycStatus { get; set; } = "NotStarted";
         public bool KycIdentityVerified { get; set; }
-        public bool KycFaceVerified { get; set; }
         public DateTime? KycVerifiedAt { get; set; }
         public string? KycRejectionReason { get; set; }
 
@@ -173,22 +172,13 @@ namespace WebApp.Models.Dtos
         public DateTime? SubmittedAt { get; set; }
         public string? DocumentType { get; set; }
         public bool DocumentUploaded { get; set; }
-        public bool FaceSubmitted { get; set; }
         public PendingKycIdentityDto? Identity { get; set; }
-        public PendingKycFaceDto? Face { get; set; }
     }
 
     public class PendingKycIdentityDto
     {
         public string? DocumentType { get; set; }
         public bool DocumentUploaded { get; set; }
-        public int Status { get; set; }
-        public string? RejectionReason { get; set; }
-    }
-
-    public class PendingKycFaceDto
-    {
-        public bool FaceSubmitted { get; set; }
         public int Status { get; set; }
         public string? RejectionReason { get; set; }
     }
@@ -215,7 +205,6 @@ namespace WebApp.Models.Dtos
         public DateTime? SubmittedAt { get; set; }
         public DateTime? VerifiedAt { get; set; }
         public AdminKycReviewIdentityDto? Identity { get; set; }
-        public AdminKycReviewFaceDto? Face { get; set; }
     }
 
     public class AdminKycReviewIdentityDto
@@ -224,15 +213,6 @@ namespace WebApp.Models.Dtos
         public string? DocumentNumber { get; set; }
         public string? FrontImagePath { get; set; }
         public string? BackImagePath { get; set; }
-        public int Status { get; set; }
-        public string? RejectionReason { get; set; }
-        public DateTime? SubmittedAt { get; set; }
-        public DateTime? VerifiedAt { get; set; }
-    }
-
-    public class AdminKycReviewFaceDto
-    {
-        public string? SelfieImagePath { get; set; }
         public int Status { get; set; }
         public string? RejectionReason { get; set; }
         public DateTime? SubmittedAt { get; set; }
