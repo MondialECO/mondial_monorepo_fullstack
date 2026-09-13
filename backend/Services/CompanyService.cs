@@ -695,7 +695,10 @@ public class CompanyService : ICompanyService
         }
     }
 
-    public async Task SeedCapTableFromOwnershipAsync(string companyId, List<OwnershipEntryDto> ownership)
+    public Task SeedCapTableFromOwnershipAsync(string companyId, List<OwnershipEntryDto> ownership)
+        => SeedCapTableFromOwnershipAsync(companyId, ownership, null);
+
+    public async Task SeedCapTableFromOwnershipAsync(string companyId, List<OwnershipEntryDto> ownership, IClientSessionHandle session)
     {
         const int totalShares = 1_000_000;
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -725,12 +728,17 @@ public class CompanyService : ICompanyService
             EsopVestingMonths = esopPct > 0 ? 48 : 0,
             Grants = grants,
         };
-        await SubmitCapTableAsync(companyId, request);
+        await SubmitCapTableAsync(companyId, request, session);
     }
 
-    public async Task<Companies> GetCompanyAsync(string companyId)
+    public Task<Companies> GetCompanyAsync(string companyId) => GetCompanyAsync(companyId, null);
+
+    public async Task<Companies> GetCompanyAsync(string companyId, IClientSessionHandle session)
     {
-        return await _dbContext.Companies.Find(c => c.Id == companyId).FirstOrDefaultAsync()
+        var find = session is null
+            ? _dbContext.Companies.Find(c => c.Id == companyId)
+            : _dbContext.Companies.Find(session, c => c.Id == companyId);
+        return await find.FirstOrDefaultAsync()
             ?? throw new KeyNotFoundException($"Company {companyId} not found");
     }
 
@@ -1602,7 +1610,10 @@ public class CompanyService : ICompanyService
 
     // ============ PHASE 4 EXTENSIONS: CAP TABLE / VESTING / OWNERSHIP HISTORY / ISSUANCE ============
 
-    public async Task<CapTableSnapshotResponse> SubmitCapTableAsync(string companyId, SubmitCapTableRequest request)
+    public Task<CapTableSnapshotResponse> SubmitCapTableAsync(string companyId, SubmitCapTableRequest request)
+        => SubmitCapTableAsync(companyId, request, null);
+
+    public async Task<CapTableSnapshotResponse> SubmitCapTableAsync(string companyId, SubmitCapTableRequest request, IClientSessionHandle session)
     {
         // Write-time validation = shape + per-grant + duplicate detection only.
         // Totals reconciliation + founder presence are enforced at phase
@@ -1620,11 +1631,13 @@ public class CompanyService : ICompanyService
         if (duplicateErrors.Count > 0)
             throw new ArgumentException(string.Join("; ", duplicateErrors));
 
-        var company = await GetCompanyAsync(companyId);
+        var company = await GetCompanyAsync(companyId, session);
 
         // Determine next version.
-        var existingLatest = await _dbContext.Phase4CapTables
-            .Find(c => c.CompanyId == companyId)
+        var capTableQuery = session is null
+            ? _dbContext.Phase4CapTables.Find(c => c.CompanyId == companyId)
+            : _dbContext.Phase4CapTables.Find(session, c => c.CompanyId == companyId);
+        var existingLatest = await capTableQuery
             .SortByDescending(c => c.Version)
             .FirstOrDefaultAsync();
         var nextVersion = (existingLatest?.Version ?? 0) + 1;
@@ -1652,7 +1665,10 @@ public class CompanyService : ICompanyService
             RecordedAt = DateTime.UtcNow,
         };
 
-        await _dbContext.Phase4CapTables.InsertOneAsync(snapshot);
+        if (session is null)
+            await _dbContext.Phase4CapTables.InsertOneAsync(snapshot);
+        else
+            await _dbContext.Phase4CapTables.InsertOneAsync(session, snapshot);
 
         // Mirror the latest snapshot into the Companies model for legacy
         // consumers (validator already reads Phase4CapTables; this keeps Phase 3
@@ -1669,8 +1685,13 @@ public class CompanyService : ICompanyService
             InvestmentAmount = g.InvestmentAmount,
         }).ToList();
         company.UpdatedAt = DateTime.UtcNow;
-        await _dbContext.Companies.ReplaceOneAsync(
-            Builders<Companies>.Filter.Eq(c => c.Id, companyId), company);
+
+        if (session is null)
+            await _dbContext.Companies.ReplaceOneAsync(
+                Builders<Companies>.Filter.Eq(c => c.Id, companyId), company);
+        else
+            await _dbContext.Companies.ReplaceOneAsync(
+                session, Builders<Companies>.Filter.Eq(c => c.Id, companyId), company);
 
         return MapCapTableSnapshot(snapshot);
     }

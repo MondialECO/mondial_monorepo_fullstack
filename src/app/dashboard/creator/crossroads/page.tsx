@@ -192,8 +192,13 @@ export default function CrossroadsPage() {
         {path === "build" && !selectingPath && (
           <CrossroadsPathB
             ideaId={activeIdeaId}
+            projectName={project?.name}
             initial={phase5Data?.pathB as Record<string, unknown> | undefined}
             formationContext={phase3Data?.formationGenerator as Record<string, unknown> | undefined}
+            isLeveledUp={computed?.phase6.status === "completed" || Boolean((journeyState as { companyId?: string })?.companyId)}
+            onBack={() => {
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
             onChanged={refresh}
           />
         )}

@@ -23,6 +23,7 @@ public interface ICompanyService
     Task<Companies> CreateCompanyAsync(string userId, CreateCompanyDto dto);
     Task<(Companies Company, bool AlreadyExisted)> CreateCompanyFromIdeaAsync(string userId, string ideaId);
     Task<Companies> GetCompanyAsync(string companyId);
+    Task<Companies> GetCompanyAsync(string companyId, IClientSessionHandle session);
     Task<Companies> GetCompanyByUserIdAsync(string userId);
     Task<Companies> GetCompanyByUserIdAsync(string userId, string? companyId);
 
@@ -53,6 +54,7 @@ public interface ICompanyService
         string companyId, string sourceIdeaId, string sourceDealId, bool isBuyout = false);
 
     Task SeedCapTableFromOwnershipAsync(string companyId, List<OwnershipEntryDto> ownership);
+    Task SeedCapTableFromOwnershipAsync(string companyId, List<OwnershipEntryDto> ownership, IClientSessionHandle session);
 
     // ============ PHASE 2: LEGAL INFO & DOCUMENTS ============
 
@@ -87,6 +89,7 @@ public interface ICompanyService
     Task<DilutionSimulationResponse> SimulateDilutionAsync(string companyId, SimulateDilutionRequest request);
 
     Task<CapTableSnapshotResponse> SubmitCapTableAsync(string companyId, SubmitCapTableRequest request);
+    Task<CapTableSnapshotResponse> SubmitCapTableAsync(string companyId, SubmitCapTableRequest request, IClientSessionHandle session);
     Task<CapTableSnapshotResponse?> GetLatestCapTableSnapshotAsync(string companyId);
     Task SetExitWaterfallReviewedAsync(string companyId);
     Task<List<VestingScheduleResponse>> SaveVestingSchedulesAsync(string companyId, SaveVestingScheduleRequest request);
