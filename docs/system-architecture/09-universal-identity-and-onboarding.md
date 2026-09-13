@@ -367,3 +367,29 @@ erDiagram
      - **Liveness** is disabled
      - **Face Match** is disabled
    - The platform does not purport to prove physical document ownership beyond provider-side document inspection and live capture enforcement.
+
+---
+
+## 11. Sumsub WebSDK 2.0 Hardening & Client Architecture
+
+1. **Canonical WebSDK 2.0 Frontend Pipeline**:
+   - Route: `/onboarding/identity`
+   - Document selection (CNI / Passport / Residence Permit) initiates session via `POST /api/identity/session`.
+   - Backend mints short-lived SDK token (TTL = 900s) bound explicitly to `id-document-only`.
+   - WebSDK 2.0 initializes via `https://static.sumsub.com/idensic/static/sns-websdk-builder.js` and launches Live Capture.
+   - Zero direct file inputs (`<input type="file">` absent) and zero direct image upload endpoints called.
+
+2. **UX-Only Client Events**:
+   - `onApplicantSubmitted` updates client state to `"Verification submitted. We're checking your document."` and starts safe 5-second polling of `GET /api/identity/status`.
+   - Client events never mutate or assume `IdentityDocumentVerified = true`.
+   - Authoritative verification state transitions are strictly governed by provider webhook delivery (`applicantReviewed`) $\to$ `UniversalIdentityVerifications` $\to$ `applicationUsers.Onboarding.IdentityDocumentVerified`.
+
+3. **Safe Access-Token Refresh**:
+   - WebSDK token expiration callback invokes `POST /api/identity/session` returning a fresh SDK token string (`Promise<string>`).
+   - Session resumption safely reuses the active `UniversalIdentityVerification` record without creating duplicate applicants or resetting verification state.
+
+4. **WebSDK Domain Authorization**:
+   - Production origin: `https://mondialbusiness.eu`
+   - Development origin: `http://localhost:3000`
+   - Wildcard origin access: **Disabled**.
+
