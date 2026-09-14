@@ -89,9 +89,10 @@ namespace WebApp.Controllers
             _audit.Record("IdeaClarifier.Start", owner, success: true,
                 new { sessionId = session.Id, businessIdeaId = session.BusinessIdeaId });
 
+            var creditOperationId = ObjectId.GenerateNewId().ToString();
             try
             {
-                await _creditService.DebitForJobAsync(owner, AiJobType.IdeaClarifier);
+                await _creditService.DebitForJobAsync(owner, AiJobType.IdeaClarifier, creditOperationId);
             }
             catch (InsufficientCreditsException ex)
             {
@@ -104,7 +105,11 @@ namespace WebApp.Controllers
             }
 
             // The handler reads sessionId from the job input to write back results.
-            var input = new BsonDocument(session.Input!) { ["sessionId"] = session.Id };
+            var input = new BsonDocument(session.Input!)
+            {
+                ["sessionId"] = session.Id,
+                ["creditOperationId"] = creditOperationId
+            };
             var jobId = await _jobService.EnqueueAsync(AiJobType.IdeaClarifier, owner, input);
             await _sessions.SetRequestIdAsync(session.Id, jobId);
 

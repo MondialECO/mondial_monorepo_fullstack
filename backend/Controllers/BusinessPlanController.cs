@@ -143,6 +143,7 @@ namespace WebApp.Controllers
                 {
                     ["sessionId"] = session.Id,
                     ["clarifierSessionId"] = session.ClarifierSessionId,
+                    ["creditOperationId"] = sessionId,
                 };
                 if (session.BusinessIdeaId != null)
                     input["businessIdeaId"] = session.BusinessIdeaId;
@@ -270,6 +271,7 @@ namespace WebApp.Controllers
                 {
                     ["sessionId"] = session.Id,
                     ["clarifierSessionId"] = session.ClarifierSessionId,
+                    ["creditOperationId"] = operationId,
                 };
                 if (session.BusinessIdeaId != null)
                     input["businessIdeaId"] = session.BusinessIdeaId;
@@ -372,6 +374,7 @@ namespace WebApp.Controllers
                     ["sessionId"] = session.Id,
                     ["clarifierSessionId"] = session.ClarifierSessionId,
                     ["sectionId"] = request.SectionId,
+                    ["creditOperationId"] = operationId,
                 };
                 if (session.BusinessIdeaId != null)
                     input["businessIdeaId"] = session.BusinessIdeaId;

@@ -73,9 +73,10 @@ namespace WebApp.Controllers
             if (!_handlers.IsSupported(jobType))
                 return BadRequest(ApiResponse.Error($"Job type '{jobType}' is not available.", HttpContext.TraceIdentifier));
 
+            var creditOperationId = ObjectId.GenerateNewId().ToString();
             try
             {
-                await _creditService.DebitForJobAsync(owner, jobType);
+                await _creditService.DebitForJobAsync(owner, jobType, creditOperationId);
             }
             catch (InsufficientCreditsException ex)
             {
@@ -88,7 +89,8 @@ namespace WebApp.Controllers
 
             var input = request.Input is { ValueKind: JsonValueKind.Object } je
                 ? BsonDocument.Parse(je.GetRawText())
-                : null;
+                : new BsonDocument();
+            input["creditOperationId"] = creditOperationId;
 
             var jobId = await _jobService.EnqueueAsync(jobType, owner, input);
             return Ok(ApiResponse.Ok("AI job enqueued.", new { jobId }));

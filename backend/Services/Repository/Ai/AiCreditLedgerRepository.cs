@@ -86,7 +86,6 @@ namespace WebApp.Services.Repository.Ai
 
             var update = Builders<AiCreditLedger>.Update
                 .Inc(x => x.Balance, expectedAmount)
-                .Inc(x => x.LifetimeSpent, -expectedAmount)
                 .Set("Debits.$.Refunded", true)
                 .Set("Debits.$.RefundedAt", DateTime.UtcNow)
                 .Set(x => x.UpdatedAt, DateTime.UtcNow);

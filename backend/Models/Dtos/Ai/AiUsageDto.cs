@@ -11,6 +11,14 @@ namespace WebApp.Models.Dtos.Ai
 
         public int CreditBalance { get; set; }
         public int LifetimeGranted { get; set; }
+
+        /// <summary>Gross credits ever debited (failures and refunded debits included).</summary>
         public int LifetimeSpent { get; set; }
+
+        /// <summary>Net credits effectively retained/consumed (excluding refunded debits).</summary>
+        public int NetCreditsSpent { get; set; }
+
+        /// <summary>Total credits returned to user balance via refund.</summary>
+        public int RefundedCredits { get; set; }
     }
 }

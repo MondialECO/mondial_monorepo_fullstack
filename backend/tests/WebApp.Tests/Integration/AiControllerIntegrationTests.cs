@@ -107,12 +107,27 @@ public class AiControllerIntegrationTests : IClassFixture<AppFixture>
         Skip.IfNot(_fx.Available, _fx.SkipReason);
         var owner = Guid.NewGuid().ToString();
         await new AiModelUsageRepository(Db).AddAsync(new AiModelUsage { OwnerUserId = owner, RequestId = MongoDB.Bson.ObjectId.GenerateNewId().ToString(), Model = "m", TotalTokens = 42, EstimatedCost = 0.01m });
-        await new AiCreditLedgerRepository(Db).AddAsync(new AiCreditLedger { OwnerUserId = owner, Balance = 5, LifetimeGranted = 10, LifetimeSpent = 5 });
+        await new AiCreditLedgerRepository(Db).AddAsync(new AiCreditLedger
+        {
+            OwnerUserId = owner,
+            Balance = 190,
+            LifetimeGranted = 200,
+            LifetimeSpent = 20,
+            Debits = new List<AiCreditDebit>
+            {
+                new() { OperationId = "op-1", Amount = 10, Refunded = false, Reason = "BusinessPlan" },
+                new() { OperationId = "op-2", Amount = 10, Refunded = true, Reason = "Clarifier" }
+            }
+        });
 
         var resp = await Authed(owner).GetAsync("/api/ai/usage");
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await resp.Content.ReadAsStringAsync();
-        body.Should().Contain("\"totalTokens\":42").And.Contain("\"creditBalance\":5");
+        body.Should().Contain("\"totalTokens\":42")
+            .And.Contain("\"creditBalance\":190")
+            .And.Contain("\"lifetimeSpent\":20")
+            .And.Contain("\"netCreditsSpent\":10")
+            .And.Contain("\"refundedCredits\":10");
     }
 
     [SkippableFact]

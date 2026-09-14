@@ -29,6 +29,10 @@ namespace WebApp.Services.Ai
             var entries = await _usage.GetByOwnerAsync(ownerUserId);
             var credit = await _credits.GetByOwnerAsync(ownerUserId);
 
+            var debits = credit?.Debits ?? new List<Models.DatabaseModels.Ai.AiCreditDebit>();
+            var refunded = debits.Where(d => d.Refunded).Sum(d => d.Amount);
+            var netSpent = debits.Where(d => !d.Refunded).Sum(d => d.Amount);
+
             return new AiUsageDto
             {
                 TotalCalls = entries.Count,
@@ -39,6 +43,8 @@ namespace WebApp.Services.Ai
                 CreditBalance = credit?.Balance ?? 0,
                 LifetimeGranted = credit?.LifetimeGranted ?? 0,
                 LifetimeSpent = credit?.LifetimeSpent ?? 0,
+                NetCreditsSpent = netSpent,
+                RefundedCredits = refunded,
             };
         }
 

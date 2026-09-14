@@ -259,9 +259,10 @@ namespace WebApp.Controllers
         /// </summary>
         private async Task<string?> EnqueueGenerationAsync(ForecastSession session, string owner)
         {
+            var creditOperationId = ObjectId.GenerateNewId().ToString();
             try
             {
-                await _creditService.DebitForJobAsync(owner, AiJobType.Forecast);
+                await _creditService.DebitForJobAsync(owner, AiJobType.Forecast, creditOperationId);
             }
             catch (InsufficientCreditsException)
             {
@@ -276,7 +277,11 @@ namespace WebApp.Controllers
                 return null;
             }
 
-            var input = new BsonDocument { ["sessionId"] = session.Id };
+            var input = new BsonDocument
+            {
+                ["sessionId"] = session.Id,
+                ["creditOperationId"] = creditOperationId
+            };
             if (!string.IsNullOrEmpty(session.BusinessPlanSessionId))
                 input["businessPlanSessionId"] = session.BusinessPlanSessionId;
             if (session.BusinessIdeaId != null)

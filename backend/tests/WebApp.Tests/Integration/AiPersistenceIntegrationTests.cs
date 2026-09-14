@@ -203,7 +203,7 @@ public class AiPersistenceIntegrationTests : IClassFixture<AppFixture>
 
         var stateAfterRefund1 = await credits.GetByOwnerAsync(owner);
         stateAfterRefund1!.Balance.Should().Be(10);
-        stateAfterRefund1.LifetimeSpent.Should().Be(0);
+        stateAfterRefund1.LifetimeSpent.Should().Be(5);
 
         // B. Sequential duplicate refund
         var second = await credits.TryRefundAsync(owner, opId, 5, "generation_failed");
@@ -211,7 +211,7 @@ public class AiPersistenceIntegrationTests : IClassFixture<AppFixture>
 
         var stateAfterRefund2 = await credits.GetByOwnerAsync(owner);
         stateAfterRefund2!.Balance.Should().Be(10);
-        stateAfterRefund2.LifetimeSpent.Should().Be(0);
+        stateAfterRefund2.LifetimeSpent.Should().Be(5);
     }
 
     [SkippableFact]
@@ -234,7 +234,7 @@ public class AiPersistenceIntegrationTests : IClassFixture<AppFixture>
 
         var finalState = await credits.GetByOwnerAsync(owner);
         finalState!.Balance.Should().Be(10);
-        finalState.LifetimeSpent.Should().Be(0);
+        finalState.LifetimeSpent.Should().Be(5);
     }
 
     [SkippableFact]
@@ -260,7 +260,7 @@ public class AiPersistenceIntegrationTests : IClassFixture<AppFixture>
 
         var finalState = await credits.GetByOwnerAsync(owner);
         finalState!.Balance.Should().Be(20);
-        finalState.LifetimeSpent.Should().Be(0);
+        finalState.LifetimeSpent.Should().Be(10);
     }
 
     [SkippableFact]
@@ -360,7 +360,7 @@ public class AiPersistenceIntegrationTests : IClassFixture<AppFixture>
 
         var stateAfterRefund1 = await credits.GetByOwnerAsync(owner);
         stateAfterRefund1!.Balance.Should().Be(10);
-        stateAfterRefund1.LifetimeSpent.Should().Be(0);
+        stateAfterRefund1.LifetimeSpent.Should().Be(5);
 
         // Second refund attempt
         var refund2 = await credits.TryRefundAsync(owner, opId, 5, "failed_job");
@@ -368,7 +368,7 @@ public class AiPersistenceIntegrationTests : IClassFixture<AppFixture>
 
         var stateAfterRefund2 = await credits.GetByOwnerAsync(owner);
         stateAfterRefund2!.Balance.Should().Be(10);
-        stateAfterRefund2.LifetimeSpent.Should().Be(0);
+        stateAfterRefund2.LifetimeSpent.Should().Be(5);
     }
 
     [SkippableFact]

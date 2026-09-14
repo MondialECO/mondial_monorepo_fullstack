@@ -63,10 +63,11 @@ namespace WebApp.Controllers
                 return BadRequest(ApiResponse.Error(errors, HttpContext.TraceIdentifier));
             }
 
+            var creditOperationId = ObjectId.GenerateNewId().ToString();
             try
             {
                 // CRITICAL: Credit check BEFORE session creation
-                await _creditService.DebitForJobAsync(owner, AiJobType.IdeaGenerator);
+                await _creditService.DebitForJobAsync(owner, AiJobType.IdeaGenerator, creditOperationId);
             }
             catch (InsufficientCreditsException ex)
             {
@@ -101,7 +102,8 @@ namespace WebApp.Controllers
                 { "sectors", new BsonArray(request.Sectors) },
                 { "observedProblem", request.ObservedProblem },
                 { "strengths", new BsonArray(request.Strengths) },
-                { "sessionId", created.Id.ToString() }
+                { "sessionId", created.Id.ToString() },
+                { "creditOperationId", creditOperationId }
             };
 
             var jobId = await _jobService.EnqueueAsync(AiJobType.IdeaGenerator, owner, input);

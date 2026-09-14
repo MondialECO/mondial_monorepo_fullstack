@@ -1,5 +1,6 @@
 using MongoDB.Bson;
 using WebApp.Models.DatabaseModels.Ai;
+using WebApp.Services.Ai;
 using WebApp.Services.Ai.Providers;
 using WebApp.Services.Ai.Prompts;
 using WebApp.Services.Repository.Ai;
@@ -27,6 +28,7 @@ namespace WebApp.Services.Ai.Jobs
         private readonly IClarifierSessionStore _clarifierSessions;
         private readonly IBusinessPlanSessionStore _businessPlanSessions;
         private readonly IForecastSessionStore _forecastSessions;
+        private readonly IAiCreditService _creditService;
         private readonly ILogger<AiJobRunner> _logger;
 
         public AiJobRunner(
@@ -43,6 +45,7 @@ namespace WebApp.Services.Ai.Jobs
             IClarifierSessionStore clarifierSessions,
             IBusinessPlanSessionStore businessPlanSessions,
             IForecastSessionStore forecastSessions,
+            IAiCreditService creditService,
             ILogger<AiJobRunner> logger)
         {
             _requests = requests;
@@ -58,6 +61,7 @@ namespace WebApp.Services.Ai.Jobs
             _clarifierSessions = clarifierSessions;
             _businessPlanSessions = businessPlanSessions;
             _forecastSessions = forecastSessions;
+            _creditService = creditService;
             _logger = logger;
         }
 
@@ -77,6 +81,9 @@ namespace WebApp.Services.Ai.Jobs
                 _logger.LogInformation("AI job {RequestId} already Completed; no-op.", requestId);
                 return;
             }
+
+            AiHandlerResult? interpreted = null;
+            Exception? caughtException = null;
 
             try
             {
@@ -103,7 +110,7 @@ namespace WebApp.Services.Ai.Jobs
                     ResponseFormat = prep.ResponseFormat,
                 });
 
-                var interpreted = await handler.InterpretAsync(request, completion);
+                interpreted = await handler.InterpretAsync(request, completion);
 
                 var responseEntity = new AiResponse
                 {
@@ -145,6 +152,7 @@ namespace WebApp.Services.Ai.Jobs
             }
             catch (Exception ex)
             {
+                caughtException = ex;
                 await _requests.SetFailedAsync(requestId, ex.Message);
 
                 // Sync the user-facing session (a SEPARATE document from the AIRequest)
@@ -159,6 +167,106 @@ namespace WebApp.Services.Ai.Jobs
                 // Let Hangfire record the failure. Transient errors retry up to the limit;
                 // permanent ones (StopRetryOnPermanentAiFailure) go straight to Failed.
                 throw;
+            }
+            finally
+            {
+                // Single determination: A terminal state with no usable payload refunds, however it was reached.
+                // If an exception was thrown OR the handler produced null output, the user received
+                // nothing usable and is refunded. Valid parsed payload (Category 6) does not refund.
+                if (caughtException != null || interpreted?.OutputPayload == null)
+                {
+                    var reason = caughtException?.Message ?? "Unusable or malformed model output";
+                    await TryAutomaticRefundAsync(request, reason);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Single determination refund handler: refunds credits when an AI job reaches a terminal
+        /// state without delivering a usable payload (exception or parser/schema rejection).
+        /// Resolves the operation ID stamped into the job payload; falls back to sessionId ONLY
+        /// where sessionId was demonstrably the debit key (BusinessPlan start path with CurrentVersion == 0).
+        /// Legacy jobs missing stamped identifiers are logged as reconciliation items.
+        /// </summary>
+        private async Task TryAutomaticRefundAsync(AiRequest request, string reason)
+        {
+            if (!Enum.TryParse<AiJobType>(request.JobType, out var jobType))
+            {
+                _logger.LogWarning("AI job {RequestId} has unknown JobType '{JobType}'; skipping refund.", request.Id, request.JobType);
+                return;
+            }
+
+            var creditOpId = request.InputPayload != null
+                && request.InputPayload.TryGetValue("creditOperationId", out var opVal)
+                && opVal.IsString
+                && !string.IsNullOrWhiteSpace(opVal.AsString)
+                    ? opVal.AsString
+                    : null;
+
+            if (string.IsNullOrEmpty(creditOpId))
+            {
+                var sessionId = request.InputPayload != null
+                    && request.InputPayload.TryGetValue("sessionId", out var sidVal)
+                    && sidVal.IsString
+                        ? sidVal.AsString
+                        : null;
+
+                // Fallback ONLY where sessionId was demonstrably the debit key:
+                // BusinessPlan.Start path (session has CurrentVersion == 0 and input has no sectionId).
+                if (jobType == AiJobType.BusinessPlan
+                    && !string.IsNullOrEmpty(sessionId)
+                    && (request.InputPayload == null || !request.InputPayload.Contains("sectionId")))
+                {
+                    try
+                    {
+                        var session = await _businessPlanSessions.GetOwnedAsync(sessionId, request.OwnerUserId);
+                        if (session != null && session.CurrentVersion == 0)
+                        {
+                            creditOpId = sessionId;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Could not verify session version for fallback refund of job {RequestId}.", request.Id);
+                    }
+                }
+
+                if (string.IsNullOrEmpty(creditOpId))
+                {
+                    _logger.LogWarning(
+                        "RECONCILIATION NEEDED: AI job {RequestId} ({JobType}) for user {UserId} ended without usable payload, but lacks a creditOperationId. Jobs debited prior to this change cannot be refunded automatically.",
+                        request.Id, request.JobType, request.OwnerUserId);
+                    return;
+                }
+            }
+
+            try
+            {
+                var result = await _creditService.RefundForJobAsync(request.OwnerUserId, jobType, creditOpId, reason);
+                switch (result)
+                {
+                    case CreditRefundResult.Applied:
+                        _logger.LogInformation("Refunded credits for AI job {RequestId} ({JobType}, op {OperationId}) to user {UserId}. Reason: {Reason}",
+                            request.Id, jobType, creditOpId, request.OwnerUserId, reason);
+                        break;
+                    case CreditRefundResult.AlreadyRefunded:
+                        _logger.LogInformation("AI job {RequestId} ({JobType}, op {OperationId}) was already refunded.",
+                            request.Id, jobType, creditOpId);
+                        break;
+                    case CreditRefundResult.DebitNotFound:
+                        _logger.LogWarning("Debit not found for refund of AI job {RequestId} ({JobType}, op {OperationId}).",
+                            request.Id, jobType, creditOpId);
+                        break;
+                    case CreditRefundResult.InvalidMismatch:
+                        _logger.LogWarning("Debit amount mismatch on refund of AI job {RequestId} ({JobType}, op {OperationId}).",
+                            request.Id, jobType, creditOpId);
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to apply automatic refund for AI job {RequestId} ({JobType}, op {OperationId}) to user {UserId}.",
+                    request.Id, jobType, creditOpId, request.OwnerUserId);
             }
         }
 
