@@ -50,6 +50,7 @@ public class AiJobEngineIntegrationTests : IClassFixture<AppFixture>
         Services.GetRequiredService<IClarifierSessionStore>(),
         Services.GetRequiredService<IBusinessPlanSessionStore>(),
         Services.GetRequiredService<IForecastSessionStore>(),
+        Services.GetRequiredService<IAiCreditService>(),
         NullLogger<AiJobRunner>.Instance);
 
     [SkippableFact]
@@ -175,6 +176,112 @@ public class AiJobEngineIntegrationTests : IClassFixture<AppFixture>
 
         var notifs = await Db.GetCollection<Notification>("Notifications").Find(n => n.UserId == owner).ToListAsync();
         notifs.Should().Contain(n => n.Title == "AI job failed");
+    }
+
+    [SkippableFact]
+    public async Task Failed_job_with_stamped_creditOperationId_automatically_refunds_credits()
+    {
+        Skip.IfNot(_fx.Available, _fx.SkipReason);
+        var owner = Guid.NewGuid().ToString();
+        var opId = Guid.NewGuid().ToString();
+        var credits = new AiCreditLedgerRepository(Db);
+        var requests = new AiRequestRepository(Db);
+
+        await credits.AddAsync(new AiCreditLedger { OwnerUserId = owner, Balance = 20, LifetimeGranted = 20, LifetimeSpent = 0 });
+        await credits.TryDebitAsync(owner, 10, new AiCreditDebit { OperationId = opId, Amount = 10, Reason = "BusinessPlan" });
+
+        var stateAfterDebit = await credits.GetByOwnerAsync(owner);
+        stateAfterDebit!.Balance.Should().Be(10);
+        stateAfterDebit.LifetimeSpent.Should().Be(10);
+
+        var req = new AiRequest
+        {
+            OwnerUserId = owner,
+            JobType = "BusinessPlan",
+            Status = "Pending",
+            InputPayload = new BsonDocument
+            {
+                ["sessionId"] = "session-" + Guid.NewGuid(),
+                ["creditOperationId"] = opId
+            }
+        };
+        await requests.AddAsync(req);
+
+        var runner = BuildRunner(new RecordingProvider(new AiProviderException("Provider error 500", 500)));
+        var act = () => runner.RunAsync(req.Id);
+        await act.Should().ThrowAsync<AiProviderException>();
+
+        var stateAfterRefund = await credits.GetByOwnerAsync(owner);
+        stateAfterRefund!.Balance.Should().Be(20, "Credits must be refunded upon terminal failure");
+        stateAfterRefund.LifetimeSpent.Should().Be(10, "LifetimeSpent must preserve gross credits debited under Meaning B");
+        stateAfterRefund.Debits.Should().ContainSingle(d => d.OperationId == opId && d.Refunded);
+    }
+
+    [SkippableFact]
+    public async Task Successful_job_does_not_refund_credits()
+    {
+        Skip.IfNot(_fx.Available, _fx.SkipReason);
+        var owner = Guid.NewGuid().ToString();
+        var opId = Guid.NewGuid().ToString();
+        var credits = new AiCreditLedgerRepository(Db);
+        var requests = new AiRequestRepository(Db);
+
+        await credits.AddAsync(new AiCreditLedger { OwnerUserId = owner, Balance = 20, LifetimeGranted = 20, LifetimeSpent = 0 });
+        await credits.TryDebitAsync(owner, 10, new AiCreditDebit { OperationId = opId, Amount = 10, Reason = "Probe" });
+
+        var req = new AiRequest
+        {
+            OwnerUserId = owner,
+            JobType = "Probe",
+            Status = "Pending",
+            InputPayload = new BsonDocument
+            {
+                ["message"] = "ping",
+                ["creditOperationId"] = opId
+            }
+        };
+        await requests.AddAsync(req);
+
+        var runner = BuildRunner(new RecordingProvider(Canned()));
+        await runner.RunAsync(req.Id);
+
+        var state = await credits.GetByOwnerAsync(owner);
+        state!.Balance.Should().Be(10, "Credits must NOT be refunded on successful completion");
+        state.Debits.Should().ContainSingle(d => d.OperationId == opId && !d.Refunded);
+    }
+
+    [SkippableFact]
+    public async Task Missing_creditOperationId_on_non_start_job_skips_refund_and_does_not_guess()
+    {
+        Skip.IfNot(_fx.Available, _fx.SkipReason);
+        var owner = Guid.NewGuid().ToString();
+        var opId = Guid.NewGuid().ToString();
+        var credits = new AiCreditLedgerRepository(Db);
+        var requests = new AiRequestRepository(Db);
+
+        await credits.AddAsync(new AiCreditLedger { OwnerUserId = owner, Balance = 20, LifetimeGranted = 20, LifetimeSpent = 0 });
+        await credits.TryDebitAsync(owner, 5, new AiCreditDebit { OperationId = opId, Amount = 5, Reason = "IdeaClarifier" });
+
+        var req = new AiRequest
+        {
+            OwnerUserId = owner,
+            JobType = "IdeaClarifier",
+            Status = "Pending",
+            InputPayload = new BsonDocument
+            {
+                ["sessionId"] = "session-" + Guid.NewGuid()
+                // Notice: creditOperationId is missing
+            }
+        };
+        await requests.AddAsync(req);
+
+        var runner = BuildRunner(new RecordingProvider(new AiProviderException("Crash", 500)));
+        var act = () => runner.RunAsync(req.Id);
+        await act.Should().ThrowAsync<AiProviderException>();
+
+        var state = await credits.GetByOwnerAsync(owner);
+        state!.Balance.Should().Be(15, "Cannot refund legacy job without stamped identifier; logged as reconciliation");
+        state.Debits.Should().ContainSingle(d => d.OperationId == opId && !d.Refunded);
     }
 
     private sealed class RecordingProvider : IAiProvider

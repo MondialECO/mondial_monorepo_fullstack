@@ -8,7 +8,7 @@ namespace WebApp.Services.Repository.Ai
     {
         public AiModelUsageRepository(IMongoDatabase database) : base(database, "ModelUsage")
         {
-            CreateIndexesAsync().GetAwaiter().GetResult();
+            try { CreateIndexesAsync().GetAwaiter().GetResult(); } catch { /* non-fatal if index exists or connection is deferred */ }
         }
 
         private async Task CreateIndexesAsync()
@@ -32,7 +32,7 @@ namespace WebApp.Services.Repository.Ai
         }
 
         /// <summary>All usage entries for a user (for usage aggregation).</summary>
-        public async Task<List<AiModelUsage>> GetByOwnerAsync(string ownerUserId)
+        public virtual async Task<List<AiModelUsage>> GetByOwnerAsync(string ownerUserId)
             => await _collection.Find(x => x.OwnerUserId == ownerUserId).ToListAsync();
     }
 }

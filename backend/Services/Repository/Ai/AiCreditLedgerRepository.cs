@@ -21,7 +21,7 @@ namespace WebApp.Services.Repository.Ai
                     new CreateIndexOptions { Name = "OwnerUserId_Unique", Unique = true }));
         }
 
-        public async Task<AiCreditLedger?> GetByOwnerAsync(string ownerUserId)
+        public virtual async Task<AiCreditLedger?> GetByOwnerAsync(string ownerUserId)
             => await _collection.Find(x => x.OwnerUserId == ownerUserId).FirstOrDefaultAsync();
 
         /// <summary>
@@ -47,13 +47,37 @@ namespace WebApp.Services.Repository.Ai
                 )
             );
 
-            var update = Builders<AiCreditLedger>.Update
+            var now = DateTime.UtcNow;
+
+            // Attempt 1: If an active measurement period is configured on the ledger,
+            // atomically increment PeriodCreditsSpent alongside LifetimeSpent.
+            var activePeriodFilter = Builders<AiCreditLedger>.Filter.And(
+                filter,
+                Builders<AiCreditLedger>.Filter.Ne(x => x.PeriodStart, null),
+                Builders<AiCreditLedger>.Filter.Ne(x => x.PeriodEnd, null),
+                Builders<AiCreditLedger>.Filter.Lte(x => x.PeriodStart, now),
+                Builders<AiCreditLedger>.Filter.Gte(x => x.PeriodEnd, now)
+            );
+
+            var activePeriodUpdate = Builders<AiCreditLedger>.Update
+                .Inc(x => x.Balance, -amount)
+                .Inc(x => x.LifetimeSpent, amount)
+                .Inc(x => x.PeriodCreditsSpent, amount)
+                .Push(x => x.Debits, debit)
+                .Set(x => x.UpdatedAt, now);
+
+            var result = await _collection.UpdateOneAsync(activePeriodFilter, activePeriodUpdate);
+            if (result.ModifiedCount > 0)
+                return CreditDebitResult.Applied;
+
+            // Attempt 2: Period is unset or outside the active window. Lifetime balance continues to govern.
+            var standardUpdate = Builders<AiCreditLedger>.Update
                 .Inc(x => x.Balance, -amount)
                 .Inc(x => x.LifetimeSpent, amount)
                 .Push(x => x.Debits, debit)
-                .Set(x => x.UpdatedAt, DateTime.UtcNow);
+                .Set(x => x.UpdatedAt, now);
 
-            var result = await _collection.UpdateOneAsync(filter, update);
+            result = await _collection.UpdateOneAsync(filter, standardUpdate);
             if (result.ModifiedCount > 0)
                 return CreditDebitResult.Applied;
 
@@ -86,7 +110,6 @@ namespace WebApp.Services.Repository.Ai
 
             var update = Builders<AiCreditLedger>.Update
                 .Inc(x => x.Balance, expectedAmount)
-                .Inc(x => x.LifetimeSpent, -expectedAmount)
                 .Set("Debits.$.Refunded", true)
                 .Set("Debits.$.RefundedAt", DateTime.UtcNow)
                 .Set(x => x.UpdatedAt, DateTime.UtcNow);
@@ -119,7 +142,7 @@ namespace WebApp.Services.Repository.Ai
         /// repeat runs are safe; the unique OwnerUserId index guards concurrency.
         /// Returns true only when a new ledger was created.
         /// </summary>
-        public async Task<bool> TryGrantInitialAsync(string ownerUserId, int amount)
+        public virtual async Task<bool> TryGrantInitialAsync(string ownerUserId, int amount)
         {
             var update = Builders<AiCreditLedger>.Update
                 .SetOnInsert(x => x.OwnerUserId, ownerUserId)
@@ -199,5 +222,43 @@ namespace WebApp.Services.Repository.Ai
 
             return report;
         }
+
+        /// <summary>
+        /// Sets a measuring period on the user's ledger. Initializes PeriodCreditsSpent to 0.
+        /// Does NOT enforce an allowance limit; lifetime balance continues to govern.
+        /// </summary>
+        public async Task<bool> SetPeriodAsync(string ownerUserId, DateTime periodStart, DateTime periodEnd, int? carryOverCeiling = null)
+        {
+            var update = Builders<AiCreditLedger>.Update
+                .Set(x => x.PeriodStart, periodStart)
+                .Set(x => x.PeriodEnd, periodEnd)
+                .Set(x => x.PeriodCreditsSpent, 0)
+                .Set(x => x.UpdatedAt, DateTime.UtcNow);
+
+            if (carryOverCeiling.HasValue)
+            {
+                update = update.Set(x => x.CarryOverCeiling, carryOverCeiling.Value);
+            }
+
+            var res = await _collection.UpdateOneAsync(x => x.OwnerUserId == ownerUserId, update);
+            return res.MatchedCount > 0;
+        }
+
+        /// <summary>
+        /// Clears the measuring period from the user's ledger, returning it to dormant state.
+        /// </summary>
+        public async Task<bool> ClearPeriodAsync(string ownerUserId)
+        {
+            var update = Builders<AiCreditLedger>.Update
+                .Unset(x => x.PeriodStart)
+                .Unset(x => x.PeriodEnd)
+                .Unset(x => x.PeriodCreditsSpent)
+                .Unset(x => x.CarryOverCeiling)
+                .Set(x => x.UpdatedAt, DateTime.UtcNow);
+
+            var res = await _collection.UpdateOneAsync(x => x.OwnerUserId == ownerUserId, update);
+            return res.MatchedCount > 0;
+        }
     }
 }
+

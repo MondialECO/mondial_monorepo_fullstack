@@ -73,9 +73,10 @@ namespace WebApp.Controllers
             if (!_handlers.IsSupported(jobType))
                 return BadRequest(ApiResponse.Error($"Job type '{jobType}' is not available.", HttpContext.TraceIdentifier));
 
+            var creditOperationId = ObjectId.GenerateNewId().ToString();
             try
             {
-                await _creditService.DebitForJobAsync(owner, jobType);
+                await _creditService.DebitForJobAsync(owner, jobType, creditOperationId);
             }
             catch (InsufficientCreditsException ex)
             {
@@ -88,7 +89,8 @@ namespace WebApp.Controllers
 
             var input = request.Input is { ValueKind: JsonValueKind.Object } je
                 ? BsonDocument.Parse(je.GetRawText())
-                : null;
+                : new BsonDocument();
+            input["creditOperationId"] = creditOperationId;
 
             var jobId = await _jobService.EnqueueAsync(jobType, owner, input);
             return Ok(ApiResponse.Ok("AI job enqueued.", new { jobId }));
@@ -136,8 +138,16 @@ namespace WebApp.Controllers
         }
 
         [HttpGet("usage")]
-        public async Task<IActionResult> GetUsage()
-            => Ok(ApiResponse.Ok("OK", await _usageService.GetUsageAsync(CurrentUserId)));
+        public async Task<IActionResult> GetUsage([FromQuery] string? period = null)
+            => Ok(ApiResponse.Ok("OK", await _usageService.GetUsageAsync(CurrentUserId, period)));
+
+        /// <summary>
+        /// Single authoritative endpoint exposing the user's available AI credit balance,
+        /// lifetime granted/spent totals, and the per-capability cost table from configuration.
+        /// </summary>
+        [HttpGet("credits")]
+        public async Task<IActionResult> GetCredits()
+            => Ok(ApiResponse.Ok("OK", await _creditService.GetBalanceAsync(CurrentUserId)));
 
         [HttpGet("insights")]
         public async Task<IActionResult> GetInsights(int skip = 0, int limit = 30)

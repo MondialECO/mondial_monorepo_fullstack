@@ -57,6 +57,15 @@ namespace WebApp.Models.DatabaseModels.Ai
         public string Status { get; set; } = "Pending";
 
         /// <summary>
+        /// Present only while generation is in flight (Pending/Processing).
+        /// Indexed with a unique sparse index to guarantee atomic double-click deduplication.
+        /// Cleared upon terminal transition (Completed, Failed, NeedsReview).
+        /// </summary>
+        [BsonElement("InFlightKey")]
+        [BsonIgnoreIfNull]
+        public string? InFlightKey { get; set; }
+
+        /// <summary>
         /// Append-only generation/edit history. Each AI run appends one version;
         /// previous versions are never overwritten.
         /// </summary>

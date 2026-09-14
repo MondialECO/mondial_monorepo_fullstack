@@ -110,20 +110,8 @@ namespace WebApp.Controllers
 
             // Pre-allocate the session ID so it serves as the stable idempotency key for debit and compensation
             var sessionId = ObjectId.GenerateNewId().ToString();
+            var inFlightKey = $"{owner}:business_plan:{request.ClarifierSessionId}";
 
-            // Step 1: Secure credit debit BEFORE creating or persisting the session.
-            try
-            {
-                await _creditService.DebitForJobAsync(owner, AiJobType.BusinessPlan, sessionId);
-            }
-            catch (InsufficientCreditsException)
-            {
-                _audit.Record("BusinessPlan.Start", owner, success: false,
-                    new { clarifierSessionId = request.ClarifierSessionId, businessIdeaId, error = "insufficient_credits" });
-                return StatusCode(402, ApiResponse.Error("Insufficient credits.", HttpContext.TraceIdentifier));
-            }
-
-            // Step 2: Create session in-memory and persist
             var session = new BusinessPlanSession
             {
                 Id = sessionId,
@@ -131,18 +119,39 @@ namespace WebApp.Controllers
                 ClarifierSessionId = request.ClarifierSessionId,
                 BusinessIdeaId = businessIdeaId,
                 Status = "Pending",
+                InFlightKey = inFlightKey,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
             };
 
+            var (created, activeSession) = await _sessions.TryCreateInFlightAsync(session);
+            if (!created)
+            {
+                _logger.LogInformation("In-flight BusinessPlanSession {SessionId} joined for clarifier {ClarifierSessionId} by user {UserId}.",
+                    activeSession.Id, request.ClarifierSessionId, owner);
+                return Ok(ApiResponse.Ok("Business plan generation started.", new { sessionId = activeSession.Id, jobId = activeSession.RequestId }));
+            }
+
+            // Won the in-flight reservation: debit credits before enqueuing work
             try
             {
-                await _sessions.AddAsync(session);
+                await _creditService.DebitForJobAsync(owner, AiJobType.BusinessPlan, sessionId);
+            }
+            catch (InsufficientCreditsException)
+            {
+                await _sessions.SetFailedAsync(session.Id, "Insufficient credits.");
+                _audit.Record("BusinessPlan.Start", owner, success: false,
+                    new { clarifierSessionId = request.ClarifierSessionId, businessIdeaId, error = "insufficient_credits" });
+                return StatusCode(402, ApiResponse.Error("Insufficient credits.", HttpContext.TraceIdentifier));
+            }
 
+            try
+            {
                 var input = new BsonDocument
                 {
                     ["sessionId"] = session.Id,
                     ["clarifierSessionId"] = session.ClarifierSessionId,
+                    ["creditOperationId"] = sessionId,
                 };
                 if (session.BusinessIdeaId != null)
                     input["businessIdeaId"] = session.BusinessIdeaId;
@@ -157,7 +166,7 @@ namespace WebApp.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to complete session creation or job enqueue after credit debit for user {OwnerUserId}", owner);
+                _logger.LogError(ex, "Failed to enqueue business plan job after credit debit for user {OwnerUserId}", owner);
                 try
                 {
                     await _creditService.RefundForJobAsync(owner, AiJobType.BusinessPlan, sessionId, "Start generation failed before acceptance");
@@ -250,15 +259,25 @@ namespace WebApp.Controllers
             if (clarifier is null || !string.Equals(clarifier.Status, "Completed", StringComparison.Ordinal) || clarifier.Output is null)
                 return Conflict(ApiResponse.Error("The source clarifier session is no longer available or not completed.", HttpContext.TraceIdentifier));
 
+            // Atomically acquire in-flight lock BEFORE debiting
+            var (acquired, activeSession) = await _sessions.TryAcquireRegenerateLockAsync(sessionId, owner);
+            if (!acquired)
+            {
+                _logger.LogInformation("In-flight BusinessPlan regenerate joined for session {SessionId} by user {UserId}.",
+                    sessionId, owner);
+                return Ok(ApiResponse.Ok("Business plan regeneration started.", new { sessionId = activeSession!.Id, jobId = activeSession.RequestId }));
+            }
+
             var operationId = ObjectId.GenerateNewId().ToString();
 
-            // Secure credit debit first
+            // Secure credit debit after acquiring lock
             try
             {
                 await _creditService.DebitForJobAsync(owner, AiJobType.BusinessPlan, operationId);
             }
             catch (InsufficientCreditsException)
             {
+                await _sessions.SetFailedAsync(session.Id, "Insufficient credits.");
                 _audit.Record("BusinessPlan.Regenerate", owner, success: false,
                     new { sessionId = session.Id, currentVersion = session.CurrentVersion, error = "insufficient_credits" });
                 return StatusCode(402, ApiResponse.Error("Insufficient credits.", HttpContext.TraceIdentifier));
@@ -270,6 +289,7 @@ namespace WebApp.Controllers
                 {
                     ["sessionId"] = session.Id,
                     ["clarifierSessionId"] = session.ClarifierSessionId,
+                    ["creditOperationId"] = operationId,
                 };
                 if (session.BusinessIdeaId != null)
                     input["businessIdeaId"] = session.BusinessIdeaId;
@@ -347,19 +367,35 @@ namespace WebApp.Controllers
             if (session.CurrentVersion <= 0)
                 return Conflict(ApiResponse.Error("There is no generated plan to rewrite a section of yet.", HttpContext.TraceIdentifier));
 
+            // Re-validate the source clarifier
             var clarifier = await _clarifiers.GetOwnedAsync(session.ClarifierSessionId, owner);
             if (clarifier is null || !string.Equals(clarifier.Status, "Completed", StringComparison.Ordinal) || clarifier.Output is null)
                 return Conflict(ApiResponse.Error("The source clarifier session is no longer available or not completed.", HttpContext.TraceIdentifier));
 
+            // Atomically acquire in-flight section rewrite lock BEFORE debiting
+            var (acquired, activeSession) = await _sessions.TryAcquireSectionRewriteLockAsync(session.Id, owner, request.SectionId);
+            if (!acquired)
+            {
+                if (activeSession != null && string.Equals(activeSession.ActiveRewriteSection, request.SectionId, StringComparison.OrdinalIgnoreCase))
+                {
+                    _logger.LogInformation("In-flight section rewrite {SectionId} joined for session {SessionId} by user {UserId}.",
+                        request.SectionId, session.Id, owner);
+                    return Ok(ApiResponse.Ok("Section rewrite started.", new { sessionId = activeSession.Id, jobId = activeSession.RequestId, sectionId = request.SectionId }));
+                }
+
+                return Conflict(ApiResponse.Error("Another section rewrite is currently in progress for this plan.", HttpContext.TraceIdentifier));
+            }
+
             var operationId = ObjectId.GenerateNewId().ToString();
 
-            // Secure credit debit first
+            // Secure credit debit after acquiring lock
             try
             {
                 await _creditService.DebitForJobAsync(owner, AiJobType.BusinessPlan, operationId);
             }
             catch (InsufficientCreditsException)
             {
+                await _sessions.SetFailedAsync(session.Id, "Insufficient credits.");
                 _audit.Record("BusinessPlan.RewriteSection", owner, success: false,
                     new { sessionId = session.Id, sectionId = request.SectionId, error = "insufficient_credits" });
                 return StatusCode(402, ApiResponse.Error("Insufficient credits.", HttpContext.TraceIdentifier));
@@ -372,6 +408,7 @@ namespace WebApp.Controllers
                     ["sessionId"] = session.Id,
                     ["clarifierSessionId"] = session.ClarifierSessionId,
                     ["sectionId"] = request.SectionId,
+                    ["creditOperationId"] = operationId,
                 };
                 if (session.BusinessIdeaId != null)
                     input["businessIdeaId"] = session.BusinessIdeaId;

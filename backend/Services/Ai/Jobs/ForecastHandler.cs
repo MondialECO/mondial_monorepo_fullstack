@@ -210,8 +210,8 @@ namespace WebApp.Services.Ai.Jobs
                 prevEb += ncf;
 
                 revMonthly.Add(new BsonDocument { ["month"] = m, ["amount"] = rev, ["notes"] = note });
-                costMonthly?.Add(new BsonDocument { ["month"] = m, ["fixedCosts"] = fixedCost, ["variableCosts"] = vc, ["notes"] = note });
-                cashMonthly?.Add(new BsonDocument { ["month"] = m, ["netCashFlow"] = ncf, ["endingBalance"] = prevEb, ["notes"] = note });
+                costMonthly?.Add(new BsonDocument { ["month"] = m, ["fixedCosts"] = fixedCost, ["variableCosts"] = vc });
+                cashMonthly?.Add(new BsonDocument { ["month"] = m, ["netCashFlow"] = ncf, ["endingBalance"] = prevEb });
             }
 
             RecomputeBreakEven(contract, cashMonthly);

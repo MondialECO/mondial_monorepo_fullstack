@@ -15,6 +15,7 @@ import { AccountMenu, type AccountMenuItem } from "@/components/layout/AccountMe
 import { UserRole, getRoleDashboardRoute } from "@/lib/roles";
 
 import { CompanySwitcher } from "@/components/entrepreneur/CompanySwitcher";
+import { AiCreditBadge } from "@/components/layout/AiCreditBadge";
 
 /**
  * Account destinations per role, verified against the routes that actually exist under
@@ -61,6 +62,7 @@ export default function Topbar() {
   const roleItems = ROLE_MENU_ITEMS[role] || [];
   const initialsFallback = roleLabel.charAt(0) || "U";
   const isEntrepreneurContext = role === UserRole.ENTREPRENEUR || pathname.startsWith("/dashboard/entrepreneur");
+  const showCredits = role === UserRole.CREATOR || role === UserRole.ENTREPRENEUR;
 
   if (isPhase2) {
     // Reduced Phase 2 chrome: logo tile, breadcrumb, switcher, avatar
@@ -112,8 +114,9 @@ export default function Topbar() {
             </nav>
           </div>
 
-          {/* RIGHT: Switcher + Avatar */}
+          {/* RIGHT: Switcher + Credits + Avatar */}
           <div className="flex items-center gap-3">
+            {showCredits && <AiCreditBadge />}
             {isEntrepreneurContext && <CompanySwitcher />}
             <div className="h-9 w-9 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold" style={{ backgroundColor: "var(--muted)", color: "var(--foreground)" }}>
               {user?.name?.charAt(0).toUpperCase() || "U"}
@@ -182,6 +185,7 @@ export default function Topbar() {
         {/* RIGHT */}
         <div className="flex items-center gap-2.5 sm:gap-3 lg:gap-5">
           {isEntrepreneurContext && <CompanySwitcher />}
+          {showCredits && <AiCreditBadge />}
           <MessageIcon />
           <NotificationBell />
           {(role === UserRole.SUPERADMIN || role === UserRole.ADMIN) && (

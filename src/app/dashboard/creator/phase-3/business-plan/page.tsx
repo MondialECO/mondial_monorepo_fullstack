@@ -11,7 +11,7 @@ import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip
 import { Phase3SetupShell } from '@/components/creator/Phase3SetupShell';
 import PlanForecastPrintView from '@/components/creator/PlanForecastPrintView';
 import { useCreatorProgress } from '@/providers/CreatorProgressProvider';
-import { useBusinessPlanSessionTimed, useForecastSessionTimed, useStartBusinessPlan } from '@/hooks/queries/creator-ai';
+import { useAiCredits, useBusinessPlanSessionTimed, useForecastSessionTimed, useStartBusinessPlan } from '@/hooks/queries/creator-ai';
 import { creatorJourneyApi } from '@/lib/api-creator-journey';
 import { creatorAiApi } from '@/lib/api-creator-ai';
 import { hasAiOutput, type BusinessPlanOutput, type ForecastOutput } from '@/types/creator/ai';
@@ -165,6 +165,9 @@ export default function BusinessPlanPage() {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(() => new Set(['executive']));
 
   const startBp = useStartBusinessPlan();
+  const credits = useAiCredits();
+  const planCost = credits.data?.costs?.BusinessPlan ?? 0;
+  const insufficientCredits = credits.data ? credits.data.balance < planCost : false;
   const session = useBusinessPlanSessionTimed(bpSessionId);
   // Reuse the existing forecast hook so the export can render the real §7 forecast.
   const forecastSession = useForecastSessionTimed(forecastSessionId);
@@ -321,7 +324,7 @@ export default function BusinessPlanPage() {
           </h3>
           <p className="text-sm text-muted-foreground">
             {startError?.kind === 'credits'
-              ? "You've used all your AI credits. Contact support to add more AI credits to your account."
+              ? "You've used all your AI credits."
               : "We'll build an 11-section plan from your clarified idea (C-3)."}
           </p>
           {startError && startError.kind !== 'credits' && (
@@ -335,9 +338,14 @@ export default function BusinessPlanPage() {
               )}
             </div>
           )}
-          <Button onClick={handleStart} disabled={startBp.isPending || startError?.kind === 'credits'} className="gap-2">
-            {startBp.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />} Generate plan
+          <Button onClick={handleStart} disabled={startBp.isPending || startError?.kind === 'credits' || insufficientCredits} className="gap-2">
+            {startBp.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />} Generate plan{planCost > 0 ? ` (${planCost} credits)` : ''}
           </Button>
+          {insufficientCredits && (
+            <p className="text-xs font-medium text-destructive">
+              Insufficient credits: requires {planCost} credits (you have {credits.data?.balance ?? 0}).
+            </p>
+          )}
         </Card>
       )}
 
@@ -376,7 +384,7 @@ export default function BusinessPlanPage() {
           </div>
           <p className="text-sm text-muted-foreground">
             {startError?.kind === 'credits' || failedIsCredits
-              ? "You've used all your AI credits. Contact support to add more AI credits to your account."
+              ? "You've used all your AI credits."
               : failedIsProviderBilling
               ? 'The AI service is temporarily unavailable on our side, so your plan couldn’t be generated. This isn’t your credits and there’s nothing you need to buy — please try again shortly.'
               : 'The AI service was temporarily unavailable (a provider error, rate limit, or timeout), so your plan didn’t finish. This isn’t anything you did — please try again.'}

@@ -8,7 +8,7 @@ namespace WebApp.Services.Repository.Ai
     {
         public AiInsightRepository(IMongoDatabase database) : base(database, "AIInsights")
         {
-            CreateIndexesAsync().GetAwaiter().GetResult();
+            try { CreateIndexesAsync().GetAwaiter().GetResult(); } catch { /* non-fatal if index exists or connection is deferred */ }
         }
 
         private async Task CreateIndexesAsync()

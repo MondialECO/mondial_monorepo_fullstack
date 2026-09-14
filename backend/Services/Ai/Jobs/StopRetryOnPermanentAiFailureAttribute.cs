@@ -41,7 +41,7 @@ namespace WebApp.Services.Ai.Jobs
             }
         }
 
-        private static bool IsPermanent(Exception? ex) => ex switch
+        public static bool IsPermanent(Exception? ex) => ex switch
         {
             // BOTH credit-failure sources are permanent. Local zero-balance: a retry
             // finds the same empty ledger. Provider 402 (our OpenRouter billing gap):
@@ -62,9 +62,10 @@ namespace WebApp.Services.Ai.Jobs
             // Failed with this error, so the UI still shows an honest message + manual retry.
             // (Only the timeout matches here: the network-error path wraps HttpRequestException.)
             AiProviderException { InnerException: OperationCanceledException } => true,
-            // A 4xx client error from the provider won't fix itself on retry; 5xx and
-            // unparseable-200 bodies (StatusCode null/2xx, non-timeout) stay transient.
-            AiProviderException ape => ape.StatusCode is >= 400 and < 500,
+            // A 4xx client error from the provider won't fix itself on retry, nor will an
+            // explicit non-transient provider error (e.g. empty content on length finish).
+            // 5xx and unparseable-200 bodies (StatusCode null/2xx, non-timeout) stay transient.
+            AiProviderException ape => !ape.IsTransient || (ape.StatusCode is >= 400 and < 500),
             _ => false,
         };
     }

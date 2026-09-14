@@ -49,6 +49,20 @@ namespace WebApp.Models.DatabaseModels.Ai
         public string Status { get; set; } = "Pending";
 
         /// <summary>
+        /// Present only while initial generation is in flight (Pending/Processing).
+        /// Indexed with a unique sparse index to guarantee atomic double-click deduplication.
+        /// Cleared upon terminal transition (Completed, Failed, NeedsReview).
+        /// </summary>
+        [BsonElement("InFlightKey")]
+        [BsonIgnoreIfNull]
+        public string? InFlightKey { get; set; }
+
+        /// <summary>Section ID currently being rewritten in-flight. Null when no rewrite is running.</summary>
+        [BsonElement("ActiveRewriteSection")]
+        [BsonIgnoreIfNull]
+        public string? ActiveRewriteSection { get; set; }
+
+        /// <summary>
         /// Append-only generation/edit history. Each AI run appends one version;
         /// previous versions are never overwritten (locked C-3 decision #5).
         /// </summary>

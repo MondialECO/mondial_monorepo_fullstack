@@ -53,12 +53,17 @@ deploying, or startup validation aborts the boot (intended fail-fast).
 
 ---
 
-## 4. Credits
+## 4. Credits & Metering
 
-- Per-user balance in `AICredits` (one doc per user, unique `OwnerUserId`).
-- `POST /api/ai/jobs` debits the configured cost atomically (`Balance >= cost`)
-  before enqueue; insufficient balance → **402**. Cost-0 jobs (Probe) are free
-  and never touch the ledger.
+- Per-user balance in `AICredits` / `AiCreditLedgers` (one doc per user, unique `OwnerUserId`).
+- Single source of truth: `GET /api/ai/credits` returns balance, lifetime stats (`TotalGranted`, `TotalSpent`), and per-capability cost table.
+- Enqueue debits the configured cost atomically (`Balance >= cost`) before dispatch; insufficient balance → **402**. Cost-0 jobs (Probe, IdeaGenerator) are free and never touch the ledger.
+- **Automatic Refunds & Zero-Unfair-Debit:**
+  - Any job failing in Hangfire or returning unparseable output automatically refunds the debited credits (`Balance += amount`).
+  - Gross spent accounting: `TotalSpent` remains immutable lifetime consumption history; refunds are recorded in a dedicated `Refunds` subdocument array with original `DebitOperationId`.
+  - Deterministic timing: `AiJobRunner` applies the refund before transitioning the user session to `Failed`, eliminating timing races for client pollers.
+- **Visibility:** Topbar `AiCreditBadge` renders real-time balance for Creator and Entrepreneur roles, invalidates immediately on mutation dispatch and session terminal state, updating dynamically without page reload.
+- Full architectural details: see `docs/operations/ai-credit-metering-and-visibility.md`.
 - **Starter-credit backfill (optional, config-gated):** set
   `Ai:GrantStarterCreditsToExisting = true` and `Ai:StarterCredits = <n>`. On
   the next boot every existing user **without** a ledger is granted `<n>`

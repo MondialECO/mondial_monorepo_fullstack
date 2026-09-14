@@ -103,15 +103,15 @@ export default function IdeaSummaryPage() {
             <div className="space-y-1">
               <h3 className="text-lg font-semibold" style={{ color: "var(--foreground)" }}>No idea summary available</h3>
               <p className="text-sm max-w-md" style={{ color: "var(--muted-foreground)" }}>
-                Complete the idea selection and confirmation steps to generate a summary.
+                Complete the Idea Clarifier questions to generate your structured project summary.
               </p>
             </div>
             <Button
-              onClick={() => router.push("/dashboard/creator/phase-2")}
+              onClick={() => router.push("/dashboard/creator/phase-2/clarifier")}
               className="rounded-xl px-6 py-5 text-sm font-semibold flex items-center gap-2"
             >
               <ArrowLeft className="h-4 w-4" />
-              Back to Phase 2
+              Go to Clarifier
             </Button>
           </div>
         )}

@@ -10,6 +10,7 @@ import {
 import creatorAiApi from "@/lib/api-creator-ai";
 import {
   isTerminalStatus,
+  type AiCreditBalance,
   type AiSessionStatus,
   type BusinessPlanSession,
   type ClarifierSession,
@@ -56,9 +57,12 @@ function useTimedSession<T extends { status: AiSessionStatus }>(
   queryKey: QueryKey,
   fetcher: (id: string) => Promise<T>,
 ): TimedSession<T> {
+  const qc = useQueryClient();
   const [timedOut, setTimedOut] = useState(false);
   const startRef = useRef<number | null>(null);
   const attemptsRef = useRef(0);
+  /** Guards one-shot credit invalidation per session. */
+  const creditInvalidatedRef = useRef<string | null>(null);
 
   // Reset the clock whenever the session id changes.
   useEffect(() => {
@@ -85,6 +89,20 @@ function useTimedSession<T extends { status: AiSessionStatus }>(
     },
   });
 
+  // When the session reaches a terminal state, refresh the credit balance
+  // so the badge reflects any refund (Failed) or confirms the debit (Completed).
+  useEffect(() => {
+    if (
+      sessionId &&
+      query.data &&
+      isTerminalStatus(query.data.status) &&
+      creditInvalidatedRef.current !== sessionId
+    ) {
+      creditInvalidatedRef.current = sessionId;
+      void qc.invalidateQueries({ queryKey: creditKeys.balance });
+    }
+  }, [sessionId, query.data, qc]);
+
   const retry = () => {
     startRef.current = Date.now();
     attemptsRef.current = 0;
@@ -102,6 +120,23 @@ function useTimedSession<T extends { status: AiSessionStatus }>(
 
   return { data: query.data, phase, isError: query.isError, error: query.error, retry };
 }
+
+// ===== Credit Balance (single source of truth) =====
+
+export const creditKeys = {
+  balance: ["ai-credits"] as const,
+};
+
+/** Fetches balance + server-authoritative cost table. Stale-while-revalidate at 60s. */
+export const useAiCredits = () =>
+  useQuery<AiCreditBalance>({
+    queryKey: creditKeys.balance,
+    queryFn: () => creatorAiApi.getCredits(),
+    staleTime: 60_000,
+    refetchOnWindowFocus: true,
+  });
+
+// ===== Generic helpers =====
 
 const byNewest = <T extends { createdAt: string }>(rows: T[]): T[] =>
   [...rows].sort(
@@ -147,8 +182,10 @@ export const useStartClarifier = () => {
   return useMutation({
     mutationFn: (payload: StartClarifierRequest) =>
       creatorAiApi.startClarifier(payload),
-    onSuccess: () =>
-      qc.invalidateQueries({ queryKey: ["creator-ai", "clarifier", "list"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["creator-ai", "clarifier", "list"] });
+      qc.invalidateQueries({ queryKey: creditKeys.balance });
+    },
   });
 };
 
@@ -192,10 +229,12 @@ export const useStartBusinessPlan = () => {
   return useMutation({
     mutationFn: (payload: StartBusinessPlanRequest) =>
       creatorAiApi.startBusinessPlan(payload),
-    onSuccess: () =>
+    onSuccess: () => {
       qc.invalidateQueries({
         queryKey: ["creator-ai", "business-plan", "list"],
-      }),
+      });
+      qc.invalidateQueries({ queryKey: creditKeys.balance });
+    },
   });
 };
 
@@ -239,7 +278,9 @@ export const useStartForecast = () => {
   return useMutation({
     mutationFn: (payload: StartForecastRequest) =>
       creatorAiApi.startForecast(payload),
-    onSuccess: () =>
-      qc.invalidateQueries({ queryKey: ["creator-ai", "forecast", "list"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["creator-ai", "forecast", "list"] });
+      qc.invalidateQueries({ queryKey: creditKeys.balance });
+    },
   });
 };

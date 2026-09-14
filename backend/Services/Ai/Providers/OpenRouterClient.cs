@@ -270,6 +270,24 @@ namespace WebApp.Services.Ai.Providers
 
                 var choice = body.Choices[0];
 
+                // Defensive guard: check if choice aborted on length with empty content
+                // (e.g. reasoning/thinking token budget exhausted without emitting visible text).
+                // An identical prompt at low temperature will deterministically reproduce the same exhaustion,
+                // so fail fast immediately on attempt 1 without burning worker retry time.
+                // NOTE: If content is non-empty, it is a normal partial truncation — let it return so
+                // downstream task handlers can preserve the partial text and route to needs-review.
+                if (string.IsNullOrWhiteSpace(choice.Message?.Content) &&
+                    string.Equals(choice.FinishReason, "length", StringComparison.OrdinalIgnoreCase))
+                {
+                    _logger.LogWarning(
+                        "OpenRouter choice finished on length with empty content on attempt {Attempt}/{MaxAttempts} (reasoning budget exhaustion). Failing fast without retry.",
+                        attempt, maxAttempts);
+                    throw new AiProviderException(
+                        "OpenRouter choice finished on length with empty content (reasoning budget exhausted).",
+                        statusCode,
+                        isTransient: false);
+                }
+
                 // Check if choice aborted with finish_reason=error and empty content
                 if (string.IsNullOrWhiteSpace(choice.Message?.Content) &&
                     string.Equals(choice.FinishReason, "error", StringComparison.OrdinalIgnoreCase))
