@@ -122,6 +122,8 @@ namespace WebApp.Controllers
                     return NotFound(ApiResponse.Error("Idea not found.", HttpContext.TraceIdentifier));
             }
 
+            var inFlightKey = $"{owner}:forecast:{planSessionId}";
+
             // Create the session first so it owns the lifecycle (source of truth).
             var session = new ForecastSession
             {
@@ -137,10 +139,18 @@ namespace WebApp.Controllers
                 },
                 BusinessIdeaId = businessIdeaId,
                 Status = "Pending",
+                InFlightKey = inFlightKey,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
             };
-            await _sessions.AddAsync(session); // ObjectId id assigned here
+
+            var (created, activeSession) = await _sessions.TryCreateInFlightAsync(session);
+            if (!created)
+            {
+                _logger.LogInformation("In-flight ForecastSession {SessionId} joined for business plan {BusinessPlanSessionId} by user {UserId}.",
+                    activeSession.Id, planSessionId, owner);
+                return Ok(ApiResponse.Ok("Forecast generation started.", new { sessionId = activeSession.Id, jobId = activeSession.RequestId }));
+            }
 
             _audit.Record("Forecast.Start", owner, success: true,
                 new { sessionId = session.Id, businessPlanSessionId = session.BusinessPlanSessionId, businessIdeaId });
@@ -198,8 +208,14 @@ namespace WebApp.Controllers
             if (session is null)
                 return NotFound(ApiResponse.Error("Session not found.", HttpContext.TraceIdentifier));
 
-            // Regenerate re-runs from the session's stored inputs + its linked business
-            // plan (validated at Start). The plan is the forecast's authoritative context.
+            // Atomically acquire in-flight lock BEFORE debiting
+            var (acquired, activeSession) = await _sessions.TryAcquireRegenerateLockAsync(sessionId, owner);
+            if (!acquired)
+            {
+                _logger.LogInformation("In-flight Forecast regenerate joined for session {SessionId} by user {UserId}.",
+                    sessionId, owner);
+                return Ok(ApiResponse.Ok("Forecast regeneration started.", new { sessionId = activeSession!.Id, jobId = activeSession.RequestId }));
+            }
 
             _audit.Record("Forecast.Regenerate", owner, success: true,
                 new { sessionId = session.Id, currentVersion = session.CurrentVersion });
@@ -208,9 +224,7 @@ namespace WebApp.Controllers
             if (jobId is null)
                 return StatusCode(402, ApiResponse.Error("Insufficient credits.", HttpContext.TraceIdentifier));
 
-            await _sessions.SetProcessingAsync(session.Id);
-
-            return Ok(ApiResponse.Ok("Forecast regeneration started.", new { sessionId = session.Id, jobId }));
+            return Ok(ApiResponse.Ok("Forecast generation started.", new { sessionId = session.Id, jobId }));
         }
 
         /// <summary>Edit the current version's forecast in place — no AI run.</summary>
@@ -266,14 +280,8 @@ namespace WebApp.Controllers
             }
             catch (InsufficientCreditsException)
             {
-                // DebitForJobAsync only raises a LOCAL zero-balance failure here (it never
-                // calls the provider), so null always means the user's own credits are
-                // exhausted → caller returns 402. An upstream provider 402 surfaces later
-                // via the async job-failure path (see AiJobRunner), never on this request.
-                // Only fail the session on the very first attempt; a regenerate keeps
-                // the existing completed forecast intact.
-                if (session.CurrentVersion <= 0)
-                    await _sessions.SetFailedAsync(session.Id, "Insufficient credits.");
+                // Unset InFlightKey via SetFailedAsync (which calls TryRestoreCompletedAsync when CurrentVersion > 0)
+                await _sessions.SetFailedAsync(session.Id, "Insufficient credits.");
                 return null;
             }
 
@@ -296,9 +304,27 @@ namespace WebApp.Controllers
                 if (session.Inputs.MonthlyChurnPct.HasValue) input["monthlyChurnPct"] = session.Inputs.MonthlyChurnPct.Value;
             }
 
-            var jobId = await _jobService.EnqueueAsync(AiJobType.Forecast, owner, input);
-            await _sessions.SetRequestIdAsync(session.Id, jobId);
-            return jobId;
+            try
+            {
+                var jobId = await _jobService.EnqueueAsync(AiJobType.Forecast, owner, input);
+                await _sessions.SetRequestIdAsync(session.Id, jobId);
+                return jobId;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to enqueue forecast job after credit debit for user {OwnerUserId}", owner);
+                try
+                {
+                    await _creditService.RefundForJobAsync(owner, AiJobType.Forecast, creditOperationId, "Enqueue failed before acceptance");
+                }
+                catch (Exception refundEx)
+                {
+                    _logger.LogCritical(refundEx, "CRITICAL: Credit compensation failed for user {OwnerUserId} after forecast enqueue failure", owner);
+                }
+
+                await _sessions.SetFailedAsync(session.Id, "Enqueue failed.");
+                throw;
+            }
         }
 
         private static ForecastSessionDto ToDto(ForecastSession s, bool includeVersionContent)

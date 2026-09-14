@@ -29,6 +29,18 @@ namespace WebApp.Services.Repository.Ai
         Task SetNeedsReviewAsync(string id, string error);
         Task SetFailedAsync(string id, string error);
         Task DeleteAsync(string id);
+
+        /// <summary>Atomically attempts to create a session guarded by unique InFlightKey. Returns (false, existing) if in flight.</summary>
+        Task<(bool Created, BusinessPlanSession Session)> TryCreateInFlightAsync(BusinessPlanSession session);
+
+        /// <summary>Finds an active, non-stale in-flight session for a clarifier session.</summary>
+        Task<BusinessPlanSession?> FindInFlightByClarifierAsync(string ownerUserId, string clarifierSessionId);
+
+        /// <summary>Atomically acquires a regeneration lock on an existing plan. Returns (false, existing) if already in flight.</summary>
+        Task<(bool Acquired, BusinessPlanSession? Session)> TryAcquireRegenerateLockAsync(string id, string ownerUserId);
+
+        /// <summary>Atomically acquires a section rewrite lock on an existing plan. Returns (false, existing) if already in flight.</summary>
+        Task<(bool Acquired, BusinessPlanSession? Session)> TryAcquireSectionRewriteLockAsync(string id, string ownerUserId, string sectionId);
     }
 
     /// <summary>
@@ -71,6 +83,16 @@ namespace WebApp.Services.Repository.Ai
                 new CreateIndexModel<BusinessPlanSession>(
                     Builders<BusinessPlanSession>.IndexKeys.Ascending(x => x.RequestId),
                     new CreateIndexOptions { Name = "RequestId" }),
+
+                // Atomic in-flight deduplication guard (unique when string present).
+                new CreateIndexModel<BusinessPlanSession>(
+                    Builders<BusinessPlanSession>.IndexKeys.Ascending(x => x.InFlightKey),
+                    new CreateIndexOptions<BusinessPlanSession>
+                    {
+                        Name = "InFlightKey_Unique",
+                        Unique = true,
+                        PartialFilterExpression = Builders<BusinessPlanSession>.Filter.Type(x => x.InFlightKey, BsonType.String)
+                    }),
             });
         }
 
@@ -153,6 +175,8 @@ namespace WebApp.Services.Repository.Ai
                     .Set(x => x.CurrentVersion, nextVersion)
                     .Set(x => x.Status, "Completed")
                     .Set(x => x.Error, null)
+                    .Unset(x => x.InFlightKey)
+                    .Unset(x => x.ActiveRewriteSection)
                     .Set(x => x.UpdatedAt, now));
         }
 
@@ -192,6 +216,8 @@ namespace WebApp.Services.Repository.Ai
                 Builders<BusinessPlanSession>.Update
                     .Set(x => x.Status, "NeedsReview")
                     .Set(x => x.Error, error)
+                    .Unset(x => x.InFlightKey)
+                    .Unset(x => x.ActiveRewriteSection)
                     .Set(x => x.UpdatedAt, DateTime.UtcNow));
         }
 
@@ -203,6 +229,8 @@ namespace WebApp.Services.Repository.Ai
                 Builders<BusinessPlanSession>.Update
                     .Set(x => x.Status, "Failed")
                     .Set(x => x.Error, error)
+                    .Unset(x => x.InFlightKey)
+                    .Unset(x => x.ActiveRewriteSection)
                     .Set(x => x.UpdatedAt, DateTime.UtcNow));
         }
 
@@ -225,8 +253,113 @@ namespace WebApp.Services.Repository.Ai
                 Builders<BusinessPlanSession>.Update
                     .Set(x => x.Status, "Completed")
                     .Set(x => x.Error, error)
+                    .Unset(x => x.InFlightKey)
+                    .Unset(x => x.ActiveRewriteSection)
                     .Set(x => x.UpdatedAt, DateTime.UtcNow));
             return res.MatchedCount > 0;
+        }
+
+        public async Task<BusinessPlanSession?> FindInFlightByClarifierAsync(string ownerUserId, string clarifierSessionId)
+        {
+            var staleCutoff = DateTime.UtcNow.AddMinutes(-5);
+            return await _collection.Find(x =>
+                x.OwnerUserId == ownerUserId
+                && x.ClarifierSessionId == clarifierSessionId
+                && (x.Status == "Pending" || x.Status == "Processing")
+                && x.UpdatedAt > staleCutoff)
+                .SortByDescending(x => x.CreatedAt)
+                .FirstOrDefaultAsync();
+        }
+
+        public async Task<(bool Created, BusinessPlanSession Session)> TryCreateInFlightAsync(BusinessPlanSession session)
+        {
+            try
+            {
+                await _collection.InsertOneAsync(session);
+                return (true, session);
+            }
+            catch (MongoWriteException ex) when (ex.WriteError?.Category == ServerErrorCategory.DuplicateKey)
+            {
+                var existing = await FindInFlightByClarifierAsync(session.OwnerUserId, session.ClarifierSessionId ?? "");
+                if (existing != null)
+                {
+                    return (false, existing);
+                }
+
+                // If duplicate key was hit from an expired/stale record, retry with fresh ID without inFlightKey
+                session.Id = ObjectId.GenerateNewId().ToString();
+                session.InFlightKey = null;
+                await _collection.InsertOneAsync(session);
+                return (true, session);
+            }
+        }
+
+        public async Task<(bool Acquired, BusinessPlanSession? Session)> TryAcquireRegenerateLockAsync(string id, string ownerUserId)
+        {
+            var staleCutoff = DateTime.UtcNow.AddMinutes(-5);
+            var now = DateTime.UtcNow;
+
+            var filter = Builders<BusinessPlanSession>.Filter.And(
+                Builders<BusinessPlanSession>.Filter.Eq(x => x.Id, id),
+                Builders<BusinessPlanSession>.Filter.Eq(x => x.OwnerUserId, ownerUserId),
+                Builders<BusinessPlanSession>.Filter.Or(
+                    Builders<BusinessPlanSession>.Filter.Nin(x => x.Status, new[] { "Pending", "Processing" }),
+                    Builders<BusinessPlanSession>.Filter.Lte(x => x.UpdatedAt, staleCutoff)
+                )
+            );
+
+            var update = Builders<BusinessPlanSession>.Update
+                .Set(x => x.Status, "Processing")
+                .Set(x => x.InFlightKey, $"{ownerUserId}:bp_regen:{id}")
+                .Unset(x => x.ActiveRewriteSection)
+                .Set(x => x.UpdatedAt, now);
+
+            var updated = await _collection.FindOneAndUpdateAsync(
+                filter,
+                update,
+                new FindOneAndUpdateOptions<BusinessPlanSession> { ReturnDocument = ReturnDocument.After });
+
+            if (updated != null)
+            {
+                return (true, updated);
+            }
+
+            var existing = await GetOwnedAsync(id, ownerUserId);
+            return (false, existing);
+        }
+
+        public async Task<(bool Acquired, BusinessPlanSession? Session)> TryAcquireSectionRewriteLockAsync(string id, string ownerUserId, string sectionId)
+        {
+            var staleCutoff = DateTime.UtcNow.AddMinutes(-5);
+            var now = DateTime.UtcNow;
+
+            var filter = Builders<BusinessPlanSession>.Filter.And(
+                Builders<BusinessPlanSession>.Filter.Eq(x => x.Id, id),
+                Builders<BusinessPlanSession>.Filter.Eq(x => x.OwnerUserId, ownerUserId),
+                Builders<BusinessPlanSession>.Filter.Or(
+                    Builders<BusinessPlanSession>.Filter.Nin(x => x.Status, new[] { "Pending", "Processing" }),
+                    Builders<BusinessPlanSession>.Filter.Lte(x => x.UpdatedAt, staleCutoff)
+                )
+            );
+
+            var update = Builders<BusinessPlanSession>.Update
+                .Set(x => x.Status, "Processing")
+                .Set(x => x.ActiveRewriteSection, sectionId)
+                .Set(x => x.InFlightKey, $"{ownerUserId}:bp_rewrite:{id}:{sectionId}")
+                .Set(x => x.UpdatedAt, now);
+
+            var updated = await _collection.FindOneAndUpdateAsync(
+                filter,
+                update,
+                new FindOneAndUpdateOptions<BusinessPlanSession> { ReturnDocument = ReturnDocument.After });
+
+            if (updated != null)
+            {
+                return (true, updated);
+            }
+
+            var existing = await GetOwnedAsync(id, ownerUserId);
+            return (false, existing);
         }
     }
 }

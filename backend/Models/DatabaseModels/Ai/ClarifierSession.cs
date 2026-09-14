@@ -39,6 +39,15 @@ namespace WebApp.Models.DatabaseModels.Ai
         [BsonElement("Status")]
         public string Status { get; set; } = "Pending";
 
+        /// <summary>
+        /// Present only while generation is in flight (Pending/Processing).
+        /// Indexed with a unique sparse index to guarantee atomic double-click deduplication.
+        /// Cleared upon terminal transition (Completed, Failed, NeedsReview).
+        /// </summary>
+        [BsonElement("InFlightKey")]
+        [BsonIgnoreIfNull]
+        public string? InFlightKey { get; set; }
+
         /// <summary>The raw idea fields submitted by the creator.</summary>
         [BsonElement("Input")]
         public BsonDocument? Input { get; set; }

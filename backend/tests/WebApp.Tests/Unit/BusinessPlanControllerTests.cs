@@ -34,6 +34,16 @@ public class BusinessPlanControllerTests
     private const string UserId = "user-1";
     private readonly string _clarifierId = ObjectId.GenerateNewId().ToString();
 
+    public BusinessPlanControllerTests()
+    {
+        _sessions.Setup(s => s.TryCreateInFlightAsync(It.IsAny<BusinessPlanSession>()))
+            .ReturnsAsync((BusinessPlanSession s) => (true, s));
+        _sessions.Setup(s => s.TryAcquireRegenerateLockAsync(It.IsAny<string>(), It.IsAny<string>()))
+            .ReturnsAsync((string id, string owner) => (true, new BusinessPlanSession { Id = id, OwnerUserId = owner, Status = "Processing", CurrentVersion = 1 }));
+        _sessions.Setup(s => s.TryAcquireSectionRewriteLockAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            .ReturnsAsync((string id, string owner, string sec) => (true, new BusinessPlanSession { Id = id, OwnerUserId = owner, Status = "Processing", CurrentVersion = 1, ActiveRewriteSection = sec }));
+    }
+
     private BusinessPlanController BuildController(AiSettings? settings = null)
     {
         settings ??= new AiSettings
@@ -78,7 +88,7 @@ public class BusinessPlanControllerTests
     // ---- A. Insufficient credits ----
 
     [Fact]
-    public async Task Start_WithInsufficientCredits_Returns402_NoSession_NoJob_NoSuccessAudit_AndFailureAuditRecorded()
+    public async Task Start_WithInsufficientCredits_Returns402_NoJob_NoSuccessAudit_AndFailureAuditRecorded()
     {
         SetupCompletedClarifier(_clarifierId);
         _credits.Setup(c => c.DebitForJobAsync(UserId, AiJobType.BusinessPlan, It.IsAny<string>()))
@@ -88,7 +98,6 @@ public class BusinessPlanControllerTests
         var result = await controller.Start(new StartBusinessPlanRequest { ClarifierSessionId = _clarifierId });
 
         result.Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(402);
-        _sessions.Verify(s => s.AddAsync(It.IsAny<BusinessPlanSession>()), Times.Never);
         _jobs.Verify(j => j.EnqueueAsync(It.IsAny<AiJobType>(), It.IsAny<string>(), It.IsAny<BsonDocument>()), Times.Never);
         _audit.Verify(a => a.Record("BusinessPlan.Start", UserId, true, It.IsAny<object>()), Times.Never);
         _audit.Verify(a => a.Record("BusinessPlan.Start", UserId, false, It.IsAny<object>()), Times.Once);
@@ -109,11 +118,78 @@ public class BusinessPlanControllerTests
 
         result.Should().BeOfType<OkObjectResult>();
         _credits.Verify(c => c.DebitForJobAsync(UserId, AiJobType.BusinessPlan, It.IsAny<string>()), Times.Once);
-        _sessions.Verify(s => s.AddAsync(It.Is<BusinessPlanSession>(sp => sp.OwnerUserId == UserId && sp.ClarifierSessionId == _clarifierId)), Times.Once);
+        _sessions.Verify(s => s.TryCreateInFlightAsync(It.Is<BusinessPlanSession>(sp => sp.OwnerUserId == UserId && sp.ClarifierSessionId == _clarifierId)), Times.Once);
         _jobs.Verify(j => j.EnqueueAsync(AiJobType.BusinessPlan, UserId, It.IsAny<BsonDocument>()), Times.Once);
         _sessions.Verify(s => s.SetRequestIdAsync(It.IsAny<string>(), "job-123"), Times.Once);
         _audit.Verify(a => a.Record("BusinessPlan.Start", UserId, true, It.IsAny<object>()), Times.Once);
         _audit.Verify(a => a.Record("BusinessPlan.Start", UserId, false, It.IsAny<object>()), Times.Never);
+    }
+
+    // ---- C. In-Flight Duplicate Guard ----
+
+    [Fact]
+    public async Task Start_WhenDuplicateInFlight_ReturnsExistingSession_NoDebit_NoJobEnqueued()
+    {
+        SetupCompletedClarifier(_clarifierId);
+        var existingSession = new BusinessPlanSession
+        {
+            Id = "existing-session-123",
+            OwnerUserId = UserId,
+            ClarifierSessionId = _clarifierId,
+            Status = "Pending",
+            RequestId = "existing-job-456"
+        };
+        _sessions.Setup(s => s.TryCreateInFlightAsync(It.IsAny<BusinessPlanSession>()))
+            .ReturnsAsync((false, existingSession));
+
+        var controller = BuildController();
+        var result = await controller.Start(new StartBusinessPlanRequest { ClarifierSessionId = _clarifierId });
+
+        result.Should().BeOfType<OkObjectResult>();
+        _credits.Verify(c => c.DebitForJobAsync(It.IsAny<string>(), It.IsAny<AiJobType>(), It.IsAny<string>()), Times.Never);
+        _jobs.Verify(j => j.EnqueueAsync(It.IsAny<AiJobType>(), It.IsAny<string>(), It.IsAny<BsonDocument>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Regenerate_WhenDuplicateInFlight_ReturnsExistingSession_NoDebit_NoJobEnqueued()
+    {
+        var sessionId = ObjectId.GenerateNewId().ToString();
+        _sessions.Setup(s => s.GetOwnedAsync(sessionId, UserId))
+            .ReturnsAsync(new BusinessPlanSession { Id = sessionId, OwnerUserId = UserId, ClarifierSessionId = _clarifierId, CurrentVersion = 1, RequestId = "existing-job-789" });
+        SetupCompletedClarifier(_clarifierId);
+
+        _sessions.Setup(s => s.TryAcquireRegenerateLockAsync(sessionId, UserId))
+            .ReturnsAsync((false, new BusinessPlanSession { Id = sessionId, OwnerUserId = UserId, ClarifierSessionId = _clarifierId, RequestId = "existing-job-789" }));
+
+        var controller = BuildController();
+        var result = await controller.Regenerate(sessionId);
+
+        result.Should().BeOfType<OkObjectResult>();
+        _credits.Verify(c => c.DebitForJobAsync(It.IsAny<string>(), It.IsAny<AiJobType>(), It.IsAny<string>()), Times.Never);
+        _jobs.Verify(j => j.EnqueueAsync(It.IsAny<AiJobType>(), It.IsAny<string>(), It.IsAny<BsonDocument>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task RewriteSection_WhenDuplicateInFlight_ReturnsExistingSession_NoDebit_NoJobEnqueued()
+    {
+        var sessionId = ObjectId.GenerateNewId().ToString();
+        _sessions.Setup(s => s.GetOwnedAsync(sessionId, UserId))
+            .ReturnsAsync(new BusinessPlanSession { Id = sessionId, OwnerUserId = UserId, ClarifierSessionId = _clarifierId, CurrentVersion = 1, RequestId = "existing-job-999" });
+        SetupCompletedClarifier(_clarifierId);
+
+        _sessions.Setup(s => s.TryAcquireSectionRewriteLockAsync(sessionId, UserId, "executive"))
+            .ReturnsAsync((false, new BusinessPlanSession { Id = sessionId, OwnerUserId = UserId, ActiveRewriteSection = "executive", RequestId = "existing-job-999" }));
+
+        var controller = BuildController();
+        var result = await controller.RewriteSection(new RewriteSectionRequest
+        {
+            BusinessPlanSessionId = sessionId,
+            SectionId = "executive"
+        });
+
+        result.Should().BeOfType<OkObjectResult>();
+        _credits.Verify(c => c.DebitForJobAsync(It.IsAny<string>(), It.IsAny<AiJobType>(), It.IsAny<string>()), Times.Never);
+        _jobs.Verify(j => j.EnqueueAsync(It.IsAny<AiJobType>(), It.IsAny<string>(), It.IsAny<BsonDocument>()), Times.Never);
     }
 
     // ---- D. Validation failure before debit ----
@@ -134,24 +210,22 @@ public class BusinessPlanControllerTests
         _audit.Verify(a => a.Record(It.IsAny<string>(), It.IsAny<string>(), true, It.IsAny<object>()), Times.Never);
     }
 
-    // ---- E. Session persistence failure after debit ----
+    // ---- E. Session creation failure before debit ----
 
     [Fact]
-    public async Task Start_WhenSessionPersistenceFailsAfterDebit_CompensatesCredit_Returns500_NoAcceptedJob_NoSuccessAudit()
+    public async Task Start_WhenSessionCreationFailsBeforeDebit_Throws_NoDebit_NoAcceptedJob_NoSuccessAudit()
     {
         SetupCompletedClarifier(_clarifierId);
-        _credits.Setup(c => c.DebitForJobAsync(UserId, AiJobType.BusinessPlan, It.IsAny<string>())).Returns(Task.CompletedTask);
-        _sessions.Setup(s => s.AddAsync(It.IsAny<BusinessPlanSession>())).ThrowsAsync(new TimeoutException("Mongo connection failed"));
+        _sessions.Setup(s => s.TryCreateInFlightAsync(It.IsAny<BusinessPlanSession>()))
+            .ThrowsAsync(new TimeoutException("Mongo connection failed"));
 
         var controller = BuildController();
-        var result = await controller.Start(new StartBusinessPlanRequest { ClarifierSessionId = _clarifierId });
+        Func<Task> act = async () => await controller.Start(new StartBusinessPlanRequest { ClarifierSessionId = _clarifierId });
 
-        result.Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(500);
-        _credits.Verify(c => c.DebitForJobAsync(UserId, AiJobType.BusinessPlan, It.IsAny<string>()), Times.Once);
-        _credits.Verify(c => c.RefundForJobAsync(UserId, AiJobType.BusinessPlan, It.IsAny<string>(), It.IsAny<string>()), Times.Once);
+        await act.Should().ThrowAsync<TimeoutException>();
+        _credits.Verify(c => c.DebitForJobAsync(UserId, AiJobType.BusinessPlan, It.IsAny<string>()), Times.Never);
         _jobs.Verify(j => j.EnqueueAsync(It.IsAny<AiJobType>(), It.IsAny<string>(), It.IsAny<BsonDocument>()), Times.Never);
         _audit.Verify(a => a.Record("BusinessPlan.Start", UserId, true, It.IsAny<object>()), Times.Never);
-        _audit.Verify(a => a.Record("BusinessPlan.Start", UserId, false, It.IsAny<object>()), Times.Once);
     }
 
     // ---- F. Job enqueue failure after debit/session creation ----
@@ -160,11 +234,7 @@ public class BusinessPlanControllerTests
     public async Task Start_WhenJobEnqueueFailsAfterDebitAndSessionCreation_CompensatesCredit_CleansUpSession_Returns500_NoSuccessAudit()
     {
         SetupCompletedClarifier(_clarifierId);
-        var sessionId = ObjectId.GenerateNewId().ToString();
         _credits.Setup(c => c.DebitForJobAsync(UserId, AiJobType.BusinessPlan, It.IsAny<string>())).Returns(Task.CompletedTask);
-        _sessions.Setup(s => s.AddAsync(It.IsAny<BusinessPlanSession>()))
-            .Callback<BusinessPlanSession>(s => s.Id = sessionId)
-            .Returns(Task.CompletedTask);
         _jobs.Setup(j => j.EnqueueAsync(AiJobType.BusinessPlan, UserId, It.IsAny<BsonDocument>()))
             .ThrowsAsync(new InvalidOperationException("Hangfire queue unreachable"));
 
@@ -174,7 +244,7 @@ public class BusinessPlanControllerTests
         result.Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(500);
         _credits.Verify(c => c.DebitForJobAsync(UserId, AiJobType.BusinessPlan, It.IsAny<string>()), Times.Once);
         _credits.Verify(c => c.RefundForJobAsync(UserId, AiJobType.BusinessPlan, It.IsAny<string>(), It.IsAny<string>()), Times.Once);
-        _sessions.Verify(s => s.DeleteAsync(sessionId), Times.Once);
+        _sessions.Verify(s => s.DeleteAsync(It.IsAny<string>()), Times.Once);
         _audit.Verify(a => a.Record("BusinessPlan.Start", UserId, true, It.IsAny<object>()), Times.Never);
         _audit.Verify(a => a.Record("BusinessPlan.Start", UserId, false, It.IsAny<object>()), Times.Once);
     }
@@ -288,7 +358,8 @@ public class BusinessPlanControllerTests
             .Callback<string, AiJobType, string, string>((u, j, op, r) => capturedRefundOpId = op)
             .ReturnsAsync(WebApp.Models.DatabaseModels.Ai.CreditRefundResult.Applied);
 
-        _sessions.Setup(s => s.AddAsync(It.IsAny<BusinessPlanSession>())).Returns(Task.CompletedTask);
+        _sessions.Setup(s => s.TryCreateInFlightAsync(It.IsAny<BusinessPlanSession>()))
+            .ReturnsAsync((BusinessPlanSession s) => (true, s));
         _jobs.Setup(j => j.EnqueueAsync(AiJobType.BusinessPlan, UserId, It.IsAny<BsonDocument>()))
             .ThrowsAsync(new InvalidOperationException("Redis queue down"));
 
@@ -323,7 +394,7 @@ public class BusinessPlanControllerTests
         capturedDebitOpId.Should().NotBeNullOrEmpty();
         _credits.Verify(c => c.DebitForJobAsync(UserId, AiJobType.BusinessPlan, capturedDebitOpId), Times.Once);
         _credits.Verify(c => c.RefundForJobAsync(It.IsAny<string>(), It.IsAny<AiJobType>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
-        _sessions.Verify(s => s.AddAsync(It.Is<BusinessPlanSession>(s => s.Id == capturedDebitOpId)), Times.Once);
+        _sessions.Verify(s => s.TryCreateInFlightAsync(It.Is<BusinessPlanSession>(s => s.Id == capturedDebitOpId)), Times.Once);
         _jobs.Verify(j => j.EnqueueAsync(AiJobType.BusinessPlan, UserId, It.IsAny<BsonDocument>()), Times.Once);
         _audit.Verify(a => a.Record("BusinessPlan.Start", UserId, true, It.IsAny<object>()), Times.Once);
         _audit.Verify(a => a.Record("BusinessPlan.Start", UserId, false, It.IsAny<object>()), Times.Never);

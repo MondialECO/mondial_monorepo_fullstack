@@ -27,6 +27,15 @@ namespace WebApp.Services.Repository.Ai
 
         Task SetNeedsReviewAsync(string id, string error);
         Task SetFailedAsync(string id, string error);
+
+        /// <summary>Atomically attempts to create a session guarded by unique InFlightKey. Returns (false, existing) if in flight.</summary>
+        Task<(bool Created, ForecastSession Session)> TryCreateInFlightAsync(ForecastSession session);
+
+        /// <summary>Finds an active, non-stale in-flight session for a business plan.</summary>
+        Task<ForecastSession?> FindInFlightByPlanAsync(string ownerUserId, string businessPlanSessionId);
+
+        /// <summary>Atomically acquires a regeneration lock on an existing forecast. Returns (false, existing) if already in flight.</summary>
+        Task<(bool Acquired, ForecastSession? Session)> TryAcquireRegenerateLockAsync(string id, string ownerUserId);
     }
 
     /// <summary>
@@ -64,6 +73,16 @@ namespace WebApp.Services.Repository.Ai
                 new CreateIndexModel<ForecastSession>(
                     Builders<ForecastSession>.IndexKeys.Ascending(x => x.RequestId),
                     new CreateIndexOptions { Name = "RequestId" }),
+
+                // Atomic in-flight deduplication guard (unique when string present).
+                new CreateIndexModel<ForecastSession>(
+                    Builders<ForecastSession>.IndexKeys.Ascending(x => x.InFlightKey),
+                    new CreateIndexOptions<ForecastSession>
+                    {
+                        Name = "InFlightKey_Unique",
+                        Unique = true,
+                        PartialFilterExpression = Builders<ForecastSession>.Filter.Type(x => x.InFlightKey, BsonType.String)
+                    }),
             });
         }
 
@@ -138,6 +157,7 @@ namespace WebApp.Services.Repository.Ai
                     .Set(x => x.CurrentVersion, nextVersion)
                     .Set(x => x.Status, "Completed")
                     .Set(x => x.Error, null)
+                    .Unset(x => x.InFlightKey)
                     .Set(x => x.UpdatedAt, now));
         }
 
@@ -177,6 +197,7 @@ namespace WebApp.Services.Repository.Ai
                 Builders<ForecastSession>.Update
                     .Set(x => x.Status, "NeedsReview")
                     .Set(x => x.Error, error)
+                    .Unset(x => x.InFlightKey)
                     .Set(x => x.UpdatedAt, DateTime.UtcNow));
         }
 
@@ -188,6 +209,7 @@ namespace WebApp.Services.Repository.Ai
                 Builders<ForecastSession>.Update
                     .Set(x => x.Status, "Failed")
                     .Set(x => x.Error, error)
+                    .Unset(x => x.InFlightKey)
                     .Set(x => x.UpdatedAt, DateTime.UtcNow));
         }
 
@@ -204,8 +226,77 @@ namespace WebApp.Services.Repository.Ai
                 Builders<ForecastSession>.Update
                     .Set(x => x.Status, "Completed")
                     .Set(x => x.Error, error)
+                    .Unset(x => x.InFlightKey)
                     .Set(x => x.UpdatedAt, DateTime.UtcNow));
             return res.MatchedCount > 0;
+        }
+
+        public async Task<ForecastSession?> FindInFlightByPlanAsync(string ownerUserId, string businessPlanSessionId)
+        {
+            var staleCutoff = DateTime.UtcNow.AddMinutes(-5);
+            return await _collection.Find(x =>
+                x.OwnerUserId == ownerUserId
+                && x.BusinessPlanSessionId == businessPlanSessionId
+                && (x.Status == "Pending" || x.Status == "Processing")
+                && x.UpdatedAt > staleCutoff)
+                .SortByDescending(x => x.CreatedAt)
+                .FirstOrDefaultAsync();
+        }
+
+        public async Task<(bool Created, ForecastSession Session)> TryCreateInFlightAsync(ForecastSession session)
+        {
+            try
+            {
+                await _collection.InsertOneAsync(session);
+                return (true, session);
+            }
+            catch (MongoWriteException ex) when (ex.WriteError?.Category == ServerErrorCategory.DuplicateKey)
+            {
+                var existing = await FindInFlightByPlanAsync(session.OwnerUserId, session.BusinessPlanSessionId ?? "");
+                if (existing != null)
+                {
+                    return (false, existing);
+                }
+
+                // If duplicate key was hit from an expired/stale record, retry with fresh ID without inFlightKey
+                session.Id = ObjectId.GenerateNewId().ToString();
+                session.InFlightKey = null;
+                await _collection.InsertOneAsync(session);
+                return (true, session);
+            }
+        }
+
+        public async Task<(bool Acquired, ForecastSession? Session)> TryAcquireRegenerateLockAsync(string id, string ownerUserId)
+        {
+            var staleCutoff = DateTime.UtcNow.AddMinutes(-5);
+            var now = DateTime.UtcNow;
+
+            var filter = Builders<ForecastSession>.Filter.And(
+                Builders<ForecastSession>.Filter.Eq(x => x.Id, id),
+                Builders<ForecastSession>.Filter.Eq(x => x.OwnerUserId, ownerUserId),
+                Builders<ForecastSession>.Filter.Or(
+                    Builders<ForecastSession>.Filter.Nin(x => x.Status, new[] { "Pending", "Processing" }),
+                    Builders<ForecastSession>.Filter.Lte(x => x.UpdatedAt, staleCutoff)
+                )
+            );
+
+            var update = Builders<ForecastSession>.Update
+                .Set(x => x.Status, "Processing")
+                .Set(x => x.InFlightKey, $"{ownerUserId}:forecast_regen:{id}")
+                .Set(x => x.UpdatedAt, now);
+
+            var updated = await _collection.FindOneAndUpdateAsync(
+                filter,
+                update,
+                new FindOneAndUpdateOptions<ForecastSession> { ReturnDocument = ReturnDocument.After });
+
+            if (updated != null)
+            {
+                return (true, updated);
+            }
+
+            var existing = await GetOwnedAsync(id, ownerUserId);
+            return (false, existing);
         }
     }
 }

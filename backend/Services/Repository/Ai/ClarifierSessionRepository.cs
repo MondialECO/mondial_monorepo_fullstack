@@ -22,6 +22,12 @@ namespace WebApp.Services.Repository.Ai
         Task SetNeedsReviewAsync(string id, string error);
         Task SetFailedAsync(string id, string error);
 
+        /// <summary>Atomically attempts to create a session guarded by unique InFlightKey. Returns (false, existing) if in flight.</summary>
+        Task<(bool Created, ClarifierSession Session)> TryCreateInFlightAsync(ClarifierSession session);
+
+        /// <summary>Finds an active, non-stale in-flight session for an idea.</summary>
+        Task<ClarifierSession?> FindInFlightByIdeaAsync(string ownerUserId, string businessIdeaId);
+
         /// <summary>Stamp the idea anchor (CreatorIdea id) onto this clarifier. Multi-idea STEP 2.</summary>
         Task SetBusinessIdeaIdAsync(string id, string businessIdeaId);
     }
@@ -59,6 +65,16 @@ namespace WebApp.Services.Repository.Ai
                 new CreateIndexModel<ClarifierSession>(
                     Builders<ClarifierSession>.IndexKeys.Ascending(x => x.RequestId),
                     new CreateIndexOptions { Name = "RequestId" }),
+
+                // Atomic in-flight deduplication guard (unique when string present).
+                new CreateIndexModel<ClarifierSession>(
+                    Builders<ClarifierSession>.IndexKeys.Ascending(x => x.InFlightKey),
+                    new CreateIndexOptions<ClarifierSession>
+                    {
+                        Name = "InFlightKey_Unique",
+                        Unique = true,
+                        PartialFilterExpression = Builders<ClarifierSession>.Filter.Type(x => x.InFlightKey, BsonType.String)
+                    }),
             });
         }
 
@@ -110,6 +126,7 @@ namespace WebApp.Services.Repository.Ai
                     .Set(x => x.Output, output)
                     .Set(x => x.ClarityScore, clarityScore)
                     .Set(x => x.Error, null)
+                    .Unset(x => x.InFlightKey)
                     .Set(x => x.UpdatedAt, DateTime.UtcNow));
 
         /// <summary>Model replied but the output could not be parsed/validated; raw kept on the response.</summary>
@@ -119,6 +136,7 @@ namespace WebApp.Services.Repository.Ai
                 Builders<ClarifierSession>.Update
                     .Set(x => x.Status, "NeedsReview")
                     .Set(x => x.Error, error)
+                    .Unset(x => x.InFlightKey)
                     .Set(x => x.UpdatedAt, DateTime.UtcNow));
 
         public Task SetFailedAsync(string id, string error)
@@ -127,7 +145,43 @@ namespace WebApp.Services.Repository.Ai
                 Builders<ClarifierSession>.Update
                     .Set(x => x.Status, "Failed")
                     .Set(x => x.Error, error)
+                    .Unset(x => x.InFlightKey)
                     .Set(x => x.UpdatedAt, DateTime.UtcNow));
+
+        public async Task<ClarifierSession?> FindInFlightByIdeaAsync(string ownerUserId, string businessIdeaId)
+        {
+            var staleCutoff = DateTime.UtcNow.AddMinutes(-5);
+            return await _collection.Find(x =>
+                x.OwnerUserId == ownerUserId
+                && x.BusinessIdeaId == businessIdeaId
+                && (x.Status == "Pending" || x.Status == "Processing")
+                && x.UpdatedAt > staleCutoff)
+                .SortByDescending(x => x.CreatedAt)
+                .FirstOrDefaultAsync();
+        }
+
+        public async Task<(bool Created, ClarifierSession Session)> TryCreateInFlightAsync(ClarifierSession session)
+        {
+            try
+            {
+                await _collection.InsertOneAsync(session);
+                return (true, session);
+            }
+            catch (MongoWriteException ex) when (ex.WriteError?.Category == ServerErrorCategory.DuplicateKey)
+            {
+                var existing = await FindInFlightByIdeaAsync(session.OwnerUserId, session.BusinessIdeaId ?? "");
+                if (existing != null)
+                {
+                    return (false, existing);
+                }
+
+                // If duplicate key was hit from an expired/stale record, retry with fresh ID without inFlightKey
+                session.Id = ObjectId.GenerateNewId().ToString();
+                session.InFlightKey = null;
+                await _collection.InsertOneAsync(session);
+                return (true, session);
+            }
+        }
 
         // Multi-idea STEP 2: BusinessIdeaId carries [BsonRepresentation(ObjectId)], so the
         // typed Set serializes the 24-hex string as an ObjectId (matches the backfill).

@@ -74,17 +74,25 @@ namespace WebApp.Controllers
             if (!_settings.Features.Clarifier)
                 return StatusCode(503, ApiResponse.Error("The Idea Clarifier is currently disabled.", HttpContext.TraceIdentifier));
 
-            // Create the session first so it owns the lifecycle (source of truth).
+            var inFlightKey = $"{owner}:clarifier:{request.BusinessIdeaId}";
             var session = new ClarifierSession
             {
                 OwnerUserId = owner,
                 BusinessIdeaId = string.IsNullOrWhiteSpace(request.BusinessIdeaId) ? null : request.BusinessIdeaId,
                 Status = "Pending",
                 Input = BuildInput(request.RawIdea),
+                InFlightKey = inFlightKey,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
             };
-            await _sessions.AddAsync(session); // ObjectId id assigned here
+
+            var (created, activeSession) = await _sessions.TryCreateInFlightAsync(session);
+            if (!created)
+            {
+                _logger.LogInformation("In-flight ClarifierSession {SessionId} joined for idea {BusinessIdeaId} by user {UserId}.",
+                    activeSession.Id, request.BusinessIdeaId, owner);
+                return Ok(ApiResponse.Ok("Idea Clarifier started.", new { sessionId = activeSession.Id, jobId = activeSession.RequestId }));
+            }
 
             _audit.Record("IdeaClarifier.Start", owner, success: true,
                 new { sessionId = session.Id, businessIdeaId = session.BusinessIdeaId });
