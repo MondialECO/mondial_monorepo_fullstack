@@ -68,7 +68,7 @@ npx playwright test tests/creator/e2e/support/manual/creator-e2e.spec.ts --heade
 ```
 
 What it covers:
-- TEST 1: Fresh user gets 100 credits on first AI call (lazy grant)
+- TEST 1: Fresh user gets starter credits on first AI call (lazy grant: 200 credits in live configuration; historical test script was authored against 100)
 - TEST 3: Business plan + forecast both complete with real AI output
 - TEST 5: Level Up creates entrepreneur profile + bridge pre-fills LegalStructure
 - TEST 7: Dashboard DOM has no mock strings (Sophie Chen etc.)
@@ -79,7 +79,7 @@ What it covers:
 
 | Test | API script | Playwright | Manual |
 |------|-----------|-----------|--------|
-| 1 — Credits lazy grant | — | ✅ | Verify MongoDB Balance=99 |
+| 1 — Credits lazy grant | — | ✅ | Verify MongoDB Balance=180 (200 grant - 20 Clarifier; historically authored for 99) |
 | 2 — Phase 3 order | ✅ | — | — |
 | 3 — Full AI flow | — | ✅ | Check chart data in browser |
 | 4 — Credit exhaustion UX | ✅ (partial) | — | Verify frontend message |

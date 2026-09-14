@@ -12,7 +12,7 @@ dashboard, health, credits, observability and failure behaviour.
 |---|---|---|
 | `OpenRouter__ApiKey` | env var / user-secrets | **Required.** `StartupConfigValidation` fails fast if absent — the app refuses to boot. |
 | `OpenRouter:BaseUrl` | appsettings | Default `https://openrouter.ai/api/v1`. |
-| `Ai:ModelRouting:Models` | appsettings | task-type → model id. `Probe` routes to a **free** model (`openai/gpt-oss-20b:free`) so the self-test runs at $0 balance. |
+| `Ai:ModelRouting:Models` | appsettings | task-type → model id. All tasks including `Probe` route to `google/gemini-3.8-flash`. Probe has credit cost 0. |
 | `Ai:CreditCosts` | appsettings | per-type credit cost; `Probe = 0` (free). |
 | `Hangfire:WorkerCount` | appsettings | bounded worker count (default 4). |
 | `Ai:Enabled` | appsettings | master kill-switch for enqueue (rollback without redeploy). |

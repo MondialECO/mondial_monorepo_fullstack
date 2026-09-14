@@ -16,7 +16,7 @@ Key architectural guarantees:
 2. **Deterministic Race Prevention:** Credit refunds are committed to the MongoDB ledger *before* the session document is transitioned to `Failed`. Client polling hooks that detect terminal failure will *always* observe the restored balance on subsequent query invalidation.
 3. **Single Source of Truth:** `GET /api/ai/credits` is the sole authoritative endpoint for credit balance, lifetime statistics, and per-capability costs. The frontend never hardcodes costs or executes balance arithmetic locally.
 4. **Live Real-Time Feedback Without Reload:** The topbar `AiCreditBadge` reflects debits immediately upon generation dispatch and reflects refunds upon job completion or failure dynamically without page reloads.
-5. **Reasoning-Aware Capacity Headroom:** All capabilities route to `google/gemini-3.8-flash`. Output contracts are trimmed (e.g. redundant Forecast monthly notes removed) to reserve 1,600+ tokens of headroom specifically for Gemini internal chain-of-thought variance under the 6,000 token ceiling.
+5. **Reasoning-Aware Capacity Headroom:** All capabilities route to `google/gemini-3.8-flash`. Output contracts are trimmed (e.g. redundant Forecast monthly notes removed) to reserve 1,600+ tokens of headroom specifically for Gemini internal chain-of-thought variance under the 8,000 token ceiling.
 
 ---
 
@@ -93,21 +93,21 @@ sequenceDiagram
     participant Runner as AiJobRunner (Hangfire)
     participant Provider as OpenRouter (Gemini Flash)
 
-    User->>UI: Click "Generate forecast (5 credits)"
+    User->>UI: Click "Generate forecast (32 credits)"
     UI->>API: POST /api/ai/forecast
     API->>Ledger: DebitForJobAsync(owner, Forecast, opId)
-    Ledger-->>API: Applied (Balance: 189 -> 184)
+    Ledger-->>API: Applied (Balance: 200 -> 168)
     API-->>UI: 200 OK { sessionId, jobId }
-    UI->>UI: Invalidate ["ai", "credits"] -> Topbar updates to "184 credits"
+    UI->>UI: Invalidate ["ai", "credits"] -> Topbar updates to "168 credits"
     
     API->>Runner: Enqueue job to 'ai' queue
-    Runner->>Provider: CompleteAsync(model, messages, maxTokens=6000)
+    Runner->>Provider: CompleteAsync(model, messages, maxTokens=8000)
     
     alt Provider Fails / Model Error / Exhaustion
         Provider-->>Runner: 4xx/5xx or Empty Content on Length
         Note over Runner: Catch Block Triggered
         Runner->>Ledger: TryAutomaticRefundAsync(opId, reason)
-        Ledger-->>Runner: Refund Applied (Balance: 184 -> 189)
+        Ledger-->>Runner: Refund Applied (Balance: 168 -> 200)
         Runner->>API: MarkSessionFailedAsync(sessionId, error)
         Note over Runner: Session document in DB is now "Failed"
         Runner-->>Runner: StopRetryOnPermanentAiFailure (no Hangfire retry)
@@ -120,8 +120,8 @@ sequenceDiagram
 
     Note over UI: useTimedSession detects terminal "Failed"
     UI->>API: GET /api/ai/credits (invalidated query)
-    API-->>UI: { balance: 189, ... }
-    UI->>UI: Topbar badge dynamically restores to "189 credits" (NO RELOAD)
+    API-->>UI: { balance: 200, ... }
+    UI->>UI: Topbar badge dynamically restores to "200 credits" (NO RELOAD)
     UI->>User: Displays honest error card with "Adjust inputs & retry"
 ```
 
@@ -143,9 +143,9 @@ Response format:
     "lifetimeGranted": 200,
     "lifetimeSpent": 11,
     "costs": {
-      "BusinessPlan": 5,
-      "Forecast": 5,
-      "IdeaClarifier": 1,
+      "BusinessPlan": 33,
+      "Forecast": 32,
+      "IdeaClarifier": 20,
       "IdeaGenerator": 0,
       "Probe": 0
     }
@@ -161,9 +161,9 @@ Response format:
    - Renders: `✦ {balance} credits` with tooltip: `Lifetime: {granted} granted, {spent} spent`.
 2. **Generate Button Labels**:
    - Dynamic server-authoritative cost suffix:
-     - `Generate plan (5 credits)`
-     - `Generate forecast (5 credits)`
-     - `Run Idea Clarifier (1 credit)`
+     - `Generate plan (33 credits)`
+     - `Generate forecast (32 credits)`
+     - `Run Idea Clarifier (20 credits)`
 3. **Insufficient Balance State**:
    - When `balance < capabilityCost`:
      - Button disabled state (`disabled={true}`).
@@ -178,4 +178,4 @@ Full automated browser verification executed across all surfaces:
 - **Baseline Funded State**: Verified topbar rendered `✦ 189 credits`, tooltip `Lifetime: 200 granted, 11 spent`.
 - **Dispatch & Debit**: Verified topbar immediately decremented to `✦ 184 credits` upon `POST /api/ai/forecast` dispatch without reload.
 - **Failure & Refund**: Forced model failure (`google/invalid-forecast-model-trigger-refund`), observed automatic refund committed in MongoDB, session marked failed, poller detected terminal failure, and topbar returned to `✦ 189 credits` without page reload.
-- **Insufficient Balance State**: Simulated balance 2 < cost 5: button disabled, inline shortfall warning rendered, contact support copy verified absent.
+- **Insufficient Balance State**: Simulated balance 2 < cost 32: button disabled, inline shortfall warning rendered, contact support copy verified absent.
