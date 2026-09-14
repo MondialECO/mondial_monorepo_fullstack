@@ -325,7 +325,10 @@ export default function AIClarifierPage() {
       };
 
       // Start the C-2 AI clarifier (1 credit), poll it, then map onto the project.
-      const { sessionId } = await creatorAiApi.startClarifier({ rawIdea });
+      const { sessionId } = await creatorAiApi.startClarifier({
+        rawIdea,
+        businessIdeaId: state.activeIdeaId ?? undefined,
+      });
       const session = await pollClarifier(sessionId);
       if (!session) throw new Error("This is taking longer than expected. Please try again.");
 
