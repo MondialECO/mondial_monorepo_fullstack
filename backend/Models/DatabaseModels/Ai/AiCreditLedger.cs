@@ -27,6 +27,21 @@ namespace WebApp.Models.DatabaseModels.Ai
         [BsonElement("LifetimeSpent")]
         public int LifetimeSpent { get; set; }
 
+        /// <summary>Start of current measuring period. Null when no period is active (default for all users).</summary>
+        [BsonElement("PeriodStart")]
+        [BsonIgnoreIfNull]
+        public DateTime? PeriodStart { get; set; }
+
+        /// <summary>End of current measuring period. Null when no period is active.</summary>
+        [BsonElement("PeriodEnd")]
+        [BsonIgnoreIfNull]
+        public DateTime? PeriodEnd { get; set; }
+
+        /// <summary>Credits spent within the current measuring period. Null when no period is active.</summary>
+        [BsonElement("PeriodCreditsSpent")]
+        [BsonIgnoreIfNull]
+        public int? PeriodCreditsSpent { get; set; }
+
         [BsonElement("Debits")]
         public List<AiCreditDebit> Debits { get; set; } = new();
 
