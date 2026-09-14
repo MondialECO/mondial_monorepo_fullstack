@@ -334,6 +334,75 @@ public class OpenRouterClientTests
         http.DefaultRequestHeaders.GetValues("X-Title").Should().ContainSingle().Which.Should().Be("Mondial");
     }
 
+    // ---- Empty-content length finish vs partial length finish ----
+
+    [Fact]
+    public async Task Empty_content_on_length_finish_fails_fast_without_retrying()
+    {
+        const string emptyLengthBody = """
+        {
+          "id": "gen-exhausted",
+          "model": "minimax/minimax-m2.7:free",
+          "choices": [
+            { "index": 0, "message": { "role": "assistant", "content": "" }, "finish_reason": "length" }
+          ],
+          "usage": { "prompt_tokens": 100, "completion_tokens": 3800, "total_tokens": 3900 }
+        }
+        """;
+
+        var handler = new StubHandler((_, _) => Json(HttpStatusCode.OK, emptyLengthBody));
+        var client = FastClientWith(handler, maxRetries: 2);
+
+        var act = () => client.CompleteAsync(SampleRequest());
+
+        var ex = await act.Should().ThrowAsync<AiProviderException>();
+        ex.Which.IsTransient.Should().BeFalse("Reasoning budget exhaustion is deterministic and must fail fast");
+        ex.Which.Message.Should().Contain("length with empty content");
+        handler.Calls.Should().Be(1, "Must not retry — fail fast on attempt 1 to save worker queue slots");
+    }
+
+    [Fact]
+    public async Task Non_empty_content_on_length_finish_returns_partial_completion_for_downstream_handling()
+    {
+        const string partialLengthBody = """
+        {
+          "id": "gen-partial",
+          "model": "google/gemini-3.8-flash",
+          "choices": [
+            { "index": 0, "message": { "role": "assistant", "content": "{\"revenueForecast\": {\"monthly\": [" }, "finish_reason": "length" }
+          ],
+          "usage": { "prompt_tokens": 500, "completion_tokens": 5996, "total_tokens": 6496 }
+        }
+        """;
+
+        var handler = new StubHandler((_, _) => Json(HttpStatusCode.OK, partialLengthBody));
+        var client = FastClientWith(handler, maxRetries: 2);
+
+        var completion = await client.CompleteAsync(SampleRequest());
+
+        completion.Text.Should().Be("{\"revenueForecast\": {\"monthly\": [");
+        completion.FinishReason.Should().Be("length");
+        completion.Usage.CompletionTokens.Should().Be(5996);
+        handler.Calls.Should().Be(1, "Valid partial output returns on attempt 1 without retry");
+    }
+
+    [Fact]
+    public void StopRetryOnPermanentAiFailure_treats_non_transient_provider_exception_as_permanent()
+    {
+        var nonTransientEx = new AiProviderException("reasoning budget exhausted", statusCode: 200, isTransient: false);
+        var transientEx = new AiProviderException("502 bad gateway", statusCode: 502, isTransient: true);
+        var clientErrorEx = new AiProviderException("400 bad request", statusCode: 400, isTransient: true);
+
+        WebApp.Services.Ai.Jobs.StopRetryOnPermanentAiFailureAttribute.IsPermanent(nonTransientEx)
+            .Should().BeTrue("Non-transient provider exceptions must be treated as permanent by Hangfire");
+
+        WebApp.Services.Ai.Jobs.StopRetryOnPermanentAiFailureAttribute.IsPermanent(transientEx)
+            .Should().BeFalse("5xx transient errors should be eligible for retry");
+
+        WebApp.Services.Ai.Jobs.StopRetryOnPermanentAiFailureAttribute.IsPermanent(clientErrorEx)
+            .Should().BeTrue("4xx client errors are permanent");
+    }
+
     private sealed class StubHandler : HttpMessageHandler
     {
         private readonly Func<HttpRequestMessage, int, HttpResponseMessage> _responder;

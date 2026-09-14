@@ -22,6 +22,7 @@ import {
   Loader2,
 } from "lucide-react";
 import {
+  useAiCredits,
   useBusinessPlanSession,
   useBusinessPlanSessions,
   useClarifierSession,
@@ -76,6 +77,8 @@ function StageShell({
 function ClarifierForm({
   onSubmit,
   isSubmitting,
+  cost = 0,
+  insufficientCredits = false,
 }: {
   onSubmit: (raw: {
     title: string;
@@ -85,6 +88,8 @@ function ClarifierForm({
     existingAlternatives?: string;
   }) => void;
   isSubmitting: boolean;
+  cost?: number;
+  insufficientCredits?: boolean;
 }) {
   const [title, setTitle] = useState("");
   const [problemStatement, setProblemStatement] = useState("");
@@ -159,14 +164,19 @@ function ClarifierForm({
           rows={2}
         />
       </div>
-      <Button type="submit" disabled={!valid || isSubmitting} className="gap-2">
+      <Button type="submit" disabled={!valid || isSubmitting || insufficientCredits} className="gap-2">
         {isSubmitting ? (
           <Loader2 className="h-4 w-4 animate-spin" />
         ) : (
           <Sparkles className="h-4 w-4" />
         )}
-        Run Idea Clarifier
+        Run Idea Clarifier{cost > 0 ? ` (${cost} ${cost === 1 ? 'credit' : 'credits'})` : ''}
       </Button>
+      {insufficientCredits && (
+        <p className="text-xs font-medium text-destructive">
+          Insufficient credits: requires {cost} credits (you have 0).
+        </p>
+      )}
     </form>
   );
 }
@@ -187,6 +197,12 @@ export function CreatorAiWorkspace() {
   const startClarifier = useStartClarifier();
   const startPlan = useStartBusinessPlan();
   const startForecast = useStartForecast();
+
+  const credits = useAiCredits();
+  const clarifierCost = credits.data?.costs?.IdeaClarifier ?? credits.data?.costs?.Clarifier ?? 0;
+  const planCost = credits.data?.costs?.BusinessPlan ?? 0;
+  const forecastCost = credits.data?.costs?.Forecast ?? 0;
+  const balance = credits.data?.balance ?? 0;
 
   // Seed active ids from the most recent sessions once lists resolve.
   useEffect(() => {
@@ -269,6 +285,8 @@ export function CreatorAiWorkspace() {
             {!clarifierId && !clarifierData ? (
               <ClarifierForm
                 isSubmitting={startClarifier.isPending}
+                cost={clarifierCost}
+                insufficientCredits={credits.data ? balance < clarifierCost : false}
                 onSubmit={(rawIdea) =>
                   startClarifier.mutate(
                     { rawIdea },
@@ -329,7 +347,7 @@ export function CreatorAiWorkspace() {
                 action={
                   <Button
                     className="gap-2"
-                    disabled={startPlan.isPending}
+                    disabled={startPlan.isPending || balance < planCost}
                     onClick={() =>
                       startPlan.mutate(
                         { clarifierSessionId: clarifierId as string },
@@ -342,7 +360,7 @@ export function CreatorAiWorkspace() {
                     ) : (
                       <Sparkles className="h-4 w-4" />
                     )}
-                    Generate Business Plan
+                    Generate Business Plan{planCost > 0 ? ` (${planCost} credits)` : ''}
                   </Button>
                 }
               />
@@ -392,7 +410,7 @@ export function CreatorAiWorkspace() {
                 action={
                   <Button
                     className="gap-2"
-                    disabled={startForecast.isPending}
+                    disabled={startForecast.isPending || balance < forecastCost}
                     onClick={() =>
                       startForecast.mutate(
                         { businessPlanSessionId: planId as string },
@@ -405,7 +423,7 @@ export function CreatorAiWorkspace() {
                     ) : (
                       <Sparkles className="h-4 w-4" />
                     )}
-                    Generate Forecast
+                    Generate Forecast{forecastCost > 0 ? ` (${forecastCost} credits)` : ''}
                   </Button>
                 }
               />

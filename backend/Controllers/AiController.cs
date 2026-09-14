@@ -141,6 +141,14 @@ namespace WebApp.Controllers
         public async Task<IActionResult> GetUsage([FromQuery] string? period = null)
             => Ok(ApiResponse.Ok("OK", await _usageService.GetUsageAsync(CurrentUserId, period)));
 
+        /// <summary>
+        /// Single authoritative endpoint exposing the user's available AI credit balance,
+        /// lifetime granted/spent totals, and the per-capability cost table from configuration.
+        /// </summary>
+        [HttpGet("credits")]
+        public async Task<IActionResult> GetCredits()
+            => Ok(ApiResponse.Ok("OK", await _creditService.GetBalanceAsync(CurrentUserId)));
+
         [HttpGet("insights")]
         public async Task<IActionResult> GetInsights(int skip = 0, int limit = 30)
         {

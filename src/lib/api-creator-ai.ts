@@ -10,6 +10,7 @@
 import api from "@/lib/axios";
 import { getCreatorWorkspaceIdea } from "@/lib/api-creator-journey";
 import type {
+  AiCreditBalance,
   BusinessPlanSession,
   ClarifierSession,
   ForecastSession,
@@ -150,6 +151,12 @@ export const creatorAiApi = {
       content,
     });
     return unwrap<BusinessPlanSession>(res.data);
+  },
+
+  // ---------- Credit Balance ----------
+  getCredits: async (): Promise<AiCreditBalance> => {
+    const res = await api.get("/ai/credits");
+    return unwrap<AiCreditBalance>(res.data);
   },
 };
 

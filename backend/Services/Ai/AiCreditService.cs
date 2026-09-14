@@ -32,6 +32,12 @@ namespace WebApp.Services.Ai
         /// or job enqueue fails. Atomically idempotent: multiple calls for the same operationId mutate at most once.
         /// </summary>
         Task<CreditRefundResult> RefundForJobAsync(string ownerUserId, AiJobType jobType, string operationId, string reason = "Generation failed before acceptance");
+
+        /// <summary>
+        /// Reads the user's available balance, lifetime totals, and the server-authoritative
+        /// capability cost table from configuration. Guarantees starter credits if absent.
+        /// </summary>
+        Task<WebApp.Models.Dtos.Ai.AiCreditBalanceDto> GetBalanceAsync(string ownerUserId);
     }
 
     public sealed class AiCreditService : IAiCreditService
@@ -86,6 +92,22 @@ namespace WebApp.Services.Ai
                 return CreditRefundResult.Applied; // free job — no refund needed
 
             return await _credits.TryRefundAsync(ownerUserId, operationId, cost, reason);
+        }
+
+        public async Task<WebApp.Models.Dtos.Ai.AiCreditBalanceDto> GetBalanceAsync(string ownerUserId)
+        {
+            if (_settings.StarterCredits > 0)
+                await _credits.TryGrantInitialAsync(ownerUserId, _settings.StarterCredits);
+
+            var ledger = await _credits.GetByOwnerAsync(ownerUserId);
+
+            return new WebApp.Models.Dtos.Ai.AiCreditBalanceDto
+            {
+                Balance = ledger?.Balance ?? _settings.StarterCredits,
+                LifetimeGranted = ledger?.LifetimeGranted ?? _settings.StarterCredits,
+                LifetimeSpent = ledger?.LifetimeSpent ?? 0,
+                Costs = _settings.CreditCosts,
+            };
         }
     }
 }

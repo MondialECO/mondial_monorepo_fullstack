@@ -9,10 +9,14 @@ namespace WebApp.Services.Ai
         /// <summary>Upstream HTTP status code, when the failure came from the provider.</summary>
         public int? StatusCode { get; }
 
-        public AiProviderException(string message, int? statusCode = null, Exception? inner = null)
+        /// <summary>Whether this failure is transient and eligible for retry, or permanent/fail-fast.</summary>
+        public bool IsTransient { get; init; } = true;
+
+        public AiProviderException(string message, int? statusCode = null, Exception? inner = null, bool isTransient = true)
             : base(message, inner)
         {
             StatusCode = statusCode;
+            IsTransient = isTransient;
         }
     }
 

@@ -142,7 +142,7 @@ namespace WebApp.Services.Repository.Ai
         /// repeat runs are safe; the unique OwnerUserId index guards concurrency.
         /// Returns true only when a new ledger was created.
         /// </summary>
-        public async Task<bool> TryGrantInitialAsync(string ownerUserId, int amount)
+        public virtual async Task<bool> TryGrantInitialAsync(string ownerUserId, int amount)
         {
             var update = Builders<AiCreditLedger>.Update
                 .SetOnInsert(x => x.OwnerUserId, ownerUserId)

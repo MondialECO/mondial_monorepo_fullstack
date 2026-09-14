@@ -155,6 +155,11 @@ namespace WebApp.Services.Ai.Jobs
                 caughtException = ex;
                 await _requests.SetFailedAsync(requestId, ex.Message);
 
+                // Apply automatic refund BEFORE marking session failed so that when the
+                // frontend poller detects the terminal Failed state, the credit refund is
+                // already committed to the ledger — eliminating any timing race.
+                await TryAutomaticRefundAsync(request, ex.Message);
+
                 // Sync the user-facing session (a SEPARATE document from the AIRequest)
                 // to Failed too. Without this the session stays "Pending" forever and the
                 // frontend poller spins to its 3-minute cap instead of surfacing the error.
@@ -171,12 +176,12 @@ namespace WebApp.Services.Ai.Jobs
             finally
             {
                 // Single determination: A terminal state with no usable payload refunds, however it was reached.
-                // If an exception was thrown OR the handler produced null output, the user received
-                // nothing usable and is refunded. Valid parsed payload (Category 6) does not refund.
-                if (caughtException != null || interpreted?.OutputPayload == null)
+                // If caughtException was null but interpreted?.OutputPayload == null (e.g. handler/parser rejection),
+                // refund here. If caughtException != null, TryAutomaticRefundAsync was already executed above
+                // (and is idempotent via CreditRefundResult.AlreadyRefunded guard).
+                if (caughtException == null && interpreted?.OutputPayload == null)
                 {
-                    var reason = caughtException?.Message ?? "Unusable or malformed model output";
-                    await TryAutomaticRefundAsync(request, reason);
+                    await TryAutomaticRefundAsync(request, "Unusable or malformed model output");
                 }
             }
         }

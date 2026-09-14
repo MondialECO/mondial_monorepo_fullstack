@@ -300,3 +300,13 @@ export interface StartIdeaGenerationRequest {
   observedProblem: string;
   strengths: string[];
 }
+
+// ---------- Credit Balance (single source of truth: GET /ai/credits) ----------
+
+export interface AiCreditBalance {
+  balance: number;
+  lifetimeGranted: number;
+  lifetimeSpent: number;
+  /** Per-capability cost table — keys are capability names (e.g. "Forecast", "BusinessPlan"). */
+  costs: Record<string, number>;
+}

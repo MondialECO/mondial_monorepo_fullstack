@@ -27,7 +27,7 @@ interface PrintProps {
     tam?: number | null;
     monthlyChurnPct?: number | null;
   } | null;
-  cross: { youNeed: string[]; seedAsk: number | null };
+  cross?: { youNeed?: string[]; seedAsk?: number | null } | null;
 }
 
 const has = (s?: string | null): s is string => !!s && s.trim().length > 0;
@@ -391,19 +391,19 @@ export default function PlanForecastPrintView({ open, onClose, projectName, proj
         </Section>
 
         {/* 8. Team Needs */}
-        {arr(cross.youNeed) && (
+        {arr(cross?.youNeed) && (
           <Section>
             <Heading>8. Team Needs</Heading>
             <Sub>Key hires</Sub>
-            <Bullets items={cross.youNeed} />
+            <Bullets items={cross!.youNeed!} />
           </Section>
         )}
 
         {/* 9. Funding Requirements */}
-        {cross.seedAsk != null && (
+        {cross?.seedAsk != null && (
           <Section>
             <Heading>9. Funding Requirements</Heading>
-            <Body>Target raise: {formatMoney(cross.seedAsk, "EUR")}.</Body>
+            <Body>Target raise: {formatMoney(cross!.seedAsk!, "EUR")}.</Body>
           </Section>
         )}
 

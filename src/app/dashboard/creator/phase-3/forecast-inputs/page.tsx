@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Phase3SetupShell } from '@/components/creator/Phase3SetupShell';
-import { useForecastSessionTimed, useStartForecast } from '@/hooks/queries/creator-ai';
+import { useAiCredits, useForecastSessionTimed, useStartForecast } from '@/hooks/queries/creator-ai';
 import { creatorJourneyApi } from '@/lib/api-creator-journey';
 import { toAiError, type AiError } from '@/lib/ai-errors';
 
@@ -31,6 +31,9 @@ export default function ForecastInputsPage() {
   const [startError, setStartError] = useState<AiError | null>(null);
 
   const startForecast = useStartForecast();
+  const credits = useAiCredits();
+  const forecastCost = credits.data?.costs?.Forecast ?? 0;
+  const insufficientCredits = credits.data ? credits.data.balance < forecastCost : false;
   // Read the latest forecast session only to PRE-FILL from its stored inputs (reuse the
   // existing hook — no new fetch pattern). Fetches once when terminal; no polling need.
   const session = useForecastSessionTimed(forecastSessionId);
@@ -133,7 +136,7 @@ export default function ForecastInputsPage() {
               <AlertDescription className="flex flex-col items-start gap-2">
                 <span>{startError.message}</span>
                 {startError.kind === 'credits' && (
-                  <span className="text-xs text-muted-foreground">Contact support to add more AI credits to your account.</span>
+                  <span className="text-xs text-muted-foreground">You do not have enough credits for this action.</span>
                 )}
                 {(startError.kind === 'service' || startError.kind === 'rateLimited') && (
                   <Button variant="outline" size="sm" onClick={handleGenerate} disabled={startForecast.isPending} className="gap-1.5">
@@ -147,10 +150,15 @@ export default function ForecastInputsPage() {
             <Button variant="ghost" onClick={() => router.push('/dashboard/creator/phase-3/business-plan')} className="text-xs font-bold text-muted-foreground">
               <ArrowLeft className="w-4 h-4 mr-1.5" /> Business Plan
             </Button>
-            <Button onClick={handleGenerate} disabled={startForecast.isPending || !businessPlanSessionId} className="gap-2">
-              {startForecast.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <TrendingUp className="h-4 w-4" />} Generate forecast
+            <Button onClick={handleGenerate} disabled={startForecast.isPending || !businessPlanSessionId || insufficientCredits} className="gap-2">
+              {startForecast.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <TrendingUp className="h-4 w-4" />} Generate forecast{forecastCost > 0 ? ` (${forecastCost} credits)` : ''}
             </Button>
           </div>
+          {insufficientCredits && (
+            <p className="text-xs font-medium text-destructive">
+              Insufficient credits: requires {forecastCost} credits (you have {credits.data?.balance ?? 0}).
+            </p>
+          )}
           {!businessPlanSessionId && (
             <p className="text-xs text-muted-foreground">You need a completed business plan first — use “Business Plan”.</p>
           )}

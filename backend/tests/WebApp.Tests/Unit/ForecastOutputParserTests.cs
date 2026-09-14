@@ -101,4 +101,48 @@ public class ForecastOutputParserTests
         ForecastOutputParser.TryParse("{ \"revenueForecast\": { ", out _, out var error).Should().BeFalse();
         error.Should().NotBeNullOrEmpty();
     }
+
+    [Fact]
+    public void Parses_trimmed_contract_without_notes_on_cost_and_cash_flow()
+    {
+        const string trimmedJson = """
+        {
+          "schemaVersion": 1,
+          "revenueForecast": {
+            "currency": "EUR",
+            "summary": "Revenue growth",
+            "monthly": [
+              { "month": 1, "amount": 10000, "notes": "Launch month" },
+              { "month": 2, "amount": 12000, "notes": "Word-of-mouth" }
+            ]
+          },
+          "costForecast": {
+            "currency": "EUR",
+            "summary": "Fixed OPEX + margin",
+            "monthly": [
+              { "month": 1, "fixedCosts": 5000, "variableCosts": 2000 },
+              { "month": 2, "fixedCosts": 5000, "variableCosts": 2400 }
+            ]
+          },
+          "cashFlowProjection": {
+            "currency": "EUR",
+            "summary": "Positive operational cash flow",
+            "monthly": [
+              { "month": 1, "netCashFlow": 3000, "endingBalance": 3000 },
+              { "month": 2, "netCashFlow": 4600, "endingBalance": 7600 }
+            ]
+          },
+          "breakEvenAnalysis": { "breakEvenMonth": 1, "isAchievedWithinHorizon": true, "summary": "Profitable from M1" },
+          "assumptions": ["Conservative ARPU"],
+          "risks": [{ "category": "Market", "description": "Competition", "likelihood": "low", "impact": "medium", "mitigation": "Speed" }],
+          "advisoryNotice": "Planning estimates only."
+        }
+        """;
+
+        ForecastOutputParser.TryParse(trimmedJson, out var doc, out var error).Should().BeTrue();
+        error.Should().BeEmpty();
+        doc["revenueForecast"]["monthly"][0]["notes"].AsString.Should().Be("Launch month");
+        doc["costForecast"]["monthly"][0].AsBsonDocument.Contains("notes").Should().BeFalse();
+        doc["cashFlowProjection"]["monthly"][0].AsBsonDocument.Contains("notes").Should().BeFalse();
+    }
 }

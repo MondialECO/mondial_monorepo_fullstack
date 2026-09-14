@@ -159,8 +159,8 @@ namespace WebApp.Services.Ai.Prompts
                 "{\n" +
                 "  \"schemaVersion\": 1,\n" +
                 "  \"revenueForecast\": { \"currency\": string, \"summary\": string, \"monthly\": [ { \"month\": integer (1-12), \"amount\": number, \"notes\": string } ] },\n" +
-                "  \"costForecast\": { \"currency\": string, \"summary\": string, \"monthly\": [ { \"month\": integer (1-12), \"fixedCosts\": number, \"variableCosts\": number, \"notes\": string } ] },\n" +
-                "  \"cashFlowProjection\": { \"currency\": string, \"summary\": string, \"monthly\": [ { \"month\": integer (1-12), \"netCashFlow\": number, \"endingBalance\": number, \"notes\": string } ] },\n" +
+                "  \"costForecast\": { \"currency\": string, \"summary\": string, \"monthly\": [ { \"month\": integer (1-12), \"fixedCosts\": number, \"variableCosts\": number } ] },\n" +
+                "  \"cashFlowProjection\": { \"currency\": string, \"summary\": string, \"monthly\": [ { \"month\": integer (1-12), \"netCashFlow\": number, \"endingBalance\": number } ] },\n" +
                 "  \"breakEvenAnalysis\": { \"breakEvenMonth\": integer (1-12) | null, \"summary\": string, \"isAchievedWithinHorizon\": boolean },\n" +
                 "  \"assumptions\": [string],\n" +
                 "  \"risks\": [ { \"category\": string, \"description\": string, \"likelihood\": \"low\" | \"medium\" | \"high\", \"impact\": \"low\" | \"medium\" | \"high\", \"mitigation\": string } ],\n" +
@@ -168,7 +168,7 @@ namespace WebApp.Services.Ai.Prompts
                 "}\n" +
                 "schemaVersion MUST be 1. Each monthly array MUST contain exactly 12 " +
                 "entries, one per month, with month values 1 through 12 in order. " +
-                "Keep monthly notes very short (labels only or empty). Keep summaries brief (1-2 sentences). " +
+                "Keep revenue monthly notes very short (labels only or empty; omit notes from cost and cash-flow entries). Keep summaries brief (1-2 sentences). " +
                 "assumptions MUST contain max 5 concise items. risks MUST contain max 5 concise items. " +
                 "breakEvenMonth MUST be an integer 1-12 when break-even is reached " +
                 "within the horizon, otherwise null with isAchievedWithinHorizon false. " +

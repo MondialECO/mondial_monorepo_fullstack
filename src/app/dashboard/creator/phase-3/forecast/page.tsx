@@ -176,7 +176,7 @@ export default function ForecastResultsPage() {
               : 'The AI service was temporarily unavailable (a provider error, rate limit, or timeout), so your forecast didn’t finish. This isn’t anything you did — please try again.'}
           </p>
           {failedIsCredits && (
-            <p className="text-xs text-muted-foreground">Contact support to add more AI credits, then generate again.</p>
+            <p className="text-xs text-muted-foreground">You do not have enough credits for this action.</p>
           )}
           <Button onClick={() => router.push(INPUTS_ROUTE)} className="gap-2">
             <RotateCw className="h-4 w-4" /> Adjust inputs &amp; retry

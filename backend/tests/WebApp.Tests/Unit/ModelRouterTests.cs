@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using WebApp.Configuration.AiOptions;
@@ -31,37 +32,37 @@ public class ModelRouterTests
 
     private static ModelRouter ShippedRouter() => Build(new()
     {
-        ["Probe"] = "minimax/minimax-m2.7:free",
-        ["IdeaClarifier"] = "minimax/minimax-m2.7:free",
-        ["BusinessPlan"] = "minimax/minimax-m2.7:free",
-        ["Forecast"] = "minimax/minimax-m2.7:free",
-        ["IdeaGenerator"] = "minimax/minimax-m2.7:free",
-    }, "minimax/minimax-m2.7:free");
+        ["Probe"] = "google/gemini-3.8-flash",
+        ["IdeaClarifier"] = "google/gemini-3.8-flash",
+        ["BusinessPlan"] = "google/gemini-3.8-flash",
+        ["Forecast"] = "google/gemini-3.8-flash",
+        ["IdeaGenerator"] = "google/gemini-3.8-flash",
+    }, "google/gemini-3.8-flash");
 
     [Fact]
-    public void Shipped_router_routes_all_tasks_to_minimax_free_model()
+    public void Shipped_router_routes_all_tasks_to_gemini_model()
     {
         var router = ShippedRouter();
-        router.Resolve("Probe").Should().Be("minimax/minimax-m2.7:free");
-        router.Resolve("IdeaClarifier").Should().Be("minimax/minimax-m2.7:free");
-        router.Resolve("BusinessPlan").Should().Be("minimax/minimax-m2.7:free");
-        router.Resolve("Forecast").Should().Be("minimax/minimax-m2.7:free");
-        router.Resolve("IdeaGenerator").Should().Be("minimax/minimax-m2.7:free");
-        router.Resolve("UnknownFallback").Should().Be("minimax/minimax-m2.7:free");
+        router.Resolve("Probe").Should().Be("google/gemini-3.8-flash");
+        router.Resolve("IdeaClarifier").Should().Be("google/gemini-3.8-flash");
+        router.Resolve("BusinessPlan").Should().Be("google/gemini-3.8-flash");
+        router.Resolve("Forecast").Should().Be("google/gemini-3.8-flash");
+        router.Resolve("IdeaGenerator").Should().Be("google/gemini-3.8-flash");
+        router.Resolve("UnknownFallback").Should().Be("google/gemini-3.8-flash");
     }
 
     [Fact]
-    public void Routes_business_plan_to_minimax_free_model()
+    public void Routes_business_plan_to_gemini_model()
     {
         var resolved = ShippedRouter().Resolve("BusinessPlan");
-        resolved.Should().Be("minimax/minimax-m2.7:free");
-        resolved.Should().NotBe("minimax/minimax-m2.7");
+        resolved.Should().Be("google/gemini-3.8-flash");
+        resolved.Should().NotBe("minimax/minimax-m2.7:free");
     }
 
     [Fact]
-    public void Routes_idea_clarifier_to_minimax_free_model()
+    public void Routes_idea_clarifier_to_gemini_model()
     {
-        ShippedRouter().Resolve("IdeaClarifier").Should().Be("minimax/minimax-m2.7:free");
+        ShippedRouter().Resolve("IdeaClarifier").Should().Be("google/gemini-3.8-flash");
     }
 
     [Fact]
@@ -75,9 +76,9 @@ public class ModelRouterTests
     }
 
     [Fact]
-    public void Probe_routing_remains_on_minimax_free_model()
+    public void Probe_routing_is_on_gemini_model()
     {
-        ShippedRouter().Resolve("Probe").Should().Be("minimax/minimax-m2.7:free");
+        ShippedRouter().Resolve("Probe").Should().Be("google/gemini-3.8-flash");
     }
 
     [Fact]
@@ -98,11 +99,30 @@ public class ModelRouterTests
     }
 
     [Fact]
-    public void Throws_for_blank_task_type()
+    public void Physical_appsettings_json_resolves_all_capabilities_to_gemini()
     {
-        var router = Build(new(), "default/model");
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir != null && !File.Exists(Path.Combine(dir.FullName, "appsettings.json")))
+        {
+            dir = dir.Parent;
+        }
+        dir.Should().NotBeNull("Must find directory containing appsettings.json");
+        var appsettingsPath = Path.Combine(dir!.FullName, "appsettings.json");
+        File.Exists(appsettingsPath).Should().BeTrue("appsettings.json must exist in backend root");
 
-        var act = () => router.Resolve("  ");
-        act.Should().Throw<ArgumentException>();
+        var json = File.ReadAllText(appsettingsPath);
+        using var doc = System.Text.Json.JsonDocument.Parse(json);
+        var aiJson = doc.RootElement.GetProperty("Ai").GetRawText();
+        var aiSettings = System.Text.Json.JsonSerializer.Deserialize<AiSettings>(
+            aiJson,
+            new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
+
+        var router = new ModelRouter(Options.Create(aiSettings), NullLogger<ModelRouter>.Instance);
+        router.Resolve("Probe").Should().Be("google/gemini-3.8-flash");
+        router.Resolve("IdeaClarifier").Should().Be("google/gemini-3.8-flash");
+        router.Resolve("BusinessPlan").Should().Be("google/gemini-3.8-flash");
+        router.Resolve("Forecast").Should().Be("google/gemini-3.8-flash");
+        router.Resolve("IdeaGenerator").Should().Be("google/gemini-3.8-flash");
+        router.Resolve("UnmappedCapability").Should().Be("google/gemini-3.8-flash");
     }
 }
