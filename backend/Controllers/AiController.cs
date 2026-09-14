@@ -138,8 +138,8 @@ namespace WebApp.Controllers
         }
 
         [HttpGet("usage")]
-        public async Task<IActionResult> GetUsage()
-            => Ok(ApiResponse.Ok("OK", await _usageService.GetUsageAsync(CurrentUserId)));
+        public async Task<IActionResult> GetUsage([FromQuery] string? period = null)
+            => Ok(ApiResponse.Ok("OK", await _usageService.GetUsageAsync(CurrentUserId, period)));
 
         [HttpGet("insights")]
         public async Task<IActionResult> GetInsights(int skip = 0, int limit = 30)

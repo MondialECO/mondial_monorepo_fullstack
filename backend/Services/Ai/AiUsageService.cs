@@ -24,7 +24,7 @@ namespace WebApp.Services.Ai
             _insights = insights;
         }
 
-        public async Task<AiUsageDto> GetUsageAsync(string ownerUserId)
+        public async Task<AiUsageDto> GetUsageAsync(string ownerUserId, string? period = null)
         {
             var entries = await _usage.GetByOwnerAsync(ownerUserId);
             var credit = await _credits.GetByOwnerAsync(ownerUserId);
@@ -33,7 +33,7 @@ namespace WebApp.Services.Ai
             var refunded = debits.Where(d => d.Refunded).Sum(d => d.Amount);
             var netSpent = debits.Where(d => !d.Refunded).Sum(d => d.Amount);
 
-            return new AiUsageDto
+            var dto = new AiUsageDto
             {
                 TotalCalls = entries.Count,
                 PromptTokens = entries.Sum(e => (long)e.PromptTokens),
@@ -46,6 +46,31 @@ namespace WebApp.Services.Ai
                 NetCreditsSpent = netSpent,
                 RefundedCredits = refunded,
             };
+
+            // Period evaluation: only populated when period=current is explicitly requested.
+            // When period=lifetime or omitted, period fields remain null (omitted from JSON response).
+            if (string.Equals(period, "current", StringComparison.OrdinalIgnoreCase))
+            {
+                var now = DateTime.UtcNow;
+                var hasActivePeriod = credit?.PeriodStart != null
+                                      && credit?.PeriodEnd != null
+                                      && now >= credit.PeriodStart.Value
+                                      && now <= credit.PeriodEnd.Value;
+
+                if (hasActivePeriod)
+                {
+                    dto.PeriodActive = true;
+                    dto.PeriodStart = credit!.PeriodStart;
+                    dto.PeriodEnd = credit!.PeriodEnd;
+                    dto.PeriodCreditsSpent = credit!.PeriodCreditsSpent ?? 0;
+                }
+                else
+                {
+                    dto.PeriodActive = false;
+                }
+            }
+
+            return dto;
         }
 
         public async Task<List<AiInsightDto>> GetInsightsAsync(string ownerUserId, int skip, int limit)

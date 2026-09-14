@@ -21,7 +21,7 @@ namespace WebApp.Services.Repository.Ai
                     new CreateIndexOptions { Name = "OwnerUserId_Unique", Unique = true }));
         }
 
-        public async Task<AiCreditLedger?> GetByOwnerAsync(string ownerUserId)
+        public virtual async Task<AiCreditLedger?> GetByOwnerAsync(string ownerUserId)
             => await _collection.Find(x => x.OwnerUserId == ownerUserId).FirstOrDefaultAsync();
 
         /// <summary>

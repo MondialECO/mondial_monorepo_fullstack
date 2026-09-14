@@ -7,7 +7,7 @@ namespace WebApp.Services.Ai
     /// </summary>
     public interface IAiUsageService
     {
-        Task<AiUsageDto> GetUsageAsync(string ownerUserId);
+        Task<AiUsageDto> GetUsageAsync(string ownerUserId, string? period = null);
         Task<List<AiInsightDto>> GetInsightsAsync(string ownerUserId, int skip, int limit);
     }
 }

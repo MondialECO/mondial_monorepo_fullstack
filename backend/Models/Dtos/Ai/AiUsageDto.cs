@@ -20,5 +20,21 @@ namespace WebApp.Models.Dtos.Ai
 
         /// <summary>Total credits returned to user balance via refund.</summary>
         public int RefundedCredits { get; set; }
+
+        /// <summary>Indicates if a measuring period is currently active for the user (only present when period=current is requested).</summary>
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+        public bool? PeriodActive { get; set; }
+
+        /// <summary>Start timestamp of the active measuring period.</summary>
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+        public DateTime? PeriodStart { get; set; }
+
+        /// <summary>End timestamp of the active measuring period.</summary>
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+        public DateTime? PeriodEnd { get; set; }
+
+        /// <summary>Credits spent within the current measuring period.</summary>
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+        public int? PeriodCreditsSpent { get; set; }
     }
 }
