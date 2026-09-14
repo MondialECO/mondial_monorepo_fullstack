@@ -227,13 +227,18 @@ namespace WebApp.Services.Repository.Ai
         /// Sets a measuring period on the user's ledger. Initializes PeriodCreditsSpent to 0.
         /// Does NOT enforce an allowance limit; lifetime balance continues to govern.
         /// </summary>
-        public async Task<bool> SetPeriodAsync(string ownerUserId, DateTime periodStart, DateTime periodEnd)
+        public async Task<bool> SetPeriodAsync(string ownerUserId, DateTime periodStart, DateTime periodEnd, int? carryOverCeiling = null)
         {
             var update = Builders<AiCreditLedger>.Update
                 .Set(x => x.PeriodStart, periodStart)
                 .Set(x => x.PeriodEnd, periodEnd)
                 .Set(x => x.PeriodCreditsSpent, 0)
                 .Set(x => x.UpdatedAt, DateTime.UtcNow);
+
+            if (carryOverCeiling.HasValue)
+            {
+                update = update.Set(x => x.CarryOverCeiling, carryOverCeiling.Value);
+            }
 
             var res = await _collection.UpdateOneAsync(x => x.OwnerUserId == ownerUserId, update);
             return res.MatchedCount > 0;
@@ -248,6 +253,7 @@ namespace WebApp.Services.Repository.Ai
                 .Unset(x => x.PeriodStart)
                 .Unset(x => x.PeriodEnd)
                 .Unset(x => x.PeriodCreditsSpent)
+                .Unset(x => x.CarryOverCeiling)
                 .Set(x => x.UpdatedAt, DateTime.UtcNow);
 
             var res = await _collection.UpdateOneAsync(x => x.OwnerUserId == ownerUserId, update);

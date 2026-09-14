@@ -42,6 +42,11 @@ namespace WebApp.Models.DatabaseModels.Ai
         [BsonIgnoreIfNull]
         public int? PeriodCreditsSpent { get; set; }
 
+        /// <summary>Maximum credit balance allowed to accumulate/carry over into a subsequent period. Null when uncapped or dormant.</summary>
+        [BsonElement("CarryOverCeiling")]
+        [BsonIgnoreIfNull]
+        public int? CarryOverCeiling { get; set; }
+
         [BsonElement("Debits")]
         public List<AiCreditDebit> Debits { get; set; } = new();
 
