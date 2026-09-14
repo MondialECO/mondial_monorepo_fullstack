@@ -23,15 +23,11 @@ import NDALockedScreen from "./_components/NDALockedScreen";
 import DataRoomSkeleton from "./_components/DataRoomSkeleton";
 
 interface PageProps {
-  params: Promise<{ companyId: string }> | { companyId: string };
+  params: Promise<{ companyId: string }>;
 }
 
 export default function DataRoomPage({ params }: PageProps) {
-  const resolvedParams =
-    typeof (params as any)?.then === "function"
-      ? use(params as Promise<{ companyId: string }>)
-      : (params as { companyId: string });
-  const companyId = resolvedParams.companyId;
+  const { companyId } = use(params);
   const router = useRouter();
 
   // Modal / Drawer state

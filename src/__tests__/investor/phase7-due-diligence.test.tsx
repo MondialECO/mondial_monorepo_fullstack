@@ -132,7 +132,7 @@ function renderPage() {
   return render(
     <QueryClientProvider client={queryClient}>
       <React.Suspense fallback={<div>Loading...</div>}>
-        <DataRoomPage params={{ companyId: "comp-123" }} />
+        <DataRoomPage params={Promise.resolve({ companyId: "comp-123" })} />
       </React.Suspense>
     </QueryClientProvider>
   );
