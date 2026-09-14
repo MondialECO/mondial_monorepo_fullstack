@@ -37,7 +37,7 @@ function KPICard({ title, value, subtext, badge, badgeColor }: { title: string; 
   );
 }
 
-export function Phase7Content() {
+function Phase7Content() {
   const router = useRouter();
   const { activeCompanyId, savePhaseData, moveToNextStep, getPhaseData, applyBackendResponse, currentPhase } = useEntrepreneurProgress();
 

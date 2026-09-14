@@ -4,9 +4,9 @@ import { Suspense } from 'react';
 import { useParams } from 'next/navigation';
 import { ProfileView } from '@/components/serviceprovider/profile/ProfileView';
 
-export default function PublicProfilePage({ params }: { params?: { slug?: string } }) {
+export default function PublicProfilePage() {
   const routeParams = useParams();
-  const rawSlug = routeParams?.slug ?? params?.slug;
+  const rawSlug = routeParams?.slug;
   const slug = Array.isArray(rawSlug) ? rawSlug[0] : (rawSlug as string | undefined);
 
   return (

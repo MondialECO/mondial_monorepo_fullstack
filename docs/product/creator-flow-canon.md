@@ -112,31 +112,43 @@ The Phase-1 completion gate promotes onboarding to Phase 1 only when all four co
 
 ---
 
-## 4. Phase 2 — Smart Gate (idea entry)
+## 4. Phase 2 — Project Identity (Canonical Linear Flow)
 
-Entry decision: "Do you already have an idea?"
+Phase 2 has been intentionally simplified to a single canonical, linear journey:
 
-- **YES** → Clarifier (Path B).
-- **NO** → Discovery (Path A). Both paths are LIVE and converge on a `clarifierSessionId` (Path A seeds one — see below).
+```text
+/phase-2
+→ /phase-2/clarifier
+→ /phase-2/idea-summary
+→ /phase-2/concept-name
+→ /phase-2/branding
+→ branding branch (M50 designer / logo-tool / skip)
+→ /phase-2/complete
+→ Phase 3
+```
 
-### Path B — Clarifier (LIVE)
+Entering `/dashboard/creator/phase-2` automatically sets `entryPath = "already_have_idea"` and `project.exists = true`, performing an immediate redirect to `/dashboard/creator/phase-2/clarifier`. There is no Smart Gate choice and no dual-path selection.
 
-A 6-question AI-guided chat (problem, target customer, differentiation, unfair advantage, GTM approach, 12-month milestone). A live clarity score updates as the user answers. Produces `clarifierSessionId`, which the Phase-3 business plan requires (C-3 start returns 409 without a completed clarifier). Then: name project, brand project.
+### Canonical Journey — Idea Clarifier (LIVE)
+
+A 6-question conversational AI-guided clarifier (core problem, target user, existing alternatives, proposed solution, unfair advantage / founder edge, riskiest assumption & timing). Answers are appended to the journey chat transcript and can be resumed at any time. Produces a live `clarityScore` and `clarifierSessionId`, which finalizes canonical project fields into `CreatorJourneyProject` (and mirrors to `CreatorIdea`). The completed clarifier satisfies the Phase-3 prerequisite chain (Phase 3 C-3 start requires a clarified project).
+
+Following the Clarifier:
+1. **Idea Summary (`/phase-2/idea-summary`):** Displays the structured concept summary and clarity score. The "Revisit" button routes directly back to `/phase-2/clarifier`.
+2. **Concept Name (`/phase-2/concept-name`):** Names the project based on clarified concept context.
+3. **Branding (`/phase-2/branding`):** Chooses visual identity method (current options: AI logo tool, hire M50 designer, or skip). The future Brand Visual Identity Studio will replace the temporary logo tool.
+4. **Phase 2 Complete (`/phase-2/complete`):** Verifies all Phase 2 criteria (`clarified`, `nameSet`, `brandingResolved`) and unlocks Phase 3.
 
 **Branding (LIVE wiring, STUB AI):** upload logo, skip, AI-generate logo, or hire an M50 designer (match → book → workroom). The AI logo generation and AI name suggestions are deterministic stubs today — functional placeholders, marked to swap to the real AI provider later.
 
 **AI failure handling (LIVE, applies to clarifier + Phase-3 plan/forecast):** a **failed** AI session is **not linked** onto the project (no poisoning the project with a Failed session). `finalize-clarifier` distinguishes an **AI-request failure** (401/402/429/timeout → "service temporarily unavailable, try again") from a **parse failure**. HTTP timeouts are classified **permanent** so Hangfire does not auto-retry and burn free-tier quota (`StopRetryOnPermanentAiFailure`). The Phase-3 business-plan and forecast pages render an **honest failure state with a fresh-regenerate path — never a blank body**.
 
-### Path A — Discovery (LIVE)
+### Path A — Discovery (REMOVED FROM CURRENT PRODUCT)
 
-The chain: sectors + problem + strengths → IdeaGenerator Hangfire job → concept cards → pick → **confirm → summary** → name → brand. Both former defects are fixed:
-
-1. **Session convergence (LIVE):** Discovery deliberately **skips the clarifier**. On confirm, `POST /journey/phase2/finalize-discovery` (`CreatorPhase2Controller.FinalizeDiscovery`) **seeds a Completed clarifier session** directly from the chosen concept, satisfying the Phase-3 session chain — a Discovery user can start the business plan. It does NOT set a server-side `selectedEntryPath` (Path B is the only value stored); the backend discriminates a Discovery user by persisted working-state (2C-2).
-2. **Mid-flow resume (LIVE):** the backend derives Discovery steps (`DerivePhase2Step`, 2C-2) and the frontend resolver maps them (2C-3).
-
-The former "Discovery removed / hidden for alpha" code comments were **corrected** — they described a state that no longer exists.
-
-**IdeaGenerator provider:** OpenRouter `openai/gpt-oss-20b:free`, same single provider as every other task (the old gpt-4o-mini fallback / meta-llama requirement is obsolete — see §1).
+> [!IMPORTANT]
+> **REMOVED FROM CURRENT PRODUCT**: The Discovery branch (`/phase-2/discovery`, `/phase-2/ai-processing`, `/phase-2/idea-cards`, `/phase-2/idea-confirm`) has been removed from active frontend and backend routing. Phase 2 is exclusively linear via the Idea Clarifier.
+>
+> **Historical Database Compatibility**: Historical `CreatorIdea` records containing `DiscoveryInputs`, `GeneratedConcepts`, or `SelectedConceptId` remain intact in MongoDB for backward compatibility. Historical users with existing clarified project fields (concept, problem, solution, clarity score, name) resume directly at their current canonical step without repeating removed screens. Shared AI infrastructure remains in place, while `IdeaGeneratorController` and `IdeaGeneratorHandler` are dormant.
 
 ---
 

@@ -49,15 +49,6 @@ namespace WebApp.Services.Interface
             string userId, string clarifierSessionId, string problem, string targetUser,
             string solution, double clarityScore, List<string> tags, string marketGap = "", string creatorEdge = "",
             string existingAlternatives = "", string whyNow = "", string riskiestAssumption = "", string ideaId = null);
-
-        /// <summary>
-        /// Discovery convergence: map a confirmed Discovery concept onto the project and
-        /// link the concept-seeded clarifier session (so Phase 3's prerequisite passes
-        /// without the clarifier Q&amp;A). Also sets Concept/Category.
-        /// </summary>
-        Task<CreatorJourney> ApplyDiscoveryMappingAsync(
-            string userId, string clarifierSessionId, CreatorDiscoveryConcept concept, string ideaId = null);
-
         /// <summary>
         /// Set branding (asset + type + method), optionally persisting the chosen
         /// palette + typography (AI logo tool). Pass null logoAsset to mark
@@ -67,15 +58,6 @@ namespace WebApp.Services.Interface
             string userId, string logoAsset, string logoType, string brandingMethod,
             List<string> colorPalette = null, string paletteName = null, string typographyPairing = null, string ideaId = null,
             string designerId = null, string conversationId = null);
-
-        /// <summary>Persist Discovery input form (sectors, problem, strengths) via targeted $set.</summary>
-        Task<CreatorJourney> SetDiscoveryInputsAsync(string userId, CreatorDiscoveryInputs inputs, string ideaId = null);
-
-        /// <summary>Persist AI-generated concepts via targeted $set (async-safe field update).</summary>
-        Task<CreatorJourney> SetGeneratedConceptsAsync(string userId, List<CreatorDiscoveryConcept> concepts, string ideaId = null);
-
-        /// <summary>Persist the selected concept ID via targeted $set.</summary>
-        Task<CreatorJourney> SetSelectedConceptIdAsync(string userId, string conceptId, string ideaId = null);
 
         // ---- Phase 3 deterministic modules ----
 

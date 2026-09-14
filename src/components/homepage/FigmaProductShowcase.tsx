@@ -60,7 +60,7 @@ export default function FigmaProductShowcase() {
                 <div className="flex flex-col gap-2 text-[12px] sm:text-[13px] text-white/80 pt-2">
                   <div className="flex items-center gap-2">
                     <Check size={14} className="text-[#00C896] shrink-0" />
-                    <span>Guided Discovery or direct AI clarification</span>
+                    <span>AI clarification and structured concept refinement</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Check size={14} className="text-[#00C896] shrink-0" />

@@ -57,11 +57,7 @@ export default function IdeaSummaryPage() {
   ];
 
   const handleRevisit = () => {
-    if (entryPath === "already_have_idea") {
-      router.push("/dashboard/creator/phase-2/clarifier");
-    } else {
-      router.push("/dashboard/creator/phase-2/idea-cards");
-    }
+    router.push("/dashboard/creator/phase-2/clarifier");
   };
 
   const handleContinue = () => {
