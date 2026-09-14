@@ -54,4 +54,47 @@ OpenRouter supports direct reasoning controls for models that support thinking (
    }
    ```
 
-*Note:* Currently, no provider reasoning limits are applied (Gemini's dynamic thinking is active). If production monitoring ever identifies runs approaching the 6,000 ceiling due to reasoning spikes, applying `reasoning: { max_tokens: 2500 }` provides a direct provider-level clamp without modifying application schemas.
+*Note:* Currently, no provider reasoning limits are applied (Gemini's dynamic thinking is active). If production monitoring ever identifies runs approaching the ceiling due to reasoning spikes, applying `reasoning: { max_tokens: 2500 }` provides a direct provider-level clamp without modifying application schemas.
+
+---
+
+## 4. Post-Ceiling (8,000 Tokens) Benchmark & Pricing Derivation
+
+Following the increase of `ForecastHandler` output ceiling to 8,000 tokens, a 12-run empirical benchmark was conducted across six distinct venture ideas across three verbosity tiers (Terse, Moderate, Verbose) with production client retries active:
+
+### A. Empirical Performance & Failure Modes
+- **Final Success Rate:** 12/12 (100.0%)
+- **First-Attempt Success Rate:** 11/12 (91.7%)
+- **Ceiling Truncations (`finish_reason == length`):** 0/12 (0.0%)
+- **Transport / Gateway Timeouts:** 0/12 (0.0%, latencies ranged between 22s and 31s)
+- **Retry Accounting:** Exactly 1 run required a retry due to a transient provider abort (empty content emitted after 5.8s with `finish_reason == error`). The provider billed 0 prompt tokens, 0 completion tokens, and $0.00 on the aborted attempt; the retry succeeded cleanly, resulting in zero wasted tokens for the rescued failure.
+- **Tracked Unhandled Failure Mode:** Malformed JSON (unterminated strings/syntax errors) appeared at ~8% across capabilities, unaffected by token ceilings and tracked for subsequent prompt/parser hardening.
+
+### B. Post-Ceiling Token Distribution (N=12)
+| Metric | Median | 75th Percentile | 90th Percentile | Observed Range | Mean |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Prompt Tokens** | 1,115.5 | 1,131 | 1,148 | 1,104 – 1,148 | 1,120.3 |
+| **Completion Tokens** | **3,893** | **4,258** | **4,287** | **3,115 – 5,267** | **3,902.8** |
+| — *Reasoning Tokens* | **2,733** | **3,061** | **3,091** | **1,929 – 4,102** | **2,732.8** |
+| — *Content Tokens* | **1,173** | **1,197** | **1,222** | **1,102 – 1,237** | **1,169.9** |
+| **Reasoning Share (%)** | **69.9%** | **71.9%** | — | **61.9% – 77.9%** | **69.9%** |
+| **Total Tokens** | **5,001** | **5,389** | **5,391** | **4,263 – 6,371** | **5,023.1** |
+| **Cost per Run (USD)** | $0.0154 | $0.0175 | — | $0.0131 – $0.0206 | $0.0155 |
+
+*Key Takeaway on Reasoning Drift:* Raising the ceiling from 6,000 to 8,000 did **not** invite general reasoning inflation. The model terminates naturally when closing JSON. The extra 2,000 tokens function strictly as a non-intrusive safety buffer for reasoning spikes.
+
+### C. Final Unified Credit Pricing Table
+All costs are server-authoritative via `GET /api/ai/credits`:
+
+| Capability | Benchmark Median Total Tokens | Pricing Ratio vs Clarifier | Credit Cost | Status & Provenance |
+| :--- | :--- | :--- | :--- | :--- |
+| **`IdeaClarifier`** | 3,105 tokens | 1.0000 | **20 credits** | **Locked baseline** (from earlier 36-run benchmark, pre-ceiling) |
+| **`BusinessPlan`** | 5,182 tokens | 1.6689 | **33 credits** | **Locked** (from earlier 36-run benchmark, pre-ceiling; exact 33.38) |
+| **`Forecast`** | 5,001 tokens | 1.6106 | **32 credits** | **Provisional** (derived from post-8k ceiling 12-run benchmark; exact 32.21) |
+| **`IdeaGenerator`** | N/A | 0.0000 | **0 credits** | Unmetered discovery generator |
+| **`Probe`** | N/A | 0.0000 | **0 credits** | Operational self-test |
+
+*Note on Benchmark Scope:* The `IdeaClarifier` and `BusinessPlan` medians were measured during the earlier 36-run benchmark before the ceiling increase. Because the ceiling change was strictly scoped to `ForecastHandler`, their measurements and ratios are unaffected.
+
+*Note on Telemetry Attribution:* All reasoning-share and token breakdown figures documented herein were manually captured from API client responses, as reasoning tokens are not yet stored in the `ModelUsage` database telemetry.
+

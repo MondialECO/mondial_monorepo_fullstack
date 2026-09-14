@@ -83,6 +83,8 @@ deploying, or startup validation aborts the boot (intended fail-fast).
   OpenRouter calls emit HTTP client spans (`System.Net.Http`). Exported via OTLP
   when `OpenTelemetry:OtlpEndpoint` / `OTEL_EXPORTER_OTLP_ENDPOINT` is set.
 - **Metrics:** `/metrics` (Prometheus).
+- **Reasoning-token telemetry attribution:** Reasoning-share figures and token breakdowns recorded in benchmarks and operational documentation were derived from manual capture of provider payloads rather than stored database telemetry. The `ModelUsage` schema will be expanded to persist reasoning tokens directly in a subsequent release.
+- **Tracked failure modes (Malformed JSON):** Unterminated JSON strings and syntax malformations appeared in roughly ~8% of runs across all three capabilities. This is the largest remaining non-retryable failure mode (unaffected by output ceiling changes) and is tracked for separate prompt and parsing hardening.
 
 ---
 

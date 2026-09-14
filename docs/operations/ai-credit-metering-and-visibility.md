@@ -26,9 +26,9 @@ All capabilities route authoritatively to `google/gemini-3.8-flash` in base conf
 
 | Capability | Model | Credit Cost | Description |
 |---|---|---|---|
-| **`IdeaClarifier`** (`C-2`) | `google/gemini-3.8-flash` | **1 credit** | Problem, audience, alternative analysis, clarity scoring |
-| **`BusinessPlan`** (`C-3`) | `google/gemini-3.8-flash` | **5 credits** | 9-section enterprise business plan |
-| **`Forecast`** (`C-4`) | `google/gemini-3.8-flash` | **5 credits** | 36-month projections (12 AI + 24 algorithmic projection) |
+| **`IdeaClarifier`** (`C-2`) | `google/gemini-3.8-flash` | **20 credits** | Problem, audience, alternative analysis, clarity scoring (locked baseline; pre-ceiling benchmark median 3,105 tokens) |
+| **`BusinessPlan`** (`C-3`) | `google/gemini-3.8-flash` | **33 credits** | 9-section enterprise business plan (locked; pre-ceiling benchmark median 5,182 tokens, ratio 1.6689) |
+| **`Forecast`** (`C-4`) | `google/gemini-3.8-flash` | **32 credits** *(Provisional)* | 36-month projections (12 AI + 24 algorithmic projection; post-8k ceiling, post-trim benchmark median 5,001 tokens, ratio 1.6106) |
 | **`IdeaGenerator`** | `google/gemini-3.8-flash` | **0 credits** | Unmetered discovery generator |
 | **`Probe`** | `google/gemini-3.8-flash` | **0 credits** | Operational health self-test |
 
