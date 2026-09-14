@@ -41,7 +41,7 @@ graph TD
     subgraph LLM_INTEGRATION["Prompt & OpenRouter LLM Gateway"]
         PROMPT_STORE["PromptVersionStore.cs<br/>PromptVersions Collection (Seeded on startup)"]
         PROMPT_BLD["PromptBuilder.cs<br/>Hydrates System & User Prompts with Session Context"]
-        MODEL_ROUTER["ModelRouter.cs<br/>Routes Task -> Configured Model (e.g. gpt-oss-20b:free)"]
+        MODEL_ROUTER["ModelRouter.cs<br/>Routes Task -> Configured Model (google/gemini-3.8-flash)"]
         OPENROUTER_CLI["OpenRouterClient.cs (Typed HttpClient)<br/>Polly Resilience: Retries on 429/5xx, Bearer Auth"]
         OPENROUTER_GATEWAY["OpenRouter Cloud Gateway (https://openrouter.ai/api/v1)"]
     end

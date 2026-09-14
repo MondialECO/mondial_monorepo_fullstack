@@ -27,7 +27,7 @@ Every feature carries a STATUS tag reflecting the current build:
 **Backend:** ASP.NET Core 8 (runtime pinned to 8.x — do not run on 10).  
 **Data:** MongoDB Atlas.  
 **Jobs:** Hangfire.  
-**AI provider:** Single-provider **OpenRouter**. Every AI task (probe, clarifier, business plan, forecast, IdeaGenerator) routes to `openai/gpt-oss-20b:free` (`backend/appsettings.json` → `ModelRouting`). This is a **deliberate consolidation** — the earlier Anthropic-Claude / meta-llama split was removed; there is **no `AnthropicClient` in the codebase**. Do not "restore" Anthropic or a per-task model split to match older notes. Free-tier limits apply (~50 requests/day, ~20/min), so flows minimize and gate AI calls; a missing `OpenRouter:ApiKey` fails fast at startup (`StartupConfigValidation`).
+**AI provider:** Single-provider **OpenRouter**. Every AI task (probe, clarifier, business plan, forecast, IdeaGenerator) routes to `google/gemini-3.8-flash` (`backend/appsettings.json` → `ModelRouting`). This is a **deliberate consolidation** — the earlier Anthropic-Claude / meta-llama split was removed; there is **no `AnthropicClient` in the codebase**. Do not "restore" Anthropic or a per-task model split to match older notes. Capabilities are metered and credit-gated via the user's credit balance; a missing `OpenRouter:ApiKey` fails fast at startup (`StartupConfigValidation`).
 
 These rules apply to every phase. Violating them is a canon breach regardless of feature correctness.
 
@@ -73,6 +73,9 @@ Two backfills run on every boot (`Program.cs`, non-fatal): the **idea backfill**
 
 **1.6.8 REMOVED — must not return: the journey mirror.**
 During the cutover, every idea write also mirrored to the journey (dual-write) as a rollback net. It was removed (commit `d27abd9`) because **mirroring is undefined once a user has two ideas** — one journey cannot mirror both, and the interleaved copy poisons any rollback. **FORBIDDEN:** do not reintroduce journey phase-block writes, "for safety" or otherwise. The journey's frozen blocks are historical residue, not a fallback store.
+
+### 1.7 AI credit metering & starter grant
+Capabilities are credit-metered against server-authoritative balance and capability costs (`GET /api/ai/credits`). Current standard starter grant is **200 credits** on onboarding or first AI call (`Ai:StarterCredits = 200`). Current costs: IdeaClarifier: **20**, BusinessPlan: **33**, Financial Forecast: **32** (provisional), Probe: **0**. Exhaustion triggers HTTP 402; failed generations auto-refund.
 
 ---
 
@@ -160,7 +163,7 @@ The strongest, most canon-correct phase. Four modules assembled into the Masterp
 
 ### 5.1 Module — Financial Forecast (C-4, LIVE)
 
-A **36-month** P&L (revenue, costs, cash flow, break-even). **Only the first 12 months are AI-generated; months 13–36 are derived deterministically** in the backend (`ForecastHandler.ExtendToThirtySixMonths`) by projecting from the user's own inputs — revenue compounds at `monthlyGrowthPct`, fixed cost holds at `opex`, variable cost tracks the AI's month-12 margin, cash flow accumulates, and break-even is recomputed across all 36. Rationale: the free model can't reliably emit 36 months of consistent JSON inside the timeout, so we keep the AI call small and extend deterministically. **Projection disclosure is REQUIRED** — the results view and the PDF both label months 13–36 as *projected, not model output* (`aiMonthCount` marks the boundary). Bound to live output — no mock arrays. Non-blocking warnings for unhealthy inputs (tight unit economics, >30% MoM growth, small TAM, high churn).
+A **36-month** P&L (revenue, costs, cash flow, break-even). **Only the first 12 months are AI-generated; months 13–36 are derived deterministically** in the backend (`ForecastHandler.ExtendToThirtySixMonths`) by projecting from the user's own inputs — revenue compounds at `monthlyGrowthPct`, fixed cost holds at `opex`, variable cost tracks the AI's month-12 margin, cash flow accumulates, and break-even is recomputed across all 36. Rationale: generating 36 full monthly projection structures in a single prompt risks reliability and latency timeouts, so we keep the AI call focused on month 1–12 and extend deterministically. **Projection disclosure is REQUIRED** — the results view and the PDF both label months 13–36 as *projected, not model output* (`aiMonthCount` marks the boundary). Bound to live output — no mock arrays. Non-blocking warnings for unhealthy inputs (tight unit economics, >30% MoM growth, small TAM, high churn).
 
 **Dedicated inputs page (LIVE).** The flow is **business plan → forecast-inputs → forecast (results)**. The old "3.1 Financial Modeling Inputs" screen (which discarded its values) was **REMOVED**; `/phase-3` now redirects to the business plan. `forecast-inputs/page.tsx` collects the 5 inputs (arpu, opex, monthlyGrowthPct, tam, monthlyChurnPct), **pre-fills from the last generation** (exposed via the session API), and its "Generate" persists them on the new `ForecastSession.Inputs` and starts the job. The forecast page is **results-only** and redirects to the inputs page when no session exists. The stored inputs drive both the AI prompt and the 13–36 derivation and survive regenerate.
 
@@ -322,7 +325,7 @@ The rule: matchmaking is unavailable across P1–P5 and unlocks only at P6. The 
 - **Crossroads Path B UI:** Replaced legacy `CompanyPlanningCard` and `FundingPreparationCard` with a clean private venture spinout confirmation and readiness summary card. Shared cards are preserved intact for the Entrepreneur acquisition workflow.
 
 **2026-07-23 — reconciled with code (Phase 2/3).**
-- **AI provider:** consolidated to single-provider OpenRouter `openai/gpt-oss-20b:free` for all tasks; removed the Anthropic-Claude / meta-llama split (no `AnthropicClient` exists). §1, §4, §5.
+- **AI provider:** consolidated to single-provider OpenRouter `google/gemini-3.8-flash` for all tasks; removed the Anthropic-Claude / meta-llama split (no `AnthropicClient` exists). §1, §4, §5.
 - **Discovery (P2):** now LIVE — both entry cards ship; Discovery seeds a Completed clarifier session at `finalize-discovery` (skips the clarifier, satisfies the P3 chain); mid-flow resume derived server-side (2C-2) + resolver-mapped (2C-3); stale "Discovery removed" comments corrected. §2, §4.
 - **AI failure handling:** failed sessions not linked; request-failure vs parse-failure distinguished; HTTP timeouts classified permanent (no Hangfire auto-retry); honest failure UI, never blank. §4.
 - **Phase-3 3.1 screen removed:** the "Financial Modeling Inputs" form (discarded values) deleted; `/phase-3` redirects to business plan. §5.1.

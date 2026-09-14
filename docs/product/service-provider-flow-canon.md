@@ -362,11 +362,11 @@ The Stitch mockups label features with AI/generative-sounding names. The table b
 
 ### 2.3 Context — the platform's real AI stack (SP does not participate)
 
-So nobody assumes AI is simply unavailable: the platform has a working AI stack used by the **Creator** flow — `IAiProvider.CompleteAsync`, the async job framework (`AiJobType` + `IAiTaskHandler` + Hangfire + session/poll, behind Business Plan / Forecast / Idea Generator/Clarifier), credit metering (`AiCreditService`/`AiUsageService`), and model routing pinned to **OpenRouter only**, free-tier `openai/gpt-oss-20b:free`. **SP touches none of it, by decision.**
+So nobody assumes AI is simply unavailable: the platform has a working AI stack used by the **Creator** flow — `IAiProvider.CompleteAsync`, the async job framework (`AiJobType` + `IAiTaskHandler` + Hangfire + session/poll, behind Business Plan / Forecast / Idea Generator/Clarifier), credit metering (`AiCreditService`/`AiUsageService`), and model routing pinned to **OpenRouter only**, `google/gemini-3.8-flash`. **SP touches none of it, by decision.**
 
 ### 2.4 Why no AI for SP
 
-Shared free-tier quota (~50 req/day, deliberately protected); deterministic pricing ranges and match scores are transparent and repeatable (an LLM adds cost/latency/unpredictability for no gain); and there is no marketplace pricing dataset to ground a "smart" number against — it would be invented.
+Credit preservation for creator venture generation; deterministic pricing ranges and match scores are transparent and repeatable (an LLM adds cost/latency/unpredictability for no gain); and there is no marketplace pricing dataset to ground a "smart" number against — it would be invented.
 
 ---
 

@@ -22,7 +22,7 @@ namespace WebApp.Services.Ai.Jobs
     /// </summary>
     public sealed class ForecastHandler : IAiTaskHandler
     {
-        private const int MaxOutputTokens = 6000;
+        private const int MaxOutputTokens = 8000;
         private const double Temperature = 0.3;
 
         private readonly IForecastSessionStore _sessions;

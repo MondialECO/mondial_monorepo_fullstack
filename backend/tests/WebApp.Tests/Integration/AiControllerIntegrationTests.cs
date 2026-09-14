@@ -138,16 +138,16 @@ public class AiControllerIntegrationTests : IClassFixture<AppFixture>
         using var scope = Services.CreateScope();
         var svc = scope.ServiceProvider.GetRequiredService<IAiCreditService>();
 
-        // Zero balance -> blocked for a costed job (IdeaClarifier costs 1 in appsettings).
+        // Zero balance -> blocked for a costed job (IdeaClarifier costs 20 in appsettings).
         var broke = Guid.NewGuid().ToString();
         await credits.AddAsync(new AiCreditLedger { OwnerUserId = broke, Balance = 0 });
         await Assert.ThrowsAsync<InsufficientCreditsException>(() => svc.DebitForJobAsync(broke, AiJobType.IdeaClarifier));
 
         // Sufficient balance -> debited.
         var funded = Guid.NewGuid().ToString();
-        await credits.AddAsync(new AiCreditLedger { OwnerUserId = funded, Balance = 5 });
+        await credits.AddAsync(new AiCreditLedger { OwnerUserId = funded, Balance = 25 });
         await svc.DebitForJobAsync(funded, AiJobType.IdeaClarifier);
-        (await credits.GetByOwnerAsync(funded))!.Balance.Should().Be(4);
+        (await credits.GetByOwnerAsync(funded))!.Balance.Should().Be(5);
 
         // Free job (Probe = 0) never touches the ledger.
         var free = Guid.NewGuid().ToString();

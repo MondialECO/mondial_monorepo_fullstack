@@ -31,6 +31,24 @@ public class AiCreditServiceTests
     }
 
     [Fact]
+    public void Production_Base_Appsettings_Resolves_Measured_CreditCosts()
+    {
+        var config = new ConfigurationBuilder()
+            .AddJsonFile("appsettings.json", optional: false)
+            .Build();
+
+        config.GetValue<int>("Ai:CreditCosts:Probe").Should().Be(0);
+        config.GetValue<int>("Ai:CreditCosts:IdeaClarifier").Should().Be(20);
+        config.GetValue<int>("Ai:CreditCosts:BusinessPlan").Should().Be(33);
+        config.GetValue<int>("Ai:CreditCosts:Forecast").Should().Be(32);
+        config.GetValue<int>("Ai:CreditCosts:IdeaGenerator").Should().Be(0);
+
+        var notes = config.GetSection("Ai:CreditCostsNotes");
+        notes["Forecast"].Should().Contain("Provisional: 32 credits");
+        notes["ClarifierAndBusinessPlan"].Should().Contain("earlier 36-run benchmark");
+    }
+
+    [Fact]
     public void Development_Appsettings_Resolves_StarterCredits_As_200()
     {
         var config = new ConfigurationBuilder()

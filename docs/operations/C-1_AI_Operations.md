@@ -12,7 +12,7 @@ dashboard, health, credits, observability and failure behaviour.
 |---|---|---|
 | `OpenRouter__ApiKey` | env var / user-secrets | **Required.** `StartupConfigValidation` fails fast if absent — the app refuses to boot. |
 | `OpenRouter:BaseUrl` | appsettings | Default `https://openrouter.ai/api/v1`. |
-| `Ai:ModelRouting:Models` | appsettings | task-type → model id. `Probe` routes to a **free** model (`openai/gpt-oss-20b:free`) so the self-test runs at $0 balance. |
+| `Ai:ModelRouting:Models` | appsettings | task-type → model id. All tasks including `Probe` route to `google/gemini-3.8-flash`. Probe has credit cost 0. |
 | `Ai:CreditCosts` | appsettings | per-type credit cost; `Probe = 0` (free). |
 | `Hangfire:WorkerCount` | appsettings | bounded worker count (default 4). |
 | `Ai:Enabled` | appsettings | master kill-switch for enqueue (rollback without redeploy). |
@@ -83,6 +83,8 @@ deploying, or startup validation aborts the boot (intended fail-fast).
   OpenRouter calls emit HTTP client spans (`System.Net.Http`). Exported via OTLP
   when `OpenTelemetry:OtlpEndpoint` / `OTEL_EXPORTER_OTLP_ENDPOINT` is set.
 - **Metrics:** `/metrics` (Prometheus).
+- **Reasoning-token telemetry attribution:** Reasoning-share figures and token breakdowns recorded in benchmarks and operational documentation were derived from manual capture of provider payloads rather than stored database telemetry. The `ModelUsage` schema will be expanded to persist reasoning tokens directly in a subsequent release.
+- **Tracked failure modes (Malformed JSON):** Unterminated JSON strings and syntax malformations appeared in roughly ~8% of runs across all three capabilities. This is the largest remaining non-retryable failure mode (unaffected by output ceiling changes) and is tracked for separate prompt and parsing hardening.
 
 ---
 
