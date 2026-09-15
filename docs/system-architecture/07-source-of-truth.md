@@ -33,6 +33,7 @@ This matrix establishes the definitive, canonical data authority for every major
 | **AI Clarifier Session** | `ClarifierSession` | `ClarifierSessions` | `CreatorIdeas.ClarifierData` | **CANONICAL**. C-2 AI session source of truth. |
 | **AI Business Plan** | `BusinessPlanSession` | `BusinessPlanSessions` | `CreatorIdeas.BusinessPlan` | **CANONICAL**. C-3 AI session source of truth. |
 | **AI Forecast Model** | `ForecastSession` | `ForecastSessions` | `CreatorIdeas.FinancialForecast`| **CANONICAL**. C-4 AI session source of truth. |
+| **Creator Brand Kit** | `BrandKitRecord` | `brandKits` | `CreatorIdea.Project.Branding` | **CANONICAL**. Full visual identity source of truth (Strategy, Direction, Logo, Colors, Typography, History). Synced to thin 4-field pointer on `Project.Branding` (`LogoUrl`, `PrimaryColor`, `SecondaryColor`, `TypographyFontFamily`). |
 | **Realtime Chat** | `ChatMessage` + `Conversation` | `ChatMessages`, `Conversations` | Redis SignalR Backplane | **CANONICAL**. Stored in MongoDB; distributed in real time via Redis SignalR. |
 | **Notifications** | `Notification` entity | `Notifications` | Browser Web Push Service Worker | **CANONICAL**. Stored in MongoDB; dispatched via `NotificationHub`. |
 
@@ -49,3 +50,6 @@ This matrix establishes the definitive, canonical data authority for every major
    - All AI sessions (`ClarifierSessions`, `BusinessPlanSessions`, `ForecastSessions`) must carry an explicit `businessIdeaId` referencing `CreatorIdea.Id`. Any unanchored session is rejected by the multi-idea integrity guard.
 4. **Deal Closure Rule**:
    - Transition to `completed` can only occur through the founder-controlled close endpoint (`AssertCanPerform(ctx.Role, DealAction.UpdateStatus)`), requiring both parties' digital signatures (`deal.Signatures.BothSigned == true`).
+5. **BrandKit & Project.Branding Synchronization Rule**:
+   - `BrandKitRecord` in the `brandKits` collection is the sole authority for full brand kit identity.
+   - `CreatorIdea.Project.Branding` is a read-optimized, thin summary pointer containing strictly 4 fields: `LogoUrl`, `PrimaryColor`, `SecondaryColor`, and `TypographyFontFamily`. Whenever Logo, Colors, or Typography are updated in `BrandKitRecord`, backend synchronously updates `CreatorIdea.Project.Branding`.

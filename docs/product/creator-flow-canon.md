@@ -139,12 +139,77 @@ A 6-question conversational AI-guided clarifier (core problem, target user, exis
 Following the Clarifier:
 1. **Idea Summary (`/phase-2/idea-summary`):** Displays the structured concept summary and clarity score. The "Revisit" button routes directly back to `/phase-2/clarifier`.
 2. **Concept Name (`/phase-2/concept-name`):** Names the project based on clarified concept context.
-3. **Branding (`/phase-2/branding`):** Chooses visual identity method (current options: AI logo tool, hire M50 designer, or skip). The future Brand Visual Identity Studio will replace the temporary logo tool.
+3. **Branding Hub & Brand Visual Identity Studio (`/phase-2/branding`):** Full brand identity suite backed by the `BrandKits` collection and `CreatorBrandKitController`.
 4. **Phase 2 Complete (`/phase-2/complete`):** Verifies all Phase 2 criteria (`clarified`, `nameSet`, `brandingResolved`) and unlocks Phase 3.
 
-**Branding (LIVE wiring, STUB AI):** upload logo, skip, AI-generate logo, or hire an M50 designer (match → book → workroom). The AI logo generation and AI name suggestions are deterministic stubs today — functional placeholders, marked to swap to the real AI provider later.
+### Brand Visual Identity Studio (LIVE)
 
-**AI failure handling (LIVE, applies to clarifier + Phase-3 plan/forecast):** a **failed** AI session is **not linked** onto the project (no poisoning the project with a Failed session). `finalize-clarifier` distinguishes an **AI-request failure** (401/402/429/timeout → "service temporarily unavailable, try again") from a **parse failure**. HTTP timeouts are classified **permanent** so Hangfire does not auto-retry and burn free-tier quota (`StopRetryOnPermanentAiFailure`). The Phase-3 business-plan and forecast pages render an **honest failure state with a fresh-regenerate path — never a blank body**.
+The Brand Visual Identity Studio manages the creator's complete visual identity across 5 interactive modal steps, persisted in the dedicated `brandKits` collection (`BrandKitRecord`) bound 1:1 to each `CreatorIdea` via `BusinessIdeaId`.
+
+#### 1. Data Model & Thin Pointer Sync
+- **`BrandKitRecord` Authority:** Holds 6 distinct sections:
+  - `Strategy`: Brand personality traits, positioning statement, target audience, values, and visual style preferences.
+  - `Direction`: 4 generated strategic visual directions (archetype, motif, typography feel, colour vibe, rationale) and the creator's selected direction.
+  - `Logo`: Selected logo concept, 6 generated concept candidates, mark geometry metadata, lockup layout, typography selection, standalone mark assets (`MarkSvg`, `MarkPngBase64`), and 7 derived variations.
+  - `Colors`: 5 canonical colour roles (`Primary`, `Secondary`, `Accent`, `Background`, `Text`) with WCAG contrast metrics and harmony rules.
+  - `Typography`: 4 canonical typography roles (`Heading`, `Body`, `Mono`, `Display`) with font pairings, weights, and sample scales.
+  - `History`: Append-only version snapshot history for auditable rollback and change tracking.
+- **`Project.Branding` Summary Pointer:** To maintain lightweight read performance across project cards and dashboard summaries, whenever the kit's Logo, Colors, or Typography change, the backend synchronously syncs strictly 4 fields to `CreatorIdea.Project.Branding`:
+  1. `LogoUrl` (Primary horizontal/stacked lockup or mark URL)
+  2. `PrimaryColor` (Hex code)
+  3. `SecondaryColor` (Hex code)
+  4. `TypographyFontFamily` (Heading font family)
+- **Optimistic Concurrency:** All section updates require matching `version` numbers. Conflicting concurrent writes return HTTP 409 Conflict.
+
+#### 2. Parametric Logo Engine
+- **Font Path Conversion:** All typography rendered inside SVG marks uses pre-parsed SVG glyph geometry (bundled font outlines via Sharp & custom path renderers) to ensure 100% deterministic, zero-external-font rendering across all platforms.
+- **6 Mark Families:**
+  1. *Monogram / Letterform* (Stylized initials with geometric intersections)
+  2. *Geometric Abstract* (Sacred geometry, rotating polygons, golden ratio forms)
+  3. *Emblem / Badge* (Enclosed crests, shields, and modern seals)
+  4. *Wordmark / Typographic* (Custom kerned, high-personality typographic treatments)
+  5. *Minimal Pictorial / Line* (Single-weight continuous line motifs)
+  6. *Combination Mark* (Fused icon + refined wordmark lockups)
+- **Asset Separation:** Clean separation between the standalone icon mark (1:1 aspect ratio, clean viewBox) and horizontal/vertical brand lockups.
+- **7 Canonical Derived Variations:**
+  1. Primary Horizontal Lockup (Light Background)
+  2. Primary Horizontal Lockup (Dark Background)
+  3. Primary Stacked / Vertical Lockup (Light Background)
+  4. Primary Stacked / Vertical Lockup (Dark Background)
+  5. Standalone Mark / Icon (Full Colour)
+  6. Monochrome Mark / App Icon (Black on White)
+  7. Reverse Monochrome Mark / App Icon (White on Black)
+
+#### 3. Dual-Path Generation Model
+- **Initial Generation (`/generate`):** Purely deterministic derivation directly from approved upstream assets (Strategy $\to$ Direction $\to$ Logo $\to$ Colors $\to$ Typography). Instant, reproducible, and **0 credits (free)**.
+- **Regeneration (`/regenerate`):** Model-based generative AI calls routed through `IModelRouter` (`google/gemini-3.8-flash`). AI output is validated against contrast, harmony, and typography rules; if AI output echoes the current state or fails validation, it falls back to a deterministically distinct pairing.
+
+#### 4. Canonical Roles & Taxonomy
+- **Five Colour Roles:**
+  - `Primary` — Dominant brand anchor color.
+  - `Secondary` — Supporting hue for structure and hierarchy.
+  - `Accent` — High-visibility CTA and highlight color.
+  - `Background` — Canvas / surface background (light or dark mode variants).
+  - `Text` — High-contrast readable typography fill (WCAG AA $\ge$ 4.5:1, AAA $\ge$ 7:1).
+  *(Note: Legacy names such as "Neutral" or "Card" are obsolete.)*
+- **Four Typography Roles:**
+  - `Heading` — Primary title and section header font family.
+  - `Body` — High-legibility text font family for paragraphs and UI copy.
+  - `Mono` — Monospaced font for figures, code, and financial tables.
+  - `Display` — High-personality display / brand mark font family.
+  *(Note: Legacy names such as "Section Title" are obsolete.)*
+
+#### 5. Credit Metering, Per-Element Caps & Studio Reset
+- **Config-Driven Pricing:** Configured under `Ai:CreditCosts` in `appsettings.json`:
+  - Direction Generation (4 candidates): **7 credits** (`AiJobType.DirectionGeneration`)
+  - Logo Batch Generation (6 concepts): **4 credits** (`AiJobType.LogoParameterSelection`)
+  - Logo Single Concept Regeneration: **2 credits** (`AiJobType.LogoConceptRegenerate`)
+  - Color Palette Regeneration: **2 credits** (`AiJobType.ColorGeneration`)
+  - Typography System Regeneration: **2 credits** (`AiJobType.TypographyGeneration`)
+  - Deterministic Initial Derivation & Derived Variations: **0 credits (Free)**
+- **Per-Element Cap (Max 3):** Each generative element enforces a maximum of 3 regenerations per studio session (`RegenerateCount >= 3` returns HTTP 400 with 0 credits debited).
+- **Compensating Refunds:** Debits occur before model execution. If an AI call fails, times out, or encounters an optimistic concurrency conflict, `RefundForJobAsync` is immediately dispatched to restore user credits.
+- **Studio Reset (`POST open-studio`):** Opening the Brand Kit Studio from the Hub (`/api/creator/journey/phase2/brand-kit/open-studio`) resets all `RegenerateCount` counters back to 0. Section `PATCH` saves do not reset counters.
 
 ### Path A — Discovery (REMOVED FROM CURRENT PRODUCT)
 
