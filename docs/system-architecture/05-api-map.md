@@ -66,9 +66,9 @@ The Mondial ECO backend exposes 579 API endpoints managed across 51 controllers.
   - `POST /api/creator/journey/phase2/brand-kit/open-studio`: Reset all section regenerate counters across the kit to 0 upon entering the studio hub.
   - `PATCH /api/creator/journey/phase2/brand-kit/strategy`: Partially update Strategy section (`PersonalityTraits`, `PositioningStatement`, `TargetAudience`, `BrandValues`, `VisualPreferences`) with optimistic concurrency validation.
   - `PATCH /api/creator/journey/phase2/brand-kit/direction`: Partially update Direction section (`SelectedDirection`, `Directions`) with optimistic concurrency validation.
-  - `PATCH /api/creator/journey/phase2/brand-kit/logo`: Partially update Logo section (`SelectedConcept`, `Concepts`, `Variations`), syncing `LogoUrl` to `CreatorIdea.Project.Branding`.
-  - `PATCH /api/creator/journey/phase2/brand-kit/colors`: Partially update Colors section (5 canonical roles), syncing `PrimaryColor` and `SecondaryColor` to `CreatorIdea.Project.Branding`.
-  - `PATCH /api/creator/journey/phase2/brand-kit/typography`: Partially update Typography section (4 canonical roles), syncing `TypographyFontFamily` to `CreatorIdea.Project.Branding`.
+  - `PATCH /api/creator/journey/phase2/brand-kit/logo`: Partially update Logo section (`SelectedConcept`, `Concepts`, `Variations`), syncing `LogoAsset` to `CreatorIdea.Project.Branding`.
+  - `PATCH /api/creator/journey/phase2/brand-kit/colors`: Partially update Colors section (5 canonical roles: `Primary`, `Secondary`, `Accent`, `Background`, `Text`), syncing `PaletteName` to `CreatorIdea.Project.Branding`.
+  - `PATCH /api/creator/journey/phase2/brand-kit/typography`: Partially update Typography section (4 canonical roles: `Logo type`, `Heading`, `Body`, `Button & label`), syncing `TypographyPairing` to `CreatorIdea.Project.Branding`.
   - `POST /api/creator/journey/phase2/brand-kit/direction/generate`: AI generation of 4 strategic brand directions (7 credits, max 3 cap).
   - `POST /api/creator/journey/phase2/brand-kit/logo/generate-concepts`: AI generation of 6 logo concepts across 6 mark families (4 credits).
   - `POST /api/creator/journey/phase2/brand-kit/logo/regenerate-concept/{conceptKey}`: AI regeneration of a single logo concept (2 credits, max 3 cap).
@@ -77,6 +77,8 @@ The Mondial ECO backend exposes 579 API endpoints managed across 51 controllers.
   - `POST /api/creator/journey/phase2/brand-kit/colors/regenerate`: AI generative colour palette regeneration with contrast validation (2 credits, max 3 cap).
   - `POST /api/creator/journey/phase2/brand-kit/typography/generate`: Deterministic initial derivation of 4-role typography system from logo/direction (0 credits).
   - `POST /api/creator/journey/phase2/brand-kit/typography/regenerate`: AI generative typography system regeneration with distinctness enforcement (2 credits, max 3 cap).
+  - `POST /api/creator/journey/phase2/brand-kit/snapshot`: Create concurrency-guarded backup snapshot (bounded to 3 newest).
+  - `POST /api/creator/journey/phase2/brand-kit/snapshot/restore`: Restore historical snapshot by index with automatic pre-restore backup.
 - **`CreatorPhase3Controller`** (`/api/creator/phase-3`):
   - `POST /api/creator/phase-3/business-plan`: Save finalized multi-section business plan.
   - `POST /api/creator/phase-3/forecast`: Persist financial model (revenue, opex, margins).
