@@ -46,6 +46,18 @@ src/
 4. **Images: always `next/image`.** Never `<img>`. Check `ImageWithFallback.tsx` for the reusable wrapper.
 5. **Dark mode: every new component must work in both themes.** Sanity-check by reading the `.dark` block in `globals.css` and avoiding fixed grays.
 6. **Radius scale:** use `rounded-md/lg/xl/2xl` — they're wired to `--radius` in globals.css.
+7. **Creator Brand Kit Studio & Hub rules:**
+   - **Routes:** Studio shell at `/dashboard/creator/phase-2/brand-studio` (replaces legacy prototypes; `/logo-tool` is untouched for compatibility). Hub page at `/dashboard/creator/phase-2/brand-kit`.
+   - **Studio Layout:** Full-bleed interactive canvas + top 6-segment progress bar (`BrandStudioProgressBar`). Modals appear as overlays; canvas accumulates persistent result cards. No agent rails or floating toolbars.
+   - **7 Steps / 6 Segments:** Strategy $\to$ Direction $\to$ Logo Type $\to$ Logo Creation $\to$ Variations (folded into Step 4 "Logo" segment) $\to$ Colour $\to$ Typography.
+   - **Interface Fonts:** Standardized on Inter / DM Sans for headings/body copy across all Studio surfaces, JetBrains Mono for numerals, tokens, and telemetry badges (Syne Bold is not used for Studio UI).
+   - **Canonical 5 Colour Roles:** `Primary`, `Secondary`, `Accent`, `Background`, `Text` (no legacy names like "Neutral" or "Card"). `Background` has null contrast ratio.
+   - **Canonical 4 Typography Roles:** `Logo type`, `Heading`, `Body`, `Button & label` (no legacy names like "Section Title" and no category names like "Mono"/"Display"). `Logo type` is server-side immutable.
+   - **7 Canonical Logo Variations:** `primary`, `horizontal`, `stacked`, `icon_only`, `black`, `white`, `transparent` (with alpha checkerboard background).
+   - **Shared Components:** Reuse `RegenerateCapBadge` for the `N/3 LEFT` / amber `0/3 LEFT` pattern.
+   - **Caps & Metering:** 3-cap regenerate limit per generative element (`DirectionGeneration` 7, `LogoParameterSelection` 4, `LogoConceptRegenerate` 2, `ColorGeneration` 2, `TypographyGeneration` 2; all free-tier starter credit eligible). `POST /open-studio` resets caps.
+   - **Hub & Versioning:** Standalone calm reference view with bounded 3-snapshot version history, automatic pre-restore backups, upstream cascade warning modals, honest "not connected yet" downstream generators, and client-side ZIP packaging.
+
 
 ## Perf rules (hard rules)
 

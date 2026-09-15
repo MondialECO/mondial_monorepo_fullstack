@@ -57,8 +57,10 @@ If a Figma color doesn't fit any of the above, ADD a token to BOTH `:root` and `
 ### Typography
 `font-sans` → DM Sans (`--font-dm-sans`), body copy. `font-heading` → Inter
 (`--font-inter`), headings and large display figures. `font-mono` → Geist Mono
-(`--font-geist-mono`). Geist Sans is NOT in use. Don't import other fonts; don't use
+(`--font-geist-mono`) / JetBrains Mono for Studio numerals and badges. Geist Sans is NOT in use. Don't import other fonts; don't use
 Google `<link>`.
+*(Note: Brand Visual Identity Studio uses Inter / DM Sans for all interface headings/body copy and JetBrains Mono for numerals/tokens; Syne Bold is not used for Studio UI).*
+
 
 ---
 
