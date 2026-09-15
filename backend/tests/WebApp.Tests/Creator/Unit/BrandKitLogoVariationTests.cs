@@ -293,18 +293,34 @@ namespace WebApp.Tests.Creator.Unit
         }
 
         [Theory]
-        [InlineData("wordmark", "side_by_side", "CyberLock")]
-        [InlineData("wordmark", "stacked", "BioSynthetic Quantum Therapeutics")]
-        [InlineData("symbol_plus_name", "side_by_side", "CyberLock")]
-        [InlineData("symbol_plus_name", "stacked", "Maison Forma")]
-        [InlineData("monogram", "side_by_side", "Onyx")]
-        [InlineData("monogram", "stacked", "TerraHarvest")]
+        // Short names (4-5 chars)
+        [InlineData("symbol_plus_name", "stacked", "Onyx")]
+        [InlineData("wordmark", "stacked", "Aero")]
+        [InlineData("monogram", "stacked", "Onyx")]
+        [InlineData("abstract", "stacked", "Flux")]
+        [InlineData("icon", "stacked", "Onyx")]
+        [InlineData("minimal", "stacked", "Nova")]
+        // Medium names (10-18 chars)
+        [InlineData("symbol_plus_name", "side_by_side", "CyberLock Security")]
+        [InlineData("wordmark", "stacked", "Maison Forma")]
+        [InlineData("monogram", "side_by_side", "TerraHarvest")]
         [InlineData("abstract", "side_by_side", "CyberLock")]
+        [InlineData("icon", "stacked", "TerraHarvest Pro")]
+        [InlineData("minimal", "side_by_side", "Maison Forma")]
+        // Long multi-word names (30-45 chars)
+        [InlineData("symbol_plus_name", "side_by_side", "BioSynthetic Quantum Therapeutics")]
+        [InlineData("wordmark", "side_by_side", "International Architectural Consulting Practice")]
+        [InlineData("monogram", "stacked", "Sustainable Agricultural Technology Solutions")]
         [InlineData("abstract", "stacked", "BioSynthetic Quantum Therapeutics")]
-        [InlineData("icon", "side_by_side", "Onyx")]
-        [InlineData("icon", "stacked", "Maison Forma")]
-        [InlineData("minimal", "side_by_side", "CyberLock")]
-        [InlineData("minimal", "stacked", "TerraHarvest")]
+        [InlineData("icon", "side_by_side", "Global Financial Systems & Infrastructure")]
+        [InlineData("minimal", "stacked", "Advanced Environmental Protection Agency")]
+        // Long unbroken names (28-34 chars)
+        [InlineData("symbol_plus_name", "stacked", "SUPERLONGUNBROKENNAMEWITHOUTSPACES")]
+        [InlineData("wordmark", "side_by_side", "AEROSTRUCTURESTECHNOLOGYLABS")]
+        [InlineData("monogram", "side_by_side", "SUPERLONGUNBROKENNAMEWITHOUTSPACES")]
+        [InlineData("abstract", "stacked", "AEROSTRUCTURESTECHNOLOGYLABS")]
+        [InlineData("icon", "stacked", "SUPERLONGUNBROKENNAMEWITHOUTSPACES")]
+        [InlineData("minimal", "side_by_side", "AEROSTRUCTURESTECHNOLOGYLABS")]
         public async Task Derived_alternate_arrangements_pass_full_layout_assertion_sweep(
             string family,
             string initialArrangement,
