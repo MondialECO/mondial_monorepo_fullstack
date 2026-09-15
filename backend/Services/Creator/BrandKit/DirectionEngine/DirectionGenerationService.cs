@@ -62,7 +62,7 @@ namespace WebApp.Services.Creator.BrandKit.DirectionEngine
             List<BrandDirectionCandidate>? aiCandidates = null;
             string? fallbackReason = null;
 
-            if (_aiProvider != null)
+            if (_aiProvider != null && _modelRouter != null)
             {
                 try
                 {
@@ -70,13 +70,15 @@ namespace WebApp.Services.Creator.BrandKit.DirectionEngine
                 }
                 catch (Exception ex)
                 {
-                    fallbackReason = $"AI provider completion failed: {ex.Message}";
+                    fallbackReason = $"AI generation failed: {ex.Message}";
                     _logger.LogWarning(ex, "Visual direction AI generation failed for {BrandName}. Reason: {Reason}", brandName, fallbackReason);
                 }
             }
             else
             {
-                fallbackReason = "No AI provider configured in service container";
+                fallbackReason = _aiProvider == null
+                    ? "No AI provider configured in service container"
+                    : "No ModelRouter configured in service container";
             }
 
             string? validationErr = null;
@@ -104,7 +106,10 @@ namespace WebApp.Services.Creator.BrandKit.DirectionEngine
             List<string> avoidList,
             CancellationToken cancellationToken)
         {
-            var modelId = _modelRouter?.Resolve("DirectionGeneration") ?? "google/gemini-3.8-flash";
+            if (_modelRouter == null)
+                throw new InvalidOperationException("IModelRouter is required for visual direction model resolution.");
+
+            var modelId = _modelRouter.Resolve("DirectionGeneration");
             var prompt = BuildPrompt(brandName, strategy, avoidList);
 
             var request = new AiCompletionRequest

@@ -135,7 +135,10 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
             List<string> avoidList,
             CancellationToken cancellationToken)
         {
-            var modelId = _modelRouter?.Resolve("LogoParameterSelection") ?? "anthropic/claude-3.5-sonnet";
+            if (_modelRouter == null)
+                throw new InvalidOperationException("IModelRouter is required for logo parameter selection model resolution.");
+
+            var modelId = _modelRouter.Resolve("LogoParameterSelection");
             var prompt = BuildPrompt(brandName, strategy, direction, candidate, avoidList);
 
             var request = new AiCompletionRequest
