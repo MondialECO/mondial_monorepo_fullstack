@@ -12,5 +12,10 @@ namespace WebApp.Services.Ai.Jobs
         BusinessPlan,
         Forecast,
         Probe,
+        DirectionGeneration,
+        LogoParameterSelection,
+        LogoConceptRegenerate,
+        ColorGeneration,
+        TypographyGeneration,
     }
 }
