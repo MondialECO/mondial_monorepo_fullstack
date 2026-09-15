@@ -146,6 +146,15 @@ namespace WebApp.Models.DatabaseModels
         /// <summary>URI reference on disk (never inlined SVG/base64).</summary>
         public string AssetUri { get; set; } = string.Empty;
         public int RegenerateCount { get; set; }
+        /// <summary>Stored parameter set for deterministic redrawing and variation derivation.</summary>
+        public BrandLogoConceptParameters? Parameters { get; set; }
+    }
+
+    public class BrandLogoConceptParameters
+    {
+        public string Family { get; set; } = string.Empty;
+        public string? Descriptor { get; set; }
+        public Dictionary<string, string> Values { get; set; } = new();
     }
 
     public class BrandLogoVariation
