@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using WebApp.Models;
@@ -20,7 +22,8 @@ namespace WebApp.Controllers
     /// <summary>
     /// Phase 2 Brand Visual Identity Studio HTTP surface.
     /// Manages BrandKit retrieval, idempotent creation, targeted partial updates
-    /// per section, server-side sequencing enforcement, step advancement, and concurrency-guarded snapshots.
+    /// per section, server-side sequencing enforcement, step advancement, concurrency-guarded snapshots,
+    /// and atomic Project.Branding summary synchronization.
     /// </summary>
     [Route("api/creator/journey/phase2/brand-kit")]
     [ApiController]
@@ -29,18 +32,128 @@ namespace WebApp.Controllers
     {
         private readonly ICreatorJourneyService _journeys;
         private readonly IBrandKitStore _brandKitStore;
+        private readonly ICreatorIdeaStore? _creatorIdeas;
+        private readonly IMongoClient? _mongoClient;
+        private readonly ILogger<CreatorBrandKitController>? _logger;
+        private readonly bool _transactionsEnabled;
 
         public CreatorBrandKitController(
             ICreatorJourneyService journeys,
-            IBrandKitStore brandKitStore)
+            IBrandKitStore brandKitStore,
+            ICreatorIdeaStore? creatorIdeas = null,
+            IMongoClient? mongoClient = null,
+            IConfiguration? config = null,
+            ILogger<CreatorBrandKitController>? logger = null)
         {
             _journeys = journeys;
             _brandKitStore = brandKitStore;
+            _creatorIdeas = creatorIdeas;
+            _mongoClient = mongoClient;
+            _logger = logger;
+            _transactionsEnabled = config?.GetValue("Mongo:TransactionsEnabled", true) ?? true;
         }
 
         private string GetUserId() =>
             User.FindFirst(ClaimTypes.NameIdentifier)?.Value
             ?? throw new UnauthorizedAccessException("User not authenticated.");
+
+        /// <summary>
+        /// Atomically updates the BrandKit and conditionally syncs the 4 summary fields to CreatorIdea.Project.Branding.
+        /// If the 4 summary fields are unchanged, the write to CreatorIdea is skipped entirely, preserving CreatorIdea.Version.
+        /// When both collections must be written, wraps both in a client session transaction if enabled,
+        /// or executes clearly ordered writes (BrandKit authoritative write first) if transactions are disabled.
+        /// </summary>
+        private async Task<bool> CommitBrandKitAndSyncAsync(
+            string ideaId,
+            string userId,
+            UpdateDefinition<BrandKit> kitUpdate,
+            long? expectedVersion,
+            UpdateOptions? options,
+            CreatorIdea idea,
+            string? newBrandingMethod,
+            string? newLogoAsset,
+            string? newPaletteName,
+            string? newTypographyPairing)
+        {
+            var currentBranding = idea.Project?.Branding;
+
+            bool requiresIdeaSync = false;
+            string? methodToSync = null;
+            string? assetToSync = null;
+            string? paletteToSync = null;
+            string? typeToSync = null;
+
+            if (newBrandingMethod != null || newLogoAsset != null || newPaletteName != null || newTypographyPairing != null)
+            {
+                methodToSync = newBrandingMethod ?? currentBranding?.BrandingMethod ?? "ai_studio";
+                assetToSync = newLogoAsset ?? currentBranding?.LogoAsset ?? string.Empty;
+                paletteToSync = newPaletteName ?? currentBranding?.PaletteName ?? string.Empty;
+                typeToSync = newTypographyPairing ?? currentBranding?.TypographyPairing ?? string.Empty;
+
+                bool methodChanged = currentBranding?.BrandingMethod != methodToSync;
+                bool assetChanged = currentBranding?.LogoAsset != assetToSync;
+                bool paletteChanged = currentBranding?.PaletteName != paletteToSync;
+                bool typeChanged = currentBranding?.TypographyPairing != typeToSync;
+
+                requiresIdeaSync = methodChanged || assetChanged || paletteChanged || typeChanged;
+            }
+
+            if (!requiresIdeaSync || _creatorIdeas == null)
+            {
+                return await _brandKitStore.UpdateAsync(ideaId, userId, kitUpdate, expectedVersion, session: null, options: options);
+            }
+
+            if (_transactionsEnabled && _mongoClient != null)
+            {
+                using var session = await _mongoClient.StartSessionAsync();
+                session.StartTransaction();
+                try
+                {
+                    var kitUpdated = await _brandKitStore.UpdateAsync(ideaId, userId, kitUpdate, expectedVersion, session, options);
+                    if (!kitUpdated)
+                    {
+                        await session.AbortTransactionAsync();
+                        return false;
+                    }
+
+                    var ideaUpdated = await _creatorIdeas.SyncBrandKitSummaryAsync(
+                        ideaId, userId, methodToSync!, assetToSync!, paletteToSync!, typeToSync!, session);
+                    if (!ideaUpdated)
+                    {
+                        await session.AbortTransactionAsync();
+                        return false;
+                    }
+
+                    await session.CommitTransactionAsync();
+                    return true;
+                }
+                catch
+                {
+                    await session.AbortTransactionAsync();
+                    throw;
+                }
+            }
+            else
+            {
+                if (!_transactionsEnabled && _logger != null)
+                {
+                    _logger.LogWarning("MongoDB transactions disabled; executing fallback sequential writes for BrandKit and CreatorIdea summary sync.");
+                }
+
+                // Clearly ordered fallback: BrandKit (authoritative) first
+                var kitUpdated = await _brandKitStore.UpdateAsync(ideaId, userId, kitUpdate, expectedVersion, session: null, options: options);
+                if (!kitUpdated)
+                {
+                    return false;
+                }
+
+                // CreatorIdea (derived echo) second
+                await _creatorIdeas.SyncBrandKitSummaryAsync(
+                    ideaId, userId, methodToSync!, assetToSync!, paletteToSync!, typeToSync!, session: null);
+
+                return true;
+            }
+        }
 
         // =========================================================================
         // 1. GET BRAND KIT
@@ -242,7 +355,56 @@ namespace WebApp.Controllers
                     return BadRequest(ApiResponse.Error("At least one field must be provided for update."));
 
                 var combinedUpdate = updateBuilder.Combine(updates);
-                var updated = await _brandKitStore.UpdateAsync(idea.Id, userId, combinedUpdate, expectedVersion);
+                bool updated;
+
+                bool isApproved = kit.Logo?.ApprovedAt != null || string.Equals(kit.Status, "complete", StringComparison.OrdinalIgnoreCase);
+                if (isApproved && (dto.SelectedDirectionKey != null || dto.Candidates != null))
+                {
+                    var chosenKey = dto.SelectedDirectionKey ?? kit.Direction?.SelectedDirectionKey;
+                    string? newPaletteName = null;
+                    string? displayTypeface = null;
+                    string? textTypeface = null;
+
+                    if (dto.Candidates != null && chosenKey != null)
+                    {
+                        var candDto = dto.Candidates.FirstOrDefault(c => c.Key == chosenKey);
+                        if (candDto != null)
+                        {
+                            newPaletteName = candDto.Name;
+                            displayTypeface = candDto.DisplayTypeface;
+                            textTypeface = candDto.TextTypeface;
+                        }
+                    }
+                    if (newPaletteName == null && chosenKey != null)
+                    {
+                        var cand = kit.Direction?.Candidates?.FirstOrDefault(c => c.Key == chosenKey);
+                        if (cand != null)
+                        {
+                            newPaletteName = cand.Name;
+                            displayTypeface = cand.DisplayTypeface;
+                            textTypeface = cand.TextTypeface;
+                        }
+                    }
+
+                    string? newTypographyPairing = null;
+                    if (newPaletteName != null)
+                    {
+                        var headingFont = kit.Typography?.Roles?.FirstOrDefault(r => r.RoleName == BrandTypographyRoleNames.Heading)?.Family;
+                        var bodyFont = kit.Typography?.Roles?.FirstOrDefault(r => r.RoleName == BrandTypographyRoleNames.Body)?.Family;
+                        if (string.IsNullOrWhiteSpace(headingFont)) headingFont = displayTypeface;
+                        if (string.IsNullOrWhiteSpace(bodyFont)) bodyFont = textTypeface;
+                        newTypographyPairing = $"{headingFont ?? "Syne"} + {bodyFont ?? "DM Sans"}";
+                    }
+
+                    updated = await CommitBrandKitAndSyncAsync(
+                        idea.Id, userId, combinedUpdate, expectedVersion, options: null,
+                        idea, newBrandingMethod: null, newLogoAsset: null, newPaletteName, newTypographyPairing);
+                }
+                else
+                {
+                    updated = await _brandKitStore.UpdateAsync(idea.Id, userId, combinedUpdate, expectedVersion);
+                }
+
                 if (!updated)
                     return StatusCode(StatusCodes.Status409Conflict, ApiResponse.Error("This brand kit was updated in another tab. Refresh to load the latest version before continuing."));
 
@@ -326,7 +488,50 @@ namespace WebApp.Controllers
                     return BadRequest(ApiResponse.Error("At least one field must be provided for update."));
 
                 var combinedUpdate = updateBuilder.Combine(updates);
-                var updated = await _brandKitStore.UpdateAsync(idea.Id, userId, combinedUpdate, expectedVersion);
+                bool updated;
+
+                bool isApproved = dto.ApprovedAt != null || kit.Logo?.ApprovedAt != null;
+                if (isApproved)
+                {
+                    var newBrandingMethod = "ai_studio";
+                    string? newLogoAsset = null;
+                    if (dto.Variations != null && dto.Variations.TryGetValue(BrandLogoVariationKeys.Primary, out var primVar))
+                    {
+                        newLogoAsset = primVar.PngUri ?? primVar.SvgUri;
+                    }
+                    else if (kit.Logo?.Variations != null && kit.Logo.Variations.TryGetValue(BrandLogoVariationKeys.Primary, out var existPrim))
+                    {
+                        newLogoAsset = existPrim.PngUri ?? existPrim.SvgUri;
+                    }
+                    else if (!string.IsNullOrEmpty(dto.SelectedConceptKey))
+                    {
+                        var dtoConcept = dto.Concepts?.FirstOrDefault(c => c.Key == dto.SelectedConceptKey);
+                        newLogoAsset = dtoConcept?.AssetUri
+                            ?? kit.Logo?.Concepts?.FirstOrDefault(c => c.Key == dto.SelectedConceptKey)?.AssetUri;
+                    }
+                    else if (!string.IsNullOrEmpty(kit.Logo?.SelectedConceptKey))
+                    {
+                        newLogoAsset = kit.Logo.Concepts.FirstOrDefault(c => c.Key == kit.Logo.SelectedConceptKey)?.AssetUri;
+                    }
+
+                    var selectedCand = kit.Direction?.Candidates?.FirstOrDefault(c => c.Key == kit.Direction.SelectedDirectionKey);
+                    var newPaletteName = selectedCand?.Name ?? string.Empty;
+
+                    var headingFont = kit.Typography?.Roles?.FirstOrDefault(r => r.RoleName == BrandTypographyRoleNames.Heading)?.Family;
+                    var bodyFont = kit.Typography?.Roles?.FirstOrDefault(r => r.RoleName == BrandTypographyRoleNames.Body)?.Family;
+                    if (string.IsNullOrWhiteSpace(headingFont)) headingFont = selectedCand?.DisplayTypeface;
+                    if (string.IsNullOrWhiteSpace(bodyFont)) bodyFont = selectedCand?.TextTypeface;
+                    var newTypographyPairing = $"{headingFont ?? "Syne"} + {bodyFont ?? "DM Sans"}";
+
+                    updated = await CommitBrandKitAndSyncAsync(
+                        idea.Id, userId, combinedUpdate, expectedVersion, options: null,
+                        idea, newBrandingMethod, newLogoAsset, newPaletteName, newTypographyPairing);
+                }
+                else
+                {
+                    updated = await _brandKitStore.UpdateAsync(idea.Id, userId, combinedUpdate, expectedVersion);
+                }
+
                 if (!updated)
                     return StatusCode(StatusCodes.Status409Conflict, ApiResponse.Error("This brand kit was updated in another tab. Refresh to load the latest version before continuing."));
 
@@ -511,8 +716,35 @@ namespace WebApp.Controllers
 
                 var combinedUpdate = updateBuilder.Combine(updates);
                 var options = arrayFilters.Count > 0 ? new UpdateOptions { ArrayFilters = arrayFilters } : null;
+                bool updated;
 
-                var updated = await _brandKitStore.UpdateAsync(idea.Id, userId, combinedUpdate, expectedVersion, session: null, options: options);
+                bool isApproved = kit.Logo?.ApprovedAt != null || string.Equals(kit.Status, "complete", StringComparison.OrdinalIgnoreCase);
+                if (isApproved && (dto.Roles != null || dto.Families != null))
+                {
+                    var headingRole = dto.Roles?.FirstOrDefault(r => r.RoleName == BrandTypographyRoleNames.Heading);
+                    var bodyRole = dto.Roles?.FirstOrDefault(r => r.RoleName == BrandTypographyRoleNames.Body);
+
+                    var headingFont = headingRole?.Family
+                        ?? dto.Families?.DisplayFamily?.Name
+                        ?? kit.Typography?.Families?.DisplayFamily?.Name
+                        ?? kit.Typography?.Roles?.FirstOrDefault(r => r.RoleName == BrandTypographyRoleNames.Heading)?.Family;
+
+                    var bodyFont = bodyRole?.Family
+                        ?? dto.Families?.TextFamily?.Name
+                        ?? kit.Typography?.Families?.TextFamily?.Name
+                        ?? kit.Typography?.Roles?.FirstOrDefault(r => r.RoleName == BrandTypographyRoleNames.Body)?.Family;
+
+                    var newTypographyPairing = $"{headingFont ?? "Syne"} + {bodyFont ?? "DM Sans"}";
+
+                    updated = await CommitBrandKitAndSyncAsync(
+                        idea.Id, userId, combinedUpdate, expectedVersion, options,
+                        idea, newBrandingMethod: null, newLogoAsset: null, newPaletteName: null, newTypographyPairing);
+                }
+                else
+                {
+                    updated = await _brandKitStore.UpdateAsync(idea.Id, userId, combinedUpdate, expectedVersion, session: null, options: options);
+                }
+
                 if (!updated)
                     return StatusCode(StatusCodes.Status409Conflict, ApiResponse.Error("This brand kit was updated in another tab. Refresh to load the latest version before continuing."));
 
@@ -576,7 +808,40 @@ namespace WebApp.Controllers
                 }
 
                 var combinedUpdate = updateBuilder.Combine(updates);
-                var updated = await _brandKitStore.UpdateAsync(idea.Id, userId, combinedUpdate, expectedVersion);
+                bool updated;
+
+                bool isApproved = kit.Logo?.ApprovedAt != null || targetStep >= 5 || string.Equals(kit.Status, "complete", StringComparison.OrdinalIgnoreCase);
+                if (isApproved)
+                {
+                    var newBrandingMethod = "ai_studio";
+                    string? newLogoAsset = null;
+                    if (kit.Logo?.Variations != null && kit.Logo.Variations.TryGetValue(BrandLogoVariationKeys.Primary, out var existPrim))
+                    {
+                        newLogoAsset = existPrim.PngUri ?? existPrim.SvgUri;
+                    }
+                    else if (!string.IsNullOrEmpty(kit.Logo?.SelectedConceptKey))
+                    {
+                        newLogoAsset = kit.Logo.Concepts.FirstOrDefault(c => c.Key == kit.Logo.SelectedConceptKey)?.AssetUri;
+                    }
+
+                    var selectedCand = kit.Direction?.Candidates?.FirstOrDefault(c => c.Key == kit.Direction.SelectedDirectionKey);
+                    var newPaletteName = selectedCand?.Name ?? string.Empty;
+
+                    var headingFont = kit.Typography?.Roles?.FirstOrDefault(r => r.RoleName == BrandTypographyRoleNames.Heading)?.Family;
+                    var bodyFont = kit.Typography?.Roles?.FirstOrDefault(r => r.RoleName == BrandTypographyRoleNames.Body)?.Family;
+                    if (string.IsNullOrWhiteSpace(headingFont)) headingFont = selectedCand?.DisplayTypeface;
+                    if (string.IsNullOrWhiteSpace(bodyFont)) bodyFont = selectedCand?.TextTypeface;
+                    var newTypographyPairing = $"{headingFont ?? "Syne"} + {bodyFont ?? "DM Sans"}";
+
+                    updated = await CommitBrandKitAndSyncAsync(
+                        idea.Id, userId, combinedUpdate, expectedVersion, options: null,
+                        idea, newBrandingMethod, newLogoAsset, newPaletteName, newTypographyPairing);
+                }
+                else
+                {
+                    updated = await _brandKitStore.UpdateAsync(idea.Id, userId, combinedUpdate, expectedVersion);
+                }
+
                 if (!updated)
                     return StatusCode(StatusCodes.Status409Conflict, ApiResponse.Error("This brand kit was updated in another tab. Refresh to load the latest version before continuing."));
 
