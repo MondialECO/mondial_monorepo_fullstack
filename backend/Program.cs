@@ -329,6 +329,10 @@ builder.Services.AddSingleton<WebApp.Services.Creator.BrandKit.LogoEngine.ILogoM
     WebApp.Services.Creator.BrandKit.LogoEngine.LogoMarkRendererRegistry>();
 builder.Services.AddScoped<WebApp.Services.Creator.BrandKit.LogoEngine.ILogoGenerationService,
     WebApp.Services.Creator.BrandKit.LogoEngine.LogoGenerationService>();
+builder.Services.AddScoped<WebApp.Services.Creator.BrandKit.LogoEngine.ILogoVariationService,
+    WebApp.Services.Creator.BrandKit.LogoEngine.LogoVariationService>();
+builder.Services.AddScoped<WebApp.Services.Creator.BrandKit.DirectionEngine.IDirectionGenerationService,
+    WebApp.Services.Creator.BrandKit.DirectionEngine.DirectionGenerationService>();
 builder.Services.AddScoped<WebApp.Services.Migrations.ICreatorIdeaBackfill,
     WebApp.Services.Migrations.CreatorIdeaBackfillMigration>();
 builder.Services.AddScoped<WebApp.Services.Migrations.ICreatorIdeaSnapshotsBackfill,

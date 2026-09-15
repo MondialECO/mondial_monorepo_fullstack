@@ -110,6 +110,9 @@ namespace WebApp.Models.DatabaseModels
         public string DisplayTypeface { get; set; } = string.Empty;
         public string TextTypeface { get; set; } = string.Empty;
         public string MotifKey { get; set; } = string.Empty;
+        /// <summary>"ai" | "fallback"</summary>
+        public string Provenance { get; set; } = "ai";
+        public bool AvoidListSubstituted { get; set; } = false;
     }
 
     public class BrandDirectionAdjustments

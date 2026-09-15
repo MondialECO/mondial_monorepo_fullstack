@@ -39,6 +39,8 @@ namespace WebApp.Models.Dtos
         public string DisplayTypeface { get; set; } = string.Empty;
         public string TextTypeface { get; set; } = string.Empty;
         public string MotifKey { get; set; } = string.Empty;
+        public string? Provenance { get; set; }
+        public bool? AvoidListSubstituted { get; set; }
     }
 
     public class BrandDirectionAdjustmentsDto

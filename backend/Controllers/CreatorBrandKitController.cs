@@ -13,6 +13,7 @@ using MongoDB.Driver;
 using WebApp.Models;
 using WebApp.Models.DatabaseModels;
 using WebApp.Models.Dtos;
+using WebApp.Services.Creator.BrandKit.DirectionEngine;
 using WebApp.Services.Creator.BrandKit.LogoEngine;
 using WebApp.Services.Implementations;
 using WebApp.Services.Interface;
@@ -36,6 +37,7 @@ namespace WebApp.Controllers
         private readonly ICreatorIdeaStore? _creatorIdeas;
         private readonly ILogoGenerationService? _logoGenerationService;
         private readonly ILogoVariationService? _logoVariationService;
+        private readonly IDirectionGenerationService? _directionGenerationService;
         private readonly IMongoClient? _mongoClient;
         private readonly ILogger<CreatorBrandKitController>? _logger;
         private readonly bool _transactionsEnabled;
@@ -48,7 +50,8 @@ namespace WebApp.Controllers
             IMongoClient? mongoClient = null,
             IConfiguration? config = null,
             ILogger<CreatorBrandKitController>? logger = null,
-            ILogoVariationService? logoVariationService = null)
+            ILogoVariationService? logoVariationService = null,
+            IDirectionGenerationService? directionGenerationService = null)
         {
             _journeys = journeys;
             _brandKitStore = brandKitStore;
@@ -57,6 +60,7 @@ namespace WebApp.Controllers
             _mongoClient = mongoClient;
             _logger = logger;
             _logoVariationService = logoVariationService;
+            _directionGenerationService = directionGenerationService;
             _transactionsEnabled = config?.GetValue("Mongo:TransactionsEnabled", true) ?? true;
         }
 
@@ -415,7 +419,9 @@ namespace WebApp.Controllers
                         ColorPalette = c.ColorPalette ?? new List<string>(),
                         DisplayTypeface = c.DisplayTypeface,
                         TextTypeface = c.TextTypeface,
-                        MotifKey = c.MotifKey
+                        MotifKey = c.MotifKey,
+                        Provenance = c.Provenance ?? "ai",
+                        AvoidListSubstituted = c.AvoidListSubstituted.GetValueOrDefault()
                     }).ToList();
                     updates.Add(updateBuilder.Set(x => x.Direction.Candidates, candidates));
                 }
@@ -487,6 +493,56 @@ namespace WebApp.Controllers
 
                 var reloaded = await _brandKitStore.GetByIdeaIdAsync(idea.Id, userId);
                 return Ok(ApiResponse.Ok("Direction updated", reloaded));
+            }
+            catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
+            catch (UnauthorizedAccessException ex) { return StatusCode(StatusCodes.Status401Unauthorized, ApiResponse.Error(ex.Message)); }
+            catch (Exception ex) { return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
+        }
+
+        // =========================================================================
+        // 4b. GENERATE DIRECTION CANDIDATES
+        // =========================================================================
+        [HttpPost("direction/generate")]
+        public async Task<IActionResult> GenerateDirections(
+            [FromQuery] string? ideaId = null,
+            [FromQuery] long? expectedVersion = null,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var userId = GetUserId();
+                var idea = await _journeys.ResolveIdeaAsync(userId, ideaId);
+
+                var kit = await _brandKitStore.GetByIdeaIdAsync(idea.Id, userId);
+                if (kit == null)
+                    return NotFound(ApiResponse.Error("Brand kit not found for this idea."));
+
+                if (kit.Strategy?.ConfirmedAt == null)
+                {
+                    return BadRequest(ApiResponse.Error("Strategy must be confirmed before visual directions can be generated."));
+                }
+
+                if (_directionGenerationService == null)
+                {
+                    return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error("Direction generation service is not available."));
+                }
+
+                var candidates = await _directionGenerationService.GenerateCandidatesAsync(idea, kit, cancellationToken);
+                if (candidates == null || candidates.Count == 0)
+                {
+                    return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error("Failed to generate visual direction candidates."));
+                }
+
+                var update = Builders<BrandKit>.Update.Set(x => x.Direction.Candidates, candidates);
+                var updated = await _brandKitStore.UpdateAsync(idea.Id, userId, update, expectedVersion);
+                if (!updated)
+                {
+                    return StatusCode(StatusCodes.Status409Conflict, ApiResponse.Error(
+                        "This brand kit was updated in another tab. Refresh to load the latest version before continuing."));
+                }
+
+                var reloaded = await _brandKitStore.GetByIdeaIdAsync(idea.Id, userId);
+                return Ok(ApiResponse.Ok("Visual directions generated", reloaded));
             }
             catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
             catch (UnauthorizedAccessException ex) { return StatusCode(StatusCodes.Status401Unauthorized, ApiResponse.Error(ex.Message)); }
