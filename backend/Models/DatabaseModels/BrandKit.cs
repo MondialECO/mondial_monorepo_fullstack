@@ -136,6 +136,7 @@ namespace WebApp.Models.DatabaseModels
         public Dictionary<string, BrandLogoVariation> Variations { get; set; } = new();
 
         public BrandLogoRefinementSettings RefinementSettings { get; set; } = new();
+        public int RegenerateCount { get; set; }
         public DateTime? ApprovedAt { get; set; }
     }
 

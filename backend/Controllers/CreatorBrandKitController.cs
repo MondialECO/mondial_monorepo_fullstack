@@ -13,6 +13,7 @@ using MongoDB.Driver;
 using WebApp.Models;
 using WebApp.Models.DatabaseModels;
 using WebApp.Models.Dtos;
+using WebApp.Services.Creator.BrandKit.LogoEngine;
 using WebApp.Services.Implementations;
 using WebApp.Services.Interface;
 using WebApp.Services.Repository;
@@ -33,6 +34,7 @@ namespace WebApp.Controllers
         private readonly ICreatorJourneyService _journeys;
         private readonly IBrandKitStore _brandKitStore;
         private readonly ICreatorIdeaStore? _creatorIdeas;
+        private readonly ILogoGenerationService? _logoGenerationService;
         private readonly IMongoClient? _mongoClient;
         private readonly ILogger<CreatorBrandKitController>? _logger;
         private readonly bool _transactionsEnabled;
@@ -41,6 +43,7 @@ namespace WebApp.Controllers
             ICreatorJourneyService journeys,
             IBrandKitStore brandKitStore,
             ICreatorIdeaStore? creatorIdeas = null,
+            ILogoGenerationService? logoGenerationService = null,
             IMongoClient? mongoClient = null,
             IConfiguration? config = null,
             ILogger<CreatorBrandKitController>? logger = null)
@@ -48,6 +51,7 @@ namespace WebApp.Controllers
             _journeys = journeys;
             _brandKitStore = brandKitStore;
             _creatorIdeas = creatorIdeas;
+            _logoGenerationService = logoGenerationService;
             _mongoClient = mongoClient;
             _logger = logger;
             _transactionsEnabled = config?.GetValue("Mongo:TransactionsEnabled", true) ?? true;
@@ -602,6 +606,114 @@ namespace WebApp.Controllers
 
                 var reloaded = await _brandKitStore.GetByIdeaIdAsync(idea.Id, userId);
                 return Ok(ApiResponse.Ok("Logo updated", reloaded));
+            }
+            catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
+            catch (UnauthorizedAccessException ex) { return StatusCode(StatusCodes.Status401Unauthorized, ApiResponse.Error(ex.Message)); }
+            catch (Exception ex) { return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
+        }
+
+        // =========================================================================
+        // 5a. GENERATE LOGO CONCEPTS
+        // =========================================================================
+        [HttpPost("logo/generate-concepts")]
+        public async Task<IActionResult> GenerateLogoConcepts(
+            [FromQuery] string? ideaId = null,
+            [FromQuery] long? expectedVersion = null,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var userId = GetUserId();
+                var idea = await _journeys.ResolveIdeaAsync(userId, ideaId);
+
+                var kit = await _brandKitStore.GetByIdeaIdAsync(idea.Id, userId);
+                if (kit == null)
+                    return NotFound(ApiResponse.Error("Brand kit not found for this idea."));
+
+                var (allowed, prerequisiteErr) = CheckPatchPrerequisite("logo", kit);
+                if (!allowed)
+                    return BadRequest(ApiResponse.Error(prerequisiteErr!));
+
+                if (_logoGenerationService == null)
+                    return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error("Logo generation service is unavailable."));
+
+                // Step 2e credit hook placeholder
+                // await _aiCreditService.DebitForJobAsync(userId, AiJobType.BrandLogoGeneration);
+
+                var concepts = await _logoGenerationService.GenerateConceptsAsync(idea, kit, cancellationToken);
+
+                var updateBuilder = Builders<BrandKit>.Update;
+                var update = updateBuilder
+                    .Set(x => x.Logo.Concepts, concepts)
+                    .Set(x => x.Logo.RegenerateCount, 0);
+
+                var updated = await _brandKitStore.UpdateAsync(idea.Id, userId, update, expectedVersion);
+                if (!updated)
+                    return StatusCode(StatusCodes.Status409Conflict, ApiResponse.Error("This brand kit was updated in another tab. Refresh to load the latest version before continuing."));
+
+                var reloaded = await _brandKitStore.GetByIdeaIdAsync(idea.Id, userId);
+                return Ok(ApiResponse.Ok("Logo concepts generated successfully", reloaded));
+            }
+            catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
+            catch (UnauthorizedAccessException ex) { return StatusCode(StatusCodes.Status401Unauthorized, ApiResponse.Error(ex.Message)); }
+            catch (Exception ex) { return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
+        }
+
+        // =========================================================================
+        // 5b. REGENERATE SINGLE LOGO CONCEPT
+        // =========================================================================
+        [HttpPost("logo/regenerate-concept/{conceptKey}")]
+        public async Task<IActionResult> RegenerateSingleLogoConcept(
+            [FromRoute] string conceptKey,
+            [FromQuery] string? ideaId = null,
+            [FromQuery] long? expectedVersion = null,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var userId = GetUserId();
+                var idea = await _journeys.ResolveIdeaAsync(userId, ideaId);
+
+                var kit = await _brandKitStore.GetByIdeaIdAsync(idea.Id, userId);
+                if (kit == null)
+                    return NotFound(ApiResponse.Error("Brand kit not found for this idea."));
+
+                var (allowed, prerequisiteErr) = CheckPatchPrerequisite("logo", kit);
+                if (!allowed)
+                    return BadRequest(ApiResponse.Error(prerequisiteErr!));
+
+                var existingConcept = kit.Logo?.Concepts?.FirstOrDefault(c => c.Key == conceptKey);
+                if (existingConcept == null)
+                    return NotFound(ApiResponse.Error($"Logo concept '{conceptKey}' not found."));
+
+                if (_logoGenerationService == null)
+                    return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error("Logo generation service is unavailable."));
+
+                // Step 2e credit hook placeholder
+                // await _aiCreditService.DebitForJobAsync(userId, AiJobType.BrandLogoRegeneration);
+
+                var regeneratedConcept = await _logoGenerationService.RegenerateSingleConceptAsync(idea, kit, conceptKey, cancellationToken);
+
+                var updateBuilder = Builders<BrandKit>.Update;
+                var arrayFilters = new List<ArrayFilterDefinition>
+                {
+                    new BsonDocumentArrayFilterDefinition<BsonDocument>(new BsonDocument("c.Key", conceptKey))
+                };
+
+                var update = updateBuilder
+                    .Set("Logo.Concepts.$[c].DescriptorLine", regeneratedConcept.DescriptorLine)
+                    .Set("Logo.Concepts.$[c].AssetUri", regeneratedConcept.AssetUri)
+                    .Set("Logo.Concepts.$[c].RegenerateCount", regeneratedConcept.RegenerateCount)
+                    .Set("Logo.Concepts.$[c].Parameters", regeneratedConcept.Parameters)
+                    .Inc(x => x.Logo.RegenerateCount, 1);
+
+                var options = new UpdateOptions { ArrayFilters = arrayFilters };
+                var updated = await _brandKitStore.UpdateAsync(idea.Id, userId, update, expectedVersion, session: null, options: options);
+                if (!updated)
+                    return StatusCode(StatusCodes.Status409Conflict, ApiResponse.Error("This brand kit was updated in another tab. Refresh to load the latest version before continuing."));
+
+                var reloaded = await _brandKitStore.GetByIdeaIdAsync(idea.Id, userId);
+                return Ok(ApiResponse.Ok($"Concept '{conceptKey}' regenerated successfully", reloaded));
             }
             catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
             catch (UnauthorizedAccessException ex) { return StatusCode(StatusCodes.Status401Unauthorized, ApiResponse.Error(ex.Message)); }

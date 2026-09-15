@@ -325,6 +325,10 @@ builder.Services.AddSingleton<WebApp.Services.Repository.ICreatorIdeaStore>(
 builder.Services.AddSingleton<WebApp.Services.Repository.BrandKitRepository>();
 builder.Services.AddSingleton<WebApp.Services.Repository.IBrandKitStore>(
     sp => sp.GetRequiredService<WebApp.Services.Repository.BrandKitRepository>());
+builder.Services.AddSingleton<WebApp.Services.Creator.BrandKit.LogoEngine.ILogoMarkRendererRegistry,
+    WebApp.Services.Creator.BrandKit.LogoEngine.LogoMarkRendererRegistry>();
+builder.Services.AddScoped<WebApp.Services.Creator.BrandKit.LogoEngine.ILogoGenerationService,
+    WebApp.Services.Creator.BrandKit.LogoEngine.LogoGenerationService>();
 builder.Services.AddScoped<WebApp.Services.Migrations.ICreatorIdeaBackfill,
     WebApp.Services.Migrations.CreatorIdeaBackfillMigration>();
 builder.Services.AddScoped<WebApp.Services.Migrations.ICreatorIdeaSnapshotsBackfill,
