@@ -1,0 +1,126 @@
+import api from "@/lib/axios";
+import { BrandKit } from "@/types/creator/brand-kit";
+
+export interface ApiResponse<T> {
+  success: boolean;
+  message?: string;
+  data?: T;
+  traceId?: string;
+}
+
+export const brandKitApi = {
+  /**
+   * Fetch complete BrandKit record for the active or queried idea.
+   */
+  async getBrandKit(ideaId?: string): Promise<BrandKit> {
+    const res = await api.get<ApiResponse<BrandKit>>(
+      "/creator/journey/phase2/brand-kit",
+      {
+        params: ideaId ? { ideaId } : {},
+      }
+    );
+    return res.data.data!;
+  },
+
+  /**
+   * Reset all section regenerate counters across the kit to 0 upon entering studio.
+   */
+  async openStudio(ideaId?: string): Promise<BrandKit> {
+    const res = await api.post<ApiResponse<BrandKit>>(
+      "/creator/journey/phase2/brand-kit/open-studio",
+      null,
+      {
+        params: ideaId ? { ideaId } : {},
+      }
+    );
+    return res.data.data!;
+  },
+
+  /**
+   * Generate 6 logo concepts across 6 mark families.
+   */
+  async generateLogoConcepts(
+    ideaId?: string,
+    expectedVersion?: number
+  ): Promise<BrandKit> {
+    const params: Record<string, string | number> = {};
+    if (ideaId) params.ideaId = ideaId;
+    if (expectedVersion !== undefined) params.expectedVersion = expectedVersion;
+
+    const res = await api.post<ApiResponse<BrandKit>>(
+      "/creator/journey/phase2/brand-kit/logo/generate-concepts",
+      null,
+      { params }
+    );
+    return res.data.data!;
+  },
+
+  /**
+   * Regenerate a single logo concept by key.
+   */
+  async regenerateSingleLogoConcept(
+    conceptKey: string,
+    ideaId?: string,
+    expectedVersion?: number
+  ): Promise<BrandKit> {
+    const params: Record<string, string | number> = {};
+    if (ideaId) params.ideaId = ideaId;
+    if (expectedVersion !== undefined) params.expectedVersion = expectedVersion;
+
+    const res = await api.post<ApiResponse<BrandKit>>(
+      `/creator/journey/phase2/brand-kit/logo/regenerate-concept/${encodeURIComponent(
+        conceptKey
+      )}`,
+      null,
+      { params }
+    );
+    return res.data.data!;
+  },
+
+  /**
+   * Partially update Logo section (e.g. set selectedConceptKey).
+   */
+  async patchLogo(
+    payload: {
+      selectedConceptKey?: string;
+      logoType?: string;
+      refinementSettings?: {
+        symbolSize?: string | null;
+        spacing?: string | null;
+        arrangement?: string | null;
+      };
+    },
+    ideaId?: string,
+    expectedVersion?: number
+  ): Promise<BrandKit> {
+    const params: Record<string, string | number> = {};
+    if (ideaId) params.ideaId = ideaId;
+    if (expectedVersion !== undefined) params.expectedVersion = expectedVersion;
+
+    const res = await api.patch<ApiResponse<BrandKit>>(
+      "/creator/journey/phase2/brand-kit/logo",
+      payload,
+      { params }
+    );
+    return res.data.data!;
+  },
+
+  /**
+   * Derive 7 canonical variations from approved concept.
+   */
+  async deriveVariations(
+    ideaId?: string,
+    expectedVersion?: number
+  ): Promise<BrandKit> {
+    const params: Record<string, string | number> = {};
+    if (ideaId) params.ideaId = ideaId;
+    if (expectedVersion !== undefined) params.expectedVersion = expectedVersion;
+
+    const res = await api.post<ApiResponse<BrandKit>>(
+      "/creator/journey/phase2/brand-kit/logo/derive-variations",
+      null,
+      { params }
+    );
+    return res.data.data!;
+  },
+};
