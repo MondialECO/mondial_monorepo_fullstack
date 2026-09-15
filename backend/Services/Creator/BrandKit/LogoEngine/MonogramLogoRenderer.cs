@@ -1,5 +1,5 @@
+using System.Globalization;
 using System.Text;
-using System.Web;
 using WebApp.Models.DatabaseModels;
 
 namespace WebApp.Services.Creator.BrandKit.LogoEngine
@@ -8,93 +8,118 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
     {
         public string FamilyName => BrandLogoFamilyNames.Monogram;
 
-        public string RenderSvg(BrandLogoConceptParameters parameters, string brandName, string? colorHex = null)
+        public string RenderMarkSvg(BrandLogoConceptParameters parameters, string brandName, string? colorHex = null)
         {
-            var color = colorHex ?? "currentColor";
-            var vals = parameters?.Values ?? new Dictionary<string, string>();
-
-            var type = vals.TryGetValue("MonogramType", out var t) ? t : "two_letter_interlock";
-            var frame = vals.TryGetValue("FrameStyle", out var f) ? f : "square_box";
-            var stroke = vals.TryGetValue("StrokeStyle", out var st) ? st : "heavy_block";
-
-            var name = string.IsNullOrWhiteSpace(brandName) ? "BRAND" : brandName.Trim().ToUpperInvariant();
-            var words = name.Split(new[] { ' ', '-', '_' }, StringSplitOptions.RemoveEmptyEntries);
-
-            string initials;
-            if (words.Length >= 2)
-            {
-                initials = $"{words[0][0]}{words[1][0]}";
-            }
-            else if (name.Length >= 2)
-            {
-                initials = name[..2];
-            }
-            else
-            {
-                initials = name.Length > 0 ? name : "B";
-            }
+            var fill = colorHex ?? "#0F172A";
+            var fontCategory = parameters?.Values?.GetValueOrDefault("FontCategory") ?? "high_contrast_serif";
+            var initials = ResolveInitials(brandName);
 
             var sb = new StringBuilder();
-            sb.AppendLine("<svg viewBox=\"0 0 100 100\" width=\"100%\" height=\"100%\" xmlns=\"http://www.w3.org/2000/svg\">");
-
-            // Render Frame
-            var isSolidDisc = frame == "solid_disc";
-            var frameFill = isSolidDisc ? color : "none";
-            var frameStroke = isSolidDisc ? "none" : color;
-            var textFill = isSolidDisc ? "#ffffff" : color;
-            var frameWidth = 6.0;
-
-            switch (frame)
-            {
-                case "circle_ring":
-                case "solid_disc":
-                    sb.AppendLine($"  <circle cx=\"50\" cy=\"50\" r=\"42\" fill=\"{frameFill}\" stroke=\"{frameStroke}\" stroke-width=\"{frameWidth}\" />");
-                    break;
-                case "square_box":
-                    sb.AppendLine($"  <rect x=\"10\" y=\"10\" width=\"80\" height=\"80\" rx=\"6\" fill=\"none\" stroke=\"{color}\" stroke-width=\"{frameWidth}\" />");
-                    break;
-                case "bracket_corners":
-                    sb.AppendLine($"  <path d=\"M 10 24 L 10 10 L 24 10\" fill=\"none\" stroke=\"{color}\" stroke-width=\"{frameWidth}\" stroke-linecap=\"square\" />");
-                    sb.AppendLine($"  <path d=\"M 90 24 L 90 10 L 76 10\" fill=\"none\" stroke=\"{color}\" stroke-width=\"{frameWidth}\" stroke-linecap=\"square\" />");
-                    sb.AppendLine($"  <path d=\"M 10 76 L 10 90 L 24 90\" fill=\"none\" stroke=\"{color}\" stroke-width=\"{frameWidth}\" stroke-linecap=\"square\" />");
-                    sb.AppendLine($"  <path d=\"M 90 76 L 90 90 L 76 90\" fill=\"none\" stroke=\"{color}\" stroke-width=\"{frameWidth}\" stroke-linecap=\"square\" />");
-                    break;
-            }
-
-            // Render Monogram Typography
-            var fontWeight = stroke switch
-            {
-                "monoline" => "600",
-                "duoline" => "700",
-                _ => "900"
-            };
-
-            var firstChar = initials.Length > 0 ? initials[0].ToString() : "A";
-            var secondChar = initials.Length > 1 ? initials[1].ToString() : "B";
-
-            if (type == "single_letter" || initials.Length == 1)
-            {
-                sb.AppendLine($"  <text x=\"50\" y=\"64\" text-anchor=\"middle\" fill=\"{textFill}\" font-family=\"'Inter', 'Georgia', sans-serif\" font-size=\"46\" font-weight=\"{fontWeight}\">{HttpUtility.HtmlEncode(firstChar)}</text>");
-            }
-            else if (type == "two_letter_adjacent")
-            {
-                sb.AppendLine($"  <text x=\"34\" y=\"62\" text-anchor=\"middle\" fill=\"{textFill}\" font-family=\"'Inter', sans-serif\" font-size=\"36\" font-weight=\"{fontWeight}\">{HttpUtility.HtmlEncode(firstChar)}</text>");
-                sb.AppendLine($"  <text x=\"66\" y=\"62\" text-anchor=\"middle\" fill=\"{textFill}\" font-family=\"'Inter', sans-serif\" font-size=\"36\" font-weight=\"{fontWeight}\">{HttpUtility.HtmlEncode(secondChar)}</text>");
-            }
-            else // two_letter_interlock or default
-            {
-                sb.AppendLine($"  <text x=\"40\" y=\"54\" text-anchor=\"middle\" fill=\"{textFill}\" font-family=\"'Inter', sans-serif\" font-size=\"38\" font-weight=\"{fontWeight}\">{HttpUtility.HtmlEncode(firstChar)}</text>");
-                // Add optical cut for second letter if needed
-                sb.AppendLine($"  <text x=\"60\" y=\"72\" text-anchor=\"middle\" fill=\"{textFill}\" font-family=\"'Inter', sans-serif\" font-size=\"38\" font-weight=\"{fontWeight}\">{HttpUtility.HtmlEncode(secondChar)}</text>");
-            }
-
-            if (stroke == "stencil_split")
-            {
-                sb.AppendLine($"  <line x1=\"15\" y1=\"50\" x2=\"85\" y2=\"50\" stroke=\"{(isSolidDisc ? color : "#ffffff")}\" stroke-width=\"4\" />");
-            }
-
+            sb.AppendLine("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\" width=\"100%\" height=\"100%\">");
+            RenderMonogramBadge(sb, initials, fontCategory, 15f, 15f, 70f, fill);
             sb.AppendLine("</svg>");
-            return sb.ToString().Trim();
+            return sb.ToString();
+        }
+
+        public string RenderLockupSvg(BrandLogoConceptParameters parameters, string brandName, string? colorHex = null)
+        {
+            var fill = colorHex ?? "#0F172A";
+            var fontCategory = parameters?.Values?.GetValueOrDefault("FontCategory") ?? "high_contrast_serif";
+            var initials = ResolveInitials(brandName);
+
+            var textResult = VectorTypographyRenderer.RenderTextToVectorPath(
+                brandName,
+                fontCategory,
+                initialFontSize: 24f,
+                letterSpacing: "wide",
+                horizontalBudget: 260f,
+                allowTwoLineStacking: true,
+                letterCase: "uppercase");
+
+            var badgeSize = 60f;
+            var paddingLeft = 24f;
+            var gap = 20f;
+            var badgeX = paddingLeft;
+            var textX = badgeX + badgeSize + gap;
+
+            var paddingRight = 24f;
+            var totalW = Math.Max(380f, textX + textResult.Width + paddingRight);
+            var totalH = textResult.IsStacked ? 120f : 100f;
+
+            var textOffsetY = totalH * 0.5f - (textResult.Top + textResult.Height * 0.5f);
+            var badgeOffsetY = totalH * 0.5f - (badgeSize * 0.5f);
+
+            var sb = new StringBuilder();
+            sb.AppendLine($"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {totalW.ToString("F0", CultureInfo.InvariantCulture)} {totalH.ToString("F0", CultureInfo.InvariantCulture)}\" width=\"100%\" height=\"100%\">");
+
+            RenderMonogramBadge(sb, initials, fontCategory, badgeX, badgeOffsetY, badgeSize, fill);
+
+            var textTranslationX = textX - textResult.Left;
+            sb.AppendLine($"  <g transform=\"translate({textTranslationX.ToString("F1", CultureInfo.InvariantCulture)}, {textOffsetY.ToString("F1", CultureInfo.InvariantCulture)})\">");
+            sb.AppendLine($"    <path d=\"{textResult.SvgPathData}\" fill=\"{fill}\" />");
+            sb.AppendLine("  </g>");
+            sb.AppendLine("</svg>");
+            return sb.ToString();
+        }
+
+        public string RenderSvg(BrandLogoConceptParameters parameters, string brandName, string? colorHex = null)
+        {
+            return RenderLockupSvg(parameters, brandName, colorHex);
+        }
+
+        private static string ResolveInitials(string brandName)
+        {
+            if (string.IsNullOrWhiteSpace(brandName)) return "B";
+            var trimmed = brandName.Trim();
+
+            // Short name (<= 4 chars, e.g. Onyx) -> hero single initial
+            if (trimmed.Length <= 4 && !trimmed.Contains(' '))
+            {
+                return trimmed[0].ToString().ToUpperInvariant();
+            }
+
+            var parts = trimmed.Split(new[] { ' ', '-', '_' }, StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length >= 2)
+            {
+                return $"{parts[0][0]}{parts[1][0]}".ToUpperInvariant();
+            }
+
+            // CamelCase split e.g. CyberLock -> C L
+            var uppers = trimmed.Where(char.IsUpper).ToList();
+            if (uppers.Count >= 2)
+            {
+                return $"{uppers[0]}{uppers[1]}";
+            }
+
+            return trimmed.Length >= 2 ? trimmed.Substring(0, 2).ToUpperInvariant() : trimmed[0].ToString().ToUpperInvariant();
+        }
+
+        private static void RenderMonogramBadge(StringBuilder sb, string initials, string fontCategory, float x, float y, float size, string fill)
+        {
+            var strokeWidth = Math.Max(4f, size * 0.08f);
+            var cx = x + size * 0.5f;
+            var cy = y + size * 0.5f;
+
+            // Frame container (outer badge)
+            sb.AppendLine($"  <rect x=\"{(x + strokeWidth * 0.5f).ToString("F1", CultureInfo.InvariantCulture)}\" y=\"{(y + strokeWidth * 0.5f).ToString("F1", CultureInfo.InvariantCulture)}\" width=\"{(size - strokeWidth).ToString("F1", CultureInfo.InvariantCulture)}\" height=\"{(size - strokeWidth).ToString("F1", CultureInfo.InvariantCulture)}\" rx=\"8\" fill=\"none\" stroke=\"{fill}\" stroke-width=\"{strokeWidth.ToString("F1", CultureInfo.InvariantCulture)}\" />");
+
+            // Initials text path
+            var fontSize = initials.Length > 1 ? size * 0.42f : size * 0.55f;
+            var textRes = VectorTypographyRenderer.RenderTextToVectorPath(
+                initials,
+                fontCategory,
+                initialFontSize: fontSize,
+                letterSpacing: "tight",
+                horizontalBudget: size * 0.7f,
+                allowTwoLineStacking: false,
+                letterCase: "uppercase");
+
+            var initX = cx - (textRes.Left + textRes.Width * 0.5f);
+            var initY = cy - (textRes.Top + textRes.Height * 0.5f);
+
+            sb.AppendLine($"  <g transform=\"translate({initX.ToString("F1", CultureInfo.InvariantCulture)}, {initY.ToString("F1", CultureInfo.InvariantCulture)})\">");
+            sb.AppendLine($"    <path d=\"{textRes.SvgPathData}\" fill=\"{fill}\" />");
+            sb.AppendLine("  </g>");
         }
     }
 }

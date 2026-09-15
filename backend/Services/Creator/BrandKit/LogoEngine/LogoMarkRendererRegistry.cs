@@ -5,6 +5,8 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
     public interface ILogoMarkRendererRegistry
     {
         ILogoMarkRenderer GetRenderer(string familyName);
+        string RenderMarkSvg(BrandLogoConceptParameters parameters, string brandName, string? colorHex = null);
+        string RenderLockupSvg(BrandLogoConceptParameters parameters, string brandName, string? colorHex = null);
         string RenderSvg(BrandLogoConceptParameters parameters, string brandName, string? colorHex = null);
         bool ValidateParameters(BrandLogoConceptParameters parameters, out string? errorMessage);
     }
@@ -35,11 +37,23 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
             return _renderers[BrandLogoFamilyNames.Minimal];
         }
 
-        public string RenderSvg(BrandLogoConceptParameters parameters, string brandName, string? colorHex = null)
+        public string RenderMarkSvg(BrandLogoConceptParameters parameters, string brandName, string? colorHex = null)
         {
             var family = parameters?.Family ?? BrandLogoFamilyNames.Minimal;
             var renderer = GetRenderer(family);
-            return renderer.RenderSvg(parameters ?? new BrandLogoConceptParameters { Family = family }, brandName, colorHex);
+            return renderer.RenderMarkSvg(parameters ?? new BrandLogoConceptParameters { Family = family }, brandName, colorHex);
+        }
+
+        public string RenderLockupSvg(BrandLogoConceptParameters parameters, string brandName, string? colorHex = null)
+        {
+            var family = parameters?.Family ?? BrandLogoFamilyNames.Minimal;
+            var renderer = GetRenderer(family);
+            return renderer.RenderLockupSvg(parameters ?? new BrandLogoConceptParameters { Family = family }, brandName, colorHex);
+        }
+
+        public string RenderSvg(BrandLogoConceptParameters parameters, string brandName, string? colorHex = null)
+        {
+            return RenderLockupSvg(parameters, brandName, colorHex);
         }
 
         public bool ValidateParameters(BrandLogoConceptParameters parameters, out string? errorMessage)
@@ -58,14 +72,17 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
 
             if (BrandLogoParameterSchema.Schemas.TryGetValue(parameters.Family, out var schema))
             {
-                foreach (var (paramKey, paramValue) in parameters.Values)
+                if (parameters.Values != null)
                 {
-                    if (schema.TryGetValue(paramKey, out var allowedValues))
+                    foreach (var (paramKey, paramValue) in parameters.Values)
                     {
-                        if (!allowedValues.Contains(paramValue, StringComparer.OrdinalIgnoreCase))
+                        if (schema.TryGetValue(paramKey, out var allowedValues))
                         {
-                            errorMessage = $"Invalid value '{paramValue}' for parameter '{paramKey}' in family '{parameters.Family}'. Allowed: {string.Join(", ", allowedValues)}.";
-                            return false;
+                            if (!allowedValues.Contains(paramValue, StringComparer.OrdinalIgnoreCase))
+                            {
+                                errorMessage = $"Invalid value '{paramValue}' for parameter '{paramKey}' in family '{parameters.Family}'. Allowed: {string.Join(", ", allowedValues)}.";
+                                return false;
+                            }
                         }
                     }
                 }

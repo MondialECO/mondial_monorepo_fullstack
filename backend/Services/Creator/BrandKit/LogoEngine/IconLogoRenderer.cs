@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using WebApp.Models.DatabaseModels;
 
@@ -7,93 +8,127 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
     {
         public string FamilyName => BrandLogoFamilyNames.Icon;
 
-        public string RenderSvg(BrandLogoConceptParameters parameters, string brandName, string? colorHex = null)
+        public string RenderMarkSvg(BrandLogoConceptParameters parameters, string brandName, string? colorHex = null)
         {
-            var color = colorHex ?? "currentColor";
-            var vals = parameters?.Values ?? new Dictionary<string, string>();
-
-            var primitive = vals.TryGetValue("MetaphorPrimitive", out var p) ? p : "spark_intelligence";
-            var construction = vals.TryGetValue("Construction", out var c) ? c : "silhouette_solid";
-            var isSolid = construction == "silhouette_solid";
-            var isSplit = construction == "split_halves";
-            var strokeWidth = 7.0;
+            var color = colorHex ?? "#0F172A";
+            var primitive = parameters?.Values?.GetValueOrDefault("MetaphorPrimitive") ?? "spark_intelligence";
+            var construction = parameters?.Values?.GetValueOrDefault("Construction") ?? "silhouette_solid";
 
             var sb = new StringBuilder();
             sb.AppendLine("<svg viewBox=\"0 0 100 100\" width=\"100%\" height=\"100%\" xmlns=\"http://www.w3.org/2000/svg\">");
+            RenderIconMetaphor(sb, primitive, construction, 15f, 15f, 70f, color);
+            sb.AppendLine("</svg>");
+            return sb.ToString();
+        }
 
-            switch (primitive)
+        public string RenderLockupSvg(BrandLogoConceptParameters parameters, string brandName, string? colorHex = null)
+        {
+            var color = colorHex ?? "#0F172A";
+            var primitive = parameters?.Values?.GetValueOrDefault("MetaphorPrimitive") ?? "spark_intelligence";
+            var construction = parameters?.Values?.GetValueOrDefault("Construction") ?? "silhouette_solid";
+            var fontCategory = parameters?.Values?.GetValueOrDefault("FontCategory") ?? "geometric_sans";
+
+            var textResult = VectorTypographyRenderer.RenderTextToVectorPath(
+                brandName,
+                fontCategory,
+                initialFontSize: 24f,
+                letterSpacing: "normal",
+                horizontalBudget: 260f,
+                allowTwoLineStacking: true,
+                letterCase: "uppercase");
+
+            var markSize = 60f;
+            var paddingLeft = 24f;
+            var gap = 20f;
+            var markX = paddingLeft;
+            var textX = markX + markSize + gap;
+
+            var paddingRight = 24f;
+            var totalW = Math.Max(380f, textX + textResult.Width + paddingRight);
+            var totalH = textResult.IsStacked ? 120f : 100f;
+
+            var textOffsetY = totalH * 0.5f - (textResult.Top + textResult.Height * 0.5f);
+            var markOffsetY = totalH * 0.5f - (markSize * 0.5f);
+
+            var sb = new StringBuilder();
+            sb.AppendLine($"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {totalW.ToString("F0", CultureInfo.InvariantCulture)} {totalH.ToString("F0", CultureInfo.InvariantCulture)}\" width=\"100%\" height=\"100%\">");
+
+            RenderIconMetaphor(sb, primitive, construction, markX, markOffsetY, markSize, color);
+
+            var textTranslationX = textX - textResult.Left;
+            sb.AppendLine($"  <g transform=\"translate({textTranslationX.ToString("F1", CultureInfo.InvariantCulture)}, {textOffsetY.ToString("F1", CultureInfo.InvariantCulture)})\">");
+            sb.AppendLine($"    <path d=\"{textResult.SvgPathData}\" fill=\"{color}\" />");
+            sb.AppendLine("  </g>");
+            sb.AppendLine("</svg>");
+            return sb.ToString();
+        }
+
+        public string RenderSvg(BrandLogoConceptParameters parameters, string brandName, string? colorHex = null)
+        {
+            return RenderLockupSvg(parameters, brandName, colorHex);
+        }
+
+        private static void RenderIconMetaphor(StringBuilder sb, string primitive, string construction, float x, float y, float size, string color)
+        {
+            var half = size * 0.5f;
+            var strokeWidth = Math.Max(5f, size * 0.09f);
+            var isSolid = construction == "silhouette_solid";
+            var isSplit = construction == "split_halves";
+
+            sb.AppendLine($"  <g transform=\"translate({x.ToString("F1", CultureInfo.InvariantCulture)}, {y.ToString("F1", CultureInfo.InvariantCulture)})\">");
+
+            switch (primitive.ToLowerInvariant())
             {
                 case "shield_security":
-                    var dShield = "M 50 14 L 84 28 L 74 66 L 50 86 L 26 66 L 16 28 Z";
+                    var dShield = $"M {half:F1} {size * 0.14f:F1} L {size * 0.84f:F1} {size * 0.28f:F1} L {size * 0.74f:F1} {size * 0.66f:F1} L {half:F1} {size * 0.86f:F1} L {size * 0.26f:F1} {size * 0.66f:F1} L {size * 0.16f:F1} {size * 0.28f:F1} Z";
                     if (isSplit)
                     {
-                        sb.AppendLine($"  <path d=\"M 50 14 L 84 28 L 74 66 L 50 86 Z\" fill=\"{color}\" />");
-                        sb.AppendLine($"  <path d=\"M 50 14 L 16 28 L 26 66 L 50 86 Z\" fill=\"none\" stroke=\"{color}\" stroke-width=\"{strokeWidth}\" />");
-                    }
-                    else if (isSolid)
-                    {
-                        sb.AppendLine($"  <path d=\"{dShield}\" fill=\"{color}\" />");
-                        sb.AppendLine($"  <path d=\"M 50 28 L 68 38 L 60 62 L 50 74 L 40 62 L 32 38 Z\" fill=\"#ffffff\" />");
+                        sb.AppendLine($"    <path d=\"M {half:F1} {size * 0.14f:F1} L {size * 0.84f:F1} {size * 0.28f:F1} L {size * 0.74f:F1} {size * 0.66f:F1} L {half:F1} {size * 0.86f:F1} Z\" fill=\"{color}\" />");
+                        sb.AppendLine($"    <path d=\"M {half:F1} {size * 0.14f:F1} L {size * 0.16f:F1} {size * 0.28f:F1} L {size * 0.26f:F1} {size * 0.66f:F1} L {half:F1} {size * 0.86f:F1} Z\" fill=\"none\" stroke=\"{color}\" stroke-width=\"{strokeWidth:F1}\" />");
                     }
                     else
                     {
-                        sb.AppendLine($"  <path d=\"{dShield}\" fill=\"none\" stroke=\"{color}\" stroke-width=\"{strokeWidth}\" stroke-linejoin=\"round\" />");
-                        sb.AppendLine($"  <circle cx=\"50\" cy=\"50\" r=\"8\" fill=\"{color}\" />");
+                        sb.AppendLine($"    <path d=\"{dShield}\" fill=\"none\" stroke=\"{color}\" stroke-width=\"{strokeWidth:F1}\" stroke-linejoin=\"round\" />");
+                        sb.AppendLine($"    <circle cx=\"{half:F1}\" cy=\"{half:F1}\" r=\"{size * 0.12f:F1}\" fill=\"{color}\" />");
                     }
                     break;
 
                 case "leaf_growth":
-                    var dLeaf1 = "M 50 86 C 50 86 20 66 20 42 C 20 18 50 14 50 14 C 50 14 50 86 50 86 Z";
-                    var dLeaf2 = "M 50 86 C 50 86 80 66 80 42 C 80 18 50 14 50 14 C 50 14 50 86 50 86 Z";
-                    if (isSplit || isSolid)
-                    {
-                        sb.AppendLine($"  <path d=\"{dLeaf1}\" fill=\"{color}\" />");
-                        sb.AppendLine($"  <path d=\"{dLeaf2}\" fill=\"{color}\" opacity=\"0.75\" />");
-                    }
-                    else
-                    {
-                        sb.AppendLine($"  <path d=\"M 50 86 C 20 66 20 42 20 42 C 20 18 50 14 50 14 C 50 14 80 18 80 42 C 80 66 50 86 50 86 Z\" fill=\"none\" stroke=\"{color}\" stroke-width=\"{strokeWidth}\" />");
-                        sb.AppendLine($"  <line x1=\"50\" y1=\"24\" x2=\"50\" y2=\"76\" stroke=\"{color}\" stroke-width=\"{strokeWidth}\" stroke-linecap=\"round\" />");
-                    }
+                    var dLeaf1 = $"M {half:F1} {size * 0.86f:F1} C {half:F1} {size * 0.86f:F1} {size * 0.2f:F1} {size * 0.66f:F1} {size * 0.2f:F1} {size * 0.42f:F1} C {size * 0.2f:F1} {size * 0.18f:F1} {half:F1} {size * 0.14f:F1} {half:F1} {size * 0.14f:F1} Z";
+                    var dLeaf2 = $"M {half:F1} {size * 0.86f:F1} C {half:F1} {size * 0.86f:F1} {size * 0.8f:F1} {size * 0.66f:F1} {size * 0.8f:F1} {size * 0.42f:F1} C {size * 0.8f:F1} {size * 0.18f:F1} {half:F1} {size * 0.14f:F1} {half:F1} {size * 0.14f:F1} Z";
+                    sb.AppendLine($"    <path d=\"{dLeaf1}\" fill=\"{color}\" />");
+                    sb.AppendLine($"    <path d=\"{dLeaf2}\" fill=\"{color}\" opacity=\"0.65\" />");
                     break;
 
                 case "node_network":
-                    sb.AppendLine($"  <line x1=\"50\" y1=\"24\" x2=\"24\" y2=\"72\" stroke=\"{color}\" stroke-width=\"{strokeWidth}\" stroke-linecap=\"round\" />");
-                    sb.AppendLine($"  <line x1=\"50\" y1=\"24\" x2=\"76\" y2=\"72\" stroke=\"{color}\" stroke-width=\"{strokeWidth}\" stroke-linecap=\"round\" />");
-                    sb.AppendLine($"  <line x1=\"24\" y1=\"72\" x2=\"76\" y2=\"72\" stroke=\"{color}\" stroke-width=\"{strokeWidth}\" stroke-linecap=\"round\" />");
-                    sb.AppendLine($"  <circle cx=\"50\" cy=\"24\" r=\"10\" fill=\"{color}\" />");
-                    sb.AppendLine($"  <circle cx=\"24\" cy=\"72\" r=\"10\" fill=\"{color}\" />");
-                    sb.AppendLine($"  <circle cx=\"76\" cy=\"72\" r=\"10\" fill=\"{color}\" />");
+                    var c1x = half; var c1y = size * 0.2f;
+                    var c2x = size * 0.22f; var c2y = size * 0.78f;
+                    var c3x = size * 0.78f; var c3y = size * 0.78f;
+                    var rNode = size * 0.12f;
+                    sb.AppendLine($"    <line x1=\"{c1x:F1}\" y1=\"{c1y:F1}\" x2=\"{c2x:F1}\" y2=\"{c2y:F1}\" stroke=\"{color}\" stroke-width=\"{strokeWidth:F1}\" />");
+                    sb.AppendLine($"    <line x1=\"{c2x:F1}\" y1=\"{c2y:F1}\" x2=\"{c3x:F1}\" y2=\"{c3y:F1}\" stroke=\"{color}\" stroke-width=\"{strokeWidth:F1}\" />");
+                    sb.AppendLine($"    <line x1=\"{c3x:F1}\" y1=\"{c3y:F1}\" x2=\"{c1x:F1}\" y2=\"{c1y:F1}\" stroke=\"{color}\" stroke-width=\"{strokeWidth:F1}\" />");
+                    sb.AppendLine($"    <circle cx=\"{c1x:F1}\" cy=\"{c1y:F1}\" r=\"{rNode:F1}\" fill=\"{color}\" />");
+                    sb.AppendLine($"    <circle cx=\"{c2x:F1}\" cy=\"{c2y:F1}\" r=\"{rNode:F1}\" fill=\"{color}\" />");
+                    sb.AppendLine($"    <circle cx=\"{c3x:F1}\" cy=\"{c3y:F1}\" r=\"{rNode:F1}\" fill=\"{color}\" />");
                     break;
 
-                case "cube_infrastructure":
-                    sb.AppendLine($"  <path d=\"M 50 16 L 82 34 L 50 52 L 18 34 Z\" fill=\"{color}\" />");
-                    sb.AppendLine($"  <path d=\"M 18 40 L 46 56 L 46 84 L 18 68 Z\" fill=\"{color}\" />");
-                    sb.AppendLine($"  <path d=\"M 54 56 L 82 40 L 82 68 L 54 84 Z\" fill=\"{color}\" />");
+                case "spark_intelligence":
+                case "prism_focus":
+                    var dSpark = $"M {half:F1} {size * 0.12f:F1} Q {half:F1} {half:F1} {size * 0.88f:F1} {half:F1} Q {half:F1} {half:F1} {half:F1} {size * 0.88f:F1} Q {half:F1} {half:F1} {size * 0.12f:F1} {half:F1} Q {half:F1} {half:F1} {half:F1} {size * 0.12f:F1} Z";
+                    sb.AppendLine($"    <path d=\"{dSpark}\" fill=\"{color}\" />");
                     break;
 
-                case "arch_gateway":
-                    sb.AppendLine($"  <path d=\"M 20 84 L 20 48 A 30 30 0 0 1 80 48 L 80 84\" fill=\"none\" stroke=\"{color}\" stroke-width=\"{strokeWidth * 1.6}\" stroke-linecap=\"square\" />");
-                    sb.AppendLine($"  <circle cx=\"50\" cy=\"48\" r=\"9\" fill=\"{color}\" />");
-                    break;
-
-                case "globe_connected":
-                    sb.AppendLine($"  <circle cx=\"50\" cy=\"50\" r=\"34\" fill=\"none\" stroke=\"{color}\" stroke-width=\"{strokeWidth}\" />");
-                    sb.AppendLine($"  <ellipse cx=\"50\" cy=\"50\" rx=\"16\" ry=\"34\" fill=\"none\" stroke=\"{color}\" stroke-width=\"{strokeWidth}\" />");
-                    sb.AppendLine($"  <line x1=\"16\" y1=\"50\" x2=\"84\" y2=\"50\" stroke=\"{color}\" stroke-width=\"{strokeWidth}\" />");
-                    break;
-
-                default: // spark_intelligence / pillar / wave
-                    sb.AppendLine($"  <path d=\"M 50 12 Q 50 50 88 50 Q 50 50 50 88 Q 50 50 12 50 Q 50 50 50 12 Z\" fill=\"{color}\" />");
-                    if (!isSolid)
-                    {
-                        sb.AppendLine($"  <circle cx=\"50\" cy=\"50\" r=\"7\" fill=\"#ffffff\" />");
-                    }
+                default: // pillar_foundation
+                    sb.AppendLine($"    <rect x=\"{size * 0.16f:F1}\" y=\"{size * 0.18f:F1}\" width=\"{size * 0.68f:F1}\" height=\"{strokeWidth * 1.2f:F1}\" rx=\"2\" fill=\"{color}\" />");
+                    sb.AppendLine($"    <rect x=\"{size * 0.24f:F1}\" y=\"{size * 0.28f:F1}\" width=\"{size * 0.14f:F1}\" height=\"{size * 0.46f:F1}\" rx=\"2\" fill=\"{color}\" />");
+                    sb.AppendLine($"    <rect x=\"{size * 0.43f:F1}\" y=\"{size * 0.28f:F1}\" width=\"{size * 0.14f:F1}\" height=\"{size * 0.46f:F1}\" rx=\"2\" fill=\"{color}\" />");
+                    sb.AppendLine($"    <rect x=\"{size * 0.62f:F1}\" y=\"{size * 0.28f:F1}\" width=\"{size * 0.14f:F1}\" height=\"{size * 0.46f:F1}\" rx=\"2\" fill=\"{color}\" />");
+                    sb.AppendLine($"    <rect x=\"{size * 0.16f:F1}\" y=\"{size * 0.76f:F1}\" width=\"{size * 0.68f:F1}\" height=\"{strokeWidth * 1.2f:F1}\" rx=\"2\" fill=\"{color}\" />");
                     break;
             }
 
-            sb.AppendLine("</svg>");
-            return sb.ToString().Trim();
+            sb.AppendLine("  </g>");
         }
     }
 }

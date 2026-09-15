@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using WebApp.Models.DatabaseModels;
 
@@ -7,15 +8,71 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
     {
         public string FamilyName => BrandLogoFamilyNames.Minimal;
 
+        public string RenderMarkSvg(BrandLogoConceptParameters parameters, string brandName, string? colorHex = null)
+        {
+            var color = colorHex ?? "#0F172A";
+            var primitive = parameters?.Values?.GetValueOrDefault("Primitive") ?? "sliced_circle";
+            var orientation = parameters?.Values?.GetValueOrDefault("Orientation") ?? "0_deg";
+            var balance = parameters?.Values?.GetValueOrDefault("WeightBalance") ?? "monolithic_solid";
+
+            var sb = new StringBuilder();
+            sb.AppendLine("<svg viewBox=\"0 0 100 100\" width=\"100%\" height=\"100%\" xmlns=\"http://www.w3.org/2000/svg\">");
+            RenderMinimalPrimitive(sb, primitive, orientation, balance, 15f, 15f, 70f, color);
+            sb.AppendLine("</svg>");
+            return sb.ToString();
+        }
+
+        public string RenderLockupSvg(BrandLogoConceptParameters parameters, string brandName, string? colorHex = null)
+        {
+            var color = colorHex ?? "#0F172A";
+            var primitive = parameters?.Values?.GetValueOrDefault("Primitive") ?? "sliced_circle";
+            var orientation = parameters?.Values?.GetValueOrDefault("Orientation") ?? "0_deg";
+            var balance = parameters?.Values?.GetValueOrDefault("WeightBalance") ?? "monolithic_solid";
+            var fontCategory = parameters?.Values?.GetValueOrDefault("FontCategory") ?? "geometric_sans";
+
+            var textResult = VectorTypographyRenderer.RenderTextToVectorPath(
+                brandName,
+                fontCategory,
+                initialFontSize: 24f,
+                letterSpacing: "wide",
+                horizontalBudget: 260f,
+                allowTwoLineStacking: true,
+                letterCase: "uppercase");
+
+            var markSize = 60f;
+            var paddingLeft = 24f;
+            var gap = 20f;
+            var markX = paddingLeft;
+            var textX = markX + markSize + gap;
+
+            var paddingRight = 24f;
+            var totalW = Math.Max(380f, textX + textResult.Width + paddingRight);
+            var totalH = textResult.IsStacked ? 120f : 100f;
+
+            var textOffsetY = totalH * 0.5f - (textResult.Top + textResult.Height * 0.5f);
+            var markOffsetY = totalH * 0.5f - (markSize * 0.5f);
+
+            var sb = new StringBuilder();
+            sb.AppendLine($"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {totalW.ToString("F0", CultureInfo.InvariantCulture)} {totalH.ToString("F0", CultureInfo.InvariantCulture)}\" width=\"100%\" height=\"100%\">");
+
+            RenderMinimalPrimitive(sb, primitive, orientation, balance, markX, markOffsetY, markSize, color);
+
+            var textTranslationX = textX - textResult.Left;
+            sb.AppendLine($"  <g transform=\"translate({textTranslationX.ToString("F1", CultureInfo.InvariantCulture)}, {textOffsetY.ToString("F1", CultureInfo.InvariantCulture)})\">");
+            sb.AppendLine($"    <path d=\"{textResult.SvgPathData}\" fill=\"{color}\" />");
+            sb.AppendLine("  </g>");
+            sb.AppendLine("</svg>");
+            return sb.ToString();
+        }
+
         public string RenderSvg(BrandLogoConceptParameters parameters, string brandName, string? colorHex = null)
         {
-            var color = colorHex ?? "currentColor";
-            var vals = parameters?.Values ?? new Dictionary<string, string>();
+            return RenderLockupSvg(parameters, brandName, colorHex);
+        }
 
-            var primitive = vals.TryGetValue("Primitive", out var p) ? p : "sliced_circle";
-            var orientation = vals.TryGetValue("Orientation", out var o) ? o : "0_deg";
-            var balance = vals.TryGetValue("WeightBalance", out var b) ? b : "monolithic_solid";
-
+        private static void RenderMinimalPrimitive(StringBuilder sb, string primitive, string orientation, string balance, float x, float y, float size, string color)
+        {
+            var half = size * 0.5f;
             var rotAngle = orientation switch
             {
                 "45_deg" => 45,
@@ -25,54 +82,39 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
                 _ => 0
             };
 
-            var sb = new StringBuilder();
-            sb.AppendLine("<svg viewBox=\"0 0 100 100\" width=\"100%\" height=\"100%\" xmlns=\"http://www.w3.org/2000/svg\">");
+            sb.AppendLine($"  <g transform=\"translate({x.ToString("F1", CultureInfo.InvariantCulture)}, {y.ToString("F1", CultureInfo.InvariantCulture)})\">");
+            sb.AppendLine($"    <g transform=\"rotate({rotAngle} {half:F1} {half:F1})\">");
 
-            sb.AppendLine($"  <g transform=\"rotate({rotAngle} 50 50)\">");
-
-            switch (primitive)
+            switch (primitive.ToLowerInvariant())
             {
                 case "quadrant_arc":
-                    sb.AppendLine($"    <path d=\"M 20 80 A 60 60 0 0 1 80 20 L 80 80 Z\" fill=\"{color}\" />");
-                    if (balance == "contrast_duo")
-                    {
-                        sb.AppendLine($"    <circle cx=\"42\" cy=\"42\" r=\"10\" fill=\"#ffffff\" />");
-                    }
+                    sb.AppendLine($"      <path d=\"M {size * 0.16f:F1} {size * 0.84f:F1} A {size * 0.68f:F1} {size * 0.68f:F1} 0 0 1 {size * 0.84f:F1} {size * 0.16f:F1} L {size * 0.84f:F1} {size * 0.84f:F1} Z\" fill=\"{color}\" />");
                     break;
 
                 case "offset_bars":
-                    sb.AppendLine($"    <rect x=\"22\" y=\"20\" width=\"16\" height=\"60\" rx=\"8\" fill=\"{color}\" />");
-                    sb.AppendLine($"    <rect x=\"44\" y=\"32\" width=\"16\" height=\"48\" rx=\"8\" fill=\"{color}\" />");
-                    sb.AppendLine($"    <rect x=\"66\" y=\"44\" width=\"16\" height=\"36\" rx=\"8\" fill=\"{color}\" />");
+                    sb.AppendLine($"      <rect x=\"{size * 0.18f:F1}\" y=\"{size * 0.16f:F1}\" width=\"{size * 0.18f:F1}\" height=\"{size * 0.68f:F1}\" rx=\"6\" fill=\"{color}\" />");
+                    sb.AppendLine($"      <rect x=\"{size * 0.42f:F1}\" y=\"{size * 0.32f:F1}\" width=\"{size * 0.18f:F1}\" height=\"{size * 0.52f:F1}\" rx=\"6\" fill=\"{color}\" />");
+                    sb.AppendLine($"      <rect x=\"{size * 0.66f:F1}\" y=\"{size * 0.48f:F1}\" width=\"{size * 0.18f:F1}\" height=\"{size * 0.36f:F1}\" rx=\"6\" fill=\"{color}\" />");
                     break;
 
                 case "chevron_fold":
-                    sb.AppendLine($"    <path d=\"M 20 28 L 50 58 L 80 28 L 80 46 L 50 76 L 20 46 Z\" fill=\"{color}\" />");
+                    sb.AppendLine($"      <path d=\"M {size * 0.16f:F1} {size * 0.28f:F1} L {half:F1} {size * 0.58f:F1} L {size * 0.84f:F1} {size * 0.28f:F1} L {size * 0.84f:F1} {size * 0.46f:F1} L {half:F1} {size * 0.76f:F1} L {size * 0.16f:F1} {size * 0.46f:F1} Z\" fill=\"{color}\" />");
                     break;
 
                 case "diagonal_slash":
-                    sb.AppendLine($"    <rect x=\"42\" y=\"10\" width=\"16\" height=\"80\" rx=\"8\" transform=\"rotate(35 50 50)\" fill=\"{color}\" />");
-                    if (balance == "contrast_duo")
-                    {
-                        sb.AppendLine($"    <circle cx=\"24\" cy=\"50\" r=\"8\" fill=\"{color}\" />");
-                        sb.AppendLine($"    <circle cx=\"76\" cy=\"50\" r=\"8\" fill=\"{color}\" />");
-                    }
-                    break;
-
-                case "concentric_arc":
-                    sb.AppendLine($"    <path d=\"M 20 50 A 30 30 0 1 1 80 50\" fill=\"none\" stroke=\"{color}\" stroke-width=\"12\" stroke-linecap=\"round\" />");
-                    sb.AppendLine($"    <path d=\"M 34 50 A 16 16 0 1 1 66 50\" fill=\"none\" stroke=\"{color}\" stroke-width=\"8\" stroke-linecap=\"round\" />");
+                case "hairline_cross":
+                    sb.AppendLine($"      <rect x=\"{half - size * 0.08f:F1}\" y=\"{size * 0.12f:F1}\" width=\"{size * 0.16f:F1}\" height=\"{size * 0.76f:F1}\" rx=\"6\" fill=\"{color}\" />");
+                    sb.AppendLine($"      <rect x=\"{size * 0.12f:F1}\" y=\"{half - size * 0.08f:F1}\" width=\"{size * 0.76f:F1}\" height=\"{size * 0.16f:F1}\" rx=\"6\" fill=\"{color}\" />");
                     break;
 
                 default: // sliced_circle
-                    sb.AppendLine($"    <path d=\"M 50 16 A 34 34 0 0 1 84 50 L 16 50 A 34 34 0 0 1 50 16 Z\" fill=\"{color}\" />");
-                    sb.AppendLine($"    <path d=\"M 16 58 L 84 58 A 34 34 0 0 1 50 92 A 34 34 0 0 1 16 58 Z\" fill=\"{color}\" />");
+                    sb.AppendLine($"      <path d=\"M {size * 0.16f:F1} {half - 4f:F1} A {size * 0.38f:F1} {size * 0.38f:F1} 0 0 1 {size * 0.84f:F1} {half - 4f:F1} Z\" fill=\"{color}\" />");
+                    sb.AppendLine($"      <path d=\"M {size * 0.16f:F1} {half + 4f:F1} A {size * 0.38f:F1} {size * 0.38f:F1} 0 0 0 {size * 0.84f:F1} {half + 4f:F1} Z\" fill=\"{color}\" />");
                     break;
             }
 
+            sb.AppendLine("    </g>");
             sb.AppendLine("  </g>");
-            sb.AppendLine("</svg>");
-            return sb.ToString().Trim();
         }
     }
 }
