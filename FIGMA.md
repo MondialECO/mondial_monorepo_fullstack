@@ -134,19 +134,23 @@ Two rules learned the hard way on this surface:
 
 ## Creator Brand Kit Studio (`src/components/creator/brand-kit/`)
 
-The Brand Visual Identity Studio translates Figma branding concepts into the 5-step modal workflow and theme tokens:
+The Brand Visual Identity Studio translates Figma branding concepts into the 7-step modal workflow and theme tokens:
 
 | Studio Modal Step | Purpose | Primary Data & Tokens |
 |---|---|---|
 | **1. Strategy Modal** | Personality traits, tone, and positioning | Brand values, visual style preferences |
 | **2. Direction Modal** | 4 generated visual direction cards | Archetype badges, motif keywords, rationale |
-| **3. Logo Studio** | 6 mark concept cards & 7 derived variations | SVG mark geometry, 1:1 icon assets, lockups (light/dark/stacked) |
-| **4. Colour Palette** | 5 canonical colour roles | `Primary`, `Secondary`, `Accent`, `Background`, `Text` + WCAG AA/AAA contrast pills |
-| **5. Typography** | 4 canonical typography roles | `Heading`, `Body`, `Mono`, `Display` pairings & scale preview |
+| **3. Logo Type Modal** | 6 mark family archetype choices | Monogram, Geometric, Emblem, Wordmark, Line, Combo |
+| **4. Logo Creation Modal** | 6 mark concept generation cards | SVG mark geometry, 1:1 icon assets, custom parameters |
+| **5. Variations Modal** | 7 derived lockup configurations | Light/Dark Horizontal & Stacked, Icon, Mono, Rev Mono |
+| **6. Colour Palette** | 5 canonical colour roles | `Primary`, `Secondary`, `Accent`, `Background`, `Text` + WCAG AA/AAA contrast pills |
+| **7. Typography** | 4 canonical typography roles | `Logo type`, `Heading`, `Body`, `Button & label` pairings & scale preview (`Logo type` locked) |
+
+Following modal completion, the creator transitions to the persistent **Brand Kit Hub** page.
 
 ### Brand Kit Asset & Token Rules
 1. **Never rename colour roles:** Always use the 5 canonical names (`Primary`, `Secondary`, `Accent`, `Background`, `Text`).
-2. **Never rename typography roles:** Always use the 4 canonical names (`Heading`, `Body`, `Mono`, `Display`).
+2. **Never rename typography roles:** Always use the 4 canonical names (`Logo type`, `Heading`, `Body`, `Button & label`).
 3. **Derived variations:** Always render the 7 canonical lockup/mark configurations without ad-hoc SVG resizing.
 4. **Regenerate caps:** Display remaining attempts `(N/3)` on all generative cards.
 

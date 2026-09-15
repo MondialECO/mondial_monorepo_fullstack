@@ -144,21 +144,21 @@ Following the Clarifier:
 
 ### Brand Visual Identity Studio (LIVE)
 
-The Brand Visual Identity Studio manages the creator's complete visual identity across 5 interactive modal steps, persisted in the dedicated `brandKits` collection (`BrandKitRecord`) bound 1:1 to each `CreatorIdea` via `BusinessIdeaId`.
+The Brand Visual Identity Studio manages the creator's complete visual identity across 7 interactive modal steps (Strategy $\to$ Direction $\to$ Logo Type $\to$ Logo Creation $\to$ Variations $\to$ Colour $\to$ Typography) followed by the persistent Brand Kit Hub page, persisted in the dedicated `BrandKits` collection (`BrandKit`) bound 1:1 to each `CreatorIdea` via `BusinessIdeaId` (unique index on `IdeaId`).
 
 #### 1. Data Model & Thin Pointer Sync
-- **`BrandKitRecord` Authority:** Holds 6 distinct sections:
+- **`BrandKit` Authority:** Holds 6 distinct sections:
   - `Strategy`: Brand personality traits, positioning statement, target audience, values, and visual style preferences.
   - `Direction`: 4 generated strategic visual directions (archetype, motif, typography feel, colour vibe, rationale) and the creator's selected direction.
-  - `Logo`: Selected logo concept, 6 generated concept candidates, mark geometry metadata, lockup layout, typography selection, standalone mark assets (`MarkSvg`, `MarkPngBase64`), and 7 derived variations.
+  - `Logo`: Selected logo concept, 6 generated concept candidates, mark geometry metadata, lockup layout, typography selection, standalone mark assets (`MarkAssetUri`, `LockupAssetUri`), and 7 derived variations.
   - `Colors`: 5 canonical colour roles (`Primary`, `Secondary`, `Accent`, `Background`, `Text`) with WCAG contrast metrics and harmony rules.
-  - `Typography`: 4 canonical typography roles (`Heading`, `Body`, `Mono`, `Display`) with font pairings, weights, and sample scales.
-  - `History`: Append-only version snapshot history for auditable rollback and change tracking.
+  - `Typography`: 4 canonical typography roles (`Logo type`, `Heading`, `Body`, `Button & label`) with font pairings, weights, and sample scales (`Logo type` is permanently locked against automated regenerate).
+  - `Snapshots`: Bounded list of up to 3 version snapshots (newest first) for auditable rollback and change tracking.
 - **`Project.Branding` Summary Pointer:** To maintain lightweight read performance across project cards and dashboard summaries, whenever the kit's Logo, Colors, or Typography change, the backend synchronously syncs strictly 4 fields to `CreatorIdea.Project.Branding`:
-  1. `LogoUrl` (Primary horizontal/stacked lockup or mark URL)
-  2. `PrimaryColor` (Hex code)
-  3. `SecondaryColor` (Hex code)
-  4. `TypographyFontFamily` (Heading font family)
+  1. `BrandingMethod` (`"ai_studio"`)
+  2. `LogoAsset` (URI reference to primary logo lockup/mark asset)
+  3. `PaletteName` (Derived or selected color palette name)
+  4. `TypographyPairing` (Derived or selected heading/body font pairing name)
 - **Optimistic Concurrency:** All section updates require matching `version` numbers. Conflicting concurrent writes return HTTP 409 Conflict.
 
 #### 2. Parametric Logo Engine
@@ -193,11 +193,11 @@ The Brand Visual Identity Studio manages the creator's complete visual identity 
   - `Text` — High-contrast readable typography fill (WCAG AA $\ge$ 4.5:1, AAA $\ge$ 7:1).
   *(Note: Legacy names such as "Neutral" or "Card" are obsolete.)*
 - **Four Typography Roles:**
+  - `Logo type` — Brand wordmark / concept font family (permanently locked from approved logo concept).
   - `Heading` — Primary title and section header font family.
   - `Body` — High-legibility text font family for paragraphs and UI copy.
-  - `Mono` — Monospaced font for figures, code, and financial tables.
-  - `Display` — High-personality display / brand mark font family.
-  *(Note: Legacy names such as "Section Title" are obsolete.)*
+  - `Button & label` — Compact, high-clarity font family for UI actions and metadata.
+  *(Note: "Mono" and "Display" are typeface category classifications, not role names. Legacy names such as "Section Title" are obsolete.)*
 
 #### 5. Credit Metering, Per-Element Caps & Studio Reset
 - **Config-Driven Pricing:** Configured under `Ai:CreditCosts` in `appsettings.json`:
