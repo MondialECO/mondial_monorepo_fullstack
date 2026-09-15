@@ -42,7 +42,7 @@ export default function BrandingOptionsPage() {
         exists: true,
       },
     }));
-    router.push("/dashboard/creator/phase-2/logo-tool");
+    router.push("/dashboard/creator/phase-2/brand-studio");
   };
 
   const handleSkip = async () => {
