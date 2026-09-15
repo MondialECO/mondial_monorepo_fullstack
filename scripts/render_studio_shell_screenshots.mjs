@@ -25,7 +25,7 @@ function generateStudioShellHtml(overlayModal = null) {
   <title>Brand Visual Identity Studio - Real Render</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&family=Space+Grotesk:wght@300..700&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -267,8 +267,8 @@ function generateStudioShellHtml(overlayModal = null) {
           <div class="rounded-xl bg-muted/20 border border-border/40 p-3.5 flex flex-col justify-between">
             <span class="text-[10px] font-mono font-semibold uppercase tracking-wider text-muted-foreground mb-1">Type Pairing</span>
             <div class="flex flex-col gap-0.5">
-              <span class="text-xs font-semibold text-foreground">Inter (Display)</span>
-              <span class="text-[11px] text-muted-foreground font-medium">Body: Inter Regular</span>
+              <span class="text-xs font-semibold text-foreground">Space Grotesk (Display)</span>
+              <span class="text-[11px] text-muted-foreground font-medium">Body: Plus Jakarta Sans</span>
             </div>
           </div>
         </div>
@@ -409,7 +409,13 @@ async function renderScreenshots() {
   await page.screenshot({ path: canvasPath, fullPage: true });
   console.log(`Saved: ${canvasPath}`);
 
-  // 2. Studio Shell with Active Modal Overlay & Dimmed Canvas
+  // 2. Focused Crop on the Corrected Direction Result Card
+  const directionCardLocator = page.locator('div:has-text("Visual Direction")').filter({ hasText: 'STEP 2' }).first();
+  const directionCardPath = path.join(outputDir, '06_studio_direction_result_card_corrected.png');
+  await directionCardLocator.screenshot({ path: directionCardPath });
+  console.log(`Saved: ${directionCardPath}`);
+
+  // 3. Studio Shell with Active Modal Overlay & Dimmed Canvas
   const htmlOverlay = generateStudioShellHtml('variations');
   await page.setContent(htmlOverlay, { waitUntil: 'networkidle' });
   await page.evaluate(async () => {

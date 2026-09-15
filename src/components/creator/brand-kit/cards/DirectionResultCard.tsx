@@ -18,8 +18,8 @@ export function DirectionResultCard({ direction, onEdit }: DirectionResultCardPr
       name: "Modern Precision",
       feelLine: "Balanced, confident and technically refined.",
       colorPalette: ["#0052FF", "#0F172A", "#38BDF8", "#F8FAFC", "#09090B"],
-      displayTypeface: "Inter",
-      textTypeface: "Inter",
+      displayTypeface: "Space Grotesk",
+      textTypeface: "Plus Jakarta Sans",
     };
 
   return (
