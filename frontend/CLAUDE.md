@@ -46,9 +46,9 @@ src/
 4. **Images: always `next/image`.** Never `<img>`. Check `ImageWithFallback.tsx` for the reusable wrapper.
 5. **Dark mode: every new component must work in both themes.** Sanity-check by reading the `.dark` block in `globals.css` and avoiding fixed grays.
 6. **Radius scale:** use `rounded-md/lg/xl/2xl` — they're wired to `--radius` in globals.css.
-7. **Creator Brand Kit Studio & Hub rules:**
-   - **Routes:** Studio shell at `/dashboard/creator/phase-2/brand-studio` (replaces legacy prototypes; `/logo-tool` is untouched for compatibility). Hub page at `/dashboard/creator/phase-2/brand-kit`.
-   - **Studio Layout:** Full-bleed interactive canvas + top 6-segment progress bar (`BrandStudioProgressBar`). Modals appear as overlays; canvas accumulates persistent result cards. No agent rails or floating toolbars.
+7. **Creator Brand Kit Studio & Hub rules (Verified Build Clean):**
+   - **Routes & Flow:** Branding entry at `/dashboard/creator/phase-2/branding` (single card, 6 deliverables, single filled blue "Open Brand Studio" button, quiet "Skip for now" row routing to `/complete`). Studio shell at `/dashboard/creator/phase-2/brand-studio`. Hub page at `/dashboard/creator/phase-2/brand-kit`. Compact summary at `/dashboard/creator/phase-2/complete` (5-role swatch strip, typography pairing, active mark, links to hub/studio). (Legacy `/logo-tool` route retained for backward compatibility).
+   - **Studio Layout & Navigation:** Full-bleed interactive canvas + top 6-segment progress bar (`BrandStudioProgressBar`). Modals appear as overlays; canvas accumulates persistent result cards. No agent rails or floating toolbars. On Step 6 Typography confirm when kit status transitions to `"complete"`, the shell automatically navigates to `/dashboard/creator/phase-2/brand-kit`.
    - **7 Steps / 6 Segments:** Strategy $\to$ Direction $\to$ Logo Type $\to$ Logo Creation $\to$ Variations (folded into Step 4 "Logo" segment) $\to$ Colour $\to$ Typography.
    - **Interface Fonts:** Standardized on Inter / DM Sans for headings/body copy across all Studio surfaces, JetBrains Mono for numerals, tokens, and telemetry badges (Syne Bold is not used for Studio UI).
    - **Canonical 5 Colour Roles:** `Primary`, `Secondary`, `Accent`, `Background`, `Text` (no legacy names like "Neutral" or "Card"). `Background` has null contrast ratio.
