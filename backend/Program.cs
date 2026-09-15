@@ -320,6 +320,11 @@ builder.Services.AddScoped<BusinessIdeasRepository>();
 builder.Services.AddSingleton<WebApp.Services.Repository.CreatorIdeaRepository>();
 builder.Services.AddSingleton<WebApp.Services.Repository.ICreatorIdeaStore>(
     sp => sp.GetRequiredService<WebApp.Services.Repository.CreatorIdeaRepository>());
+
+// Brand Visual Identity Studio (Phase 2). Repo owns BrandKits collection + unique IdeaId index.
+builder.Services.AddSingleton<WebApp.Services.Repository.BrandKitRepository>();
+builder.Services.AddSingleton<WebApp.Services.Repository.IBrandKitStore>(
+    sp => sp.GetRequiredService<WebApp.Services.Repository.BrandKitRepository>());
 builder.Services.AddScoped<WebApp.Services.Migrations.ICreatorIdeaBackfill,
     WebApp.Services.Migrations.CreatorIdeaBackfillMigration>();
 builder.Services.AddScoped<WebApp.Services.Migrations.ICreatorIdeaSnapshotsBackfill,
