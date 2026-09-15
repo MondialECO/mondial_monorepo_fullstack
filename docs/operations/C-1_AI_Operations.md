@@ -71,10 +71,12 @@ deploying, or startup validation aborts the boot (intended fail-fast).
   touched, safe to leave on. Off by default.
 
 ### 4.1 Brand Kit Studio Generative Metering & Per-Element Caps
-- **Synchronous Debits:** Brand Kit generative calls (`DirectionGeneration`: 7, `LogoParameterSelection`: 4, `LogoConceptRegenerate`: 2, `ColorGeneration`: 2, `TypographyGeneration`: 2) are debited immediately before model execution in `CreatorBrandKitController`.
+- **Synchronous Debits:** Brand Kit generative calls (`DirectionGeneration`: 7, `LogoParameterSelection`: 4, `LogoConceptRegenerate`: 2, `ColorGeneration`: 2, `TypographyGeneration`: 2) are debited immediately before model execution in `CreatorBrandKitController`. All 5 operations are eligible for deduction against the starter credit grant (200 credits).
 - **Per-Element Regenerate Cap (Max 3):** Direction candidate generation, single logo concept regeneration, colour palette regeneration, and typography regeneration each track an individual `RegenerateCount`. When `RegenerateCount >= 3`, the request halts with HTTP 400 and **0 credits debited**.
 - **Hub Reset (`POST open-studio`):** Entering the visual identity studio hub resets all section regenerate counters to 0 (`Direction.RegenerateCount = 0`, `Logo.Concepts[i].RegenerateCount = 0`, `Colors.RegenerateCount = 0`, `Typography.RegenerateCount = 0`). Section `PATCH` updates do not reset counters.
 - **Compensating Refunds:** If an AI model call throws, times out, returns malformed parameters, or encounters an optimistic concurrency write conflict, `RefundForJobAsync(userId, jobType, opId, reason)` is synchronously dispatched with the matching `operationId`.
+
+
 
 ---
 
