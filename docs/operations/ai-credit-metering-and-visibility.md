@@ -33,7 +33,7 @@ All capabilities route authoritatively to `google/gemini-3.8-flash` in base conf
 | **`LogoParameterSelection`**| `google/gemini-3.8-flash` | **4 credits** | 6-concept parametric logo batch generator across 6 mark families |
 | **`LogoConceptRegenerate`** | `google/gemini-3.8-flash` | **2 credits** | Single logo concept regeneration (distinct geometry and layout) |
 | **`ColorGeneration`** | `google/gemini-3.8-flash` | **2 credits** | 5-role colour palette regeneration (contrast, harmony, and luminance enforcement) |
-| **`TypographyGeneration`** | `google/gemini-3.8-flash` | **2 credits** | 4-role typography system regeneration (distinct pairing validation) |
+| **`TypographyGeneration`** | `google/gemini-3.8-flash` | **2 credits** | 4-role typography system regeneration (distinct pairing validation; known UI badge discrepancy: `TypographySystemModal.tsx:280` renders 5 credits chip while backend authoritatively debits 2) |
 | **`IdeaGenerator`** | `google/gemini-3.8-flash` | **0 credits** | Unmetered discovery generator |
 | **`Probe`** | `google/gemini-3.8-flash` | **0 credits** | Operational health self-test |
 | **Deterministic Derivations** | — | **0 credits** | Free initial color/typography derivations, derived variations, section patches |

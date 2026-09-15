@@ -242,7 +242,7 @@ The Brand Visual Identity Studio provides a calm, generative studio workflow acr
   - Logo Batch Generation (6 concepts): **4 credits** (`AiJobType.LogoParameterSelection`)
   - Logo Single Concept Regeneration: **2 credits** (`AiJobType.LogoConceptRegenerate`)
   - Color Palette Regeneration: **2 credits** (`AiJobType.ColorGeneration`)
-  - Typography System Regeneration: **2 credits** (`AiJobType.TypographyGeneration`)
+  - Typography System Regeneration: **2 credits** (`AiJobType.TypographyGeneration`) *(Note: Known frontend UI badge discrepancy — `TypographySystemModal.tsx:280` displays a "5 Credits" chip while backend authoritatively debits 2 credits per config).*
   - Deterministic Initial Derivations & Derived Variations: **0 credits (Free)**
   - All 5 generative operations are free-tier eligible per the platform's starter credits model (200 credits granted on onboarding/first AI call).
 - **Per-Element Cap (Max 3):** Direction, Logo Concepts, Colors, and Typography each enforce `RegenerateCount <= 3`. Reaching the cap halts further generation with HTTP 400 and **0 credits debited**.

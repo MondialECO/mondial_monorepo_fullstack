@@ -55,7 +55,7 @@ src/
    - **Canonical 4 Typography Roles:** `Logo type`, `Heading`, `Body`, `Button & label` (no legacy names like "Section Title" and no category names like "Mono"/"Display"). `Logo type` is server-side immutable.
    - **7 Canonical Logo Variations:** `primary`, `horizontal`, `stacked`, `icon_only`, `black`, `white`, `transparent` (with alpha checkerboard background).
    - **Shared Components:** Reuse `RegenerateCapBadge` for the `N/3 LEFT` / amber `0/3 LEFT` pattern.
-   - **Caps & Metering:** 3-cap regenerate limit per generative element (`DirectionGeneration` 7, `LogoParameterSelection` 4, `LogoConceptRegenerate` 2, `ColorGeneration` 2, `TypographyGeneration` 2; all free-tier starter credit eligible). `POST /open-studio` resets caps.
+   - **Caps & Metering:** 3-cap regenerate limit per generative element (`DirectionGeneration` 7, `LogoParameterSelection` 4, `LogoConceptRegenerate` 2, `ColorGeneration` 2, `TypographyGeneration` 2; all free-tier starter credit eligible. Note: known UI badge discrepancy in `TypographySystemModal.tsx:280` displaying "5 Credits" while backend debits 2). `POST /open-studio` resets caps.
    - **Hub & Versioning:** Standalone calm reference view with bounded 3-snapshot version history, automatic pre-restore backups, upstream cascade warning modals, honest "not connected yet" downstream generators, and client-side ZIP packaging.
 
 
