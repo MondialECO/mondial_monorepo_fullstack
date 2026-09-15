@@ -206,5 +206,75 @@ export const brandKitApi = {
     );
     return res.data.data!;
   },
+
+  /**
+   * Generate initial 5-role colour system (free, deterministic derivation from mark & direction).
+   */
+  async generateColors(
+    ideaId?: string,
+    expectedVersion?: number
+  ): Promise<BrandKit> {
+    const params: Record<string, string | number> = {};
+    if (ideaId) params.ideaId = ideaId;
+    if (expectedVersion !== undefined) params.expectedVersion = expectedVersion;
+
+    const res = await api.post<ApiResponse<BrandKit>>(
+      "/creator/journey/phase2/brand-kit/colors/generate",
+      null,
+      { params }
+    );
+    return res.data.data!;
+  },
+
+  /**
+   * Regenerate entire 5-role colour system (model call, costs credits, 3-cap, respects isLocked).
+   */
+  async regenerateColors(
+    ideaId?: string,
+    expectedVersion?: number
+  ): Promise<BrandKit> {
+    const params: Record<string, string | number> = {};
+    if (ideaId) params.ideaId = ideaId;
+    if (expectedVersion !== undefined) params.expectedVersion = expectedVersion;
+
+    const res = await api.post<ApiResponse<BrandKit>>(
+      "/creator/journey/phase2/brand-kit/colors/regenerate",
+      null,
+      { params }
+    );
+    return res.data.data!;
+  },
+
+  /**
+   * Partially update Colors section (per-role hex edits, lock toggles, or confirmation).
+   */
+  async patchColors(
+    payload: {
+      roles?: Array<{
+        roleName: string;
+        hex?: string;
+        rgb?: string;
+        usageNote?: string;
+        contrastRatio?: number | null;
+        contrastVerdict?: string | null;
+        isLocked?: boolean;
+        provenance?: string;
+      }>;
+      confirmedAt?: string | null;
+    },
+    ideaId?: string,
+    expectedVersion?: number
+  ): Promise<BrandKit> {
+    const params: Record<string, string | number> = {};
+    if (ideaId) params.ideaId = ideaId;
+    if (expectedVersion !== undefined) params.expectedVersion = expectedVersion;
+
+    const res = await api.patch<ApiResponse<BrandKit>>(
+      "/creator/journey/phase2/brand-kit/colors",
+      payload,
+      { params }
+    );
+    return res.data.data!;
+  },
 };
 
