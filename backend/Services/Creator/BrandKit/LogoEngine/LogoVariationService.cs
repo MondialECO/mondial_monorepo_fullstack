@@ -14,15 +14,16 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
     public class LogoVariationService : ILogoVariationService
     {
         private readonly IWebHostEnvironment? _env;
-        private readonly LogoMarkRendererRegistry _rendererRegistry;
+        private readonly ILogoMarkRendererRegistry _rendererRegistry;
 
         public LogoVariationService(
-            LogoMarkRendererRegistry rendererRegistry,
+            ILogoMarkRendererRegistry rendererRegistry,
             IWebHostEnvironment? env = null)
         {
             _rendererRegistry = rendererRegistry ?? throw new ArgumentNullException(nameof(rendererRegistry));
             _env = env;
         }
+
 
         public async Task<Dictionary<string, BrandLogoVariation>> DeriveVariationsAsync(
             string ideaId,

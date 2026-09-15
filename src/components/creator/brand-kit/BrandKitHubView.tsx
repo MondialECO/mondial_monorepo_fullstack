@@ -265,10 +265,12 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
             <div className="flex items-start gap-4">
               {/* Approved Mark Thumbnail */}
               <div className="size-16 rounded-2xl bg-zinc-950 flex items-center justify-center p-3 shadow-inner shrink-0 border border-zinc-800">
-                {approvedConcept?.svgMarkup ? (
+                {logoVariations.primary?.svgUri || approvedConcept?.markAssetUri ? (
                   <div
                     className="size-full flex items-center justify-center [&_svg]:size-full [&_svg]:max-h-full"
-                    dangerouslySetInnerHTML={{ __html: approvedConcept.svgMarkup }}
+                    dangerouslySetInnerHTML={{
+                      __html: logoVariations.primary?.svgUri || approvedConcept?.markAssetUri || "",
+                    }}
                   />
                 ) : (
                   <Sparkles className="size-8 text-primary" />
@@ -381,7 +383,7 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
               const varObj: BrandLogoVariation | undefined = logoVariations[item.key];
               const isDark = item.key === "white";
               const isCheckerboard = item.key === "transparent";
-              const assetMarkup = varObj?.svgUri || approvedConcept?.svgMarkup || "";
+              const assetMarkup = varObj?.svgUri || approvedConcept?.markAssetUri || "";
 
               const handleCopySvg = (e: React.MouseEvent) => {
                 e.stopPropagation();
@@ -491,7 +493,9 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
                       {role.roleName}
                     </span>
                     {role.isLocked && (
-                      <Lock className="size-3 text-muted-foreground" title="Role Locked" />
+                      <span title="Role Locked">
+                        <Lock className="size-3 text-muted-foreground" />
+                      </span>
                     )}
                   </div>
 
@@ -925,9 +929,31 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
         <StrategyReviewModal
           kit={kit}
           onClose={() => setActiveModal(null)}
-          onConfirm={(updatedKit) => {
-            setKit(updatedKit);
-            setActiveModal(null);
+          onConfirm={async (updatedStrategy) => {
+            try {
+              const updatedKit = await apiCreatorBrandKit.patchStrategy(
+                {
+                  businessName: updatedStrategy.businessName,
+                  nameDisplayForm: updatedStrategy.nameDisplayForm,
+                  concept: updatedStrategy.concept?.value,
+                  targetAudience: updatedStrategy.targetAudience?.value,
+                  industry: updatedStrategy.industry?.value,
+                  positioning: updatedStrategy.positioning?.value,
+                  personalityTraits: updatedStrategy.personalityTraits,
+                  avoidList: updatedStrategy.avoidList,
+                  tonePosition: updatedStrategy.tonePosition,
+                  firstAppearance: updatedStrategy.firstAppearance,
+                  symbolFeeling: updatedStrategy.symbolFeeling,
+                  confirmedAt: updatedStrategy.confirmedAt || new Date().toISOString(),
+                },
+                ideaId,
+                kit.version
+              );
+              setKit(updatedKit);
+              setActiveModal(null);
+            } catch (err) {
+              console.error("Failed to update strategy from hub:", err);
+            }
           }}
         />
       )}
