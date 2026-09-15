@@ -84,11 +84,13 @@ export const brandKitApi = {
     payload: {
       selectedConceptKey?: string;
       logoType?: string;
+      approvedAt?: string | null;
       refinementSettings?: {
         symbolSize?: string | null;
         spacing?: string | null;
         arrangement?: string | null;
       };
+      variations?: Record<string, any>;
     },
     ideaId?: string,
     expectedVersion?: number
