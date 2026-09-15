@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using WebApp.Models.DatabaseModels;
 
 namespace WebApp.Models.Dtos
 {
@@ -63,6 +64,7 @@ namespace WebApp.Models.Dtos
         public string DescriptorLine { get; set; } = string.Empty;
         public string MarkAssetUri { get; set; } = string.Empty;
         public string LockupAssetUri { get; set; } = string.Empty;
+        public BrandLogoConceptParameters? Parameters { get; set; }
     }
 
     public class BrandLogoRefinementSettingsDto

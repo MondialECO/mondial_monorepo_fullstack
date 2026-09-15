@@ -35,6 +35,7 @@ namespace WebApp.Controllers
         private readonly IBrandKitStore _brandKitStore;
         private readonly ICreatorIdeaStore? _creatorIdeas;
         private readonly ILogoGenerationService? _logoGenerationService;
+        private readonly ILogoVariationService? _logoVariationService;
         private readonly IMongoClient? _mongoClient;
         private readonly ILogger<CreatorBrandKitController>? _logger;
         private readonly bool _transactionsEnabled;
@@ -46,7 +47,8 @@ namespace WebApp.Controllers
             ILogoGenerationService? logoGenerationService = null,
             IMongoClient? mongoClient = null,
             IConfiguration? config = null,
-            ILogger<CreatorBrandKitController>? logger = null)
+            ILogger<CreatorBrandKitController>? logger = null,
+            ILogoVariationService? logoVariationService = null)
         {
             _journeys = journeys;
             _brandKitStore = brandKitStore;
@@ -54,6 +56,7 @@ namespace WebApp.Controllers
             _logoGenerationService = logoGenerationService;
             _mongoClient = mongoClient;
             _logger = logger;
+            _logoVariationService = logoVariationService;
             _transactionsEnabled = config?.GetValue("Mongo:TransactionsEnabled", true) ?? true;
         }
 
@@ -526,7 +529,8 @@ namespace WebApp.Controllers
                         Key = c.Key,
                         DescriptorLine = c.DescriptorLine,
                         MarkAssetUri = c.MarkAssetUri,
-                        LockupAssetUri = c.LockupAssetUri
+                        LockupAssetUri = c.LockupAssetUri,
+                        Parameters = c.Parameters
                     }).ToList();
                     updates.Add(updateBuilder.Set(x => x.Logo.Concepts, concepts));
                 }
@@ -559,6 +563,39 @@ namespace WebApp.Controllers
                     }
                 }
 
+                var targetConceptKey = dto.SelectedConceptKey ?? kit.Logo?.SelectedConceptKey;
+                BrandLogoConcept? targetConcept = null;
+                if (dto.Concepts != null)
+                {
+                    var foundDto = dto.Concepts.FirstOrDefault(c => c.Key == targetConceptKey);
+                    if (foundDto != null)
+                    {
+                        targetConcept = new BrandLogoConcept
+                        {
+                            Key = foundDto.Key,
+                            DescriptorLine = foundDto.DescriptorLine,
+                            MarkAssetUri = foundDto.MarkAssetUri,
+                            LockupAssetUri = foundDto.LockupAssetUri,
+                            Parameters = foundDto.Parameters
+                        };
+                    }
+                }
+                if (targetConcept == null && kit.Logo?.Concepts != null)
+                {
+                    targetConcept = kit.Logo.Concepts.FirstOrDefault(c => c.Key == targetConceptKey);
+                }
+                Dictionary<string, BrandLogoVariation>? autoDerivedVariations = null;
+
+                if (dto.Variations == null && targetConcept != null && _logoVariationService != null && (dto.ApprovedAt != null || dto.SelectedConceptKey != null))
+                {
+                    var brandName = !string.IsNullOrWhiteSpace(kit.Strategy?.NameDisplayForm)
+                        ? kit.Strategy.NameDisplayForm
+                        : (!string.IsNullOrWhiteSpace(kit.Strategy?.BusinessName) ? kit.Strategy.BusinessName : (idea.Project?.Name ?? "Brand"));
+                    autoDerivedVariations = await _logoVariationService.DeriveVariationsAsync(
+                        idea.Id, brandName, targetConcept, kit, HttpContext.RequestAborted);
+                    updates.Add(updateBuilder.Set(x => x.Logo.Variations, autoDerivedVariations));
+                }
+
                 if (updates.Count == 0)
                     return BadRequest(ApiResponse.Error("At least one field must be provided for update."));
 
@@ -573,6 +610,10 @@ namespace WebApp.Controllers
                     if (dto.Variations != null && dto.Variations.TryGetValue(BrandLogoVariationKeys.Primary, out var primVar))
                     {
                         newLogoAsset = primVar.PngUri ?? primVar.SvgUri;
+                    }
+                    else if (autoDerivedVariations != null && autoDerivedVariations.TryGetValue(BrandLogoVariationKeys.Primary, out var autoPrim))
+                    {
+                        newLogoAsset = autoPrim.PngUri ?? autoPrim.SvgUri;
                     }
                     else if (kit.Logo?.Variations != null && kit.Logo.Variations.TryGetValue(BrandLogoVariationKeys.Primary, out var existPrim))
                     {
@@ -607,6 +648,58 @@ namespace WebApp.Controllers
 
                 var reloaded = await _brandKitStore.GetByIdeaIdAsync(idea.Id, userId);
                 return Ok(ApiResponse.Ok("Logo updated", reloaded));
+            }
+            catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
+            catch (UnauthorizedAccessException ex) { return StatusCode(StatusCodes.Status401Unauthorized, ApiResponse.Error(ex.Message)); }
+            catch (Exception ex) { return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
+        }
+
+        // =========================================================================
+        // 5. DERIVE LOGO VARIATIONS
+        // =========================================================================
+        [HttpPost("logo/derive-variations")]
+        public async Task<IActionResult> DeriveLogoVariations(
+            [FromQuery] string? ideaId = null,
+            [FromQuery] long? expectedVersion = null,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var userId = GetUserId();
+                var idea = await _journeys.ResolveIdeaAsync(userId, ideaId);
+
+                var kit = await _brandKitStore.GetByIdeaIdAsync(idea.Id, userId);
+                if (kit == null)
+                    return NotFound(ApiResponse.Error("Brand kit not found for this idea."));
+
+                var (allowed, prerequisiteErr) = CheckPatchPrerequisite("logo", kit);
+                if (!allowed)
+                    return BadRequest(ApiResponse.Error(prerequisiteErr!));
+
+                if (string.IsNullOrEmpty(kit.Logo?.SelectedConceptKey))
+                    return BadRequest(ApiResponse.Error("A logo concept must be selected/approved before deriving variations."));
+
+                var approvedConcept = kit.Logo.Concepts.FirstOrDefault(c => c.Key == kit.Logo.SelectedConceptKey);
+                if (approvedConcept == null)
+                    return NotFound(ApiResponse.Error($"Selected logo concept '{kit.Logo.SelectedConceptKey}' not found."));
+
+                if (_logoVariationService == null)
+                    return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error("Logo variation service is unavailable."));
+
+                var brandName = !string.IsNullOrWhiteSpace(kit.Strategy?.NameDisplayForm)
+                    ? kit.Strategy.NameDisplayForm
+                    : (!string.IsNullOrWhiteSpace(kit.Strategy?.BusinessName) ? kit.Strategy.BusinessName : (idea.Project?.Name ?? "Brand"));
+                var variations = await _logoVariationService.DeriveVariationsAsync(idea.Id, brandName, approvedConcept, kit, cancellationToken);
+
+                var updateBuilder = Builders<BrandKit>.Update;
+                var update = updateBuilder.Set(x => x.Logo.Variations, variations);
+
+                var updated = await _brandKitStore.UpdateAsync(idea.Id, userId, update, expectedVersion);
+                if (!updated)
+                    return StatusCode(StatusCodes.Status409Conflict, ApiResponse.Error("This brand kit was updated in another tab. Refresh to load the latest version before continuing."));
+
+                var reloaded = await _brandKitStore.GetByIdeaIdAsync(idea.Id, userId);
+                return Ok(ApiResponse.Ok("Logo variations derived successfully", reloaded));
             }
             catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
             catch (UnauthorizedAccessException ex) { return StatusCode(StatusCodes.Status401Unauthorized, ApiResponse.Error(ex.Message)); }
