@@ -38,6 +38,10 @@ All capabilities route authoritatively to `google/gemini-3.8-flash` in base conf
 | **`Probe`** | `google/gemini-3.8-flash` | **0 credits** | Operational health self-test |
 | **Deterministic Derivations** | — | **0 credits** | Free initial color/typography derivations, derived variations, section patches |
 
+> [!NOTE]
+> **Free-Tier Starter Credit Eligibility**: All 5 Brand Kit generative operations (`DirectionGeneration`, `LogoParameterSelection`, `LogoConceptRegenerate`, `ColorGeneration`, `TypographyGeneration`) are fully eligible for consumption against the user's standard 200 starter credit grant (`Ai:StarterCredits = 200`), enabling creators to build their first brand identity kit end-to-end at zero monetary cost.
+
+
 ---
 
 ## 3. Credit Ledger & Accounting Model

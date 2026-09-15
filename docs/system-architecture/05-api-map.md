@@ -143,9 +143,10 @@ The Mondial ECO backend exposes 579 API endpoints managed across 51 controllers.
   - `POST /api/deals/{id}/handover`: Final asset handover from Creator to Entrepreneur.
   - `POST /api/deals/{id}/build-company`: Automatically initialize a new Company from acquired IP.
 
-### G. AI Subsystem (22 Endpoints)
+### G. AI Subsystem & Brand Studio (36 Endpoints)
 - **`AiController`** (`/api/ai`):
   - `GET /api/ai/usage`: Query consumed AI credits and historical model invocations.
+  - `GET /api/ai/credits`: Authoritative balance, lifetime stats, and capability cost table.
 - **`ClarifierController`** (`/api/ai/clarifier`):
   - `POST /api/ai/clarifier/start`: Enqueue asynchronous Idea Clarifier job on Hangfire `ai` queue.
   - `GET /api/ai/clarifier/{sessionId}`: Read session status and structured clarity dimensions.
@@ -154,6 +155,28 @@ The Mondial ECO backend exposes 579 API endpoints managed across 51 controllers.
   - `GET /api/ai/business-plan/{sessionId}`: Read generated executive summary, market analysis, and GTM.
 - **`ForecastController`** (`/api/ai/forecast`):
   - `POST /api/ai/forecast/start`: Enqueue financial projection generation.
+  - `GET /api/ai/forecast/{sessionId}`: Read generated 36-month P&L model and break-even milestones.
+- **`CreatorBrandKitController`** (`/api/creator/journey/phase2/brand-kit`):
+  - `GET /api/creator/journey/phase2/brand-kit`: Retrieve owner-scoped BrandKit by `ideaId`.
+  - `POST /api/creator/journey/phase2/brand-kit`: Idempotent kit initialization from `CreatorIdea.Project`.
+  - `PATCH /api/creator/journey/phase2/brand-kit/strategy`: Update brand personality traits and avoid list.
+  - `POST /api/creator/journey/phase2/brand-kit/direction/generate`: Generative 4-candidate visual direction generation (7 credits).
+  - `PATCH /api/creator/journey/phase2/brand-kit/direction`: Select active visual direction and persist Adjust strip settings.
+  - `POST /api/creator/journey/phase2/brand-kit/logo/generate-concepts`: Batch generate 6 logo concepts filtered by LogoType (4 credits).
+  - `POST /api/creator/journey/phase2/brand-kit/logo/regenerate-concept/{conceptKey}`: Regenerate single concept (2 credits, 3-cap).
+  - `POST /api/creator/journey/phase2/brand-kit/logo/derive-variations`: Free deterministic derivation of 7 canonical variations.
+  - `PATCH /api/creator/journey/phase2/brand-kit/logo`: Set selected concept, logoType, refinement settings, or approve logo.
+  - `POST /api/creator/journey/phase2/brand-kit/colors/generate`: Free deterministic initial color palette derivation.
+  - `POST /api/creator/journey/phase2/brand-kit/colors/regenerate`: Generative whole-palette regeneration (2 credits, 3-cap).
+  - `PATCH /api/creator/journey/phase2/brand-kit/colors`: Free manual role updates (Hex, IsLocked) with deterministic WCAG evaluation.
+  - `POST /api/creator/journey/phase2/brand-kit/typography/generate`: Free deterministic initial typography pairing derivation.
+  - `POST /api/creator/journey/phase2/brand-kit/typography/regenerate`: Generative pairing regeneration (2 credits, 3-cap, preserves locked roles & immutable Logo type).
+  - `PATCH /api/creator/journey/phase2/brand-kit/typography`: Free manual role and family updates (server-side rejects modification to "Logo type").
+  - `POST /api/creator/journey/phase2/brand-kit/advance`: Enforce sequential step prerequisites, advance `currentStep`, mark `complete` on Step 6, and sync `Project.Branding`.
+  - `POST /api/creator/journey/phase2/brand-kit/snapshot`: Create concurrency-guarded backup snapshot (bounded to 3).
+  - `POST /api/creator/journey/phase2/brand-kit/snapshot/restore`: Concurrency-guarded snapshot restoration with automatic pre-restore backup.
+  - `POST /api/creator/journey/phase2/brand-kit/open-studio`: Reset regenerate counters (3/3 caps) when Creator re-enters Studio from Hub.
+
 
 ### H. Platform Administration & Governance (93 Endpoints)
 - **`AdminController` & Sub-Controllers** (`/api/admin/*`):

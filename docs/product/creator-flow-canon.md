@@ -142,74 +142,112 @@ Following the Clarifier:
 3. **Branding Hub & Brand Visual Identity Studio (`/phase-2/branding`):** Full brand identity suite backed by the `BrandKits` collection and `CreatorBrandKitController`.
 4. **Phase 2 Complete (`/phase-2/complete`):** Verifies all Phase 2 criteria (`clarified`, `nameSet`, `brandingResolved`) and unlocks Phase 3.
 
-### Brand Visual Identity Studio (LIVE)
+### Brand Visual Identity Studio & Hub (LIVE)
 
-The Brand Visual Identity Studio manages the creator's complete visual identity across 7 interactive modal steps (Strategy $\to$ Direction $\to$ Logo Type $\to$ Logo Creation $\to$ Variations $\to$ Colour $\to$ Typography) followed by the persistent Brand Kit Hub page, persisted in the dedicated `BrandKits` collection (`BrandKit`) bound 1:1 to each `CreatorIdea` via `BusinessIdeaId` (unique index on `IdeaId`).
+The Brand Visual Identity Studio provides a calm, generative studio workflow across 7 user-facing modal steps followed by a persistent Brand Kit Hub page. Persisted in the dedicated `BrandKits` collection (`BrandKit`) bound 1:1 to each `CreatorIdea` via `BusinessIdeaId` (unique index on `IdeaId`).
 
-#### 1. Data Model & Thin Pointer Sync
-- **`BrandKit` Authority:** Holds 6 distinct sections:
-  - `Strategy`: Brand personality traits, positioning statement, target audience, values, and visual style preferences.
-  - `Direction`: 4 generated strategic visual directions (archetype, motif, typography feel, colour vibe, rationale) and the creator's selected direction.
-  - `Logo`: Selected logo concept, 6 generated concept candidates, mark geometry metadata, lockup layout, typography selection, standalone mark assets (`MarkAssetUri`, `LockupAssetUri`), and 7 derived variations.
-  - `Colors`: 5 canonical colour roles (`Primary`, `Secondary`, `Accent`, `Background`, `Text`) with WCAG contrast metrics and harmony rules.
-  - `Typography`: 4 canonical typography roles (`Logo type`, `Heading`, `Body`, `Button & label`) with font pairings, weights, and sample scales (`Logo type` is permanently locked against automated regenerate).
-  - `Snapshots`: Bounded list of up to 3 version snapshots (newest first) for auditable rollback and change tracking.
-- **`Project.Branding` Summary Pointer:** To maintain lightweight read performance across project cards and dashboard summaries, whenever the kit's Logo, Colors, or Typography change, the backend synchronously syncs strictly 4 fields to `CreatorIdea.Project.Branding`:
-  1. `BrandingMethod` (`"ai_studio"`)
-  2. `LogoAsset` (URI reference to primary logo lockup/mark asset)
-  3. `PaletteName` (Derived or selected color palette name)
-  4. `TypographyPairing` (Derived or selected heading/body font pairing name)
-- **Optimistic Concurrency:** All section updates require matching `version` numbers. Conflicting concurrent writes return HTTP 409 Conflict.
+#### 1. Studio Frontend Architecture
+- **Studio Shell (`/dashboard/creator/phase-2/brand-studio`):**
+  - Replaces legacy prototypes; the legacy `/logo-tool` route remains untouched for backward compatibility.
+  - Consists of one full-bleed interactive canvas and a top 6-segment progress bar (`BrandStudioProgressBar`).
+  - No AI agent rail, no prompt box, and no secondary floating toolbar; all interactions take place in focused modal overlays over the live canvas.
+  - **Accumulated Result Cards:** As steps are completed, the canvas accumulates and displays rich summary cards (`StrategyResultCard`, `DirectionResultCard`, `LogoTypeResultCard`, `LogoResultCard`, `ColorsResultCard`, `TypographyResultCard`), which persist across the session.
+- **Top 6-Segment Progress Bar vs 7 User-Facing Steps:**
+  1. `strategy` (Step 1 segment: "Strategy", modal: `StrategyReviewModal`)
+  2. `direction` (Step 2 segment: "Direction", modal: `DirectionBoardModal`)
+  3. `logo_type` (Step 3 segment: "Logo Type", modal: `LogoTypeChooserModal`)
+  4. `logo` (Step 4 segment: "Logo", encompassing both Step 4 `LogoCreationModal` and Step 5 `VariationSetModal`)
+  5. `colors` (Step 5 segment: "Colours", modal: `ColorSystemModal`)
+  6. `typography` (Step 6 segment: "Typography", modal: `TypographySystemModal`)
+- **Interface Typography:** Standardized on **Inter** and **DM Sans** for all UI body copy, headings, and labels across all Studio surfaces (Syne Bold was an earlier prototype mock and is NOT used). **JetBrains Mono** is used for all numerals, tokens, and telemetry badges.
+- **Shared Components:**
+  - `RegenerateCapBadge`: Reused across Direction, Logo Creation, Colour, and Typography to display remaining attempts (`N/3 LEFT` in neutral/muted, transitions to amber `0/3 LEFT` when cap is exhausted).
 
-#### 2. Parametric Logo Engine
-- **Font Path Conversion:** All typography rendered inside SVG marks uses pre-parsed SVG glyph geometry (bundled font outlines via Sharp & custom path renderers) to ensure 100% deterministic, zero-external-font rendering across all platforms.
-- **6 Mark Families:**
-  1. *Monogram / Letterform* (Stylized initials with geometric intersections)
-  2. *Geometric Abstract* (Sacred geometry, rotating polygons, golden ratio forms)
-  3. *Emblem / Badge* (Enclosed crests, shields, and modern seals)
-  4. *Wordmark / Typographic* (Custom kerned, high-personality typographic treatments)
-  5. *Minimal Pictorial / Line* (Single-weight continuous line motifs)
-  6. *Combination Mark* (Fused icon + refined wordmark lockups)
-- **Asset Separation:** Clean separation between the standalone icon mark (1:1 aspect ratio, clean viewBox) and horizontal/vertical brand lockups.
-- **7 Canonical Derived Variations:**
-  1. Primary Horizontal Lockup (Light Background)
-  2. Primary Horizontal Lockup (Dark Background)
-  3. Primary Stacked / Vertical Lockup (Light Background)
-  4. Primary Stacked / Vertical Lockup (Dark Background)
-  5. Standalone Mark / Icon (Full Colour)
-  6. Monochrome Mark / App Icon (Black on White)
-  7. Reverse Monochrome Mark / App Icon (White on Black)
+#### 2. Per-Modal Behavior & Interaction Rules
+1. **Strategy Review Modal (`StrategyReviewModal`):**
+   - Initial automatic derivation from `CreatorIdea.Project`:
+     - `Project.Name` $\to$ `BusinessName`, `NameDisplayForm`
+     - `Project.Concept` (fallback `Project.Solution`) $\to$ `Concept` (Provenance: `stated` if from project, `derived` if fallback)
+     - `Project.TargetUser` $\to$ `TargetAudience` (`stated` / `derived`)
+     - `Project.Category` (fallback `Project.Tags[0]`) $\to$ `Industry` (`stated` / `derived`)
+     - `Project.MarketGap` (fallback `Project.Solution`) $\to$ `Positioning` (`stated` / `derived`)
+     - `Project.Tags` + `Project.CreatorEdge` $\to$ `PersonalityTraits` (default fallback: `["Precise", "Resilient", "Autonomous"]`)
+     - Category keywords $\to$ `AvoidList` heuristics (e.g. avoiding cliché padlocks/shields for cyber, leaves/wheat for agri).
+   - Creators can freely edit personality traits and avoid items with zero credit cost.
+2. **Direction Board Modal (`DirectionBoardModal`):**
+   - Generates exactly 4 distinct visual directions via generative model call (`AiJobType.DirectionGeneration`, **7 credits**).
+   - Free interactive **Adjust strip** (Palette variant, Contrast position, Type weight) persisted directly via `PATCH /direction` without credit cost.
+   - Enforces a 3-regeneration cap for the entire candidate set (`RegenerateCount <= 3`).
+3. **Logo Type Chooser Modal (`LogoTypeChooserModal`):**
+   - **0 credit cost** and zero regenerate cap (pure structural choice).
+   - Computes dynamic fit indicators (Recommended, Good Fit, Low Fit) in real time based on `CharacterLength` and `WordCount` constraints (e.g. short names favor Monograms, long names favor Wordmarks/Combination marks).
+   - Hands off selected `LogoType` to Logo Creation to filter subsequent concept generation.
+4. **Logo Creation Modal (`LogoCreationModal`):**
+   - Batch generation of 6 parametric logo concepts filtered by the selected `LogoType` (`AiJobType.LogoParameterSelection`, **4 credits**).
+   - Per-concept regeneration: creators can regenerate individual concepts independently (`AiJobType.LogoConceptRegenerate`, **2 credits**, capped at 3 regenerations per concept).
+   - Includes full-screen Compare Overlay and Micro-Scale Inspection (16px favicon view & invoice mock).
+5. **Variation Set Modal (`VariationSetModal`):**
+   - Free deterministic derivation of the **7 canonical logo variations** derived from the approved concept mark geometry.
+   - Separate confirmation action (`POST derive-variations` / `PATCH logo` with `approvedAt`) from concept selection.
+   - 7 Canonical Variation Keys & Purposes:
+     1. `primary`: Default master brand lockup for full-color presentations.
+     2. `horizontal`: Linear lockup for navbars, page headers, and wide banners.
+     3. `stacked`: Centered vertical lockup for square cards, badges, and packaging.
+     4. `icon_only`: Standalone mark for favicons (16/32px), app icons, and social avatars.
+     5. `black`: Single-ink solid black lockup for dark monochrome printing.
+     6. `white`: Reversed solid white lockup for dark backgrounds.
+     7. `transparent`: Alpha channel SVG mark with transparency grid rendering.
+6. **Colour System Modal (`ColorSystemModal`):**
+   - Initial deterministic derivation (`DeriveInitialColors`, **0 credits**).
+   - Generative whole-palette regeneration (`AiJobType.ColorGeneration`, **2 credits**, 3-cap).
+   - Free individual role editing (Hex color picker and role lock toggles).
+   - Real-time deterministic WCAG contrast ratio and rating calculation against `#FFFFFF` canvas. `Background` role has null contrast ratio by design.
+7. **Typography System Modal (`TypographySystemModal`):**
+   - Initial deterministic pairing derivation (`DeriveInitialTypography`, **0 credits**).
+   - Generative pairing suggestion (`AiJobType.TypographyGeneration`, **2 credits**, 3-cap).
+   - **Server-Side Immutability of "Logo type":** The `Logo type` role is structurally bound to the approved logo concept. `CreatorBrandKitController.cs` explicitly rejects modifications or unlock attempts on `Logo type` via `PatchTypography`, and regeneration strictly preserves it.
+   - **Completion Trigger:** Confirming Step 6 advances the kit to `CurrentStep = 6`, marks `Status = "complete"`, and automatically synchronizes the 4-field pointer to `CreatorIdea.Project.Branding`.
+   - **Downstream Completion Effects:** Setting `Status = "complete"` permanently unlocks non-linear section editing from the Hub, bypassing prerequisite sequencing guards in `CheckPatchPrerequisite`.
 
-#### 3. Dual-Path Generation Model
-- **Initial Generation (`/generate`):** Purely deterministic derivation directly from approved upstream assets (Strategy $\to$ Direction $\to$ Logo $\to$ Colors $\to$ Typography). Instant, reproducible, and **0 credits (free)**.
-- **Regeneration (`/regenerate`):** Model-based generative AI calls routed through `IModelRouter` (`google/gemini-3.8-flash`). AI output is validated against contrast, harmony, and typography rules; if AI output echoes the current state or fails validation, it falls back to a deterministically distinct pairing.
+#### 3. Brand Kit Hub Page (`/dashboard/creator/phase-2/brand-kit`)
+- **Calm Reference View:** A standalone hub page displaying all confirmed brand assets without Studio progress bars or step counters.
+- **Header Action Cluster:** Exactly ONE filled blue primary CTA button (`Download Brand Kit (.zip)`); secondary actions (`Version History`, `Open Studio`) are subtle outline/ghost buttons.
+- **Section Overview:**
+  1. *Logo & 7 Variations:* 7 production SVG tiles with "Copy SVG" actions and checkerboard alpha background on `transparent`.
+  2. *Colour Tokens:* 5 canonical roles (`Primary`, `Secondary`, `Accent`, `Background`, `Text`) with WCAG AAA/AA badges.
+  3. *Typography Specimens:* 4 canonical roles (`Logo type`, `Heading`, `Body`, `Button & label`) with live specimens and scale metadata.
+  4. *Brand Strategy Foundations:* 6 confirmed facts (Industry, Target Audience, Core Concept, Positioning, Personality Traits, Tone Position).
+- **Version History & Rollback:**
+  - Bounded to the 3 most recent snapshots (newest first).
+  - Snapshot restoration requires explicit modal confirmation (`RestoreSnapshotModal`).
+  - An automatic backup snapshot (`isAutomaticBackup: true`) is captured immediately before restoring an older version.
+  - Concurrency guarded via `UpdatedAt` and `Version` checks.
+- **Cascade Warning Modal (`CascadeWarningModal`):**
+  - Displayed when the creator clicks "Edit in Studio" on an upstream section (Strategy, Direction, Logo) from the Hub.
+  - Transparently itemizes all downstream artifacts that will be recalculated or invalidated if upstream choices change.
+- **Downstream Generators Status:**
+  - Honestly displays "Not connected yet" across all 4 generator integrations (Business Plan, Landing Page, Pitch Deck, Invoices & Receipts).
+- **Download Brand Kit (.zip) Packaging:**
+  - Client-side ZIP generated via `JSZip` containing:
+    1. `/logos/`: 7 canonical SVG assets (`logo-primary.svg`, `logo-horizontal.svg`, `logo-stacked.svg`, `logo-icon_only.svg`, `logo-black.svg`, `logo-white.svg`, `logo-transparent.svg`).
+    2. `/tokens/colors.json`: 5-role color tokens with hex, rgb, and WCAG contrast ratios.
+    3. `/tokens/typography.json`: 4-role typography tokens with family, weight, size, line-height, and specimen text.
+    4. `/tokens/brand-tokens.css`: Ready-to-use CSS Custom Properties (`:root { --brand-primary: ... }`).
+    5. `/README.md`: Brand identity summary document.
 
-#### 4. Canonical Roles & Taxonomy
-- **Five Colour Roles:**
-  - `Primary` — Dominant brand anchor color.
-  - `Secondary` — Supporting hue for structure and hierarchy.
-  - `Accent` — High-visibility CTA and highlight color.
-  - `Background` — Canvas / surface background (light or dark mode variants).
-  - `Text` — High-contrast readable typography fill (WCAG AA $\ge$ 4.5:1, AAA $\ge$ 7:1).
-  *(Note: Legacy names such as "Neutral" or "Card" are obsolete.)*
-- **Four Typography Roles:**
-  - `Logo type` — Brand wordmark / concept font family (permanently locked from approved logo concept).
-  - `Heading` — Primary title and section header font family.
-  - `Body` — High-legibility text font family for paragraphs and UI copy.
-  - `Button & label` — Compact, high-clarity font family for UI actions and metadata.
-  *(Note: "Mono" and "Display" are typeface category classifications, not role names. Legacy names such as "Section Title" are obsolete.)*
-
-#### 5. Credit Metering, Per-Element Caps & Studio Reset
+#### 4. Credit Metering, Per-Element Caps & Studio Reset
 - **Config-Driven Pricing:** Configured under `Ai:CreditCosts` in `appsettings.json`:
   - Direction Generation (4 candidates): **7 credits** (`AiJobType.DirectionGeneration`)
   - Logo Batch Generation (6 concepts): **4 credits** (`AiJobType.LogoParameterSelection`)
   - Logo Single Concept Regeneration: **2 credits** (`AiJobType.LogoConceptRegenerate`)
   - Color Palette Regeneration: **2 credits** (`AiJobType.ColorGeneration`)
   - Typography System Regeneration: **2 credits** (`AiJobType.TypographyGeneration`)
-  - Deterministic Initial Derivation & Derived Variations: **0 credits (Free)**
-- **Per-Element Cap (Max 3):** Each generative element enforces a maximum of 3 regenerations per studio session (`RegenerateCount >= 3` returns HTTP 400 with 0 credits debited).
-- **Compensating Refunds:** Debits occur before model execution. If an AI call fails, times out, or encounters an optimistic concurrency conflict, `RefundForJobAsync` is immediately dispatched to restore user credits.
-- **Studio Reset (`POST open-studio`):** Opening the Brand Kit Studio from the Hub (`/api/creator/journey/phase2/brand-kit/open-studio`) resets all `RegenerateCount` counters back to 0. Section `PATCH` saves do not reset counters.
+  - Deterministic Initial Derivations & Derived Variations: **0 credits (Free)**
+  - All 5 generative operations are free-tier eligible per the platform's starter credits model (200 credits granted on onboarding/first AI call).
+- **Per-Element Cap (Max 3):** Direction, Logo Concepts, Colors, and Typography each enforce `RegenerateCount <= 3`. Reaching the cap halts further generation with HTTP 400 and **0 credits debited**.
+- **Compensating Refunds:** Debits occur before model execution. If an AI call fails, times out, or encounters an optimistic concurrency conflict, `RefundForJobAsync` is immediately dispatched.
+- **Studio Reset (`POST open-studio`):** Opening Studio from the Hub resets all `RegenerateCount` counters to 0 across the entire kit. Normal section `PATCH` saves do not reset counters.
+
 
 ### Path A — Discovery (REMOVED FROM CURRENT PRODUCT)
 

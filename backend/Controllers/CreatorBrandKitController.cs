@@ -1750,6 +1750,87 @@ namespace WebApp.Controllers
         }
 
         // =========================================================================
+        // 9b. RESTORE SNAPSHOT (REVERTS LIVE BRANDKIT SECTIONS)
+        // =========================================================================
+        [HttpPost("snapshot/restore")]
+        public async Task<IActionResult> RestoreSnapshot(
+            [FromBody] RestoreSnapshotRequestDto dto,
+            [FromQuery] string? ideaId = null)
+        {
+            try
+            {
+                var userId = GetUserId();
+                var idea = await _journeys.ResolveIdeaAsync(userId, ideaId);
+
+                var kit = await _brandKitStore.GetByIdeaIdAsync(idea.Id, userId);
+                if (kit == null)
+                    return NotFound(ApiResponse.Error("Brand kit not found for this idea."));
+
+                if (kit.Snapshots == null || dto.SnapshotIndex < 0 || dto.SnapshotIndex >= kit.Snapshots.Count)
+                    return BadRequest(ApiResponse.Error($"Invalid snapshot index: {dto.SnapshotIndex}. Available snapshots: {kit.Snapshots?.Count ?? 0}."));
+
+                var targetSnapshot = kit.Snapshots[dto.SnapshotIndex];
+
+                // Auto-capture backup snapshot of current live state before restoring
+                var backupSnapshot = new BrandKitSnapshot
+                {
+                    Description = $"Pre-restore backup ({DateTime.UtcNow:MMM dd, HH:mm})",
+                    Timestamp = DateTime.UtcNow,
+                    Strategy = kit.Strategy,
+                    Direction = kit.Direction,
+                    Logo = kit.Logo,
+                    Colors = kit.Colors,
+                    Typography = kit.Typography
+                };
+
+                var updateBuilder = Builders<BrandKit>.Update;
+                var updates = new List<UpdateDefinition<BrandKit>>
+                {
+                    updateBuilder.Set(x => x.Strategy, targetSnapshot.Strategy),
+                    updateBuilder.Set(x => x.Direction, targetSnapshot.Direction),
+                    updateBuilder.Set(x => x.Logo, targetSnapshot.Logo),
+                    updateBuilder.Set(x => x.Colors, targetSnapshot.Colors),
+                    updateBuilder.Set(x => x.Typography, targetSnapshot.Typography),
+                    updateBuilder.PushEach(x => x.Snapshots, new[] { backupSnapshot }, position: 0, slice: 3)
+                };
+
+                var combinedUpdate = updateBuilder.Combine(updates);
+                var expectedVersion = dto.ExpectedVersion ?? kit.Version;
+
+                var newBrandingMethod = "ai_studio";
+                string? newLogoAsset = null;
+                if (targetSnapshot.Logo?.Variations != null && targetSnapshot.Logo.Variations.TryGetValue(BrandLogoVariationKeys.Primary, out var existPrim))
+                {
+                    newLogoAsset = existPrim.PngUri ?? existPrim.SvgUri;
+                }
+                else if (!string.IsNullOrEmpty(targetSnapshot.Logo?.SelectedConceptKey))
+                {
+                    newLogoAsset = targetSnapshot.Logo.Concepts.FirstOrDefault(c => c.Key == targetSnapshot.Logo.SelectedConceptKey)?.LockupAssetUri;
+                }
+
+                var selectedCand = targetSnapshot.Direction?.Candidates?.FirstOrDefault(c => c.Key == targetSnapshot.Direction.SelectedDirectionKey);
+                var newPaletteName = selectedCand?.Name ?? string.Empty;
+                var newTypographyPairing = ResolveTypographyPairing(kit, selectedCand);
+
+                var updated = await CommitBrandKitAndSyncAsync(
+                    idea.Id, userId, combinedUpdate, expectedVersion, options: null,
+                    idea, newBrandingMethod, newLogoAsset, newPaletteName, newTypographyPairing);
+
+                if (!updated)
+                {
+                    return StatusCode(StatusCodes.Status409Conflict, ApiResponse.Error(
+                        "This brand kit was updated in another tab. Refresh to load the latest version before continuing."));
+                }
+
+                var reloaded = await _brandKitStore.GetByIdeaIdAsync(idea.Id, userId);
+                return Ok(ApiResponse.Ok("Brand kit restored from snapshot", reloaded));
+            }
+            catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
+            catch (UnauthorizedAccessException ex) { return StatusCode(StatusCodes.Status401Unauthorized, ApiResponse.Error(ex.Message)); }
+            catch (Exception ex) { return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
+        }
+
+        // =========================================================================
         // 10. OPEN STUDIO / RESET REGENERATE CAPS (HUB RE-EDIT RESET)
         // =========================================================================
         [HttpPost("open-studio")]
