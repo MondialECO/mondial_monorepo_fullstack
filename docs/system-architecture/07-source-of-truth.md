@@ -33,7 +33,7 @@ This matrix establishes the definitive, canonical data authority for every major
 | **AI Clarifier Session** | `ClarifierSession` | `ClarifierSessions` | `CreatorIdeas.ClarifierData` | **CANONICAL**. C-2 AI session source of truth. |
 | **AI Business Plan** | `BusinessPlanSession` | `BusinessPlanSessions` | `CreatorIdeas.BusinessPlan` | **CANONICAL**. C-3 AI session source of truth. |
 | **AI Forecast Model** | `ForecastSession` | `ForecastSessions` | `CreatorIdeas.FinancialForecast`| **CANONICAL**. C-4 AI session source of truth. |
-| **Creator Brand Kit** | `BrandKit` | `BrandKits` | `CreatorIdea.Project.Branding` | **CANONICAL**. Full visual identity source of truth (Strategy, Direction, Logo, Colors, Typography, Snapshots/History). Synced to thin 4-field pointer on `Project.Branding` (`BrandingMethod`, `LogoAsset`, `PaletteName`, `TypographyPairing`). |
+| **Creator Brand Kit** | `BrandKit` | `BrandKits` | `CreatorIdea.Project.Branding` | **CANONICAL**. Full visual identity source of truth (Strategy, Direction, Logo Type, Logo Concepts, 7 Derived Variations, Colors, Typography, 3-Snapshot History). Synced to thin 4-field pointer on `Project.Branding` (`BrandingMethod`, `LogoAsset`, `PaletteName`, `TypographyPairing`). |
 | **Realtime Chat** | `ChatMessage` + `Conversation` | `ChatMessages`, `Conversations` | Redis SignalR Backplane | **CANONICAL**. Stored in MongoDB; distributed in real time via Redis SignalR. |
 | **Notifications** | `Notification` entity | `Notifications` | Browser Web Push Service Worker | **CANONICAL**. Stored in MongoDB; dispatched via `NotificationHub`. |
 
@@ -47,9 +47,13 @@ This matrix establishes the definitive, canonical data authority for every major
 2. **Cap Table Dilution Rule**:
    - The Cap Table is never mutated by ad-hoc field edits. A new version (`Version + 1`) is appended to `Phase4CapTables` alongside matching entries in `Phase4OwnershipHistories` and `Phase4ShareIssuances`.
 3. **Multi-Idea Creator Anchor**:
-   - All AI sessions (`ClarifierSessions`, `BusinessPlanSessions`, `ForecastSessions`) must carry an explicit `businessIdeaId` referencing `CreatorIdea.Id`. Any unanchored session is rejected by the multi-idea integrity guard.
+   - All AI sessions (`ClarifierSessions`, `BusinessPlanSessions`, `ForecastSessions`, `BrandKits`) must carry an explicit `businessIdeaId` referencing `CreatorIdea.Id`. Any unanchored session is rejected by the multi-idea integrity guard.
 4. **Deal Closure Rule**:
    - Transition to `completed` can only occur through the founder-controlled close endpoint (`AssertCanPerform(ctx.Role, DealAction.UpdateStatus)`), requiring both parties' digital signatures (`deal.Signatures.BothSigned == true`).
 5. **BrandKit & Project.Branding Synchronization Rule**:
    - `BrandKit` in the `BrandKits` collection is the sole authority for full brand kit identity.
    - `CreatorIdea.Project.Branding` is a read-optimized, thin summary pointer containing strictly 4 fields: `BrandingMethod`, `LogoAsset`, `PaletteName`, and `TypographyPairing`. Whenever Logo, Colors, or Typography are updated in `BrandKit`, backend synchronously updates `CreatorIdea.Project.Branding`.
+6. **BrandKit Section Sequencing & Re-Edit Rule**:
+   - During initial drafting (`Status = "draft"`), step advancement and PATCH operations enforce strict sequential prerequisites (Strategy $\to$ Direction $\to$ Logo Type $\to$ Logo Creation $\to$ Variations $\to$ Colors $\to$ Typography).
+   - Once confirmed complete (`Status = "complete"`), the kit transitions to the Brand Kit Hub (`/dashboard/creator/phase-2/brand-kit`), allowing arbitrary section re-editing in Studio (`/dashboard/creator/phase-2/brand-studio`) with upstream cascade warnings and automatic rollback snapshots.
+
