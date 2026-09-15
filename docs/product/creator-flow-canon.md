@@ -139,19 +139,20 @@ A 6-question conversational AI-guided clarifier (core problem, target user, exis
 Following the Clarifier:
 1. **Idea Summary (`/phase-2/idea-summary`):** Displays the structured concept summary and clarity score. The "Revisit" button routes directly back to `/phase-2/clarifier`.
 2. **Concept Name (`/phase-2/concept-name`):** Names the project based on clarified concept context.
-3. **Branding Hub & Brand Visual Identity Studio (`/phase-2/branding`):** Full brand identity suite backed by the `BrandKits` collection and `CreatorBrandKitController`.
-4. **Phase 2 Complete (`/phase-2/complete`):** Verifies all Phase 2 criteria (`clarified`, `nameSet`, `brandingResolved`) and unlocks Phase 3.
+3. **Branding Entry (`/phase-2/branding`):** Redesigned single-card presentation ("Brand Visual Identity Studio", light theme, hairline borders) highlighting 6 concrete deliverables, a single filled primary blue CTA ("Open Brand Studio") routing to `/dashboard/creator/phase-2/brand-studio`, and a quiet secondary "Skip for now" action that calls `creatorJourneyApi.skipBranding()` and navigates directly to `/complete`.
+4. **Phase 2 Complete (`/phase-2/complete`):** Redesigned compact summary screen reading the live `BrandKit` from `apiCreatorBrandKit.getBrandKit(ideaId)`. Displays a 5-role color swatch strip, typography pairing ({Heading} + {Body}), and active logo mark alongside the clarified idea summary; provides direct links to the full Brand Kit hub (`/dashboard/creator/phase-2/brand-kit`), studio re-entry (`/dashboard/creator/phase-2/brand-studio`), and proceeds to Phase 3 Business Plan.
 
 ### Brand Visual Identity Studio & Hub (LIVE)
 
-The Brand Visual Identity Studio provides a calm, generative studio workflow across 7 user-facing modal steps followed by a persistent Brand Kit Hub page. Persisted in the dedicated `BrandKits` collection (`BrandKit`) bound 1:1 to each `CreatorIdea` via `BusinessIdeaId` (unique index on `IdeaId`).
+The Brand Visual Identity Studio provides a calm, generative studio workflow across 7 user-facing modal steps followed by a persistent Brand Kit Hub page. Persisted in the dedicated `BrandKits` collection (`BrandKit`) bound 1:1 to each `CreatorIdea` via `BusinessIdeaId` (unique index on `IdeaId`). Fully compiled and verified clean in full-solution backend (.NET 8) and production frontend (Next.js 16/Turbopack) builds.
 
 #### 1. Studio Frontend Architecture
 - **Studio Shell (`/dashboard/creator/phase-2/brand-studio`):**
-  - Replaces legacy prototypes; the legacy `/logo-tool` route remains untouched for backward compatibility.
+  - Replaces legacy prototypes; the legacy `/logo-tool` route remains in codebase for backward compatibility.
   - Consists of one full-bleed interactive canvas and a top 6-segment progress bar (`BrandStudioProgressBar`).
   - No AI agent rail, no prompt box, and no secondary floating toolbar; all interactions take place in focused modal overlays over the live canvas.
   - **Accumulated Result Cards:** As steps are completed, the canvas accumulates and displays rich summary cards (`StrategyResultCard`, `DirectionResultCard`, `LogoTypeResultCard`, `LogoResultCard`, `ColorsResultCard`, `TypographyResultCard`), which persist across the session.
+  - **Completion Transition:** On Step 6 Typography confirmation when `kit.status` flips to `"complete"`, the shell automatically navigates the creator to the full Brand Kit Hub at `/dashboard/creator/phase-2/brand-kit?ideaId=...`.
 - **Top 6-Segment Progress Bar vs 7 User-Facing Steps:**
   1. `strategy` (Step 1 segment: "Strategy", modal: `StrategyReviewModal`)
   2. `direction` (Step 2 segment: "Direction", modal: `DirectionBoardModal`)
