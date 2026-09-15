@@ -13,8 +13,10 @@ using MongoDB.Driver;
 using WebApp.Models;
 using WebApp.Models.DatabaseModels;
 using WebApp.Models.Dtos;
+using WebApp.Services.Creator.BrandKit.ColorEngine;
 using WebApp.Services.Creator.BrandKit.DirectionEngine;
 using WebApp.Services.Creator.BrandKit.LogoEngine;
+using WebApp.Services.Creator.BrandKit.TypographyEngine;
 using WebApp.Services.Implementations;
 using WebApp.Services.Interface;
 using WebApp.Services.Repository;
@@ -38,6 +40,8 @@ namespace WebApp.Controllers
         private readonly ILogoGenerationService? _logoGenerationService;
         private readonly ILogoVariationService? _logoVariationService;
         private readonly IDirectionGenerationService? _directionGenerationService;
+        private readonly IColorGenerationService? _colorGenerationService;
+        private readonly ITypographyGenerationService? _typographyGenerationService;
         private readonly IMongoClient? _mongoClient;
         private readonly ILogger<CreatorBrandKitController>? _logger;
         private readonly bool _transactionsEnabled;
@@ -51,7 +55,9 @@ namespace WebApp.Controllers
             IConfiguration? config = null,
             ILogger<CreatorBrandKitController>? logger = null,
             ILogoVariationService? logoVariationService = null,
-            IDirectionGenerationService? directionGenerationService = null)
+            IDirectionGenerationService? directionGenerationService = null,
+            IColorGenerationService? colorGenerationService = null,
+            ITypographyGenerationService? typographyGenerationService = null)
         {
             _journeys = journeys;
             _brandKitStore = brandKitStore;
@@ -61,6 +67,8 @@ namespace WebApp.Controllers
             _logger = logger;
             _logoVariationService = logoVariationService;
             _directionGenerationService = directionGenerationService;
+            _colorGenerationService = colorGenerationService;
+            _typographyGenerationService = typographyGenerationService;
             _transactionsEnabled = config?.GetValue("Mongo:TransactionsEnabled", true) ?? true;
         }
 
@@ -872,7 +880,93 @@ namespace WebApp.Controllers
         }
 
         // =========================================================================
-        // 6. PATCH COLORS (BY ROLENAME VIA ARRAY FILTERS)
+        // 6a. GENERATE INITIAL COLORS (DETERMINISTIC DERIVATION)
+        // =========================================================================
+        [HttpPost("colors/generate")]
+        public async Task<IActionResult> GenerateColors(
+            [FromQuery] string? ideaId = null,
+            [FromQuery] long? expectedVersion = null)
+        {
+            try
+            {
+                var userId = GetUserId();
+                var idea = await _journeys.ResolveIdeaAsync(userId, ideaId);
+
+                var kit = await _brandKitStore.GetByIdeaIdAsync(idea.Id, userId);
+                if (kit == null)
+                    return NotFound(ApiResponse.Error("Brand kit not found for this idea."));
+
+                var (allowed, prerequisiteErr) = CheckPatchPrerequisite("colors", kit);
+                if (!allowed)
+                    return BadRequest(ApiResponse.Error(prerequisiteErr!));
+
+                if (_colorGenerationService == null)
+                    return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error("Color generation service is unavailable."));
+
+                var colors = _colorGenerationService.DeriveInitialColors(kit, idea);
+
+                var updateBuilder = Builders<BrandKit>.Update;
+                var update = updateBuilder.Set(x => x.Colors, colors);
+
+                var updated = await _brandKitStore.UpdateAsync(idea.Id, userId, update, expectedVersion);
+                if (!updated)
+                    return StatusCode(StatusCodes.Status409Conflict, ApiResponse.Error("This brand kit was updated in another tab. Refresh to load the latest version before continuing."));
+
+                var reloaded = await _brandKitStore.GetByIdeaIdAsync(idea.Id, userId);
+                return Ok(ApiResponse.Ok("Colors generated successfully", reloaded));
+            }
+            catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
+            catch (UnauthorizedAccessException ex) { return StatusCode(StatusCodes.Status401Unauthorized, ApiResponse.Error(ex.Message)); }
+            catch (Exception ex) { return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
+        }
+
+        // =========================================================================
+        // 6b. REGENERATE COLORS (MODEL CALL VIA COLORGENERATION)
+        // =========================================================================
+        [HttpPost("colors/regenerate")]
+        public async Task<IActionResult> RegenerateColors(
+            [FromQuery] string? ideaId = null,
+            [FromQuery] long? expectedVersion = null,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var userId = GetUserId();
+                var idea = await _journeys.ResolveIdeaAsync(userId, ideaId);
+
+                var kit = await _brandKitStore.GetByIdeaIdAsync(idea.Id, userId);
+                if (kit == null)
+                    return NotFound(ApiResponse.Error("Brand kit not found for this idea."));
+
+                var (allowed, prerequisiteErr) = CheckPatchPrerequisite("colors", kit);
+                if (!allowed)
+                    return BadRequest(ApiResponse.Error(prerequisiteErr!));
+
+                if (_colorGenerationService == null)
+                    return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error("Color generation service is unavailable."));
+
+                // Step 2e credit hook placeholder
+                // await _aiCreditService.DebitForJobAsync(userId, AiJobType.BrandColorRegeneration);
+
+                var colors = await _colorGenerationService.RegenerateColorsAsync(kit, idea, cancellationToken);
+
+                var updateBuilder = Builders<BrandKit>.Update;
+                var update = updateBuilder.Set(x => x.Colors, colors);
+
+                var updated = await _brandKitStore.UpdateAsync(idea.Id, userId, update, expectedVersion);
+                if (!updated)
+                    return StatusCode(StatusCodes.Status409Conflict, ApiResponse.Error("This brand kit was updated in another tab. Refresh to load the latest version before continuing."));
+
+                var reloaded = await _brandKitStore.GetByIdeaIdAsync(idea.Id, userId);
+                return Ok(ApiResponse.Ok("Colors regenerated successfully", reloaded));
+            }
+            catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
+            catch (UnauthorizedAccessException ex) { return StatusCode(StatusCodes.Status401Unauthorized, ApiResponse.Error(ex.Message)); }
+            catch (Exception ex) { return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
+        }
+
+        // =========================================================================
+        // 6c. PATCH COLORS (BY ROLENAME VIA ARRAY FILTERS)
         // =========================================================================
         [HttpPatch("colors")]
         public async Task<IActionResult> PatchColors(
@@ -952,7 +1046,131 @@ namespace WebApp.Controllers
         }
 
         // =========================================================================
-        // 7. PATCH TYPOGRAPHY (BY ROLENAME VIA ARRAY FILTERS)
+        // 7a. GENERATE INITIAL TYPOGRAPHY (DETERMINISTIC DERIVATION & LOCKED LOGO TYPE)
+        // =========================================================================
+        [HttpPost("typography/generate")]
+        public async Task<IActionResult> GenerateTypography(
+            [FromQuery] string? ideaId = null,
+            [FromQuery] long? expectedVersion = null)
+        {
+            try
+            {
+                var userId = GetUserId();
+                var idea = await _journeys.ResolveIdeaAsync(userId, ideaId);
+
+                var kit = await _brandKitStore.GetByIdeaIdAsync(idea.Id, userId);
+                if (kit == null)
+                    return NotFound(ApiResponse.Error("Brand kit not found for this idea."));
+
+                var (allowed, prerequisiteErr) = CheckPatchPrerequisite("typography", kit);
+                if (!allowed)
+                    return BadRequest(ApiResponse.Error(prerequisiteErr!));
+
+                if (kit.Colors?.Roles == null || kit.Colors.Roles.Count != 5)
+                    return BadRequest(ApiResponse.Error("All 5 colour roles must be defined before generating typography."));
+
+                if (_typographyGenerationService == null)
+                    return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error("Typography generation service is unavailable."));
+
+                var typography = _typographyGenerationService.DeriveInitialTypography(kit, idea);
+
+                var updateBuilder = Builders<BrandKit>.Update;
+                var update = updateBuilder.Set(x => x.Typography, typography);
+
+                bool updated;
+                bool isApproved = kit.Logo?.ApprovedAt != null || string.Equals(kit.Status, "complete", StringComparison.OrdinalIgnoreCase);
+                if (isApproved)
+                {
+                    var headingOverride = typography.Roles.FirstOrDefault(r => r.RoleName == BrandTypographyRoleNames.Heading)?.Family;
+                    var bodyOverride = typography.Roles.FirstOrDefault(r => r.RoleName == BrandTypographyRoleNames.Body)?.Family;
+                    var newTypographyPairing = ResolveTypographyPairing(kit, selectedCand: null, headingOverride, bodyOverride);
+
+                    updated = await CommitBrandKitAndSyncAsync(
+                        idea.Id, userId, update, expectedVersion, options: null,
+                        idea, newBrandingMethod: null, newLogoAsset: null, newPaletteName: null, newTypographyPairing);
+                }
+                else
+                {
+                    updated = await _brandKitStore.UpdateAsync(idea.Id, userId, update, expectedVersion);
+                }
+
+                if (!updated)
+                    return StatusCode(StatusCodes.Status409Conflict, ApiResponse.Error("This brand kit was updated in another tab. Refresh to load the latest version before continuing."));
+
+                var reloaded = await _brandKitStore.GetByIdeaIdAsync(idea.Id, userId);
+                return Ok(ApiResponse.Ok("Typography generated successfully", reloaded));
+            }
+            catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
+            catch (UnauthorizedAccessException ex) { return StatusCode(StatusCodes.Status401Unauthorized, ApiResponse.Error(ex.Message)); }
+            catch (Exception ex) { return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
+        }
+
+        // =========================================================================
+        // 7b. REGENERATE TYPOGRAPHY (MODEL CALL VIA TYPOGRAPHYGENERATION)
+        // =========================================================================
+        [HttpPost("typography/regenerate")]
+        public async Task<IActionResult> RegenerateTypography(
+            [FromQuery] string? ideaId = null,
+            [FromQuery] long? expectedVersion = null,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var userId = GetUserId();
+                var idea = await _journeys.ResolveIdeaAsync(userId, ideaId);
+
+                var kit = await _brandKitStore.GetByIdeaIdAsync(idea.Id, userId);
+                if (kit == null)
+                    return NotFound(ApiResponse.Error("Brand kit not found for this idea."));
+
+                var (allowed, prerequisiteErr) = CheckPatchPrerequisite("typography", kit);
+                if (!allowed)
+                    return BadRequest(ApiResponse.Error(prerequisiteErr!));
+
+                if (kit.Colors?.Roles == null || kit.Colors.Roles.Count != 5)
+                    return BadRequest(ApiResponse.Error("All 5 colour roles must be defined before regenerating typography."));
+
+                if (_typographyGenerationService == null)
+                    return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error("Typography generation service is unavailable."));
+
+                // Step 2e credit hook placeholder
+                // await _aiCreditService.DebitForJobAsync(userId, AiJobType.BrandTypographyRegeneration);
+
+                var typography = await _typographyGenerationService.RegenerateTypographyAsync(kit, idea, cancellationToken);
+
+                var updateBuilder = Builders<BrandKit>.Update;
+                var update = updateBuilder.Set(x => x.Typography, typography);
+
+                bool updated;
+                bool isApproved = kit.Logo?.ApprovedAt != null || string.Equals(kit.Status, "complete", StringComparison.OrdinalIgnoreCase);
+                if (isApproved)
+                {
+                    var headingOverride = typography.Roles.FirstOrDefault(r => r.RoleName == BrandTypographyRoleNames.Heading)?.Family;
+                    var bodyOverride = typography.Roles.FirstOrDefault(r => r.RoleName == BrandTypographyRoleNames.Body)?.Family;
+                    var newTypographyPairing = ResolveTypographyPairing(kit, selectedCand: null, headingOverride, bodyOverride);
+
+                    updated = await CommitBrandKitAndSyncAsync(
+                        idea.Id, userId, update, expectedVersion, options: null,
+                        idea, newBrandingMethod: null, newLogoAsset: null, newPaletteName: null, newTypographyPairing);
+                }
+                else
+                {
+                    updated = await _brandKitStore.UpdateAsync(idea.Id, userId, update, expectedVersion);
+                }
+
+                if (!updated)
+                    return StatusCode(StatusCodes.Status409Conflict, ApiResponse.Error("This brand kit was updated in another tab. Refresh to load the latest version before continuing."));
+
+                var reloaded = await _brandKitStore.GetByIdeaIdAsync(idea.Id, userId);
+                return Ok(ApiResponse.Ok("Typography regenerated successfully", reloaded));
+            }
+            catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
+            catch (UnauthorizedAccessException ex) { return StatusCode(StatusCodes.Status401Unauthorized, ApiResponse.Error(ex.Message)); }
+            catch (Exception ex) { return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
+        }
+
+        // =========================================================================
+        // 7c. PATCH TYPOGRAPHY (BY ROLENAME VIA ARRAY FILTERS)
         // =========================================================================
         [HttpPatch("typography")]
         public async Task<IActionResult> PatchTypography(

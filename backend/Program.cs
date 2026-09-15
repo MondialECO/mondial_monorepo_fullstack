@@ -333,6 +333,10 @@ builder.Services.AddScoped<WebApp.Services.Creator.BrandKit.LogoEngine.ILogoVari
     WebApp.Services.Creator.BrandKit.LogoEngine.LogoVariationService>();
 builder.Services.AddScoped<WebApp.Services.Creator.BrandKit.DirectionEngine.IDirectionGenerationService,
     WebApp.Services.Creator.BrandKit.DirectionEngine.DirectionGenerationService>();
+builder.Services.AddScoped<WebApp.Services.Creator.BrandKit.ColorEngine.IColorGenerationService,
+    WebApp.Services.Creator.BrandKit.ColorEngine.ColorGenerationService>();
+builder.Services.AddScoped<WebApp.Services.Creator.BrandKit.TypographyEngine.ITypographyGenerationService,
+    WebApp.Services.Creator.BrandKit.TypographyEngine.TypographyGenerationService>();
 builder.Services.AddScoped<WebApp.Services.Migrations.ICreatorIdeaBackfill,
     WebApp.Services.Migrations.CreatorIdeaBackfillMigration>();
 builder.Services.AddScoped<WebApp.Services.Migrations.ICreatorIdeaSnapshotsBackfill,
