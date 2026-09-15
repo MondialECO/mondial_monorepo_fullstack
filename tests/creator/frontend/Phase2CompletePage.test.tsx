@@ -93,10 +93,10 @@ const mockBrandKit: BrandKit = {
   },
   colors: {
     roles: [
-      { roleName: 'Primary', hex: '#0052FF', isDark: true, provenance: 'stated' },
-      { roleName: 'Secondary', hex: '#0F172A', isDark: true, provenance: 'stated' },
-      { roleName: 'Accent', hex: '#38BDF8', isDark: false, provenance: 'stated' },
-      { roleName: 'Background', hex: '#F8FAFC', isDark: false, provenance: 'stated' },
+      { roleName: 'Primary', hex: '#0F172A', isDark: true, provenance: 'stated' },
+      { roleName: 'Secondary', hex: '#2563EB', isDark: true, provenance: 'stated' },
+      { roleName: 'Accent', hex: '#10B981', isDark: false, provenance: 'stated' },
+      { roleName: 'Background', hex: '#FFFFFF', isDark: false, provenance: 'stated' },
       { roleName: 'Text', hex: '#09090B', isDark: true, provenance: 'stated' },
     ],
     regenerateCount: 0,
@@ -130,7 +130,7 @@ describe('Phase2CompletePage Component', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Project Identity Ready.')).toBeInTheDocument();
-      expect(screen.getByText('CyberLock')).toBeInTheDocument();
+      expect(screen.getByText('CyberLock Sentinel')).toBeInTheDocument();
       expect(screen.getByText('Zero-compromise cloud security automation.')).toBeInTheDocument();
     });
 

@@ -127,8 +127,8 @@ export default function Phase2CompletePage() {
 
   // Real BrandKit properties with robust fallbacks
   const brandName =
-    brandKit?.strategy?.nameDisplayForm ||
     brandKit?.strategy?.businessName ||
+    brandKit?.strategy?.nameDisplayForm ||
     project.name ||
     "Untitled Project";
 
@@ -143,8 +143,30 @@ export default function Phase2CompletePage() {
     brandKit?.logo?.variations?.primary?.svgUri ||
     brandKit?.logo?.variations?.horizontal?.svgUri;
 
-  const colorRoles = brandKit?.colors?.roles ?? [];
-  const candidatePalette = brandKit?.direction?.candidates?.[0]?.colorPalette ?? [];
+  const CANONICAL_ROLES = ["Primary", "Secondary", "Accent", "Background", "Text"] as const;
+  const rawColorRoles = brandKit?.colors?.roles ?? [];
+
+  const orderedColorRoles = CANONICAL_ROLES.map((roleName) => {
+    const found = rawColorRoles.find(
+      (r) => r.roleName?.trim().toLowerCase() === roleName.toLowerCase()
+    );
+    if (found) return found;
+    const paletteIndex =
+      roleName === "Primary"
+        ? 0
+        : roleName === "Secondary"
+        ? 1
+        : roleName === "Accent"
+        ? 2
+        : roleName === "Background"
+        ? 3
+        : 4;
+    const candidateHex = brandKit?.direction?.candidates?.[0]?.colorPalette?.[paletteIndex];
+    return {
+      roleName,
+      hex: candidateHex || (roleName === "Background" ? "#FFFFFF" : roleName === "Accent" ? "#10B981" : "#0F172A"),
+    };
+  });
 
   const displayFont =
     brandKit?.typography?.roles?.find((r) => r.roleName === "Heading")?.family ||
@@ -307,23 +329,14 @@ export default function Phase2CompletePage() {
                   <div className="flex items-center gap-1.5">
                     <Palette className="size-3.5 text-muted-foreground" />
                     <div className="flex items-center -space-x-1">
-                      {colorRoles.length > 0
-                        ? colorRoles.map((c, i) => (
-                            <div
-                              key={c.roleName || i}
-                              className="size-5 rounded-full border border-white shadow-2xs shrink-0"
-                              style={{ backgroundColor: c.hex }}
-                              title={`${c.roleName}: ${c.hex}`}
-                            />
-                          ))
-                        : candidatePalette.map((hex, i) => (
-                            <div
-                              key={i}
-                              className="size-5 rounded-full border border-white shadow-2xs shrink-0"
-                              style={{ backgroundColor: hex }}
-                              title={hex}
-                            />
-                          ))}
+                      {orderedColorRoles.map((c) => (
+                        <div
+                          key={c.roleName}
+                          className="size-5 rounded-full border border-zinc-200 dark:border-zinc-800 ring-1 ring-white dark:ring-zinc-900 shadow-2xs shrink-0"
+                          style={{ backgroundColor: c.hex }}
+                          title={`${c.roleName}: ${c.hex}`}
+                        />
+                      ))}
                     </div>
                   </div>
 
