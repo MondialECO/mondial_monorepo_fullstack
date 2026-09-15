@@ -61,10 +61,10 @@ src/
 9. **Creator Brand Kit Studio rules:**
    - Visual Identity Studio uses 5 modal steps: Strategy $\to$ Direction $\to$ Logo $\to$ Colors $\to$ Typography.
    - Canonical 5 colour roles: `Primary`, `Secondary`, `Accent`, `Background`, `Text` (no legacy names like "Neutral" or "Card").
-   - Canonical 4 typography roles: `Heading`, `Body`, `Mono`, `Display` (no legacy names like "Section Title").
-   - Logo assets separate standalone icon mark (`MarkSvg`/`MarkPngBase64`, 1:1 aspect ratio) from 7 canonical derived lockup variations.
+   - Canonical 4 typography roles: `Logo type`, `Heading`, `Body`, `Button & label` (no legacy names like "Section Title" and no category names like "Mono"/"Display").
+   - Logo assets separate standalone icon mark (`MarkAssetUri`, 1:1 aspect ratio) from 7 canonical derived lockup variations.
    - Per-element regenerate limit is 3. Show remaining attempts counter `(N/3)`. Studio reset runs on `POST /open-studio`.
-   - UI summary reads from `CreatorIdea.Project.Branding` (4 fields: `LogoUrl`, `PrimaryColor`, `SecondaryColor`, `TypographyFontFamily`), while full studio reads/writes `BrandKitRecord`.
+   - UI summary reads from `CreatorIdea.Project.Branding` (4 fields: `BrandingMethod`, `LogoAsset`, `PaletteName`, `TypographyPairing`), while full studio reads/writes `BrandKit` in `BrandKits`.
 
 ## Perf rules (hard rules)
 
