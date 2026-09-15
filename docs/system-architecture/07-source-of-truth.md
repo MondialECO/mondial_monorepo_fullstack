@@ -51,9 +51,10 @@ This matrix establishes the definitive, canonical data authority for every major
 4. **Deal Closure Rule**:
    - Transition to `completed` can only occur through the founder-controlled close endpoint (`AssertCanPerform(ctx.Role, DealAction.UpdateStatus)`), requiring both parties' digital signatures (`deal.Signatures.BothSigned == true`).
 5. **BrandKit & Project.Branding Synchronization Rule**:
-   - `BrandKit` in the `BrandKits` collection is the sole authority for full brand kit identity.
+   - `BrandKit` in the `BrandKits` collection is the sole authority for full brand kit identity (Strategy, Direction, Logo Type, Logo Concepts, 7 Derived Variations, 5-role Color System, 4-role Typography System, 3-Snapshot History).
    - `CreatorIdea.Project.Branding` is a read-optimized, thin summary pointer containing strictly 4 fields: `BrandingMethod`, `LogoAsset`, `PaletteName`, and `TypographyPairing`. Whenever Logo, Colors, or Typography are updated in `BrandKit`, backend synchronously updates `CreatorIdea.Project.Branding`.
-6. **BrandKit Section Sequencing & Re-Edit Rule**:
+6. **BrandKit Section Sequencing, Completion & Hub Re-Edit Rule**:
    - During initial drafting (`Status = "draft"`), step advancement and PATCH operations enforce strict sequential prerequisites (Strategy $\to$ Direction $\to$ Logo Type $\to$ Logo Creation $\to$ Variations $\to$ Colors $\to$ Typography).
-   - Once confirmed complete (`Status = "complete"`), the kit transitions to the Brand Kit Hub (`/dashboard/creator/phase-2/brand-kit`), allowing arbitrary section re-editing in Studio (`/dashboard/creator/phase-2/brand-studio`) with upstream cascade warnings and automatic rollback snapshots.
+   - Confirming Typography advances the kit to `Status = "complete"` and automatically transitions the creator to the Brand Kit Hub (`/dashboard/creator/phase-2/brand-kit`), allowing arbitrary section re-editing in Studio (`/dashboard/creator/phase-2/brand-studio`) with upstream cascade warnings and automatic rollback snapshots.
+   - The entry flow (`/phase-2/branding`), studio shell, hub, and summary complete screen (`/phase-2/complete`) are verified compile-clean across backend and frontend builds.
 
