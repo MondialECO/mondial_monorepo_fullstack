@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using System.Security;
 using WebApp.Models.DatabaseModels;
 
 namespace WebApp.Services.Creator.BrandKit.LogoEngine
@@ -13,9 +14,11 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
             var color = colorHex ?? "#0F172A";
             var primitive = parameters?.Values?.GetValueOrDefault("MetaphorPrimitive") ?? "spark_intelligence";
             var construction = parameters?.Values?.GetValueOrDefault("Construction") ?? "silhouette_solid";
+            var escapedName = SecurityElement.Escape(brandName ?? "Brand");
 
             var sb = new StringBuilder();
-            sb.AppendLine("<svg viewBox=\"0 0 100 100\" width=\"100%\" height=\"100%\" xmlns=\"http://www.w3.org/2000/svg\">");
+            sb.AppendLine($"<svg viewBox=\"0 0 100 100\" width=\"100%\" height=\"100%\" xmlns=\"http://www.w3.org/2000/svg\" role=\"img\" aria-label=\"{escapedName} Logo\">");
+            sb.AppendLine($"  <title>{escapedName} Logo</title>");
             RenderIconMetaphor(sb, primitive, construction, 15f, 15f, 70f, color);
             sb.AppendLine("</svg>");
             return sb.ToString();
@@ -27,39 +30,70 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
             var primitive = parameters?.Values?.GetValueOrDefault("MetaphorPrimitive") ?? "spark_intelligence";
             var construction = parameters?.Values?.GetValueOrDefault("Construction") ?? "silhouette_solid";
             var fontCategory = parameters?.Values?.GetValueOrDefault("FontCategory") ?? "geometric_sans";
+            var arrangement = parameters?.Values?.GetValueOrDefault("Arrangement") ?? "side_by_side";
+            var escapedName = SecurityElement.Escape(brandName ?? "Brand");
+
+            var isStacked = string.Equals(arrangement, "stacked", StringComparison.OrdinalIgnoreCase);
 
             var textResult = VectorTypographyRenderer.RenderTextToVectorPath(
                 brandName,
                 fontCategory,
-                initialFontSize: 24f,
+                initialFontSize: isStacked ? 22f : 24f,
                 letterSpacing: "normal",
-                horizontalBudget: 260f,
+                horizontalBudget: isStacked ? 300f : 260f,
                 allowTwoLineStacking: true,
                 letterCase: "uppercase");
 
-            var markSize = 60f;
-            var paddingLeft = 24f;
-            var gap = 20f;
-            var markX = paddingLeft;
-            var textX = markX + markSize + gap;
-
-            var paddingRight = 24f;
-            var totalW = Math.Max(380f, textX + textResult.Width + paddingRight);
-            var totalH = textResult.IsStacked ? 120f : 100f;
-
-            var textOffsetY = totalH * 0.5f - (textResult.Top + textResult.Height * 0.5f);
-            var markOffsetY = totalH * 0.5f - (markSize * 0.5f);
-
             var sb = new StringBuilder();
-            sb.AppendLine($"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {totalW.ToString("F0", CultureInfo.InvariantCulture)} {totalH.ToString("F0", CultureInfo.InvariantCulture)}\" width=\"100%\" height=\"100%\">");
 
-            RenderIconMetaphor(sb, primitive, construction, markX, markOffsetY, markSize, color);
+            if (isStacked)
+            {
+                var markSize = 64f;
+                var totalW = Math.Max(320f, textResult.Width + 48f);
+                var totalH = 160f;
 
-            var textTranslationX = textX - textResult.Left;
-            sb.AppendLine($"  <g transform=\"translate({textTranslationX.ToString("F1", CultureInfo.InvariantCulture)}, {textOffsetY.ToString("F1", CultureInfo.InvariantCulture)})\">");
-            sb.AppendLine($"    <path d=\"{textResult.SvgPathData}\" fill=\"{color}\" />");
-            sb.AppendLine("  </g>");
-            sb.AppendLine("</svg>");
+                var markX = (totalW - markSize) * 0.5f;
+                var markY = 18f;
+
+                var textX = (totalW - textResult.Width) * 0.5f - textResult.Left;
+                var textY = 120f - (textResult.Top + textResult.Height * 0.5f);
+
+                sb.AppendLine($"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {totalW.ToString("F0", CultureInfo.InvariantCulture)} {totalH.ToString("F0", CultureInfo.InvariantCulture)}\" width=\"100%\" height=\"100%\" role=\"img\" aria-label=\"{escapedName} Logo\">");
+                sb.AppendLine($"  <title>{escapedName} Logo</title>");
+                RenderIconMetaphor(sb, primitive, construction, markX, markY, markSize, color);
+
+                sb.AppendLine($"  <g transform=\"translate({textX.ToString("F1", CultureInfo.InvariantCulture)}, {textY.ToString("F1", CultureInfo.InvariantCulture)})\">");
+                sb.AppendLine($"    <path d=\"{textResult.SvgPathData}\" fill=\"{color}\" />");
+                sb.AppendLine("  </g>");
+                sb.AppendLine("</svg>");
+            }
+            else
+            {
+                var markSize = 60f;
+                var paddingLeft = 24f;
+                var gap = 20f;
+                var markX = paddingLeft;
+                var textX = markX + markSize + gap;
+
+                var paddingRight = 24f;
+                var totalW = Math.Max(380f, textX + textResult.Width + paddingRight);
+                var totalH = textResult.IsStacked ? 120f : 100f;
+
+                var textOffsetY = totalH * 0.5f - (textResult.Top + textResult.Height * 0.5f);
+                var markOffsetY = totalH * 0.5f - (markSize * 0.5f);
+
+                sb.AppendLine($"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {totalW.ToString("F0", CultureInfo.InvariantCulture)} {totalH.ToString("F0", CultureInfo.InvariantCulture)}\" width=\"100%\" height=\"100%\" role=\"img\" aria-label=\"{escapedName} Logo\">");
+                sb.AppendLine($"  <title>{escapedName} Logo</title>");
+
+                RenderIconMetaphor(sb, primitive, construction, markX, markOffsetY, markSize, color);
+
+                var textTranslationX = textX - textResult.Left;
+                sb.AppendLine($"  <g transform=\"translate({textTranslationX.ToString("F1", CultureInfo.InvariantCulture)}, {textOffsetY.ToString("F1", CultureInfo.InvariantCulture)})\">");
+                sb.AppendLine($"    <path d=\"{textResult.SvgPathData}\" fill=\"{color}\" />");
+                sb.AppendLine("  </g>");
+                sb.AppendLine("</svg>");
+            }
+
             return sb.ToString();
         }
 
@@ -71,64 +105,53 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
         private static void RenderIconMetaphor(StringBuilder sb, string primitive, string construction, float x, float y, float size, string color)
         {
             var half = size * 0.5f;
+            var cx = x + half;
+            var cy = y + half;
             var strokeWidth = Math.Max(5f, size * 0.09f);
-            var isSolid = construction == "silhouette_solid";
-            var isSplit = construction == "split_halves";
-
-            sb.AppendLine($"  <g transform=\"translate({x.ToString("F1", CultureInfo.InvariantCulture)}, {y.ToString("F1", CultureInfo.InvariantCulture)})\">");
 
             switch (primitive.ToLowerInvariant())
             {
-                case "shield_security":
-                    var dShield = $"M {half:F1} {size * 0.14f:F1} L {size * 0.84f:F1} {size * 0.28f:F1} L {size * 0.74f:F1} {size * 0.66f:F1} L {half:F1} {size * 0.86f:F1} L {size * 0.26f:F1} {size * 0.66f:F1} L {size * 0.16f:F1} {size * 0.28f:F1} Z";
-                    if (isSplit)
-                    {
-                        sb.AppendLine($"    <path d=\"M {half:F1} {size * 0.14f:F1} L {size * 0.84f:F1} {size * 0.28f:F1} L {size * 0.74f:F1} {size * 0.66f:F1} L {half:F1} {size * 0.86f:F1} Z\" fill=\"{color}\" />");
-                        sb.AppendLine($"    <path d=\"M {half:F1} {size * 0.14f:F1} L {size * 0.16f:F1} {size * 0.28f:F1} L {size * 0.26f:F1} {size * 0.66f:F1} L {half:F1} {size * 0.86f:F1} Z\" fill=\"none\" stroke=\"{color}\" stroke-width=\"{strokeWidth:F1}\" />");
-                    }
-                    else
-                    {
-                        sb.AppendLine($"    <path d=\"{dShield}\" fill=\"none\" stroke=\"{color}\" stroke-width=\"{strokeWidth:F1}\" stroke-linejoin=\"round\" />");
-                        sb.AppendLine($"    <circle cx=\"{half:F1}\" cy=\"{half:F1}\" r=\"{size * 0.12f:F1}\" fill=\"{color}\" />");
-                    }
-                    break;
-
                 case "leaf_growth":
-                    var dLeaf1 = $"M {half:F1} {size * 0.86f:F1} C {half:F1} {size * 0.86f:F1} {size * 0.2f:F1} {size * 0.66f:F1} {size * 0.2f:F1} {size * 0.42f:F1} C {size * 0.2f:F1} {size * 0.18f:F1} {half:F1} {size * 0.14f:F1} {half:F1} {size * 0.14f:F1} Z";
-                    var dLeaf2 = $"M {half:F1} {size * 0.86f:F1} C {half:F1} {size * 0.86f:F1} {size * 0.8f:F1} {size * 0.66f:F1} {size * 0.8f:F1} {size * 0.42f:F1} C {size * 0.8f:F1} {size * 0.18f:F1} {half:F1} {size * 0.14f:F1} {half:F1} {size * 0.14f:F1} Z";
-                    sb.AppendLine($"    <path d=\"{dLeaf1}\" fill=\"{color}\" />");
-                    sb.AppendLine($"    <path d=\"{dLeaf2}\" fill=\"{color}\" opacity=\"0.65\" />");
+                    sb.AppendLine($"  <path d=\"M {(cx - half * 0.6f).ToString("F1", CultureInfo.InvariantCulture)},{(cy + half * 0.6f).ToString("F1", CultureInfo.InvariantCulture)} C {(cx - half * 0.6f).ToString("F1", CultureInfo.InvariantCulture)},{(cy - half * 0.5f).ToString("F1", CultureInfo.InvariantCulture)} {(cx).ToString("F1", CultureInfo.InvariantCulture)},{(cy - half * 0.8f).ToString("F1", CultureInfo.InvariantCulture)} {(cx + half * 0.7f).ToString("F1", CultureInfo.InvariantCulture)},{(cy - half * 0.8f).ToString("F1", CultureInfo.InvariantCulture)} C {(cx + half * 0.7f).ToString("F1", CultureInfo.InvariantCulture)},{(cy + half * 0.3f).ToString("F1", CultureInfo.InvariantCulture)} {(cx + half * 0.2f).ToString("F1", CultureInfo.InvariantCulture)},{(cy + half * 0.6f).ToString("F1", CultureInfo.InvariantCulture)} {(cx - half * 0.6f).ToString("F1", CultureInfo.InvariantCulture)},{(cy + half * 0.6f).ToString("F1", CultureInfo.InvariantCulture)} Z\" fill=\"{color}\" />");
                     break;
 
                 case "node_network":
-                    var c1x = half; var c1y = size * 0.2f;
-                    var c2x = size * 0.22f; var c2y = size * 0.78f;
-                    var c3x = size * 0.78f; var c3y = size * 0.78f;
-                    var rNode = size * 0.12f;
-                    sb.AppendLine($"    <line x1=\"{c1x:F1}\" y1=\"{c1y:F1}\" x2=\"{c2x:F1}\" y2=\"{c2y:F1}\" stroke=\"{color}\" stroke-width=\"{strokeWidth:F1}\" />");
-                    sb.AppendLine($"    <line x1=\"{c2x:F1}\" y1=\"{c2y:F1}\" x2=\"{c3x:F1}\" y2=\"{c3y:F1}\" stroke=\"{color}\" stroke-width=\"{strokeWidth:F1}\" />");
-                    sb.AppendLine($"    <line x1=\"{c3x:F1}\" y1=\"{c3y:F1}\" x2=\"{c1x:F1}\" y2=\"{c1y:F1}\" stroke=\"{color}\" stroke-width=\"{strokeWidth:F1}\" />");
-                    sb.AppendLine($"    <circle cx=\"{c1x:F1}\" cy=\"{c1y:F1}\" r=\"{rNode:F1}\" fill=\"{color}\" />");
-                    sb.AppendLine($"    <circle cx=\"{c2x:F1}\" cy=\"{c2y:F1}\" r=\"{rNode:F1}\" fill=\"{color}\" />");
-                    sb.AppendLine($"    <circle cx=\"{c3x:F1}\" cy=\"{c3y:F1}\" r=\"{rNode:F1}\" fill=\"{color}\" />");
+                    var r1 = half * 0.65f;
+                    var nR = size * 0.12f;
+                    var p1 = (cx, cy - r1);
+                    var p2 = (cx + r1 * 0.866f, cy + r1 * 0.5f);
+                    var p3 = (cx - r1 * 0.866f, cy + r1 * 0.5f);
+
+                    sb.AppendLine($"  <line x1=\"{p1.Item1.ToString("F1", CultureInfo.InvariantCulture)}\" y1=\"{p1.Item2.ToString("F1", CultureInfo.InvariantCulture)}\" x2=\"{p2.Item1.ToString("F1", CultureInfo.InvariantCulture)}\" y2=\"{p2.Item2.ToString("F1", CultureInfo.InvariantCulture)}\" stroke=\"{color}\" stroke-width=\"{strokeWidth.ToString("F1", CultureInfo.InvariantCulture)}\" />");
+                    sb.AppendLine($"  <line x1=\"{p2.Item1.ToString("F1", CultureInfo.InvariantCulture)}\" y1=\"{p2.Item2.ToString("F1", CultureInfo.InvariantCulture)}\" x2=\"{p3.Item1.ToString("F1", CultureInfo.InvariantCulture)}\" y2=\"{p3.Item2.ToString("F1", CultureInfo.InvariantCulture)}\" stroke=\"{color}\" stroke-width=\"{strokeWidth.ToString("F1", CultureInfo.InvariantCulture)}\" />");
+                    sb.AppendLine($"  <line x1=\"{p3.Item1.ToString("F1", CultureInfo.InvariantCulture)}\" y1=\"{p3.Item2.ToString("F1", CultureInfo.InvariantCulture)}\" x2=\"{p1.Item1.ToString("F1", CultureInfo.InvariantCulture)}\" y2=\"{p1.Item2.ToString("F1", CultureInfo.InvariantCulture)}\" stroke=\"{color}\" stroke-width=\"{strokeWidth.ToString("F1", CultureInfo.InvariantCulture)}\" />");
+
+                    sb.AppendLine($"  <circle cx=\"{p1.Item1.ToString("F1", CultureInfo.InvariantCulture)}\" cy=\"{p1.Item2.ToString("F1", CultureInfo.InvariantCulture)}\" r=\"{nR.ToString("F1", CultureInfo.InvariantCulture)}\" fill=\"{color}\" />");
+                    sb.AppendLine($"  <circle cx=\"{p2.Item1.ToString("F1", CultureInfo.InvariantCulture)}\" cy=\"{p2.Item2.ToString("F1", CultureInfo.InvariantCulture)}\" r=\"{nR.ToString("F1", CultureInfo.InvariantCulture)}\" fill=\"{color}\" />");
+                    sb.AppendLine($"  <circle cx=\"{p3.Item1.ToString("F1", CultureInfo.InvariantCulture)}\" cy=\"{p3.Item2.ToString("F1", CultureInfo.InvariantCulture)}\" r=\"{nR.ToString("F1", CultureInfo.InvariantCulture)}\" fill=\"{color}\" />");
                     break;
 
                 case "spark_intelligence":
-                case "prism_focus":
-                    var dSpark = $"M {half:F1} {size * 0.12f:F1} Q {half:F1} {half:F1} {size * 0.88f:F1} {half:F1} Q {half:F1} {half:F1} {half:F1} {size * 0.88f:F1} Q {half:F1} {half:F1} {size * 0.12f:F1} {half:F1} Q {half:F1} {half:F1} {half:F1} {size * 0.12f:F1} Z";
-                    sb.AppendLine($"    <path d=\"{dSpark}\" fill=\"{color}\" />");
+                    var sw = size * 0.45f;
+                    var sh = size * 0.45f;
+                    sb.AppendLine($"  <path d=\"M {cx.ToString("F1", CultureInfo.InvariantCulture)},{(cy - sh).ToString("F1", CultureInfo.InvariantCulture)} Q {cx.ToString("F1", CultureInfo.InvariantCulture)},{cy.ToString("F1", CultureInfo.InvariantCulture)} {(cx + sw).ToString("F1", CultureInfo.InvariantCulture)},{cy.ToString("F1", CultureInfo.InvariantCulture)} Q {cx.ToString("F1", CultureInfo.InvariantCulture)},{cy.ToString("F1", CultureInfo.InvariantCulture)} {cx.ToString("F1", CultureInfo.InvariantCulture)},{(cy + sh).ToString("F1", CultureInfo.InvariantCulture)} Q {cx.ToString("F1", CultureInfo.InvariantCulture)},{cy.ToString("F1", CultureInfo.InvariantCulture)} {(cx - sw).ToString("F1", CultureInfo.InvariantCulture)},{cy.ToString("F1", CultureInfo.InvariantCulture)} Q {cx.ToString("F1", CultureInfo.InvariantCulture)},{cy.ToString("F1", CultureInfo.InvariantCulture)} {cx.ToString("F1", CultureInfo.InvariantCulture)},{(cy - sh).ToString("F1", CultureInfo.InvariantCulture)} Z\" fill=\"{color}\" />");
                     break;
 
-                default: // pillar_foundation
-                    sb.AppendLine($"    <rect x=\"{size * 0.16f:F1}\" y=\"{size * 0.18f:F1}\" width=\"{size * 0.68f:F1}\" height=\"{strokeWidth * 1.2f:F1}\" rx=\"2\" fill=\"{color}\" />");
-                    sb.AppendLine($"    <rect x=\"{size * 0.24f:F1}\" y=\"{size * 0.28f:F1}\" width=\"{size * 0.14f:F1}\" height=\"{size * 0.46f:F1}\" rx=\"2\" fill=\"{color}\" />");
-                    sb.AppendLine($"    <rect x=\"{size * 0.43f:F1}\" y=\"{size * 0.28f:F1}\" width=\"{size * 0.14f:F1}\" height=\"{size * 0.46f:F1}\" rx=\"2\" fill=\"{color}\" />");
-                    sb.AppendLine($"    <rect x=\"{size * 0.62f:F1}\" y=\"{size * 0.28f:F1}\" width=\"{size * 0.14f:F1}\" height=\"{size * 0.46f:F1}\" rx=\"2\" fill=\"{color}\" />");
-                    sb.AppendLine($"    <rect x=\"{size * 0.16f:F1}\" y=\"{size * 0.76f:F1}\" width=\"{size * 0.68f:F1}\" height=\"{strokeWidth * 1.2f:F1}\" rx=\"2\" fill=\"{color}\" />");
+                case "pillar_foundation":
+                    var pw = size * 0.65f;
+                    var px = cx - pw * 0.5f;
+                    sb.AppendLine($"  <rect x=\"{px.ToString("F1", CultureInfo.InvariantCulture)}\" y=\"{(cy - half * 0.7f).ToString("F1", CultureInfo.InvariantCulture)}\" width=\"{pw.ToString("F1", CultureInfo.InvariantCulture)}\" height=\"7\" fill=\"{color}\" rx=\"2\" />");
+                    sb.AppendLine($"  <rect x=\"{(px + 4).ToString("F1", CultureInfo.InvariantCulture)}\" y=\"{(cy - half * 0.45f).ToString("F1", CultureInfo.InvariantCulture)}\" width=\"7\" height=\"{(size * 0.5f).ToString("F1", CultureInfo.InvariantCulture)}\" fill=\"{color}\" rx=\"2\" />");
+                    sb.AppendLine($"  <rect x=\"{(cx - 3.5f).ToString("F1", CultureInfo.InvariantCulture)}\" y=\"{(cy - half * 0.45f).ToString("F1", CultureInfo.InvariantCulture)}\" width=\"7\" height=\"{(size * 0.5f).ToString("F1", CultureInfo.InvariantCulture)}\" fill=\"{color}\" rx=\"2\" />");
+                    sb.AppendLine($"  <rect x=\"{(px + pw - 11).ToString("F1", CultureInfo.InvariantCulture)}\" y=\"{(cy - half * 0.45f).ToString("F1", CultureInfo.InvariantCulture)}\" width=\"7\" height=\"{(size * 0.5f).ToString("F1", CultureInfo.InvariantCulture)}\" fill=\"{color}\" rx=\"2\" />");
+                    sb.AppendLine($"  <rect x=\"{px.ToString("F1", CultureInfo.InvariantCulture)}\" y=\"{(cy + half * 0.55f).ToString("F1", CultureInfo.InvariantCulture)}\" width=\"{pw.ToString("F1", CultureInfo.InvariantCulture)}\" height=\"7\" fill=\"{color}\" rx=\"2\" />");
+                    break;
+
+                default: // prism_focus
+                    sb.AppendLine($"  <polygon points=\"{cx.ToString("F1", CultureInfo.InvariantCulture)},{(cy - half * 0.75f).ToString("F1", CultureInfo.InvariantCulture)} {(cx + half * 0.75f).ToString("F1", CultureInfo.InvariantCulture)},{(cy + half * 0.65f).ToString("F1", CultureInfo.InvariantCulture)} {(cx - half * 0.75f).ToString("F1", CultureInfo.InvariantCulture)},{(cy + half * 0.65f).ToString("F1", CultureInfo.InvariantCulture)}\" fill=\"none\" stroke=\"{color}\" stroke-width=\"{strokeWidth.ToString("F1", CultureInfo.InvariantCulture)}\" />");
+                    sb.AppendLine($"  <circle cx=\"{cx.ToString("F1", CultureInfo.InvariantCulture)}\" cy=\"{(cy + half * 0.1f).ToString("F1", CultureInfo.InvariantCulture)}\" r=\"4\" fill=\"{color}\" />");
                     break;
             }
-
-            sb.AppendLine("  </g>");
         }
     }
 }

@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using System.Security;
 using WebApp.Models.DatabaseModels;
 
 namespace WebApp.Services.Creator.BrandKit.LogoEngine
@@ -13,6 +14,7 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
             var color = colorHex ?? "#0F172A";
             var geomType = parameters?.Values?.GetValueOrDefault("GeometryType") ?? "rotational_symmetry_3";
             var weight = parameters?.Values?.GetValueOrDefault("StrokeWeight") ?? "heavy_bold";
+            var escapedName = SecurityElement.Escape(brandName ?? "Brand");
             var strokeWidth = weight switch
             {
                 "thin_precision" => 6.0f,
@@ -21,7 +23,8 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
             };
 
             var sb = new StringBuilder();
-            sb.AppendLine("<svg viewBox=\"0 0 100 100\" width=\"100%\" height=\"100%\" xmlns=\"http://www.w3.org/2000/svg\">");
+            sb.AppendLine($"<svg viewBox=\"0 0 100 100\" width=\"100%\" height=\"100%\" xmlns=\"http://www.w3.org/2000/svg\" role=\"img\" aria-label=\"{escapedName} Logo\">");
+            sb.AppendLine($"  <title>{escapedName} Logo</title>");
             RenderAbstractGeometry(sb, geomType, strokeWidth, 15f, 15f, 70f, color);
             sb.AppendLine("</svg>");
             return sb.ToString();
@@ -32,7 +35,9 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
             var color = colorHex ?? "#0F172A";
             var geomType = parameters?.Values?.GetValueOrDefault("GeometryType") ?? "rotational_symmetry_3";
             var fontCategory = parameters?.Values?.GetValueOrDefault("FontCategory") ?? "geometric_sans";
+            var arrangement = parameters?.Values?.GetValueOrDefault("Arrangement") ?? "side_by_side";
             var weight = parameters?.Values?.GetValueOrDefault("StrokeWeight") ?? "heavy_bold";
+            var escapedName = SecurityElement.Escape(brandName ?? "Brand");
             var strokeWidth = weight switch
             {
                 "thin_precision" => 6.0f,
@@ -40,38 +45,66 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
                 _ => 11.0f
             };
 
+            var isStacked = string.Equals(arrangement, "stacked", StringComparison.OrdinalIgnoreCase);
+
             var textResult = VectorTypographyRenderer.RenderTextToVectorPath(
                 brandName,
                 fontCategory,
-                initialFontSize: 24f,
+                initialFontSize: isStacked ? 22f : 24f,
                 letterSpacing: "wide",
-                horizontalBudget: 260f,
+                horizontalBudget: isStacked ? 300f : 260f,
                 allowTwoLineStacking: true,
                 letterCase: "uppercase");
 
-            var markSize = 60f;
-            var paddingLeft = 24f;
-            var gap = 20f;
-            var markX = paddingLeft;
-            var textX = markX + markSize + gap;
-
-            var paddingRight = 24f;
-            var totalW = Math.Max(380f, textX + textResult.Width + paddingRight);
-            var totalH = textResult.IsStacked ? 120f : 100f;
-
-            var textOffsetY = totalH * 0.5f - (textResult.Top + textResult.Height * 0.5f);
-            var markOffsetY = totalH * 0.5f - (markSize * 0.5f);
-
             var sb = new StringBuilder();
-            sb.AppendLine($"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {totalW.ToString("F0", CultureInfo.InvariantCulture)} {totalH.ToString("F0", CultureInfo.InvariantCulture)}\" width=\"100%\" height=\"100%\">");
 
-            RenderAbstractGeometry(sb, geomType, strokeWidth, markX, markOffsetY, markSize, color);
+            if (isStacked)
+            {
+                var markSize = 64f;
+                var totalW = Math.Max(320f, textResult.Width + 48f);
+                var totalH = 160f;
 
-            var textTranslationX = textX - textResult.Left;
-            sb.AppendLine($"  <g transform=\"translate({textTranslationX.ToString("F1", CultureInfo.InvariantCulture)}, {textOffsetY.ToString("F1", CultureInfo.InvariantCulture)})\">");
-            sb.AppendLine($"    <path d=\"{textResult.SvgPathData}\" fill=\"{color}\" />");
-            sb.AppendLine("  </g>");
-            sb.AppendLine("</svg>");
+                var markX = (totalW - markSize) * 0.5f;
+                var markY = 18f;
+
+                var textX = (totalW - textResult.Width) * 0.5f - textResult.Left;
+                var textY = 120f - (textResult.Top + textResult.Height * 0.5f);
+
+                sb.AppendLine($"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {totalW.ToString("F0", CultureInfo.InvariantCulture)} {totalH.ToString("F0", CultureInfo.InvariantCulture)}\" width=\"100%\" height=\"100%\" role=\"img\" aria-label=\"{escapedName} Logo\">");
+                sb.AppendLine($"  <title>{escapedName} Logo</title>");
+                RenderAbstractGeometry(sb, geomType, strokeWidth, markX, markY, markSize, color);
+
+                sb.AppendLine($"  <g transform=\"translate({textX.ToString("F1", CultureInfo.InvariantCulture)}, {textY.ToString("F1", CultureInfo.InvariantCulture)})\">");
+                sb.AppendLine($"    <path d=\"{textResult.SvgPathData}\" fill=\"{color}\" />");
+                sb.AppendLine("  </g>");
+                sb.AppendLine("</svg>");
+            }
+            else
+            {
+                var markSize = 60f;
+                var paddingLeft = 24f;
+                var gap = 20f;
+                var markX = paddingLeft;
+                var textX = markX + markSize + gap;
+
+                var paddingRight = 24f;
+                var totalW = Math.Max(380f, textX + textResult.Width + paddingRight);
+                var totalH = textResult.IsStacked ? 120f : 100f;
+
+                var textOffsetY = totalH * 0.5f - (textResult.Top + textResult.Height * 0.5f);
+                var markOffsetY = totalH * 0.5f - (markSize * 0.5f);
+
+                sb.AppendLine($"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {totalW.ToString("F0", CultureInfo.InvariantCulture)} {totalH.ToString("F0", CultureInfo.InvariantCulture)}\" width=\"100%\" height=\"100%\" role=\"img\" aria-label=\"{escapedName} Logo\">");
+                sb.AppendLine($"  <title>{escapedName} Logo</title>");
+                RenderAbstractGeometry(sb, geomType, strokeWidth, markX, markOffsetY, markSize, color);
+
+                var textTranslationX = textX - textResult.Left;
+                sb.AppendLine($"  <g transform=\"translate({textTranslationX.ToString("F1", CultureInfo.InvariantCulture)}, {textOffsetY.ToString("F1", CultureInfo.InvariantCulture)})\">");
+                sb.AppendLine($"    <path d=\"{textResult.SvgPathData}\" fill=\"{color}\" />");
+                sb.AppendLine("  </g>");
+                sb.AppendLine("</svg>");
+            }
+
             return sb.ToString();
         }
 
@@ -80,60 +113,57 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
             return RenderLockupSvg(parameters, brandName, colorHex);
         }
 
-        private static void RenderAbstractGeometry(StringBuilder sb, string geomType, float strokeWidth, float x, float y, float size, string color)
+        private static void RenderAbstractGeometry(StringBuilder sb, string type, float strokeWidth, float x, float y, float size, string color)
         {
-            var cx = x + size * 0.5f;
-            var cy = y + size * 0.5f;
             var half = size * 0.5f;
+            var cx = x + half;
+            var cy = y + half;
+            var r = half - strokeWidth;
 
-            sb.AppendLine($"  <g transform=\"translate({x.ToString("F1", CultureInfo.InvariantCulture)}, {y.ToString("F1", CultureInfo.InvariantCulture)})\">");
-
-            switch (geomType.ToLowerInvariant())
+            switch (type.ToLowerInvariant())
             {
-                case "intersecting_rings":
-                    sb.AppendLine($"    <circle cx=\"{size * 0.4f:F1}\" cy=\"{half:F1}\" r=\"{size * 0.26f:F1}\" fill=\"none\" stroke=\"{color}\" stroke-width=\"{strokeWidth:F1}\" />");
-                    sb.AppendLine($"    <circle cx=\"{size * 0.6f:F1}\" cy=\"{half:F1}\" r=\"{size * 0.26f:F1}\" fill=\"none\" stroke=\"{color}\" stroke-width=\"{strokeWidth:F1}\" />");
-                    break;
-
-                case "nested_polygons":
-                    sb.AppendLine($"    <rect x=\"{strokeWidth * 0.5f:F1}\" y=\"{strokeWidth * 0.5f:F1}\" width=\"{size - strokeWidth:F1}\" height=\"{size - strokeWidth:F1}\" rx=\"8\" fill=\"none\" stroke=\"{color}\" stroke-width=\"{strokeWidth:F1}\" />");
-                    sb.AppendLine($"    <rect x=\"{size * 0.28f:F1}\" y=\"{size * 0.28f:F1}\" width=\"{size * 0.44f:F1}\" height=\"{size * 0.44f:F1}\" rx=\"4\" fill=\"none\" stroke=\"{color}\" stroke-width=\"{Math.Max(4, strokeWidth * 0.7f):F1}\" />");
+                case "rotational_symmetry_3":
+                    var rArc = half * 0.75f;
+                    sb.AppendLine($"  <g transform=\"translate({cx.ToString("F1", CultureInfo.InvariantCulture)}, {cy.ToString("F1", CultureInfo.InvariantCulture)})\">");
+                    for (int i = 0; i < 3; i++)
+                    {
+                        var angle = i * 120f;
+                        sb.AppendLine($"    <path d=\"M 0,{(-rArc).ToString("F1", CultureInfo.InvariantCulture)} A {rArc.ToString("F1", CultureInfo.InvariantCulture)} {rArc.ToString("F1", CultureInfo.InvariantCulture)} 0 0 1 {(rArc * 0.866f).ToString("F1", CultureInfo.InvariantCulture)} {(-rArc * 0.5f).ToString("F1", CultureInfo.InvariantCulture)}\" fill=\"none\" stroke=\"{color}\" stroke-width=\"{strokeWidth.ToString("F1", CultureInfo.InvariantCulture)}\" stroke-linecap=\"round\" transform=\"rotate({angle.ToString("F0", CultureInfo.InvariantCulture)})\" />");
+                    }
+                    sb.AppendLine("  </g>");
                     break;
 
                 case "rotational_symmetry_4":
+                    var rArc4 = half * 0.75f;
+                    sb.AppendLine($"  <g transform=\"translate({cx.ToString("F1", CultureInfo.InvariantCulture)}, {cy.ToString("F1", CultureInfo.InvariantCulture)})\">");
                     for (int i = 0; i < 4; i++)
                     {
-                        var angle = i * 90;
-                        sb.AppendLine($"    <g transform=\"rotate({angle} {half:F1} {half:F1})\">");
-                        sb.AppendLine($"      <path d=\"M {half:F1} {size * 0.18f:F1} L {size * 0.74f:F1} {size * 0.18f:F1} A 8 8 0 0 1 {size * 0.82f:F1} {size * 0.26f:F1} L {size * 0.82f:F1} {half:F1}\" fill=\"none\" stroke=\"{color}\" stroke-width=\"{strokeWidth:F1}\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />");
-                        sb.AppendLine("    </g>");
+                        var angle = i * 90f;
+                        sb.AppendLine($"    <path d=\"M 0,{(-rArc4).ToString("F1", CultureInfo.InvariantCulture)} A {rArc4.ToString("F1", CultureInfo.InvariantCulture)} {rArc4.ToString("F1", CultureInfo.InvariantCulture)} 0 0 1 {rArc4.ToString("F1", CultureInfo.InvariantCulture)} 0\" fill=\"none\" stroke=\"{color}\" stroke-width=\"{strokeWidth.ToString("F1", CultureInfo.InvariantCulture)}\" stroke-linecap=\"round\" transform=\"rotate({angle.ToString("F0", CultureInfo.InvariantCulture)})\" />");
                     }
+                    sb.AppendLine("  </g>");
                     break;
 
                 case "isometric_cube":
-                    sb.AppendLine($"    <path d=\"M {half:F1} {size * 0.14f:F1} L {size * 0.82f:F1} {size * 0.32f:F1} L {half:F1} {size * 0.5f:F1} L {size * 0.18f:F1} {size * 0.32f:F1} Z\" fill=\"{color}\" />");
-                    sb.AppendLine($"    <path d=\"M {size * 0.16f:F1} {size * 0.36f:F1} L {half - 2f:F1} {size * 0.54f:F1} L {half - 2f:F1} {size * 0.88f:F1} L {size * 0.16f:F1} {size * 0.7f:F1} Z\" fill=\"{color}\" />");
-                    sb.AppendLine($"    <path d=\"M {half + 2f:F1} {size * 0.54f:F1} L {size * 0.84f:F1} {size * 0.36f:F1} L {size * 0.84f:F1} {size * 0.7f:F1} L {half + 2f:F1} {size * 0.88f:F1} Z\" fill=\"{color}\" />");
+                    var s = size * 0.42f;
+                    var dy = s * 0.577f;
+                    sb.AppendLine($"  <polygon points=\"{cx.ToString("F1", CultureInfo.InvariantCulture)},{(cy - s).ToString("F1", CultureInfo.InvariantCulture)} {(cx + s * 0.866f).ToString("F1", CultureInfo.InvariantCulture)},{(cy - dy * 0.5f).ToString("F1", CultureInfo.InvariantCulture)} {cx.ToString("F1", CultureInfo.InvariantCulture)},{cy.ToString("F1", CultureInfo.InvariantCulture)} {(cx - s * 0.866f).ToString("F1", CultureInfo.InvariantCulture)},{(cy - dy * 0.5f).ToString("F1", CultureInfo.InvariantCulture)}\" fill=\"{color}\" opacity=\"0.9\" />");
+                    sb.AppendLine($"  <polygon points=\"{cx.ToString("F1", CultureInfo.InvariantCulture)},{cy.ToString("F1", CultureInfo.InvariantCulture)} {(cx + s * 0.866f).ToString("F1", CultureInfo.InvariantCulture)},{(cy - dy * 0.5f).ToString("F1", CultureInfo.InvariantCulture)} {(cx + s * 0.866f).ToString("F1", CultureInfo.InvariantCulture)},{(cy + dy * 0.5f).ToString("F1", CultureInfo.InvariantCulture)} {cx.ToString("F1", CultureInfo.InvariantCulture)},{(cy + s).ToString("F1", CultureInfo.InvariantCulture)}\" fill=\"{color}\" opacity=\"0.7\" />");
+                    sb.AppendLine($"  <polygon points=\"{cx.ToString("F1", CultureInfo.InvariantCulture)},{cy.ToString("F1", CultureInfo.InvariantCulture)} {(cx - s * 0.866f).ToString("F1", CultureInfo.InvariantCulture)},{(cy - dy * 0.5f).ToString("F1", CultureInfo.InvariantCulture)} {(cx - s * 0.866f).ToString("F1", CultureInfo.InvariantCulture)},{(cy + dy * 0.5f).ToString("F1", CultureInfo.InvariantCulture)} {cx.ToString("F1", CultureInfo.InvariantCulture)},{(cy + s).ToString("F1", CultureInfo.InvariantCulture)}\" fill=\"{color}\" opacity=\"1.0\" />");
                     break;
 
-                case "mobius_fold":
                 case "faceted_diamond":
-                    sb.AppendLine($"    <polygon points=\"{half:F1},{size * 0.12f:F1} {size * 0.88f:F1},{half:F1} {half:F1},{size * 0.88f:F1} {size * 0.12f:F1},{half:F1}\" fill=\"none\" stroke=\"{color}\" stroke-width=\"{strokeWidth:F1}\" />");
-                    sb.AppendLine($"    <circle cx=\"{half:F1}\" cy=\"{half:F1}\" r=\"{size * 0.16f:F1}\" fill=\"{color}\" />");
+                    var dw = size * 0.38f;
+                    var dh = size * 0.48f;
+                    sb.AppendLine($"  <polygon points=\"{cx.ToString("F1", CultureInfo.InvariantCulture)},{(cy - dh).ToString("F1", CultureInfo.InvariantCulture)} {(cx + dw).ToString("F1", CultureInfo.InvariantCulture)},{cy.ToString("F1", CultureInfo.InvariantCulture)} {cx.ToString("F1", CultureInfo.InvariantCulture)},{(cy + dh).ToString("F1", CultureInfo.InvariantCulture)} {(cx - dw).ToString("F1", CultureInfo.InvariantCulture)},{cy.ToString("F1", CultureInfo.InvariantCulture)}\" fill=\"{color}\" />");
+                    sb.AppendLine($"  <polygon points=\"{cx.ToString("F1", CultureInfo.InvariantCulture)},{(cy - dh * 0.55f).ToString("F1", CultureInfo.InvariantCulture)} {(cx + dw * 0.55f).ToString("F1", CultureInfo.InvariantCulture)},{cy.ToString("F1", CultureInfo.InvariantCulture)} {cx.ToString("F1", CultureInfo.InvariantCulture)},{(cy + dh * 0.55f).ToString("F1", CultureInfo.InvariantCulture)} {(cx - dw * 0.55f).ToString("F1", CultureInfo.InvariantCulture)},{cy.ToString("F1", CultureInfo.InvariantCulture)}\" fill=\"#FFFFFF\" />");
                     break;
 
-                default: // rotational_symmetry_3
-                    for (int i = 0; i < 3; i++)
-                    {
-                        var angle = i * 120;
-                        sb.AppendLine($"    <g transform=\"rotate({angle} {half:F1} {half:F1})\">");
-                        sb.AppendLine($"      <path d=\"M {half:F1} {size * 0.15f:F1} A {size * 0.35f:F1} {size * 0.35f:F1} 0 0 1 {size * 0.82f:F1} {size * 0.42f:F1} L {size * 0.72f:F1} {size * 0.54f:F1} A {size * 0.25f:F1} {size * 0.25f:F1} 0 0 0 {half:F1} {size * 0.28f:F1} Z\" fill=\"{color}\" />");
-                        sb.AppendLine("    </g>");
-                    }
+                default: // nested_polygons
+                    sb.AppendLine($"  <rect x=\"{(cx - r * 0.8f).ToString("F1", CultureInfo.InvariantCulture)}\" y=\"{(cy - r * 0.8f).ToString("F1", CultureInfo.InvariantCulture)}\" width=\"{(r * 1.6f).ToString("F1", CultureInfo.InvariantCulture)}\" height=\"{(r * 1.6f).ToString("F1", CultureInfo.InvariantCulture)}\" rx=\"10\" fill=\"none\" stroke=\"{color}\" stroke-width=\"{strokeWidth.ToString("F1", CultureInfo.InvariantCulture)}\" />");
+                    sb.AppendLine($"  <rect x=\"{(cx - r * 0.4f).ToString("F1", CultureInfo.InvariantCulture)}\" y=\"{(cy - r * 0.4f).ToString("F1", CultureInfo.InvariantCulture)}\" width=\"{(r * 0.8f).ToString("F1", CultureInfo.InvariantCulture)}\" height=\"{(r * 0.8f).ToString("F1", CultureInfo.InvariantCulture)}\" rx=\"4\" fill=\"{color}\" />");
                     break;
             }
-
-            sb.AppendLine("  </g>");
         }
     }
 }

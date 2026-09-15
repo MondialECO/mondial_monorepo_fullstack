@@ -343,6 +343,74 @@ You MUST choose parameters for 6 distinct concepts covering at least 4 of the fo
             if (avoidList.Any(a => a.Contains("node", StringComparison.OrdinalIgnoreCase)) && iconMetaphor == "node_network")
                 iconMetaphor = "prism_focus";
 
+            // Determine layout and composition variety per archetype
+            string wordmarkAccent;
+            string wordmarkCase;
+            string symbolArrangement;
+            string monogramFrame;
+            string monogramArrangement;
+            string abstractArrangement;
+            string iconArrangement;
+            string minimalArrangement;
+
+            switch (archetype)
+            {
+                case "luxury":
+                    wordmarkAccent = "baseline_underline";
+                    wordmarkCase = "uppercase";
+                    symbolArrangement = "stacked";
+                    monogramFrame = "bracket_corners";
+                    monogramArrangement = "stacked";
+                    abstractArrangement = "side_by_side";
+                    iconArrangement = "stacked";
+                    minimalArrangement = "side_by_side";
+                    break;
+
+                case "organic":
+                    wordmarkAccent = "none";
+                    wordmarkCase = "titlecase";
+                    symbolArrangement = "side_by_side";
+                    monogramFrame = "circle_ring";
+                    monogramArrangement = "stacked";
+                    abstractArrangement = "side_by_side";
+                    iconArrangement = "side_by_side";
+                    minimalArrangement = "stacked";
+                    break;
+
+                case "industrial":
+                    wordmarkAccent = "overscore";
+                    wordmarkCase = "uppercase";
+                    symbolArrangement = "side_by_side";
+                    monogramFrame = "square_box";
+                    monogramArrangement = "side_by_side";
+                    abstractArrangement = "stacked";
+                    iconArrangement = "side_by_side";
+                    minimalArrangement = "side_by_side";
+                    break;
+
+                case "tech":
+                    wordmarkAccent = "terminal_dot";
+                    wordmarkCase = "uppercase";
+                    symbolArrangement = "side_by_side";
+                    monogramFrame = "square_box";
+                    monogramArrangement = "side_by_side";
+                    abstractArrangement = "side_by_side";
+                    iconArrangement = "side_by_side";
+                    minimalArrangement = "side_by_side";
+                    break;
+
+                default: // minimal
+                    wordmarkAccent = "none";
+                    wordmarkCase = "uppercase";
+                    symbolArrangement = "stacked";
+                    monogramFrame = "bracket_corners";
+                    monogramArrangement = "side_by_side";
+                    abstractArrangement = "side_by_side";
+                    iconArrangement = "side_by_side";
+                    minimalArrangement = "side_by_side";
+                    break;
+            }
+
             return new List<BrandLogoConceptParameters>
             {
                 // Concept 1: Minimal
@@ -355,7 +423,8 @@ You MUST choose parameters for 6 distinct concepts covering at least 4 of the fo
                         ["Primitive"] = minimalPrim,
                         ["Orientation"] = "0_deg",
                         ["WeightBalance"] = "monolithic_solid",
-                        ["FontCategory"] = wordmarkFont
+                        ["FontCategory"] = wordmarkFont,
+                        ["Arrangement"] = minimalArrangement
                     }
                 },
                 // Concept 2: Wordmark
@@ -366,8 +435,8 @@ You MUST choose parameters for 6 distinct concepts covering at least 4 of the fo
                     Values = new()
                     {
                         ["Layout"] = "tracked_wide",
-                        ["LetterCase"] = "uppercase",
-                        ["AccentElement"] = "terminal_dot",
+                        ["LetterCase"] = wordmarkCase,
+                        ["AccentElement"] = wordmarkAccent,
                         ["FontCategory"] = wordmarkFont,
                         ["LetterSpacing"] = wordmarkSpacing
                     }
@@ -382,7 +451,8 @@ You MUST choose parameters for 6 distinct concepts covering at least 4 of the fo
                         ["BadgeShape"] = symbolShape,
                         ["BadgeStyle"] = "outline_stroke",
                         ["InternalGlyph"] = "initial_letter",
-                        ["FontCategory"] = symbolFont
+                        ["FontCategory"] = symbolFont,
+                        ["Arrangement"] = symbolArrangement
                     }
                 },
                 // Concept 4: Monogram
@@ -393,9 +463,10 @@ You MUST choose parameters for 6 distinct concepts covering at least 4 of the fo
                     Values = new()
                     {
                         ["MonogramType"] = "two_letter_interlock",
-                        ["FrameStyle"] = "square_box",
+                        ["FrameStyle"] = monogramFrame,
                         ["StrokeStyle"] = "heavy_block",
-                        ["FontCategory"] = monogramFont
+                        ["FontCategory"] = monogramFont,
+                        ["Arrangement"] = monogramArrangement
                     }
                 },
                 // Concept 5: Abstract
@@ -407,7 +478,8 @@ You MUST choose parameters for 6 distinct concepts covering at least 4 of the fo
                     {
                         ["GeometryType"] = abstractGeom,
                         ["StrokeWeight"] = "heavy_bold",
-                        ["FontCategory"] = wordmarkFont
+                        ["FontCategory"] = wordmarkFont,
+                        ["Arrangement"] = abstractArrangement
                     }
                 },
                 // Concept 6: Icon
@@ -419,7 +491,8 @@ You MUST choose parameters for 6 distinct concepts covering at least 4 of the fo
                     {
                         ["MetaphorPrimitive"] = iconMetaphor,
                         ["Construction"] = "silhouette_solid",
-                        ["FontCategory"] = wordmarkFont
+                        ["FontCategory"] = wordmarkFont,
+                        ["Arrangement"] = iconArrangement
                     }
                 }
             };

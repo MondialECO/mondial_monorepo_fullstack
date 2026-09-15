@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using System.Security;
 using WebApp.Models.DatabaseModels;
 
 namespace WebApp.Services.Creator.BrandKit.LogoEngine
@@ -14,6 +15,7 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
             var fontCategory = parameters?.Values?.GetValueOrDefault("FontCategory") ?? "geometric_sans";
             var letterCase = parameters?.Values?.GetValueOrDefault("LetterCase") ?? "uppercase";
             var accent = parameters?.Values?.GetValueOrDefault("AccentElement") ?? "none";
+            var escapedName = SecurityElement.Escape(brandName ?? "Brand");
 
             var initial = !string.IsNullOrWhiteSpace(brandName) ? brandName.Trim()[0].ToString() : "B";
             var textResult = VectorTypographyRenderer.RenderTextToVectorPath(
@@ -26,7 +28,8 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
                 letterCase: letterCase);
 
             var sb = new StringBuilder();
-            sb.AppendLine("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\" width=\"100%\" height=\"100%\">");
+            sb.AppendLine($"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\" width=\"100%\" height=\"100%\" role=\"img\" aria-label=\"{escapedName} Logo\">");
+            sb.AppendLine($"  <title>{escapedName} Logo</title>");
 
             var offsetX = 50f - (textResult.Left + textResult.Width * 0.5f);
             var offsetY = 50f - (textResult.Top + textResult.Height * 0.5f);
@@ -53,6 +56,7 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
             var letterCase = parameters?.Values?.GetValueOrDefault("LetterCase") ?? "uppercase";
             var letterSpacing = parameters?.Values?.GetValueOrDefault("LetterSpacing") ?? "wide";
             var accent = parameters?.Values?.GetValueOrDefault("AccentElement") ?? "none";
+            var escapedName = SecurityElement.Escape(brandName ?? "Brand");
 
             var textResult = VectorTypographyRenderer.RenderTextToVectorPath(
                 brandName,
@@ -71,7 +75,8 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
             var offsetY = totalH * 0.5f - (textResult.Top + textResult.Height * 0.5f);
 
             var sb = new StringBuilder();
-            sb.AppendLine($"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {totalW.ToString("F0", CultureInfo.InvariantCulture)} {totalH.ToString("F0", CultureInfo.InvariantCulture)}\" width=\"100%\" height=\"100%\">");
+            sb.AppendLine($"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {totalW.ToString("F0", CultureInfo.InvariantCulture)} {totalH.ToString("F0", CultureInfo.InvariantCulture)}\" width=\"100%\" height=\"100%\" role=\"img\" aria-label=\"{escapedName} Logo\">");
+            sb.AppendLine($"  <title>{escapedName} Logo</title>");
             sb.AppendLine($"  <g transform=\"translate({offsetX.ToString("F1", CultureInfo.InvariantCulture)}, {offsetY.ToString("F1", CultureInfo.InvariantCulture)})\">");
             sb.AppendLine($"    <path d=\"{textResult.SvgPathData}\" fill=\"{fill}\" />");
 

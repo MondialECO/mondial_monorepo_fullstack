@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using System.Security;
 using WebApp.Models.DatabaseModels;
 
 namespace WebApp.Services.Creator.BrandKit.LogoEngine
@@ -13,9 +14,11 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
             var fill = colorHex ?? "#0F172A";
             var badgeShape = parameters?.Values?.GetValueOrDefault("BadgeShape") ?? "hexagon";
             var initial = !string.IsNullOrWhiteSpace(brandName) ? brandName.Trim()[0].ToString().ToUpperInvariant() : "B";
+            var escapedName = SecurityElement.Escape(brandName ?? "Brand");
 
             var sb = new StringBuilder();
-            sb.AppendLine("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\" width=\"100%\" height=\"100%\">");
+            sb.AppendLine($"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\" width=\"100%\" height=\"100%\" role=\"img\" aria-label=\"{escapedName} Logo\">");
+            sb.AppendLine($"  <title>{escapedName} Logo</title>");
             RenderBadgeSymbol(sb, badgeShape, initial, 15f, 15f, 70f, fill);
             sb.AppendLine("</svg>");
             return sb.ToString();
@@ -26,42 +29,72 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
             var fill = colorHex ?? "#0F172A";
             var badgeShape = parameters?.Values?.GetValueOrDefault("BadgeShape") ?? "hexagon";
             var fontCategory = parameters?.Values?.GetValueOrDefault("FontCategory") ?? "geometric_sans";
+            var arrangement = parameters?.Values?.GetValueOrDefault("Arrangement") ?? "side_by_side";
             var initial = !string.IsNullOrWhiteSpace(brandName) ? brandName.Trim()[0].ToString().ToUpperInvariant() : "B";
+            var escapedName = SecurityElement.Escape(brandName ?? "Brand");
+
+            var isStacked = string.Equals(arrangement, "stacked", StringComparison.OrdinalIgnoreCase);
 
             var textResult = VectorTypographyRenderer.RenderTextToVectorPath(
                 brandName,
                 fontCategory,
-                initialFontSize: 24f,
+                initialFontSize: isStacked ? 22f : 24f,
                 letterSpacing: "normal",
-                horizontalBudget: 260f,
+                horizontalBudget: isStacked ? 300f : 260f,
                 allowTwoLineStacking: true,
                 letterCase: "uppercase");
 
-            var badgeSize = 60f;
-            var paddingLeft = 24f;
-            var gap = 20f;
-            var badgeX = paddingLeft;
-            var textX = badgeX + badgeSize + gap;
-
-            var paddingRight = 24f;
-            var totalW = Math.Max(380f, textX + textResult.Width + paddingRight);
-            var totalH = textResult.IsStacked ? 120f : 100f;
-
-            var textOffsetY = totalH * 0.5f - (textResult.Top + textResult.Height * 0.5f);
-            var badgeOffsetY = totalH * 0.5f - (badgeSize * 0.5f);
-
             var sb = new StringBuilder();
-            sb.AppendLine($"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {totalW.ToString("F0", CultureInfo.InvariantCulture)} {totalH.ToString("F0", CultureInfo.InvariantCulture)}\" width=\"100%\" height=\"100%\">");
 
-            // Render Symbol
-            RenderBadgeSymbol(sb, badgeShape, initial, badgeX, badgeOffsetY, badgeSize, fill);
+            if (isStacked)
+            {
+                // Stacked / Centered Emblem Composition
+                var badgeSize = 64f;
+                var totalW = Math.Max(320f, textResult.Width + 48f);
+                var totalH = 160f;
 
-            // Render Text
-            var textTranslationX = textX - textResult.Left;
-            sb.AppendLine($"  <g transform=\"translate({textTranslationX.ToString("F1", CultureInfo.InvariantCulture)}, {textOffsetY.ToString("F1", CultureInfo.InvariantCulture)})\">");
-            sb.AppendLine($"    <path d=\"{textResult.SvgPathData}\" fill=\"{fill}\" />");
-            sb.AppendLine("  </g>");
-            sb.AppendLine("</svg>");
+                var badgeX = (totalW - badgeSize) * 0.5f;
+                var badgeY = 18f;
+
+                var textX = (totalW - textResult.Width) * 0.5f - textResult.Left;
+                var textY = 120f - (textResult.Top + textResult.Height * 0.5f);
+
+                sb.AppendLine($"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {totalW.ToString("F0", CultureInfo.InvariantCulture)} {totalH.ToString("F0", CultureInfo.InvariantCulture)}\" width=\"100%\" height=\"100%\" role=\"img\" aria-label=\"{escapedName} Logo\">");
+                sb.AppendLine($"  <title>{escapedName} Logo</title>");
+                RenderBadgeSymbol(sb, badgeShape, initial, badgeX, badgeY, badgeSize, fill);
+
+                sb.AppendLine($"  <g transform=\"translate({textX.ToString("F1", CultureInfo.InvariantCulture)}, {textY.ToString("F1", CultureInfo.InvariantCulture)})\">");
+                sb.AppendLine($"    <path d=\"{textResult.SvgPathData}\" fill=\"{fill}\" />");
+                sb.AppendLine("  </g>");
+                sb.AppendLine("</svg>");
+            }
+            else
+            {
+                // Horizontal Side-by-Side Composition
+                var badgeSize = 60f;
+                var paddingLeft = 24f;
+                var gap = 20f;
+                var badgeX = paddingLeft;
+                var textX = badgeX + badgeSize + gap;
+
+                var paddingRight = 24f;
+                var totalW = Math.Max(380f, textX + textResult.Width + paddingRight);
+                var totalH = textResult.IsStacked ? 120f : 100f;
+
+                var textOffsetY = totalH * 0.5f - (textResult.Top + textResult.Height * 0.5f);
+                var badgeOffsetY = totalH * 0.5f - (badgeSize * 0.5f);
+
+                sb.AppendLine($"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {totalW.ToString("F0", CultureInfo.InvariantCulture)} {totalH.ToString("F0", CultureInfo.InvariantCulture)}\" width=\"100%\" height=\"100%\" role=\"img\" aria-label=\"{escapedName} Logo\">");
+                sb.AppendLine($"  <title>{escapedName} Logo</title>");
+                RenderBadgeSymbol(sb, badgeShape, initial, badgeX, badgeOffsetY, badgeSize, fill);
+
+                var textTranslationX = textX - textResult.Left;
+                sb.AppendLine($"  <g transform=\"translate({textTranslationX.ToString("F1", CultureInfo.InvariantCulture)}, {textOffsetY.ToString("F1", CultureInfo.InvariantCulture)})\">");
+                sb.AppendLine($"    <path d=\"{textResult.SvgPathData}\" fill=\"{fill}\" />");
+                sb.AppendLine("  </g>");
+                sb.AppendLine("</svg>");
+            }
+
             return sb.ToString();
         }
 
