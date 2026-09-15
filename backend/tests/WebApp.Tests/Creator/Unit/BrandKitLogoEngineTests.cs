@@ -20,11 +20,21 @@ namespace WebApp.Tests.Creator.Unit
         public void Every_family_renders_valid_flat_vector_svg(string familyName)
         {
             var p = new BrandLogoConceptParameters { Family = familyName };
-            var svg = _registry.RenderSvg(p, "MONDIAL");
+            var svg = _registry.RenderSvg(p, "MONDIAL").Trim();
+            var markSvg = _registry.RenderMarkSvg(p, "MONDIAL").Trim();
+            var lockupSvg = _registry.RenderLockupSvg(p, "MONDIAL").Trim();
 
             svg.Should().NotBeNullOrWhiteSpace();
             svg.Should().StartWith("<svg");
             svg.Should().EndWith("</svg>");
+
+            markSvg.Should().NotBeNullOrWhiteSpace();
+            markSvg.Should().StartWith("<svg");
+            markSvg.Should().EndWith("</svg>");
+
+            lockupSvg.Should().NotBeNullOrWhiteSpace();
+            lockupSvg.Should().StartWith("<svg");
+            lockupSvg.Should().EndWith("</svg>");
 
             // Non-negotiable flat vector properties: no gradients, no filters, no shadows
             svg.Should().NotContain("<linearGradient");
