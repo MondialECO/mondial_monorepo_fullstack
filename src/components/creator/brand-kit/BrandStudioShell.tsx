@@ -15,6 +15,7 @@ import { LogoTypeResultCard } from "./cards/LogoTypeResultCard";
 import { LogoResultCard } from "./cards/LogoResultCard";
 import { LogoCreationModal } from "./LogoCreationModal";
 import { VariationSetModal } from "./VariationSetModal";
+import { StrategyReviewModal } from "./StrategyReviewModal";
 import { StudioStepPlaceholderModal } from "./StudioStepPlaceholderModal";
 import { Sparkles, AlertCircle, Loader2 } from "lucide-react";
 
@@ -211,6 +212,47 @@ export function BrandStudioShell({
   }, [ideaId, initialKit]);
 
   // 4. Modal Confirm Handlers
+  const handleStrategyConfirm = async (updatedStrategy: Partial<BrandStrategy>) => {
+    if (!kit) return;
+    try {
+      setIsLoading(true);
+      setError(null);
+      setInFlightStatus("Saving Brand Strategy...");
+
+      const updatedKit = await brandKitApi.patchStrategy(
+        {
+          businessName: updatedStrategy.businessName,
+          nameDisplayForm: updatedStrategy.nameDisplayForm,
+          concept: updatedStrategy.concept?.value,
+          targetAudience: updatedStrategy.targetAudience?.value,
+          industry: updatedStrategy.industry?.value,
+          positioning: updatedStrategy.positioning?.value,
+          personalityTraits: updatedStrategy.personalityTraits,
+          avoidList: updatedStrategy.avoidList,
+          tonePosition: updatedStrategy.tonePosition,
+          firstAppearance: updatedStrategy.firstAppearance,
+          symbolFeeling: updatedStrategy.symbolFeeling,
+          confirmedAt: updatedStrategy.confirmedAt || new Date().toISOString(),
+        },
+        ideaId,
+        kit.version
+      );
+
+      setKit(updatedKit);
+      // Strategy confirmed -> unlock and advance to Step 2 (Direction)
+      setActiveModal("direction");
+    } catch (err: any) {
+      setError(
+        err?.response?.data?.message ||
+          err?.message ||
+          "Failed to confirm brand strategy."
+      );
+    } finally {
+      setIsLoading(false);
+      setInFlightStatus(null);
+    }
+  };
+
   const handleLogoCreationConfirm = (updatedKit: BrandKit) => {
     setKit(updatedKit);
     // Move immediately to variations (Step 3b)
@@ -379,15 +421,13 @@ export function BrandStudioShell({
         />
       )}
 
-      {/* Unbuilt Steps Placeholders */}
-      {activeModal === "strategy" && (
-        <StudioStepPlaceholderModal
-          stepKey="strategy"
-          stepNumber={1}
-          stepTitle="Brand Strategy & Core Attributes"
-          description="Define brand personality traits, positioning, target audience and aesthetic boundaries."
-          isOpen={true}
+      {/* Step 1: Strategy Review Modal */}
+      {activeModal === "strategy" && kit && (
+        <StrategyReviewModal
+          kit={kit}
           onClose={() => setActiveModal(null)}
+          onConfirm={handleStrategyConfirm}
+          isSubmitting={isLoading}
         />
       )}
 

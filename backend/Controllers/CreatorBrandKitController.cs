@@ -268,6 +268,15 @@ namespace WebApp.Controllers
                 if (kit == null)
                     return Ok(ApiResponse.Ok("No brand kit found for this idea.", null));
 
+                // Backfill Strategy if unpopulated and idea.Project has a name
+                if (string.IsNullOrWhiteSpace(kit.Strategy?.BusinessName) && !string.IsNullOrWhiteSpace(idea.Project?.Name))
+                {
+                    var derivedStrategy = DeriveInitialStrategy(idea.Project);
+                    var backfillUpdate = Builders<BrandKit>.Update.Set(x => x.Strategy, derivedStrategy);
+                    await _brandKitStore.UpdateAsync(idea.Id, userId, backfillUpdate);
+                    kit = await _brandKitStore.GetByIdeaIdAsync(idea.Id, userId) ?? kit;
+                }
+
                 return Ok(ApiResponse.Ok("Brand kit retrieved", kit));
             }
             catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
@@ -288,9 +297,20 @@ namespace WebApp.Controllers
 
                 var existing = await _brandKitStore.GetByIdeaIdAsync(idea.Id, userId);
                 if (existing != null)
+                {
+                    if (string.IsNullOrWhiteSpace(existing.Strategy?.BusinessName) && !string.IsNullOrWhiteSpace(idea.Project?.Name))
+                    {
+                        var derivedStrategy = DeriveInitialStrategy(idea.Project);
+                        var backfillUpdate = Builders<BrandKit>.Update.Set(x => x.Strategy, derivedStrategy);
+                        await _brandKitStore.UpdateAsync(idea.Id, userId, backfillUpdate);
+                        existing = await _brandKitStore.GetByIdeaIdAsync(idea.Id, userId) ?? existing;
+                    }
                     return Ok(ApiResponse.Ok("Brand kit retrieved", existing));
+                }
 
                 var now = DateTime.UtcNow;
+                var initialStrategy = DeriveInitialStrategy(idea.Project ?? new CreatorJourneyProject());
+
                 var kit = new BrandKit
                 {
                     IdeaId = idea.Id,
@@ -300,6 +320,7 @@ namespace WebApp.Controllers
                     Version = 1,
                     CreatedAt = now,
                     UpdatedAt = now,
+                    Strategy = initialStrategy,
                     Colors = new BrandColors
                     {
                         Roles = new List<BrandColorRole>
@@ -337,6 +358,119 @@ namespace WebApp.Controllers
             catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
             catch (UnauthorizedAccessException ex) { return StatusCode(StatusCodes.Status401Unauthorized, ApiResponse.Error(ex.Message)); }
             catch (Exception ex) { return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
+        }
+
+        private static BrandStrategy DeriveInitialStrategy(CreatorJourneyProject project)
+        {
+            var businessName = !string.IsNullOrWhiteSpace(project.Name) ? project.Name.Trim() : string.Empty;
+            var nameDisplayForm = businessName;
+
+            var conceptValue = !string.IsNullOrWhiteSpace(project.Concept)
+                ? project.Concept.Trim()
+                : (!string.IsNullOrWhiteSpace(project.Solution) ? project.Solution.Trim() : string.Empty);
+            var conceptProvenance = !string.IsNullOrWhiteSpace(project.Concept) || !string.IsNullOrWhiteSpace(project.Solution) ? "stated" : "derived";
+
+            var audienceValue = !string.IsNullOrWhiteSpace(project.TargetUser) ? project.TargetUser.Trim() : string.Empty;
+            var audienceProvenance = !string.IsNullOrWhiteSpace(project.TargetUser) ? "stated" : "derived";
+
+            var industryValue = !string.IsNullOrWhiteSpace(project.Category)
+                ? project.Category.Trim()
+                : (project.Tags != null && project.Tags.Count > 0 ? project.Tags[0].Trim() : string.Empty);
+            var industryProvenance = !string.IsNullOrWhiteSpace(project.Category) ? "stated" : "derived";
+
+            var positioningValue = !string.IsNullOrWhiteSpace(project.MarketGap)
+                ? project.MarketGap.Trim()
+                : (!string.IsNullOrWhiteSpace(project.Solution) ? project.Solution.Trim() : string.Empty);
+            var positioningProvenance = !string.IsNullOrWhiteSpace(project.MarketGap) || !string.IsNullOrWhiteSpace(project.Solution) ? "stated" : "derived";
+
+            var personalityTraits = new List<string>();
+            if (project.Tags != null && project.Tags.Count > 0)
+            {
+                personalityTraits.AddRange(project.Tags.Where(t => !string.IsNullOrWhiteSpace(t)).Take(3));
+            }
+            if (!string.IsNullOrWhiteSpace(project.CreatorEdge) && personalityTraits.Count < 4)
+            {
+                personalityTraits.Add(project.CreatorEdge.Trim());
+            }
+            if (personalityTraits.Count == 0)
+            {
+                personalityTraits.AddRange(new[] { "Precise", "Resilient", "Autonomous" });
+            }
+
+            var avoidList = new List<string>();
+            if (!string.IsNullOrWhiteSpace(project.Category))
+            {
+                var cat = project.Category.ToLowerInvariant();
+                if (cat.Contains("security") || cat.Contains("cyber"))
+                {
+                    avoidList.AddRange(new[] { "Cliché padlocks", "Generic shields" });
+                }
+                else if (cat.Contains("agri") || cat.Contains("farm") || cat.Contains("food"))
+                {
+                    avoidList.AddRange(new[] { "Generic leaves", "Literal wheat ears" });
+                }
+                else if (cat.Contains("lux") || cat.Contains("real") || cat.Contains("arch"))
+                {
+                    avoidList.AddRange(new[] { "Gaudy gold bevels", "Roof outlines" });
+                }
+                else if (cat.Contains("health") || cat.Contains("med"))
+                {
+                    avoidList.AddRange(new[] { "Generic red crosses", "Stethoscope rings" });
+                }
+                else if (cat.Contains("fin") || cat.Contains("money") || cat.Contains("pay"))
+                {
+                    avoidList.AddRange(new[] { "Literal dollar signs", "Generic bar charts" });
+                }
+            }
+
+            var derivedConstraints = ComputeDerivedConstraints(businessName);
+
+            return new BrandStrategy
+            {
+                BusinessName = businessName,
+                NameDisplayForm = nameDisplayForm,
+                Concept = new BrandProvenancedText { Value = conceptValue, Provenance = conceptProvenance },
+                TargetAudience = new BrandProvenancedText { Value = audienceValue, Provenance = audienceProvenance },
+                Industry = new BrandProvenancedText { Value = industryValue, Provenance = industryProvenance },
+                Positioning = new BrandProvenancedText { Value = positioningValue, Provenance = positioningProvenance },
+                PersonalityTraits = personalityTraits.Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+                AvoidList = avoidList,
+                TonePosition = "balanced",
+                FirstAppearance = "website",
+                SymbolFeeling = "The Guardian",
+                DerivedConstraints = derivedConstraints,
+                ConfirmedAt = null
+            };
+        }
+
+        private static BrandDerivedConstraints ComputeDerivedConstraints(string businessName)
+        {
+            if (string.IsNullOrWhiteSpace(businessName))
+            {
+                return new BrandDerivedConstraints();
+            }
+
+            var clean = businessName.Trim();
+            var words = clean.Split(new[] { ' ', '-', '_' }, StringSplitOptions.RemoveEmptyEntries);
+            var charLen = clean.Length;
+            var wordCount = words.Length;
+
+            var initials = words.Length switch
+            {
+                0 => "",
+                1 => clean.Length > 0 ? clean.Substring(0, 1).ToUpperInvariant() : "",
+                2 => $"{char.ToUpperInvariant(words[0][0])}{char.ToUpperInvariant(words[1][0])}",
+                _ => $"{char.ToUpperInvariant(words[0][0])}{char.ToUpperInvariant(words[1][0])}{char.ToUpperInvariant(words[2][0])}"
+            };
+
+            return new BrandDerivedConstraints
+            {
+                CharacterLength = charLen,
+                WordCount = wordCount,
+                Script = "Latin",
+                MonogramInitials = initials,
+                IsIconOnlyViable = charLen <= 12
+            };
         }
 
         // =========================================================================

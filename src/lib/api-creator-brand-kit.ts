@@ -108,6 +108,39 @@ export const brandKitApi = {
   },
 
   /**
+   * Partially update Strategy section and optionally set ConfirmedAt.
+   */
+  async patchStrategy(
+    payload: {
+      businessName?: string;
+      nameDisplayForm?: string;
+      concept?: string;
+      targetAudience?: string;
+      industry?: string;
+      positioning?: string;
+      personalityTraits?: string[];
+      avoidList?: string[];
+      tonePosition?: string;
+      firstAppearance?: string;
+      symbolFeeling?: string | null;
+      confirmedAt?: string | null;
+    },
+    ideaId?: string,
+    expectedVersion?: number
+  ): Promise<BrandKit> {
+    const params: Record<string, string | number> = {};
+    if (ideaId) params.ideaId = ideaId;
+    if (expectedVersion !== undefined) params.expectedVersion = expectedVersion;
+
+    const res = await api.patch<ApiResponse<BrandKit>>(
+      "/creator/journey/phase2/brand-kit/strategy",
+      payload,
+      { params }
+    );
+    return res.data.data!;
+  },
+
+  /**
    * Derive 7 canonical variations from approved concept.
    */
   async deriveVariations(
@@ -126,3 +159,4 @@ export const brandKitApi = {
     return res.data.data!;
   },
 };
+
