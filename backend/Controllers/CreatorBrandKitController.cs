@@ -90,10 +90,10 @@ namespace WebApp.Controllers
                 paletteToSync = newPaletteName ?? currentBranding?.PaletteName ?? string.Empty;
                 typeToSync = newTypographyPairing ?? currentBranding?.TypographyPairing ?? string.Empty;
 
-                bool methodChanged = currentBranding?.BrandingMethod != methodToSync;
-                bool assetChanged = currentBranding?.LogoAsset != assetToSync;
-                bool paletteChanged = currentBranding?.PaletteName != paletteToSync;
-                bool typeChanged = currentBranding?.TypographyPairing != typeToSync;
+                bool methodChanged = newBrandingMethod != null && currentBranding?.BrandingMethod != newBrandingMethod;
+                bool assetChanged = newLogoAsset != null && currentBranding?.LogoAsset != newLogoAsset;
+                bool paletteChanged = newPaletteName != null && currentBranding?.PaletteName != newPaletteName;
+                bool typeChanged = newTypographyPairing != null && currentBranding?.TypographyPairing != newTypographyPairing;
 
                 requiresIdeaSync = methodChanged || assetChanged || paletteChanged || typeChanged;
             }
@@ -153,6 +153,78 @@ namespace WebApp.Controllers
 
                 return true;
             }
+        }
+
+        /// <summary>
+        /// Resolves the {Heading} + {Body} typography pairing string following product specifications:
+        /// Uses Typography.Roles where RoleName is 'Heading' and 'Body' (or from Direction candidate
+        /// typography if Typography roles are not yet customized with Provenance == "user").
+        /// </summary>
+        private static string ResolveTypographyPairing(
+            BrandKit kit,
+            BrandDirectionCandidate? selectedCand = null,
+            string? overrideHeadingFamily = null,
+            string? overrideBodyFamily = null)
+        {
+            if (selectedCand == null && kit.Direction?.Candidates != null && !string.IsNullOrEmpty(kit.Direction.SelectedDirectionKey))
+            {
+                selectedCand = kit.Direction.Candidates.FirstOrDefault(c => c.Key == kit.Direction.SelectedDirectionKey);
+            }
+
+            var headingRole = kit.Typography?.Roles?.FirstOrDefault(r => r.RoleName == BrandTypographyRoleNames.Heading);
+            var bodyRole = kit.Typography?.Roles?.FirstOrDefault(r => r.RoleName == BrandTypographyRoleNames.Body);
+
+            string? headingFont = overrideHeadingFamily;
+            if (string.IsNullOrWhiteSpace(headingFont))
+            {
+                if (headingRole != null && string.Equals(headingRole.Provenance, "user", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(headingRole.Family))
+                {
+                    headingFont = headingRole.Family;
+                }
+                else if (!string.IsNullOrWhiteSpace(selectedCand?.DisplayTypeface))
+                {
+                    headingFont = selectedCand.DisplayTypeface;
+                }
+                else if (!string.IsNullOrWhiteSpace(headingRole?.Family))
+                {
+                    headingFont = headingRole.Family;
+                }
+                else if (!string.IsNullOrWhiteSpace(kit.Typography?.Families?.DisplayFamily?.Name))
+                {
+                    headingFont = kit.Typography.Families.DisplayFamily.Name;
+                }
+                else
+                {
+                    headingFont = "Syne";
+                }
+            }
+
+            string? bodyFont = overrideBodyFamily;
+            if (string.IsNullOrWhiteSpace(bodyFont))
+            {
+                if (bodyRole != null && string.Equals(bodyRole.Provenance, "user", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(bodyRole.Family))
+                {
+                    bodyFont = bodyRole.Family;
+                }
+                else if (!string.IsNullOrWhiteSpace(selectedCand?.TextTypeface))
+                {
+                    bodyFont = selectedCand.TextTypeface;
+                }
+                else if (!string.IsNullOrWhiteSpace(bodyRole?.Family))
+                {
+                    bodyFont = bodyRole.Family;
+                }
+                else if (!string.IsNullOrWhiteSpace(kit.Typography?.Families?.TextFamily?.Name))
+                {
+                    bodyFont = kit.Typography.Families.TextFamily.Name;
+                }
+                else
+                {
+                    bodyFont = "DM Sans";
+                }
+            }
+
+            return $"{headingFont} + {bodyFont}";
         }
 
         // =========================================================================
@@ -362,8 +434,7 @@ namespace WebApp.Controllers
                 {
                     var chosenKey = dto.SelectedDirectionKey ?? kit.Direction?.SelectedDirectionKey;
                     string? newPaletteName = null;
-                    string? displayTypeface = null;
-                    string? textTypeface = null;
+                    BrandDirectionCandidate? chosenCand = null;
 
                     if (dto.Candidates != null && chosenKey != null)
                     {
@@ -371,29 +442,28 @@ namespace WebApp.Controllers
                         if (candDto != null)
                         {
                             newPaletteName = candDto.Name;
-                            displayTypeface = candDto.DisplayTypeface;
-                            textTypeface = candDto.TextTypeface;
+                            chosenCand = new BrandDirectionCandidate
+                            {
+                                Key = candDto.Key,
+                                Name = candDto.Name,
+                                DisplayTypeface = candDto.DisplayTypeface,
+                                TextTypeface = candDto.TextTypeface
+                            };
                         }
                     }
                     if (newPaletteName == null && chosenKey != null)
                     {
-                        var cand = kit.Direction?.Candidates?.FirstOrDefault(c => c.Key == chosenKey);
-                        if (cand != null)
+                        chosenCand = kit.Direction?.Candidates?.FirstOrDefault(c => c.Key == chosenKey);
+                        if (chosenCand != null)
                         {
-                            newPaletteName = cand.Name;
-                            displayTypeface = cand.DisplayTypeface;
-                            textTypeface = cand.TextTypeface;
+                            newPaletteName = chosenCand.Name;
                         }
                     }
 
                     string? newTypographyPairing = null;
                     if (newPaletteName != null)
                     {
-                        var headingFont = kit.Typography?.Roles?.FirstOrDefault(r => r.RoleName == BrandTypographyRoleNames.Heading)?.Family;
-                        var bodyFont = kit.Typography?.Roles?.FirstOrDefault(r => r.RoleName == BrandTypographyRoleNames.Body)?.Family;
-                        if (string.IsNullOrWhiteSpace(headingFont)) headingFont = displayTypeface;
-                        if (string.IsNullOrWhiteSpace(bodyFont)) bodyFont = textTypeface;
-                        newTypographyPairing = $"{headingFont ?? "Syne"} + {bodyFont ?? "DM Sans"}";
+                        newTypographyPairing = ResolveTypographyPairing(kit, chosenCand);
                     }
 
                     updated = await CommitBrandKitAndSyncAsync(
@@ -516,12 +586,7 @@ namespace WebApp.Controllers
 
                     var selectedCand = kit.Direction?.Candidates?.FirstOrDefault(c => c.Key == kit.Direction.SelectedDirectionKey);
                     var newPaletteName = selectedCand?.Name ?? string.Empty;
-
-                    var headingFont = kit.Typography?.Roles?.FirstOrDefault(r => r.RoleName == BrandTypographyRoleNames.Heading)?.Family;
-                    var bodyFont = kit.Typography?.Roles?.FirstOrDefault(r => r.RoleName == BrandTypographyRoleNames.Body)?.Family;
-                    if (string.IsNullOrWhiteSpace(headingFont)) headingFont = selectedCand?.DisplayTypeface;
-                    if (string.IsNullOrWhiteSpace(bodyFont)) bodyFont = selectedCand?.TextTypeface;
-                    var newTypographyPairing = $"{headingFont ?? "Syne"} + {bodyFont ?? "DM Sans"}";
+                    var newTypographyPairing = ResolveTypographyPairing(kit, selectedCand);
 
                     updated = await CommitBrandKitAndSyncAsync(
                         idea.Id, userId, combinedUpdate, expectedVersion, options: null,
@@ -718,23 +783,20 @@ namespace WebApp.Controllers
                 var options = arrayFilters.Count > 0 ? new UpdateOptions { ArrayFilters = arrayFilters } : null;
                 bool updated;
 
+                bool hasFamilyChange =
+                    (dto.Roles != null && dto.Roles.Any(r => !string.IsNullOrWhiteSpace(r.Family))) ||
+                    !string.IsNullOrWhiteSpace(dto.Families?.DisplayFamily?.Name) ||
+                    !string.IsNullOrWhiteSpace(dto.Families?.TextFamily?.Name);
+
                 bool isApproved = kit.Logo?.ApprovedAt != null || string.Equals(kit.Status, "complete", StringComparison.OrdinalIgnoreCase);
-                if (isApproved && (dto.Roles != null || dto.Families != null))
+                if (isApproved && hasFamilyChange)
                 {
-                    var headingRole = dto.Roles?.FirstOrDefault(r => r.RoleName == BrandTypographyRoleNames.Heading);
-                    var bodyRole = dto.Roles?.FirstOrDefault(r => r.RoleName == BrandTypographyRoleNames.Body);
+                    var headingOverride = dto.Roles?.FirstOrDefault(r => r.RoleName == BrandTypographyRoleNames.Heading && !string.IsNullOrWhiteSpace(r.Family))?.Family
+                        ?? dto.Families?.DisplayFamily?.Name;
+                    var bodyOverride = dto.Roles?.FirstOrDefault(r => r.RoleName == BrandTypographyRoleNames.Body && !string.IsNullOrWhiteSpace(r.Family))?.Family
+                        ?? dto.Families?.TextFamily?.Name;
 
-                    var headingFont = headingRole?.Family
-                        ?? dto.Families?.DisplayFamily?.Name
-                        ?? kit.Typography?.Families?.DisplayFamily?.Name
-                        ?? kit.Typography?.Roles?.FirstOrDefault(r => r.RoleName == BrandTypographyRoleNames.Heading)?.Family;
-
-                    var bodyFont = bodyRole?.Family
-                        ?? dto.Families?.TextFamily?.Name
-                        ?? kit.Typography?.Families?.TextFamily?.Name
-                        ?? kit.Typography?.Roles?.FirstOrDefault(r => r.RoleName == BrandTypographyRoleNames.Body)?.Family;
-
-                    var newTypographyPairing = $"{headingFont ?? "Syne"} + {bodyFont ?? "DM Sans"}";
+                    var newTypographyPairing = ResolveTypographyPairing(kit, selectedCand: null, headingOverride, bodyOverride);
 
                     updated = await CommitBrandKitAndSyncAsync(
                         idea.Id, userId, combinedUpdate, expectedVersion, options,
@@ -826,12 +888,7 @@ namespace WebApp.Controllers
 
                     var selectedCand = kit.Direction?.Candidates?.FirstOrDefault(c => c.Key == kit.Direction.SelectedDirectionKey);
                     var newPaletteName = selectedCand?.Name ?? string.Empty;
-
-                    var headingFont = kit.Typography?.Roles?.FirstOrDefault(r => r.RoleName == BrandTypographyRoleNames.Heading)?.Family;
-                    var bodyFont = kit.Typography?.Roles?.FirstOrDefault(r => r.RoleName == BrandTypographyRoleNames.Body)?.Family;
-                    if (string.IsNullOrWhiteSpace(headingFont)) headingFont = selectedCand?.DisplayTypeface;
-                    if (string.IsNullOrWhiteSpace(bodyFont)) bodyFont = selectedCand?.TextTypeface;
-                    var newTypographyPairing = $"{headingFont ?? "Syne"} + {bodyFont ?? "DM Sans"}";
+                    var newTypographyPairing = ResolveTypographyPairing(kit, selectedCand);
 
                     updated = await CommitBrandKitAndSyncAsync(
                         idea.Id, userId, combinedUpdate, expectedVersion, options: null,
