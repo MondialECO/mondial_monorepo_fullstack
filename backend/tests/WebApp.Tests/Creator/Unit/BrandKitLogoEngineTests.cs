@@ -17,7 +17,7 @@ namespace WebApp.Tests.Creator.Unit
         [InlineData(BrandLogoFamilyNames.Abstract)]
         [InlineData(BrandLogoFamilyNames.Icon)]
         [InlineData(BrandLogoFamilyNames.Minimal)]
-        public void Every_family_renders_valid_flat_vector_svg(string familyName)
+        public void Every_family_renders_valid_flat_vector_svg_with_accessibility(string familyName)
         {
             var p = new BrandLogoConceptParameters { Family = familyName };
             var svg = _registry.RenderSvg(p, "MONDIAL").Trim();
@@ -36,6 +36,23 @@ namespace WebApp.Tests.Creator.Unit
             lockupSvg.Should().StartWith("<svg");
             lockupSvg.Should().EndWith("</svg>");
 
+            // Accessibility attributes & elements
+            svg.Should().Contain("role=\"img\"");
+            svg.Should().Contain("aria-label=\"MONDIAL Logo\"");
+            svg.Should().Contain("<title>MONDIAL Logo</title>");
+
+            markSvg.Should().Contain("role=\"img\"");
+            markSvg.Should().Contain("aria-label=\"MONDIAL Logo\"");
+            markSvg.Should().Contain("<title>MONDIAL Logo</title>");
+
+            lockupSvg.Should().Contain("role=\"img\"");
+            lockupSvg.Should().Contain("aria-label=\"MONDIAL Logo\"");
+            lockupSvg.Should().Contain("<title>MONDIAL Logo</title>");
+
+            // Zero font dependency tags
+            svg.Should().NotContain("<text");
+            svg.Should().NotContain("<tspan");
+
             // Non-negotiable flat vector properties: no gradients, no filters, no shadows
             svg.Should().NotContain("<linearGradient");
             svg.Should().NotContain("<radialGradient");
@@ -48,6 +65,46 @@ namespace WebApp.Tests.Creator.Unit
             xmlDoc.Root.Should().NotBeNull();
             xmlDoc.Root!.Name.LocalName.Should().Be("svg");
             xmlDoc.Root.Attribute("viewBox").Should().NotBeNull();
+        }
+
+        [Fact]
+        public void Bundled_fonts_load_from_embedded_or_file_streams_without_os_registry()
+        {
+            VectorTypographyRenderer.EnsureInitialized();
+
+            var categories = new[] { "high_contrast_serif", "geometric_sans", "humanist_sans", "slab_serif", "mono" };
+            foreach (var cat in categories)
+            {
+                var tf = VectorTypographyRenderer.ResolveTypeface(cat);
+                tf.Should().NotBeNull();
+                tf.FamilyName.Should().NotBeNullOrWhiteSpace();
+            }
+        }
+
+        [Fact]
+        public void Multi_word_long_name_triggers_stacked_two_line_layout()
+        {
+            var p = new BrandLogoConceptParameters
+            {
+                Family = BrandLogoFamilyNames.SymbolPlusName,
+                Values = new()
+                {
+                    ["BadgeShape"] = "hexagon",
+                    ["FontCategory"] = "geometric_sans"
+                }
+            };
+
+            var res = VectorTypographyRenderer.RenderTextToVectorPath(
+                "BioSynthetic Quantum Therapeutics",
+                "geometric_sans",
+                initialFontSize: 24f,
+                letterSpacing: "normal",
+                horizontalBudget: 260f,
+                allowTwoLineStacking: true,
+                letterCase: "uppercase");
+
+            res.IsStacked.Should().BeTrue();
+            res.Width.Should().BeLessThanOrEqualTo(260f);
         }
 
         [Fact]
