@@ -129,6 +129,8 @@ public class ModelRouterTests
         router.Resolve("IdeaGenerator").Should().Be("google/gemini-3.8-flash");
         router.Resolve("DirectionGeneration").Should().Be("google/gemini-3.8-flash");
         router.Resolve("LogoParameterSelection").Should().Be("google/gemini-3.8-flash");
+        router.Resolve("ColorGeneration").Should().Be("google/gemini-3.8-flash");
+        router.Resolve("TypographyGeneration").Should().Be("google/gemini-3.8-flash");
         router.Resolve("UnmappedCapability").Should().Be("google/gemini-3.8-flash");
     }
 }
