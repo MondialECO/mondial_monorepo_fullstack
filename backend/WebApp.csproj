@@ -68,11 +68,13 @@
     <Folder Include="wwwroot\" />
   </ItemGroup>
 
-  <!-- Demo seed payloads. The SDK already includes these as Content
-       implicitly; we only need to set CopyToOutputDirectory so the
-       seeder can resolve them via AppContext.BaseDirectory at runtime. -->
+  <!-- Demo seed payloads and bundled OFL font binaries -->
   <ItemGroup>
     <Content Update="Configuration\SeedData\**\*.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <EmbeddedResource Include="Resources\Fonts\*.ttf" />
+    <Content Update="Resources\Fonts\*.ttf">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

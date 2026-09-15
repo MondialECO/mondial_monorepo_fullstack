@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Reflection;
 using SkiaSharp;
 
 namespace WebApp.Services.Creator.BrandKit.LogoEngine
@@ -15,32 +17,102 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
 
     public static class VectorTypographyRenderer
     {
-        private static readonly Dictionary<string, string[]> FontFallbacks = new(StringComparer.OrdinalIgnoreCase)
-        {
-            ["high_contrast_serif"] = new[] { "Playfair Display", "Cinzel", "Didot", "Georgia", "Times New Roman" },
-            ["geometric_sans"] = new[] { "Space Grotesk", "Outfit", "Inter", "Arial", "Century Gothic" },
-            ["humanist_sans"] = new[] { "Plus Jakarta Sans", "Inter", "Segoe UI", "Trebuchet MS", "Helvetica" },
-            ["slab_serif"] = new[] { "Syne", "Rockwell", "Arial Black", "Impact" },
-            ["mono"] = new[] { "JetBrains Mono", "Space Mono", "Consolas", "Courier New", "monospace" }
-        };
+        private static readonly Dictionary<string, SKTypeface> BundledTypefaces = new(StringComparer.OrdinalIgnoreCase);
+        private static readonly object InitLock = new();
+        private static bool _isInitialized = false;
 
-        public static SKTypeface ResolveTypeface(string fontCategory, bool isBold = true)
+        static VectorTypographyRenderer()
         {
-            var weight = isBold ? SKFontStyleWeight.Bold : SKFontStyleWeight.Normal;
-            if (FontFallbacks.TryGetValue(fontCategory, out var candidates))
+            EnsureInitialized();
+        }
+
+        public static void EnsureInitialized()
+        {
+            if (_isInitialized) return;
+            lock (InitLock)
             {
-                foreach (var name in candidates)
+                if (_isInitialized) return;
+                LoadBundledFonts();
+                _isInitialized = true;
+            }
+        }
+
+        private static void LoadBundledFonts()
+        {
+            var assembly = typeof(VectorTypographyRenderer).Assembly;
+            var baseDir = AppContext.BaseDirectory;
+
+            var fontMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["high_contrast_serif"] = "Cinzel.ttf",
+                ["geometric_sans"] = "SpaceGrotesk.ttf",
+                ["humanist_sans"] = "PlusJakartaSans.ttf",
+                ["slab_serif"] = "Syne.ttf",
+                ["mono"] = "JetBrainsMono.ttf"
+            };
+
+            foreach (var (category, filename) in fontMap)
+            {
+                SKTypeface? tf = null;
+
+                // 1. Try embedded manifest resource stream
+                var resourceName = assembly.GetManifestResourceNames()
+                    .FirstOrDefault(n => n.EndsWith(filename, StringComparison.OrdinalIgnoreCase));
+                if (resourceName != null)
                 {
-                    var tf = SKTypeface.FromFamilyName(name, weight, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright);
-                    if (tf != null && !string.Equals(tf.FamilyName, "Default", StringComparison.OrdinalIgnoreCase))
+                    using var resStream = assembly.GetManifestResourceStream(resourceName);
+                    if (resStream != null)
                     {
-                        return tf;
+                        tf = SKTypeface.FromStream(resStream);
                     }
                 }
+
+                // 2. Try file system candidates if stream not found
+                if (tf == null)
+                {
+                    var candidates = new[]
+                    {
+                        Path.Combine(baseDir, "Resources", "Fonts", filename),
+                        Path.Combine(baseDir, filename),
+                        Path.Combine(Directory.GetCurrentDirectory(), "backend", "Resources", "Fonts", filename),
+                        Path.Combine(Directory.GetCurrentDirectory(), "Resources", "Fonts", filename),
+                        Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "Fonts", filename)
+                    };
+
+                    foreach (var path in candidates)
+                    {
+                        if (File.Exists(path))
+                        {
+                            using var fs = File.OpenRead(path);
+                            tf = SKTypeface.FromStream(fs);
+                            if (tf != null) break;
+                        }
+                    }
+                }
+
+                if (tf != null)
+                {
+                    BundledTypefaces[category] = tf;
+                }
+            }
+        }
+
+        public static SKTypeface ResolveTypeface(string fontCategory)
+        {
+            EnsureInitialized();
+
+            if (BundledTypefaces.TryGetValue(fontCategory, out var tf))
+            {
+                return tf;
             }
 
-            return SKTypeface.FromFamilyName("Arial", weight, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright)
-                   ?? SKTypeface.Default;
+            if (BundledTypefaces.TryGetValue("geometric_sans", out var defaultTf))
+            {
+                return defaultTf;
+            }
+
+            return BundledTypefaces.Values.FirstOrDefault()
+                   ?? throw new InvalidOperationException("No bundled fonts could be loaded.");
         }
 
         public static VectorTextResult RenderTextToVectorPath(
@@ -74,7 +146,7 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
                 _ => 0.05f
             };
 
-            var typeface = ResolveTypeface(fontCategory, isBold: true);
+            var typeface = ResolveTypeface(fontCategory);
 
             // 1. Check if single line fits within budget
             var singleLineResult = MeasureAndBuildPath(processedText, typeface, initialFontSize, trackingEm);
@@ -83,7 +155,7 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
                 return singleLineResult;
             }
 
-            // 2. If text has multiple words and exceeds budget, try 2-line stacking
+            // 2. If text has multiple words and exceeds budget, prefer 2-line stacking
             var words = processedText.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             if (allowTwoLineStacking && words.Length > 1)
             {
@@ -91,15 +163,18 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
                 var line1 = string.Join(" ", words.Take(mid));
                 var line2 = string.Join(" ", words.Skip(mid));
 
-                var stackedFontSize = Math.Max(18f, initialFontSize * 0.9f);
-                var stackedResult = BuildTwoLineStackedPath(line1, line2, typeface, stackedFontSize, trackingEm);
-                if (stackedResult.Width <= horizontalBudget || stackedFontSize <= 18f)
+                // Loop stacked font sizes down to floor to find optimal fit
+                for (float stackedSize = initialFontSize; stackedSize >= 14f; stackedSize -= 1.5f)
                 {
-                    return stackedResult;
+                    var stackedResult = BuildTwoLineStackedPath(line1, line2, typeface, stackedSize, trackingEm);
+                    if (stackedResult.Width <= horizontalBudget || stackedSize <= 14f)
+                    {
+                        return stackedResult;
+                    }
                 }
             }
 
-            // 3. Single unbroken word or multi-word scaling down toward font floor
+            // 3. Single unbroken word or scaling down single line toward font floor
             var fontSize = initialFontSize;
             const float fontFloor = 16f;
 
@@ -173,7 +248,7 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
             float trackingEm)
         {
             using var font = new SKFont(typeface, fontSize);
-            var lineSpacing = fontSize * 1.2f;
+            var lineSpacing = fontSize * 1.3f;
             using var combinedPath = new SKPath();
             var trackingOffset = trackingEm * fontSize;
 
@@ -189,7 +264,7 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
                     if (cp != null && !cp.IsEmpty)
                     {
                         using var op = new SKPath(cp);
-                        op.Offset(x1, -lineSpacing * 0.5f);
+                        op.Offset(x1, -lineSpacing * 0.45f);
                         combinedPath.AddPath(op);
                     }
                 }
@@ -208,7 +283,7 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
                     if (cp != null && !cp.IsEmpty)
                     {
                         using var op = new SKPath(cp);
-                        op.Offset(x2, lineSpacing * 0.5f);
+                        op.Offset(x2, lineSpacing * 0.55f);
                         combinedPath.AddPath(op);
                     }
                 }
