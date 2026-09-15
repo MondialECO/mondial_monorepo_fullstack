@@ -235,6 +235,102 @@ namespace WebApp.Tests.Creator.Unit
             regenerated.Families.TextFamily.License.Should().Be("Apache License 2.0 / OFL");
         }
 
+        [Fact]
+        public void TypographyService_LogoType_FollowsApprovedConcept_SpecificallyAfterLogoConceptChange()
+        {
+            var service = new TypographyGenerationService(aiProvider: null, modelRouter: null, logger: NullLogger<TypographyGenerationService>.Instance);
+
+            var kit = new BrandKitModel
+            {
+                Id = "test-kit-concept-change",
+                Logo = new BrandLogo
+                {
+                    SelectedConceptKey = "concept-1",
+                    ApprovedAt = DateTime.UtcNow,
+                    Concepts = new List<BrandLogoConcept>
+                    {
+                        new() { Key = "concept-1", Parameters = new BrandLogoConceptParameters { Family = "Cinzel" } },
+                        new() { Key = "concept-2", Parameters = new BrandLogoConceptParameters { Family = "JetBrains Mono" } }
+                    }
+                }
+            };
+            var idea = new CreatorIdea { Id = "idea-5", Project = new CreatorJourneyProject { Name = "Evolving Brand" } };
+
+            // Initial derive with concept-1 approved
+            var initialTypo = service.DeriveInitialTypography(kit, idea);
+            initialTypo.Roles.First(r => r.RoleName == BrandTypographyRoleNames.LogoType).Family.Should().Be("Cinzel");
+
+            // User switches approved concept to concept-2 (JetBrains Mono)
+            kit.Logo.SelectedConceptKey = "concept-2";
+
+            var updatedTypo = service.DeriveInitialTypography(kit, idea);
+            var updatedLogoRole = updatedTypo.Roles.First(r => r.RoleName == BrandTypographyRoleNames.LogoType);
+            updatedLogoRole.Family.Should().Be("JetBrains Mono", "Logo type role must follow the newly approved concept font after concept change");
+            updatedLogoRole.IsLocked.Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task TypographyService_Regenerate_ExplicitlyEnforcesPairingDiffersInAtLeastOneFamilyFromCurrent()
+        {
+            var service = new TypographyGenerationService(aiProvider: null, modelRouter: null, logger: NullLogger<TypographyGenerationService>.Instance);
+
+            string currentHeading = "Space Grotesk";
+            string currentBody = "Plus Jakarta Sans";
+
+            var kit = CreateTestBrandKit("CyberShield", "Cinzel", new List<string> { "#000000", "#111111", "#222222", "#FFFFFF" });
+            kit.Typography = new BrandTypography
+            {
+                Roles = new List<BrandTypographyRole>
+                {
+                    new() { RoleName = BrandTypographyRoleNames.LogoType, Family = "Cinzel", IsLocked = true },
+                    new() { RoleName = BrandTypographyRoleNames.Heading, Family = currentHeading, IsLocked = false },
+                    new() { RoleName = BrandTypographyRoleNames.Body, Family = currentBody, IsLocked = false }
+                }
+            };
+            var idea = new CreatorIdea { Id = "idea-diff", Project = new CreatorJourneyProject { Name = "CyberShield" } };
+
+            var regenerated = await service.RegenerateTypographyAsync(kit, idea, CancellationToken.None);
+
+            var newHeading = regenerated.Roles.First(r => r.RoleName == BrandTypographyRoleNames.Heading).Family;
+            var newBody = regenerated.Roles.First(r => r.RoleName == BrandTypographyRoleNames.Body).Family;
+
+            // Explicit assertion: pairing MUST differ in at least one family from current pairing
+            bool differs = !string.Equals(newHeading, currentHeading, StringComparison.OrdinalIgnoreCase) ||
+                           !string.Equals(newBody, currentBody, StringComparison.OrdinalIgnoreCase);
+
+            differs.Should().BeTrue($"Regenerated pairing ({newHeading} + {newBody}) must differ from current pairing ({currentHeading} + {currentBody}) in at least one family");
+        }
+
+        [Fact]
+        public async Task ColorGenerationService_Regenerate_ExplicitlyProducesGenuinelyDifferentPaletteFromCurrent()
+        {
+            var service = new ColorGenerationService(aiProvider: null, modelRouter: null, logger: NullLogger<ColorGenerationService>.Instance);
+
+            var currentPrimary = "#1A1A24";
+            var currentSecondary = "#3C61DD";
+
+            var kit = CreateTestBrandKit("CyberShield", "Cinzel", new List<string> { currentPrimary, currentSecondary, "#00D084", "#FFFFFF" });
+            kit.Colors = new BrandColors
+            {
+                Roles = new List<BrandColorRole>
+                {
+                    new() { RoleName = BrandColorRoleNames.Primary, Hex = currentPrimary },
+                    new() { RoleName = BrandColorRoleNames.Secondary, Hex = currentSecondary }
+                }
+            };
+            var idea = new CreatorIdea { Id = "idea-diff-color", Project = new CreatorJourneyProject { Name = "CyberShield" } };
+
+            var regenerated = await service.RegenerateColorsAsync(kit, idea, CancellationToken.None);
+
+            var newPrimary = regenerated.Roles.First(r => r.RoleName == BrandColorRoleNames.Primary).Hex;
+            var newSecondary = regenerated.Roles.First(r => r.RoleName == BrandColorRoleNames.Secondary).Hex;
+
+            bool differs = !string.Equals(newPrimary, currentPrimary, StringComparison.OrdinalIgnoreCase) ||
+                           !string.Equals(newSecondary, currentSecondary, StringComparison.OrdinalIgnoreCase);
+
+            differs.Should().BeTrue($"Regenerated palette (Primary: {newPrimary}, Secondary: {newSecondary}) must differ from current palette (Primary: {currentPrimary}, Secondary: {currentSecondary})");
+        }
+
         // -------------------------------------------------------------------------
         // 4. STRATEGY SPECIMEN TEXT GENERATION ACROSS 3 CONTRASTING BUSINESSES
         // -------------------------------------------------------------------------
