@@ -501,11 +501,20 @@ export function BrandStudioShell({
           kit={kit}
           onClose={() => setActiveModal(null)}
           onSuccess={(updatedKit) => {
+            const wasNotComplete = kit?.status?.toLowerCase() !== "complete";
+            const isNowComplete = updatedKit?.status?.toLowerCase() === "complete";
             setKit(updatedKit);
             setActiveModal(null);
+            if (wasNotComplete && isNowComplete) {
+              const hubUrl = `/dashboard/creator/phase-2/brand-kit${
+                ideaId ? `?ideaId=${encodeURIComponent(ideaId)}` : ""
+              }`;
+              router.push(hubUrl);
+            }
           }}
         />
       )}
+
     </div>
   );
 }
