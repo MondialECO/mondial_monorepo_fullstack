@@ -14,12 +14,14 @@ import { DirectionResultCard } from "./cards/DirectionResultCard";
 import { LogoTypeResultCard } from "./cards/LogoTypeResultCard";
 import { LogoResultCard } from "./cards/LogoResultCard";
 import { ColorsResultCard } from "./cards/ColorsResultCard";
+import { TypographyResultCard } from "./cards/TypographyResultCard";
 import { LogoCreationModal } from "./LogoCreationModal";
 import { VariationSetModal } from "./VariationSetModal";
 import { StrategyReviewModal } from "./StrategyReviewModal";
 import { DirectionBoardModal } from "./DirectionBoardModal";
 import { LogoTypeChooserModal } from "./LogoTypeChooserModal";
 import { ColorSystemModal } from "./ColorSystemModal";
+import { TypographySystemModal } from "./TypographySystemModal";
 import { StudioStepPlaceholderModal } from "./StudioStepPlaceholderModal";
 import { Sparkles, AlertCircle, Loader2 } from "lucide-react";
 
@@ -382,6 +384,14 @@ export function BrandStudioShell({
               />
             )}
 
+            {/* Typography Result Card (Step 6) */}
+            {kit?.typography?.confirmedAt && (
+              <TypographyResultCard
+                kit={kit}
+                onEdit={() => setActiveModal("typography")}
+              />
+            )}
+
             {/* Studio Canvas Hero Banner if no cards yet */}
             {!kit?.strategy?.confirmedAt &&
               !kit?.direction?.selectedAt &&
@@ -483,14 +493,17 @@ export function BrandStudioShell({
         />
       )}
 
-      {activeModal === "typography" && (
-        <StudioStepPlaceholderModal
-          stepKey="typography"
-          stepNumber={6}
-          stepTitle="Typography System"
-          description="Configure heading, body and UI button typefaces with optical hierarchy scales."
+      {/* Step 6: Typography System Modal */}
+      {activeModal === "typography" && kit && (
+        <TypographySystemModal
           isOpen={true}
+          ideaId={ideaId}
+          kit={kit}
           onClose={() => setActiveModal(null)}
+          onSuccess={(updatedKit) => {
+            setKit(updatedKit);
+            setActiveModal(null);
+          }}
         />
       )}
     </div>

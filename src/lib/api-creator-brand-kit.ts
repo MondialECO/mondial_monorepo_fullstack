@@ -276,5 +276,114 @@ export const brandKitApi = {
     );
     return res.data.data!;
   },
+
+  /**
+   * Generate initial 4-role typography system (free, deterministic derivation from logo & visual direction).
+   */
+  async generateTypography(
+    ideaId?: string,
+    expectedVersion?: number
+  ): Promise<BrandKit> {
+    const params: Record<string, string | number> = {};
+    if (ideaId) params.ideaId = ideaId;
+    if (expectedVersion !== undefined) params.expectedVersion = expectedVersion;
+
+    const res = await api.post<ApiResponse<BrandKit>>(
+      "/creator/journey/phase2/brand-kit/typography/generate",
+      null,
+      { params }
+    );
+    return res.data.data!;
+  },
+
+  /**
+   * Regenerate typography pairing for Heading, Body, Button (model call, costs credits, 3-cap, Logo type permanently locked).
+   */
+  async regenerateTypography(
+    ideaId?: string,
+    expectedVersion?: number
+  ): Promise<BrandKit> {
+    const params: Record<string, string | number> = {};
+    if (ideaId) params.ideaId = ideaId;
+    if (expectedVersion !== undefined) params.expectedVersion = expectedVersion;
+
+    const res = await api.post<ApiResponse<BrandKit>>(
+      "/creator/journey/phase2/brand-kit/typography/regenerate",
+      null,
+      { params }
+    );
+    return res.data.data!;
+  },
+
+  /**
+   * Partially update Typography section (per-role weight/size/line-height tuning, or confirmation).
+   */
+  async patchTypography(
+    payload: {
+      roles?: Array<{
+        roleName: string;
+        family?: string;
+        weight?: string;
+        size?: string;
+        lineHeight?: string;
+        specimenText?: string;
+        isLocked?: boolean;
+        provenance?: string;
+      }>;
+      families?: {
+        displayFamily?: {
+          name: string;
+          license: string;
+          availableWeights: string[];
+          webWeightKb: number;
+        };
+        textFamily?: {
+          name: string;
+          license: string;
+          availableWeights: string[];
+          webWeightKb: number;
+        };
+      };
+      confirmedAt?: string | null;
+    },
+    ideaId?: string,
+    expectedVersion?: number
+  ): Promise<BrandKit> {
+    const params: Record<string, string | number> = {};
+    if (ideaId) params.ideaId = ideaId;
+    if (expectedVersion !== undefined) params.expectedVersion = expectedVersion;
+
+    const res = await api.patch<ApiResponse<BrandKit>>(
+      "/creator/journey/phase2/brand-kit/typography",
+      payload,
+      { params }
+    );
+    return res.data.data!;
+  },
+
+  /**
+   * Advance step and update kit Status to complete when advancing past step 6.
+   */
+  async advanceStep(
+    targetStep: number,
+    ideaId?: string,
+    expectedVersion?: number
+  ): Promise<BrandKit> {
+    const params: Record<string, string | number> = {};
+    if (ideaId) params.ideaId = ideaId;
+    if (expectedVersion !== undefined) params.expectedVersion = expectedVersion;
+
+    const res = await api.post<ApiResponse<BrandKit>>(
+      "/creator/journey/phase2/brand-kit/advance",
+      { targetStep },
+      { params }
+    );
+    return res.data.data!;
+  },
 };
+
+export const apiCreatorBrandKit = brandKitApi;
+
+
+
 

@@ -1495,13 +1495,19 @@ namespace WebApp.Controllers
 
                 if (dto.Roles != null && dto.Roles.Count > 0)
                 {
-                    // Reject invalid role names immediately
+                    // Reject invalid role names immediately and enforce immutability of Logo type
                     foreach (var role in dto.Roles)
                     {
                         if (!BrandTypographyRoleNames.All.Contains(role.RoleName))
                         {
                             return BadRequest(ApiResponse.Error(
                                 $"Invalid typography role name: '{role.RoleName}'. Must be one of: {string.Join(", ", BrandTypographyRoleNames.All)}"));
+                        }
+
+                        if (role.RoleName == BrandTypographyRoleNames.LogoType && (role.Family != null || role.IsLocked.HasValue))
+                        {
+                            return BadRequest(ApiResponse.Error(
+                                "The 'Logo type' role is structurally bound to the approved logo concept and cannot be modified or unlocked via typography patch."));
                         }
                     }
 
