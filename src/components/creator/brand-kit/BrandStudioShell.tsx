@@ -16,6 +16,7 @@ import { LogoResultCard } from "./cards/LogoResultCard";
 import { LogoCreationModal } from "./LogoCreationModal";
 import { VariationSetModal } from "./VariationSetModal";
 import { StrategyReviewModal } from "./StrategyReviewModal";
+import { DirectionBoardModal } from "./DirectionBoardModal";
 import { StudioStepPlaceholderModal } from "./StudioStepPlaceholderModal";
 import { Sparkles, AlertCircle, Loader2 } from "lucide-react";
 
@@ -431,14 +432,16 @@ export function BrandStudioShell({
         />
       )}
 
-      {activeModal === "direction" && (
-        <StudioStepPlaceholderModal
-          stepKey="direction"
-          stepNumber={2}
-          stepTitle="Visual Directions"
-          description="Explore and select from four generative strategic visual directions tailored to your archetype."
+      {/* Step 2: Visual Direction Board Modal */}
+      {activeModal === "direction" && kit && (
+        <DirectionBoardModal
           isOpen={true}
+          ideaId={ideaId}
+          kit={kit}
           onClose={() => setActiveModal(null)}
+          onSuccess={(updatedKit) => {
+            setKit(updatedKit);
+          }}
         />
       )}
 

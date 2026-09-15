@@ -158,5 +158,53 @@ export const brandKitApi = {
     );
     return res.data.data!;
   },
+
+  /**
+   * Generate 4 visual direction candidates (costs 7 credits).
+   */
+  async generateDirections(
+    ideaId?: string,
+    expectedVersion?: number
+  ): Promise<BrandKit> {
+    const params: Record<string, string | number> = {};
+    if (ideaId) params.ideaId = ideaId;
+    if (expectedVersion !== undefined) params.expectedVersion = expectedVersion;
+
+    const res = await api.post<ApiResponse<BrandKit>>(
+      "/creator/journey/phase2/brand-kit/direction/generate",
+      null,
+      { params }
+    );
+    return res.data.data!;
+  },
+
+  /**
+   * Partially update Direction section (e.g. select candidate, tune adjustment settings, confirm selection).
+   */
+  async patchDirection(
+    payload: {
+      selectedDirectionKey?: string;
+      selectedAt?: string | null;
+      candidates?: any[];
+      adjustmentSettings?: {
+        paletteVariant?: string;
+        contrastPosition?: string;
+        typeWeight?: string;
+      };
+    },
+    ideaId?: string,
+    expectedVersion?: number
+  ): Promise<BrandKit> {
+    const params: Record<string, string | number> = {};
+    if (ideaId) params.ideaId = ideaId;
+    if (expectedVersion !== undefined) params.expectedVersion = expectedVersion;
+
+    const res = await api.patch<ApiResponse<BrandKit>>(
+      "/creator/journey/phase2/brand-kit/direction",
+      payload,
+      { params }
+    );
+    return res.data.data!;
+  },
 };
 

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { BrandLogoConcept, formatConceptTitle } from "@/types/creator/brand-kit";
 import { InvoiceMockHeader } from "./InvoiceMockHeader";
 import { MicroScaleViewer } from "./MicroScaleViewer";
+import { RegenerateCapBadge } from "./RegenerateCapBadge";
 import Link from "next/link";
 
 export interface ConceptTileProps {
@@ -70,21 +71,7 @@ export const ConceptTile = memo(function ConceptTile({
         </div>
 
         {/* Remaining attempts counter */}
-        {isExhausted ? (
-          <span
-            className="inline-flex items-center gap-1 font-mono text-[10px] font-medium px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 tabular-nums shrink-0"
-            title="Maximum 3 regenerations reached for this concept"
-          >
-            0/3 LEFT
-          </span>
-        ) : (
-          <span
-            className="inline-flex items-center gap-1 font-mono text-[10px] font-medium px-2 py-0.5 rounded-full bg-muted/60 text-muted-foreground border border-border/50 tabular-nums shrink-0"
-            title={`${remaining} of 3 regenerations left`}
-          >
-            {remaining}/3 LEFT
-          </span>
-        )}
+        <RegenerateCapBadge usedCount={concept.regenerateCount || 0} maxCount={3} />
       </div>
 
       {/* Main Canvas Area according to View Mode */}
