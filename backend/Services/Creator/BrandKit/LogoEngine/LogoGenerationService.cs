@@ -41,6 +41,7 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
             var direction = kit?.Direction ?? new BrandDirection();
             var selectedCand = direction.Candidates?.FirstOrDefault(c => c.Key == direction.SelectedDirectionKey);
             var avoidList = strategy.AvoidList ?? new List<string>();
+            var selectedLogoType = kit?.Logo?.LogoType;
 
             List<BrandLogoConceptParameters>? rawParamSets = null;
 
@@ -48,7 +49,7 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
             {
                 try
                 {
-                    rawParamSets = await QueryAiForParameterSetsAsync(brandName, strategy, direction, selectedCand, avoidList, cancellationToken);
+                    rawParamSets = await QueryAiForParameterSetsAsync(brandName, strategy, direction, selectedCand, avoidList, selectedLogoType, cancellationToken);
                 }
                 catch (Exception ex)
                 {
@@ -56,9 +57,9 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
                 }
             }
 
-            if (rawParamSets == null || rawParamSets.Count < 6 || !ValidateSetDiversity(rawParamSets, avoidList))
+            if (rawParamSets == null || rawParamSets.Count < 6 || !ValidateSetDiversity(rawParamSets, avoidList, selectedLogoType))
             {
-                rawParamSets = GenerateDeterministicParameterSets(brandName, strategy, direction, selectedCand, avoidList);
+                rawParamSets = GenerateDeterministicParameterSets(brandName, strategy, direction, selectedCand, avoidList, selectedLogoType);
             }
 
             var concepts = new List<BrandLogoConcept>();
@@ -99,12 +100,21 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
             var direction = kit?.Direction ?? new BrandDirection();
             var selectedCand = direction.Candidates?.FirstOrDefault(c => c.Key == direction.SelectedDirectionKey);
             var avoidList = strategy.AvoidList ?? new List<string>();
+            var selectedLogoType = kit?.Logo?.LogoType;
 
             var existingConcept = kit.Logo?.Concepts?.FirstOrDefault(c => c.Key == targetConceptKey);
             var existingRegenCount = existingConcept?.RegenerateCount ?? 0;
 
-            var seedIndex = (existingRegenCount + 1) % BrandLogoFamilyNames.All.Count;
-            var targetFamily = BrandLogoFamilyNames.All[seedIndex];
+            string targetFamily;
+            if (!string.IsNullOrWhiteSpace(selectedLogoType) && BrandLogoFamilyNames.All.Contains(selectedLogoType))
+            {
+                targetFamily = selectedLogoType;
+            }
+            else
+            {
+                var seedIndex = (existingRegenCount + 1) % BrandLogoFamilyNames.All.Count;
+                targetFamily = BrandLogoFamilyNames.All[seedIndex];
+            }
 
             var synthParams = GenerateDeterministicSingleParameterSet(brandName, strategy, direction, targetFamily, existingRegenCount + 1, avoidList);
             var descriptor = $"Regenerated {targetFamily} direction tailored to {selectedCand?.Name ?? "brand identity"}";
@@ -133,13 +143,14 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
             BrandDirection direction,
             BrandDirectionCandidate? candidate,
             List<string> avoidList,
+            string? selectedLogoType,
             CancellationToken cancellationToken)
         {
             if (_modelRouter == null)
                 throw new InvalidOperationException("IModelRouter is required for logo parameter selection model resolution.");
 
             var modelId = _modelRouter.Resolve("LogoParameterSelection");
-            var prompt = BuildPrompt(brandName, strategy, direction, candidate, avoidList);
+            var prompt = BuildPrompt(brandName, strategy, direction, candidate, avoidList, selectedLogoType);
 
             var request = new AiCompletionRequest
             {
@@ -196,10 +207,28 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
             BrandStrategy strategy,
             BrandDirection direction,
             BrandDirectionCandidate? candidate,
-            List<string> avoidList)
+            List<string> avoidList,
+            string? selectedLogoType)
         {
             var traits = string.Join(", ", strategy.PersonalityTraits ?? new List<string>());
             var avoids = string.Join(", ", avoidList);
+
+            if (!string.IsNullOrWhiteSpace(selectedLogoType) && BrandLogoFamilyNames.All.Contains(selectedLogoType))
+            {
+                return $@"Select discrete parameters for 6 distinct logo concepts for the brand '{brandName}'.
+Brand Personality Traits: {traits}
+Selected Direction: {candidate?.Name} ({candidate?.DisplayTypeface} + {candidate?.TextTypeface})
+Avoided Elements: {avoids}
+Selected Mark Architecture: '{selectedLogoType}'
+
+You MUST choose parameters for 6 distinct concepts EXCLUSIVELY within the '{selectedLogoType}' family:
+1. 'wordmark': Layout in [single_line, stacked_two_line, tracked_wide, tight_bold], LetterCase in [uppercase, lowercase, titlecase], AccentElement in [none, terminal_dot, baseline_underline, overscore, split_dot], FontCategory in [geometric_sans, humanist_sans, high_contrast_serif, slab_serif, mono], LetterSpacing in [tight, normal, wide, ultra_wide]
+2. 'symbol_plus_name': BadgeShape in [circle, square, rounded_rect, shield, diamond, hexagon, cut_corner_rect], BadgeStyle in [solid_fill, outline_stroke, double_stroke, split_negative], InternalGlyph in [initial_letter, geometric_cut, diagonal_cross, concentric_ring, horizontal_bars]
+3. 'monogram': MonogramType in [single_letter, two_letter_interlock, two_letter_adjacent, three_letter_pyramid], FrameStyle in [none, circle_ring, square_box, bracket_corners, solid_disc], StrokeStyle in [heavy_block, stencil_split, monoline, duoline], FontCategory in [geometric_sans, humanist_sans, high_contrast_serif, slab_serif, mono]
+4. 'abstract': GeometryType in [intersecting_rings, nested_polygons, rotational_symmetry_3, rotational_symmetry_4, mobius_fold, isometric_cube, faceted_diamond], StrokeWeight in [thin_precision, medium, heavy_bold], FontCategory in [geometric_sans, humanist_sans, high_contrast_serif, slab_serif, mono]
+5. 'icon': MetaphorPrimitive in [shield_security, leaf_growth, node_network, cube_infrastructure, prism_focus, arch_gateway, spark_intelligence, pillar_foundation, wave_flow], Construction in [monoline_stroke, silhouette_solid, split_halves, segmented_arcs], FontCategory in [geometric_sans, humanist_sans, high_contrast_serif, slab_serif, mono]
+6. 'minimal': Primitive in [sliced_circle, quadrant_arc, offset_bars, chevron_fold, diagonal_slash, hairline_cross], Orientation in [0_deg, 45_deg, 90_deg, 180_deg, 270_deg], WeightBalance in [monolithic_solid, contrast_duo, negative_aperture], FontCategory in [geometric_sans, humanist_sans, high_contrast_serif, slab_serif, mono]";
+            }
 
             return $@"Select discrete parameters for 6 distinct logo concepts for the brand '{brandName}'.
 Brand Personality Traits: {traits}
@@ -215,12 +244,20 @@ You MUST choose parameters for 6 distinct concepts covering at least 4 of the fo
 6. 'minimal': Primitive in [sliced_circle, quadrant_arc, offset_bars, chevron_fold, diagonal_slash, hairline_cross], Orientation in [0_deg, 45_deg, 90_deg, 180_deg, 270_deg], WeightBalance in [monolithic_solid, contrast_duo, negative_aperture], FontCategory in [geometric_sans, humanist_sans, high_contrast_serif, slab_serif, mono]";
         }
 
-        private static bool ValidateSetDiversity(List<BrandLogoConceptParameters> set, List<string> avoidList)
+        private static bool ValidateSetDiversity(List<BrandLogoConceptParameters> set, List<string> avoidList, string? selectedLogoType = null)
         {
             if (set == null || set.Count < 6) return false;
 
-            var distinctFamilies = set.Select(s => s.Family).Distinct().Count();
-            if (distinctFamilies < 4) return false;
+            if (!string.IsNullOrWhiteSpace(selectedLogoType) && BrandLogoFamilyNames.All.Contains(selectedLogoType))
+            {
+                if (set.Any(s => !string.Equals(s.Family, selectedLogoType, StringComparison.OrdinalIgnoreCase)))
+                    return false;
+            }
+            else
+            {
+                var distinctFamilies = set.Select(s => s.Family).Distinct().Count();
+                if (distinctFamilies < 4) return false;
+            }
 
             foreach (var concept in set)
             {
@@ -264,7 +301,8 @@ You MUST choose parameters for 6 distinct concepts covering at least 4 of the fo
             BrandStrategy strategy,
             BrandDirection direction,
             BrandDirectionCandidate? candidate,
-            List<string> avoidList)
+            List<string> avoidList,
+            string? selectedLogoType = null)
         {
             var archetype = ResolveArchetype(strategy, candidate);
 
@@ -345,6 +383,14 @@ You MUST choose parameters for 6 distinct concepts covering at least 4 of the fo
             }
             if (avoidList.Any(a => a.Contains("node", StringComparison.OrdinalIgnoreCase)) && iconMetaphor == "node_network")
                 iconMetaphor = "prism_focus";
+
+            // If a specific LogoType was chosen in Step 3, generate 6 diverse variations within that family
+            if (!string.IsNullOrWhiteSpace(selectedLogoType) && BrandLogoFamilyNames.All.Contains(selectedLogoType))
+            {
+                return GenerateFamilySpecificDeterministicParameterSets(
+                    brandName, strategy, direction, candidate, avoidList, selectedLogoType, archetype,
+                    wordmarkFont, wordmarkSpacing, symbolShape, symbolFont, monogramFont, abstractGeom, iconMetaphor, minimalPrim);
+            }
 
             // Determine layout and composition variety per archetype
             string wordmarkAccent;
@@ -499,6 +545,279 @@ You MUST choose parameters for 6 distinct concepts covering at least 4 of the fo
                     }
                 }
             };
+        }
+
+        private static List<BrandLogoConceptParameters> GenerateFamilySpecificDeterministicParameterSets(
+            string brandName,
+            BrandStrategy strategy,
+            BrandDirection direction,
+            BrandDirectionCandidate? candidate,
+            List<string> avoidList,
+            string family,
+            string archetype,
+            string wordmarkFont,
+            string wordmarkSpacing,
+            string symbolShape,
+            string symbolFont,
+            string monogramFont,
+            string abstractGeom,
+            string iconMetaphor,
+            string minimalPrim)
+        {
+            var initial = !string.IsNullOrWhiteSpace(brandName) ? brandName.Trim()[0].ToString().ToUpperInvariant() : "B";
+
+            switch (family)
+            {
+                case BrandLogoFamilyNames.SymbolPlusName:
+                    var badgeShapes = new[] { symbolShape, "shield", "circle", "diamond", "rounded_rect", "square" };
+                    if (avoidList.Any(a => a.Contains("shield", StringComparison.OrdinalIgnoreCase)))
+                        badgeShapes = new[] { symbolShape, "hexagon", "circle", "diamond", "rounded_rect", "square" };
+
+                    return new List<BrandLogoConceptParameters>
+                    {
+                        new()
+                        {
+                            Family = BrandLogoFamilyNames.SymbolPlusName,
+                            Descriptor = $"Hexagonal emblem framing '{initial}' with structured {wordmarkFont.Replace('_', ' ')} type",
+                            Values = new() { ["BadgeShape"] = badgeShapes[0], ["BadgeStyle"] = "outline_stroke", ["InternalGlyph"] = "initial_letter", ["FontCategory"] = wordmarkFont, ["Arrangement"] = "side_by_side" }
+                        },
+                        new()
+                        {
+                            Family = BrandLogoFamilyNames.SymbolPlusName,
+                            Descriptor = $"Shield crest badge enclosing brand initial with balanced lockup",
+                            Values = new() { ["BadgeShape"] = badgeShapes[1], ["BadgeStyle"] = "outline_stroke", ["InternalGlyph"] = "initial_letter", ["FontCategory"] = "geometric_sans", ["Arrangement"] = "side_by_side" }
+                        },
+                        new()
+                        {
+                            Family = BrandLogoFamilyNames.SymbolPlusName,
+                            Descriptor = $"Circular medallion emblem positioned above centered brand name",
+                            Values = new() { ["BadgeShape"] = badgeShapes[2], ["BadgeStyle"] = "outline_stroke", ["InternalGlyph"] = "initial_letter", ["FontCategory"] = "humanist_sans", ["Arrangement"] = "stacked" }
+                        },
+                        new()
+                        {
+                            Family = BrandLogoFamilyNames.SymbolPlusName,
+                            Descriptor = $"Diamond insignia with geometric cut accent in high-contrast serif",
+                            Values = new() { ["BadgeShape"] = badgeShapes[3], ["BadgeStyle"] = "outline_stroke", ["InternalGlyph"] = "initial_letter", ["FontCategory"] = "high_contrast_serif", ["Arrangement"] = "side_by_side" }
+                        },
+                        new()
+                        {
+                            Family = BrandLogoFamilyNames.SymbolPlusName,
+                            Descriptor = $"Rounded rectangular seal with modern technical typography",
+                            Values = new() { ["BadgeShape"] = badgeShapes[4], ["BadgeStyle"] = "outline_stroke", ["InternalGlyph"] = "initial_letter", ["FontCategory"] = "mono", ["Arrangement"] = "side_by_side" }
+                        },
+                        new()
+                        {
+                            Family = BrandLogoFamilyNames.SymbolPlusName,
+                            Descriptor = $"Architectural square mark set above stacked name typography",
+                            Values = new() { ["BadgeShape"] = badgeShapes[5], ["BadgeStyle"] = "outline_stroke", ["InternalGlyph"] = "initial_letter", ["FontCategory"] = "slab_serif", ["Arrangement"] = "stacked" }
+                        }
+                    };
+
+                case BrandLogoFamilyNames.Wordmark:
+                    return new List<BrandLogoConceptParameters>
+                    {
+                        new()
+                        {
+                            Family = BrandLogoFamilyNames.Wordmark,
+                            Descriptor = "Spaced geometric sans uppercase wordmark with wide tracking",
+                            Values = new() { ["Layout"] = "tracked_wide", ["LetterCase"] = "uppercase", ["AccentElement"] = "none", ["FontCategory"] = "geometric_sans", ["LetterSpacing"] = "wide" }
+                        },
+                        new()
+                        {
+                            Family = BrandLogoFamilyNames.Wordmark,
+                            Descriptor = "Bold uppercase lockup with precision terminal accent dot",
+                            Values = new() { ["Layout"] = "tight_bold", ["LetterCase"] = "uppercase", ["AccentElement"] = "terminal_dot", ["FontCategory"] = "geometric_sans", ["LetterSpacing"] = "tight" }
+                        },
+                        new()
+                        {
+                            Family = BrandLogoFamilyNames.Wordmark,
+                            Descriptor = "High-contrast serif wordmark with grounded baseline rule",
+                            Values = new() { ["Layout"] = "tracked_wide", ["LetterCase"] = "uppercase", ["AccentElement"] = "baseline_underline", ["FontCategory"] = "high_contrast_serif", ["LetterSpacing"] = "ultra_wide" }
+                        },
+                        new()
+                        {
+                            Family = BrandLogoFamilyNames.Wordmark,
+                            Descriptor = "Natural titlecase humanist sans typography with balanced spacing",
+                            Values = new() { ["Layout"] = "single_line", ["LetterCase"] = "titlecase", ["AccentElement"] = "none", ["FontCategory"] = "humanist_sans", ["LetterSpacing"] = "normal" }
+                        },
+                        new()
+                        {
+                            Family = BrandLogoFamilyNames.Wordmark,
+                            Descriptor = "Technical monospace wordmark with precision structural overscore",
+                            Values = new() { ["Layout"] = "tracked_wide", ["LetterCase"] = "uppercase", ["AccentElement"] = "overscore", ["FontCategory"] = "mono", ["LetterSpacing"] = "wide" }
+                        },
+                        new()
+                        {
+                            Family = BrandLogoFamilyNames.Wordmark,
+                            Descriptor = "Solid slab-serif lockup with modern split accent details",
+                            Values = new() { ["Layout"] = "tight_bold", ["LetterCase"] = "uppercase", ["AccentElement"] = "split_dot", ["FontCategory"] = "slab_serif", ["LetterSpacing"] = "normal" }
+                        }
+                    };
+
+                case BrandLogoFamilyNames.Monogram:
+                    return new List<BrandLogoConceptParameters>
+                    {
+                        new()
+                        {
+                            Family = BrandLogoFamilyNames.Monogram,
+                            Descriptor = "Interlocking monogram with bracket corner frame in geometric sans",
+                            Values = new() { ["MonogramType"] = "two_letter_interlock", ["FrameStyle"] = "bracket_corners", ["StrokeStyle"] = "heavy_block", ["FontCategory"] = "geometric_sans", ["Arrangement"] = "side_by_side" }
+                        },
+                        new()
+                        {
+                            Family = BrandLogoFamilyNames.Monogram,
+                            Descriptor = "Single-letter circular monogram with clean monoline construction",
+                            Values = new() { ["MonogramType"] = "single_letter", ["FrameStyle"] = "circle_ring", ["StrokeStyle"] = "monoline", ["FontCategory"] = "humanist_sans", ["Arrangement"] = "stacked" }
+                        },
+                        new()
+                        {
+                            Family = BrandLogoFamilyNames.Monogram,
+                            Descriptor = "Adjacent monogram inside architectural square box frame",
+                            Values = new() { ["MonogramType"] = "two_letter_adjacent", ["FrameStyle"] = "square_box", ["StrokeStyle"] = "stencil_split", ["FontCategory"] = "mono", ["Arrangement"] = "side_by_side" }
+                        },
+                        new()
+                        {
+                            Family = BrandLogoFamilyNames.Monogram,
+                            Descriptor = "Solid disc monogram badge with high-contrast serif lettering",
+                            Values = new() { ["MonogramType"] = "two_letter_interlock", ["FrameStyle"] = "solid_disc", ["StrokeStyle"] = "heavy_block", ["FontCategory"] = "high_contrast_serif", ["Arrangement"] = "stacked" }
+                        },
+                        new()
+                        {
+                            Family = BrandLogoFamilyNames.Monogram,
+                            Descriptor = "Frameless dual-line monogram letterform in slab-serif",
+                            Values = new() { ["MonogramType"] = "single_letter", ["FrameStyle"] = "none", ["StrokeStyle"] = "duoline", ["FontCategory"] = "slab_serif", ["Arrangement"] = "side_by_side" }
+                        },
+                        new()
+                        {
+                            Family = BrandLogoFamilyNames.Monogram,
+                            Descriptor = "Three-letter pyramid monogram badge with balanced type",
+                            Values = new() { ["MonogramType"] = "three_letter_pyramid", ["FrameStyle"] = "bracket_corners", ["StrokeStyle"] = "monoline", ["FontCategory"] = "geometric_sans", ["Arrangement"] = "stacked" }
+                        }
+                    };
+
+                case BrandLogoFamilyNames.Abstract:
+                    return new List<BrandLogoConceptParameters>
+                    {
+                        new()
+                        {
+                            Family = BrandLogoFamilyNames.Abstract,
+                            Descriptor = "Faceted geometric diamond structure expressing precision",
+                            Values = new() { ["GeometryType"] = "faceted_diamond", ["StrokeWeight"] = "heavy_bold", ["FontCategory"] = "geometric_sans", ["Arrangement"] = "side_by_side" }
+                        },
+                        new()
+                        {
+                            Family = BrandLogoFamilyNames.Abstract,
+                            Descriptor = "Tri-fold rotational symmetry emblem with dynamic balance",
+                            Values = new() { ["GeometryType"] = "rotational_symmetry_3", ["StrokeWeight"] = "medium", ["FontCategory"] = "humanist_sans", ["Arrangement"] = "side_by_side" }
+                        },
+                        new()
+                        {
+                            Family = BrandLogoFamilyNames.Abstract,
+                            Descriptor = "Isometric dimensional cube positioned above centered lockup",
+                            Values = new() { ["GeometryType"] = "isometric_cube", ["StrokeWeight"] = "heavy_bold", ["FontCategory"] = "mono", ["Arrangement"] = "stacked" }
+                        },
+                        new()
+                        {
+                            Family = BrandLogoFamilyNames.Abstract,
+                            Descriptor = "Four-axis rotational geometry with solid weight",
+                            Values = new() { ["GeometryType"] = "rotational_symmetry_4", ["StrokeWeight"] = "heavy_bold", ["FontCategory"] = "slab_serif", ["Arrangement"] = "side_by_side" }
+                        },
+                        new()
+                        {
+                            Family = BrandLogoFamilyNames.Abstract,
+                            Descriptor = "Intersecting precision rings in high-contrast editorial styling",
+                            Values = new() { ["GeometryType"] = "intersecting_rings", ["StrokeWeight"] = "thin_precision", ["FontCategory"] = "high_contrast_serif", ["Arrangement"] = "stacked" }
+                        },
+                        new()
+                        {
+                            Family = BrandLogoFamilyNames.Abstract,
+                            Descriptor = "Continuous Mobius fold geometry conveying seamless flow",
+                            Values = new() { ["GeometryType"] = "mobius_fold", ["StrokeWeight"] = "medium", ["FontCategory"] = "geometric_sans", ["Arrangement"] = "side_by_side" }
+                        }
+                    };
+
+                case BrandLogoFamilyNames.Icon:
+                    return new List<BrandLogoConceptParameters>
+                    {
+                        new()
+                        {
+                            Family = BrandLogoFamilyNames.Icon,
+                            Descriptor = "Shield security metaphor constructed from clean geometric lines",
+                            Values = new() { ["MetaphorPrimitive"] = "shield_security", ["Construction"] = "monoline_stroke", ["FontCategory"] = "geometric_sans", ["Arrangement"] = "side_by_side" }
+                        },
+                        new()
+                        {
+                            Family = BrandLogoFamilyNames.Icon,
+                            Descriptor = "Connected node network icon with solid silhouette styling",
+                            Values = new() { ["MetaphorPrimitive"] = "node_network", ["Construction"] = "silhouette_solid", ["FontCategory"] = "geometric_sans", ["Arrangement"] = "side_by_side" }
+                        },
+                        new()
+                        {
+                            Family = BrandLogoFamilyNames.Icon,
+                            Descriptor = "Growth leaf metaphor set above centered typography",
+                            Values = new() { ["MetaphorPrimitive"] = "leaf_growth", ["Construction"] = "monoline_stroke", ["FontCategory"] = "humanist_sans", ["Arrangement"] = "stacked" }
+                        },
+                        new()
+                        {
+                            Family = BrandLogoFamilyNames.Icon,
+                            Descriptor = "Prism focus icon with precision split construction",
+                            Values = new() { ["MetaphorPrimitive"] = "prism_focus", ["Construction"] = "split_halves", ["FontCategory"] = "mono", ["Arrangement"] = "side_by_side" }
+                        },
+                        new()
+                        {
+                            Family = BrandLogoFamilyNames.Icon,
+                            Descriptor = "Architectural pillar metaphor expressing institutional strength",
+                            Values = new() { ["MetaphorPrimitive"] = "pillar_foundation", ["Construction"] = "silhouette_solid", ["FontCategory"] = "slab_serif", ["Arrangement"] = "side_by_side" }
+                        },
+                        new()
+                        {
+                            Family = BrandLogoFamilyNames.Icon,
+                            Descriptor = "Spark intelligence emblem with segmented precision arcs",
+                            Values = new() { ["MetaphorPrimitive"] = "spark_intelligence", ["Construction"] = "segmented_arcs", ["FontCategory"] = "high_contrast_serif", ["Arrangement"] = "stacked" }
+                        }
+                    };
+
+                default: // Minimal
+                    return new List<BrandLogoConceptParameters>
+                    {
+                        new()
+                        {
+                            Family = BrandLogoFamilyNames.Minimal,
+                            Descriptor = "Hairline cross primitive conveying focus and balance",
+                            Values = new() { ["Primitive"] = "hairline_cross", ["Orientation"] = "0_deg", ["WeightBalance"] = "monolithic_solid", ["FontCategory"] = "geometric_sans", ["Arrangement"] = "side_by_side" }
+                        },
+                        new()
+                        {
+                            Family = BrandLogoFamilyNames.Minimal,
+                            Descriptor = "Sliced circle emblem with dual contrast weighting",
+                            Values = new() { ["Primitive"] = "sliced_circle", ["Orientation"] = "45_deg", ["WeightBalance"] = "contrast_duo", ["FontCategory"] = "humanist_sans", ["Arrangement"] = "stacked" }
+                        },
+                        new()
+                        {
+                            Family = BrandLogoFamilyNames.Minimal,
+                            Descriptor = "Offset precision bars in modern monospaced lockup",
+                            Values = new() { ["Primitive"] = "offset_bars", ["Orientation"] = "90_deg", ["WeightBalance"] = "monolithic_solid", ["FontCategory"] = "mono", ["Arrangement"] = "side_by_side" }
+                        },
+                        new()
+                        {
+                            Family = BrandLogoFamilyNames.Minimal,
+                            Descriptor = "Quadrant arc geometry with negative aperture styling",
+                            Values = new() { ["Primitive"] = "quadrant_arc", ["Orientation"] = "180_deg", ["WeightBalance"] = "negative_aperture", ["FontCategory"] = "high_contrast_serif", ["Arrangement"] = "side_by_side" }
+                        },
+                        new()
+                        {
+                            Family = BrandLogoFamilyNames.Minimal,
+                            Descriptor = "Diagonal slash mark positioned over stacked name",
+                            Values = new() { ["Primitive"] = "diagonal_slash", ["Orientation"] = "45_deg", ["WeightBalance"] = "contrast_duo", ["FontCategory"] = "slab_serif", ["Arrangement"] = "stacked" }
+                        },
+                        new()
+                        {
+                            Family = BrandLogoFamilyNames.Minimal,
+                            Descriptor = "Chevron fold linework with solid monolithic weighting",
+                            Values = new() { ["Primitive"] = "chevron_fold", ["Orientation"] = "270_deg", ["WeightBalance"] = "monolithic_solid", ["FontCategory"] = "geometric_sans", ["Arrangement"] = "side_by_side" }
+                        }
+                    };
+            }
         }
 
         private static BrandLogoConceptParameters GenerateDeterministicSingleParameterSet(

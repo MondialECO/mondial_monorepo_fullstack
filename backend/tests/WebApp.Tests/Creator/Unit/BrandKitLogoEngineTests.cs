@@ -178,5 +178,138 @@ namespace WebApp.Tests.Creator.Unit
             isInvalid.Should().BeFalse();
             invalidError.Should().Contain("Invalid value");
         }
+
+        [Theory]
+        [InlineData(BrandLogoFamilyNames.SymbolPlusName)]
+        [InlineData(BrandLogoFamilyNames.Wordmark)]
+        [InlineData(BrandLogoFamilyNames.Monogram)]
+        [InlineData(BrandLogoFamilyNames.Abstract)]
+        [InlineData(BrandLogoFamilyNames.Icon)]
+        [InlineData(BrandLogoFamilyNames.Minimal)]
+        public async Task LogoGenerationService_generates_six_concepts_exclusively_within_selected_logo_type(string selectedFamily)
+        {
+            var tempDir = Path.Combine(Path.GetTempPath(), $"logo_test_{Guid.NewGuid():N}");
+            Directory.CreateDirectory(tempDir);
+            try
+            {
+                var envMock = new Moq.Mock<Microsoft.AspNetCore.Hosting.IWebHostEnvironment>();
+                envMock.Setup(e => e.WebRootPath).Returns(tempDir);
+
+                var service = new LogoGenerationService(_registry, env: envMock.Object);
+
+                var idea = new CreatorIdea
+                {
+                    Id = "idea-123",
+                    Project = new CreatorJourneyProject
+                    {
+                        Name = "CyberLock Sentinel",
+                        Problem = "Security breaches",
+                        Solution = "Autonomous network defense"
+                    }
+                };
+
+                var kit = new BrandKit
+                {
+                    Strategy = new BrandStrategy
+                    {
+                        BusinessName = "CyberLock Sentinel",
+                        PersonalityTraits = new List<string> { "precision", "cyber", "technical" }
+                    },
+                    Direction = new BrandDirection
+                    {
+                        SelectedDirectionKey = "dir_1",
+                        Candidates = new List<BrandDirectionCandidate>
+                        {
+                            new() { Key = "dir_1", Name = "High-Assurance Security", DisplayTypeface = "Space Grotesk", TextTypeface = "Inter" }
+                        }
+                    },
+                    Logo = new BrandLogo
+                    {
+                        LogoType = selectedFamily
+                    }
+                };
+
+                var concepts = await service.GenerateConceptsAsync(idea, kit);
+
+                concepts.Should().NotBeNull();
+                concepts.Should().HaveCount(6);
+
+                // All 6 concepts MUST match the chosen mark family
+                foreach (var concept in concepts)
+                {
+                    concept.Parameters.Family.Should().Be(selectedFamily);
+                    concept.MarkAssetUri.Should().NotBeNullOrWhiteSpace();
+                    concept.LockupAssetUri.Should().NotBeNullOrWhiteSpace();
+                    concept.DescriptorLine.Should().NotBeNullOrWhiteSpace();
+                }
+
+                // Verify that parameters across the 6 concepts are diverse (not 6 identical copies)
+                var parameterValues = concepts.Select(c => string.Join("|", c.Parameters.Values.Select(kv => $"{kv.Key}={kv.Value}"))).ToList();
+                parameterValues.Distinct().Count().Should().Be(6);
+            }
+            finally
+            {
+                if (Directory.Exists(tempDir))
+                {
+                    try { Directory.Delete(tempDir, recursive: true); } catch { }
+                }
+            }
+        }
+
+        [Fact]
+        public async Task LogoGenerationService_falls_back_to_multi_family_diversity_when_logo_type_not_selected()
+        {
+            var tempDir = Path.Combine(Path.GetTempPath(), $"logo_test_{Guid.NewGuid():N}");
+            Directory.CreateDirectory(tempDir);
+            try
+            {
+                var envMock = new Moq.Mock<Microsoft.AspNetCore.Hosting.IWebHostEnvironment>();
+                envMock.Setup(e => e.WebRootPath).Returns(tempDir);
+
+                var service = new LogoGenerationService(_registry, env: envMock.Object);
+
+                var idea = new CreatorIdea
+                {
+                    Id = "idea-456",
+                    Project = new CreatorJourneyProject { Name = "TerraHarvest Organic" }
+                };
+
+                var kit = new BrandKit
+                {
+                    Strategy = new BrandStrategy
+                    {
+                        BusinessName = "TerraHarvest Organic",
+                        PersonalityTraits = new List<string> { "organic", "warm", "sustainable" }
+                    },
+                    Direction = new BrandDirection
+                    {
+                        SelectedDirectionKey = "dir_1",
+                        Candidates = new List<BrandDirectionCandidate>
+                        {
+                            new() { Key = "dir_1", Name = "Earth & Craft", DisplayTypeface = "Cinzel", TextTypeface = "Plus Jakarta Sans" }
+                        }
+                    },
+                    Logo = new BrandLogo
+                    {
+                        LogoType = null // No single type locked -> fallback to cross-family
+                    }
+                };
+
+                var concepts = await service.GenerateConceptsAsync(idea, kit);
+
+                concepts.Should().NotBeNull();
+                concepts.Should().HaveCount(6);
+
+                var distinctFamilies = concepts.Select(c => c.Parameters.Family).Distinct().Count();
+                distinctFamilies.Should().BeGreaterOrEqualTo(4);
+            }
+            finally
+            {
+                if (Directory.Exists(tempDir))
+                {
+                    try { Directory.Delete(tempDir, recursive: true); } catch { }
+                }
+            }
+        }
     }
 }
