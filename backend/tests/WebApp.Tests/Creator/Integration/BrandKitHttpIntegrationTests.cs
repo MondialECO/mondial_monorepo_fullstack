@@ -107,9 +107,10 @@ namespace WebApp.Tests.Creator.Integration
                 JourneyService,
                 BrandKitRepo,
                 ideaStoreOverride ?? IdeaRepo,
-                client,
-                configOverride,
-                NullLogger<CreatorBrandKitController>.Instance)
+                logoGenerationService: null,
+                mongoClient: client,
+                config: configOverride,
+                logger: NullLogger<CreatorBrandKitController>.Instance)
             {
                 ControllerContext = new ControllerContext
                 {
