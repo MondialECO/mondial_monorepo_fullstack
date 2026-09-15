@@ -29,8 +29,14 @@ All capabilities route authoritatively to `google/gemini-3.8-flash` in base conf
 | **`IdeaClarifier`** (`C-2`) | `google/gemini-3.8-flash` | **20 credits** | Problem, audience, alternative analysis, clarity scoring (locked baseline; pre-ceiling benchmark median 3,105 tokens) |
 | **`BusinessPlan`** (`C-3`) | `google/gemini-3.8-flash` | **33 credits** | 9-section enterprise business plan (locked; pre-ceiling benchmark median 5,182 tokens, ratio 1.6689) |
 | **`Forecast`** (`C-4`) | `google/gemini-3.8-flash` | **32 credits** *(Provisional)* | 36-month projections (12 AI + 24 algorithmic projection; post-8k ceiling, post-trim benchmark median 5,001 tokens, ratio 1.6106) |
+| **`DirectionGeneration`** | `google/gemini-3.8-flash` | **7 credits** | 4-candidate strategic brand direction generator (archetypes, motifs, rationales) |
+| **`LogoParameterSelection`**| `google/gemini-3.8-flash` | **4 credits** | 6-concept parametric logo batch generator across 6 mark families |
+| **`LogoConceptRegenerate`** | `google/gemini-3.8-flash` | **2 credits** | Single logo concept regeneration (distinct geometry and layout) |
+| **`ColorGeneration`** | `google/gemini-3.8-flash` | **2 credits** | 5-role colour palette regeneration (contrast, harmony, and luminance enforcement) |
+| **`TypographyGeneration`** | `google/gemini-3.8-flash` | **2 credits** | 4-role typography system regeneration (distinct pairing validation) |
 | **`IdeaGenerator`** | `google/gemini-3.8-flash` | **0 credits** | Unmetered discovery generator |
 | **`Probe`** | `google/gemini-3.8-flash` | **0 credits** | Operational health self-test |
+| **Deterministic Derivations** | — | **0 credits** | Free initial color/typography derivations, derived variations, section patches |
 
 ---
 

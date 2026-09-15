@@ -12,8 +12,8 @@ dashboard, health, credits, observability and failure behaviour.
 |---|---|---|
 | `OpenRouter__ApiKey` | env var / user-secrets | **Required.** `StartupConfigValidation` fails fast if absent — the app refuses to boot. |
 | `OpenRouter:BaseUrl` | appsettings | Default `https://openrouter.ai/api/v1`. |
-| `Ai:ModelRouting:Models` | appsettings | task-type → model id. All tasks including `Probe` route to `google/gemini-3.8-flash`. Probe has credit cost 0. |
-| `Ai:CreditCosts` | appsettings | per-type credit cost; `Probe = 0` (free). |
+| `Ai:ModelRouting:Models` | appsettings | task-type → model id (`IModelRouter`). All tasks route to `google/gemini-3.8-flash` with zero hardcoded model fallbacks in application code. Tasks include `Probe`, `IdeaClarifier`, `BusinessPlan`, `Forecast`, `DirectionGeneration`, `LogoParameterSelection`, `LogoConceptRegenerate`, `ColorGeneration`, `TypographyGeneration`. |
+| `Ai:CreditCosts` | appsettings | per-type credit cost config: `DirectionGeneration=7`, `LogoParameterSelection=4`, `LogoConceptRegenerate=2`, `ColorGeneration=2`, `TypographyGeneration=2`, `IdeaClarifier=20`, `BusinessPlan=33`, `Forecast=32`, `Probe=0`. |
 | `Hangfire:WorkerCount` | appsettings | bounded worker count (default 4). |
 | `Ai:Enabled` | appsettings | master kill-switch for enqueue (rollback without redeploy). |
 
@@ -69,6 +69,12 @@ deploying, or startup validation aborts the boot (intended fail-fast).
   the next boot every existing user **without** a ledger is granted `<n>`
   credits. Idempotent (upsert with `$setOnInsert`) — existing balances are never
   touched, safe to leave on. Off by default.
+
+### 4.1 Brand Kit Studio Generative Metering & Per-Element Caps
+- **Synchronous Debits:** Brand Kit generative calls (`DirectionGeneration`: 7, `LogoParameterSelection`: 4, `LogoConceptRegenerate`: 2, `ColorGeneration`: 2, `TypographyGeneration`: 2) are debited immediately before model execution in `CreatorBrandKitController`.
+- **Per-Element Regenerate Cap (Max 3):** Direction candidate generation, single logo concept regeneration, colour palette regeneration, and typography regeneration each track an individual `RegenerateCount`. When `RegenerateCount >= 3`, the request halts with HTTP 400 and **0 credits debited**.
+- **Hub Reset (`POST open-studio`):** Entering the visual identity studio hub resets all section regenerate counters to 0 (`Direction.RegenerateCount = 0`, `Logo.Concepts[i].RegenerateCount = 0`, `Colors.RegenerateCount = 0`, `Typography.RegenerateCount = 0`). Section `PATCH` updates do not reset counters.
+- **Compensating Refunds:** If an AI model call throws, times out, returns malformed parameters, or encounters an optimistic concurrency write conflict, `RefundForJobAsync(userId, jobType, opId, reason)` is synchronously dispatched with the matching `operationId`.
 
 ---
 
