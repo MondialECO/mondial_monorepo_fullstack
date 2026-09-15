@@ -525,7 +525,8 @@ namespace WebApp.Controllers
                     {
                         Key = c.Key,
                         DescriptorLine = c.DescriptorLine,
-                        AssetUri = c.AssetUri
+                        MarkAssetUri = c.MarkAssetUri,
+                        LockupAssetUri = c.LockupAssetUri
                     }).ToList();
                     updates.Add(updateBuilder.Set(x => x.Logo.Concepts, concepts));
                 }
@@ -580,12 +581,12 @@ namespace WebApp.Controllers
                     else if (!string.IsNullOrEmpty(dto.SelectedConceptKey))
                     {
                         var dtoConcept = dto.Concepts?.FirstOrDefault(c => c.Key == dto.SelectedConceptKey);
-                        newLogoAsset = dtoConcept?.AssetUri
-                            ?? kit.Logo?.Concepts?.FirstOrDefault(c => c.Key == dto.SelectedConceptKey)?.AssetUri;
+                        newLogoAsset = dtoConcept?.LockupAssetUri
+                            ?? kit.Logo?.Concepts?.FirstOrDefault(c => c.Key == dto.SelectedConceptKey)?.LockupAssetUri;
                     }
                     else if (!string.IsNullOrEmpty(kit.Logo?.SelectedConceptKey))
                     {
-                        newLogoAsset = kit.Logo.Concepts.FirstOrDefault(c => c.Key == kit.Logo.SelectedConceptKey)?.AssetUri;
+                        newLogoAsset = kit.Logo.Concepts.FirstOrDefault(c => c.Key == kit.Logo.SelectedConceptKey)?.LockupAssetUri;
                     }
 
                     var selectedCand = kit.Direction?.Candidates?.FirstOrDefault(c => c.Key == kit.Direction.SelectedDirectionKey);
@@ -702,7 +703,8 @@ namespace WebApp.Controllers
 
                 var update = updateBuilder
                     .Set("Logo.Concepts.$[c].DescriptorLine", regeneratedConcept.DescriptorLine)
-                    .Set("Logo.Concepts.$[c].AssetUri", regeneratedConcept.AssetUri)
+                    .Set("Logo.Concepts.$[c].MarkAssetUri", regeneratedConcept.MarkAssetUri)
+                    .Set("Logo.Concepts.$[c].LockupAssetUri", regeneratedConcept.LockupAssetUri)
                     .Set("Logo.Concepts.$[c].RegenerateCount", regeneratedConcept.RegenerateCount)
                     .Set("Logo.Concepts.$[c].Parameters", regeneratedConcept.Parameters)
                     .Inc(x => x.Logo.RegenerateCount, 1);
@@ -995,7 +997,7 @@ namespace WebApp.Controllers
                     }
                     else if (!string.IsNullOrEmpty(kit.Logo?.SelectedConceptKey))
                     {
-                        newLogoAsset = kit.Logo.Concepts.FirstOrDefault(c => c.Key == kit.Logo.SelectedConceptKey)?.AssetUri;
+                        newLogoAsset = kit.Logo.Concepts.FirstOrDefault(c => c.Key == kit.Logo.SelectedConceptKey)?.LockupAssetUri;
                     }
 
                     var selectedCand = kit.Direction?.Candidates?.FirstOrDefault(c => c.Key == kit.Direction.SelectedDirectionKey);

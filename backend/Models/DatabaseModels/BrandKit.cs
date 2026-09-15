@@ -144,8 +144,10 @@ namespace WebApp.Models.DatabaseModels
     {
         public string Key { get; set; } = string.Empty;
         public string DescriptorLine { get; set; } = string.Empty;
-        /// <summary>URI reference on disk (never inlined SVG/base64).</summary>
-        public string AssetUri { get; set; } = string.Empty;
+        /// <summary>URI reference on disk for standalone mark (never inlined SVG/base64).</summary>
+        public string MarkAssetUri { get; set; } = string.Empty;
+        /// <summary>URI reference on disk for mark + text lockup (never inlined SVG/base64).</summary>
+        public string LockupAssetUri { get; set; } = string.Empty;
         public int RegenerateCount { get; set; }
         /// <summary>Stored parameter set for deterministic redrawing and variation derivation.</summary>
         public BrandLogoConceptParameters? Parameters { get; set; }

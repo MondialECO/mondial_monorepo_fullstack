@@ -203,21 +203,19 @@ namespace WebApp.Tests.Creator.Integration
             var families = kit.Logo.Concepts.Select(c => c.Parameters?.Family).Distinct().ToList();
             families.Count.Should().BeGreaterOrEqualTo(4);
 
-            // Verify every concept has asset on disk
+            // Verify every concept has mark and lockup assets on disk
             foreach (var concept in kit.Logo.Concepts)
             {
                 concept.Key.Should().NotBeNullOrWhiteSpace();
                 concept.DescriptorLine.Should().NotBeNullOrWhiteSpace();
-                concept.AssetUri.Should().StartWith("/brand-assets/logos/");
+                concept.MarkAssetUri.Should().StartWith("/brand-assets/logos/");
+                concept.LockupAssetUri.Should().StartWith("/brand-assets/logos/");
                 concept.Parameters.Should().NotBeNull();
 
-                var relativeDiskPath = concept.AssetUri.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
-                var fullDiskPath = Path.Combine(_tempWebRoot, relativeDiskPath.Substring("brand-assets/logos/".Length + ideaId.Length + 1));
-                // Find file in directory
                 var dir = Path.Combine(_tempWebRoot, "brand-assets", "logos", ideaId);
                 Directory.Exists(dir).Should().BeTrue();
                 var files = Directory.GetFiles(dir);
-                files.Should().HaveCount(6);
+                files.Should().HaveCount(12); // 6 marks + 6 lockups
             }
         }
 
@@ -258,7 +256,8 @@ namespace WebApp.Tests.Creator.Integration
 
             var targetConceptAfter = kitAfter.Logo.Concepts.First(c => c.Key == "concept_3");
             targetConceptAfter.RegenerateCount.Should().Be(1);
-            targetConceptAfter.AssetUri.Should().NotBe(targetConceptBefore.AssetUri);
+            targetConceptAfter.LockupAssetUri.Should().NotBe(targetConceptBefore.LockupAssetUri);
+            targetConceptAfter.MarkAssetUri.Should().NotBe(targetConceptBefore.MarkAssetUri);
 
             // Assert the other 5 concepts are byte-for-byte unchanged in DB
             var otherConceptsAfter = kitAfter.Logo.Concepts.Where(c => c.Key != "concept_3").ToList();
@@ -266,7 +265,8 @@ namespace WebApp.Tests.Creator.Integration
             {
                 otherConceptsAfter[i].Key.Should().Be(otherConceptsBefore[i].Key);
                 otherConceptsAfter[i].DescriptorLine.Should().Be(otherConceptsBefore[i].DescriptorLine);
-                otherConceptsAfter[i].AssetUri.Should().Be(otherConceptsBefore[i].AssetUri);
+                otherConceptsAfter[i].MarkAssetUri.Should().Be(otherConceptsBefore[i].MarkAssetUri);
+                otherConceptsAfter[i].LockupAssetUri.Should().Be(otherConceptsBefore[i].LockupAssetUri);
                 otherConceptsAfter[i].RegenerateCount.Should().Be(otherConceptsBefore[i].RegenerateCount);
             }
         }

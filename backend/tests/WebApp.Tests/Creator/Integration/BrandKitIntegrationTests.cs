@@ -110,7 +110,7 @@ namespace WebApp.Tests.Creator.Integration
                     LogoType = "ai",
                     Concepts = new List<BrandLogoConcept>
                     {
-                        new() { Key = "concept-1", DescriptorLine = "Monogram A mark", AssetUri = "/uploads/branding/c1.svg" }
+                        new() { Key = "concept-1", DescriptorLine = "Monogram A mark", MarkAssetUri = "/uploads/branding/c1_mark.svg", LockupAssetUri = "/uploads/branding/c1_lockup.svg" }
                     },
                     SelectedConceptKey = "concept-1",
                     RefinementSettings = new BrandLogoRefinementSettings

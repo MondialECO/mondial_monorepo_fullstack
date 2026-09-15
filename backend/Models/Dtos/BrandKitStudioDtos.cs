@@ -61,7 +61,8 @@ namespace WebApp.Models.Dtos
     {
         public string Key { get; set; } = string.Empty;
         public string DescriptorLine { get; set; } = string.Empty;
-        public string AssetUri { get; set; } = string.Empty;
+        public string MarkAssetUri { get; set; } = string.Empty;
+        public string LockupAssetUri { get; set; } = string.Empty;
     }
 
     public class BrandLogoRefinementSettingsDto
