@@ -144,7 +144,7 @@ Following the Clarifier:
 
 ### Brand Visual Identity Studio (LIVE)
 
-The Brand Visual Identity Studio manages the creator's complete visual identity across 5 interactive modal steps, persisted in the dedicated `BrandKits` collection (`BrandKit`) bound 1:1 to each `CreatorIdea` via `BusinessIdeaId` (unique index on `IdeaId`).
+The Brand Visual Identity Studio manages the creator's complete visual identity across 7 interactive modal steps (Strategy $\to$ Direction $\to$ Logo Type $\to$ Logo Creation $\to$ Variations $\to$ Colour $\to$ Typography) followed by the persistent Brand Kit Hub page, persisted in the dedicated `BrandKits` collection (`BrandKit`) bound 1:1 to each `CreatorIdea` via `BusinessIdeaId` (unique index on `IdeaId`).
 
 #### 1. Data Model & Thin Pointer Sync
 - **`BrandKit` Authority:** Holds 6 distinct sections:

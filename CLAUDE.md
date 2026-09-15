@@ -59,7 +59,7 @@ src/
    mean — including elements inside a dropdown that renders inline. This silently broke the
    SP notification panel for months. Pass a class prop for the specific element instead.
 9. **Creator Brand Kit Studio rules:**
-   - Visual Identity Studio uses 5 modal steps: Strategy $\to$ Direction $\to$ Logo $\to$ Colors $\to$ Typography.
+   - Visual Identity Studio uses 7 modal steps: Strategy $\to$ Direction $\to$ Logo Type $\to$ Logo Creation $\to$ Variations $\to$ Colour $\to$ Typography, followed by the final Brand Kit hub page.
    - Canonical 5 colour roles: `Primary`, `Secondary`, `Accent`, `Background`, `Text` (no legacy names like "Neutral" or "Card").
    - Canonical 4 typography roles: `Logo type`, `Heading`, `Body`, `Button & label` (no legacy names like "Section Title" and no category names like "Mono"/"Display").
    - Logo assets separate standalone icon mark (`MarkAssetUri`, 1:1 aspect ratio) from 7 canonical derived lockup variations.
