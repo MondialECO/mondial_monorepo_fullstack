@@ -13,11 +13,13 @@ import { StrategyResultCard } from "./cards/StrategyResultCard";
 import { DirectionResultCard } from "./cards/DirectionResultCard";
 import { LogoTypeResultCard } from "./cards/LogoTypeResultCard";
 import { LogoResultCard } from "./cards/LogoResultCard";
+import { ColorsResultCard } from "./cards/ColorsResultCard";
 import { LogoCreationModal } from "./LogoCreationModal";
 import { VariationSetModal } from "./VariationSetModal";
 import { StrategyReviewModal } from "./StrategyReviewModal";
 import { DirectionBoardModal } from "./DirectionBoardModal";
 import { LogoTypeChooserModal } from "./LogoTypeChooserModal";
+import { ColorSystemModal } from "./ColorSystemModal";
 import { StudioStepPlaceholderModal } from "./StudioStepPlaceholderModal";
 import { Sparkles, AlertCircle, Loader2 } from "lucide-react";
 
@@ -372,6 +374,14 @@ export function BrandStudioShell({
               />
             )}
 
+            {/* Colour System Result Card (Step 5) */}
+            {kit?.colors?.confirmedAt && (
+              <ColorsResultCard
+                kit={kit}
+                onEdit={() => setActiveModal("colors")}
+              />
+            )}
+
             {/* Studio Canvas Hero Banner if no cards yet */}
             {!kit?.strategy?.confirmedAt &&
               !kit?.direction?.selectedAt &&
@@ -459,14 +469,17 @@ export function BrandStudioShell({
         />
       )}
 
-      {activeModal === "colors" && (
-        <StudioStepPlaceholderModal
-          stepKey="colors"
-          stepNumber={5}
-          stepTitle="Harmonized Colour System"
-          description="Review and customize the 5 canonical brand color roles with live WCAG contrast checking."
+      {/* Step 5: Color System Modal */}
+      {activeModal === "colors" && kit && (
+        <ColorSystemModal
           isOpen={true}
+          ideaId={ideaId}
+          kit={kit}
           onClose={() => setActiveModal(null)}
+          onSuccess={(updatedKit) => {
+            setKit(updatedKit);
+            setActiveModal("typography");
+          }}
         />
       )}
 
