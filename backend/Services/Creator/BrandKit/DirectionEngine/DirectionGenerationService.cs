@@ -104,7 +104,7 @@ namespace WebApp.Services.Creator.BrandKit.DirectionEngine
             List<string> avoidList,
             CancellationToken cancellationToken)
         {
-            var modelId = _modelRouter?.Resolve("DirectionGeneration") ?? "anthropic/claude-3.5-sonnet";
+            var modelId = _modelRouter?.Resolve("DirectionGeneration") ?? "google/gemini-3.8-flash";
             var prompt = BuildPrompt(brandName, strategy, avoidList);
 
             var request = new AiCompletionRequest

@@ -80,7 +80,7 @@ namespace WebApp.Tests.Creator.Unit
         {
             var mockAi = new Mock<IAiProvider>();
             var mockRouter = new Mock<IModelRouter>();
-            mockRouter.Setup(r => r.Resolve(It.IsAny<string>())).Returns("anthropic/claude-3.5-sonnet");
+            mockRouter.Setup(r => r.Resolve(It.IsAny<string>())).Returns("google/gemini-3.8-flash");
 
             var fakeJsonResponse = @"{
               ""candidates"": [
@@ -127,9 +127,9 @@ namespace WebApp.Tests.Creator.Unit
                 .ReturnsAsync(new AiCompletion
                 {
                     Text = fakeJsonResponse,
-                    Model = "anthropic/claude-3.5-sonnet",
+                    Model = "google/gemini-3.8-flash",
                     Usage = new AiTokenUsage(520, 380, 900),
-                    EstimatedCost = 0.0072m
+                    EstimatedCost = 0.000153m
                 });
 
             var service = new DirectionGenerationService(mockAi.Object, mockRouter.Object, NullLogger<DirectionGenerationService>.Instance);
@@ -291,9 +291,9 @@ namespace WebApp.Tests.Creator.Unit
                         }
                       ]
                     }",
-                    Model = "anthropic/claude-3.5-sonnet",
+                    Model = "google/gemini-3.8-flash",
                     Usage = new AiTokenUsage(540, 390, 930),
-                    EstimatedCost = 0.0074m
+                    EstimatedCost = 0.0001575m
                 });
 
             mockAi.Setup(ai => ai.CompleteAsync(It.Is<AiCompletionRequest>(r => r.Messages[1].Content.Contains("TerraHarvest")), It.IsAny<CancellationToken>()))
@@ -339,9 +339,9 @@ namespace WebApp.Tests.Creator.Unit
                         }
                       ]
                     }",
-                    Model = "anthropic/claude-3.5-sonnet",
+                    Model = "google/gemini-3.8-flash",
                     Usage = new AiTokenUsage(530, 385, 915),
-                    EstimatedCost = 0.0073m
+                    EstimatedCost = 0.0001553m
                 });
 
             mockAi.Setup(ai => ai.CompleteAsync(It.Is<AiCompletionRequest>(r => r.Messages[1].Content.Contains("Maison Forma")), It.IsAny<CancellationToken>()))
@@ -387,9 +387,9 @@ namespace WebApp.Tests.Creator.Unit
                         }
                       ]
                     }",
-                    Model = "anthropic/claude-3.5-sonnet",
+                    Model = "google/gemini-3.8-flash",
                     Usage = new AiTokenUsage(555, 395, 950),
-                    EstimatedCost = 0.0076m
+                    EstimatedCost = 0.0001601m
                 });
 
             var service = new DirectionGenerationService(mockAi.Object, mockRouter.Object, NullLogger<DirectionGenerationService>.Instance);
