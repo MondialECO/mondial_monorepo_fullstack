@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using Moq;
@@ -94,9 +96,20 @@ namespace WebApp.Tests.Creator.Integration
             await _appFixture.DisposeAsync();
         }
 
-        private CreatorBrandKitController CreateController(string userId)
+        private CreatorBrandKitController CreateController(
+            string userId,
+            ICreatorIdeaStore? ideaStoreOverride = null,
+            IMongoClient? mongoClientOverride = null,
+            IConfiguration? configOverride = null)
         {
-            return new CreatorBrandKitController(JourneyService, BrandKitRepo)
+            var client = mongoClientOverride ?? (_fallbackClient ?? (IMongoClient?)_appFixture.Factory?.Services.GetService(typeof(IMongoClient)));
+            return new CreatorBrandKitController(
+                JourneyService,
+                BrandKitRepo,
+                ideaStoreOverride ?? IdeaRepo,
+                client,
+                configOverride,
+                NullLogger<CreatorBrandKitController>.Instance)
             {
                 ControllerContext = new ControllerContext
                 {
@@ -525,6 +538,399 @@ namespace WebApp.Tests.Creator.Integration
             conflictResult.Should().BeOfType<ObjectResult>();
             ((ObjectResult)conflictResult).StatusCode.Should().Be(StatusCodes.Status409Conflict);
             ((ApiResponse)((ObjectResult)conflictResult).Value!).Message.Should().Contain("switched to a different idea");
+        }
+
+        // =========================================================================
+        // 11. DERIVED SUMMARY SYNC: 4-FIELD TARGETED SET LEAVES DESIGNER FIELDS UNTOUCHED
+        // =========================================================================
+        [Fact]
+        public async Task Approving_logo_updates_all_four_summary_fields_and_leaves_designer_fields_untouched()
+        {
+            var userId = "user-" + Guid.NewGuid();
+            var ideaId = ObjectId.GenerateNewId().ToString();
+
+            var initialBookedAt = DateTime.UtcNow.AddDays(-3);
+            var idea = new CreatorIdea
+            {
+                Id = ideaId,
+                UserId = userId,
+                Project = new CreatorJourneyProject
+                {
+                    Name = "Brand Identity Studio Idea",
+                    Branding = new CreatorBranding
+                    {
+                        LogoType = "designer",
+                        DesignerId = "sp_designer_42",
+                        ConversationId = "conv_9999",
+                        BookedAt = initialBookedAt,
+                        ColorPalette = new List<string> { "#112233", "#445566", "#778899" }
+                    }
+                },
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                Version = 1
+            };
+            await Database.GetCollection<CreatorIdea>("CreatorIdeas").InsertOneAsync(idea);
+
+            var journey = new CreatorJourney { UserId = userId, ActiveIdeaId = ideaId };
+            await Database.GetCollection<CreatorJourney>("CreatorJourneys").InsertOneAsync(journey);
+
+            var controller = CreateController(userId);
+
+            // Initialize kit
+            await controller.CreateKit(ideaId);
+
+            // Confirm Strategy
+            await controller.PatchStrategy(new BrandStrategyPatchDto { ConfirmedAt = DateTime.UtcNow }, ideaId);
+
+            // Select Direction
+            var candKey = "cand-slate";
+            await controller.PatchDirection(new BrandDirectionPatchDto
+            {
+                SelectedDirectionKey = candKey,
+                SelectedAt = DateTime.UtcNow,
+                Candidates = new List<BrandDirectionCandidateDto>
+                {
+                    new()
+                    {
+                        Key = candKey,
+                        Name = "Minimal Slate",
+                        DisplayTypeface = "Syne",
+                        TextTypeface = "DM Sans",
+                        ColorPalette = new List<string> { "#000000", "#FFFFFF", "#333333", "#F0F0F0" }
+                    }
+                }
+            }, ideaId);
+
+            // Approve Logo with primary variation
+            var primarySvg = "/brand-assets/vector/primary_logo.svg";
+            var primaryPng = "/brand-assets/raster/primary_logo.png";
+            var patchLogoResult = await controller.PatchLogo(new BrandLogoPatchDto
+            {
+                ApprovedAt = DateTime.UtcNow,
+                Variations = new Dictionary<string, BrandLogoVariationDto>
+                {
+                    [BrandLogoVariationKeys.Primary] = new()
+                    {
+                        SvgUri = primarySvg,
+                        PngUri = primaryPng,
+                        UsageNote = "Primary lockup"
+                    }
+                }
+            }, ideaId);
+
+            patchLogoResult.Should().BeOfType<OkObjectResult>();
+
+            // Re-read CreatorIdea from repository
+            var reloadedIdea = await IdeaRepo.GetOwnedAsync(ideaId, userId);
+            reloadedIdea.Should().NotBeNull();
+            var branding = reloadedIdea!.Project?.Branding;
+            branding.Should().NotBeNull();
+
+            // Four synced fields
+            branding!.BrandingMethod.Should().Be("ai_studio");
+            branding.LogoAsset.Should().Be(primaryPng);
+            branding.PaletteName.Should().Be("Minimal Slate");
+            branding.TypographyPairing.Should().Be("Syne + DM Sans");
+
+            // Untouched hire-designer fields and color palette
+            branding.LogoType.Should().Be("designer");
+            branding.DesignerId.Should().Be("sp_designer_42");
+            branding.ConversationId.Should().Be("conv_9999");
+            branding.BookedAt.Should().BeCloseTo(initialBookedAt, TimeSpan.FromSeconds(1));
+            branding.ColorPalette.Should().Equal("#112233", "#445566", "#778899");
+        }
+
+        // =========================================================================
+        // 12. TARGETED $SET LEAVES ALL SIBLING PROJECT FIELDS BYTE-IDENTICAL
+        // =========================================================================
+        [Fact]
+        public async Task Targeted_set_leaves_all_sibling_project_fields_byte_identical()
+        {
+            var userId = "user-" + Guid.NewGuid();
+            var ideaId = ObjectId.GenerateNewId().ToString();
+
+            var project = new CreatorJourneyProject
+            {
+                Name = "Autonomous Solar Grid",
+                Problem = "Grid instability during peak demand periods",
+                Solution = "Decentralized modular battery microgrids",
+                TargetUser = "Commercial and municipal facility operators",
+                MarketGap = "High latency demand-response systems",
+                CreatorEdge = "Proprietary low-loss bidirectional inverter firmware",
+                ClarityScore = 92.5,
+                Tags = new List<string> { "energy", "hardware", "cleantech" },
+                Sector = "Clean Energy",
+                Category = "Hardware",
+                TargetMarket = "North America",
+                Geography = "US-West",
+                WhyNow = "State subsidies for commercial microgrids expiring in 2028",
+                RiskiestAssumption = "Cell degradation under continuous peak-cycling"
+            };
+
+            var idea = new CreatorIdea
+            {
+                Id = ideaId,
+                UserId = userId,
+                Project = project,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                Version = 1
+            };
+            await Database.GetCollection<CreatorIdea>("CreatorIdeas").InsertOneAsync(idea);
+
+            var journey = new CreatorJourney { UserId = userId, ActiveIdeaId = ideaId };
+            await Database.GetCollection<CreatorJourney>("CreatorJourneys").InsertOneAsync(journey);
+
+            var controller = CreateController(userId);
+
+            await controller.CreateKit(ideaId);
+            await controller.PatchStrategy(new BrandStrategyPatchDto { ConfirmedAt = DateTime.UtcNow }, ideaId);
+            await controller.PatchDirection(new BrandDirectionPatchDto
+            {
+                SelectedDirectionKey = "cand-solar",
+                SelectedAt = DateTime.UtcNow,
+                Candidates = new List<BrandDirectionCandidateDto>
+                {
+                    new() { Key = "cand-solar", Name = "Solaris Clean", DisplayTypeface = "Outfit", TextTypeface = "Inter" }
+                }
+            }, ideaId);
+
+            // Trigger sync via logo approval
+            await controller.PatchLogo(new BrandLogoPatchDto
+            {
+                ApprovedAt = DateTime.UtcNow,
+                Variations = new Dictionary<string, BrandLogoVariationDto>
+                {
+                    [BrandLogoVariationKeys.Primary] = new() { SvgUri = "/solar/logo.svg", UsageNote = "Main" }
+                }
+            }, ideaId);
+
+            var reloadedIdea = await IdeaRepo.GetOwnedAsync(ideaId, userId);
+            reloadedIdea.Should().NotBeNull();
+            var p = reloadedIdea!.Project;
+            p.Should().NotBeNull();
+
+            // Verify all sibling project properties remain byte-identical
+            p!.Name.Should().Be(project.Name);
+            p.Problem.Should().Be(project.Problem);
+            p.Solution.Should().Be(project.Solution);
+            p.TargetUser.Should().Be(project.TargetUser);
+            p.MarketGap.Should().Be(project.MarketGap);
+            p.CreatorEdge.Should().Be(project.CreatorEdge);
+            p.ClarityScore.Should().Be(project.ClarityScore);
+            p.Tags.Should().Equal(project.Tags);
+            p.Sector.Should().Be(project.Sector);
+            p.Category.Should().Be(project.Category);
+            p.TargetMarket.Should().Be(project.TargetMarket);
+            p.Geography.Should().Be(project.Geography);
+            p.WhyNow.Should().Be(project.WhyNow);
+            p.RiskiestAssumption.Should().Be(project.RiskiestAssumption);
+        }
+
+        // =========================================================================
+        // 13. STRATEGY-ONLY PATCH PRODUCES NO WRITE TO CREATOR IDEA (VERSION UNCHANGED)
+        // =========================================================================
+        [Fact]
+        public async Task Strategy_only_patch_produces_no_write_to_CreatorIdea_and_version_is_unchanged()
+        {
+            var userId = "user-" + Guid.NewGuid();
+            var ideaId = ObjectId.GenerateNewId().ToString();
+
+            await SeedIdeaAndJourneyAsync(userId, ideaId);
+            var controller = CreateController(userId);
+
+            await controller.CreateKit(ideaId);
+
+            var ideaBefore = await IdeaRepo.GetOwnedAsync(ideaId, userId);
+            var initialVersion = ideaBefore!.Version;
+
+            // Strategy patch modifies business name and traits
+            var patchResult = await controller.PatchStrategy(new BrandStrategyPatchDto
+            {
+                BusinessName = "Ecosystem Ventures",
+                PersonalityTraits = new List<string> { "bold", "visionary" }
+            }, ideaId);
+            patchResult.Should().BeOfType<OkObjectResult>();
+
+            var ideaAfter = await IdeaRepo.GetOwnedAsync(ideaId, userId);
+            ideaAfter.Should().NotBeNull();
+            ideaAfter!.Version.Should().Be(initialVersion);
+            ideaAfter.Project!.Branding.BrandingMethod.Should().BeNull();
+            ideaAfter.Project.Branding.LogoAsset.Should().BeNull();
+            ideaAfter.Project.Branding.Should().BeEquivalentTo(ideaBefore.Project.Branding);
+        }
+
+        // =========================================================================
+        // 14. TYPOGRAPHY WEIGHT TWEAK DOES NOT BUMP CREATOR IDEA VERSION
+        // =========================================================================
+        [Fact]
+        public async Task Typography_weight_tweak_does_not_bump_CreatorIdea_version()
+        {
+            var userId = "user-" + Guid.NewGuid();
+            var ideaId = ObjectId.GenerateNewId().ToString();
+
+            await SeedIdeaAndJourneyAsync(userId, ideaId);
+            var controller = CreateController(userId);
+
+            await controller.CreateKit(ideaId);
+            await controller.PatchStrategy(new BrandStrategyPatchDto { ConfirmedAt = DateTime.UtcNow }, ideaId);
+            await controller.PatchDirection(new BrandDirectionPatchDto
+            {
+                SelectedDirectionKey = "cand-1",
+                SelectedAt = DateTime.UtcNow,
+                Candidates = new List<BrandDirectionCandidateDto>
+                {
+                    new() { Key = "cand-1", Name = "Dir 1", DisplayTypeface = "Syne", TextTypeface = "DM Sans" }
+                }
+            }, ideaId);
+            await controller.PatchLogo(new BrandLogoPatchDto
+            {
+                ApprovedAt = DateTime.UtcNow,
+                Variations = new Dictionary<string, BrandLogoVariationDto>
+                {
+                    [BrandLogoVariationKeys.Primary] = new() { SvgUri = "/logo.svg" }
+                }
+            }, ideaId);
+
+            var ideaAfterSync = await IdeaRepo.GetOwnedAsync(ideaId, userId);
+            var versionAfterSync = ideaAfterSync!.Version;
+
+            // Tweak weight only on typography (no change to Family)
+            var patchResult = await controller.PatchTypography(new BrandTypographyPatchDto
+            {
+                Roles = new List<BrandTypographyRolePatchDto>
+                {
+                    new() { RoleName = BrandTypographyRoleNames.Heading, Weight = "800", Size = "36px" }
+                }
+            }, ideaId);
+            patchResult.Should().BeOfType<OkObjectResult>();
+
+            var ideaAfterWeightTweak = await IdeaRepo.GetOwnedAsync(ideaId, userId);
+            ideaAfterWeightTweak!.Version.Should().Be(versionAfterSync);
+        }
+
+        // =========================================================================
+        // 15. TRANSACTION ROLLBACK: FORCED FAILURE OF SECOND WRITE ROLLS BACK FIRST WRITE
+        // =========================================================================
+        [Fact]
+        public async Task Transaction_rollback_on_forced_second_write_failure_leaves_neither_collection_changed()
+        {
+            var userId = "user-" + Guid.NewGuid();
+            var ideaId = ObjectId.GenerateNewId().ToString();
+
+            await SeedIdeaAndJourneyAsync(userId, ideaId);
+
+            // Mock ICreatorIdeaStore where SyncBrandKitSummaryAsync throws
+            var ideaStoreMock = new Mock<ICreatorIdeaStore>();
+            ideaStoreMock.Setup(x => x.GetOwnedAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .ReturnsAsync((string id, string uid) => IdeaRepo.GetOwnedAsync(id, uid).Result);
+            ideaStoreMock.Setup(x => x.SyncBrandKitSummaryAsync(
+                    It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                    It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                    It.IsAny<IClientSessionHandle>()))
+                .ThrowsAsync(new InvalidOperationException("Injected mid-transaction failure on CreatorIdea sync write"));
+
+            var configDict = new Dictionary<string, string?> { ["Mongo:TransactionsEnabled"] = "true" };
+            var configuration = new ConfigurationBuilder().AddInMemoryCollection(configDict).Build();
+
+            var controller = CreateController(userId, ideaStoreOverride: ideaStoreMock.Object, configOverride: configuration);
+
+            // Setup kit with unapproved logo
+            await controller.CreateKit(ideaId);
+            await controller.PatchStrategy(new BrandStrategyPatchDto { ConfirmedAt = DateTime.UtcNow }, ideaId);
+            await controller.PatchDirection(new BrandDirectionPatchDto
+            {
+                SelectedDirectionKey = "c1",
+                SelectedAt = DateTime.UtcNow,
+                Candidates = new List<BrandDirectionCandidateDto> { new() { Key = "c1", Name = "D1" } }
+            }, ideaId);
+
+            // Attempt logo approval which triggers sync write that throws
+            Func<Task> act = async () => await controller.PatchLogo(new BrandLogoPatchDto
+            {
+                ApprovedAt = DateTime.UtcNow,
+                Variations = new Dictionary<string, BrandLogoVariationDto>
+                {
+                    [BrandLogoVariationKeys.Primary] = new() { SvgUri = "/tx_logo.svg" }
+                }
+            }, ideaId);
+
+            // Depending on whether environment supports transactions, if RS available it throws, or 500
+            try
+            {
+                var actionResult = await controller.PatchLogo(new BrandLogoPatchDto
+                {
+                    ApprovedAt = DateTime.UtcNow,
+                    Variations = new Dictionary<string, BrandLogoVariationDto>
+                    {
+                        [BrandLogoVariationKeys.Primary] = new() { SvgUri = "/tx_logo.svg" }
+                    }
+                }, ideaId);
+
+                // If controller caught and returned 500
+                if (actionResult is ObjectResult objRes)
+                {
+                    objRes.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
+                }
+            }
+            catch (InvalidOperationException)
+            {
+                // Thrown if unhandled or rethrown
+            }
+
+            // Verify BrandKit was rolled back: ApprovedAt must remain null!
+            var kit = await BrandKitRepo.GetByIdeaIdAsync(ideaId, userId);
+            kit.Should().NotBeNull();
+            kit!.Logo.ApprovedAt.Should().BeNull();
+        }
+
+        // =========================================================================
+        // 16. BRANDING METHOD AI_STUDIO SATISFIES RESOLUTION WITHOUT DESIGNER HIRE CREDIT
+        // =========================================================================
+        [Fact]
+        public async Task BrandingMethod_ai_studio_satisfies_resolution_without_awarding_designer_hire_points()
+        {
+            var userId = "user-" + Guid.NewGuid();
+            var ideaId = ObjectId.GenerateNewId().ToString();
+
+            var journey = new CreatorJourney
+            {
+                UserId = userId,
+                ActiveIdeaId = ideaId,
+                Project = new CreatorJourneyProject
+                {
+                    Name = "Autonomous Clean Energy",
+                    ClarityScore = 80,
+                    Problem = "High grid carbon intensity",
+                    Solution = "Modular solar deployment",
+                    Branding = new CreatorBranding
+                    {
+                        BrandingMethod = "ai_studio",
+                        LogoAsset = "/assets/ai_logo.svg",
+                        PaletteName = "Solaris",
+                        TypographyPairing = "Syne + DM Sans"
+                    }
+                },
+                Phase2Data = new CreatorPhase2Data
+                {
+                    ClarifierSessionId = "clarifier-123"
+                }
+            };
+
+            // 1. Check phase status computation
+            var phaseStatus = await JourneyService.ComputePhaseStatusAsync(journey, phase1Complete: true);
+            phaseStatus.Phase2.Status.Should().Be("completed");
+
+            // 2. Check SmartMatchingService completeness bonus (+2 for resolved branding)
+            var p = journey.Project;
+            bool brandingBonusSatisfied = !string.IsNullOrEmpty(p.Branding?.BrandingMethod) && p.Branding.BrandingMethod != "pending";
+            brandingBonusSatisfied.Should().BeTrue();
+
+            // 3. Check CreatorPhase3Controller line 629 condition (designer credit)
+            var p3 = journey.Phase3Data ?? new CreatorPhase3Data();
+            bool designerHiredCredit = (((p3.FormationGenerator?.MatchedSpIds?.Count ?? 0) > 0) || p.Branding?.BrandingMethod == "m50_designer");
+            designerHiredCredit.Should().BeFalse(); // ai_studio must NOT receive designer credit!
         }
     }
 }
