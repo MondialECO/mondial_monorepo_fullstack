@@ -380,7 +380,7 @@ namespace WebApp.Controllers
                 for (int i = 0; i < dto.Roles.Count; i++)
                 {
                     var role = dto.Roles[i];
-                    var identifier = $"r_{i}";
+                    var identifier = $"r{i}";
                     arrayFilters.Add(new BsonDocumentArrayFilterDefinition<BsonDocument>(
                         new BsonDocument($"{identifier}.RoleName", role.RoleName)));
 
@@ -459,7 +459,7 @@ namespace WebApp.Controllers
                     for (int i = 0; i < dto.Roles.Count; i++)
                     {
                         var role = dto.Roles[i];
-                        var identifier = $"t_{i}";
+                        var identifier = $"t{i}";
                         arrayFilters.Add(new BsonDocumentArrayFilterDefinition<BsonDocument>(
                             new BsonDocument($"{identifier}.RoleName", role.RoleName)));
 
