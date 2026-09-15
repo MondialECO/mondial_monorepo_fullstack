@@ -195,6 +195,12 @@ namespace WebApp.Services.Implementations
             return OverlayIdea(j, idea);
         }
 
+        public async Task<CreatorIdea> ResolveIdeaAsync(string userId, string ideaId = null)
+        {
+            var j = await GetOrCreateAsync(userId);
+            return await ResolveIdeaAsync(j, ideaId);
+        }
+
         public async Task<CreatorJourney> GetOrCreateAsync(string userId)
         {
             var existing = await _context.CreatorJourneys.Find(j => j.UserId == userId).FirstOrDefaultAsync();

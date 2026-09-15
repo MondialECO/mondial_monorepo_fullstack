@@ -21,6 +21,13 @@ namespace WebApp.Services.Interface
         Task<CreatorJourney> GetOrCreateComposedAsync(string userId, string ideaId = null);
 
         /// <summary>
+        /// Resolves an idea scoped to the user. Validates an explicit ideaId against the user's ideas
+        /// (404 when not found, 409 when belonging to another idea context); an absent ideaId falls back
+        /// to the journey's active idea.
+        /// </summary>
+        Task<CreatorIdea> ResolveIdeaAsync(string userId, string ideaId = null);
+
+        /// <summary>
         /// The derived-status engine. Pure function of the journey's artifacts plus the
         /// user's Phase-1 onboarding completion. Never persisted — call on every read.
         /// </summary>
