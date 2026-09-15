@@ -37,6 +37,21 @@ namespace WebApp.Services.Repository
         /// idea write keeps the my-ideas sort honest.
         /// </summary>
         Task<bool> UpdateAsync(string ideaId, string ownerUserId, UpdateDefinition<CreatorIdea> update, long? expectedVersion = null, IClientSessionHandle? session = null);
+
+        /// <summary>
+        /// Dedicated narrow write path for the BrandKit derived summary echo (Step 1c).
+        /// Targets ONLY the four summary paths on Project.Branding via atomic $set, leaving
+        /// all hire-designer fields (LogoType, DesignerId, ConversationId, BookedAt) and
+        /// color palette arrays untouched.
+        /// </summary>
+        Task<bool> SyncBrandKitSummaryAsync(
+            string ideaId,
+            string ownerUserId,
+            string brandingMethod,
+            string logoAsset,
+            string paletteName,
+            string typographyPairing,
+            IClientSessionHandle? session = null);
     }
 
     /// <summary>
@@ -134,6 +149,24 @@ namespace WebApp.Services.Repository
                 ? await _collection.UpdateOneAsync(filter, stampedUpdate)
                 : await _collection.UpdateOneAsync(session, filter, stampedUpdate);
             return result.MatchedCount == 1;
+        }
+
+        public Task<bool> SyncBrandKitSummaryAsync(
+            string ideaId,
+            string ownerUserId,
+            string brandingMethod,
+            string logoAsset,
+            string paletteName,
+            string typographyPairing,
+            IClientSessionHandle? session = null)
+        {
+            var update = Builders<CreatorIdea>.Update
+                .Set(x => x.Project.Branding.BrandingMethod, brandingMethod)
+                .Set(x => x.Project.Branding.LogoAsset, logoAsset)
+                .Set(x => x.Project.Branding.PaletteName, paletteName)
+                .Set(x => x.Project.Branding.TypographyPairing, typographyPairing);
+
+            return UpdateAsync(ideaId, ownerUserId, update, expectedVersion: null, session: session);
         }
     }
 }

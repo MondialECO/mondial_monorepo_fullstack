@@ -37,6 +37,11 @@ public class ModelRouterTests
         ["BusinessPlan"] = "google/gemini-3.8-flash",
         ["Forecast"] = "google/gemini-3.8-flash",
         ["IdeaGenerator"] = "google/gemini-3.8-flash",
+        ["DirectionGeneration"] = "google/gemini-3.8-flash",
+        ["LogoParameterSelection"] = "google/gemini-3.8-flash",
+        ["LogoConceptRegenerate"] = "google/gemini-3.8-flash",
+        ["ColorGeneration"] = "google/gemini-3.8-flash",
+        ["TypographyGeneration"] = "google/gemini-3.8-flash",
     }, "google/gemini-3.8-flash");
 
     [Fact]
@@ -48,6 +53,11 @@ public class ModelRouterTests
         router.Resolve("BusinessPlan").Should().Be("google/gemini-3.8-flash");
         router.Resolve("Forecast").Should().Be("google/gemini-3.8-flash");
         router.Resolve("IdeaGenerator").Should().Be("google/gemini-3.8-flash");
+        router.Resolve("DirectionGeneration").Should().Be("google/gemini-3.8-flash");
+        router.Resolve("LogoParameterSelection").Should().Be("google/gemini-3.8-flash");
+        router.Resolve("LogoConceptRegenerate").Should().Be("google/gemini-3.8-flash");
+        router.Resolve("ColorGeneration").Should().Be("google/gemini-3.8-flash");
+        router.Resolve("TypographyGeneration").Should().Be("google/gemini-3.8-flash");
         router.Resolve("UnknownFallback").Should().Be("google/gemini-3.8-flash");
     }
 
@@ -123,6 +133,11 @@ public class ModelRouterTests
         router.Resolve("BusinessPlan").Should().Be("google/gemini-3.8-flash");
         router.Resolve("Forecast").Should().Be("google/gemini-3.8-flash");
         router.Resolve("IdeaGenerator").Should().Be("google/gemini-3.8-flash");
+        router.Resolve("DirectionGeneration").Should().Be("google/gemini-3.8-flash");
+        router.Resolve("LogoParameterSelection").Should().Be("google/gemini-3.8-flash");
+        router.Resolve("LogoConceptRegenerate").Should().Be("google/gemini-3.8-flash");
+        router.Resolve("ColorGeneration").Should().Be("google/gemini-3.8-flash");
+        router.Resolve("TypographyGeneration").Should().Be("google/gemini-3.8-flash");
         router.Resolve("UnmappedCapability").Should().Be("google/gemini-3.8-flash");
     }
 }

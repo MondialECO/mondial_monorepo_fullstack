@@ -320,6 +320,23 @@ builder.Services.AddScoped<BusinessIdeasRepository>();
 builder.Services.AddSingleton<WebApp.Services.Repository.CreatorIdeaRepository>();
 builder.Services.AddSingleton<WebApp.Services.Repository.ICreatorIdeaStore>(
     sp => sp.GetRequiredService<WebApp.Services.Repository.CreatorIdeaRepository>());
+
+// Brand Visual Identity Studio (Phase 2). Repo owns BrandKits collection + unique IdeaId index.
+builder.Services.AddSingleton<WebApp.Services.Repository.BrandKitRepository>();
+builder.Services.AddSingleton<WebApp.Services.Repository.IBrandKitStore>(
+    sp => sp.GetRequiredService<WebApp.Services.Repository.BrandKitRepository>());
+builder.Services.AddSingleton<WebApp.Services.Creator.BrandKit.LogoEngine.ILogoMarkRendererRegistry,
+    WebApp.Services.Creator.BrandKit.LogoEngine.LogoMarkRendererRegistry>();
+builder.Services.AddScoped<WebApp.Services.Creator.BrandKit.LogoEngine.ILogoGenerationService,
+    WebApp.Services.Creator.BrandKit.LogoEngine.LogoGenerationService>();
+builder.Services.AddScoped<WebApp.Services.Creator.BrandKit.LogoEngine.ILogoVariationService,
+    WebApp.Services.Creator.BrandKit.LogoEngine.LogoVariationService>();
+builder.Services.AddScoped<WebApp.Services.Creator.BrandKit.DirectionEngine.IDirectionGenerationService,
+    WebApp.Services.Creator.BrandKit.DirectionEngine.DirectionGenerationService>();
+builder.Services.AddScoped<WebApp.Services.Creator.BrandKit.ColorEngine.IColorGenerationService,
+    WebApp.Services.Creator.BrandKit.ColorEngine.ColorGenerationService>();
+builder.Services.AddScoped<WebApp.Services.Creator.BrandKit.TypographyEngine.ITypographyGenerationService,
+    WebApp.Services.Creator.BrandKit.TypographyEngine.TypographyGenerationService>();
 builder.Services.AddScoped<WebApp.Services.Migrations.ICreatorIdeaBackfill,
     WebApp.Services.Migrations.CreatorIdeaBackfillMigration>();
 builder.Services.AddScoped<WebApp.Services.Migrations.ICreatorIdeaSnapshotsBackfill,
