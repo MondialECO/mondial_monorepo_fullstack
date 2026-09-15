@@ -167,3 +167,37 @@ export interface BrandKitSnapshot {
   colors?: BrandColors;
   typography?: BrandTypography;
 }
+
+export function formatLogoFamily(family?: string): string {
+  if (!family) return "Mark";
+  const map: Record<string, string> = {
+    symbol_plus_name: "Symbol + Name",
+    combination_mark: "Combination Mark",
+    minimal_pictorial: "Minimal Pictorial",
+    geometric_abstract: "Geometric Abstract",
+    wordmark: "Wordmark",
+    monogram: "Monogram",
+    emblem: "Emblem",
+    minimal: "Minimal",
+  };
+  const normalized = family.toLowerCase().trim();
+  if (map[normalized]) return map[normalized];
+  return family
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+export function formatConceptTitle(concept: BrandLogoConcept, index: number): string {
+  if (concept.parameters?.descriptor) {
+    const cleanDescriptor = concept.parameters.descriptor
+      .replace(/symbol_plus_name/gi, "Symbol + Name")
+      .replace(/combination_mark/gi, "Combination Mark")
+      .replace(/minimal_pictorial/gi, "Minimal Pictorial")
+      .replace(/geometric_abstract/gi, "Geometric Abstract")
+      .replace(/_/g, " ");
+    return `Concept ${index + 1}: ${cleanDescriptor}`;
+  }
+  const familyDisplay = formatLogoFamily(concept.parameters?.family);
+  return `Concept ${index + 1} (${familyDisplay})`;
+}
+

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { BrandLogoConcept } from "@/types/creator/brand-kit";
+import { BrandLogoConcept, formatLogoFamily } from "@/types/creator/brand-kit";
 import { Button } from "@/components/ui/button";
 import { X, Check, Sun, Moon } from "lucide-react";
 import { InvoiceMockHeader } from "./InvoiceMockHeader";
@@ -42,7 +42,7 @@ export function CompareOverlay({
       <div className="flex-1 flex flex-col rounded-2xl border border-border bg-card p-6 shadow-xs">
         <div className="flex items-center justify-between mb-4">
           <span className="font-heading font-semibold text-sm text-foreground">
-            {label}: {concept.parameters?.descriptor || concept.parameters?.family || concept.key}
+            {label}: {concept.parameters?.descriptor || formatLogoFamily(concept.parameters?.family) || concept.key}
           </span>
           <Button
             size="sm"

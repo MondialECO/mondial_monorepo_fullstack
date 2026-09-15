@@ -3,7 +3,7 @@
 import React, { memo } from "react";
 import { Sparkles, Check, RefreshCw, AlertCircle, ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { BrandLogoConcept } from "@/types/creator/brand-kit";
+import { BrandLogoConcept, formatConceptTitle } from "@/types/creator/brand-kit";
 import { InvoiceMockHeader } from "./InvoiceMockHeader";
 import { MicroScaleViewer } from "./MicroScaleViewer";
 import Link from "next/link";
@@ -42,9 +42,7 @@ export const ConceptTile = memo(function ConceptTile({
   const remaining = Math.max(0, maxRegens - used);
   const isExhausted = remaining === 0;
 
-  const conceptTitle = concept.parameters?.descriptor
-    ? `Concept ${index + 1}: ${concept.parameters.descriptor}`
-    : `Concept ${index + 1} (${concept.parameters?.family || "Mark"})`;
+  const conceptTitle = formatConceptTitle(concept, index);
 
   return (
     <div
