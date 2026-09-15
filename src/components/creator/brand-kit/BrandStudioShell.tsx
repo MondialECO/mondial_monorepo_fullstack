@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { BrandKit } from "@/types/creator/brand-kit";
+import { BrandKit, BrandStrategy } from "@/types/creator/brand-kit";
 import { brandKitApi } from "@/lib/api-creator-brand-kit";
 import {
   BrandStudioProgressBar,

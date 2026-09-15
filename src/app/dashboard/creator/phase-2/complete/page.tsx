@@ -76,7 +76,7 @@ export default function Phase2CompletePage() {
 
   useEffect(() => {
     let active = true;
-    const ideaId = state.project?.id || undefined;
+    const ideaId = state.activeIdeaId || state.project?.projectId || undefined;
     apiCreatorBrandKit
       .getBrandKit(ideaId)
       .then((kit) => {
@@ -90,7 +90,7 @@ export default function Phase2CompletePage() {
     return () => {
       active = false;
     };
-  }, [state.project?.id]);
+  }, [state.activeIdeaId, state.project?.projectId]);
 
   // Eligibility: Phase 3 is anything other than `locked`.
   const canContinue = !!computed && computed.phase3.status !== 'locked';
@@ -178,10 +178,9 @@ export default function Phase2CompletePage() {
     brandKit?.direction?.candidates?.[0]?.textTypeface ||
     "Plus Jakarta Sans";
 
+  const effectiveIdeaId = brandKit?.ideaId || state.activeIdeaId || state.project?.projectId;
   const hubUrl = `/dashboard/creator/phase-2/brand-kit${
-    brandKit?.ideaId || state.project?.id
-      ? `?ideaId=${encodeURIComponent(brandKit?.ideaId || state.project.id)}`
-      : ""
+    effectiveIdeaId ? `?ideaId=${encodeURIComponent(effectiveIdeaId)}` : ""
   }`;
 
   const handleNextPhase = () => {
