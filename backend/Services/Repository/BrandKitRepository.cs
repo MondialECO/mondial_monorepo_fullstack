@@ -26,7 +26,8 @@ namespace WebApp.Services.Repository
             string ownerUserId,
             UpdateDefinition<BrandKit> update,
             long? expectedVersion = null,
-            IClientSessionHandle? session = null);
+            IClientSessionHandle? session = null,
+            UpdateOptions? options = null);
 
         /// <summary>
         /// Pushes a snapshot with write-time retention enforcement: position 0 (newest first),
@@ -80,7 +81,8 @@ namespace WebApp.Services.Repository
             string ownerUserId,
             UpdateDefinition<BrandKit> update,
             long? expectedVersion = null,
-            IClientSessionHandle? session = null)
+            IClientSessionHandle? session = null,
+            UpdateOptions? options = null)
         {
             var now = DateTime.UtcNow;
             var filter = Builders<BrandKit>.Filter.Eq(x => x.IdeaId, ideaId)
@@ -99,8 +101,8 @@ namespace WebApp.Services.Repository
                 .Inc(x => x.Version, 1);
 
             var result = session is null
-                ? await _collection.UpdateOneAsync(filter, stampedUpdate)
-                : await _collection.UpdateOneAsync(session, filter, stampedUpdate);
+                ? await _collection.UpdateOneAsync(filter, stampedUpdate, options)
+                : await _collection.UpdateOneAsync(session, filter, stampedUpdate, options);
 
             return result.MatchedCount == 1;
         }
