@@ -380,6 +380,44 @@ export const brandKitApi = {
     );
     return res.data.data!;
   },
+
+  /**
+   * Capture a new concurrency-guarded snapshot of current BrandKit state.
+   */
+  async createSnapshot(
+    description: string,
+    expectedVersion: number,
+    ideaId?: string
+  ): Promise<BrandKit> {
+    const params: Record<string, string | number> = {};
+    if (ideaId) params.ideaId = ideaId;
+
+    const res = await api.post<ApiResponse<BrandKit>>(
+      "/creator/journey/phase2/brand-kit/snapshot",
+      { description, expectedVersion },
+      { params }
+    );
+    return res.data.data!;
+  },
+
+  /**
+   * Revert live BrandKit to a previous snapshot by index.
+   */
+  async restoreSnapshot(
+    snapshotIndex: number,
+    expectedVersion?: number,
+    ideaId?: string
+  ): Promise<BrandKit> {
+    const params: Record<string, string | number> = {};
+    if (ideaId) params.ideaId = ideaId;
+
+    const res = await api.post<ApiResponse<BrandKit>>(
+      "/creator/journey/phase2/brand-kit/snapshot/restore",
+      { snapshotIndex, expectedVersion },
+      { params }
+    );
+    return res.data.data!;
+  },
 };
 
 export const apiCreatorBrandKit = brandKitApi;

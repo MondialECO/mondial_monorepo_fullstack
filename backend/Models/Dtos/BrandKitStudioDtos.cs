@@ -147,4 +147,12 @@ namespace WebApp.Models.Dtos
         [Required]
         public long ExpectedVersion { get; set; }
     }
+
+    public class RestoreSnapshotRequestDto
+    {
+        [Required]
+        public int SnapshotIndex { get; set; }
+
+        public long? ExpectedVersion { get; set; }
+    }
 }
