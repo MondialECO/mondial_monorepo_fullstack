@@ -17,6 +17,7 @@ import { LogoCreationModal } from "./LogoCreationModal";
 import { VariationSetModal } from "./VariationSetModal";
 import { StrategyReviewModal } from "./StrategyReviewModal";
 import { DirectionBoardModal } from "./DirectionBoardModal";
+import { LogoTypeChooserModal } from "./LogoTypeChooserModal";
 import { StudioStepPlaceholderModal } from "./StudioStepPlaceholderModal";
 import { Sparkles, AlertCircle, Loader2 } from "lucide-react";
 
@@ -445,14 +446,16 @@ export function BrandStudioShell({
         />
       )}
 
-      {activeModal === "logo_type" && (
-        <StudioStepPlaceholderModal
-          stepKey="logo_type"
-          stepNumber={3}
-          stepTitle="Logo Type Chooser"
-          description="Select the architectural mark family (Monogram, Geometric, Emblem, Wordmark, Line, Combination)."
+      {/* Step 3: Logo Type Chooser Modal */}
+      {activeModal === "logo_type" && kit && (
+        <LogoTypeChooserModal
           isOpen={true}
+          ideaId={ideaId}
+          kit={kit}
           onClose={() => setActiveModal(null)}
+          onSuccess={(updatedKit) => {
+            setKit(updatedKit);
+          }}
         />
       )}
 
