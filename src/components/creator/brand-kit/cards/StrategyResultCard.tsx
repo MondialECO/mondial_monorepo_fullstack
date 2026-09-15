@@ -14,11 +14,11 @@ export function StrategyResultCard({ strategy, onEdit }: StrategyResultCardProps
 
   const concept = strategy.concept?.value || "Core brand vision defined.";
   const audience = strategy.targetAudience?.value || "Primary target demographic identified.";
-  const industry = strategy.industry?.value || strategy.positioning?.value || "Market segment positioning.";
+  const industry = strategy.industry?.value || "Industry sector defined.";
+  const positioning = strategy.positioning?.value || "Market positioning defined.";
   const personality = strategy.personalityTraits?.length
     ? strategy.personalityTraits.join(", ")
     : "Visionary, Trustworthy, Precision";
-  const archetype = strategy.symbolFeeling || "The Guardian";
   const avoidList = strategy.avoidList?.length ? strategy.avoidList.join(", ") : "Generic corporate tropes";
 
   return (
@@ -59,7 +59,7 @@ export function StrategyResultCard({ strategy, onEdit }: StrategyResultCardProps
         </button>
       </div>
 
-      {/* 6 Brand Facts Grid */}
+      {/* 6 Brand Facts Grid Matching Real Modal Fields */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
         {/* 1. Core Concept */}
         <div className="rounded-xl bg-muted/20 border border-border/40 p-3 flex flex-col justify-between">
@@ -79,22 +79,22 @@ export function StrategyResultCard({ strategy, onEdit }: StrategyResultCardProps
           <p className="text-xs text-foreground font-medium line-clamp-2">{audience}</p>
         </div>
 
-        {/* 3. Industry / Positioning */}
+        {/* 3. Industry / Sector */}
         <div className="rounded-xl bg-muted/20 border border-border/40 p-3 flex flex-col justify-between">
           <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
-            <Target className="size-3.5 text-purple-500" />
-            <span className="text-[10px] font-mono font-semibold uppercase tracking-wider">Positioning</span>
+            <Shield className="size-3.5 text-purple-500" />
+            <span className="text-[10px] font-mono font-semibold uppercase tracking-wider">Industry</span>
           </div>
           <p className="text-xs text-foreground font-medium line-clamp-2">{industry}</p>
         </div>
 
-        {/* 4. Personality Archetype */}
+        {/* 4. Market Positioning */}
         <div className="rounded-xl bg-muted/20 border border-border/40 p-3 flex flex-col justify-between">
           <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
-            <Shield className="size-3.5 text-amber-500" />
-            <span className="text-[10px] font-mono font-semibold uppercase tracking-wider">Archetype</span>
+            <Target className="size-3.5 text-amber-500" />
+            <span className="text-[10px] font-mono font-semibold uppercase tracking-wider">Positioning</span>
           </div>
-          <p className="text-xs text-foreground font-medium line-clamp-1">{archetype}</p>
+          <p className="text-xs text-foreground font-medium line-clamp-2">{positioning}</p>
         </div>
 
         {/* 5. Personality Traits */}

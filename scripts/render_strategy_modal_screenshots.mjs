@@ -593,15 +593,15 @@ function generateConfirmedCanvasHtml() {
           </div>
           <div class="rounded-xl bg-muted/20 border border-border/40 p-3 flex flex-col justify-between">
             <div class="flex items-center gap-1.5 text-muted-foreground mb-1">
-              <span class="text-[10px] font-mono font-semibold uppercase tracking-wider text-purple-500">Positioning</span>
+              <span class="text-[10px] font-mono font-semibold uppercase tracking-wider text-purple-500">Industry</span>
             </div>
-            <p class="text-xs text-foreground font-medium line-clamp-2">Zero-compromise cloud security automation.</p>
+            <p class="text-xs text-foreground font-medium line-clamp-2">Cybersecurity & Cloud Infrastructure</p>
           </div>
           <div class="rounded-xl bg-muted/20 border border-border/40 p-3 flex flex-col justify-between">
             <div class="flex items-center gap-1.5 text-muted-foreground mb-1">
-              <span class="text-[10px] font-mono font-semibold uppercase tracking-wider text-amber-500">Archetype</span>
+              <span class="text-[10px] font-mono font-semibold uppercase tracking-wider text-amber-500">Positioning</span>
             </div>
-            <p class="text-xs text-foreground font-medium line-clamp-1">The Guardian</p>
+            <p class="text-xs text-foreground font-medium line-clamp-2">Zero-compromise cloud security automation.</p>
           </div>
           <div class="rounded-xl bg-muted/20 border border-border/40 p-3 flex flex-col justify-between">
             <div class="flex items-center gap-1.5 text-muted-foreground mb-1">

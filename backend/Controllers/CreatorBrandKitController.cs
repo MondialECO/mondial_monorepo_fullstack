@@ -437,7 +437,7 @@ namespace WebApp.Controllers
                 AvoidList = avoidList,
                 TonePosition = "balanced",
                 FirstAppearance = "website",
-                SymbolFeeling = "The Guardian",
+                SymbolFeeling = null,
                 DerivedConstraints = derivedConstraints,
                 ConfirmedAt = null
             };
