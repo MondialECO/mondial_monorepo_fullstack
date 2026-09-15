@@ -189,13 +189,16 @@ describe('BrandKitHubView', () => {
     expect(screen.getByRole('button', { name: /Download Brand Kit/i })).toBeInTheDocument();
     expect(screen.getByText(/v3/i)).toBeInTheDocument();
 
-    // 2. Logo Section
-    expect(screen.getByText(/Sentinel Shield/i)).toBeInTheDocument();
-    expect(screen.getByText(/Horizontal Lockup/i)).toBeInTheDocument();
-    expect(screen.getByText(/Transparent Mark/i)).toBeInTheDocument();
+    // 2. Logo Section (All 7 canonical variations)
+    expect(screen.getAllByText('Primary').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Horizontal').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Stacked').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Icon-only').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Black').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('White').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Transparent').length).toBeGreaterThanOrEqual(1);
 
     // 3. Colour System Section (5 canonical roles)
-    expect(screen.getByText('Primary')).toBeInTheDocument();
     expect(screen.getByText('Secondary')).toBeInTheDocument();
     expect(screen.getByText('Accent')).toBeInTheDocument();
     expect(screen.getByText('Background')).toBeInTheDocument();
@@ -208,8 +211,13 @@ describe('BrandKitHubView', () => {
     expect(screen.getByText('TEXT FAMILY')).toBeInTheDocument();
     expect(screen.getAllByText('Permanent').length).toBeGreaterThan(0);
 
-    // 5. Strategy Section
-    expect(screen.getByText('INDUSTRY')).toBeInTheDocument();
+    // 5. Strategy Section (All 6 confirmed facts)
+    expect(screen.getByText('1. INDUSTRY')).toBeInTheDocument();
+    expect(screen.getByText('2. TARGET AUDIENCE')).toBeInTheDocument();
+    expect(screen.getByText('3. CORE CONCEPT')).toBeInTheDocument();
+    expect(screen.getByText('4. POSITIONING')).toBeInTheDocument();
+    expect(screen.getByText('5. PERSONALITY TRAITS')).toBeInTheDocument();
+    expect(screen.getByText('6. TONE POSITION')).toBeInTheDocument();
     expect(screen.getAllByText('Cybersecurity').length).toBeGreaterThan(0);
 
     // 6. Version History Panel

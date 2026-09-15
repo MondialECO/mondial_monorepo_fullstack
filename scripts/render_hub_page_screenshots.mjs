@@ -129,7 +129,7 @@ function generateHubPageHtml() {
     <section class="space-y-4">
       <div class="flex items-center justify-between">
         <div>
-          <h2 class="text-lg font-bold text-zinc-900 font-heading">Logo Assets & Variations</h2>
+          <h2 class="text-lg font-bold text-zinc-900 font-heading">Logo Concept & 7 Canonical Variations</h2>
           <p class="text-xs text-zinc-500">7 production SVG assets derived from the approved Sentinel Shield mark.</p>
         </div>
         <button class="inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-600 hover:text-zinc-900 bg-white border border-zinc-200 px-3 py-1.5 rounded-md hover:bg-zinc-50">
@@ -138,118 +138,104 @@ function generateHubPageHtml() {
         </button>
       </div>
 
-      <!-- Master Hero Mark + 6 Variations Grid -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <!-- Master Mark (Dark Background) -->
-        <div class="md:col-span-1 p-6 rounded-2xl bg-[#09090B] border border-zinc-800 flex flex-col justify-between relative group shadow-sm">
+      <!-- All 7 Canonical Variations Grid -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
+        
+        <!-- Var 1: Primary -->
+        <div class="p-4 rounded-xl border border-zinc-200 bg-white flex flex-col justify-between gap-3 shadow-xs">
           <div class="flex items-center justify-between">
-            <span class="font-mono text-[10px] font-bold text-zinc-400 uppercase tracking-wider">PRIMARY HERO MARK</span>
-            <span class="font-mono text-[10px] text-zinc-500 bg-zinc-800/80 px-2 py-0.5 rounded">Vector SVG</span>
+            <span class="font-mono text-xs font-bold text-zinc-900">Primary</span>
+            <button class="font-mono text-[10px] text-zinc-500 bg-zinc-100 hover:bg-zinc-200 px-2 py-0.5 rounded transition-colors">Copy SVG</button>
           </div>
-
-          <div class="py-8 flex flex-col items-center justify-center gap-3">
-            <div class="size-16 rounded-2xl bg-zinc-800 flex items-center justify-center p-3 shadow-inner">
-              <svg class="size-10 text-[#0052FF]" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            </div>
-            <span class="text-xl font-bold text-white tracking-tight" style="font-family: '${logoFamily}', sans-serif;">
-              ${brandName}
-            </span>
+          <div class="h-24 rounded-lg bg-zinc-50 border border-zinc-200 flex items-center justify-center gap-2 p-3 shadow-inner">
+            <svg class="size-6 text-[#0052FF]" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <span class="font-bold text-xs text-zinc-900 tracking-tight" style="font-family: '${logoFamily}', sans-serif;">${brandName}</span>
           </div>
-
-          <div class="flex items-center justify-between pt-4 border-t border-zinc-800/80">
-            <span class="font-mono text-[11px] text-zinc-400">Sentinel Shield Lockup</span>
-            <button class="inline-flex items-center gap-1 font-mono text-[11px] text-zinc-300 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-2.5 py-1 rounded transition-colors">
-              <svg class="size-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-              Copy SVG
-            </button>
-          </div>
+          <p class="font-mono text-[10px] text-zinc-400 line-clamp-1">Default master brand lockup</p>
         </div>
 
-        <!-- 6 Variations Grid -->
-        <div class="md:col-span-2 grid grid-cols-2 sm:grid-cols-3 gap-3">
-          <!-- Var 1: Primary Lockup -->
-          <div class="p-4 rounded-xl border border-zinc-200 bg-white flex flex-col justify-between gap-3 shadow-xs">
-            <div class="flex items-center justify-between">
-              <span class="font-mono text-[10px] font-bold text-zinc-500">Primary Lockup</span>
-              <button class="font-mono text-[10px] text-zinc-400 hover:text-zinc-800">Copy</button>
-            </div>
-            <div class="py-4 flex items-center justify-center gap-2">
-              <svg class="size-5 text-[#0052FF]" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-              <span class="font-bold text-xs text-zinc-900">${brandName}</span>
-            </div>
-            <span class="font-mono text-[9px] text-zinc-400 text-center">Horizontal Lockup</span>
+        <!-- Var 2: Horizontal -->
+        <div class="p-4 rounded-xl border border-zinc-200 bg-white flex flex-col justify-between gap-3 shadow-xs">
+          <div class="flex items-center justify-between">
+            <span class="font-mono text-xs font-bold text-zinc-900">Horizontal</span>
+            <button class="font-mono text-[10px] text-zinc-500 bg-zinc-100 hover:bg-zinc-200 px-2 py-0.5 rounded transition-colors">Copy SVG</button>
           </div>
+          <div class="h-24 rounded-lg bg-zinc-50 border border-zinc-200 flex items-center justify-center gap-2 p-3 shadow-inner">
+            <svg class="size-5 text-[#0052FF]" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <span class="font-bold text-xs text-zinc-900 tracking-tight" style="font-family: '${logoFamily}', sans-serif;">${brandName}</span>
+          </div>
+          <p class="font-mono text-[10px] text-zinc-400 line-clamp-1">Navbars, headers & landscape banners</p>
+        </div>
 
-          <!-- Var 2: Secondary / Stacked -->
-          <div class="p-4 rounded-xl border border-zinc-200 bg-white flex flex-col justify-between gap-3 shadow-xs">
-            <div class="flex items-center justify-between">
-              <span class="font-mono text-[10px] font-bold text-zinc-500">Secondary Lockup</span>
-              <button class="font-mono text-[10px] text-zinc-400 hover:text-zinc-800">Copy</button>
-            </div>
-            <div class="py-3 flex flex-col items-center justify-center gap-1">
+        <!-- Var 3: Stacked -->
+        <div class="p-4 rounded-xl border border-zinc-200 bg-white flex flex-col justify-between gap-3 shadow-xs">
+          <div class="flex items-center justify-between">
+            <span class="font-mono text-xs font-bold text-zinc-900">Stacked</span>
+            <button class="font-mono text-[10px] text-zinc-500 bg-zinc-100 hover:bg-zinc-200 px-2 py-0.5 rounded transition-colors">Copy SVG</button>
+          </div>
+          <div class="h-24 rounded-lg bg-zinc-50 border border-zinc-200 flex flex-col items-center justify-center gap-1 p-3 shadow-inner">
+            <svg class="size-6 text-[#0052FF]" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <span class="font-bold text-[11px] text-zinc-900 tracking-tight leading-none" style="font-family: '${logoFamily}', sans-serif;">${brandName}</span>
+          </div>
+          <p class="font-mono text-[10px] text-zinc-400 line-clamp-1">Square cards, badges & packaging</p>
+        </div>
+
+        <!-- Var 4: Icon-only -->
+        <div class="p-4 rounded-xl border border-zinc-200 bg-white flex flex-col justify-between gap-3 shadow-xs">
+          <div class="flex items-center justify-between">
+            <span class="font-mono text-xs font-bold text-zinc-900">Icon-only</span>
+            <button class="font-mono text-[10px] text-zinc-500 bg-zinc-100 hover:bg-zinc-200 px-2 py-0.5 rounded transition-colors">Copy SVG</button>
+          </div>
+          <div class="h-24 rounded-lg bg-zinc-50 border border-zinc-200 flex items-center justify-center p-3 shadow-inner">
+            <div class="size-10 rounded-lg bg-white border border-zinc-200 flex items-center justify-center shadow-xs">
               <svg class="size-6 text-[#0052FF]" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-              <span class="font-bold text-[11px] text-zinc-900 text-center leading-none">${brandName}</span>
             </div>
-            <span class="font-mono text-[9px] text-zinc-400 text-center">Stacked Lockup</span>
           </div>
-
-          <!-- Var 3: Symbol Mark Only -->
-          <div class="p-4 rounded-xl border border-zinc-200 bg-white flex flex-col justify-between gap-3 shadow-xs">
-            <div class="flex items-center justify-between">
-              <span class="font-mono text-[10px] font-bold text-zinc-500">Symbol Mark</span>
-              <button class="font-mono text-[10px] text-zinc-400 hover:text-zinc-800">Copy</button>
-            </div>
-            <div class="py-3 flex items-center justify-center">
-              <div class="size-10 rounded-lg bg-zinc-100 flex items-center justify-center">
-                <svg class="size-6 text-[#0052FF]" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-              </div>
-            </div>
-            <span class="font-mono text-[9px] text-zinc-400 text-center">Standalone Icon</span>
-          </div>
-
-          <!-- Var 4: Monochrome Light -->
-          <div class="p-4 rounded-xl border border-zinc-200 bg-white flex flex-col justify-between gap-3 shadow-xs">
-            <div class="flex items-center justify-between">
-              <span class="font-mono text-[10px] font-bold text-zinc-500">Monochrome Light</span>
-              <button class="font-mono text-[10px] text-zinc-400 hover:text-zinc-800">Copy</button>
-            </div>
-            <div class="py-4 flex items-center justify-center gap-2">
-              <svg class="size-5 text-black" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-              <span class="font-bold text-xs text-black">${brandName}</span>
-            </div>
-            <span class="font-mono text-[9px] text-zinc-400 text-center">100% Solid Black</span>
-          </div>
-
-          <!-- Var 5: Monochrome Dark -->
-          <div class="p-4 rounded-xl border border-zinc-800 bg-[#09090B] flex flex-col justify-between gap-3 shadow-xs">
-            <div class="flex items-center justify-between">
-              <span class="font-mono text-[10px] font-bold text-zinc-400">Monochrome Dark</span>
-              <button class="font-mono text-[10px] text-zinc-400 hover:text-white">Copy</button>
-            </div>
-            <div class="py-4 flex items-center justify-center gap-2">
-              <svg class="size-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-              <span class="font-bold text-xs text-white">${brandName}</span>
-            </div>
-            <span class="font-mono text-[9px] text-zinc-500 text-center">100% Reverse White</span>
-          </div>
-
-          <!-- Var 6: Favicon / App Icon -->
-          <div class="p-4 rounded-xl border border-zinc-200 bg-white flex flex-col justify-between gap-3 shadow-xs">
-            <div class="flex items-center justify-between">
-              <span class="font-mono text-[10px] font-bold text-zinc-500">Favicon (16/32px)</span>
-              <button class="font-mono text-[10px] text-zinc-400 hover:text-zinc-800">Copy</button>
-            </div>
-            <div class="py-3 flex items-center justify-center gap-3">
-              <div class="size-8 rounded bg-[#0052FF] flex items-center justify-center text-white">
-                <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-              </div>
-              <div class="size-4 rounded-xs bg-[#0052FF] flex items-center justify-center text-white">
-                <svg class="size-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-              </div>
-            </div>
-            <span class="font-mono text-[9px] text-zinc-400 text-center">Pixel-aligned Icons</span>
-          </div>
+          <p class="font-mono text-[10px] text-zinc-400 line-clamp-1">Favicons, avatars & app icons</p>
         </div>
+
+        <!-- Var 5: Black -->
+        <div class="p-4 rounded-xl border border-zinc-200 bg-white flex flex-col justify-between gap-3 shadow-xs">
+          <div class="flex items-center justify-between">
+            <span class="font-mono text-xs font-bold text-zinc-900">Black</span>
+            <button class="font-mono text-[10px] text-zinc-500 bg-zinc-100 hover:bg-zinc-200 px-2 py-0.5 rounded transition-colors">Copy SVG</button>
+          </div>
+          <div class="h-24 rounded-lg bg-zinc-50 border border-zinc-200 flex items-center justify-center gap-2 p-3 shadow-inner">
+            <svg class="size-5 text-black" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <span class="font-bold text-xs text-black tracking-tight" style="font-family: '${logoFamily}', sans-serif;">${brandName}</span>
+          </div>
+          <p class="font-mono text-[10px] text-zinc-400 line-clamp-1">Single-ink monochrome dark</p>
+        </div>
+
+        <!-- Var 6: White -->
+        <div class="p-4 rounded-xl border border-zinc-800 bg-[#09090B] flex flex-col justify-between gap-3 shadow-xs">
+          <div class="flex items-center justify-between">
+            <span class="font-mono text-xs font-bold text-white">White</span>
+            <button class="font-mono text-[10px] text-zinc-400 hover:text-white bg-zinc-800 px-2 py-0.5 rounded transition-colors">Copy SVG</button>
+          </div>
+          <div class="h-24 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center gap-2 p-3 shadow-inner">
+            <svg class="size-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <span class="font-bold text-xs text-white tracking-tight" style="font-family: '${logoFamily}', sans-serif;">${brandName}</span>
+          </div>
+          <p class="font-mono text-[10px] text-zinc-400 line-clamp-1">Monochrome reverse white</p>
+        </div>
+
+        <!-- Var 7: Transparent with Checkerboard -->
+        <div class="p-4 rounded-xl border border-zinc-200 bg-white flex flex-col justify-between gap-3 shadow-xs">
+          <div class="flex items-center justify-between">
+            <span class="font-mono text-xs font-bold text-zinc-900">Transparent</span>
+            <button class="font-mono text-[10px] text-zinc-500 bg-zinc-100 hover:bg-zinc-200 px-2 py-0.5 rounded transition-colors">Copy SVG</button>
+          </div>
+          <div
+            class="h-24 rounded-lg border border-zinc-200 flex items-center justify-center gap-2 p-3 shadow-inner"
+            style="background-image: linear-gradient(45deg, #e2e8f0 25%, transparent 25%), linear-gradient(-45deg, #e2e8f0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e2e8f0 75%), linear-gradient(-45deg, transparent 75%, #e2e8f0 75%); background-size: 12px 12px; background-position: 0 0, 0 6px, 6px -6px, -6px 0px; background-color: #ffffff;"
+          >
+            <svg class="size-5 text-[#0052FF]" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <span class="font-bold text-xs text-zinc-900 tracking-tight" style="font-family: '${logoFamily}', sans-serif;">${brandName}</span>
+          </div>
+          <p class="font-mono text-[10px] text-zinc-400 line-clamp-1">Alpha channel background</p>
+        </div>
+
       </div>
     </section>
 
@@ -434,36 +420,64 @@ function generateHubPageHtml() {
       </div>
     </section>
 
-    <!-- 5. Strategy Facts & Visual Direction Overview -->
-    <section class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <!-- Strategy Card -->
-      <div class="p-5 rounded-xl border border-zinc-200 bg-white space-y-4 shadow-xs">
-        <div class="flex items-center justify-between border-b border-zinc-100 pb-3">
-          <h3 class="text-sm font-bold text-zinc-900">Brand Strategy Constraints</h3>
-          <button class="font-mono text-xs text-zinc-500 hover:text-zinc-900">Edit</button>
+    <!-- 5. Strategy Facts (All 6 Confirmed Facts) -->
+    <section class="space-y-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-lg font-bold text-zinc-900 font-heading">Brand Strategy Foundations (6 Confirmed Facts)</h2>
+          <p class="text-xs text-zinc-500">Extracted from validated business model and confirmed in Step 1.</p>
         </div>
-        <div class="grid grid-cols-2 gap-3 text-xs">
-          <div><span class="font-mono text-[10px] text-zinc-400 block">INDUSTRY</span><span class="font-semibold text-zinc-800">Cybersecurity</span></div>
-          <div><span class="font-mono text-[10px] text-zinc-400 block">AUDIENCE</span><span class="font-semibold text-zinc-800">Enterprise SecOps</span></div>
-          <div><span class="font-mono text-[10px] text-zinc-400 block">TRAITS</span><span class="font-semibold text-zinc-800">Precise, Resilient</span></div>
-          <div><span class="font-mono text-[10px] text-zinc-400 block">TONE</span><span class="font-semibold text-zinc-800">Authoritative</span></div>
-        </div>
+        <button class="inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-600 hover:text-zinc-900 bg-white border border-zinc-200 px-3 py-1.5 rounded-md hover:bg-zinc-50">
+          <svg class="size-3.5 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+          Edit in Studio
+        </button>
       </div>
 
-      <!-- Direction Card -->
-      <div class="p-5 rounded-xl border border-zinc-200 bg-white space-y-4 shadow-xs">
-        <div class="flex items-center justify-between border-b border-zinc-100 pb-3">
-          <h3 class="text-sm font-bold text-zinc-900">Visual Direction</h3>
-          <button class="font-mono text-xs text-zinc-500 hover:text-zinc-900">Edit</button>
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        <!-- Fact 1: Industry -->
+        <div class="p-4 rounded-xl border border-zinc-200 bg-white space-y-1.5 shadow-xs">
+          <span class="font-mono text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">1. INDUSTRY</span>
+          <div class="text-sm font-semibold text-zinc-900">Cybersecurity</div>
+          <p class="font-mono text-[10px] text-zinc-400">Enterprise cloud defense sector</p>
         </div>
-        <div class="space-y-2">
-          <div class="flex items-center justify-between">
-            <span class="text-sm font-bold text-zinc-900">Modern Precision</span>
-            <span class="font-mono text-[10px] text-zinc-500 bg-zinc-100 px-2 py-0.5 rounded">Direction 2 of 4</span>
+
+        <!-- Fact 2: Audience -->
+        <div class="p-4 rounded-xl border border-zinc-200 bg-white space-y-1.5 shadow-xs">
+          <span class="font-mono text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">2. TARGET AUDIENCE</span>
+          <div class="text-sm font-semibold text-zinc-900">Enterprise SecOps</div>
+          <p class="font-mono text-[10px] text-zinc-400">CISOs & Security Architects</p>
+        </div>
+
+        <!-- Fact 3: Concept -->
+        <div class="p-4 rounded-xl border border-zinc-200 bg-white space-y-1.5 shadow-xs">
+          <span class="font-mono text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">3. CORE CONCEPT</span>
+          <div class="text-sm font-semibold text-zinc-900 line-clamp-2">Autonomous zero-trust threat containment & cloud security operations</div>
+          <p class="font-mono text-[10px] text-zinc-400">Cryptographic lattice core</p>
+        </div>
+
+        <!-- Fact 4: Positioning -->
+        <div class="p-4 rounded-xl border border-zinc-200 bg-white space-y-1.5 shadow-xs">
+          <span class="font-mono text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">4. POSITIONING</span>
+          <div class="text-sm font-semibold text-zinc-900 line-clamp-2">Next-generation cryptographic infrastructure protection</div>
+          <p class="font-mono text-[10px] text-zinc-400">Defensible high-assurance tier</p>
+        </div>
+
+        <!-- Fact 5: Personality Traits -->
+        <div class="p-4 rounded-xl border border-zinc-200 bg-white space-y-1.5 shadow-xs">
+          <span class="font-mono text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">5. PERSONALITY TRAITS</span>
+          <div class="flex flex-wrap gap-1.5 pt-0.5">
+            <span class="text-xs px-2 py-0.5 rounded-md bg-zinc-100 font-mono font-medium text-zinc-800 border border-zinc-200">Precise</span>
+            <span class="text-xs px-2 py-0.5 rounded-md bg-zinc-100 font-mono font-medium text-zinc-800 border border-zinc-200">Resilient</span>
+            <span class="text-xs px-2 py-0.5 rounded-md bg-zinc-100 font-mono font-medium text-zinc-800 border border-zinc-200">Authoritative</span>
           </div>
-          <p class="text-xs text-zinc-500">
-            Balanced and technically refined visual architecture with high contrast telemetry displays.
-          </p>
+          <p class="font-mono text-[10px] text-zinc-400 pt-1">3 confirmed brand characteristics</p>
+        </div>
+
+        <!-- Fact 6: Tone Position -->
+        <div class="p-4 rounded-xl border border-zinc-200 bg-white space-y-1.5 shadow-xs">
+          <span class="font-mono text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">6. TONE POSITION</span>
+          <div class="text-sm font-semibold text-zinc-900 capitalize">Authoritative</div>
+          <p class="font-mono text-[10px] text-zinc-400">Technical rigor & institutional calm</p>
         </div>
       </div>
     </section>

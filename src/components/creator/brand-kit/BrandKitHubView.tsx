@@ -234,13 +234,14 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
 
   const logoVariations = kit.logo?.variations ?? {};
 
-  const variationKeys = [
-    { key: "horizontal", label: "Horizontal Lockup" },
-    { key: "stacked", label: "Stacked Lockup" },
-    { key: "icon_only", label: "Icon Only" },
-    { key: "black", label: "Monochrome Black" },
-    { key: "white", label: "Reverse White" },
-    { key: "transparent", label: "Transparent Mark" },
+  const canonicalVariationDefinitions = [
+    { key: "primary", label: "Primary", description: "Default master brand lockup" },
+    { key: "horizontal", label: "Horizontal", description: "Navbars, headers & landscape banners" },
+    { key: "stacked", label: "Stacked", description: "Square cards, badges & packaging" },
+    { key: "icon_only", label: "Icon-only", description: "Favicons, avatars & app icons" },
+    { key: "black", label: "Black", description: "Single-ink monochrome dark" },
+    { key: "white", label: "White", description: "Monochrome reverse white" },
+    { key: "transparent", label: "Transparent", description: "Alpha channel background" },
   ];
 
   const colors = kit.colors?.roles ?? [];
@@ -313,7 +314,7 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
                 className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-xs font-semibold bg-primary text-white shadow-sm hover:bg-primary/90 transition-all disabled:opacity-50"
               >
                 <Download className="size-4" />
-                <span>{isZipping ? "Packaging ZIP..." : "Download Brand Kit"}</span>
+                <span>{isZipping ? "Packaging ZIP..." : "Download Brand Kit (.zip)"}</span>
               </button>
             </div>
           </div>
@@ -352,7 +353,7 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
         </section>
 
         {/* =========================================================================
-            2. LOGO SECTION (PRIMARY HERO + 6 VARIATIONS)
+            2. LOGO SECTION (ALL 7 CANONICAL VARIATIONS)
            ========================================================================= */}
         <section className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-6">
           <div className="flex items-center justify-between border-b border-border/60 pb-3">
@@ -361,7 +362,7 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
                 STEP 4
               </span>
               <h2 className="text-base font-bold text-foreground">
-                Logo Concept & Canonical Variations
+                Logo Concept & 7 Canonical Variations
               </h2>
             </div>
 
@@ -374,79 +375,80 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
             </button>
           </div>
 
-          {/* Primary Lockup Hero */}
-          <div className="p-6 rounded-xl border border-border bg-zinc-950 text-white flex flex-col sm:flex-row items-center justify-between gap-6 shadow-sm">
-            <div className="flex items-center gap-4">
-              <div className="size-16 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center p-3">
-                {approvedConcept?.svgMarkup ? (
-                  <div
-                    className="size-full flex items-center justify-center [&_svg]:size-full"
-                    dangerouslySetInnerHTML={{ __html: approvedConcept.svgMarkup }}
-                  />
-                ) : (
-                  <Sparkles className="size-8 text-primary" />
-                )}
-              </div>
-              <div>
-                <span className="font-mono text-[10px] text-zinc-400 uppercase tracking-wider block">
-                  PRIMARY APPROVED LOCKUP
-                </span>
-                <h3 className="text-lg font-bold text-white">
-                  {approvedConcept?.name || `${brandName} Primary`}
-                </h3>
-                <p className="text-xs text-zinc-400">
-                  {approvedConcept?.rationale || "Balanced geometry and authoritative typography lockup."}
-                </p>
-              </div>
-            </div>
+          {/* All 7 Canonical Variations Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
+            {canonicalVariationDefinitions.map((item) => {
+              const varObj: BrandLogoVariation | undefined = logoVariations[item.key];
+              const isDark = item.key === "white";
+              const isCheckerboard = item.key === "transparent";
+              const assetMarkup = varObj?.svgUri || approvedConcept?.svgMarkup || "";
 
-            <div className="font-mono text-xs text-zinc-300 bg-zinc-900 px-3 py-1.5 rounded-lg border border-zinc-800 shrink-0">
-              Contrast: <strong className="text-emerald-400">{approvedConcept?.contrastOnLight || 14.5}:1 (AAA)</strong>
-            </div>
-          </div>
+              const handleCopySvg = (e: React.MouseEvent) => {
+                e.stopPropagation();
+                if (!assetMarkup) return;
+                navigator.clipboard.writeText(assetMarkup);
+                setFeedbackMessage(`Copied ${item.label} SVG to clipboard.`);
+                setTimeout(() => setFeedbackMessage(null), 3000);
+              };
 
-          {/* 6 Variations Thumbnails */}
-          <div className="space-y-2">
-            <span className="font-mono text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-              6 DERIVED FORMATS
-            </span>
-
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-              {variationKeys.map((item) => {
-                const varObj: BrandLogoVariation | undefined = logoVariations[item.key];
-                const isDark = item.key === "white";
-                const isCheckerboard = item.key === "transparent";
-
-                return (
-                  <div
-                    key={item.key}
-                    className="p-3 rounded-xl border border-border bg-muted/20 flex flex-col items-center text-center gap-2"
-                  >
-                    <div
-                      className={`size-14 rounded-lg flex items-center justify-center p-2 border ${
-                        isDark
-                          ? "bg-zinc-950 border-zinc-800 text-white"
-                          : isCheckerboard
-                          ? "bg-[repeating-conic-gradient(#e4e4e7_0%_25%,#ffffff_0%_50%)] bg-[length:10px_10px] border-border"
-                          : "bg-background border-border text-foreground"
-                      }`}
-                    >
-                      {varObj?.svgUri ? (
-                        <div
-                          className="size-full flex items-center justify-center [&_svg]:size-full"
-                          dangerouslySetInnerHTML={{ __html: varObj.svgUri }}
-                        />
-                      ) : (
-                        <span className="font-mono text-[10px] font-bold">SVG</span>
-                      )}
-                    </div>
-                    <span className="font-mono text-[10px] font-semibold text-muted-foreground line-clamp-1">
+              return (
+                <div
+                  key={item.key}
+                  className="p-4 rounded-xl border border-border bg-muted/10 flex flex-col justify-between gap-3 shadow-xs hover:border-border/80 transition-colors"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-xs font-bold text-foreground">
                       {item.label}
                     </span>
+                    <button
+                      type="button"
+                      onClick={handleCopySvg}
+                      className="font-mono text-[10px] text-muted-foreground hover:text-foreground bg-muted px-2 py-0.5 rounded transition-colors"
+                    >
+                      Copy SVG
+                    </button>
                   </div>
-                );
-              })}
-            </div>
+
+                  {/* Visual Stage */}
+                  <div
+                    className={`h-24 rounded-lg flex items-center justify-center p-3 border shadow-inner ${
+                      isDark
+                        ? "bg-[#09090B] border-zinc-800 text-white"
+                        : isCheckerboard
+                        ? "border-border/80"
+                        : "bg-white border-border/60 text-foreground"
+                    }`}
+                    style={
+                      isCheckerboard
+                        ? {
+                            backgroundImage:
+                              "linear-gradient(45deg, #e2e8f0 25%, transparent 25%), linear-gradient(-45deg, #e2e8f0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e2e8f0 75%), linear-gradient(-45deg, transparent 75%, #e2e8f0 75%)",
+                            backgroundSize: "12px 12px",
+                            backgroundPosition: "0 0, 0 6px, 6px -6px, -6px 0px",
+                            backgroundColor: "#ffffff",
+                          }
+                        : undefined
+                    }
+                  >
+                    {varObj?.svgUri ? (
+                      <div
+                        className="size-full flex items-center justify-center [&_svg]:max-h-full [&_svg]:max-w-full [&_svg]:object-contain"
+                        dangerouslySetInnerHTML={{ __html: varObj.svgUri }}
+                      />
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="size-5 text-primary" />
+                        <span className="font-bold text-xs">{brandName}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <p className="font-mono text-[10px] text-muted-foreground line-clamp-1">
+                    {varObj?.usageNote || item.description}
+                  </p>
+                </div>
+              );
+            })}
           </div>
         </section>
 
@@ -637,7 +639,7 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
         </section>
 
         {/* =========================================================================
-            5. BRAND STRATEGY SECTION
+            5. BRAND STRATEGY SECTION (ALL 6 CONFIRMED FACTS)
            ========================================================================= */}
         <section className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-6">
           <div className="flex items-center justify-between border-b border-border/60 pb-3">
@@ -646,7 +648,7 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
                 STEP 1
               </span>
               <h2 className="text-base font-bold text-foreground">
-                Brand Strategy Foundations
+                Brand Strategy Foundations (6 Confirmed Facts)
               </h2>
             </div>
 
@@ -660,42 +662,59 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            {/* Fact 1: Industry */}
             <div className="p-3.5 rounded-xl border border-border bg-muted/10 space-y-1">
               <span className="font-mono text-[10px] font-bold text-muted-foreground uppercase">
-                INDUSTRY
+                1. INDUSTRY
               </span>
               <div className="text-sm font-semibold text-foreground">
-                {kit.strategy?.industry?.value || "Technology"}
+                {kit.strategy?.industry?.value || "Cybersecurity"}
               </div>
             </div>
 
+            {/* Fact 2: Audience */}
             <div className="p-3.5 rounded-xl border border-border bg-muted/10 space-y-1">
               <span className="font-mono text-[10px] font-bold text-muted-foreground uppercase">
-                TARGET AUDIENCE
+                2. TARGET AUDIENCE
               </span>
               <div className="text-sm font-semibold text-foreground">
-                {kit.strategy?.targetAudience?.value || "Enterprise Teams"}
+                {kit.strategy?.targetAudience?.value || "Enterprise SecOps"}
               </div>
             </div>
 
+            {/* Fact 3: Concept */}
             <div className="p-3.5 rounded-xl border border-border bg-muted/10 space-y-1">
               <span className="font-mono text-[10px] font-bold text-muted-foreground uppercase">
-                POSITIONING
+                3. CORE CONCEPT
               </span>
-              <div className="text-sm font-semibold text-foreground">
-                {kit.strategy?.positioning?.value || "Premium Solution"}
+              <div className="text-sm font-semibold text-foreground line-clamp-2">
+                {kit.strategy?.concept?.value || "Autonomous zero-trust threat containment & cloud security operations"}
               </div>
             </div>
 
+            {/* Fact 4: Positioning */}
             <div className="p-3.5 rounded-xl border border-border bg-muted/10 space-y-1">
               <span className="font-mono text-[10px] font-bold text-muted-foreground uppercase">
-                PERSONALITY TRAITS
+                4. POSITIONING
               </span>
-              <div className="flex flex-wrap gap-1 pt-1">
-                {(kit.strategy?.personalityTraits ?? ["Precise", "Resilient"]).map((trait) => (
+              <div className="text-sm font-semibold text-foreground line-clamp-2">
+                {kit.strategy?.positioning?.value || "Next-generation cryptographic infrastructure protection"}
+              </div>
+            </div>
+
+            {/* Fact 5: Personality Traits */}
+            <div className="p-3.5 rounded-xl border border-border bg-muted/10 space-y-1">
+              <span className="font-mono text-[10px] font-bold text-muted-foreground uppercase">
+                5. PERSONALITY TRAITS
+              </span>
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {(kit.strategy?.personalityTraits && kit.strategy.personalityTraits.length > 0
+                  ? kit.strategy.personalityTraits
+                  : ["Precise", "Resilient", "Authoritative"]
+                ).map((trait) => (
                   <span
                     key={trait}
-                    className="text-xs px-2 py-0.5 rounded-md bg-muted font-medium text-foreground"
+                    className="text-xs px-2 py-0.5 rounded-md bg-muted font-mono font-medium text-foreground border border-border"
                   >
                     {trait}
                   </span>
@@ -703,23 +722,13 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
               </div>
             </div>
 
+            {/* Fact 6: Tone Position */}
             <div className="p-3.5 rounded-xl border border-border bg-muted/10 space-y-1">
               <span className="font-mono text-[10px] font-bold text-muted-foreground uppercase">
-                TONE POSITION
+                6. TONE POSITION
               </span>
               <div className="text-sm font-semibold text-foreground capitalize">
-                {kit.strategy?.tonePosition || "Balanced"}
-              </div>
-            </div>
-
-            <div className="p-3.5 rounded-xl border border-border bg-muted/10 space-y-1">
-              <span className="font-mono text-[10px] font-bold text-muted-foreground uppercase">
-                AVOID LIST
-              </span>
-              <div className="text-xs text-muted-foreground pt-1">
-                {kit.strategy?.avoidList && kit.strategy.avoidList.length > 0
-                  ? kit.strategy.avoidList.join(", ")
-                  : "None specified"}
+                {kit.strategy?.tonePosition || "Authoritative"}
               </div>
             </div>
           </div>
