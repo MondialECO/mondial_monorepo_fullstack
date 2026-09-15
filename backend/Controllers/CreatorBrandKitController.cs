@@ -13,6 +13,8 @@ using MongoDB.Driver;
 using WebApp.Models;
 using WebApp.Models.DatabaseModels;
 using WebApp.Models.Dtos;
+using WebApp.Services.Ai;
+using WebApp.Services.Ai.Jobs;
 using WebApp.Services.Creator.BrandKit.ColorEngine;
 using WebApp.Services.Creator.BrandKit.DirectionEngine;
 using WebApp.Services.Creator.BrandKit.LogoEngine;
@@ -34,6 +36,8 @@ namespace WebApp.Controllers
     [Authorize]
     public class CreatorBrandKitController : ControllerBase
     {
+        private const int MaxRegenerations = 3;
+
         private readonly ICreatorJourneyService _journeys;
         private readonly IBrandKitStore _brandKitStore;
         private readonly ICreatorIdeaStore? _creatorIdeas;
@@ -42,6 +46,7 @@ namespace WebApp.Controllers
         private readonly IDirectionGenerationService? _directionGenerationService;
         private readonly IColorGenerationService? _colorGenerationService;
         private readonly ITypographyGenerationService? _typographyGenerationService;
+        private readonly IAiCreditService? _aiCreditService;
         private readonly IMongoClient? _mongoClient;
         private readonly ILogger<CreatorBrandKitController>? _logger;
         private readonly bool _transactionsEnabled;
@@ -57,7 +62,8 @@ namespace WebApp.Controllers
             ILogoVariationService? logoVariationService = null,
             IDirectionGenerationService? directionGenerationService = null,
             IColorGenerationService? colorGenerationService = null,
-            ITypographyGenerationService? typographyGenerationService = null)
+            ITypographyGenerationService? typographyGenerationService = null,
+            IAiCreditService? aiCreditService = null)
         {
             _journeys = journeys;
             _brandKitStore = brandKitStore;
@@ -69,6 +75,7 @@ namespace WebApp.Controllers
             _directionGenerationService = directionGenerationService;
             _colorGenerationService = colorGenerationService;
             _typographyGenerationService = typographyGenerationService;
+            _aiCreditService = aiCreditService;
             _transactionsEnabled = config?.GetValue("Mongo:TransactionsEnabled", true) ?? true;
         }
 
@@ -516,9 +523,12 @@ namespace WebApp.Controllers
             [FromQuery] long? expectedVersion = null,
             CancellationToken cancellationToken = default)
         {
+            string? creditOpId = null;
+            string? currentUserId = null;
             try
             {
                 var userId = GetUserId();
+                currentUserId = userId;
                 var idea = await _journeys.ResolveIdeaAsync(userId, ideaId);
 
                 var kit = await _brandKitStore.GetByIdeaIdAsync(idea.Id, userId);
@@ -530,21 +540,58 @@ namespace WebApp.Controllers
                     return BadRequest(ApiResponse.Error("Strategy must be confirmed before visual directions can be generated."));
                 }
 
+                bool isRegeneration = kit.Direction?.Candidates != null && kit.Direction.Candidates.Count > 0;
+                if (isRegeneration && (kit.Direction?.RegenerateCount ?? 0) >= MaxRegenerations)
+                {
+                    return BadRequest(ApiResponse.Error($"Visual direction candidates have reached the maximum regeneration limit ({MaxRegenerations}/{MaxRegenerations})."));
+                }
+
                 if (_directionGenerationService == null)
                 {
                     return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error("Direction generation service is not available."));
                 }
 
-                var candidates = await _directionGenerationService.GenerateCandidatesAsync(idea, kit, cancellationToken);
+                if (_aiCreditService != null)
+                {
+                    creditOpId = Guid.NewGuid().ToString("N");
+                    await _aiCreditService.DebitForJobAsync(userId, AiJobType.DirectionGeneration, creditOpId);
+                }
+
+                List<BrandDirectionCandidate>? candidates;
+                try
+                {
+                    candidates = await _directionGenerationService.GenerateCandidatesAsync(idea, kit, cancellationToken);
+                }
+                catch
+                {
+                    if (_aiCreditService != null && creditOpId != null)
+                    {
+                        await _aiCreditService.RefundForJobAsync(userId, AiJobType.DirectionGeneration, creditOpId, "Direction candidate generation failed before persistence");
+                    }
+                    throw;
+                }
+
                 if (candidates == null || candidates.Count == 0)
                 {
+                    if (_aiCreditService != null && creditOpId != null)
+                    {
+                        await _aiCreditService.RefundForJobAsync(userId, AiJobType.DirectionGeneration, creditOpId, "Empty direction candidates generated");
+                    }
                     return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error("Failed to generate visual direction candidates."));
                 }
 
-                var update = Builders<BrandKit>.Update.Set(x => x.Direction.Candidates, candidates);
+                var nextRegenCount = isRegeneration ? (kit.Direction?.RegenerateCount ?? 0) + 1 : 0;
+                var update = Builders<BrandKit>.Update
+                    .Set(x => x.Direction.Candidates, candidates)
+                    .Set(x => x.Direction.RegenerateCount, nextRegenCount);
+
                 var updated = await _brandKitStore.UpdateAsync(idea.Id, userId, update, expectedVersion);
                 if (!updated)
                 {
+                    if (_aiCreditService != null && creditOpId != null)
+                    {
+                        await _aiCreditService.RefundForJobAsync(userId, AiJobType.DirectionGeneration, creditOpId, "Optimistic concurrency conflict on direction save");
+                    }
                     return StatusCode(StatusCodes.Status409Conflict, ApiResponse.Error(
                         "This brand kit was updated in another tab. Refresh to load the latest version before continuing."));
                 }
@@ -552,6 +599,7 @@ namespace WebApp.Controllers
                 var reloaded = await _brandKitStore.GetByIdeaIdAsync(idea.Id, userId);
                 return Ok(ApiResponse.Ok("Visual directions generated", reloaded));
             }
+            catch (InsufficientCreditsException ex) { return StatusCode(StatusCodes.Status402PaymentRequired, ApiResponse.Error(ex.Message)); }
             catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
             catch (UnauthorizedAccessException ex) { return StatusCode(StatusCodes.Status401Unauthorized, ApiResponse.Error(ex.Message)); }
             catch (Exception ex) { return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
@@ -779,6 +827,7 @@ namespace WebApp.Controllers
             [FromQuery] long? expectedVersion = null,
             CancellationToken cancellationToken = default)
         {
+            string? creditOpId = null;
             try
             {
                 var userId = GetUserId();
@@ -795,10 +844,34 @@ namespace WebApp.Controllers
                 if (_logoGenerationService == null)
                     return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error("Logo generation service is unavailable."));
 
-                // Step 2e credit hook placeholder
-                // await _aiCreditService.DebitForJobAsync(userId, AiJobType.BrandLogoGeneration);
+                if (_aiCreditService != null)
+                {
+                    creditOpId = Guid.NewGuid().ToString("N");
+                    await _aiCreditService.DebitForJobAsync(userId, AiJobType.LogoParameterSelection, creditOpId);
+                }
 
-                var concepts = await _logoGenerationService.GenerateConceptsAsync(idea, kit, cancellationToken);
+                List<BrandLogoConcept>? concepts;
+                try
+                {
+                    concepts = await _logoGenerationService.GenerateConceptsAsync(idea, kit, cancellationToken);
+                }
+                catch
+                {
+                    if (_aiCreditService != null && creditOpId != null)
+                    {
+                        await _aiCreditService.RefundForJobAsync(userId, AiJobType.LogoParameterSelection, creditOpId, "Logo concept generation failed before persistence");
+                    }
+                    throw;
+                }
+
+                if (concepts == null || concepts.Count == 0)
+                {
+                    if (_aiCreditService != null && creditOpId != null)
+                    {
+                        await _aiCreditService.RefundForJobAsync(userId, AiJobType.LogoParameterSelection, creditOpId, "Empty logo concepts generated");
+                    }
+                    return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error("Failed to generate logo concepts."));
+                }
 
                 var updateBuilder = Builders<BrandKit>.Update;
                 var update = updateBuilder
@@ -807,11 +880,18 @@ namespace WebApp.Controllers
 
                 var updated = await _brandKitStore.UpdateAsync(idea.Id, userId, update, expectedVersion);
                 if (!updated)
+                {
+                    if (_aiCreditService != null && creditOpId != null)
+                    {
+                        await _aiCreditService.RefundForJobAsync(userId, AiJobType.LogoParameterSelection, creditOpId, "Optimistic concurrency conflict on logo generation save");
+                    }
                     return StatusCode(StatusCodes.Status409Conflict, ApiResponse.Error("This brand kit was updated in another tab. Refresh to load the latest version before continuing."));
+                }
 
                 var reloaded = await _brandKitStore.GetByIdeaIdAsync(idea.Id, userId);
                 return Ok(ApiResponse.Ok("Logo concepts generated successfully", reloaded));
             }
+            catch (InsufficientCreditsException ex) { return StatusCode(StatusCodes.Status402PaymentRequired, ApiResponse.Error(ex.Message)); }
             catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
             catch (UnauthorizedAccessException ex) { return StatusCode(StatusCodes.Status401Unauthorized, ApiResponse.Error(ex.Message)); }
             catch (Exception ex) { return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
@@ -827,6 +907,7 @@ namespace WebApp.Controllers
             [FromQuery] long? expectedVersion = null,
             CancellationToken cancellationToken = default)
         {
+            string? creditOpId = null;
             try
             {
                 var userId = GetUserId();
@@ -844,13 +925,33 @@ namespace WebApp.Controllers
                 if (existingConcept == null)
                     return NotFound(ApiResponse.Error($"Logo concept '{conceptKey}' not found."));
 
+                if (existingConcept.RegenerateCount >= MaxRegenerations)
+                {
+                    return BadRequest(ApiResponse.Error($"Logo concept '{conceptKey}' has reached the maximum regeneration limit ({MaxRegenerations}/{MaxRegenerations})."));
+                }
+
                 if (_logoGenerationService == null)
                     return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error("Logo generation service is unavailable."));
 
-                // Step 2e credit hook placeholder
-                // await _aiCreditService.DebitForJobAsync(userId, AiJobType.BrandLogoRegeneration);
+                if (_aiCreditService != null)
+                {
+                    creditOpId = Guid.NewGuid().ToString("N");
+                    await _aiCreditService.DebitForJobAsync(userId, AiJobType.LogoConceptRegenerate, creditOpId);
+                }
 
-                var regeneratedConcept = await _logoGenerationService.RegenerateSingleConceptAsync(idea, kit, conceptKey, cancellationToken);
+                BrandLogoConcept? regeneratedConcept;
+                try
+                {
+                    regeneratedConcept = await _logoGenerationService.RegenerateSingleConceptAsync(idea, kit, conceptKey, cancellationToken);
+                }
+                catch
+                {
+                    if (_aiCreditService != null && creditOpId != null)
+                    {
+                        await _aiCreditService.RefundForJobAsync(userId, AiJobType.LogoConceptRegenerate, creditOpId, "Single logo concept regeneration failed before persistence");
+                    }
+                    throw;
+                }
 
                 var updateBuilder = Builders<BrandKit>.Update;
                 var arrayFilters = new List<ArrayFilterDefinition>
@@ -869,11 +970,18 @@ namespace WebApp.Controllers
                 var options = new UpdateOptions { ArrayFilters = arrayFilters };
                 var updated = await _brandKitStore.UpdateAsync(idea.Id, userId, update, expectedVersion, session: null, options: options);
                 if (!updated)
+                {
+                    if (_aiCreditService != null && creditOpId != null)
+                    {
+                        await _aiCreditService.RefundForJobAsync(userId, AiJobType.LogoConceptRegenerate, creditOpId, "Optimistic concurrency conflict on logo single concept regeneration");
+                    }
                     return StatusCode(StatusCodes.Status409Conflict, ApiResponse.Error("This brand kit was updated in another tab. Refresh to load the latest version before continuing."));
+                }
 
                 var reloaded = await _brandKitStore.GetByIdeaIdAsync(idea.Id, userId);
                 return Ok(ApiResponse.Ok($"Concept '{conceptKey}' regenerated successfully", reloaded));
             }
+            catch (InsufficientCreditsException ex) { return StatusCode(StatusCodes.Status402PaymentRequired, ApiResponse.Error(ex.Message)); }
             catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
             catch (UnauthorizedAccessException ex) { return StatusCode(StatusCodes.Status401Unauthorized, ApiResponse.Error(ex.Message)); }
             catch (Exception ex) { return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
@@ -929,6 +1037,7 @@ namespace WebApp.Controllers
             [FromQuery] long? expectedVersion = null,
             CancellationToken cancellationToken = default)
         {
+            string? creditOpId = null;
             try
             {
                 var userId = GetUserId();
@@ -942,24 +1051,51 @@ namespace WebApp.Controllers
                 if (!allowed)
                     return BadRequest(ApiResponse.Error(prerequisiteErr!));
 
+                if ((kit.Colors?.RegenerateCount ?? 0) >= MaxRegenerations)
+                {
+                    return BadRequest(ApiResponse.Error($"Colour palette has reached the maximum regeneration limit ({MaxRegenerations}/{MaxRegenerations})."));
+                }
+
                 if (_colorGenerationService == null)
                     return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error("Color generation service is unavailable."));
 
-                // Step 2e credit hook placeholder
-                // await _aiCreditService.DebitForJobAsync(userId, AiJobType.BrandColorRegeneration);
+                if (_aiCreditService != null)
+                {
+                    creditOpId = Guid.NewGuid().ToString("N");
+                    await _aiCreditService.DebitForJobAsync(userId, AiJobType.ColorGeneration, creditOpId);
+                }
 
-                var colors = await _colorGenerationService.RegenerateColorsAsync(kit, idea, cancellationToken);
+                BrandColors? colors;
+                try
+                {
+                    colors = await _colorGenerationService.RegenerateColorsAsync(kit, idea, cancellationToken);
+                }
+                catch
+                {
+                    if (_aiCreditService != null && creditOpId != null)
+                    {
+                        await _aiCreditService.RefundForJobAsync(userId, AiJobType.ColorGeneration, creditOpId, "Color regeneration failed before persistence");
+                    }
+                    throw;
+                }
 
                 var updateBuilder = Builders<BrandKit>.Update;
                 var update = updateBuilder.Set(x => x.Colors, colors);
 
                 var updated = await _brandKitStore.UpdateAsync(idea.Id, userId, update, expectedVersion);
                 if (!updated)
+                {
+                    if (_aiCreditService != null && creditOpId != null)
+                    {
+                        await _aiCreditService.RefundForJobAsync(userId, AiJobType.ColorGeneration, creditOpId, "Optimistic concurrency conflict on color regeneration save");
+                    }
                     return StatusCode(StatusCodes.Status409Conflict, ApiResponse.Error("This brand kit was updated in another tab. Refresh to load the latest version before continuing."));
+                }
 
                 var reloaded = await _brandKitStore.GetByIdeaIdAsync(idea.Id, userId);
                 return Ok(ApiResponse.Ok("Colors regenerated successfully", reloaded));
             }
+            catch (InsufficientCreditsException ex) { return StatusCode(StatusCodes.Status402PaymentRequired, ApiResponse.Error(ex.Message)); }
             catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
             catch (UnauthorizedAccessException ex) { return StatusCode(StatusCodes.Status401Unauthorized, ApiResponse.Error(ex.Message)); }
             catch (Exception ex) { return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
@@ -1114,6 +1250,7 @@ namespace WebApp.Controllers
             [FromQuery] long? expectedVersion = null,
             CancellationToken cancellationToken = default)
         {
+            string? creditOpId = null;
             try
             {
                 var userId = GetUserId();
@@ -1130,13 +1267,33 @@ namespace WebApp.Controllers
                 if (kit.Colors?.Roles == null || kit.Colors.Roles.Count != 5)
                     return BadRequest(ApiResponse.Error("All 5 colour roles must be defined before regenerating typography."));
 
+                if ((kit.Typography?.RegenerateCount ?? 0) >= MaxRegenerations)
+                {
+                    return BadRequest(ApiResponse.Error($"Typography system has reached the maximum regeneration limit ({MaxRegenerations}/{MaxRegenerations})."));
+                }
+
                 if (_typographyGenerationService == null)
                     return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error("Typography generation service is unavailable."));
 
-                // Step 2e credit hook placeholder
-                // await _aiCreditService.DebitForJobAsync(userId, AiJobType.BrandTypographyRegeneration);
+                if (_aiCreditService != null)
+                {
+                    creditOpId = Guid.NewGuid().ToString("N");
+                    await _aiCreditService.DebitForJobAsync(userId, AiJobType.TypographyGeneration, creditOpId);
+                }
 
-                var typography = await _typographyGenerationService.RegenerateTypographyAsync(kit, idea, cancellationToken);
+                BrandTypography? typography;
+                try
+                {
+                    typography = await _typographyGenerationService.RegenerateTypographyAsync(kit, idea, cancellationToken);
+                }
+                catch
+                {
+                    if (_aiCreditService != null && creditOpId != null)
+                    {
+                        await _aiCreditService.RefundForJobAsync(userId, AiJobType.TypographyGeneration, creditOpId, "Typography regeneration failed before persistence");
+                    }
+                    throw;
+                }
 
                 var updateBuilder = Builders<BrandKit>.Update;
                 var update = updateBuilder.Set(x => x.Typography, typography);
@@ -1159,11 +1316,18 @@ namespace WebApp.Controllers
                 }
 
                 if (!updated)
+                {
+                    if (_aiCreditService != null && creditOpId != null)
+                    {
+                        await _aiCreditService.RefundForJobAsync(userId, AiJobType.TypographyGeneration, creditOpId, "Optimistic concurrency conflict on typography regeneration save");
+                    }
                     return StatusCode(StatusCodes.Status409Conflict, ApiResponse.Error("This brand kit was updated in another tab. Refresh to load the latest version before continuing."));
+                }
 
                 var reloaded = await _brandKitStore.GetByIdeaIdAsync(idea.Id, userId);
                 return Ok(ApiResponse.Ok("Typography regenerated successfully", reloaded));
             }
+            catch (InsufficientCreditsException ex) { return StatusCode(StatusCodes.Status402PaymentRequired, ApiResponse.Error(ex.Message)); }
             catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
             catch (UnauthorizedAccessException ex) { return StatusCode(StatusCodes.Status401Unauthorized, ApiResponse.Error(ex.Message)); }
             catch (Exception ex) { return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
@@ -1439,6 +1603,55 @@ namespace WebApp.Controllers
 
                 var reloaded = await _brandKitStore.GetByIdeaIdAsync(idea.Id, userId);
                 return Ok(ApiResponse.Ok("Snapshot created", reloaded));
+            }
+            catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
+            catch (UnauthorizedAccessException ex) { return StatusCode(StatusCodes.Status401Unauthorized, ApiResponse.Error(ex.Message)); }
+            catch (Exception ex) { return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
+        }
+
+        // =========================================================================
+        // 10. OPEN STUDIO / RESET REGENERATE CAPS (HUB RE-EDIT RESET)
+        // =========================================================================
+        [HttpPost("open-studio")]
+        public async Task<IActionResult> OpenStudio(
+            [FromQuery] string? ideaId = null,
+            [FromQuery] long? expectedVersion = null)
+        {
+            try
+            {
+                var userId = GetUserId();
+                var idea = await _journeys.ResolveIdeaAsync(userId, ideaId);
+
+                var kit = await _brandKitStore.GetByIdeaIdAsync(idea.Id, userId);
+                if (kit == null)
+                    return NotFound(ApiResponse.Error("Brand kit not found for this idea."));
+
+                var updateBuilder = Builders<BrandKit>.Update;
+                var updates = new List<UpdateDefinition<BrandKit>>
+                {
+                    updateBuilder.Set(x => x.Direction.RegenerateCount, 0),
+                    updateBuilder.Set(x => x.Logo.RegenerateCount, 0),
+                    updateBuilder.Set(x => x.Colors.RegenerateCount, 0),
+                    updateBuilder.Set(x => x.Typography.RegenerateCount, 0)
+                };
+
+                if (kit.Logo?.Concepts != null && kit.Logo.Concepts.Count > 0)
+                {
+                    for (int i = 0; i < kit.Logo.Concepts.Count; i++)
+                    {
+                        updates.Add(updateBuilder.Set($"Logo.Concepts.{i}.RegenerateCount", 0));
+                    }
+                }
+
+                var combinedUpdate = updateBuilder.Combine(updates);
+                var updated = await _brandKitStore.UpdateAsync(idea.Id, userId, combinedUpdate, expectedVersion);
+                if (!updated)
+                {
+                    return StatusCode(StatusCodes.Status409Conflict, ApiResponse.Error("This brand kit was updated in another tab. Refresh to load the latest version before continuing."));
+                }
+
+                var reloaded = await _brandKitStore.GetByIdeaIdAsync(idea.Id, userId);
+                return Ok(ApiResponse.Ok("Studio opened and regenerate caps reset", reloaded));
             }
             catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
             catch (UnauthorizedAccessException ex) { return StatusCode(StatusCodes.Status401Unauthorized, ApiResponse.Error(ex.Message)); }
