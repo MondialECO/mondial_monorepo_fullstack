@@ -100,18 +100,18 @@ Gating is strict: no skipping steps; user can always go back one step; completed
 
 **Purpose:** verify identity and lock in the Creator role before any dashboard access.
 
-**Steps:** email OTP, phone OTP, identity document upload, face verification, role selection.
+**Steps:** email OTP, phone OTP, identity document upload, role selection.
 
-The Phase-1 completion gate promotes onboarding to Phase 1 only when all four core items (identity, face, phone, email) read verified on the Onboarding model. Promotion is derived — no manual phase writes.
+The Phase-1 completion gate promotes onboarding to Phase 1 based on verified core items (email, phone, identity document) on the Onboarding model. Promotion is derived — no manual phase writes.
 
 ### Status:
 
 - **Email OTP, Phone OTP** — **LIVE** (HMAC-hashed, expiring, rate-limited).
 - **Role selection persistence** — **LIVE** (set at signup, read via onboarding status + JWT role claim).
-- **Identity + Face verification** — was STUB (only dev-only endpoints wrote the flags). Fixed via the KYC bridge: admin approval of uploaded docs now sets the onboarding identity/face flags and re-runs promotion, so a concierge-approved user clears the gate in production. Reject is symmetric (clears the flags + re-evaluates). SUMSUB is intentionally not wired for alpha.
-- **The role UI cosmetic hardcode** ("Role selected (Creator)" without reading actual role) — minor, should read the real role.
+- **Identity verification** — was STUB (only dev-only endpoints wrote the flags). Fixed via the KYC bridge: admin approval of uploaded docs sets the onboarding identity flag and re-runs promotion, so a concierge-approved user clears the gate in production. Reject is symmetric (clears the flag + re-evaluates). Sumsub document-only verification is wired and gated via feature flags; face/biometrics has been permanently removed.
+- **Role selection UI status** — **LIVE** (reads real role dynamically from onboarding status and profile data).
 
-**Alpha rule:** KYC clearance is by admin (concierge) approval. This is the legitimate path until SUMSUB is integrated post-alpha.
+**Alpha rule:** KYC clearance is by admin (concierge) approval or Sumsub document mode.
 
 ---
 
@@ -201,10 +201,16 @@ The Brand Visual Identity Studio provides a calm, generative studio workflow acr
      - `Project.Tags` + `Project.CreatorEdge` $\to$ `PersonalityTraits` (default fallback: `["Precise", "Resilient", "Autonomous"]`)
      - Category keywords $\to$ `AvoidList` heuristics (e.g. avoiding cliché padlocks/shields for cyber, leaves/wheat for agri).
    - Creators can freely edit personality traits and avoid items with zero credit cost.
-2. **Direction Board Modal (`DirectionBoardModal` — Step 2: "Direction"):**
-   - Generates exactly 4 distinct visual directions via generative model call (`AiJobType.DirectionGeneration`, **7 credits**).
-   - Free interactive **Adjust strip** (Palette variant, Contrast position, Type weight) persisted directly via `PATCH /direction` without credit cost.
-   - Enforces a 3-regeneration cap for the entire candidate set (`RegenerateCount <= 3`).
+2. **Direction Board Modal (`DirectionBoardModal` — Step 2: "Direction", Figma Node `57012:9066`):**
+   - Canonical Title: `"Pick a visual direction"` (`font-heading font-semibold 26px`), Subtitle: `"This sets the visual language. Logos are drawn inside the direction you pick."` (`DM Sans 14px text-muted-foreground`).
+   - Generates exactly 4 distinct visual directions via generative model call (`AiJobType.DirectionGeneration`, **7 credits**), enforcing a 3-regeneration cap (`RegenerateCount <= 3`, amber badge `[N]/3 LEFT`).
+   - **Visual Direction Filter Strip ("SHOW ME"):** Filter chips (`All four`, `Calmer`, `Bolder`, `More technical`) allowing creators to re-sort directions instantaneously without consuming credits or regenerations.
+   - **2x2 Direction Boards Grid (24px Gutters, Height-Matched):**
+     - *Preview Band (200px tall):* Distinct abstract style specimen (`SPECIMEN · GRID 01`, `DIRECTION 02`, `SPECIMEN · ORGANIC 03`, `SYSTEM // SYS_04`) with large `Aa` specimen and archetype subline, plus a pinned 24px primary check badge on active selection.
+     - *Four-Swatch Colour Strip (28px tall):* Edge-to-edge color palette representation.
+     - *Body Area (20px padding):* Direction name, `ACTIVE SELECTION` pill, descriptive feel line, and `WHY THIS FITS` rationale.
+     - *Footer Row:* Individual font pairing pills (`[ Display Family ]` `+` `[ Text Family ]`) and single-card selection/action button.
+   - Free interactive **Adjust strip** (Palette variant, Contrast balance, Display weight) persisted directly via `PATCH /direction` without credit cost.
 3. **Logo Type Chooser Modal (`LogoTypeChooserModal` — Step 3: "Logo Type"):**
    - **0 credit cost** and zero regenerate cap (pure structural choice).
    - Computes dynamic fit indicators (Recommended, Good Fit, Low Fit) in real time based on `CharacterLength` and `WordCount` constraints (e.g. short names favor Monograms, long names favor Wordmarks/Combination marks).
@@ -376,9 +382,9 @@ A combined **Business Plan + Forecast** document (`PlanForecastPrintView`), reac
 
 **Step 4.1 — Pricing (LIVE):** model selection (subscription / one-time / freemium / usage-based) + 3–5 editable tiers, validated and persisted.
 
-**Step 4.2 — Resource Calculator (MISSING):** team requirements (role/cost/duration), SaaS stack with costs, total launch budget, time-to-launch, budget breakdown %. Not built — backlog.
+**Step 4.2 — Resource Calculator (LIVE):** Sector-specific benchmark resolution (`MarketBenchmarkResolver`) deriving required team roles, salary ranges, duration, essential SaaS stack with costs, and dynamic min/max launch budget calculations based on clarified concept and sector context.
 
-**Step 4.3 — GTM Roadmap (partly MISSING):** GTM setup inputs are captured (LIVE), but the AI-generated 12-week timeline / weekly tasks / channel-mix visualization is not built. The landing-page generator is a "coming soon" placeholder — no generated artifact.
+**Step 4.3 — GTM Setup & Roadmap (LIVE):** Structured GTM setup inputs + AI-generated 12-week benchmark GTM schedule with Week 1 foundations auto-completion, marketing channel breakdown, and landing page generator.
 
 **Cross-module note:** the `auto_built_43` badge on business-plan §6 lights on GTM-setup completion, not on pricing data injection. "Pricing feeds GTM" is not literally true — the GTM section still renders the P3 plan text unchanged. Real pricing→GTM data injection is a backlog item, not a claim to make in the doc.
 
@@ -411,7 +417,7 @@ Company document verification does NOT happen in P5 — it is deferred to Entrep
 - **REMOVE** the stale four-screen wizard, fully live front-to-back: entity-type selector (SAS/SAS-U/SARL), shareholder/cap-table editor (founder/ESOP %), Seed Funding card, the company-formation and seed-funding endpoints, and the CreatorPathB model. For alpha it is hidden so no user can reach it; full deletion follows once business-plan §9 is decoupled.
 - **FORBIDDEN:** Listing Path B ("Build Yourself") on the marketplace. Path B is an internal venture spinout to Entrepreneur P1/P6.
 - **FORBIDDEN:** showing matched buyers/investors or any match count in Phase 5. Matchmaking does not exist before P6.
-- Any "72h path lock" — not canon, not built, do not add.
+- **30-Day Switch Window:** Once a path is chosen, switching between Path A and Path B is permitted within a 30-day window (`PathSwitchWindow = TimeSpan.FromDays(30)` in `CreatorJourneyService.cs`). After 30 days elapse, the decision locks permanently.
 
 ---
 

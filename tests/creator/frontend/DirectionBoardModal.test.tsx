@@ -199,7 +199,7 @@ describe('DirectionBoardModal Component', () => {
     fireEvent.click(vibrantBtn);
 
     // Click bold type weight
-    const boldBtn = screen.getByRole('button', { name: /bold/i });
+    const boldBtn = screen.getByRole('button', { name: /^bold$/i });
     fireEvent.click(boldBtn);
 
     // Click Confirm button
