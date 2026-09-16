@@ -102,7 +102,7 @@ describe('BrandStudioShell Component', () => {
 
 
     // Verify resumed active step is Logo Type modal
-    expect(screen.getByText(/Choose Your Logo Type Archetype/i)).toBeInTheDocument();
+    expect(screen.getByText(/What kind of logo\?/i)).toBeInTheDocument();
   });
 
   it('locks subsequent steps and prevents opening locked steps', async () => {

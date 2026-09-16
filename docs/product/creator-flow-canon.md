@@ -211,9 +211,16 @@ The Brand Visual Identity Studio provides a calm, generative studio workflow acr
      - *Body Area (20px padding):* Direction name, `ACTIVE SELECTION` pill, descriptive feel line, and `WHY THIS FITS` rationale.
      - *Footer Row:* Individual font pairing pills (`[ Display Family ]` `+` `[ Text Family ]`) and single-card selection/action button.
    - Free interactive **Adjust strip** (Palette variant, Contrast balance, Display weight) persisted directly via `PATCH /direction` without credit cost.
-3. **Logo Type Chooser Modal (`LogoTypeChooserModal` — Step 3: "Logo Type"):**
-   - **0 credit cost** and zero regenerate cap (pure structural choice).
-   - Computes dynamic fit indicators (Recommended, Good Fit, Low Fit) in real time based on `CharacterLength` and `WordCount` constraints (e.g. short names favor Monograms, long names favor Wordmarks/Combination marks).
+3. **Logo Type Chooser Modal (`LogoTypeChooserModal` — Step 3: "Logo Type", Figma Node `57004:10297`):**
+   - **Canonical Title & Subtitle:** Title: `"What kind of logo?"` (`font-heading font-semibold 26px`), Subtitle: `"Pick the form first — then we'll draw six concepts in that form, inside {directionName}."` (`DM Sans 14px text-muted-foreground`).
+   - **0 credit cost** and zero regenerate cap (pure structural archetype selection).
+   - **Context Strip (56px tall, `bg-muted/40`):** Displays 3 key strategy properties (`YOUR NAME` $\to$ `{businessName} · {charLength} characters`, `FIRST APPEARS ON` $\to$ `{firstAppearance}`, `DIRECTION` $\to$ `{directionName}`) plus the guidance note `"These shape which types work best for you."`
+   - **3x2 Grid of 6 Architectural Archetype Cards (24px Gutters, Height-Matched):**
+     - 6 Canonical Options: `Wordmark`, `Symbol + Name`, `Monogram`, `Abstract mark`, `Icon`, `Minimal`.
+     - *Specimen Band (150px tall):* Neutral generic greyscale archetype specimen.
+     - *Top-Right Check Badge (24px):* Primary blue circular checkmark pinned to top-right corner on active selection.
+     - *Body Area (20px padding):* Canonical title, subtitle description, and two guidance rows: `Good when:` (green check icon) and `Trade-off:` (dash `—`).
+     - *Dynamic Fit Indicator:* Real-time fit badges (`Strong fit for you`, `Workable`, `Tight fit`) computed deterministically from `characterLength`, `wordCount`, `firstAppearance`, and `directionName` with zero mock data.
    - Hands off selected `LogoType` to Logo Creation to filter subsequent concept generation.
 4. **Logo Creation & Variations Modals (Step 4: "Logo"):**
    - **4a. Logo Creation Modal (`LogoCreationModal`):**
