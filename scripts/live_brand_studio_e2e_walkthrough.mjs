@@ -113,13 +113,17 @@ async function runLiveE2EWalkthrough() {
   const networkErrors = [];
 
   page.on('console', (msg) => {
+    const text = msg.text();
     if (msg.type() === 'error' || msg.type() === 'warning') {
-      consoleLogs.push({ type: msg.type(), text: msg.text() });
+      consoleLogs.push({ type: msg.type(), text });
     }
+    console.log(`[Browser Console ${msg.type()}] ${text}`);
   });
 
   page.on('requestfailed', (req) => {
-    networkErrors.push({ url: req.url(), failure: req.failure()?.errorText });
+    const errText = req.failure()?.errorText || 'Unknown request failure';
+    console.log(`[Browser Request Failed] ${req.url()}: ${errText}`);
+    networkErrors.push({ url: req.url(), failure: errText });
   });
 
   // Set Auth in localStorage
@@ -217,20 +221,13 @@ async function runLiveE2EWalkthrough() {
   if (confirmDirBtn) {
     await confirmDirBtn.click();
   }
-  await page.waitForTimeout(3500);
-
-  // Open Step 3: Logo Type
-  console.log(`[Step] Opening Step 3: Logo Type...`);
-  await page.click('button[title="3. Logo Type"]');
-  await page.waitForTimeout(2000);
-
   // =========================================================================
-  // CHECKPOINT 4: Logo Type Modal
+  // CHECKPOINT 4: Logo Type Modal (Auto-Opened from Direction Confirm)
   // =========================================================================
   console.log(`\n========================================`);
-  console.log(`CHECKPOINT 4: Logo Type Modal`);
+  console.log(`CHECKPOINT 4: Logo Type Modal (Auto-Opened from Direction Confirm)`);
   console.log(`========================================`);
-  await page.waitForSelector('h2:has-text("Choose Your Logo Type Archetype")', { timeout: 20000 });
+  await page.waitForSelector('h2:has-text("Choose Your Logo Type Archetype")', { timeout: 25000 });
   await page.waitForTimeout(1500);
 
   // Select "Modern Combination Mark" or first archetype card
@@ -309,18 +306,13 @@ async function runLiveE2EWalkthrough() {
   await page.waitForTimeout(3500);
 
   // =========================================================================
-  // CHECKPOINT 7: Colour System Modal
+  // =========================================================================
+  // CHECKPOINT 7: Colour System Modal (Auto-Opened from Variations Confirm)
   // =========================================================================
   console.log(`\n========================================`);
-  console.log(`CHECKPOINT 7: Colour System Modal`);
+  console.log(`CHECKPOINT 7: Colour System Modal (Auto-Opened from Variations Confirm)`);
   console.log(`========================================`);
-  try {
-    await page.waitForSelector('h2:has-text("Harmonized Colour System")', { timeout: 10000 });
-  } catch {
-    console.log(`[Step] Opening Step 5: Colour System...`);
-    await page.click('button[title="5. Colour"]');
-    await page.waitForSelector('h2:has-text("Harmonized Colour System")', { timeout: 25000 });
-  }
+  await page.waitForSelector('h2:has-text("Harmonized Colour System")', { timeout: 25000 });
   await page.waitForTimeout(2000);
 
   // Select mood shift "Higher contrast"
@@ -500,7 +492,7 @@ runLiveE2EWalkthrough()
     console.log('LIVE WALKTHROUGH FINISHED SUCCESSFULLY');
     process.exit(0);
   })
-  .catch(err => {
+  .catch(async (err) => {
     console.error('LIVE WALKTHROUGH FAILED:', err);
     process.exit(1);
   });

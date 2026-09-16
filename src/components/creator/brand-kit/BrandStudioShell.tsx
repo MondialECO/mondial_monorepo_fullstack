@@ -224,7 +224,25 @@ export function BrandStudioShell({
     };
   }, [ideaId, initialKit]);
 
-  // 4. Modal Confirm Handlers
+  // 4. Unified Modal Step Transition Handler
+  const handleStepTransition = useCallback(
+    (nextModalKey: StudioModalKey | null, updatedKit?: BrandKit) => {
+      if (updatedKit) {
+        setKit(updatedKit);
+      }
+      if (nextModalKey === null && updatedKit?.status?.toLowerCase() === "complete") {
+        setActiveModal(null);
+        const hubUrl = `/dashboard/creator/phase-2/brand-kit${
+          ideaId ? `?ideaId=${encodeURIComponent(ideaId)}` : ""
+        }`;
+        router.push(hubUrl);
+        return;
+      }
+      setActiveModal(nextModalKey);
+    },
+    [ideaId, router]
+  );
+
   const handleStrategyConfirm = async (updatedStrategy: Partial<BrandStrategy>) => {
     if (!kit) return;
     try {
@@ -251,9 +269,7 @@ export function BrandStudioShell({
         kit.version
       );
 
-      setKit(updatedKit);
-      // Strategy confirmed -> unlock and advance to Step 2 (Direction)
-      setActiveModal("direction");
+      handleStepTransition("direction", updatedKit);
     } catch (err: any) {
       setError(
         err?.response?.data?.message ||
@@ -266,21 +282,9 @@ export function BrandStudioShell({
     }
   };
 
-  const handleLogoCreationConfirm = (updatedKit: BrandKit) => {
-    setKit(updatedKit);
-    // Move immediately to variations (Step 3b)
-    setActiveModal("variations");
-  };
-
-  const handleVariationsConfirm = (updatedKit: BrandKit) => {
-    setKit(updatedKit);
-    // Logo complete -> advance to Colour step placeholder
-    setActiveModal("colors");
-  };
-
   const handleSelectStep = (stepKey: StudioStepKey) => {
     const modalKey = getModalKeyForStep(stepKey, kit);
-    setActiveModal(modalKey);
+    handleStepTransition(modalKey);
   };
 
   const handleBackNavigation = () => {
@@ -428,33 +432,11 @@ export function BrandStudioShell({
 
       {/* 3. Modal Overlays */}
 
-      {/* Step 3a: Logo Creation Modal */}
-      {activeModal === "logo_creation" && (
-        <LogoCreationModal
-          ideaId={ideaId}
-          initialKit={kit}
-          onConfirm={handleLogoCreationConfirm}
-          onBack={() => setActiveModal(null)}
-          onClose={() => setActiveModal(null)}
-        />
-      )}
-
-      {/* Step 3b: Variation Set Modal */}
-      {activeModal === "variations" && (
-        <VariationSetModal
-          ideaId={ideaId}
-          initialKit={kit}
-          onConfirm={handleVariationsConfirm}
-          onBack={() => setActiveModal("logo_creation")}
-          onClose={() => setActiveModal(null)}
-        />
-      )}
-
       {/* Step 1: Strategy Review Modal */}
       {activeModal === "strategy" && kit && (
         <StrategyReviewModal
           kit={kit}
-          onClose={() => setActiveModal(null)}
+          onClose={() => handleStepTransition(null)}
           onConfirm={handleStrategyConfirm}
           isSubmitting={isLoading}
         />
@@ -466,10 +448,8 @@ export function BrandStudioShell({
           isOpen={true}
           ideaId={ideaId}
           kit={kit}
-          onClose={() => setActiveModal(null)}
-          onSuccess={(updatedKit) => {
-            setKit(updatedKit);
-          }}
+          onClose={() => handleStepTransition(null)}
+          onSuccess={(updatedKit) => handleStepTransition("logo_type", updatedKit)}
         />
       )}
 
@@ -479,11 +459,30 @@ export function BrandStudioShell({
           isOpen={true}
           ideaId={ideaId}
           kit={kit}
-          onClose={() => setActiveModal(null)}
-          onSuccess={(updatedKit) => {
-            setKit(updatedKit);
-            setActiveModal("logo_creation");
-          }}
+          onClose={() => handleStepTransition(null)}
+          onSuccess={(updatedKit) => handleStepTransition("logo_creation", updatedKit)}
+        />
+      )}
+
+      {/* Step 4a: Logo Creation Modal */}
+      {activeModal === "logo_creation" && (
+        <LogoCreationModal
+          ideaId={ideaId}
+          initialKit={kit}
+          onConfirm={(updatedKit) => handleStepTransition("variations", updatedKit)}
+          onBack={() => handleStepTransition(null)}
+          onClose={() => handleStepTransition(null)}
+        />
+      )}
+
+      {/* Step 4b: Variation Set Modal */}
+      {activeModal === "variations" && (
+        <VariationSetModal
+          ideaId={ideaId}
+          initialKit={kit}
+          onConfirm={(updatedKit) => handleStepTransition("colors", updatedKit)}
+          onBack={() => handleStepTransition("logo_creation")}
+          onClose={() => handleStepTransition(null)}
         />
       )}
 
@@ -493,11 +492,8 @@ export function BrandStudioShell({
           isOpen={true}
           ideaId={ideaId}
           kit={kit}
-          onClose={() => setActiveModal(null)}
-          onSuccess={(updatedKit) => {
-            setKit(updatedKit);
-            setActiveModal("typography");
-          }}
+          onClose={() => handleStepTransition(null)}
+          onSuccess={(updatedKit) => handleStepTransition("typography", updatedKit)}
         />
       )}
 
@@ -507,19 +503,8 @@ export function BrandStudioShell({
           isOpen={true}
           ideaId={ideaId}
           kit={kit}
-          onClose={() => setActiveModal(null)}
-          onSuccess={(updatedKit) => {
-            const wasNotComplete = kit?.status?.toLowerCase() !== "complete";
-            const isNowComplete = updatedKit?.status?.toLowerCase() === "complete";
-            setKit(updatedKit);
-            setActiveModal(null);
-            if (wasNotComplete && isNowComplete) {
-              const hubUrl = `/dashboard/creator/phase-2/brand-kit${
-                ideaId ? `?ideaId=${encodeURIComponent(ideaId)}` : ""
-              }`;
-              router.push(hubUrl);
-            }
-          }}
+          onClose={() => handleStepTransition(null)}
+          onSuccess={(updatedKit) => handleStepTransition(null, updatedKit)}
         />
       )}
 

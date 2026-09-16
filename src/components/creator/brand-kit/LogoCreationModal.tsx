@@ -266,7 +266,8 @@ export function LogoCreationModal({
     : "Concept";
 
   return (
-    <div className="w-full max-w-6xl mx-auto flex flex-col bg-background text-foreground rounded-3xl border border-border shadow-xl overflow-hidden min-h-[720px]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 md:p-6 overflow-y-auto animate-in fade-in duration-200">
+      <div className="w-full max-w-6xl mx-auto flex flex-col bg-background text-foreground rounded-3xl border border-border shadow-xl overflow-hidden min-h-[720px]">
       {/* 1. Modal Top Navigation Header */}
       <header className="flex items-center justify-between border-b border-border bg-card/60 backdrop-blur-xs px-6 py-4">
         <div className="flex items-center gap-3">
@@ -506,6 +507,7 @@ export function LogoCreationModal({
           }}
         />
       )}
+      </div>
     </div>
   );
 }

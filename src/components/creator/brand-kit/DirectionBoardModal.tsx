@@ -178,6 +178,7 @@ export function DirectionBoardModal({
   onSuccess,
 }: DirectionBoardModalProps) {
   // 1. Core State
+  const [currentKit, setCurrentKit] = useState<BrandKit>(kit);
   const initialSelectedKey =
     kit?.direction?.selectedDirectionKey ||
     kit?.direction?.candidates?.[0]?.key ||
@@ -209,6 +210,9 @@ export function DirectionBoardModal({
 
   // Synchronize state when kit updates
   useEffect(() => {
+    if (kit) {
+      setCurrentKit(kit);
+    }
     if (kit?.direction?.candidates && kit.direction.candidates.length > 0) {
       setCandidates(kit.direction.candidates);
       if (!selectedKey || !kit.direction.candidates.some((c) => c.key === selectedKey)) {
@@ -261,17 +265,19 @@ export function DirectionBoardModal({
     try {
       const updatedKit = await brandKitApi.generateDirections(
         ideaId,
-        kit?.version
+        currentKit?.version ?? kit?.version
       );
-      if (updatedKit?.direction?.candidates) {
-        setCandidates(updatedKit.direction.candidates);
-        setSelectedKey(
-          updatedKit.direction.selectedDirectionKey ||
-            updatedKit.direction.candidates[0]?.key ||
-            ""
-        );
-        setRegenerateCount(updatedKit.direction.regenerateCount || 0);
-        onSuccess(updatedKit);
+      if (updatedKit) {
+        setCurrentKit(updatedKit);
+        if (updatedKit.direction?.candidates) {
+          setCandidates(updatedKit.direction.candidates);
+          setSelectedKey(
+            updatedKit.direction.selectedDirectionKey ||
+              updatedKit.direction.candidates[0]?.key ||
+              ""
+          );
+          setRegenerateCount(updatedKit.direction.regenerateCount || 0);
+        }
       }
     } catch (err: any) {
       const status = err?.response?.status;
@@ -315,11 +321,10 @@ export function DirectionBoardModal({
           adjustmentSettings: adjustments,
         },
         ideaId,
-        kit?.version
+        currentKit?.version ?? kit?.version
       );
 
       onSuccess(updatedKit);
-      onClose();
     } catch (err: any) {
       const msg =
         err?.response?.data?.message ||
