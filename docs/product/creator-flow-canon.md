@@ -159,19 +159,37 @@ The Brand Visual Identity Studio provides a calm, generative studio workflow acr
   - On the backend, `POST /api/creator/journey/phase2/brand-kit/open-studio` checks for an existing `BrandKit`. If none exists (first-time creator), it transparently auto-provisions a fresh draft kit via the shared `GetOrCreateBrandKitAsync` helper (deriving initial `BrandStrategy` from `idea.Project` and seeding default 5-role Colour and 4-role Typography defaults), returning HTTP 200 with the newly created kit.
   - Studio immediately initializes and opens Step 1 (`StrategyReviewModal`) without requiring any out-of-band pre-creation or encountering 404 errors.
   - **Defense-in-Depth Null Guards:** `BrandStudioShell.tsx` `loadStudioSession()` applies optional chaining on every `currentKit` property access (`currentKit?.strategy?.confirmedAt`, `currentKit?.direction?.selectedAt`, `currentKit?.logo?.logoType`, `currentKit?.logo?.approvedAt`, `currentKit?.colors?.confirmedAt`, `currentKit?.logo?.selectedConceptKey`) and includes a secondary `brandKitApi.createBrandKit(ideaId)` fallback so null or missing kit states never produce unhandled runtime property errors.
-- **Top 6-Segment Progress Bar vs 7 User-Facing Steps:**
+- **Unified Modal Step Transition Architecture (`handleStepTransition`):**
+  - **Elimination of Conflicting Modal Wiring:** Replaces earlier fragmented patterns (direct state mutation vs out-of-band step reloading vs custom router pushes) with exactly **one unified transition function** in `BrandStudioShell.tsx`:
+    ```ts
+    const handleStepTransition = useCallback(
+      (nextModalKey: StudioModalKey | null, updatedKit?: BrandKit) => { ... }
+    );
+    ```
+  - **Single Source of State Truth:** Whenever any modal completes a step (PATCH, generate, or confirm), it passes the fresh `updatedKit` returned from the API directly into `handleStepTransition(nextStepKey, updatedKit)`. This immediately updates `kit` state, refreshes canvas cards, and ensures the optimistic concurrency version (`kit.version`) is always accurate for the next step.
+  - **Standardized Modal Transition Contract (7 Modals Across 6 Progress Segments):**
+    1. `StrategyReviewModal` (Step 1: "Strategy"): `handleStrategyConfirm` $\to$ `handleStepTransition("direction", updatedKit)`
+    2. `DirectionBoardModal` (Step 2: "Direction"): `onSuccess` $\to$ `handleStepTransition("logo_type", updatedKit)`
+    3. `LogoTypeChooserModal` (Step 3: "Logo Type"): `onSuccess` $\to$ `handleStepTransition("logo_creation", updatedKit)`
+    4. `LogoCreationModal` (Step 4a within "Logo" segment): `onConfirm` $\to$ `handleStepTransition("variations", updatedKit)`
+    5. `VariationSetModal` (Step 4b within "Logo" segment): `onConfirm` $\to$ `handleStepTransition("colors", updatedKit)`, `onBack` $\to$ `handleStepTransition("logo_creation")`
+    6. `ColorSystemModal` (Step 5: "Colour"): `onSuccess` $\to$ `handleStepTransition("typography", updatedKit)`
+    7. `TypographySystemModal` (Step 6: "Typography"): `onSuccess` $\to$ `handleStepTransition(null, updatedKit)`
+  - **Automatic Hub Completion Hand-Off:** When `nextModalKey === null` and `updatedKit.status === "complete"`, `handleStepTransition` intercepts the transition and automatically pushes the browser to the live Brand Kit Hub (`/dashboard/creator/phase-2/brand-kit?ideaId=...`).
+  - **Standardized Close/Dismiss:** All modals bind `onClose={() => handleStepTransition(null)}`, safely dismissing the overlay to reveal the accumulated canvas cards without losing session state.
+- **Top 6-Segment Progress Bar vs 7 User-Facing Modals:**
   1. `strategy` (Step 1 segment: "Strategy", modal: `StrategyReviewModal`)
   2. `direction` (Step 2 segment: "Direction", modal: `DirectionBoardModal`)
   3. `logo_type` (Step 3 segment: "Logo Type", modal: `LogoTypeChooserModal`)
-  4. `logo` (Step 4 segment: "Logo", encompassing both Step 4 `LogoCreationModal` and Step 5 `VariationSetModal`)
-  5. `colors` (Step 5 segment: "Colours", modal: `ColorSystemModal`)
+  4. `logo` (Step 4 segment: "Logo", encompassing both Step 4a `LogoCreationModal` and Step 4b `VariationSetModal`)
+  5. `colors` (Step 5 segment: "Colour", modal: `ColorSystemModal`)
   6. `typography` (Step 6 segment: "Typography", modal: `TypographySystemModal`)
 - **Interface Typography:** Standardized on **Inter** and **DM Sans** for all UI body copy, headings, and labels across all Studio surfaces (Syne Bold was an earlier prototype mock and is NOT used). **JetBrains Mono** is used for all numerals, tokens, and telemetry badges.
 - **Shared Components:**
   - `RegenerateCapBadge`: Reused across Direction, Logo Creation, Colour, and Typography to display remaining attempts (`N/3 LEFT` in neutral/muted, transitions to amber `0/3 LEFT` when cap is exhausted).
 
 #### 2. Per-Modal Behavior & Interaction Rules
-1. **Strategy Review Modal (`StrategyReviewModal`):**
+1. **Strategy Review Modal (`StrategyReviewModal` — Step 1: "Strategy"):**
    - Initial automatic derivation from `CreatorIdea.Project`:
      - `Project.Name` $\to$ `BusinessName`, `NameDisplayForm`
      - `Project.Concept` (fallback `Project.Solution`) $\to$ `Concept` (Provenance: `stated` if from project, `derived` if fallback)
@@ -181,36 +199,37 @@ The Brand Visual Identity Studio provides a calm, generative studio workflow acr
      - `Project.Tags` + `Project.CreatorEdge` $\to$ `PersonalityTraits` (default fallback: `["Precise", "Resilient", "Autonomous"]`)
      - Category keywords $\to$ `AvoidList` heuristics (e.g. avoiding cliché padlocks/shields for cyber, leaves/wheat for agri).
    - Creators can freely edit personality traits and avoid items with zero credit cost.
-2. **Direction Board Modal (`DirectionBoardModal`):**
+2. **Direction Board Modal (`DirectionBoardModal` — Step 2: "Direction"):**
    - Generates exactly 4 distinct visual directions via generative model call (`AiJobType.DirectionGeneration`, **7 credits**).
    - Free interactive **Adjust strip** (Palette variant, Contrast position, Type weight) persisted directly via `PATCH /direction` without credit cost.
    - Enforces a 3-regeneration cap for the entire candidate set (`RegenerateCount <= 3`).
-3. **Logo Type Chooser Modal (`LogoTypeChooserModal`):**
+3. **Logo Type Chooser Modal (`LogoTypeChooserModal` — Step 3: "Logo Type"):**
    - **0 credit cost** and zero regenerate cap (pure structural choice).
    - Computes dynamic fit indicators (Recommended, Good Fit, Low Fit) in real time based on `CharacterLength` and `WordCount` constraints (e.g. short names favor Monograms, long names favor Wordmarks/Combination marks).
    - Hands off selected `LogoType` to Logo Creation to filter subsequent concept generation.
-4. **Logo Creation Modal (`LogoCreationModal`):**
-   - Batch generation of 6 parametric logo concepts filtered by the selected `LogoType` (`AiJobType.LogoParameterSelection`, **4 credits**).
-   - Per-concept regeneration: creators can regenerate individual concepts independently (`AiJobType.LogoConceptRegenerate`, **2 credits**, capped at 3 regenerations per concept).
-   - Includes full-screen Compare Overlay and Micro-Scale Inspection (16px favicon view & invoice mock).
-5. **Variation Set Modal (`VariationSetModal`):**
-   - Free deterministic derivation of the **7 canonical logo variations** derived from the approved concept mark geometry.
-   - Separate confirmation action (`POST derive-variations` / `PATCH logo` with `approvedAt`) from concept selection.
-   - 7 Canonical Variation Keys & Purposes:
-     1. `primary`: Default master brand lockup for full-color presentations.
-     2. `horizontal`: Linear lockup for navbars, page headers, and wide banners.
-     3. `stacked`: Centered vertical lockup for square cards, badges, and packaging.
-     4. `icon_only`: Standalone mark for favicons (16/32px), app icons, and social avatars.
-     5. `black`: Single-ink solid black lockup for dark monochrome printing.
-     6. `white`: Reversed solid white lockup for dark backgrounds.
-     7. `transparent`: Alpha channel SVG mark with transparency grid rendering.
-6. **Colour System Modal (`ColorSystemModal`):**
+4. **Logo Creation & Variations Modals (Step 4: "Logo"):**
+   - **4a. Logo Creation Modal (`LogoCreationModal`):**
+     - Batch generation of 6 parametric logo concepts filtered by the selected `LogoType` (`AiJobType.LogoParameterSelection`, **4 credits**).
+     - Per-concept regeneration: creators can regenerate individual concepts independently (`AiJobType.LogoConceptRegenerate`, **2 credits**, capped at 3 regenerations per concept).
+     - Includes full-screen Compare Overlay and Micro-Scale Inspection (16px favicon view & invoice mock).
+   - **4b. Variation Set Modal (`VariationSetModal`):**
+     - Free deterministic derivation of the **7 canonical logo variations** derived from the approved concept mark geometry.
+     - Separate confirmation action (`POST derive-variations` / `PATCH logo` with `approvedAt`) from concept selection.
+     - 7 Canonical Variation Keys & Purposes:
+       1. `primary`: Default master brand lockup for full-color presentations.
+       2. `horizontal`: Linear lockup for navbars, page headers, and wide banners.
+       3. `stacked`: Centered vertical lockup for square cards, badges, and packaging.
+       4. `icon_only`: Standalone mark for favicons (16/32px), app icons, and social avatars.
+       5. `black`: Single-ink solid black lockup for dark monochrome printing.
+       6. `white`: Reversed solid white lockup for dark backgrounds.
+       7. `transparent`: Alpha channel SVG mark with transparency grid rendering.
+5. **Colour System Modal (`ColorSystemModal` — Step 5: "Colour"):**
    - Initial deterministic derivation (`DeriveInitialColors`, **0 credits**).
    - Generative whole-palette regeneration (`AiJobType.ColorGeneration`, **2 credits**, 3-cap).
    - Free individual role editing (Hex color picker and role lock toggles).
    - Real-time deterministic WCAG contrast ratio and rating calculation against `#FFFFFF` canvas. `Background` role has null contrast ratio by design.
    - **Server-Side Confirmation (`Colors.ConfirmedAt`):** Confirming the Colour System sends `confirmedAt: ISO timestamp` via `PATCH /colors`, and `CreatorBrandKitController.cs` records a genuine server-side UTC timestamp in `kit.Colors.ConfirmedAt` (matching Strategy and Logo confirmation patterns). Step 6 prerequisite sequencing in `CheckStepPrerequisite(6)` and `CheckPatchPrerequisite("typography")` strictly requires `kit.Colors.ConfirmedAt != null` (removing prior role-count proxy).
-7. **Typography System Modal (`TypographySystemModal`):**
+6. **Typography System Modal (`TypographySystemModal` — Step 6: "Typography"):**
    - Initial deterministic pairing derivation (`DeriveInitialTypography`, **0 credits**).
    - Generative pairing suggestion (`AiJobType.TypographyGeneration`, **2 credits**, 3-cap). *(Note: Known UI badge display bug — `TypographySystemModal.tsx:285` renders a static `<Badge>5 Credits</Badge>` chip while backend authoritatively debits 2 credits per `appsettings.json`).*
    - **Server-Side Immutability of "Logo type":** The `Logo type` role is structurally bound to the approved logo concept. `CreatorBrandKitController.cs` explicitly rejects modifications or unlock attempts on `Logo type` via `PatchTypography`, and regeneration strictly preserves it.
