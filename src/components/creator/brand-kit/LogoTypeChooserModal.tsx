@@ -350,7 +350,7 @@ export function LogoTypeChooserModal({
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-mono text-[11px] font-semibold text-primary uppercase tracking-wider">
-                  STEP 3 OF 7
+                  STEP 3 OF 6
                 </span>
                 <span className="text-xs text-muted-foreground">•</span>
                 <span className="text-xs font-medium text-muted-foreground">

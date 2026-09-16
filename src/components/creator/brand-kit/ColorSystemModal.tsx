@@ -537,7 +537,7 @@ export function ColorSystemModal({
           <div>
             <div className="flex items-center gap-2 mb-1">
               <span className="text-[11px] font-bold font-mono tracking-wider text-blue-600 uppercase bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
-                STEP 5 OF 7 · COLOUR SYSTEM
+                STEP 5 OF 6 · COLOUR SYSTEM
               </span>
               <span className="text-[11px] font-mono text-muted-foreground">
                 Deterministic WCAG 2.1 Contrast

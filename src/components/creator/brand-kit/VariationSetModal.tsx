@@ -213,7 +213,7 @@ export function VariationSetModal({
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-primary/10 text-primary border border-primary/20">
-                <span className="font-mono font-semibold mr-1">STEP 5 OF 7</span> • LOGO VARIATIONS
+                <span className="font-mono font-semibold mr-1">STEP 4 OF 6 · VARIATIONS</span> • LOGO SET
               </span>
               <span className="text-xs text-muted-foreground font-mono">
                 {brandName}
