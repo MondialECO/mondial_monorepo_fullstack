@@ -223,10 +223,16 @@ The Brand Visual Identity Studio provides a calm, generative studio workflow acr
      - *Dynamic Fit Indicator:* Real-time fit badges (`Strong fit for you`, `Workable`, `Tight fit`) computed deterministically from `characterLength`, `wordCount`, `firstAppearance`, and `directionName` with zero mock data.
    - Hands off selected `LogoType` to Logo Creation to filter subsequent concept generation.
 4. **Logo Creation & Variations Modals (Step 4: "Logo"):**
-   - **4a. Logo Creation Modal (`LogoCreationModal`):**
-     - Batch generation of 6 parametric logo concepts filtered by the selected `LogoType` (`AiJobType.LogoParameterSelection`, **4 credits**).
-     - Per-concept regeneration: creators can regenerate individual concepts independently (`AiJobType.LogoConceptRegenerate`, **2 credits**, capped at 3 regenerations per concept).
-     - Includes full-screen Compare Overlay and Micro-Scale Inspection (16px favicon view & invoice mock).
+   - **4a. Logo Creation Modal (`LogoCreationModal`, Figma Node `57004:10578`):**
+     - **Canonical Title & Subtitle:** Title: `"Choose your logo"` (`font-heading font-semibold 26px`), Subtitle: `"Six {logoTypeName} concepts, drawn inside {directionName}. Pick the one you'd defend to a customer."` (`DM Sans 14px text-muted-foreground`).
+     - **Batch Regeneration in Header:** `"Redraw all six"` button + `[N]/3 LEFT` amber cap badge (4 credits, capped at 3 batch redraws).
+     - **Dedicated View Bar (48px tall):**
+       - "SHOW AS" filter chips: `Mark only`, `On an invoice`, `At 16px`.
+       - Right action & counter: `Compare two` toggle + `6 CONCEPTS` badge.
+     - **3x2 Concept Tiles Grid (24px Gutters, Height-Matched):**
+       - *Mark Stage (200px tall):* High-res SVG mark / lockup from C# backend with dynamic business name and pinned 24px primary circular check badge on active selection.
+       - *Card Footer (16px padding):* `CONCEPT 01` .. `CONCEPT 06` mono tag, live `descriptorLine` from backend, `SELECTED` primary badge, and single-concept redraw icon button (`Redraw just this one`, 2 credits, 3-cap).
+     - **Compare Overlay (`CompareOverlay`):** Side-by-side comparison modal with Light/Dark canvas toggles and winning concept selection.
    - **4b. Variation Set Modal (`VariationSetModal`):**
      - Free deterministic derivation of the **7 canonical logo variations** derived from the approved concept mark geometry.
      - Separate confirmation action (`POST derive-variations` / `PATCH logo` with `approvedAt`) from concept selection.

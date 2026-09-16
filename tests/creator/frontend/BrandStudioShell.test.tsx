@@ -142,7 +142,7 @@ describe('BrandStudioShell Component', () => {
 
     // Verify Logo Creation Modal renders as overlay
     await waitFor(() => {
-      expect(screen.getByText(/Select Your Brand Mark/i)).toBeInTheDocument();
+      expect(screen.getByText(/Choose your logo/i)).toBeInTheDocument();
     });
   });
 

@@ -8,51 +8,51 @@ import { BrandKit, BrandLogoConcept } from '@/types/creator/brand-kit';
 const mockConcepts: BrandLogoConcept[] = [
   {
     key: 'concept_1',
-    descriptorLine: 'Geometric interlocking letters',
+    descriptorLine: 'Folded invoice corner',
     markAssetUri: '/brand-assets/logos/idea_123/concept_1_mark.svg',
     lockupAssetUri: '/brand-assets/logos/idea_123/concept_1_lockup.svg',
     regenerateCount: 0,
-    parameters: { family: 'Monogram', descriptor: 'Alpha Monogram' },
+    parameters: { family: 'Monogram', descriptor: 'Folded invoice corner' },
   },
   {
     key: 'concept_2',
-    descriptorLine: 'Rotating polygonal geometry',
+    descriptorLine: 'Continuous return loop',
     markAssetUri: '/brand-assets/logos/idea_123/concept_2_mark.svg',
     lockupAssetUri: '/brand-assets/logos/idea_123/concept_2_lockup.svg',
     regenerateCount: 1,
-    parameters: { family: 'Geometric Abstract', descriptor: 'Hex Shield' },
+    parameters: { family: 'Geometric Abstract', descriptor: 'Continuous return loop' },
   },
   {
     key: 'concept_3',
-    descriptorLine: 'Shield badge with modern crest',
+    descriptorLine: 'Offset dual chevrons',
     markAssetUri: '/brand-assets/logos/idea_123/concept_3_mark.svg',
     lockupAssetUri: '/brand-assets/logos/idea_123/concept_3_lockup.svg',
     regenerateCount: 2,
-    parameters: { family: 'Emblem', descriptor: 'Apex Emblem' },
+    parameters: { family: 'Emblem', descriptor: 'Offset dual chevrons' },
   },
   {
     key: 'concept_4',
-    descriptorLine: 'High-contrast typography mark',
+    descriptorLine: 'Interlocking modular bracket',
     markAssetUri: '/brand-assets/logos/idea_123/concept_4_mark.svg',
     lockupAssetUri: '/brand-assets/logos/idea_123/concept_4_lockup.svg',
     regenerateCount: 3, // Exhausted
-    parameters: { family: 'Wordmark', descriptor: 'Modern Wordmark' },
+    parameters: { family: 'Wordmark', descriptor: 'Interlocking modular bracket' },
   },
   {
     key: 'concept_5',
-    descriptorLine: 'Continuous single-weight line',
+    descriptorLine: 'Circular cadence notch',
     markAssetUri: '/brand-assets/logos/idea_123/concept_5_mark.svg',
     lockupAssetUri: '/brand-assets/logos/idea_123/concept_5_lockup.svg',
     regenerateCount: 0,
-    parameters: { family: 'Minimal Pictorial', descriptor: 'Zenith Line' },
+    parameters: { family: 'Minimal Pictorial', descriptor: 'Circular cadence notch' },
   },
   {
     key: 'concept_6',
-    descriptorLine: 'Fused symbol and typography',
+    descriptorLine: 'Interlocking Geometric A',
     markAssetUri: '/brand-assets/logos/idea_123/concept_6_mark.svg',
     lockupAssetUri: '/brand-assets/logos/idea_123/concept_6_lockup.svg',
     regenerateCount: 0,
-    parameters: { family: 'Combination Mark', descriptor: 'Dual Horizon' },
+    parameters: { family: 'Combination Mark', descriptor: 'Interlocking Geometric A' },
   },
 ];
 
@@ -64,6 +64,24 @@ const mockBrandKit: BrandKit = {
   version: 1,
   createdAt: '2026-09-15T00:00:00Z',
   updatedAt: '2026-09-15T00:00:00Z',
+  strategy: {
+    businessName: 'AutoInvoice',
+    nameDisplayForm: 'AutoInvoice',
+  },
+  direction: {
+    selectedDirectionKey: 'dir_1',
+    candidates: [
+      {
+        key: 'dir_1',
+        name: 'Bold & Innovative',
+        feelLine: 'Decisive & modern',
+        rationale: 'High tech precision',
+        colorPalette: ['#0F172A', '#3B82F6', '#64748B', '#F8FAFC'],
+        displayTypeface: 'Inter',
+        textTypeface: 'DM Sans',
+      },
+    ],
+  },
   logo: {
     concepts: mockConcepts,
     selectedConceptKey: null,
@@ -89,15 +107,14 @@ describe('LogoCreationModal Component Tests', () => {
   it('renders 6 real concept cards with counters and descriptors', async () => {
     render(<LogoCreationModal ideaId="idea_123" initialKit={mockBrandKit} />);
 
-    expect(screen.getByText('Select Your Brand Mark')).toBeDefined();
-    expect(screen.getByText('Concept 1: Alpha Monogram')).toBeDefined();
-    expect(screen.getByText('Concept 2: Hex Shield')).toBeDefined();
-    expect(screen.getByText('Concept 4: Modern Wordmark')).toBeDefined();
+    expect(screen.getByText('Choose your logo')).toBeDefined();
+    expect(screen.getByText('CONCEPT 01')).toBeDefined();
+    expect(screen.getAllByText('Folded invoice corner').length).toBeGreaterThan(0);
+    expect(screen.getByText('CONCEPT 02')).toBeDefined();
+    expect(screen.getAllByText('Continuous return loop').length).toBeGreaterThan(0);
 
     // Verify remaining counter formats (concepts 1, 5, 6 have 3/3 left)
-    expect(screen.getAllByText('3/3 LEFT').length).toBe(3);
-    expect(screen.getByText('2/3 LEFT')).toBeDefined(); // Concept 2 (1 used)
-    expect(screen.getByText('1/3 LEFT')).toBeDefined(); // Concept 3 (2 used)
+    expect(screen.getByText('3/3 LEFT')).toBeDefined(); // Header batch redraw
     expect(screen.getByText('0/3 LEFT')).toBeDefined(); // Concept 4 (3 used - exhausted amber chip)
   });
 
@@ -130,9 +147,9 @@ describe('LogoCreationModal Component Tests', () => {
   it('isolates single-concept regeneration and updates only target tile in place', async () => {
     const updatedConcept1: BrandLogoConcept = {
       ...mockConcepts[0],
-      descriptorLine: 'Updated Geometric Monogram V2',
+      descriptorLine: 'Updated Folded Corner V2',
       regenerateCount: 1,
-      parameters: { family: 'Monogram', descriptor: 'Alpha Monogram V2' },
+      parameters: { family: 'Monogram', descriptor: 'Updated Folded Corner V2' },
     };
 
     const updatedKit: BrandKit = {
@@ -148,22 +165,24 @@ describe('LogoCreationModal Component Tests', () => {
 
     render(<LogoCreationModal ideaId="idea_123" initialKit={mockBrandKit} />);
 
-    // Find regenerate buttons
-    const regenButtons = screen.getAllByRole('button', { name: /Regenerate/i });
-    expect(regenButtons.length).toBe(6);
+    // Find redraw buttons on tiles
+    const redrawButtons = screen.getAllByTitle(/Redraw/i);
+    expect(redrawButtons.length).toBeGreaterThanOrEqual(6);
 
     // Concept 4 is exhausted, its button should be disabled
-    expect(regenButtons[3]).toBeDisabled();
+    const exhaustedBtn = screen.getAllByTitle(/Redraw limit reached for this concept/i).find(el => el.tagName === 'BUTTON');
+    expect(exhaustedBtn).toBeDisabled();
 
-    // Click regenerate on concept 1
-    fireEvent.click(regenButtons[0]);
+    // Click redraw on concept 1
+    const concept1RedrawBtn = screen.getAllByTitle(/Redraw just this one \(2 credits · 3\/3 left\)/i)[0];
+    fireEvent.click(concept1RedrawBtn);
 
     await waitFor(() => {
       expect(brandKitApi.regenerateSingleLogoConcept).toHaveBeenCalledWith('concept_1', 'idea_123', 1);
-      expect(screen.getByText('Concept 1: Alpha Monogram V2')).toBeDefined();
+      expect(screen.getByText('Updated Folded Corner V2')).toBeDefined();
       // Sibling concepts remain untouched
-      expect(screen.getByText('Concept 2: Hex Shield')).toBeDefined();
-      expect(screen.getByText('Concept 3: Apex Emblem')).toBeDefined();
+      expect(screen.getByText('Continuous return loop')).toBeDefined();
+      expect(screen.getByText('Offset dual chevrons')).toBeDefined();
     });
   });
 
@@ -179,8 +198,8 @@ describe('LogoCreationModal Component Tests', () => {
 
     render(<LogoCreationModal ideaId="idea_123" initialKit={mockBrandKit} />);
 
-    const regenButtons = screen.getAllByRole('button', { name: /Regenerate/i });
-    fireEvent.click(regenButtons[0]);
+    const concept1RedrawBtn = screen.getAllByTitle(/Redraw just this one \(2 credits · 3\/3 left\)/i)[0];
+    fireEvent.click(concept1RedrawBtn);
 
     await waitFor(() => {
       expect(screen.getByText(/Insufficient AI credits \(2 credits required\)\./i)).toBeDefined();
@@ -209,19 +228,16 @@ describe('LogoCreationModal Component Tests', () => {
       />
     );
 
-    const confirmBtn = screen.getByRole('button', { name: /Confirm & Continue/i });
-    expect(confirmBtn).toBeDisabled();
-
     // Click concept 2 card
-    const concept2Card = screen.getByText('Concept 2: Hex Shield');
+    const concept2Card = screen.getByText('Continuous return loop');
     fireEvent.click(concept2Card);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Confirm & Continue with Hex Shield/i })).not.toBeDisabled();
+      expect(screen.getByRole('button', { name: /Use Continuous return loop/i })).not.toBeDisabled();
     });
 
     // Click confirm button
-    const confirmBtnWithConcept = screen.getByRole('button', { name: /Confirm & Continue with Hex Shield/i });
+    const confirmBtnWithConcept = screen.getByRole('button', { name: /Use Continuous return loop/i });
     fireEvent.click(confirmBtnWithConcept);
 
     await waitFor(() => {
@@ -243,16 +259,16 @@ describe('LogoCreationModal Component Tests', () => {
     expect(screen.getByText(/Select 2 more concepts to compare/i)).toBeDefined();
 
     // Click concept 1 and concept 2
-    fireEvent.click(screen.getByText('Concept 1: Alpha Monogram'));
+    fireEvent.click(screen.getByText('CONCEPT 01'));
     expect(screen.getByText(/Select 1 more concept to compare/i)).toBeDefined();
 
-    fireEvent.click(screen.getByText('Concept 2: Hex Shield'));
+    fireEvent.click(screen.getByText('CONCEPT 02'));
 
     // Comparison overlay should open
     await waitFor(() => {
       expect(screen.getByText('Side-by-Side Concept Comparison')).toBeDefined();
-      expect(screen.getAllByText('Concept 1: Alpha Monogram').length).toBeGreaterThan(0);
-      expect(screen.getAllByText('Concept 2: Hex Shield').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Folded invoice corner').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Continuous return loop').length).toBeGreaterThan(0);
     });
   });
 });

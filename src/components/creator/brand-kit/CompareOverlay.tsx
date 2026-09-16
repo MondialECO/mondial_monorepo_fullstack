@@ -8,18 +8,24 @@ import { X, Check, Sun, Moon } from "lucide-react";
 import { InvoiceMockHeader } from "./InvoiceMockHeader";
 import { MicroScaleViewer } from "./MicroScaleViewer";
 
-interface CompareOverlayProps {
-  concepts: BrandLogoConcept[];
-  selectedKeys: [string, string];
+export interface CompareOverlayProps {
+  concepts?: BrandLogoConcept[];
+  selectedKeys?: [string, string] | string[];
+  conceptA?: BrandLogoConcept;
+  conceptB?: BrandLogoConcept;
   onClose: () => void;
-  onSelectWinningConcept: (key: string) => void;
+  onSelectWinningConcept?: (key: string) => void;
+  onSelect?: (key: string) => void;
 }
 
 export function CompareOverlay({
   concepts,
   selectedKeys,
+  conceptA: propConceptA,
+  conceptB: propConceptB,
   onClose,
   onSelectWinningConcept,
+  onSelect,
 }: CompareOverlayProps) {
   const [backgroundTheme, setBackgroundTheme] = useState<"light" | "dark">(
     "light"
@@ -28,8 +34,14 @@ export function CompareOverlay({
     "mark"
   );
 
-  const conceptA = concepts.find((c) => c.key === selectedKeys[0]);
-  const conceptB = concepts.find((c) => c.key === selectedKeys[1]);
+  const conceptA =
+    propConceptA ||
+    (concepts && selectedKeys ? concepts.find((c) => c.key === selectedKeys[0]) : undefined);
+  const conceptB =
+    propConceptB ||
+    (concepts && selectedKeys ? concepts.find((c) => c.key === selectedKeys[1]) : undefined);
+
+  const handleSelect = onSelect || onSelectWinningConcept || (() => {});
 
   if (!conceptA || !conceptB) {
     return null;
@@ -47,7 +59,7 @@ export function CompareOverlay({
           </span>
           <Button
             size="sm"
-            onClick={() => onSelectWinningConcept(concept.key)}
+            onClick={() => handleSelect(concept.key)}
             className="h-8 gap-1.5 text-xs bg-primary text-primary-foreground hover:bg-primary/90"
           >
             <Check className="size-3.5" />
