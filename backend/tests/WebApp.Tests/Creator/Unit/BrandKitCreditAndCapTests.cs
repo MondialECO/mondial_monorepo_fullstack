@@ -287,6 +287,41 @@ namespace WebApp.Tests.Creator.Unit
         }
 
         [Fact]
+        public async Task OpenStudio_When_No_Kit_Exists_AutoProvisions_BrandKit_And_Returns_200()
+        {
+            var (controller, mockKitStore, _, _, _, _, _, _) = SetupController(null);
+
+            BrandKitModel? addedKit = null;
+            mockKitStore.Setup(s => s.AddAsync(It.IsAny<BrandKitModel>(), null))
+                .Callback<BrandKitModel, IClientSessionHandle?>((k, _) => addedKit = k)
+                .Returns(Task.CompletedTask);
+
+            var result = await controller.OpenStudio(TestIdeaId);
+
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var response = okResult.Value as ApiResponse;
+            response.Should().NotBeNull();
+            response!.Success.Should().BeTrue();
+            mockKitStore.Verify(s => s.AddAsync(It.IsAny<BrandKitModel>(), null), Times.Once);
+            addedKit.Should().NotBeNull();
+            addedKit!.IdeaId.Should().Be(TestIdeaId);
+            addedKit.Status.Should().Be("draft");
+            addedKit.CurrentStep.Should().Be(1);
+        }
+
+        [Fact]
+        public async Task CreateKit_Multiple_Calls_Are_Idempotent()
+        {
+            var kit = CreateSeededKit();
+            var (controller, mockKitStore, _, _, _, _, _, _) = SetupController(kit);
+
+            var result = await controller.CreateKit(TestIdeaId);
+
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            mockKitStore.Verify(s => s.AddAsync(It.IsAny<BrandKitModel>(), null), Times.Never);
+        }
+
+        [Fact]
         public async Task Section_Patches_Are_Free_Zero_Debits()
         {
             var kit = CreateSeededKit();

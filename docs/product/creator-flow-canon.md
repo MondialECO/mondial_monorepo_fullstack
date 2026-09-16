@@ -153,6 +153,12 @@ The Brand Visual Identity Studio provides a calm, generative studio workflow acr
   - No AI agent rail, no prompt box, and no secondary floating toolbar; all interactions take place in focused modal overlays over the live canvas.
   - **Accumulated Result Cards:** As steps are completed, the canvas accumulates and displays rich summary cards (`StrategyResultCard`, `DirectionResultCard`, `LogoTypeResultCard`, `LogoResultCard`, `ColorsResultCard`, `TypographyResultCard`), which persist across the session.
   - **Completion Transition:** On Step 6 Typography confirmation when `kit.status` flips to `"complete"`, the shell automatically navigates the creator to the full Brand Kit Hub at `/dashboard/creator/phase-2/brand-kit?ideaId=...`.
+- **First-Time Creator Entry & Transparent Auto-Provisioning:**
+  - When a Creator clicks "Open Brand Studio" on `/phase-2/branding`, the router navigates to `/dashboard/creator/phase-2/brand-studio`.
+  - `BrandStudioShell` mounts and invokes `brandKitApi.openStudio(ideaId)`.
+  - On the backend, `POST /api/creator/journey/phase2/brand-kit/open-studio` checks for an existing `BrandKit`. If none exists (first-time creator), it transparently auto-provisions a fresh draft kit via the shared `GetOrCreateBrandKitAsync` helper (deriving initial `BrandStrategy` from `idea.Project` and seeding default 5-role Colour and 4-role Typography defaults), returning HTTP 200 with the newly created kit.
+  - Studio immediately initializes and opens Step 1 (`StrategyReviewModal`) without requiring any out-of-band pre-creation or encountering 404 errors.
+  - **Defense-in-Depth Null Guards:** `BrandStudioShell.tsx` `loadStudioSession()` applies optional chaining on every `currentKit` property access (`currentKit?.strategy?.confirmedAt`, `currentKit?.direction?.selectedAt`, `currentKit?.logo?.logoType`, `currentKit?.logo?.approvedAt`, `currentKit?.colors?.confirmedAt`, `currentKit?.logo?.selectedConceptKey`) and includes a secondary `brandKitApi.createBrandKit(ideaId)` fallback so null or missing kit states never produce unhandled runtime property errors.
 - **Top 6-Segment Progress Bar vs 7 User-Facing Steps:**
   1. `strategy` (Step 1 segment: "Strategy", modal: `StrategyReviewModal`)
   2. `direction` (Step 2 segment: "Direction", modal: `DirectionBoardModal`)
@@ -249,11 +255,17 @@ The Brand Visual Identity Studio provides a calm, generative studio workflow acr
   - All generative operations are free-tier eligible per the platform's starter credits model (200 credits granted on onboarding/first AI call).
 - **Per-Element Cap (Max 3):** Direction, Logo Concepts, Colors, and Typography each enforce `RegenerateCount <= 3`. Reaching the cap halts further generation with HTTP 400 and **0 credits debited**.
 - **Compensating Refunds:** Debits occur before model execution. If an AI call fails, times out, or encounters an optimistic concurrency conflict, `RefundForJobAsync` is immediately dispatched.
-- **Studio Reset (`POST open-studio`):** Opening Studio from the Hub resets all `RegenerateCount` counters to 0 across the entire kit. Normal section `PATCH` saves do not reset counters.
+- **Studio Reset & First-Time Provisioning (`POST open-studio`):**
+  - Handles missing and existing kits consistently: if no `BrandKit` exists for an idea, `POST open-studio` auto-provisions a fresh draft kit using the shared `GetOrCreateBrandKitAsync` method (matching `CreateKit`), returning HTTP 200 rather than 404.
+  - When invoked for an existing kit upon re-entering from the Hub, it resets all `RegenerateCount` counters (`Direction`, `Logo`, `Logo.Concepts[*]`, `Colors`, `Typography`) to 0. Normal section `PATCH` saves do not reset counters.
 
-#### 5. Known Historical Data Gap (Operational Note)
-- **Pre-Fix Completed Kits:** An audit of historical `BrandKits` documents in MongoDB revealed 3 kits created prior to the confirmation fix (`6aa9b5e6b51421948f8b807d`, `6aa9b760b51421948f8b80a1`, `6aaa3335f4440c68adeb27a3`) that have `Status = "complete"` but `Colors.ConfirmedAt == null` and `Typography.ConfirmedAt == null`.
-- **Operational Policy:** These historical records were captured and reported without mutating historical database records. A separate operational decision will determine whether to run an idempotent backfill script or leave historical legacy kits as-is.
+#### 5. Operational Notes & Verification
+- **E2E Walkthrough Full-Flow Coverage:**
+  - The live browser automation test (`scripts/live_brand_studio_e2e_walkthrough.mjs`) starts with a genuinely kit-less fresh idea, with zero out-of-band pre-provisioning.
+  - It exercises the real first-time Creator path: navigating from `/phase-2/branding`, clicking "Open Brand Studio", backend auto-provisioning via `openStudio`, stepping through Strategy Review, live AI Direction generation, Logo Type selection, 6-concept Logo generation + regeneration, 7-variation derivation, Colour editing & confirmation, Typography confirmation, automatic transition to `/phase-2/brand-kit` Hub, full ZIP package downloading, summary navigation to `/phase-2/complete`, and Hub cascade warning triggering.
+- **Pre-Fix Completed Kits (Historical Data Gap):**
+  - An audit of historical `BrandKits` documents in MongoDB revealed 3 kits created prior to the confirmation fix (`6aa9b5e6b51421948f8b807d`, `6aa9b760b51421948f8b80a1`, `6aaa3335f4440c68adeb27a3`) that have `Status = "complete"` but `Colors.ConfirmedAt == null` and `Typography.ConfirmedAt == null`.
+  - **Operational Policy:** These historical records were captured and reported without mutating historical database records. A separate operational decision will determine whether to run an idempotent backfill script or leave historical legacy kits as-is.
 
 
 ### Path A — Discovery (REMOVED FROM CURRENT PRODUCT)
