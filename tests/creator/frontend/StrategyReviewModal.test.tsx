@@ -121,7 +121,32 @@ describe('StrategyReviewModal Component', () => {
 
     // Verify casing variants derived from "CyberLock Sentinel"
     expect(screen.getAllByText('CyberLock Sentinel').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('CYBERLOCK SENTINEL')).toBeInTheDocument();
     expect(screen.getByText('cyberlock sentinel')).toBeInTheDocument();
+  });
+
+  it('renders ALL CAPS and distinct casing variants for single-word business names like Instaly', () => {
+    const singleWordKit: BrandKit = {
+      ...mockTestKit,
+      strategy: {
+        ...mockTestKit.strategy!,
+        businessName: 'Instaly',
+        nameDisplayForm: 'Instaly',
+      },
+    };
+
+    render(
+      <StrategyReviewModal
+        kit={singleWordKit}
+        onClose={vi.fn()}
+        onConfirm={vi.fn()}
+      />
+    );
+
+    // Verify TitleCase, ALL CAPS, and lowercase
+    expect(screen.getByText('INSTALY')).toBeInTheDocument();
+    expect(screen.getByText('instaly')).toBeInTheDocument();
+    expect(screen.getAllByText('Instaly').length).toBeGreaterThanOrEqual(1);
   });
 
   it('allows adding and removing personality trait pills freely', async () => {

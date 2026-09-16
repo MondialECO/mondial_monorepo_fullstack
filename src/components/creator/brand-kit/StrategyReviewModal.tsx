@@ -84,19 +84,54 @@ export function StrategyReviewModal({
     const raw = businessName.trim();
     if (!raw) {
       return [
-        { id: "pascal", label: "" },
-        { id: "separated", label: "" },
+        { id: "original", label: "" },
+        { id: "uppercase", label: "" },
         { id: "lowercase", label: "" },
       ];
     }
+
     const separated = raw
       .replace(/([a-z])([A-Z])/g, "$1 $2")
       .replace(/([A-Z])([A-Z][a-z])/g, "$1 $2");
-    return [
-      { id: "pascal", label: raw },
-      { id: "separated", label: separated },
-      { id: "lowercase", label: raw.toLowerCase() },
-    ];
+
+    const uppercase = raw.toUpperCase();
+    const lowercase = raw.toLowerCase();
+
+    const options: { id: string; label: string }[] = [];
+
+    // 1. Original / Stated Form (e.g., "Instaly" or "AutoInvoice")
+    options.push({ id: "original", label: raw });
+
+    // 2. ALL CAPS / Uppercase (e.g., "INSTALY" or "AUTOINVOICE")
+    if (uppercase !== raw) {
+      options.push({ id: "uppercase", label: uppercase });
+    }
+
+    // 3. Separated Form (if distinct from raw, e.g. "Auto Invoice")
+    if (
+      separated !== raw &&
+      separated.toUpperCase() !== uppercase &&
+      separated.toLowerCase() !== lowercase
+    ) {
+      options.push({ id: "separated", label: separated });
+    }
+
+    // 4. all lowercase (e.g., "instaly" or "autoinvoice")
+    if (lowercase !== raw && lowercase !== uppercase) {
+      options.push({ id: "lowercase", label: lowercase });
+    }
+
+    // Deduplicate by label just in case
+    const seen = new Set<string>();
+    const uniqueOptions: { id: string; label: string }[] = [];
+    for (const opt of options) {
+      if (!seen.has(opt.label)) {
+        seen.add(opt.label);
+        uniqueOptions.push(opt);
+      }
+    }
+
+    return uniqueOptions;
   }, [businessName]);
 
   const [nameDisplayForm, setNameDisplayForm] = useState(
@@ -527,7 +562,15 @@ export function StrategyReviewModal({
                   )}
                 </div>
 
-                <div className="grid grid-cols-3 gap-2">
+                <div
+                  className={`grid ${
+                    casingVariants.length >= 4
+                      ? "grid-cols-2 sm:grid-cols-4"
+                      : casingVariants.length === 2
+                      ? "grid-cols-2"
+                      : "grid-cols-3"
+                  } gap-2`}
+                >
                   {casingVariants.map((variant) => {
                     const isSelected = nameDisplayForm === variant.label;
                     return (
