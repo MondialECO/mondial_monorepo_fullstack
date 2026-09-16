@@ -159,6 +159,24 @@ The Brand Visual Identity Studio provides a calm, generative studio workflow acr
   - On the backend, `POST /api/creator/journey/phase2/brand-kit/open-studio` checks for an existing `BrandKit`. If none exists (first-time creator), it transparently auto-provisions a fresh draft kit via the shared `GetOrCreateBrandKitAsync` helper (deriving initial `BrandStrategy` from `idea.Project` and seeding default 5-role Colour and 4-role Typography defaults), returning HTTP 200 with the newly created kit.
   - Studio immediately initializes and opens Step 1 (`StrategyReviewModal`) without requiring any out-of-band pre-creation or encountering 404 errors.
   - **Defense-in-Depth Null Guards:** `BrandStudioShell.tsx` `loadStudioSession()` applies optional chaining on every `currentKit` property access (`currentKit?.strategy?.confirmedAt`, `currentKit?.direction?.selectedAt`, `currentKit?.logo?.logoType`, `currentKit?.logo?.approvedAt`, `currentKit?.colors?.confirmedAt`, `currentKit?.logo?.selectedConceptKey`) and includes a secondary `brandKitApi.createBrandKit(ideaId)` fallback so null or missing kit states never produce unhandled runtime property errors.
+- **Unified Modal Step Transition Architecture (`handleStepTransition`):**
+  - **Elimination of Conflicting Modal Wiring:** Replaces earlier fragmented patterns (direct state mutation vs out-of-band step reloading vs custom router pushes) with exactly **one unified transition function** in `BrandStudioShell.tsx`:
+    ```ts
+    const handleStepTransition = useCallback(
+      (nextModalKey: StudioModalKey | null, updatedKit?: BrandKit) => { ... }
+    );
+    ```
+  - **Single Source of State Truth:** Whenever any modal completes a step (PATCH, generate, or confirm), it passes the fresh `updatedKit` returned from the API directly into `handleStepTransition(nextStepKey, updatedKit)`. This immediately updates `kit` state, refreshes canvas cards, and ensures the optimistic concurrency version (`kit.version`) is always accurate for the next step.
+  - **Standardized Modal Transition Contract Across All 7 Modals:**
+    1. `StrategyReviewModal` (Step 1): `handleStrategyConfirm` $\to$ `handleStepTransition("direction", updatedKit)`
+    2. `DirectionBoardModal` (Step 2): `onSuccess` $\to$ `handleStepTransition("logo_type", updatedKit)`
+    3. `LogoTypeChooserModal` (Step 3): `onSuccess` $\to$ `handleStepTransition("logo_creation", updatedKit)`
+    4. `LogoCreationModal` (Step 4): `onConfirm` $\to$ `handleStepTransition("variations", updatedKit)`
+    5. `VariationSetModal` (Step 5): `onConfirm` $\to$ `handleStepTransition("colors", updatedKit)`, `onBack` $\to$ `handleStepTransition("logo_creation")`
+    6. `ColorSystemModal` (Step 6): `onSuccess` $\to$ `handleStepTransition("typography", updatedKit)`
+    7. `TypographySystemModal` (Step 7): `onSuccess` $\to$ `handleStepTransition(null, updatedKit)`
+  - **Automatic Hub Completion Hand-Off:** When `nextModalKey === null` and `updatedKit.status === "complete"`, `handleStepTransition` intercepts the transition and automatically pushes the browser to the live Brand Kit Hub (`/dashboard/creator/phase-2/brand-kit?ideaId=...`).
+  - **Standardized Close/Dismiss:** All modals bind `onClose={() => handleStepTransition(null)}`, safely dismissing the overlay to reveal the accumulated canvas cards without losing session state.
 - **Top 6-Segment Progress Bar vs 7 User-Facing Steps:**
   1. `strategy` (Step 1 segment: "Strategy", modal: `StrategyReviewModal`)
   2. `direction` (Step 2 segment: "Direction", modal: `DirectionBoardModal`)
