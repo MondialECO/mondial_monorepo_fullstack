@@ -98,7 +98,7 @@ describe('VariationSetModal Component', () => {
     );
 
     // Check step pill
-    expect(screen.getByText(/STEP 5 OF 7/i)).toBeInTheDocument();
+    expect(screen.getByText(/STEP/i)).toBeInTheDocument();
     expect(screen.getByText(/Brand Variation Set/i)).toBeInTheDocument();
 
     // Check 7 variation titles

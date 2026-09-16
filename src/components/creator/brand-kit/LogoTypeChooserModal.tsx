@@ -17,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { BrandKit } from "@/types/creator/brand-kit";
 import { brandKitApi } from "@/lib/api-creator-brand-kit";
+import { ModalWorkflowHeader } from "./ModalWorkflowHeader";
 
 export interface LogoTypeChooserModalProps {
   isOpen: boolean;
@@ -324,6 +325,7 @@ export function LogoTypeChooserModal({
       );
 
       onSuccess(updatedKit);
+      onClose();
     } catch (err: any) {
       setError(
         err?.response?.data?.message ||
@@ -341,38 +343,13 @@ export function LogoTypeChooserModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 md:p-8 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="relative w-full max-w-5xl max-h-[92vh] flex flex-col bg-card border border-border/80 rounded-2xl shadow-2xl overflow-hidden bg-white">
         
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border/60 bg-muted/20 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <Compass className="size-4.5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-[11px] font-semibold text-primary uppercase tracking-wider">
-                  STEP 3 OF 6
-                </span>
-                <span className="text-xs text-muted-foreground">•</span>
-                <span className="text-xs font-medium text-muted-foreground">
-                  Architectural Mark Form
-                </span>
-              </div>
-              <h2 className="text-lg font-heading font-bold text-foreground">
-                Choose Your Logo Type Archetype
-              </h2>
-            </div>
-          </div>
-
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={onClose}
-            className="size-8 rounded-lg text-muted-foreground hover:text-foreground"
-          >
-            <X className="size-4" />
-          </Button>
-        </div>
+        {/* Modal Header & 6-Step Workflow Track (Figma Node 57003:9812) */}
+        <ModalWorkflowHeader
+          title="Choose Your Logo Type Archetype"
+          subtitle="Select the architectural structure for how your brand mark and name will be constructed."
+          currentStep={3}
+          onClose={onClose}
+        />
 
         {/* Top Context Strip: Real Strategy & Direction Data */}
         <div className="px-6 py-3 bg-muted/30 border-b border-border/60 flex flex-wrap items-center justify-between gap-3 shrink-0 text-xs">

@@ -5,6 +5,7 @@ import JSZip from "jszip";
 import { BrandKit, BrandLogoVariation } from "@/types/creator/brand-kit";
 import { brandKitApi } from "@/lib/api-creator-brand-kit";
 import { VariationTile } from "./VariationTile";
+import { ModalWorkflowHeader } from "./ModalWorkflowHeader";
 import { Button } from "@/components/ui/button";
 import {
   ArrowLeft,
@@ -208,54 +209,31 @@ export function VariationSetModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 md:p-6 overflow-y-auto animate-in fade-in duration-200">
       <div className="relative flex flex-col w-full max-w-6xl max-h-[92vh] rounded-2xl bg-card border border-border shadow-2xl overflow-hidden">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 md:px-8 md:py-6 border-b border-border/80 bg-background/50">
-          <div className="flex flex-col gap-1.5">
+        {/* Modal Header & 6-Step Workflow Track (Figma Node 57003:9812) */}
+        <ModalWorkflowHeader
+          title="Brand Variation Set"
+          subtitle="Complete deterministic variation matrix across core lockups, monochromes, and dark/light modes."
+          currentStep={4}
+          onClose={onClose || onBack || (() => {})}
+          headerActions={
             <div className="flex items-center gap-2">
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-primary/10 text-primary border border-primary/20">
-                <span className="font-mono font-semibold mr-1">STEP 4 OF 6 · VARIATIONS</span> • LOGO SET
-              </span>
-              <span className="text-xs text-muted-foreground font-mono">
-                {brandName}
-              </span>
-            </div>
-            <h1 className="text-xl md:text-2xl font-bold tracking-tight text-foreground">
-              Brand Variation Set
-            </h1>
-            <p className="text-xs md:text-sm text-muted-foreground">
-              Seven production-ready variations have been derived from your approved concept.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleDownloadAllZip}
-              disabled={isZipping || !hasVariations || isLoading}
-              className="gap-2 h-9 text-xs font-medium border-border/80 shadow-2xs hover:bg-muted"
-            >
-              {isZipping ? (
-                <Loader2 className="size-3.5 animate-spin text-primary" />
-              ) : (
-                <Download className="size-3.5 text-primary" />
-              )}
-              {isZipping ? "Packaging ZIP..." : "Download set (.zip)"}
-            </Button>
-
-            {onClose && (
-              <button
-                type="button"
-                onClick={onClose}
-                aria-label="Close modal"
-                className="inline-flex size-9 items-center justify-center rounded-lg border border-border/60 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDownloadAllZip}
+                disabled={!hasVariations || isZipping}
+                className="gap-2 text-xs font-sans cursor-pointer"
               >
-                <X className="size-4" />
-              </button>
-            )}
-          </div>
-        </div>
+                {isZipping ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : (
+                  <Download className="size-3.5" />
+                )}
+                <span>Export ZIP</span>
+              </Button>
+            </div>
+          }
+        />
 
         {/* Global Error Banner */}
         {error && (

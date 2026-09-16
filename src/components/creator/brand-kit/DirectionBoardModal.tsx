@@ -22,6 +22,7 @@ import {
 } from "@/types/creator/brand-kit";
 import { brandKitApi } from "@/lib/api-creator-brand-kit";
 import { RegenerateCapBadge } from "./RegenerateCapBadge";
+import { ModalWorkflowHeader } from "./ModalWorkflowHeader";
 import Link from "next/link";
 
 interface DirectionBoardModalProps {
@@ -325,6 +326,7 @@ export function DirectionBoardModal({
       );
 
       onSuccess(updatedKit);
+      onClose();
     } catch (err: any) {
       const msg =
         err?.response?.data?.message ||
@@ -344,30 +346,13 @@ export function DirectionBoardModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 md:p-8 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="relative w-full max-w-5xl max-h-[92vh] flex flex-col bg-card border border-border/80 rounded-2xl shadow-2xl overflow-hidden">
-        {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border/60 bg-muted/20 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <Palette className="size-4.5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-[11px] font-semibold text-primary uppercase tracking-wider">
-                  STEP 2 OF 6
-                </span>
-                <span className="text-xs text-muted-foreground">•</span>
-                <span className="text-xs font-medium text-muted-foreground">
-                  Visual Direction Board
-                </span>
-              </div>
-              <h2 className="text-lg font-heading font-bold text-foreground">
-                Select Your Visual Direction
-              </h2>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {/* Regenerate All Four Button */}
+        {/* Modal Header & 6-Step Workflow Track (Figma Node 57003:9812) */}
+        <ModalWorkflowHeader
+          title="Select Your Visual Direction"
+          subtitle="Four visual concepts with curated type pairings, color roles, and brand tone."
+          currentStep={2}
+          onClose={onClose}
+          headerActions={
             <div className="flex items-center gap-2 bg-background border border-border/80 rounded-xl p-1 px-2.5 shadow-2xs">
               <Button
                 type="button"
@@ -375,7 +360,7 @@ export function DirectionBoardModal({
                 size="sm"
                 disabled={isGenerating || isCapExhausted}
                 onClick={handleGenerate}
-                className="h-7 px-2 text-xs font-medium gap-1.5 hover:bg-muted text-foreground disabled:opacity-50"
+                className="h-7 px-2 text-xs font-medium gap-1.5 hover:bg-muted text-foreground disabled:opacity-50 font-sans cursor-pointer"
                 title={
                   isCapExhausted
                     ? "Regeneration cap reached (3/3)"
@@ -399,19 +384,8 @@ export function DirectionBoardModal({
               {/* Cap Badge */}
               <RegenerateCapBadge usedCount={regenerateCount} maxCount={3} />
             </div>
-
-            {/* Close modal */}
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="size-8 rounded-lg text-muted-foreground hover:text-foreground"
-            >
-              <X className="size-4" />
-            </Button>
-          </div>
-        </div>
+          }
+        />
 
         {/* Inline Error Alert if any */}
         {error && (

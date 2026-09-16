@@ -171,7 +171,7 @@ describe('TypographySystemModal', () => {
     expect(screen.getAllByText(/Plus Jakarta Sans/i).length).toBeGreaterThan(0);
 
     // 4 Canonical Roles
-    expect(screen.getByText('Logo type')).toBeInTheDocument();
+    expect(screen.getAllByText('Logo type').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Heading')).toBeInTheDocument();
     expect(screen.getByText('Body')).toBeInTheDocument();
     expect(screen.getByText('Button & label')).toBeInTheDocument();

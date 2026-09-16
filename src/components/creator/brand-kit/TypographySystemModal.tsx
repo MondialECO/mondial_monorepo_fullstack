@@ -9,6 +9,7 @@ import {
 } from "@/types/creator/brand-kit";
 import { apiCreatorBrandKit } from "@/lib/api-creator-brand-kit";
 import { RegenerateCapBadge } from "./RegenerateCapBadge";
+import { ModalWorkflowHeader } from "./ModalWorkflowHeader";
 import {
   Sparkles,
   Lock,
@@ -255,30 +256,13 @@ export function TypographySystemModal({
       aria-labelledby="typography-modal-title"
     >
       <div className="relative w-full max-w-5xl rounded-2xl border border-border/80 bg-card shadow-2xl overflow-hidden flex flex-col my-auto max-h-[92vh]">
-        {/* Modal Header */}
-        <div className="flex items-start justify-between border-b border-border/60 px-6 py-4 bg-muted/20">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1 font-mono text-[11px] font-bold text-primary tracking-wider uppercase bg-primary/10 px-2 py-0.5 rounded">
-                STEP 6 OF 6
-              </span>
-              <span className="font-mono text-xs text-muted-foreground">
-                Final Step of Studio Flow
-              </span>
-            </div>
-            <h2
-              id="typography-modal-title"
-              className="text-xl font-bold tracking-tight text-foreground"
-            >
-              Harmonized Typography System
-            </h2>
-            <p className="text-xs text-muted-foreground">
-              Typeface pairings, optical scales, and role assignments calibrated for your brand identity.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {/* Shared Regenerate Cap & AI Credit Cost */}
+        {/* Modal Header & 6-Step Workflow Track (Figma Node 57003:9812) */}
+        <ModalWorkflowHeader
+          title="Harmonized Typography System"
+          subtitle="Display and text typefaces paired to match your strategy and visual archetype."
+          currentStep={6}
+          onClose={onClose}
+          headerActions={
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center gap-1 font-mono text-[11px] font-semibold text-muted-foreground bg-muted/60 px-2.5 py-1 rounded-md border border-border/60">
                 <Sparkles className="size-3 text-primary" />
@@ -289,7 +273,7 @@ export function TypographySystemModal({
                 type="button"
                 onClick={handleRegeneratePairing}
                 disabled={isRegenerating || isCapExhausted}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-muted hover:bg-muted/80 text-foreground border border-border/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-muted hover:bg-muted/80 text-foreground border border-border/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
                 title={
                   isCapExhausted
                     ? "Maximum regenerations reached (3/3)"
@@ -300,17 +284,8 @@ export function TypographySystemModal({
                 <span>{isRegenerating ? "Pairing..." : "Suggest pairings"}</span>
               </button>
             </div>
-
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-              aria-label="Close dialog"
-            >
-              <X className="size-5" />
-            </button>
-          </div>
-        </div>
+          }
+        />
 
         {/* Insufficient Credits Banner */}
         {insufficientCredits && (

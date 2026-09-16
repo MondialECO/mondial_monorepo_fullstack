@@ -88,12 +88,12 @@ describe('BrandStudioShell Component', () => {
     );
 
     // Verify Progress bar segments
-    expect(screen.getByText('Strategy')).toBeInTheDocument();
-    expect(screen.getByText('Direction')).toBeInTheDocument();
-    expect(screen.getByText('Logo type')).toBeInTheDocument();
-    expect(screen.getByText('Logo')).toBeInTheDocument();
-    expect(screen.getByText('Colour')).toBeInTheDocument();
-    expect(screen.getByText('Typography')).toBeInTheDocument();
+    expect(screen.getAllByText('Strategy').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Direction').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Logo type').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Logo').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Colour').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Typography').length).toBeGreaterThan(0);
 
     // Verify accumulated Result Cards on canvas
     expect(screen.getByText('Autonomous AI defense system for cloud infrastructure.')).toBeInTheDocument();

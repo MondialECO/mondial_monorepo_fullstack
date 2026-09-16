@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { BrandKit, BrandColorRole } from "@/types/creator/brand-kit";
 import { brandKitApi } from "@/lib/api-creator-brand-kit";
 import { RegenerateCapBadge } from "./RegenerateCapBadge";
+import { ModalWorkflowHeader } from "./ModalWorkflowHeader";
 import { Button } from "@/components/ui/button";
 import {
   Sparkles,
@@ -532,25 +533,17 @@ export function ColorSystemModal({
     >
       <div className="relative w-full max-w-5xl rounded-2xl bg-white shadow-2xl border border-border flex flex-col max-h-[92vh] overflow-hidden">
         
-        {/* 1. Modal Header */}
-        <div className="flex items-start justify-between border-b border-border/80 px-6 py-5 bg-gradient-to-b from-slate-50/80 to-white shrink-0">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-[11px] font-bold font-mono tracking-wider text-blue-600 uppercase bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
-                STEP 5 OF 6 · COLOUR SYSTEM
-              </span>
-              <span className="text-[11px] font-mono text-muted-foreground">
-                Deterministic WCAG 2.1 Contrast
-              </span>
-            </div>
-            <h2 id="color-system-title" className="text-xl font-bold tracking-tight text-foreground">
-              Harmonized Colour System
-            </h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Review 5 canonical brand color roles derived from your mark and direction. Edit hex values directly or tune the mood.
-            </p>
-          </div>
-
+        {/* Modal Header & 6-Step Workflow Track (Figma Node 57003:9812) */}
+        <ModalWorkflowHeader
+          title="Harmonized Colour System"
+          subtitle="Review 5 canonical brand color roles derived from your mark and direction. Edit hex values directly or tune the mood."
+          currentStep={5}
+          onClose={onClose}
+        />
+        <div className="flex items-center justify-between px-6 py-3 border-b border-border/80 bg-slate-50/50 shrink-0">
+          <span className="text-xs font-mono text-muted-foreground">
+            Deterministic WCAG 2.1 Contrast
+          </span>
           <div className="flex items-center gap-2">
             <RegenerateCapBadge usedCount={regenerateCount} maxCount={3} />
             <Button

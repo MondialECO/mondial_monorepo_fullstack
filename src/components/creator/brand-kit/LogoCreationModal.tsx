@@ -5,6 +5,7 @@ import { BrandKit, BrandLogoConcept } from "@/types/creator/brand-kit";
 import { brandKitApi } from "@/lib/api-creator-brand-kit";
 import { ConceptTile } from "./ConceptTile";
 import { CompareOverlay } from "./CompareOverlay";
+import { ModalWorkflowHeader } from "./ModalWorkflowHeader";
 import { Button } from "@/components/ui/button";
 import {
   Sparkles,
@@ -267,100 +268,78 @@ export function LogoCreationModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 md:p-6 overflow-y-auto animate-in fade-in duration-200">
-      <div className="w-full max-w-6xl mx-auto flex flex-col bg-background text-foreground rounded-3xl border border-border shadow-xl overflow-hidden min-h-[720px]">
-      {/* 1. Modal Top Navigation Header */}
-      <header className="flex items-center justify-between border-b border-border bg-card/60 backdrop-blur-xs px-6 py-4">
-        <div className="flex items-center gap-3">
-          {onBack && (
+      <div className="relative w-full max-w-6xl rounded-2xl bg-card border border-border shadow-2xl overflow-hidden flex flex-col my-auto max-h-[92vh]">
+        {/* Modal Header & 6-Step Workflow Track (Figma Node 57003:9812) */}
+        <ModalWorkflowHeader
+        title="Select Your Brand Mark"
+        subtitle="Explore 6 distinctive algorithmic logo concepts generated from your strategy and direction."
+        currentStep={4}
+        onClose={onClose || onBack || (() => {})}
+        headerActions={
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* View Modes */}
+            <div className="inline-flex rounded-xl border border-border/80 bg-muted/30 p-1 text-xs">
+              <button
+                type="button"
+                onClick={() => setViewMode("mark")}
+                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg transition-colors font-sans cursor-pointer ${
+                  viewMode === "mark"
+                    ? "bg-card font-medium text-foreground shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Eye className="size-3.5" />
+                <span>Mark only</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setViewMode("invoice")}
+                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg transition-colors font-sans cursor-pointer ${
+                  viewMode === "invoice"
+                    ? "bg-card font-medium text-foreground shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <FileText className="size-3.5" />
+                <span>Invoice</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setViewMode("16px")}
+                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg transition-colors font-sans cursor-pointer ${
+                  viewMode === "16px"
+                    ? "bg-card font-medium text-foreground shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Scan className="size-3.5" />
+                <span>16px</span>
+              </button>
+            </div>
+
+            {/* Compare Two Toggle */}
             <Button
               type="button"
-              variant="ghost"
+              variant={isCompareMode ? "secondary" : "outline"}
               size="sm"
-              onClick={onBack}
-              className="gap-1.5 text-xs text-muted-foreground hover:text-foreground h-8"
+              onClick={() => {
+                setIsCompareMode(!isCompareMode);
+                setCompareSelection([]);
+              }}
+              className={`h-9 gap-1.5 text-xs font-sans cursor-pointer ${
+                isCompareMode
+                  ? "bg-primary/10 text-primary border-primary/30"
+                  : "border-border/80 text-muted-foreground hover:text-foreground"
+              }`}
             >
-              <ArrowLeft className="size-3.5" />
-              Back
+              <Columns2 className="size-3.5" />
+              <span>{isCompareMode ? "Exit compare" : "Compare"}</span>
             </Button>
-          )}
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-[11px] font-semibold text-primary uppercase tracking-wider">
-                STEP 4 OF 6
-              </span>
-              <span className="text-muted-foreground text-xs">•</span>
-              <span className="text-xs text-muted-foreground">Logo Creation</span>
-            </div>
-            <h1 className="font-heading font-bold text-lg text-foreground tracking-tight">
-              Select Your Brand Mark
-            </h1>
           </div>
-        </div>
-
-        {/* View Mode Bar and Compare Mode Toggle */}
-        <div className="flex items-center gap-3">
-          {/* View Modes */}
-          <div className="inline-flex rounded-xl border border-border/80 bg-muted/30 p-1 text-xs">
-            <button
-              type="button"
-              onClick={() => setViewMode("mark")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors ${
-                viewMode === "mark"
-                  ? "bg-card font-medium text-foreground shadow-2xs"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Eye className="size-3.5" />
-              <span>Mark only</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setViewMode("invoice")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors ${
-                viewMode === "invoice"
-                  ? "bg-card font-medium text-foreground shadow-2xs"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <FileText className="size-3.5" />
-              <span>On an invoice</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setViewMode("16px")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors ${
-                viewMode === "16px"
-                  ? "bg-card font-medium text-foreground shadow-2xs"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Scan className="size-3.5" />
-              <span>At 16px</span>
-            </button>
-          </div>
-
-          {/* Compare Two Toggle */}
-          <Button
-            type="button"
-            variant={isCompareMode ? "secondary" : "outline"}
-            size="sm"
-            onClick={() => {
-              setIsCompareMode(!isCompareMode);
-              setCompareSelection([]);
-            }}
-            className={`h-9 gap-1.5 text-xs ${
-              isCompareMode
-                ? "bg-primary/10 text-primary border-primary/30"
-                : "border-border/80 text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Columns2 className="size-3.5" />
-            <span>{isCompareMode ? "Exit compare" : "Compare two"}</span>
-          </Button>
-        </div>
-      </header>
+        }
+      />
 
       {/* Global Error Banner */}
       {globalError && (

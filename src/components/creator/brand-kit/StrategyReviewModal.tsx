@@ -17,6 +17,7 @@ import {
   Store,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ModalWorkflowHeader } from "./ModalWorkflowHeader";
 
 interface StrategyReviewModalProps {
   kit: BrandKit;
@@ -24,15 +25,6 @@ interface StrategyReviewModalProps {
   onConfirm: (updatedStrategy: Partial<BrandStrategy>) => Promise<void>;
   isSubmitting?: boolean;
 }
-
-const WORKFLOW_STEPS = [
-  { id: "strategy", label: "Strategy", step: 1, active: true },
-  { id: "direction", label: "Direction", step: 2, locked: true },
-  { id: "logotype", label: "Logo type", step: 3, locked: true },
-  { id: "logo", label: "Logo", step: 4, locked: true },
-  { id: "colour", label: "Colour", step: 5, locked: true },
-  { id: "typography", label: "Typography", step: 6, locked: true },
-];
 
 const SUGGESTED_PERSONALITY_TRAITS = [
   "Direct",
@@ -232,51 +224,13 @@ export function StrategyReviewModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-xs p-3 sm:p-5 lg:p-6 overflow-y-auto">
       <div className="relative flex flex-col w-full max-w-[1080px] max-h-[94vh] rounded-2xl sm:rounded-3xl bg-card border border-border/90 shadow-2xl overflow-hidden animate-in fade-in duration-200">
         
-        {/* Modal Header */}
-        <div className="px-6 sm:px-8 pt-6 pb-0 border-b border-border/70 bg-card">
-          <div className="flex items-start justify-between gap-4 pb-4">
-            <div className="space-y-1.5 max-w-2xl">
-              <h1 className="text-2xl sm:text-[26px] font-semibold tracking-tight text-foreground font-heading">
-                Confirm your brand strategy
-              </h1>
-              <p className="text-sm text-muted-foreground font-sans leading-relaxed">
-                Pulled from your idea. Correct anything that&apos;s off — this drives every visual choice after it.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-3 shrink-0">
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-muted/80 text-foreground/80 border border-border/70 font-sans">
-                STEP <span className="font-mono font-semibold text-foreground mx-1">1</span> OF <span className="font-mono font-semibold text-foreground ml-1">6</span>
-              </span>
-
-              <button
-                type="button"
-                onClick={onClose}
-                className="inline-flex size-8 items-center justify-center rounded-lg border border-border/60 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
-                aria-label="Close dialog"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
-          </div>
-
-          {/* Workflow Steps Tab Bar */}
-          <div className="flex items-center gap-6 sm:gap-8 overflow-x-auto no-scrollbar pt-2">
-            {WORKFLOW_STEPS.map((step) => (
-              <div
-                key={step.id}
-                className={`flex items-center gap-1.5 pb-3 text-xs font-medium transition-colors border-b-2 whitespace-nowrap font-sans ${
-                  step.active
-                    ? "border-primary text-foreground font-semibold"
-                    : "border-transparent text-muted-foreground/65"
-                }`}
-              >
-                {step.locked && <Lock className="size-3 shrink-0 text-muted-foreground/50" />}
-                <span>{step.label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+        {/* Modal Header & 6-Step Workflow Track (Figma Node 57003:9812) */}
+        <ModalWorkflowHeader
+          title="Confirm your brand strategy"
+          subtitle="Pulled from your idea. Correct anything that's off — this drives every visual choice after it."
+          currentStep={1}
+          onClose={onClose}
+        />
 
         {/* Modal Scrollable Body - 2 Column Split (58% / 42%) */}
         <div className="p-6 sm:p-8 overflow-y-auto max-h-[calc(94vh-180px)]">
