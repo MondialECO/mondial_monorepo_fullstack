@@ -457,6 +457,7 @@ export function ColorSystemModal({
       );
       setCurrentKit(updated);
       onSuccess(updated);
+      onClose();
     } catch (err: any) {
       setError(
         err?.response?.data?.message ||
