@@ -8,9 +8,10 @@ Source of truth for development and architecture of the **Brand Identity Studio 
 
 ## 1. Overview & Architectural Principles
 
-The **Brand Identity Studio** is an enterprise-grade visual identity creation engine built into Creator Phase 2. It guides the creator through a structured 6-step guided modal workflow:
+The **Brand Identity Studio** is an enterprise-grade visual identity creation engine built into Creator Phase 2. It guides the creator through the branding entry screen followed by a structured 6-step guided modal workflow on a live canvas:
 
-1. **Step 1: Strategy Review** (`StrategyReviewModal.tsx`) — Figma Node `57004:9812`
+0. **Entry: Branding Options** (`/dashboard/creator/phase-2/branding`) — Single-card presentation reconciled with Figma (`57007:12780` revision).
+1. **Step 1: Strategy Review** (`StrategyReviewModal.tsx`) — Figma Node `57003:9780` / `57004:9812`
 2. **Step 2: Direction Board** (`DirectionBoardModal.tsx`) — Figma Node `57012:9066`
 3. **Step 3: Logo Type Chooser** (`LogoTypeChooserModal.tsx`) — Figma Node `57004:10297`
 4. **Step 4: Logo Creation & Variations**:
@@ -19,17 +20,41 @@ The **Brand Identity Studio** is an enterprise-grade visual identity creation en
 5. **Step 5: Color System** (`ColorSystemModal.tsx`) — Figma Node `57004:11600`
 6. **Step 6: Typography System** (`TypographySystemModal.tsx`) — Figma Node `57004:12100`
 
+### 1.1 Viewport Responsiveness & Typography Canon
+- **Viewport Scaling**: Authored at 1440px desktop base, but engineered to stay fluidly responsive from 1440px up to 1920px (and down to mobile viewports).
+- **Typography Canon**: Headings and titles use `font-heading` (Inter), body copy and card descriptions use `font-sans` (DM Sans — note that DM Mono was a defect fixed on the branding entry screen), and numerals/telemetry badges use `font-mono` (JetBrains Mono).
+- **Design Tokens**: 100% theme token classes (`bg-background`, `text-foreground`, `bg-card`, `border-border/80`, `bg-primary`, `text-primary-foreground`, `text-muted-foreground`), zero raw hex.
+
 ---
 
-## 2. Modal Specifications & Figma Mapping
+## 2. Page & Modal Specifications
+
+### 2.0 Branding Entry Screen (`/dashboard/creator/phase-2/branding`)
+- **Figma Reference**: Node `57007:12780` / `57003:9780`
+- **Layout**: Centered single-card container (`max-w-[680px]`). The icon tile from earlier drafts was removed per an updated Figma revision.
+- **Card Content**:
+  - Title: `"Build your brand identity"` & Subtitle in DM Sans (`font-sans`).
+  - Studio Deliverables Checklist: 6 concrete deliverables (`Brand strategy`, `Visual direction`, `Logo concepts`, `7 logo variations`, `5-role colour system`, `4-role typography system`).
+  - Single filled blue primary CTA: `"Open Brand Studio"` (routes to `/dashboard/creator/phase-2/brand-studio`).
+  - Navigation Footer: `"Back"` and quiet `"Skip Branding for Now"` action calling `creatorJourneyApi.skipBranding()` routing directly to `/complete`.
 
 ### 2.1 Step 1: Strategy Review Modal (`StrategyReviewModal.tsx`)
-- **Figma Reference**: Node `57004:9812`
-- **Purpose**: Review and refine brand strategy tokens before visual rendering begins.
-- **Fields**:
+- **Figma Reference**: Node `57003:9780` / `57004:9812`
+- **Purpose**: Review and hand-refine brand strategy tokens, tone, and first placement before visual rendering begins.
+- **Per-Field Edit Tracking (`BrandProvenancedText`)**:
+  - Four core text fields are tracked individually: `Concept`, `TargetAudience`, `Industry`, and `Positioning`.
+  - Backend (`CreatorBrandKitController.PatchStrategy`): Whenever any of these 4 fields has its `.Value` modified via `BrandStrategyPatchDto`, the controller updates `.Value`, sets that field's `.EditedAt = DateTime.UtcNow`, and marks `.Provenance = "user_refined"`.
+  - Untouched fields retain `.EditedAt = null` and their original provenance (`"derived"` / `"stated"`).
+  - Frontend Rendering: Dynamically computes and displays relative-time `"EDITED X AGO"` badges (e.g. `EDITED 5 MINUTES AGO`, `EDITED JUST NOW`) using `date-fns` `formatDistanceToNowStrict` only when `editedAt` is non-null. Untouched fields display a clean `"From your idea"` badge with no timestamp.
+- **Interactive Tone & Placement Tokens (Fully Wired & Consumed Downstream)**:
+  - `TonePosition` / `Tone`: Interactive Formal $\leftrightarrow$ Casual slider (1–5 scale).
+  - `FirstAppearance`: Selection choice for where the mark first appears (`website`, `app_icon`, `invoice`, `social`).
+  - **Downstream Consumer Integrations**:
+    1. `LogoTypeChooserModal.tsx`: Consumes `firstAppearance` and `tone` to compute family fit scores and display context-aware reasoning badges (e.g. `"Best for invoice headers"`, `"Matches your tone"`).
+    2. `DirectionGenerationService.cs` & `TypographyGenerationService.cs`: Ingest `Tone` and `FirstAppearance` as prompt tuning inputs for Gemini direction & pairing generation.
+    3. `BrandKitHubView.tsx`: Displays `Tone` and `First Appearance` on the Strategy summary card.
+- **Other Editable Strategy Attributes**:
   - `nameDisplayForm`: Editable brand name casing and typography rendering.
-  - `missionStatement`: Core purpose definition.
-  - `personalityArchetype`: Visual archetype (e.g. *The Innovator*, *The Guardian*).
   - `personalityTraits`: Tag cloud editor (add/remove up to 8 traits).
 
 ### 2.2 Step 2: Direction Board Modal (`DirectionBoardModal.tsx`)

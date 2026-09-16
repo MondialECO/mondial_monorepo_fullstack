@@ -55,11 +55,17 @@ If a Figma color doesn't fit any of the above, ADD a token to BOTH `:root` and `
 `--radius: 0.75rem` → use `rounded-md` (sm-2px), `rounded-lg` (base), `rounded-xl` (+4), `rounded-2xl` (+8), `rounded-3xl` (+12), `rounded-4xl` (+16). No arbitrary `rounded-[Npx]`.
 
 ### Typography
-`font-sans` → DM Sans (`--font-dm-sans`), body copy. `font-heading` → Inter
-(`--font-inter`), headings and large display figures. `font-mono` → Geist Mono
-(`--font-geist-mono`) / JetBrains Mono for Studio numerals and badges. Geist Sans is NOT in use. Don't import other fonts; don't use
+`font-sans` → DM Sans (`--font-dm-sans`), body copy and paragraph text. `font-heading` → Inter
+(`--font-inter`), headings, section titles, and large display figures. `font-mono` → JetBrains Mono
+(`--font-jetbrains-mono` / `--font-geist-mono`) ONLY for numbers, statistics, token names, and telemetry badges. Geist Sans / DM Mono for body copy are NOT in use (DM Mono was a defect fixed in the branding entry screen). Don't import other fonts; don't use
 Google `<link>`.
 *(Note: Brand Visual Identity Studio uses Inter / DM Sans for all interface headings/body copy and JetBrains Mono for numerals/tokens; Syne Bold is not used for Studio UI. Screens include: Branding Entry single-card `/phase-2/branding`, Studio canvas shell `/phase-2/brand-studio`, Hub reference view `/phase-2/brand-kit`, and compact `/phase-2/complete` summary).*
+
+### Viewport Responsiveness (1440px → 1920px)
+Figma artboards for this project are authored at **1440px** desktop base. The real web application must maintain seamless responsive layout scaling from **1440px up to 1920px** wide displays (as well as tablet/mobile viewports). Never hardcode fixed pixel widths on page shells — use canonical column containers (`max-w-[680px]`, `max-w-[720px]`, `max-w-[1080px]`, `max-w-[1440px]`) centered with `mx-auto` and fluid paddings.
+
+### Strict Design Token Rule
+Never copy raw Figma export values (arbitrary inline `#hex` colors, raw px font sizes without token pairing, arbitrary `line-height`). Always map Figma styles to the design system CSS variables in `globals.css` and shadcn primitives.
 
 
 ---
