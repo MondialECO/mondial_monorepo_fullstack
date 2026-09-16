@@ -4,6 +4,7 @@ import React, { memo } from "react";
 import { Sparkles, Check, RefreshCw, AlertCircle, ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BrandLogoConcept, formatConceptTitle } from "@/types/creator/brand-kit";
+import { resolveMediaUrl } from "@/lib/brand-kit-media";
 import { InvoiceMockHeader } from "./InvoiceMockHeader";
 import { MicroScaleViewer } from "./MicroScaleViewer";
 import { RegenerateCapBadge } from "./RegenerateCapBadge";
@@ -80,7 +81,7 @@ export const ConceptTile = memo(function ConceptTile({
           <div className="relative size-28 flex items-center justify-center p-2 rounded-xl bg-muted/20 border border-border/40">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={concept.markAssetUri}
+              src={resolveMediaUrl(concept.markAssetUri)}
               alt={concept.descriptorLine || `Concept ${index + 1}`}
               className="size-full object-contain filter drop-shadow-2xs transition-transform duration-200 group-hover:scale-105"
             />
@@ -90,7 +91,7 @@ export const ConceptTile = memo(function ConceptTile({
         {viewMode === "invoice" && (
           <div className="w-full max-w-[280px]">
             <InvoiceMockHeader
-              lockupUri={concept.lockupAssetUri || concept.markAssetUri}
+              lockupUri={resolveMediaUrl(concept.lockupAssetUri || concept.markAssetUri)}
               conceptName={`Concept ${index + 1}`}
             />
           </div>
@@ -98,7 +99,7 @@ export const ConceptTile = memo(function ConceptTile({
 
         {viewMode === "16px" && (
           <MicroScaleViewer
-            markUri={concept.markAssetUri}
+            markUri={resolveMediaUrl(concept.markAssetUri)}
             conceptName={`Concept ${index + 1}`}
           />
         )}

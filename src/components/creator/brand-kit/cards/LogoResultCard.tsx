@@ -1,7 +1,6 @@
-"use client";
-
 import React from "react";
 import { BrandLogo } from "@/types/creator/brand-kit";
+import { resolveMediaUrl } from "@/lib/brand-kit-media";
 import { CheckCircle2, Edit3, Layers, Sparkles } from "lucide-react";
 
 interface LogoResultCardProps {
@@ -18,7 +17,8 @@ export function LogoResultCard({ logo, brandName = "Brand", onEdit }: LogoResult
     logo.concepts?.[0];
 
   const primaryVariation = logo.variations?.primary;
-  const lockupAsset = primaryVariation?.svgUri || concept?.lockupAssetUri || concept?.markAssetUri;
+  const rawLockupAsset = primaryVariation?.svgUri || concept?.lockupAssetUri || concept?.markAssetUri;
+  const lockupAsset = resolveMediaUrl(rawLockupAsset);
   const variationCount = logo.variations ? Object.keys(logo.variations).length : 0;
   const isApproved = Boolean(logo.approvedAt);
 

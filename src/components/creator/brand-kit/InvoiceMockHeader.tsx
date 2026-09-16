@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { resolveMediaUrl } from "@/lib/brand-kit-media";
 
 interface InvoiceMockHeaderProps {
   lockupUri: string;
@@ -19,7 +20,7 @@ export function InvoiceMockHeader({
           <div className="relative h-7 max-w-[120px] flex items-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={lockupUri}
+              src={resolveMediaUrl(lockupUri)}
               alt={`${conceptName} invoice header lockup`}
               className="h-full w-auto object-contain"
             />

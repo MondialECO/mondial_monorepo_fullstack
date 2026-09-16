@@ -126,6 +126,11 @@ async function runLiveE2EWalkthrough() {
     networkErrors.push({ url: req.url(), failure: errText });
   });
 
+  await context.addInitScript(({ token, activeIdeaId }) => {
+    window.localStorage.setItem('token', token);
+    window.localStorage.setItem('activeIdeaId', activeIdeaId);
+  }, { token, activeIdeaId });
+
   // Set Auth in localStorage
   await page.goto(`${APP_BASE}/dashboard/creator`, { waitUntil: 'domcontentloaded' });
   await page.evaluate(({ token, activeIdeaId }) => {
@@ -279,6 +284,21 @@ async function runLiveE2EWalkthrough() {
   const logoCreationScreenshot = path.join(OUTPUT_DIR, '05_live_logo_creation_modal.png');
   await page.screenshot({ path: logoCreationScreenshot });
   console.log(`[CP5] Screenshot saved: 05_live_logo_creation_modal.png`);
+
+  // Switch to 16px inspection view and screenshot
+  console.log(`[CP5] Switching to "At 16px" inspection view...`);
+  const at16pxBtn = await page.$('button:has-text("At 16px")');
+  if (at16pxBtn) {
+    await at16pxBtn.click();
+    await page.waitForTimeout(1500);
+    const inspectionScreenshot = path.join(OUTPUT_DIR, '05b_live_logo_creation_16px_inspection.png');
+    await page.screenshot({ path: inspectionScreenshot });
+    console.log(`[CP5] Screenshot saved: 05b_live_logo_creation_16px_inspection.png`);
+    // Switch back to Mark only
+    const markOnlyBtn = await page.$('button:has-text("Mark only")');
+    if (markOnlyBtn) await markOnlyBtn.click();
+    await page.waitForTimeout(1000);
+  }
 
   // Confirm Logo Concept
   console.log(`[CP5] Clicking "Confirm & Continue"...`);

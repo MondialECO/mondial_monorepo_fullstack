@@ -20,6 +20,7 @@ import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
 import { creatorJourneyApi } from "@/lib/api-creator-journey";
 import { apiCreatorBrandKit } from "@/lib/api-creator-brand-kit";
 import { BrandKit } from "@/types/creator/brand-kit";
+import { resolveMediaUrl } from "@/lib/brand-kit-media";
 import type { ComputedJourneyStatus } from "@/types/creator/journey-api";
 import { useState, useEffect } from "react";
 
@@ -281,10 +282,16 @@ export default function Phase2CompletePage() {
                 <div className="flex-1 min-w-0 flex items-center gap-4">
                   {primaryVariationSvg ? (
                     <div
-                      className="rounded-xl border border-border/60 bg-white p-2 flex items-center justify-center shrink-0 shadow-xs [&_svg]:max-h-full [&_svg]:max-w-full [&_svg]:object-contain"
+                      className="rounded-xl border border-border/60 bg-white p-2 flex items-center justify-center shrink-0 shadow-xs overflow-hidden"
                       style={{ width: 72, height: 72 }}
-                      dangerouslySetInnerHTML={{ __html: primaryVariationSvg }}
-                    />
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={resolveMediaUrl(primaryVariationSvg)}
+                        alt={brandName}
+                        className="max-h-full max-w-full object-contain"
+                      />
+                    </div>
                   ) : branding?.logoAsset && !logoError ? (
                     <img
                       src={branding.logoAsset}
