@@ -96,7 +96,7 @@ namespace WebApp.Services.Creator.BrandKit.DirectionEngine
 
             // Fallback to deterministic synthesis
             _logger.LogWarning("Visual direction fallback activated for {BrandName}. Reason: {Reason}. Synthesizing deterministic archetype candidates.", brandName, fallbackReason);
-            var fallbackCandidates = GenerateDeterministicCandidates(brandName, strategy, avoidList);
+            var fallbackCandidates = GenerateDeterministicCandidates(brandName, strategy, avoidList, kit?.Direction?.RegenerateCount ?? 0);
             return fallbackCandidates;
         }
 
@@ -446,7 +446,8 @@ Return strict JSON:
         private static List<BrandDirectionCandidate> GenerateDeterministicCandidates(
             string brandName,
             BrandStrategy strategy,
-            List<string> avoidList)
+            List<string> avoidList,
+            int regenCount = 0)
         {
             var archetypes = new[]
             {
@@ -485,13 +486,51 @@ Return strict JSON:
                     DisplayFont: "Syne",
                     TextFont: "JetBrains Mono",
                     Motif: "bold_abstract"
+                ),
+                (
+                    Name: "Minimalist Modern & Monogram Focus",
+                    Feel: "Clarity and modern reductionism with focused typography",
+                    Rationale: $"Emphasizes pure typographic clarity and brand signature for {brandName}.",
+                    Palette: new List<string> { "#0F172A", "#334155", "#0EA5E9", "#F8FAFC" },
+                    DisplayFont: "Space Grotesk",
+                    TextFont: "JetBrains Mono",
+                    Motif: "minimal_monogram"
+                ),
+                (
+                    Name: "Dynamic Innovation & Digital Velocity",
+                    Feel: "Vibrant high-contrast creative energy and modern velocity",
+                    Rationale: $"Captures energetic digital leadership and progressive innovation.",
+                    Palette: new List<string> { "#7C3AED", "#2E1065", "#A78BFA", "#FAF5FF" },
+                    DisplayFont: "Syne",
+                    TextFont: "Plus Jakarta Sans",
+                    Motif: "bold_abstract"
+                ),
+                (
+                    Name: "Technical Architecture & Grid Lattice",
+                    Feel: "Engineered structural rigor with data-first precision",
+                    Rationale: $"Communicates deep technical infrastructure and architectural robustness.",
+                    Palette: new List<string> { "#0284C7", "#082F49", "#38BDF8", "#F0F9FF" },
+                    DisplayFont: "JetBrains Mono",
+                    TextFont: "Space Grotesk",
+                    Motif: "technical_lattice"
+                ),
+                (
+                    Name: "Warm Editorial & Bespoke Craft",
+                    Feel: "Warm artisanal heritage paired with contemporary elegance",
+                    Rationale: $"Blends timeless editorial elegance with memorable warmth.",
+                    Palette: new List<string> { "#C2410C", "#431407", "#FDBA74", "#FFF7ED" },
+                    DisplayFont: "Cinzel",
+                    TextFont: "Syne",
+                    Motif: "editorial_classic"
                 )
             };
 
+            int offset = (regenCount * 2) % archetypes.Length;
             var rawList = new List<BrandDirectionCandidate>();
             for (int i = 0; i < 4; i++)
             {
-                var a = archetypes[i];
+                var archetypeIndex = (offset + i) % archetypes.Length;
+                var a = archetypes[archetypeIndex];
                 rawList.Add(new BrandDirectionCandidate
                 {
                     Key = $"candidate_{i + 1}",

@@ -285,8 +285,10 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
                 {logoVariations.primary?.svgUri || approvedConcept?.markAssetUri ? (
                   /* eslint-disable-next-line @next/next/no-img-element */
                   <img
+                    key={`hub-thumb-${kit.version ?? 0}`}
                     src={resolveMediaUrl(
-                      logoVariations.primary?.svgUri || approvedConcept?.markAssetUri
+                      logoVariations.primary?.svgUri || approvedConcept?.markAssetUri,
+                      kit.version
                     )}
                     alt={`${brandName} Approved Mark`}
                     className="max-h-full max-w-full object-contain"
@@ -454,8 +456,10 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
                     {varObj?.svgUri || approvedConcept?.markAssetUri ? (
                       /* eslint-disable-next-line @next/next/no-img-element */
                       <img
+                        key={`hub-var-${item.key}-${kit.version ?? 0}`}
                         src={resolveMediaUrl(
-                          varObj?.svgUri || approvedConcept?.markAssetUri
+                          varObj?.svgUri || approvedConcept?.markAssetUri,
+                          kit.version
                         )}
                         alt={`${brandName} ${item.label}`}
                         className="max-h-full max-w-full object-contain relative z-10"
