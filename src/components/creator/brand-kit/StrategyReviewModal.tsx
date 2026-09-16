@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ModalWorkflowHeader } from "./ModalWorkflowHeader";
+import { formatDistanceToNowStrict } from "date-fns";
 
 interface StrategyReviewModalProps {
   kit: BrandKit;
@@ -46,6 +47,26 @@ const FIRST_APPEARANCE_OPTIONS = [
   { id: "saas", label: "Product / SaaS", icon: Layers },
 ];
 
+function formatEditedTime(
+  isLocallyEdited: boolean,
+  savedEditedAt?: string | Date | null
+): string | null {
+  if (isLocallyEdited) {
+    return "EDITED JUST NOW";
+  }
+  if (!savedEditedAt) {
+    return null;
+  }
+  try {
+    const d = typeof savedEditedAt === "string" ? new Date(savedEditedAt) : savedEditedAt;
+    if (isNaN(d.getTime())) return null;
+    const distance = formatDistanceToNowStrict(d, { addSuffix: true });
+    return `EDITED ${distance.toUpperCase()}`;
+  } catch {
+    return null;
+  }
+}
+
 export function StrategyReviewModal({
   kit,
   onClose,
@@ -70,6 +91,42 @@ export function StrategyReviewModal({
   // Field provenance / edit flags (tracks user modifications vs derived/stated from idea)
   const [editedFields, setEditedFields] = useState<Record<string, boolean>>({});
   const [editingField, setEditingField] = useState<string | null>(null);
+
+  // Computed edit flags and real relative timestamps for all 4 provenanced fields
+  const isBusinessNameEdited = Boolean(editedFields["businessName"]);
+  const isConceptEdited = Boolean(
+    editedFields["concept"] ||
+      (strategy?.concept?.editedAt && strategy?.concept?.provenance === "user_refined")
+  );
+  const isAudienceEdited = Boolean(
+    editedFields["targetAudience"] ||
+      (strategy?.targetAudience?.editedAt && strategy?.targetAudience?.provenance === "user_refined")
+  );
+  const isIndustryEdited = Boolean(
+    editedFields["industry"] ||
+      (strategy?.industry?.editedAt && strategy?.industry?.provenance === "user_refined")
+  );
+  const isPositioningEdited = Boolean(
+    editedFields["positioning"] ||
+      (strategy?.positioning?.editedAt && strategy?.positioning?.provenance === "user_refined")
+  );
+
+  const conceptEditedTime = formatEditedTime(
+    Boolean(editedFields["concept"]),
+    strategy?.concept?.editedAt
+  );
+  const audienceEditedTime = formatEditedTime(
+    Boolean(editedFields["targetAudience"]),
+    strategy?.targetAudience?.editedAt
+  );
+  const industryEditedTime = formatEditedTime(
+    Boolean(editedFields["industry"]),
+    strategy?.industry?.editedAt
+  );
+  const positioningEditedTime = formatEditedTime(
+    Boolean(editedFields["positioning"]),
+    strategy?.positioning?.editedAt
+  );
 
   // Name display form choices derived dynamically from real businessName
   const casingVariants = useMemo(() => {
@@ -194,22 +251,22 @@ export function StrategyReviewModal({
       concept: {
         value: concept,
         provenance: editedFields["concept"] ? "user_refined" : strategy?.concept?.provenance || "stated",
-        editedAt: new Date().toISOString(),
+        editedAt: editedFields["concept"] ? new Date().toISOString() : strategy?.concept?.editedAt,
       },
       targetAudience: {
         value: targetAudience,
         provenance: editedFields["targetAudience"] ? "user_refined" : strategy?.targetAudience?.provenance || "stated",
-        editedAt: new Date().toISOString(),
+        editedAt: editedFields["targetAudience"] ? new Date().toISOString() : strategy?.targetAudience?.editedAt,
       },
       industry: {
         value: industry,
         provenance: editedFields["industry"] ? "user_refined" : strategy?.industry?.provenance || "stated",
-        editedAt: new Date().toISOString(),
+        editedAt: editedFields["industry"] ? new Date().toISOString() : strategy?.industry?.editedAt,
       },
       positioning: {
         value: positioning,
         provenance: editedFields["positioning"] ? "user_refined" : strategy?.positioning?.provenance || "stated",
-        editedAt: new Date().toISOString(),
+        editedAt: editedFields["positioning"] ? new Date().toISOString() : strategy?.positioning?.editedAt,
       },
       personalityTraits: traits,
       tonePosition: toneMapping[toneScale] || "balanced",
@@ -241,10 +298,10 @@ export function StrategyReviewModal({
               <div className="flex items-center justify-between pb-1">
                 <div>
                   <h2 className="text-sm sm:text-base font-semibold text-foreground tracking-tight font-heading">
-                    What we know about {businessName}
+                    Review what we derived from your idea
                   </h2>
                   <p className="text-xs text-muted-foreground font-sans">
-                    From your idea brief and clarifier answers
+                    Click any field to correct — changes update downstream steps.
                   </p>
                 </div>
                 <span className="px-2.5 py-1 rounded-md text-[11px] font-medium bg-muted/70 text-foreground/80 border border-border/60 font-sans">
@@ -259,8 +316,12 @@ export function StrategyReviewModal({
                     BUSINESS NAME
                   </span>
                   <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-muted/60 text-muted-foreground border border-border/50 font-sans">
-                      {editedFields["businessName"] ? "Edited" : "From your idea"}
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-medium border font-sans ${
+                      isBusinessNameEdited
+                        ? "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20"
+                        : "bg-muted/60 text-muted-foreground border-border/50"
+                    }`}>
+                      {isBusinessNameEdited ? "Edited" : "From your idea"}
                     </span>
                     <button
                       type="button"
@@ -304,8 +365,12 @@ export function StrategyReviewModal({
                     ONE-LINE CONCEPT
                   </span>
                   <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-muted/60 text-muted-foreground border border-border/50 font-sans">
-                      {editedFields["concept"] ? "Edited" : "From your idea"}
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-medium border font-sans ${
+                      isConceptEdited
+                        ? "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20"
+                        : "bg-muted/60 text-muted-foreground border-border/50"
+                    }`}>
+                      {isConceptEdited ? "Edited" : "From your idea"}
                     </span>
                     <button
                       type="button"
@@ -338,7 +403,14 @@ export function StrategyReviewModal({
                     </Button>
                   </div>
                 ) : (
-                  <p className="text-sm font-sans text-foreground/90 leading-relaxed">{concept}</p>
+                  <div>
+                    <p className="text-sm font-sans text-foreground/90 leading-relaxed">{concept}</p>
+                    {conceptEditedTime && (
+                      <p className="text-[10px] font-medium text-muted-foreground/75 uppercase tracking-wider font-sans pt-1">
+                        {conceptEditedTime}
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
 
@@ -349,8 +421,12 @@ export function StrategyReviewModal({
                     TARGET AUDIENCE
                   </span>
                   <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-muted/60 text-muted-foreground border border-border/50 font-sans">
-                      {editedFields["targetAudience"] ? "Edited" : "From your idea"}
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-medium border font-sans ${
+                      isAudienceEdited
+                        ? "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20"
+                        : "bg-muted/60 text-muted-foreground border-border/50"
+                    }`}>
+                      {isAudienceEdited ? "Edited" : "From your idea"}
                     </span>
                     <button
                       type="button"
@@ -383,7 +459,14 @@ export function StrategyReviewModal({
                     </Button>
                   </div>
                 ) : (
-                  <p className="text-sm font-sans text-foreground/90 leading-relaxed">{targetAudience}</p>
+                  <div>
+                    <p className="text-sm font-sans text-foreground/90 leading-relaxed">{targetAudience}</p>
+                    {audienceEditedTime && (
+                      <p className="text-[10px] font-medium text-muted-foreground/75 uppercase tracking-wider font-sans pt-1">
+                        {audienceEditedTime}
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
 
@@ -393,14 +476,23 @@ export function StrategyReviewModal({
                   <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground font-heading">
                     INDUSTRY
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => setEditingField(editingField === "industry" ? null : "industry")}
-                    className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer"
-                    title="Edit Industry"
-                  >
-                    <Edit3 className="size-3.5" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-medium border font-sans ${
+                      isIndustryEdited
+                        ? "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20"
+                        : "bg-muted/60 text-muted-foreground border-border/50"
+                    }`}>
+                      {isIndustryEdited ? "Edited" : "From your idea"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setEditingField(editingField === "industry" ? null : "industry")}
+                      className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer"
+                      title="Edit Industry"
+                    >
+                      <Edit3 className="size-3.5" />
+                    </button>
+                  </div>
                 </div>
 
                 {editingField === "industry" ? (
@@ -423,13 +515,20 @@ export function StrategyReviewModal({
                     </Button>
                   </div>
                 ) : (
-                  <div className="flex flex-wrap items-center gap-2.5">
-                    <span className="px-3 py-1 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 text-xs font-medium font-sans">
-                      {industry}
-                    </span>
-                    <span className="text-xs text-muted-foreground font-sans">
-                      Used to shortlist visual directions.
-                    </span>
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      <span className="px-3 py-1 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 text-xs font-medium font-sans">
+                        {industry}
+                      </span>
+                      <span className="text-xs text-muted-foreground font-sans">
+                        Used to shortlist visual directions.
+                      </span>
+                    </div>
+                    {industryEditedTime && (
+                      <p className="text-[10px] font-medium text-muted-foreground/75 uppercase tracking-wider font-sans pt-1">
+                        {industryEditedTime}
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
@@ -441,8 +540,12 @@ export function StrategyReviewModal({
                     POSITIONING
                   </span>
                   <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/20 font-sans">
-                      {editedFields["positioning"] ? "Edited" : "From your idea"}
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-medium border font-sans ${
+                      isPositioningEdited
+                        ? "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20"
+                        : "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20"
+                    }`}>
+                      {isPositioningEdited ? "Edited" : "From your idea"}
                     </span>
                     <button
                       type="button"
@@ -477,9 +580,9 @@ export function StrategyReviewModal({
                 ) : (
                   <div>
                     <p className="text-sm font-sans text-foreground/90 leading-relaxed">{positioning}</p>
-                    {editedFields["positioning"] && (
+                    {positioningEditedTime && (
                       <p className="text-[10px] font-medium text-muted-foreground/75 uppercase tracking-wider font-sans pt-1">
-                        EDITED 2M AGO
+                        {positioningEditedTime}
                       </p>
                     )}
                   </div>

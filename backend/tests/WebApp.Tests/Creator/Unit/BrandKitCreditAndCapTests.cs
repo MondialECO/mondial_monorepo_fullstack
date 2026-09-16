@@ -71,6 +71,7 @@ namespace WebApp.Tests.Creator.Unit
                 },
                 Colors = new BrandColors
                 {
+                    ConfirmedAt = DateTime.UtcNow,
                     RegenerateCount = 0,
                     Roles = new List<BrandColorRole>
                     {

@@ -793,6 +793,9 @@ namespace WebApp.Tests.Creator.Integration
                     [BrandLogoVariationKeys.Primary] = new() { SvgUri = "/logo.svg" }
                 }
             }, ideaId);
+            await controller.GenerateColors(ideaId);
+            await controller.PatchColors(new BrandColorsPatchDto { ConfirmedAt = DateTime.UtcNow }, ideaId);
+            await controller.GenerateTypography(ideaId);
 
             var ideaAfterSync = await IdeaRepo.GetOwnedAsync(ideaId, userId);
             var versionAfterSync = ideaAfterSync!.Version;
@@ -932,6 +935,58 @@ namespace WebApp.Tests.Creator.Integration
             var p3 = journey.Phase3Data ?? new CreatorPhase3Data();
             bool designerHiredCredit = (((p3.FormationGenerator?.MatchedSpIds?.Count ?? 0) > 0) || p.Branding?.BrandingMethod == "m50_designer");
             designerHiredCredit.Should().BeFalse(); // ai_studio must NOT receive designer credit!
+        }
+
+        // =========================================================================
+        // 17. STRATEGY PROVENANCED TEXT EDIT TRACKING (EDITEDAT & PROVENANCE)
+        // =========================================================================
+        [Fact]
+        public async Task Strategy_text_patch_sets_EditedAt_and_Provenance_only_for_modified_fields()
+        {
+            var userId = "user-" + Guid.NewGuid();
+            var ideaId = MongoDB.Bson.ObjectId.GenerateNewId().ToString();
+
+            await SeedIdeaAndJourneyAsync(userId, ideaId);
+            var controller = CreateController(userId);
+
+            var createRes = await controller.CreateKit(ideaId);
+            createRes.Should().BeOfType<Microsoft.AspNetCore.Mvc.OkObjectResult>();
+            var initialApiResponse = (ApiResponse)((Microsoft.AspNetCore.Mvc.OkObjectResult)createRes).Value!;
+            initialApiResponse.Success.Should().BeTrue();
+            var initialKit = (BrandKit)initialApiResponse.Data!;
+            initialKit.Should().NotBeNull();
+            initialKit.Strategy.Positioning.EditedAt.Should().BeNull();
+            initialKit.Strategy.Concept.EditedAt.Should().BeNull();
+            initialKit.Strategy.TargetAudience.EditedAt.Should().BeNull();
+            initialKit.Strategy.Industry.EditedAt.Should().BeNull();
+
+            var beforePatch = DateTime.UtcNow.AddSeconds(-1);
+
+            // Patch ONLY Positioning
+            var patchRes = await controller.PatchStrategy(new BrandStrategyPatchDto
+            {
+                Positioning = "The premier autonomous AI platform for modern builders"
+            }, ideaId);
+
+            patchRes.Should().BeOfType<Microsoft.AspNetCore.Mvc.OkObjectResult>();
+
+            // Direct database read from MongoDB store
+            var updatedKit = await BrandKitRepo.GetByIdeaIdAsync(ideaId, userId);
+            updatedKit.Should().NotBeNull();
+
+            // 1. Positioning is updated with timestamp and provenance
+            updatedKit!.Strategy.Positioning.Value.Should().Be("The premier autonomous AI platform for modern builders");
+            updatedKit.Strategy.Positioning.EditedAt.Should().NotBeNull();
+            updatedKit.Strategy.Positioning.EditedAt.Should().BeAfter(beforePatch);
+            updatedKit.Strategy.Positioning.Provenance.Should().Be("user_refined");
+
+            // 2. Untouched fields retain EditedAt == null and their original provenance
+            updatedKit.Strategy.Concept.EditedAt.Should().BeNull();
+            updatedKit.Strategy.Concept.Provenance.Should().NotBe("user_refined");
+            updatedKit.Strategy.TargetAudience.EditedAt.Should().BeNull();
+            updatedKit.Strategy.TargetAudience.Provenance.Should().NotBe("user_refined");
+            updatedKit.Strategy.Industry.EditedAt.Should().BeNull();
+            updatedKit.Strategy.Industry.Provenance.Should().NotBe("user_refined");
         }
     }
 }
