@@ -213,25 +213,30 @@ export function TypographySystemModal({
 
     try {
       const confirmedAt = new Date().toISOString();
+      const patchRoles = roles.map((r) => ({
+        roleName: r.roleName,
+        family: r.roleName === "Logo type" ? undefined : r.family,
+        weight: r.weight,
+        size: r.size,
+        lineHeight: r.lineHeight,
+        specimenText: r.specimenText,
+        isLocked: r.roleName === "Logo type" ? undefined : r.isLocked,
+        provenance: r.provenance,
+      }));
+
       const updatedKit = await apiCreatorBrandKit.patchTypography(
         {
+          roles: patchRoles,
           confirmedAt,
         },
         ideaId,
         kit.version
       );
 
-      // Advance/complete step if needed
-      await apiCreatorBrandKit.advanceStep(6, ideaId, updatedKit.version);
+      // Advance/complete step (sets kit to complete server-side)
+      const finalKit = await apiCreatorBrandKit.advanceStep(6, ideaId, updatedKit.version);
 
-      onSuccess({
-        ...updatedKit,
-        status: "complete",
-        typography: {
-          ...localTypography,
-          confirmedAt,
-        },
-      });
+      onSuccess(finalKit);
     } catch (err: any) {
       console.error("Failed to confirm typography:", err);
       setErrorMessage(

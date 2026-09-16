@@ -100,6 +100,21 @@ export function LogoCreationModal({
         }
       } catch (err: any) {
         if (!isMounted) return;
+        if (err?.response?.status === 409) {
+          try {
+            const freshKit = await brandKitApi.getBrandKit(ideaId);
+            if (isMounted && (freshKit.logo?.concepts?.length ?? 0) >= 6) {
+              setKit(freshKit);
+              setConcepts(freshKit.logo?.concepts ?? []);
+              if (freshKit.logo?.selectedConceptKey) {
+                setSelectedConceptKey(freshKit.logo.selectedConceptKey);
+              }
+              return;
+            }
+          } catch {
+            // fall through
+          }
+        }
         const msg =
           err?.response?.data?.message ||
           err?.message ||

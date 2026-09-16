@@ -203,11 +203,12 @@ The Brand Visual Identity Studio provides a calm, generative studio workflow acr
    - Generative whole-palette regeneration (`AiJobType.ColorGeneration`, **2 credits**, 3-cap).
    - Free individual role editing (Hex color picker and role lock toggles).
    - Real-time deterministic WCAG contrast ratio and rating calculation against `#FFFFFF` canvas. `Background` role has null contrast ratio by design.
+   - **Server-Side Confirmation (`Colors.ConfirmedAt`):** Confirming the Colour System sends `confirmedAt: ISO timestamp` via `PATCH /colors`, and `CreatorBrandKitController.cs` records a genuine server-side UTC timestamp in `kit.Colors.ConfirmedAt` (matching Strategy and Logo confirmation patterns). Step 6 prerequisite sequencing in `CheckStepPrerequisite(6)` and `CheckPatchPrerequisite("typography")` strictly requires `kit.Colors.ConfirmedAt != null` (removing prior role-count proxy).
 7. **Typography System Modal (`TypographySystemModal`):**
    - Initial deterministic pairing derivation (`DeriveInitialTypography`, **0 credits**).
-   - Generative pairing suggestion (`AiJobType.TypographyGeneration`, **2 credits**, 3-cap).
+   - Generative pairing suggestion (`AiJobType.TypographyGeneration`, **2 credits**, 3-cap). *(Note: Known UI badge display bug — `TypographySystemModal.tsx:285` renders a static `<Badge>5 Credits</Badge>` chip while backend authoritatively debits 2 credits per `appsettings.json`).*
    - **Server-Side Immutability of "Logo type":** The `Logo type` role is structurally bound to the approved logo concept. `CreatorBrandKitController.cs` explicitly rejects modifications or unlock attempts on `Logo type` via `PatchTypography`, and regeneration strictly preserves it.
-   - **Completion Trigger:** Confirming Step 6 advances the kit to `CurrentStep = 6`, marks `Status = "complete"`, and automatically synchronizes the 4-field pointer to `CreatorIdea.Project.Branding`.
+   - **Server-Side Confirmation (`Typography.ConfirmedAt`) & Completion Trigger:** Confirming Step 6 sends `confirmedAt: ISO timestamp` via `PATCH /typography`, setting `kit.Typography.ConfirmedAt`. `AdvanceStep(6)` enforces `kit.Typography.ConfirmedAt != null` before advancing `CurrentStep = 6`, marking `Status = "complete"`, and synchronizing the 4-field pointer to `CreatorIdea.Project.Branding`. Frontend `BrandStudioShell` strictly checks real server `confirmedAt` values (`isColorsComplete = Boolean(kit?.colors?.confirmedAt)`, `isTypographyComplete = Boolean(kit?.typography?.confirmedAt)`).
    - **Downstream Completion Effects:** Setting `Status = "complete"` permanently unlocks non-linear section editing from the Hub, bypassing prerequisite sequencing guards in `CheckPatchPrerequisite`.
 
 #### 3. Brand Kit Hub Page (`/dashboard/creator/phase-2/brand-kit`)
@@ -230,7 +231,7 @@ The Brand Visual Identity Studio provides a calm, generative studio workflow acr
   - Honestly displays "Not connected yet" across all 4 generator integrations (Business Plan, Landing Page, Pitch Deck, Invoices & Receipts).
 - **Download Brand Kit (.zip) Packaging:**
   - Client-side ZIP generated via `JSZip` containing:
-    1. `/logos/`: 7 canonical SVG assets (`logo-primary.svg`, `logo-horizontal.svg`, `logo-stacked.svg`, `logo-icon_only.svg`, `logo-black.svg`, `logo-white.svg`, `logo-transparent.svg`).
+    1. `/logos/`: 7 canonical SVG assets (`{brand}-primary.svg`, `{brand}-horizontal.svg`, `{brand}-stacked.svg`, `{brand}-icon_only.svg`, `{brand}-black.svg`, `{brand}-white.svg`, `{brand}-transparent.svg`). `BrandKitHubView.tsx` fetches URL-based `/brand-assets/logos/...` SVGs using `API_ORIGIN` (as well as inline SVGs), ensuring all 7 variation files are extracted with non-zero byte size.
     2. `/tokens/colors.json`: 5-role color tokens with hex, rgb, and WCAG contrast ratios.
     3. `/tokens/typography.json`: 4-role typography tokens with family, weight, size, line-height, and specimen text.
     4. `/tokens/brand-tokens.css`: Ready-to-use CSS Custom Properties (`:root { --brand-primary: ... }`).
@@ -242,12 +243,17 @@ The Brand Visual Identity Studio provides a calm, generative studio workflow acr
   - Logo Batch Generation (6 concepts): **4 credits** (`AiJobType.LogoParameterSelection`)
   - Logo Single Concept Regeneration: **2 credits** (`AiJobType.LogoConceptRegenerate`)
   - Color Palette Regeneration: **2 credits** (`AiJobType.ColorGeneration`)
-  - Typography System Regeneration: **2 credits** (`AiJobType.TypographyGeneration`) *(Note: Known frontend UI badge discrepancy — `TypographySystemModal.tsx:280` displays a "5 Credits" chip while backend authoritatively debits 2 credits per config).*
+  - Typography System Regeneration: **2 credits** (`AiJobType.TypographyGeneration`) *(Note: Known frontend UI badge discrepancy — `TypographySystemModal.tsx:285` displays a "5 Credits" chip while backend authoritatively debits 2 credits per config).*
   - Deterministic Initial Derivations & Derived Variations: **0 credits (Free)**
-  - All 5 generative operations are free-tier eligible per the platform's starter credits model (200 credits granted on onboarding/first AI call).
+  - Total credits spent during full E2E walkthrough is exactly **13 credits** (7 for Direction + 4 for Logo concepts + 2 for single concept regeneration).
+  - All generative operations are free-tier eligible per the platform's starter credits model (200 credits granted on onboarding/first AI call).
 - **Per-Element Cap (Max 3):** Direction, Logo Concepts, Colors, and Typography each enforce `RegenerateCount <= 3`. Reaching the cap halts further generation with HTTP 400 and **0 credits debited**.
 - **Compensating Refunds:** Debits occur before model execution. If an AI call fails, times out, or encounters an optimistic concurrency conflict, `RefundForJobAsync` is immediately dispatched.
 - **Studio Reset (`POST open-studio`):** Opening Studio from the Hub resets all `RegenerateCount` counters to 0 across the entire kit. Normal section `PATCH` saves do not reset counters.
+
+#### 5. Known Historical Data Gap (Operational Note)
+- **Pre-Fix Completed Kits:** An audit of historical `BrandKits` documents in MongoDB revealed 3 kits created prior to the confirmation fix (`6aa9b5e6b51421948f8b807d`, `6aa9b760b51421948f8b80a1`, `6aaa3335f4440c68adeb27a3`) that have `Status = "complete"` but `Colors.ConfirmedAt == null` and `Typography.ConfirmedAt == null`.
+- **Operational Policy:** These historical records were captured and reported without mutating historical database records. A separate operational decision will determine whether to run an idempotent backfill script or leave historical legacy kits as-is.
 
 
 ### Path A — Discovery (REMOVED FROM CURRENT PRODUCT)

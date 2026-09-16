@@ -437,15 +437,25 @@ export function ColorSystemModal({
       setIsConfirming(true);
       setError(null);
 
-      const confirmedAt = new Date().toISOString();
       const updated = await brandKitApi.patchColors(
-        { confirmedAt },
+        {
+          roles: roles.map((r) => ({
+            roleName: r.roleName,
+            hex: r.hex,
+            rgb: r.rgb,
+            contrastRatio: r.contrastRatio,
+            contrastVerdict: r.contrastVerdict,
+            usageNote: r.usageNote,
+            isLocked: r.isLocked,
+            provenance: r.provenance,
+          })),
+          confirmedAt: new Date().toISOString(),
+        },
         ideaId,
         currentKit.version
       );
       setCurrentKit(updated);
       onSuccess(updated);
-      onClose();
     } catch (err: any) {
       setError(
         err?.response?.data?.message ||

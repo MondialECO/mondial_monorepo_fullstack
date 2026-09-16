@@ -1257,51 +1257,60 @@ namespace WebApp.Controllers
                 if (!allowed)
                     return BadRequest(ApiResponse.Error(prerequisiteErr!));
 
-                if (dto.Roles == null || dto.Roles.Count == 0)
-                    return BadRequest(ApiResponse.Error("At least one role update must be provided."));
-
-                // Reject invalid role names immediately (no creation of nonexistent roles, no silent ignores)
-                foreach (var role in dto.Roles)
-                {
-                    if (!BrandColorRoleNames.All.Contains(role.RoleName))
-                    {
-                        return BadRequest(ApiResponse.Error(
-                            $"Invalid colour role name: '{role.RoleName}'. Must be one of: {string.Join(", ", BrandColorRoleNames.All)}"));
-                    }
-                }
-
                 var updateBuilder = Builders<BrandKit>.Update;
                 var updates = new List<UpdateDefinition<BrandKit>>();
                 var arrayFilters = new List<ArrayFilterDefinition>();
 
-                for (int i = 0; i < dto.Roles.Count; i++)
+                if (dto.ConfirmedAt.HasValue)
                 {
-                    var role = dto.Roles[i];
-                    var identifier = $"r{i}";
-                    arrayFilters.Add(new BsonDocumentArrayFilterDefinition<BsonDocument>(
-                        new BsonDocument($"{identifier}.RoleName", role.RoleName)));
+                    var roleCount = dto.Roles?.Count ?? kit.Colors?.Roles?.Count ?? 0;
+                    if (roleCount < 5)
+                        return BadRequest(ApiResponse.Error("All 5 colour roles must be defined before colour system can be confirmed."));
 
-                    if (role.Hex != null)
-                        updates.Add(updateBuilder.Set($"Colors.Roles.$[{identifier}].Hex", role.Hex));
-                    if (role.Rgb != null)
-                        updates.Add(updateBuilder.Set($"Colors.Roles.$[{identifier}].Rgb", role.Rgb));
-                    if (role.ContrastRatio.HasValue)
-                        updates.Add(updateBuilder.Set($"Colors.Roles.$[{identifier}].ContrastRatio", role.ContrastRatio.Value));
-                    if (role.ContrastVerdict != null)
-                        updates.Add(updateBuilder.Set($"Colors.Roles.$[{identifier}].ContrastVerdict", role.ContrastVerdict));
-                    if (role.UsageNote != null)
-                        updates.Add(updateBuilder.Set($"Colors.Roles.$[{identifier}].UsageNote", role.UsageNote));
-                    if (role.IsLocked.HasValue)
-                        updates.Add(updateBuilder.Set($"Colors.Roles.$[{identifier}].IsLocked", role.IsLocked.Value));
-                    if (role.Provenance != null)
-                        updates.Add(updateBuilder.Set($"Colors.Roles.$[{identifier}].Provenance", role.Provenance));
+                    updates.Add(updateBuilder.Set(x => x.Colors.ConfirmedAt, dto.ConfirmedAt.Value));
+                }
+
+                if (dto.Roles != null && dto.Roles.Count > 0)
+                {
+                    // Reject invalid role names immediately (no creation of nonexistent roles, no silent ignores)
+                    foreach (var role in dto.Roles)
+                    {
+                        if (!BrandColorRoleNames.All.Contains(role.RoleName))
+                        {
+                            return BadRequest(ApiResponse.Error(
+                                $"Invalid colour role name: '{role.RoleName}'. Must be one of: {string.Join(", ", BrandColorRoleNames.All)}"));
+                        }
+                    }
+
+                    for (int i = 0; i < dto.Roles.Count; i++)
+                    {
+                        var role = dto.Roles[i];
+                        var identifier = $"r{i}";
+                        arrayFilters.Add(new BsonDocumentArrayFilterDefinition<BsonDocument>(
+                            new BsonDocument($"{identifier}.RoleName", role.RoleName)));
+
+                        if (role.Hex != null)
+                            updates.Add(updateBuilder.Set($"Colors.Roles.$[{identifier}].Hex", role.Hex));
+                        if (role.Rgb != null)
+                            updates.Add(updateBuilder.Set($"Colors.Roles.$[{identifier}].Rgb", role.Rgb));
+                        if (role.ContrastRatio.HasValue)
+                            updates.Add(updateBuilder.Set($"Colors.Roles.$[{identifier}].ContrastRatio", role.ContrastRatio.Value));
+                        if (role.ContrastVerdict != null)
+                            updates.Add(updateBuilder.Set($"Colors.Roles.$[{identifier}].ContrastVerdict", role.ContrastVerdict));
+                        if (role.UsageNote != null)
+                            updates.Add(updateBuilder.Set($"Colors.Roles.$[{identifier}].UsageNote", role.UsageNote));
+                        if (role.IsLocked.HasValue)
+                            updates.Add(updateBuilder.Set($"Colors.Roles.$[{identifier}].IsLocked", role.IsLocked.Value));
+                        if (role.Provenance != null)
+                            updates.Add(updateBuilder.Set($"Colors.Roles.$[{identifier}].Provenance", role.Provenance));
+                    }
                 }
 
                 if (updates.Count == 0)
-                    return BadRequest(ApiResponse.Error("No valid fields provided to update."));
+                    return BadRequest(ApiResponse.Error("At least one field (roles or confirmedAt) must be provided for update."));
 
                 var combinedUpdate = updateBuilder.Combine(updates);
-                var options = new UpdateOptions { ArrayFilters = arrayFilters };
+                var options = arrayFilters.Count > 0 ? new UpdateOptions { ArrayFilters = arrayFilters } : null;
 
                 var updated = await _brandKitStore.UpdateAsync(idea.Id, userId, combinedUpdate, expectedVersion, session: null, options: options);
                 if (!updated)
@@ -1493,6 +1502,15 @@ namespace WebApp.Controllers
                 var updates = new List<UpdateDefinition<BrandKit>>();
                 var arrayFilters = new List<ArrayFilterDefinition>();
 
+                if (dto.ConfirmedAt.HasValue)
+                {
+                    var roleCount = dto.Roles?.Count ?? kit.Typography?.Roles?.Count ?? 0;
+                    if (roleCount < 4)
+                        return BadRequest(ApiResponse.Error("All 4 typography roles must be defined before typography system can be confirmed."));
+
+                    updates.Add(updateBuilder.Set(x => x.Typography.ConfirmedAt, dto.ConfirmedAt.Value));
+                }
+
                 if (dto.Roles != null && dto.Roles.Count > 0)
                 {
                     // Reject invalid role names immediately and enforce immutability of Logo type
@@ -1641,6 +1659,10 @@ namespace WebApp.Controllers
                 // Complete kit when advancing past step 6 (or target step is 6)
                 if (targetStep >= 6)
                 {
+                    if (kit.Typography?.ConfirmedAt == null)
+                    {
+                        return BadRequest(ApiResponse.Error("Typography system must be confirmed before completing brand kit."));
+                    }
                     updates.Add(updateBuilder.Set(x => x.CurrentStep, 6));
                     updates.Add(updateBuilder.Set(x => x.Status, "complete"));
                 }
@@ -1900,9 +1922,9 @@ namespace WebApp.Controllers
                 "colors" => !string.IsNullOrEmpty(kit.Logo.SelectedConceptKey) || kit.Logo.ApprovedAt != null
                     ? (true, null)
                     : (false, "A logo concept must be approved before color palette can be edited."),
-                "typography" => !string.IsNullOrEmpty(kit.Logo.SelectedConceptKey) || kit.Logo.ApprovedAt != null
+                "typography" => kit.Colors.ConfirmedAt != null
                     ? (true, null)
-                    : (false, "A logo concept must be approved before typography can be edited."),
+                    : (false, "Colour system must be confirmed before typography can be edited."),
                 _ => (true, null)
             };
         }
@@ -1923,9 +1945,9 @@ namespace WebApp.Controllers
                 5 => kit.Logo.ApprovedAt != null
                     ? (true, null)
                     : (false, "Logo must be approved before advancing to colours."),
-                6 => kit.Colors.Roles != null && kit.Colors.Roles.Count == 5
+                6 => kit.Colors.ConfirmedAt != null
                     ? (true, null)
-                    : (false, "All colour roles must be defined before advancing to typography."),
+                    : (false, "Colour system must be confirmed before advancing to typography."),
                 _ => (true, null)
             };
         }
