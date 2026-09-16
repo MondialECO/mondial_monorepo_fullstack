@@ -306,14 +306,21 @@ export function DirectionBoardModal({
     );
   }, [candidates, selectedKey]);
 
-  // Derive single letterform initial for abstract specimen
-  const brandInitial = useMemo(() => {
-    const name =
+  // Business Name derived directly from real strategy
+  const businessName = useMemo(() => {
+    return (
+      currentKit?.strategy?.nameDisplayForm ||
       kit?.strategy?.nameDisplayForm ||
       kit?.strategy?.businessName ||
-      "M";
-    return name.trim().charAt(0).toUpperCase() || "M";
-  }, [kit]);
+      "Brand"
+    );
+  }, [currentKit, kit]);
+
+  // Derive letterform pair from real business name (e.g. "Instaly" -> "Ii", "CyberLock" -> "Cc", "AutoInvoice" -> "Aa")
+  const brandInitialPair = useMemo(() => {
+    const firstChar = businessName.trim().charAt(0).toUpperCase() || "A";
+    return `${firstChar}${firstChar.toLowerCase()}`;
+  }, [businessName]);
 
   // Generate / Regenerate Candidates (Costs 7 credits, capped at 3)
   const handleGenerate = async () => {
@@ -618,18 +625,30 @@ export function DirectionBoardModal({
 
                       {/* Bottom Row: Large Letterform Specimen & Direction Descriptor */}
                       <div className="relative z-10 flex items-end justify-between gap-4">
-                        <span
-                          className="text-6xl sm:text-[64px] font-semibold leading-none tracking-tight"
-                          style={{
-                            fontFamily: getFontFamilyCss(
-                              candidate.displayTypeface
-                            ),
-                          }}
-                        >
-                          Aa
-                        </span>
+                        <div className="flex flex-col">
+                          <span
+                            className="text-5xl sm:text-6xl font-semibold leading-none tracking-tight"
+                            style={{
+                              fontFamily: getFontFamilyCss(
+                                candidate.displayTypeface
+                              ),
+                            }}
+                          >
+                            {brandInitialPair}
+                          </span>
+                          <span
+                            className="text-xs font-medium tracking-wide mt-1.5 opacity-85 truncate max-w-[200px]"
+                            style={{
+                              fontFamily: getFontFamilyCss(
+                                candidate.textTypeface
+                              ),
+                            }}
+                          >
+                            {businessName}
+                          </span>
+                        </div>
 
-                        <div className="text-right">
+                        <div className="text-right shrink-0">
                           <span className="font-mono text-[11px] font-medium tracking-wider uppercase opacity-90 block">
                             {specimenSub}
                           </span>
