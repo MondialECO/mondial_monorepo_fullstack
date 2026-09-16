@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { resolveMediaUrl } from "@/lib/brand-kit-media";
 
 interface MultiScaleIconViewerProps {
   iconUri: string;
@@ -11,6 +12,8 @@ export function MultiScaleIconViewer({
   iconUri,
   brandName = "Brand",
 }: MultiScaleIconViewerProps) {
+  const resolvedIconUri = resolveMediaUrl(iconUri);
+
   const scales = [
     { size: 64, label: "64×64px", containerClass: "size-16 p-2 rounded-xl" },
     { size: 32, label: "32×32px", containerClass: "size-8 p-1 rounded-md" },
@@ -37,9 +40,9 @@ export function MultiScaleIconViewer({
                 />
               )}
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              {iconUri ? (
+              {resolvedIconUri ? (
                 <img
-                  src={iconUri}
+                  src={resolvedIconUri}
                   alt={`${brandName} icon ${label}`}
                   className="size-full object-contain relative z-10"
                 />

@@ -243,6 +243,15 @@ The Brand Visual Identity Studio provides a calm, generative studio workflow acr
     4. `/tokens/brand-tokens.css`: Ready-to-use CSS Custom Properties (`:root { --brand-primary: ... }`).
     5. `/README.md`: Brand identity summary document.
 
+- **Brand Kit Asset Delivery & Origin Resolution:**
+  - **Single Shared Helper (`resolveMediaUrl`):** All components displaying brand assets (Concept Tiles, Variation Tiles, MicroScaleViewer, MultiScaleIconViewer, Invoice Mock, Compare Overlay, Hub Logo Grid, and Phase 2 Complete identity card) consume `resolveMediaUrl(uri?: string | null): string` from `src/lib/brand-kit-media.ts`.
+  - **Dynamic URL Normalization:** Converts relative paths (`/brand-assets/logos/...`) served by ASP.NET backend to absolute origin (`http://localhost:5093/brand-assets/...` in local development via `NEXT_PUBLIC_API_ORIGIN`), while passing data URIs and existing `http://`/`https://` absolute URLs through untouched.
+  - **Next.js Reverse Proxy Rewrite (Defense-in-Depth):** `next.config.ts` includes an `async rewrites()` rule proxying `/brand-assets/:path*` directly to `http://localhost:5093/brand-assets/:path*`, ensuring direct HTTP asset fetches by browser or client-side libraries never 404 across port boundaries.
+  - **Clean Standard Image Tags:** `BrandKitHubView.tsx` and `Phase2CompletePage.tsx` use standard `<img src={resolveMediaUrl(...)} />` elements instead of insecure or brittle `dangerouslySetInnerHTML` attempts on relative asset file paths.
+- **Version History & Snapshot Policy:**
+  - **Non-Destructive In-Wizard Candidate Exploration:** During initial Studio progression (Steps 1–6), candidate generation and per-tile regeneration (`RegenerateCount`) are non-destructive and tracked via element-level counters. No version snapshots are created during initial creation.
+  - **Destructive Hub Re-Edits & Backups:** Bounded history snapshots (`BrandKitSnapshot`, up to 3 retained) are strictly captured when destructive changes occur to an already-approved/completed kit (e.g. changing an approved Visual Direction or Logo Concept from the Hub), or as automated pre-restore backups.
+
 #### 4. Credit Metering, Per-Element Caps & Studio Reset
 - **Config-Driven Pricing:** Configured under `Ai:CreditCosts` in `appsettings.json`:
   - Direction Generation (4 candidates): **7 credits** (`AiJobType.DirectionGeneration`)

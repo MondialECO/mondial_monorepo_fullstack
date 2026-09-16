@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { BrandLogoConcept, formatLogoFamily } from "@/types/creator/brand-kit";
+import { resolveMediaUrl } from "@/lib/brand-kit-media";
 import { Button } from "@/components/ui/button";
 import { X, Check, Sun, Moon } from "lucide-react";
 import { InvoiceMockHeader } from "./InvoiceMockHeader";
@@ -35,8 +36,8 @@ export function CompareOverlay({
   }
 
   const renderConceptContent = (concept: BrandLogoConcept, label: string) => {
-    const markUri = concept.markAssetUri;
-    const lockupUri = concept.lockupAssetUri || concept.markAssetUri;
+    const markUri = resolveMediaUrl(concept.markAssetUri);
+    const lockupUri = resolveMediaUrl(concept.lockupAssetUri || concept.markAssetUri);
 
     return (
       <div className="flex-1 flex flex-col rounded-2xl border border-border bg-card p-6 shadow-xs">

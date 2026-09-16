@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { BrandKit, BrandKitSnapshot, BrandLogoVariation } from "@/types/creator/brand-kit";
+import { resolveMediaUrl } from "@/lib/brand-kit-media";
 import { apiCreatorBrandKit } from "@/lib/api-creator-brand-kit";
 import { API_ORIGIN } from "@/lib/api-config";
 import { CascadeWarningModal, CascadeTargetSection } from "./CascadeWarningModal";
@@ -282,11 +283,13 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
               {/* Approved Mark Thumbnail */}
               <div className="size-16 rounded-2xl bg-zinc-950 flex items-center justify-center p-3 shadow-inner shrink-0 border border-zinc-800">
                 {logoVariations.primary?.svgUri || approvedConcept?.markAssetUri ? (
-                  <div
-                    className="size-full flex items-center justify-center [&_svg]:size-full [&_svg]:max-h-full"
-                    dangerouslySetInnerHTML={{
-                      __html: logoVariations.primary?.svgUri || approvedConcept?.markAssetUri || "",
-                    }}
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={resolveMediaUrl(
+                      logoVariations.primary?.svgUri || approvedConcept?.markAssetUri
+                    )}
+                    alt={`${brandName} Approved Mark`}
+                    className="max-h-full max-w-full object-contain"
                   />
                 ) : (
                   <Sparkles className="size-8 text-primary" />
@@ -448,10 +451,14 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
                         : undefined
                     }
                   >
-                    {varObj?.svgUri ? (
-                      <div
-                        className="size-full flex items-center justify-center [&_svg]:max-h-full [&_svg]:max-w-full [&_svg]:object-contain"
-                        dangerouslySetInnerHTML={{ __html: varObj.svgUri }}
+                    {varObj?.svgUri || approvedConcept?.markAssetUri ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={resolveMediaUrl(
+                          varObj?.svgUri || approvedConcept?.markAssetUri
+                        )}
+                        alt={`${brandName} ${item.label}`}
+                        className="max-h-full max-w-full object-contain relative z-10"
                       />
                     ) : (
                       <div className="flex items-center gap-2">

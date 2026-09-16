@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { resolveMediaUrl } from "@/lib/brand-kit-media";
 
 interface MicroScaleViewerProps {
   markUri: string;
@@ -8,6 +9,8 @@ interface MicroScaleViewerProps {
 }
 
 export function MicroScaleViewer({ markUri, conceptName }: MicroScaleViewerProps) {
+  const resolvedUri = resolveMediaUrl(markUri);
+
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-2 w-full">
       <div className="flex items-center justify-center gap-6 p-4 rounded-xl bg-muted/40 border border-border/60">
@@ -16,7 +19,7 @@ export function MicroScaleViewer({ markUri, conceptName }: MicroScaleViewerProps
           <div className="relative size-[16px] overflow-hidden rounded-[2px] bg-card border border-border shadow-2xs flex items-center justify-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={markUri}
+              src={resolvedUri}
               alt={`${conceptName} 16px icon`}
               className="size-full object-contain"
             />
@@ -42,7 +45,7 @@ export function MicroScaleViewer({ markUri, conceptName }: MicroScaleViewerProps
             />
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={markUri}
+              src={resolvedUri}
               alt={`${conceptName} magnified inspection`}
               className="size-full object-contain relative z-10 filter drop-shadow-2xs"
             />

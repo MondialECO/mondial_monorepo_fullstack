@@ -47,6 +47,13 @@ async function runLiveE2EWalkthrough() {
   }
 
   // 2. Check Initial Credits
+  const meRes = await fetch(`${API_BASE}/auth/me`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  const meData = await meRes.json();
+  const userData = meData.data ?? meData;
+  console.log(`[Setup] User verified: ${userData.email || testEmail} (role: ${userData.role || 'Creator'})`);
+
   const initialCredRes = await fetch(`${API_BASE}/ai/credits`, {
     headers: { Authorization: `Bearer ${token}` }
   });
@@ -113,21 +120,41 @@ async function runLiveE2EWalkthrough() {
   const networkErrors = [];
 
   page.on('console', (msg) => {
+    const text = msg.text();
     if (msg.type() === 'error' || msg.type() === 'warning') {
-      consoleLogs.push({ type: msg.type(), text: msg.text() });
+      consoleLogs.push({ type: msg.type(), text });
     }
+    console.log(`[Browser Console ${msg.type()}] ${text}`);
   });
 
   page.on('requestfailed', (req) => {
-    networkErrors.push({ url: req.url(), failure: req.failure()?.errorText });
+    const errText = req.failure()?.errorText || 'Unknown request failure';
+    console.log(`[Browser Request Failed] ${req.url()}: ${errText}`);
+    networkErrors.push({ url: req.url(), failure: errText });
   });
+
+  await context.addCookies([
+    { name: 'token', value: token, domain: 'localhost', path: '/' },
+    { name: 'auth_token', value: token, domain: 'localhost', path: '/' },
+  ]);
+
+  await context.addInitScript(({ token, activeIdeaId, user }) => {
+    window.localStorage.setItem('token', token);
+    window.localStorage.setItem('user', JSON.stringify(user));
+    window.localStorage.setItem('activeIdeaId', activeIdeaId);
+    document.cookie = `token=${token}; path=/`;
+    document.cookie = `auth_token=${token}; path=/`;
+  }, { token, activeIdeaId, user: userData });
 
   // Set Auth in localStorage
   await page.goto(`${APP_BASE}/dashboard/creator`, { waitUntil: 'domcontentloaded' });
-  await page.evaluate(({ token, activeIdeaId }) => {
+  await page.evaluate(({ token, activeIdeaId, user }) => {
     localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(user));
     localStorage.setItem('activeIdeaId', activeIdeaId);
-  }, { token, activeIdeaId });
+    document.cookie = `token=${token}; path=/`;
+    document.cookie = `auth_token=${token}; path=/`;
+  }, { token, activeIdeaId, user: userData });
 
   // =========================================================================
   // CHECKPOINT 1: Land on /phase-2/branding
@@ -217,20 +244,13 @@ async function runLiveE2EWalkthrough() {
   if (confirmDirBtn) {
     await confirmDirBtn.click();
   }
-  await page.waitForTimeout(3500);
-
-  // Open Step 3: Logo Type
-  console.log(`[Step] Opening Step 3: Logo Type...`);
-  await page.click('button[title="3. Logo Type"]');
-  await page.waitForTimeout(2000);
-
   // =========================================================================
-  // CHECKPOINT 4: Logo Type Modal
+  // CHECKPOINT 4: Logo Type Modal (Auto-Opened from Direction Confirm)
   // =========================================================================
   console.log(`\n========================================`);
-  console.log(`CHECKPOINT 4: Logo Type Modal`);
+  console.log(`CHECKPOINT 4: Logo Type Modal (Auto-Opened from Direction Confirm)`);
   console.log(`========================================`);
-  await page.waitForSelector('h2:has-text("Choose Your Logo Type Archetype")', { timeout: 20000 });
+  await page.waitForSelector('h2:has-text("Choose Your Logo Type Archetype")', { timeout: 25000 });
   await page.waitForTimeout(1500);
 
   // Select "Modern Combination Mark" or first archetype card
@@ -283,6 +303,21 @@ async function runLiveE2EWalkthrough() {
   await page.screenshot({ path: logoCreationScreenshot });
   console.log(`[CP5] Screenshot saved: 05_live_logo_creation_modal.png`);
 
+  // Switch to 16px inspection view and screenshot
+  console.log(`[CP5] Switching to "At 16px" inspection view...`);
+  const at16pxBtn = await page.$('button:has-text("At 16px")');
+  if (at16pxBtn) {
+    await at16pxBtn.click();
+    await page.waitForTimeout(1500);
+    const inspectionScreenshot = path.join(OUTPUT_DIR, '05b_live_logo_creation_16px_inspection.png');
+    await page.screenshot({ path: inspectionScreenshot });
+    console.log(`[CP5] Screenshot saved: 05b_live_logo_creation_16px_inspection.png`);
+    // Switch back to Mark only
+    const markOnlyBtn = await page.$('button:has-text("Mark only")');
+    if (markOnlyBtn) await markOnlyBtn.click();
+    await page.waitForTimeout(1000);
+  }
+
   // Confirm Logo Concept
   console.log(`[CP5] Clicking "Confirm & Continue"...`);
   await page.waitForSelector('button:has-text("Confirm & Continue"):not([disabled])', { timeout: 15000 });
@@ -309,18 +344,13 @@ async function runLiveE2EWalkthrough() {
   await page.waitForTimeout(3500);
 
   // =========================================================================
-  // CHECKPOINT 7: Colour System Modal
+  // =========================================================================
+  // CHECKPOINT 7: Colour System Modal (Auto-Opened from Variations Confirm)
   // =========================================================================
   console.log(`\n========================================`);
-  console.log(`CHECKPOINT 7: Colour System Modal`);
+  console.log(`CHECKPOINT 7: Colour System Modal (Auto-Opened from Variations Confirm)`);
   console.log(`========================================`);
-  try {
-    await page.waitForSelector('h2:has-text("Harmonized Colour System")', { timeout: 10000 });
-  } catch {
-    console.log(`[Step] Opening Step 5: Colour System...`);
-    await page.click('button[title="5. Colour"]');
-    await page.waitForSelector('h2:has-text("Harmonized Colour System")', { timeout: 25000 });
-  }
+  await page.waitForSelector('h2:has-text("Harmonized Colour System")', { timeout: 25000 });
   await page.waitForTimeout(2000);
 
   // Select mood shift "Higher contrast"
@@ -428,8 +458,8 @@ async function runLiveE2EWalkthrough() {
   // =========================================================================
   console.log(`\n========================================`);
   console.log(`CHECKPOINT 11: Phase 2 Complete Screen (/phase-2/complete)`);
-  console.log(`========================================`);
-  await page.goto(`${APP_BASE}/dashboard/creator/phase-2/complete`, { waitUntil: 'networkidle' });
+  await page.evaluate((url) => { window.location.href = url; }, `${APP_BASE}/dashboard/creator/phase-2/complete?ideaId=${activeIdeaId}`);
+  await page.waitForSelector('text=Project Identity Ready.', { timeout: 15000 }).catch(() => {});
   await page.waitForTimeout(2500);
 
   const phase2CompleteScreenshot = path.join(OUTPUT_DIR, '11_live_phase2_complete_screen.png');
@@ -500,7 +530,7 @@ runLiveE2EWalkthrough()
     console.log('LIVE WALKTHROUGH FINISHED SUCCESSFULLY');
     process.exit(0);
   })
-  .catch(err => {
+  .catch(async (err) => {
     console.error('LIVE WALKTHROUGH FAILED:', err);
     process.exit(1);
   });

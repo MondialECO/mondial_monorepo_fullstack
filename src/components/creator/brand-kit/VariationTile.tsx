@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { Download, Check } from "lucide-react";
 import { BrandLogoVariation } from "@/types/creator/brand-kit";
+import { resolveMediaUrl } from "@/lib/brand-kit-media";
 import { MultiScaleIconViewer } from "./MultiScaleIconViewer";
 
 export interface VariationTileProps {
@@ -55,7 +56,7 @@ export function VariationTile({
     subtitle: "Brand variation",
   };
 
-  const assetUri = variation.svgUri || variation.pngUri || "";
+  const assetUri = resolveMediaUrl(variation.svgUri || variation.pngUri || "");
 
   const handleDownload = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -63,7 +64,7 @@ export function VariationTile({
 
     try {
       const isPng = variationKey === "transparent" && variation.pngUri;
-      const fileUri = (isPng ? variation.pngUri : variation.svgUri) || assetUri;
+      const fileUri = resolveMediaUrl((isPng ? variation.pngUri : variation.svgUri) || assetUri);
       const ext = isPng ? "png" : "svg";
       const slug = brandName.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "brand";
       const filename = `${slug}-${variationKey.replace(/_/g, "-")}.${ext}`;
@@ -88,30 +89,36 @@ export function VariationTile({
 
   return (
     <div
-      className={`group relative flex flex-col justify-between rounded-xl border border-border/80 bg-card p-4 transition-all duration-200 hover:border-primary/40 hover:shadow-md ${
-        isWide ? "min-h-[220px]" : "min-h-[200px]"
+      onClick={handleDownload}
+      className={`group relative flex flex-col justify-between rounded-xl border border-border/80 bg-card p-4 transition-all duration-200 hover:border-primary/50 hover:shadow-sm cursor-pointer ${
+        isWide ? "col-span-full md:col-span-2" : ""
       }`}
     >
-      {/* Header with Title and Single-Asset Download */}
-      <div className="flex items-start justify-between gap-2 mb-3">
-        <div className="flex flex-col">
-          <span className="text-sm font-semibold tracking-tight text-foreground">
+      {/* Header Info */}
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <h4 className="text-xs font-semibold text-foreground tracking-tight">
             {meta.title}
-          </span>
-          <span className="text-[11px] text-muted-foreground line-clamp-1">
+          </h4>
+          <span className="text-[10px] text-muted-foreground block">
             {meta.subtitle}
           </span>
         </div>
 
+        {/* Action Button */}
         <button
           type="button"
           onClick={handleDownload}
-          title={`Download ${meta.title} file`}
+          className={`flex size-7 items-center justify-center rounded-lg border transition-colors ${
+            downloaded
+              ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+              : "bg-muted/40 text-muted-foreground border-border/60 hover:bg-primary/10 hover:text-primary hover:border-primary/30"
+          }`}
+          title={`Download ${meta.title}`}
           aria-label={`Download ${meta.title}`}
-          className="relative inline-flex size-7 items-center justify-center rounded-lg border border-border/60 bg-muted/40 text-muted-foreground transition-all hover:bg-primary/10 hover:text-primary hover:border-primary/30 active:scale-95"
         >
           {downloaded ? (
-            <Check className="size-3.5 text-emerald-500" />
+            <Check className="size-3.5" />
           ) : (
             <Download className="size-3.5" />
           )}
@@ -149,7 +156,7 @@ export function VariationTile({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             {assetUri ? (
               <img
-                src={variation.pngUri || assetUri}
+                src={resolveMediaUrl(variation.pngUri || assetUri)}
                 alt={`${brandName} ${meta.title}`}
                 className="max-h-full max-w-full object-contain relative z-10"
               />

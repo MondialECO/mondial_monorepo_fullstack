@@ -31,6 +31,16 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async rewrites() {
+    const backendOrigin =
+      process.env.NEXT_PUBLIC_API_ORIGIN || "http://localhost:5093";
+    return [
+      {
+        source: "/brand-assets/:path*",
+        destination: `${backendOrigin}/brand-assets/:path*`,
+      },
+    ];
+  },
 };
 
 export default nextConfig;
