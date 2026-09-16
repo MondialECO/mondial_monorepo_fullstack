@@ -60,56 +60,35 @@ export function StrategyReviewModal({
   onConfirm,
   isSubmitting = false,
 }: StrategyReviewModalProps) {
-  const strategy = kit.strategy || {
-    businessName: "AutoInvoice",
-    nameDisplayForm: "AutoInvoice",
-    concept: {
-      value: "Automated invoicing and payment chasing for freelance teams.",
-      provenance: "stated",
-    },
-    targetAudience: {
-      value: "Freelancers and 2-10 person agencies who bill hourly and hate chasing late payments.",
-      provenance: "stated",
-    },
-    industry: {
-      value: "FinTech SaaS",
-      provenance: "stated",
-    },
-    positioning: {
-      value: "The invoicing tool that does the awkward follow-up for you.",
-      provenance: "stated",
-    },
-    personalityTraits: ["Direct", "Calm", "Practical", "Modern", "Trustworthy"],
-    avoidList: ["Cliché padlocks", "Generic shields"],
-    tonePosition: "balanced",
-    firstAppearance: "invoice",
-    symbolFeeling: "The Guardian",
-    confirmedAt: null,
-  };
+  const strategy = kit?.strategy;
 
-  // State for editable left column fields
-  const [businessName, setBusinessName] = useState(strategy.businessName || "AutoInvoice");
-  const [concept, setConcept] = useState(
-    strategy.concept?.value || "Automated invoicing and payment chasing for freelance teams."
+  // Real Database Field Ingestion directly from MongoDB BrandKit/CreatorIdea
+  const [businessName, setBusinessName] = useState(
+    strategy?.businessName || (kit as any)?.businessName || ""
   );
+  const [concept, setConcept] = useState(strategy?.concept?.value || "");
   const [targetAudience, setTargetAudience] = useState(
-    strategy.targetAudience?.value ||
-      "Freelancers and 2-10 person agencies who bill hourly and hate chasing late payments."
+    strategy?.targetAudience?.value || ""
   );
-  const [industry, setIndustry] = useState(strategy.industry?.value || "FinTech SaaS");
+  const [industry, setIndustry] = useState(strategy?.industry?.value || "");
   const [positioning, setPositioning] = useState(
-    strategy.positioning?.value || "The invoicing tool that does the awkward follow-up for you."
+    strategy?.positioning?.value || ""
   );
 
-  // Field provenance / edit flags
-  const [editedFields, setEditedFields] = useState<Record<string, boolean>>({
-    positioning: true, // matches figma default presentation
-  });
+  // Field provenance / edit flags (tracks user modifications vs derived/stated from idea)
+  const [editedFields, setEditedFields] = useState<Record<string, boolean>>({});
   const [editingField, setEditingField] = useState<string | null>(null);
 
-  // Name display form choices
+  // Name display form choices derived dynamically from real businessName
   const casingVariants = useMemo(() => {
-    const raw = businessName.trim() || "AutoInvoice";
+    const raw = businessName.trim();
+    if (!raw) {
+      return [
+        { id: "pascal", label: "" },
+        { id: "separated", label: "" },
+        { id: "lowercase", label: "" },
+      ];
+    }
     const separated = raw
       .replace(/([a-z])([A-Z])/g, "$1 $2")
       .replace(/([A-Z])([A-Z][a-z])/g, "$1 $2");
@@ -121,14 +100,14 @@ export function StrategyReviewModal({
   }, [businessName]);
 
   const [nameDisplayForm, setNameDisplayForm] = useState(
-    strategy.nameDisplayForm || casingVariants[0]?.label || "AutoInvoice"
+    strategy?.nameDisplayForm || (businessName.trim() ? businessName.trim() : "")
   );
 
-  // Personality traits pills
+  // Personality traits pills - directly from real strategy array
   const [traits, setTraits] = useState<string[]>(
-    strategy.personalityTraits && strategy.personalityTraits.length > 0
+    strategy?.personalityTraits && strategy.personalityTraits.length > 0
       ? strategy.personalityTraits
-      : ["Direct", "Calm", "Practical", "Modern", "Trustworthy"]
+      : ["Precise", "Resilient", "Autonomous"]
   );
   const [newTraitInput, setNewTraitInput] = useState("");
   const [showAddTraitInput, setShowAddTraitInput] = useState(false);
@@ -146,12 +125,21 @@ export function StrategyReviewModal({
     setTraits(traits.filter((t) => t !== traitToRemove));
   };
 
-  // Tone position (1 to 5 scale: 1=Formal, 5=Casual, 3=Balanced, 4=Modern Casual)
-  const [toneScale, setToneScale] = useState<number>(4);
+  // Tone position (1 to 5 scale: 1=Formal, 5=Casual, 3=Balanced, 4=Approachable)
+  const tonePositionMap: Record<string, number> = {
+    formal: 1,
+    structured: 2,
+    balanced: 3,
+    approachable: 4,
+    casual: 5,
+  };
+  const [toneScale, setToneScale] = useState<number>(
+    strategy?.tonePosition ? tonePositionMap[strategy.tonePosition] || 3 : 3
+  );
 
   // First appearance
   const [firstAppearance, setFirstAppearance] = useState<string>(
-    strategy.firstAppearance || "invoice"
+    strategy?.firstAppearance || "website"
   );
 
   // Remaining choices count calculation
@@ -696,7 +684,7 @@ export function StrategyReviewModal({
                 </div>
 
                 <p className="text-xs text-muted-foreground font-sans">
-                  Your audience is freelancers, not banks — but you handle their money.
+                  {targetAudience ? `Tailored for ${targetAudience}.` : "Calibrate how your brand speaks to your target audience."}
                 </p>
               </div>
 
