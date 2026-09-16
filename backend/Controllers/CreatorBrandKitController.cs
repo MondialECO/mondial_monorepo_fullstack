@@ -1646,6 +1646,12 @@ namespace WebApp.Controllers
 
                 var targetStep = dto?.TargetStep ?? (kit.CurrentStep + 1);
 
+                // Idempotent re-confirm: when targetStep == kit.CurrentStep and already complete, return 200 no-op
+                if (targetStep == kit.CurrentStep && string.Equals(kit.Status, "complete", StringComparison.OrdinalIgnoreCase))
+                {
+                    return Ok(ApiResponse.Ok("Step advanced", kit));
+                }
+
                 // Cannot move backwards
                 if (targetStep <= kit.CurrentStep)
                     return BadRequest(ApiResponse.Error("CurrentStep cannot move backwards."));

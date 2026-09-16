@@ -286,7 +286,7 @@ export function LogoCreationModal({
           <div>
             <div className="flex items-center gap-2">
               <span className="font-mono text-[11px] font-semibold text-primary uppercase tracking-wider">
-                Step 4 of 7
+                STEP 4 OF 6
               </span>
               <span className="text-muted-foreground text-xs">•</span>
               <span className="text-xs text-muted-foreground">Logo Creation</span>

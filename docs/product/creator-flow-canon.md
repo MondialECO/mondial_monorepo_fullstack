@@ -177,13 +177,15 @@ The Brand Visual Identity Studio provides a calm, generative studio workflow acr
     7. `TypographySystemModal` (Step 6: "Typography"): `onSuccess` $\to$ `handleStepTransition(null, updatedKit)`
   - **Automatic Hub Completion Hand-Off:** When `nextModalKey === null` and `updatedKit.status === "complete"`, `handleStepTransition` intercepts the transition and automatically pushes the browser to the live Brand Kit Hub (`/dashboard/creator/phase-2/brand-kit?ideaId=...`).
   - **Standardized Close/Dismiss:** All modals bind `onClose={() => handleStepTransition(null)}`, safely dismissing the overlay to reveal the accumulated canvas cards without losing session state.
-- **Top 6-Segment Progress Bar vs 7 User-Facing Modals:**
-  1. `strategy` (Step 1 segment: "Strategy", modal: `StrategyReviewModal`)
-  2. `direction` (Step 2 segment: "Direction", modal: `DirectionBoardModal`)
-  3. `logo_type` (Step 3 segment: "Logo Type", modal: `LogoTypeChooserModal`)
-  4. `logo` (Step 4 segment: "Logo", encompassing both Step 4a `LogoCreationModal` and Step 4b `VariationSetModal`)
-  5. `colors` (Step 5 segment: "Colour", modal: `ColorSystemModal`)
-  6. `typography` (Step 6 segment: "Typography", modal: `TypographySystemModal`)
+- **Top 6-Segment Progress Bar vs 7 User-Facing Modals (Canonical Step Eyebrow Scheme):**
+  1. `strategy` (Step 1 segment: "Strategy", modal: `StrategyReviewModal` $\to$ `STEP 1 OF 6 • BRAND STRATEGY`)
+  2. `direction` (Step 2 segment: "Direction", modal: `DirectionBoardModal` $\to$ `STEP 2 OF 6 • Visual Direction Board`)
+  3. `logo_type` (Step 3 segment: "Logo Type", modal: `LogoTypeChooserModal` $\to$ `STEP 3 OF 6 • Architectural Mark Form`)
+  4. `logo` (Step 4 segment: "Logo", encompassing both Step 4a and Step 4b):
+     - `LogoCreationModal` (Step 4a) $\to$ `STEP 4 OF 6 • Logo Creation`
+     - `VariationSetModal` (Step 4b) $\to$ `STEP 4 OF 6 · VARIATIONS • LOGO SET`
+  5. `colors` (Step 5 segment: "Colour", modal: `ColorSystemModal` $\to$ `STEP 5 OF 6 · COLOUR SYSTEM`)
+  6. `typography` (Step 6 segment: "Typography", modal: `TypographySystemModal` $\to$ `STEP 6 OF 6 • TYPOGRAPHY`)
 - **Interface Typography:** Standardized on **Inter** and **DM Sans** for all UI body copy, headings, and labels across all Studio surfaces (Syne Bold was an earlier prototype mock and is NOT used). **JetBrains Mono** is used for all numerals, tokens, and telemetry badges.
 - **Shared Components:**
   - `RegenerateCapBadge`: Reused across Direction, Logo Creation, Colour, and Typography to display remaining attempts (`N/3 LEFT` in neutral/muted, transitions to amber `0/3 LEFT` when cap is exhausted).
@@ -231,9 +233,10 @@ The Brand Visual Identity Studio provides a calm, generative studio workflow acr
    - **Server-Side Confirmation (`Colors.ConfirmedAt`):** Confirming the Colour System sends `confirmedAt: ISO timestamp` via `PATCH /colors`, and `CreatorBrandKitController.cs` records a genuine server-side UTC timestamp in `kit.Colors.ConfirmedAt` (matching Strategy and Logo confirmation patterns). Step 6 prerequisite sequencing in `CheckStepPrerequisite(6)` and `CheckPatchPrerequisite("typography")` strictly requires `kit.Colors.ConfirmedAt != null` (removing prior role-count proxy).
 6. **Typography System Modal (`TypographySystemModal` — Step 6: "Typography"):**
    - Initial deterministic pairing derivation (`DeriveInitialTypography`, **0 credits**).
-   - Generative pairing suggestion (`AiJobType.TypographyGeneration`, **2 credits**, 3-cap). *(Note: Known UI badge display bug — `TypographySystemModal.tsx:285` renders a static `<Badge>5 Credits</Badge>` chip while backend authoritatively debits 2 credits per `appsettings.json`).*
+   - Generative pairing suggestion (`AiJobType.TypographyGeneration`, **2 credits**, 3-cap; UI header displays `<Badge>2 Credits</Badge>` matching authoritative backend pricing).
    - **Server-Side Immutability of "Logo type":** The `Logo type` role is structurally bound to the approved logo concept. `CreatorBrandKitController.cs` explicitly rejects modifications or unlock attempts on `Logo type` via `PatchTypography`, and regeneration strictly preserves it.
    - **Server-Side Confirmation (`Typography.ConfirmedAt`) & Completion Trigger:** Confirming Step 6 sends `confirmedAt: ISO timestamp` via `PATCH /typography`, setting `kit.Typography.ConfirmedAt`. `AdvanceStep(6)` enforces `kit.Typography.ConfirmedAt != null` before advancing `CurrentStep = 6`, marking `Status = "complete"`, and synchronizing the 4-field pointer to `CreatorIdea.Project.Branding`. Frontend `BrandStudioShell` strictly checks real server `confirmedAt` values (`isColorsComplete = Boolean(kit?.colors?.confirmedAt)`, `isTypographyComplete = Boolean(kit?.typography?.confirmedAt)`).
+   - **AdvanceStep Idempotency on Completed Kits (Defect #9 Fix):** `POST /advance` with `targetStep == kit.CurrentStep` on an already-"complete" kit is an idempotent 200 no-op (returning current kit state unchanged with no `Version` increment), allowing safe re-confirmation of already-satisfied terminal milestones from the Hub or Studio without 400 errors. Genuine backwards attempts (`targetStep < kit.CurrentStep`) remain strictly guarded and return 400.
    - **Downstream Completion Effects:** Setting `Status = "complete"` permanently unlocks non-linear section editing from the Hub, bypassing prerequisite sequencing guards in `CheckPatchPrerequisite`.
 
 #### 3. Brand Kit Hub Page (`/dashboard/creator/phase-2/brand-kit`)
@@ -321,23 +324,23 @@ A **36-month** P&L (revenue, costs, cash flow, break-even). **Only the first 12 
 
 ### 5.2 Module — Business Plan (C-3, LIVE)
 
-9 sections. This is the canonical taxonomy — an older design doc's "5 editable / 4 auto-derived" split is SUPERSEDED, do not use it.
+11 display sections: **5 rewritable** (via `BusinessPlanSections.Map`: executive, target-market, business-model, competitive, gtm) and **6 read-only** (derived from Phase 2, live forecast, formation, Phase 5, operations plan, and risk assessment).
 
-| # | Section | Source | Badge |
-|---|---------|--------|-------|
-| 1 | Executive Summary | C-3 | — |
-| 2 | Problem & Solution | Clarifier | — |
-| 3 | Target Market | Clarifier | `auto_built_phase2` |
-| 4 | Business Model | C-3 | — |
-| 5 | Competitive Landscape | C-3 | `ai_researched` |
-| 6 | Go-to-Market | C-3 | `auto_built_43` |
-| 7 | Financial Projections | live C-4 forecast | `auto_filled_3` |
-| 8 | Team Needs | live formation.youNeed | — |
-| 9 | Funding Requirements | (see P5 note) | `used_in_phase5` |
+| # | Section | Source | Rewritable | Badge |
+|---|---------|--------|------------|-------|
+| 1 | Executive Summary | C-3 `executiveSummary` | ✅ | — |
+| 2 | Problem & Solution | Clarifier (Phase 2 project) | ❌ | `auto_built_phase2` |
+| 3 | Target Market | Clarifier + C-3 `marketAnalysis` | ✅ | `auto_built_phase2` |
+| 4 | Business Model | C-3 `revenueModel` | ✅ | — |
+| 5 | Competitive Landscape | C-3 `competitorAnalysis` | ✅ | `ai_researched` |
+| 6 | Go-to-Market | C-3 `goToMarket` | ✅ | `auto_built_43` |
+| 7 | Financial Projections | live C-4 forecast | ❌ | `auto_filled_31` |
+| 8 | Team Needs | live formation.youNeed | ❌ | — |
+| 9 | Funding Requirements | (see P5 note) | ❌ | `used_in_phase5` |
+| 10 | Operations & Milestones | C-3 `operationsPlan` | ❌ | — |
+| 11 | Risk Register | C-3 `risks[]` | ❌ | — |
 
-Sections 7/8/9 read live cross-module data, not hardcoded values. Each section has **Edit** (inline, persists) and **Rewrite** (AI regenerate). Rewrite: 100/day/user Redis limit, 429 with `retryAfterSeconds` on hit, version bump + append-only history.
-
-**KNOWN CAVEAT:** Rewrite regenerates the whole plan (C-3 has no single-section job yet); Edit persists as a display-level override (full edit→C-3 splice not wired).
+Sections 7–9 read live cross-module data, not hardcoded values. Sections 10–11 are direct read-only renders of C-3 output fields. The 5 rewritable sections each support **Edit** (inline, persists via `BusinessPlanSections.ReplaceSectionText` splice) and **Rewrite** (single-section AI regenerate via `BusinessPlanHandler` accepting `sectionId` in `PrepareAsync`, spliced back by `InterpretSingleSectionAsync` + `BusinessPlanSections.ReplaceField`). Rewrite: 100/day/user Redis limit, 429 with `retryAfterSeconds` on hit, version bump + append-only history.
 
 **§9 DEPENDENCY NOTE:** §9 currently reads `pathB.seedFunding.totalAsk` from the stale P5 wizard. When the wizard is removed (see P5), §9 must be decoupled — re-source or drop it.
 
@@ -484,6 +487,20 @@ The rule: matchmaking is unavailable across P1–P5 and unlocks only at P6. The 
 - **Legal checklist gate:** the "all mandatory Done" intent is now **implemented** (shared predicate in derivation + endpoint, uniform, no grandfathering; compliance page gates Continue). §5.3.
 - **Phase-3 completion:** documented as **success-gated** (Status Completed + version), not session-id presence. §5.7.
 - **Poll policy:** 60/3-min → **96 attempts / 4 min**; clarifier + ai-processing consolidated onto the shared constants. §5.5.
+
+**2026-09-16 — Phase 2 Brand Studio: Systematic Audit Pass & AdvanceStep Idempotency.**
+- **AdvanceStep Idempotency (Defect #9):** `POST /api/creator/journey/phase2/brand-kit/advance` now treats `targetStep == kit.CurrentStep` on an already-"complete" kit as a 200 no-op (re-confirming an already-satisfied milestone) returning the current kit state unchanged with no `Version` increment, eliminating 400 errors during Hub/Studio re-confirmations. Genuine backwards attempts (`targetStep < kit.CurrentStep`) remain guarded and return 400. §1.5.2.
+- **Full Systematic Code-Review Audit:** Verified end-to-end code paths across all backend endpoints (`strategy`, `direction`, `logo`, `colors`, `typography`, `advance`, `open-studio`, `snapshots`), `Project.Branding` 4-field sync, credit debit/refund ordering, and all 7 frontend modals, confirming defects #1 through #9 fixes remain intact.
+- **Typography Badge Alignment:** `TypographySystemModal.tsx:285` badge chip corrected from `5 Credits` to `2 Credits`, aligning frontend UI with backend `appsettings.json` pricing.
+- **Step-Numbering Drift Resolution:** Corrected modal header step eyebrow counters from legacy `"OF 7"` across all 7 modals to strictly align with the canonical 6-segment progress bar scheme:
+  1. Strategy: `STEP 1 OF 6 • BRAND STRATEGY`
+  2. Direction: `STEP 2 OF 6 • Visual Direction Board`
+  3. Logo Type: `STEP 3 OF 6 • Architectural Mark Form`
+  4. Logo Creation: `STEP 4 OF 6 • Logo Creation`
+  5. Variations: `STEP 4 OF 6 · VARIATIONS • LOGO SET`
+  6. Colour: `STEP 5 OF 6 · COLOUR SYSTEM`
+  7. Typography: `STEP 6 OF 6 • TYPOGRAPHY`
+- **Visual Validation:** Live browser rendering confirmed via headless Playwright runs on running Next.js app, with authentic screenshots captured for modal headers.
 
 ---
 

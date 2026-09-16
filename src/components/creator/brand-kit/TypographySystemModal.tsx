@@ -260,7 +260,7 @@ export function TypographySystemModal({
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center gap-1 font-mono text-[11px] font-bold text-primary tracking-wider uppercase bg-primary/10 px-2 py-0.5 rounded">
-                STEP 6 OF 7
+                STEP 6 OF 6
               </span>
               <span className="font-mono text-xs text-muted-foreground">
                 Final Step of Studio Flow
@@ -282,7 +282,7 @@ export function TypographySystemModal({
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center gap-1 font-mono text-[11px] font-semibold text-muted-foreground bg-muted/60 px-2.5 py-1 rounded-md border border-border/60">
                 <Sparkles className="size-3 text-primary" />
-                5 Credits
+                2 Credits
               </span>
               <RegenerateCapBadge usedCount={regenerateCount} maxCount={3} />
               <button

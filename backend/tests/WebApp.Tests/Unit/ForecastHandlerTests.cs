@@ -82,10 +82,47 @@ public class ForecastHandlerTests
 
         prep.PromptKey.Should().Be(PromptTemplate.Forecast.Key);
         prep.TaskType.Should().Be("Forecast");
-        prep.MaxTokens.Should().Be(6000);
+        prep.MaxTokens.Should().Be(8000);
         prep.Temperature.Should().Be(0.3);
         prep.ResponseFormat.Should().Be("json_object");
         prep.Task.Should().Contain("12-month");
+    }
+
+    [Fact]
+    public async Task Prepare_includes_churn_in_prompt_when_provided()
+    {
+        var planId = ObjectId.GenerateNewId().ToString();
+        _plans.Setup(p => p.GetOwnedAsync(planId, "user-1")).ReturnsAsync(CompletedPlan(planId));
+
+        var prep = await Handler().PrepareAsync(Request(new BsonDocument
+        {
+            ["sessionId"] = ObjectId.GenerateNewId().ToString(),
+            ["businessPlanSessionId"] = planId,
+            ["arpu"] = 49,
+            ["monthlyChurnPct"] = 5.0,
+        }));
+
+        prep.UserContext.Should().Contain("Monthly churn rate (%): 5");
+        prep.UserContext.Should().Contain("ARPU");
+        prep.Task.Should().Contain("monthly churn");
+    }
+
+    [Fact]
+    public async Task Prepare_omits_churn_gracefully_when_absent()
+    {
+        var planId = ObjectId.GenerateNewId().ToString();
+        _plans.Setup(p => p.GetOwnedAsync(planId, "user-1")).ReturnsAsync(CompletedPlan(planId));
+
+        // No monthlyChurnPct in the input — simulates a legacy session or omitted field.
+        var prep = await Handler().PrepareAsync(Request(new BsonDocument
+        {
+            ["sessionId"] = ObjectId.GenerateNewId().ToString(),
+            ["businessPlanSessionId"] = planId,
+            ["arpu"] = 49,
+        }));
+
+        prep.UserContext.Should().NotContain("churn");
+        prep.UserContext.Should().Contain("ARPU"); // other inputs still present
     }
 
     [Fact]

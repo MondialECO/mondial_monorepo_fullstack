@@ -292,8 +292,8 @@ namespace WebApp.Tests.Creator.Unit
             var (controller, mockKitStore, _, _, _, _, _, _) = SetupController(null);
 
             BrandKitModel? addedKit = null;
-            mockKitStore.Setup(s => s.AddAsync(It.IsAny<BrandKitModel>(), null))
-                .Callback<BrandKitModel, IClientSessionHandle?>((k, _) => addedKit = k)
+            mockKitStore.Setup(s => s.AddAsync(It.IsAny<BrandKitModel>()))
+                .Callback<BrandKitModel>(k => addedKit = k)
                 .Returns(Task.CompletedTask);
 
             var result = await controller.OpenStudio(TestIdeaId);
@@ -302,7 +302,7 @@ namespace WebApp.Tests.Creator.Unit
             var response = okResult.Value as ApiResponse;
             response.Should().NotBeNull();
             response!.Success.Should().BeTrue();
-            mockKitStore.Verify(s => s.AddAsync(It.IsAny<BrandKitModel>(), null), Times.Once);
+            mockKitStore.Verify(s => s.AddAsync(It.IsAny<BrandKitModel>()), Times.Once);
             addedKit.Should().NotBeNull();
             addedKit!.IdeaId.Should().Be(TestIdeaId);
             addedKit.Status.Should().Be("draft");
@@ -318,7 +318,7 @@ namespace WebApp.Tests.Creator.Unit
             var result = await controller.CreateKit(TestIdeaId);
 
             var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
-            mockKitStore.Verify(s => s.AddAsync(It.IsAny<BrandKitModel>(), null), Times.Never);
+            mockKitStore.Verify(s => s.AddAsync(It.IsAny<BrandKitModel>()), Times.Never);
         }
 
         [Fact]

@@ -58,5 +58,6 @@ This matrix establishes the definitive, canonical data authority for every major
    - First-time entry from `/phase-2/branding` into Studio transparently auto-provisions a default draft BrandKit via `POST /open-studio` / `GetOrCreateBrandKitAsync` without requiring out-of-band pre-seeding.
    - Step 6 advancement strictly requires `kit.Colors.ConfirmedAt != null` (eliminating role count proxies), and transitioning to `Status = "complete"` requires `kit.Typography.ConfirmedAt != null`.
    - Confirming Typography advances the kit to `Status = "complete"` and automatically transitions the creator to the Brand Kit Hub (`/dashboard/creator/phase-2/brand-kit`), allowing arbitrary section re-editing in Studio (`/dashboard/creator/phase-2/brand-studio`) with upstream cascade warnings and automatic rollback snapshots.
+   - When `Status = "complete"`, `POST /advance` with `targetStep == kit.CurrentStep` is an idempotent 200 no-op (no `Version` increment), allowing safe re-confirmations from Hub or Studio, while genuine backwards transitions (`targetStep < kit.CurrentStep`) remain blocked with 400.
    - The entry flow (`/phase-2/branding`), studio shell, hub, and summary complete screen (`/phase-2/complete`) are verified compile-clean and verified via live E2E browser walkthroughs on unseeded fresh ideas and direct MongoDB reads.
 
