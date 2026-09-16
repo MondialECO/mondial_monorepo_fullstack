@@ -55,7 +55,8 @@ This matrix establishes the definitive, canonical data authority for every major
    - `CreatorIdea.Project.Branding` is a read-optimized, thin summary pointer containing strictly 4 fields: `BrandingMethod`, `LogoAsset`, `PaletteName`, and `TypographyPairing`. Whenever Logo, Colors, or Typography are updated in `BrandKit`, backend synchronously updates `CreatorIdea.Project.Branding`.
 6. **BrandKit Section Sequencing, Completion & Hub Re-Edit Rule**:
    - During initial drafting (`Status = "draft"`), step advancement and PATCH operations enforce strict sequential prerequisites with genuine server-side timestamps (`Strategy.ConfirmedAt`, `Direction.SelectedAt`, `Logo.ApprovedAt`, `Colors.ConfirmedAt`, `Typography.ConfirmedAt`).
+   - First-time entry from `/phase-2/branding` into Studio transparently auto-provisions a default draft BrandKit via `POST /open-studio` / `GetOrCreateBrandKitAsync` without requiring out-of-band pre-seeding.
    - Step 6 advancement strictly requires `kit.Colors.ConfirmedAt != null` (eliminating role count proxies), and transitioning to `Status = "complete"` requires `kit.Typography.ConfirmedAt != null`.
    - Confirming Typography advances the kit to `Status = "complete"` and automatically transitions the creator to the Brand Kit Hub (`/dashboard/creator/phase-2/brand-kit`), allowing arbitrary section re-editing in Studio (`/dashboard/creator/phase-2/brand-studio`) with upstream cascade warnings and automatic rollback snapshots.
-   - The entry flow (`/phase-2/branding`), studio shell, hub, and summary complete screen (`/phase-2/complete`) are verified compile-clean and verified via live E2E browser walkthroughs and direct MongoDB reads.
+   - The entry flow (`/phase-2/branding`), studio shell, hub, and summary complete screen (`/phase-2/complete`) are verified compile-clean and verified via live E2E browser walkthroughs on unseeded fresh ideas and direct MongoDB reads.
 

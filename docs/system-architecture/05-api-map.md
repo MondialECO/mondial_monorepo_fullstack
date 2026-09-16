@@ -62,8 +62,9 @@ The Mondial ECO backend exposes 579 API endpoints managed across 51 controllers.
   - `POST /api/creator/phase-2/logo`: Upload and attach brand logo asset.
   - `GET /api/creator/phase-2/hire-designer`: Find matched Service Providers for design work.
 - **`CreatorBrandKitController`** (`/api/creator/journey/phase2/brand-kit`):
-  - `GET /api/creator/journey/phase2/brand-kit`: Retrieve complete BrandKit entity (`BrandKitRecord`) for the active or queried idea.
-  - `POST /api/creator/journey/phase2/brand-kit/open-studio`: Reset all section regenerate counters across the kit to 0 upon entering the studio hub.
+  - `GET /api/creator/journey/phase2/brand-kit`: Retrieve complete BrandKit entity (`BrandKitRecord`) for the active or queried idea (returns 200 with null data if no kit exists).
+  - `POST /api/creator/journey/phase2/brand-kit`: Idempotently create or retrieve initial BrandKit entity (seeding Strategy from Project, 5-role default Colors, 4-role default Typography) via shared `GetOrCreateBrandKitAsync`.
+  - `POST /api/creator/journey/phase2/brand-kit/open-studio`: Idempotently retrieve/auto-provision initial BrandKit on first-time entry via shared `GetOrCreateBrandKitAsync`, or reset all section regenerate counters (3/3 caps) to 0 when re-entering Studio from Hub.
   - `PATCH /api/creator/journey/phase2/brand-kit/strategy`: Partially update Strategy section (`PersonalityTraits`, `PositioningStatement`, `TargetAudience`, `BrandValues`, `VisualPreferences`) with optimistic concurrency validation.
   - `PATCH /api/creator/journey/phase2/brand-kit/direction`: Partially update Direction section (`SelectedDirection`, `Directions`) with optimistic concurrency validation.
   - `PATCH /api/creator/journey/phase2/brand-kit/logo`: Partially update Logo section (`SelectedConcept`, `Concepts`, `Variations`), syncing `LogoAsset` to `CreatorIdea.Project.Branding`.
@@ -177,7 +178,7 @@ The Mondial ECO backend exposes 579 API endpoints managed across 51 controllers.
   - `POST /api/creator/journey/phase2/brand-kit/advance`: Enforce sequential step prerequisites (`Step 6` requires `kit.Colors.ConfirmedAt != null`), mark `complete` on Step 6 when `kit.Typography.ConfirmedAt != null`, and sync `Project.Branding`.
   - `POST /api/creator/journey/phase2/brand-kit/snapshot`: Create concurrency-guarded backup snapshot (bounded to 3).
   - `POST /api/creator/journey/phase2/brand-kit/snapshot/restore`: Concurrency-guarded snapshot restoration with automatic pre-restore backup.
-  - `POST /api/creator/journey/phase2/brand-kit/open-studio`: Reset regenerate counters (3/3 caps) when Creator re-enters Studio from Hub.
+  - `POST /api/creator/journey/phase2/brand-kit/open-studio`: Idempotently retrieve/auto-provision initial BrandKit on first-time entry via shared `GetOrCreateBrandKitAsync`, or reset regenerate counters (3/3 caps) when Creator re-enters Studio from Hub.
 
 
 ### H. Platform Administration & Governance (93 Endpoints)
