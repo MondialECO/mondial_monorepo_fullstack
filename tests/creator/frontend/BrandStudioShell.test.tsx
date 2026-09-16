@@ -90,7 +90,7 @@ describe('BrandStudioShell Component', () => {
     // Verify Progress bar segments
     expect(screen.getByText('Strategy')).toBeInTheDocument();
     expect(screen.getByText('Direction')).toBeInTheDocument();
-    expect(screen.getByText('Logo Type')).toBeInTheDocument();
+    expect(screen.getByText('Logo type')).toBeInTheDocument();
     expect(screen.getByText('Logo')).toBeInTheDocument();
     expect(screen.getByText('Colour')).toBeInTheDocument();
     expect(screen.getByText('Typography')).toBeInTheDocument();

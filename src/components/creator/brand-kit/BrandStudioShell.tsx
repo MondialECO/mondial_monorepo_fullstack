@@ -88,7 +88,7 @@ export function BrandStudioShell({
       {
         key: "logo_type",
         stepNumber: 3,
-        label: "Logo Type",
+        label: "Logo type",
         status: isLogoTypeComplete
           ? "complete"
           : isDirectionComplete
