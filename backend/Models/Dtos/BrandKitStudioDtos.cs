@@ -86,6 +86,7 @@ namespace WebApp.Models.Dtos
     public class BrandColorsPatchDto
     {
         public List<BrandColorRolePatchDto>? Roles { get; set; }
+        public DateTime? ConfirmedAt { get; set; }
     }
 
     public class BrandColorRolePatchDto
@@ -105,6 +106,7 @@ namespace WebApp.Models.Dtos
     {
         public List<BrandTypographyRolePatchDto>? Roles { get; set; }
         public BrandTypographyFamiliesDto? Families { get; set; }
+        public DateTime? ConfirmedAt { get; set; }
     }
 
     public class BrandTypographyRolePatchDto

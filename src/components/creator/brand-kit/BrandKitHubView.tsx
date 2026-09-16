@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { BrandKit, BrandKitSnapshot, BrandLogoVariation } from "@/types/creator/brand-kit";
 import { apiCreatorBrandKit } from "@/lib/api-creator-brand-kit";
+import { API_ORIGIN } from "@/lib/api-config";
 import { CascadeWarningModal, CascadeTargetSection } from "./CascadeWarningModal";
 import { RestoreSnapshotModal } from "./RestoreSnapshotModal";
 import { StrategyReviewModal } from "./StrategyReviewModal";
@@ -98,6 +99,21 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
             logosFolder?.file(`${slug}-${fileKey}.svg`, rawSvg);
           } else if (variation.svgUri.startsWith("<svg")) {
             logosFolder?.file(`${slug}-${fileKey}.svg`, variation.svgUri);
+          } else if (variation.svgUri.startsWith("/") || variation.svgUri.startsWith("http")) {
+            try {
+              const fetchUrl = variation.svgUri.startsWith("http")
+                ? variation.svgUri
+                : `${API_ORIGIN}${variation.svgUri}`;
+              const res = await fetch(fetchUrl);
+              if (res.ok) {
+                const svgText = await res.text();
+                if (svgText && svgText.includes("<svg")) {
+                  logosFolder?.file(`${slug}-${fileKey}.svg`, svgText);
+                }
+              }
+            } catch (err) {
+              console.warn(`Failed to fetch SVG asset for ${fileKey}:`, err);
+            }
           }
         }
       }

@@ -65,12 +65,8 @@ export function BrandStudioShell({
     );
     const isLogoTypeComplete = Boolean(kit?.logo?.logoType);
     const isLogoComplete = Boolean(kit?.logo?.approvedAt);
-    const isColorsComplete = Boolean(
-      kit?.colors?.confirmedAt || (kit?.colors?.roles && kit.colors.roles.length === 5)
-    );
-    const isTypographyComplete = Boolean(
-      kit?.typography?.confirmedAt || (kit?.typography?.roles && kit.typography.roles.length >= 4)
-    );
+    const isColorsComplete = Boolean(kit?.colors?.confirmedAt);
+    const isTypographyComplete = Boolean(kit?.typography?.confirmedAt);
 
     return [
       {
@@ -475,6 +471,7 @@ export function BrandStudioShell({
           onClose={() => setActiveModal(null)}
           onSuccess={(updatedKit) => {
             setKit(updatedKit);
+            setActiveModal("logo_creation");
           }}
         />
       )}
