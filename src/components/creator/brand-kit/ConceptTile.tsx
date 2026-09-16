@@ -109,7 +109,8 @@ export const ConceptTile = memo(function ConceptTile({
             <div className="relative size-24 sm:size-28 flex items-center justify-center p-1">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={resolveMediaUrl(concept.markAssetUri)}
+                key={`${concept.key}-${concept.regenerateCount ?? 0}-${concept.markAssetUri}`}
+                src={resolveMediaUrl(concept.markAssetUri, concept.regenerateCount)}
                 alt={descriptor}
                 className="size-full object-contain filter drop-shadow-2xs transition-transform duration-200 group-hover:scale-105"
               />
@@ -124,7 +125,7 @@ export const ConceptTile = memo(function ConceptTile({
         {viewMode === "invoice" && (
           <div className="w-full max-w-[280px]">
             <InvoiceMockHeader
-              lockupUri={resolveMediaUrl(concept.lockupAssetUri || concept.markAssetUri)}
+              lockupUri={resolveMediaUrl(concept.lockupAssetUri || concept.markAssetUri, concept.regenerateCount)}
               conceptName={conceptTag}
             />
           </div>
@@ -133,7 +134,7 @@ export const ConceptTile = memo(function ConceptTile({
         {/* Mode 3: At 16px (Micro-Scale Favicon Inspection) */}
         {viewMode === "16px" && (
           <MicroScaleViewer
-            markUri={resolveMediaUrl(concept.markAssetUri)}
+            markUri={resolveMediaUrl(concept.markAssetUri, concept.regenerateCount)}
             conceptName={conceptTag}
           />
         )}

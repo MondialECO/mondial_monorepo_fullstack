@@ -62,6 +62,7 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
                 rawParamSets = GenerateDeterministicParameterSets(brandName, strategy, direction, selectedCand, avoidList, selectedLogoType);
             }
 
+            var regenCount = kit?.Logo?.RegenerateCount ?? 0;
             var concepts = new List<BrandLogoConcept>();
             for (int i = 0; i < 6; i++)
             {
@@ -69,11 +70,13 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
                 var param = rawParamSets[i];
                 var descriptor = param.Descriptor ?? $"Concept {i + 1}: {param.Family} visual direction";
 
+                var markFileKey = regenCount > 0 ? $"{conceptKey}_mark_b{regenCount}" : $"{conceptKey}_mark";
                 var markSvg = _rendererRegistry.RenderMarkSvg(param, brandName);
-                var markAssetUri = await SaveSvgAssetAsync(idea.Id, $"{conceptKey}_mark", markSvg);
+                var markAssetUri = await SaveSvgAssetAsync(idea.Id, markFileKey, markSvg);
 
+                var lockupFileKey = regenCount > 0 ? $"{conceptKey}_lockup_b{regenCount}" : $"{conceptKey}_lockup";
                 var lockupSvg = _rendererRegistry.RenderLockupSvg(param, brandName);
-                var lockupAssetUri = await SaveSvgAssetAsync(idea.Id, $"{conceptKey}_lockup", lockupSvg);
+                var lockupAssetUri = await SaveSvgAssetAsync(idea.Id, lockupFileKey, lockupSvg);
 
                 concepts.Add(new BrandLogoConcept
                 {
@@ -116,8 +119,14 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
                 targetFamily = BrandLogoFamilyNames.All[seedIndex];
             }
 
-            var synthParams = GenerateDeterministicSingleParameterSet(brandName, strategy, direction, targetFamily, existingRegenCount + 1, avoidList);
-            var descriptor = $"Regenerated {targetFamily} direction tailored to {selectedCand?.Name ?? "brand identity"}";
+            int conceptIndex = 0;
+            if (targetConceptKey.StartsWith("concept_") && int.TryParse(targetConceptKey.Substring("concept_".Length), out var parsedIdx))
+            {
+                conceptIndex = Math.Max(0, parsedIdx - 1);
+            }
+
+            var synthParams = GenerateDeterministicSingleParameterSet(brandName, strategy, direction, targetFamily, conceptIndex + existingRegenCount + 1, avoidList);
+            var descriptor = synthParams.Descriptor ?? $"Regenerated {targetFamily} direction #{existingRegenCount + 1} tailored to {selectedCand?.Name ?? "brand identity"}";
             synthParams.Descriptor = descriptor;
 
             var markSvg = _rendererRegistry.RenderMarkSvg(synthParams, brandName);
@@ -828,9 +837,12 @@ You MUST choose parameters for 6 distinct concepts covering at least 4 of the fo
             int seed,
             List<string> avoidList)
         {
-            var sets = GenerateDeterministicParameterSets(brandName, strategy, direction, null, avoidList);
-            var matching = sets.FirstOrDefault(s => s.Family == family);
-            if (matching != null) return matching;
+            var sets = GenerateDeterministicParameterSets(brandName, strategy, direction, null, avoidList, family);
+            if (sets != null && sets.Count > 0)
+            {
+                var index = Math.Abs(seed) % sets.Count;
+                return sets[index];
+            }
 
             return new BrandLogoConceptParameters
             {

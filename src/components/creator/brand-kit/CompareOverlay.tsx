@@ -48,8 +48,8 @@ export function CompareOverlay({
   }
 
   const renderConceptContent = (concept: BrandLogoConcept, label: string) => {
-    const markUri = resolveMediaUrl(concept.markAssetUri);
-    const lockupUri = resolveMediaUrl(concept.lockupAssetUri || concept.markAssetUri);
+    const markUri = resolveMediaUrl(concept.markAssetUri, concept.regenerateCount);
+    const lockupUri = resolveMediaUrl(concept.lockupAssetUri || concept.markAssetUri, concept.regenerateCount);
 
     return (
       <div className="flex-1 flex flex-col rounded-2xl border border-border bg-card p-6 shadow-xs">
