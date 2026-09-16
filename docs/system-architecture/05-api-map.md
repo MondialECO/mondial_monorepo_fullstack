@@ -170,11 +170,11 @@ The Mondial ECO backend exposes 579 API endpoints managed across 51 controllers.
   - `PATCH /api/creator/journey/phase2/brand-kit/logo`: Set selected concept, logoType, refinement settings, or approve logo.
   - `POST /api/creator/journey/phase2/brand-kit/colors/generate`: Free deterministic initial color palette derivation.
   - `POST /api/creator/journey/phase2/brand-kit/colors/regenerate`: Generative whole-palette regeneration (2 credits, 3-cap).
-  - `PATCH /api/creator/journey/phase2/brand-kit/colors`: Free manual role updates (Hex, IsLocked) with deterministic WCAG evaluation.
+  - `PATCH /api/creator/journey/phase2/brand-kit/colors`: Update Colors section (5 canonical roles: `Primary`, `Secondary`, `Accent`, `Background`, `Text`), writing `Colors.ConfirmedAt` on confirmation and syncing `PaletteName` to `CreatorIdea.Project.Branding`.
   - `POST /api/creator/journey/phase2/brand-kit/typography/generate`: Free deterministic initial typography pairing derivation.
   - `POST /api/creator/journey/phase2/brand-kit/typography/regenerate`: Generative pairing regeneration (2 credits, 3-cap, preserves locked roles & immutable Logo type).
-  - `PATCH /api/creator/journey/phase2/brand-kit/typography`: Free manual role and family updates (server-side rejects modification to "Logo type").
-  - `POST /api/creator/journey/phase2/brand-kit/advance`: Enforce sequential step prerequisites, advance `currentStep`, mark `complete` on Step 6, and sync `Project.Branding`.
+  - `PATCH /api/creator/journey/phase2/brand-kit/typography`: Update Typography section (4 canonical roles: `Logo type`, `Heading`, `Body`, `Button & label`), writing `Typography.ConfirmedAt` on confirmation and syncing `TypographyPairing` to `CreatorIdea.Project.Branding` (server-side rejects modification to "Logo type").
+  - `POST /api/creator/journey/phase2/brand-kit/advance`: Enforce sequential step prerequisites (`Step 6` requires `kit.Colors.ConfirmedAt != null`), mark `complete` on Step 6 when `kit.Typography.ConfirmedAt != null`, and sync `Project.Branding`.
   - `POST /api/creator/journey/phase2/brand-kit/snapshot`: Create concurrency-guarded backup snapshot (bounded to 3).
   - `POST /api/creator/journey/phase2/brand-kit/snapshot/restore`: Concurrency-guarded snapshot restoration with automatic pre-restore backup.
   - `POST /api/creator/journey/phase2/brand-kit/open-studio`: Reset regenerate counters (3/3 caps) when Creator re-enters Studio from Hub.
