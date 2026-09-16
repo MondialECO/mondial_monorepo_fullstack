@@ -3,25 +3,23 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Sparkles,
-  ShieldCheck,
   ArrowRight,
   ArrowLeft,
-  Compass,
   CheckCircle2,
+  Info,
+  Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
 import { creatorJourneyApi } from "@/lib/api-creator-journey";
 
 const STUDIO_DELIVERABLES = [
-  "Brand strategy confirmed (positioning, target audience, traits & avoid list)",
-  "Curated visual direction & moodboard",
-  "Architectural logo concepts in your chosen mark archetype",
-  "Full set of 7 canonical logo variations (including transparent checkerboard)",
-  "5-role colour system with deterministic WCAG contrast evaluation",
-  "4-role typography system with optical role specimens",
+  "Brand strategy confirmed from your idea",
+  "A visual direction you choose",
+  "Logo concepts in the style you pick",
+  "Seven logo variations — SVG and PNG",
+  "Five-role colour system, contrast checked",
+  "Four-role typography system, open licence",
 ];
 
 export default function BrandingOptionsPage() {
@@ -76,121 +74,130 @@ export default function BrandingOptionsPage() {
   };
 
   return (
-    <div className="w-full flex-1 flex flex-col bg-background text-foreground min-h-screen">
-      {/* Progress Bar (78% filled) */}
-      <div className="h-[3px] w-full bg-muted">
-        <div className="h-full bg-primary" style={{ width: "78%" }} />
-      </div>
-
-      {/* Top Header Bar */}
-      <header className="flex items-center justify-between border-b border-border/80 bg-card/60 backdrop-blur-xs px-6 py-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => router.push("/dashboard/creator/phase-2/concept-name")}
-          className="flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back
-        </Button>
-        <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-          <Sparkles className="h-3 w-3" />
-          Phase 2 of 6 — Visual Identity
+    <div className="w-full flex-1 min-h-screen bg-background text-foreground flex flex-col items-center justify-center px-4 py-10 sm:py-16">
+      <div className="w-full max-w-[680px] mx-auto space-y-6">
+        {/* Page Header */}
+        <div className="text-center space-y-3">
+          <h1 className="text-3xl sm:text-4xl lg:text-[44px] font-semibold tracking-tight text-foreground leading-tight font-heading">
+            Build your brand identity
+          </h1>
+          <p className="text-sm sm:text-base text-muted-foreground font-sans leading-relaxed max-w-xl mx-auto">
+            One guided session gives you a logo, colours and typography. Every generator after this reads from it automatically.
+          </p>
         </div>
-      </header>
 
-      {/* Section Heading */}
-      <div className="px-6 pt-10 pb-6 sm:px-10 max-w-2xl mx-auto w-full text-center">
-        <span className="text-xs font-bold text-primary uppercase tracking-wider">
-          Step 2.3
-        </span>
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground mt-2 leading-tight">
-          Build your brand identity
-        </h1>
-        <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-          Craft a complete, production-ready brand identity kit in a guided 7-step studio session.
-        </p>
-      </div>
+        {/* Main Studio Card */}
+        <div className="w-full rounded-2xl sm:rounded-3xl border border-border/80 bg-card p-6 sm:p-9 shadow-xs space-y-6">
+          {/* Geometric Glyph Icon Tile */}
+          <div className="size-16 rounded-xl bg-muted/60 border border-border/80 flex items-center justify-center text-foreground shrink-0 shadow-2xs">
+            <svg
+              className="size-8 stroke-foreground"
+              viewBox="0 0 32 32"
+              fill="none"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              {/* Circle */}
+              <circle cx="12" cy="13" r="6" />
+              {/* Square */}
+              <rect x="13" y="13" width="11" height="11" rx="1.5" />
+              {/* Triangle */}
+              <path d="M20 7L28 17H12L20 7Z" />
+            </svg>
+          </div>
 
-      {/* Single Primary Studio Card */}
-      <div className="flex-1 flex flex-col items-center px-6 sm:px-10 pb-12 max-w-3xl mx-auto w-full space-y-6">
-        <Card className="w-full rounded-2xl border border-border/80 bg-card shadow-sm hover:shadow-md transition-shadow">
-          <CardContent className="p-6 sm:p-8 space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-              <div className="flex items-start gap-4">
-                <div className="flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary shrink-0">
-                  <Compass className="size-6" />
-                </div>
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-primary bg-primary/10 px-2 py-0.5 rounded">
-                      7-Step Guided Session
-                    </span>
-                  </div>
-                  <h3 className="text-xl font-bold text-foreground">
-                    Brand Visual Identity Studio
-                  </h3>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    A comprehensive, interactive studio session producing a cohesive brand kit across logo, colour, and typography systems.
-                  </p>
-                </div>
-              </div>
-            </div>
+          {/* Title & Description */}
+          <div className="space-y-2">
+            <h2 className="text-2xl sm:text-[26px] font-semibold text-foreground tracking-tight font-heading">
+              Brand Visual Identity Studio
+            </h2>
+            <p className="text-sm sm:text-base text-muted-foreground font-sans leading-relaxed">
+              A guided studio that builds your full identity step by step, using the idea details you&apos;ve already given.
+            </p>
+          </div>
 
-            {/* Deliverables Box */}
-            <div className="bg-muted/30 border border-border/60 rounded-xl p-5 space-y-3">
-              <span className="text-[10px] font-mono font-bold text-muted-foreground uppercase tracking-wider block">
-                What you will produce (6 concrete deliverables)
-              </span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                {STUDIO_DELIVERABLES.map((item, index) => (
-                  <div
-                    key={index}
-                    className="flex items-start gap-2 text-xs text-muted-foreground"
-                  >
-                    <CheckCircle2 className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
-                    <span className="leading-tight">{item}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+          {/* Studio Details Badges */}
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <span className="px-3 py-1.5 rounded-lg bg-muted/70 text-foreground/85 text-xs font-medium border border-border/40 font-sans">
+              <span className="font-mono font-semibold text-foreground">6</span> steps
+            </span>
+            <span className="px-3 py-1.5 rounded-lg bg-muted/70 text-foreground/85 text-xs font-medium border border-border/40 font-sans">
+              ~<span className="font-mono font-semibold text-foreground">5</span>minutes
+            </span>
+            <span className="px-3 py-1.5 rounded-lg bg-muted/70 text-foreground/85 text-xs font-medium border border-border/40 font-sans">
+              Editable later
+            </span>
+          </div>
 
-            {/* Primary Action Button */}
-            <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-border/60">
-              <span className="text-xs text-muted-foreground font-mono">
-                Estimated time: ~5 minutes
-              </span>
-              <Button
-                onClick={handleOpenStudio}
-                size="lg"
-                className="w-full sm:w-auto px-8 rounded-xl font-bold bg-primary text-primary-foreground hover:bg-primary/95 shadow-sm inline-flex items-center justify-center gap-2"
+          {/* Hairline Divider */}
+          <div className="h-px w-full bg-border/60" />
+
+          {/* Deliverables Checklist */}
+          <ul className="space-y-3.5">
+            {STUDIO_DELIVERABLES.map((item, index) => (
+              <li
+                key={index}
+                className="flex items-start gap-3 text-sm font-sans text-foreground/90 leading-relaxed"
               >
-                <span>Open Brand Studio</span>
-                <ArrowRight className="size-4" />
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+                <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
 
-        {/* Quiet Secondary Row (Skip) & Marketplace Notice */}
-        <div className="flex flex-col items-center space-y-3 text-center">
+          {/* Hairline Divider */}
+          <div className="h-px w-full bg-border/60" />
+
+          {/* Information Line */}
+          <div className="flex items-center gap-2 text-xs text-muted-foreground font-sans">
+            <Info className="size-3.5 shrink-0 text-muted-foreground/80" />
+            <span>Everything lands in My Brand Kit — you can change any part of it later.</span>
+          </div>
+
+          {/* Primary Action Button (The single filled blue element on screen) */}
+          <Button
+            onClick={handleOpenStudio}
+            size="lg"
+            className="w-full h-13 sm:h-14 rounded-xl font-medium text-base bg-primary text-primary-foreground hover:bg-primary/90 transition-all shadow-xs inline-flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <span>Open Brand Studio</span>
+            <ArrowRight className="size-4.5" />
+          </Button>
+        </div>
+
+        {/* Step Navigation Card */}
+        <div className="w-full rounded-2xl border border-border/80 bg-card/60 p-4 sm:p-5 flex items-center justify-between shadow-2xs">
           <Button
             variant="ghost"
-            onClick={handleSkip}
-            disabled={skipping}
-            className="text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted/60"
+            size="sm"
+            onClick={() => router.push("/dashboard/creator/phase-2/concept-name")}
+            className="text-sm font-medium text-foreground hover:text-foreground inline-flex items-center gap-2 px-3 py-2 cursor-pointer"
           >
-            {skipping ? "Skipping…" : "Skip for now"}
-            <ArrowRight className="size-3.5 ml-1.5" />
+            <ArrowLeft className="size-4" />
+            <span>Back</span>
           </Button>
 
-          {skipError && (
-            <p className="text-xs text-destructive">{skipError}</p>
-          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSkip}
+            disabled={skipping}
+            className="rounded-full border-border/90 px-5 py-2 text-sm font-medium text-foreground hover:bg-muted/60 inline-flex items-center gap-2 cursor-pointer"
+          >
+            <span>{skipping ? "Skipping…" : "Skip Branding for Now"}</span>
+            <ArrowRight className="size-3.5" />
+          </Button>
+        </div>
 
-          <p className="text-xs text-muted-foreground/70 max-w-md">
-            Prefer a human designer? Hiring verified designers arrives when the marketplace opens.
-          </p>
+        {skipError && (
+          <p className="text-xs text-destructive text-center">{skipError}</p>
+        )}
+
+        {/* Footer - Additional Information */}
+        <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground/80 font-sans text-center pt-1 pb-2">
+          <Clock className="size-3.5 shrink-0" />
+          <span>Prefer a human designer? Hiring verified designers arrives when the marketplace opens.</span>
         </div>
       </div>
     </div>
