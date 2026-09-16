@@ -140,7 +140,12 @@ Following the Clarifier:
 1. **Idea Summary (`/phase-2/idea-summary`):** Displays the structured concept summary and clarity score. The "Revisit" button routes directly back to `/phase-2/clarifier`.
 2. **Concept Name (`/phase-2/concept-name`):** Names the project based on clarified concept context.
 3. **Branding Entry (`/phase-2/branding`):** Redesigned single-card presentation ("Brand Visual Identity Studio", light theme, hairline borders) highlighting 6 concrete deliverables, a single filled primary blue CTA ("Open Brand Studio") routing to `/dashboard/creator/phase-2/brand-studio`, and a quiet secondary "Skip for now" action that calls `creatorJourneyApi.skipBranding()` and navigates directly to `/complete`.
-4. **Phase 2 Complete (`/phase-2/complete`):** Redesigned compact summary screen reading the live `BrandKit` from `apiCreatorBrandKit.getBrandKit(ideaId)`. Displays a 5-role color swatch strip, typography pairing ({Heading} + {Body}), and active logo mark alongside the clarified idea summary; provides direct links to the full Brand Kit hub (`/dashboard/creator/phase-2/brand-kit`), studio re-entry (`/dashboard/creator/phase-2/brand-studio`), and proceeds to Phase 3 Business Plan.
+4. **Phase 2 Complete (`/phase-2/complete` — Figma Node `57007-12780`):** Redesigned canonical completion screen (720px centered container) reading live `BrandKit` from `brandKitApi.getBrandKit(ideaId)` and `CreatorIdea.Project`. Features:
+   - **Header Cluster:** 56px circular checkmark badge, `"✓ Phase 2 complete"`, project name, and dynamic category/tagline subline.
+   - **Card 1 (Brand Kit Showcase):** `"BRAND KIT READY"` badge pill, `"Open Brand Kit"` link (`/phase-2/brand-kit`), 200px Logo Hero Band rendering dynamic SVG/PNG mark and typography, plus a 3-column lower specimen grid (5-role Colours swatches, Typography pairing, and 4 Logo Form chips: Horizontal, Stacked, Dark, Light).
+   - **Card 2 (Project Summary):** Mark avatar tile, project title, tagline, category badge pill, and 2×2 facts grid (Target Audience, Positioning, Core Problem, Personality badges).
+   - **Card 3 (Next Phase Strip):** `"Next: Phase 3 — Business plan"` with `"4 TOOLS"` badge previewing Financial forecast, Business plan, Legal checklist, and Formation generator.
+   - **Footer Navigation:** Primary `"Continue to Phase 3"` (`/dashboard/creator/phase-3`), with secondary `"Back to dashboard"` (`/dashboard/creator`) and `"Edit Brand Kit"` (`/dashboard/creator/phase-2/brand-studio`).
 
 ### Brand Visual Identity Studio & Hub (LIVE)
 
@@ -233,38 +238,54 @@ The Brand Visual Identity Studio provides a calm, generative studio workflow acr
        - *Mark Stage (200px tall):* High-res SVG mark / lockup from C# backend with dynamic business name and pinned 24px primary circular check badge on active selection.
        - *Card Footer (16px padding):* `CONCEPT 01` .. `CONCEPT 06` mono tag, live `descriptorLine` from backend, `SELECTED` primary badge, and single-concept redraw icon button (`Redraw just this one`, 2 credits, 3-cap).
      - **Compare Overlay (`CompareOverlay`):** Side-by-side comparison modal with Light/Dark canvas toggles and winning concept selection.
-   - **4b. Variation Set Modal (`VariationSetModal`):**
-     - Free deterministic derivation of the **7 canonical logo variations** derived from the approved concept mark geometry.
-     - Separate confirmation action (`POST derive-variations` / `PATCH logo` with `approvedAt`) from concept selection.
-     - 7 Canonical Variation Keys & Purposes:
-       1. `primary`: Default master brand lockup for full-color presentations.
-       2. `horizontal`: Linear lockup for navbars, page headers, and wide banners.
-       3. `stacked`: Centered vertical lockup for square cards, badges, and packaging.
-       4. `icon_only`: Standalone mark for favicons (16/32px), app icons, and social avatars.
-       5. `black`: Single-ink solid black lockup for dark monochrome printing.
-       6. `white`: Reversed solid white lockup for dark backgrounds.
-       7. `transparent`: Alpha channel SVG mark with transparency grid rendering.
-5. **Colour System Modal (`ColorSystemModal` — Step 5: "Colour"):**
-   - Initial deterministic derivation (`DeriveInitialColors`, **0 credits**).
-   - Generative whole-palette regeneration (`AiJobType.ColorGeneration`, **2 credits**, 3-cap).
-   - Free individual role editing (Hex color picker and role lock toggles).
-   - Real-time deterministic WCAG contrast ratio and rating calculation against `#FFFFFF` canvas. `Background` role has null contrast ratio by design.
-   - **Server-Side Confirmation (`Colors.ConfirmedAt`):** Confirming the Colour System sends `confirmedAt: ISO timestamp` via `PATCH /colors`, and `CreatorBrandKitController.cs` records a genuine server-side UTC timestamp in `kit.Colors.ConfirmedAt` (matching Strategy and Logo confirmation patterns). Step 6 prerequisite sequencing in `CheckStepPrerequisite(6)` and `CheckPatchPrerequisite("typography")` strictly requires `kit.Colors.ConfirmedAt != null` (removing prior role-count proxy).
-6. **Typography System Modal (`TypographySystemModal` — Step 6: "Typography"):**
-   - Initial deterministic pairing derivation (`DeriveInitialTypography`, **0 credits**).
-   - Generative pairing suggestion (`AiJobType.TypographyGeneration`, **2 credits**, 3-cap; UI header displays `<Badge>2 Credits</Badge>` matching authoritative backend pricing).
-   - **Server-Side Immutability of "Logo type":** The `Logo type` role is structurally bound to the approved logo concept. `CreatorBrandKitController.cs` explicitly rejects modifications or unlock attempts on `Logo type` via `PatchTypography`, and regeneration strictly preserves it.
-   - **Server-Side Confirmation (`Typography.ConfirmedAt`) & Completion Trigger:** Confirming Step 6 sends `confirmedAt: ISO timestamp` via `PATCH /typography`, setting `kit.Typography.ConfirmedAt`. `AdvanceStep(6)` enforces `kit.Typography.ConfirmedAt != null` before advancing `CurrentStep = 6`, marking `Status = "complete"`, and synchronizing the 4-field pointer to `CreatorIdea.Project.Branding`. Frontend `BrandStudioShell` strictly checks real server `confirmedAt` values (`isColorsComplete = Boolean(kit?.colors?.confirmedAt)`, `isTypographyComplete = Boolean(kit?.typography?.confirmedAt)`).
-   - **AdvanceStep Idempotency on Completed Kits (Defect #9 Fix):** `POST /advance` with `targetStep == kit.CurrentStep` on an already-"complete" kit is an idempotent 200 no-op (returning current kit state unchanged with no `Version` increment), allowing safe re-confirmation of already-satisfied terminal milestones from the Hub or Studio without 400 errors. Genuine backwards attempts (`targetStep < kit.CurrentStep`) remain strictly guarded and return 400.
-   - **Downstream Completion Effects:** Setting `Status = "complete"` permanently unlocks non-linear section editing from the Hub, bypassing prerequisite sequencing guards in `CheckPatchPrerequisite`.
+   - **4b. Approved Logo Variation Set Modal (`VariationSetModal`, Figma Node `57004:11174`):**
+      - *(Canonical Specification in [brand-identity-studio-canon.md](brand-identity-studio-canon.md))*
+      - **Header Cluster:** Title `"Your logo, in every form"`, Subtitle `"Seven variations built from Concept {N}. Same geometry throughout — only arrangement and colour change."`, Top action `"Download set"` button (DM Mono) + `"STEP 4 OF 6"` badge + Close button.
+      - **Batch Summary Metadata Strip:** 4 inline metadata pairs separated by subtle hairline vertical dividers:
+        - `SOURCE` $\to$ `Concept {N}`
+        - `VARIATIONS` $\to$ `7`
+        - `FORMATS` $\to$ `SVG + PNG`
+        - `COST` $\to$ `Free, derived`
+        - Right-aligned emerald outline pill badge: `✓ No credits used`
+      - **7 Deterministic Logo Variation Tiles (3 Wide + 4 Compact Grid):**
+        1. `PRIMARY` (`3:1` aspect ratio): Master full-color lockup with pinned green `PRIMARY` badge.
+        2. `HORIZONTAL` (`4:1` aspect ratio): Compact lockup for navigation bars & email signatures. Hover download and redraw actions with `"Redraw just this variation"` tooltip.
+        3. `STACKED` (`1:1` aspect ratio): Centered emblem lockup for square avatars, app tiles & packaging.
+        4. `ICON-ONLY` (`1:1` aspect ratio): Standalone mark with 3 micro-scale fidelity proofs (`64px`, `32px`, `16px`).
+        5. `BLACK` (`3:1` aspect ratio): Single-ink 100% solid black lockup for dark monochrome printing & laser engraving.
+        6. `WHITE` (`3:1` aspect ratio): 100% pure white knockout on isolated dark ground (`#0A1128`).
+        7. `TRANSPARENT` (`3:1` aspect ratio): 32-bit RGBA alpha channel preview with checkerboard background and `PNG · ALPHA` corner chip.
+      - **Footer Actions:** Left-aligned `"Export ZIP"` (`.zip` archive containing all 7 SVGs + high-res PNGs), and Right-aligned Primary CTA `"Approve all seven"` (persists server-side `approvedAt` and advances journey).
+5. **Colour System Modal (`ColorSystemModal` — Step 5: "Colour", Figma Node `57004:11484`):**
+   - *(Canonical Specification in [brand-identity-studio-canon.md](brand-identity-studio-canon.md))*
+   - **Canonical Header & Subtitle:** Title: `"Your colour system"`, Subtitle: `"Five roles pulled from your logo. Each one has a job — change any of them without touching the rest."`, `"Regenerate palette"` button with `[N]/3 LEFT` amber cap badge, `"STEP 5 OF 6"` badge.
+   - **Palette Mood Filter Strip ("PALETTE MOOD"):** 4 instant tuning chips (`As generated`, `Calmer`, `Warmer`, `Higher contrast`) with zero credit cost (`"Switching mood is free — it doesn't use a regenerate."`).
+   - **5 Canonical Role Rows (Section A):** Single card with divided rows for `Primary`, `Secondary`, `Accent`, `Background`, `Text` featuring 68×68 swatch well, HEX editor with copy action, RGB triplet, real-time WCAG 2.1 AA/AAA contrast ratio rating against background ground, individual slider adjust button, and lock toggle against regeneration.
+   - **Live Application Preview ("How it looks together", Section B):** Segmented control with 3 interactive preview modes (`Website`, `Invoice`, `Deck`) rendered on dynamic background color.
+   - **Server-Side Confirmation (`Colors.ConfirmedAt`):** Confirming the Colour System sends `confirmedAt: ISO timestamp` via `PATCH /colors`, and `CreatorBrandKitController.cs` records a genuine server-side UTC timestamp in `kit.Colors.ConfirmedAt`. Step 6 prerequisite sequencing in `CheckStepPrerequisite(6)` and `CheckPatchPrerequisite("typography")` strictly requires `kit.Colors.ConfirmedAt != null`.
+6. **Typography System Modal (`TypographySystemModal` — Step 6: "Typography", Figma Node `57004:11793`):**
+   - *(Canonical Specification in [brand-identity-studio-canon.md](brand-identity-studio-canon.md))*
+   - **Canonical Header & Subtitle:** Title: `"Your typography"`, Subtitle: `"Two families, four roles. The display face carries personality; the text face carries everything people actually read."`, `"Suggest other pairings"` button with `[N]/3 LEFT` amber cap badge, `"STEP 6 OF 6"` badge.
+   - **Pairing Choice Grid ("PICK A PAIRING"):** 3 curated pairing candidate cards (`Syne + DM Sans`, `Plus Jakarta Sans + Inter`, `Space Grotesk + Inter`) with live brand name display specimen, subline text specimen, and metadata badges (`Open licence`, `weights`, `file size`).
+   - **Four Roles Specimen Editor ("FOUR ROLES"):** Single unified card with 4 divided rows:
+     1. `Logo type` (ROW 1 - LOCKED STATE): Structurally bound to the approved logo concept (`"Locked to your wordmark."`), immutable.
+     2. `Heading`: Display face specimen with font weight selector and size stepping.
+     3. `Body`: Text face multi-line paragraph specimen with weight selector.
+     4. `Button & label`: Text face interactive button and active status badge specimens.
+   - **Server-Side Confirmation (`Typography.ConfirmedAt`) & Completion Trigger:** Confirming Step 6 sends `confirmedAt: ISO timestamp` via `PATCH /typography`, setting `kit.Typography.ConfirmedAt`. `AdvanceStep(6)` enforces `kit.Typography.ConfirmedAt != null` before advancing `CurrentStep = 6`, marking `Status = "complete"`, and synchronizing the 4-field pointer to `CreatorIdea.Project.Branding`.
+   - **AdvanceStep Idempotency on Completed Kits:** `POST /advance` with `targetStep == kit.CurrentStep` on an already-"complete" kit is an idempotent 200 no-op.
+   - **Downstream Completion Effects:** Setting `Status = "complete"` permanently unlocks non-linear section editing from the Hub.
 
-#### 3. Brand Kit Hub Page (`/dashboard/creator/phase-2/brand-kit`)
-- **Calm Reference View:** A standalone hub page displaying all confirmed brand assets without Studio progress bars or step counters.
-- **Header Action Cluster:** Exactly ONE filled blue primary CTA button (`Download Brand Kit (.zip)`); secondary actions (`Version History`, `Open Studio`) are subtle outline/ghost buttons.
-- **Section Overview:**
-  1. *Logo & 7 Variations:* 7 production SVG tiles with "Copy SVG" actions and checkerboard alpha background on `transparent`.
-  2. *Colour Tokens:* 5 canonical roles (`Primary`, `Secondary`, `Accent`, `Background`, `Text`) with WCAG AAA/AA badges.
-  3. *Typography Specimens:* 4 canonical roles (`Logo type`, `Heading`, `Body`, `Button & label`) with live specimens and scale metadata.
+#### 3. Brand Kit Hub Page (`/dashboard/creator/phase-2/brand-kit`, Figma Node `57004:12057`)
+- **Centered 1080px Column:** Standalone reference hub displaying all confirmed brand assets on an `#EFEFF1` (light) / `#0c0d0e` (dark) canvas.
+- **Identity Block:** 56px Avatar mark box, brand title, `v1` version badge, `"v1 · Stored in Mondial cloud"`, `"Updated {Date}"`, `"Open in Studio"` button, and primary `"Download all assets (.zip)"` JSZip client-side packager. 4-column metric strip: `STATUS: Ready to use`, `TIED TO: {brandName} (Project #{shortId})`, `STORAGE: SVG + PNG + CSS + JSON Tokens`, `VERSION: v{kit.version}.0.4`.
+- **Section 1: Logo:** Header with `"Logo"` + `"6 LOCKUPS READY"` badge + `"Open in Studio"`, 240px interactive hero band, and 6-thumbnail lockup selector row (`HORIZONTAL`, `STACKED`, `ICON-ONLY`, `BLACK`, `WHITE`, `TRANSPARENT`).
+- **Section 2: Colour:** Header with `"Colour"` + `"5 ROLES"` badge + `"Contrast checked"` shield check badge, and 5 equal swatch cards (`Primary`, `Secondary`, `Accent`, `Background`, `Text`) with 110px color fill, uppercase hex codes, RGB, WCAG contrast ratio badges (`AAA`/`AA`), usage notes, and one-click copy hex.
+- **Section 3: Typography:** Header with `"Typography"` + `"4 ROLES · 2 FAMILIES"` badge + `"Open licence"` check badge, and 4 divided rows (`Logo type` [locked], `Heading`, `Body`, `Button & label` [`Start free` pill & `INVOICE NUMBER` label]).
+- **Section 4: Strategy:** Header with `"Strategy"` + `"Open in Studio"`, and 2-column 6-fact grid (`BUSINESS NAME`, `CONCEPT`, `AUDIENCE`, `INDUSTRY` [badge pill], `POSITIONING`, `PERSONALITY` [trait badges]).
+- **Section 5: Used by:** Header with `"Used by"` + `"2 OF 4 CONNECTED"` badge, and 4 integration tiles (`Business plan` [Applied], `Landing page` [Applied], `Pitch deck` [Not generated yet], `Invoices` [Not generated yet]).
+- **Section 6: Coming Soon:** 2 roadmap cards (`Brand assets` and `Brand guidelines PDF` with `"Coming soon"` badges).
+- **Footer Strip:** Info note: `"Edits apply the next time a generator runs. Already-generated documents keep the version they were made with."`
   4. *Brand Strategy Foundations:* 6 confirmed facts (Industry, Target Audience, Core Concept, Positioning, Personality Traits, Tone Position).
 - **Version History & Rollback:**
   - Bounded to the 3 most recent snapshots (newest first).

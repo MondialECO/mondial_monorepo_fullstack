@@ -39,11 +39,11 @@ export default function CreatorPhase1Client() {
   }
 
   // Get verification items statuses
-  const isRoleSelected = true; // Creator is selected
+  const isRoleSelected = Boolean(status.role && status.role.trim().length > 0);
   const isIdentityDone = !!status.items.identity?.verified;
   const isPhoneDone = !!status.items.phone?.verified;
   const isEmailDone = !!status.items.email?.verified;
-  const isFinalApprovalDone = isIdentityDone && isPhoneDone && isEmailDone;
+  const isFinalApprovalDone = isRoleSelected && isIdentityDone && isPhoneDone && isEmailDone;
 
   const totalPhases = 6;
   const currentPhase = 1;
@@ -200,9 +200,13 @@ export default function CreatorPhase1Client() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {/* Step 1: Role Selection */}
                         <div className="flex items-center gap-3 p-3 rounded-xl bg-background border border-border/80">
-                          <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0" />
+                          {isRoleSelected ? (
+                            <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0" />
+                          ) : (
+                            <Circle className="w-5 h-5 text-muted-foreground/30 shrink-0" />
+                          )}
                           <span className="text-xs sm:text-sm font-medium text-foreground">
-                            Role selected (Creator)
+                            {status.role ? `Role selected (${status.role})` : "Role selection"}
                           </span>
                         </div>
 

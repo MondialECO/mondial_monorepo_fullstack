@@ -172,7 +172,7 @@ describe('BrandStudioShell Component', () => {
 
     // Verify Variation Set Modal resumes automatically
     await waitFor(() => {
-      expect(screen.getByText(/Brand Variation Set/i)).toBeInTheDocument();
+      expect(screen.getByText(/Your logo, in every form/i)).toBeInTheDocument();
       expect(screen.getByText(/Approve all seven/i)).toBeInTheDocument();
     });
   });

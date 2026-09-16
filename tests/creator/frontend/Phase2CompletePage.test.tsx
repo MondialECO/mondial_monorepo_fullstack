@@ -21,6 +21,9 @@ const mockProjectState = {
   tagline: 'Zero-compromise cloud security automation.',
   problem: 'DevOps teams struggle with unauthorized lateral movement.',
   solution: 'Autonomous AI defense engine for microservice meshes.',
+  industry: 'Cybersecurity SaaS',
+  targetAudience: 'DevOps engineers and Cloud Security leads.',
+  positioning: 'Autonomous runtime security without agent overhead.',
   branding: {
     logoType: 'ai',
     logoAsset: null,
@@ -32,6 +35,7 @@ vi.mock('@/providers/CreatorProgressProvider', () => ({
   useCreatorProgress: () => ({
     state: {
       project: mockProjectState,
+      activeIdeaId: 'idea_cyber_123',
       journeyState: {
         phase3: { status: 'available' },
       },
@@ -54,9 +58,11 @@ const mockBrandKit: BrandKit = {
   strategy: {
     businessName: 'CyberLock Sentinel',
     nameDisplayForm: 'CyberLock',
+    industry: { value: 'Cybersecurity SaaS', provenance: 'stated' },
     concept: { value: 'Autonomous AI defense system for cloud infrastructure.', provenance: 'stated' },
     positioning: { value: 'Zero-compromise cloud security automation.', provenance: 'stated' },
-    personalityTraits: ['Precise', 'Resilient', 'Autonomous'],
+    targetAudience: { value: 'DevOps engineers and Cloud Security leads.', provenance: 'stated' },
+    personalityTraits: ['Precise', 'Resilient', 'Autonomous', 'Modern', 'Trustworthy'],
     confirmedAt: '2026-09-15T10:00:00Z',
   },
   direction: {
@@ -86,6 +92,14 @@ const mockBrandKit: BrandKit = {
       primary: {
         svgUri: '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#0052FF"/></svg>',
         usageNote: 'Primary master lockup',
+      },
+      horizontal: {
+        svgUri: '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#0052FF"/></svg>',
+        usageNote: 'Horizontal lockup',
+      },
+      icon_only: {
+        svgUri: '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#0052FF"/></svg>',
+        usageNote: 'Icon only mark',
       },
     },
     regenerateCount: 0,
@@ -125,51 +139,61 @@ describe('Phase2CompletePage Component', () => {
     vi.spyOn(apiCreatorBrandKit, 'getBrandKit').mockResolvedValue(mockBrandKit);
   });
 
-  it('renders real BrandKit data including primary logo, 5 colour swatches, and typography pairing', async () => {
+  it('renders Figma matching Phase 2 complete layout with real BrandKit data', async () => {
     render(<Phase2CompletePage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Project Identity Ready.')).toBeInTheDocument();
-      expect(screen.getByText('CyberLock Sentinel')).toBeInTheDocument();
-      expect(screen.getByText('Zero-compromise cloud security automation.')).toBeInTheDocument();
+      expect(screen.getByText('Your identity is ready')).toBeInTheDocument();
+      expect(screen.getByText(/Phase 2 complete/i)).toBeInTheDocument();
+      expect(screen.getAllByText('CyberLock Sentinel').length).toBeGreaterThan(0);
     });
+
+    // Check header metadata pill & Open Brand Kit link
+    expect(screen.getByText(/Open Brand Kit/i)).toBeInTheDocument();
 
     // Check typography pairing display
     expect(screen.getByText('Space Grotesk')).toBeInTheDocument();
     expect(screen.getByText('Plus Jakarta Sans')).toBeInTheDocument();
 
-    // Check View full Brand Kit link
-    expect(screen.getByText(/View full Brand Kit/i)).toBeInTheDocument();
+    // Check Project summary 2x2 facts & traits
+    expect(screen.getByText('TARGET AUDIENCE')).toBeInTheDocument();
+    expect(screen.getByText('POSITIONING')).toBeInTheDocument();
+    expect(screen.getByText('CORE PROBLEM')).toBeInTheDocument();
+    expect(screen.getByText('PERSONALITY')).toBeInTheDocument();
+    expect(screen.getByText('Precise')).toBeInTheDocument();
+    expect(screen.getByText('Resilient')).toBeInTheDocument();
 
-    // Check Masterplan preview items
-    expect(screen.getByText('AI Business Plan')).toBeInTheDocument();
-    expect(screen.getByText('AI Financial Forecast')).toBeInTheDocument();
-    expect(screen.getByText('Legal & Structural Checklist')).toBeInTheDocument();
-    expect(screen.getByText('Formation Generator')).toBeInTheDocument();
+    // Check Phase 3 strip items
+    expect(screen.getByText('Next: Phase 3 — Business plan')).toBeInTheDocument();
+    expect(screen.getByText('4 TOOLS')).toBeInTheDocument();
+    expect(screen.getByText('Financial forecast')).toBeInTheDocument();
+    expect(screen.getByText('Business plan')).toBeInTheDocument();
+    expect(screen.getByText('Legal checklist')).toBeInTheDocument();
+    expect(screen.getByText('Formation generator')).toBeInTheDocument();
   });
 
-  it('routes to Brand Kit Hub when View full Brand Kit link is clicked', async () => {
+  it('routes to Brand Kit Hub when Open Brand Kit link or Edit Brand Kit is clicked', async () => {
     render(<Phase2CompletePage />);
 
     await waitFor(() => {
-      expect(screen.getByText(/View full Brand Kit/i)).toBeInTheDocument();
+      expect(screen.getByText(/Open Brand Kit/i)).toBeInTheDocument();
     });
 
-    const hubButton = screen.getByRole('button', { name: /View full Brand Kit/i });
-    fireEvent.click(hubButton);
+    const openHubBtn = screen.getByRole('button', { name: /Open Brand Kit/i });
+    fireEvent.click(openHubBtn);
 
     expect(mockPush).toHaveBeenCalledWith('/dashboard/creator/phase-2/brand-kit?ideaId=idea_cyber_123');
   });
 
-  it('routes to Phase 3 when Launch Masterplan button is clicked', async () => {
+  it('routes to Phase 3 when Continue to Phase 3 button is clicked', async () => {
     render(<Phase2CompletePage />);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Launch Masterplan/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Continue to Phase 3/i })).toBeInTheDocument();
     });
 
-    const launchButton = screen.getByRole('button', { name: /Launch Masterplan/i });
-    fireEvent.click(launchButton);
+    const continueBtn = screen.getByRole('button', { name: /Continue to Phase 3/i });
+    fireEvent.click(continueBtn);
 
     expect(mockPush).toHaveBeenCalledWith('/dashboard/creator/phase-3');
   });

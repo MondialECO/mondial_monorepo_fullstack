@@ -32,7 +32,7 @@ namespace WebApp.Services.Implementations
         private readonly ICreatorIdeaStore _creatorIdeas;
         private readonly IClarifierSessionStore _clarifiers;
         private readonly IHttpContextAccessor _httpContextAccessor;
-        private static readonly TimeSpan PathSwitchWindow = TimeSpan.FromHours(72);
+        private static readonly TimeSpan PathSwitchWindow = TimeSpan.FromDays(30);
 
         // Legacy Path-A value, retired in P1.10. Centralized here so the one-time
         // read-coercion is the ONLY reference to it; no consumer branches on it.
@@ -465,7 +465,7 @@ namespace WebApp.Services.Implementations
             OverlayIdea(j, idea);
             var p5 = j.Phase5Data ??= new CreatorPhase5Data();
 
-            // 72-hour switch lock: once a path is chosen, switching is allowed only
+            // 30-day switch lock: once a path is chosen, switching is allowed only
             // within the window. After it elapses, the choice is locked.
             if (!string.IsNullOrEmpty(p5.ChosenPath) && p5.ChosenPath != "sell_license" && p5.ChosenPath != path && p5.PathSelectedAt.HasValue)
             {

@@ -31,15 +31,15 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
                 [BrandLogoFamilyNames.SymbolPlusName] = new Dictionary<string, IReadOnlyList<string>>
                 {
                     ["BadgeShape"] = new[] { "circle", "square", "rounded_rect", "shield", "diamond", "hexagon", "cut_corner_rect" },
-                    ["BadgeStyle"] = new[] { "solid_fill", "outline_stroke", "double_stroke", "split_negative" },
-                    ["InternalGlyph"] = new[] { "initial_letter", "geometric_cut", "diagonal_cross", "concentric_ring", "horizontal_bars" },
+                    ["BadgeStyle"] = new[] { "solid_fill", "outline_stroke", "double_stroke", "split_negative", "duo_tone" },
+                    ["InternalGlyph"] = new[] { "initial_letter", "dual_initial", "geometric_cut", "diagonal_cross", "concentric_ring", "horizontal_bars" },
                     ["Arrangement"] = new[] { "side_by_side", "stacked", "side_by_side_left", "side_by_side_right", "stacked_top", "stacked_bottom" },
                     ["FontCategory"] = new[] { "geometric_sans", "humanist_sans", "high_contrast_serif", "slab_serif", "mono" }
                 },
                 [BrandLogoFamilyNames.Monogram] = new Dictionary<string, IReadOnlyList<string>>
                 {
                     ["MonogramType"] = new[] { "single_letter", "two_letter_interlock", "two_letter_adjacent", "three_letter_pyramid" },
-                    ["FrameStyle"] = new[] { "none", "circle_ring", "square_box", "bracket_corners", "solid_disc" },
+                    ["FrameStyle"] = new[] { "none", "circle_ring", "square_box", "bracket_corners", "solid_disc", "chamfer_box" },
                     ["StrokeStyle"] = new[] { "heavy_block", "stencil_split", "monoline", "duoline" },
                     ["Arrangement"] = new[] { "side_by_side", "stacked" },
                     ["FontCategory"] = new[] { "geometric_sans", "humanist_sans", "high_contrast_serif", "slab_serif", "mono" }
@@ -53,8 +53,8 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
                 },
                 [BrandLogoFamilyNames.Icon] = new Dictionary<string, IReadOnlyList<string>>
                 {
-                    ["MetaphorPrimitive"] = new[] { "shield_security", "leaf_growth", "node_network", "cube_infrastructure", "prism_focus", "arch_gateway", "globe_connected", "spark_intelligence", "pillar_foundation", "wave_flow" },
-                    ["Construction"] = new[] { "monoline_stroke", "silhouette_solid", "split_halves", "segmented_arcs" },
+                    ["MetaphorPrimitive"] = new[] { "shield_security", "leaf_growth", "node_network", "cube_infrastructure", "prism_focus", "arch_gateway", "globe_connected", "spark_intelligence", "pillar_foundation", "wave_flow", "energy_bolt" },
+                    ["Construction"] = new[] { "monoline_stroke", "silhouette_solid", "split_halves", "segmented_arcs", "duo_tone" },
                     ["Arrangement"] = new[] { "side_by_side", "stacked" },
                     ["FontCategory"] = new[] { "geometric_sans", "humanist_sans", "high_contrast_serif", "slab_serif", "mono" }
                 },

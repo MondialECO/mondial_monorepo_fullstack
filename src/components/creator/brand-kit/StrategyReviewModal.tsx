@@ -193,22 +193,22 @@ export function StrategyReviewModal({
       nameDisplayForm,
       concept: {
         value: concept,
-        provenance: editedFields["concept"] ? "user_refined" : strategy.concept?.provenance || "stated",
+        provenance: editedFields["concept"] ? "user_refined" : strategy?.concept?.provenance || "stated",
         editedAt: new Date().toISOString(),
       },
       targetAudience: {
         value: targetAudience,
-        provenance: editedFields["targetAudience"] ? "user_refined" : strategy.targetAudience?.provenance || "stated",
+        provenance: editedFields["targetAudience"] ? "user_refined" : strategy?.targetAudience?.provenance || "stated",
         editedAt: new Date().toISOString(),
       },
       industry: {
         value: industry,
-        provenance: editedFields["industry"] ? "user_refined" : strategy.industry?.provenance || "stated",
+        provenance: editedFields["industry"] ? "user_refined" : strategy?.industry?.provenance || "stated",
         editedAt: new Date().toISOString(),
       },
       positioning: {
         value: positioning,
-        provenance: editedFields["positioning"] ? "user_refined" : strategy.positioning?.provenance || "stated",
+        provenance: editedFields["positioning"] ? "user_refined" : strategy?.positioning?.provenance || "stated",
         editedAt: new Date().toISOString(),
       },
       personalityTraits: traits,

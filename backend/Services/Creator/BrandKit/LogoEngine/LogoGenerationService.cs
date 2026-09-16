@@ -62,6 +62,10 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
                 rawParamSets = GenerateDeterministicParameterSets(brandName, strategy, direction, selectedCand, avoidList, selectedLogoType);
             }
 
+            var palette = selectedCand?.ColorPalette ?? new List<string>();
+            var primaryColor = palette.Count > 0 ? palette[0] : "#0F172A";
+            var accentColor = palette.Count > 2 ? palette[2] : (palette.Count > 1 ? palette[1] : primaryColor);
+
             var regenCount = kit?.Logo?.RegenerateCount ?? 0;
             var concepts = new List<BrandLogoConcept>();
             for (int i = 0; i < 6; i++)
@@ -70,12 +74,18 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
                 var param = rawParamSets[i];
                 var descriptor = param.Descriptor ?? $"Concept {i + 1}: {param.Family} visual direction";
 
+                if (param.Values != null)
+                {
+                    param.Values["PrimaryColor"] = primaryColor;
+                    param.Values["AccentColor"] = accentColor;
+                }
+
                 var markFileKey = regenCount > 0 ? $"{conceptKey}_mark_b{regenCount}" : $"{conceptKey}_mark";
-                var markSvg = _rendererRegistry.RenderMarkSvg(param, brandName);
+                var markSvg = _rendererRegistry.RenderMarkSvg(param, brandName, primaryColor);
                 var markAssetUri = await SaveSvgAssetAsync(idea.Id, markFileKey, markSvg);
 
                 var lockupFileKey = regenCount > 0 ? $"{conceptKey}_lockup_b{regenCount}" : $"{conceptKey}_lockup";
-                var lockupSvg = _rendererRegistry.RenderLockupSvg(param, brandName);
+                var lockupSvg = _rendererRegistry.RenderLockupSvg(param, brandName, primaryColor);
                 var lockupAssetUri = await SaveSvgAssetAsync(idea.Id, lockupFileKey, lockupSvg);
 
                 concepts.Add(new BrandLogoConcept
@@ -126,13 +136,23 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
             }
 
             var synthParams = GenerateDeterministicSingleParameterSet(brandName, strategy, direction, targetFamily, conceptIndex + existingRegenCount + 1, avoidList);
+            var palette = selectedCand?.ColorPalette ?? new List<string>();
+            var primaryColor = palette.Count > 0 ? palette[0] : "#0F172A";
+            var accentColor = palette.Count > 2 ? palette[2] : (palette.Count > 1 ? palette[1] : primaryColor);
+
+            if (synthParams.Values != null)
+            {
+                synthParams.Values["PrimaryColor"] = primaryColor;
+                synthParams.Values["AccentColor"] = accentColor;
+            }
+
             var descriptor = synthParams.Descriptor ?? $"Regenerated {targetFamily} direction #{existingRegenCount + 1} tailored to {selectedCand?.Name ?? "brand identity"}";
             synthParams.Descriptor = descriptor;
 
-            var markSvg = _rendererRegistry.RenderMarkSvg(synthParams, brandName);
+            var markSvg = _rendererRegistry.RenderMarkSvg(synthParams, brandName, primaryColor);
             var markAssetUri = await SaveSvgAssetAsync(idea.Id, $"{targetConceptKey}_mark_r{existingRegenCount + 1}", markSvg);
 
-            var lockupSvg = _rendererRegistry.RenderLockupSvg(synthParams, brandName);
+            var lockupSvg = _rendererRegistry.RenderLockupSvg(synthParams, brandName, primaryColor);
             var lockupAssetUri = await SaveSvgAssetAsync(idea.Id, $"{targetConceptKey}_lockup_r{existingRegenCount + 1}", lockupSvg);
 
             return new BrandLogoConcept

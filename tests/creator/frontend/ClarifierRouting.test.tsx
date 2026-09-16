@@ -94,14 +94,12 @@ describe("Creator Clarifier Routing & Resolver Semantics", () => {
     expect(mockReplace).toHaveBeenCalledWith("/dashboard/creator");
   });
 
-  it("navigates from Phase 2 Smart Gate to canonical /dashboard/creator/phase-2/clarifier route", () => {
-    mockPush.mockClear();
+  it("navigates from Phase 2 entry to canonical /dashboard/creator/phase-2/clarifier route", () => {
+    mockReplace.mockClear();
 
     render(<SmartGatePage />);
 
-    const sharptenButton = screen.getByRole("button", { name: /lets Sharper it/i });
-    fireEvent.click(sharptenButton);
-
-    expect(mockPush).toHaveBeenCalledWith("/dashboard/creator/phase-2/clarifier");
+    expect(screen.getByText(/Entering Idea Clarifier/i)).toBeInTheDocument();
+    expect(mockReplace).toHaveBeenCalledWith("/dashboard/creator/phase-2/clarifier");
   });
 });
