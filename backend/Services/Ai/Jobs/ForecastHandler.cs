@@ -55,11 +55,12 @@ namespace WebApp.Services.Ai.Jobs
 
             // The business plan (revenue model, market analysis from C-3) is the
             // AUTHORITATIVE context again (forecast follows the plan in the new order).
-            // The numeric inputs (ARPU/OPEX/growth/TAM) are explicit supporting parameters.
+            // The numeric inputs (ARPU/OPEX/growth/TAM/churn) are explicit supporting parameters.
             var arpu = Num("arpu");
             var opex = Num("opex");
             var growth = Num("monthlyGrowthPct");
             var tam = Num("tam");
+            var churn = Num("monthlyChurnPct");
 
             var businessPlanSessionId = Field("businessPlanSessionId");
             var plan = businessPlanSessionId.Length > 0
@@ -76,6 +77,7 @@ namespace WebApp.Services.Ai.Jobs
             if (opex.HasValue) inputLines.Add($"OPEX (€/month): {opex.Value}");
             if (growth.HasValue) inputLines.Add($"Monthly growth rate (%): {growth.Value}");
             if (tam.HasValue) inputLines.Add($"TAM (€): {tam.Value}");
+            if (churn.HasValue) inputLines.Add($"Monthly churn rate (%): {churn.Value}");
             if (inputLines.Count > 0)
                 contextLines.Add("FORECAST PARAMETERS (supporting figures):\n" + string.Join("\n", inputLines));
 
@@ -89,7 +91,7 @@ namespace WebApp.Services.Ai.Jobs
 
             const string task =
                 "Produce a compact 12-month financial forecast grounded in the BUSINESS PLAN above " +
-                "and refined by the FORECAST PARAMETERS (ARPU, OPEX, monthly growth, TAM), " +
+                "and refined by the FORECAST PARAMETERS (ARPU, OPEX, monthly growth, TAM, monthly churn), " +
                 "following the output contract exactly: 12 consecutive monthly periods, " +
                 "numeric monthly arrays, no funding ask. Keep summaries, notes, and narrative concise. State driving assumptions. " +
                 "Return only the JSON object.";

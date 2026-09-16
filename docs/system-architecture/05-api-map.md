@@ -80,10 +80,30 @@ The Mondial ECO backend exposes 579 API endpoints managed across 51 controllers.
   - `POST /api/creator/journey/phase2/brand-kit/typography/regenerate`: AI generative typography system regeneration with distinctness enforcement (2 credits, max 3 cap).
   - `POST /api/creator/journey/phase2/brand-kit/snapshot`: Create concurrency-guarded backup snapshot (bounded to 3 newest).
   - `POST /api/creator/journey/phase2/brand-kit/snapshot/restore`: Restore historical snapshot by index with automatic pre-restore backup.
-- **`CreatorPhase3Controller`** (`/api/creator/phase-3`):
-  - `POST /api/creator/phase-3/business-plan`: Save finalized multi-section business plan.
-  - `POST /api/creator/phase-3/forecast`: Persist financial model (revenue, opex, margins).
-  - `POST /api/creator/phase-3/compliance`: Store legal and regulatory checklist answers.
+- **`BusinessPlanController`** (`/api/ai/business-plan`):
+  - `POST /api/ai/business-plan`: Start AI business plan generation (C-3, requires clarifier session).
+  - `GET /api/ai/business-plan/{sessionId}`: Read a single business plan session with version content.
+  - `GET /api/ai/business-plan`: List all business plan sessions for the authenticated user.
+  - `POST /api/ai/business-plan/{sessionId}/regenerate`: Regenerate business plan (new version, append-only).
+  - `POST /api/ai/business-plan/rewrite-section`: AI single-section rewrite (splice via `BusinessPlanSections`).
+  - `PATCH /api/ai/business-plan/{sessionId}/section`: Manual per-section text edit (shared splice path).
+  - `PUT /api/ai/business-plan/{sessionId}`: Full content update on the current version.
+- **`ForecastController`** (`/api/ai/forecast`):
+  - `POST /api/ai/forecast`: Start AI forecast generation (C-4, requires completed business plan).
+  - `GET /api/ai/forecast/{sessionId}`: Read a single forecast session with version content.
+  - `GET /api/ai/forecast`: List all forecast sessions for the authenticated user.
+  - `POST /api/ai/forecast/{sessionId}/regenerate`: Regenerate forecast (new version, append-only).
+  - `PUT /api/ai/forecast/{sessionId}`: Full content update on the current version.
+- **`CreatorPhase3Controller`** (`/api/creator`):
+  - `POST /api/creator/ai/legal-checklist/generate`: Generate deterministic sector-specific legal checklist (3.3).
+  - `PATCH /api/creator/legal-checklist/item/{itemId}`: Toggle checklist item completion status.
+  - `POST /api/creator/ai/formation-generator/start`: Generate formation recommendation (3.4).
+  - `PATCH /api/creator/formation/select-type`: Select legal entity type (SAS/SAS-U/SARL).
+  - `PATCH /api/creator/formation/skills`: Update skill-gap / team assessment.
+  - `GET /api/creator/sp-matches`: Service Provider skill-gap matches.
+  - `POST /api/creator/workroom/open`: Open a workroom with a matched SP.
+  - `POST /api/creator/journey/phase3/session`: Link AI session IDs to the journey.
+  - `PATCH /api/creator/masterplan/complete`: Trigger Phase 3 completion gate.
 - **`CreatorPhase4Controller`** (`/api/creator/phase-4`):
   - `GET /api/creator/phase-4/offer-pricing`: Calculate recommended asset valuation using market benchmarks.
 - **`CreatorPhase5Controller`** (`/api/creator/phase-5`):
@@ -175,7 +195,7 @@ The Mondial ECO backend exposes 579 API endpoints managed across 51 controllers.
   - `POST /api/creator/journey/phase2/brand-kit/typography/generate`: Free deterministic initial typography pairing derivation.
   - `POST /api/creator/journey/phase2/brand-kit/typography/regenerate`: Generative pairing regeneration (2 credits, 3-cap, preserves locked roles & immutable Logo type).
   - `PATCH /api/creator/journey/phase2/brand-kit/typography`: Update Typography section (4 canonical roles: `Logo type`, `Heading`, `Body`, `Button & label`), writing `Typography.ConfirmedAt` on confirmation and syncing `TypographyPairing` to `CreatorIdea.Project.Branding` (server-side rejects modification to "Logo type").
-  - `POST /api/creator/journey/phase2/brand-kit/advance`: Enforce sequential step prerequisites (`Step 6` requires `kit.Colors.ConfirmedAt != null`), mark `complete` on Step 6 when `kit.Typography.ConfirmedAt != null`, and sync `Project.Branding`.
+  - `POST /api/creator/journey/phase2/brand-kit/advance`: Enforce sequential step prerequisites (`Step 6` requires `kit.Colors.ConfirmedAt != null`), mark `complete` on Step 6 when `kit.Typography.ConfirmedAt != null`, and sync `Project.Branding`. When `targetStep == kit.CurrentStep` on an already-`complete` kit, operates as an idempotent 200 no-op without incrementing `Version`; genuine backwards attempts (`targetStep < kit.CurrentStep`) return 400.
   - `POST /api/creator/journey/phase2/brand-kit/snapshot`: Create concurrency-guarded backup snapshot (bounded to 3).
   - `POST /api/creator/journey/phase2/brand-kit/snapshot/restore`: Concurrency-guarded snapshot restoration with automatic pre-restore backup.
   - `POST /api/creator/journey/phase2/brand-kit/open-studio`: Idempotently retrieve/auto-provision initial BrandKit on first-time entry via shared `GetOrCreateBrandKitAsync`, or reset regenerate counters (3/3 caps) when Creator re-enters Studio from Hub.

@@ -49,6 +49,9 @@ public class CreatorStabilizationTests
             .ReturnsAsync((CreatorIdea?)null);
         _creatorIdeas.Setup(x => x.GetOwnedAsync(IdeaAId, CreatorBId))
             .ReturnsAsync((CreatorIdea?)null);
+
+        _bpSessions.Setup(s => s.TryCreateInFlightAsync(It.IsAny<BusinessPlanSession>()))
+            .ReturnsAsync((true, (BusinessPlanSession?)null));
     }
 
     private ClarifierController BuildClarifierController(string userId)
