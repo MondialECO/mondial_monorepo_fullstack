@@ -391,7 +391,6 @@ export function DirectionBoardModal({
       );
 
       onSuccess(updatedKit);
-      onClose();
     } catch (err: any) {
       const msg =
         err?.response?.data?.message ||

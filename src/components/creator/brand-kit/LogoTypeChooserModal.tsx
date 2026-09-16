@@ -325,7 +325,6 @@ export function LogoTypeChooserModal({
       );
 
       onSuccess(updatedKit);
-      onClose();
     } catch (err: any) {
       setError(
         err?.response?.data?.message ||

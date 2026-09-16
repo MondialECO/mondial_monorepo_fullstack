@@ -260,7 +260,6 @@ describe('ColorSystemModal Component', () => {
         1
       );
       expect(handleSuccess).toHaveBeenCalled();
-      expect(handleClose).toHaveBeenCalled();
     });
   });
 });
