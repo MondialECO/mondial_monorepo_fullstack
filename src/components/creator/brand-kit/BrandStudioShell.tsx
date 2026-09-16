@@ -157,22 +157,33 @@ export function BrandStudioShell({
           try {
             currentKit = await brandKitApi.openStudio(ideaId);
           } catch {
-            currentKit = await brandKitApi.getBrandKit(ideaId);
+            try {
+              currentKit = await brandKitApi.getBrandKit(ideaId);
+            } catch {
+              currentKit = null as any;
+            }
+          }
+          if (!currentKit) {
+            try {
+              currentKit = await brandKitApi.createBrandKit(ideaId);
+            } catch {
+              // fallback
+            }
           }
         }
 
         if (!isMounted) return;
-        setKit(currentKit);
+        setKit(currentKit ?? null);
 
-        // Resume to the first incomplete unlocked step
-        const isStrategyComplete = Boolean(currentKit.strategy?.confirmedAt);
+        // Resume to the first incomplete unlocked step (guarded against null kit)
+        const isStrategyComplete = Boolean(currentKit?.strategy?.confirmedAt);
         const isDirectionComplete = Boolean(
-          currentKit.direction?.selectedAt || currentKit.direction?.selectedDirectionKey
+          currentKit?.direction?.selectedAt || currentKit?.direction?.selectedDirectionKey
         );
-        const isLogoTypeComplete = Boolean(currentKit.logo?.logoType);
-        const isLogoComplete = Boolean(currentKit.logo?.approvedAt);
+        const isLogoTypeComplete = Boolean(currentKit?.logo?.logoType);
+        const isLogoComplete = Boolean(currentKit?.logo?.approvedAt);
         const isColorsComplete = Boolean(
-          currentKit.colors?.confirmedAt || (currentKit.colors?.roles && currentKit.colors.roles.length === 5)
+          currentKit?.colors?.confirmedAt || (currentKit?.colors?.roles && currentKit.colors.roles.length === 5)
         );
 
         let resumeModal: StudioModalKey = "strategy";
@@ -183,7 +194,7 @@ export function BrandStudioShell({
         } else if (!isLogoTypeComplete) {
           resumeModal = "logo_type";
         } else if (!isLogoComplete) {
-          resumeModal = currentKit.logo?.selectedConceptKey ? "variations" : "logo_creation";
+          resumeModal = currentKit?.logo?.selectedConceptKey ? "variations" : "logo_creation";
         } else if (!isColorsComplete) {
           resumeModal = "colors";
         } else {

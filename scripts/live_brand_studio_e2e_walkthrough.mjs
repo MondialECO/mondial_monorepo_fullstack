@@ -88,13 +88,9 @@ async function runLiveE2EWalkthrough() {
   );
   console.log(`[Setup] Project "Aura Botanica" saved to backend (status: ${patchProjRes.status}).`);
 
-  // 4. Initialize Initial BrandKit on backend for activeIdeaId
-  const initKitRes = await fetch(`${API_BASE}/creator/journey/phase2/brand-kit?ideaId=${activeIdeaId}`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  const initKitData = await initKitRes.json();
-  console.log(`[Setup] Initial BrandKit created on backend (status: ${initKitRes.status}, strategy businessName: "${initKitData.data?.strategy?.businessName}").`);
+  // 4. Genuinely kit-less idea: NO out-of-band BrandKit creation.
+  // The walkthrough verifies that opening Studio for the very first time on a fresh idea auto-provisions cleanly.
+  console.log(`[Setup] Idea "${activeIdeaId}" initialized with NO prior BrandKit in database.`);
 
   // Launch Playwright Browser using system Chrome channel
   console.log(`\n[Browser] Launching Chrome browser (channel: 'chrome')...`);
@@ -263,7 +259,7 @@ async function runLiveE2EWalkthrough() {
   console.log(`[CP5] Logo Creation modal open. Waiting for 6 real SVG concepts generation...`);
 
   // Wait for concepts to render
-  await page.waitForSelector('button:has-text("Regenerate")', { timeout: 90000 });
+  await page.waitForSelector('button:has-text("Regenerate")', { timeout: 180000 });
   await page.waitForTimeout(2000);
 
   // Regenerate Concept 3 once

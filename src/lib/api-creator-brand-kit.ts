@@ -23,6 +23,20 @@ export const brandKitApi = {
   },
 
   /**
+   * Idempotently create or retrieve initial BrandKit for the active or queried idea.
+   */
+  async createBrandKit(ideaId?: string): Promise<BrandKit> {
+    const res = await api.post<ApiResponse<BrandKit>>(
+      "/creator/journey/phase2/brand-kit",
+      null,
+      {
+        params: ideaId ? { ideaId } : {},
+      }
+    );
+    return res.data.data!;
+  },
+
+  /**
    * Reset all section regenerate counters across the kit to 0 upon entering studio.
    */
   async openStudio(ideaId?: string): Promise<BrandKit> {

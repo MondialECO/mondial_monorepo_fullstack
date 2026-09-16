@@ -285,8 +285,71 @@ namespace WebApp.Controllers
         }
 
         // =========================================================================
-        // 2. CREATE BRAND KIT (IDEMPOTENT)
+        // 2. CREATE BRAND KIT (IDEMPOTENT / SHARED PROVISIONING HELPER)
         // =========================================================================
+        private async Task<BrandKit> GetOrCreateBrandKitAsync(CreatorIdea idea, string userId)
+        {
+            var existing = await _brandKitStore.GetByIdeaIdAsync(idea.Id, userId);
+            if (existing != null)
+            {
+                if (string.IsNullOrWhiteSpace(existing.Strategy?.BusinessName) && !string.IsNullOrWhiteSpace(idea.Project?.Name))
+                {
+                    var derivedStrategy = DeriveInitialStrategy(idea.Project);
+                    var backfillUpdate = Builders<BrandKit>.Update.Set(x => x.Strategy, derivedStrategy);
+                    await _brandKitStore.UpdateAsync(idea.Id, userId, backfillUpdate);
+                    existing = await _brandKitStore.GetByIdeaIdAsync(idea.Id, userId) ?? existing;
+                }
+                return existing;
+            }
+
+            var now = DateTime.UtcNow;
+            var initialStrategy = DeriveInitialStrategy(idea.Project ?? new CreatorJourneyProject());
+
+            var kit = new BrandKit
+            {
+                IdeaId = idea.Id,
+                UserId = userId,
+                Status = "draft",
+                CurrentStep = 1,
+                Version = 1,
+                CreatedAt = now,
+                UpdatedAt = now,
+                Strategy = initialStrategy,
+                Colors = new BrandColors
+                {
+                    Roles = new List<BrandColorRole>
+                    {
+                        new() { RoleName = BrandColorRoleNames.Primary, Hex = "#1A1A24", Rgb = "26,26,36", ContrastRatio = 12.4, ContrastVerdict = "AAA", IsLocked = false, Provenance = "stated" },
+                        new() { RoleName = BrandColorRoleNames.Secondary, Hex = "#3C61DD", Rgb = "60,97,221", ContrastRatio = 4.8, ContrastVerdict = "AA", IsLocked = false, Provenance = "derived" },
+                        new() { RoleName = BrandColorRoleNames.Accent, Hex = "#00D084", Rgb = "0,208,132", ContrastRatio = 3.5, ContrastVerdict = "AA_Large", IsLocked = false, Provenance = "derived" },
+                        new() { RoleName = BrandColorRoleNames.Background, Hex = "#FFFFFF", Rgb = "255,255,255", ContrastRatio = null, ContrastVerdict = null, IsLocked = true, Provenance = "stated" },
+                        new() { RoleName = BrandColorRoleNames.Text, Hex = "#0F172A", Rgb = "15,23,42", ContrastRatio = 14.2, ContrastVerdict = "AAA", IsLocked = false, Provenance = "derived" }
+                    }
+                },
+                Typography = new BrandTypography
+                {
+                    Roles = new List<BrandTypographyRole>
+                    {
+                        new() { RoleName = BrandTypographyRoleNames.LogoType, Family = "Cabinet Grotesk", Weight = "800", IsLocked = true, Provenance = "stated" },
+                        new() { RoleName = BrandTypographyRoleNames.Heading, Family = "Clash Display", Weight = "700", IsLocked = false, Provenance = "derived" },
+                        new() { RoleName = BrandTypographyRoleNames.Body, Family = "Inter", Weight = "400", IsLocked = false, Provenance = "derived" },
+                        new() { RoleName = BrandTypographyRoleNames.ButtonAndLabel, Family = "Inter", Weight = "600", IsLocked = false, Provenance = "derived" }
+                    }
+                }
+            };
+
+            try
+            {
+                await _brandKitStore.AddAsync(kit);
+                return kit;
+            }
+            catch (MongoWriteException ex) when (ex.WriteError?.Category == ServerErrorCategory.DuplicateKey)
+            {
+                var winner = await _brandKitStore.GetByIdeaIdAsync(idea.Id, userId);
+                return winner ?? kit;
+            }
+        }
+
         [HttpPost]
         public async Task<IActionResult> CreateKit([FromQuery] string? ideaId = null)
         {
@@ -294,66 +357,8 @@ namespace WebApp.Controllers
             {
                 var userId = GetUserId();
                 var idea = await _journeys.ResolveIdeaAsync(userId, ideaId);
-
-                var existing = await _brandKitStore.GetByIdeaIdAsync(idea.Id, userId);
-                if (existing != null)
-                {
-                    if (string.IsNullOrWhiteSpace(existing.Strategy?.BusinessName) && !string.IsNullOrWhiteSpace(idea.Project?.Name))
-                    {
-                        var derivedStrategy = DeriveInitialStrategy(idea.Project);
-                        var backfillUpdate = Builders<BrandKit>.Update.Set(x => x.Strategy, derivedStrategy);
-                        await _brandKitStore.UpdateAsync(idea.Id, userId, backfillUpdate);
-                        existing = await _brandKitStore.GetByIdeaIdAsync(idea.Id, userId) ?? existing;
-                    }
-                    return Ok(ApiResponse.Ok("Brand kit retrieved", existing));
-                }
-
-                var now = DateTime.UtcNow;
-                var initialStrategy = DeriveInitialStrategy(idea.Project ?? new CreatorJourneyProject());
-
-                var kit = new BrandKit
-                {
-                    IdeaId = idea.Id,
-                    UserId = userId,
-                    Status = "draft",
-                    CurrentStep = 1,
-                    Version = 1,
-                    CreatedAt = now,
-                    UpdatedAt = now,
-                    Strategy = initialStrategy,
-                    Colors = new BrandColors
-                    {
-                        Roles = new List<BrandColorRole>
-                        {
-                            new() { RoleName = BrandColorRoleNames.Primary, Hex = "#1A1A24", Rgb = "26,26,36", ContrastRatio = 12.4, ContrastVerdict = "AAA", IsLocked = false, Provenance = "stated" },
-                            new() { RoleName = BrandColorRoleNames.Secondary, Hex = "#3C61DD", Rgb = "60,97,221", ContrastRatio = 4.8, ContrastVerdict = "AA", IsLocked = false, Provenance = "derived" },
-                            new() { RoleName = BrandColorRoleNames.Accent, Hex = "#00D084", Rgb = "0,208,132", ContrastRatio = 3.5, ContrastVerdict = "AA_Large", IsLocked = false, Provenance = "derived" },
-                            new() { RoleName = BrandColorRoleNames.Background, Hex = "#FFFFFF", Rgb = "255,255,255", ContrastRatio = null, ContrastVerdict = null, IsLocked = true, Provenance = "stated" },
-                            new() { RoleName = BrandColorRoleNames.Text, Hex = "#0F172A", Rgb = "15,23,42", ContrastRatio = 14.2, ContrastVerdict = "AAA", IsLocked = false, Provenance = "derived" }
-                        }
-                    },
-                    Typography = new BrandTypography
-                    {
-                        Roles = new List<BrandTypographyRole>
-                        {
-                            new() { RoleName = BrandTypographyRoleNames.LogoType, Family = "Cabinet Grotesk", Weight = "800", IsLocked = true, Provenance = "stated" },
-                            new() { RoleName = BrandTypographyRoleNames.Heading, Family = "Clash Display", Weight = "700", IsLocked = false, Provenance = "derived" },
-                            new() { RoleName = BrandTypographyRoleNames.Body, Family = "Inter", Weight = "400", IsLocked = false, Provenance = "derived" },
-                            new() { RoleName = BrandTypographyRoleNames.ButtonAndLabel, Family = "Inter", Weight = "600", IsLocked = false, Provenance = "derived" }
-                        }
-                    }
-                };
-
-                try
-                {
-                    await _brandKitStore.AddAsync(kit);
-                    return Ok(ApiResponse.Ok("Brand kit created", kit));
-                }
-                catch (MongoWriteException ex) when (ex.WriteError?.Category == ServerErrorCategory.DuplicateKey)
-                {
-                    var winner = await _brandKitStore.GetByIdeaIdAsync(idea.Id, userId);
-                    return Ok(ApiResponse.Ok("Brand kit retrieved", winner));
-                }
+                var kit = await GetOrCreateBrandKitAsync(idea, userId);
+                return Ok(ApiResponse.Ok("Brand kit retrieved", kit));
             }
             catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
             catch (UnauthorizedAccessException ex) { return StatusCode(StatusCodes.Status401Unauthorized, ApiResponse.Error(ex.Message)); }
@@ -1867,7 +1872,10 @@ namespace WebApp.Controllers
 
                 var kit = await _brandKitStore.GetByIdeaIdAsync(idea.Id, userId);
                 if (kit == null)
-                    return NotFound(ApiResponse.Error("Brand kit not found for this idea."));
+                {
+                    var newKit = await GetOrCreateBrandKitAsync(idea, userId);
+                    return Ok(ApiResponse.Ok("Brand kit created and studio opened", newKit));
+                }
 
                 var updateBuilder = Builders<BrandKit>.Update;
                 var updates = new List<UpdateDefinition<BrandKit>>
