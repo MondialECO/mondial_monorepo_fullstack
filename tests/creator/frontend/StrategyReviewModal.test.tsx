@@ -202,4 +202,50 @@ describe('StrategyReviewModal Component', () => {
       ]);
     });
   });
+
+  it('renders clean "From your idea" badges and no relative timestamp when fields have null editedAt', () => {
+    render(
+      <StrategyReviewModal
+        kit={mockTestKit}
+        onClose={vi.fn()}
+        onConfirm={vi.fn()}
+      />
+    );
+
+    // Initial stated fields have "From your idea" badges
+    const fromYourIdeaBadges = screen.getAllByText('From your idea');
+    expect(fromYourIdeaBadges.length).toBe(5);
+
+    // No "EDITED" timestamp text rendered
+    expect(screen.queryByText(/EDITED/i)).not.toBeInTheDocument();
+  });
+
+  it('renders "Edited" badge and real relative time indicator when field has editedAt or is edited locally', () => {
+    const editedKit: BrandKit = {
+      ...mockTestKit,
+      strategy: {
+        ...mockTestKit.strategy!,
+        positioning: {
+          value: 'Customized positioning statement.',
+          provenance: 'user_refined',
+          editedAt: new Date(Date.now() - 1000 * 60 * 5).toISOString(), // 5 minutes ago
+        },
+      },
+    };
+
+    render(
+      <StrategyReviewModal
+        kit={editedKit}
+        onClose={vi.fn()}
+        onConfirm={vi.fn()}
+      />
+    );
+
+    // Positioning has an "Edited" badge
+    const editedBadges = screen.getAllByText('Edited');
+    expect(editedBadges.length).toBe(1);
+
+    // Displays relative time "EDITED 5 MINUTES AGO" or similar formatDistanceToNowStrict
+    expect(screen.getByText(/EDITED 5 MINUTES AGO/i)).toBeInTheDocument();
+  });
 });

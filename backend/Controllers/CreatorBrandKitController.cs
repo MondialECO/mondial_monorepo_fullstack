@@ -503,12 +503,33 @@ namespace WebApp.Controllers
                 var updateBuilder = Builders<BrandKit>.Update;
                 var updates = new List<UpdateDefinition<BrandKit>>();
 
+                var now = DateTime.UtcNow;
                 if (dto.BusinessName != null) updates.Add(updateBuilder.Set(x => x.Strategy.BusinessName, dto.BusinessName));
                 if (dto.NameDisplayForm != null) updates.Add(updateBuilder.Set(x => x.Strategy.NameDisplayForm, dto.NameDisplayForm));
-                if (dto.Concept != null) updates.Add(updateBuilder.Set(x => x.Strategy.Concept.Value, dto.Concept));
-                if (dto.TargetAudience != null) updates.Add(updateBuilder.Set(x => x.Strategy.TargetAudience.Value, dto.TargetAudience));
-                if (dto.Industry != null) updates.Add(updateBuilder.Set(x => x.Strategy.Industry.Value, dto.Industry));
-                if (dto.Positioning != null) updates.Add(updateBuilder.Set(x => x.Strategy.Positioning.Value, dto.Positioning));
+                if (dto.Concept != null)
+                {
+                    updates.Add(updateBuilder.Set(x => x.Strategy.Concept.Value, dto.Concept));
+                    updates.Add(updateBuilder.Set(x => x.Strategy.Concept.EditedAt, now));
+                    updates.Add(updateBuilder.Set(x => x.Strategy.Concept.Provenance, "user_refined"));
+                }
+                if (dto.TargetAudience != null)
+                {
+                    updates.Add(updateBuilder.Set(x => x.Strategy.TargetAudience.Value, dto.TargetAudience));
+                    updates.Add(updateBuilder.Set(x => x.Strategy.TargetAudience.EditedAt, now));
+                    updates.Add(updateBuilder.Set(x => x.Strategy.TargetAudience.Provenance, "user_refined"));
+                }
+                if (dto.Industry != null)
+                {
+                    updates.Add(updateBuilder.Set(x => x.Strategy.Industry.Value, dto.Industry));
+                    updates.Add(updateBuilder.Set(x => x.Strategy.Industry.EditedAt, now));
+                    updates.Add(updateBuilder.Set(x => x.Strategy.Industry.Provenance, "user_refined"));
+                }
+                if (dto.Positioning != null)
+                {
+                    updates.Add(updateBuilder.Set(x => x.Strategy.Positioning.Value, dto.Positioning));
+                    updates.Add(updateBuilder.Set(x => x.Strategy.Positioning.EditedAt, now));
+                    updates.Add(updateBuilder.Set(x => x.Strategy.Positioning.Provenance, "user_refined"));
+                }
                 if (dto.TonePosition != null) updates.Add(updateBuilder.Set(x => x.Strategy.TonePosition, dto.TonePosition));
                 if (dto.FirstAppearance != null) updates.Add(updateBuilder.Set(x => x.Strategy.FirstAppearance, dto.FirstAppearance));
                 if (dto.SymbolFeeling != null) updates.Add(updateBuilder.Set(x => x.Strategy.SymbolFeeling, dto.SymbolFeeling));
