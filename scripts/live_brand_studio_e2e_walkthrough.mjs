@@ -47,6 +47,13 @@ async function runLiveE2EWalkthrough() {
   }
 
   // 2. Check Initial Credits
+  const meRes = await fetch(`${API_BASE}/auth/me`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  const meData = await meRes.json();
+  const userData = meData.data ?? meData;
+  console.log(`[Setup] User verified: ${userData.email || testEmail} (role: ${userData.role || 'Creator'})`);
+
   const initialCredRes = await fetch(`${API_BASE}/ai/credits`, {
     headers: { Authorization: `Bearer ${token}` }
   });
@@ -126,17 +133,28 @@ async function runLiveE2EWalkthrough() {
     networkErrors.push({ url: req.url(), failure: errText });
   });
 
-  await context.addInitScript(({ token, activeIdeaId }) => {
+  await context.addCookies([
+    { name: 'token', value: token, domain: 'localhost', path: '/' },
+    { name: 'auth_token', value: token, domain: 'localhost', path: '/' },
+  ]);
+
+  await context.addInitScript(({ token, activeIdeaId, user }) => {
     window.localStorage.setItem('token', token);
+    window.localStorage.setItem('user', JSON.stringify(user));
     window.localStorage.setItem('activeIdeaId', activeIdeaId);
-  }, { token, activeIdeaId });
+    document.cookie = `token=${token}; path=/`;
+    document.cookie = `auth_token=${token}; path=/`;
+  }, { token, activeIdeaId, user: userData });
 
   // Set Auth in localStorage
   await page.goto(`${APP_BASE}/dashboard/creator`, { waitUntil: 'domcontentloaded' });
-  await page.evaluate(({ token, activeIdeaId }) => {
+  await page.evaluate(({ token, activeIdeaId, user }) => {
     localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(user));
     localStorage.setItem('activeIdeaId', activeIdeaId);
-  }, { token, activeIdeaId });
+    document.cookie = `token=${token}; path=/`;
+    document.cookie = `auth_token=${token}; path=/`;
+  }, { token, activeIdeaId, user: userData });
 
   // =========================================================================
   // CHECKPOINT 1: Land on /phase-2/branding
@@ -440,8 +458,8 @@ async function runLiveE2EWalkthrough() {
   // =========================================================================
   console.log(`\n========================================`);
   console.log(`CHECKPOINT 11: Phase 2 Complete Screen (/phase-2/complete)`);
-  console.log(`========================================`);
-  await page.goto(`${APP_BASE}/dashboard/creator/phase-2/complete`, { waitUntil: 'networkidle' });
+  await page.evaluate((url) => { window.location.href = url; }, `${APP_BASE}/dashboard/creator/phase-2/complete?ideaId=${activeIdeaId}`);
+  await page.waitForSelector('text=Project Identity Ready.', { timeout: 15000 }).catch(() => {});
   await page.waitForTimeout(2500);
 
   const phase2CompleteScreenshot = path.join(OUTPUT_DIR, '11_live_phase2_complete_screen.png');

@@ -53,31 +53,49 @@ export default function Phase2CompletePage() {
 
   useEffect(() => {
     let active = true;
-    (async () => {
-      setStatusLoading(true);
-      setStatusError(false);
-      try {
-        const { computedStatus } = await creatorJourneyApi.get();
+    const ideaId =
+      state.activeIdeaId ||
+      state.project?.projectId ||
+      (typeof window !== "undefined"
+        ? localStorage.getItem("activeIdeaId") || undefined
+        : undefined);
+
+    setStatusLoading(true);
+    setStatusError(false);
+
+    creatorJourneyApi
+      .get(ideaId)
+      .then(({ computedStatus }) => {
         if (!active) return;
         setComputed(computedStatus);
-        if (computedStatus.phase3.status === 'locked') {
-          console.warn('[phase-2/complete] not-ready state rendered — a Phase 2 write may not have landed', {
-            phase2Step: computedStatus.phase2.currentStep,
-            phase3Status: computedStatus.phase3.status,
-          });
+      })
+      .catch(() => {
+        if (active) {
+          if (state.journeyState) {
+            setComputed(state.journeyState);
+          } else {
+            setStatusError(true);
+          }
         }
-      } catch {
-        if (active) setStatusError(true);
-      } finally {
+      })
+      .finally(() => {
         if (active) setStatusLoading(false);
-      }
-    })();
-    return () => { active = false; };
-  }, [attempt]);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [attempt, state.activeIdeaId, state.project?.projectId, state.journeyState]);
 
   useEffect(() => {
     let active = true;
-    const ideaId = state.activeIdeaId || state.project?.projectId || undefined;
+    const ideaId =
+      state.activeIdeaId ||
+      state.project?.projectId ||
+      (typeof window !== "undefined"
+        ? localStorage.getItem("activeIdeaId") || undefined
+        : undefined);
+
     apiCreatorBrandKit
       .getBrandKit(ideaId)
       .then((kit) => {
@@ -140,9 +158,17 @@ export default function Phase2CompletePage() {
     project.solution ||
     "Your project identity is ready.";
 
+  const selectedConcept =
+    brandKit?.logo?.concepts?.find(
+      (c) => c.key === brandKit?.logo?.selectedConceptKey
+    ) || brandKit?.logo?.concepts?.[0];
+
   const primaryVariationSvg =
     brandKit?.logo?.variations?.primary?.svgUri ||
-    brandKit?.logo?.variations?.horizontal?.svgUri;
+    brandKit?.logo?.variations?.horizontal?.svgUri ||
+    selectedConcept?.lockupAssetUri ||
+    selectedConcept?.markAssetUri ||
+    branding?.logoAsset;
 
   const CANONICAL_ROLES = ["Primary", "Secondary", "Accent", "Background", "Text"] as const;
   const rawColorRoles = brandKit?.colors?.roles ?? [];
@@ -280,7 +306,7 @@ export default function Phase2CompletePage() {
             >
               <div className="flex flex-col sm:flex-row sm:items-start gap-4">
                 <div className="flex-1 min-w-0 flex items-center gap-4">
-                  {primaryVariationSvg ? (
+                  {primaryVariationSvg && !logoError ? (
                     <div
                       className="rounded-xl border border-border/60 bg-white p-2 flex items-center justify-center shrink-0 shadow-xs overflow-hidden"
                       style={{ width: 72, height: 72 }}
@@ -290,20 +316,13 @@ export default function Phase2CompletePage() {
                         src={resolveMediaUrl(primaryVariationSvg)}
                         alt={brandName}
                         className="max-h-full max-w-full object-contain"
+                        onError={() => setLogoError(true)}
                       />
                     </div>
-                  ) : branding?.logoAsset && !logoError ? (
-                    <img
-                      src={branding.logoAsset}
-                      alt={brandName}
-                      className="rounded-xl object-cover shrink-0"
-                      style={{ width: 72, height: 72 }}
-                      onError={() => setLogoError(true)}
-                    />
                   ) : (
                     <div
-                      className="rounded-xl flex items-center justify-center shrink-0 text-3xl font-semibold select-none shadow-xs"
-                      style={{ width: 72, height: 72, backgroundColor: "var(--muted)", color: "var(--primary)" }}
+                      className="rounded-xl flex items-center justify-center shrink-0 text-3xl font-semibold select-none shadow-xs bg-primary/10 text-primary border border-primary/20"
+                      style={{ width: 72, height: 72 }}
                     >
                       {brandName?.charAt(0) || "A"}
                     </div>
