@@ -88,25 +88,6 @@ export default function BrandingOptionsPage() {
 
         {/* Main Studio Card */}
         <div className="w-full rounded-2xl sm:rounded-3xl border border-border/80 bg-card p-6 sm:p-9 shadow-xs space-y-6">
-          {/* Geometric Glyph Icon Tile */}
-          <div className="size-16 rounded-xl bg-muted/60 border border-border/80 flex items-center justify-center text-foreground shrink-0 shadow-2xs">
-            <svg
-              className="size-8 stroke-foreground"
-              viewBox="0 0 32 32"
-              fill="none"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              {/* Circle */}
-              <circle cx="12" cy="13" r="6" />
-              {/* Square */}
-              <rect x="13" y="13" width="11" height="11" rx="1.5" />
-              {/* Triangle */}
-              <path d="M20 7L28 17H12L20 7Z" />
-            </svg>
-          </div>
-
           {/* Title & Description */}
           <div className="space-y-2">
             <h2 className="text-2xl sm:text-[26px] font-semibold text-foreground tracking-tight font-heading">
