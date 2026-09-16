@@ -164,14 +164,14 @@ describe('TypographySystemModal', () => {
     );
 
     // Header & Families
-    expect(screen.getByText(/Harmonized Typography System/i)).toBeInTheDocument();
+    expect(screen.getByText(/Your typography/i)).toBeInTheDocument();
     expect(screen.getByText(/DISPLAY FAMILY/i)).toBeInTheDocument();
     expect(screen.getByText(/TEXT FAMILY/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Space Grotesk/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Plus Jakarta Sans/i).length).toBeGreaterThan(0);
 
     // 4 Canonical Roles
-    expect(screen.getByText('Logo type')).toBeInTheDocument();
+    expect(screen.getAllByText('Logo type').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Heading')).toBeInTheDocument();
     expect(screen.getByText('Body')).toBeInTheDocument();
     expect(screen.getByText('Button & label')).toBeInTheDocument();
@@ -257,7 +257,7 @@ describe('TypographySystemModal', () => {
     );
 
     // Click Suggest pairings
-    const regenButton = screen.getByRole('button', { name: /Suggest pairings/i });
+    const regenButton = screen.getByRole('button', { name: /Suggest (other )?pairings/i });
     fireEvent.click(regenButton);
 
     await waitFor(() => {

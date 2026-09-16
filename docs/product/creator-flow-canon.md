@@ -100,18 +100,18 @@ Gating is strict: no skipping steps; user can always go back one step; completed
 
 **Purpose:** verify identity and lock in the Creator role before any dashboard access.
 
-**Steps:** email OTP, phone OTP, identity document upload, face verification, role selection.
+**Steps:** email OTP, phone OTP, identity document upload, role selection.
 
-The Phase-1 completion gate promotes onboarding to Phase 1 only when all four core items (identity, face, phone, email) read verified on the Onboarding model. Promotion is derived — no manual phase writes.
+The Phase-1 completion gate promotes onboarding to Phase 1 based on verified core items (email, phone, identity document) on the Onboarding model. Promotion is derived — no manual phase writes.
 
 ### Status:
 
 - **Email OTP, Phone OTP** — **LIVE** (HMAC-hashed, expiring, rate-limited).
 - **Role selection persistence** — **LIVE** (set at signup, read via onboarding status + JWT role claim).
-- **Identity + Face verification** — was STUB (only dev-only endpoints wrote the flags). Fixed via the KYC bridge: admin approval of uploaded docs now sets the onboarding identity/face flags and re-runs promotion, so a concierge-approved user clears the gate in production. Reject is symmetric (clears the flags + re-evaluates). SUMSUB is intentionally not wired for alpha.
-- **The role UI cosmetic hardcode** ("Role selected (Creator)" without reading actual role) — minor, should read the real role.
+- **Identity verification** — was STUB (only dev-only endpoints wrote the flags). Fixed via the KYC bridge: admin approval of uploaded docs sets the onboarding identity flag and re-runs promotion, so a concierge-approved user clears the gate in production. Reject is symmetric (clears the flag + re-evaluates). Sumsub document-only verification is wired and gated via feature flags; face/biometrics has been permanently removed.
+- **Role selection UI status** — **LIVE** (reads real role dynamically from onboarding status and profile data).
 
-**Alpha rule:** KYC clearance is by admin (concierge) approval. This is the legitimate path until SUMSUB is integrated post-alpha.
+**Alpha rule:** KYC clearance is by admin (concierge) approval or Sumsub document mode.
 
 ---
 
@@ -140,7 +140,12 @@ Following the Clarifier:
 1. **Idea Summary (`/phase-2/idea-summary`):** Displays the structured concept summary and clarity score. The "Revisit" button routes directly back to `/phase-2/clarifier`.
 2. **Concept Name (`/phase-2/concept-name`):** Names the project based on clarified concept context.
 3. **Branding Entry (`/phase-2/branding`):** Redesigned single-card presentation ("Brand Visual Identity Studio", light theme, hairline borders) highlighting 6 concrete deliverables, a single filled primary blue CTA ("Open Brand Studio") routing to `/dashboard/creator/phase-2/brand-studio`, and a quiet secondary "Skip for now" action that calls `creatorJourneyApi.skipBranding()` and navigates directly to `/complete`.
-4. **Phase 2 Complete (`/phase-2/complete`):** Redesigned compact summary screen reading the live `BrandKit` from `apiCreatorBrandKit.getBrandKit(ideaId)`. Displays a 5-role color swatch strip, typography pairing ({Heading} + {Body}), and active logo mark alongside the clarified idea summary; provides direct links to the full Brand Kit hub (`/dashboard/creator/phase-2/brand-kit`), studio re-entry (`/dashboard/creator/phase-2/brand-studio`), and proceeds to Phase 3 Business Plan.
+4. **Phase 2 Complete (`/phase-2/complete` — Figma Node `57007-12780`):** Redesigned canonical completion screen (720px centered container) reading live `BrandKit` from `brandKitApi.getBrandKit(ideaId)` and `CreatorIdea.Project`. Features:
+   - **Header Cluster:** 56px circular checkmark badge, `"✓ Phase 2 complete"`, project name, and dynamic category/tagline subline.
+   - **Card 1 (Brand Kit Showcase):** `"BRAND KIT READY"` badge pill, `"Open Brand Kit"` link (`/phase-2/brand-kit`), 200px Logo Hero Band rendering dynamic SVG/PNG mark and typography, plus a 3-column lower specimen grid (5-role Colours swatches, Typography pairing, and 4 Logo Form chips: Horizontal, Stacked, Dark, Light).
+   - **Card 2 (Project Summary):** Mark avatar tile, project title, tagline, category badge pill, and 2×2 facts grid (Target Audience, Positioning, Core Problem, Personality badges).
+   - **Card 3 (Next Phase Strip):** `"Next: Phase 3 — Business plan"` with `"4 TOOLS"` badge previewing Financial forecast, Business plan, Legal checklist, and Formation generator.
+   - **Footer Navigation:** Primary `"Continue to Phase 3"` (`/dashboard/creator/phase-3`), with secondary `"Back to dashboard"` (`/dashboard/creator`) and `"Edit Brand Kit"` (`/dashboard/creator/phase-2/brand-studio`).
 
 ### Brand Visual Identity Studio & Hub (LIVE)
 
@@ -201,51 +206,86 @@ The Brand Visual Identity Studio provides a calm, generative studio workflow acr
      - `Project.Tags` + `Project.CreatorEdge` $\to$ `PersonalityTraits` (default fallback: `["Precise", "Resilient", "Autonomous"]`)
      - Category keywords $\to$ `AvoidList` heuristics (e.g. avoiding cliché padlocks/shields for cyber, leaves/wheat for agri).
    - Creators can freely edit personality traits and avoid items with zero credit cost.
-2. **Direction Board Modal (`DirectionBoardModal` — Step 2: "Direction"):**
-   - Generates exactly 4 distinct visual directions via generative model call (`AiJobType.DirectionGeneration`, **7 credits**).
-   - Free interactive **Adjust strip** (Palette variant, Contrast position, Type weight) persisted directly via `PATCH /direction` without credit cost.
-   - Enforces a 3-regeneration cap for the entire candidate set (`RegenerateCount <= 3`).
-3. **Logo Type Chooser Modal (`LogoTypeChooserModal` — Step 3: "Logo Type"):**
-   - **0 credit cost** and zero regenerate cap (pure structural choice).
-   - Computes dynamic fit indicators (Recommended, Good Fit, Low Fit) in real time based on `CharacterLength` and `WordCount` constraints (e.g. short names favor Monograms, long names favor Wordmarks/Combination marks).
+2. **Direction Board Modal (`DirectionBoardModal` — Step 2: "Direction", Figma Node `57012:9066`):**
+   - Canonical Title: `"Pick a visual direction"` (`font-heading font-semibold 26px`), Subtitle: `"This sets the visual language. Logos are drawn inside the direction you pick."` (`DM Sans 14px text-muted-foreground`).
+   - Generates exactly 4 distinct visual directions via generative model call (`AiJobType.DirectionGeneration`, **7 credits**), enforcing a 3-regeneration cap (`RegenerateCount <= 3`, amber badge `[N]/3 LEFT`).
+   - **Visual Direction Filter Strip ("SHOW ME"):** Filter chips (`All four`, `Calmer`, `Bolder`, `More technical`) allowing creators to re-sort directions instantaneously without consuming credits or regenerations.
+   - **2x2 Direction Boards Grid (24px Gutters, Height-Matched):**
+     - *Preview Band (200px tall):* Distinct abstract style specimen (`SPECIMEN · GRID 01`, `DIRECTION 02`, `SPECIMEN · ORGANIC 03`, `SYSTEM // SYS_04`) with large `Aa` specimen and archetype subline, plus a pinned 24px primary check badge on active selection.
+     - *Four-Swatch Colour Strip (28px tall):* Edge-to-edge color palette representation.
+     - *Body Area (20px padding):* Direction name, `ACTIVE SELECTION` pill, descriptive feel line, and `WHY THIS FITS` rationale.
+     - *Footer Row:* Individual font pairing pills (`[ Display Family ]` `+` `[ Text Family ]`) and single-card selection/action button.
+   - Free interactive **Adjust strip** (Palette variant, Contrast balance, Display weight) persisted directly via `PATCH /direction` without credit cost.
+3. **Logo Type Chooser Modal (`LogoTypeChooserModal` — Step 3: "Logo Type", Figma Node `57004:10297`):**
+   - **Canonical Title & Subtitle:** Title: `"What kind of logo?"` (`font-heading font-semibold 26px`), Subtitle: `"Pick the form first — then we'll draw six concepts in that form, inside {directionName}."` (`DM Sans 14px text-muted-foreground`).
+   - **0 credit cost** and zero regenerate cap (pure structural archetype selection).
+   - **Context Strip (56px tall, `bg-muted/40`):** Displays 3 key strategy properties (`YOUR NAME` $\to$ `{businessName} · {charLength} characters`, `FIRST APPEARS ON` $\to$ `{firstAppearance}`, `DIRECTION` $\to$ `{directionName}`) plus the guidance note `"These shape which types work best for you."`
+   - **3x2 Grid of 6 Architectural Archetype Cards (24px Gutters, Height-Matched):**
+     - 6 Canonical Options: `Wordmark`, `Symbol + Name`, `Monogram`, `Abstract mark`, `Icon`, `Minimal`.
+     - *Specimen Band (150px tall):* Neutral generic greyscale archetype specimen.
+     - *Top-Right Check Badge (24px):* Primary blue circular checkmark pinned to top-right corner on active selection.
+     - *Body Area (20px padding):* Canonical title, subtitle description, and two guidance rows: `Good when:` (green check icon) and `Trade-off:` (dash `—`).
+     - *Dynamic Fit Indicator:* Real-time fit badges (`Strong fit for you`, `Workable`, `Tight fit`) computed deterministically from `characterLength`, `wordCount`, `firstAppearance`, and `directionName` with zero mock data.
    - Hands off selected `LogoType` to Logo Creation to filter subsequent concept generation.
 4. **Logo Creation & Variations Modals (Step 4: "Logo"):**
-   - **4a. Logo Creation Modal (`LogoCreationModal`):**
-     - Batch generation of 6 parametric logo concepts filtered by the selected `LogoType` (`AiJobType.LogoParameterSelection`, **4 credits**).
-     - Per-concept regeneration: creators can regenerate individual concepts independently (`AiJobType.LogoConceptRegenerate`, **2 credits**, capped at 3 regenerations per concept).
-     - Includes full-screen Compare Overlay and Micro-Scale Inspection (16px favicon view & invoice mock).
-   - **4b. Variation Set Modal (`VariationSetModal`):**
-     - Free deterministic derivation of the **7 canonical logo variations** derived from the approved concept mark geometry.
-     - Separate confirmation action (`POST derive-variations` / `PATCH logo` with `approvedAt`) from concept selection.
-     - 7 Canonical Variation Keys & Purposes:
-       1. `primary`: Default master brand lockup for full-color presentations.
-       2. `horizontal`: Linear lockup for navbars, page headers, and wide banners.
-       3. `stacked`: Centered vertical lockup for square cards, badges, and packaging.
-       4. `icon_only`: Standalone mark for favicons (16/32px), app icons, and social avatars.
-       5. `black`: Single-ink solid black lockup for dark monochrome printing.
-       6. `white`: Reversed solid white lockup for dark backgrounds.
-       7. `transparent`: Alpha channel SVG mark with transparency grid rendering.
-5. **Colour System Modal (`ColorSystemModal` — Step 5: "Colour"):**
-   - Initial deterministic derivation (`DeriveInitialColors`, **0 credits**).
-   - Generative whole-palette regeneration (`AiJobType.ColorGeneration`, **2 credits**, 3-cap).
-   - Free individual role editing (Hex color picker and role lock toggles).
-   - Real-time deterministic WCAG contrast ratio and rating calculation against `#FFFFFF` canvas. `Background` role has null contrast ratio by design.
-   - **Server-Side Confirmation (`Colors.ConfirmedAt`):** Confirming the Colour System sends `confirmedAt: ISO timestamp` via `PATCH /colors`, and `CreatorBrandKitController.cs` records a genuine server-side UTC timestamp in `kit.Colors.ConfirmedAt` (matching Strategy and Logo confirmation patterns). Step 6 prerequisite sequencing in `CheckStepPrerequisite(6)` and `CheckPatchPrerequisite("typography")` strictly requires `kit.Colors.ConfirmedAt != null` (removing prior role-count proxy).
-6. **Typography System Modal (`TypographySystemModal` — Step 6: "Typography"):**
-   - Initial deterministic pairing derivation (`DeriveInitialTypography`, **0 credits**).
-   - Generative pairing suggestion (`AiJobType.TypographyGeneration`, **2 credits**, 3-cap; UI header displays `<Badge>2 Credits</Badge>` matching authoritative backend pricing).
-   - **Server-Side Immutability of "Logo type":** The `Logo type` role is structurally bound to the approved logo concept. `CreatorBrandKitController.cs` explicitly rejects modifications or unlock attempts on `Logo type` via `PatchTypography`, and regeneration strictly preserves it.
-   - **Server-Side Confirmation (`Typography.ConfirmedAt`) & Completion Trigger:** Confirming Step 6 sends `confirmedAt: ISO timestamp` via `PATCH /typography`, setting `kit.Typography.ConfirmedAt`. `AdvanceStep(6)` enforces `kit.Typography.ConfirmedAt != null` before advancing `CurrentStep = 6`, marking `Status = "complete"`, and synchronizing the 4-field pointer to `CreatorIdea.Project.Branding`. Frontend `BrandStudioShell` strictly checks real server `confirmedAt` values (`isColorsComplete = Boolean(kit?.colors?.confirmedAt)`, `isTypographyComplete = Boolean(kit?.typography?.confirmedAt)`).
-   - **AdvanceStep Idempotency on Completed Kits (Defect #9 Fix):** `POST /advance` with `targetStep == kit.CurrentStep` on an already-"complete" kit is an idempotent 200 no-op (returning current kit state unchanged with no `Version` increment), allowing safe re-confirmation of already-satisfied terminal milestones from the Hub or Studio without 400 errors. Genuine backwards attempts (`targetStep < kit.CurrentStep`) remain strictly guarded and return 400.
-   - **Downstream Completion Effects:** Setting `Status = "complete"` permanently unlocks non-linear section editing from the Hub, bypassing prerequisite sequencing guards in `CheckPatchPrerequisite`.
+   - **4a. Logo Creation Modal (`LogoCreationModal`, Figma Node `57004:10578`):**
+     - **Canonical Title & Subtitle:** Title: `"Choose your logo"` (`font-heading font-semibold 26px`), Subtitle: `"Six {logoTypeName} concepts, drawn inside {directionName}. Pick the one you'd defend to a customer."` (`DM Sans 14px text-muted-foreground`).
+     - **Batch Regeneration in Header:** `"Redraw all six"` button + `[N]/3 LEFT` amber cap badge (4 credits, capped at 3 batch redraws).
+     - **Dedicated View Bar (48px tall):**
+       - "SHOW AS" filter chips: `Mark only`, `On an invoice`, `At 16px`.
+       - Right action & counter: `Compare two` toggle + `6 CONCEPTS` badge.
+     - **3x2 Concept Tiles Grid (24px Gutters, Height-Matched):**
+       - *Mark Stage (200px tall):* High-res SVG mark / lockup from C# backend with dynamic business name and pinned 24px primary circular check badge on active selection.
+       - *Card Footer (16px padding):* `CONCEPT 01` .. `CONCEPT 06` mono tag, live `descriptorLine` from backend, `SELECTED` primary badge, and single-concept redraw icon button (`Redraw just this one`, 2 credits, 3-cap).
+     - **Compare Overlay (`CompareOverlay`):** Side-by-side comparison modal with Light/Dark canvas toggles and winning concept selection.
+   - **4b. Approved Logo Variation Set Modal (`VariationSetModal`, Figma Node `57004:11174`):**
+      - *(Canonical Specification in [brand-identity-studio-canon.md](brand-identity-studio-canon.md))*
+      - **Header Cluster:** Title `"Your logo, in every form"`, Subtitle `"Seven variations built from Concept {N}. Same geometry throughout — only arrangement and colour change."`, Top action `"Download set"` button (DM Mono) + `"STEP 4 OF 6"` badge + Close button.
+      - **Batch Summary Metadata Strip:** 4 inline metadata pairs separated by subtle hairline vertical dividers:
+        - `SOURCE` $\to$ `Concept {N}`
+        - `VARIATIONS` $\to$ `7`
+        - `FORMATS` $\to$ `SVG + PNG`
+        - `COST` $\to$ `Free, derived`
+        - Right-aligned emerald outline pill badge: `✓ No credits used`
+      - **7 Deterministic Logo Variation Tiles (3 Wide + 4 Compact Grid):**
+        1. `PRIMARY` (`3:1` aspect ratio): Master full-color lockup with pinned green `PRIMARY` badge.
+        2. `HORIZONTAL` (`4:1` aspect ratio): Compact lockup for navigation bars & email signatures. Hover download and redraw actions with `"Redraw just this variation"` tooltip.
+        3. `STACKED` (`1:1` aspect ratio): Centered emblem lockup for square avatars, app tiles & packaging.
+        4. `ICON-ONLY` (`1:1` aspect ratio): Standalone mark with 3 micro-scale fidelity proofs (`64px`, `32px`, `16px`).
+        5. `BLACK` (`3:1` aspect ratio): Single-ink 100% solid black lockup for dark monochrome printing & laser engraving.
+        6. `WHITE` (`3:1` aspect ratio): 100% pure white knockout on isolated dark ground (`#0A1128`).
+        7. `TRANSPARENT` (`3:1` aspect ratio): 32-bit RGBA alpha channel preview with checkerboard background and `PNG · ALPHA` corner chip.
+      - **Footer Actions:** Left-aligned `"Export ZIP"` (`.zip` archive containing all 7 SVGs + high-res PNGs), and Right-aligned Primary CTA `"Approve all seven"` (persists server-side `approvedAt` and advances journey).
+5. **Colour System Modal (`ColorSystemModal` — Step 5: "Colour", Figma Node `57004:11484`):**
+   - *(Canonical Specification in [brand-identity-studio-canon.md](brand-identity-studio-canon.md))*
+   - **Canonical Header & Subtitle:** Title: `"Your colour system"`, Subtitle: `"Five roles pulled from your logo. Each one has a job — change any of them without touching the rest."`, `"Regenerate palette"` button with `[N]/3 LEFT` amber cap badge, `"STEP 5 OF 6"` badge.
+   - **Palette Mood Filter Strip ("PALETTE MOOD"):** 4 instant tuning chips (`As generated`, `Calmer`, `Warmer`, `Higher contrast`) with zero credit cost (`"Switching mood is free — it doesn't use a regenerate."`).
+   - **5 Canonical Role Rows (Section A):** Single card with divided rows for `Primary`, `Secondary`, `Accent`, `Background`, `Text` featuring 68×68 swatch well, HEX editor with copy action, RGB triplet, real-time WCAG 2.1 AA/AAA contrast ratio rating against background ground, individual slider adjust button, and lock toggle against regeneration.
+   - **Live Application Preview ("How it looks together", Section B):** Segmented control with 3 interactive preview modes (`Website`, `Invoice`, `Deck`) rendered on dynamic background color.
+   - **Server-Side Confirmation (`Colors.ConfirmedAt`):** Confirming the Colour System sends `confirmedAt: ISO timestamp` via `PATCH /colors`, and `CreatorBrandKitController.cs` records a genuine server-side UTC timestamp in `kit.Colors.ConfirmedAt`. Step 6 prerequisite sequencing in `CheckStepPrerequisite(6)` and `CheckPatchPrerequisite("typography")` strictly requires `kit.Colors.ConfirmedAt != null`.
+6. **Typography System Modal (`TypographySystemModal` — Step 6: "Typography", Figma Node `57004:11793`):**
+   - *(Canonical Specification in [brand-identity-studio-canon.md](brand-identity-studio-canon.md))*
+   - **Canonical Header & Subtitle:** Title: `"Your typography"`, Subtitle: `"Two families, four roles. The display face carries personality; the text face carries everything people actually read."`, `"Suggest other pairings"` button with `[N]/3 LEFT` amber cap badge, `"STEP 6 OF 6"` badge.
+   - **Pairing Choice Grid ("PICK A PAIRING"):** 3 curated pairing candidate cards (`Syne + DM Sans`, `Plus Jakarta Sans + Inter`, `Space Grotesk + Inter`) with live brand name display specimen, subline text specimen, and metadata badges (`Open licence`, `weights`, `file size`).
+   - **Four Roles Specimen Editor ("FOUR ROLES"):** Single unified card with 4 divided rows:
+     1. `Logo type` (ROW 1 - LOCKED STATE): Structurally bound to the approved logo concept (`"Locked to your wordmark."`), immutable.
+     2. `Heading`: Display face specimen with font weight selector and size stepping.
+     3. `Body`: Text face multi-line paragraph specimen with weight selector.
+     4. `Button & label`: Text face interactive button and active status badge specimens.
+   - **Server-Side Confirmation (`Typography.ConfirmedAt`) & Completion Trigger:** Confirming Step 6 sends `confirmedAt: ISO timestamp` via `PATCH /typography`, setting `kit.Typography.ConfirmedAt`. `AdvanceStep(6)` enforces `kit.Typography.ConfirmedAt != null` before advancing `CurrentStep = 6`, marking `Status = "complete"`, and synchronizing the 4-field pointer to `CreatorIdea.Project.Branding`.
+   - **AdvanceStep Idempotency on Completed Kits:** `POST /advance` with `targetStep == kit.CurrentStep` on an already-"complete" kit is an idempotent 200 no-op.
+   - **Downstream Completion Effects:** Setting `Status = "complete"` permanently unlocks non-linear section editing from the Hub.
 
-#### 3. Brand Kit Hub Page (`/dashboard/creator/phase-2/brand-kit`)
-- **Calm Reference View:** A standalone hub page displaying all confirmed brand assets without Studio progress bars or step counters.
-- **Header Action Cluster:** Exactly ONE filled blue primary CTA button (`Download Brand Kit (.zip)`); secondary actions (`Version History`, `Open Studio`) are subtle outline/ghost buttons.
-- **Section Overview:**
-  1. *Logo & 7 Variations:* 7 production SVG tiles with "Copy SVG" actions and checkerboard alpha background on `transparent`.
-  2. *Colour Tokens:* 5 canonical roles (`Primary`, `Secondary`, `Accent`, `Background`, `Text`) with WCAG AAA/AA badges.
-  3. *Typography Specimens:* 4 canonical roles (`Logo type`, `Heading`, `Body`, `Button & label`) with live specimens and scale metadata.
+#### 3. Brand Kit Hub Page (`/dashboard/creator/phase-2/brand-kit`, Figma Node `57004:12057`)
+- **Centered 1080px Column:** Standalone reference hub displaying all confirmed brand assets on an `#EFEFF1` (light) / `#0c0d0e` (dark) canvas.
+- **Identity Block:** 56px Avatar mark box, brand title, `v1` version badge, `"v1 · Stored in Mondial cloud"`, `"Updated {Date}"`, `"Open in Studio"` button, and primary `"Download all assets (.zip)"` JSZip client-side packager. 4-column metric strip: `STATUS: Ready to use`, `TIED TO: {brandName} (Project #{shortId})`, `STORAGE: SVG + PNG + CSS + JSON Tokens`, `VERSION: v{kit.version}.0.4`.
+- **Section 1: Logo:** Header with `"Logo"` + `"6 LOCKUPS READY"` badge + `"Open in Studio"`, 240px interactive hero band, and 6-thumbnail lockup selector row (`HORIZONTAL`, `STACKED`, `ICON-ONLY`, `BLACK`, `WHITE`, `TRANSPARENT`).
+- **Section 2: Colour:** Header with `"Colour"` + `"5 ROLES"` badge + `"Contrast checked"` shield check badge, and 5 equal swatch cards (`Primary`, `Secondary`, `Accent`, `Background`, `Text`) with 110px color fill, uppercase hex codes, RGB, WCAG contrast ratio badges (`AAA`/`AA`), usage notes, and one-click copy hex.
+- **Section 3: Typography:** Header with `"Typography"` + `"4 ROLES · 2 FAMILIES"` badge + `"Open licence"` check badge, and 4 divided rows (`Logo type` [locked], `Heading`, `Body`, `Button & label` [`Start free` pill & `INVOICE NUMBER` label]).
+- **Section 4: Strategy:** Header with `"Strategy"` + `"Open in Studio"`, and 2-column 6-fact grid (`BUSINESS NAME`, `CONCEPT`, `AUDIENCE`, `INDUSTRY` [badge pill], `POSITIONING`, `PERSONALITY` [trait badges]).
+- **Section 5: Used by:** Header with `"Used by"` + `"2 OF 4 CONNECTED"` badge, and 4 integration tiles (`Business plan` [Applied], `Landing page` [Applied], `Pitch deck` [Not generated yet], `Invoices` [Not generated yet]).
+- **Section 6: Coming Soon:** 2 roadmap cards (`Brand assets` and `Brand guidelines PDF` with `"Coming soon"` badges).
+- **Footer Strip:** Info note: `"Edits apply the next time a generator runs. Already-generated documents keep the version they were made with."`
   4. *Brand Strategy Foundations:* 6 confirmed facts (Industry, Target Audience, Core Concept, Positioning, Personality Traits, Tone Position).
 - **Version History & Rollback:**
   - Bounded to the 3 most recent snapshots (newest first).
@@ -376,9 +416,9 @@ A combined **Business Plan + Forecast** document (`PlanForecastPrintView`), reac
 
 **Step 4.1 — Pricing (LIVE):** model selection (subscription / one-time / freemium / usage-based) + 3–5 editable tiers, validated and persisted.
 
-**Step 4.2 — Resource Calculator (MISSING):** team requirements (role/cost/duration), SaaS stack with costs, total launch budget, time-to-launch, budget breakdown %. Not built — backlog.
+**Step 4.2 — Resource Calculator (LIVE):** Sector-specific benchmark resolution (`MarketBenchmarkResolver`) deriving required team roles, salary ranges, duration, essential SaaS stack with costs, and dynamic min/max launch budget calculations based on clarified concept and sector context.
 
-**Step 4.3 — GTM Roadmap (partly MISSING):** GTM setup inputs are captured (LIVE), but the AI-generated 12-week timeline / weekly tasks / channel-mix visualization is not built. The landing-page generator is a "coming soon" placeholder — no generated artifact.
+**Step 4.3 — GTM Setup & Roadmap (LIVE):** Structured GTM setup inputs + AI-generated 12-week benchmark GTM schedule with Week 1 foundations auto-completion, marketing channel breakdown, and landing page generator.
 
 **Cross-module note:** the `auto_built_43` badge on business-plan §6 lights on GTM-setup completion, not on pricing data injection. "Pricing feeds GTM" is not literally true — the GTM section still renders the P3 plan text unchanged. Real pricing→GTM data injection is a backlog item, not a claim to make in the doc.
 
@@ -411,7 +451,7 @@ Company document verification does NOT happen in P5 — it is deferred to Entrep
 - **REMOVE** the stale four-screen wizard, fully live front-to-back: entity-type selector (SAS/SAS-U/SARL), shareholder/cap-table editor (founder/ESOP %), Seed Funding card, the company-formation and seed-funding endpoints, and the CreatorPathB model. For alpha it is hidden so no user can reach it; full deletion follows once business-plan §9 is decoupled.
 - **FORBIDDEN:** Listing Path B ("Build Yourself") on the marketplace. Path B is an internal venture spinout to Entrepreneur P1/P6.
 - **FORBIDDEN:** showing matched buyers/investors or any match count in Phase 5. Matchmaking does not exist before P6.
-- Any "72h path lock" — not canon, not built, do not add.
+- **30-Day Switch Window:** Once a path is chosen, switching between Path A and Path B is permitted within a 30-day window (`PathSwitchWindow = TimeSpan.FromDays(30)` in `CreatorJourneyService.cs`). After 30 days elapse, the decision locks permanently.
 
 ---
 

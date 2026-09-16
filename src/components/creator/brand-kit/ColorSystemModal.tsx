@@ -1,12 +1,11 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { BrandKit, BrandColorRole } from "@/types/creator/brand-kit";
 import { brandKitApi } from "@/lib/api-creator-brand-kit";
-import { RegenerateCapBadge } from "./RegenerateCapBadge";
+import { ModalWorkflowHeader } from "./ModalWorkflowHeader";
 import { Button } from "@/components/ui/button";
 import {
-  Sparkles,
   ArrowRight,
   RefreshCw,
   AlertCircle,
@@ -17,8 +16,11 @@ import {
   ShieldCheck,
   AlertTriangle,
   SlidersHorizontal,
-  Eye,
   Info,
+  Sliders,
+  FileText,
+  Layout,
+  Presentation,
 } from "lucide-react";
 
 export interface ColorSystemModalProps {
@@ -30,6 +32,16 @@ export interface ColorSystemModalProps {
 }
 
 type PaletteMood = "as_generated" | "calmer" | "warmer" | "higher_contrast";
+type PreviewTab = "website" | "invoice" | "deck";
+
+// Canonical role default usage notes from Figma Node 57004:11484
+const CANONICAL_ROLE_NOTES: Record<string, string> = {
+  Primary: "Buttons, links, the one thing you want clicked.",
+  Secondary: "Headlines, navigation, dense text areas.",
+  Accent: "Highlights, badges, small emphasis only.",
+  Background: "Page and surface background.",
+  Text: "Body copy on background.",
+};
 
 // Deterministic client-side contrast evaluator matching server-side WcagContrastCalculator
 function calculateLuminance(r: number, g: number, b: number): number {
@@ -43,6 +55,7 @@ function calculateLuminance(r: number, g: number, b: number): number {
 }
 
 function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+  if (!hex) return null;
   const clean = hex.replace("#", "").trim();
   if (clean.length === 3) {
     return {
@@ -179,6 +192,7 @@ export function ColorSystemModal({
     kit.colors?.regenerateCount ?? 0
   );
   const [selectedMood, setSelectedMood] = useState<PaletteMood>("as_generated");
+  const [previewTab, setPreviewTab] = useState<PreviewTab>("website");
 
   const [isLoadingInitial, setIsLoadingInitial] = useState<boolean>(false);
   const [isRegenerating, setIsRegenerating] = useState<boolean>(false);
@@ -193,6 +207,26 @@ export function ColorSystemModal({
       roles.find((r) => r.roleName === "Background")?.hex || "#FFFFFF"
     );
   }, [roles]);
+
+  // Brand Name from strategy
+  const brandName = useMemo(() => {
+    return (
+      currentKit.strategy?.nameDisplayForm ||
+      currentKit.strategy?.businessName ||
+      "Brand"
+    );
+  }, [currentKit]);
+
+  // Logo mark from Step 4
+  const logoMarkUri = useMemo(() => {
+    if (currentKit.logo?.selectedConceptKey) {
+      const concept = currentKit.logo.concepts?.find(
+        (c) => c.key === currentKit.logo?.selectedConceptKey
+      );
+      if (concept?.markAssetUri) return concept.markAssetUri;
+    }
+    return currentKit.logo?.variations?.["primary"]?.svgUri || null;
+  }, [currentKit.logo]);
 
   // 1. Initial Generation if roles missing
   useEffect(() => {
@@ -297,6 +331,7 @@ export function ColorSystemModal({
           }
         : r
     );
+
     setRoles(updatedRoles);
 
     try {
@@ -445,7 +480,7 @@ export function ColorSystemModal({
             rgb: r.rgb,
             contrastRatio: r.contrastRatio,
             contrastVerdict: r.contrastVerdict,
-            usageNote: r.usageNote,
+            usageNote: r.usageNote || CANONICAL_ROLE_NOTES[r.roleName] || "",
             isLocked: r.isLocked,
             provenance: r.provenance,
           })),
@@ -473,8 +508,8 @@ export function ColorSystemModal({
   const renderContrastBadge = (role: BrandColorRole) => {
     if (role.roleName === "Background") {
       return (
-        <span className="text-[11px] font-mono text-muted-foreground">
-          Used as a ground, not for text
+        <span className="text-xs font-mono text-muted-foreground">
+          Used as a ground, not for text.
         </span>
       );
     }
@@ -484,8 +519,8 @@ export function ColorSystemModal({
 
     if (verdict === "AAA") {
       return (
-        <span className="inline-flex items-center gap-1 text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
-          <ShieldCheck className="size-3" />
+        <span className="inline-flex items-center gap-1.5 text-xs font-mono font-bold px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
+          <ShieldCheck className="size-3.5" />
           {ratio} AAA
         </span>
       );
@@ -493,8 +528,8 @@ export function ColorSystemModal({
 
     if (verdict === "AA" || verdict === "AA_LARGE") {
       return (
-        <span className="inline-flex items-center gap-1 text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-teal-500/10 text-teal-700 dark:text-teal-400 border border-teal-500/20">
-          <ShieldCheck className="size-3" />
+        <span className="inline-flex items-center gap-1.5 text-xs font-mono font-bold px-2.5 py-1 rounded-md bg-teal-500/10 text-teal-700 dark:text-teal-400 border border-teal-500/20">
+          <ShieldCheck className="size-3.5" />
           {ratio} {verdict === "AA_LARGE" ? "AA Large" : "AA"}
         </span>
       );
@@ -502,26 +537,26 @@ export function ColorSystemModal({
 
     if (verdict === "FAIL") {
       return (
-        <span className="inline-flex items-center gap-1 text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
-          <AlertTriangle className="size-3" />
+        <span className="inline-flex items-center gap-1.5 text-xs font-mono font-bold px-2.5 py-1 rounded-md bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
+          <AlertTriangle className="size-3.5" />
           {ratio} FAIL
         </span>
       );
     }
 
     return (
-      <span className="text-[11px] font-mono text-muted-foreground">
+      <span className="text-xs font-mono text-muted-foreground">
         {ratio}
       </span>
     );
   };
 
   // Find colors for preview
-  const primaryColor = roles.find((r) => r.roleName === "Primary")?.hex || "#0F172A";
-  const secondaryColor = roles.find((r) => r.roleName === "Secondary")?.hex || "#3B82F6";
-  const accentColor = roles.find((r) => r.roleName === "Accent")?.hex || "#10B981";
-  const textColor = roles.find((r) => r.roleName === "Text")?.hex || "#09090B";
-  const bgColor = roles.find((r) => r.roleName === "Background")?.hex || "#FFFFFF";
+  const primaryColor = roles.find((r) => r.roleName === "Primary")?.hex || "#3C61DD";
+  const secondaryColor = roles.find((r) => r.roleName === "Secondary")?.hex || "#0E1726";
+  const accentColor = roles.find((r) => r.roleName === "Accent")?.hex || "#6366F1";
+  const bgColor = roles.find((r) => r.roleName === "Background")?.hex || "#F8F9FB";
+  const textColor = roles.find((r) => r.roleName === "Text")?.hex || "#111827";
 
   return (
     <div
@@ -530,41 +565,30 @@ export function ColorSystemModal({
       aria-labelledby="color-system-title"
       className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
     >
-      <div className="relative w-full max-w-5xl rounded-2xl bg-white shadow-2xl border border-border flex flex-col max-h-[92vh] overflow-hidden">
+      <div className="relative w-full max-w-5xl rounded-2xl bg-card shadow-2xl border border-border flex flex-col max-h-[92vh] overflow-hidden text-card-foreground">
         
-        {/* 1. Modal Header */}
-        <div className="flex items-start justify-between border-b border-border/80 px-6 py-5 bg-gradient-to-b from-slate-50/80 to-white shrink-0">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-[11px] font-bold font-mono tracking-wider text-blue-600 uppercase bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
-                STEP 5 OF 6 · COLOUR SYSTEM
-              </span>
-              <span className="text-[11px] font-mono text-muted-foreground">
-                Deterministic WCAG 2.1 Contrast
-              </span>
-            </div>
-            <h2 id="color-system-title" className="text-xl font-bold tracking-tight text-foreground">
-              Harmonized Colour System
-            </h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Review 5 canonical brand color roles derived from your mark and direction. Edit hex values directly or tune the mood.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <RegenerateCapBadge usedCount={regenerateCount} maxCount={3} />
+        {/* Header & 6-Step Workflow Track (Figma Node 57004:11484) */}
+        <ModalWorkflowHeader
+          title="Your colour system"
+          subtitle="Five roles pulled from your logo. Each one has a job — change any of them without touching the rest."
+          currentStep={5}
+          onClose={onClose}
+          headerActions={
             <Button
               variant="outline"
               size="sm"
               onClick={handleRegeneratePalette}
               disabled={isRegenerating || regenerateCount >= 3}
-              className="gap-1.5 text-xs font-semibold"
+              className="gap-2 text-xs font-mono font-medium h-8 border-border bg-background hover:bg-muted/60"
             >
-              <RefreshCw className={`size-3.5 ${isRegenerating ? "animate-spin" : ""}`} />
+              <RefreshCw className={`size-3.5 text-muted-foreground ${isRegenerating ? "animate-spin text-primary" : ""}`} />
               <span>Regenerate Palette</span>
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
+                {Math.max(0, 3 - regenerateCount)}/3 LEFT
+              </span>
             </Button>
-          </div>
-        </div>
+          }
+        />
 
         {/* Error Alerts */}
         {error && (
@@ -590,126 +614,198 @@ export function ColorSystemModal({
           </div>
         )}
 
-        {/* 2. Modal Body */}
+        {/* Modal Scrolling Body */}
         <div className="p-6 overflow-y-auto space-y-6">
           
-          {/* Palette Mood Filter Strip */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-slate-50 border border-border/80">
-            <div className="flex items-center gap-2">
-              <SlidersHorizontal className="size-4 text-muted-foreground" />
-              <span className="text-xs font-bold text-foreground">PALETTE MOOD:</span>
-              <span className="text-[11px] text-muted-foreground">Free instant tuning</span>
+          {/* VARIANT ROW: Palette Mood Filter Strip */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-muted/30 border border-border/80">
+            <div className="flex items-center gap-2.5">
+              <SlidersHorizontal className="size-4 text-muted-foreground shrink-0" />
+              <span className="text-[11px] font-mono font-bold tracking-wider text-muted-foreground uppercase">
+                PALETTE MOOD:
+              </span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {(
+                  [
+                    { key: "as_generated", label: "As generated" },
+                    { key: "calmer", label: "Calmer" },
+                    { key: "warmer", label: "Warmer" },
+                    { key: "higher_contrast", label: "Higher contrast" },
+                  ] as const
+                ).map((mood) => (
+                  <button
+                    key={mood.key}
+                    type="button"
+                    onClick={() => handleSelectMood(mood.key)}
+                    className={`px-3 py-1 rounded-lg text-xs font-mono font-medium transition-all ${
+                      selectedMood === mood.key
+                        ? "bg-foreground text-background shadow-xs font-semibold"
+                        : "bg-background text-foreground/80 hover:bg-muted border border-border/80"
+                    }`}
+                  >
+                    {mood.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {(
-                [
-                  { key: "as_generated", label: "As generated" },
-                  { key: "calmer", label: "Calmer" },
-                  { key: "warmer", label: "Warmer" },
-                  { key: "higher_contrast", label: "Higher contrast" },
-                ] as const
-              ).map((mood) => (
-                <button
-                  key={mood.key}
-                  type="button"
-                  onClick={() => handleSelectMood(mood.key)}
-                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
-                    selectedMood === mood.key
-                      ? "bg-slate-900 text-white shadow-xs"
-                      : "bg-white text-slate-700 hover:bg-slate-100 border border-border"
-                  }`}
-                >
-                  {mood.label}
-                </button>
-              ))}
-            </div>
+            <span className="text-xs font-mono text-muted-foreground">
+              Switching mood is free — it doesn't use a regenerate.
+            </span>
           </div>
 
-          {/* 5 Roles Single Card List */}
-          <div className="rounded-xl border border-border bg-white divide-y divide-border/80 overflow-hidden shadow-2xs">
+          {/* SECTION A: 5 CANONICAL ROLE ROWS (Figma Node 57004:11484) */}
+          <div className="rounded-xl border border-border bg-card divide-y divide-border/80 overflow-hidden shadow-2xs">
             {roles.map((role) => {
+              const isPrimary = role.roleName === "Primary";
+              const isSecondary = role.roleName === "Secondary";
+              const isAccent = role.roleName === "Accent";
               const isBg = role.roleName === "Background";
+              const isEdited = role.provenance === "user_edited" || role.provenance === "user_tuned";
+
+              const usageNote =
+                role.usageNote ||
+                CANONICAL_ROLE_NOTES[role.roleName] ||
+                `Canonical ${role.roleName.toLowerCase()} brand tone`;
 
               return (
                 <div
                   key={role.roleName}
-                  className="flex flex-col md:flex-row md:items-center justify-between p-4 gap-4 hover:bg-slate-50/50 transition-colors"
+                  className={`group relative flex flex-col md:flex-row md:items-center justify-between p-4.5 gap-4 transition-colors ${
+                    isAccent && isEdited
+                      ? "bg-primary/5 border-l-2 border-l-primary"
+                      : "hover:bg-muted/30"
+                  }`}
                 >
-                  {/* Left: Swatch Well + Names */}
-                  <div className="flex items-center gap-3.5 min-w-[220px]">
-                    <div className="relative size-11 rounded-xl border border-black/10 shadow-inner shrink-0 overflow-hidden group/swatch">
+                  {/* Left: 68x68 Swatch Well + Text Block */}
+                  <div className="flex items-center gap-4 min-w-[280px]">
+                    {/* 68x68 Swatch Well */}
+                    <div
+                      className={`relative size-[68px] rounded-xl border shrink-0 overflow-hidden shadow-2xs group/swatch cursor-pointer ${
+                        isBg ? "border-black/15 shadow-inner" : "border-black/10"
+                      }`}
+                      title="Click to pick custom color"
+                    >
                       <div
-                        className="w-full h-full"
+                        className="w-full h-full transition-transform group-hover/swatch:scale-105"
                         style={{ backgroundColor: role.hex }}
                       />
+                      {/* Interactive Color Input overlay */}
                       <input
                         type="color"
                         value={role.hex}
                         onChange={(e) => handleRoleHexChange(role.roleName, e.target.value)}
                         className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                        title="Click to pick color"
+                        title="Click to adjust color"
                       />
                     </div>
 
-                    <div className="flex flex-col">
+                    {/* Text Block */}
+                    <div className="flex flex-col gap-0.5">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-foreground">
+                        <span className="text-base font-bold font-heading text-foreground">
                           {role.roleName}
                         </span>
+
+                        {isPrimary && (
+                          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
+                            Core Brand
+                          </span>
+                        )}
+
                         {role.isLocked && (
-                          <span className="inline-flex items-center gap-0.5 text-[10px] font-mono text-slate-500 bg-slate-100 px-1.5 py-0.2 rounded border border-border/60">
-                            <Lock className="size-2.5" /> Locked
+                          <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-muted text-muted-foreground border border-border/80">
+                            <Lock className="size-2.5" /> LOCKED
+                          </span>
+                        )}
+
+                        {isEdited && !role.isLocked && (
+                          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/20 uppercase">
+                            EDITED
                           </span>
                         )}
                       </div>
-                      <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">
-                        {role.usageNote || `Canonical ${role.roleName.toLowerCase()} brand tone`}
+                      <p className="text-xs font-sans text-muted-foreground leading-normal max-w-sm">
+                        {usageNote}
                       </p>
                     </div>
                   </div>
 
-                  {/* Center: Hex, RGB & Copy */}
-                  <div className="flex items-center gap-4">
-                    {/* Hex Editor with copy */}
-                    <div className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-border/80">
-                      <span className="text-xs font-mono font-bold text-foreground">
-                        {role.hex}
+                  {/* Center: Values Block (HEX + RGB) */}
+                  <div className="flex items-center gap-6 min-w-[200px]">
+                    <div className="flex flex-col gap-0.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm font-bold font-mono text-foreground tracking-wide">
+                          {role.hex}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => handleCopyHex(e, role.hex, role.roleName)}
+                          className="text-muted-foreground hover:text-foreground p-1 rounded-md transition-colors hover:bg-muted"
+                          title="Copy Hex"
+                        >
+                          {copiedRole === role.roleName ? (
+                            <Check className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+                          ) : (
+                            <Copy className="size-3.5" />
+                          )}
+                        </button>
+                      </div>
+                      <span className="text-xs font-mono text-muted-foreground">
+                        RGB {role.rgb || hexToRgb(role.hex) ? `${hexToRgb(role.hex)?.r}, ${hexToRgb(role.hex)?.g}, ${hexToRgb(role.hex)?.b}` : "—"}
                       </span>
-                      <button
-                        type="button"
-                        onClick={(e) => handleCopyHex(e, role.hex, role.roleName)}
-                        className="text-muted-foreground hover:text-foreground p-0.5 rounded"
-                        title="Copy Hex"
-                      >
-                        {copiedRole === role.roleName ? (
-                          <Check className="size-3 text-emerald-600" />
-                        ) : (
-                          <Copy className="size-3" />
-                        )}
-                      </button>
                     </div>
-
-                    {/* RGB Triplet */}
-                    <span className="hidden sm:inline text-xs font-mono text-muted-foreground">
-                      RGB: {role.rgb}
-                    </span>
                   </div>
 
-                  {/* Right: Contrast Verdict Chip & Lock Action */}
-                  <div className="flex items-center gap-3 justify-end min-w-[200px]">
+                  {/* Contrast Block */}
+                  <div className="flex items-center justify-start md:justify-center min-w-[140px]">
                     {renderContrastBadge(role)}
+                  </div>
 
-                    {/* Lock Affordance (Data-driven for all 5 roles) */}
+                  {/* Right: Control Cluster (Adjust, Copy, Lock) */}
+                  <div className="flex items-center gap-1.5 justify-end">
+                    {/* Sliders / Color Picker Trigger */}
+                    <label
+                      className="relative p-2 rounded-lg border border-border/80 bg-background hover:bg-muted cursor-pointer transition-colors text-muted-foreground hover:text-foreground group/slider"
+                      title="Adjust this role only — free"
+                    >
+                      <Sliders className="size-3.5" />
+                      <input
+                        type="color"
+                        value={role.hex}
+                        onChange={(e) => handleRoleHexChange(role.roleName, e.target.value)}
+                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                      />
+                    </label>
+
+                    {/* Copy Button */}
+                    <button
+                      type="button"
+                      onClick={(e) => handleCopyHex(e, role.hex, role.roleName)}
+                      className="p-2 rounded-lg border border-border/80 bg-background hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                      title="Copy Hex"
+                    >
+                      {copiedRole === role.roleName ? (
+                        <Check className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+                      ) : (
+                        <Copy className="size-3.5" />
+                      )}
+                    </button>
+
+                    {/* Lock Toggle Affordance */}
                     <button
                       type="button"
                       onClick={() => handleToggleLock(role.roleName)}
                       className={`p-2 rounded-lg border transition-colors ${
                         role.isLocked
-                          ? "bg-slate-900 text-white border-slate-900 shadow-2xs"
-                          : "bg-white text-muted-foreground hover:text-foreground border-border hover:bg-slate-50"
+                          ? "bg-foreground text-background border-foreground shadow-2xs font-bold"
+                          : "bg-background text-muted-foreground hover:text-foreground border-border/80 hover:bg-muted"
                       }`}
-                      title={role.isLocked ? "Role is locked against palette regeneration" : "Lock role against palette regeneration"}
+                      title={
+                        role.isLocked
+                          ? "Role is locked against palette regeneration"
+                          : "Lock role against palette regeneration"
+                      }
                     >
                       {role.isLocked ? (
                         <Lock className="size-3.5" />
@@ -723,101 +819,311 @@ export function ColorSystemModal({
             })}
           </div>
 
-          {/* Visual Proportion Distribution Bar */}
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between text-[11px] font-mono text-muted-foreground">
-              <span>PROPORTION RATIO (60-30-10 RULE)</span>
-              <span>60% Ground · 30% Primary/Text · 10% Accent/Secondary</span>
-            </div>
-            <div className="h-3 w-full rounded-full overflow-hidden flex shadow-inner border border-black/10">
-              <div style={{ width: "60%", backgroundColor: bgColor }} title="Background 60%" />
-              <div style={{ width: "20%", backgroundColor: primaryColor }} title="Primary 20%" />
-              <div style={{ width: "10%", backgroundColor: textColor }} title="Text 10%" />
-              <div style={{ width: "6%", backgroundColor: secondaryColor }} title="Secondary 6%" />
-              <div style={{ width: "4%", backgroundColor: accentColor }} title="Accent 4%" />
-            </div>
-          </div>
-
-          {/* Live Mock UI Preview Component */}
-          <div className="rounded-xl border border-border p-5 space-y-3 bg-slate-50/50">
+          {/* SECTION B: LIVE APPLICATION PREVIEW ("How it looks together", Figma Node 57004:11484) */}
+          <div className="space-y-3 pt-2">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
-                <Eye className="size-3.5 text-blue-600" />
-                <span>LIVE UI APPLICATION PREVIEW</span>
+              <h3 className="text-base font-bold font-heading text-foreground">
+                How it looks together
+              </h3>
+
+              {/* Segmented control: Website, Invoice, Deck */}
+              <div className="flex items-center p-1 rounded-lg bg-muted border border-border/80">
+                {(
+                  [
+                    { key: "website", label: "Website", icon: Layout },
+                    { key: "invoice", label: "Invoice", icon: FileText },
+                    { key: "deck", label: "Deck", icon: Presentation },
+                  ] as const
+                ).map((tab) => {
+                  const Icon = tab.icon;
+                  return (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      onClick={() => setPreviewTab(tab.key)}
+                      className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-mono font-medium transition-all ${
+                        previewTab === tab.key
+                          ? "bg-background text-foreground shadow-xs font-semibold"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <Icon className="size-3" />
+                      <span>{tab.label}</span>
+                    </button>
+                  );
+                })}
               </div>
-              <span className="text-[10px] font-mono text-muted-foreground">
-                Real-time Mock Fragment
-              </span>
             </div>
 
+            {/* 220px tall preview band filled with Background role colour */}
             <div
-              className="p-6 rounded-xl border transition-all duration-200 shadow-sm"
-              style={{ backgroundColor: bgColor, borderColor: `${textColor}20` }}
+              className="h-[220px] rounded-xl border border-border/80 p-6 flex flex-col justify-between overflow-hidden relative shadow-inner transition-colors duration-200"
+              style={{ backgroundColor: bgColor }}
             >
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="text-[10px] font-bold font-mono px-2 py-0.5 rounded-full border"
-                      style={{
-                        backgroundColor: `${secondaryColor}15`,
-                        color: secondaryColor,
-                        borderColor: `${secondaryColor}30`,
-                      }}
-                    >
-                      ENTERPRISE READY
+              {previewTab === "website" && (
+                <div className="flex flex-col justify-between h-full">
+                  {/* Top Bar */}
+                  <div className="flex items-center justify-between pb-3 border-b border-black/10">
+                    <div className="flex items-center gap-2">
+                      {logoMarkUri ? (
+                        <div
+                          className="size-5 rounded-md flex items-center justify-center p-0.5 overflow-hidden"
+                          style={{ backgroundColor: `${primaryColor}20`, border: `1px solid ${primaryColor}40` }}
+                        >
+                          <img src={logoMarkUri} alt="Logo" className="w-full h-full object-contain" />
+                        </div>
+                      ) : (
+                        <div
+                          className="size-5 rounded-md flex items-center justify-center font-bold text-xs"
+                          style={{ backgroundColor: primaryColor, color: bgColor }}
+                        >
+                          {brandName.charAt(0)}
+                        </div>
+                      )}
+                      <span
+                        className="text-xs font-bold font-heading"
+                        style={{ color: secondaryColor }}
+                      >
+                        {brandName}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-3 text-[11px] font-medium" style={{ color: textColor }}>
+                      <span className="opacity-80">Platform</span>
+                      <span className="opacity-80">Solutions</span>
+                      <span className="opacity-80">Pricing</span>
+                      <span
+                        className="px-2 py-0.5 rounded text-[10px] font-mono font-bold"
+                        style={{
+                          backgroundColor: `${accentColor}15`,
+                          color: accentColor,
+                          border: `1px solid ${accentColor}30`,
+                        }}
+                      >
+                        Live Network
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Hero Body */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-2">
+                    <div className="space-y-1">
+                      <h4
+                        className="text-lg font-bold font-heading tracking-tight leading-snug"
+                        style={{ color: textColor }}
+                      >
+                        Empowering Next-Gen Autonomous Systems
+                      </h4>
+                      <p
+                        className="text-xs font-sans max-w-md leading-relaxed"
+                        style={{ color: textColor, opacity: 0.75 }}
+                      >
+                        Engineered with pure contrast harmony, live WCAG 2.1 compliance, and verified enterprise security.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        className="px-4 py-2 rounded-lg text-xs font-bold shadow-xs transition-opacity hover:opacity-90"
+                        style={{ backgroundColor: primaryColor, color: bgColor }}
+                      >
+                        Get Started
+                      </button>
+                      <button
+                        type="button"
+                        className="px-3.5 py-2 rounded-lg text-xs font-semibold border transition-colors"
+                        style={{
+                          backgroundColor: "transparent",
+                          color: textColor,
+                          borderColor: `${textColor}30`,
+                        }}
+                      >
+                        Documentation
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Footer Stats Strip */}
+                  <div className="flex items-center gap-6 pt-2 border-t border-black/10 text-[10px] font-mono" style={{ color: textColor, opacity: 0.65 }}>
+                    <span>99.99% Uptime SLA</span>
+                    <span>·</span>
+                    <span>Zero-Trust Architecture</span>
+                    <span>·</span>
+                    <span>Global Edge Deployments</span>
+                  </div>
+                </div>
+              )}
+
+              {previewTab === "invoice" && (
+                <div className="flex flex-col justify-between h-full text-xs">
+                  {/* Invoice Header */}
+                  <div className="flex items-center justify-between pb-3 border-b border-black/10">
+                    <div className="flex items-center gap-2">
+                      {logoMarkUri ? (
+                        <div
+                          className="size-5 rounded-md flex items-center justify-center p-0.5 overflow-hidden"
+                          style={{ backgroundColor: `${primaryColor}20`, border: `1px solid ${primaryColor}40` }}
+                        >
+                          <img src={logoMarkUri} alt="Logo" className="w-full h-full object-contain" />
+                        </div>
+                      ) : (
+                        <div
+                          className="size-5 rounded-md flex items-center justify-center font-bold text-xs"
+                          style={{ backgroundColor: primaryColor, color: bgColor }}
+                        >
+                          {brandName.charAt(0)}
+                        </div>
+                      )}
+                      <span className="font-bold text-sm font-heading" style={{ color: secondaryColor }}>
+                        {brandName} Technologies Inc.
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-[11px]" style={{ color: textColor, opacity: 0.7 }}>
+                        #INV-2026-089
+                      </span>
+                      <span
+                        className="px-2 py-0.5 rounded text-[10px] font-mono font-bold"
+                        style={{
+                          backgroundColor: `${accentColor}15`,
+                          color: accentColor,
+                          border: `1px solid ${accentColor}30`,
+                        }}
+                      >
+                        PAID
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Line Items Table */}
+                  <div className="space-y-1.5 py-2">
+                    <div className="flex justify-between font-mono text-[11px] pb-1 border-b border-black/5" style={{ color: textColor, opacity: 0.6 }}>
+                      <span>DESCRIPTION</span>
+                      <span>AMOUNT</span>
+                    </div>
+                    <div className="flex justify-between font-medium text-xs" style={{ color: textColor }}>
+                      <span>Enterprise Platform Subscription (Annual)</span>
+                      <span className="font-mono font-bold">$12,000.00</span>
+                    </div>
+                    <div className="flex justify-between font-medium text-xs" style={{ color: textColor }}>
+                      <span>Dedicated Edge Compute Cluster</span>
+                      <span className="font-mono font-bold">$3,500.00</span>
+                    </div>
+                  </div>
+
+                  {/* Invoice Total */}
+                  <div className="flex items-center justify-between pt-2 border-t border-black/10">
+                    <span className="text-[11px] font-mono" style={{ color: textColor, opacity: 0.7 }}>
+                      DUE UPON RECEIPT
                     </span>
-                    <span
-                      className="text-[11px] font-semibold"
-                      style={{ color: accentColor }}
-                    >
-                      ● Active Network
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold" style={{ color: textColor }}>
+                        TOTAL:
+                      </span>
+                      <span
+                        className="text-base font-bold font-mono"
+                        style={{ color: primaryColor }}
+                      >
+                        $15,500.00 USD
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {previewTab === "deck" && (
+                <div className="flex flex-col justify-between h-full">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="px-2 py-0.5 rounded text-[10px] font-mono font-bold"
+                        style={{
+                          backgroundColor: `${accentColor}15`,
+                          color: accentColor,
+                          border: `1px solid ${accentColor}30`,
+                        }}
+                      >
+                        EXECUTIVE SUMMARY
+                      </span>
+                      <span className="text-xs font-mono" style={{ color: textColor, opacity: 0.5 }}>
+                        SLIDE 04
+                      </span>
+                    </div>
+
+                    <span className="text-xs font-bold font-heading" style={{ color: secondaryColor }}>
+                      {brandName}
                     </span>
                   </div>
-                  <h4
-                    className="text-lg font-bold tracking-tight"
-                    style={{ color: textColor }}
-                  >
-                    Autonomous Infrastructure Suite
-                  </h4>
-                  <p
-                    className="text-xs leading-relaxed max-w-lg"
-                    style={{ color: `${textColor}B3` }}
-                  >
-                    Experience deterministic contrast pairing with live WCAG 2.1 compliance across high-density creator dashboards.
-                  </p>
-                </div>
 
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    type="button"
-                    className="px-4 py-2 rounded-lg text-xs font-bold shadow-xs transition-opacity hover:opacity-90"
-                    style={{ backgroundColor: primaryColor, color: bgColor }}
-                  >
-                    Deploy Node
-                  </button>
-                  <button
-                    type="button"
-                    className="px-3.5 py-2 rounded-lg text-xs font-semibold border transition-colors"
-                    style={{
-                      backgroundColor: "transparent",
-                      color: textColor,
-                      borderColor: `${textColor}30`,
-                    }}
-                  >
-                    Documentation
-                  </button>
+                  <div className="space-y-1.5 py-1">
+                    <h4
+                      className="text-xl font-bold font-heading tracking-tight"
+                      style={{ color: textColor }}
+                    >
+                      Accelerating Market Adoption with Autonomous Value
+                    </h4>
+                    <p className="text-xs max-w-lg leading-relaxed" style={{ color: textColor, opacity: 0.75 }}>
+                      Capturing market share through deterministic infrastructure, unified APIs, and zero friction creator-to-investor liquidity.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3 pt-2 border-t border-black/10">
+                    <div
+                      className="p-2.5 rounded-lg border flex flex-col"
+                      style={{
+                        backgroundColor: `${primaryColor}08`,
+                        borderColor: `${primaryColor}20`,
+                      }}
+                    >
+                      <span className="text-base font-bold font-mono" style={{ color: primaryColor }}>
+                        +142%
+                      </span>
+                      <span className="text-[10px] font-mono" style={{ color: textColor, opacity: 0.7 }}>
+                        MoM Growth
+                      </span>
+                    </div>
+                    <div
+                      className="p-2.5 rounded-lg border flex flex-col"
+                      style={{
+                        backgroundColor: `${accentColor}08`,
+                        borderColor: `${accentColor}20`,
+                      }}
+                    >
+                      <span className="text-base font-bold font-mono" style={{ color: accentColor }}>
+                        99.4%
+                      </span>
+                      <span className="text-[10px] font-mono" style={{ color: textColor, opacity: 0.7 }}>
+                        Retention Rate
+                      </span>
+                    </div>
+                    <div
+                      className="p-2.5 rounded-lg border flex flex-col"
+                      style={{
+                        backgroundColor: `${secondaryColor}08`,
+                        borderColor: `${secondaryColor}20`,
+                      }}
+                    >
+                      <span className="text-base font-bold font-mono" style={{ color: secondaryColor }}>
+                        $4.2M
+                      </span>
+                      <span className="text-[10px] font-mono" style={{ color: textColor, opacity: 0.7 }}>
+                        Annual ARR Run-Rate
+                      </span>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
 
         </div>
 
-        {/* 3. Modal Footer */}
-        <div className="flex items-center justify-between border-t border-border/80 px-6 py-4 bg-white shrink-0">
+        {/* Modal Footer (Figma Node 57004:11484) */}
+        <div className="flex items-center justify-between border-t border-border px-6 py-4 bg-card shrink-0">
           <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
-            <Info className="size-3.5 text-blue-600" />
+            <Info className="size-3.5 text-primary shrink-0" />
             <span>5 Canonical Roles · Free Hex Edits · 3-Cap Palette Regen</span>
           </div>
 
@@ -828,7 +1134,7 @@ export function ColorSystemModal({
             <Button
               onClick={handleConfirm}
               disabled={isConfirming || isLoadingInitial}
-              className="gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold"
+              className="gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold px-5"
             >
               <span>{isConfirming ? "Confirming..." : "Confirm Colour System"}</span>
               <ArrowRight className="size-3.5" />

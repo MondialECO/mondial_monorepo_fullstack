@@ -88,12 +88,12 @@ describe('BrandStudioShell Component', () => {
     );
 
     // Verify Progress bar segments
-    expect(screen.getByText('Strategy')).toBeInTheDocument();
-    expect(screen.getByText('Direction')).toBeInTheDocument();
-    expect(screen.getByText('Logo Type')).toBeInTheDocument();
-    expect(screen.getByText('Logo')).toBeInTheDocument();
-    expect(screen.getByText('Colour')).toBeInTheDocument();
-    expect(screen.getByText('Typography')).toBeInTheDocument();
+    expect(screen.getAllByText('Strategy').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Direction').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Logo type').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Logo').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Colour').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Typography').length).toBeGreaterThan(0);
 
     // Verify accumulated Result Cards on canvas
     expect(screen.getByText('Autonomous AI defense system for cloud infrastructure.')).toBeInTheDocument();
@@ -102,7 +102,7 @@ describe('BrandStudioShell Component', () => {
 
 
     // Verify resumed active step is Logo Type modal
-    expect(screen.getByText(/Choose Your Logo Type Archetype/i)).toBeInTheDocument();
+    expect(screen.getByText(/What kind of logo\?/i)).toBeInTheDocument();
   });
 
   it('locks subsequent steps and prevents opening locked steps', async () => {
@@ -142,7 +142,7 @@ describe('BrandStudioShell Component', () => {
 
     // Verify Logo Creation Modal renders as overlay
     await waitFor(() => {
-      expect(screen.getByText(/Select Your Brand Mark/i)).toBeInTheDocument();
+      expect(screen.getByText(/Choose your logo/i)).toBeInTheDocument();
     });
   });
 
@@ -172,7 +172,7 @@ describe('BrandStudioShell Component', () => {
 
     // Verify Variation Set Modal resumes automatically
     await waitFor(() => {
-      expect(screen.getByText(/Brand Variation Set/i)).toBeInTheDocument();
+      expect(screen.getByText(/Your logo, in every form/i)).toBeInTheDocument();
       expect(screen.getByText(/Approve all seven/i)).toBeInTheDocument();
     });
   });

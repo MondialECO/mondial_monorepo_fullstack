@@ -18,7 +18,7 @@ export function LogoResultCard({ logo, brandName = "Brand", onEdit }: LogoResult
 
   const primaryVariation = logo.variations?.primary;
   const rawLockupAsset = primaryVariation?.svgUri || concept?.lockupAssetUri || concept?.markAssetUri;
-  const lockupAsset = resolveMediaUrl(rawLockupAsset);
+  const lockupAsset = resolveMediaUrl(rawLockupAsset, logo.regenerateCount);
   const variationCount = logo.variations ? Object.keys(logo.variations).length : 0;
   const isApproved = Boolean(logo.approvedAt);
 
@@ -66,6 +66,7 @@ export function LogoResultCard({ logo, brandName = "Brand", onEdit }: LogoResult
           {lockupAsset ? (
             /* eslint-disable-next-line @next/next/no-img-element */
             <img
+              key={`${logo.selectedConceptKey}-${logo.regenerateCount ?? 0}-${lockupAsset}`}
               src={lockupAsset}
               alt={`${brandName} Approved Logo`}
               className="max-h-full max-w-full object-contain"

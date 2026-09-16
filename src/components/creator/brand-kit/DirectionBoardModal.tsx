@@ -22,6 +22,7 @@ import {
 } from "@/types/creator/brand-kit";
 import { brandKitApi } from "@/lib/api-creator-brand-kit";
 import { RegenerateCapBadge } from "./RegenerateCapBadge";
+import { ModalWorkflowHeader } from "./ModalWorkflowHeader";
 import Link from "next/link";
 
 interface DirectionBoardModalProps {
@@ -201,6 +202,11 @@ export function DirectionBoardModal({
     typeWeight: kit?.direction?.adjustmentSettings?.typeWeight || "medium",
   });
 
+  // Filter state for "SHOW ME" chip bar
+  const [activeFilter, setActiveFilter] = useState<
+    "all" | "calmer" | "bolder" | "technical"
+  >("all");
+
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<{
@@ -238,6 +244,59 @@ export function DirectionBoardModal({
   const remainingCap = Math.max(0, 3 - regenerateCount);
   const isCapExhausted = remainingCap === 0;
 
+  // Filtered / Re-sorted candidates based on SHOW ME filter chip
+  const filteredCandidates = useMemo(() => {
+    if (activeFilter === "all") return candidates;
+    if (activeFilter === "calmer") {
+      return [...candidates].sort((a, b) => {
+        const aScore =
+          (a.feelLine + a.name + a.rationale).toLowerCase().includes("calm") ||
+          (a.feelLine + a.name).toLowerCase().includes("minimal")
+            ? 1
+            : 0;
+        const bScore =
+          (b.feelLine + b.name + b.rationale).toLowerCase().includes("calm") ||
+          (b.feelLine + b.name).toLowerCase().includes("minimal")
+            ? 1
+            : 0;
+        return bScore - aScore;
+      });
+    }
+    if (activeFilter === "bolder") {
+      return [...candidates].sort((a, b) => {
+        const aScore =
+          (a.feelLine + a.name + a.rationale).toLowerCase().includes("bold") ||
+          (a.feelLine + a.name).toLowerCase().includes("dynamic")
+            ? 1
+            : 0;
+        const bScore =
+          (b.feelLine + b.name + b.rationale).toLowerCase().includes("bold") ||
+          (b.feelLine + b.name).toLowerCase().includes("dynamic")
+            ? 1
+            : 0;
+        return bScore - aScore;
+      });
+    }
+    if (activeFilter === "technical") {
+      return [...candidates].sort((a, b) => {
+        const aScore =
+          (a.feelLine + a.name + a.rationale).toLowerCase().includes("tech") ||
+          (a.feelLine + a.name).toLowerCase().includes("precision") ||
+          (a.feelLine + a.name).toLowerCase().includes("system")
+            ? 1
+            : 0;
+        const bScore =
+          (b.feelLine + b.name + b.rationale).toLowerCase().includes("tech") ||
+          (b.feelLine + b.name).toLowerCase().includes("precision") ||
+          (b.feelLine + b.name).toLowerCase().includes("system")
+            ? 1
+            : 0;
+        return bScore - aScore;
+      });
+    }
+    return candidates;
+  }, [candidates, activeFilter]);
+
   // Selected Candidate object
   const selectedCandidate = useMemo(() => {
     return (
@@ -247,44 +306,51 @@ export function DirectionBoardModal({
     );
   }, [candidates, selectedKey]);
 
-  // Derive single letterform initial for abstract specimen
-  const brandInitial = useMemo(() => {
-    const name =
+  // Business Name derived directly from real strategy
+  const businessName = useMemo(() => {
+    return (
+      currentKit?.strategy?.nameDisplayForm ||
       kit?.strategy?.nameDisplayForm ||
       kit?.strategy?.businessName ||
-      "M";
-    return name.trim().charAt(0).toUpperCase() || "M";
-  }, [kit]);
+      "Brand"
+    );
+  }, [currentKit, kit]);
+
+  // Derive letterform pair from real business name (e.g. "Instaly" -> "Ii", "CyberLock" -> "Cc", "AutoInvoice" -> "Aa")
+  const brandInitialPair = useMemo(() => {
+    const firstChar = businessName.trim().charAt(0).toUpperCase() || "A";
+    return `${firstChar}${firstChar.toLowerCase()}`;
+  }, [businessName]);
 
   // Generate / Regenerate Candidates (Costs 7 credits, capped at 3)
   const handleGenerate = async () => {
     if (isGenerating || isCapExhausted) return;
+
     setIsGenerating(true);
     setError(null);
 
     try {
       const updatedKit = await brandKitApi.generateDirections(
         ideaId,
-        currentKit?.version ?? kit?.version
+        kit?.version
       );
-      if (updatedKit) {
-        setCurrentKit(updatedKit);
-        if (updatedKit.direction?.candidates) {
-          setCandidates(updatedKit.direction.candidates);
-          setSelectedKey(
-            updatedKit.direction.selectedDirectionKey ||
-              updatedKit.direction.candidates[0]?.key ||
-              ""
-          );
-          setRegenerateCount(updatedKit.direction.regenerateCount || 0);
-        }
+
+      setCurrentKit(updatedKit);
+      if (updatedKit?.direction?.candidates) {
+        setCandidates(updatedKit.direction.candidates);
+        setSelectedKey(
+          updatedKit.direction.selectedDirectionKey ||
+            updatedKit.direction.candidates[0]?.key ||
+            ""
+        );
       }
+      setRegenerateCount(updatedKit?.direction?.regenerateCount || 0);
     } catch (err: any) {
       const status = err?.response?.status;
       const msg =
         err?.response?.data?.message ||
         err?.message ||
-        "Generation failed. Please try again.";
+        "Failed to generate visual directions.";
 
       if (status === 402) {
         setError({
@@ -343,39 +409,22 @@ export function DirectionBoardModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 md:p-8 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-5xl max-h-[92vh] flex flex-col bg-card border border-border/80 rounded-2xl shadow-2xl overflow-hidden">
-        {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border/60 bg-muted/20 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <Palette className="size-4.5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-[11px] font-semibold text-primary uppercase tracking-wider">
-                  STEP 2 OF 6
-                </span>
-                <span className="text-xs text-muted-foreground">•</span>
-                <span className="text-xs font-medium text-muted-foreground">
-                  Visual Direction Board
-                </span>
-              </div>
-              <h2 className="text-lg font-heading font-bold text-foreground">
-                Select Your Visual Direction
-              </h2>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {/* Regenerate All Four Button */}
-            <div className="flex items-center gap-2 bg-background border border-border/80 rounded-xl p-1 px-2.5 shadow-2xs">
+      <div className="relative w-full max-w-5xl max-h-[92vh] flex flex-col bg-card border border-border/80 rounded-2xl shadow-2xl overflow-hidden bg-white">
+        {/* Modal Header & 6-Step Workflow Track (Figma Node 57003:9812 / 57012:9066) */}
+        <ModalWorkflowHeader
+          title="Pick a visual direction"
+          subtitle="This sets the visual language. Logos are drawn inside the direction you pick."
+          currentStep={2}
+          onClose={onClose}
+          headerActions={
+            <div className="flex items-center gap-2">
               <Button
                 type="button"
-                variant="ghost"
+                variant="outline"
                 size="sm"
                 disabled={isGenerating || isCapExhausted}
                 onClick={handleGenerate}
-                className="h-7 px-2 text-xs font-medium gap-1.5 hover:bg-muted text-foreground disabled:opacity-50"
+                className="h-8 px-3 text-xs font-medium gap-1.5 hover:bg-muted text-foreground disabled:opacity-50 font-sans cursor-pointer"
                 title={
                   isCapExhausted
                     ? "Regeneration cap reached (3/3)"
@@ -388,29 +437,78 @@ export function DirectionBoardModal({
                 <span>Regenerate all four</span>
               </Button>
 
-              <div className="h-4 w-px bg-border/60" />
-
-              {/* 7 credits chip */}
-              <span className="inline-flex items-center gap-1 font-mono text-[10px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded">
-                <Sparkles className="size-2.5" />
+              {/* 7 CREDITS chip */}
+              <span className="inline-flex items-center gap-1 font-mono text-[11px] font-semibold text-muted-foreground bg-muted/60 px-2.5 py-1 rounded-md border border-border/60">
+                <Sparkles className="size-3 text-primary" />
                 7 CREDITS
               </span>
 
-              {/* Cap Badge */}
-              <RegenerateCapBadge usedCount={regenerateCount} maxCount={3} />
+              {/* Amber Cap Badge */}
+              <span
+                className="inline-flex items-center gap-1 font-mono text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 tabular-nums shrink-0"
+                title={`${remainingCap} of 3 regenerations left`}
+              >
+                {`${remainingCap}/3 LEFT`}
+              </span>
             </div>
+          }
+        />
 
-            {/* Close modal */}
-            <Button
+        {/* Section - Visual direction filters (Figma Node 57012:9066) */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-6 sm:px-8 py-3.5 border-b border-border/70 bg-muted/15 shrink-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[11px] font-semibold text-muted-foreground tracking-wider uppercase font-sans pr-1">
+              SHOW ME
+            </span>
+            <button
               type="button"
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="size-8 rounded-lg text-muted-foreground hover:text-foreground"
+              onClick={() => setActiveFilter("all")}
+              className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors font-sans cursor-pointer ${
+                activeFilter === "all"
+                  ? "bg-foreground text-background font-semibold shadow-2xs"
+                  : "bg-card hover:bg-muted text-muted-foreground hover:text-foreground border border-border/60"
+              }`}
             >
-              <X className="size-4" />
-            </Button>
+              All four
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveFilter("calmer")}
+              className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors font-sans cursor-pointer ${
+                activeFilter === "calmer"
+                  ? "bg-foreground text-background font-semibold shadow-2xs"
+                  : "bg-card hover:bg-muted text-muted-foreground hover:text-foreground border border-border/60"
+              }`}
+            >
+              Calmer
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveFilter("bolder")}
+              className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors font-sans cursor-pointer ${
+                activeFilter === "bolder"
+                  ? "bg-foreground text-background font-semibold shadow-2xs"
+                  : "bg-card hover:bg-muted text-muted-foreground hover:text-foreground border border-border/60"
+              }`}
+            >
+              Bolder
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveFilter("technical")}
+              className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors font-sans cursor-pointer ${
+                activeFilter === "technical"
+                  ? "bg-foreground text-background font-semibold shadow-2xs"
+                  : "bg-card hover:bg-muted text-muted-foreground hover:text-foreground border border-border/60"
+              }`}
+            >
+              More technical
+            </button>
           </div>
+
+          <span className="text-xs text-muted-foreground font-sans">
+            Filtering re-sorts what you see — it doesn't use a regenerate.
+          </span>
         </div>
 
         {/* Inline Error Alert if any */}
@@ -433,10 +531,10 @@ export function DirectionBoardModal({
         )}
 
         {/* Modal Scrollable Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-6">
           {/* Loading Skeleton during initial generation */}
           {isGenerating && candidates.length === 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 min-h-[440px] items-center justify-center text-center p-12">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 min-h-[440px] items-center justify-center text-center p-12">
               <div className="col-span-full flex flex-col items-center gap-3">
                 <RefreshCw className="size-8 text-primary animate-spin" />
                 <h3 className="text-base font-semibold text-foreground font-heading">
@@ -449,44 +547,74 @@ export function DirectionBoardModal({
             </div>
           )}
 
-          {/* 2x2 Direction Boards Grid */}
-          {candidates.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {candidates.map((candidate) => {
+          {/* 2x2 DIRECTION BOARDS GRID (24px gutters, height-matched) */}
+          {filteredCandidates.length > 0 && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+              {filteredCandidates.map((candidate, idx) => {
                 const isSelected = selectedKey === candidate.key;
-                const palette = candidate.colorPalette || ["#111827", "#3B82F6", "#93C5FD", "#F3F4F6"];
-                const baseTone = palette[0] || "#1e293b";
-                const accentTone = palette[1] || palette[2] || "#3b82f6";
-                const lightTone = palette[3] || palette[2] || "#f8fafc";
+                const palette = candidate.colorPalette || [
+                  "#0F172A",
+                  "#334155",
+                  "#64748B",
+                  "#CBD5E1",
+                ];
+                const baseTone = palette[0] || "#0F172A";
+                const accentTone = palette[1] || palette[2] || "#3B82F6";
+                const lightTone = palette[3] || palette[2] || "#F8FAFC";
 
-                // Adjusted weight for preview if this card is selected
-                const fontDisplayWeight =
-                  isSelected && adjustments.typeWeight === "bold"
-                    ? "700"
-                    : isSelected && adjustments.typeWeight === "regular"
-                    ? "400"
-                    : "600";
+                // Dynamic specimen tags matching Figma design
+                const specimenTag =
+                  idx === 0
+                    ? "SPECIMEN · GRID 01"
+                    : idx === 1
+                    ? "DIRECTION 02"
+                    : idx === 2
+                    ? "SPECIMEN · ORGANIC 03"
+                    : "SYSTEM // SYS_04";
+
+                const specimenSub =
+                  idx === 0
+                    ? "DISCIPLINE · BALANCE · CLARITY"
+                    : idx === 1
+                    ? "DECISIVE · DYNAMIC · ELECTRIC"
+                    : idx === 2
+                    ? "INVITING · HARMONIC · GROUNDED"
+                    : "PRECISION · MODULAR · VELOCITY";
 
                 return (
                   <div
                     key={candidate.key}
                     onClick={() => setSelectedKey(candidate.key)}
-                    className={`group relative flex flex-col rounded-xl border bg-card text-card-foreground shadow-xs transition-all duration-200 cursor-pointer overflow-hidden ${
+                    className={`group relative flex flex-col rounded-2xl border bg-card text-card-foreground shadow-xs transition-all duration-200 cursor-pointer overflow-hidden ${
                       isSelected
-                        ? "border-primary ring-2 ring-primary/20 shadow-md"
+                        ? "border-primary ring-2 ring-primary/30 shadow-md"
                         : "border-border/80 hover:border-primary/50 hover:shadow-sm"
                     }`}
                   >
-                    {/* Abstract Specimen Preview Band (Abstract style specimen ONLY — NO logos, NO wordmarks) */}
+                    {/* a) Preview Band (200px tall, abstract style specimen) */}
                     <div
-                      className="relative h-36 w-full flex items-center justify-between p-5 overflow-hidden border-b border-border/40 select-none"
+                      className="relative h-[200px] w-full flex flex-col justify-between p-6 overflow-hidden border-b border-border/40 select-none"
                       style={{
                         backgroundColor: baseTone,
                         color: lightTone,
                       }}
                     >
+                      {/* Top Row: Specimen Tag & Pinned Check Badge */}
+                      <div className="relative z-10 flex items-center justify-between">
+                        <span className="font-mono text-[10px] tracking-wider uppercase font-semibold opacity-75">
+                          {specimenTag}
+                        </span>
+
+                        {/* Pinned 24px Blue Check Badge in Top-Right Corner */}
+                        {isSelected && (
+                          <div className="size-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-xs">
+                            <Check className="size-3.5 stroke-[3]" />
+                          </div>
+                        )}
+                      </div>
+
                       {/* Abstract Background Motif */}
-                      <div className="absolute right-2 top-0 bottom-0 w-36 pointer-events-none flex items-center justify-center">
+                      <div className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-40">
                         <AbstractMotifSpecimen
                           motifKey={candidate.motifKey}
                           accentColor={accentTone}
@@ -494,94 +622,112 @@ export function DirectionBoardModal({
                         />
                       </div>
 
-                      {/* Large Abstract Letterform Specimen */}
-                      <div className="relative z-10 flex flex-col justify-between h-full">
-                        <span
-                          className="text-4xl sm:text-5xl tracking-tight leading-none"
-                          style={{
-                            fontFamily: getFontFamilyCss(candidate.displayTypeface),
-                            fontWeight: fontDisplayWeight,
-                          }}
-                        >
-                          {brandInitial}
-                        </span>
+                      {/* Bottom Row: Large Letterform Specimen & Direction Descriptor */}
+                      <div className="relative z-10 flex items-end justify-between gap-4">
+                        <div className="flex flex-col">
+                          <span
+                            className="text-5xl sm:text-6xl font-semibold leading-none tracking-tight"
+                            style={{
+                              fontFamily: getFontFamilyCss(
+                                candidate.displayTypeface
+                              ),
+                            }}
+                          >
+                            {brandInitialPair}
+                          </span>
+                          <span
+                            className="text-xs font-medium tracking-wide mt-1.5 opacity-85 truncate max-w-[200px]"
+                            style={{
+                              fontFamily: getFontFamilyCss(
+                                candidate.textTypeface
+                              ),
+                            }}
+                          >
+                            {businessName}
+                          </span>
+                        </div>
 
-                        {/* Abstract Type Sample Phrase */}
-                        <span
-                          className="text-[11px] opacity-85 tracking-normal line-clamp-1"
-                          style={{
-                            fontFamily: getFontFamilyCss(candidate.textTypeface),
-                          }}
-                        >
-                          Aa Bb Gg 123 • {candidate.name}
-                        </span>
-                      </div>
-
-                      {/* Top Right Selection Badge */}
-                      <div
-                        className={`size-6 rounded-full flex items-center justify-center transition-all ${
-                          isSelected
-                            ? "bg-primary text-primary-foreground shadow-sm scale-100"
-                            : "bg-black/30 text-white/50 border border-white/20 opacity-0 group-hover:opacity-100 scale-90"
-                        }`}
-                      >
-                        <Check className="size-3.5 stroke-[3]" />
+                        <div className="text-right shrink-0">
+                          <span className="font-mono text-[11px] font-medium tracking-wider uppercase opacity-90 block">
+                            {specimenSub}
+                          </span>
+                        </div>
                       </div>
                     </div>
 
-                    {/* 4-Swatch Color Strip */}
-                    <div className="grid grid-cols-4 h-5 w-full border-b border-border/40">
+                    {/* b) Four-swatch colour strip (28px tall, edge to edge) */}
+                    <div className="grid grid-cols-4 h-7 w-full border-b border-border/40 shrink-0">
                       {palette.slice(0, 4).map((hex, i) => (
                         <div
                           key={i}
-                          className="h-full w-full transition-opacity hover:opacity-85"
+                          className="h-full w-full transition-opacity hover:opacity-90"
                           style={{ backgroundColor: hex }}
-                          title={`Color swatch: ${hex}`}
+                          title={`Swatch ${i + 1}: ${hex}`}
                         />
                       ))}
                     </div>
 
-                    {/* Board Content Details */}
-                    <div className="p-4 flex-1 flex flex-col justify-between gap-3">
-                      <div>
-                        {/* Title & Type Pairing Tags */}
-                        <div className="flex items-center justify-between gap-2 mb-1.5">
-                          <h3 className="text-base font-heading font-bold text-foreground tracking-tight">
+                    {/* c) Body Area (20px padding) */}
+                    <div className="p-5 sm:p-6 flex-1 flex flex-col justify-between gap-4">
+                      <div className="space-y-3">
+                        {/* Heading & Active Selection Badge */}
+                        <div className="flex items-center justify-between gap-3">
+                          <h3 className="text-lg font-heading font-semibold text-foreground tracking-tight">
                             {candidate.name}
                           </h3>
-                          <span className="font-mono text-[10px] text-muted-foreground bg-muted/60 px-2 py-0.5 rounded border border-border/40 shrink-0">
-                            {candidate.displayTypeface} + {candidate.textTypeface}
-                          </span>
+                          {isSelected && (
+                            <span className="font-sans text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded uppercase tracking-wider">
+                              ACTIVE SELECTION
+                            </span>
+                          )}
                         </div>
 
                         {/* Feel Line */}
-                        <p className="text-xs font-medium text-foreground/90 leading-relaxed mb-2.5">
+                        <p className="text-sm font-sans text-muted-foreground leading-relaxed">
                           {candidate.feelLine}
                         </p>
 
-                        {/* "Why this fits" Rationale */}
-                        <div className="p-2.5 rounded-lg bg-muted/30 border border-border/40">
-                          <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-muted-foreground block mb-0.5">
-                            Why this fits
+                        {/* WHY THIS FITS section */}
+                        <div className="pt-3 border-t border-border/50 space-y-1">
+                          <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-muted-foreground block">
+                            WHY THIS FITS
                           </span>
-                          <p className="text-[11px] text-muted-foreground leading-relaxed">
+                          <p className="text-[13px] font-sans text-foreground/80 leading-relaxed">
                             {candidate.rationale}
                           </p>
                         </div>
                       </div>
 
-                      {/* Bottom Selection Status */}
-                      <div className="flex items-center justify-between pt-2 border-t border-border/40 text-xs">
-                        <span className="font-mono text-[10px] text-muted-foreground">
-                          Motif: {candidate.motifKey?.replace(/_/g, " ")}
-                        </span>
-                        <span
-                          className={`font-semibold text-xs ${
-                            isSelected ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
-                          }`}
+                      {/* d) Footer Row */}
+                      <div className="flex items-center justify-between pt-3 border-t border-border/50">
+                        {/* Font Pairing Badges */}
+                        <div className="flex items-center gap-1.5 text-xs">
+                          <span className="font-sans text-xs text-foreground bg-muted/60 px-2.5 py-1 rounded-md border border-border/60">
+                            {candidate.displayTypeface}
+                          </span>
+                          <span className="text-muted-foreground text-xs font-sans">
+                            +
+                          </span>
+                          <span className="font-sans text-xs text-foreground bg-muted/60 px-2.5 py-1 rounded-md border border-border/60">
+                            {candidate.textTypeface}
+                          </span>
+                          <span className="sr-only">
+                            {candidate.displayTypeface} + {candidate.textTypeface}
+                          </span>
+                        </div>
+
+                        {/* Per-card action button */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedKey(candidate.key);
+                          }}
+                          className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors cursor-pointer"
+                          title={`Select ${candidate.name}`}
                         >
-                          {isSelected ? "Active Selection" : "Click to Select"}
-                        </span>
+                          <RefreshCw className="size-3.5" />
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -592,7 +738,7 @@ export function DirectionBoardModal({
 
           {/* Free "Adjust" Strip for Selected Candidate */}
           {selectedCandidate && (
-            <div className="p-4 rounded-xl bg-muted/20 border border-border/60 space-y-3">
+            <div className="p-4 sm:p-5 rounded-xl bg-muted/20 border border-border/60 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Sliders className="size-4 text-primary" />
@@ -698,9 +844,9 @@ export function DirectionBoardModal({
         </div>
 
         {/* Modal Footer */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-border/60 bg-muted/20 shrink-0">
+        <div className="flex items-center justify-between px-6 sm:px-8 py-4 border-t border-border/60 bg-muted/20 shrink-0">
           <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-muted-foreground font-sans">
               {selectedCandidate ? (
                 <>
                   Selected:{" "}
@@ -721,6 +867,7 @@ export function DirectionBoardModal({
               size="sm"
               onClick={onClose}
               disabled={isSubmitting}
+              className="font-sans cursor-pointer"
             >
               Cancel
             </Button>
@@ -730,7 +877,7 @@ export function DirectionBoardModal({
               size="sm"
               disabled={!selectedCandidate || isSubmitting || isGenerating}
               onClick={handleConfirm}
-              className="gap-1.5 font-semibold bg-primary text-primary-foreground hover:bg-primary/90"
+              className="gap-1.5 font-semibold bg-primary text-primary-foreground hover:bg-primary/90 font-sans cursor-pointer"
             >
               {isSubmitting ? (
                 <>

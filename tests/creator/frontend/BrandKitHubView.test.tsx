@@ -6,9 +6,10 @@ import { apiCreatorBrandKit } from '@/lib/api-creator-brand-kit';
 import { BrandKit } from '@/types/creator/brand-kit';
 
 // Mock useRouter
+const mockPush = vi.fn();
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
-    push: vi.fn(),
+    push: mockPush,
   }),
 }));
 
@@ -181,72 +182,102 @@ describe('BrandKitHubView', () => {
     vi.clearAllMocks();
   });
 
-  it('renders all 8 hub sections with real data and verified badges', () => {
+  it('renders all 8 hub sections matching Figma Node 57004:12057 with real data', () => {
     render(<BrandKitHubView ideaId="idea_cyber" initialKit={mockCompleteKit} />);
 
     // 1. Identity Hero Block
-    expect(screen.getByText(/All six steps complete/i)).toBeInTheDocument();
+    expect(screen.getAllByText('CyberLock Sentinel').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByRole('button', { name: /Download Brand Kit/i })).toBeInTheDocument();
-    expect(screen.getByText(/v3/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Edit in Studio/i })).toBeInTheDocument();
+    expect(screen.getByText(/All six steps complete/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/V3/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/Cybersecurity · Brand Kit/i)).toBeInTheDocument();
 
-    // 2. Logo Section (All 7 canonical variations)
-    expect(screen.getAllByText('Primary').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('Horizontal').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('Stacked').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('Icon-only').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('Black').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('White').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('Transparent').length).toBeGreaterThanOrEqual(1);
+    // 2. Logo Section (6 canonical lockup thumbnails)
+    expect(screen.getByText('7 VARIATIONS')).toBeInTheDocument();
+    expect(screen.getByText('HORIZONTAL')).toBeInTheDocument();
+    expect(screen.getByText('STACKED')).toBeInTheDocument();
+    expect(screen.getByText('ICON-ONLY')).toBeInTheDocument();
+    expect(screen.getByText('BLACK')).toBeInTheDocument();
+    expect(screen.getByText('WHITE')).toBeInTheDocument();
+    expect(screen.getByText('TRANSPARENT')).toBeInTheDocument();
 
     // 3. Colour System Section (5 canonical roles)
+    expect(screen.getByText('5 ROLES')).toBeInTheDocument();
+    expect(screen.getByText('Contrast checked')).toBeInTheDocument();
+    expect(screen.getByText('Primary')).toBeInTheDocument();
     expect(screen.getByText('Secondary')).toBeInTheDocument();
     expect(screen.getByText('Accent')).toBeInTheDocument();
     expect(screen.getByText('Background')).toBeInTheDocument();
     expect(screen.getByText('Text')).toBeInTheDocument();
-    expect(screen.getByText('#0F172A')).toBeInTheDocument();
-    expect(screen.getByText(/Ground canvas/i)).toBeInTheDocument();
+    expect(screen.getAllByText('#0F172A').length).toBeGreaterThanOrEqual(1);
 
     // 4. Typography System Section
-    expect(screen.getByText('DISPLAY FAMILY')).toBeInTheDocument();
-    expect(screen.getByText('TEXT FAMILY')).toBeInTheDocument();
-    expect(screen.getAllByText('Permanent').length).toBeGreaterThan(0);
+    expect(screen.getByText('4 ROLES · 2 FAMILIES')).toBeInTheDocument();
+    expect(screen.getByText('Open licence')).toBeInTheDocument();
+    expect(screen.getByText('Logo type')).toBeInTheDocument();
+    expect(screen.getByText('Heading')).toBeInTheDocument();
+    expect(screen.getByText('Body')).toBeInTheDocument();
+    expect(screen.getByText('Button & label')).toBeInTheDocument();
+    expect(screen.getByText('Start free')).toBeInTheDocument();
+    expect(screen.getByText('INVOICE NUMBER')).toBeInTheDocument();
 
     // 5. Strategy Section (All 6 confirmed facts)
-    expect(screen.getByText('1. INDUSTRY')).toBeInTheDocument();
-    expect(screen.getByText('2. TARGET AUDIENCE')).toBeInTheDocument();
-    expect(screen.getByText('3. CORE CONCEPT')).toBeInTheDocument();
-    expect(screen.getByText('4. POSITIONING')).toBeInTheDocument();
-    expect(screen.getByText('5. PERSONALITY TRAITS')).toBeInTheDocument();
-    expect(screen.getByText('6. TONE POSITION')).toBeInTheDocument();
+    expect(screen.getByText('BUSINESS NAME')).toBeInTheDocument();
+    expect(screen.getByText('CONCEPT')).toBeInTheDocument();
+    expect(screen.getByText('AUDIENCE')).toBeInTheDocument();
+    expect(screen.getByText('INDUSTRY')).toBeInTheDocument();
+    expect(screen.getByText('POSITIONING')).toBeInTheDocument();
+    expect(screen.getByText('PERSONALITY')).toBeInTheDocument();
     expect(screen.getAllByText('Cybersecurity').length).toBeGreaterThan(0);
 
-    // 6. Version History Panel
-    expect(screen.getByText(/Initial completed identity/i)).toBeInTheDocument();
+    // 6. Used By Section
+    expect(screen.getByText('2 OF 4 CONNECTED')).toBeInTheDocument();
+    expect(screen.getByText('Business plan')).toBeInTheDocument();
+    expect(screen.getByText('Landing page')).toBeInTheDocument();
+    expect(screen.getByText('Pitch deck')).toBeInTheDocument();
+    expect(screen.getByText('Invoices')).toBeInTheDocument();
 
-    // 7. Used By Section (Honest Not Connected State)
-    expect(screen.getByText('Business Plan')).toBeInTheDocument();
-    expect(screen.getByText('Landing Page')).toBeInTheDocument();
-    expect(screen.getByText('Pitch Deck')).toBeInTheDocument();
-    expect(screen.getByText('Invoices & Receipts')).toBeInTheDocument();
-    const notConnectedBadges = screen.getAllByText('Not connected yet');
-    expect(notConnectedBadges.length).toBe(4);
+    // 7. Coming Soon Cards
+    expect(screen.getByText('Brand assets')).toBeInTheDocument();
+    expect(screen.getByText('Brand guidelines PDF')).toBeInTheDocument();
 
-    // 8. Coming Soon Cards
-    expect(screen.getByText('Brand Assets Exporter')).toBeInTheDocument();
-    expect(screen.getByText('Brand Guidelines PDF')).toBeInTheDocument();
+    // 8. Footer Strip
+    expect(screen.getByText(/Edits apply the next time a generator runs/i)).toBeInTheDocument();
+
+    // 9. Next Action Button
+    expect(screen.getByRole('button', { name: /Next: Complete Phase 2/i })).toBeInTheDocument();
+  });
+
+  it('opens Strategy Review modal when clicking Edit in Studio', async () => {
+    render(<BrandKitHubView ideaId="idea_cyber" initialKit={mockCompleteKit} />);
+
+    // Click Edit in Studio button
+    const editStudioBtn = screen.getByRole('button', { name: /Edit in Studio/i });
+    fireEvent.click(editStudioBtn);
+
+    // Verify Strategy Review Modal is opened
+    expect(screen.getByText(/What we know about CyberLock Sentinel/i)).toBeInTheDocument();
   });
 
   it('triggers Cascade Warning modal on upstream edit actions', async () => {
     render(<BrandKitHubView ideaId="idea_cyber" initialKit={mockCompleteKit} />);
 
-    // Click Edit Logo
-    const editLogoBtn = screen.getByRole('button', { name: /Edit Logo →/i });
-    fireEvent.click(editLogoBtn);
+    // Click Open in Studio from Logo section
+    const logoOpenBtn = screen.getAllByRole('button', { name: /Open in Studio/i })[0];
+    fireEvent.click(logoOpenBtn);
 
     // Verify Cascade Warning Modal is open
-    expect(screen.getByText(/Cascade Invalidation Warning/i)).toBeInTheDocument();
-    expect(screen.getByText(/Modify Core Logo Concept\?/i)).toBeInTheDocument();
-    expect(screen.getByText(/All 7 canonical Variation formats/i)).toBeInTheDocument();
+    expect(screen.getByText(/Change Visual Direction\?|Modify Core Logo Concept\?/i)).toBeInTheDocument();
+  });
+
+  it('navigates to Phase 2 Complete page when clicking Next button', async () => {
+    render(<BrandKitHubView ideaId="idea_cyber" initialKit={mockCompleteKit} />);
+
+    const nextBtn = screen.getByRole('button', { name: /Next: Complete Phase 2/i });
+    fireEvent.click(nextBtn);
+
+    expect(mockPush).toHaveBeenCalledWith('/dashboard/creator/phase-2/complete?ideaId=idea_cyber');
   });
 
   it('triggers Restore Snapshot modal and restores snapshot correctly', async () => {

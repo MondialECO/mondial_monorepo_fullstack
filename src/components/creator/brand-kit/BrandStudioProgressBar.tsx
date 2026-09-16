@@ -37,7 +37,7 @@ export function BrandStudioProgressBar({
   onBack,
 }: BrandStudioProgressBarProps) {
   return (
-    <header className="sticky top-0 z-40 flex h-16 w-full items-center justify-between border-b border-border/80 bg-white/95 px-4 md:px-8 backdrop-blur-md">
+    <header className="sticky top-0 z-40 flex h-16 w-full items-center justify-between border-b border-border/80 bg-card/95 px-4 md:px-8 backdrop-blur-md">
       {/* Left: Back button + Brand context */}
       <div className="flex items-center gap-3 min-w-[200px]">
         <Button
@@ -45,16 +45,16 @@ export function BrandStudioProgressBar({
           variant="ghost"
           size="sm"
           onClick={onBack}
-          className="gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground h-8 px-2.5"
+          className="gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground h-8 px-2.5 font-sans cursor-pointer"
         >
           <ArrowLeft className="size-3.5" />
           Back
         </Button>
         <div className="hidden sm:flex flex-col">
-          <span className="text-[11px] font-bold text-foreground line-clamp-1">
+          <span className="text-[11px] font-bold text-foreground line-clamp-1 font-heading">
             {brandName}
           </span>
-          <span className="text-[10px] text-muted-foreground font-mono">
+          <span className="text-[10px] text-muted-foreground font-sans">
             Visual Identity Studio
           </span>
         </div>
@@ -74,9 +74,9 @@ export function BrandStudioProgressBar({
                 type="button"
                 disabled={isLocked}
                 onClick={() => onSelectStep(seg.key)}
-                className={`group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                className={`group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all font-sans ${
                   isSelected
-                    ? "bg-primary/10 text-primary border border-primary/30 shadow-2xs font-semibold"
+                    ? "bg-primary/10 text-foreground border border-primary/30 shadow-2xs font-semibold"
                     : isComplete
                     ? "text-foreground hover:bg-muted/80 cursor-pointer"
                     : isActive
@@ -95,7 +95,7 @@ export function BrandStudioProgressBar({
                     isComplete
                       ? "bg-emerald-500 text-white"
                       : isSelected || isActive
-                      ? "bg-primary text-white"
+                      ? "bg-primary text-primary-foreground"
                       : "bg-muted text-muted-foreground"
                   }`}
                 >
@@ -129,14 +129,14 @@ export function BrandStudioProgressBar({
       {/* Right: What's running now / In-flight status */}
       <div className="flex items-center justify-end min-w-[200px]">
         {inFlightStatus ? (
-          <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200/80 text-blue-600 animate-pulse">
+          <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary animate-pulse">
             <Loader2 className="size-3 animate-spin" />
             <span className="text-[11px] font-medium font-mono line-clamp-1">
               {inFlightStatus}
             </span>
           </div>
         ) : (
-          <span className="text-[11px] text-muted-foreground font-mono hidden sm:inline">
+          <span className="text-[11px] text-muted-foreground font-sans hidden sm:inline">
             Studio Live
           </span>
         )}

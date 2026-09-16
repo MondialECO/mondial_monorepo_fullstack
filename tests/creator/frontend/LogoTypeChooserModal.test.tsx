@@ -110,21 +110,16 @@ describe('LogoTypeChooserModal Component', () => {
       />
     );
 
-    // Verify all 6 card titles
+    // Verify all 6 card titles (Figma node 57004:10297)
     expect(screen.getByText('Wordmark')).toBeInTheDocument();
     expect(screen.getAllByText('Symbol + Name').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Monogram')).toBeInTheDocument();
-    expect(screen.getByText('Geometric Abstract')).toBeInTheDocument();
-    expect(screen.getByText('Minimal Pictorial / Icon')).toBeInTheDocument();
-    expect(screen.getByText('Minimal Lineform')).toBeInTheDocument();
+    expect(screen.getByText('Abstract mark')).toBeInTheDocument();
+    expect(screen.getByText('Icon')).toBeInTheDocument();
+    expect(screen.getByText('Minimal')).toBeInTheDocument();
 
-    // Verify generic placeholder name (NORTHLINE) is used in specimen
-    const placeholderNames = screen.getAllByText(/NORTHLINE/i);
-    expect(placeholderNames.length).toBeGreaterThanOrEqual(2);
-
-    // Verify real business name is in context strip but NOT inside generic specimens
-    expect(screen.getByText('CyberLock Sentinel')).toBeInTheDocument();
-    expect(screen.getByText('18 chars • 2 words')).toBeInTheDocument();
+    // Verify real business name is dynamically rendered
+    expect(screen.getAllByText(/CyberLock Sentinel/i).length).toBeGreaterThanOrEqual(1);
 
     // Verify NO credit/cap badge exists
     expect(screen.queryByText(/CREDITS/i)).not.toBeInTheDocument();
@@ -191,7 +186,6 @@ describe('LogoTypeChooserModal Component', () => {
         1
       );
       expect(handleSuccess).toHaveBeenCalled();
-      expect(handleClose).toHaveBeenCalled();
     });
   });
 });

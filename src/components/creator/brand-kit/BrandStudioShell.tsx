@@ -22,7 +22,6 @@ import { DirectionBoardModal } from "./DirectionBoardModal";
 import { LogoTypeChooserModal } from "./LogoTypeChooserModal";
 import { ColorSystemModal } from "./ColorSystemModal";
 import { TypographySystemModal } from "./TypographySystemModal";
-import { StudioStepPlaceholderModal } from "./StudioStepPlaceholderModal";
 import { Sparkles, AlertCircle, Loader2 } from "lucide-react";
 
 export interface BrandStudioShellProps {
@@ -88,7 +87,7 @@ export function BrandStudioShell({
       {
         key: "logo_type",
         stepNumber: 3,
-        label: "Logo Type",
+        label: "Logo type",
         status: isLogoTypeComplete
           ? "complete"
           : isDirectionComplete

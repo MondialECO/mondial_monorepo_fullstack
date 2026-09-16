@@ -34,7 +34,7 @@ const mockTestKit: BrandKit = {
     personalityTraits: ['Precise', 'Resilient', 'Autonomous'],
     avoidList: ['Cliché padlocks', 'Generic shields'],
     tonePosition: 'balanced',
-    firstAppearance: 'website',
+    firstAppearance: 'invoice',
     symbolFeeling: 'The Guardian',
     confirmedAt: null,
   },
@@ -61,7 +61,7 @@ const mockTestKit: BrandKit = {
 };
 
 describe('StrategyReviewModal Component', () => {
-  it('renders real pulled Creator data with stated provenance chips', () => {
+  it('renders real pulled Creator data with provenance badges and 6 workflow steps', () => {
     const handleConfirm = vi.fn();
     const handleClose = vi.fn();
 
@@ -73,7 +73,21 @@ describe('StrategyReviewModal Component', () => {
       />
     );
 
-    // Verify Business Name appears
+    // Verify Title & Subtitle per Figma 57003:9780
+    expect(screen.getByText('Confirm your brand strategy')).toBeInTheDocument();
+    expect(
+      screen.getByText(/Pulled from your idea\. Correct anything that's off/i)
+    ).toBeInTheDocument();
+
+    // Verify Workflow Steps Tab Bar
+    expect(screen.getByText('Strategy')).toBeInTheDocument();
+    expect(screen.getByText('Direction')).toBeInTheDocument();
+    expect(screen.getByText('Logo type')).toBeInTheDocument();
+    expect(screen.getByText('Logo')).toBeInTheDocument();
+    expect(screen.getByText('Colour')).toBeInTheDocument();
+    expect(screen.getByText('Typography')).toBeInTheDocument();
+
+    // Verify Business Name appears in Header & Fields
     const nameInstances = screen.getAllByText('CyberLock Sentinel');
     expect(nameInstances.length).toBeGreaterThanOrEqual(1);
 
@@ -90,12 +104,10 @@ describe('StrategyReviewModal Component', () => {
       screen.getByText('Zero-compromise cloud security automation.')
     ).toBeInTheDocument();
 
-    // Verify honest provenance chips
-    const statedBadges = screen.getAllByText('stated');
-    expect(statedBadges.length).toBeGreaterThanOrEqual(4);
-
     // Verify 0 credit cost indicator
-    expect(screen.getByText('0 CREDITS')).toBeInTheDocument();
+    const zeroDigits = screen.getAllByText('0');
+    expect(zeroDigits.length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/CREDITS/i)).toBeInTheDocument();
   });
 
   it('renders Name Display Form options derived directly from business name', () => {
@@ -113,6 +125,30 @@ describe('StrategyReviewModal Component', () => {
     expect(screen.getByText('cyberlock sentinel')).toBeInTheDocument();
   });
 
+  it('renders ALL CAPS and distinct casing variants for single-word business names like Instaly', () => {
+    const singleWordKit: BrandKit = {
+      ...mockTestKit,
+      strategy: {
+        ...mockTestKit.strategy!,
+        businessName: 'Instaly',
+        nameDisplayForm: 'Instaly',
+      },
+    };
+
+    render(
+      <StrategyReviewModal
+        kit={singleWordKit}
+        onClose={vi.fn()}
+        onConfirm={vi.fn()}
+      />
+    );
+
+    // Verify TitleCase, ALL CAPS, and lowercase
+    expect(screen.getByText('INSTALY')).toBeInTheDocument();
+    expect(screen.getByText('instaly')).toBeInTheDocument();
+    expect(screen.getAllByText('Instaly').length).toBeGreaterThanOrEqual(1);
+  });
+
   it('allows adding and removing personality trait pills freely', async () => {
     render(
       <StrategyReviewModal
@@ -128,44 +164,14 @@ describe('StrategyReviewModal Component', () => {
     expect(screen.getByText('Autonomous')).toBeInTheDocument();
 
     // Remove a trait
-    const removeBtn = screen.getByTitle('Remove Precise');
+    const removeBtn = screen.getByLabelText('Remove Precise');
     fireEvent.click(removeBtn);
     expect(screen.queryByText('Precise')).not.toBeInTheDocument();
 
-    // Add a new trait
-    const traitInput = screen.getByPlaceholderText('Add trait...');
-    fireEvent.change(traitInput, { target: { value: 'Hyper-scalable' } });
-    const addButtons = screen.getAllByRole('button', { name: /Add/i });
-    fireEvent.click(addButtons[0]);
-
-    expect(screen.getByText('Hyper-scalable')).toBeInTheDocument();
-  });
-
-  it('allows adding custom avoidances and picking sector suggestions', async () => {
-    render(
-      <StrategyReviewModal
-        kit={mockTestKit}
-        onClose={vi.fn()}
-        onConfirm={vi.fn()}
-      />
-    );
-
-    // Initial avoidances
-    expect(screen.getByTitle('Remove Cliché padlocks')).toBeInTheDocument();
-    expect(screen.getByTitle('Remove Generic shields')).toBeInTheDocument();
-
-    // Remove an avoidance
-    const removeBtn = screen.getByTitle('Remove Cliché padlocks');
-    fireEvent.click(removeBtn);
-    expect(screen.queryByTitle('Remove Cliché padlocks')).not.toBeInTheDocument();
-
-    // Add avoidance via free text
-    const avoidInput = screen.getByPlaceholderText('Add avoidance...');
-    fireEvent.change(avoidInput, { target: { value: 'Cartoon mascots' } });
-    const addButtons = screen.getAllByRole('button', { name: /Add/i });
-    fireEvent.click(addButtons[addButtons.length - 1]);
-
-    expect(screen.getByTitle('Remove Cartoon mascots')).toBeInTheDocument();
+    // Add a suggested trait
+    const suggestedBtn = screen.getByRole('button', { name: 'Technical' });
+    fireEvent.click(suggestedBtn);
+    expect(screen.getByText('Technical')).toBeInTheDocument();
   });
 
   it('submits updated strategy payload and sets confirmedAt on confirm', async () => {

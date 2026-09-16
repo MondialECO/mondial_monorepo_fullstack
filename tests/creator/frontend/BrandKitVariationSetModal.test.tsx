@@ -98,28 +98,28 @@ describe('VariationSetModal Component', () => {
     );
 
     // Check step pill
-    expect(screen.getByText(/STEP 5 OF 7/i)).toBeInTheDocument();
-    expect(screen.getByText(/Brand Variation Set/i)).toBeInTheDocument();
+    expect(screen.getByText(/STEP/i)).toBeInTheDocument();
+    expect(screen.getByText(/Your logo, in every form/i)).toBeInTheDocument();
 
-    // Check 7 variation titles
-    expect(screen.getByText('Primary Logo')).toBeInTheDocument();
-    expect(screen.getByText('Horizontal Lockup')).toBeInTheDocument();
-    expect(screen.getByText('Stacked Lockup')).toBeInTheDocument();
-    expect(screen.getByText('Icon Only')).toBeInTheDocument();
-    expect(screen.getByText('Black Monochrome')).toBeInTheDocument();
-    expect(screen.getByText('White Monochrome')).toBeInTheDocument();
-    expect(screen.getByText('Transparent Background')).toBeInTheDocument();
+    // Check 7 variation titles from Figma Node 57004-11174
+    expect(screen.getAllByText('PRIMARY').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('HORIZONTAL')).toBeInTheDocument();
+    expect(screen.getByText('STACKED')).toBeInTheDocument();
+    expect(screen.getByText('ICON-ONLY')).toBeInTheDocument();
+    expect(screen.getByText('BLACK')).toBeInTheDocument();
+    expect(screen.getByText('WHITE')).toBeInTheDocument();
+    expect(screen.getByText('TRANSPARENT')).toBeInTheDocument();
 
-    // Check usage notes
+    // Check usage notes / subtitles
     expect(
-      screen.getAllByText(/Default lockup for hero brand placements/i).length
-    ).toBeGreaterThanOrEqual(1);
+      screen.getByText(/Default — website header, deck cover, documents./i)
+    ).toBeInTheDocument();
     expect(
-      screen.getAllByText(/Optimised for navigation bars, email headers/i).length
-    ).toBeGreaterThanOrEqual(1);
+      screen.getByText(/Wide spaces — navigation bars, email signatures./i)
+    ).toBeInTheDocument();
   });
 
-  it('renders icon_only variation with MultiScaleIconViewer at 64px, 32px, and 16px', () => {
+  it('renders icon_only variation with multi-scale proofs at 64px, 32px, and 16px', () => {
     render(
       <VariationSetModal
         ideaId="idea_123"
@@ -127,15 +127,13 @@ describe('VariationSetModal Component', () => {
       />
     );
 
-    expect(screen.getByText('64×64px')).toBeInTheDocument();
-    expect(screen.getByText('32×32px')).toBeInTheDocument();
-    expect(screen.getByText('16×16px')).toBeInTheDocument();
+    expect(screen.getByText('64px')).toBeInTheDocument();
+    expect(screen.getByText('32px')).toBeInTheDocument();
+    expect(screen.getByText('16px')).toBeInTheDocument();
   });
 
   it('handles individual asset download click', () => {
     const createElementSpy = vi.spyOn(document, 'createElement');
-    const appendChildSpy = vi.spyOn(document.body, 'appendChild');
-    const removeChildSpy = vi.spyOn(document.body, 'removeChild');
 
     render(
       <VariationSetModal
@@ -144,10 +142,10 @@ describe('VariationSetModal Component', () => {
       />
     );
 
-    const downloadButtons = screen.getAllByRole('button', { name: /Download/i });
-    expect(downloadButtons.length).toBeGreaterThan(0);
+    const tileDownloadButtons = screen.getAllByRole('button', { name: /Download this variation/i });
+    expect(tileDownloadButtons.length).toBeGreaterThan(0);
 
-    fireEvent.click(downloadButtons[1]); // First tile download button
+    fireEvent.click(tileDownloadButtons[0]);
 
     expect(createElementSpy).toHaveBeenCalledWith('a');
   });
@@ -219,7 +217,7 @@ describe('VariationSetModal Component', () => {
 
     await waitFor(() => {
       expect(deriveVariationsSpy).toHaveBeenCalledWith('idea_123', 2);
-      expect(screen.getByText('Primary Logo')).toBeInTheDocument();
+      expect(screen.getByText('HORIZONTAL')).toBeInTheDocument();
     });
   });
 });

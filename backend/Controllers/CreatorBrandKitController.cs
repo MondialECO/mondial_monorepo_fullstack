@@ -1509,7 +1509,7 @@ namespace WebApp.Controllers
 
                 if (dto.ConfirmedAt.HasValue)
                 {
-                    var roleCount = dto.Roles?.Count ?? kit.Typography?.Roles?.Count ?? 0;
+                    var roleCount = (kit.Typography?.Roles?.Count ?? 0) >= 4 ? kit.Typography!.Roles.Count : (dto.Roles?.Count ?? 0);
                     if (roleCount < 4)
                         return BadRequest(ApiResponse.Error("All 4 typography roles must be defined before typography system can be confirmed."));
 

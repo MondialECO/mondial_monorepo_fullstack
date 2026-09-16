@@ -36,21 +36,28 @@ describe('BrandingOptionsPage Component', () => {
     // Header & title
     expect(screen.getByText('Build your brand identity')).toBeInTheDocument();
     expect(screen.getByText('Brand Visual Identity Studio')).toBeInTheDocument();
-    expect(screen.getByText(/7-Step Guided Session/i)).toBeInTheDocument();
+    expect(screen.getByText('6')).toBeInTheDocument();
+    expect(screen.getByText(/steps/i)).toBeInTheDocument();
+    expect(screen.getByText('5')).toBeInTheDocument();
+    expect(screen.getByText(/minutes/i)).toBeInTheDocument();
+    expect(screen.getByText('Editable later')).toBeInTheDocument();
 
-    // Verify 6 deliverables are listed
-    expect(screen.getByText(/Brand strategy confirmed/i)).toBeInTheDocument();
-    expect(screen.getByText(/Curated visual direction & moodboard/i)).toBeInTheDocument();
-    expect(screen.getByText(/Architectural logo concepts in your chosen mark archetype/i)).toBeInTheDocument();
-    expect(screen.getByText(/Full set of 7 canonical logo variations/i)).toBeInTheDocument();
-    expect(screen.getByText(/5-role colour system with deterministic WCAG contrast/i)).toBeInTheDocument();
-    expect(screen.getByText(/4-role typography system with optical role specimens/i)).toBeInTheDocument();
+    // Verify 6 deliverables are listed per Figma frame 56999:8076
+    expect(screen.getByText(/Brand strategy confirmed from your idea/i)).toBeInTheDocument();
+    expect(screen.getByText(/A visual direction you choose/i)).toBeInTheDocument();
+    expect(screen.getByText(/Logo concepts in the style you pick/i)).toBeInTheDocument();
+    expect(screen.getByText(/Seven logo variations — SVG and PNG/i)).toBeInTheDocument();
+    expect(screen.getByText(/Five-role colour system, contrast checked/i)).toBeInTheDocument();
+    expect(screen.getByText(/Four-role typography system, open licence/i)).toBeInTheDocument();
 
     // Verify old card is NOT present
     expect(screen.queryByText('Hire Verified Designer')).not.toBeInTheDocument();
     expect(screen.queryByText('Use AI Logo Tool')).not.toBeInTheDocument();
 
-    // Verify informational text line
+    // Verify informational text lines
+    expect(
+      screen.getByText(/Everything lands in My Brand Kit — you can change any part of it later\./i)
+    ).toBeInTheDocument();
     expect(
       screen.getByText(/Prefer a human designer\? Hiring verified designers arrives when the marketplace opens\./i)
     ).toBeInTheDocument();
@@ -66,12 +73,12 @@ describe('BrandingOptionsPage Component', () => {
     expect(mockSetState).toHaveBeenCalled();
   });
 
-  it('calls skipBranding and routes to /dashboard/creator/phase-2/complete when Skip for now is clicked', async () => {
+  it('calls skipBranding and routes to /dashboard/creator/phase-2/complete when Skip Branding for Now is clicked', async () => {
     vi.spyOn(creatorJourneyApi, 'skipBranding').mockResolvedValue({} as any);
 
     render(<BrandingOptionsPage />);
 
-    const skipButton = screen.getByRole('button', { name: /Skip for now/i });
+    const skipButton = screen.getByRole('button', { name: /Skip Branding for Now/i });
     fireEvent.click(skipButton);
 
     await waitFor(() => {
