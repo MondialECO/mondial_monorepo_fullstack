@@ -185,6 +185,28 @@ This makes future generations return `<Button variant="outline">…</Button>` di
 
 ---
 
+## Desktop Scaling & Responsiveness (1440px – 1920px)
+
+- **Canvas Baseline**: Figma designs are authored at a 1440px baseline.
+- **Fluid Desktop Range**: Layouts must scale cleanly across **1440px to 1920px** without breaking or pinning to a fixed `1440px` width.
+- **Fluid Layout Rules**:
+  - Use responsive max-width containers (`max-w-[680px]`, `max-w-4xl`, `max-w-6xl`, `max-w-7xl mx-auto`).
+  - Use responsive padding (`px-4 py-8 sm:py-12 lg:py-16`) and gap scales (`gap-4 sm:gap-6 lg:gap-8`).
+  - Never hardcode fixed container widths (`w-[1440px]`).
+
+---
+
+## Autonomous Figma-to-Code Workflow
+
+When the user provides a **Figma Link** + **Page / Modal Step Name**:
+1. **Inspect Node**: Automatically inspect the Figma node structure and design tokens.
+2. **Audit & Diff**: Compare the Figma spec against the current code implementation in `src/`.
+3. **Pre-Check Logic & Conflicts**: Identify if any state, routing, or logic changes are required. Alert the user in advance before altering business logic.
+4. **Structured Plan**: Present a clear plan/audit outlining the exact changes needed.
+5. **Execute & Verify**: Make clean edits with atomic git commits, run unit tests, and verify visual rendering in both Light and Dark modes at 1440px and 1920px viewports.
+
+---
+
 ## Known constraints (from `CLAUDE.md`)
 
 - Don't run `npm install`, `npm run build`, or `next dev` without being asked.
@@ -192,3 +214,4 @@ This makes future generations return `<Button variant="outline">…</Button>` di
 - Don't import `react-icons` (being removed). lucide-react only.
 - Don't use raw `<img>`, `<button>`, `<a>` inside pages.
 - Don't write hex literals in components.
+
