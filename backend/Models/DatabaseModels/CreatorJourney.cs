@@ -221,6 +221,19 @@ namespace WebApp.Models.DatabaseModels
         // Co-founder preferences captured on 3.5b. Stored now; matched at Level Up (P6),
         // never in Phase 3 (matchmaking is a P6 privilege).
         public CreatorCofounderDraft CofounderDraft { get; set; }
+
+        // Records whether the creator chose an alternative entity structure over the automated suggestion
+        public bool IsOverride { get; set; }
+
+        // Structured inputs that drove the recommendation so founders can audit the reasoning
+        public List<FormationRecommendationFactor> RecommendationFactors { get; set; } = new();
+    }
+
+    public class FormationRecommendationFactor
+    {
+        public string Category { get; set; }
+        public string Signal { get; set; }
+        public string Implication { get; set; }
     }
 
     public class CreatorFormationOption

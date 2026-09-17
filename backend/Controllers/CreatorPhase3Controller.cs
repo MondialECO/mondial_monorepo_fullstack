@@ -322,6 +322,85 @@ namespace WebApp.Controllers
 
                 recommendationReason += ForecastSummary(forecastBasis);
 
+                // Build discrete recommendation factors so the founder can inspect the exact inputs driving the suggestion
+                var factors = new List<FormationRecommendationFactor>();
+
+                // 1. Industry / Sector factor
+                if (isFinTech)
+                {
+                    factors.Add(new FormationRecommendationFactor
+                    {
+                        Category = "Industry & Regulation",
+                        Signal = $"Sector: {p.Sector ?? "FinTech"} (Regulated domain)",
+                        Implication = "Favors SAS for statutory flexibility, multi-tier governance, and investor credibility."
+                    });
+                }
+                else if (!string.IsNullOrWhiteSpace(p.Sector))
+                {
+                    factors.Add(new FormationRecommendationFactor
+                    {
+                        Category = "Industry Sector",
+                        Signal = $"Sector: {p.Sector}",
+                        Implication = familyRetail ? "Favors SARL for traditional/retail commercial model." : "Standard commercial framework."
+                    });
+                }
+
+                // 2. Growth Scale & TAM factor
+                if (forecastBasis?.Tam.HasValue == true || forecastBasis?.MonthlyGrowthPct.HasValue == true)
+                {
+                    var parts = new List<string>();
+                    if (forecastBasis.Tam.HasValue) parts.Add($"${forecastBasis.Tam.Value:N0} TAM");
+                    if (forecastBasis.MonthlyGrowthPct.HasValue) parts.Add($"{forecastBasis.MonthlyGrowthPct.Value}% monthly growth");
+                    factors.Add(new FormationRecommendationFactor
+                    {
+                        Category = "Market Scale & Growth",
+                        Signal = string.Join(" · ", parts),
+                        Implication = forecastSupportsScale
+                            ? "High-scale growth trajectory strongly aligns with SAS equity & capitalization flexibility."
+                            : "Moderate scale trajectory accommodates flexible entity setups."
+                    });
+                }
+
+                // 3. Capital & Funding Strategy factor
+                if (hasInvestors)
+                {
+                    factors.Add(new FormationRecommendationFactor
+                    {
+                        Category = "Capital & Funding Strategy",
+                        Signal = $"Targeting external capital (${p5.PathB?.SeedFunding?.TotalAsk:N0})",
+                        Implication = "Favors SAS due to multiple share classes, preferred equity, and investor expectations."
+                    });
+                }
+                else
+                {
+                    factors.Add(new FormationRecommendationFactor
+                    {
+                        Category = "Capital & Funding Strategy",
+                        Signal = "Bootstrapped / self-funded baseline",
+                        Implication = "Compatible with simplified single-member SAS-U or traditional SARL."
+                    });
+                }
+
+                // 4. Team & Governance Structure factor
+                if (soloFounder)
+                {
+                    factors.Add(new FormationRecommendationFactor
+                    {
+                        Category = "Founding Team & Governance",
+                        Signal = "Solo founder (single initial shareholder)",
+                        Implication = "Permits SAS-U (simplified single-shareholder) with frictionless transition to SAS as team expands."
+                    });
+                }
+                else
+                {
+                    factors.Add(new FormationRecommendationFactor
+                    {
+                        Category = "Founding Team & Governance",
+                        Signal = "Multi-member founding team / planned hiring",
+                        Implication = "Requires multi-shareholder entity (SAS or SARL) with shareholder agreements."
+                    });
+                }
+
                 // youHave — deterministic keyword extraction from creatorEdge.
                 // TODO: swap to IAiProvider for a smarter parse when model-router is ready.
                 var youHave = ExtractStrengths(p.CreatorEdge);
@@ -354,16 +433,21 @@ namespace WebApp.Controllers
                 // suggestion and the declared skills are deliberately decoupled).
                 var existingF = journey.Phase3Data?.FormationGenerator;
                 bool declared = existingF?.SkillsDeclared == true;
+                bool isOverride = !string.IsNullOrEmpty(existingF?.SelectedType) &&
+                                  !string.Equals(existingF.SelectedType, recommendedType, StringComparison.OrdinalIgnoreCase);
+
                 var formation = new CreatorFormationGenerator
                 {
                     RecommendedType = recommendedType,
                     RecommendationReason = recommendationReason,
+                    RecommendationFactors = factors,
                     ForecastBasis = forecastBasis,
                     Options = FormationOptions(),
                     YouHave = declared ? existingF.YouHave : youHave,
                     YouNeed = declared ? existingF.YouNeed : youNeed,
                     MatchedSpIds = declared ? existingF.MatchedSpIds : matchedSpIds.Distinct().ToList(),
                     SelectedType = existingF?.SelectedType,
+                    IsOverride = isOverride,
                     SkillsDeclared = declared,
                     CofounderDraft = existingF?.CofounderDraft,
                 };

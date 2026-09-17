@@ -699,9 +699,16 @@ namespace WebApp.Services.Implementations
             OverlayIdea(j, idea);
             var formation = j.Phase3Data?.FormationGenerator
                 ?? throw new CreatorJourneyException(404, "Formation not generated yet.");
-            formation.SelectedType = selectedType;
+            
+            bool isOverride = !string.IsNullOrEmpty(selectedType) &&
+                              !string.Equals(selectedType, formation.RecommendedType, StringComparison.OrdinalIgnoreCase);
 
-            var ideaUpdate = Builders<CreatorIdea>.Update.Set(x => x.Phase3Data.FormationGenerator.SelectedType, selectedType);
+            formation.SelectedType = selectedType;
+            formation.IsOverride = isOverride;
+
+            var ideaUpdate = Builders<CreatorIdea>.Update
+                .Set(x => x.Phase3Data.FormationGenerator.SelectedType, selectedType)
+                .Set(x => x.Phase3Data.FormationGenerator.IsOverride, isOverride);
 
             // Flip legal item 1 (company type selection) to done, if the checklist exists.
             var item1 = j.Phase3Data.LegalChecklist?.Items?.FirstOrDefault(i => i.Id == "company-type");
