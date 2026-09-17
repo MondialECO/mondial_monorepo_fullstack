@@ -353,23 +353,62 @@ The Brand Visual Identity Studio provides a calm, generative studio workflow acr
 
 ---
 
-## 5. Phase 3 — AI Masterplan
+## 5. Phase 3 — Business Architecture & Masterplan (Canonical 7-Step Sequence)
 
-The strongest, most canon-correct phase. Four modules assembled into the Masterplan, then a readiness score, then a completion gate.
+Phase 3 establishes the comprehensive business, market, financial, and legal foundation for the venture across **seven sequential steps**:
 
-**Session chain (enforced):** `clarifierSessionId` → `businessPlanSessionId` (C-3) → `forecastSessionId` (C-4). C-4 start returns 422 if the business plan is missing/incomplete.
+```text
+/phase-3
+→ Step 3.1: /phase-3/market-study
+→ Step 3.2: /phase-3/business-model
+→ Step 3.3: /phase-3/business-plan
+→ Step 3.4: /phase-3/forecast-inputs → /phase-3/forecast
+→ Step 3.5: /phase-3/compliance
+→ Step 3.6: /phase-3/formation
+→ Step 3.7: /phase-3/complete
+→ Phase 4
+```
 
-### 5.1 Module — Financial Forecast (C-4, LIVE)
+**Session & Prerequisite Chain (Enforced):**
+`clarifierSessionId` (P2) $\to$ `marketStudySessionId` (3.1) $\to$ `businessModelSessionId` (3.2) $\to$ `businessPlanSessionId` (3.3) $\to$ `forecastSessionId` (3.4).
 
-A **36-month** P&L (revenue, costs, cash flow, break-even). **Only the first 12 months are AI-generated; months 13–36 are derived deterministically** in the backend (`ForecastHandler.ExtendToThirtySixMonths`) by projecting from the user's own inputs — revenue compounds at `monthlyGrowthPct`, fixed cost holds at `opex`, variable cost tracks the AI's month-12 margin, cash flow accumulates, and break-even is recomputed across all 36. Rationale: generating 36 full monthly projection structures in a single prompt risks reliability and latency timeouts, so we keep the AI call focused on month 1–12 and extend deterministically. **Projection disclosure is REQUIRED** — the results view and the PDF both label months 13–36 as *projected, not model output* (`aiMonthCount` marks the boundary). Bound to live output — no mock arrays. Non-blocking warnings for unhealthy inputs (tight unit economics, >30% MoM growth, small TAM, high churn).
+### 5.1 Step 3.1 — Market Study & Competitive Intelligence (LIVE)
+- **Route:** `/dashboard/creator/phase-3/market-study`
+- **Backing Entity & Controller:** `MarketStudySession` stored in `MarketStudySessions` collection via `MarketStudyController` (`/api/ai/market-study`).
+- **Inputs Consumed:** `ClarifierSessionId` (from Phase 2, required) and `BusinessIdeaId` (optional/context).
+- **Backend Architecture & Benchmark Reuse:** `MarketStudyHandler` reuses `IMarketBenchmarkResolver` (which until now was Phase-4-only) to query sector-specific benchmarks, tailwinds, and median multiples, injecting rich quantitative baselines into the generative prompt.
+- **Output Schema (`MarketStudyOutput`, Schema Version 1):**
+  1. `marketSizing`: Hierarchical TAM, SAM, and SOM figures with label, currency, derivation rationale, source attribution, and step reduction percentages (`percentageOfTam`, `percentageOfSam`), plus the bottom-up arithmetic methodology string.
+  2. `competitorLandscape`: Summary prose, `directCompetitors` array (name, market share, pricing model, strengths, weaknesses, exploitable gap, source attribution), and `indirectCompetitors` array (name, substitute approach, threat level: `low`/`medium`/`high`).
+  3. `demandSignals`: Array of signals with headline, real-world evidence, source attribution, and numeric `relevanceScore` (0–100).
+  4. `sizingRisks`: Array of sensitivity risks with impact on SOM (`low`/`medium`/`high`) and concrete mitigation strategies.
+  5. `marketGapValidation`: Primary market opportunity, validation rationale, and confidence level (`high`/`moderate`/`speculative`).
+- **Credit Cost:** **20 credits** (`AiJobType.MarketStudy`).
+- **UI Presentation:** Proportional horizontal funnel bars with step reduction percentage bridges, bottom-up methodology strip, competitor benchmarking matrix, demand signals, and sensitivity risk cards. Responsive across 1440px–1920px with Inter headings, DM Sans body copy, JetBrains Mono numerals/metrics, and full dark theme support.
 
-**Dedicated inputs page (LIVE).** The flow is **business plan → forecast-inputs → forecast (results)**. The old "3.1 Financial Modeling Inputs" screen (which discarded its values) was **REMOVED**; `/phase-3` now redirects to the business plan. `forecast-inputs/page.tsx` collects the 5 inputs (arpu, opex, monthlyGrowthPct, tam, monthlyChurnPct), **pre-fills from the last generation** (exposed via the session API), and its "Generate" persists them on the new `ForecastSession.Inputs` and starts the job. The forecast page is **results-only** and redirects to the inputs page when no session exists. The stored inputs drive both the AI prompt and the 13–36 derivation and survive regenerate.
+### 5.2 Step 3.2 — Business Model & Monetization Canvas (LIVE)
+- **Route:** `/dashboard/creator/phase-3/business-model`
+- **Backing Entity & Controller:** `BusinessModelSession` stored in `BusinessModelSessions` collection via `BusinessModelController` (`/api/ai/business-model`).
+- **Inputs Consumed:** `MarketStudySessionId` (from Step 3.1, required) and `BusinessIdeaId` (optional/context).
+- **Output Schema (`BusinessModelOutput`, Schema Version 1):**
+  1. `canvas`: Canonical 9-block Osterwalder layout (`keyPartners`, `keyActivities`, `keyResources`, `valuePropositions`, `customerRelationships`, `channels`, `customerSegments`, `costStructure`, `revenueStreams`). Grounded in Step 3.1 with explicit `marketStudyFootnote` cross-references on Value Propositions, Customer Segments, and Revenue Streams.
+  2. `revenueTiers`: Array of pricing packages with tier name, target segment, pricing model, feature inclusions, and projected contribution percentage.
+  3. `unitEconomics`: Modelled ARPU (monthly/annual), blended CAC, customer LTV, LTV:CAC ratio, CAC payback period (months), and operational commentary.
+  4. `assumptions`: Key model assumptions categorized with evidence ratings (`evidenced`/`modelled`/`untested`).
+- **Credit Cost:** **18 credits** (`AiJobType.BusinessModel`).
+- **UI Presentation:** Canonical single Osterwalder grid with hairline dividers (5 top columns: Key Partners flanking left, Key Activities over Key Resources, Value Propositions centered with prominent focal emphasis and zero background tint, Customer Relationships over Channels, Customer Segments flanking right; 2 bottom columns: Cost Structure 50% and Revenue Streams 50%), modelled unit economics telemetry strip, and pricing tiers. Responsive across 1440px–1920px with Inter headings, DM Sans body copy, JetBrains Mono numerals/metrics, and full dark theme support.
 
-**Timeout/poll envelope:** the OpenRouter HTTP timeout is **120s** (`OpenRouter:TimeoutSeconds`), and the shared frontend poll ceiling is **96 attempts / 4 min** (§5.5) so it outlasts the backend worst case.
-
-### 5.2 Module — Business Plan (C-3, LIVE)
-
-11 display sections: **5 rewritable** (via `BusinessPlanSections.Map`: executive, target-market, business-model, competitive, gtm) and **6 read-only** (derived from Phase 2, live forecast, formation, Phase 5, operations plan, and risk assessment).
+### 5.3 Step 3.3 — Business Plan (C-3, LIVE)
+- **Route:** `/dashboard/creator/phase-3/business-plan`
+- **Backing Entity & Controller:** `BusinessPlanSession` stored in `BusinessPlanSessions` collection via `BusinessPlanController` (`/api/ai/business-plan`).
+- **Inputs Consumed:** `ClarifierSessionId` + `BusinessIdeaId`.
+- **Prerequisite Gate & Branching Rule:**
+  - Server-side enforced in `BusinessPlanController.Start`.
+  - **Fresh Creators** without an existing completed Business Plan session (`idea.Phase3Data.BusinessPlanSessionId == null`): **MUST** complete Step 3.1 (Market Study) and Step 3.2 (Business Model) first (`!hasMarketStudy || !hasBusinessModel` returns HTTP 422 Unprocessable Entity).
+  - **Legacy Creators** who already have a completed Business Plan session in their stored journey (`idea.Phase3Data.BusinessPlanSessionId != null`): keep their position, are never pushed backwards, and are permitted to regenerate or continue without blocker.
+  - **Branching Rule:** The prerequisite gate branches strictly on **stored session completion in MongoDB (`idea.Phase3Data`)**, never on which parameters the client happens to send in the HTTP request.
+- **11 Display Sections:** 5 rewritable (executive, target-market, business-model, competitive, gtm) and 6 read-only / derived cross-module sections.
+- **Credit Cost:** **33 credits** (`AiJobType.BusinessPlan`).
 
 | # | Section | Source | Rewritable | Badge |
 |---|---------|--------|------------|-------|
@@ -385,35 +424,36 @@ A **36-month** P&L (revenue, costs, cash flow, break-even). **Only the first 12 
 | 10 | Operations & Milestones | C-3 `operationsPlan` | ❌ | — |
 | 11 | Risk Register | C-3 `risks[]` | ❌ | — |
 
-Sections 7–9 read live cross-module data, not hardcoded values. Sections 10–11 are direct read-only renders of C-3 output fields. The 5 rewritable sections each support **Edit** (inline, persists via `BusinessPlanSections.ReplaceSectionText` splice) and **Rewrite** (single-section AI regenerate via `BusinessPlanHandler` accepting `sectionId` in `PrepareAsync`, spliced back by `InterpretSingleSectionAsync` + `BusinessPlanSections.ReplaceField`). Rewrite: 100/day/user Redis limit, 429 with `retryAfterSeconds` on hit, version bump + append-only history.
+### 5.4 Step 3.4 — Financial Forecast (C-4, LIVE)
+- **Routes:** Inputs at `/dashboard/creator/phase-3/forecast-inputs`, results at `/dashboard/creator/phase-3/forecast`.
+- **Backing Entity & Controller:** `ForecastSession` stored in `ForecastSessions` collection via `ForecastController` (`/api/ai/forecast`).
+- **Model & Derivation:** 36-month P&L (months 1–12 AI-generated by Gemini; months 13–36 deterministically projected via `ForecastHandler.ExtendToThirtySixMonths`).
+- **Credit Cost:** **32 credits** (`AiJobType.Forecast`).
 
-**§9 DEPENDENCY NOTE:** §9 currently reads `pathB.seedFunding.totalAsk` from the stale P5 wizard. When the wizard is removed (see P5), §9 must be decoupled — re-source or drop it.
+### 5.5 Step 3.5 — Legal Checklist (LIVE)
+- **Route:** `/dashboard/creator/phase-3/compliance`
+- **Backing Entity & Controller:** Backed by `CreatorPhase3Controller` (`/api/creator/legal-checklist`).
+- **Behavior:** 12-item sector-specific checklist. Guidance, not a gate: items never block Phase 3 completion.
 
-### 5.3 Module — Legal Checklist (LIVE)
+### 5.6 Step 3.6 — Company Formation (LIVE)
+- **Route:** `/dashboard/creator/phase-3/formation`
+- **Backing Entity & Controller:** Backed by `CreatorPhase3Controller` (`/api/creator/ai/formation-generator/start`).
+- **Behavior:** SAS/SAS-U/SARL recommendation, team strengths, and skill-gap identification.
 
-12-item deterministic, sector-specific, mandatory vs optional (item `Category`), "Find Specialist" opens a workroom. **Guidance, not a gate (changed 2026-07-24):** legal items never block Phase-3 completion. The checklist is pure self-attestation (checkbox cycling — no upload, no evidence, no verification), so gating on it produced friction, not assurance. Phase 3 completes on **plan + forecast + formation** only; the former shared `MandatoryItemsDone` predicate was deleted along with both of its readers (derivation engine + masterplan endpoint — changed together, no drift). Still true: checklist presence marks Phase 3 "in progress"; `SelectFormationType` auto-completes the company-type item; `CompletedCount` feeds Legal Readiness (0–15, §5.7), the formation skill-gap suggestion, IP valuation, and investor matching. The compliance page's **Continue is always enabled**; outstanding mandatory items are shown as "recommended before launch", never as a blocker.
+### 5.7 Step 3.7 — Phase 3 Complete & Investor Readiness (LIVE)
+- **Route:** `/dashboard/creator/phase-3/complete`
+- **Backing Controller:** `CreatorPhase3Controller` (`PATCH /api/creator/masterplan/complete`).
+- **Scoring & Promotion:** Computes Creator Investor Readiness Score (20/20/25/15/20 weighting across Concept Clarity, Market Evidence, Financial Model, Legal Readiness, Team Credibility). Advances journey to Phase 4 upon completion.
 
-### 5.4 Module — Formation Generator (LIVE)
+### 5.8 Poll Policy (R12)
+One shared timed-session policy (`src/hooks/queries/creator-ai.ts`): **96 attempts OR 4 minutes** wall-clock, 2500ms interval. Inherited identically by Clarifier, Market Study, Business Model, Business Plan, and Forecast polling hooks.
 
-Legal structure recommendation (SAS/SAS-U/SARL), team strengths (from clarifier), skill gaps (with Find Specialist). Non-binding at this stage.
-
-### 5.5 Poll policy (R12)
-
-One shared timed-session policy (`creator-ai.ts`) — **96 attempts OR 4 minutes** wall-clock, 2500ms interval. Raised from the original 60/3-min so the poll comfortably outlasts the 120s backend HTTP timeout plus Hangfire pickup (a job must never finish *after* the poll gives up). Timeout state is distinct from failed; retry re-attaches to the same session.
-
-**Consolidation DONE:** the clarifier and ai-processing pages now import the shared constants — the old hardcoded 100-attempt caps were removed (one policy, no copies).
-
-### 5.6 Mock cleanup (R15)
-
-The standalone mock ai-masterplan page (hardcoded financials, fake score "84") was URL-reachable — DELETED. No page may render mock financial data.
-
-### 5.7 Completion gate
-
-Requires the three gated modules — business plan, forecast, formation; returns 422 with the missing module name otherwise (the legal checklist is guidance and never 422s, §5.3). Crucially, "present" means **success-gated, not presence-of-an-id**: business plan and forecast count only when their AI session is `Status == "Completed"` AND `CurrentVersion > 0` (a failed/pending job routes the user back to that step, not past it); formation requires its object. Legal Readiness still scores from checklist completion and can be low or 0 if items are left outstanding — deliberate and honest. All Phase status is **backend-derived** (`ComputePhaseStatus`, pure-read — never a manual write, never mutates data), so re-locking a module leaves downstream data intact. Computes the readiness score with weights 20/20/25/15/20 (Concept Clarity / Market Evidence / Financial Model / Legal Readiness / Team Credibility) → labels **Not Ready / Developing / Strong / Investor-Ready**. Stored and surfaced on the dashboard. This is a Creator-stage score — distinct from the Entrepreneur P7 InvestorReadyScore; do not conflate.
-
-### 5.8 PDF export (LIVE)
-
-A combined **Business Plan + Forecast** document (`PlanForecastPrintView`), reachable from the business-plan and forecast pages. Implementation is an **in-page print view** (browser print → "Save as PDF") — no library, no backend, no infra. The forecast section renders **year-grouped 36-month tables** (Year 1/2/3 blocks, subtotals) with the projection caption from §5.1. Uses the app's **real** design tokens/fonts — **Inter (body/headings) + the app mono for figures**. Note: this project does **not** use Syne / DM Sans / JetBrains Mono; do not spec fonts that aren't installed.
+### 5.9 Typography Canon & Token Compliance
+All Phase 3 surfaces strictly enforce the project typography canon:
+- **Headings:** Inter (`font-heading` / `font-semibold text-foreground`).
+- **Body & Paragraphs:** DM Sans (`font-sans text-muted-foreground / text-foreground`); strictly zero DM Mono / monospace leaks on body copy.
+- **Numerals & Metrics:** JetBrains Mono (`font-mono tabular-nums`) strictly applied to financial figures, currencies, percentages, and scores.
+- **Tokens:** 100% theme semantic tokens (`bg-card`, `border-border`, `text-primary`, etc.); zero raw hex values. Fully verified in both Light and Dark themes across 1440px and 1920px viewports.
 
 ---
 
