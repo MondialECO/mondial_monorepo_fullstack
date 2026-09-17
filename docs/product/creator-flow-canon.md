@@ -378,13 +378,14 @@ Phase 3 establishes the comprehensive business, market, financial, and legal fou
 - **Inputs Consumed:** `ClarifierSessionId` (from Phase 2, required) and `BusinessIdeaId` (optional/context).
 - **Backend Architecture & Benchmark Reuse:** `MarketStudyHandler` reuses `IMarketBenchmarkResolver` (which until now was Phase-4-only) to query sector-specific benchmarks, tailwinds, and median multiples, injecting rich quantitative baselines into the generative prompt.
 - **Output Schema (`MarketStudyOutput`, Schema Version 1):**
-  1. `marketSizing`: `tam` (`value`, `currency`, `label`, `derivation`, `sourceAttribution`), `sam` (`value`, `currency`, `label`, `percentageOfTam`, `derivation`, `sourceAttribution`), `som` (`value`, `currency`, `label`, `percentageOfSam`, `derivation`, `sourceAttribution`), and `methodology` (bottom-up derivation formula and arithmetic string).
+  1. `marketSizing`: `tam` (`value`, `currency`, `label`, `derivation`, `sourceAttribution`), `sam` (`value`, `currency`, `label`, `percentageOfTam`, `derivation`, `sourceAttribution`), `som` (`value`, `currency`, `label`, `percentageOfSam`, `derivation`, `sourceAttribution`), and `methodology` (freeform descriptive string explaining bottom-up calculation and triangulation arithmetic; parser defaults to `"triangulated"` if empty).
   2. `competitorLandscape`: `summary`, `directCompetitors` array (`name`, `estimatedMarketShare`, `pricingModel`, `strengths`, `weaknesses`, `exploitableGap`, `sourceAttribution`), and `indirectCompetitors` array (`name`, `substituteApproach`, `threatLevel`: `low` | `medium` | `high`).
   3. `demandSignals`: Array of signals with `signal`, `evidence`, `sourceAttribution`, and `relevanceScore` (integer 1–10).
   4. `sizingRisks`: Array of sensitivity risks with `risk`, `impactOnSom` (`low` | `medium` | `high`), and `mitigation`.
   5. `marketGapValidation`: `primaryGap`, `validationRationale`, and `confidenceLevel` (`high` | `moderate` | `speculative`).
+- **Parser Normalisation & Logging:** Constrained enum fields (`threatLevel`, `impactOnSom`, `confidenceLevel`) are normalized at the parser layer before persisting to MongoDB using safe, conservative fallbacks that never overstate certainty (`threatLevel`/`impactOnSom` default to `medium`, `confidenceLevel` defaults to `speculative`). Non-canonical raw values that undergo coercion are recorded as backend warnings via `ILogger.LogWarning`.
 - **Credit Cost:** **20 credits** (`AiJobType.MarketStudy`).
-- **UI Presentation:** Proportional horizontal funnel bars with step reduction percentage bridges, bottom-up methodology strip, competitor benchmarking matrix, demand signals, and sensitivity risk cards. Responsive across 1440px–1920px with Inter headings, DM Sans body copy, JetBrains Mono numerals/metrics, and full dark theme support.
+- **UI Presentation:** Proportional horizontal funnel bars with step reduction percentage bridges, bottom-up methodology strip, competitor benchmarking matrix, demand signals, and sensitivity risk cards. Responsive across 1440px–1920px with Inter headings, DM Sans body copy, JetBrains Mono numerals/metrics, and full dark theme support. Out-of-contract strings reaching the frontend are styled with destructive visual tokens rather than silently absorbed.
 
 ### 5.2 Step 3.2 — Business Model & Monetization Canvas (LIVE)
 - **Route:** `/dashboard/creator/phase-3/business-model`
@@ -395,8 +396,9 @@ Phase 3 establishes the comprehensive business, market, financial, and legal fou
   2. `revenueTiers`: Array of pricing packages with `tierName`, `pricing`, `targetSegment`, `features`, and `projectedContributionPct`.
   3. `unitEconomics`: `arpu` (`amount`, `currency`, `period`: `monthly` | `annual`, `isModelled`), `cac` (`amount`, `currency`, `isModelled`), `ltv` (`amount`, `currency`, `isModelled`), `ltvToCacRatio`, `paybackPeriodMonths`, and `commentary`.
   4. `assumptions`: Array of core model assumptions with `category`, `assumption`, and `evidenceLevel` (`evidenced` | `modelled` | `untested`).
+- **Parser Normalisation & Logging:** `assumptions[].evidenceLevel` is normalized at the parser layer to canonical values (`evidenced`, `modelled`, `untested`), conservatively mapping genuine synonyms while routing ambiguous inputs (e.g. `observed`) to the safe fallback `untested` to prevent over-claiming validation. `arpu.period` is normalized to `monthly` | `annual` (fallback `monthly`). All coercions are logged as backend warnings via `ILogger.LogWarning`.
 - **Credit Cost:** **18 credits** (`AiJobType.BusinessModel`).
-- **UI Presentation:** Canonical single Osterwalder grid with hairline dividers (5 top columns: Key Partners flanking left, Key Activities over Key Resources, Value Propositions centered with prominent focal emphasis and zero background tint, Customer Relationships over Channels, Customer Segments flanking right; 2 bottom columns: Cost Structure 50% and Revenue Streams 50%), modelled unit economics telemetry strip, and pricing tiers. Responsive across 1440px–1920px with Inter headings, DM Sans body copy, JetBrains Mono numerals/metrics, and full dark theme support.
+- **UI Presentation:** Canonical single Osterwalder grid with hairline dividers (5 top columns: Key Partners flanking left, Key Activities over Key Resources, Value Propositions centered with prominent focal emphasis and zero background tint, Customer Relationships over Channels, Customer Segments flanking right; 2 bottom columns: Cost Structure 50% and Revenue Streams 50%), modelled unit economics telemetry strip, and pricing tiers. Responsive across 1440px–1920px with Inter headings, DM Sans body copy, JetBrains Mono numerals/metrics, and full dark theme support. Out-of-contract strings reaching the frontend are styled with destructive visual tokens rather than silently absorbed.
 
 ### 5.3 Step 3.3 — Business Plan (C-3, LIVE)
 - **Route:** `/dashboard/creator/phase-3/business-plan`
@@ -539,6 +541,11 @@ The rule: matchmaking is unavailable across P1–P5 and unlocks only at P6. The 
 ---
 
 ## 11. Changelog
+
+**2026-09-17 — Phase 3 Market Study & Business Model: Enum Normalisation & Logging.**
+- **Lenient Normalisation with Conservative Fallbacks:** `BusinessModelOutputParser` and `MarketStudyOutputParser` normalize LLM output strings to canonical enums (`evidenceLevel`: `evidenced`/`modelled`/`untested` with `untested` safe fallback; `confidenceLevel`: `high`/`moderate`/`speculative` with `speculative` fallback; `threatLevel`/`impactOnSom`: `low`/`medium`/`high` with `medium` fallback; `period`: `monthly`/`annual` with `monthly` fallback). Coerced values are recorded via `ILogger.LogWarning`.
+- **Methodology Canon Alignment:** Clarified `marketSizing.methodology` as a freeform descriptive string explaining derivation arithmetic and triangulation formulas, with a parser fallback of `"triangulated"`.
+- **Frontend Error Visibility:** `MarketStudyPage` and `BusinessModelPage` badges explicitly style canonical values and render unexpected out-of-contract strings with destructive styling (`border-destructive/60 bg-destructive/10 text-destructive`) rather than quietly absorbing them in neutral styling.
 
 **2026-07-24 — legal checklist demoted to guidance (Phase-3 gate removed).**
 - **Rule:** Phase 3 completes on **plan + forecast + formation**; mandatory legal items no longer block the derivation engine or the masterplan endpoint (both readers changed together; the shared `MandatoryItemsDone` predicate deleted as dead code). Rationale: pure self-attestation — the gate produced checkbox-cycling friction, not assurance. §2, §5.3, §5.7.
