@@ -31,11 +31,11 @@ All capabilities route authoritatively to `google/gemini-3.8-flash` in base conf
 | **`BusinessModel`** (`3.2`) | `google/gemini-3.8-flash` | **18 credits** | **8,500 tokens** | Canonical 9-block Osterwalder canvas, pricing tier architecture, modelled unit economics (ARPU/CAC/LTV/Payback) |
 | **`BusinessPlan`** (`C-3`) | `google/gemini-3.8-flash` | **33 credits** | **7,500 tokens** | 9-section enterprise business plan (pre-ceiling benchmark median 5,182 tokens) |
 | **`Forecast`** (`C-4`) | `google/gemini-3.8-flash` | **32 credits** *(Provisional)* | **8,000 tokens** | 36-month projections (12 AI + 24 algorithmic projection; post-8k ceiling, post-trim benchmark median 5,001 tokens, ratio 1.6106) |
-| **`DirectionGeneration`** | `google/gemini-3.8-flash` | **7 credits** | **2,000 tokens** | 4-candidate strategic brand direction generator (archetypes, motifs, rationales) |
-| **`LogoParameterSelection`**| `google/gemini-3.8-flash` | **4 credits** | **2,000 tokens** | 6-concept parametric logo batch generator across 6 mark families |
-| **`LogoConceptRegenerate`** | `google/gemini-3.8-flash` | **2 credits** | **2,000 tokens** | Single logo concept regeneration (distinct geometry and layout) |
-| **`ColorGeneration`** | `google/gemini-3.8-flash` | **2 credits** | **2,000 tokens** | 5-role colour palette regeneration (contrast, harmony, and luminance enforcement) |
-| **`TypographyGeneration`** | `google/gemini-3.8-flash` | **2 credits** | **2,000 tokens** | 4-role typography system regeneration (distinct pairing validation) |
+| **`DirectionGeneration`** | `google/gemini-3.8-flash` | **7 credits** | **4,500 tokens** | 4-candidate strategic brand direction generator (archetypes, motifs, rationales; observed peak 2,827 tokens) |
+| **`LogoParameterSelection`**| `google/gemini-3.8-flash` | **4 credits** | **3,000 tokens** | 6-concept parametric logo batch generator across 6 mark families (observed peak 1,649 tokens) |
+| **`LogoConceptRegenerate`** | `google/gemini-3.8-flash` | **2 credits** | **2,000 tokens** | Single logo concept regeneration (deterministic in-memory SVG parametric renderer) |
+| **`ColorGeneration`** | `google/gemini-3.8-flash` | **2 credits** | **4,500 tokens** | 5-role colour palette regeneration (contrast, harmony, and luminance enforcement; observed peak 3,228 tokens) |
+| **`TypographyGeneration`** | `google/gemini-3.8-flash` | **2 credits** | **2,000 tokens** | 4-role typography system regeneration (distinct pairing validation; observed peak 457 tokens) |
 | **`IdeaGenerator`** | `google/gemini-3.8-flash` | **0 credits** | **3,500 tokens** | Unmetered discovery generator |
 | **`Probe`** | `google/gemini-3.8-flash` | **0 credits** | **500 tokens** | Operational health self-test |
 | **Deterministic Derivations** | — | **0 credits** | — | Free initial color/typography derivations, derived variations, section patches |
