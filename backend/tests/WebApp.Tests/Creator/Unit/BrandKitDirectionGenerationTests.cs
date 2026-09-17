@@ -33,7 +33,7 @@ namespace WebApp.Tests.Creator.Unit
         }
 
         [Fact]
-        public async Task Fallback_synthesis_produces_four_valid_distinct_candidates_with_fallback_provenance()
+        public async Task DirectionGenerationService_Throws_When_AiProvider_Or_ModelRouter_Not_Configured()
         {
             var service = new DirectionGenerationService(aiProvider: null, modelRouter: null, logger: NullLogger<DirectionGenerationService>.Instance);
 
@@ -53,26 +53,9 @@ namespace WebApp.Tests.Creator.Unit
                 }
             };
 
-            var candidates = await service.GenerateCandidatesAsync(idea, kit);
-
-            candidates.Should().NotBeNull();
-            candidates.Should().HaveCount(4);
-
-            // Verify Provenance
-            candidates.Should().OnlyContain(c => c.Provenance == "fallback");
-
-            // Verify ColorPalette is 4 hex values with no role keys
-            foreach (var c in candidates)
-            {
-                c.ColorPalette.Should().HaveCount(4);
-                c.ColorPalette.Should().OnlyContain(hex => hex.StartsWith("#") && hex.Length == 7);
-                DirectionGenerationService.ValidBundledFonts.Should().Contain(c.DisplayTypeface);
-                DirectionGenerationService.ValidBundledFonts.Should().Contain(c.TextTypeface);
-                DirectionGenerationService.ValidMotifKeys.Should().Contain(c.MotifKey);
-            }
-
-            // Verify Distinctness
-            DirectionGenerationService.ValidateDistinctness(candidates, out var err).Should().BeTrue(err);
+            var act = () => service.GenerateCandidatesAsync(idea, kit);
+            await act.Should().ThrowAsync<InvalidOperationException>()
+                .WithMessage("*No AI provider configured*");
         }
 
         [Fact]

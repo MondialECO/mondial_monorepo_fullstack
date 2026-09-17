@@ -21,6 +21,7 @@ import {
   BrandDirectionCandidate,
 } from "@/types/creator/brand-kit";
 import { brandKitApi } from "@/lib/api-creator-brand-kit";
+import creatorAiApi from "@/lib/api-creator-ai";
 import { RegenerateCapBadge } from "./RegenerateCapBadge";
 import { ModalWorkflowHeader } from "./ModalWorkflowHeader";
 import Link from "next/link";
@@ -209,10 +210,22 @@ export function DirectionBoardModal({
 
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [directionCost, setDirectionCost] = useState<number>(7);
   const [error, setError] = useState<{
     type: "credits" | "cap" | "network";
     message: string;
   } | null>(null);
+
+  useEffect(() => {
+    creatorAiApi
+      .getCredits()
+      .then((res) => {
+        if (res?.costs?.DirectionGeneration != null) {
+          setDirectionCost(res.costs.DirectionGeneration);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Synchronize state when kit updates
   useEffect(() => {
@@ -355,7 +368,7 @@ export function DirectionBoardModal({
       if (status === 402) {
         setError({
           type: "credits",
-          message: "Insufficient AI credits (7 credits required).",
+          message: `Insufficient AI credits (${directionCost} credits required).`,
         });
       } else if (status === 400 && msg.toLowerCase().includes("limit")) {
         setError({
@@ -365,7 +378,7 @@ export function DirectionBoardModal({
       } else {
         setError({
           type: "network",
-          message: msg,
+          message: `Visual Direction generation did not finish. Your ${directionCost} credits have been automatically refunded to your balance.`,
         });
       }
     } finally {
@@ -428,7 +441,7 @@ export function DirectionBoardModal({
                 title={
                   isCapExhausted
                     ? "Regeneration cap reached (3/3)"
-                    : `Regenerate all 4 directions (7 credits, ${remainingCap} left)`
+                    : `Regenerate all 4 directions (${directionCost} credits, ${remainingCap} left)`
                 }
               >
                 <RefreshCw
@@ -437,10 +450,10 @@ export function DirectionBoardModal({
                 <span>Regenerate all four</span>
               </Button>
 
-              {/* 7 CREDITS chip */}
+              {/* Dynamic CREDITS chip */}
               <span className="inline-flex items-center gap-1 font-mono text-[11px] font-semibold text-muted-foreground bg-muted/60 px-2.5 py-1 rounded-md border border-border/60">
                 <Sparkles className="size-3 text-primary" />
-                7 CREDITS
+                {directionCost} CREDITS
               </span>
 
               {/* Amber Cap Badge */}

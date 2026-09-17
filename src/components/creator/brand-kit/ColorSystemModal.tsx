@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { BrandKit, BrandColorRole } from "@/types/creator/brand-kit";
 import { brandKitApi } from "@/lib/api-creator-brand-kit";
+import { creatorAiApi } from "@/lib/api-creator-ai";
 import { ModalWorkflowHeader } from "./ModalWorkflowHeader";
 import { Button } from "@/components/ui/button";
 import {
@@ -200,6 +201,18 @@ export function ColorSystemModal({
   const [error, setError] = useState<string | null>(null);
   const [creditError, setCreditError] = useState<string | null>(null);
   const [copiedRole, setCopiedRole] = useState<string | null>(null);
+  const [colorCost, setColorCost] = useState<number>(2);
+
+  useEffect(() => {
+    creatorAiApi
+      .getCredits()
+      .then((res) => {
+        if (res?.costs?.ColorGeneration != null) {
+          setColorCost(res.costs.ColorGeneration);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Background hex reference for contrast calculation
   const backgroundHex = useMemo(() => {
@@ -452,13 +465,11 @@ export function ColorSystemModal({
     } catch (err: any) {
       if (err?.response?.status === 402) {
         setCreditError(
-          "Insufficient AI credits to regenerate palette. Please top up credits to continue."
+          `Insufficient AI credits to regenerate palette (${colorCost} credits required). Please top up credits to continue.`
         );
       } else {
         setError(
-          err?.response?.data?.message ||
-            err?.message ||
-            "Failed to regenerate colour palette."
+          `Colour palette regeneration did not finish. Your ${colorCost} credits have been automatically refunded to your balance.`
         );
       }
     } finally {

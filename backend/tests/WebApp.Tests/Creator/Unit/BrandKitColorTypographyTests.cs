@@ -272,7 +272,26 @@ namespace WebApp.Tests.Creator.Unit
         [Fact]
         public async Task TypographyService_Regenerate_ExplicitlyEnforcesPairingDiffersInAtLeastOneFamilyFromCurrent()
         {
-            var service = new TypographyGenerationService(aiProvider: null, modelRouter: null, logger: NullLogger<TypographyGenerationService>.Instance);
+            var mockAi = new Mock<IAiProvider>();
+            var mockRouter = new Mock<IModelRouter>();
+            mockRouter.Setup(r => r.Resolve("TypographyGeneration")).Returns("google/gemini-3.8-flash");
+
+            string distinctAiJson = @"{
+                ""heading_font"": ""Syne"",
+                ""body_font"": ""JetBrains Mono"",
+                ""rationale"": ""High contrast modern pairing""
+            }";
+
+            mockAi.Setup(a => a.CompleteAsync(It.IsAny<AiCompletionRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new AiCompletion
+                {
+                    Text = distinctAiJson,
+                    Model = "google/gemini-3.8-flash",
+                    Usage = new AiTokenUsage(150, 40, 190),
+                    EstimatedCost = 0.0001m
+                });
+
+            var service = new TypographyGenerationService(mockAi.Object, mockRouter.Object, logger: NullLogger<TypographyGenerationService>.Instance);
 
             string currentHeading = "Space Grotesk";
             string currentBody = "Plus Jakarta Sans";
@@ -302,27 +321,23 @@ namespace WebApp.Tests.Creator.Unit
         }
 
         [Fact]
-        public async Task TypographyService_Regenerate_WhenAiEchoesCurrentPairing_RejectsAndFallsBackToDistinctPairing()
+        public async Task TypographyService_Regenerate_WhenAiReturnsUnbundledFont_Throws()
         {
             var mockAi = new Mock<IAiProvider>();
             var mockRouter = new Mock<IModelRouter>();
 
             mockRouter.Setup(r => r.Resolve("TypographyGeneration")).Returns("google/gemini-3.8-flash");
 
-            string currentHeading = "Syne";
-            string currentBody = "Plus Jakarta Sans";
-
-            // AI deliberately returns the identical pairing to test distinctness rejection
-            string echoAiJson = @"{
-                ""heading_font"": ""Syne"",
+            string invalidAiJson = @"{
+                ""heading_font"": ""NonExistentFont"",
                 ""body_font"": ""Plus Jakarta Sans"",
-                ""rationale"": ""Echoing identical pairing""
+                ""rationale"": ""Invalid unbundled font""
             }";
 
             mockAi.Setup(a => a.CompleteAsync(It.IsAny<AiCompletionRequest>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new AiCompletion
                 {
-                    Text = echoAiJson,
+                    Text = invalidAiJson,
                     Model = "google/gemini-3.8-flash",
                     Usage = new AiTokenUsage(150, 40, 190),
                     EstimatedCost = 0.0001m
@@ -336,28 +351,19 @@ namespace WebApp.Tests.Creator.Unit
                 Roles = new List<BrandTypographyRole>
                 {
                     new() { RoleName = BrandTypographyRoleNames.LogoType, Family = "Cinzel", IsLocked = true },
-                    new() { RoleName = BrandTypographyRoleNames.Heading, Family = currentHeading, IsLocked = false },
-                    new() { RoleName = BrandTypographyRoleNames.Body, Family = currentBody, IsLocked = false }
+                    new() { RoleName = BrandTypographyRoleNames.Heading, Family = "Syne", IsLocked = false },
+                    new() { RoleName = BrandTypographyRoleNames.Body, Family = "Plus Jakarta Sans", IsLocked = false }
                 }
             };
             var idea = new CreatorIdea { Id = "idea-echo", Project = new CreatorJourneyProject { Name = "CyberShield" } };
 
-            var regenerated = await service.RegenerateTypographyAsync(kit, idea, CancellationToken.None);
-
-            var newHeadingRole = regenerated.Roles.First(r => r.RoleName == BrandTypographyRoleNames.Heading);
-            var newBodyRole = regenerated.Roles.First(r => r.RoleName == BrandTypographyRoleNames.Body);
-
-            // Rejection of AI echo must result in fallback distinct pairing
-            newHeadingRole.Provenance.Should().Be("fallback", "AI echo must be rejected and flagged as fallback");
-            
-            bool differs = !string.Equals(newHeadingRole.Family, currentHeading, StringComparison.OrdinalIgnoreCase) ||
-                           !string.Equals(newBodyRole.Family, currentBody, StringComparison.OrdinalIgnoreCase);
-
-            differs.Should().BeTrue("When AI echoes the identical pairing, fallback must supply a pairing differing in at least one family");
+            var act = () => service.RegenerateTypographyAsync(kit, idea, CancellationToken.None);
+            await act.Should().ThrowAsync<InvalidOperationException>()
+                .WithMessage("*Typography pairing AI generation did not return valid bundled fonts*");
         }
 
         [Fact]
-        public async Task ColorGenerationService_Regenerate_ExplicitlyProducesGenuinelyDifferentPaletteFromCurrent()
+        public async Task ColorGenerationService_Regenerate_Throws_When_AiProvider_Not_Configured()
         {
             var service = new ColorGenerationService(aiProvider: null, modelRouter: null, logger: NullLogger<ColorGenerationService>.Instance);
 
@@ -375,15 +381,9 @@ namespace WebApp.Tests.Creator.Unit
             };
             var idea = new CreatorIdea { Id = "idea-diff-color", Project = new CreatorJourneyProject { Name = "CyberShield" } };
 
-            var regenerated = await service.RegenerateColorsAsync(kit, idea, CancellationToken.None);
-
-            var newPrimary = regenerated.Roles.First(r => r.RoleName == BrandColorRoleNames.Primary).Hex;
-            var newSecondary = regenerated.Roles.First(r => r.RoleName == BrandColorRoleNames.Secondary).Hex;
-
-            bool differs = !string.Equals(newPrimary, currentPrimary, StringComparison.OrdinalIgnoreCase) ||
-                           !string.Equals(newSecondary, currentSecondary, StringComparison.OrdinalIgnoreCase);
-
-            differs.Should().BeTrue($"Regenerated palette (Primary: {newPrimary}, Secondary: {newSecondary}) must differ from current palette (Primary: {currentPrimary}, Secondary: {currentSecondary})");
+            var act = () => service.RegenerateColorsAsync(kit, idea, CancellationToken.None);
+            await act.Should().ThrowAsync<InvalidOperationException>()
+                .WithMessage("*No AI provider configured*");
         }
 
         // -------------------------------------------------------------------------

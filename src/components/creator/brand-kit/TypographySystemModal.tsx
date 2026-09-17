@@ -8,6 +8,7 @@ import {
   BrandTypographyFamilies,
 } from "@/types/creator/brand-kit";
 import { apiCreatorBrandKit, brandKitApi } from "@/lib/api-creator-brand-kit";
+import { creatorAiApi } from "@/lib/api-creator-ai";
 import { ModalWorkflowHeader } from "./ModalWorkflowHeader";
 import { Button } from "@/components/ui/button";
 import {
@@ -108,6 +109,18 @@ export function TypographySystemModal({
   const [isConfirming, setIsConfirming] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [insufficientCredits, setInsufficientCredits] = useState(false);
+  const [typographyCost, setTypographyCost] = useState<number>(2);
+
+  useEffect(() => {
+    creatorAiApi
+      .getCredits()
+      .then((res) => {
+        if (res?.costs?.TypographyGeneration != null) {
+          setTypographyCost(res.costs.TypographyGeneration);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Derive initial typography if roles are missing
   useEffect(() => {
@@ -283,9 +296,7 @@ export function TypographySystemModal({
         setInsufficientCredits(true);
       } else {
         setErrorMessage(
-          err?.response?.data?.message ||
-            err?.message ||
-            "Failed to regenerate typography pairing."
+          `Typography pairing regeneration did not finish. Your ${typographyCost} credits have been automatically refunded to your balance.`
         );
       }
     } finally {

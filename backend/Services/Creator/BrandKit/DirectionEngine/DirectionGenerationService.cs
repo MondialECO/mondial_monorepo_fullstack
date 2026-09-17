@@ -67,44 +67,41 @@ namespace WebApp.Services.Creator.BrandKit.DirectionEngine
             var avoidList = strategy.AvoidList ?? new List<string>();
 
             List<BrandDirectionCandidate>? aiCandidates = null;
-            string? fallbackReason = null;
+            string? failureReason = null;
 
-            if (_aiProvider != null && _modelRouter != null)
+            if (_aiProvider == null)
             {
-                try
-                {
-                    aiCandidates = await QueryAiForDirectionsAsync(brandName, strategy, avoidList, cancellationToken);
-                }
-                catch (Exception ex)
-                {
-                    fallbackReason = $"AI generation failed: {ex.Message}";
-                    _logger.LogWarning(ex, "Visual direction AI generation failed for {BrandName}. Reason: {Reason}", brandName, fallbackReason);
-                }
+                throw new InvalidOperationException("No AI provider configured in service container.");
             }
-            else
+            if (_modelRouter == null)
             {
-                fallbackReason = _aiProvider == null
-                    ? "No AI provider configured in service container"
-                    : "No ModelRouter configured in service container";
+                throw new InvalidOperationException("No ModelRouter configured in service container.");
             }
 
-            string? validationErr = null;
-            if (aiCandidates != null && aiCandidates.Count == 4 && ValidateDistinctness(aiCandidates, out validationErr))
+            try
             {
-                // Enforce avoid-list on AI candidates
-                var processed = EnforceAvoidList(aiCandidates, avoidList, isFallback: false);
-                return processed;
+                aiCandidates = await QueryAiForDirectionsAsync(brandName, strategy, avoidList, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                failureReason = $"AI completion failed: {ex.Message}";
+                _logger.LogError(ex, "Visual direction AI generation failed for {BrandName}. Reason: {Reason}", brandName, failureReason);
+                throw new InvalidOperationException(failureReason, ex);
             }
 
-            if (fallbackReason == null && aiCandidates != null)
+            if (aiCandidates == null || aiCandidates.Count != 4)
             {
-                fallbackReason = $"AI output failed distinctness validation: {validationErr}";
+                throw new InvalidOperationException("AI generation did not return exactly 4 visual direction proposals.");
             }
 
-            // Fallback to deterministic synthesis
-            _logger.LogWarning("Visual direction fallback activated for {BrandName}. Reason: {Reason}. Synthesizing deterministic archetype candidates.", brandName, fallbackReason);
-            var fallbackCandidates = GenerateDeterministicCandidates(brandName, strategy, avoidList, kit?.Direction?.RegenerateCount ?? 0);
-            return fallbackCandidates;
+            if (!ValidateDistinctness(aiCandidates, out var validationErr))
+            {
+                throw new InvalidOperationException($"AI generated candidates failed distinctness validation: {validationErr}");
+            }
+
+            // Enforce avoid-list on AI candidates
+            var processed = EnforceAvoidList(aiCandidates, avoidList, isFallback: false);
+            return processed;
         }
 
         private async Task<List<BrandDirectionCandidate>?> QueryAiForDirectionsAsync(
@@ -452,112 +449,6 @@ Return strict JSON:
             }
 
             return "bold_abstract";
-        }
-
-        private static List<BrandDirectionCandidate> GenerateDeterministicCandidates(
-            string brandName,
-            BrandStrategy strategy,
-            List<string> avoidList,
-            int regenCount = 0)
-        {
-            var archetypes = new[]
-            {
-                (
-                    Name: "Precision & Modern Structure",
-                    Feel: "Clean geometric certainty with technical authority",
-                    Rationale: $"Emphasizes precision and modern trust tailored for {strategy.Industry?.Value ?? "market leadership"}.",
-                    Palette: new List<string> { "#0052FF", "#0F172A", "#38BDF8", "#F1F5F9" },
-                    DisplayFont: "Space Grotesk",
-                    TextFont: "Plus Jakarta Sans",
-                    Motif: "geometric_structure"
-                ),
-                (
-                    Name: "Organic Harmony & Approachability",
-                    Feel: "Warm, grounded vitality with sustainable resonance",
-                    Rationale: $"Connects with {strategy.TargetAudience?.Value ?? "customers"} through approachable warmth and natural balance.",
-                    Palette: new List<string> { "#2D6A4F", "#1B4332", "#74C69D", "#F4F1DE" },
-                    DisplayFont: "Plus Jakarta Sans",
-                    TextFont: "Plus Jakarta Sans",
-                    Motif: "organic_growth"
-                ),
-                (
-                    Name: "Refined Luxury & Editorial Luxe",
-                    Feel: "Sophisticated bespoke craft with timeless poise",
-                    Rationale: $"Elevates {brandName} with an architectural, premium aesthetic built for discerning clients.",
-                    Palette: new List<string> { "#B38E5D", "#1C1917", "#D4AF37", "#FAFAF9" },
-                    DisplayFont: "Cinzel",
-                    TextFont: "Plus Jakarta Sans",
-                    Motif: "editorial_classic"
-                ),
-                (
-                    Name: "Bold Technical Power & Momentum",
-                    Feel: "Dynamic industrial strength and high-impact momentum",
-                    Rationale: $"Projects bold technological capability and decisive execution.",
-                    Palette: new List<string> { "#4F46E5", "#18181B", "#818CF8", "#F8FAFC" },
-                    DisplayFont: "Syne",
-                    TextFont: "JetBrains Mono",
-                    Motif: "bold_abstract"
-                ),
-                (
-                    Name: "Minimalist Modern & Monogram Focus",
-                    Feel: "Clarity and modern reductionism with focused typography",
-                    Rationale: $"Emphasizes pure typographic clarity and brand signature for {brandName}.",
-                    Palette: new List<string> { "#0F172A", "#334155", "#0EA5E9", "#F8FAFC" },
-                    DisplayFont: "Space Grotesk",
-                    TextFont: "JetBrains Mono",
-                    Motif: "minimal_monogram"
-                ),
-                (
-                    Name: "Dynamic Innovation & Digital Velocity",
-                    Feel: "Vibrant high-contrast creative energy and modern velocity",
-                    Rationale: $"Captures energetic digital leadership and progressive innovation.",
-                    Palette: new List<string> { "#7C3AED", "#2E1065", "#A78BFA", "#FAF5FF" },
-                    DisplayFont: "Syne",
-                    TextFont: "Plus Jakarta Sans",
-                    Motif: "bold_abstract"
-                ),
-                (
-                    Name: "Technical Architecture & Grid Lattice",
-                    Feel: "Engineered structural rigor with data-first precision",
-                    Rationale: $"Communicates deep technical infrastructure and architectural robustness.",
-                    Palette: new List<string> { "#0284C7", "#082F49", "#38BDF8", "#F0F9FF" },
-                    DisplayFont: "JetBrains Mono",
-                    TextFont: "Space Grotesk",
-                    Motif: "technical_lattice"
-                ),
-                (
-                    Name: "Warm Editorial & Bespoke Craft",
-                    Feel: "Warm artisanal heritage paired with contemporary elegance",
-                    Rationale: $"Blends timeless editorial elegance with memorable warmth.",
-                    Palette: new List<string> { "#C2410C", "#431407", "#FDBA74", "#FFF7ED" },
-                    DisplayFont: "Cinzel",
-                    TextFont: "Syne",
-                    Motif: "editorial_classic"
-                )
-            };
-
-            int offset = (regenCount * 2) % archetypes.Length;
-            var rawList = new List<BrandDirectionCandidate>();
-            for (int i = 0; i < 4; i++)
-            {
-                var archetypeIndex = (offset + i) % archetypes.Length;
-                var a = archetypes[archetypeIndex];
-                rawList.Add(new BrandDirectionCandidate
-                {
-                    Key = $"candidate_{i + 1}",
-                    Name = a.Name,
-                    FeelLine = a.Feel,
-                    Rationale = a.Rationale,
-                    ColorPalette = new List<string>(a.Palette),
-                    DisplayTypeface = a.DisplayFont,
-                    TextTypeface = a.TextFont,
-                    MotifKey = a.Motif,
-                    Provenance = "fallback",
-                    AvoidListSubstituted = false
-                });
-            }
-
-            return EnforceAvoidList(rawList, avoidList, isFallback: true);
         }
 
         private static string NormalizeTypeface(string? input, string defaultChoice)

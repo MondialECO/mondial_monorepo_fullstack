@@ -13,6 +13,7 @@ using WebApp.DbContext;
 using WebApp.Models;
 using WebApp.Models.DatabaseModels;
 using WebApp.Models.Dtos;
+using WebApp.Services.Ai.Providers;
 using WebApp.Services.Creator.BrandKit.LogoEngine;
 using WebApp.Services.Implementations;
 using WebApp.Services.Interface;
@@ -75,8 +76,35 @@ namespace WebApp.Tests.Creator.Integration
             var envMock = new Mock<IWebHostEnvironment>();
             envMock.Setup(e => e.WebRootPath).Returns(_tempWebRoot);
 
+            var mockAi = new Mock<IAiProvider>();
+            mockAi.Setup(a => a.CompleteAsync(It.IsAny<AiCompletionRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((AiCompletionRequest req, CancellationToken ct) =>
+                {
+                    var userPrompt = req.Messages.FirstOrDefault(m => m.Role == "user")?.Content ?? "";
+                    var tag = userPrompt.Contains("CyberLock") ? "Cyber" : (userPrompt.Contains("TerraHarvest") ? "Terra" : "Luxe");
+                    var json = $@"{{
+                        ""concepts"": [
+                            {{ ""family"": ""wordmark"", ""descriptor"": ""{tag} Wordmark"", ""parameters"": {{ ""Layout"": ""single_line"", ""LetterCase"": ""uppercase"", ""AccentElement"": ""none"", ""FontCategory"": ""geometric_sans"", ""LetterSpacing"": ""normal"" }} }},
+                            {{ ""family"": ""symbol_plus_name"", ""descriptor"": ""{tag} Badge"", ""parameters"": {{ ""BadgeShape"": ""circle"", ""BadgeStyle"": ""outline_stroke"", ""InternalGlyph"": ""initial_letter"" }} }},
+                            {{ ""family"": ""monogram"", ""descriptor"": ""{tag} Monogram"", ""parameters"": {{ ""MonogramType"": ""single_letter"", ""FrameStyle"": ""circle_ring"", ""StrokeStyle"": ""heavy_block"", ""FontCategory"": ""geometric_sans"" }} }},
+                            {{ ""family"": ""abstract"", ""descriptor"": ""{tag} Abstract"", ""parameters"": {{ ""GeometryType"": ""intersecting_rings"", ""StrokeWeight"": ""medium"", ""FontCategory"": ""geometric_sans"" }} }},
+                            {{ ""family"": ""icon"", ""descriptor"": ""{tag} Icon"", ""parameters"": {{ ""MetaphorPrimitive"": ""node_network"", ""Construction"": ""monoline_stroke"", ""FontCategory"": ""geometric_sans"" }} }},
+                            {{ ""family"": ""minimal"", ""descriptor"": ""{tag} Minimal"", ""parameters"": {{ ""Primitive"": ""quadrant_arc"", ""Orientation"": ""0_deg"", ""WeightBalance"": ""monolithic_solid"", ""FontCategory"": ""geometric_sans"" }} }}
+                        ]
+                    }}";
+                    return new AiCompletion
+                    {
+                        Text = json,
+                        Model = "mock-model",
+                        Usage = new AiTokenUsage(100, 200, 300)
+                    };
+                });
+
+            var mockRouter = new Mock<IModelRouter>();
+            mockRouter.Setup(r => r.Resolve(It.IsAny<string>())).Returns("mock-model");
+
             RendererRegistry = new LogoMarkRendererRegistry();
-            LogoGenService = new LogoGenerationService(RendererRegistry, env: envMock.Object);
+            LogoGenService = new LogoGenerationService(RendererRegistry, mockAi.Object, mockRouter.Object, env: envMock.Object);
         }
 
         public async Task DisposeAsync()

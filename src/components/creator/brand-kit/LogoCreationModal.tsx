@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { BrandKit, BrandLogoConcept } from "@/types/creator/brand-kit";
 import { brandKitApi } from "@/lib/api-creator-brand-kit";
+import creatorAiApi from "@/lib/api-creator-ai";
 import { ConceptTile } from "./ConceptTile";
 import { CompareOverlay } from "./CompareOverlay";
 import { ModalWorkflowHeader } from "./ModalWorkflowHeader";
@@ -51,10 +52,22 @@ export function LogoCreationModal({
   const [isLoadingInitial, setIsLoadingInitial] = useState<boolean>(false);
   const [isBatchRegenerating, setIsBatchRegenerating] = useState<boolean>(false);
   const [batchRegenerateCount, setBatchRegenerateCount] = useState<number>(0);
+  const [batchRedrawCost, setBatchRedrawCost] = useState<number>(4);
   const [globalError, setGlobalError] = useState<{
     type: "credits" | "cap" | "network";
     message: string;
   } | null>(null);
+
+  useEffect(() => {
+    creatorAiApi
+      .getCredits()
+      .then((res) => {
+        if (res?.costs?.LogoParameterSelection != null) {
+          setBatchRedrawCost(res.costs.LogoParameterSelection);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Per-tile loading and error states to ensure isolated tile updates
   const [regeneratingKeys, setRegeneratingKeys] = useState<Record<string, boolean>>({});
@@ -206,7 +219,7 @@ export function LogoCreationModal({
       if (status === 402) {
         setGlobalError({
           type: "credits",
-          message: "Insufficient AI credits (4 credits required for batch redraw).",
+          message: `Insufficient AI credits (${batchRedrawCost} credits required for batch redraw).`,
         });
       } else if (status === 400 && msg.toLowerCase().includes("limit")) {
         setGlobalError({
@@ -214,7 +227,10 @@ export function LogoCreationModal({
           message: "Maximum batch regeneration limit (3/3) reached.",
         });
       } else {
-        setGlobalError({ type: "network", message: msg });
+        setGlobalError({
+          type: "network",
+          message: `Logo concept generation did not finish. Your ${batchRedrawCost} credits have been automatically refunded to your balance.`,
+        });
       }
     } finally {
       setIsBatchRegenerating(false);
@@ -264,7 +280,7 @@ export function LogoCreationModal({
             ...prev,
             [conceptKey]: {
               type: "credits",
-              message: "Insufficient AI credits (2 credits required).",
+              message: "Insufficient credits.",
             },
           }));
         } else if (status === 400 && msg.toLowerCase().includes("limit")) {
@@ -374,7 +390,7 @@ export function LogoCreationModal({
                 title={
                   isBatchCapExhausted
                     ? "Maximum 3 batch redraws reached"
-                    : "Redraw all 6 concepts (4 credits)"
+                    : `Redraw all 6 concepts (${batchRedrawCost} credits)`
                 }
               >
                 <RefreshCw className={`size-3.5 ${isBatchRegenerating ? "animate-spin text-primary" : ""}`} />

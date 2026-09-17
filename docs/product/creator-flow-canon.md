@@ -75,7 +75,7 @@ Two backfills run on every boot (`Program.cs`, non-fatal): the **idea backfill**
 During the cutover, every idea write also mirrored to the journey (dual-write) as a rollback net. It was removed (commit `d27abd9`) because **mirroring is undefined once a user has two ideas** — one journey cannot mirror both, and the interleaved copy poisons any rollback. **FORBIDDEN:** do not reintroduce journey phase-block writes, "for safety" or otherwise. The journey's frozen blocks are historical residue, not a fallback store.
 
 ### 1.7 AI credit metering, token limits & starter grant
-Capabilities are credit-metered against server-authoritative balance and capability costs (`GET /api/ai/credits`). Current standard starter grant is **200 credits** on onboarding or first AI call (`Ai:StarterCredits = 200`). Current costs: `IdeaClarifier`: **20**, `MarketStudy`: **20**, `BusinessModel`: **18**, `BusinessPlan`: **33**, `Forecast`: **32** (provisional), `IdeaGenerator`: **0**, `Probe`: **0**, `DirectionGeneration`: **7**, `LogoParameterSelection`: **4**, `LogoConceptRegenerate`: **2`, `ColorGeneration`: **2`, `TypographyGeneration`: **2**. Exhaustion triggers HTTP 402; failed generations auto-refund.
+Capabilities are credit-metered against server-authoritative balance and capability costs (`GET /api/ai/credits`). Current standard starter grant is **200 credits** on onboarding or first AI call (`Ai:StarterCredits = 200`). Current costs: `IdeaClarifier`: **20**, `MarketStudy`: **20**, `BusinessModel`: **18**, `BusinessPlan`: **33**, `Forecast`: **32** (provisional), `IdeaGenerator`: **0**, `Probe`: **0**, `DirectionGeneration`: **7**, `LogoParameterSelection`: **4**, `LogoConceptRegenerate`: **0** (free local SVG redraw), `ColorGeneration`: **2**, `TypographyGeneration`: **2**. Exhaustion triggers HTTP 402; failed generations auto-refund under Option A without deterministic fallback substitution.
 
 Output token ceilings are dynamically configured via `Ai:OutputTokenLimits` in `appsettings.json` (`IdeaGenerator: 3500`, `IdeaClarifier: 3500`, `MarketStudy: 7500`, `BusinessModel: 8500`, `BusinessPlan: 7500`, `Forecast: 8000`, `Probe: 500`, `DirectionGeneration: 4500`, `LogoParameterSelection: 3000`, `ColorGeneration: 4500`, `TypographyGeneration: 2000`) with safe fallback constants in handlers.
 
@@ -325,14 +325,18 @@ The Brand Visual Identity Studio provides a calm, generative studio workflow acr
 - **Config-Driven Pricing:** Configured under `Ai:CreditCosts` in `appsettings.json`:
   - Direction Generation (4 candidates): **7 credits** (`AiJobType.DirectionGeneration`)
   - Logo Batch Generation (6 concepts): **4 credits** (`AiJobType.LogoParameterSelection`)
-  - Logo Single Concept Regeneration: **2 credits** (`AiJobType.LogoConceptRegenerate`)
+  - Logo Single Concept Regeneration: **0 credits (Free)** (Local SVG parametric redraw, not an AI job)
   - Color Palette Regeneration: **2 credits** (`AiJobType.ColorGeneration`)
-  - Typography System Regeneration: **2 credits** (`AiJobType.TypographyGeneration`) *(Note: Known frontend UI badge discrepancy — `TypographySystemModal.tsx:285` displays a "5 Credits" chip while backend authoritatively debits 2 credits per config).*
+  - Typography System Regeneration: **2 credits** (`AiJobType.TypographyGeneration`)
   - Deterministic Initial Derivations & Derived Variations: **0 credits (Free)**
-  - Total credits spent during full E2E walkthrough is exactly **13 credits** (7 for Direction + 4 for Logo concepts + 2 for single concept regeneration).
+  - Total credits spent during full E2E walkthrough is exactly **11 credits** (7 for Direction + 4 for Logo concepts).
   - All generative operations are free-tier eligible per the platform's starter credits model (200 credits granted on onboarding/first AI call).
 - **Per-Element Cap (Max 3):** Direction, Logo Concepts, Colors, and Typography each enforce `RegenerateCount <= 3`. Reaching the cap halts further generation with HTTP 400 and **0 credits debited**.
-- **Compensating Refunds:** Debits occur before model execution. If an AI call fails, times out, or encounters an optimistic concurrency conflict, `RefundForJobAsync` is immediately dispatched.
+- **Compensating Refunds & Option A Failure Handling:** Debits occur before model execution. If an AI call fails, parse fails, or encounters an optimistic concurrency conflict:
+  1. The error propagates cleanly (Option A); deterministic fallbacks are permanently deleted from billed paths.
+  2. The controller returns an honest HTTP 500 error naming the failure.
+  3. `RefundForJobAsync` is immediately dispatched, refunding the user's credits atomically.
+  4. The section's `RegenerateCount` is not incremented.
 - **Studio Reset & First-Time Provisioning (`POST open-studio`):**
   - Handles missing and existing kits consistently: if no `BrandKit` exists for an idea, `POST open-studio` auto-provisions a fresh draft kit using the shared `GetOrCreateBrandKitAsync` method (matching `CreateKit`), returning HTTP 200 rather than 404.
   - When invoked for an existing kit upon re-entering from the Hub, it resets all `RegenerateCount` counters (`Direction`, `Logo`, `Logo.Concepts[*]`, `Colors`, `Typography`) to 0. Normal section `PATCH` saves do not reset counters.

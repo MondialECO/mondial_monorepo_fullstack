@@ -52,21 +52,28 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
 
             List<BrandLogoConceptParameters>? rawParamSets = null;
 
-            if (_aiProvider != null)
+            if (_aiProvider == null)
             {
-                try
-                {
-                    rawParamSets = await QueryAiForParameterSetsAsync(brandName, strategy, direction, selectedCand, avoidList, selectedLogoType, cancellationToken);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "AI parameter generation failed for brand '{BrandName}'. Falling back to deterministic generation.", brandName);
-                }
+                throw new InvalidOperationException("No AI provider configured in service container.");
+            }
+            if (_modelRouter == null)
+            {
+                throw new InvalidOperationException("No ModelRouter configured in service container.");
+            }
+
+            try
+            {
+                rawParamSets = await QueryAiForParameterSetsAsync(brandName, strategy, direction, selectedCand, avoidList, selectedLogoType, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "AI parameter generation failed for brand '{BrandName}': {Message}", brandName, ex.Message);
+                throw new InvalidOperationException($"Logo concept parameter AI generation failed: {ex.Message}", ex);
             }
 
             if (rawParamSets == null || rawParamSets.Count < 6 || !ValidateSetDiversity(rawParamSets, avoidList, selectedLogoType))
             {
-                rawParamSets = GenerateDeterministicParameterSets(brandName, strategy, direction, selectedCand, avoidList, selectedLogoType);
+                throw new InvalidOperationException("Logo concept parameter AI generation did not produce 6 valid diverse parameter sets.");
             }
 
             var palette = selectedCand?.ColorPalette ?? new List<string>();
